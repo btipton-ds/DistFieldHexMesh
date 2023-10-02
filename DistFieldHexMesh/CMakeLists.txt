@@ -2,23 +2,32 @@
 # project specific logic here.
 #
 
+find_package(wxWidgets)
+include(${wxWidgets_USE_FILE})
+message("wxWidgets_USE_FILE: ${wxWidgets_USE_FILE}")
+message("wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
+
 include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
-	"C:/Program\ Files/wxWidgets/include/"
-	"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/mswu/"
+    "${wxWidgets_INCLUDE_DIRS}"
 )
 
 # Add source to this project's executable.
 
-set(triMeshLibDir "D:/Users/BobT/Documents/Projects/Code/triMesh/x64/${CMAKE_BUILD_TYPE}")
+set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
 
 link_directories(
 	"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/"
 	${triMeshLibDir}
 )
 
-add_executable (DistFieldHexMesh "main.cpp" "volume.cpp")
+add_executable (DistFieldHexMesh         
+	WIN32
+	"main.cpp" 
+	"volume.cpp"
+	"mainFrame.cpp"
+)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	target_link_libraries("DistFieldHexMesh" 

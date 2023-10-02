@@ -11,6 +11,7 @@
 #endif
 
 #include <triMesh.h>
+#include "mainFrame.h"
 #include "volume.h"
 
 using namespace std;
@@ -22,28 +23,27 @@ public:
 	virtual bool OnInit() wxOVERRIDE;
 };
 
+
 // Create a new application object
 wxIMPLEMENT_APP(DFHMApp);
 
 // 'Main program' equivalent: the program execution "starts" here
 bool DFHMApp::OnInit()
 {
-#if 0
-    // create the main application window
-    wxFrame* frame = new wxFrame;
+    wxApp::OnInit();
 
-    // show it
+    MainFrame* frame = new MainFrame(nullptr, 0, L"DistFieldHexMesh", wxPoint(50, 50), wxSize(1000, 1000));
     frame->Show(true);
 
     // just for Motif
 #ifdef __WXMOTIF__
     frame->UpdateInfoText();
 #endif
-#endif
+
     // enter the main message loop and run the app
     return true;
 }
-
+#if 0
 int main(int numParams, const char** params)
 {
 	Block::setBlockDim(8);
@@ -51,3 +51,5 @@ int main(int numParams, const char** params)
 
 	return 0;
 }
+#endif
+
