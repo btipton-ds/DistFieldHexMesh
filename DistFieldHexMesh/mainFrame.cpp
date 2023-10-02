@@ -1,5 +1,12 @@
+#include <memory>
+#include <wx/filedlg.h>
+#include <wx/string.h>
+#include <wx/wfstream.h>
+#include <readStl.h>
+
 #include "mainFrame.h"
 
+using namespace std;
 using namespace DFHM;
 
 MainFrame::MainFrame(wxWindow* parent,
@@ -83,6 +90,24 @@ void MainFrame::addStatusBar()
 
 void MainFrame::OnOpen(wxCommandEvent& event)
 {
+    wxFileDialog openFileDialog(this, _("Open Triangle Mesh file"), "", "",
+            "TriMesh files (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (openFileDialog.ShowModal() == wxID_CANCEL)
+        return;     // the user changed idea...
+
+    // proceed loading the file chosen by the user;
+    // this can be done with e.g. wxWidgets input streams:
+    wxString pathStr = openFileDialog.GetPath();
+    if (pathStr.find(".stl") != 0) {
+        TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
+        CReadSTL reader(pMesh);
+
+        wstring filename(openFileDialog.GetFilename().ToStdWstring());
+        wstring path(pathStr.ToStdWstring());
+        auto pos = path.find(filename);
+        path = path.substr(0, pos);
+        reader.read(path, filename);
+    }
 
 }
 

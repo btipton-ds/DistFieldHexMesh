@@ -10,6 +10,7 @@ message("wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
+	"../../triMesh/stlReader/include/"
     "${wxWidgets_INCLUDE_DIRS}"
 )
 
