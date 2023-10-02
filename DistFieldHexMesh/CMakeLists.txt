@@ -27,6 +27,7 @@ add_executable (DistFieldHexMesh
 	"main.cpp" 
 	"volume.cpp"
 	"mainFrame.cpp"
+	"app.cpp"
 )
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
