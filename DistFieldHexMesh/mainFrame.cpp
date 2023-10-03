@@ -3,6 +3,7 @@
 #include <wx/string.h>
 #include <wx/wfstream.h>
 #include <readStl.h>
+#include <filesystem>
 
 #include "mainFrame.h"
 
@@ -36,52 +37,52 @@ void MainFrame::addMenus()
 
 void MainFrame::createFileMenu()
 {
-    wxMenu* menu = new wxMenu;
+    _fileMenu = new wxMenu;
 
-    menu->Append(wxID_OPEN);
+    _fileMenu->Append(wxID_OPEN);
     Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 
-    menu->Append(wxID_NEW);
+    _fileMenu->Append(wxID_NEW);
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
 
-    menu->Append(wxID_CLOSE);
+    _fileMenu->Append(wxID_CLOSE);
     Bind(wxEVT_MENU, &MainFrame::OnClose, this, wxID_CLOSE);
 
-    menu->AppendSeparator();
+    _fileMenu->AppendSeparator();
 
-    menu->Append(wxID_EXIT, "Quit\tCtrl-Q");
+    _fileMenu->Append(wxID_EXIT, "Quit\tCtrl-Q");
     Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 
-    _menuBar->Append(menu, "&File");
+    _menuBar->Append(_fileMenu, "&File");
 }
 
 void MainFrame::createEditMenu()
 {
-    wxMenu* menu = new wxMenu;
+    _editMenu = new wxMenu;
     
-    menu->Append(wxID_CUT);
+    _editMenu->Append(wxID_CUT);
     Bind(wxEVT_MENU, &MainFrame::OnCut, this, wxID_CUT);
 
-    menu->Append(wxID_COPY);
+    _editMenu->Append(wxID_COPY);
     Bind(wxEVT_MENU, &MainFrame::OnCopy, this, wxID_COPY);
 
-    menu->Append(wxID_PASTE);
+    _editMenu->Append(wxID_PASTE);
     Bind(wxEVT_MENU, &MainFrame::OnPaste, this, wxID_PASTE);
 
-    menu->AppendSeparator();
+    _editMenu->AppendSeparator();
 
-    menu->Append(ID_VerifyClosed, "Verify Closed");
+    _editMenu->Append(ID_VerifyClosed, "Verify Closed");
     Bind(wxEVT_MENU, &MainFrame::OnVerifyClosed, this, ID_VerifyClosed);
 
-    menu->Append(ID_VerifyNormals, "Verify Normals");
+    _editMenu->Append(ID_VerifyNormals, "Verify Normals");
     Bind(wxEVT_MENU, &MainFrame::OnVerifyNormals, this, ID_VerifyNormals);
 
-    menu->Append(ID_AnalyzeGaps, "Analyze Gaps");
+    _editMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
     Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_AnalyzeGaps);
     
         
 
-    _menuBar->Append(menu, "&Edit");
+    _menuBar->Append(_editMenu, "&Edit");
 
 }
 
@@ -99,7 +100,21 @@ void MainFrame::createHelpMenu()
 void MainFrame::addStatusBar()
 {
     CreateStatusBar();
-    SetStatusText("Welcome to VulkanQuickStart!");
+    SetStatusText("Welcome to DistFieldHexMesh!");
+}
+
+void MainFrame::OnInternalIdle()
+{
+    wxFrame::OnInternalIdle();
+
+    if (_editMenu) {
+        _editMenu->Enable(ID_VerifyClosed, _pAppData->getMesh() != nullptr);
+        _editMenu->Enable(ID_VerifyNormals, _pAppData->getMesh() != nullptr);
+        _editMenu->Enable(ID_AnalyzeGaps, _pAppData->getMesh() != nullptr);
+    }
+    if (_fileMenu) {
+
+    }
 }
 
 void MainFrame::OnOpen(wxCommandEvent& event)
@@ -184,6 +199,17 @@ void AppData::doOpen()
         path = path.substr(0, pos);
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
+
+            wstring dumpTriFilename(path + L"triDump.txt");
+            wstring dumpTreeFilename(path + L"treeDump.txt");
+            if (!filesystem::exists(dumpTriFilename)) {
+                _pMesh->dumpTris(dumpTriFilename);
+                _pMesh->dumpTree(dumpTreeFilename);
+            }
+            if (!_pMesh->compareDumpedTris(dumpTriFilename)) {
+                wxMessageBox(L"Check file did not match latest read file.", "Load Stl Error", wxOK | wxICON_INFORMATION);
+
+            }
 
             stringstream ss;
             ss << "Tri mesh read. Num tris: " << _pMesh->numTris();

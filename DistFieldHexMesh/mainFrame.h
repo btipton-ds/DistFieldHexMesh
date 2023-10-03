@@ -30,6 +30,10 @@ public:
     void doVerifyNormals();
     void doAnalyzeGaps();
 
+    inline TriMesh::CMeshPtr getMesh() const
+    {
+        return _pMesh;
+    }
 private:
     MainFrame* _pMainFrame = nullptr;
     TriMesh::CMeshPtr _pMesh;
@@ -52,9 +56,12 @@ public:
 
     void addMenus();
     void addStatusBar();
+    void OnInternalIdle() wxOVERRIDE;
 
 private:
     wxMenuBar* _menuBar = nullptr;
+    wxMenu *_editMenu = nullptr,
+        *_fileMenu = nullptr;
     AppDataPtr _pAppData;
 
     void createFileMenu();
