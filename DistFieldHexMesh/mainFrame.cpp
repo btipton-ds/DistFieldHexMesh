@@ -18,6 +18,7 @@ MainFrame::MainFrame(wxWindow* parent,
     const wxString& name)
     : wxFrame(parent, id, title, pos, size, style, name)
 {
+    _pAppData = make_shared<AppData>(this);
     addMenus();
     addStatusBar();
 }
@@ -35,23 +36,23 @@ void MainFrame::addMenus()
 
 void MainFrame::createFileMenu()
 {
-    wxMenu* menuFile = new wxMenu;
+    wxMenu* menu = new wxMenu;
 
-    menuFile->Append(wxID_OPEN);
+    menu->Append(wxID_OPEN);
     Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 
-    menuFile->Append(wxID_NEW);
+    menu->Append(wxID_NEW);
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
 
-    menuFile->Append(wxID_CLOSE);
+    menu->Append(wxID_CLOSE);
     Bind(wxEVT_MENU, &MainFrame::OnClose, this, wxID_CLOSE);
 
-    menuFile->AppendSeparator();
+    menu->AppendSeparator();
 
-    menuFile->Append(wxID_EXIT, "Quit\tCtrl-Q");
+    menu->Append(wxID_EXIT, "Quit\tCtrl-Q");
     Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 
-    _menuBar->Append(menuFile, "&File");
+    _menuBar->Append(menu, "&File");
 }
 
 void MainFrame::createEditMenu()
@@ -66,6 +67,19 @@ void MainFrame::createEditMenu()
 
     menu->Append(wxID_PASTE);
     Bind(wxEVT_MENU, &MainFrame::OnPaste, this, wxID_PASTE);
+
+    menu->AppendSeparator();
+
+    menu->Append(ID_VerifyClosed, "Verify Closed");
+    Bind(wxEVT_MENU, &MainFrame::OnVerifyClosed, this, ID_VerifyClosed);
+
+    menu->Append(ID_VerifyNormals, "Verify Normals");
+    Bind(wxEVT_MENU, &MainFrame::OnVerifyNormals, this, ID_VerifyNormals);
+
+    menu->Append(ID_AnalyzeGaps, "Analyze Gaps");
+    Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_AnalyzeGaps);
+    
+        
 
     _menuBar->Append(menu, "&Edit");
 
@@ -90,25 +104,7 @@ void MainFrame::addStatusBar()
 
 void MainFrame::OnOpen(wxCommandEvent& event)
 {
-    wxFileDialog openFileDialog(this, _("Open Triangle Mesh file"), "", "",
-            "TriMesh files (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (openFileDialog.ShowModal() == wxID_CANCEL)
-        return;     // the user changed idea...
-
-    // proceed loading the file chosen by the user;
-    // this can be done with e.g. wxWidgets input streams:
-    wxString pathStr = openFileDialog.GetPath();
-    if (pathStr.find(".stl") != 0) {
-        TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
-        CReadSTL reader(pMesh);
-
-        wstring filename(openFileDialog.GetFilename().ToStdWstring());
-        wstring path(pathStr.ToStdWstring());
-        auto pos = path.find(filename);
-        path = path.substr(0, pos);
-        reader.read(path, filename);
-    }
-
+    _pAppData->doOpen();
 }
 
 void MainFrame::OnNew(wxCommandEvent& event)
@@ -145,4 +141,115 @@ void MainFrame::OnCopy(wxCommandEvent& event)
 void MainFrame::OnPaste(wxCommandEvent& event)
 {
 
+}
+
+void MainFrame::OnVerifyClosed(wxCommandEvent& event)
+{
+    _pAppData->doVerifyClosed();
+}
+
+void MainFrame::OnVerifyNormals(wxCommandEvent& event)
+{
+    _pAppData->doVerifyNormals();
+}
+
+void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
+{
+    _pAppData->doAnalyzeGaps();
+}
+
+AppData::AppData(MainFrame* pMainFrame)
+    : _pMainFrame(pMainFrame)
+{
+
+}
+
+void AppData::doOpen()
+{
+    wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
+        "TriMesh files (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (openFileDialog.ShowModal() == wxID_CANCEL)
+        return;     // the user changed idea...
+
+    // proceed loading the file chosen by the user;
+    // this can be done with e.g. wxWidgets input streams:
+    wxString pathStr = openFileDialog.GetPath();
+    if (pathStr.find(".stl") != 0) {
+        TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
+        CReadSTL reader(pMesh);
+
+        wstring filename(openFileDialog.GetFilename().ToStdWstring());
+        wstring path(pathStr.ToStdWstring());
+        auto pos = path.find(filename);
+        path = path.substr(0, pos);
+        if (reader.read(path, filename)) {
+            _pMesh = pMesh;
+
+            stringstream ss;
+            ss << "Tri mesh read. Num tris: " << _pMesh->numTris();
+            wxMessageBox(ss.str().c_str(), "Load Stl Results", wxOK | wxICON_INFORMATION);
+        }
+    }
+}
+
+void AppData::doVerifyClosed()
+{
+    int numOpen = _pMesh->numLaminarEdges();
+
+    stringstream ss;
+    ss << "Number of edges: " << _pMesh->numEdges() << "\nNumber of open edges: " << numOpen;
+    wxMessageBox(ss.str().c_str(), "Verify Closed", wxOK | wxICON_INFORMATION);
+}
+
+void AppData::doVerifyNormals()
+{
+    size_t numMisMatched = 0;
+    size_t numEdges = _pMesh->numEdges();
+    for (size_t i = 0; i < numEdges; i++) {
+        const auto& edge = _pMesh->getEdge(i);
+        if (edge._numFaces == 2) {
+            size_t ptIdx0 = edge._vertIndex[0];
+            size_t ptIdx1 = edge._vertIndex[1];
+
+            const Vector3i& faceIndices0 = _pMesh->getTri(edge._faceIndex[0]);
+            const Vector3i& faceIndices1 = _pMesh->getTri(edge._faceIndex[1]);
+
+            bool face0Pos = false, face1Pos = false;
+            for (int i = 0; i < 3; i++) {
+                if (faceIndices0[i] == ptIdx0) {
+                    face0Pos = (faceIndices0[(i + 1) % 3] == ptIdx1);
+                    break;
+                }
+            }
+
+            for (int i = 0; i < 3; i++) {
+                if (faceIndices1[i] == ptIdx0) {
+                    face1Pos = (faceIndices1[(i + 1) % 3] == ptIdx1);
+                    break;
+                }
+            }
+
+            if (face0Pos == face1Pos) {
+                numMisMatched++;
+            }
+        }
+    }
+    stringstream ss;
+    ss << "Number of tris: " << _pMesh->numTris() << "\nNumber of opposed faces: " << numMisMatched;
+    wxMessageBox(ss.str().c_str(), "Verify Normals", wxOK | wxICON_INFORMATION);
+}
+
+void AppData::doAnalyzeGaps()
+{
+    vector<double> binSizes({ 0.050 / 64, 0.050 / 32, 0.050 / 16, 0.050 / 8, 0.050 / 4, 0.050 / 2, 0.050});
+    vector<size_t> bins;
+    bins.resize(binSizes.size(), 0);
+    _pMesh->getGapHistogram(binSizes, bins);
+
+    stringstream ss;
+    ss << "Gap histogram\n";
+    for (size_t i = 0; i < binSizes.size(); i++) {
+        ss << "hits < " << binSizes[i] << ": " << bins[i] << "\n";
+    }
+    wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
 }

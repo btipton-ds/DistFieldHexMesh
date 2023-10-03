@@ -7,12 +7,37 @@
 #include "wx/wx.h"
 #endif
 
+#include <memory>
+#include <triMesh.h>
+
 namespace DFHM {
 
-enum
+enum DFHM_MENU_ID
 {
-    ID_Hello = 1
+    DFHM_LOWEST = wxID_HIGHEST,
+    ID_VerifyClosed,
+    ID_VerifyNormals,
+    ID_AnalyzeGaps,
 };
+
+class MainFrame;
+
+class AppData {
+public:
+    AppData(MainFrame* pMainFrame);
+    void doOpen();
+    void doVerifyClosed();
+    void doVerifyNormals();
+    void doAnalyzeGaps();
+
+private:
+    MainFrame* _pMainFrame = nullptr;
+    TriMesh::CMeshPtr _pMesh;
+
+    std::vector<double> _binSizes;
+    std::vector<std::vector<int>> _bins;
+};
+using AppDataPtr = std::shared_ptr<AppData>;
 
 class MainFrame : public wxFrame
 {
@@ -30,6 +55,7 @@ public:
 
 private:
     wxMenuBar* _menuBar = nullptr;
+    AppDataPtr _pAppData;
 
     void createFileMenu();
     void createEditMenu();
@@ -44,6 +70,9 @@ private:
     void OnCut(wxCommandEvent& event);
     void OnCopy(wxCommandEvent& event);
     void OnPaste(wxCommandEvent& event);
+    void OnVerifyClosed(wxCommandEvent& event);
+    void OnVerifyNormals(wxCommandEvent& event);
+    void OnAnalyzeGaps(wxCommandEvent& event);
 };
 
 }
