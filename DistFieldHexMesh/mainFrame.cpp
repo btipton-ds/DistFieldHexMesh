@@ -23,11 +23,19 @@ MainFrame::MainFrame(wxWindow* parent,
     const wxString& name)
     : wxFrame(parent, id, title, pos, size, style, name)
 {
+#ifdef WIN32
+#pragma warning(push)
+#pragma warning(disable: 4996)
+
     AllocConsole();
     freopen("conin$", "r", stdin);
     freopen("conout$", "w", stdout);
     freopen("conout$", "w", stderr);
     cout << "Console up\n";
+
+#pragma warning(pop)
+#endif // WIN32
+
 
     _pAppData = make_shared<AppData>(this);
     addMenus();
