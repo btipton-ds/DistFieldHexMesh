@@ -18,6 +18,7 @@ enum DFHM_MENU_ID
     ID_VerifyClosed,
     ID_VerifyNormals,
     ID_AnalyzeGaps,
+    ID_FindMinimumGap,
 };
 
 class MainFrame;
@@ -29,6 +30,7 @@ public:
     void doVerifyClosed();
     void doVerifyNormals();
     void doAnalyzeGaps();
+    void DoFindMinGap() const;
 
     inline TriMesh::CMeshPtr getMesh() const
     {
@@ -80,6 +82,7 @@ private:
     void OnVerifyClosed(wxCommandEvent& event);
     void OnVerifyNormals(wxCommandEvent& event);
     void OnAnalyzeGaps(wxCommandEvent& event);
+    void OnFindMinGap(wxCommandEvent& event);
 };
 
 }

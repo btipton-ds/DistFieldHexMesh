@@ -9,6 +9,9 @@
 #include "windows.h"
 #endif // WIN32
 
+#include <tm_math.h>
+#include <MultiCoreUtil.h>
+
 #include "mainFrame.h"
 
 using namespace std;
@@ -98,7 +101,8 @@ void MainFrame::createEditMenu()
     _editMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
     Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_AnalyzeGaps);
     
-        
+    _editMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
+    Bind(wxEVT_MENU, &MainFrame::OnFindMinGap, this, ID_FindMinimumGap);
 
     _menuBar->Append(_editMenu, "&Edit");
 
@@ -129,6 +133,7 @@ void MainFrame::OnInternalIdle()
         _editMenu->Enable(ID_VerifyClosed, _pAppData->getMesh() != nullptr);
         _editMenu->Enable(ID_VerifyNormals, _pAppData->getMesh() != nullptr);
         _editMenu->Enable(ID_AnalyzeGaps, _pAppData->getMesh() != nullptr);
+        _editMenu->Enable(ID_FindMinimumGap, _pAppData->getMesh() != nullptr);
     }
     if (_fileMenu) {
 
@@ -189,6 +194,12 @@ void MainFrame::OnVerifyNormals(wxCommandEvent& event)
 void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
 {
     _pAppData->doAnalyzeGaps();
+}
+
+void MainFrame::OnFindMinGap(wxCommandEvent& event)
+{
+    _pAppData->DoFindMinGap();
+
 }
 
 AppData::AppData(MainFrame* pMainFrame)
@@ -296,4 +307,47 @@ void AppData::doAnalyzeGaps()
         ss << "hits < " << binSizes[i] << ": " << bins[i] << "\n";
     }
     wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
+}
+
+void AppData::DoFindMinGap() const
+{
+    double t = _pMesh->findMinGap() * 10;
+    auto bb = _pMesh->getBBox();
+    auto bbMin = bb.getMin();
+    auto range = bb.range();
+    size_t numX = (size_t)(range[0] / t + 0.5);
+    size_t numY = (size_t)(range[1] / t + 0.5);
+    size_t numZ = (size_t)(range[2] / t + 0.5);
+
+    numX = (numX / 8 + 1) * 8;
+    numY = (numY / 8 + 1) * 8;
+    numZ = (numZ / 8 + 1) * 8;
+    Vector3i dim(numX, numY, numZ);
+
+
+    MultiCore::runLambda([this, dim, bb](size_t threadNum, size_t numThreads) {
+        auto range = bb.range();
+        auto bbMin = bb.getMin();
+        Vector3d zAxis(0, 0, 1);
+        for (size_t ix = threadNum; ix < dim[0]; ix += numThreads) {
+            double t = ix / (dim[0] - 1.0);
+            double x = bbMin[0] + t * range[0];
+            for (size_t iy = 0; iy < dim[1]; iy++) {
+                double u = iy / (dim[1] - 1.0);
+                double y = bbMin[1] + u * range[1];
+                Vector3d ctr(x, y, 0);
+                Ray ray(ctr, zAxis);
+
+                vector<RayHit> hits;
+                if (_pMesh->biDirRayCast(ray, hits)) {
+                    int dbgBreak = 1;
+                }
+            }
+        }
+        }, true);
+
+
+    stringstream ss;
+    ss << "Span: [" << numX << ", " << numY << ", " << numZ << "]\n";
+    wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
 }

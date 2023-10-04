@@ -11,6 +11,7 @@ include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
+	"../../utilities/include/"
     "${wxWidgets_INCLUDE_DIRS}"
 )
 
