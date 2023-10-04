@@ -31,22 +31,9 @@ add_executable (DistFieldHexMesh
 	"app.cpp"
 )
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
-	target_link_libraries("DistFieldHexMesh" 
-	PUBLIC triMesh
-	PUBLIC stlReader
+message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
-	#windows & mfc libraries
-	PUBLIC comctl32
-	PUBLIC rpcrt4
-
-	#wxWidgests Libraries
-	PUBLIC wxbase32u
-	PUBLIC wxmsw32u_core
-	PUBLIC wxpng
-	PUBLIC wxzlib
-	)
-else()
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	target_link_libraries("DistFieldHexMesh" 
 	PUBLIC triMesh
 	PUBLIC stlReader
@@ -60,6 +47,21 @@ else()
 	PUBLIC wxmsw32ud_core
 	PUBLIC wxpngd
 	PUBLIC wxzlibd
+	)
+else()
+	target_link_libraries("DistFieldHexMesh" 
+	PUBLIC triMesh
+	PUBLIC stlReader
+
+	#windows & mfc libraries
+	PUBLIC comctl32
+	PUBLIC rpcrt4
+
+	#wxWidgests Libraries
+	PUBLIC wxbase32u
+	PUBLIC wxmsw32u_core
+	PUBLIC wxpng
+	PUBLIC wxzlib
 	)
 endif()
 

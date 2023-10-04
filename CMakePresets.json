@@ -30,12 +30,20 @@
             }
         },
         {
-            "name": "release",
-            "displayName": "Release",
+            "name": "releaseDbg",
+            "displayName": "Release Dbg",
             "inherits": "debug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
+          "cacheVariables": {
+              "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+          }
+        },
+        {
+          "name": "release",
+          "displayName": "Release",
+          "inherits": "debug",
+          "cacheVariables": {
+            "CMAKE_BUILD_TYPE": "Release"
+          }
         }
     ]
 }

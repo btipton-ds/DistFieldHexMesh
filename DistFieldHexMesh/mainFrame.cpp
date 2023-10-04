@@ -5,6 +5,10 @@
 #include <readStl.h>
 #include <filesystem>
 
+#ifdef WIN32
+#include "windows.h"
+#endif // WIN32
+
 #include "mainFrame.h"
 
 using namespace std;
@@ -19,6 +23,12 @@ MainFrame::MainFrame(wxWindow* parent,
     const wxString& name)
     : wxFrame(parent, id, title, pos, size, style, name)
 {
+    AllocConsole();
+    freopen("conin$", "r", stdin);
+    freopen("conout$", "w", stdout);
+    freopen("conout$", "w", stderr);
+    cout << "Console up\n";
+
     _pAppData = make_shared<AppData>(this);
     addMenus();
     addStatusBar();
@@ -270,7 +280,7 @@ void AppData::doAnalyzeGaps()
     vector<double> binSizes({ 0.050 / 64, 0.050 / 32, 0.050 / 16, 0.050 / 8, 0.050 / 4, 0.050 / 2, 0.050});
     vector<size_t> bins;
     bins.resize(binSizes.size(), 0);
-    _pMesh->getGapHistogram(binSizes, bins);
+    _pMesh->getGapHistogram(binSizes, bins, true);
 
     stringstream ss;
     ss << "Gap histogram\n";
