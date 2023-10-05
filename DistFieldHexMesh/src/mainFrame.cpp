@@ -2,7 +2,6 @@
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
-#include <readStl.h>
 #include <filesystem>
 
 #ifdef WIN32
@@ -10,6 +9,8 @@
 #endif // WIN32
 
 #include <tm_math.h>
+#include <triMesh.h>
+#include <readStl.h>
 #include <MultiCoreUtil.h>
 
 #include <mainFrame.h>
@@ -40,8 +41,8 @@ MainFrame::MainFrame(wxWindow* parent,
 #pragma warning(pop)
 #endif // WIN32
 
-    auto pCanvas = new graphicsCanvas(this);
-    pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.2f));
+    _pCanvas = new GraphicsCanvas(this);
+    _pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.2f));
 
     _pAppData = make_shared<AppData>(this);
     addMenus();
@@ -231,6 +232,10 @@ void AppData::doOpen()
         path = path.substr(0, pos);
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
+            auto pCanvas = _pMainFrame->getCanvas();
+            pCanvas->beginFaceTesselation();
+            pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+            pCanvas->endFaceTesselation(false);
 
             wstring dumpTriFilename(path + L"triDump.txt");
             wstring dumpTreeFilename(path + L"treeDump.txt");

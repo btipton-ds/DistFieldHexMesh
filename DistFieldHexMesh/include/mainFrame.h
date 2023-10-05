@@ -21,6 +21,7 @@ enum DFHM_MENU_ID
     ID_FindMinimumGap,
 };
 
+class GraphicsCanvas;
 class MainFrame;
 
 class AppData {
@@ -60,11 +61,14 @@ public:
     void addStatusBar();
     void OnInternalIdle() wxOVERRIDE;
 
+    const GraphicsCanvas* getCanvas() const;
+    GraphicsCanvas* getCanvas();
 private:
     wxMenuBar* _menuBar = nullptr;
     wxMenu *_editMenu = nullptr,
         *_fileMenu = nullptr;
     AppDataPtr _pAppData;
+    GraphicsCanvas* _pCanvas = nullptr;
 
     void createFileMenu();
     void createEditMenu();
@@ -84,5 +88,15 @@ private:
     void OnAnalyzeGaps(wxCommandEvent& event);
     void OnFindMinGap(wxCommandEvent& event);
 };
+
+inline const GraphicsCanvas* MainFrame::getCanvas() const
+{
+    return _pCanvas;
+}
+
+inline GraphicsCanvas* MainFrame::getCanvas()
+{
+    return _pCanvas;
+}
 
 }

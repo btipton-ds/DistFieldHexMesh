@@ -1,5 +1,5 @@
 #include <memory>
-#include <graphicsCanvas.h>
+#include <GraphicsCanvas.h>
 
 #ifdef __WXMAC__
 #include <GLUT/glut.h>
@@ -15,8 +15,8 @@
 using namespace std;
 using namespace DFHM;
 
-BEGIN_EVENT_TABLE(graphicsCanvas, wxGLCanvas)
-EVT_PAINT(graphicsCanvas::doPaint)
+BEGIN_EVENT_TABLE(GraphicsCanvas, wxGLCanvas)
+EVT_PAINT(GraphicsCanvas::doPaint)
 END_EVENT_TABLE()
 
 namespace
@@ -24,7 +24,7 @@ namespace
     shared_ptr<wxGLContext> g_pContext;
 }
 
-graphicsCanvas::graphicsCanvas(wxFrame* parent)
+GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     : wxGLCanvas(parent, wxID_ANY, nullptr, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _faceVBO(GL_TRIANGLES, 10)
     , _edgeVBO(GL_LINES, 10)
@@ -33,20 +33,20 @@ graphicsCanvas::graphicsCanvas(wxFrame* parent)
         g_pContext = make_shared<wxGLContext>(this);
 }
 
-graphicsCanvas::~graphicsCanvas()
+GraphicsCanvas::~GraphicsCanvas()
 {
 }
 
-void graphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
+void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }
 
-void graphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
     ::glClearColor(red, green, blue, alpha);
 }
 
-void graphicsCanvas::glClearColor(const rgbaColor& color)
+void GraphicsCanvas::glClearColor(const rgbaColor& color)
 {
     ::glClearColor(
         color._rgba[0] / 255.0f,
@@ -56,7 +56,7 @@ void graphicsCanvas::glClearColor(const rgbaColor& color)
     );
 }
 
-void graphicsCanvas::render()
+void GraphicsCanvas::render()
 {
     SetCurrent(*g_pContext);
     wxPaintDC(this);
@@ -65,6 +65,8 @@ void graphicsCanvas::render()
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
+    _faceVBO.draw(0);
+    _edgeVBO.draw(0);
 
     glFlush();
     SwapBuffers();
