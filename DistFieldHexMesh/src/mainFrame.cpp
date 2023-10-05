@@ -19,6 +19,18 @@
 using namespace std;
 using namespace DFHM;
 
+namespace
+{
+
+enum DrawModes {
+    DRAW_NORMAL,
+    DRAW_SELECTED,
+    DRAW_HIGHLIGHTED,
+    DRAW_MAX_IDX
+};
+
+}
+
 MainFrame::MainFrame(wxWindow* parent,
     wxWindowID id,
     const wxString& title,
@@ -234,8 +246,12 @@ void AppData::doOpen()
             _pMesh = pMesh;
             auto pCanvas = _pMainFrame->getCanvas();
             pCanvas->beginFaceTesselation();
-            pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+            auto pIndices = pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
             pCanvas->endFaceTesselation(false);
+
+            pCanvas->beginSettingFaceIndices(0xffffffffffffffff);
+            pCanvas->includeFaceIndices(DRAW_NORMAL, *pIndices);
+            pCanvas->endSettingFaceIndices();
 
             wstring dumpTriFilename(path + L"triDump.txt");
             wstring dumpTreeFilename(path + L"treeDump.txt");
