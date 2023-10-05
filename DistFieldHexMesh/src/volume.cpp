@@ -2,7 +2,7 @@
 
 #include <triMesh.h>
 
-#include "volume.h"
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;

@@ -10,10 +10,10 @@
 #endif
 
 #include <triMesh.h>
-#include "volume.h"
+#include <volume.h>
 
-#include "app.h"
-#include "mainFrame.h"
+#include <app.h>
+#include <mainFrame.h>
 
 using namespace std;
 using namespace DFHM;

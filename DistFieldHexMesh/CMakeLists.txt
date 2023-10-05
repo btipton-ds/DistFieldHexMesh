@@ -11,8 +11,10 @@ include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
-	"../../utilities/include/"
-    "${wxWidgets_INCLUDE_DIRS}"
+	"../../utilities/threads/include/"
+	"../../utilities/opengl/include/"
+  "include"
+  "${wxWidgets_INCLUDE_DIRS}"
 )
 
 # Add source to this project's executable.
@@ -26,11 +28,15 @@ link_directories(
 
 add_executable (DistFieldHexMesh         
 	WIN32
-	"main.cpp" 
-	"volume.cpp"
-	"mainFrame.cpp"
-	"app.cpp"
-)
+	"src/main.cpp" 
+	"src/volume.cpp"
+	"src/mainFrame.cpp"
+	"src/app.cpp"
+	"src/graphicsCanvas.cpp"
+	"../../utilities/opengl/src/OGLExtensions.cpp"
+	"../../utilities/opengl/src/OGLMultiVbo.cpp"
+	"../../utilities/opengl/src/OGLMultiVboHandler.cpp"
+ )
 
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
@@ -48,6 +54,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	PUBLIC wxmsw32ud_core
 	PUBLIC wxpngd
 	PUBLIC wxzlibd
+	PUBLIC wxmsw32ud_gl
 	)
 else()
 	target_link_libraries("DistFieldHexMesh" 
@@ -63,6 +70,7 @@ else()
 	PUBLIC wxmsw32u_core
 	PUBLIC wxpng
 	PUBLIC wxzlib
+	PUBLIC wxmsw32u_gl
 	)
 endif()
 

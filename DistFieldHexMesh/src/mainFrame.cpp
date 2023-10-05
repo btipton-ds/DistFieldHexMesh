@@ -12,7 +12,8 @@
 #include <tm_math.h>
 #include <MultiCoreUtil.h>
 
-#include "mainFrame.h"
+#include <mainFrame.h>
+#include <graphicsCanvas.h>
 
 using namespace std;
 using namespace DFHM;
@@ -39,6 +40,8 @@ MainFrame::MainFrame(wxWindow* parent,
 #pragma warning(pop)
 #endif // WIN32
 
+    auto pCanvas = new graphicsCanvas(this);
+    pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.2f));
 
     _pAppData = make_shared<AppData>(this);
     addMenus();
