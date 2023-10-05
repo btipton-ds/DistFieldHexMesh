@@ -25,7 +25,9 @@ namespace
 }
 
 graphicsCanvas::graphicsCanvas(wxFrame* parent)
-    : wxGLCanvas(parent, wxID_ANY, nullptr, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas")) 
+    : wxGLCanvas(parent, wxID_ANY, nullptr, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
+    , _faceVBO(GL_TRIANGLES, 10)
+    , _edgeVBO(GL_LINES, 10)
 {
     if (!g_pContext)
         g_pContext = make_shared<wxGLContext>(this);

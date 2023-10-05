@@ -3,6 +3,7 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
+#include <OGLMultiVboHandler.h>
 
 namespace DFHM {
 
@@ -26,6 +27,8 @@ private:
 
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
     void render();
+
+    COglMultiVboHandler _faceVBO, _edgeVBO;
 protected:
     DECLARE_EVENT_TABLE()
 };
