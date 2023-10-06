@@ -34,6 +34,7 @@ add_executable (DistFieldHexMesh
 	"src/app.cpp"
 	"src/graphicsCanvas.cpp"
 	"../../utilities/opengl/src/OGLExtensions.cpp"
+	"../../utilities/opengl/src/OGLShader.cpp"
 	"../../utilities/opengl/src/OGLMultiVbo.cpp"
 	"../../utilities/opengl/src/OGLMultiVboHandler.cpp"
  )

@@ -24,8 +24,12 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    void setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices);
+    const COglMultiVboHandler::OGLIndices* setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices);
     void endFaceTesselation(bool smoothNormals);
+
+    void beginSettingFaceElementIndices(size_t layerBitMask);
+    void includeFaceElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
+    void endSettingFaceElementIndices();
 
 private:
     void glClearColor(const rgbaColor& color);
@@ -50,9 +54,9 @@ inline void GraphicsCanvas::beginFaceTesselation()
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-inline void GraphicsCanvas::setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices)
+inline const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices)
 {
-    _faceVBO.setFaceTessellation(entityKey, changeNumber, points, normals, parameters, vertiIndices);
+    return _faceVBO.setFaceTessellation(entityKey, changeNumber, points, normals, parameters, vertiIndices);
 }
 
 inline void GraphicsCanvas::endFaceTesselation(bool smoothNormals)
@@ -60,5 +64,21 @@ inline void GraphicsCanvas::endFaceTesselation(bool smoothNormals)
     _faceVBO.endFaceTesselation(smoothNormals);
 
 }
+
+inline void GraphicsCanvas::beginSettingFaceElementIndices(size_t layerBitMask)
+{
+    _faceVBO.beginSettingElementIndices(layerBitMask);
+}
+
+inline void GraphicsCanvas::includeFaceElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId)
+{
+    _faceVBO.includeElementIndices(key, batchIndices, texId);
+}
+
+inline void GraphicsCanvas::endSettingFaceElementIndices()
+{
+    _faceVBO.endSettingElementVBOs();
+}
+
 
 }

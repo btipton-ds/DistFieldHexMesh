@@ -12,6 +12,8 @@
 //Not necessary, but if it was, it needs to be replaced by process.h AND io.h
 #endif
 
+#include <OGLMultiVboHandlerTempl.h>
+
 using namespace std;
 using namespace DFHM;
 
@@ -65,7 +67,20 @@ void GraphicsCanvas::render()
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
-    _faceVBO.draw(0);
+    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+        return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+    };
+
+    auto postDraw = [this]() {
+    };
+
+    auto preTexDraw = [this](int key) {
+    };
+
+    auto postTexDraw = [this]() {
+    };
+
+    _faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _edgeVBO.draw(0);
 
     glFlush();

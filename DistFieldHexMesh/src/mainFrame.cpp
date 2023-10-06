@@ -133,6 +133,8 @@ void MainFrame::OnInternalIdle()
 {
     wxFrame::OnInternalIdle();
 
+    Refresh();
+
     if (_editMenu) {
         _editMenu->Enable(ID_VerifyClosed, _pAppData->getMesh() != nullptr);
         _editMenu->Enable(ID_VerifyNormals, _pAppData->getMesh() != nullptr);
@@ -234,9 +236,14 @@ void AppData::doOpen()
             _pMesh = pMesh;
             auto pCanvas = _pMainFrame->getCanvas();
             pCanvas->beginFaceTesselation();
-            pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+            auto tess = pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
             pCanvas->endFaceTesselation(false);
 
+            pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
+            pCanvas->includeFaceElementIndices(0, *tess);
+            pCanvas->endSettingFaceElementIndices();
+
+#if 0
             wstring dumpTriFilename(path + L"triDump.txt");
             wstring dumpTreeFilename(path + L"treeDump.txt");
             if (!filesystem::exists(dumpTriFilename)) {
@@ -247,7 +254,7 @@ void AppData::doOpen()
                 wxMessageBox(L"Check file did not match latest read file.", "Load Stl Error", wxOK | wxICON_INFORMATION);
 
             }
-
+#endif
             stringstream ss;
             ss << "Tri mesh read. Num tris: " << _pMesh->numTris();
             wxMessageBox(ss.str().c_str(), "Load Stl Results", wxOK | wxICON_INFORMATION);
