@@ -1,9 +1,14 @@
 #pragma once
 
+#include <memory>
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
+#include <OglMath.h>
 #include <OGLMultiVboHandler.h>
+#include <OGLExtensions.h>
+
+class COglShader;
 
 namespace DFHM {
 
@@ -13,7 +18,8 @@ namespace DFHM {
 using GraphicsCanvasBase = wxGLCanvas;
 #endif
 
-class GraphicsCanvas : public GraphicsCanvasBase {
+class GraphicsCanvas : public GraphicsCanvasBase, public COglExtensions 
+{
 public:
 
     GraphicsCanvas(wxFrame* parent);
@@ -32,9 +38,24 @@ public:
     void endSettingFaceElementIndices();
 
 private:
+    struct GraphicsUBO {
+        m44f modelView;
+        m44f proj;
+        p3f lightDir[2];
+        size_t __PAD0 = -1;
+        p3f defColor;
+        int numLights = 0;
+        float ambient = 0;
+        size_t __PAD1 = -1;
+    };
+
+    void loadShaders();
+    
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 
+    GraphicsUBO _graphicsUBO;
+    std::shared_ptr<COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
     void render();
 

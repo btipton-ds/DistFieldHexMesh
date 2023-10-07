@@ -236,7 +236,7 @@ void AppData::doOpen()
             _pMesh = pMesh;
             auto pCanvas = _pMainFrame->getCanvas();
             pCanvas->beginFaceTesselation();
-            auto tess = pCanvas->setFaceTessellation(0, 0, _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+            auto tess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false), _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
             pCanvas->endFaceTesselation(false);
 
             pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
