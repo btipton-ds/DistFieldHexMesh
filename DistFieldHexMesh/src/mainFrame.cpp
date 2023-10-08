@@ -42,7 +42,7 @@ MainFrame::MainFrame(wxWindow* parent,
 #endif // WIN32
 
     _pCanvas = new GraphicsCanvas(this);
-    _pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.2f));
+    _pCanvas->setBackColor(rgbaColor(0.75f, 0.75f, 0.75f));
 
     _pAppData = make_shared<AppData>(this);
     addMenus();

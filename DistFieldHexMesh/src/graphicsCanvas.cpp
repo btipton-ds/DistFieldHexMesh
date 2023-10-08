@@ -32,10 +32,19 @@ namespace
     {
         return v * M_PI / 180.0f;
     }
+
+#define OVER_SAMPLING 2
+
+    int attribs[] = {
+#if OVER_SAMPLING > 1
+        WX_GL_SAMPLES, OVER_SAMPLING * OVER_SAMPLING,
+#endif
+        0
+    };
 }
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
-    : wxGLCanvas(parent, wxID_ANY, nullptr, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
+    : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _faceVBO(GL_TRIANGLES, 10)
     , _edgeVBO(GL_LINES, 10)
 {
@@ -159,11 +168,16 @@ layout(binding = 0) uniform UniformBufferObject {
     glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, buffer);
 
     glClearColor(_backColor);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
     auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
-        glColor3f(0, 1, 0);
+        glColor3f(1, 1, 1);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     };
 
