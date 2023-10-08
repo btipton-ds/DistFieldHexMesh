@@ -36,6 +36,7 @@ namespace
 #define OVER_SAMPLING 2
 
     int attribs[] = {
+        WX_GL_DEPTH_SIZE, 16,
 #if OVER_SAMPLING > 1
         WX_GL_SAMPLES, OVER_SAMPLING * OVER_SAMPLING,
 #endif
@@ -51,12 +52,18 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     if (!g_pContext)
         g_pContext = make_shared<wxGLContext>(this);
 
-    float lightAz[] = { toRad(30.0f), toRad(-45.0f) };
-    float lightEl[] = { toRad(30.0f), toRad(30.0f) };
+    float lightAz[] = { 
+        toRad(30.0f), 
+        toRad(-30.0f), 
+    };
+    float lightEl[] = { 
+        toRad(30.0f), 
+        toRad(30.0f),
+    };
     
-    _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+    _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
     _graphicsUBO.ambient = 0.2f;
-    _graphicsUBO.numLights = 0;
+    _graphicsUBO.numLights = 2;
     _graphicsUBO.modelView = m44f().identity();
     _graphicsUBO.proj = m44f().identity();
     for (int i = 0; i < _graphicsUBO.numLights; i++) {
@@ -133,8 +140,8 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
     Eigen::Vector2d delta;
     if (_leftDown) {
         delta = pos - _mouseStartLoc;
-        double az = _initAzRad + delta[0] * M_PI / 2;
-        double el = _initElRad + delta[1] * M_PI / 2;
+        double az = _initAzRad - delta[0] * M_PI / 2;
+        double el = _initElRad - delta[1] * M_PI / 2;
         setViewEulerAnglesRad(az, el);
     } else if (_middleDown) {
         delta = pos - _mouseStartLoc;
@@ -242,12 +249,13 @@ layout(binding = 0) uniform UniformBufferObject {
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
     auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
-        glColor3f(1, 1, 1);
+        _graphicsUBO.defColor = p3f(1.0f, 0, 1);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
