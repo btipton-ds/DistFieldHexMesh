@@ -46,7 +46,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     float lightEl[] = { toRad(45.0f), toRad(30.0f) };
     
     _graphicsUBO.defColor = p3f(0.0f, 0.5f, 0);
-    _graphicsUBO.ambient = 1;
+    _graphicsUBO.ambient = 0.0f;
     _graphicsUBO.numLights = 2;
     _graphicsUBO.modelView = m44f().identity();
     _graphicsUBO.proj = m44f().identity();
@@ -79,9 +79,17 @@ void GraphicsCanvas::loadShaders()
     SetCurrent(*g_pContext);
     string path = "/Users/BobT/Documents/Projects/Code/utilities/opengl/src/";
     _phongShader = make_shared<COglShader>();
+
+    _phongShader->setShaderVertexAttribName("inPosition");
+    _phongShader->setShaderNormalAttribName("inNormal");
+    _phongShader->setShaderColorAttribName("inColor");
+//    _phongShader->setShaderTexParamAttribName("inPosition");
+
     _phongShader->setVertexSrcFile(path + "phong.vert");
     _phongShader->setFragmentSrcFile(path + "phong.frag");
     _phongShader->load();
+    _faceVBO.setShader(_phongShader.get());
+    _edgeVBO.setShader(_phongShader.get());
 }
 
 void GraphicsCanvas::glClearColor(const rgbaColor& color)
