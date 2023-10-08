@@ -133,7 +133,7 @@ void MainFrame::OnInternalIdle()
 {
     wxFrame::OnInternalIdle();
 
-    Refresh();
+    _pCanvas->Refresh();
 
     if (_editMenu) {
         _editMenu->Enable(ID_VerifyClosed, _pAppData->getMesh() != nullptr);

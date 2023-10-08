@@ -63,6 +63,7 @@ public:
 
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();
+
 private:
     wxMenuBar* _menuBar = nullptr;
     wxMenu *_editMenu = nullptr,

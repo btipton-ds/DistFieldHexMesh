@@ -8,6 +8,8 @@
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
 
+#include <tm_vector3.h>
+
 class COglShader;
 
 namespace DFHM {
@@ -37,6 +39,21 @@ public:
     void includeFaceElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
     void endSettingFaceElementIndices();
 
+    void setViewOrigin(const Vector3d& origin);
+    void setViewScale(double scale);
+    void setViewEulerAnglesRad(double az, double el);
+    void getViewOrigin(Vector3d& origin);
+    void getViewScale(double& scale);
+    void getViewEulerAnglesRad(double& az, double& el);
+
+    void onMouseLeftDown(wxMouseEvent& event);
+    void onMouseLeftUp(wxMouseEvent& event);
+    void onMouseMiddleDown(wxMouseEvent& event);
+    void onMouseMiddleUp(wxMouseEvent& event);
+    void onMouseRightDown(wxMouseEvent& event);
+    void onMouseRightUp(wxMouseEvent& event);
+    void onMouseMove(wxMouseEvent& event);
+
 private:
     struct GraphicsUBO {
         m44f modelView;
@@ -49,15 +66,24 @@ private:
         size_t __PAD1 = -1;
     };
 
+    bool _leftDown = false, _middleDown = false, _rightDown = false;
+    double _initAzRad, _initElRad;
     void loadShaders();
+
+    Eigen::Vector2d _mouseStartLoc;
+    Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
+    void render();
+    void updateView();
+
+    Vector3d _viewOrigin = Vector3d(0, 0, 0);
+    double _viewScale = 1, _viewAzRad = 0, _viewElRad = 0;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
-    void render();
 
     COglMultiVboHandler _faceVBO, _edgeVBO;
 protected:
@@ -99,6 +125,39 @@ inline void GraphicsCanvas::includeFaceElementIndices(int key, const COglMultiVb
 inline void GraphicsCanvas::endSettingFaceElementIndices()
 {
     _faceVBO.endSettingElementVBOs();
+}
+
+
+inline void GraphicsCanvas::setViewOrigin(const Vector3d& origin)
+{
+    _viewOrigin = origin;
+}
+
+inline void GraphicsCanvas::setViewScale(double scale)
+{
+    _viewScale = scale;
+}
+
+inline void GraphicsCanvas::setViewEulerAnglesRad(double az, double el)
+{
+    _viewAzRad = az;
+    _viewElRad = el;
+}
+
+inline void GraphicsCanvas::getViewOrigin(Vector3d& origin)
+{
+    origin = _viewOrigin;
+}
+
+inline void GraphicsCanvas::getViewScale(double& scale)
+{
+    scale = _viewScale;
+}
+
+inline void GraphicsCanvas::getViewEulerAnglesRad(double& az, double& el)
+{
+    az = _viewAzRad;
+    el = _viewElRad;
 }
 
 
