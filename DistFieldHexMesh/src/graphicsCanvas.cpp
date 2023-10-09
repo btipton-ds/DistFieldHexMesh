@@ -164,7 +164,7 @@ void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, G
 void GraphicsCanvas::loadShaders()
 {
     SetCurrent(*g_pContext);
-    string path = "/Users/BobT/Documents/Projects/Code/utilities/opengl/src/";
+    string path = "shaders/";
     _phongShader = make_shared<COglShader>();
 
     _phongShader->setShaderVertexAttribName("inPosition");

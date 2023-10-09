@@ -5,6 +5,7 @@ out
 *.vcxproj
 *.filters
 *.sln
+/x64/
 /build/
 /Debug/
 /Release/

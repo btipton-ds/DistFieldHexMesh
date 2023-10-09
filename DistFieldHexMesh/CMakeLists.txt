@@ -7,19 +7,23 @@ include(${wxWidgets_USE_FILE})
 message("wxWidgets_USE_FILE: ${wxWidgets_USE_FILE}")
 message("wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
+set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
+set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
+
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+
 include_directories(
+	"include"
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
 	"../../utilities/threads/include/"
-	"../../utilities/opengl/include/"
-  "include"
-  "${wxWidgets_INCLUDE_DIRS}"
+	"${OpenGlDir}/include/"
+	"${wxWidgets_INCLUDE_DIRS}"
 )
 
-# Add source to this project's executable.
-
-set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
 
 link_directories(
 	"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/"
@@ -33,10 +37,10 @@ add_executable (DistFieldHexMesh
 	"src/mainFrame.cpp"
 	"src/app.cpp"
 	"src/graphicsCanvas.cpp"
-	"../../utilities/opengl/src/OGLExtensions.cpp"
-	"../../utilities/opengl/src/OGLShader.cpp"
-	"../../utilities/opengl/src/OGLMultiVbo.cpp"
-	"../../utilities/opengl/src/OGLMultiVboHandler.cpp"
+	"${OpenGlDir}/src/OGLExtensions.cpp"
+	"${OpenGlDir}/src/OGLShader.cpp"
+	"${OpenGlDir}/src/OGLMultiVbo.cpp"
+	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
  )
 
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
@@ -74,6 +78,17 @@ else()
 	PUBLIC wxmsw32u_gl
 	)
 endif()
+
+add_custom_command(
+        TARGET DistFieldHexMesh POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${OpenGlDir}/src/phong.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.vert"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${OpenGlDir}/src/phong.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
+)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET DistFieldHexMesh PROPERTY CXX_STANDARD 20)

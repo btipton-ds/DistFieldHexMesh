@@ -235,20 +235,27 @@ void AppData::doOpen()
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
             auto pCanvas = _pMainFrame->getCanvas();
-            pCanvas->beginFaceTesselation();
+
             const auto& pts = _pMesh->getGlPoints();
             const auto& norms = _pMesh->getGlNormals(false);
+            const auto& params = _pMesh->getGlParams();
+            const auto& indices = _pMesh->getGlFaceIndices();
+
 #if 0
             if (pts.size() == norms.size()) {
                 size_t numVerts = pts.size() / 3;
                 for (size_t i = 0; i < numVerts; i++) {
-                    cout << "pt: [" << pts[3 * i + 0] << " " << pts[3 * i + 1] << " " << pts[3 * i + 2] << "]";
-                    cout << " no: [" << norms[3 * i + 0] << " " << norms[3 * i + 1] << " " << norms[3 * i + 2] << "]\n";
+                    cout << i << "pt: [" << pts[3 * i + 0] << " " << pts[3 * i + 1] << " " << pts[3 * i + 2] << "] ";
+                    cout << "no: [" << norms[3 * i + 0] << " " << norms[3 * i + 1] << " " << norms[3 * i + 2] << "]\n";
                 }
             }
+
+            for (size_t i = 0; i < indices.size(); i++) {
+                cout << i << "\n";
+            }
 #endif
-            const auto& params = _pMesh->getGlParams();
-            const auto& indices = _pMesh->getGlFaceIndices();
+
+            pCanvas->beginFaceTesselation();
             auto tess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
             pCanvas->endFaceTesselation(false);
 
