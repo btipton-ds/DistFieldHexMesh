@@ -9,8 +9,11 @@
 
 #include <memory>
 #include <triMesh.h>
+#include <volume.h>
 
 namespace DFHM {
+
+class Volume;
 
 enum DFHM_MENU_ID
 {
@@ -19,6 +22,7 @@ enum DFHM_MENU_ID
     ID_VerifyNormals,
     ID_AnalyzeGaps,
     ID_FindMinimumGap,
+    ID_BuildCFDHexes,
 };
 
 class GraphicsCanvas;
@@ -31,15 +35,23 @@ public:
     void doVerifyClosed();
     void doVerifyNormals();
     void doAnalyzeGaps();
-    void DoFindMinGap() const;
+    void doFindMinGap() const;
+    void doBuildCFDHexes();
 
     inline TriMesh::CMeshPtr getMesh() const
     {
         return _pMesh;
     }
+
+    inline VolumePtr getVolume() const
+    {
+        return _volume;
+    }
+
 private:
     MainFrame* _pMainFrame = nullptr;
     TriMesh::CMeshPtr _pMesh;
+    VolumePtr _volume;
 
     std::vector<double> _binSizes;
     std::vector<std::vector<int>> _bins;
@@ -88,6 +100,7 @@ private:
     void OnVerifyNormals(wxCommandEvent& event);
     void OnAnalyzeGaps(wxCommandEvent& event);
     void OnFindMinGap(wxCommandEvent& event);
+    void OnBuildCFDHexes(wxCommandEvent& event);
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

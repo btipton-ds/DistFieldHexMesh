@@ -10,10 +10,6 @@ message("wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
 
-set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-
 include_directories(
 	"include"
 	"../../ThirdParty/eigen/"

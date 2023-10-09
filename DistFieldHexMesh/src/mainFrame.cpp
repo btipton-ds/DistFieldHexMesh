@@ -15,6 +15,7 @@
 
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -107,6 +108,9 @@ void MainFrame::createEditMenu()
     
     _editMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
     Bind(wxEVT_MENU, &MainFrame::OnFindMinGap, this, ID_FindMinimumGap);
+
+    _editMenu->Append(ID_BuildCFDHexes, "Build CFD Hexes");
+    Bind(wxEVT_MENU, &MainFrame::OnBuildCFDHexes, this, ID_BuildCFDHexes);
 
     _menuBar->Append(_editMenu, "&Edit");
 
@@ -204,8 +208,13 @@ void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
 
 void MainFrame::OnFindMinGap(wxCommandEvent& event)
 {
-    _pAppData->DoFindMinGap();
+    _pAppData->doFindMinGap();
 
+}
+
+void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
+{
+    _pAppData->doBuildCFDHexes();
 }
 
 AppData::AppData(MainFrame* pMainFrame)
@@ -344,7 +353,7 @@ void AppData::doAnalyzeGaps()
     wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
 }
 
-void AppData::DoFindMinGap() const
+void AppData::doFindMinGap() const
 {
     double t = _pMesh->findMinGap() * 10;
     auto bb = _pMesh->getBBox();
@@ -385,4 +394,19 @@ void AppData::DoFindMinGap() const
     stringstream ss;
     ss << "Span: [" << numX << ", " << numY << ", " << numZ << "]\n";
     wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
+}
+
+void AppData::doBuildCFDHexes()
+{
+    if (!_volume)
+        _volume = make_shared<Volume>();
+
+    double gap = 0.000254;
+    if (gap <= 0)
+        gap = _pMesh->findMinGap();
+#ifdef _DEBUG
+    gap = gap * 10;
+#endif // _DEBUG
+
+    _volume->buildCFDHexes(_pMesh, gap);
 }

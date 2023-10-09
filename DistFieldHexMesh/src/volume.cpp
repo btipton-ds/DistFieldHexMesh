@@ -6,66 +6,78 @@
 
 using namespace std;
 using namespace DFHM;
+using namespace TriMesh;
 
-Volume::Volume(const Index3& size)
+Volume::Volume(const Index3& blockSize)
 {
-	setSize(size);
+	setBlockDims(blockSize);
 }
 
 Volume::Volume(const Volume& src)
 	: _originMeters(src._originMeters), 
 	_spanMeters(_spanMeters),
-	_size(src._size),
+	_blockDim(src._blockDim),
 	_cellPool(src._cellPool),
 	_blocks(src._blocks)
 {
 }
 
-void Volume::setSize(const Index3& size)
+void Volume::setBlockDims(const Index3& blockSize)
 {
-	_size = size;
-	_blocks.resize(_size[0] * _size[1] * _size[2]);
+	_blockDim = blockSize;
+	_blocks.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
 }
 
-const Index3& Volume::getSize() const
+const Index3& Volume::getBlockDims() const
 {
-	return _size;
+	return _blockDim;
 }
 
-void Volume::buildCFDMesh(const CMesh& triMesh, double minCellSize, const Vector3& emptyVolRatio)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3& emptyVolRatio)
 {
-	CMesh::BoundingBox bb = triMesh.getBBox();
-	_originMeters = (bb.getMin() + bb.getMax()) * 0.5;
+	CMesh::BoundingBox bb = pTriMesh->getBBox();
+	_originMeters = bb.getMin();
 	Vector3 halfRange = bb.range() / 2;
 
-	double gap = triMesh.findMinGap();
-
-	{
-		CMesh::BoundingBox bbTmp;
-		Vector3 v(halfRange[0] * emptyVolRatio[0], halfRange[1] * emptyVolRatio[1], halfRange[2] * emptyVolRatio[2]);
-		for (int i = 0; i < 2; i++) {
-			for (int j = 0; j < 2; j++) {
-				for (int k = 0; k < 2; k++) {
-					Vector3 p = _originMeters + Vector3(
-						(i == 0 ? -1 : 1) * v[0],
-						(j == 0 ? -1 : 1) * v[1],
-						(k == 0 ? -1 : 1) * v[2]);
-					bbTmp.merge(p);;
-				}
-			}
-		}
-		bb = bbTmp;
-	}
-
 	_spanMeters = bb.range();
-	Index3 size(
+	Index3 blockSize(
 		(size_t)(_spanMeters[0] / minCellSize / Block::getBlockDim() + 0.5),
 		(size_t)(_spanMeters[1] / minCellSize / Block::getBlockDim() + 0.5),
 		(size_t)(_spanMeters[2] / minCellSize / Block::getBlockDim() + 0.5)
 	);
 
-	setSize(size);
+	setBlockDims(blockSize);
 
+	Vector3d xAxis(1, 0, 0);
+	Vector3d yAxis(0, 1, 0);
+	Vector3d zAxis(0, 0, 1);
+
+	// scan xy plane
+	Vector3d rayOrigin(0, 0, _originMeters[2]);
+	for (size_t bx = 0; bx <= _blockDim[0]; bx++) {
+		double tx = bx / (double)_blockDim[0];
+		rayOrigin[0] = _originMeters[0] + tx * _spanMeters[0];
+
+		for (size_t by = 0; by <= _blockDim[1]; by++) {
+			double ty = by / (double)_blockDim[1];
+			rayOrigin[1] = _originMeters[1] + ty * _spanMeters[1];
+
+			Ray ray(rayOrigin, zAxis);
+			vector<RayHit> hits;
+			if (pTriMesh->biDirRayCast(ray, hits)) {
+				if (hits.size() % 2 == 0) {
+					for (size_t i = 0; i < hits.size(); i++) {
+						double t = hits[i].dist / _spanMeters[2];
+						size_t idx = (size_t)(blockSize[2] * t);
+						cout << "d: " << hits[i].dist << " t: " << t << " idx[" << i << "]: " << idx << "\n";
+					}
+				} else {
+
+				}
+			}
+		}
+
+	}
 }
 
 /******************** Block **************************/
