@@ -22,6 +22,7 @@ using namespace DFHM;
 
 BEGIN_EVENT_TABLE(GraphicsCanvas, wxGLCanvas)
 EVT_PAINT(GraphicsCanvas::doPaint)
+EVT_SIZE(GraphicsCanvas::onSize)
 END_EVENT_TABLE()
 
 namespace
@@ -155,6 +156,29 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }
+
+void GraphicsCanvas::onSize(wxSizeEvent& event)
+{
+    // Adjust the projection matrix to keep the pixel aspect ratio constant
+    float ratio;
+    Eigen::Matrix4f proj(Eigen::Matrix4f::Identity());
+    if (event.m_size.x > event.m_size.y) {
+        ratio = event.m_size.y / (float)event.m_size.x;
+        proj(0, 0) = ratio;
+        proj(1, 1) = 1;
+    } else {
+        ratio = event.m_size.x / (float)event.m_size.y;
+        proj(0, 0) = 1;
+        proj(1, 1) = ratio;
+
+    }
+
+    float* pf = _graphicsUBO.proj;
+    for (int i = 0; i < 16; i++) {
+        pf[i] = (float)proj(i);
+    }
+}
+
 
 void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {

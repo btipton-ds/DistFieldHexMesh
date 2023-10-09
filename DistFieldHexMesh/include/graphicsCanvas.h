@@ -28,6 +28,7 @@ public:
     ~GraphicsCanvas();
 
     void doPaint(wxPaintEvent& event);
+    void onSize(wxSizeEvent& event);
     void setBackColor(const rgbaColor& color);
 
     void beginFaceTesselation();
