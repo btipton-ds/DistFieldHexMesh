@@ -408,5 +408,19 @@ void AppData::doBuildCFDHexes()
     gap = gap * 10;
 #endif // _DEBUG
 
-    _volume->buildCFDHexes(_pMesh, gap);
+    auto blockMesh = _volume->buildCFDHexes(_pMesh, gap);
+    auto pCanvas = _pMainFrame->getCanvas();
+
+    const auto& pts = _pMesh->getGlPoints();
+    const auto& norms = _pMesh->getGlNormals(false);
+    const auto& params = _pMesh->getGlParams();
+    const auto& indices = _pMesh->getGlFaceIndices();
+
+    pCanvas->beginFaceTesselation();
+    auto tess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
+    pCanvas->endFaceTesselation(false);
+
+    pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
+    pCanvas->includeFaceElementIndices(0, *tess);
+    pCanvas->endSettingFaceElementIndices();
 }

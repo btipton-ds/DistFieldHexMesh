@@ -64,10 +64,25 @@ public:
 	Block();
 	Block(const Block& src);
 
+	void scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, const Vector3i& axisOrder);
+	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
+	size_t calcCellIndex(const Vector3i& celIdx) const;
+	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 private:
 	static size_t s_blockDim;
 	std::vector< std::shared_ptr<Cell>> _cells;
 };
+
+inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
+{
+	size_t result = ix + s_blockDim * (iy + s_blockDim * iz);
+	return result;
+}
+
+inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
+{
+	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
+}
 
 class Polygon {
 public:
@@ -92,10 +107,15 @@ public:
 	std::shared_ptr<const Block> getBlock(size_t ix, size_t iy, size_t iz) const;
 
 	// Currently flow direction is along positive x axis.
-	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3& emptyVolRatio = Vector3(10, 3, 3));
+	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
+	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
+	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3& emptyVolRatio = Vector3(10, 3, 3));
+//	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
+	TriMesh::CMeshPtr makeTris(bool cells = true);
 
 private:
-	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
+	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3i& axisOrder);
+	void scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh);
 
 	Eigen::Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
@@ -129,6 +149,11 @@ inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 	size_t result = ix + _blockDim[1] * (iy + _blockDim[2] * iz);
 
 	return result;
+}
+
+inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
+{
+	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 } // end namespace DFHM

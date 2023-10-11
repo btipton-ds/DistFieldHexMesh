@@ -2,10 +2,12 @@
 # project specific logic here.
 #
 
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
+
 find_package(wxWidgets)
 include(${wxWidgets_USE_FILE})
-message("wxWidgets_USE_FILE: ${wxWidgets_USE_FILE}")
-message("wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
