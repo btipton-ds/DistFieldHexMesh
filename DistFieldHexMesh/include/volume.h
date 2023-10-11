@@ -20,12 +20,66 @@ namespace DFHM {
 
 using CMesh = TriMesh::CMesh;
 
-class Volume;
+class Cell;
 class Block;
+class Polygon;
+class Polyhedron;
+class Volume;
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-class Cell {
+template<class T>
+class ObjectPool {
+public:
+	inline void free(size_t index)
+	{
+		_available.push_back(index);
+	}
+
+	inline size_t getObj(size_t index, T* pObj, bool allocateIfNeeded)
+	{
+		size_t result = -1;
+		if (index != -1 && index < _pool.size()) {
+			result = index;
+		} else {
+			if (_available.empty()) {
+				result = _pool.size();
+				_pool.push_back(T());
+			} else {
+				result = _available.back();
+				_available.pop_back();
+				{
+					_pool[result] = T();
+				}
+			}
+		}
+		pObj = &_pool[result];
+		return result;
+	}
+
+	inline const T* getObj(size_t index) const
+	{
+		if (index != -1 && index < _pool.size()) {
+			return &_pool[index];
+		}
+		return nullptr;
+	}
+
+private:
+	std::vector<size_t> _available;
+	std::vector<T> _pool;
+};
+
+class DataPool
+{
+protected:
+	static ObjectPool<Polygon> _polygonPool;
+	static ObjectPool<Polyhedron> _polyhedronPool;
+	static ObjectPool<Cell> _cellPool;
+	static ObjectPool<Block> _blockPool;
+};
+
+class Cell : public DataPool {
 public:
 	enum VolumeType {
 		VT_VOID,
@@ -33,7 +87,8 @@ public:
 		VT_FLUID,
 	};
 	VolumeType volType;
-	std::vector<size_t> polyhedra;
+	std::vector<size_t> polygons; // indices of polygons in this cell
+	std::vector<size_t> polyhedra;// indices of polyedra in this cell
 };
 
 class HalfJack {
@@ -56,7 +111,7 @@ private:
 	std::vector<size_t> _avalCells;
 };
 
-class Block {
+class Block : public DataPool {
 public:
 	static void setBlockDim(size_t dim);
 	static size_t getBlockDim();
@@ -68,9 +123,10 @@ public:
 	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calcCellIndex(const Vector3i& celIdx) const;
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
+
 private:
 	static size_t s_blockDim;
-	std::vector< std::shared_ptr<Cell>> _cells;
+	std::vector<size_t> _cells;
 };
 
 inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
@@ -84,17 +140,17 @@ inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
 	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
-class Polygon {
+class Polygon : public DataPool {
 public:
 	std::vector<size_t> vertexIndices;
 };
 
-class PolyHedron {
+class Polyhedron : public DataPool {
 public:
 	std::vector<size_t> faceIndices;
 };
 
-class Volume {
+class Volume : public DataPool {
 public:
 	Volume(const Index3& size = Index3(0, 0, 0));
 	Volume(const Volume& src);
@@ -120,8 +176,8 @@ private:
 	Eigen::Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 	HalfJackPool _cellPool;
-	std::vector<Polygon> _faces;
-	std::vector<PolyHedron> _polyHedra;
+	std::vector<size_t> _faces;
+	std::vector<size_t> _polyHedra;
 
 	std::vector<std::shared_ptr<Block>> _blocks;
 };

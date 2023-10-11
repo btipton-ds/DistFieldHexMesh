@@ -9,6 +9,11 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
+ObjectPool<Polygon> DataPool::_polygonPool;
+ObjectPool<Polyhedron> DataPool::_polyhedronPool;
+ObjectPool<Cell> DataPool::_cellPool;
+ObjectPool<Block> DataPool::_blockPool;
+
 Volume::Volume(const Index3& blockSize)
 {
 	setBlockDims(blockSize);
@@ -245,7 +250,8 @@ void Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 								}
 								lock.unlock();
 
-								_cells[cellIdx] = pBlock;
+								Cell* pCell = nullptr;
+								_cells[cellIdx] = _cellPool.getObj(-1, pCell, true);
 								Vector3 cellOrigin = origin;
 								cellOrigin[0] += blockSpan[0] * (ix / (double)s_blockDim);
 								cellOrigin[1] += blockSpan[0] * (iy / (double)s_blockDim);
