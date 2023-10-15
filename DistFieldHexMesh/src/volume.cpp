@@ -31,7 +31,7 @@ Volume::Volume(const Volume& src)
 void Volume::setBlockDims(const Index3& blockSize)
 {
 	_blockDim = blockSize;
-	_blocks.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
+	_blocks.resize(_blockDim[0] * _blockDim[1] * _blockDim[2], -1);
 }
 
 const Index3& Volume::getBlockDims() const
@@ -41,23 +41,22 @@ const Index3& Volume::getBlockDims() const
 
 #define RUN_MULTI_THREAD true
 
-void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3i& axisOrder)
+void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder)
 {
-	MultiCore::runLambda([this, pTriMesh, axisOrder, origin](size_t threadNum, size_t numThreads) {
+	if (blocksToCreate.empty())
+		blocksToCreate.resize(_blocks.size());
+	MultiCore::runLambda([this, pTriMesh, &blocksToCreate, axisOrder](size_t threadNum, size_t numThreads) {
+		int overFlow = 1;
 		Vector3d axis;
 
-		Vector3d rayOrigin(origin);
 		switch (axisOrder[2]) {
 		case 0:
-			rayOrigin[0] = origin[0];
 			axis = Vector3d(1, 0, 0);
 			break;
 		case 1:
-			rayOrigin[1] = origin[1];
 			axis = Vector3d(0, 1, 0);
 			break;
 		case 2:
-			rayOrigin[2] = origin[2];
 			axis = Vector3d(0, 0, 1);
 			break;
 		}
@@ -71,13 +70,15 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, co
 		size_t axisIdx1 = axisOrder[1];
 		size_t axisIdx2 = axisOrder[2];
 
-		for (size_t i = threadNum; i <= _blockDim[axisIdx0]; i += numThreads) {
-			double ti = i / (double)_blockDim[axisIdx0];
-			rayOrigin[axisIdx0] = _originMeters[axisIdx0] + ti * _spanMeters[axisIdx0];
+		Eigen::Vector3d offset(0, 0, 0);
 
-			for (size_t j = 0; j <= _blockDim[axisIdx1]; j++) {
-				double tj = j / (double)_blockDim[axisIdx1];
-				rayOrigin[axisIdx1] = _originMeters[axisIdx1] + tj * _spanMeters[axisIdx1];
+		for (size_t i = threadNum; i < _blockDim[axisIdx0]; i += numThreads) {
+			offset[axisIdx0] = i * blockRange[axisIdx0];
+
+			for (size_t j = 0; j < _blockDim[axisIdx1]; j++) {
+				offset[axisIdx1] = j * blockRange[axisIdx1];
+
+				Eigen::Vector3d rayOrigin = _originMeters + offset;
 
 				Ray ray(rayOrigin, axis);
 				// We need to support solids and surfaces
@@ -86,12 +87,16 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, co
 				// This sorts them out
 				vector<RayHit> hits;
 				if (pTriMesh->biDirRayCast(ray, hits)) {
-					for (const auto hit : hits) {
+					for (const auto& hit : hits) {
+//						cout << "x: " << (offset[axisIdx0] / volumeRange[axisIdx0]) << ", y: " << (offset[axisIdx1] / volumeRange[axisIdx1]) << ", z: " << (hit.dist / volumeRange[axisIdx2]) << "\n";
 
 						double tk = hit.dist / _spanMeters[axisIdx2];
-						size_t k0 = (size_t)(_blockDim[axisIdx2] * tk);
-						size_t k1 = (size_t)(_blockDim[axisIdx2] * tk + 0.5);
-						for (size_t k = k0; k <= k1; k++) {
+						size_t k = (size_t)(_blockDim[axisIdx2] * tk);
+						if (k < 0)
+							k = 0;
+						if (k >= _blockDim[axisIdx2])
+							k = _blockDim[axisIdx2] - 1;
+						{
 							size_t ix, iy, iz;
 							switch (axisOrder[0]) {
 								case 0: ix = i; break;
@@ -111,24 +116,43 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, co
 								case 2: iz = k; break;
 							}
 
-							Vector3i blockIdx(ix, iy, iz);
-							size_t bIdx = calLinearBlockIndex(blockIdx);
-							if (!_blocks[bIdx]) {
-								auto pBlock = make_shared<Block>();
-								_blocks[bIdx] = pBlock;
-								Vector3 cellOrigin = origin;
-								cellOrigin[0] += volumeRange[0] * (ix / (double)_blockDim[0]);
-								cellOrigin[1] += volumeRange[1] * (iy / (double)_blockDim[1]);
-								cellOrigin[2] += volumeRange[2] * (iz / (double)_blockDim[2]);
-							}
+							size_t iix = ix, iiy = iy, iiz = iz;
+							for (int ii = -overFlow; ii <= overFlow; ii++) {
+								switch (axisOrder[0]) {
+									case 0: iix = ix + ii; break;
+									case 1: iiy = iy + ii; break;
+									case 2: iiz = iz + ii; break;
+								}
+
+								for (int jj = -overFlow; jj <= overFlow; jj++) {
+									switch (axisOrder[1]) {
+										case 0: iix = ix + jj; break;
+										case 1: iiy = iy + jj; break;
+										case 2: iiz = iz + jj; break;
+									}
+
+									for (int kk = -overFlow; kk <= overFlow; kk++) {
+										switch (axisOrder[2]) {
+											case 0: iix = ix + kk; break;
+											case 1: iiy = iy + kk; break;
+											case 2: iiz = iz + kk; break;
+										}
+
+										size_t bIdx = calLinearBlockIndex(iix, iiy, iiz);
+										// No mutex required, because order of setting true is not a race condition.
+										if (bIdx != -1)
+											blocksToCreate[bIdx] = true;
+									}
+								}
+							}	
 						}
 					}
 
 				}
 			}
-
 		}
 	}, RUN_MULTI_THREAD);
+
 }
 
 void Volume::scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh)
@@ -145,8 +169,7 @@ void Volume::scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh)
 		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
 			for (size_t j = 0; j < _blockDim[1]; j++) {
 				for (size_t k = 0; k < _blockDim[2]; k++) {
-					size_t blockIdx = calLinearBlockIndex(i, j, k);
-					auto pBlock = _blocks[blockIdx];
+					Block* pBlock = getBlock(i, j, k);
 					if (pBlock) {
 						Vector3 origin = volOrigin;
 
@@ -168,7 +191,6 @@ void Volume::scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh)
 void Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, const Vector3i& axisOrder)
 {
 	static mutex lock;
-	const double TOL = 1.0e-6;
 	static size_t numCells = 0;
 	Vector3d axis;
 	Vector3d cellSpan = blockSpan * (1.0 / s_blockDim);
@@ -285,13 +307,40 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	);
 
 	setBlockDims(blockSize);
+	vector<bool> blocksToCreate;
 
 	// Scan the model in from all three orthoganal planes and create all intersecting blocks
-	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, _originMeters, Vector3i(0, 1, 2));
-	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, _originMeters, Vector3i(2, 0, 1));
-	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, _originMeters, Vector3i(1, 2, 0));
+	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, blocksToCreate, Vector3i(0, 1, 2));
+	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, blocksToCreate, Vector3i(2, 0, 1));
+	scanVolumePlaneCreateBlocksWhereNeeded(pTriMesh, blocksToCreate, Vector3i(1, 2, 0));
 
 //	scanVolumeCreateCellsWhereNeeded(pTriMesh);
+
+#if 0
+	for (size_t iz = 0; iz < _blockDim[2]; iz++) {
+		cout << "Slice " << iz << "\n";
+
+		for (size_t iy = 0; iy < _blockDim[1]; iy++) {
+			for (size_t ix = 0; ix < _blockDim[0]; ix++) {
+				auto idx = calLinearBlockIndex(ix, iy, iz);
+				if (blocksToCreate[idx])
+					cout << "X";
+				else
+					cout << " ";
+			}
+			cout << "\n";
+		}
+
+		cout << "\n\n";
+	}
+#endif
+
+	for (size_t i = 0; i < blocksToCreate.size(); i++) {
+		if (blocksToCreate[i]) {
+			Block* pBlock;
+			_blocks[i] = _blockPool.getObj(i, pBlock, true);
+		}
+	}
 
 	CMeshPtr result = makeTris(false);
 
@@ -300,29 +349,47 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 
 CMeshPtr Volume::makeTris(bool cells)
 {
-	CMeshPtr result = make_shared<CMesh>();
+	CBoundingBox3Dd bbox;
+	bbox.merge(_originMeters);
+	bbox.merge(_originMeters + _spanMeters);
+	auto diagDist = bbox.range().norm();
+	bbox.grow(diagDist * 0.05);
 
-	Vector3d blockSpan, blockOrigin;
+	vector<CMeshPtr> results;
+	for (size_t i = 0; i < MultiCore::getNumCores(); i++) {
+		results.push_back(make_shared<CMesh>());
+		results.back()->reset(bbox);
+	}
 
+	Vector3d blockSpan;
 	for (int i = 0; i < 3; i++)
 		blockSpan[i] = _spanMeters[i] / _blockDim[i];
 
-	Vector3i blockIdx;
-	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
-		blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
-		for (blockIdx[1] = 0; blockIdx[1] < _blockDim[1]; blockIdx[1]++) {
-			blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
-			for (blockIdx[2] = 0; blockIdx[2] < _blockDim[2]; blockIdx[2]++) {
-				blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
-				size_t bIdx = calLinearBlockIndex(blockIdx);
-				auto pBlock = _blocks[bIdx];
-				if (pBlock) {
-					pBlock->addBlockTris(blockOrigin, blockSpan, result, cells);
+//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
+	MultiCore::runLambda([this, &blockSpan, &results, cells](size_t threadNum, size_t numThreads) {
+		Vector3d blockOrigin;
+		auto result = results[threadNum];
+
+		Vector3i blockIdx;
+		for (blockIdx[0] = threadNum; blockIdx[0] < _blockDim[0]; blockIdx[0] += numThreads) {
+			blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
+			for (blockIdx[1] = 0; blockIdx[1] < _blockDim[1]; blockIdx[1]++) {
+				blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
+				for (blockIdx[2] = 0; blockIdx[2] < _blockDim[2]; blockIdx[2]++) {
+					blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
+					Block* pBlock = getBlock(blockIdx);
+					if (pBlock) {
+						pBlock->addBlockTris(blockOrigin, blockSpan, result, cells);
+					}
 				}
 			}
 		}
-	}
+	}, RUN_MULTI_THREAD);
 
+	CMeshPtr result = make_shared<CMesh>();
+	result->merge(results);
+	cout << "Num tris: " << result->numTris();
+	cout << "Num cells: " << result->numTris() / 12;
 	return result;
 }
 
@@ -334,9 +401,9 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 	} else {
 		vector<Vector3d> pts = {
 			Vector3d(blockOrigin[0], blockOrigin[1], blockOrigin[2]),
-			Vector3d(blockOrigin[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
-			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
 			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1], blockOrigin[2]),
+			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
+			Vector3d(blockOrigin[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
 
 			Vector3d(blockOrigin[0], blockOrigin[1], blockOrigin[2] + blockSpan[2]),
 			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1], blockOrigin[2] + blockSpan[2]),

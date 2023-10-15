@@ -43,7 +43,7 @@ MainFrame::MainFrame(wxWindow* parent,
 #endif // WIN32
 
     _pCanvas = new GraphicsCanvas(this);
-    _pCanvas->setBackColor(rgbaColor(0.75f, 0.75f, 0.75f));
+    _pCanvas->setBackColor(rgbaColor(1.0f, 1.0f, 1.0f));
 
     _pAppData = make_shared<AppData>(this);
     addMenus();
@@ -284,9 +284,6 @@ void AppData::doOpen()
 
             }
 #endif
-            stringstream ss;
-            ss << "Tri mesh read. Num tris: " << _pMesh->numTris();
-            wxMessageBox(ss.str().c_str(), "Load Stl Results", wxOK | wxICON_INFORMATION);
         }
     }
 }
@@ -401,26 +398,28 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    double gap = 0.000254;
+    Block::setBlockDim(32);
+
+    double gap = 0.00005;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
-#ifdef _DEBUG
-    gap = gap * 10;
-#endif // _DEBUG
 
-    auto blockMesh = _volume->buildCFDHexes(_pMesh, gap);
+    double superCellSize = gap * Block::getBlockDim();
+
+    auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
     auto pCanvas = _pMainFrame->getCanvas();
 
-    const auto& pts = _pMesh->getGlPoints();
-    const auto& norms = _pMesh->getGlNormals(false);
-    const auto& params = _pMesh->getGlParams();
-    const auto& indices = _pMesh->getGlFaceIndices();
-
     pCanvas->beginFaceTesselation();
-    auto tess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
+    auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false), 
+        _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+
+    auto blockTess = pCanvas->setFaceTessellation(blockMesh->getId(), blockMesh->getChangeNumber(), blockMesh->getGlPoints(), blockMesh->getGlNormals(false),
+        blockMesh->getGlParams(), blockMesh->getGlFaceIndices());
+
     pCanvas->endFaceTesselation(false);
 
     pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
-    pCanvas->includeFaceElementIndices(0, *tess);
+    pCanvas->includeFaceElementIndices(0, *triTess);
+    pCanvas->includeFaceElementIndices(1, *blockTess);
     pCanvas->endSettingFaceElementIndices();
 }

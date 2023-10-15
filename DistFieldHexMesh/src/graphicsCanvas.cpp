@@ -54,17 +54,17 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
         g_pContext = make_shared<wxGLContext>(this);
 
     float lightAz[] = { 
-        toRad(30.0f), 
-        toRad(-30.0f), 
+        toRad(0.0f), 
+        toRad(90 + 30.0f), 
     };
     float lightEl[] = { 
-        toRad(30.0f), 
+        toRad(0.0f), 
         toRad(30.0f),
     };
     
     _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
-    _graphicsUBO.ambient = 0.2f;
-    _graphicsUBO.numLights = 2;
+    _graphicsUBO.ambient = 0.15f;
+    _graphicsUBO.numLights = 1;
     _graphicsUBO.modelView = m44f().identity();
     _graphicsUBO.proj = m44f().identity();
     for (int i = 0; i < _graphicsUBO.numLights; i++) {
@@ -73,7 +73,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
         float sinEl = sinf(lightEl[i]);
         float cosEl = cosf(lightEl[i]);
 
-        _graphicsUBO.lightDir[i] = p3f(cosEl * cosAz, cosEl * sinAz, sinEl);
+        _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
     }
 
     loadShaders();
@@ -245,7 +245,7 @@ layout(binding = 0) uniform UniformBufferObject {
 #if 1 && defined(_DEBUG)
 
     size_t cBlockSize = sizeof(GraphicsUBO);
-    const GLchar* names[] = { "modelView", "proj", "lightDir", "defColor", "numLights", "ambient"};
+    const GLchar* names[] = { "modelView", "proj", "defColor", "ambient", "numLights", "lightDir" };
     GLuint indices[6] = { 0, 0, 0, 0, 0 };
     glGetUniformIndices(_phongShader->programID(), 6, names, indices); COglShader::dumpGlErrors();
 
@@ -257,10 +257,10 @@ layout(binding = 0) uniform UniformBufferObject {
     GLint offset1[] = { 
         (GLint)(((size_t)&testSize.modelView) - addr0),
         (GLint)(((size_t)&testSize.proj) - addr0),
-        (GLint)((GLint)((size_t)&testSize.lightDir) - addr0),
         (GLint)((GLint)((size_t)&testSize.defColor) - addr0),
-        (GLint)(((size_t)&testSize.numLights) - addr0),
         (GLint)(((size_t)&testSize.ambient) - addr0),
+        (GLint)(((size_t)&testSize.numLights) - addr0),
+        (GLint)((GLint)((size_t)&testSize.lightDir) - addr0),
     };
 #endif
 
@@ -278,7 +278,15 @@ layout(binding = 0) uniform UniformBufferObject {
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
     auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
-        _graphicsUBO.defColor = p3f(1.0f, 0, 1);
+        switch (key) {
+        default:
+        case 0:
+            _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
+            break;
+        case 1:
+            _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+            break;
+        }
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
@@ -333,7 +341,6 @@ void GraphicsCanvas::updateView()
     rotToGl(1, 2) = -sin(xRotAngleRad);
     rotToGl(2, 1) = sin(xRotAngleRad);
     rotToGl(2, 2) = cos(xRotAngleRad);
-
 
     trans *= rotToGl;
     trans *= panInv;

@@ -31,40 +31,13 @@ using VolumePtr = std::shared_ptr<Volume>;
 template<class T>
 class ObjectPool {
 public:
-	inline void free(size_t index)
-	{
-		_available.push_back(index);
-	}
+	ObjectPool();
+	ObjectPool(const ObjectPool& src) = default;
+	void free(size_t index);
 
-	inline size_t getObj(size_t index, T* pObj, bool allocateIfNeeded)
-	{
-		size_t result = -1;
-		if (index != -1 && index < _pool.size()) {
-			result = index;
-		} else {
-			if (_available.empty()) {
-				result = _pool.size();
-				_pool.push_back(T());
-			} else {
-				result = _available.back();
-				_available.pop_back();
-				{
-					_pool[result] = T();
-				}
-			}
-		}
-		pObj = &_pool[result];
-		return result;
-	}
-
-	inline const T* getObj(size_t index) const
-	{
-		if (index != -1 && index < _pool.size()) {
-			return &_pool[index];
-		}
-		return nullptr;
-	}
-
+	size_t getObj(size_t index, T*& pObj, bool allocateIfNeeded);
+	const T* getObj(size_t index) const;
+	T* getObj(size_t index);
 private:
 	std::vector<size_t> _available;
 	std::vector<T> _pool;
@@ -78,6 +51,61 @@ protected:
 	static ObjectPool<Cell> _cellPool;
 	static ObjectPool<Block> _blockPool;
 };
+
+template<class T>
+inline ObjectPool<T>::ObjectPool()
+{
+	_pool.reserve(1000);
+}
+
+template<class T>
+inline void ObjectPool<T>::free(size_t index)
+{
+	_available.push_back(index);
+}
+
+template<class T>
+size_t ObjectPool<T>::getObj(size_t index, T*& pObj, bool allocateIfNeeded)
+{
+	size_t result = -1;
+	if (index != -1 && index < _pool.size()) {
+		result = index;
+	}
+	else {
+		if (_available.empty()) {
+			result = _pool.size();
+			_pool.push_back(T());
+		}
+		else {
+			result = _available.back();
+			_available.pop_back();
+			{
+				_pool[result] = T();
+			}
+		}
+	}
+	pObj = &_pool[result];
+	return result;
+}
+
+template<class T>
+inline const T* ObjectPool<T>::getObj(size_t index) const
+{
+	if (index != -1 && index < _pool.size()) {
+		return &_pool[index];
+	}
+	return nullptr;
+}
+
+template<class T>
+inline T* ObjectPool<T>::getObj(size_t index)
+{
+	if (index != -1 && index < _pool.size()) {
+		return &_pool[index];
+	}
+	return nullptr;
+}
+
 
 class Cell : public DataPool {
 public:
@@ -159,8 +187,10 @@ public:
 	const Index3& getBlockDims() const;
 	const Index3& getDims() const;
 
-	std::shared_ptr<Block> getBlock(size_t ix, size_t iy, size_t iz);
-	std::shared_ptr<const Block> getBlock(size_t ix, size_t iy, size_t iz) const;
+	const Block* getBlock(size_t ix, size_t iy, size_t iz) const;
+	const Block* getBlock(const Vector3i& blockIdx) const;
+	Block* getBlock(size_t ix, size_t iy, size_t iz);
+	Block* getBlock(const Vector3i& blockIdx);
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
@@ -170,7 +200,7 @@ public:
 	TriMesh::CMeshPtr makeTris(bool cells = true);
 
 private:
-	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3i& axisOrder);
+	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh);
 
 	Eigen::Vector3d _originMeters, _spanMeters;
@@ -179,32 +209,43 @@ private:
 	std::vector<size_t> _faces;
 	std::vector<size_t> _polyHedra;
 
-	std::vector<std::shared_ptr<Block>> _blocks;
+	std::vector<size_t> _blocks;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-inline std::shared_ptr<Block> Volume::getBlock(size_t ix, size_t iy, size_t iz)
+inline const Block* Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 {
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
 	if (idx < _blocks.size())
-		return _blocks[idx];
+		return _blockPool.getObj(_blocks[idx]);
 	return nullptr;
 }
 
-inline std::shared_ptr<const Block> Volume::getBlock(size_t ix, size_t iy, size_t iz) const
+inline Block* Volume::getBlock(size_t ix, size_t iy, size_t iz)
 {
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
 	if (idx < _blocks.size())
-		return _blocks[idx];
+		return _blockPool.getObj(_blocks[idx]);
 	return nullptr;
+}
+
+inline const Block* Volume::getBlock(const Vector3i& blockIdx) const
+{
+	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+inline Block* Volume::getBlock(const Vector3i& blockIdx)
+{
+	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 {
-	size_t result = ix + _blockDim[1] * (iy + _blockDim[2] * iz);
+	if (ix < _blockDim[0] && iy < _blockDim[1] && iz < _blockDim[2])
+	return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
 
-	return result;
+	return -1;
 }
 
 inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const

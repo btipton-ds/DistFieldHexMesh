@@ -59,12 +59,10 @@ private:
     struct GraphicsUBO {
         m44f modelView;
         m44f proj;
-        p3f lightDir[2];
-        size_t __PAD0 = -1;
         p3f defColor;
-        int numLights = 0;
         float ambient = 0;
-        size_t __PAD1 = -1;
+        int numLights = 0;
+        p3f lightDir[8];
     };
 
     bool _leftDown = false, _middleDown = false, _rightDown = false;
