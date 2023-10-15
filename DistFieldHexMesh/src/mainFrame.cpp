@@ -380,7 +380,7 @@ void AppData::doFindMinGap() const
                 Ray ray(ctr, zAxis);
 
                 vector<RayHit> hits;
-                if (_pMesh->biDirRayCast(ray, hits)) {
+                if (_pMesh->rayCast(ray, hits)) {
                     int dbgBreak = 1;
                 }
             }
@@ -398,9 +398,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setBlockDim(32);
+    Block::setBlockDim(16);
 
-    double gap = 0.00005;
+    double gap = 0.001;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 

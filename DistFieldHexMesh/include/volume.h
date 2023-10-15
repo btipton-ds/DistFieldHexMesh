@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <mutex>
 #include "indices.h"
 
 namespace TriMesh {
@@ -35,10 +36,12 @@ public:
 	ObjectPool(const ObjectPool& src) = default;
 	void free(size_t index);
 
+	size_t create();
 	size_t getObj(size_t index, T*& pObj, bool allocateIfNeeded);
 	const T* getObj(size_t index) const;
 	T* getObj(size_t index);
 private:
+	std::mutex _mutex;
 	std::vector<size_t> _available;
 	std::vector<T> _pool;
 };
@@ -55,18 +58,30 @@ protected:
 template<class T>
 inline ObjectPool<T>::ObjectPool()
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	_pool.reserve(1000);
 }
 
 template<class T>
 inline void ObjectPool<T>::free(size_t index)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	_available.push_back(index);
+}
+
+template<class T>
+size_t ObjectPool<T>::create()
+{
+	std::lock_guard<std::mutex> lock(_mutex);
+	size_t result = _pool.size();
+	_pool.push_back(T());
+	return result;
 }
 
 template<class T>
 size_t ObjectPool<T>::getObj(size_t index, T*& pObj, bool allocateIfNeeded)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	size_t result = -1;
 	if (index != -1 && index < _pool.size()) {
 		result = index;
@@ -91,6 +106,7 @@ size_t ObjectPool<T>::getObj(size_t index, T*& pObj, bool allocateIfNeeded)
 template<class T>
 inline const T* ObjectPool<T>::getObj(size_t index) const
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	if (index != -1 && index < _pool.size()) {
 		return &_pool[index];
 	}
@@ -100,6 +116,7 @@ inline const T* ObjectPool<T>::getObj(size_t index) const
 template<class T>
 inline T* ObjectPool<T>::getObj(size_t index)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	if (index != -1 && index < _pool.size()) {
 		return &_pool[index];
 	}
@@ -114,9 +131,9 @@ public:
 		VT_SOLID,
 		VT_FLUID,
 	};
-	VolumeType volType;
-	std::vector<size_t> polygons; // indices of polygons in this cell
-	std::vector<size_t> polyhedra;// indices of polyedra in this cell
+	VolumeType volType = VT_VOID;
+	std::vector<size_t> _pPolygons; // indices of polygons in this cell
+	std::vector<size_t> _pPolyhedra;// indices of polyedra in this cell
 };
 
 class HalfJack {
@@ -147,20 +164,23 @@ public:
 	Block();
 	Block(const Block& src);
 
-	void scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, const Vector3i& axisOrder);
+	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
+	void createCells(const std::vector<bool>& cellsToCreate);
 	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calcCellIndex(const Vector3i& celIdx) const;
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 
 private:
+
 	static size_t s_blockDim;
 	std::vector<size_t> _cells;
 };
 
 inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
 {
-	size_t result = ix + s_blockDim * (iy + s_blockDim * iz);
-	return result;
+	if (ix < s_blockDim && iy < s_blockDim && iz < s_blockDim)
+		return ix + s_blockDim * (iy + s_blockDim * iz);
+	return -1;
 }
 
 inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
@@ -201,7 +221,6 @@ public:
 
 private:
 	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
-	void scanVolumeCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh);
 
 	Eigen::Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
