@@ -242,7 +242,7 @@ layout(binding = 0) uniform UniformBufferObject {
         glGenBuffers(1, &buffer);
     }
 
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 
     size_t cBlockSize = sizeof(GraphicsUBO);
     const GLchar* names[] = { "modelView", "proj", "defColor", "ambient", "numLights", "lightDir" };
@@ -277,7 +277,8 @@ layout(binding = 0) uniform UniformBufferObject {
 //    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
-    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+    auto preDrawFace = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+        _graphicsUBO.ambient = 0.2f;
         switch (key) {
         default:
         case 0:
@@ -293,17 +294,45 @@ layout(binding = 0) uniform UniformBufferObject {
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     };
 
-    auto postDraw = [this]() {
+    auto postDrawFace = [this]() {
     };
 
-    auto preTexDraw = [this](int key) {
+    auto preTexDrawFace = [this](int key) {
     };
 
-    auto postTexDraw = [this]() {
+    auto postTexDrawFace = [this]() {
     };
 
-    _faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-//    _edgeVBO.draw(0);
+    _faceVBO.drawAllKeys(preDrawFace, postDrawFace, preTexDrawFace, postTexDrawFace);
+
+    auto preDrawEdge = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+        switch (key) {
+        default:
+        case 0:
+            glLineWidth(2.0f);
+            _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+            break;
+        case 1:
+            _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+            break;
+        }
+        _graphicsUBO.ambient = 1.0f;
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    };
+
+    auto postDrawEdge = [this]() {
+    };
+
+    auto preTexDrawEdge = [this](int key) {
+    };
+
+    auto postTexDrawEdge = [this]() {
+    };
+
+    _edgeVBO.drawAllKeys(preDrawEdge, postDrawEdge, preTexDrawEdge, postTexDrawEdge);
 
     SwapBuffers();
     _phongShader->unBind();

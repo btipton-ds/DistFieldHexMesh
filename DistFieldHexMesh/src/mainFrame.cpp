@@ -250,40 +250,41 @@ void AppData::doOpen()
             const auto& params = _pMesh->getGlParams();
             const auto& indices = _pMesh->getGlFaceIndices();
 
-#if 0
-            if (pts.size() == norms.size()) {
-                size_t numVerts = pts.size() / 3;
-                for (size_t i = 0; i < numVerts; i++) {
-                    cout << i << "pt: [" << pts[3 * i + 0] << " " << pts[3 * i + 1] << " " << pts[3 * i + 2] << "] ";
-                    cout << "no: [" << norms[3 * i + 0] << " " << norms[3 * i + 1] << " " << norms[3 * i + 2] << "]\n";
-                }
-            }
-
-            for (size_t i = 0; i < indices.size(); i++) {
-                cout << i << "\n";
-            }
-#endif
-
             pCanvas->beginFaceTesselation();
-            auto tess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
+            auto faceTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
             pCanvas->endFaceTesselation(false);
 
             pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
-            pCanvas->includeFaceElementIndices(0, *tess);
+            pCanvas->includeFaceElementIndices(0, *faceTess);
             pCanvas->endSettingFaceElementIndices();
 
-#if 0
-            wstring dumpTriFilename(path + L"triDump.txt");
-            wstring dumpTreeFilename(path + L"treeDump.txt");
-            if (!filesystem::exists(dumpTriFilename)) {
-                _pMesh->dumpTris(dumpTriFilename);
-                _pMesh->dumpTree(dumpTreeFilename);
-            }
-            if (!_pMesh->compareDumpedTris(dumpTriFilename)) {
-                wxMessageBox(L"Check file did not match latest read file.", "Load Stl Error", wxOK | wxICON_INFORMATION);
+            vector<size_t> sharps;
+            if (pMesh->collectSharpEdges(sharps, sin(30 * M_PI / 180.0)) > 0) {
+                vector<float> pts;
+                vector<int> indices;
+                for (size_t i : sharps) {
+                    const auto& edge = pMesh->getEdge(i);
+                    const auto pt0 = pMesh->getVert(edge._vertIndex[0]);
+                    const auto pt1 = pMesh->getVert(edge._vertIndex[1]);
 
+                    for (int j = 0; j < 3; j++)
+                        pts.push_back((float)pt0._pt[j]);
+
+                    for (int j = 0; j < 3; j++)
+                        pts.push_back((float)pt1._pt[j]);
+
+                    indices.push_back((int)indices.size());
+                    indices.push_back((int)indices.size());
+                }
+
+                pCanvas->beginEdgeTesselation();
+                auto edgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, indices);
+                pCanvas->endEdgeTesselation();
+
+                pCanvas->beginSettingEdgeElementIndices(0xffffffffffffffff);
+                pCanvas->includeEdgeElementIndices(0, *edgeTess);
+                pCanvas->endSettingEdgeElementIndices();
             }
-#endif
         }
     }
 }

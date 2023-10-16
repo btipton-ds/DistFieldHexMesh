@@ -40,6 +40,15 @@ public:
     void includeFaceElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
     void endSettingFaceElementIndices();
 
+    void beginEdgeTesselation();
+    // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
+    const COglMultiVboHandler::OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<int>& indices);
+    void endEdgeTesselation();
+
+    void beginSettingEdgeElementIndices(size_t layerBitMask);
+    void includeEdgeElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
+    void endSettingEdgeElementIndices();
+
     void setViewOrigin(const Vector3d& origin);
     void setViewScale(double scale);
     void setViewEulerAnglesRad(double az, double el);
@@ -123,9 +132,39 @@ inline void GraphicsCanvas::includeFaceElementIndices(int key, const COglMultiVb
 
 inline void GraphicsCanvas::endSettingFaceElementIndices()
 {
-    _faceVBO.endSettingElementVBOs();
+    _faceVBO.endSettingElementIndices();
 }
 
+inline void GraphicsCanvas::beginEdgeTesselation()
+{
+    _edgeVBO.beginEdgeTesselation();
+}
+
+// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
+inline const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<int>& indices)
+{
+    return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
+}
+
+inline void GraphicsCanvas::endEdgeTesselation()
+{
+    _edgeVBO.endEdgeTesselation();
+}
+
+inline void GraphicsCanvas::beginSettingEdgeElementIndices(size_t layerBitMask)
+{
+    _edgeVBO.beginSettingElementIndices(layerBitMask);
+}
+
+inline void GraphicsCanvas::includeEdgeElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId)
+{
+    _edgeVBO.includeElementIndices(key, batchIndices, texId);
+}
+
+inline void GraphicsCanvas::endSettingEdgeElementIndices()
+{
+    _edgeVBO.endSettingElementIndices();
+}
 
 inline void GraphicsCanvas::setViewOrigin(const Vector3d& origin)
 {
