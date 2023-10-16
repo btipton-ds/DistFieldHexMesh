@@ -11,22 +11,17 @@ using namespace TriMesh;
 
 #define RUN_MULTI_THREAD true
 
-ObjectPool<Polygon> DataPool::_polygonPool;
-ObjectPool<Polyhedron> DataPool::_polyhedronPool;
-ObjectPool<Cell> DataPool::_cellPool;
-ObjectPool<Block> DataPool::_blockPool;
-
 Volume::Volume(const Index3& blockSize)
 {
 	setBlockDims(blockSize);
 }
 
 Volume::Volume(const Volume& src)
-	: _originMeters(src._originMeters), 
-	_spanMeters(_spanMeters),
-	_blockDim(src._blockDim),
-	_cellPool(src._cellPool),
-	_blocks(src._blocks)
+	: DataPool(src)
+	, _originMeters(src._originMeters) 
+	, _spanMeters(src._spanMeters)
+	, _blockDim(src._blockDim)
+	, _blocks(src._blocks)
 {
 }
 
