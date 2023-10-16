@@ -56,6 +56,12 @@ public:
     void getViewScale(double& scale);
     void getViewEulerAnglesRad(double& az, double& el);
 
+    bool showSharpEdges() const;
+    bool toggleShowSharpEdges();
+
+    bool showTriNormals() const;
+    bool toggleShowTriNormals();
+
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
@@ -81,6 +87,7 @@ private:
     void drawFaces();
     void drawEdges();
 
+    bool _showSharpEdges = false, _showTriNormals = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     double _initAzRad, _initElRad;
     void loadShaders();
@@ -198,6 +205,16 @@ inline void GraphicsCanvas::getViewEulerAnglesRad(double& az, double& el)
 {
     az = _viewAzRad;
     el = _viewElRad;
+}
+
+inline bool GraphicsCanvas::showSharpEdges() const
+{
+    return _showSharpEdges;
+}
+
+inline bool GraphicsCanvas::showTriNormals() const
+{
+    return _showTriNormals;
 }
 
 

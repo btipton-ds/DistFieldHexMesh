@@ -56,6 +56,7 @@ void MainFrame::addMenus()
 
     createFileMenu();
     createEditMenu();
+    createViewMenu();
     createHelpMenu();
 
     SetMenuBar(_menuBar);
@@ -114,6 +115,27 @@ void MainFrame::createEditMenu()
 
     _menuBar->Append(_editMenu, "&Edit");
 
+}
+
+void MainFrame::createViewMenu()
+{
+    wxMenu* menu= new wxMenu;
+
+    menu->Append(ID_SHOW_SHARP_EDGES, "Show Sharps", "Turns rendering of sharp edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSharpEdges, this, ID_SHOW_SHARP_EDGES);
+
+    menu->Append(ID_SHOW_TRI_NORMALS, "Show Tri Normals", "Turns rendering of triangle normals on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowTriNormals, this, ID_SHOW_TRI_NORMALS);
+
+    auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    if (sharpItem)
+        sharpItem->Check(getCanvas()->showSharpEdges());
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
+    if (normItem)
+        normItem->Check(getCanvas()->showTriNormals());
+
+    _menuBar->Append(menu, "&View");
 }
 
 void MainFrame::createHelpMenu()
@@ -217,3 +239,21 @@ void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
     _pAppData->doBuildCFDHexes();
 }
 
+void MainFrame::OnShowSharpEdges(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowSharpEdges();
+
+    auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    if (sharpItem)
+        sharpItem->Check(getCanvas()->showSharpEdges());
+
+}
+
+void MainFrame::OnShowTriNormals(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowTriNormals();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
+    if (normItem)
+        normItem->Check(getCanvas()->showTriNormals());
+}

@@ -24,6 +24,9 @@ enum DFHM_MENU_ID
     ID_AnalyzeGaps,
     ID_FindMinimumGap,
     ID_BuildCFDHexes,
+
+    ID_SHOW_SHARP_EDGES,
+    ID_SHOW_TRI_NORMALS,
 };
 
 class GraphicsCanvas;
@@ -56,6 +59,7 @@ private:
 
     void createFileMenu();
     void createEditMenu();
+    void createViewMenu();
     void createHelpMenu();
 
     void OnOpen(wxCommandEvent& event);
@@ -72,6 +76,9 @@ private:
     void OnAnalyzeGaps(wxCommandEvent& event);
     void OnFindMinGap(wxCommandEvent& event);
     void OnBuildCFDHexes(wxCommandEvent& event);
+
+    void OnShowSharpEdges(wxCommandEvent& event);
+    void OnShowTriNormals(wxCommandEvent& event);
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

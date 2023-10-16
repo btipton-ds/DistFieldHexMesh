@@ -76,34 +76,32 @@ void AppData::doOpen()
                 }
 
             }
-            bool showTriNorms = false;
             vector<float> normPts;
             vector<int> normIndices;
-            if (showTriNorms) {
-                for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
-                    const Vector3i& triIndices = _pMesh->getTri(triIdx);
-                    const auto pt0 = pMesh->getVert(triIndices[0])._pt;
-                    const auto pt1 = pMesh->getVert(triIndices[1])._pt;
-                    const auto pt2 = pMesh->getVert(triIndices[2])._pt;
+            for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
+                const Vector3i& triIndices = _pMesh->getTri(triIdx);
+                const auto pt0 = pMesh->getVert(triIndices[0])._pt;
+                const auto pt1 = pMesh->getVert(triIndices[1])._pt;
+                const auto pt2 = pMesh->getVert(triIndices[2])._pt;
 
-                    Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
-                    Vector3d v0 = pt0 - pt1;
-                    Vector3d v1 = pt2 - pt1;
-                    Vector3d n = v1.cross(v0);
-                    double area = n.norm() / 2;
-                    double charLen = sqrt(area);
-                    Vector3d ptEnd = ctr + n.normalized() * charLen;
+                Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
+                Vector3d v0 = pt0 - pt1;
+                Vector3d v1 = pt2 - pt1;
+                Vector3d n = v1.cross(v0);
+                double area = n.norm() / 2;
+                double charLen = sqrt(area);
+                Vector3d ptEnd = ctr + n.normalized() * charLen;
 
-                    for (int j = 0; j < 3; j++)
-                        normPts.push_back((float)ctr[j]);
+                for (int j = 0; j < 3; j++)
+                    normPts.push_back((float)ctr[j]);
 
-                    for (int j = 0; j < 3; j++)
-                        normPts.push_back((float)ptEnd[j]);
+                for (int j = 0; j < 3; j++)
+                    normPts.push_back((float)ptEnd[j]);
 
-                    normIndices.push_back((int)normIndices.size());
-                    normIndices.push_back((int)normIndices.size());
-                }
+                normIndices.push_back((int)normIndices.size());
+                normIndices.push_back((int)normIndices.size());
             }
+            
             pCanvas->beginEdgeTesselation();
             const COglMultiVboHandler::OGLIndices* sharpEdgeTess = nullptr;
             const COglMultiVboHandler::OGLIndices* normEdgeTess = nullptr;

@@ -91,6 +91,20 @@ GraphicsCanvas::~GraphicsCanvas()
 {
 }
 
+bool GraphicsCanvas::toggleShowSharpEdges()
+{
+    _showSharpEdges = !_showSharpEdges;
+
+    return _showSharpEdges;
+}
+
+bool GraphicsCanvas::toggleShowTriNormals()
+{
+    _showTriNormals = !_showTriNormals;
+
+    return _showTriNormals;
+}
+
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLoc = calMouseLoc(event.GetPosition());
@@ -326,6 +340,9 @@ void GraphicsCanvas::drawEdges()
         switch (key) {
             default:
             case 0:
+                if (!_showSharpEdges)
+                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
+
                 glLineWidth(2.0f);
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
@@ -333,6 +350,9 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
                 break;
             case 2:
+                if (!_showTriNormals)
+                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
+
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
