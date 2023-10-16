@@ -15,6 +15,8 @@
 #include <ObjectPool.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <cell.h>
+#include <block.h>
 
 namespace TriMesh {
 	class CMesh;
@@ -25,50 +27,6 @@ namespace DFHM {
 
 using CMesh = TriMesh::CMesh;
 
-class Cell : public DataPool {
-public:
-	enum VolumeType {
-		VT_UNKNOWN,
-		VT_VOID,
-		VT_SOLID,
-		VT_FLUID,
-	};
-	VolumeType volType = VT_UNKNOWN;
-	std::vector<size_t> _pPolygons; // indices of polygons in this cell
-	std::vector<size_t> _pPolyhedra;// indices of polyedra in this cell
-};
-
-class Block : public DataPool {
-public:
-	static void setBlockDim(size_t dim);
-	static size_t getBlockDim();
-
-	Block();
-	Block(const Block& src);
-
-	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
-	void createCells(const std::vector<bool>& cellsToCreate);
-	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
-	size_t calcCellIndex(const Vector3i& celIdx) const;
-	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
-
-private:
-
-	static size_t s_blockDim;
-	std::vector<size_t> _cells;
-};
-
-inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
-{
-	if (ix < s_blockDim && iy < s_blockDim && iz < s_blockDim)
-		return ix + s_blockDim * (iy + s_blockDim * iz);
-	return -1;
-}
-
-inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
-{
-	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
-}
 
 class Volume : public DataPool {
 public:
