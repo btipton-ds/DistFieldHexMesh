@@ -51,6 +51,8 @@ public:
 
 private:
 	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
+	void scanVolumePlaneCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& axisOrder);
+	void scanBlockColumn(const TriMesh::CMeshPtr& pTriMesh, size_t i, size_t j, const Vector3d& blockRange, const Vector3i& axisOrder);
 
 	Eigen::Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;

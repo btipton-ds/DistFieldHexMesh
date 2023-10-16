@@ -6,6 +6,28 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
+size_t Block::s_blockDim = 8;
+
+void Block::setBlockDim(size_t dim)
+{
+	s_blockDim = dim;
+}
+
+size_t Block::getBlockDim()
+{
+	return s_blockDim;
+}
+
+Block::Block()
+{
+}
+
+Block::Block(const Block& src)
+	: _cells(src._cells)
+{
+
+}
+
 bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, vector<bool>& cellsToCreate, const Vector3i& axisOrder)
 {
 	static size_t numCells = 0;
@@ -40,13 +62,11 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 		for (size_t j = 0; j < s_blockDim; j++) {
 			rayOrigin[axisIdx1] = origin[axisIdx1] + j * cellSpan[axisIdx1];
 
-			LineSegment lineSeg(rayOrigin, rayOrigin + blockSpan[axisIdx2] * axis);
-			// We need to support solids and surfaces
-			// Solids will always have crossing in pairs, except at tangential crossings
-			// Surface crossings are singular
-			// This sorts them out
+			Ray ray(rayOrigin, rayOrigin + blockSpan[axisIdx2] * axis);
+
 			vector<RayHit> hits;
-			if (pTriMesh->rayCast(lineSeg, hits)) {
+			pTriMesh->rayCast(ray, hits);
+			if (!hits.empty()) {
 				for (const auto hit : hits) {
 
 					double tk = hit.dist / blockSpan[axisIdx2];
@@ -66,40 +86,66 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 						}
 
 						switch (axisOrder[2]) {
-						case 0: ix = k; break;
-						case 1: iy = k; break;
-						case 2: iz = k; break;
-						}
+							case 0: {
+								ix = k;
 
-						size_t iix = ix, iiy = iy, iiz = iz;
-						for (int ii = -overFlow; ii <= overFlow; ii++) {
-							switch (axisOrder[0]) {
-							case 0: iix = ix + ii; break;
-							case 1: iiy = iy + ii; break;
-							case 2: iiz = iz + ii; break;
+								for (int iiy = -1; iiy <= 1; iiy++) {
+									if (iy + iiy >= s_blockDim)
+										continue;
+									for (int iiz = -1; iiz <= 1; iiz++) {
+										if (iz + iiz >= s_blockDim)
+											continue;
+
+										size_t cIdx = calcCellIndex(ix, iy + iiy, iz + iiz);
+										if (cIdx < cellsToCreate.size()) {
+											result = true;
+											cellsToCreate[cIdx] = true;
+										}
+									}
+								}
+
+								break;
 							}
+							case 1:
+							{
+								iy = k;
 
-							for (int jj = -overFlow; jj <= overFlow; jj++) {
-								switch (axisOrder[1]) {
-								case 0: iix = ix + jj; break;
-								case 1: iiy = iy + jj; break;
-								case 2: iiz = iz + jj; break;
-								}
+								for (int iix = -1; iix <= 1; iix++) {
+									if (ix + iix >= s_blockDim)
+										continue;
+									for (int iiz = -1; iiz <= 1; iiz++) {
+										if (iz + iiz >= s_blockDim)
+											continue;
 
-								for (int kk = -overFlow; kk <= overFlow; kk++) {
-									switch (axisOrder[2]) {
-									case 0: iix = ix + kk; break;
-									case 1: iiy = iy + kk; break;
-									case 2: iiz = iz + kk; break;
-									}
-
-									size_t cIdx = calcCellIndex(iix, iiy, iiz);
-									// No mutex required, because order of setting true is not a race condition.
-									if (cIdx != -1) {
-										result = true;
-										cellsToCreate[cIdx] = true;
+										size_t cIdx = calcCellIndex(ix + iix, iy, iz + iiz);
+										if (cIdx < cellsToCreate.size()) {
+											result = true;
+											cellsToCreate[cIdx] = true;
+										}
 									}
 								}
+
+								break;
+							}
+							case 2: {
+								iz = k;
+
+								for (int iix = -1; iix <= 1; iix++) {
+									if (ix + iix >= s_blockDim)
+										continue;
+									for (int iiy = -1; iiy <= 1; iiy++) {
+										if (iy + iiy >= s_blockDim)
+											continue;
+
+										size_t cIdx = calcCellIndex(ix + iix, iy + iiy, iz);
+										if (cIdx < cellsToCreate.size()) {
+											result = true;
+											cellsToCreate[cIdx] = true;
+										}
+									}
+								}
+
+								break;
 							}
 						}
 					}
@@ -114,6 +160,8 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 
 void Block::createCells(const std::vector<bool>& cellsToCreate)
 {
+	if (_cells.empty())
+		_cells.resize(s_blockDim * s_blockDim * s_blockDim);
 
 	if (_cells.size() == cellsToCreate.size()) {
 		for (size_t i = 0; i < cellsToCreate.size(); i++) {
@@ -184,29 +232,4 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 		};
 		pMesh->addRectPrism(pts);
 	}
-}
-
-/******************** Block **************************/
-
-size_t Block::s_blockDim = 8;
-
-void Block::setBlockDim(size_t dim)
-{
-	s_blockDim = dim;
-}
-
-size_t Block::getBlockDim()
-{
-	return s_blockDim;
-}
-
-Block::Block()
-{
-	_cells.resize(s_blockDim * s_blockDim * s_blockDim);
-}
-
-Block::Block(const Block& src)
-	: _cells(src._cells)
-{
-
 }

@@ -11,7 +11,17 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
+
+namespace
+{
+inline void assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder, Vector3i& indexOut)
+{
+	indexOut[axisOrder[0]] = indexIn[0];
+	indexOut[axisOrder[1]] = indexIn[1];
+	indexOut[axisOrder[2]] = indexIn[2];
+}
+}
 
 Volume::Volume(const Index3& blockSize)
 {
@@ -43,7 +53,6 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, st
 	if (blocksToCreate.empty())
 		blocksToCreate.resize(_blocks.size());
 	MultiCore::runLambda([this, pTriMesh, &blocksToCreate, axisOrder](size_t threadNum, size_t numThreads) {
-		const int overFlow = 1;
 		Vector3d axis;
 
 		switch (axisOrder[2]) {
@@ -85,7 +94,6 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, st
 				vector<RayHit> hits;
 				if (pTriMesh->rayCast(ray, hits, false)) {
 					for (const auto& hit : hits) {
-//						cout << "x: " << (offset[axisIdx0] / volumeRange[axisIdx0]) << ", y: " << (offset[axisIdx1] / volumeRange[axisIdx1]) << ", z: " << (hit.dist / volumeRange[axisIdx2]) << "\n";
 
 						double tk = hit.dist / _spanMeters[axisIdx2];
 						size_t k = (size_t)(_blockDim[axisIdx2] * tk);
@@ -108,47 +116,184 @@ void Volume::scanVolumePlaneCreateBlocksWhereNeeded(const CMeshPtr& pTriMesh, st
 							}
 
 							switch (axisOrder[2]) {
-								case 0: ix = k; break;
-								case 1: iy = k; break;
-								case 2: iz = k; break;
-							}
+								case 0: {
+									ix = k; 
 
-							size_t iix = ix, iiy = iy, iiz = iz;
-							for (int ii = -overFlow; ii <= overFlow; ii++) {
-								switch (axisOrder[0]) {
-									case 0: iix = ix + ii; break;
-									case 1: iiy = iy + ii; break;
-									case 2: iiz = iz + ii; break;
-								}
+									for (int iiy = -1; iiy <= 1; iiy++) {
+										if (iy + iiy >= _blockDim[1])
+											continue;
+										for (int iiz = -1; iiz <= 1; iiz++) {
+											if (iz + iiz >= _blockDim[2])
+												continue;
 
-								for (int jj = -overFlow; jj <= overFlow; jj++) {
-									switch (axisOrder[1]) {
-										case 0: iix = ix + jj; break;
-										case 1: iiy = iy + jj; break;
-										case 2: iiz = iz + jj; break;
-									}
-
-									for (int kk = -overFlow; kk <= overFlow; kk++) {
-										switch (axisOrder[2]) {
-											case 0: iix = ix + kk; break;
-											case 1: iiy = iy + kk; break;
-											case 2: iiz = iz + kk; break;
+											size_t bIdx = calLinearBlockIndex(ix, iy + iiy, iz + iiz);
+											// No mutex required, because order of setting true is not a race condition.
+											if (bIdx != -1)
+												blocksToCreate[bIdx] = true;
 										}
-
-										size_t bIdx = calLinearBlockIndex(iix, iiy, iiz);
-										// No mutex required, because order of setting true is not a race condition.
-										if (bIdx != -1)
-											blocksToCreate[bIdx] = true;
 									}
+
+									break;
 								}
-							}	
+								case 1: {
+									iy = k;
+
+									for (int iix = -1; iix <= 1; iix++) {
+										if (ix + iix >= _blockDim[0])
+											continue;
+										for (int iiz = -1; iiz <= 1; iiz++) {
+											if (iz + iiz >= _blockDim[2])
+												continue;
+
+											size_t bIdx = calLinearBlockIndex(ix + iix, iy, iz + iiz);
+											// No mutex required, because order of setting true is not a race condition.
+											if (bIdx != -1)
+												blocksToCreate[bIdx] = true;
+										}
+									}
+
+									break;
+								}
+								case 2: {
+									iz = k;
+
+									for (int iix = -1; iix <= 1; iix++) {
+										if (ix + iix >= _blockDim[0])
+											continue;
+										for (int iiy = -1; iiy <= 1; iiy++) {
+											if (iy + iiy >= _blockDim[1])
+												continue;
+
+											size_t bIdx = calLinearBlockIndex(ix + iix, iy + iiy, iz);
+											// No mutex required, because order of setting true is not a race condition.
+											if (bIdx != -1)
+												blocksToCreate[bIdx] = true;
+										}
+									}
+									break;
+								}
+							}						
 						}
 					}
-
 				}
 			}
 		}
 	}, RUN_MULTI_THREAD);
+
+}
+
+void Volume::scanVolumePlaneCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& axisOrder)
+{
+	MultiCore::runLambda([this, pTriMesh, axisOrder](size_t threadNum, size_t numThreads) {
+		Vector3d axis;
+
+		switch (axisOrder[2]) {
+		case 0:
+			axis = Vector3d(1, 0, 0);
+			break;
+		case 1:
+			axis = Vector3d(0, 1, 0);
+			break;
+		case 2:
+			axis = Vector3d(0, 0, 1);
+			break;
+		}
+
+		Vector3 blockRange;
+		const auto& volumeRange = pTriMesh->getBBox().range();
+		for (int i = 0; i < 3; i++) {
+			blockRange[i] = volumeRange[i] / _blockDim[i];
+		}
+		size_t axisIdx0 = axisOrder[0];
+		size_t axisIdx1 = axisOrder[1];
+		size_t axisIdx2 = axisOrder[2];
+
+		Eigen::Vector3d offset(0, 0, 0);
+
+		for (size_t i = threadNum; i < _blockDim[axisIdx0]; i += numThreads) {
+			offset[axisIdx0] = i * blockRange[axisIdx0];
+
+			for (size_t j = 0; j < _blockDim[axisIdx1]; j++) {
+				offset[axisIdx1] = j * blockRange[axisIdx1];
+
+				scanBlockColumn(pTriMesh, i, j, blockRange, axisOrder);
+			}
+		}
+	}, RUN_MULTI_THREAD);
+}
+
+void Volume::scanBlockColumn(const TriMesh::CMeshPtr& pTriMesh, size_t i, size_t j, const Vector3d& blockRange, const Vector3i& axisOrder)
+{
+	size_t ix, iy, iz;
+	switch (axisOrder[0]) {
+		case 0: ix = i; break;
+		case 1: iy = i; break;
+		case 2: iz = i; break;
+	}
+
+	switch (axisOrder[1]) {
+		case 0: ix = j; break;
+		case 1: iy = j; break;
+		case 2: iz = j; break;
+	}
+
+	bool needScan = false;
+
+	switch (axisOrder[2]) {
+		case 0: {
+			for (size_t ix = 0; ix < _blockDim[axisOrder[0]]; ix++) {
+				size_t bIdx = calLinearBlockIndex(ix, iy, iz);
+				if (_blocks[bIdx]) {
+					needScan = true;
+					break;
+				}
+			}
+			
+			break;
+		}
+		case 1: {
+			for (size_t iy = 0; iy < _blockDim[axisOrder[1]]; iy++) {
+				size_t bIdx = calLinearBlockIndex(ix, iy, iz);
+				if (_blocks[bIdx]) {
+					needScan = true;
+					break;
+				}
+			}
+			break;
+		}
+		case 2: {
+			for (size_t iz = 0; iz < _blockDim[axisOrder[2]]; iz++) {
+				size_t bIdx = calLinearBlockIndex(ix, iy, iz);
+				if (_blocks[bIdx]) {
+					needScan = true;
+					break;
+				}
+			}
+
+			break;
+		}
+	}
+
+
+	if (!needScan)
+		return;
+
+	for (int ii = 0; ii < _blockDim[axisOrder[0]]; ii++) {
+		for (int jj = 0; jj < _blockDim[axisOrder[1]]; jj++) {
+			size_t iix, iiy, iiz;
+			switch (axisOrder[0]) {
+				case 0: iix = ii; break;
+				case 1: iiy = ii; break;
+				case 2: iiz = ii; break;
+			}
+
+			switch (axisOrder[1]) {
+				case 0: iix = jj; break;
+				case 1: iiy = jj; break;
+				case 2: iiz = jj; break;
+			}
+		}
+	}
 
 }
 
@@ -179,6 +324,9 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 		}
 		for (size_t i = threadNum; i < blocksToCreate.size(); i += numThreads) {
 			if (blocksToCreate[i]) {
+				_blocks[i] = _blockPool.create();
+#if 0
+				Block* pBlock;
 				size_t ix = i % _blockDim[0];
 				size_t tempI = i / _blockDim[0];
 				size_t iy = tempI % _blockDim[1];
@@ -188,8 +336,6 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 				Vector3 blockOrigin(_originMeters);
 				blockOrigin += Vector3(ix * blockSpan[0], iy * blockSpan[1], iz * blockSpan[2]);
 
-				Block* pBlock;
-				_blocks[i] = _blockPool.getObj(i, pBlock, true);
 				vector<bool> cellsToCreate;
 				size_t bd = Block::getBlockDim();
 				cellsToCreate.resize(bd * bd * bd);
@@ -204,6 +350,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 				} else {
 					pBlock->createCells(cellsToCreate);
 				}
+#endif
 			}
 		}
 	}, RUN_MULTI_THREAD);

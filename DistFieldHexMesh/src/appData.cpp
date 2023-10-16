@@ -237,7 +237,7 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setBlockDim(16);
+    Block::setBlockDim(8);
 
     double gap = 0.001;
     if (gap <= 0)
