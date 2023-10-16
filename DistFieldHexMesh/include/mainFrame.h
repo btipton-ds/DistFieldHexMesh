@@ -10,6 +10,7 @@
 #include <memory>
 #include <triMesh.h>
 #include <volume.h>
+#include <appData.h>
 
 namespace DFHM {
 
@@ -27,36 +28,6 @@ enum DFHM_MENU_ID
 
 class GraphicsCanvas;
 class MainFrame;
-
-class AppData {
-public:
-    AppData(MainFrame* pMainFrame);
-    void doOpen();
-    void doVerifyClosed();
-    void doVerifyNormals();
-    void doAnalyzeGaps();
-    void doFindMinGap() const;
-    void doBuildCFDHexes();
-
-    inline TriMesh::CMeshPtr getMesh() const
-    {
-        return _pMesh;
-    }
-
-    inline VolumePtr getVolume() const
-    {
-        return _volume;
-    }
-
-private:
-    MainFrame* _pMainFrame = nullptr;
-    TriMesh::CMeshPtr _pMesh;
-    VolumePtr _volume;
-
-    std::vector<double> _binSizes;
-    std::vector<std::vector<int>> _bins;
-};
-using AppDataPtr = std::shared_ptr<AppData>;
 
 class MainFrame : public wxFrame
 {
