@@ -277,65 +277,83 @@ layout(binding = 0) uniform UniformBufferObject {
 //    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
-    auto preDrawFace = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+    drawFaces();
+    drawEdges();
+
+    SwapBuffers();
+    _phongShader->unBind();
+}
+
+void GraphicsCanvas::drawFaces()
+{
+    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
-        default:
-        case 0:
-            _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
-            break;
-        case 1:
-            _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
-            break;
+            default:
+            case 0:
+                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
+                break;
+            case 1:
+                _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+                break;
         }
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
+
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 2.0f);
+
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-    };
+        };
 
-    auto postDrawFace = [this]() {
-    };
+    auto postDraw = [this]() {
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        };
 
-    auto preTexDrawFace = [this](int key) {
-    };
+    auto preTexDraw = [this](int key) {
+        };
 
-    auto postTexDrawFace = [this]() {
-    };
+    auto postTexDraw = [this]() {
+        };
 
-    _faceVBO.drawAllKeys(preDrawFace, postDrawFace, preTexDrawFace, postTexDrawFace);
+    _faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+}
 
-    auto preDrawEdge = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+void GraphicsCanvas::drawEdges()
+{
+    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
         switch (key) {
-        default:
-        case 0:
-            glLineWidth(2.0f);
-            _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
-            break;
-        case 1:
-            _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
-            break;
+            default:
+            case 0:
+                glLineWidth(2.0f);
+                _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+                break;
+            case 1:
+                _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+                break;
+            case 2:
+                glLineWidth(1.0f);
+                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
+                break;
         }
         _graphicsUBO.ambient = 1.0f;
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-    };
+        };
 
-    auto postDrawEdge = [this]() {
-    };
+    auto postDraw = [this]() {
+        };
 
-    auto preTexDrawEdge = [this](int key) {
-    };
+    auto preTexDraw = [this](int key) {
+        };
 
-    auto postTexDrawEdge = [this]() {
-    };
+    auto postTexDraw = [this]() {
+        };
 
-    _edgeVBO.drawAllKeys(preDrawEdge, postDrawEdge, preTexDrawEdge, postTexDrawEdge);
-
-    SwapBuffers();
-    _phongShader->unBind();
+    _edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
 void GraphicsCanvas::updateView()

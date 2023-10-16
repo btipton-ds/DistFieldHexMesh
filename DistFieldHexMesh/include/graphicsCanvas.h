@@ -74,6 +74,13 @@ private:
         p3f lightDir[8];
     };
 
+    void glClearColor(const rgbaColor& color);
+    void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
+    void render();
+    void updateView();
+    void drawFaces();
+    void drawEdges();
+
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     double _initAzRad, _initElRad;
     void loadShaders();
@@ -81,11 +88,6 @@ private:
     Eigen::Vector2d _mouseStartLoc;
     Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
-    void glClearColor(const rgbaColor& color);
-    void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
-    void render();
-    void updateView();
-
     Vector3d _viewOrigin = Vector3d(0, 0, 0);
     double _viewScale = 1, _viewAzRad = 0, _viewElRad = 0;
 

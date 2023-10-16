@@ -258,33 +258,75 @@ void AppData::doOpen()
             pCanvas->includeFaceElementIndices(0, *faceTess);
             pCanvas->endSettingFaceElementIndices();
 
-            vector<size_t> sharps;
-            if (pMesh->collectSharpEdges(sharps, sin(30 * M_PI / 180.0)) > 0) {
-                vector<float> pts;
-                vector<int> indices;
+            vector<float> sharpPts;
+            vector<int> sharpIndices;
+            const vector<size_t>& sharps = _pMesh->getSharpEdgeIndices(15 * M_PI / 180.0);
+            if (!sharps.empty()) {
                 for (size_t i : sharps) {
                     const auto& edge = pMesh->getEdge(i);
                     const auto pt0 = pMesh->getVert(edge._vertIndex[0]);
                     const auto pt1 = pMesh->getVert(edge._vertIndex[1]);
 
                     for (int j = 0; j < 3; j++)
-                        pts.push_back((float)pt0._pt[j]);
+                        sharpPts.push_back((float)pt0._pt[j]);
 
                     for (int j = 0; j < 3; j++)
-                        pts.push_back((float)pt1._pt[j]);
+                        sharpPts.push_back((float)pt1._pt[j]);
 
-                    indices.push_back((int)indices.size());
-                    indices.push_back((int)indices.size());
+                    sharpIndices.push_back((int)sharpIndices.size());
+                    sharpIndices.push_back((int)sharpIndices.size());
                 }
 
-                pCanvas->beginEdgeTesselation();
-                auto edgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, indices);
-                pCanvas->endEdgeTesselation();
-
-                pCanvas->beginSettingEdgeElementIndices(0xffffffffffffffff);
-                pCanvas->includeEdgeElementIndices(0, *edgeTess);
-                pCanvas->endSettingEdgeElementIndices();
             }
+            bool showTriNorms = false;
+            vector<float> normPts;
+            vector<int> normIndices;
+            if (showTriNorms) {
+                for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
+                    const Vector3i& triIndices = _pMesh->getTri(triIdx);
+                    const auto pt0 = pMesh->getVert(triIndices[0])._pt;
+                    const auto pt1 = pMesh->getVert(triIndices[1])._pt;
+                    const auto pt2 = pMesh->getVert(triIndices[2])._pt;
+
+                    Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
+                    Vector3d v0 = pt0 - pt1;
+                    Vector3d v1 = pt2 - pt1;
+                    Vector3d n = v1.cross(v0);
+                    double area = n.norm() / 2;
+                    double charLen = sqrt(area);
+                    Vector3d ptEnd = ctr + n.normalized() * charLen;
+
+                    for (int j = 0; j < 3; j++)
+                        normPts.push_back((float)ctr[j]);
+
+                    for (int j = 0; j < 3; j++)
+                        normPts.push_back((float)ptEnd[j]);
+
+                    normIndices.push_back((int)normIndices.size());
+                    normIndices.push_back((int)normIndices.size());
+                }
+            }
+            pCanvas->beginEdgeTesselation();
+            const COglMultiVboHandler::OGLIndices* sharpEdgeTess = nullptr;
+            const COglMultiVboHandler::OGLIndices* normEdgeTess = nullptr;
+
+            if (!sharpPts.empty())
+                sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), sharpPts, sharpIndices);
+
+            if (!normPts.empty())
+                normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
+
+            pCanvas->endEdgeTesselation();
+
+            pCanvas->beginSettingEdgeElementIndices(0xffffffffffffffff);
+
+            if (sharpEdgeTess)
+                pCanvas->includeEdgeElementIndices(0, *sharpEdgeTess);
+
+            if (normEdgeTess)
+                pCanvas->includeEdgeElementIndices(2, *normEdgeTess);
+
+            pCanvas->endSettingEdgeElementIndices();
         }
     }
 }
