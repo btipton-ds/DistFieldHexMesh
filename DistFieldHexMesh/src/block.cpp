@@ -117,8 +117,23 @@ void Block::createCells(const std::vector<bool>& cellsToCreate)
 
 	if (_cells.size() == cellsToCreate.size()) {
 		for (size_t i = 0; i < cellsToCreate.size(); i++) {
-			if (cellsToCreate[i])
+			if (cellsToCreate[i]) {
+				size_t temp = i;
+
+				size_t ix = temp % s_blockDim;
+				temp = temp / s_blockDim;
+
+				size_t iy = temp % s_blockDim;
+				temp = temp / s_blockDim;
+
+				size_t iz = temp % s_blockDim;
+
+				assert(i == calcCellIndex(ix, iy, iz));
+
 				_cells[i] = _cellPool.create();
+
+				auto pCell = getCell(ix, iy, iz);
+			}
 		}
 	}
 }

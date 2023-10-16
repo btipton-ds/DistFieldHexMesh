@@ -19,6 +19,9 @@ public:
 	size_t calcCellIndex(const Vector3i& celIdx) const;
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 
+	Cell* getCell(size_t ix, size_t iy, size_t iz);
+	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
+
 private:
 
 	static size_t s_blockDim;
@@ -35,6 +38,24 @@ inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
 inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
 {
 	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
+}
+
+inline Cell* Block::getCell(size_t ix, size_t iy, size_t iz)
+{
+	size_t idx = calcCellIndex(ix, iy, iz);
+	if (idx < _cells.size())
+		return _cellPool.getObj(_cells[idx]);
+
+	return nullptr;
+}
+
+inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
+{
+	size_t idx = calcCellIndex(ix, iy, iz);
+	if (idx < _cells.size())
+		return _cellPool.getObj(_cells[idx]);
+
+	return nullptr;
 }
 
 }
