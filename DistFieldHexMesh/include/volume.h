@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <map>
 #include <mutex>
 #include "indices.h"
 #include <triMesh.h>
@@ -45,21 +46,33 @@ public:
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3& emptyVolRatio = Vector3(10, 3, 3));
+	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
 //	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr makeTris(bool cells = true);
 
 private:
-	void scanVolumePlaneCreateBlocksWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
-	void scanVolumePlaneCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& axisOrder);
-	void scanBlockColumn(const TriMesh::CMeshPtr& pTriMesh, size_t i, size_t j, const Vector3d& blockRange, const Vector3i& axisOrder);
+	enum class AxisIndex {
+		X, Y, Z
+	};
+	struct RayTriIntersect {
+		double _w = -1;
+		size_t _triIdx = -1, _blockIdx = -1, _cellIdx = -1;
+	};
 
-	Eigen::Vector3d _originMeters, _spanMeters;
+	using RayTriIntersectVec = std::vector<RayTriIntersect>;
+	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
+
+	static Vector3i getAxisOrder(Volume::AxisIndex axisIdx);
+	void rayCastAxis(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axis, std::vector<bool>& blocksToCreate);
+
+	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 
 	std::vector<size_t> _faces;
 	std::vector<size_t> _polyHedra;
 	std::vector<size_t> _blocks;
+
+	std::map<size_t, std::map<size_t, RayBlockIntersectVec>> _xHits, _yHits, _zHits;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

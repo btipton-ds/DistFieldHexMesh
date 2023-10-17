@@ -239,26 +239,28 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.001;
+    double gap = 0.0005;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 
     double superCellSize = gap * Block::getBlockDim();
 
     auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
-    auto pCanvas = _pMainFrame->getCanvas();
+    if (blockMesh->numTris() > 0) {
+        auto pCanvas = _pMainFrame->getCanvas();
 
-    pCanvas->beginFaceTesselation();
-    auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
-        _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+        pCanvas->beginFaceTesselation();
+        auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
+            _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
 
-    auto blockTess = pCanvas->setFaceTessellation(blockMesh->getId(), blockMesh->getChangeNumber(), blockMesh->getGlPoints(), blockMesh->getGlNormals(false),
-        blockMesh->getGlParams(), blockMesh->getGlFaceIndices());
+        auto blockTess = pCanvas->setFaceTessellation(blockMesh->getId(), blockMesh->getChangeNumber(), blockMesh->getGlPoints(), blockMesh->getGlNormals(false),
+            blockMesh->getGlParams(), blockMesh->getGlFaceIndices());
 
-    pCanvas->endFaceTesselation(false);
+        pCanvas->endFaceTesselation(false);
 
-    pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
-    pCanvas->includeFaceElementIndices(0, *triTess);
-    pCanvas->includeFaceElementIndices(1, *blockTess);
-    pCanvas->endSettingFaceElementIndices();
+        pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
+        pCanvas->includeFaceElementIndices(0, *triTess);
+        pCanvas->includeFaceElementIndices(1, *blockTess);
+        pCanvas->endSettingFaceElementIndices();
+    }
 }

@@ -315,8 +315,10 @@ void GraphicsCanvas::drawFaces()
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0f, 2.0f);
+        if (_showSharpEdges) {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.0f, 2.0f);
+        }
 
         return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         };
