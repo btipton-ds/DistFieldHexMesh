@@ -9,6 +9,29 @@ using namespace DFHM;
 
 size_t Block::s_blockDim = 8;
 
+namespace
+{
+
+	inline void assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder, Vector3i& indexOut)
+	{
+		indexOut[axisOrder[0]] = indexIn[0];
+		indexOut[axisOrder[1]] = indexIn[1];
+		indexOut[axisOrder[2]] = indexIn[2];
+	}
+
+	inline void assignAxes(const Vector3i& axisOrder, Vector3i& indexOut)
+	{
+		assignAxes(Vector3i(0, 1, 2), axisOrder, indexOut);
+	}
+
+}
+
+Vector3i Block::getAxisOrder(AxisIndex axisIdx)
+{
+	const Vector3i axisOrder = axisIdx == AxisIndex::Z ? Vector3i(0, 1, 2) : (axisIdx == AxisIndex::Y ? Vector3i(2, 0, 1) : Vector3i(1, 2, 0));
+	return axisOrder;
+}
+
 void Block::setBlockDim(size_t dim)
 {
 	s_blockDim = dim;
@@ -159,7 +182,7 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 	return result;
 }
 
-void Block::createCells(const std::vector<bool>& cellsToCreate)
+void Block::createCells(const vector<bool>& cellsToCreate)
 {
 	if (_cells.empty())
 		_cells.resize(s_blockDim * s_blockDim * s_blockDim);
@@ -235,12 +258,86 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 	}
 }
 
-void Block::processBlock(size_t ix, size_t iy, size_t iz)
+void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan)
 {
+	vector<bool> cellsToCreate;
+	size_t bd = getBlockDim();
+	cellsToCreate.resize(bd * bd * bd);
+
+	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::X, cellsToCreate);
+	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Y, cellsToCreate);
+	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Z, cellsToCreate);
 
 }
 
-bool Block::unload(std::string& filename)
+void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, AxisIndex axisIdx, vector<bool>& cellsToCreate)
+{
+	const Vector3i axisOrder = getAxisOrder(axisIdx);
+
+	const Vector3d rayDir = axisIdx == AxisIndex::Z ? Vector3d(0, 0, 1) : (axisIdx == AxisIndex::Y ? Vector3d(0, 1, 0) : Vector3d(1, 0, 0));
+
+	vector<shared_ptr<RayBlockIntersectVec>> allHits;
+	size_t bd = getBlockDim();
+	size_t numSteps = bd + 1;
+
+	allHits.resize(numSteps * numSteps);
+	const double TOL = 1.0e-6;
+	const size_t axis0 = axisOrder[0];
+	const size_t axis1 = axisOrder[1];
+	const size_t axis2 = axisOrder[2];
+
+	Vector3d origin(blockOrigin), cellSpan;
+	for (int i = 0; i < 3; i++)
+		cellSpan[i] = blockSpan[i] / bd;
+
+	for (size_t i = 0; i < numSteps; i++) {
+		double t = i / (double) bd;
+		origin[axis0] = origin[axis0] + t * cellSpan[axis0];
+
+		for (size_t j = 0; j < numSteps; j++) {
+			const size_t rayIdx = i + numSteps * j;
+			double u = j / (double)bd;
+			origin[axis1] = origin[axis1] + u * cellSpan[axis1];
+
+			Ray ray(origin, rayDir);
+			vector<RayHit> hits;
+			if (pTriMesh->rayCast(ray, hits)) {
+				if (!allHits[rayIdx])
+					allHits[rayIdx] = make_shared<RayBlockIntersectVec>();
+				auto& blockHits = *allHits[rayIdx];
+
+				if (blockHits.empty())
+					blockHits.resize(1);
+				RayTriIntersectVec& rayHits = blockHits.front();
+
+				for (const auto& triHit : hits) {
+					double dist0 = triHit.dist;
+					if (dist0 < 0)
+						dist0 = 0;
+					else if (dist0 >= blockSpan[axis2])
+						dist0 = blockSpan[axis2];
+
+					RayTriIntersect rti;
+					rti._triIdx = triHit.triIdx;
+					rti._blockIdx = blockRayIdx;
+
+					double w0 = dist0 / blockSpan[axis2];
+
+					rti._cellIdx = (size_t)(w0 * bd);
+					if (rti._cellIdx >= bd)
+						rti._cellIdx = bd - 1;
+					double dist1 = dist0 - (rti._cellIdx * cellSpan[axis2]);
+
+					rti._w = dist1 / cellSpan[axis2];
+					rayHits.push_back(rti);
+				}
+			}
+		}
+	}
+
+}
+
+bool Block::unload(string& filename)
 {
 	{
 		ofstream out(filename, ofstream::binary);

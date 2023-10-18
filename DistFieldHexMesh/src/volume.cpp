@@ -30,12 +30,6 @@ inline void assignAxes(const Vector3i& axisOrder, Vector3i& indexOut)
 
 }
 
-inline Vector3i Volume::getAxisOrder(AxisIndex axisIdx)
-{
-	const Vector3i axisOrder = axisIdx == AxisIndex::Z ? Vector3i(0, 1, 2) : (axisIdx == AxisIndex::Y ? Vector3i(2, 0, 1) : Vector3i(1, 2, 0));
-	return axisOrder;
-}
-
 Volume::Volume(const Index3& blockSize)
 {
 	setBlockDims(blockSize);
@@ -97,7 +91,7 @@ const Cell* Volume::getCell(size_t ix, size_t iy, size_t iz) const
 
 void Volume::createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate)
 {
-	const Vector3i axisOrder = getAxisOrder(axisIdx);
+	const Vector3i axisOrder = Block::getAxisOrder(axisIdx);
 
 	const Vector3d rayDir = axisIdx == AxisIndex::Z ? Vector3d(0, 0, 1) : (axisIdx == AxisIndex::Y ? Vector3d(0, 1, 0) : Vector3d(1, 0, 0));
 
@@ -245,18 +239,22 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	createBlockRays(pTriMesh, AxisIndex::Z, blocksToCreate);
 
 	MultiCore::runLambda([this, pTriMesh, &blocksToCreate](size_t threadNum, size_t numThreads) {
-		Vector3d blockSpan;
+		Vector3d blockSpan, blockOrigin;
 		for (int i = 0; i < 3; i++) {
 			blockSpan[i] = _spanMeters[i] / (double)_blockDim[i];
 		}
 		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
+			blockOrigin[0] = _originMeters[0] + i * blockSpan[0];
 			for (size_t j = 0; j < _blockDim[1]; j++) {
+				blockOrigin[1] = _originMeters[1] + j * blockSpan[1];
 				for (size_t k = 0; k < _blockDim[2]; k++) {
+					blockOrigin[2] = _originMeters[2] + k * blockSpan[2];
+
 					size_t bIdx = calLinearBlockIndex(i, j, k);
 					if (blocksToCreate[bIdx]) {
 						Block* pBlock = nullptr;
 						_blocks[bIdx] = _blockPool.getObj(bIdx, pBlock, true);
-						pBlock->processBlock(i, j, k);
+						pBlock->processBlock(pTriMesh, k, blockOrigin, blockSpan);
 					}
 				}
 			}

@@ -13,7 +13,7 @@ public:
 	Block();
 	Block(const Block& src);
 
-	void processBlock(size_t ix, size_t iy, size_t iz);
+	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void createCells(const std::vector<bool>& cellsToCreate);
 	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
@@ -29,8 +29,16 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
+protected:
+	enum class AxisIndex {
+		X, Y, Z
+	};
+	static Vector3i getAxisOrder(AxisIndex axisIdx);
+
 private:
 	friend class Volume;
+
+
 	struct RayTriIntersect {
 		double _w = -1;
 		size_t _triIdx = -1, _blockIdx = -1, _cellIdx = -1;
@@ -39,6 +47,7 @@ private:
 	using RayTriIntersectVec = std::vector<RayTriIntersect>;
 	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
 
+	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, AxisIndex axisIdx, std::vector<bool>& cellsToCreate);
 	std::string _filename;
 
 	static size_t s_blockDim;

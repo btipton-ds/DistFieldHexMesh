@@ -58,16 +58,12 @@ public:
 	TriMesh::CMeshPtr makeTris(bool cells = true);
 
 private:
+	using AxisIndex = Block::AxisIndex;
 	using RayTriIntersect = Block::RayTriIntersect;
 
 	using RayTriIntersectVec = Block::RayTriIntersectVec;
 	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
 
-	enum class AxisIndex {
-		X, Y, Z
-	};
-
-	static Vector3i getAxisOrder(Volume::AxisIndex axisIdx);
 	void createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
 
 	Vector3d _originMeters, _spanMeters;
