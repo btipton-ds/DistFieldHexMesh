@@ -22,7 +22,12 @@ public:
 	Cell* getCell(size_t ix, size_t iy, size_t iz);
 	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
 
+	bool isUnloaded() const;
+	bool unload(std::string& filename);
+	bool load();
+
 private:
+	std::string _filename;
 
 	static size_t s_blockDim;
 	std::vector<size_t> _cells;
@@ -56,6 +61,11 @@ inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
 		return _cellPool.getObj(_cells[idx]);
 
 	return nullptr;
+}
+
+inline bool Block::isUnloaded() const
+{
+	return !_filename.empty();
 }
 
 }

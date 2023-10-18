@@ -1,6 +1,7 @@
 #include <vector>
 #include <cell.h>
 #include <block.h>
+#include <fstream>
 
 using namespace std;
 using namespace TriMesh;
@@ -232,4 +233,61 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 		};
 		pMesh->addRectPrism(pts);
 	}
+}
+
+bool Block::unload(std::string& filename)
+{
+	{
+		ofstream out(filename, ofstream::binary);
+		if (!out.good()) {
+			return false;
+		}
+
+		size_t count = _cells.size();
+		out.write((char*)&count, sizeof(count));
+		for (size_t cellIdx : _cells) {
+			Cell* pCell = _cellPool.getObj(cellIdx);
+			if (!pCell->unload(out)) {
+				return false;
+			}
+		}
+		if (out.good()) {
+			_filename = filename;
+		} else {
+			return false;
+		}
+	}
+
+	for (size_t cellIdx : _cells) {
+		_cellPool.free(cellIdx);
+	}
+	_cells.clear();
+
+	return true;
+}
+
+bool Block::load()
+{
+	if (_filename.empty())
+		return false;
+	ifstream in(_filename, ofstream::binary);
+	if (!in.good()) return false;
+
+	size_t size;
+	in.read((char*) & size, sizeof(size));
+	if (!in.good()) return false;
+
+	_cells.resize(size);
+	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
+		Cell* pCell;
+		_cells[cellIdx] = _cellPool.getObj(-1, pCell, true);
+		if (!pCell->load(in)) {
+			// TODO cleanup here
+			return false;
+		}
+	}
+
+	_filename.clear();
+
+	return true;
 }

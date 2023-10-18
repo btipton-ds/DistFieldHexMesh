@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <vector>
+#include <tm_vector3.h>
 
 namespace DFHM {
 
@@ -10,82 +11,113 @@ class ObjectPool {
 public:
 	ObjectPool();
 	ObjectPool(const ObjectPool& src) = default;
-	void free(size_t index);
+	void free(size_t id); // Permanently delete it
+	void unload(size_t id); // Free the memory, but keep the id
 
-	size_t create();
-	size_t getObj(size_t index, T*& pObj, bool allocateIfNeeded);
-	const T* getObj(size_t index) const;
-	T* getObj(size_t index);
+	size_t create(size_t id = -1);
+	size_t getObj(size_t id, T*& pObj, bool allocateIfNeeded);
+	const T* getObj(size_t id) const;
+	T* getObj(size_t id);
+
 private:
 	std::mutex _mutex;
-	std::vector<size_t> _available;
+	std::vector<size_t> _idToIndexMap;
+	std::vector<size_t> _availableData;
+	std::vector<size_t> _availableIds;
 	std::vector<T> _pool;
 };
 
 template<class T>
-inline ObjectPool<T>::ObjectPool()
+ObjectPool<T>::ObjectPool()
 {
 	std::lock_guard<std::mutex> lock(_mutex);
 	_pool.reserve(1000);
+	_idToIndexMap.reserve(1000);
 }
 
 template<class T>
-inline void ObjectPool<T>::free(size_t index)
+void ObjectPool<T>::free(size_t id)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
-	_available.push_back(index);
+	size_t index = _idToIndexMap[id];
+	if (index != -1) {
+		_availableData.push_back(index);
+		_availableIds.push_back(id);
+		_idToIndexMap[id] = -1;
+	}
 }
 
 template<class T>
-size_t ObjectPool<T>::create()
+void ObjectPool<T>::unload(size_t id)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
-	size_t result = _pool.size();
-	_pool.push_back(T());
-	return result;
+	size_t index = _idToIndexMap[id];
+	if (index != -1) 
+		_availableData.push_back(index);
+	_idToIndexMap[id] = -1;
 }
 
 template<class T>
-size_t ObjectPool<T>::getObj(size_t index, T*& pObj, bool allocateIfNeeded)
+size_t ObjectPool<T>::create(size_t id /* = -1*/)
+{
+	std::lock_guard<std::mutex> lock(_mutex);
+
+	size_t index = -1;
+	if (id >= _idToIndexMap.size()) {
+		if (!_availableIds.empty()) {
+			id = _availableIds.back();
+			_availableIds.pop_back();
+		} else {
+			id = _idToIndexMap.size();
+			_idToIndexMap.push_back(-1);
+		}
+	}
+
+	index = _idToIndexMap[id];
+	if (index >= _pool.size()) {
+		if (_availableData.empty()) {
+			_idToIndexMap[id] = index = _pool.size();
+			_pool.push_back(T());
+		} else {
+			_idToIndexMap[id] = index = _availableData.back();
+			_availableData.pop_back();
+			_pool[index] = T();
+		}
+	}
+
+	return id;
+}
+
+template<class T>
+size_t ObjectPool<T>::getObj(size_t id, T*& pObj, bool allocateIfNeeded)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
 	size_t result = -1;
-	if (index != -1 && index < _pool.size()) {
-		result = index;
+	if (id != -1 && id < _idToIndexMap.size()) {
+		result = id;
+	} else {
+		result = create();
 	}
-	else {
-		if (_available.empty()) {
-			result = _pool.size();
-			_pool.push_back(T());
-		}
-		else {
-			result = _available.back();
-			_available.pop_back();
-			{
-				_pool[result] = T();
-			}
-		}
-	}
-	pObj = &_pool[result];
+	pObj = &_pool[_idToIndexMap[result]];
 	return result;
 }
 
 template<class T>
-inline const T* ObjectPool<T>::getObj(size_t index) const
+const T* ObjectPool<T>::getObj(size_t id) const
 {
 	std::lock_guard<std::mutex> lock(_mutex);
-	if (index != -1 && index < _pool.size()) {
-		return &_pool[index];
+	if (id != -1 && id < _idToIndexMap.size()) {
+		return &_pool[_idToIndexMap[id]];
 	}
 	return nullptr;
 }
 
 template<class T>
-inline T* ObjectPool<T>::getObj(size_t index)
+T* ObjectPool<T>::getObj(size_t id)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
-	if (index != -1 && index < _pool.size()) {
-		return &_pool[index];
+	if (id != -1 && id < _idToIndexMap.size()) {
+		return &_pool[_idToIndexMap[id]];
 	}
 	return nullptr;
 }
@@ -95,12 +127,14 @@ class Block;
 class Polygon;
 class Polyhedron;
 class Volume;
+class Vertex;
 
 using VolumePtr = std::shared_ptr<Volume>;
 
 class DataPool
 {
 protected:
+	static ObjectPool<Vertex> _vertexPool;
 	static ObjectPool<Polygon> _polygonPool;
 	static ObjectPool<Polyhedron> _polyhedronPool;
 	static ObjectPool<Cell> _cellPool;

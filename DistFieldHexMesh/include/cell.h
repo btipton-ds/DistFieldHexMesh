@@ -12,9 +12,13 @@ public:
 		VT_SOLID,
 		VT_FLUID,
 	};
+
+	bool unload(std::ostream& out);
+	bool load(std::istream& in);
+
 	VolumeType volType = VT_UNKNOWN;
-	std::vector<size_t> _pPolygons; // indices of polygons in this cell
-	std::vector<size_t> _pPolyhedra;// indices of polyedra in this cell
+	std::vector<size_t> _polygons; // indices of polygons in this cell
+	std::vector<size_t> _polyhedra;// indices of polyedra in this cell
 };
 
 }

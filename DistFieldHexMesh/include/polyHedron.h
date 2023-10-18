@@ -6,7 +6,10 @@ namespace DFHM {
 
 class Polyhedron : public DataPool {
 public:
-	std::vector<size_t> faceIndices;
+	bool unload(std::ostream& out);
+	bool load(std::istream& out);
+
+	std::vector<size_t> polygonId;
 };
 
 }

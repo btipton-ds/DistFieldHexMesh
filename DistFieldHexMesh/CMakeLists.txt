@@ -37,12 +37,15 @@ add_executable (DistFieldHexMesh
     "src/appData.cpp"
 	"src/graphicsCanvas.cpp"
 	"src/objectPool.cpp" 
-	"src/block.cpp"
+	"src/block.cpp"	
+	"src/cell.cpp"
+	"src/polygon.cpp"
+	"src/polyHedron.cpp"
+	"src/vertex.cpp"
 	"${OpenGlDir}/src/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
-	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- )
+	"${OpenGlDir}/src/OGLMultiVboHandler.cpp")
 
 message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
