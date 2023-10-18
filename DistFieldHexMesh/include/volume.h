@@ -77,7 +77,6 @@ private:
 	std::vector<size_t> _polyHedra;
 	std::vector<size_t> _blocks;
 
-	std::vector<std::shared_ptr<RayBlockIntersectVec>> _xHits, _yHits, _zHits;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

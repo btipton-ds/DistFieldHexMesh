@@ -101,7 +101,7 @@ void Volume::createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisId
 
 	const Vector3d rayDir = axisIdx == AxisIndex::Z ? Vector3d(0, 0, 1) : (axisIdx == AxisIndex::Y ? Vector3d(0, 1, 0) : Vector3d(1, 0, 0));
 
-	vector<shared_ptr<RayBlockIntersectVec>>& allHits = axisIdx == AxisIndex::Z ? _zHits : (axisIdx == AxisIndex::Y ? _yHits : _xHits);
+	vector<shared_ptr<RayBlockIntersectVec>> allHits;
 	const size_t numI = _blockDim[axisOrder[0]] + 1;
 	const size_t numJ = _blockDim[axisOrder[1]] + 1;
 
