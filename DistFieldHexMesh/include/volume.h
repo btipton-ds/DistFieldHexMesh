@@ -58,20 +58,17 @@ public:
 	TriMesh::CMeshPtr makeTris(bool cells = true);
 
 private:
+	using RayTriIntersect = Block::RayTriIntersect;
+
+	using RayTriIntersectVec = Block::RayTriIntersectVec;
+	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
+
 	enum class AxisIndex {
 		X, Y, Z
 	};
-	struct RayTriIntersect {
-		double _w = -1;
-		size_t _triIdx = -1, _blockIdx = -1, _cellIdx = -1;
-	};
-
-	using RayTriIntersectVec = std::vector<RayTriIntersect>;
-	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
 
 	static Vector3i getAxisOrder(Volume::AxisIndex axisIdx);
 	void createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
-	void createCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const std::vector<bool>& blocksToCreate);
 
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
@@ -80,7 +77,7 @@ private:
 	std::vector<size_t> _polyHedra;
 	std::vector<size_t> _blocks;
 
-	std::map<size_t, std::map<size_t, RayBlockIntersectVec>> _xHits, _yHits, _zHits;
+	std::vector<std::shared_ptr<RayBlockIntersectVec>> _xHits, _yHits, _zHits;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

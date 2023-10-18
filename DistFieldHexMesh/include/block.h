@@ -29,6 +29,15 @@ public:
 	bool load();
 
 private:
+	friend class Volume;
+	struct RayTriIntersect {
+		double _w = -1;
+		size_t _triIdx = -1, _blockIdx = -1, _cellIdx = -1;
+	};
+
+	using RayTriIntersectVec = std::vector<RayTriIntersect>;
+	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
+
 	std::string _filename;
 
 	static size_t s_blockDim;
