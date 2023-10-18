@@ -259,7 +259,7 @@ bool Block::unload(std::string& filename)
 	}
 
 	for (size_t cellIdx : _cells) {
-		_cellPool.free(cellIdx);
+		_cellPool.unload(cellIdx);
 	}
 	_cells.clear();
 

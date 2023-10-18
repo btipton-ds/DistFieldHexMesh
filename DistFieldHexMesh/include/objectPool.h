@@ -52,6 +52,7 @@ void ObjectPool<T>::unload(size_t id)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
 	size_t index = _idToIndexMap[id];
+	_pool[index] = {};
 	if (index != -1) 
 		_availableData.push_back(index);
 	_idToIndexMap[id] = -1;

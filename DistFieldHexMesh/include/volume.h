@@ -38,10 +38,17 @@ public:
 	const Index3& getBlockDims() const;
 	const Index3& getDims() const;
 
+	// Get the block using a block index
 	const Block* getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block* getBlock(const Vector3i& blockIdx) const;
 	Block* getBlock(size_t ix, size_t iy, size_t iz);
 	Block* getBlock(const Vector3i& blockIdx);
+
+	// Get the cell using a cell index
+	Cell* getCell(size_t ix, size_t iy, size_t iz);
+	Cell* getCell(const Vector3i& cellIdx);
+	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
+	const Cell* getCell(const Vector3i& cellIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
@@ -115,6 +122,16 @@ inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
 {
 	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+inline Cell* Volume::getCell(const Vector3i& cellIdx)
+{
+	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
+}
+
+inline const Cell* Volume::getCell(const Vector3i& cellIdx) const
+{
+	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }
 
 } // end namespace DFHM

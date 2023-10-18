@@ -20,7 +20,9 @@ public:
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 
 	Cell* getCell(size_t ix, size_t iy, size_t iz);
+	Cell* getCell(const Vector3i& idx);
 	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
+	const Cell* getCell(const Vector3i& idx) const;
 
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
@@ -54,6 +56,11 @@ inline Cell* Block::getCell(size_t ix, size_t iy, size_t iz)
 	return nullptr;
 }
 
+inline Cell* Block::getCell(const Vector3i& idx)
+{
+	return getCell(idx[0], idx[1], idx[2]);
+}
+
 inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
 {
 	size_t idx = calcCellIndex(ix, iy, iz);
@@ -61,6 +68,11 @@ inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
 		return _cellPool.getObj(_cells[idx]);
 
 	return nullptr;
+}
+
+inline const Cell* Block::getCell(const Vector3i& idx) const
+{
+	return getCell(idx[0], idx[1], idx[2]);
 }
 
 inline bool Block::isUnloaded() const

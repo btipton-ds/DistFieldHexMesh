@@ -61,6 +61,40 @@ const Index3& Volume::getBlockDims() const
 	return _blockDim;
 }
 
+Cell* Volume::getCell(size_t ix, size_t iy, size_t iz)
+{
+	size_t blkDim = Block::getBlockDim();
+	Vector3i idx(ix, iy, iz);
+	Vector3i blockIdx, cellIdx;
+	for (int i = 0; i < 3; i++) {
+		blockIdx[i] = idx[i] / blkDim;
+		cellIdx[i] = idx[i] % blkDim;
+	}
+	Block* pBlock = getBlock(blockIdx);
+	if (pBlock) {
+		Cell* pCell = pBlock->getCell(cellIdx);
+		return pCell;
+	}
+	return nullptr;
+}
+
+const Cell* Volume::getCell(size_t ix, size_t iy, size_t iz) const
+{
+	size_t blkDim = Block::getBlockDim();
+	Vector3i idx(ix, iy, iz);
+	Vector3i blockIdx, cellIdx;
+	for (int i = 0; i < 3; i++) {
+		blockIdx[i] = idx[i] / blkDim;
+		cellIdx[i] = idx[i] % blkDim;
+	}
+	const Block* pBlock = getBlock(blockIdx);
+	if (pBlock) {
+		const Cell* pCell = pBlock->getCell(cellIdx);
+		return pCell;
+	}
+	return nullptr;
+}
+
 void Volume::createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate)
 {
 	mutex allHitsLock;
