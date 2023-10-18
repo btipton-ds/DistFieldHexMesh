@@ -217,11 +217,11 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 		Vector3d cellOrgin(blockOrigin);
 		Vector3d cellSpan = blockSpan * (1.0 / s_blockDim);
 		for (size_t ix = 0; ix < s_blockDim; ix++) {
-			cellOrgin[ix] = blockOrigin[ix] + ix * cellSpan[0];
+			cellOrgin[0] = blockOrigin[0] + ix * cellSpan[0];
 			for (size_t iy = 0; iy < s_blockDim; iy++) {
-				cellOrgin[iy] = blockOrigin[iy] + iy * cellSpan[1];
+				cellOrgin[1] = blockOrigin[1] + iy * cellSpan[1];
 				for (size_t iz = 0; iz < s_blockDim; iz++) {
-					cellOrgin[iz] = blockOrigin[iz] + iz * cellSpan[2];
+					cellOrgin[2] = blockOrigin[2] + iz * cellSpan[2];
 					size_t cIdx = calcCellIndex(ix, iy, iz);
 					if ((cIdx != -1) && (_cells[cIdx] != -1)) {
 						vector<Vector3d> pts = {
@@ -258,83 +258,46 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 	}
 }
 
-void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan)
+void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)
 {
-	vector<bool> cellsToCreate;
 	size_t bd = getBlockDim();
-	cellsToCreate.resize(bd * bd * bd);
+	_cells.resize(bd * bd * bd, -1);
+	for (size_t i = 0; i < bd; i++) {
+		for (size_t j = 0; j < bd; j++) {
+			for (size_t k = 0; k < bd; k++) {
+				size_t cellIdx = calcCellIndex(i, j, k);
+				if (cellsToCreate[cellIdx])
+					_cells[cellIdx] = 1;
+			}
+		}
+	}
+#if 0
 
 	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::X, cellsToCreate);
 	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Y, cellsToCreate);
 	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Z, cellsToCreate);
 
-}
-
-void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, AxisIndex axisIdx, vector<bool>& cellsToCreate)
-{
-	const Vector3i axisOrder = getAxisOrder(axisIdx);
-
-	const Vector3d rayDir = axisIdx == AxisIndex::Z ? Vector3d(0, 0, 1) : (axisIdx == AxisIndex::Y ? Vector3d(0, 1, 0) : Vector3d(1, 0, 0));
-
-	vector<shared_ptr<RayBlockIntersectVec>> allHits;
-	size_t bd = getBlockDim();
-	size_t numSteps = bd + 1;
-
-	allHits.resize(numSteps * numSteps);
-	const double TOL = 1.0e-6;
-	const size_t axis0 = axisOrder[0];
-	const size_t axis1 = axisOrder[1];
-	const size_t axis2 = axisOrder[2];
-
-	Vector3d origin(blockOrigin), cellSpan;
+	Vector3d cellOrigin, cellSpan;
 	for (int i = 0; i < 3; i++)
 		cellSpan[i] = blockSpan[i] / bd;
 
-	for (size_t i = 0; i < numSteps; i++) {
-		double t = i / (double) bd;
-		origin[axis0] = origin[axis0] + t * cellSpan[axis0];
+	for (size_t i = 0; i < bd; i++) {
+		cellOrigin[0] = blockOrigin[0] + i * cellSpan[0];
+		for (size_t j = 0; j < bd; j++) {
+			cellOrigin[1] = blockOrigin[1] + j * cellSpan[1];
+			for (size_t k = 0; k < bd; k++) {
+				cellOrigin[2] = blockOrigin[2] + k * cellSpan[2];
 
-		for (size_t j = 0; j < numSteps; j++) {
-			const size_t rayIdx = i + numSteps * j;
-			double u = j / (double)bd;
-			origin[axis1] = origin[axis1] + u * cellSpan[axis1];
-
-			Ray ray(origin, rayDir);
-			vector<RayHit> hits;
-			if (pTriMesh->rayCast(ray, hits)) {
-				if (!allHits[rayIdx])
-					allHits[rayIdx] = make_shared<RayBlockIntersectVec>();
-				auto& blockHits = *allHits[rayIdx];
-
-				if (blockHits.empty())
-					blockHits.resize(1);
-				RayTriIntersectVec& rayHits = blockHits.front();
-
-				for (const auto& triHit : hits) {
-					double dist0 = triHit.dist;
-					if (dist0 < 0)
-						dist0 = 0;
-					else if (dist0 >= blockSpan[axis2])
-						dist0 = blockSpan[axis2];
-
-					RayTriIntersect rti;
-					rti._triIdx = triHit.triIdx;
-					rti._blockIdx = blockRayIdx;
-
-					double w0 = dist0 / blockSpan[axis2];
-
-					rti._cellIdx = (size_t)(w0 * bd);
-					if (rti._cellIdx >= bd)
-						rti._cellIdx = bd - 1;
-					double dist1 = dist0 - (rti._cellIdx * cellSpan[axis2]);
-
-					rti._w = dist1 / cellSpan[axis2];
-					rayHits.push_back(rti);
+				size_t bIdx = calcCellIndex(i, j, k);
+				if (cellsToCreate[bIdx]) {
+					Cell* pCell = nullptr;
+					_cells[bIdx] = _cellPool.getObj(bIdx, pCell, true);
+//					pCell->processBlock(pTriMesh, k, blockOrigin, blockSpan);
 				}
 			}
 		}
 	}
-
+#endif
 }
 
 bool Block::unload(string& filename)

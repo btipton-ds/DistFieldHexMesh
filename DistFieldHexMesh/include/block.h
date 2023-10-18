@@ -13,11 +13,11 @@ public:
 	Block();
 	Block(const Block& src);
 
-	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan);
+	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void createCells(const std::vector<bool>& cellsToCreate);
-	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;
-	size_t calcCellIndex(const Vector3i& celIdx) const;
+	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
+	static size_t calcCellIndex(const Vector3i& celIdx);
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 
 	Cell* getCell(size_t ix, size_t iy, size_t iz);
@@ -47,21 +47,20 @@ private:
 	using RayTriIntersectVec = std::vector<RayTriIntersect>;
 	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
 
-	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, AxisIndex axisIdx, std::vector<bool>& cellsToCreate);
 	std::string _filename;
 
 	static size_t s_blockDim;
 	std::vector<size_t> _cells;
 };
 
-inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz) const
+inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz)
 {
 	if (ix < s_blockDim && iy < s_blockDim && iz < s_blockDim)
 		return ix + s_blockDim * (iy + s_blockDim * iz);
 	return -1;
 }
 
-inline size_t Block::calcCellIndex(const Vector3i& celIdx) const
+inline size_t Block::calcCellIndex(const Vector3i& celIdx)
 {
 	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
