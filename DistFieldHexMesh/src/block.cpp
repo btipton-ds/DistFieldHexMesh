@@ -235,6 +235,11 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 	}
 }
 
+void Block::processBlock(size_t ix, size_t iy, size_t iz)
+{
+
+}
+
 bool Block::unload(std::string& filename)
 {
 	{

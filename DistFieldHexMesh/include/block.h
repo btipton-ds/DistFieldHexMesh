@@ -13,6 +13,7 @@ public:
 	Block();
 	Block(const Block& src);
 
+	void processBlock(size_t ix, size_t iy, size_t iz);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void createCells(const std::vector<bool>& cellsToCreate);
 	size_t calcCellIndex(size_t ix, size_t iy, size_t iz) const;

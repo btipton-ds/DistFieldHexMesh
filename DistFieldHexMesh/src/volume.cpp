@@ -249,9 +249,16 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 		for (int i = 0; i < 3; i++) {
 			blockSpan[i] = _spanMeters[i] / (double)_blockDim[i];
 		}
-		for (size_t i = threadNum; i < blocksToCreate.size(); i += numThreads) {
-			if (blocksToCreate[i]) {
-				_blocks[i] = _blockPool.create();
+		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
+			for (size_t j = 0; j < _blockDim[1]; j++) {
+				for (size_t k = 0; k < _blockDim[2]; k++) {
+					size_t bIdx = calLinearBlockIndex(i, j, k);
+					if (blocksToCreate[bIdx]) {
+						Block* pBlock = nullptr;
+						_blocks[bIdx] = _blockPool.getObj(bIdx, pBlock, true);
+						pBlock->processBlock(i, j, k);
+					}
+				}
 			}
 		}
 	}, RUN_MULTI_THREAD); 

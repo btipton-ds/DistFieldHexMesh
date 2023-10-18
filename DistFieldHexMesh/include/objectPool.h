@@ -15,6 +15,7 @@ public:
 	void unload(size_t id); // Free the memory, but keep the id
 
 	size_t create(size_t id = -1);
+	size_t create(T*& pObj, size_t id = -1);
 	size_t getObj(size_t id, T*& pObj, bool allocateIfNeeded);
 	const T* getObj(size_t id) const;
 	T* getObj(size_t id);
@@ -59,7 +60,14 @@ void ObjectPool<T>::unload(size_t id)
 }
 
 template<class T>
-size_t ObjectPool<T>::create(size_t id /* = -1*/)
+inline size_t ObjectPool<T>::create(size_t id /* = -1*/)
+{
+	T* pObj;
+	return create(pObj, id);
+}
+
+template<class T>
+size_t ObjectPool<T>::create(T*& pObj, size_t id /* = -1*/)
 {
 	std::lock_guard<std::mutex> lock(_mutex);
 
@@ -85,6 +93,7 @@ size_t ObjectPool<T>::create(size_t id /* = -1*/)
 			_pool[index] = T();
 		}
 	}
+	pObj = &_pool[index];
 
 	return id;
 }
@@ -92,14 +101,18 @@ size_t ObjectPool<T>::create(size_t id /* = -1*/)
 template<class T>
 size_t ObjectPool<T>::getObj(size_t id, T*& pObj, bool allocateIfNeeded)
 {
-	std::lock_guard<std::mutex> lock(_mutex);
 	size_t result = -1;
-	if (id != -1 && id < _idToIndexMap.size()) {
+	if (id != -1 && id < _idToIndexMap.size())
 		result = id;
-	} else {
+
+	// Create also locks, so don't lock again
+	if (result == -1) 
 		result = create();
+	
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		pObj = &_pool[_idToIndexMap[result]];
 	}
-	pObj = &_pool[_idToIndexMap[result]];
 	return result;
 }
 
