@@ -12,18 +12,14 @@ size_t Block::s_blockDim = 8;
 namespace
 {
 
-	inline void assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder, Vector3i& indexOut)
+	inline Vector3i assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder)
 	{
-		indexOut[axisOrder[0]] = indexIn[0];
-		indexOut[axisOrder[1]] = indexIn[1];
-		indexOut[axisOrder[2]] = indexIn[2];
+		Vector3i result;
+		result[axisOrder[0]] = indexIn[0];
+		result[axisOrder[1]] = indexIn[1];
+		result[axisOrder[2]] = indexIn[2];
+		return result;
 	}
-
-	inline void assignAxes(const Vector3i& axisOrder, Vector3i& indexOut)
-	{
-		assignAxes(Vector3i(0, 1, 2), axisOrder, indexOut);
-	}
-
 }
 
 Vector3i Block::getAxisOrder(AxisIndex axisIdx)
@@ -45,7 +41,6 @@ size_t Block::getBlockDim()
 Block::Block()
 {
 	size_t bd = getBlockDim();
-	_cells.resize(bd * bd * bd, -1);
 }
 
 Block::Block(const Block& src)
@@ -187,11 +182,14 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 void Block::createCells(const vector<bool>& cellsToCreate)
 {
 	if (_cells.empty())
-		_cells.resize(s_blockDim * s_blockDim * s_blockDim);
+		_cells.resize(s_blockDim * s_blockDim * s_blockDim, -1);
 
 	if (_cells.size() == cellsToCreate.size()) {
 		for (size_t i = 0; i < cellsToCreate.size(); i++) {
 			if (cellsToCreate[i]) {
+#ifdef _DEBUG
+
+
 				size_t temp = i;
 
 				size_t ix = temp % s_blockDim;
@@ -203,6 +201,7 @@ void Block::createCells(const vector<bool>& cellsToCreate)
 				size_t iz = temp % s_blockDim;
 
 				assert(i == calcCellIndex(ix, iy, iz));
+#endif // _DEBUG
 
 				_cells[i] = _cellPool.create();
 			}

@@ -56,6 +56,7 @@ public:
 	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
 //	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr makeTris(bool cells = true);
+	void dumpSections(const std::string& dirName) const;
 
 private:
 	using AxisIndex = Block::AxisIndex;
@@ -64,18 +65,9 @@ private:
 	using RayTriIntersectVec = Block::RayTriIntersectVec;
 	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
 
-	struct BlockColRec {
-		BlockColRec(const Vector3i& blockDim);
-		void set(size_t i, size_t j, size_t k);
-
-		Vector3i _blockDim;
-		std::vector<bool> _xyBlocks, _yzBlocks, _zxBlocks;
-	};
-
 	void createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
-	void createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const BlockColRec& blockColRec, std::vector<std::vector<bool>>& cellsToCreate);
-	void createCellRays(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& axisOrder, const Vector3d& blockOrigin, const Vector3d& rayDir, const Vector3d& blockSpan,
-		std::vector<bool>& cellsToCreate, std::vector<std::shared_ptr<RayBlockIntersectVec>>& cellHits);
+	void createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
+	bool skipBlock(const std::vector<bool>& blocksToCreate, size_t iBlk, size_t jBlk, const Vector3i& axisOrder, size_t threadNum, size_t numThreads) const;
 
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;

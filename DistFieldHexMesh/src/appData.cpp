@@ -30,6 +30,7 @@ void AppData::doOpen()
 
     // proceed loading the file chosen by the user;
     // this can be done with e.g. wxWidgets input streams:
+    _workDirName = openFileDialog.GetDirectory();
     wxString pathStr = openFileDialog.GetPath();
     if (pathStr.find(".stl") != 0) {
         TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
@@ -239,13 +240,14 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.002;
+    double gap = 0.001;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 
     double superCellSize = gap * Block::getBlockDim();
 
     auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
+    _volume->dumpSections(_workDirName.ToStdString());
 
     if (blockMesh->numTris() > 0) {
         auto pCanvas = _pMainFrame->getCanvas();

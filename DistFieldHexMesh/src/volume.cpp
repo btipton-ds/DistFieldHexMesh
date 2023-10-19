@@ -1,4 +1,6 @@
 
+#include <sstream>
+#include <fstream>
 
 #include <triMesh.h>
 
@@ -16,16 +18,13 @@ using namespace TriMesh;
 namespace
 {
 
-inline void assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder, Vector3i& indexOut)
+inline Vector3i assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder)
 {
-	indexOut[axisOrder[0]] = indexIn[0];
-	indexOut[axisOrder[1]] = indexIn[1];
-	indexOut[axisOrder[2]] = indexIn[2];
-}
-
-inline void assignAxes(const Vector3i& axisOrder, Vector3i& indexOut)
-{
-	assignAxes(Vector3i(0, 1, 2), axisOrder, indexOut);
+	Vector3i result;
+	result[axisOrder[0]] = indexIn[0];
+	result[axisOrder[1]] = indexIn[1];
+	result[axisOrder[2]] = indexIn[2];
+	return result;
 }
 
 }
@@ -158,8 +157,7 @@ void Volume::createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisId
 								if (jj >= _blockDim[axis1])
 									continue;
 
-								Vector3i idxIn(ii, jj, k), blockIndex;
-								assignAxes(idxIn, axisOrder, blockIndex);
+								Vector3i blockIndex = assignAxes(Vector3i(ii, jj, k), axisOrder);
 								size_t bIdx = calLinearBlockIndex(blockIndex);
 								if (bIdx < blocksToCreate.size()) {
 									blocksToCreate[bIdx] = true;
@@ -175,13 +173,28 @@ void Volume::createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisId
 
 }
 
-void Volume::createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const BlockColRec& blockColRec, std::vector<std::vector<bool>>& cellsToCreate)
+bool Volume::skipBlock(const std::vector<bool>& blocksToCreate, size_t iBlk, size_t jBlk, const Vector3i& axisOrder, size_t threadNum, size_t numThreads) const
 {
+	if ((iBlk + _blockDim[axisOrder[0]] * jBlk) % numThreads == threadNum) {
+		// See if any block in the cast direction is occupied. If not skip this cast.
+		for (size_t kBlk = 0; kBlk < _blockDim[axisOrder[2]]; kBlk++) {
+			Vector3i blockIdx = assignAxes(Vector3i(iBlk, jBlk, kBlk), axisOrder);
+			size_t blkIdx = calLinearBlockIndex(blockIdx);
+			if (blocksToCreate[blkIdx]) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+void Volume::createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const vector<bool>& blocksToCreate, vector<vector<bool>>& cellsToCreate)
+{
+	mutex cellsToCreateLock;
 	const Vector3i axisOrder = Block::getAxisOrder(axisIdx);
-	const auto& blocksToTest = (axisIdx == AxisIndex::X) ? blockColRec._yzBlocks : (axisIdx == AxisIndex::Y) ? blockColRec._zxBlocks : blockColRec._xyBlocks;
 	const Vector3d rayDir = axisIdx == AxisIndex::Z ? Vector3d(0, 0, 1) : (axisIdx == AxisIndex::Y ? Vector3d(0, 1, 0) : Vector3d(1, 0, 0));
 
-	MultiCore::runLambda([this, pTriMesh, axisOrder, rayDir, &blocksToTest, &cellsToCreate](size_t threadNum, size_t numThreads) {
+	MultiCore::runLambda([this, pTriMesh, axisOrder, rayDir, &cellsToCreateLock, &blocksToCreate, &cellsToCreate](size_t threadNum, size_t numThreads) {
 		const double TOL = 1.0e-6;
 		const size_t bd = Block::getBlockDim();
 		const size_t numBlockCells = bd * bd * bd;
@@ -202,20 +215,18 @@ void Volume::createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex ax
 			blockOrigin[axis0] = _originMeters[axis0] + iBlk * blockSpan[axis0];
 
 			for (size_t jBlk = 0; jBlk < _blockDim[axisOrder[1]]; jBlk++) {
-				const size_t blkIdx = iBlk + _blockDim[axisOrder[0]] * jBlk;
-				if (blkIdx % numThreads != threadNum || !blocksToTest[blkIdx])
-					continue;
-
+				if (skipBlock(blocksToCreate, iBlk, jBlk, axisOrder, threadNum, numThreads)) continue;
 				blockOrigin[axis1] = _originMeters[axis1] + jBlk * blockSpan[axis1];
 
-				Vector3d cellOrigin;
-				cellOrigin[axis2] = _originMeters[axis2];
+				Vector3d rayOrigin;
+				rayOrigin[axis2] = blockOrigin[axis2];
 				for (size_t iCell = 0; iCell < numSteps; iCell++) {
-					cellOrigin[axis0] = blockOrigin[axis0] + iCell * cellSpan[axis0];
+					rayOrigin[axis0] = blockOrigin[axis0] + iCell * cellSpan[axis0];
 
 					for (size_t jCell = 0; jCell < numSteps; jCell++) {
-						cellOrigin[axis1] = blockOrigin[axis1] + jCell * cellSpan[axis1];
-						Ray ray(cellOrigin, rayDir);
+						rayOrigin[axis1] = blockOrigin[axis1] + jCell * cellSpan[axis1];
+
+						Ray ray(rayOrigin, rayDir);
 						vector<RayHit> hits;
 						if (pTriMesh->rayCast(ray, hits)) {
 							for (const auto& triHit : hits) {
@@ -237,34 +248,32 @@ void Volume::createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex ax
 								if (rayCellIdx >= bd)
 									rayCellIdx = bd - 1;
 
-								double dist2 = dist1 - (rayCellIdx * cellSpan[axis2]);
-
-								Vector3i blkIdxIn(iBlk, jBlk, rayBlockIdx), blockIndex;
-								assignAxes(blkIdxIn, axisOrder, blockIndex);
+								Vector3i blockIndex = assignAxes(Vector3i(iBlk, jBlk, rayBlockIdx), axisOrder);
 								size_t bIdx = calLinearBlockIndex(blockIndex);
+								if (bIdx < cellsToCreate.size()) {
+									vector<bool>& blockCellsToCreate = cellsToCreate[bIdx];
 
-								vector<bool>& blockCellsToCreate = cellsToCreate[bIdx];
-								if (blockCellsToCreate.empty())
-									blockCellsToCreate.resize(numBlockCells);
-
-								for (int di = -1; di < 2; di++) {
-									size_t iiCell = iCell + di;
-									if (iiCell >= bd)
-										continue;
-
-									for (int dj = -1; dj < 2; dj++) {
-										size_t jjCell = jCell + dj;
-										if (jjCell >= bd)
+									for (int di = -1; di < 2; di++) {
+										size_t iiCell = iCell + di;
+										if (iiCell >= bd)
 											continue;
 
-										Vector3i cellIdxIn(iiCell, jjCell, rayCellIdx), cellIndex;
-										assignAxes(cellIdxIn, axisOrder, cellIndex);
-										size_t cIdx = Block::calcCellIndex(cellIndex);
-										if (cIdx < blockCellsToCreate.size()) {
-											blockCellsToCreate[cIdx] = true;
+										for (int dj = -1; dj < 2; dj++) {
+											size_t jjCell = jCell + dj;
+											if (jjCell >= bd)
+												continue;
+
+											if (blockCellsToCreate.empty())
+												blockCellsToCreate.resize(numBlockCells);
+
+											Vector3i cellIndex = assignAxes(Vector3i(iiCell, jjCell, rayCellIdx), axisOrder);
+											size_t cIdx = Block::calcCellIndex(cellIndex);
+											if (cIdx < blockCellsToCreate.size()) {
+												blockCellsToCreate[cIdx] = true;
+											}
+											else
+												cout << "block index out  of bounds\n";
 										}
-										else
-											cout << "block index out  of bounds\n";
 									}
 								}
 							}
@@ -273,95 +282,7 @@ void Volume::createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex ax
 				}
 			}
 		}
-	}, RUN_MULTI_THREAD);
-}
-void Volume::createCellRays(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& axisOrder, const Vector3d& blockOrigin, const Vector3d& rayDir, const Vector3d& blockSpan,
-	vector<bool>& cellsToCreate, vector<shared_ptr<RayBlockIntersectVec>>& cellHits)
-{
-	const size_t bd = Block::getBlockDim();
-	const double TOL = 1.0e-6;
-	const size_t axis0 = axisOrder[0];
-	const size_t axis1 = axisOrder[1];
-	const size_t axis2 = axisOrder[2];
-
-	cellsToCreate.resize(bd * bd * bd);
-	cellHits.resize((bd + 1) * (bd + 1));
-
-	Vector3d origin(blockOrigin), cellSpan;
-	for (int i = 0; i < 3; i++)
-		cellSpan[i] = blockSpan[i] / bd;
-
-	for (size_t i = 0; i <= bd; i++) {
-		origin[axis0] = blockOrigin[axis0] + i * cellSpan[axis0];
-
-		for (size_t j = 0; j < bd; j++) {
-			const size_t rayIdx = i + bd * j;
-			origin[axis1] = blockOrigin[axis1] + j * cellSpan[axis1];
-
-			Ray ray(origin, rayDir);
-			vector<RayHit> hits;
-			if (pTriMesh->rayCast(ray, hits)) {
-				if (!cellHits[rayIdx]) {
-					cellHits[rayIdx] = make_shared<RayBlockIntersectVec>();
-				}
-				auto& blockHits = *cellHits[rayIdx];
-
-				if (blockHits.empty())
-					blockHits.resize(1);
-				RayTriIntersectVec& rayHits = blockHits.front();
-
-				for (const auto& triHit : hits) {
-					double dist0 = triHit.dist;
-					if (dist0 < 0)
-						dist0 = 0;
-					else if (dist0 >= _spanMeters[axis2])
-						dist0 = _spanMeters[axis2];
-
-					RayTriIntersect rti;
-					rti._triIdx = triHit.triIdx;
-
-					double w0 = dist0 / _spanMeters[axis2];
-
-					rti._blockIdx = (size_t)(w0 * _blockDim[axis2]);
-					if (rti._blockIdx >= _blockDim[axis2])
-						rti._blockIdx = _blockDim[axis2] - 1;
-					double dist1 = dist0 - (rti._blockIdx * blockSpan[axis2]);
-
-					double w1 = dist1 / blockSpan[axis2];
-					rti._cellIdx = (size_t)(w1 * bd);
-					if (rti._cellIdx >= bd)
-						rti._cellIdx = bd - 1;
-
-					double dist2 = dist1 - (rti._cellIdx * cellSpan[axis2]);
-
-					rti._w = dist2 / cellSpan[axis2];
-					rayHits.push_back(rti);
-
-					size_t k = rti._cellIdx;
-					for (int di = -1; di < 2; di++) {
-						size_t ii = i + di;
-						if (ii >= bd)
-							continue;
-
-						for (int dj = -1; dj < 2; dj++) {
-							size_t jj = j + dj;
-							if (jj >= bd)
-								continue;
-
-							Vector3i idxIn(ii, jj, k), cellIndex;
-							assignAxes(idxIn, axisOrder, cellIndex);
-							size_t bIdx = Block::calcCellIndex(cellIndex);
-							if (bIdx < cellsToCreate.size()) {
-								cellsToCreate[bIdx] = true;
-							}
-							else
-								cout << "Cell index out  of bounds\n";
-						}
-					}
-				}
-			}
-		}
-	}
+	}, false && RUN_MULTI_THREAD);
 }
 
 CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
@@ -385,52 +306,29 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	createBlockRays(pTriMesh, AxisIndex::Y, blocksToCreate);
 	createBlockRays(pTriMesh, AxisIndex::Z, blocksToCreate);
 
-	BlockColRec blockColRec(_blockDim);
-
-	MultiCore::runLambda([this, pTriMesh, &blocksToCreate, &blockColRec](size_t threadNum, size_t numThreads) {
-		Vector3d blockSpan, blockOrigin;
-		for (int i = 0; i < 3; i++) {
-			blockSpan[i] = _spanMeters[i] / (double)_blockDim[i];
-		}
-		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
-			blockOrigin[0] = _originMeters[0] + i * blockSpan[0];
-			for (size_t j = 0; j < _blockDim[1]; j++) {
-				blockOrigin[1] = _originMeters[1] + j * blockSpan[1];
-				for (size_t k = 0; k < _blockDim[2]; k++) {
-					blockOrigin[2] = _originMeters[2] + k * blockSpan[2];
-
-					size_t bIdx = calLinearBlockIndex(i, j, k);
-					if (blocksToCreate[bIdx]) {
-						blockColRec.set(i, j, k);
-					}
-				}
-			}
-		}
-	}, RUN_MULTI_THREAD); 
-
 	vector<vector<bool>> cellsToCreate;
 	cellsToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
-	createBlockCellRays(pTriMesh, AxisIndex::X, blockColRec, cellsToCreate);
-	createBlockCellRays(pTriMesh, AxisIndex::Y, blockColRec, cellsToCreate);
-	createBlockCellRays(pTriMesh, AxisIndex::Z, blockColRec, cellsToCreate);
+	createBlockCellRays(pTriMesh, AxisIndex::X, blocksToCreate, cellsToCreate);
+	createBlockCellRays(pTriMesh, AxisIndex::Y, blocksToCreate, cellsToCreate);
+	createBlockCellRays(pTriMesh, AxisIndex::Z, blocksToCreate, cellsToCreate);
 
+	std::cout << "Blockdim: " << _blockDim << "\n";
 	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
-		Vector3d blockSpan, blockOrigin;
-		for (int i = 0; i < 3; i++) {
-			blockSpan[i] = _spanMeters[i] / (double)_blockDim[i];
-		}
 		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
-			blockOrigin[0] = _originMeters[0] + i * blockSpan[0];
 			for (size_t j = 0; j < _blockDim[1]; j++) {
-				blockOrigin[1] = _originMeters[1] + j * blockSpan[1];
 				for (size_t k = 0; k < _blockDim[2]; k++) {
-					blockOrigin[2] = _originMeters[2] + k * blockSpan[2];
 
 					size_t bIdx = calLinearBlockIndex(i, j, k);
 					if (!cellsToCreate[bIdx].empty()) {
-						Block* pBlock = nullptr;
-						_blocks[bIdx] = _blockPool.getObj(bIdx, pBlock, true);
-						pBlock->createCells(cellsToCreate[bIdx]);
+						Block* pBlock;
+						if (_blocks[bIdx] == -1) {
+							_blocks[bIdx] = _blockPool.getObj(bIdx, pBlock, true);
+						} else {
+							pBlock = _blockPool.getObj(bIdx);
+						}
+						if (pBlock) {
+							pBlock->createCells(cellsToCreate[bIdx]);
+						}
 					}
 				}
 			}
@@ -488,22 +386,33 @@ CMeshPtr Volume::makeTris(bool cells)
 	return result;
 }
 
-
-Volume::BlockColRec::BlockColRec(const Vector3i& blockDim)
-	: _blockDim(blockDim)
+void Volume::dumpSections(const string& dirName) const
 {
-	_xyBlocks.resize(_blockDim[0] * _blockDim[1]);
-	_yzBlocks.resize(_blockDim[1] * _blockDim[2]);
-	_zxBlocks.resize(_blockDim[2] * _blockDim[0]);
+	const size_t bd = Block::getBlockDim();
+	size_t numX = _blockDim[0] * bd;
+	size_t numY = _blockDim[1] * bd;
+	size_t numZ = _blockDim[2] * bd;
 
+	for (size_t iz = 0; iz < numZ; iz++) {
+		stringstream ss;
+		ss << dirName << "/dump" << to_string(iz) << ".txt";
+		ofstream o(ss.str());
+		for (size_t iy = 0; iy < numY; iy++) {
+			if (iy % bd == (bd - 1)) {
+				for (size_t ix = 0; ix < numX; ix++)
+					o << "_";
+				o << "\n";
+			}
+
+			for (size_t ix = 0; ix < numX; ix++) {
+				if (ix % bd == (bd - 1))
+					o << "|";
+				if (getCell(ix, iy, iz))
+					o << "X";
+				else
+					o << " ";
+			}
+			o << "\n";
+		}
+	}
 }
-
-inline void Volume::BlockColRec::set(size_t i, size_t j, size_t k)
-{
-	_xyBlocks[i + _blockDim[0] * j] = true;
-	_yzBlocks[j + _blockDim[1] * k] = true;
-	_zxBlocks[k + _blockDim[2] * i] = true;
-}
-
-
-

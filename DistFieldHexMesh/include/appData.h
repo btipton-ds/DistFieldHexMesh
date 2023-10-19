@@ -37,6 +37,7 @@ public:
     }
 
 private:
+    wxString _workDirName;
     MainFrame* _pMainFrame = nullptr;
     TriMesh::CMeshPtr _pMesh;
     VolumePtr _volume;
