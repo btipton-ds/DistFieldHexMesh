@@ -44,6 +44,8 @@ size_t Block::getBlockDim()
 
 Block::Block()
 {
+	size_t bd = getBlockDim();
+	_cells.resize(bd * bd * bd, -1);
 }
 
 Block::Block(const Block& src)
@@ -203,8 +205,6 @@ void Block::createCells(const vector<bool>& cellsToCreate)
 				assert(i == calcCellIndex(ix, iy, iz));
 
 				_cells[i] = _cellPool.create();
-
-				auto pCell = getCell(ix, iy, iz);
 			}
 		}
 	}
@@ -260,17 +260,6 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 
 void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)
 {
-	size_t bd = getBlockDim();
-	_cells.resize(bd * bd * bd, -1);
-	for (size_t i = 0; i < bd; i++) {
-		for (size_t j = 0; j < bd; j++) {
-			for (size_t k = 0; k < bd; k++) {
-				size_t cellIdx = calcCellIndex(i, j, k);
-				if (cellsToCreate[cellIdx])
-					_cells[cellIdx] = 1;
-			}
-		}
-	}
 #if 0
 
 	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::X, cellsToCreate);

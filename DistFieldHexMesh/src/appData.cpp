@@ -239,7 +239,7 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.001;
+    double gap = 0.002;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 
