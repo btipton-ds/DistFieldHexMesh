@@ -65,9 +65,9 @@ private:
 	using RayTriIntersectVec = Block::RayTriIntersectVec;
 	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
 
-	void createBlockRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
-	void createBlockCellRays(const TriMesh::CMeshPtr& pTriMesh, AxisIndex axisIdx, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
-	bool skipBlock(const std::vector<bool>& blocksToCreate, size_t iBlk, size_t jBlk, const Vector3i& axisOrder, size_t threadNum, size_t numThreads) const;
+	void createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate);
+	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
+	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
 
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;

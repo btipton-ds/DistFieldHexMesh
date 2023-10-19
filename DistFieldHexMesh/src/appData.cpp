@@ -238,9 +238,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setBlockDim(8);
+    Block::setBlockDim(16);
 
-    double gap = 0.001;
+    double gap = 0.0005;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 

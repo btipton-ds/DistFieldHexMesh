@@ -33,7 +33,6 @@ protected:
 	enum class AxisIndex {
 		X, Y, Z
 	};
-	static Vector3i getAxisOrder(AxisIndex axisIdx);
 
 private:
 	friend class Volume;

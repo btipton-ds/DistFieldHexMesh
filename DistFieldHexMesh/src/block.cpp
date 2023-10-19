@@ -22,12 +22,6 @@ namespace
 	}
 }
 
-Vector3i Block::getAxisOrder(AxisIndex axisIdx)
-{
-	const Vector3i axisOrder = axisIdx == AxisIndex::Z ? Vector3i(0, 1, 2) : (axisIdx == AxisIndex::Y ? Vector3i(2, 0, 1) : Vector3i(1, 2, 0));
-	return axisOrder;
-}
-
 void Block::setBlockDim(size_t dim)
 {
 	s_blockDim = dim;
@@ -214,13 +208,17 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 
 	if (useCells && !_cells.empty()) {
 		Vector3d cellOrgin(blockOrigin);
-		Vector3d cellSpan = blockSpan * (1.0 / s_blockDim);
+		Vector3d cellSpan;
+		for (int i = 0; i < 3; i++)
+			cellSpan[i]  = blockSpan[i] / s_blockDim;
+
 		for (size_t ix = 0; ix < s_blockDim; ix++) {
 			cellOrgin[0] = blockOrigin[0] + ix * cellSpan[0];
 			for (size_t iy = 0; iy < s_blockDim; iy++) {
 				cellOrgin[1] = blockOrigin[1] + iy * cellSpan[1];
 				for (size_t iz = 0; iz < s_blockDim; iz++) {
 					cellOrgin[2] = blockOrigin[2] + iz * cellSpan[2];
+
 					size_t cIdx = calcCellIndex(ix, iy, iz);
 					if ((cIdx != -1) && (_cells[cIdx] != -1)) {
 						vector<Vector3d> pts = {
