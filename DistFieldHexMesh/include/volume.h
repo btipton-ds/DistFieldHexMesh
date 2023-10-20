@@ -41,8 +41,8 @@ public:
 	// Get the block using a block index
 	const Block* getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block* getBlock(const Vector3i& blockIdx) const;
-	Block* getBlock(size_t ix, size_t iy, size_t iz);
-	Block* getBlock(const Vector3i& blockIdx);
+	Block* getBlock(size_t ix, size_t iy, size_t iz, bool create = false);
+	Block* getBlock(const Vector3i& blockIdx, bool create = false);
 
 	// Get the cell using a cell index
 	Cell* getCell(size_t ix, size_t iy, size_t iz);
@@ -69,6 +69,7 @@ private:
 	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
 	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
 
+	mutable std::mutex _mutex;
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 
@@ -82,17 +83,28 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 inline const Block* Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 {
+	std::lock_guard<std::mutex> lock(_mutex);
+
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
 	if (idx < _blocks.size())
 		return _blockPool.getObj(_blocks[idx]);
 	return nullptr;
 }
 
-inline Block* Volume::getBlock(size_t ix, size_t iy, size_t iz)
+inline Block* Volume::getBlock(size_t ix, size_t iy, size_t iz, bool create)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
+
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
-	if (idx < _blocks.size())
-		return _blockPool.getObj(_blocks[idx]);
+	if (idx < _blocks.size()) {
+		if (_blocks[idx] != -1)
+			return _blockPool.getObj(_blocks[idx]);
+		else if (create) {
+			Block* pBlock = nullptr;
+			_blocks[idx] = _blockPool.getObj(-1, pBlock, true);
+			return pBlock;
+		} 
+	}
 	return nullptr;
 }
 
@@ -101,9 +113,9 @@ inline const Block* Volume::getBlock(const Vector3i& blockIdx) const
 	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-inline Block* Volume::getBlock(const Vector3i& blockIdx)
+inline Block* Volume::getBlock(const Vector3i& blockIdx, bool create)
 {
-	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
+	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2], create);
 }
 
 inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const

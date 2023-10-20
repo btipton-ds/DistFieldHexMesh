@@ -492,12 +492,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 
 					size_t bIdx = calLinearBlockIndex(i, j, k);
 					if (!cellsToCreate[bIdx].empty()) {
-						Block* pBlock;
-						if (_blocks[bIdx] == -1) {
-							_blocks[bIdx] = _blockPool.getObj(bIdx, pBlock, true);
-						} else {
-							pBlock = _blockPool.getObj(bIdx);
-						}
+						Block* pBlock = getBlock(i, j, k, true);
 						if (pBlock) {
 							pBlock->createCells(cellsToCreate[bIdx]);
 						}
