@@ -498,20 +498,6 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 						} else {
 							pBlock = _blockPool.getObj(bIdx);
 						}
-					}
-				}
-			}
-		}
-	}, RUN_MULTI_THREAD);
-
-	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
-		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
-			for (size_t j = 0; j < _blockDim[1]; j++) {
-				for (size_t k = 0; k < _blockDim[2]; k++) {
-
-					size_t bIdx = calLinearBlockIndex(i, j, k);
-					if (!cellsToCreate[bIdx].empty()) {
-						Block* pBlock = _blockPool.getObj(bIdx);
 						if (pBlock) {
 							pBlock->createCells(cellsToCreate[bIdx]);
 						}
