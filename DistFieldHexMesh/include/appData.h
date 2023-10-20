@@ -18,7 +18,7 @@ class MainFrame;
 
 class AppData {
 public:
-    AppData(MainFrame* pMainFrame);
+    AppData(MainFrame* pMainFrame = nullptr);
     void doOpen();
     void doVerifyClosed();
     void doVerifyNormals();
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    wxString _workDirName;
+    std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     TriMesh::CMeshPtr _pMesh;
     VolumePtr _volume;

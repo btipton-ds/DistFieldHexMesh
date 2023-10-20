@@ -10,7 +10,9 @@ template<class T>
 class ObjectPool {
 public:
 	ObjectPool();
-	ObjectPool(const ObjectPool& src) = default;
+
+	void testReset();
+
 	void free(size_t id); // Permanently delete it
 	void unload(size_t id); // Free the memory, but keep the id
 
@@ -20,7 +22,13 @@ public:
 	const T* getObj(size_t id) const;
 	T* getObj(size_t id);
 
+	size_t getNumAllocated() const;
+	size_t getNumAvailable() const;
+	size_t getNumAvailableIds() const;
+	size_t getNumUnloaded() const;
 private:
+	ObjectPool(const ObjectPool& src) = default;
+
 	std::mutex _mutex;
 	std::vector<size_t> _idToIndexMap;
 	std::vector<size_t> _availableData;
@@ -37,8 +45,20 @@ ObjectPool<T>::ObjectPool()
 }
 
 template<class T>
+void ObjectPool<T>::testReset()
+{
+	std::lock_guard<std::mutex> lock(_mutex);
+	_idToIndexMap.clear();
+	_availableData.clear();
+	_availableIds.clear();
+	_pool.clear();
+}
+
+template<class T>
 void ObjectPool<T>::free(size_t id)
 {
+	if (id > _idToIndexMap.size())
+		return;
 	std::lock_guard<std::mutex> lock(_mutex);
 	size_t index = _idToIndexMap[id];
 	if (index != -1) {
@@ -134,6 +154,35 @@ T* ObjectPool<T>::getObj(size_t id)
 		return &_pool[_idToIndexMap[id]];
 	}
 	return nullptr;
+}
+
+template<class T>
+size_t ObjectPool<T>::getNumAllocated() const
+{
+	size_t num = 0;
+	for (size_t idx : _idToIndexMap) {
+		if (idx != -1)
+			num++;
+	}
+	return num;
+}
+
+template<class T>
+size_t ObjectPool<T>::getNumAvailable() const
+{
+	return _availableData.size();
+}
+
+template<class T>
+size_t ObjectPool<T>::getNumAvailableIds() const
+{
+	return _availableIds.size();
+}
+
+template<class T>
+size_t ObjectPool<T>::getNumUnloaded() const
+{
+	return _idToIndexMap.size() - getNumAllocated();
 }
 
 class Cell;

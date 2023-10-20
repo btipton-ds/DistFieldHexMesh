@@ -12,6 +12,7 @@ public:
 
 	Block();
 	Block(const Block& src);
+	~Block(); // NOT virtual - do not inherit
 
 	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
@@ -20,11 +21,18 @@ public:
 	static size_t calcCellIndex(const Vector3i& celIdx);
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
 
-	Cell* getCell(size_t ix, size_t iy, size_t iz);
-	Cell* getCell(const Vector3i& idx);
+	size_t numCells() const;
+	Cell* getCell(size_t ix, size_t iy, size_t iz, bool create = false);
+	Cell* getCell(const Vector3i& idx, bool create = false);
 	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
 	const Cell* getCell(const Vector3i& idx) const;
+	void freeCell(size_t ix, size_t iy, size_t iz);
+	void freeCell(const Vector3i& idx);
 
+	void fillEmpty();
+
+	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
+	void pack();
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
@@ -36,7 +44,7 @@ protected:
 
 private:
 	friend class Volume;
-
+	friend class TestBlock;
 
 	struct RayTriIntersect {
 		double _w = -1;
@@ -52,6 +60,11 @@ private:
 	std::vector<size_t> _cells;
 };
 
+inline size_t Block::numCells() const
+{
+	return _cells.size();
+}
+
 inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz)
 {
 	if (ix < s_blockDim && iy < s_blockDim && iz < s_blockDim)
@@ -64,18 +77,25 @@ inline size_t Block::calcCellIndex(const Vector3i& celIdx)
 	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
-inline Cell* Block::getCell(size_t ix, size_t iy, size_t iz)
+inline Cell* Block::getCell(size_t ix, size_t iy, size_t iz, bool create)
 {
+	Cell* result = nullptr;
+	if (create)
+		fillEmpty();
 	size_t idx = calcCellIndex(ix, iy, iz);
-	if (idx < _cells.size())
-		return _cellPool.getObj(_cells[idx]);
+	if (idx < _cells.size()) {
+		if (create && _cells[idx] == -1) {
+			_cells[idx] = _cellPool.getObj(-1, result, true);
+		} else
+			result = _cellPool.getObj(_cells[idx]);
+	}
 
-	return nullptr;
+	return result;
 }
 
-inline Cell* Block::getCell(const Vector3i& idx)
+inline Cell* Block::getCell(const Vector3i& idx, bool create)
 {
-	return getCell(idx[0], idx[1], idx[2]);
+	return getCell(idx[0], idx[1], idx[2], create);
 }
 
 inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
@@ -90,6 +110,20 @@ inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
 inline const Cell* Block::getCell(const Vector3i& idx) const
 {
 	return getCell(idx[0], idx[1], idx[2]);
+}
+
+inline void Block::freeCell(size_t ix, size_t iy, size_t iz)
+{
+	size_t idx = calcCellIndex(ix, iy, iz);
+	if (idx < _cells.size() && _cells[idx] != -1) {
+		_cellPool.free(_cells[idx]);
+		_cells[idx] = -1;
+	}
+}
+
+inline void Block::freeCell(const Vector3i& idx)
+{
+	freeCell(idx[0], idx[1], idx[2]);
 }
 
 inline bool Block::isUnloaded() const

@@ -45,25 +45,35 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
-	"${OpenGlDir}/src/OGLMultiVboHandler.cpp")
+	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
+)
 
-message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+add_executable (TestDFM         
+	"src/mainTest.cpp"
+	"src/volume.cpp"
+	"src/objectPool.cpp" 
+	"src/block.cpp"	
+	"src/cell.cpp"
+	"src/polygon.cpp"
+	"src/polyHedron.cpp"
+	"src/vertex.cpp"
+ "src/blockTest.cpp")
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	target_link_libraries("DistFieldHexMesh" 
-	PUBLIC triMesh
-	PUBLIC stlReader
+		PUBLIC triMesh
+		PUBLIC stlReader
 
-	#windows & mfc libraries
-	PUBLIC comctl32
-	PUBLIC rpcrt4
+		#windows & mfc libraries
+		PUBLIC comctl32
+		PUBLIC rpcrt4
 
-	#wxWidgests Libraries
-	PUBLIC wxbase32ud
-	PUBLIC wxmsw32ud_core
-	PUBLIC wxpngd
-	PUBLIC wxzlibd
-	PUBLIC wxmsw32ud_gl
+		#wxWidgests Libraries
+		PUBLIC wxbase32ud
+		PUBLIC wxmsw32ud_core
+		PUBLIC wxpngd
+		PUBLIC wxzlibd
+		PUBLIC wxmsw32ud_gl
 	)
 else()
 	target_link_libraries("DistFieldHexMesh" 
@@ -82,6 +92,11 @@ else()
 	PUBLIC wxmsw32u_gl
 	)
 endif()
+
+target_link_libraries("TestDFM" 
+	PUBLIC triMesh
+	PUBLIC stlReader
+)
 
 add_custom_command(
         TARGET DistFieldHexMesh POST_BUILD

@@ -43,6 +43,14 @@ Block::Block(const Block& src)
 
 }
 
+Block::~Block()
+{
+	for (auto id : _cells) {
+		if (id != -1)
+		_cellPool.free(id);
+	}
+}
+
 bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, vector<bool>& cellsToCreate, const Vector3i& axisOrder)
 {
 	static size_t numCells = 0;
@@ -207,33 +215,67 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 {
 
 	if (useCells && !_cells.empty()) {
-		Vector3d cellOrgin(blockOrigin);
-		Vector3d cellSpan;
-		for (int i = 0; i < 3; i++)
-			cellSpan[i]  = blockSpan[i] / s_blockDim;
+		const Vector3d vX(1, 0, 0), vY(0, 1, 0), vZ(0, 0, 1);
+		Vector3d cellOrigin(blockOrigin);
+		Vector3d cellSpan = blockSpan / s_blockDim;
 
 		for (size_t ix = 0; ix < s_blockDim; ix++) {
-			cellOrgin[0] = blockOrigin[0] + ix * cellSpan[0];
+			cellOrigin[0] = blockOrigin[0] + ix * cellSpan[0];
 			for (size_t iy = 0; iy < s_blockDim; iy++) {
-				cellOrgin[1] = blockOrigin[1] + iy * cellSpan[1];
+				cellOrigin[1] = blockOrigin[1] + iy * cellSpan[1];
 				for (size_t iz = 0; iz < s_blockDim; iz++) {
-					cellOrgin[2] = blockOrigin[2] + iz * cellSpan[2];
+					cellOrigin[2] = blockOrigin[2] + iz * cellSpan[2];
 
 					size_t cIdx = calcCellIndex(ix, iy, iz);
 					if ((cIdx != -1) && (_cells[cIdx] != -1)) {
 						vector<Vector3d> pts = {
-							Vector3d(cellOrgin[0], cellOrgin[1], cellOrgin[2]),
-							Vector3d(cellOrgin[0] + cellSpan[0], cellOrgin[1], cellOrgin[2]),
-							Vector3d(cellOrgin[0] + cellSpan[0], cellOrgin[1] + cellSpan[1], cellOrgin[2]),
-							Vector3d(cellOrgin[0], cellOrgin[1] + cellSpan[1], cellOrgin[2]),
+							cellOrigin,
+							cellOrigin + vX * cellSpan[0],
+							cellOrigin + vX * cellSpan[0] + vY * cellSpan[1],
+							cellOrigin +                    vY * cellSpan[1],
 
-							Vector3d(cellOrgin[0], cellOrgin[1], cellOrgin[2] + cellSpan[2]),
-							Vector3d(cellOrgin[0] + cellSpan[0], cellOrgin[1], cellOrgin[2] + cellSpan[2]),
-							Vector3d(cellOrgin[0] + cellSpan[0], cellOrgin[1] + cellSpan[1], cellOrgin[2] + cellSpan[2]),
-							Vector3d(cellOrgin[0], cellOrgin[1] + cellSpan[1], cellOrgin[2] + cellSpan[2]),
+							cellOrigin + vZ * cellSpan[2],
+							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0],
+							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0] + vY * cellSpan[1],
+							cellOrigin + vZ * cellSpan[2] +                    vY * cellSpan[1],
 						};
+#ifdef _DEBUG
+						CMesh::BoundingBox bb;
+						bb.merge(cellOrigin);
+						bb.merge(cellOrigin + cellSpan);
+
+						for (const auto& pt : pts) {
+							assert(bb.contains(pt));
+						}
+#endif // _DEBUG
+
 						pMesh->addRectPrism(pts);
 
+#ifdef _DEBUG
+						size_t numPos = 0, numNeg = 0;
+						Vector3d cellCentroid = 0.5 * (bb.getMin() + bb.getMax());
+						vector<size_t> triIndices;
+						pMesh->findTris(bb, triIndices);
+						for (size_t triIdx : triIndices) {
+							auto vertIndices = pMesh->getTri(triIdx);
+							Vector3d pts[] = {
+								pMesh->getVert(vertIndices[0])._pt,
+								pMesh->getVert(vertIndices[1])._pt,
+								pMesh->getVert(vertIndices[2])._pt,
+							};
+							if (bb.contains(pts[0]) && bb.contains(pts[1]) && bb.contains(pts[2])) {
+								Vector3d triCentroid = pMesh->triCentroid(triIdx);
+								Vector3d v = (triCentroid - cellCentroid).normalized();
+								Vector3d n = pMesh->triUnitNormal(triIdx);
+								auto dp = n.dot(v);
+								if (dp > 0)
+									numPos++;
+								else
+									numNeg++;
+							}
+						}
+						assert(numPos == 12);
+#endif // _DEBUG
 					}
 				}
 			}
@@ -341,4 +383,22 @@ bool Block::load()
 	_filename.clear();
 
 	return true;
+}
+
+void Block::fillEmpty()
+{
+	const size_t numCells = s_blockDim * s_blockDim * s_blockDim;
+
+	if (_cells.size() != numCells)
+		_cells.resize(numCells, -1);
+}
+
+void Block::pack()
+{
+	for (size_t id : _cells) {
+		if (id != -1)
+			return;
+	}
+
+	_cells.clear();
 }

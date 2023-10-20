@@ -474,15 +474,15 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	vector<bool> blocksToCreate;
 	blocksToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
 
-//	createBlockRays(AxisIndex::X, pTriMesh, blocksToCreate);
+	createBlockRays(AxisIndex::X, pTriMesh, blocksToCreate);
 	createBlockRays(AxisIndex::Y, pTriMesh, blocksToCreate);
-//	createBlockRays(AxisIndex::Z, pTriMesh, blocksToCreate);
+	createBlockRays(AxisIndex::Z, pTriMesh, blocksToCreate);
 
 	vector<vector<bool>> cellsToCreate;
 	cellsToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
-//	createBlockCellRays(AxisIndex::X, pTriMesh, blocksToCreate, cellsToCreate);
+	createBlockCellRays(AxisIndex::X, pTriMesh, blocksToCreate, cellsToCreate);
 	createBlockCellRays(AxisIndex::Y, pTriMesh, blocksToCreate, cellsToCreate);
-//	createBlockCellRays(AxisIndex::Z, pTriMesh, blocksToCreate, cellsToCreate);
+	createBlockCellRays(AxisIndex::Z, pTriMesh, blocksToCreate, cellsToCreate);
 
 	std::cout << "Blockdim: " << _blockDim << "\n";
 	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
@@ -498,6 +498,20 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 						} else {
 							pBlock = _blockPool.getObj(bIdx);
 						}
+					}
+				}
+			}
+		}
+	}, RUN_MULTI_THREAD);
+
+	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
+		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
+			for (size_t j = 0; j < _blockDim[1]; j++) {
+				for (size_t k = 0; k < _blockDim[2]; k++) {
+
+					size_t bIdx = calLinearBlockIndex(i, j, k);
+					if (!cellsToCreate[bIdx].empty()) {
+						Block* pBlock = _blockPool.getObj(bIdx);
 						if (pBlock) {
 							pBlock->createCells(cellsToCreate[bIdx]);
 						}
@@ -550,8 +564,9 @@ CMeshPtr Volume::makeTris(bool cells)
 		}
 	}, RUN_MULTI_THREAD);
 
-	CMeshPtr result = make_shared<CMesh>();
-	result->merge(results);
+	CMeshPtr result = results.back();
+	results.pop_back();
+	result->merge(results, true);
 	cout << "Num tris: " << result->numTris();
 	cout << "Num cells: " << result->numTris() / 12;
 	return result;
