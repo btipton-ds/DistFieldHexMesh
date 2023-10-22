@@ -7,6 +7,7 @@
 #include <cell.h>
 #include <block.h>
 #include <volume.h>
+#include <vertex.h>
 #include <MultiCoreUtil.h>
 
 using namespace std;
@@ -88,26 +89,55 @@ const Cell* Volume::getCell(size_t ix, size_t iy, size_t iz) const
 	return nullptr;
 }
 
-void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx)
+void Volume::processRayHit(const RayHit& triHit, AxisIndex rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx)
 {
+	RayTriIntersectVec blockHits;
+	processRayHit(triHit, rayAxis, -1, -1, blockSpan, cellSpan, blockHits, blockIdx, cellIdx);
+}
+
+void Volume::processRayHit(const RayHit& triHit, AxisIndex rayAxis, size_t i, size_t j, const Vector3d& blockSpan, const Vector3d& cellSpan, RayTriIntersectVec& blockHits, size_t& blockIdx, size_t& cellIdx)
+{
+
+	int rayAxisIdx = (int)rayAxis;
 
 	double dist0 = triHit.dist;
 	if (dist0 < 0)
 		dist0 = 0;
-	else if (dist0 >= _spanMeters[rayAxis])
-		dist0 = _spanMeters[rayAxis];
+	else if (dist0 >= _spanMeters[rayAxisIdx])
+		dist0 = _spanMeters[rayAxisIdx];
 
-	double w0 = dist0 / _spanMeters[rayAxis];
+	double w0 = dist0 / _spanMeters[rayAxisIdx];
 
-	blockIdx = (size_t)(w0 * _blockDim[rayAxis]);
-	if (blockIdx >= _blockDim[rayAxis])
-		blockIdx = _blockDim[rayAxis] - 1;
-	double dist1 = dist0 - (blockIdx * blockSpan[rayAxis]);
+	blockIdx = (size_t)(w0 * _blockDim[rayAxisIdx]);
+	if (blockIdx >= _blockDim[rayAxisIdx])
+		blockIdx = _blockDim[rayAxisIdx] - 1;
+	double dist1 = dist0 - (blockIdx * blockSpan[rayAxisIdx]);
 
-	double w1 = dist1 / blockSpan[rayAxis];
+	double w1 = dist1 / blockSpan[rayAxisIdx];
 	cellIdx = (size_t)(w1 * Block::getBlockDim());
 	if (cellIdx >= Block::getBlockDim())
 		cellIdx = Block::getBlockDim() - 1;
+
+	double dist2 = dist1 - (cellIdx * cellSpan[rayAxisIdx]);
+	double w2 = dist2 / cellSpan[rayAxisIdx];
+
+	RayTriIntersect rti;
+	rti._blockIdx = blockIdx;
+	rti._triIdx = triHit.triIdx;
+	rti._hitPt = triHit.hitPt;
+	switch (rayAxis) {
+		case AxisIndex::X :
+			rti._cellIdx = Vector3i(cellIdx, i, j);
+			break;
+		case AxisIndex::Y:
+			rti._cellIdx = Vector3i(i, cellIdx, j);
+			break;
+		case AxisIndex::Z:
+			rti._cellIdx = Vector3i(i, j, cellIdx);
+			break;
+	}
+
+	blockHits.push_back(rti);
 }
 
 void Volume::createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, vector<bool>& blocksToCreate)
@@ -143,10 +173,10 @@ void Volume::createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMes
 						if (pTriMesh->rayCast(ray, hits)) {
 							for (const auto& triHit : hits) {
 								size_t blockIdx, cellIdx;
-								processRayHit(triHit, 0, blockSpan, cellSpan, blockIdx, cellIdx);
+								processRayHit(triHit, AxisIndex::X, blockSpan, cellSpan, blockIdx, cellIdx);
 								size_t ix = blockIdx;
-								for (int dy = -1; dy < 2; dy++) {
-									for (int dz = -1; dz < 2; dz++) {
+								for (int dy = -1; dy <= 0; dy++) {
+									for (int dz = -1; dz <= 0; dz++) {
 										size_t bIdx = calLinearBlockIndex(Vector3i(ix, iy + dy, iz + dz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
@@ -182,10 +212,10 @@ void Volume::createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMes
 						if (pTriMesh->rayCast(ray, hits)) {
 							for (const auto& triHit : hits) {
 								size_t blockIdx, cellIdx;
-								processRayHit(triHit, 1, blockSpan, cellSpan, blockIdx, cellIdx);
+								processRayHit(triHit, AxisIndex::Y, blockSpan, cellSpan, blockIdx, cellIdx);
 								size_t iy = blockIdx;
-								for (int dx = -1; dx < 2; dx++) {
-									for (int dz = -1; dz < 2; dz++) {
+								for (int dx = -1; dx <= 0; dx++) {
+									for (int dz = -1; dz <= 0; dz++) {
 										size_t bIdx = calLinearBlockIndex(Vector3i(ix + dx, iy, iz + dz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
@@ -221,10 +251,10 @@ void Volume::createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMes
 						if (pTriMesh->rayCast(ray, hits)) {
 							for (const auto& triHit : hits) {
 								size_t blockIdx, cellIdx;
-								processRayHit(triHit, 2, blockSpan, cellSpan, blockIdx, cellIdx);
+								processRayHit(triHit, AxisIndex::Z, blockSpan, cellSpan, blockIdx, cellIdx);
 								size_t iz = blockIdx;
-								for (int dx = -1; dx < 2; dx++) {
-									for (int dy = -1; dy < 2; dy++) {
+								for (int dx = -1; dx <= 0; dx++) {
+									for (int dy = -1; dy <= 0; dy++) {
 										size_t bIdx = calLinearBlockIndex(Vector3i(ix + dx, iy + dy, iz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
@@ -240,7 +270,7 @@ void Volume::createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMes
 	}
 }
 
-void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const vector<bool>& blocksToCreate, vector<vector<bool>>& cellsToCreate)
+void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const vector<bool>& blocksToCreate, RayHitRec& inter, vector<vector<bool>>& cellsToCreate)
 {
 	const size_t bd = Block::getBlockDim();
 	Vector3d blockSpan, cellSpan;
@@ -251,7 +281,9 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 
 	switch (axisIdx) {
 		case AxisIndex::X: {
-			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &cellsToCreate](size_t threadNum, size_t numThreads) {
+			auto& interX = inter._xIntersects;
+			interX.resize(_blockDim[1] * _blockDim[2]);
+			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &interX, &cellsToCreate](size_t threadNum, size_t numThreads) {
 				const Vector3d rayDir(1, 0, 0);
 				const size_t bd = Block::getBlockDim();
 				const size_t numBlockCells = bd * bd * bd;
@@ -263,8 +295,8 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 					blockOrigin[1] = _originMeters[1] + iyBlk * blockSpan[1];
 
 					for (size_t izBlk = 0; izBlk < _blockDim[2]; izBlk++) {
-						size_t threadIdx = iyBlk + izBlk * _blockDim[1];
-						if (threadIdx % numThreads != threadNum)
+						size_t blockIdx = iyBlk + izBlk * _blockDim[1];
+						if (blockIdx % numThreads != threadNum)
 							continue;
 
 						bool skipBlock = true;
@@ -290,19 +322,21 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 								Ray ray(rayOrigin, rayDir);
 								vector<RayHit> hits;
 								if (pTriMesh->rayCast(ray, hits)) {
+									auto pBlockInter = make_shared<RayTriIntersectVec>();
+									interX[blockIdx] = pBlockInter;
 									for (const auto& triHit : hits) {
-										size_t blockIdx, cellIdx;
-										processRayHit(triHit, 0, blockSpan, cellSpan, blockIdx, cellIdx);
+										size_t blkIdx, cellIdx;
+										processRayHit(triHit, AxisIndex::X, iyCell, izCell, blockSpan, cellSpan, *pBlockInter, blkIdx, cellIdx);
 
-										size_t bIdx = calLinearBlockIndex(blockIdx, iyBlk, izBlk);
+										size_t bIdx = calLinearBlockIndex(blkIdx, iyBlk, izBlk);
 										if (bIdx < cellsToCreate.size()) {
 											vector<bool>& blockCellsToCreate = cellsToCreate[bIdx];
 											if (blockCellsToCreate.empty())
 												blockCellsToCreate.resize(numBlockCells);
 
-											for (int dy = -1; dy < 2; dy++) {
-												for (int dz = -1; dz < 2; dz++) {
-													size_t cIdx = Block::calcCellIndex(Vector3i(cellIdx, iyCell + dy, izCell + dz));
+											for (int dy = -1; dy <= 0; dy++) {
+												for (int dz = -1; dz <= 0; dz++) {
+													size_t cIdx = Block::calcLinearCellIndex(Vector3i(cellIdx, iyCell + dy, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -319,7 +353,9 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 			break;
 		}
 		case AxisIndex::Y: {
-			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &cellsToCreate](size_t threadNum, size_t numThreads) {
+			auto& interY = inter._yIntersects;
+			interY.resize(_blockDim[0] * _blockDim[2]);
+			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &interY, &cellsToCreate](size_t threadNum, size_t numThreads) {
 				const Vector3d rayDir(0, 1, 0);
 				const size_t bd = Block::getBlockDim();
 				const size_t numBlockCells = bd * bd * bd;
@@ -331,8 +367,8 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 					blockOrigin[0] = _originMeters[0] + ixBlk * blockSpan[0];
 
 					for (size_t izBlk = 0; izBlk < _blockDim[2]; izBlk++) {
-						size_t threadIdx = ixBlk + izBlk * _blockDim[2];
-						if (threadIdx % numThreads != threadNum)
+						size_t blockIdx = ixBlk + izBlk * _blockDim[0];
+						if (blockIdx % numThreads != threadNum)
 							continue;
 
 						bool skipBlock = true;
@@ -358,19 +394,21 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 								Ray ray(rayOrigin, rayDir);
 								vector<RayHit> hits;
 								if (pTriMesh->rayCast(ray, hits)) {
+									auto pBlockInter = make_shared<RayTriIntersectVec>();
+									interY[blockIdx] = pBlockInter;
 									for (const auto& triHit : hits) {
-										size_t blockIdx, cellIdx;
-										processRayHit(triHit, 1, blockSpan, cellSpan, blockIdx, cellIdx);
+										size_t blkIdx, cellIdx;
+										processRayHit(triHit, AxisIndex::Y, ixCell, izCell, blockSpan, cellSpan, *pBlockInter, blkIdx, cellIdx);
 
-										size_t bIdx = calLinearBlockIndex(ixBlk, blockIdx, izBlk);
+										size_t bIdx = calLinearBlockIndex(ixBlk, blkIdx, izBlk);
 										if (bIdx < cellsToCreate.size()) {
 											vector<bool>& blockCellsToCreate = cellsToCreate[bIdx];
 											if (blockCellsToCreate.empty())
 												blockCellsToCreate.resize(numBlockCells);
 
-											for (int dx = -1; dx < 2; dx++) {
-												for (int dz = -1; dz < 2; dz++) {
-													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, cellIdx, izCell + dz));
+											for (int dx = -1; dx <= 0; dx++) {
+												for (int dz = -1; dz <= 0; dz++) {
+													size_t cIdx = Block::calcLinearCellIndex(Vector3i(ixCell + dx, cellIdx, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -387,7 +425,9 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 			break;
 		}
 		case AxisIndex::Z: {
-			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &cellsToCreate](size_t threadNum, size_t numThreads) {
+			auto& interZ = inter._zIntersects;
+			interZ.resize(_blockDim[0] * _blockDim[1]);
+			MultiCore::runLambda([this, pTriMesh, blockSpan, cellSpan, &blocksToCreate, &interZ, &cellsToCreate](size_t threadNum, size_t numThreads) {
 				const Vector3d rayDir(0, 0, 1);
 				const size_t bd = Block::getBlockDim();
 				const size_t numBlockCells = bd * bd * bd;
@@ -399,8 +439,8 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 					blockOrigin[0] = _originMeters[0] + ixBlk * blockSpan[0];
 
 					for (size_t iyBlk = 0; iyBlk < _blockDim[1]; iyBlk++) {
-						size_t threadIdx = ixBlk + iyBlk * _blockDim[0];
-						if (threadIdx % numThreads != threadNum)
+						size_t blockIdx = ixBlk + iyBlk * _blockDim[0];
+						if (blockIdx % numThreads != threadNum)
 							continue;
 
 						bool skipBlock = true;
@@ -426,19 +466,21 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 								Ray ray(rayOrigin, rayDir);
 								vector<RayHit> hits;
 								if (pTriMesh->rayCast(ray, hits)) {
+									auto pBlockInter = make_shared<RayTriIntersectVec>();
+									interZ[blockIdx] = pBlockInter;
 									for (const auto& triHit : hits) {
-										size_t blockIdx, cellIdx;
-										processRayHit(triHit, 2, blockSpan, cellSpan, blockIdx, cellIdx);
+										size_t blkIdx, cellIdx;
+										processRayHit(triHit, AxisIndex::Z, ixCell, iyCell, blockSpan, cellSpan, *pBlockInter, blkIdx, cellIdx);
 
-										size_t bIdx = calLinearBlockIndex(ixBlk, iyBlk, blockIdx);
+										size_t bIdx = calLinearBlockIndex(ixBlk, iyBlk, blkIdx);
 										if (bIdx < cellsToCreate.size()) {
 											vector<bool>& blockCellsToCreate = cellsToCreate[bIdx];
 											if (blockCellsToCreate.empty())
 												blockCellsToCreate.resize(numBlockCells);
 
-											for (int dx = -1; dx < 2; dx++) {
-												for (int dy = -1; dy < 2; dy++) {
-													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, iyCell + dy, cellIdx));
+											for (int dx = -1; dx <= 0; dx++) {
+												for (int dy = -1; dy <= 0; dy++) {
+													size_t cIdx = Block::calcLinearCellIndex(Vector3i(ixCell + dx, iyCell + dy, cellIdx));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -457,57 +499,102 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 	}
 }
 
-CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
 {
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
 
-	Index3 blockSize(
+	Index3 blockDims(
 		(size_t)(_spanMeters[0] / minCellSize / Block::getBlockDim() + 0.5),
 		(size_t)(_spanMeters[1] / minCellSize / Block::getBlockDim() + 0.5),
 		(size_t)(_spanMeters[2] / minCellSize / Block::getBlockDim() + 0.5)
 	);
 
-	setBlockDims(blockSize);
+	setBlockDims(blockDims);
 
 	vector<bool> blocksToCreate;
 	blocksToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
 
+	cout << "createBlockRays X\n";
 	createBlockRays(AxisIndex::X, pTriMesh, blocksToCreate);
+	cout << "createBlockRays Y\n";
 	createBlockRays(AxisIndex::Y, pTriMesh, blocksToCreate);
+	cout << "createBlockRays Z\n";
 	createBlockRays(AxisIndex::Z, pTriMesh, blocksToCreate);
 
 	vector<vector<bool>> cellsToCreate;
 	cellsToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
-	createBlockCellRays(AxisIndex::X, pTriMesh, blocksToCreate, cellsToCreate);
-	createBlockCellRays(AxisIndex::Y, pTriMesh, blocksToCreate, cellsToCreate);
-	createBlockCellRays(AxisIndex::Z, pTriMesh, blocksToCreate, cellsToCreate);
 
-	std::cout << "Blockdim: " << _blockDim << "\n";
-	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
-		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
-			for (size_t j = 0; j < _blockDim[1]; j++) {
-				for (size_t k = 0; k < _blockDim[2]; k++) {
+	RayHitRec rayHits;
+	cout << "createBlockCellRays X\n";
+	createBlockCellRays(AxisIndex::X, pTriMesh, blocksToCreate, rayHits, cellsToCreate);
+	cout << "createBlockCellRays Y\n";
+	createBlockCellRays(AxisIndex::Y, pTriMesh, blocksToCreate, rayHits, cellsToCreate);
+	cout << "createBlockCellRays Z\n";
+	createBlockCellRays(AxisIndex::Z, pTriMesh, blocksToCreate, rayHits, cellsToCreate);
 
-					size_t bIdx = calLinearBlockIndex(i, j, k);
-					if (!cellsToCreate[bIdx].empty()) {
-						Block* pBlock = getBlock(i, j, k, true);
-						if (pBlock) {
-							pBlock->createCells(cellsToCreate[bIdx]);
-						}
-					}
+	cout << "Creating cells\n";
+
+	vector<size_t> blocksToProcess;
+	for (size_t bIdx = 0; bIdx < cellsToCreate.size(); bIdx++) {
+		if (!cellsToCreate[bIdx].empty())
+			blocksToProcess.push_back(bIdx);
+
+	}
+	cout << "Num blocks " << (_blockDim[0] * _blockDim[1] * _blockDim[2]) << "\n";
+	cout << "Num blocks to process " << blocksToProcess.size() << "\n";
+
+	MultiCore::runLambda([this, pTriMesh, &blocksToProcess, &rayHits, &cellsToCreate](size_t threadNum, size_t numThreads) {
+		cout << "Thread num " << threadNum << " starting.\n";
+		Vector3d blockSpan;
+		for (int i = 0; i < 3; i++)
+			blockSpan[i] = _spanMeters[i] / _blockDim[i];
+
+		for (size_t bpIdx = threadNum; bpIdx < blocksToProcess.size(); bpIdx += numThreads) {
+			size_t bIdx = blocksToProcess[bpIdx];
+			if (threadNum == 0)
+				cout << "Progress: " << (100 * bpIdx / (blocksToProcess.size() - 1.0)) << "%\n";
+			if (!cellsToCreate[bIdx].empty()) {
+				Vector3i blockIndex = calCartesianBlockIndex(bIdx);
+				Block* pBlock = getBlock(blockIndex, true);
+				if (pBlock) {
+					Vector3d blockOrigin;
+					for (int i = 0; i < 3; i++)
+						blockOrigin[i] = _originMeters[i] + blockIndex[i] * blockSpan[i];
+					pBlock->createCells(blockOrigin, blockSpan, _blockDim, blockIndex, cellsToCreate[bIdx], rayHits);
 				}
 			}
 		}
+		cout << "Thread num " << threadNum << " complete.\n";
 	}, RUN_MULTI_THREAD);
+#if 0
+	cout << "Intersecting cells\n";
+	MultiCore::runLambda([this, &blocksToProcess, pTriMesh](size_t threadNum, size_t numThreads) {
+		Vector3d blockSpan;
+		for (int i = 0; i < 3; i++)
+			blockSpan[i] = _spanMeters[i] / _blockDim[i];
 
-	CMeshPtr result = makeTris(true);
+		for (size_t bpIdx = threadNum; bpIdx < blocksToProcess.size(); bpIdx += numThreads) {
+			size_t bIdx = blocksToProcess[bpIdx];
+			if (threadNum == 0)
+				cout << "Progress: " << (100 * bpIdx / (blocksToProcess.size() - 1.0)) << "%\n";
+			Vector3i blockIndex = calCartesianBlockIndex(bIdx);
 
-	return result;
+			Block* pBlock = getBlock(blockIndex);
+			if (pBlock) {
+				Vector3d blockOrigin;
+				for (int i = 0; i < 3; i++)
+					blockOrigin[i] = _originMeters[i] + blockIndex[i] * blockSpan[i];
+				pBlock->createIntersectionCells(*this, blockOrigin, blockSpan);
+			}
+		}
+	}, RUN_MULTI_THREAD);
+#endif
+	cout << "buildCFDHexes finished\n";
 }
 
-CMeshPtr Volume::makeTris(bool cells)
+CMeshPtr Volume::makeBlockTris(bool cells)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -583,3 +670,37 @@ void Volume::dumpSections(const string& dirName) const
 		}
 	}
 }
+size_t Volume::getVertIdx(const Vertex& vert) const
+{
+	return getVertIdx(vert.getPoint());
+}
+
+size_t Volume::getVertIdx(const Vector3d& pt) const
+{
+	CBoundingBox3Dd bbox(pt);
+	vector<size_t> indices;
+	if (_pVertFinder && _pVertFinder->find(bbox, indices)) {
+		if (indices.size() == 1)
+			return indices.front();
+		else
+			throw "should never get multiple hits";
+	}
+
+	return -1;
+}
+
+size_t Volume::addVert(const Vertex& vert)
+{
+	CBoundingBox3Dd bbox(vert.getPoint());
+	vector<size_t> indices;
+	if (!_pVertFinder) {
+		CBoundingBox3Dd volBox;
+		volBox.merge(_originMeters);
+		volBox.merge(_originMeters + _spanMeters);
+		volBox.grow(_spanMeters.norm() * 0.1);
+		_pVertFinder = make_shared<CSpatialSearchSTd>(volBox);
+	}
+	Vertex* pVert;
+	return _vertexPool.create(pVert, -1, vert);
+}
+

@@ -13,9 +13,6 @@ using namespace DFHM;
 
 bool TestBlock::testBlock00()
 {
-	auto& cp = Block::_cellPool;
-	cp.testReset();
-
 	const size_t bd = Block::getBlockDim();
 
 	if (Block::getBlockDim() != bd) {
@@ -31,14 +28,6 @@ bool TestBlock::testBlock00()
 			cout << "testBlock fail: Bad cell count\n";
 			return false;
 		}
-		if (cp.getNumAllocated() != 0) {
-			cout << "testBlock fail: Allocated cell count mismatch\n";
-			return false;
-		}
-	}
-	if (cp.getNumAllocated() != 0) {
-		cout << "testBlock fail: Leaked cells\n";
-		return false;
 	}
 
 	return true;
@@ -46,8 +35,6 @@ bool TestBlock::testBlock00()
 
 bool TestBlock::testBlock01()
 {
-	auto& cp = Block::_cellPool;
-	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();
 	Block block;
@@ -67,9 +54,6 @@ bool TestBlock::testBlock01()
 
 bool TestBlock::testBlock02()
 {
-	auto& cp = Block::_cellPool;
-	cp.testReset();
-
 	const size_t bd = Block::getBlockDim();
 	Block block;
 
@@ -87,21 +71,6 @@ bool TestBlock::testBlock02()
 
 	if (block.numCells() != bd * bd * bd) {
 		cout << "testBlock fail: Bad cell count\n";
-		return false;
-	}
-
-	if (cp.getNumAllocated() != bd * bd * bd) {
-		cout << "testBlock fail: Allocated cell count mismatch\n";
-		return false;
-	}
-
-	if (cp.getNumAvailable() != 0) {
-		cout << "testBlock fail: Available pool wrong size\n";
-		return false;
-	}
-
-	if (cp.getNumAvailableIds() != 0) {
-		cout << "testBlock fail: Available id pool wrong size\n";
 		return false;
 	}
 
@@ -129,29 +98,11 @@ bool TestBlock::testBlock02()
 		return false;
 	}
 
-	if (cp.getNumAllocated() != 0) {
-		cout << "testBlock fail: Allocated cell count mismatch\n";
-		return false;
-	}
-
-	if (cp.getNumAvailable() != bd * bd * bd) {
-		cout << "testBlock fail: Available pool wrong size\n";
-		return false;
-	}
-
-	if (cp.getNumAvailableIds() != bd * bd * bd) {
-		cout << "testBlock fail: Available id pool wrong size\n";
-		return false;
-	}
-
 	return true;
 }
 
 bool TestBlock::testBlock03()
 {
-	auto& cp = Block::_cellPool;
-	cp.testReset();
-
 	const size_t bd = Block::getBlockDim();
 	Block block;
 
@@ -163,19 +114,22 @@ bool TestBlock::testBlock03()
 			for (size_t k = 0; k < bd; k++) {
 				auto v = rand() / (double)RAND_MAX;
 				if (v < 0.25) {
-					size_t idx = Block::calcCellIndex(i, j, k);
+					size_t idx = Block::calcLinearCellIndex(i, j, k);
 					cellsToCreate[idx] = true;
 				}
 			}
 		}
 	}
 
-	block.createCells(cellsToCreate);
+	RayHitRec rayHits;
+	Vector3d blockOrigin(0, 0, 0);
+	Vector3d blockSpan(1, 1, 1);
+	block.createCells(blockOrigin, blockSpan, Vector3i(0, 0, 0), Vector3i(0, 0, 0), cellsToCreate, rayHits);
 
 	for (size_t i = 0; i < bd; i++) {
 		for (size_t j = 0; j < bd; j++) {
 			for (size_t k = 0; k < bd; k++) {
-				size_t idx = Block::calcCellIndex(i, j, k);
+				size_t idx = Block::calcLinearCellIndex(i, j, k);
 				if (cellsToCreate[idx]) {
 					if (!block.getCell(i, j, k)) {
 						cout << "testBlock fail: Bad empty block.createCells test. No block at " << i << ", " << j << ", " << k << "\n";
@@ -197,9 +151,6 @@ bool TestBlock::testBlock03()
 
 bool TestBlock::testBlock04()
 {
-	auto& cp = Block::_cellPool;
-	cp.testReset();
-
 	const size_t bd = Block::getBlockDim();
 	Block block;
 
@@ -211,16 +162,17 @@ bool TestBlock::testBlock04()
 			for (size_t k = 0; k < bd; k++) {
 				auto v = rand() / (double)RAND_MAX;
 				if (v < 0.25) {
-					size_t idx = Block::calcCellIndex(i, j, k);
+					size_t idx = Block::calcLinearCellIndex(i, j, k);
 					cellsToCreate[idx] = true;
 				}
 			}
 		}
 	}
 
-	block.createCells(cellsToCreate);
-
+	RayHitRec rayHits;
 	Vector3d blockOrigin(0, 0, 0), span(1, 1, 1), cellOrgin, cellSpan;
+	block.createCells(blockOrigin, span, Vector3i(0, 0, 0), Vector3i(0, 0, 0), cellsToCreate, rayHits);
+
 	for (int i = 0; i < 3; i++)
 		cellSpan[i] = span[i] / bd;
 
@@ -239,7 +191,7 @@ bool TestBlock::testBlock04()
 			for (size_t k = 0; k < bd; k++) {
 				cellOrgin[2] = blockOrigin[2] + k * cellSpan[2];
 
-				size_t idx = Block::calcCellIndex(i, j, k);
+				size_t idx = Block::calcLinearCellIndex(i, j, k);
 				if (cellsToCreate[idx]) {
 					CBoundingBox3Dd bb;
 					bb.merge(cellOrgin);

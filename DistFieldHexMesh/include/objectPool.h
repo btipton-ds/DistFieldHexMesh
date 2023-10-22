@@ -17,8 +17,8 @@ public:
 	void free(size_t id); // Permanently delete it
 	void unload(size_t id); // Free the memory, but keep the id
 
-	size_t create(size_t id = -1);
-	size_t create(T*& pObj, size_t id = -1);
+	size_t createEmpty(size_t id = -1);
+	size_t create(T*& pObj, size_t id = -1, const T& src = T());
 	size_t getObj(size_t id, T*& pObj, bool allocateIfNeeded);
 	const T* getObj(size_t id) const;
 	T* getObj(size_t id);
@@ -79,14 +79,14 @@ void ObjectPool<T>::unload(size_t id)
 }
 
 template<class T>
-inline size_t ObjectPool<T>::create(size_t id /* = -1*/)
+inline size_t ObjectPool<T>::createEmpty(size_t id /* = -1*/)
 {
 	T* pObj;
 	return create(pObj, id);
 }
 
 template<class T>
-size_t ObjectPool<T>::create(T*& pObj, size_t id /* = -1*/)
+size_t ObjectPool<T>::create(T*& pObj, size_t id /* = -1 */, const T& src /* = T() */)
 {
 	std::lock_guard<std::recursive_mutex> lock(_pool.getMutex());
 
@@ -105,11 +105,11 @@ size_t ObjectPool<T>::create(T*& pObj, size_t id /* = -1*/)
 	if (index >= _pool.size()) {
 		if (_availableData.empty()) {
 			_idToIndexMap[id] = index = _pool.size();
-			_pool.push_back(T());
+			_pool.push_back(src);
 		} else {
 			_idToIndexMap[id] = index = _availableData.back();
 			_availableData.pop_back();
-			_pool[index] = T();
+			_pool[index] = src;
 		}
 	}
 	pObj = &_pool[index];
@@ -126,7 +126,7 @@ size_t ObjectPool<T>::getObj(size_t id, T*& pObj, bool allocateIfNeeded)
 
 	// Create also locks, so don't lock again
 	if (result == -1) 
-		result = create();
+		result = createEmpty();
 	
 	{
 		std::lock_guard<std::recursive_mutex> lock(_pool.getMutex());
@@ -184,12 +184,11 @@ size_t ObjectPool<T>::getNumUnloaded() const
 	return _idToIndexMap.size() - getNumAllocated();
 }
 
-class Cell;
 class Block;
-class Polygon;
-class Polyhedron;
 class Volume;
 class Vertex;
+class Polygon;
+class Polyhedron;
 
 using VolumePtr = std::shared_ptr<Volume>;
 
@@ -199,7 +198,6 @@ protected:
 	static ObjectPool<Vertex> _vertexPool;
 	static ObjectPool<Polygon> _polygonPool;
 	static ObjectPool<Polyhedron> _polyhedronPool;
-	static ObjectPool<Cell> _cellPool;
 	static ObjectPool<Block> _blockPool;
 };
 

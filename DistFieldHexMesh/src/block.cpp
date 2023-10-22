@@ -45,10 +45,40 @@ Block::Block(const Block& src)
 
 Block::~Block()
 {
-	for (auto id : _cells) {
-		if (id != -1)
-		_cellPool.free(id);
+}
+
+size_t Block::createCell(Cell*& pCell)
+{
+	size_t result = -1;
+	if (!_freeCells.empty()) {
+		result = _freeCells.back();
+		_freeCells.pop_back();
+		_cellData[result] = {};
 	}
+	else {
+		result = _cellData.size();
+		_cellData.push_back(Cell());
+	}
+
+	pCell = &_cellData[result];
+
+	return result;
+}
+
+Cell* Block::getCell(size_t ix, size_t iy, size_t iz, bool create)
+{
+	Cell* result = nullptr;
+	if (create)
+		fillEmpty();
+	size_t idx = calcLinearCellIndex(ix, iy, iz);
+	if (idx < _cells.size()) {
+		if (create && _cells[idx] == -1) {
+			_cells[idx] = createCell(result);
+		}
+		result = &_cellData[_cells[idx]];
+	}
+
+	return result;
 }
 
 bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, vector<bool>& cellsToCreate, const Vector3i& axisOrder)
@@ -95,31 +125,31 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 					double tk = hit.dist / blockSpan[axisIdx2];
 					size_t k = (size_t)(s_blockDim * tk);
 					if (0 <= k && k < s_blockDim) {
-						size_t ix, iy, iz;
+						size_t icx, icy, iz;
 						switch (axisOrder[0]) {
-						case 0: ix = i; break;
-						case 1: iy = i; break;
+						case 0: icx = i; break;
+						case 1: icy = i; break;
 						case 2: iz = i; break;
 						}
 
 						switch (axisOrder[1]) {
-						case 0: ix = j; break;
-						case 1: iy = j; break;
+						case 0: icx = j; break;
+						case 1: icy = j; break;
 						case 2: iz = j; break;
 						}
 
 						switch (axisOrder[2]) {
 							case 0: {
-								ix = k;
+								icx = k;
 
 								for (int iiy = -1; iiy <= 1; iiy++) {
-									if (iy + iiy >= s_blockDim)
+									if (icy + iiy >= s_blockDim)
 										continue;
 									for (int iiz = -1; iiz <= 1; iiz++) {
 										if (iz + iiz >= s_blockDim)
 											continue;
 
-										size_t cIdx = calcCellIndex(ix, iy + iiy, iz + iiz);
+										size_t cIdx = calcLinearCellIndex(icx, icy + iiy, iz + iiz);
 										if (cIdx < cellsToCreate.size()) {
 											result = true;
 											cellsToCreate[cIdx] = true;
@@ -131,16 +161,16 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 							}
 							case 1:
 							{
-								iy = k;
+								icy = k;
 
 								for (int iix = -1; iix <= 1; iix++) {
-									if (ix + iix >= s_blockDim)
+									if (icx + iix >= s_blockDim)
 										continue;
 									for (int iiz = -1; iiz <= 1; iiz++) {
 										if (iz + iiz >= s_blockDim)
 											continue;
 
-										size_t cIdx = calcCellIndex(ix + iix, iy, iz + iiz);
+										size_t cIdx = calcLinearCellIndex(icx + iix, icy, iz + iiz);
 										if (cIdx < cellsToCreate.size()) {
 											result = true;
 											cellsToCreate[cIdx] = true;
@@ -154,13 +184,13 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 								iz = k;
 
 								for (int iix = -1; iix <= 1; iix++) {
-									if (ix + iix >= s_blockDim)
+									if (icx + iix >= s_blockDim)
 										continue;
 									for (int iiy = -1; iiy <= 1; iiy++) {
-										if (iy + iiy >= s_blockDim)
+										if (icy + iiy >= s_blockDim)
 											continue;
 
-										size_t cIdx = calcCellIndex(ix + iix, iy + iiy, iz);
+										size_t cIdx = calcLinearCellIndex(icx + iix, icy + iiy, iz);
 										if (cIdx < cellsToCreate.size()) {
 											result = true;
 											cellsToCreate[cIdx] = true;
@@ -181,34 +211,42 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 	return result;
 }
 
-void Block::createCells(const vector<bool>& cellsToCreate)
+void Block::createCells(const Vector3d& blockOrigin, const Vector3d& blockSpan, const Vector3i& blockDim, const Vector3i& blockIdx, const vector<bool>& cellsToCreate, const RayHitRec& hits)
 {
 	if (_cells.empty())
 		_cells.resize(s_blockDim * s_blockDim * s_blockDim, -1);
+	const Vector3d cellSpan(blockSpan / s_blockDim);
 
 	if (_cells.size() == cellsToCreate.size()) {
 		for (size_t i = 0; i < cellsToCreate.size(); i++) {
 			if (cellsToCreate[i]) {
-#ifdef _DEBUG
-
-
-				size_t temp = i;
-
-				size_t ix = temp % s_blockDim;
-				temp = temp / s_blockDim;
-
-				size_t iy = temp % s_blockDim;
-				temp = temp / s_blockDim;
-
-				size_t iz = temp % s_blockDim;
-
-				assert(i == calcCellIndex(ix, iy, iz));
-#endif // _DEBUG
-
-				_cells[i] = _cellPool.create();
+				Cell* pCell = nullptr;
+				_cells[i] = createCell(pCell);
 			}
 		}
 	}
+
+	addCellHitsX(blockOrigin, cellSpan, blockDim, blockIdx, hits._xIntersects);
+	addCellHitsY(blockOrigin, cellSpan, blockDim, blockIdx, hits._yIntersects);
+	addCellHitsZ(blockOrigin, cellSpan, blockDim, blockIdx, hits._zIntersects);
+}
+
+void Block::createIntersectionCells(Volume& vol, const Vector3d& blockOrigin, const Vector3d& blockSpan)
+{
+	if (_cells.empty())
+		return;
+	size_t bd = getBlockDim();
+	const Vector3d cellSpan(blockSpan / s_blockDim);
+
+	for (size_t cIdx = 0; cIdx < _cells.size(); cIdx++) {
+		Vector3i cellIdx = calcCartesianCellIndex(cIdx);
+		Cell* pCell = getCell(cellIdx);
+		if (pCell) {
+			Vector3d cellOrigin = calcCellOrigin(cellIdx, blockOrigin, blockSpan);
+			pCell->makeIntersectionFaces(vol, _cells[cIdx], cellOrigin, cellSpan);
+		}
+	}
+
 }
 
 void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells)
@@ -219,14 +257,14 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 		Vector3d cellOrigin(blockOrigin);
 		Vector3d cellSpan = blockSpan / s_blockDim;
 
-		for (size_t ix = 0; ix < s_blockDim; ix++) {
-			cellOrigin[0] = blockOrigin[0] + ix * cellSpan[0];
-			for (size_t iy = 0; iy < s_blockDim; iy++) {
-				cellOrigin[1] = blockOrigin[1] + iy * cellSpan[1];
+		for (size_t icx = 0; icx < s_blockDim; icx++) {
+			cellOrigin[0] = blockOrigin[0] + icx * cellSpan[0];
+			for (size_t icy = 0; icy < s_blockDim; icy++) {
+				cellOrigin[1] = blockOrigin[1] + icy * cellSpan[1];
 				for (size_t iz = 0; iz < s_blockDim; iz++) {
 					cellOrigin[2] = blockOrigin[2] + iz * cellSpan[2];
 
-					size_t cIdx = calcCellIndex(ix, iy, iz);
+					size_t cIdx = calcLinearCellIndex(icx, icy, iz);
 					if ((cIdx != -1) && (_cells[cIdx] != -1)) {
 						vector<Vector3d> pts = {
 							cellOrigin,
@@ -239,43 +277,9 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0] + vY * cellSpan[1],
 							cellOrigin + vZ * cellSpan[2] +                    vY * cellSpan[1],
 						};
-#ifdef _DEBUG
-						CMesh::BoundingBox bb;
-						bb.merge(cellOrigin);
-						bb.merge(cellOrigin + cellSpan);
-
-						for (const auto& pt : pts) {
-							assert(bb.contains(pt));
-						}
-#endif // _DEBUG
 
 						pMesh->addRectPrism(pts);
 
-#ifdef _DEBUG
-						size_t numPos = 0, numNeg = 0;
-						Vector3d cellCentroid = 0.5 * (bb.getMin() + bb.getMax());
-						vector<size_t> triIndices;
-						pMesh->findTris(bb, triIndices);
-						for (size_t triIdx : triIndices) {
-							auto vertIndices = pMesh->getTri(triIdx);
-							Vector3d pts[] = {
-								pMesh->getVert(vertIndices[0])._pt,
-								pMesh->getVert(vertIndices[1])._pt,
-								pMesh->getVert(vertIndices[2])._pt,
-							};
-							if (bb.contains(pts[0]) && bb.contains(pts[1]) && bb.contains(pts[2])) {
-								Vector3d triCentroid = pMesh->triCentroid(triIdx);
-								Vector3d v = (triCentroid - cellCentroid).normalized();
-								Vector3d n = pMesh->triUnitNormal(triIdx);
-								auto dp = n.dot(v);
-								if (dp > 0)
-									numPos++;
-								else
-									numNeg++;
-							}
-						}
-						assert(numPos == 12);
-#endif // _DEBUG
 					}
 				}
 			}
@@ -297,37 +301,6 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 	}
 }
 
-void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)
-{
-#if 0
-
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::X, cellsToCreate);
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Y, cellsToCreate);
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Z, cellsToCreate);
-
-	Vector3d cellOrigin, cellSpan;
-	for (int i = 0; i < 3; i++)
-		cellSpan[i] = blockSpan[i] / bd;
-
-	for (size_t i = 0; i < bd; i++) {
-		cellOrigin[0] = blockOrigin[0] + i * cellSpan[0];
-		for (size_t j = 0; j < bd; j++) {
-			cellOrigin[1] = blockOrigin[1] + j * cellSpan[1];
-			for (size_t k = 0; k < bd; k++) {
-				cellOrigin[2] = blockOrigin[2] + k * cellSpan[2];
-
-				size_t bIdx = calcCellIndex(i, j, k);
-				if (cellsToCreate[bIdx]) {
-					Cell* pCell = nullptr;
-					_cells[bIdx] = _cellPool.getObj(bIdx, pCell, true);
-//					pCell->processBlock(pTriMesh, k, blockOrigin, blockSpan);
-				}
-			}
-		}
-	}
-#endif
-}
-
 bool Block::unload(string& filename)
 {
 	{
@@ -339,7 +312,9 @@ bool Block::unload(string& filename)
 		size_t count = _cells.size();
 		out.write((char*)&count, sizeof(count));
 		for (size_t cellIdx : _cells) {
-			Cell* pCell = _cellPool.getObj(cellIdx);
+			if (cellIdx == -1)
+				continue;
+			Cell* pCell = &_cellData[cellIdx];
 			if (!pCell->unload(out)) {
 				return false;
 			}
@@ -351,9 +326,6 @@ bool Block::unload(string& filename)
 		}
 	}
 
-	for (size_t cellIdx : _cells) {
-		_cellPool.unload(cellIdx);
-	}
 	_cells.clear();
 
 	return true;
@@ -373,7 +345,7 @@ bool Block::load()
 	_cells.resize(size);
 	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
 		Cell* pCell;
-		_cells[cellIdx] = _cellPool.getObj(-1, pCell, true);
+		_cells[cellIdx] = createCell(pCell);
 		if (!pCell->load(in)) {
 			// TODO cleanup here
 			return false;
@@ -383,6 +355,83 @@ bool Block::load()
 	_filename.clear();
 
 	return true;
+}
+
+void Block::addCellHitsX(const Vector3d& blockOrigin, const Vector3d& cellSpan, const Vector3i& blockDim, const Vector3i& blockIdx, const RayBlockIntersectVec& xHits)
+{
+	size_t hitIdx = blockIdx[1] + blockIdx[2] * blockDim[1];
+	if (hitIdx < xHits.size() && xHits[hitIdx]) {
+		auto& blockHits = *xHits[hitIdx];
+		for (const auto& hit : blockHits) {
+			size_t ibx = hit._blockIdx;
+			if (ibx != blockIdx[0])
+				continue;
+
+			// This hit is in our block
+			Vector3d cellOrigin = calcCellOrigin(hit._cellIdx, blockOrigin, cellSpan), offset(0, 0, 0);
+			for (int iy = -1; iy <= 0; iy++) {
+				offset[1] = iy * cellSpan[1];
+				for (int iz = -1; iz <= 0; iz++) {
+					offset[2] = iz * cellSpan[2];
+					Cell* pCell = getCell(hit._cellIdx[0], hit._cellIdx[1] + iy, hit._cellIdx[2] + iz);
+					if (pCell) {
+						pCell->addHit(cellOrigin + offset, cellSpan, AxisIndex::X, hit);
+					}
+				}
+			}
+		}
+	}
+}
+
+void Block::addCellHitsY(const Vector3d& blockOrigin, const Vector3d& cellSpan, const Vector3i& blockDim, const Vector3i& blockIdx, const RayBlockIntersectVec& yHits)
+{
+	size_t hitIdx = blockIdx[0] + blockIdx[2] * blockDim[0];
+	if (hitIdx < yHits.size() && yHits[hitIdx]) {
+		auto& blockHits = *yHits[hitIdx];
+		for (const auto& hit : blockHits) {
+			size_t iby = hit._blockIdx;
+			if (iby != blockIdx[1])
+				continue;
+
+			Vector3d cellOrigin = calcCellOrigin(hit._cellIdx, blockOrigin, cellSpan), offset(0, 0, 0);
+
+			for (int ix = -1; ix <= 0; ix++) {
+				offset[0] = ix * cellSpan[0];
+				for (int iz = -1; iz <= 0; iz++) {
+					offset[2] = iz * cellSpan[2];
+					Cell* pCell = getCell(hit._cellIdx[0] + ix, hit._cellIdx[1], hit._cellIdx[2] + iz);
+					if (pCell) {
+						pCell->addHit(cellOrigin + offset, cellSpan, AxisIndex::Y, hit);
+					}
+				}
+			}
+		}
+	}
+}
+
+void Block::addCellHitsZ(const Vector3d& blockOrigin, const Vector3d& cellSpan, const Vector3i& blockDim, const Vector3i& blockIdx, const RayBlockIntersectVec& zHits)
+{
+	size_t hitIdx = blockIdx[0] + blockIdx[1] * blockDim[0];
+	if (hitIdx < zHits.size() && zHits[hitIdx]) {
+		auto& blockHits = *zHits[hitIdx];
+		for (const auto& hit : blockHits) {
+			size_t ibz = hit._blockIdx;
+			if (ibz != blockIdx[2])
+				continue;
+			Vector3d cellOrigin = calcCellOrigin(hit._cellIdx, blockOrigin, cellSpan), offset(0, 0, 0);
+
+			for (int ix = -1; ix <= 0; ix++) {
+				offset[0] = ix * cellSpan[0];
+				for (int iy = -1; iy <= 0; iy++) {
+					offset[1] = iy * cellSpan[1];
+					Cell* pCell = getCell(hit._cellIdx[0] + ix, hit._cellIdx[1] + iy, hit._cellIdx[2]);
+					if (pCell) {
+						pCell->addHit(cellOrigin + offset, cellSpan, AxisIndex::Z, hit);
+					}
+				}
+			}
+		}
+	}
 }
 
 void Block::fillEmpty()

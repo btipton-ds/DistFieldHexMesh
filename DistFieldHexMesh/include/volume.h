@@ -12,10 +12,12 @@
 #include <map>
 #include <mutex>
 #include "indices.h"
+#include <tm_spatialSearch.h>
 #include <triMesh.h>
 #include <ObjectPool.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <types.h>
 #include <cell.h>
 #include <block.h>
 
@@ -50,33 +52,31 @@ public:
 	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
 	const Cell* getCell(const Vector3i& cellIdx) const;
 
+	size_t getVertIdx(const Vector3d& pt) const;
+	size_t getVertIdx(const Vertex& vert) const;
+	size_t addVert(const Vertex& vert);
+
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
-//	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr makeTris(bool cells = true);
+	Vector3i calCartesianBlockIndex(size_t idx) const;
+	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
+	TriMesh::CMeshPtr makeBlockTris(bool cells = true);
+	TriMesh::CMeshPtr makeIntersectionTris(bool cells = true);
 	void dumpSections(const std::string& dirName) const;
 
 private:
-	using AxisIndex = Block::AxisIndex;
-	using RayTriIntersect = Block::RayTriIntersect;
-
-	using RayTriIntersectVec = Block::RayTriIntersectVec;
-	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
-
 	void createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate);
-	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
-	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
+	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, RayHitRec& intersections, std::vector<std::vector<bool>>& cellsToCreate);
+	void processRayHit(const RayHit& triHit, AxisIndex rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
+	void processRayHit(const RayHit& triHit, AxisIndex rayAxis, size_t i, size_t j, const Vector3d& blockSpan, const Vector3d& cellSpan, RayTriIntersectVec& blockHits, size_t& blockIdx, size_t& cellIdx);
 
 	mutable std::mutex _mutex;
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 
-	std::vector<size_t> _faces;
-	std::vector<size_t> _polyHedra;
 	std::vector<size_t> _blocks;
-
+	std::shared_ptr<CSpatialSearchSTd> _pVertFinder;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
@@ -129,6 +129,25 @@ inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
 {
 	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+inline Vector3i Volume::calCartesianBlockIndex(size_t idx) const
+{
+	Vector3i blockIdx;
+	size_t temp;
+
+	blockIdx[0] = idx % _blockDim[0];
+	temp = idx / _blockDim[0];
+
+	blockIdx[1] = temp % _blockDim[1];
+	temp = temp / _blockDim[1];
+
+	blockIdx[2] = temp % _blockDim[2];
+
+	// Back check the math. TODO remove later
+	assert(calLinearBlockIndex(blockIdx) == idx);
+
+	return blockIdx;
 }
 
 inline Cell* Volume::getCell(const Vector3i& cellIdx)

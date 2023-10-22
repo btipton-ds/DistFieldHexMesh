@@ -17,7 +17,7 @@ public:
 
 	Vertex() = default;
 	Vertex(const Vertex& src) = default;
-	Vertex(const Vector3d& pt);
+	Vertex(const Vector3d& pt, LockType lockType, size_t lockIdx);
 
 	void setLockType(LockType val, size_t idx);
 	LockType getLockType(size_t& idx) const;
@@ -37,8 +37,10 @@ private:
 	std::vector<size_t> _polygonIds;
 };
 
-inline Vertex::Vertex(const Vector3d& pt)
-	: _pt(pt)
+inline Vertex::Vertex(const Vector3d& pt, LockType lockType, size_t lockIdx)
+	: _lockType(lockType)
+	, _lockIdx(lockIdx)
+	, _pt(pt)
 {
 }
 

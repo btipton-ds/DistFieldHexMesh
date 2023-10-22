@@ -240,14 +240,15 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.0005;
+    double gap = 0.0001;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 
     double superCellSize = gap * Block::getBlockDim();
 
-    auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
-    _volume->dumpSections(_workDirName);
+    _volume->buildCFDHexes(_pMesh, superCellSize);
+//    _volume->dumpSections(_workDirName);
+    auto blockMesh = _volume->makeBlockTris(false);
 
     if (blockMesh->numTris() > 0) {
         auto pCanvas = _pMainFrame->getCanvas();

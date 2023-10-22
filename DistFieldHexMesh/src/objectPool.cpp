@@ -8,5 +8,4 @@ using namespace DFHM;
 ObjectPool<Vertex> DataPool::_vertexPool;
 ObjectPool<Polygon> DataPool::_polygonPool;
 ObjectPool<Polyhedron> DataPool::_polyhedronPool;
-ObjectPool<Cell> DataPool::_cellPool;
 ObjectPool<Block> DataPool::_blockPool;
