@@ -1,6 +1,6 @@
 #pragma once
 
-#include <objectPool.h>
+#include <dataPool.h>
 
 namespace DFHM {
 
@@ -17,8 +17,8 @@ public:
 	bool load(std::istream& in);
 
 	VolumeType volType = VT_UNKNOWN;
-	std::vector<size_t> _polygons; // indices of polygons in this cell
-	std::vector<size_t> _polyhedra;// indices of polyedra in this cell
+	std::vector<ObjectPoolId> _polygons; // indices of polygons in this cell
+	std::vector<ObjectPoolId> _polyhedra;// indices of polyedra in this cell
 };
 
 }

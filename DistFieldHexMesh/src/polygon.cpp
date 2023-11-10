@@ -5,10 +5,10 @@
 using namespace std;
 using namespace DFHM;
 
-bool Polygon::unload(std::ostream& out, size_t idSelf)
+bool Polygon::unload(std::ostream& out, const ObjectPoolId& idSelf)
 {
 	size_t numVertices = vertexIds.size();
-	for (size_t vertId : vertexIds) {
+	for (const auto& vertId : vertexIds) {
 		auto* pVert = _vertexPool.getObj(vertId);
 		pVert->removePolygonReference(idSelf);
 	}
@@ -19,7 +19,7 @@ bool Polygon::unload(std::ostream& out, size_t idSelf)
 	return true;
 }
 
-bool Polygon::load(std::istream& in, size_t idSelf)
+bool Polygon::load(std::istream& in, const ObjectPoolId& idSelf)
 {
 	size_t numVertices;
 

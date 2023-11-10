@@ -181,7 +181,7 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 	return result;
 }
 
-void Block::createCells(const vector<bool>& cellsToCreate)
+void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 {
 	if (_cells.empty())
 		_cells.resize(s_blockDim * s_blockDim * s_blockDim, -1);
@@ -205,7 +205,7 @@ void Block::createCells(const vector<bool>& cellsToCreate)
 				assert(i == calcCellIndex(ix, iy, iz));
 #endif // _DEBUG
 
-				_cells[i] = _cellPool.create();
+				_cells[i] = _cellPool.create(ObjectPoolId(-1, threadNum));
 			}
 		}
 	}
@@ -338,7 +338,7 @@ bool Block::unload(string& filename)
 
 		size_t count = _cells.size();
 		out.write((char*)&count, sizeof(count));
-		for (size_t cellIdx : _cells) {
+		for (auto cellIdx : _cells) {
 			Cell* pCell = _cellPool.getObj(cellIdx);
 			if (!pCell->unload(out)) {
 				return false;
@@ -351,7 +351,7 @@ bool Block::unload(string& filename)
 		}
 	}
 
-	for (size_t cellIdx : _cells) {
+	for (auto cellIdx : _cells) {
 		_cellPool.unload(cellIdx);
 	}
 	_cells.clear();
@@ -395,7 +395,7 @@ void Block::fillEmpty()
 
 void Block::pack()
 {
-	for (size_t id : _cells) {
+	for (auto id : _cells) {
 		if (id != -1)
 			return;
 	}

@@ -73,9 +73,9 @@ private:
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 
-	std::vector<size_t> _faces;
-	std::vector<size_t> _polyHedra;
-	std::vector<size_t> _blocks;
+	std::vector<ObjectPoolId> _faces;
+	std::vector<ObjectPoolId> _polyHedra;
+	std::vector<ObjectPoolId> _blocks;
 
 };
 

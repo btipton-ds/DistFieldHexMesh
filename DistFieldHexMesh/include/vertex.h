@@ -2,7 +2,7 @@
 
 
 #include <tm_vector3.h>
-#include <objectPool.h>
+#include <dataPool.h>
 
 namespace DFHM {
 
@@ -26,15 +26,15 @@ public:
 	const Vector3d& getPoint() const;
 	operator const Vector3d& () const;
 
-	void addPolygonReference(size_t polygonId);
-	void removePolygonReference(size_t polygonId);
+	void addPolygonReference(const ObjectPoolId& polygonId);
+	void removePolygonReference(const ObjectPoolId& polygonId);
 
 private:
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;
 
 	Vector3d _pt;
-	std::vector<size_t> _polygonIds;
+	std::vector<ObjectPoolId> _polygonIds;
 };
 
 inline Vertex::Vertex(const Vector3d& pt)

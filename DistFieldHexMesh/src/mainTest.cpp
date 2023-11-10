@@ -7,6 +7,8 @@
 #include <triMesh.h>
 #include <volume.h>
 #include <blockTest.h>
+#include <dataPool.h>
+#include <MultiCoreUtil.h>
 
 using namespace std;
 
@@ -33,6 +35,7 @@ void testBlock(size_t bd = 8)
 
 int main(int numParams, const char** params)
 {
+	DataPool::setNumThreads(MultiCore::getNumCores());
 	testBlock();
 
 	return 0;

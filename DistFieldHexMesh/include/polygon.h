@@ -1,15 +1,15 @@
 #pragma once
 
-#include <objectPool.h>
+#include <dataPool.h>
 
 namespace DFHM {
 
 class Polygon : public DataPool {
 public:
-	bool unload(std::ostream& out, size_t idSelf);
-	bool load(std::istream& out, size_t idSelf);
+	bool unload(std::ostream& out, const ObjectPoolId& idSelf);
+	bool load(std::istream& out, const ObjectPoolId& idSelf);
 
-	std::vector<size_t> vertexIds;
+	std::vector<ObjectPoolId> vertexIds;
 };
 
 }

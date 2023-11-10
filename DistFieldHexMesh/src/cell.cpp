@@ -17,7 +17,7 @@ bool Cell::unload(ostream& out)
 		// Write out the polygon ids
 		out.write((char*)&numPolygons, sizeof(numPolygons));
 		for (size_t i = 0; i < numPolygons; i++) {
-			size_t id = _polygons[i];
+			ObjectPoolId id = _polygons[i];
 
 			out.write((char*)&id, sizeof(id));
 			auto* pPolygon = _polygonPool.getObj(id);
@@ -34,7 +34,7 @@ bool Cell::unload(ostream& out)
 		// Write out the polygon ids
 		out.write((char*)&numPolyhedra, sizeof(numPolyhedra));
 		for (size_t i = 0; i < numPolyhedra; i++) {
-			size_t id = _polyhedra[i];
+			ObjectPoolId id = _polyhedra[i];
 
 			out.write((char*)&id, sizeof(id));
 			auto* pPolyhedron = _polyhedronPool.getObj(id);

@@ -494,7 +494,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 					if (!cellsToCreate[bIdx].empty()) {
 						Block* pBlock = getBlock(i, j, k, true);
 						if (pBlock) {
-							pBlock->createCells(cellsToCreate[bIdx]);
+							pBlock->createCells(cellsToCreate[bIdx], threadNum);
 						}
 					}
 				}
@@ -547,7 +547,7 @@ CMeshPtr Volume::makeTris(bool cells)
 
 	CMeshPtr result = results.back();
 	results.pop_back();
-	result->merge(results, true);
+	result->merge(results, true, RUN_MULTI_THREAD);
 	cout << "Num tris: " << result->numTris();
 	cout << "Num cells: " << result->numTris() / 12;
 	return result;

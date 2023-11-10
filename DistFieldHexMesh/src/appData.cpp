@@ -11,6 +11,7 @@
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
+#include <dataPool.h>
 
 using namespace std;
 using namespace DFHM;
@@ -18,7 +19,7 @@ using namespace DFHM;
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
-
+    DataPool::setNumThreads(MultiCore::getNumCores());
 }
 
 void AppData::doOpen()
@@ -240,7 +241,7 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.0005;
+    double gap = 0.001 / 4;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 

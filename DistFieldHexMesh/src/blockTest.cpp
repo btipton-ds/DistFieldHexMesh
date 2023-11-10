@@ -170,7 +170,7 @@ bool TestBlock::testBlock03()
 		}
 	}
 
-	block.createCells(cellsToCreate);
+	block.createCells(cellsToCreate, 0);
 
 	for (size_t i = 0; i < bd; i++) {
 		for (size_t j = 0; j < bd; j++) {
@@ -218,7 +218,7 @@ bool TestBlock::testBlock04()
 		}
 	}
 
-	block.createCells(cellsToCreate);
+	block.createCells(cellsToCreate, 0);
 
 	Vector3d blockOrigin(0, 0, 0), span(1, 1, 1), cellOrgin, cellSpan;
 	for (int i = 0; i < 3; i++)

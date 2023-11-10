@@ -1,7 +1,7 @@
 #pragma once
 
 #include <triMesh.h>
-#include <objectPool.h>
+#include <dataPool.h>
 
 namespace DFHM {
 
@@ -16,7 +16,7 @@ public:
 
 	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
-	void createCells(const std::vector<bool>& cellsToCreate);
+	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum);
 	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
 	static size_t calcCellIndex(const Vector3i& celIdx);
 	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
@@ -57,7 +57,7 @@ private:
 	std::string _filename;
 
 	static size_t s_blockDim;
-	std::vector<size_t> _cells;
+	std::vector<ObjectPoolId> _cells;
 };
 
 inline size_t Block::numCells() const

@@ -46,7 +46,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
-)
+ "src/dataPool.cpp")
 
 add_executable (TestDFM         
 	"src/mainTest.cpp"
@@ -57,7 +57,7 @@ add_executable (TestDFM
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
 	"src/vertex.cpp"
- "src/blockTest.cpp")
+ "src/blockTest.cpp" "src/dataPool.cpp")
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	target_link_libraries("DistFieldHexMesh" 
