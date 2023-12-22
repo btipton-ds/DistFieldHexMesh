@@ -547,7 +547,7 @@ CMeshPtr Volume::makeTris(bool cells)
 
 	CMeshPtr result = results.back();
 	results.pop_back();
-	result->merge(results, true, RUN_MULTI_THREAD);
+	result->merge(results, true);
 	cout << "Num tris: " << result->numTris();
 	cout << "Num cells: " << result->numTris() / 12;
 	return result;
