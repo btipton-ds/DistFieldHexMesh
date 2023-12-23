@@ -55,7 +55,7 @@ bool TestBlock::testBlock01()
 	for (size_t i = 0; i < bd; i++) {
 		for (size_t j = 0; j < bd; j++) {
 			for (size_t k = 0; k < bd; k++) {
-				if (block.getCell(i, j, k)) {
+				if (block.cellExists(i, j, k)) {
 					cout << "testBlock fail: Bad empty cell test " << i << ", " << j << ", " << k << "\n";
 					return false;
 				}
@@ -76,8 +76,8 @@ bool TestBlock::testBlock02()
 	for (size_t i = 0; i < bd; i++) {
 		for (size_t j = 0; j < bd; j++) {
 			for (size_t k = 0; k < bd; k++) {
-				auto* pCell = block.getCell(i, j, k, true);
-				if (!block.getCell(i, j, k)) {
+				block.addCell(i, j, k);
+				if (!block.cellExists(i, j, k)) {
 					cout << "testBlock fail: Bad cell test after create " << i << ", " << j << ", " << k << "\n";
 					return false;
 				}
@@ -109,7 +109,7 @@ bool TestBlock::testBlock02()
 		for (size_t j = 0; j < bd; j++) {
 			for (size_t k = 0; k < bd; k++) {
 				block.freeCell(i, j, k);
-				if (block.getCell(i, j, k)) {
+				if (block.cellExists(i, j, k)) {
 					cout << "testBlock fail: Bad empty cell test after create and free " << i << ", " << j << ", " << k << "\n";
 					return false;
 				}
@@ -177,13 +177,13 @@ bool TestBlock::testBlock03()
 			for (size_t k = 0; k < bd; k++) {
 				size_t idx = Block::calcCellIndex(i, j, k);
 				if (cellsToCreate[idx]) {
-					if (!block.getCell(i, j, k)) {
+					if (!block.cellExists(i, j, k)) {
 						cout << "testBlock fail: Bad empty block.createCells test. No block at " << i << ", " << j << ", " << k << "\n";
 						return false;
 					}
 				}
 				else {
-					if (block.getCell(i, j, k)) {
+					if (block.cellExists(i, j, k)) {
 						cout << "testBlock fail: Bad empty block.createCells test. Block at " << i << ", " << j << ", " << k << "\n";
 						return false;
 					}

@@ -39,23 +39,27 @@ public:
 	const Index3& getDims() const;
 
 	// Get the block using a block index
-	const Block* getBlock(size_t ix, size_t iy, size_t iz) const;
-	const Block* getBlock(const Vector3i& blockIdx) const;
-	Block* getBlock(size_t ix, size_t iy, size_t iz, bool create = false);
-	Block* getBlock(const Vector3i& blockIdx, bool create = false);
+	bool blockExists(size_t ix, size_t iy, size_t iz) const;
+	bool blockExists(const Vector3i& blockIdx) const;
+	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
+	const Block& getBlock(const Vector3i& blockIdx) const;
+	Block& getBlock(size_t ix, size_t iy, size_t iz);
+	Block& getBlock(const Vector3i& blockIdx);
 
 	// Get the cell using a cell index
-	Cell* getCell(size_t ix, size_t iy, size_t iz);
-	Cell* getCell(const Vector3i& cellIdx);
-	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell* getCell(const Vector3i& cellIdx) const;
+	bool cellExists(size_t ix, size_t iy, size_t iz) const;
+	bool cellExists(const Vector3i& blockIdx) const;
+	Cell& getCell(size_t ix, size_t iy, size_t iz);
+	Cell& getCell(const Vector3i& cellIdx);
+	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
+	const Cell& getCell(const Vector3i& cellIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
 //	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr makeTris(bool cells = true);
+	TriMesh::CMeshPtr makeTris(bool cells = true) const;
 	void dumpSections(const std::string& dirName) const;
 
 private:
@@ -81,41 +85,56 @@ private:
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-inline const Block* Volume::getBlock(size_t ix, size_t iy, size_t iz) const
+inline bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
 {
-	std::lock_guard<std::mutex> lock(_mutex);
-
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
-	if (idx < _blocks.size())
-		return _blockPool.getObj(_blocks[idx]);
-	return nullptr;
+	if (idx >= _blocks.size())
+		return false;
+	ObjectPoolId poolId = _blocks[idx];
+	return _blockPool.idExists(poolId);
 }
 
-inline Block* Volume::getBlock(size_t ix, size_t iy, size_t iz, bool create)
+inline bool Volume::blockExists(const Vector3i& blockIdx) const
+{
+	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+inline const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 {
 	std::lock_guard<std::mutex> lock(_mutex);
 
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
 	if (idx < _blocks.size()) {
-		if (_blocks[idx] != -1)
-			return _blockPool.getObj(_blocks[idx]);
-		else if (create) {
-			Block* pBlock = nullptr;
-			_blocks[idx] = _blockPool.getObj(-1, pBlock, true);
-			return pBlock;
-		} 
+		ObjectPoolId poolId = _blocks[idx];
+		if (!_blockPool.idExists(poolId))
+			throw std::exception("Volume::getBlock block not allocated");
+		return _blockPool[poolId];
 	}
-	return nullptr;
+	throw std::exception("Volume::getBlock index out of range");
 }
 
-inline const Block* Volume::getBlock(const Vector3i& blockIdx) const
+inline Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
+{
+	std::lock_guard<std::mutex> lock(_mutex);
+
+	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	if (idx < _blocks.size()) {
+		ObjectPoolId poolId = _blocks[idx];
+		if (!_blockPool.idExists(poolId))
+			poolId = _blocks[idx] = _blockPool.add(Block(), poolId);
+		return _blockPool[poolId];
+	}
+	throw std::exception("Volume::getBlock index out of range");
+}
+
+inline const Block& Volume::getBlock(const Vector3i& blockIdx) const
 {
 	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-inline Block* Volume::getBlock(const Vector3i& blockIdx, bool create)
+inline Block& Volume::getBlock(const Vector3i& blockIdx)
 {
-	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2], create);
+	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
@@ -131,12 +150,12 @@ inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
 	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-inline Cell* Volume::getCell(const Vector3i& cellIdx)
+inline Cell& Volume::getCell(const Vector3i& cellIdx)
 {
 	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }
 
-inline const Cell* Volume::getCell(const Vector3i& cellIdx) const
+inline const Cell& Volume::getCell(const Vector3i& cellIdx) const
 {
 	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }

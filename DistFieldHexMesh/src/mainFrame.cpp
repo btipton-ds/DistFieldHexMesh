@@ -14,6 +14,7 @@
 #include <MultiCoreUtil.h>
 
 #include <mainFrame.h>
+#include <makeBlockDlg.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
 
@@ -179,7 +180,10 @@ void MainFrame::OnOpen(wxCommandEvent& event)
 
 void MainFrame::OnNew(wxCommandEvent& event)
 {
-
+    MakeBlockDlg dlg(this, 1, wxString("Make Block"), wxPoint(40,40));
+    if (dlg.ShowModal() == wxID_OK) {
+        dlg.makeBlock();
+    }
 }
 
 void MainFrame::OnClose(wxCommandEvent& event)

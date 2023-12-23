@@ -33,6 +33,7 @@ add_executable (DistFieldHexMesh
 	"src/main.cpp" 
 	"src/volume.cpp"
 	"src/mainFrame.cpp"
+	"src/makeBlockDlg.cpp"
 	"src/app.cpp"
     "src/appData.cpp"
 	"src/graphicsCanvas.cpp"

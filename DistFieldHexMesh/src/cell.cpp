@@ -20,8 +20,8 @@ bool Cell::unload(ostream& out)
 			ObjectPoolId id = _polygons[i];
 
 			out.write((char*)&id, sizeof(id));
-			auto* pPolygon = _polygonPool.getObj(id);
-			if (!pPolygon->unload(out, id))
+			auto& pPolygon = _polygonPool[id];
+			if (!pPolygon.unload(out, id))
 				return false;
 		}
 		_polygons.clear();
@@ -37,8 +37,8 @@ bool Cell::unload(ostream& out)
 			ObjectPoolId id = _polyhedra[i];
 
 			out.write((char*)&id, sizeof(id));
-			auto* pPolyhedron = _polyhedronPool.getObj(id);
-			if (!pPolyhedron->unload(out))
+			auto& pPolyhedron = _polyhedronPool[id];
+			if (!pPolyhedron.unload(out))
 				return false;
 		}
 		_polyhedra.clear();
@@ -62,9 +62,9 @@ bool Cell::load(istream& in)
 			size_t id;
 
 			in.read((char*)&id, sizeof(id));
-			Polygon* pPolygon = nullptr;
-			_polygons[i] = _polygonPool.getObj(id, pPolygon, true);
-			if (!pPolygon->load(in, id))
+			_polygons[i] = id;
+			auto& polygon = _polygonPool[id];
+			if (!polygon.load(in, id))
 				return false;
 		}
 	}
@@ -80,9 +80,9 @@ bool Cell::load(istream& in)
 			size_t id;
 
 			in.read((char*)&id, sizeof(id));
-			Polyhedron* pPolyhedron = nullptr;
-			_polyhedra[i] = _polyhedronPool.getObj(id, pPolyhedron, true);
-			if (!pPolyhedron->load(in))
+			_polyhedra[i] = id;
+			auto& polyhedron = _polyhedronPool[id];
+			if (!polyhedron.load(in))
 				return false;
 		}
 	}

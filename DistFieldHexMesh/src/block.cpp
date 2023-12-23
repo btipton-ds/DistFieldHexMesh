@@ -51,6 +51,17 @@ Block::~Block()
 	}
 }
 
+bool Block::cellExists(size_t ix, size_t iy, size_t iz) const
+{
+	return _cellPool.idExists(calcCellIndex(ix, iy, iz));
+}
+
+bool Block::cellExists(const Vector3i& idx) const
+{
+	return cellExists(idx[0], idx[1], idx[2]);
+}
+
+
 bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, vector<bool>& cellsToCreate, const Vector3i& axisOrder)
 {
 	static size_t numCells = 0;
@@ -181,6 +192,19 @@ bool Block::scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const 
 	return result;
 }
 
+void Block::addCell(size_t ix, size_t iy, size_t iz, size_t threadNum)
+{
+	if (_cells.empty())
+		_cells.resize(s_blockDim * s_blockDim * s_blockDim, -1);
+	size_t idx = calcCellIndex(ix, iy, iz);
+	_cells[idx] = _cellPool.add(Cell(), ObjectPoolId(idx, threadNum));
+}
+
+void Block::addCell(const Vector3i& cellIdx, size_t threadNum)
+{
+	addCell(cellIdx[0], cellIdx[1], cellIdx[2], threadNum);
+}
+
 void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 {
 	if (_cells.empty())
@@ -205,13 +229,13 @@ void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 				assert(i == calcCellIndex(ix, iy, iz));
 #endif // _DEBUG
 
-				_cells[i] = _cellPool.create(ObjectPoolId(-1, threadNum));
+				_cells[i] = _cellPool.add(Cell(), ObjectPoolId(i, threadNum));
 			}
 		}
 	}
 }
 
-void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells)
+void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const
 {
 
 	if (useCells && !_cells.empty()) {
@@ -339,8 +363,8 @@ bool Block::unload(string& filename)
 		size_t count = _cells.size();
 		out.write((char*)&count, sizeof(count));
 		for (auto cellIdx : _cells) {
-			Cell* pCell = _cellPool.getObj(cellIdx);
-			if (!pCell->unload(out)) {
+			Cell& cell = _cellPool[cellIdx];
+			if (!cell.unload(out)) {
 				return false;
 			}
 		}
@@ -372,12 +396,12 @@ bool Block::load()
 
 	_cells.resize(size);
 	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
-		Cell* pCell;
-		_cells[cellIdx] = _cellPool.getObj(-1, pCell, true);
-		if (!pCell->load(in)) {
+		Cell cell;
+		if (!cell.load(in)) {
 			// TODO cleanup here
 			return false;
 		}
+		_cells[cellIdx] = _cellPool.add(cell, ObjectPoolId(cellIdx, 0));
 	}
 
 	_filename.clear();

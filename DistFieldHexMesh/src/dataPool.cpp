@@ -1,4 +1,5 @@
 #include <volume.h> // Includes all the geometry types
+#include <cell.h>
 
 using namespace DFHM;
 

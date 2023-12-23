@@ -54,7 +54,7 @@ const Index3& Volume::getBlockDims() const
 	return _blockDim;
 }
 
-Cell* Volume::getCell(size_t ix, size_t iy, size_t iz)
+bool Volume::cellExists(size_t ix, size_t iy, size_t iz) const
 {
 	size_t blkDim = Block::getBlockDim();
 	Vector3i idx(ix, iy, iz);
@@ -63,15 +63,18 @@ Cell* Volume::getCell(size_t ix, size_t iy, size_t iz)
 		blockIdx[i] = idx[i] / blkDim;
 		cellIdx[i] = idx[i] % blkDim;
 	}
-	Block* pBlock = getBlock(blockIdx);
-	if (pBlock) {
-		Cell* pCell = pBlock->getCell(cellIdx);
-		return pCell;
-	}
-	return nullptr;
+	if (!blockExists(blockIdx))
+		return false;
+	const auto& block = getBlock(blockIdx);
+	return block.cellExists(cellIdx);
 }
 
-const Cell* Volume::getCell(size_t ix, size_t iy, size_t iz) const
+bool Volume::cellExists(const Vector3i& blockIdx) const
+{
+	return cellExists(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
 {
 	size_t blkDim = Block::getBlockDim();
 	Vector3i idx(ix, iy, iz);
@@ -80,12 +83,23 @@ const Cell* Volume::getCell(size_t ix, size_t iy, size_t iz) const
 		blockIdx[i] = idx[i] / blkDim;
 		cellIdx[i] = idx[i] % blkDim;
 	}
-	const Block* pBlock = getBlock(blockIdx);
-	if (pBlock) {
-		const Cell* pCell = pBlock->getCell(cellIdx);
-		return pCell;
+	auto& block = getBlock(blockIdx);
+	auto& cell = block.getCell(cellIdx);
+	return cell;
+}
+
+const Cell& Volume::getCell(size_t ix, size_t iy, size_t iz) const
+{
+	size_t blkDim = Block::getBlockDim();
+	Vector3i idx(ix, iy, iz);
+	Vector3i blockIdx, cellIdx;
+	for (int i = 0; i < 3; i++) {
+		blockIdx[i] = idx[i] / blkDim;
+		cellIdx[i] = idx[i] % blkDim;
 	}
-	return nullptr;
+	auto& block = getBlock(blockIdx);
+	auto& cell = block.getCell(cellIdx);
+	return cell;
 }
 
 void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx)
@@ -492,10 +506,8 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 
 					size_t bIdx = calLinearBlockIndex(i, j, k);
 					if (!cellsToCreate[bIdx].empty()) {
-						Block* pBlock = getBlock(i, j, k, true);
-						if (pBlock) {
-							pBlock->createCells(cellsToCreate[bIdx], threadNum);
-						}
+						Block& block = getBlock(i, j, k);
+						block.createCells(cellsToCreate[bIdx], threadNum);
 					}
 				}
 			}
@@ -507,7 +519,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	return result;
 }
 
-CMeshPtr Volume::makeTris(bool cells)
+CMeshPtr Volume::makeTris(bool cells) const
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -536,9 +548,9 @@ CMeshPtr Volume::makeTris(bool cells)
 				blockOrigin[1] = _originMeters[1] + iy * blockSpan[1];
 				for (size_t iz = 0; iz < _blockDim[2]; iz++) {
 					blockOrigin[2] = _originMeters[2] + iz * blockSpan[2];
-					Block* pBlock = getBlock(ix, iy, iz);
-					if (pBlock) {
-						pBlock->addBlockTris(blockOrigin, blockSpan, result, cells);
+					if (blockExists(ix, iy, iz)) {
+						const Block& block = getBlock(ix, iy, iz);
+						block.addBlockTris(blockOrigin, blockSpan, result, cells);
 					}
 				}
 			}
@@ -574,7 +586,8 @@ void Volume::dumpSections(const string& dirName) const
 			for (size_t ix = 0; ix < numX; ix++) {
 				if (ix % bd == (bd - 1))
 					o << "|";
-				if (getCell(ix, iy, iz))
+
+				if (cellExists(ix, iy, iz))
 					o << "X";
 				else
 					o << " ";

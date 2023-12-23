@@ -2,6 +2,7 @@
 
 #include <triMesh.h>
 #include <dataPool.h>
+#include <cell.h>
 
 namespace DFHM {
 
@@ -16,16 +17,20 @@ public:
 
 	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
-	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum);
+	void addCell(size_t ix, size_t iy, size_t iz, size_t threadNum = 0);
+	void addCell(const Vector3i& cellIdx, size_t threadNum = 0);
+	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum = 0);
 	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
-	static size_t calcCellIndex(const Vector3i& celIdx);
-	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells);
+	static size_t calcCellIndex(const Vector3i& cellIdx);
+	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const;
 
 	size_t numCells() const;
-	Cell* getCell(size_t ix, size_t iy, size_t iz, bool create = false);
-	Cell* getCell(const Vector3i& idx, bool create = false);
-	const Cell* getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell* getCell(const Vector3i& idx) const;
+	bool cellExists(size_t ix, size_t iy, size_t iz) const;
+	bool cellExists(const Vector3i& idx) const;
+	Cell& getCell(size_t ix, size_t iy, size_t iz);
+	Cell& getCell(const Vector3i& idx);
+	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
+	const Cell& getCell(const Vector3i& idx) const;
 	void freeCell(size_t ix, size_t iy, size_t iz);
 	void freeCell(const Vector3i& idx);
 
@@ -77,37 +82,32 @@ inline size_t Block::calcCellIndex(const Vector3i& celIdx)
 	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
-inline Cell* Block::getCell(size_t ix, size_t iy, size_t iz, bool create)
+inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
 {
-	Cell* result = nullptr;
-	if (create)
-		fillEmpty();
+	return getCell(Vector3i(ix, iy, iz));
+}
+
+inline Cell& Block::getCell(const Vector3i& idx3)
+{
+	size_t idx = calcCellIndex(idx3);
+	if (idx < _cells.size()) {
+		auto& result = _cellPool[_cells[idx]];
+		return result;
+	}
+	throw std::exception("Block::getCell out of range");
+}
+
+inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
+{
 	size_t idx = calcCellIndex(ix, iy, iz);
 	if (idx < _cells.size()) {
-		if (create && _cells[idx] == -1) {
-			_cells[idx] = _cellPool.getObj(-1, result, true);
-		} else
-			result = _cellPool.getObj(_cells[idx]);
+		auto& result = _cellPool[_cells[idx]];
+		return result;
 	}
-
-	return result;
+	throw std::exception("Block::getCell out of range");
 }
 
-inline Cell* Block::getCell(const Vector3i& idx, bool create)
-{
-	return getCell(idx[0], idx[1], idx[2], create);
-}
-
-inline const Cell* Block::getCell(size_t ix, size_t iy, size_t iz) const
-{
-	size_t idx = calcCellIndex(ix, iy, iz);
-	if (idx < _cells.size())
-		return _cellPool.getObj(_cells[idx]);
-
-	return nullptr;
-}
-
-inline const Cell* Block::getCell(const Vector3i& idx) const
+inline const Cell& Block::getCell(const Vector3i& idx) const
 {
 	return getCell(idx[0], idx[1], idx[2]);
 }
