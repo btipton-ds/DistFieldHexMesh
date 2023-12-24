@@ -1,6 +1,8 @@
 #include <vector>
 #include <cell.h>
 #include <block.h>
+#include <volume.h>
+#include <vertex.h>
 #include <fstream>
 
 using namespace std;
@@ -235,7 +237,7 @@ void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 	}
 }
 
-void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const
+void Block::addBlockTris(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const
 {
 
 	if (useCells && !_cells.empty()) {
@@ -317,8 +319,33 @@ void Block::addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan,
 			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1] + blockSpan[1], blockOrigin[2] + blockSpan[2]),
 			Vector3d(blockOrigin[0], blockOrigin[1] + blockSpan[1], blockOrigin[2] + blockSpan[2]),
 		};
-		pMesh->addRectPrism(pts);
+		addRectPrismFaces(blockId, pts);
 	}
+}
+
+void Block::addRectPrismFaces(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const
+{
+	addQuadFace(blockId, { pts[0], pts[3], pts[2], pts[1] });
+	addQuadFace(blockId, { pts[4], pts[5], pts[6], pts[7] });
+
+	// add left and right
+	addQuadFace(blockId, { pts[0], pts[4], pts[7], pts[3] });
+	addQuadFace(blockId, { pts[1], pts[2], pts[6], pts[5] });
+
+	// add front and back
+	addQuadFace(blockId, { pts[0], pts[1], pts[5], pts[4] });
+	addQuadFace(blockId, { pts[2], pts[3], pts[7], pts[6] });
+
+}
+
+void Block::addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const
+{
+	Polygon poly;
+
+	poly.setOwnerBlockId(blockId);
+	for (const auto& pt : pts)
+		poly.addVertex( _vertexPool.add(pt, blockId));
+
 }
 
 void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)

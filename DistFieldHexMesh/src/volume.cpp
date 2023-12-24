@@ -8,7 +8,8 @@
 #include <block.h>
 #include <volume.h>
 #include <MultiCoreUtil.h>
-
+#include <vertex.h>
+#include <filesystem>
 using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
@@ -470,7 +471,63 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTr
 		}
 	}
 }
+Block& Volume::addBlock(size_t ix, size_t iy, size_t iz, size_t threadNum)
+{
+	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	ObjectPoolId poolId = _blocks[idx];
+	if (poolId == -1) {
+		poolId = ObjectPoolId(-1, threadNum);
+		poolId = _blocks[idx] = _blockPool.add(Block(), poolId);
+	}
+	return _blockPool[poolId];
+}
 
+Block& Volume::addBlock(const Vector3i& blockIdx, size_t threadNum)
+{
+	return addBlock(blockIdx[0], blockIdx[1], blockIdx[2], threadNum);
+}
+
+bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
+{
+	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	if (idx >= _blocks.size())
+		return false;
+	ObjectPoolId poolId = _blocks[idx];
+	return _blockPool.idExists(poolId);
+}
+
+bool Volume::blockExists(const Vector3i& blockIdx) const
+{
+	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
+{
+	lock_guard<mutex> lock(_mutex);
+
+	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	if (idx < _blocks.size()) {
+		ObjectPoolId poolId = _blocks[idx];
+		if (!_blockPool.idExists(poolId))
+			throw exception("Volume::getBlock block not allocated");
+		return _blockPool[poolId];
+	}
+	throw exception("Volume::getBlock index out of range");
+}
+
+Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
+{
+	lock_guard<mutex> lock(_mutex);
+
+	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	if (idx < _blocks.size()) {
+		ObjectPoolId poolId = _blocks[idx];
+		if (!_blockPool.idExists(poolId))
+			throw exception("Volume::getBlock not allocated");
+		return _blockPool[poolId];
+	}
+	throw exception("Volume::getBlock index out of range");
+}
 CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
 {
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -498,15 +555,15 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	createBlockCellRays(AxisIndex::Y, pTriMesh, blocksToCreate, cellsToCreate);
 	createBlockCellRays(AxisIndex::Z, pTriMesh, blocksToCreate, cellsToCreate);
 
-	std::cout << "Blockdim: " << _blockDim << "\n";
 	MultiCore::runLambda([this, pTriMesh, &cellsToCreate](size_t threadNum, size_t numThreads) {
-		for (size_t i = threadNum; i < _blockDim[0]; i += numThreads) {
-			for (size_t j = 0; j < _blockDim[1]; j++) {
-				for (size_t k = 0; k < _blockDim[2]; k++) {
+		Vector3i blockIdx;
+		for (blockIdx[0] = threadNum; blockIdx[0] < _blockDim[0]; blockIdx[0] += numThreads) {
+			for (blockIdx[1] = 0; blockIdx[1] < _blockDim[1]; blockIdx[1]++) {
+				for (blockIdx[2] = 0; blockIdx[2] < _blockDim[2]; blockIdx[2]++) {
 
-					size_t bIdx = calLinearBlockIndex(i, j, k);
+					size_t bIdx = calLinearBlockIndex(blockIdx);
 					if (!cellsToCreate[bIdx].empty()) {
-						Block& block = getBlock(i, j, k);
+						Block& block = addBlock(blockIdx, threadNum);
 						block.createCells(cellsToCreate[bIdx], threadNum);
 					}
 				}
@@ -514,12 +571,12 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 		}
 	}, RUN_MULTI_THREAD);
 
-	CMeshPtr result = makeTris(true);
+	CMeshPtr result = makeTris(false);
 
 	return result;
 }
 
-CMeshPtr Volume::makeTris(bool cells) const
+CMeshPtr Volume::makeTris(bool cells)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -542,15 +599,17 @@ CMeshPtr Volume::makeTris(bool cells) const
 		Vector3d blockOrigin;
 		auto result = results[threadNum];
 
-		for (size_t ix = threadNum; ix < _blockDim[0]; ix += numThreads) {
-			blockOrigin[0] = _originMeters[0] + ix * blockSpan[0];
-			for (size_t iy = 0; iy < _blockDim[1]; iy++) {
-				blockOrigin[1] = _originMeters[1] + iy * blockSpan[1];
-				for (size_t iz = 0; iz < _blockDim[2]; iz++) {
-					blockOrigin[2] = _originMeters[2] + iz * blockSpan[2];
-					if (blockExists(ix, iy, iz)) {
-						const Block& block = getBlock(ix, iy, iz);
-						block.addBlockTris(blockOrigin, blockSpan, result, cells);
+		Vector3i blockIdx;
+		for (blockIdx[0] = threadNum; blockIdx[0] < _blockDim[0]; blockIdx[0] += numThreads) {
+			blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
+			for (blockIdx[1] = 0; blockIdx[1] < _blockDim[1]; blockIdx[1]++) {
+				blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
+				for (blockIdx[2] = 0; blockIdx[2] < _blockDim[2]; blockIdx[2]++) {
+					blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
+					if (blockExists(blockIdx)) {
+						const Block& block = getBlock(blockIdx);
+						ObjectPoolId blockId = _blocks[calLinearBlockIndex(blockIdx)];
+						block.addBlockTris(blockId, blockOrigin, blockSpan, result, cells);
 					}
 				}
 			}
@@ -563,6 +622,79 @@ CMeshPtr Volume::makeTris(bool cells) const
 	cout << "Num tris: " << result->numTris();
 	cout << "Num cells: " << result->numTris() / 12;
 	return result;
+}
+
+namespace {
+	void appendDir(string& dirName, const string& str)
+	{
+		if (dirName.find_last_of("/") != dirName.length() - 1)
+			dirName += "/";
+		dirName += str;
+	}
+}
+
+void Volume::writePolyMesh(const string& dirNameIn) const
+{
+
+	string dirName(dirNameIn);
+	if (dirName.find("constant") == string::npos)
+		appendDir(dirName, "constant");
+	if (dirName.find("polyMesh") == string::npos)
+		appendDir(dirName, "polyMesh");
+	
+	filesystem::path dirPath(dirName);
+	filesystem::remove_all(dirPath);
+	filesystem::create_directories(dirPath);
+	writePolyMeshPoints(dirName);
+}
+
+void Volume::writePolyMeshPoints(const std::string& dirName) const
+{
+	ofstream out(dirName + "/points", ios_base::binary);
+	writeFOAMHeader(out, "vectorField", "points");
+	size_t numPoints = 0;
+	_vertexPool.iterateInOrder([&numPoints](const Vertex& vert) {
+		numPoints++;
+	});
+	out << numPoints << "\n";
+	_vertexPool.iterateInOrder([&out, &numPoints](const Vertex& vert) {
+		char openParen = '(';
+		char closeParen = ')';
+
+		const double& x = vert.getPoint()[0];
+		const double& y = vert.getPoint()[1];
+		const double& z = vert.getPoint()[2];
+
+		out.write(&openParen, 1);
+		out.write((char*)&x, sizeof(x));
+		out.write((char*)&y, sizeof(y));
+		out.write((char*)&z, sizeof(z));
+		out.write(&closeParen, 1);
+	});
+}
+
+void Volume::writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const
+{
+	out << "/*--------------------------------*- C++ -*----------------------------------*/\n";
+	out << "| =========                 |                                                 |\n";
+	out << "| \\ / F ield | OpenFOAM: The Open Source CFD Toolbox           |\n";
+	out << "| \\ / O peration | Version:  v1812                                 |\n";
+	out << "|   \\ / A nd | Web:      www.OpenFOAM.com                      |\n";
+	out << "|    \\ / M anipulation  |                                                 |\n";
+	out << "/* -------------------------------------------------------------------------- - */\n";
+	out << "FoamFile\n";
+	out << "	{\n";
+	out << "		version     2.0;\n";
+	out << "		format      binary;\n";
+	out << "		class       " << foamClass << ";\n";
+	out << "		arch        \"LSB; label = 32; scalar = 64\";\n";
+	out << "		location    \"constant / polyMesh\";\n";
+	out << "		object      " << object << ";\n";
+	out << "	}\n";
+	out << "		// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n";
+	out << "\n";
+	out << "\n";
+
 }
 
 void Volume::dumpSections(const string& dirName) const

@@ -24,6 +24,7 @@ enum DFHM_MENU_ID
     ID_AnalyzeGaps,
     ID_FindMinimumGap,
     ID_BuildCFDHexes,
+    ID_WRITE_POLYMESH,
 
     ID_SHOW_SHARP_EDGES,
     ID_SHOW_TRI_NORMALS,
@@ -64,6 +65,7 @@ private:
 
     void OnOpen(wxCommandEvent& event);
     void OnNew(wxCommandEvent& event);
+    void OnWritePolymesh(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);

@@ -9,6 +9,7 @@
 #include <blockTest.h>
 #include <dataPool.h>
 #include <MultiCoreUtil.h>
+#include <vertex.h>
 
 using namespace std;
 

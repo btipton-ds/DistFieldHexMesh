@@ -17,6 +17,7 @@
 #include <makeBlockDlg.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
+#include <vertex.h>
 
 using namespace std;
 using namespace DFHM;
@@ -72,6 +73,9 @@ void MainFrame::createFileMenu()
 
     _fileMenu->Append(wxID_NEW);
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
+
+    _fileMenu->Append(ID_WRITE_POLYMESH, "Write Polymesh");
+    Bind(wxEVT_MENU, &MainFrame::OnWritePolymesh, this, ID_WRITE_POLYMESH);
 
     _fileMenu->Append(wxID_CLOSE);
     Bind(wxEVT_MENU, &MainFrame::OnClose, this, wxID_CLOSE);
@@ -183,6 +187,15 @@ void MainFrame::OnNew(wxCommandEvent& event)
     MakeBlockDlg dlg(this, 1, wxString("Make Block"), wxPoint(40,40));
     if (dlg.ShowModal() == wxID_OK) {
         dlg.makeBlock();
+    }
+}
+
+void MainFrame::OnWritePolymesh(wxCommandEvent& event)
+{
+    wxDirDialog dlg(this, "Choose OpenFoam Project Directory");
+    if (dlg.ShowModal() == wxID_OK) {
+        auto dirPath = dlg.GetPath().ToStdString();
+        _pAppData->getVolume()->writePolyMesh(dirPath);
     }
 }
 

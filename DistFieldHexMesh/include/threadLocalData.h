@@ -19,6 +19,12 @@ namespace DFHM_ObjectPool {
 		const T& operator[](size_t id) const;
 		T& operator[](size_t id);
 
+		template<class FUNC>
+		void iterateInOrder(FUNC f) const
+		{
+			_pool.iterateInOrder(f);
+		}
+
 		size_t getNumAllocated() const;
 		size_t getNumAvailable() const;
 		size_t getNumAvailableIds() const;

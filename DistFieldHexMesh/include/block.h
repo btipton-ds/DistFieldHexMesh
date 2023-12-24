@@ -6,6 +6,8 @@
 
 namespace DFHM {
 
+class Volume;
+
 class Block : public DataPool {
 public:
 	static void setBlockDim(size_t dim);
@@ -22,7 +24,7 @@ public:
 	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum = 0);
 	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
 	static size_t calcCellIndex(const Vector3i& cellIdx);
-	void addBlockTris(const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const;
+	void addBlockTris(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const;
 
 	size_t numCells() const;
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;
@@ -58,6 +60,9 @@ private:
 
 	using RayTriIntersectVec = std::vector<RayTriIntersect>;
 	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
+
+	void addRectPrismFaces(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const;
+	void addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const;
 
 	std::string _filename;
 

@@ -41,6 +41,8 @@ public:
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
 	bool blockExists(const Vector3i& blockIdx) const;
+	Block& addBlock(size_t ix, size_t iy, size_t iz, size_t threadNum);
+	Block& addBlock(const Vector3i& blockIdx, size_t threadNum);
 	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block& getBlock(const Vector3i& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
@@ -59,7 +61,10 @@ public:
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
 //	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr makeTris(bool cells = true) const;
+	TriMesh::CMeshPtr makeTris(bool cells = true);
+
+	void writePolyMesh(const std::string& dirName) const;
+
 	void dumpSections(const std::string& dirName) const;
 
 private:
@@ -73,6 +78,9 @@ private:
 	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
 	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
 
+	void writePolyMeshPoints(const std::string& dirName) const;
+	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
+
 	mutable std::mutex _mutex;
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
@@ -85,47 +93,7 @@ private:
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-inline bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
-{
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
-	if (idx >= _blocks.size())
-		return false;
-	ObjectPoolId poolId = _blocks[idx];
-	return _blockPool.idExists(poolId);
-}
 
-inline bool Volume::blockExists(const Vector3i& blockIdx) const
-{
-	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
-}
-
-inline const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
-{
-	std::lock_guard<std::mutex> lock(_mutex);
-
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
-	if (idx < _blocks.size()) {
-		ObjectPoolId poolId = _blocks[idx];
-		if (!_blockPool.idExists(poolId))
-			throw std::exception("Volume::getBlock block not allocated");
-		return _blockPool[poolId];
-	}
-	throw std::exception("Volume::getBlock index out of range");
-}
-
-inline Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
-{
-	std::lock_guard<std::mutex> lock(_mutex);
-
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
-	if (idx < _blocks.size()) {
-		ObjectPoolId poolId = _blocks[idx];
-		if (!_blockPool.idExists(poolId))
-			poolId = _blocks[idx] = _blockPool.add(Block(), poolId);
-		return _blockPool[poolId];
-	}
-	throw std::exception("Volume::getBlock index out of range");
-}
 
 inline const Block& Volume::getBlock(const Vector3i& blockIdx) const
 {

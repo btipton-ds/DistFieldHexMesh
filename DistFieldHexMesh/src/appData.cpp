@@ -12,6 +12,7 @@
 #include <graphicsCanvas.h>
 #include <volume.h>
 #include <dataPool.h>
+#include <vertex.h>
 
 using namespace std;
 using namespace DFHM;
@@ -241,7 +242,7 @@ void AppData::doBuildCFDHexes()
 
     Block::setBlockDim(8);
 
-    double gap = 0.001 / 2;
+    double gap = 0.001 / 1;
     if (gap <= 0)
         gap = _pMesh->findMinGap();
 

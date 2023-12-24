@@ -14,7 +14,7 @@ public:
 	ObjectPool() = default;
 
 	size_t getNumThreads() const;
-	void setNumThreads(size_t val);
+	virtual void setNumThreads(size_t val);
 
 	void testReset();
 
@@ -22,9 +22,17 @@ public:
 	void unload(const ObjectPoolId& id); // Free the memory, but keep the id
 
 	bool idExists(const ObjectPoolId& id) const;
-	ObjectPoolId add(const T& obj, const ObjectPoolId& id = ObjectPoolId());
+	virtual ObjectPoolId add(const T& obj, const ObjectPoolId& id = ObjectPoolId());
 	const T& operator[](const ObjectPoolId& id) const;
 	T& operator[](const ObjectPoolId& id);
+
+	template<class F>
+	void iterateInOrder(F fLambda) const
+	{
+		for (auto& data : _threadLocalData) {
+			data.iterateInOrder(fLambda);
+		}
+	}
 
 	size_t getNumAllocated(size_t threadIndex = -1) const;
 	size_t getNumAvailable(size_t threadIndex = -1) const;

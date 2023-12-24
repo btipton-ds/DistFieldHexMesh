@@ -47,7 +47,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- "src/dataPool.cpp")
+ "src/dataPool.cpp" "src/vertexManager.cpp")
 
 add_executable (TestDFM         
 	"src/mainTest.cpp"
@@ -58,7 +58,7 @@ add_executable (TestDFM
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
 	"src/vertex.cpp"
- "src/blockTest.cpp" "src/dataPool.cpp")
+ "src/blockTest.cpp" "src/dataPool.cpp" "src/vertexManager.cpp")
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	target_link_libraries("DistFieldHexMesh" 
@@ -110,8 +110,11 @@ add_custom_command(
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
 )
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET DistFieldHexMesh PROPERTY CXX_STANDARD 20)
-endif()
+if(MSVC)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
+else(MSVC)
+target_compile_features(DistFieldHexMesh PRIVATE cxx_std_17)
+endif(MSVC)
+
 
 # TODO: Add tests and install targets if needed.

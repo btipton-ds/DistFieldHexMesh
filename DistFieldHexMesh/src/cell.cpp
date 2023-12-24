@@ -2,6 +2,7 @@
 #include <cell.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <vertex.h>
 
 using namespace std;
 using namespace DFHM;

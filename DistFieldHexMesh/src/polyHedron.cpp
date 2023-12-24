@@ -1,4 +1,5 @@
 #include <polyhedron.h>
+#include <vertex.h>
 
 using namespace DFHM;
 

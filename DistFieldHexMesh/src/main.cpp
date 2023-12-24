@@ -14,6 +14,7 @@
 
 #include <app.h>
 #include <mainFrame.h>
+#include <vertex.h>
 
 using namespace std;
 using namespace DFHM;

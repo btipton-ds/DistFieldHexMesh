@@ -6,6 +6,7 @@
 #include <cell.h>
 #include <block.h>
 #include <blockTest.h>
+#include <vertex.h>
 
 using namespace std;
 using namespace TriMesh;
@@ -230,7 +231,7 @@ bool TestBlock::testBlock04()
 	TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
 	pMesh->reset(meshBB);
 
-	block.addBlockTris(blockOrigin, span, pMesh, true);
+	block.addBlockTris(ObjectPoolId(0, 0), blockOrigin, span, pMesh, true);
 
 	for (size_t i = 0; i < bd; i++) {
 		cellOrgin[0] = blockOrigin[0] + i * cellSpan[0];
