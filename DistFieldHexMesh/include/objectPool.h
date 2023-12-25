@@ -5,6 +5,7 @@
 #include <segmentedVector.h>
 #include <objectPoolId.h>
 #include <threadLocalData.h>
+#include <stdexcept>
 
 namespace DFHM {
 
@@ -105,7 +106,7 @@ inline T& ObjectPool<T>::operator[](const ObjectPoolId& id)
 		return t[id.getIndex()];
 
 	}
-	throw std::exception("ObjectPool<T>::operator[] out of range");
+	throw std::runtime_error("ObjectPool<T>::operator[] out of range");
 }
 
 template<class T>
@@ -113,7 +114,7 @@ inline const T& ObjectPool<T>::operator[](const ObjectPoolId& id) const
 {
 	if (id.getThreadIndex() < _threadLocalData.size())
 		return _threadLocalData[id.getThreadIndex()][id.getIndex()];
-	throw std::exception("ObjectPool<T>::operator[] out of range");
+	throw std::runtime_error("ObjectPool<T>::operator[] out of range");
 }
 
 template<class T>

@@ -3,6 +3,7 @@
 #include <triMesh.h>
 #include <dataPool.h>
 #include <cell.h>
+#include <stdexcept>
 
 namespace DFHM {
 
@@ -99,7 +100,7 @@ inline Cell& Block::getCell(const Vector3i& idx3)
 		auto& result = _cellPool[_cells[idx]];
 		return result;
 	}
-	throw std::exception("Block::getCell out of range");
+	throw std::runtime_error("Block::getCell out of range");
 }
 
 inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
@@ -109,7 +110,7 @@ inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
 		auto& result = _cellPool[_cells[idx]];
 		return result;
 	}
-	throw std::exception("Block::getCell out of range");
+	throw std::runtime_error("Block::getCell out of range");
 }
 
 inline const Cell& Block::getCell(const Vector3i& idx) const

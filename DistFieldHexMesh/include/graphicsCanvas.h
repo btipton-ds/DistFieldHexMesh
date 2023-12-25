@@ -4,7 +4,7 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
-#include <OglMath.h>
+#include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
 

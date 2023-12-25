@@ -10,6 +10,8 @@
 #include <MultiCoreUtil.h>
 #include <vertex.h>
 #include <filesystem>
+#include <stdexcept>
+
 using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
@@ -509,10 +511,10 @@ const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 	if (idx < _blocks.size()) {
 		ObjectPoolId poolId = _blocks[idx];
 		if (!_blockPool.idExists(poolId))
-			throw exception("Volume::getBlock block not allocated");
+			throw runtime_error("Volume::getBlock block not allocated");
 		return _blockPool[poolId];
 	}
-	throw exception("Volume::getBlock index out of range");
+	throw runtime_error("Volume::getBlock index out of range");
 }
 
 Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
@@ -523,10 +525,10 @@ Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
 	if (idx < _blocks.size()) {
 		ObjectPoolId poolId = _blocks[idx];
 		if (!_blockPool.idExists(poolId))
-			throw exception("Volume::getBlock not allocated");
+			throw runtime_error("Volume::getBlock not allocated");
 		return _blockPool[poolId];
 	}
-	throw exception("Volume::getBlock index out of range");
+	throw runtime_error("Volume::getBlock index out of range");
 }
 CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
 {

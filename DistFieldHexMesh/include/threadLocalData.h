@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <segmentedVector.h>
+#include <stdexcept>
 
 namespace DFHM_ObjectPool {
 	using namespace DFHM;
@@ -122,7 +123,7 @@ namespace DFHM_ObjectPool {
 		if (id != -1 && id < _idToIndexMap.size())
 			return _pool[_idToIndexMap[id]];
 
-		throw std::exception("ThreadLocalData<T, BITS>::operator[] out of bounds");
+		throw std::runtime_error("ThreadLocalData<T, BITS>::operator[] out of bounds");
 	}
 
 	template<class T, int BITS>
@@ -131,7 +132,7 @@ namespace DFHM_ObjectPool {
 		if (id != -1 && id < _idToIndexMap.size())
 			return _pool[_idToIndexMap[id]];
 
-		throw std::exception("ThreadLocalData<T, BITS>::operator[] out of bounds");
+		throw std::runtime_error("ThreadLocalData<T, BITS>::operator[] out of bounds");
 	}
 
 	template<class T, int BITS>

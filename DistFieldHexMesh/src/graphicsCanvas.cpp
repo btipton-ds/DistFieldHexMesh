@@ -1,5 +1,5 @@
 #include <memory>
-#include <GraphicsCanvas.h>
+#include <graphicsCanvas.h>
 
 #ifdef __WXMAC__
 #include <GLUT/glut.h>
@@ -13,8 +13,8 @@
 #endif
 
 #include <OGLMultiVboHandlerTempl.h>
-#include <OglShader.h>
-#include <OglMath.h>
+#include <OGLShader.h>
+#include <OGLMath.h>
 #include <cmath>
 
 using namespace std;

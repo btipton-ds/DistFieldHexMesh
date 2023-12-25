@@ -13,7 +13,7 @@
 #include <mutex>
 #include "indices.h"
 #include <triMesh.h>
-#include <ObjectPool.h>
+#include <objectPool.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <cell.h>
