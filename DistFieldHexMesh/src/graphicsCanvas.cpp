@@ -1,11 +1,20 @@
 #include <memory>
 #include <graphicsCanvas.h>
 
+#ifdef WIN32
+#include <Windows.h>
+#include <GL/gl.h>
+#include <GL/glext.h>
+#include <GL/wglext.h>
+#else
+#include "/usr/include/GL/gl.h"
+#include "/usr/include/GL/glext.h"
+#endif
+
 #ifdef __WXMAC__
 #include <GLUT/glut.h>
 #else
 #include <GL/glu.h>
-#include </usr/include/GL/glext.h>
 #endif
 
 #ifndef WIN32
