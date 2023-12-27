@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#define GL_GLEXT_PROTOTYPES
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
@@ -20,7 +21,11 @@ namespace DFHM {
 using GraphicsCanvasBase = wxGLCanvas;
 #endif
 
+#ifdef WIN32
 class GraphicsCanvas : public GraphicsCanvasBase, public COglExtensions 
+#else
+class GraphicsCanvas : public GraphicsCanvasBase 
+#endif
 {
 public:
 

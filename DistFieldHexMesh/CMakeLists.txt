@@ -12,6 +12,14 @@ include(${wxWidgets_USE_FILE})
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
 
+if(WIN32)
+set(OpenGlPlatform "win")
+set(OpenGlPlatformDecl WIN32)
+else(WIN32)
+set(OpenGlPlatform "linux")
+set(OpenGlPlatformDecl )
+endif(WIN32)
+
 include_directories(
 	"include"
 	"../../ThirdParty/eigen/"
@@ -19,17 +27,25 @@ include_directories(
 	"../../triMesh/stlReader/include/"
 	"../../utilities/threads/include/"
 	"${OpenGlDir}/include/"
+	"${OpenGlDir}/include/${OpenGlPlatform}/"
 	"${wxWidgets_INCLUDE_DIRS}"
 )
 
-
+if(WIN32)
 link_directories(
 	"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/"
 	${triMeshLibDir}
 )
+else()
+link_directories(
+	"/usr/local/lib/libwx_gtk3u-3.2"
+	"/usr/local/lib/x86_64-linux-gnu"
+	${triMeshLibDir}
+)
+endif()
 
 add_executable (DistFieldHexMesh         
-	WIN32
+	${OpenGlPlatformDecl}
 	"src/main.cpp" 
 	"src/volume.cpp"
 	"src/mainFrame.cpp"
@@ -43,7 +59,8 @@ add_executable (DistFieldHexMesh
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
 	"src/vertex.cpp"
-	"${OpenGlDir}/src/OGLExtensions.cpp"
+	"${OpenGlDir}/src/${OpenGlPlatform}/"
+	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
@@ -65,6 +82,7 @@ add_executable (TestDFM
  	"src/vertexManager.cpp"
  )
 
+if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	target_link_libraries("DistFieldHexMesh" 
 		PUBLIC triMesh
@@ -74,7 +92,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 		PUBLIC comctl32
 		PUBLIC rpcrt4
 
-		#wxWidgests Libraries
+		#wxWidgets Libraries
 		PUBLIC wxbase32ud
 		PUBLIC wxmsw32ud_core
 		PUBLIC wxpngd
@@ -90,7 +108,7 @@ else()
 	PUBLIC comctl32
 	PUBLIC rpcrt4
 
-	#wxWidgests Libraries
+	#wxWidgets Libraries
 	PUBLIC wxbase32u
 	PUBLIC wxmsw32u_core
 	PUBLIC wxpng
@@ -98,6 +116,20 @@ else()
 	PUBLIC wxmsw32u_gl
 	)
 endif()
+else(WIN32)
+target_link_libraries("DistFieldHexMesh" 
+	PUBLIC triMesh
+	PUBLIC stlReader
+
+	PUBLIC GL
+	PUBLIC GLU
+	PUBLIC GLX
+
+	#wxWidgets Libraries
+	PUBLIC wx_gtk3u-3.2
+	PUBLIC wx_gtk3u_gl-3.2
+)
+endif(WIN32)
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh
@@ -115,11 +147,12 @@ add_custom_command(
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
 )
 
-if(MSVC)
+if(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
-else(MSVC)
-target_compile_features(DistFieldHexMesh PRIVATE cxx_std_17)
-endif(MSVC)
+else(WIN32)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-enum-enum-conversion")
+target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20)
+endif(WIN32)
 
 
 # TODO: Add tests and install targets if needed.

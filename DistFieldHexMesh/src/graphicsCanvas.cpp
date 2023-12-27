@@ -5,6 +5,7 @@
 #include <GLUT/glut.h>
 #else
 #include <GL/glu.h>
+#include </usr/include/GL/glext.h>
 #endif
 
 #ifndef WIN32
