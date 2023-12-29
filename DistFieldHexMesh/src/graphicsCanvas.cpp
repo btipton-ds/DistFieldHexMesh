@@ -18,7 +18,7 @@
 #endif
 
 #ifndef WIN32
-#include <unistd.h> // FIXME: ¿This work/necessary in Windows?
+#include <unistd.h> // FIXME: ï¿½This work/necessary in Windows?
 //Not necessary, but if it was, it needs to be replaced by process.h AND io.h
 #endif
 
