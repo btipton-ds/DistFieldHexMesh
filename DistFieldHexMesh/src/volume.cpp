@@ -489,6 +489,29 @@ Block& Volume::addBlock(const Vector3i& blockIdx, size_t threadNum)
 	return addBlock(blockIdx[0], blockIdx[1], blockIdx[2], threadNum);
 }
 
+TriMesh::CMeshPtr Volume::addAllBlocks()
+{
+	Vector3d origin, blockSpan;
+	for (int i = 0; i < 3; i++) {
+		blockSpan[i] = _spanMeters[i] / _blockDim[i];
+	}
+
+	Vector3i blkIdx;
+	for (blkIdx[0] = 0; blkIdx[0] < _blockDim[0]; blkIdx[0]++) {
+		origin[1] = _originMeters[1] + blkIdx[0] * blockSpan[1];
+		for (blkIdx[1] = 0; blkIdx[1] < _blockDim[1]; blkIdx[1]++) {
+			origin[1] = _originMeters[1] + blkIdx[1] * blockSpan[1];
+
+			for (blkIdx[2] = 0; blkIdx[2] < _blockDim[2]; blkIdx[2]++) {
+				origin[2] = _originMeters[2] + blkIdx[2] * blockSpan[2];
+				Block& block = addBlock(blkIdx, 0);
+			}
+		}
+	}
+
+	return makeTris(false);
+}
+
 bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
 {
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
@@ -530,6 +553,7 @@ Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
 	}
 	throw runtime_error("Volume::getBlock index out of range");
 }
+
 CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
 {
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -578,7 +602,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	return result;
 }
 
-CMeshPtr Volume::makeTris(bool cells)
+CMeshPtr Volume::makeTris(bool makeCells)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -597,7 +621,7 @@ CMeshPtr Volume::makeTris(bool cells)
 		blockSpan[i] = _spanMeters[i] / _blockDim[i];
 
 //	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
-	MultiCore::runLambda([this, &blockSpan, &results, cells](size_t threadNum, size_t numThreads) {
+	MultiCore::runLambda([this, &blockSpan, &results, makeCells](size_t threadNum, size_t numThreads) {
 		Vector3d blockOrigin;
 		auto result = results[threadNum];
 
@@ -611,7 +635,7 @@ CMeshPtr Volume::makeTris(bool cells)
 					if (blockExists(blockIdx)) {
 						const Block& block = getBlock(blockIdx);
 						ObjectPoolId blockId = _blocks[calLinearBlockIndex(blockIdx)];
-						block.addBlockTris(blockId, blockOrigin, blockSpan, result, cells);
+						block.addBlockTris(blockId, blockOrigin, blockSpan, result, makeCells);
 					}
 				}
 			}
@@ -621,8 +645,8 @@ CMeshPtr Volume::makeTris(bool cells)
 	CMeshPtr result = results.back();
 	results.pop_back();
 	result->merge(results, true);
-	cout << "Num tris: " << result->numTris();
-	cout << "Num cells: " << result->numTris() / 12;
+	cout << "Num tris: " << (result->numTris()) << "\n";
+	cout << "Num cells: " << (result->numTris() / 12) << "\n";
 	return result;
 }
 

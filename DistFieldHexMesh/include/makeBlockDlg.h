@@ -12,18 +12,25 @@ namespace DFHM {
 
 class MakeBlockDlg : public wxDialog {
 public:
+	enum BlockType {
+		BLOCK_TYPE_BLOCK = 0,
+		BLOCK_TYPE_CYLINDER = 1,
+		BLOCK_TYPE_WEDGE = 2,
+	};
+
 	MakeBlockDlg(wxWindow* parent, wxWindowID id, const wxString& title, 
 	const wxPoint& pos = wxDefaultPosition);
-	void makeBlock();
 
 	void comboBoxTypeComboAction(const wxCommandEvent& event);
 	void comboBoxAxisComboAction(const wxCommandEvent& event);
+
+	int getSelection() const;
+
 private:
 	void comboBoxTypeKeyAction(wxKeyEvent& event);
 	void comboBoxAxisKeyAction(wxKeyEvent& event);
 
 	void setBlockType(int blockType);
-
 
 	int _curType = -1;
 	wxChoice* _comboBoxType;
@@ -62,5 +69,12 @@ private:
 		* _cancelButton;
 
 };
+
+inline int MakeBlockDlg::getSelection() const
+{
+	if (_comboBoxType)
+		return _comboBoxType->GetSelection();
+	return -1;
+}
 
 }

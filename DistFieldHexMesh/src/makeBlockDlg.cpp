@@ -3,6 +3,8 @@
 #include <wx/string.h>
 #include <wx/wfstream.h>
 #include <filesystem>
+#include <block.h>
+#include <volume.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -11,24 +13,27 @@
 using namespace std;
 using namespace DFHM;
 
-#define BLOCK_TYPE_BLOCK 0
-#define BLOCK_TYPE_CYLINDER 1
-#define BLOCK_TYPE_WEDGE 2
-
 #define COMBO_TYPE_ID 0
 #define COMBO_AXIS_ID 1
 #define OUTER_RAD_ID 2
 
 namespace {
+#ifdef WIN32
 	int col0 = 8;
 	int col1 = 120;
 	int rowHeight = 24;
 	int comboOffset = 3;
+#else
+	int col0 = 8;
+	int col1 = 150;
+	int rowHeight = 34;
+	int comboOffset = 6;
+#endif
 }
 
 MakeBlockDlg::MakeBlockDlg(wxWindow* parent, wxWindowID id, const wxString& title,
 	const wxPoint& pos)
-	: wxDialog(parent, id, title, pos, wxSize(400,400), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
+	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
 {
 
 	int rowNum = 1;
@@ -106,15 +111,10 @@ MakeBlockDlg::MakeBlockDlg(wxWindow* parent, wxWindowID id, const wxString& titl
 	_heightPrompt->Show(false);
 	_heightBox->Show(false);
 
-	_okButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(180, (rowNum + 6) * rowHeight));
-	_cancelButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(100, (rowNum + 6) * rowHeight));
+	_okButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(col1 + 100, (rowNum + 7) * rowHeight));
+	_cancelButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(col1, (rowNum + 7) * rowHeight));
 
 	setBlockType(BLOCK_TYPE_CYLINDER);
-}
-
-void MakeBlockDlg::makeBlock()
-{
-
 }
 
 void MakeBlockDlg::comboBoxTypeKeyAction(wxKeyEvent& event)

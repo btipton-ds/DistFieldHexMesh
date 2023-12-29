@@ -341,7 +341,7 @@ void Block::addRectPrismFaces(const ObjectPoolId& blockId, const std::vector<Vec
 void Block::addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const
 {
 	Polygon poly;
-
+cout << "Adding quad face\n";
 	poly.setOwnerBlockId(blockId);
 	for (const auto& pt : pts)
 		poly.addVertex( _vertexPool.add(pt, blockId));

@@ -71,10 +71,10 @@ void MainFrame::createFileMenu()
     _fileMenu->Append(wxID_OPEN);
     Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 
-    _fileMenu->Append(wxID_NEW);
+    _fileMenu->Append(wxID_NEW, "New...");
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
 
-    _fileMenu->Append(ID_WRITE_POLYMESH, "Write Polymesh");
+    _fileMenu->Append(ID_WRITE_POLYMESH, "Write Polymesh...");
     Bind(wxEVT_MENU, &MainFrame::OnWritePolymesh, this, ID_WRITE_POLYMESH);
 
     _fileMenu->Append(wxID_CLOSE);
@@ -82,7 +82,7 @@ void MainFrame::createFileMenu()
 
     _fileMenu->AppendSeparator();
 
-    _fileMenu->Append(wxID_EXIT, "Quit\tCtrl-Q");
+    _fileMenu->Append(wxID_EXIT);
     Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 
     _menuBar->Append(_fileMenu, "&File");
@@ -186,7 +186,7 @@ void MainFrame::OnNew(wxCommandEvent& event)
 {
     MakeBlockDlg dlg(this, 1, wxString("Make Block"), wxPoint(40,40));
     if (dlg.ShowModal() == wxID_OK) {
-        dlg.makeBlock();
+    	_pAppData->doNew(dlg);
     }
 }
 

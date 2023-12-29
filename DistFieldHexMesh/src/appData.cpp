@@ -8,6 +8,7 @@
 #include <readStl.h>
 #include <MultiCoreUtil.h>
 
+#include <makeBlockDlg.h>
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
@@ -235,6 +236,50 @@ void AppData::doFindMinGap() const
     wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
 }
 
+void AppData::doNew(const MakeBlockDlg& dlg)
+{
+	switch (dlg.getSelection()) {
+		default:
+			break;
+		case MakeBlockDlg::BLOCK_TYPE_BLOCK:
+			makeBlock(dlg);
+			break;
+		case MakeBlockDlg::BLOCK_TYPE_CYLINDER:
+			makeCylinderWedge(dlg, true);
+			break;
+		case MakeBlockDlg::BLOCK_TYPE_WEDGE:
+			makeCylinderWedge(dlg, false);
+			break;
+	}
+}
+
+void AppData::makeBlock(const MakeBlockDlg& dlg)
+{
+	Volume vol(Index3(2, 2, 2));
+	auto blockMesh = vol.addAllBlocks();
+    if (blockMesh->numTris() > 0) {
+        auto pCanvas = _pMainFrame->getCanvas();
+
+        pCanvas->beginFaceTesselation();
+        auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
+            _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+
+        auto blockTess = pCanvas->setFaceTessellation(blockMesh->getId(), blockMesh->getChangeNumber(), blockMesh->getGlPoints(), blockMesh->getGlNormals(false),
+            blockMesh->getGlParams(), blockMesh->getGlFaceIndices());
+
+        pCanvas->endFaceTesselation(false);
+
+        pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
+        pCanvas->includeFaceElementIndices(0, *triTess);
+        pCanvas->includeFaceElementIndices(1, *blockTess);
+        pCanvas->endSettingFaceElementIndices();
+    }
+}
+
+void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
+{
+}
+
 void AppData::doBuildCFDHexes()
 {
     if (!_volume)
@@ -249,7 +294,7 @@ void AppData::doBuildCFDHexes()
     double superCellSize = gap * Block::getBlockDim();
 
     auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
-    _volume->dumpSections(_workDirName);
+//    _volume->dumpSections(_workDirName);
 
     if (blockMesh->numTris() > 0) {
         auto pCanvas = _pMainFrame->getCanvas();

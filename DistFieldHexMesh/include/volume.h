@@ -34,9 +34,13 @@ public:
 	Volume(const Index3& size = Index3(0, 0, 0));
 	Volume(const Volume& src);
 
+	void setOrigin(const Vector3d& origin);
+	void setSpan(const Vector3d& span);
 	void setBlockDims(const Index3& size);
 	const Index3& getBlockDims() const;
 	const Index3& getDims() const;
+
+	TriMesh::CMeshPtr addAllBlocks();
 
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
@@ -94,6 +98,15 @@ private:
 using VolumePtr = std::shared_ptr<Volume>;
 
 
+inline void Volume::setOrigin(const Vector3d& origin)
+{
+	_originMeters = origin;
+}
+
+inline void Volume::setSpan(const Vector3d& span)
+{
+	_spanMeters = span;
+}
 
 inline const Block& Volume::getBlock(const Vector3i& blockIdx) const
 {

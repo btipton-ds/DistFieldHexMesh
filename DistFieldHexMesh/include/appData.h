@@ -15,6 +15,7 @@ namespace DFHM {
 
 class GraphicsCanvas;
 class MainFrame;
+class MakeBlockDlg;
 
 class AppData {
 public:
@@ -25,8 +26,9 @@ public:
     void doAnalyzeGaps();
     void doFindMinGap() const;
     void doBuildCFDHexes();
+    void doNew(const MakeBlockDlg& dlg);
 
-    inline TriMesh::CMeshPtr getMesh() const
+	inline TriMesh::CMeshPtr getMesh() const
     {
         return _pMesh;
     }
@@ -37,7 +39,10 @@ public:
     }
 
 private:
-    std::string _workDirName;
+	void makeBlock(const MakeBlockDlg& dlg);
+	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
+
+	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     TriMesh::CMeshPtr _pMesh;
     VolumePtr _volume;
