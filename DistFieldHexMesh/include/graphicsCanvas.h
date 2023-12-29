@@ -92,9 +92,14 @@ private:
     void drawFaces();
     void drawEdges();
 
+    std::shared_ptr<wxGLContext> _pContext;
+    
+    bool _initialized = false;
+
     bool _showSharpEdges = false, _showTriNormals = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     double _initAzRad, _initElRad;
+    void initialize();
     void loadShaders();
 
     Eigen::Vector2d _mouseStartLoc;

@@ -37,7 +37,6 @@ END_EVENT_TABLE()
 
 namespace
 {
-    shared_ptr<wxGLContext> g_pContext;
 
     inline float toRad(float v)
     {
@@ -60,8 +59,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     , _faceVBO(GL_TRIANGLES, 10)
     , _edgeVBO(GL_LINES, 10)
 {
-    if (!g_pContext)
-        g_pContext = make_shared<wxGLContext>(this);
+    _pContext = make_shared<wxGLContext>(this);
 
     float lightAz[] = { 
         toRad(0.0f), 
@@ -85,8 +83,6 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
 
         _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
     }
-
-    loadShaders();
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -209,10 +205,21 @@ void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, G
     ::glClearColor(red, green, blue, alpha);
 }
 
+void GraphicsCanvas::initialize() 
+{
+	if (_initialized)
+		return;
+
+	loadShaders();
+	_initialized = true;
+	return;
+}
+
 void GraphicsCanvas::loadShaders()
 {
-    SetCurrent(*g_pContext);
+    SetCurrent(*_pContext);
     string path = "shaders/";
+    
     _phongShader = make_shared<COglShader>();
 
     _phongShader->setShaderVertexAttribName("inPosition");
@@ -239,7 +246,8 @@ void GraphicsCanvas::glClearColor(const rgbaColor& color)
 
 void GraphicsCanvas::render()
 {
-    SetCurrent(*g_pContext);
+    SetCurrent(*_pContext);
+	initialize();
 
     updateView();
     _phongShader->bind();
@@ -262,7 +270,7 @@ layout(binding = 0) uniform UniformBufferObject {
     static GLuint buffer = -1;
     if (vertUboIdx == -1) {
         vertUboIdx = glGetUniformBlockIndex(_phongShader->programID(), "UniformBufferObject");
-        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); COglShader::dumpGlErrors();
+        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);GL_ASSERT
         glGenBuffers(1, &buffer);
     }
 
