@@ -256,7 +256,10 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
 	Volume vol(Index3(2, 2, 2));
-	auto blockMesh = vol.addAllBlocks();
+    vol.setOrigin(dlg.getBlockOrigin());
+    vol.setSpan(dlg.getBlockSpan());
+    
+    auto blockMesh = vol.addAllBlocks();
     if (blockMesh->numTris() > 0) {
         auto pCanvas = _pMainFrame->getCanvas();
 

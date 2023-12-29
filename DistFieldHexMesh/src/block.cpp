@@ -344,8 +344,8 @@ void Block::addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>
 cout << "Adding quad face\n";
 	poly.setOwnerBlockId(blockId);
 	for (const auto& pt : pts)
-		poly.addVertex( _vertexPool.add(pt, blockId));
-
+		poly.addVertex( _vertexPool.add(pt, ObjectPoolId(-1, blockId.getThreadIndex())));
+	_polygonPool.add(poly);
 }
 
 void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)

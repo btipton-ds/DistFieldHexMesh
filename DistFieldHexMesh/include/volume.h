@@ -65,7 +65,7 @@ public:
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
 //	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
-	TriMesh::CMeshPtr makeTris(bool cells = true);
+	TriMesh::CMeshPtr makeTris(bool cells = true, bool multiThread = true);
 
 	void writePolyMesh(const std::string& dirName) const;
 

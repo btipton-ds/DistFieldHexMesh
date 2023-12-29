@@ -45,9 +45,6 @@ ObjectPoolId VertexManager::getId(const Vector3d& pt, size_t threadNum) const
 
 ObjectPoolId VertexManager::add(const Vertex& obj, const ObjectPoolId& id)
 {
-
-	ObjectPoolId result = Base::add(obj, id);
-
 	auto pt = obj.getPoint();
 
 	Vector3<int> iPt(fromDbl(pt[0]), fromDbl(pt[1]), fromDbl(pt[2]));
@@ -58,18 +55,19 @@ ObjectPoolId VertexManager::add(const Vertex& obj, const ObjectPoolId& id)
 	if (iter0 == localMap.end()) {
 		iter0 = localMap.insert(make_pair(iPt[0], intMap2())).first;
 	}
-	auto map1 = iter0->second;
+	auto& map1 = iter0->second;
 
 	auto iter1 = map1.find(iPt[1]);
 	if (iter1 == map1.end()) {
 		iter1 = map1.insert(make_pair(iPt[1], intMap1())).first;
 	}
-	auto map2 = iter1->second;
+	auto& map2 = iter1->second;
 
 	auto iter2 = map2.find(iPt[2]);
 	if (iter2 == map2.end()) {
-		map2.insert(make_pair(iPt[2], result)).first;
+		auto newId = Base::add(obj, id);
+		iter2 = map2.insert(make_pair(iPt[2], newId)).first;
 	}
 
-	return result;
+	return iter2->second;
 }

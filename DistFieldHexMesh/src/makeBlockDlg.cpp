@@ -4,6 +4,7 @@
 #include <wx/wfstream.h>
 #include <filesystem>
 #include <block.h>
+#include <Vertex.h>
 #include <volume.h>
 
 #ifdef WIN32
@@ -220,4 +221,45 @@ void MakeBlockDlg::setBlockType(int blockType)
 			break;
 	}
 	_comboBoxType->SetSelection(blockType);
+}
+
+Vector3d MakeBlockDlg::getBlockOrigin() const
+{
+	Vector3d result(-1, -1, -1);
+	if (getSelection() == BLOCK_TYPE_BLOCK) {
+		double start;
+		if (!_startBox->GetValue().ToDouble(&start)) {
+			return result;
+		}
+		result[0] = 0;
+		result[1] = start;
+		result[2] = 0;
+	}
+	return result;
+}
+
+Vector3d MakeBlockDlg::getBlockSpan() const
+{
+	Vector3d result(-1, -1, -1);
+	if (getSelection() == BLOCK_TYPE_BLOCK) {
+		double start, end, width, height;
+		if (!_startBox->GetValue().ToDouble(&start)) {
+			return result;
+		}
+		if (!_endBox->GetValue().ToDouble(&end)) {
+			return result;
+		}
+
+		if (!_widthBox->GetValue().ToDouble(&width)) {
+			return result;
+		}
+
+		if (!_heightBox->GetValue().ToDouble(&height)) {
+			return result;
+		}
+		result[0] = width;
+		result[1] = end - start;
+		result[2] = height;
+	}
+	return result;
 }

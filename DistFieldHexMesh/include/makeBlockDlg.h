@@ -1,7 +1,7 @@
 #pragma once
 
 #include "wx/wxprec.h"
-
+#include <tm_vector3.h>
 
 #ifndef WX_PRECOMP
 #include "wx/wx.h"
@@ -25,6 +25,8 @@ public:
 	void comboBoxAxisComboAction(const wxCommandEvent& event);
 
 	int getSelection() const;
+	Vector3d getBlockOrigin() const;
+	Vector3d getBlockSpan() const;
 
 private:
 	void comboBoxTypeKeyAction(wxKeyEvent& event);

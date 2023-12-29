@@ -509,7 +509,7 @@ TriMesh::CMeshPtr Volume::addAllBlocks()
 		}
 	}
 
-	return makeTris(false);
+	return makeTris(false, false);
 }
 
 bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
@@ -602,7 +602,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 	return result;
 }
 
-CMeshPtr Volume::makeTris(bool makeCells)
+CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -640,7 +640,7 @@ CMeshPtr Volume::makeTris(bool makeCells)
 				}
 			}
 		}
-	}, RUN_MULTI_THREAD);
+	}, multiThread && RUN_MULTI_THREAD);
 
 	CMeshPtr result = results.back();
 	results.pop_back();
