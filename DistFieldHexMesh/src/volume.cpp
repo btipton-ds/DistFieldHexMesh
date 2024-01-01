@@ -509,7 +509,7 @@ TriMesh::CMeshPtr Volume::addAllBlocks()
 		}
 	}
 
-	return makeTris(false, false);
+	return makeTris();
 }
 
 bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
@@ -621,12 +621,12 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, boo
 		}
 	}, RUN_MULTI_THREAD);
 
-	CMeshPtr result = makeTris(true);
+	CMeshPtr result = makeTris();
 
 	return result;
 }
 
-CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
+CMeshPtr Volume::makeTris()
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -634,17 +634,32 @@ CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 	auto diagDist = bbox.range().norm();
 	bbox.grow(diagDist * 0.05);
 
-//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
+	vector<vector<ObjectPoolId>> faceIds;
+	faceIds.resize(MultiCore::getNumCores());
+
+	MultiCore::runLambda([this, &faceIds](size_t threadNum, size_t numThreads) {
+		auto& threadFaceIds = faceIds[threadNum];
+		_polygonPool.iterateOverThread(threadNum, [this, &threadFaceIds](const ObjectPoolId& id, const Polygon& poly) {
+			if (poly.isOuter())
+				threadFaceIds.push_back(ObjectPoolId(id));
+			else
+				cout << "Found inner face\n";
+		});
+	}, RUN_MULTI_THREAD);
+	
+	//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
 	CMeshPtr result = make_shared<CMesh>();
 
-	_polygonPool.iterateInOrder([&result](const Polygon& poly) {
-		if (poly.isOuter()) {
+	for (const auto& ids : faceIds) {
+		for (const auto& id : ids) {
+			const Polygon& poly = _polygonPool[id];
 			const auto& vertIds = poly.getVertexIds();
 			vector<Vector3d> pts;
 			for (const auto& vertId : vertIds) {
 				Vector3d pt = _vertexPool[vertId];
 				pts.push_back(pt);
 			}
+
 			switch (pts.size()) {
 				case 3:
 					result->addTriangle(pts[0], pts[1], pts[2]);
@@ -656,7 +671,7 @@ CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 					break;
 			}
 		}
-	});
+	}
 
 	cout << "Num tris: " << (result->numTris()) << "\n";
 	cout << "Num cells: " << (result->numTris() / 12) << "\n";
@@ -692,11 +707,11 @@ void Volume::writePolyMeshPoints(const std::string& dirName) const
 	ofstream out(dirName + "/points", ios_base::binary);
 	writeFOAMHeader(out, "vectorField", "points");
 	size_t numPoints = 0;
-	_vertexPool.iterateInOrder([&numPoints](const Vertex& vert) {
+	_vertexPool.iterateInOrder([&numPoints](const ObjectPoolId& id, const Vertex& vert) {
 		numPoints++;
 	});
 	out << numPoints << "\n";
-	_vertexPool.iterateInOrder([&out, &numPoints](const Vertex& vert) {
+	_vertexPool.iterateInOrder([&out, &numPoints](const ObjectPoolId& id, const Vertex& vert) {
 		char openParen = '(';
 		char closeParen = ')';
 

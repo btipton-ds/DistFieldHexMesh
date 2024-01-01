@@ -56,8 +56,10 @@ void Polygon::setNeighborBlockId(const ObjectPoolId& blockId)
 size_t Polygon::getHash() const
 {
 	size_t hash = 0;
-	for (auto vertId : _vertexIds)
-		hash += vertId.getThreadIndex() + vertId.getIndex();
+	for (auto vertId : _vertexIds) {
+		const auto& vert = _vertexPool.get(vertId);
+		hash += vert->getHash();
+	}
 	return hash;
 }
 
@@ -69,8 +71,8 @@ bool Polygon::operator < (const Polygon& rhs) const
 		return false;
 
 	vector<ObjectPoolId> lhsIndices(_vertexIds), rhsIndices(rhs._vertexIds);
-	sort(lhsIndices.begin(), lhsIndices.begin());
-	sort(rhsIndices.begin(), rhsIndices.begin());
+	sort(lhsIndices.begin(), lhsIndices.end());
+	sort(rhsIndices.begin(), rhsIndices.end());
 	for (size_t i = 0; i < lhsIndices.size(); i++) {
 		if (lhsIndices[i] < rhsIndices[i])
 			return true;

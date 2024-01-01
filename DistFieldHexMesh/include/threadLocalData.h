@@ -3,6 +3,7 @@
 #include <vector>
 #include <segmentedVector.h>
 #include <stdexcept>
+#include <objectPoolId.h>
 #include <hashBTreeMap.h>
 
 namespace DFHM_ObjectPool {
@@ -23,12 +24,16 @@ namespace DFHM_ObjectPool {
 		T& operator[](size_t id);
 
 		template<class FUNC>
-		void iterateInOrder(FUNC f) const
+		void iterateInOrder(size_t threadNum, FUNC f) const
 		{
-			_pool.iterateInOrder(f);
+			_pool.iterateInOrder(threadNum, f);
 		}
 
 		size_t find(const T& obj) const;
+
+		const T* get(const T& obj) const;
+		T* get(const T& obj);
+
 		size_t getNumAllocated() const;
 		size_t getNumAvailable() const;
 		size_t getNumAvailableIds() const;
@@ -36,7 +41,7 @@ namespace DFHM_ObjectPool {
 
 	private:
 		bool _needReverseLookup = false;
-		HashBTreeMap<size_t, T> _objToIdMap;
+		HashBTreeMap<T> _objToIdMap;
 
 		std::vector<size_t> _idToIndexMap;
 		std::vector<size_t> _availableData;
@@ -146,9 +151,35 @@ namespace DFHM_ObjectPool {
 	}
 
 	template<class T, int BITS>
-	size_t ThreadLocalData<T, BITS>::find(const T& obj) const
+	inline size_t ThreadLocalData<T, BITS>::find(const T& obj) const
 	{
 		return _objToIdMap.find(obj);
+	}
+
+	template<class T, int BITS>
+	inline const T* ThreadLocalData<T, BITS>::get(const T& obj) const
+	{
+		size_t id = _objToIdMap.find(obj);
+		if (id < _idToIndexMap.size()) {
+			size_t idx = _idToIndexMap[id];
+			if (idx < _pool.size()) {
+				return &_pool[idx];
+			}
+		}
+		return nullptr;
+	}
+
+	template<class T, int BITS>
+	inline T* ThreadLocalData<T, BITS>::get(const T& obj)
+	{
+		size_t id = _objToIdMap.find(obj);
+		if (id < _idToIndexMap.size()) {
+			size_t idx = _idToIndexMap[id];
+			if (idx < _pool.size()) {
+				return &_pool[idx];
+			}
+		}
+		return nullptr;
 	}
 
 	template<class T, int BITS>

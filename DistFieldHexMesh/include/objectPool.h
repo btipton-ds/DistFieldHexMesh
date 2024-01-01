@@ -22,17 +22,33 @@ public:
 	void free(const ObjectPoolId& id); // Permanently delete it
 	void unload(const ObjectPoolId& id); // Free the memory, but keep the id
 
+	ObjectPoolId findId(const T& obj) const;
 	bool idExists(const ObjectPoolId& id) const;
-	virtual ObjectPoolId add(const T& obj, const ObjectPoolId& id = ObjectPoolId());
+
+	ObjectPoolId add(const T& obj, const ObjectPoolId& id = ObjectPoolId());
+
+	const T* get(const ObjectPoolId& id) const;
+	T* get(const ObjectPoolId& id);
+
+	const T* get(const T& obj) const;
+	T* get(const T& obj);
+
 	const T& operator[](const ObjectPoolId& id) const;
 	T& operator[](const ObjectPoolId& id);
 
 	template<class F>
 	void iterateInOrder(F fLambda) const
 	{
-		for (auto& data : _threadLocalData) {
-			data.iterateInOrder(fLambda);
+		for (size_t threadNum = 0; threadNum < _threadLocalData.size(); threadNum++) {
+			_threadLocalData[threadNum].iterateInOrder(threadNum, fLambda);
 		}
+	}
+
+	template<class F>
+	void iterateOverThread(size_t threadNum, F fLambda) const
+	{
+		const ThreadLocalDataT10& entry = _threadLocalData[threadNum];
+		entry.iterateInOrder(threadNum, fLambda);
 	}
 
 	size_t getNumAllocated(size_t threadIndex = -1) const;
@@ -90,6 +106,20 @@ inline void ObjectPool<T>::unload(const ObjectPoolId& id)
 }
 
 template<class T>
+ObjectPoolId ObjectPool<T>::findId(const T& obj) const
+{
+	if (!_needReverseLookup) {
+		throw std::runtime_error("reverseLookup is not enabled for this pool.");
+	}
+	for (size_t threadNum = 0; threadNum < _threadLocalData.size(); threadNum++) {
+		size_t index = _threadLocalData[threadNum].find(obj);
+		if (index != -1)
+			return ObjectPoolId(index, threadNum);
+	}
+	return ObjectPoolId();
+}
+
+template<class T>
 bool ObjectPool<T>::idExists(const ObjectPoolId& id) const
 {
 	return (id.getThreadIndex() < _threadLocalData.size()) && _threadLocalData[id.getThreadIndex()].idExists(id.getIndex());
@@ -103,6 +133,53 @@ inline ObjectPoolId ObjectPool<T>::add(const T& pObj, const ObjectPoolId& id)
 		index = _threadLocalData[id.getThreadIndex()].add(pObj, id.getIndex());
 	return ObjectPoolId(index, id.getThreadIndex());
 
+}
+
+template<class T>
+const T* ObjectPool<T>::get(const ObjectPoolId& id) const
+{
+	if (id.getThreadIndex() < _threadLocalData.size()) {
+		ThreadLocalDataT10& t = _threadLocalData[id.getThreadIndex()];
+		return &t[id.getIndex()];
+	}
+	return nullptr;
+}
+
+template<class T>
+T* ObjectPool<T>::get(const ObjectPoolId& id)
+{
+	if (id.getThreadIndex() < _threadLocalData.size()) {
+		ThreadLocalDataT10& t = _threadLocalData[id.getThreadIndex()];
+		return &t[id.getIndex()];
+	}
+	return nullptr;
+}
+
+template<class T>
+const T* ObjectPool<T>::get(const T& obj) const
+{
+	if (_needReverseLookup) {
+		for (size_t threadNum = 0; threadNum < _threadLocalData.size(); threadNum++) {
+			const T* ptr = _threadLocalData[threadNum].get(obj);
+			if (ptr)
+				return ptr;
+		}
+
+	}
+	return nullptr;
+}
+
+template<class T>
+T* ObjectPool<T>::get(const T& obj)
+{
+	if (_needReverseLookup) {
+		for (size_t threadNum = 0; threadNum < _threadLocalData.size(); threadNum++) {
+			T* ptr = _threadLocalData[threadNum].get(obj);
+			if (ptr)
+				return ptr;
+		}
+	}
+	return nullptr;
 }
 
 template<class T>

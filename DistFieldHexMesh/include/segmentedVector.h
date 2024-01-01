@@ -4,6 +4,7 @@
 #include <vector>
 #include <tm_vector3.h>
 #include <fixedArray.h>
+#include <objectPoolId.h>
 
 namespace DFHM {
 
@@ -17,12 +18,12 @@ public:
 	void clear();
 
 	template<class FUNC>
-	void iterateInOrder(FUNC f) const
+	void iterateInOrder(size_t threadNum, FUNC f) const
 	{
 		for (const std::shared_ptr<FixedArrayTB>& ptr : _data) {
 			const FixedArrayTB& fa = *ptr;
 			for (size_t i = 0; i < fa.size(); i++) {
-				f(fa[i]);
+				f(ObjectPoolId(i, threadNum), fa[i]);
 			}
 		}
 	}

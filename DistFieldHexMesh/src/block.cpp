@@ -1,10 +1,12 @@
 #include <vector>
+#include <algorithm>
+#include <fstream>
+
 #include <cell.h>
 #include <block.h>
 #include <volume.h>
 #include <vertex.h>
 #include <polygon.h>
-#include <fstream>
 
 using namespace std;
 using namespace TriMesh;
@@ -306,18 +308,36 @@ void Block::addRectPrismFaces(const ObjectPoolId& blockId, const std::vector<Vec
 
 void Block::addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const
 {
-	Polygon newPoly;
-cout << "Adding quad face\n";
-	for (const auto& pt : pts)
-		newPoly.addVertex( _vertexPool.add(pt, ObjectPoolId(-1, blockId.getThreadIndex())));
-	ObjectPoolId polyId = _polygonPool.add(newPoly, ObjectPoolId(-1, blockId.getThreadIndex()));
+	Polygon newPoly, revPoly;
+	for (const auto& pt : pts) {
+		newPoly.addVertex(_vertexPool.add(pt, ObjectPoolId(-1, blockId.getThreadIndex())));
+	}
+	auto& verts = newPoly.getVertexIds();
+	for (size_t i = verts.size() - 1; i != -1; i--)
+		revPoly.addVertex(verts[i]);
+	assert(newPoly.getHash() == revPoly.getHash());
+	assert(!(newPoly <  revPoly));
+	assert(!(revPoly < newPoly));
 
-	Polygon& poly = _polygonPool[polyId];
-	if (poly.getOwnerBlockId() == -1)
-		poly.setOwnerBlockId(blockId);
-	else {
-		assert(poly.getNeighborBlockId() == -1);
-		poly.setNeighborBlockId(blockId);
+	Polygon* pPoly = _polygonPool.get(newPoly);
+	if (pPoly) {
+		assert(!(*pPoly < newPoly));
+		assert(!(newPoly < *pPoly));
+		assert(pPoly->getNeighborBlockId() == -1);
+		pPoly->setNeighborBlockId(blockId);
+	} else {
+		newPoly.setOwnerBlockId(blockId);
+		_polygonPool.add(newPoly, ObjectPoolId(-1, blockId.getThreadIndex()));
+		pPoly = _polygonPool.get(newPoly);
+		Polygon* pRevPoly = _polygonPool.get(revPoly);
+		assert(pPoly != nullptr);
+		assert(pPoly == pRevPoly);
+		if (pPoly) {
+			assert(pPoly == _polygonPool.get(revPoly));
+			assert(!(*pPoly < newPoly));
+			assert(!(newPoly < *pPoly));
+			assert(pPoly->getNeighborBlockId() == -1);
+		}
 	}
 }
 

@@ -3,14 +3,14 @@
 #include <map>
 
 namespace DFHM {
-template<class IDX, class OBJ>
+template<class OBJ>
 class HashBTreeMap {
 public:
-	IDX find(const OBJ& value) const;
+	size_t find(const OBJ& value) const;
 
 	// Add entry. Returs true if the entity was added, false if it was already in the map
-	bool add(const IDX& index, const OBJ& value);
-	bool remove(const IDX& value);
+	bool add(const size_t& index, const OBJ& value);
+	bool remove(const size_t& value);
 	bool remove(const OBJ& value);
 
 	size_t size() const;
@@ -21,8 +21,8 @@ private:
 	std::map<size_t, BMap> _data;
 };
 
-template<class IDX, class OBJ>
-IDX HashBTreeMap<IDX, OBJ>::find(const OBJ& value) const
+template<class OBJ>
+size_t HashBTreeMap<OBJ>::find(const OBJ& value) const
 {
 	size_t hash = value.getHash();
 	auto iter0 = _data.find(hash);
@@ -30,14 +30,15 @@ IDX HashBTreeMap<IDX, OBJ>::find(const OBJ& value) const
 		auto& map0 = iter0->second;
 		auto iter1 = map0.find(value);
 		if (iter1 != map0.end()) {
-			return  iter1.second;
+			return  iter1->second;
 		}
 	}
-	return IDX();
+	size_t result(-1);
+	return result;
 }
 
-template<class IDX, class OBJ>
-bool HashBTreeMap<IDX, OBJ>::add(const IDX& index, const OBJ& value)
+template<class OBJ>
+bool HashBTreeMap<OBJ>::add(const size_t& index, const OBJ& value)
 {
 	size_t hash = value.getHash();
 	auto iter0 = _data.find(hash);
