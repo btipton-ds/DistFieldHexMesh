@@ -296,7 +296,8 @@ void AppData::doBuildCFDHexes()
 
     double superCellSize = gap * Block::getBlockDim();
 
-    auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize);
+    bool makeCells = true;
+    auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize, makeCells);
 //    _volume->dumpSections(_workDirName);
 
     if (blockMesh->numTris() > 0) {

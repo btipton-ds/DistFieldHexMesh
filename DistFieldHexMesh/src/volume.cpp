@@ -554,7 +554,7 @@ Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
 	throw runtime_error("Volume::getBlock index out of range");
 }
 
-CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, const Vector3d& emptyVolRatio)
+CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, bool makeCells, const Vector3d& emptyVolRatio)
 {
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
 	_originMeters = bb.getMin();
@@ -597,24 +597,10 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double minCellSize, con
 		}
 	}, RUN_MULTI_THREAD);
 
-	CMeshPtr result = makeTris(false);
-
-	return result;
-}
-
-CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
-{
-	CBoundingBox3Dd bbox;
-	bbox.merge(_originMeters);
-	bbox.merge(_originMeters + _spanMeters);
-	auto diagDist = bbox.range().norm();
-	bbox.grow(diagDist * 0.05);
-
 	Vector3d blockSpan;
 	for (int i = 0; i < 3; i++)
 		blockSpan[i] = _spanMeters[i] / _blockDim[i];
 
-//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
 	MultiCore::runLambda([this, &blockSpan, makeCells](size_t threadNum, size_t numThreads) {
 		Vector3d blockOrigin;
 
@@ -633,7 +619,22 @@ CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 				}
 			}
 		}
-	}, multiThread && RUN_MULTI_THREAD);
+	}, RUN_MULTI_THREAD);
+
+	CMeshPtr result = makeTris(true);
+
+	return result;
+}
+
+CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
+{
+	CBoundingBox3Dd bbox;
+	bbox.merge(_originMeters);
+	bbox.merge(_originMeters + _spanMeters);
+	auto diagDist = bbox.range().norm();
+	bbox.grow(diagDist * 0.05);
+
+//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
 	CMeshPtr result = make_shared<CMesh>();
 
 	_polygonPool.iterateInOrder([&result](const Polygon& poly) {

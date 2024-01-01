@@ -28,7 +28,8 @@ public:
 	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum = 0);
 	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
 	static size_t calcCellIndex(const Vector3i& cellIdx);
-	void addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool useCells) const;
+	void addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool makeCells) const;
+	void createBlockFaces();
 
 	size_t numCells() const;
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;

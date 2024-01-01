@@ -238,10 +238,10 @@ void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 	}
 }
 
-void Block::addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool useCells) const
+void Block::addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool makeCells) const
 {
 
-	if (useCells && !_cells.empty()) {
+	if (makeCells && !_cells.empty()) {
 		const Vector3d vX(1, 0, 0), vY(0, 1, 0), vZ(0, 0, 1);
 		Vector3d cellOrigin(blockOrigin);
 		Vector3d cellSpan = blockSpan / s_blockDim;
