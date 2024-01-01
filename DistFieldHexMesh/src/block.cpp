@@ -3,6 +3,7 @@
 #include <block.h>
 #include <volume.h>
 #include <vertex.h>
+#include <polygon.h>
 #include <fstream>
 
 using namespace std;
@@ -237,7 +238,7 @@ void Block::createCells(const vector<bool>& cellsToCreate, size_t threadNum)
 	}
 }
 
-void Block::addBlockTris(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const
+void Block::addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool useCells) const
 {
 
 	if (useCells && !_cells.empty()) {
@@ -265,43 +266,8 @@ void Block::addBlockTris(const ObjectPoolId& blockId, const Vector3d& blockOrigi
 							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0] + vY * cellSpan[1],
 							cellOrigin + vZ * cellSpan[2] +                    vY * cellSpan[1],
 						};
-#ifdef _DEBUG
-						CMesh::BoundingBox bb;
-						bb.merge(cellOrigin);
-						bb.merge(cellOrigin + cellSpan);
 
-						for (const auto& pt : pts) {
-							assert(bb.contains(pt));
-						}
-#endif // _DEBUG
-
-						pMesh->addRectPrism(pts);
-
-#ifdef _DEBUG
-						size_t numPos = 0, numNeg = 0;
-						Vector3d cellCentroid = 0.5 * (bb.getMin() + bb.getMax());
-						vector<size_t> triIndices;
-						pMesh->findTris(bb, triIndices);
-						for (size_t triIdx : triIndices) {
-							auto vertIndices = pMesh->getTri(triIdx);
-							Vector3d pts[] = {
-								pMesh->getVert(vertIndices[0])._pt,
-								pMesh->getVert(vertIndices[1])._pt,
-								pMesh->getVert(vertIndices[2])._pt,
-							};
-							if (bb.contains(pts[0]) && bb.contains(pts[1]) && bb.contains(pts[2])) {
-								Vector3d triCentroid = pMesh->triCentroid(triIdx);
-								Vector3d v = (triCentroid - cellCentroid).normalized();
-								Vector3d n = pMesh->triUnitNormal(triIdx);
-								auto dp = n.dot(v);
-								if (dp > 0)
-									numPos++;
-								else
-									numNeg++;
-							}
-						}
-						assert(numPos == 12);
-#endif // _DEBUG
+						addRectPrismFaces(blockId, pts);
 					}
 				}
 			}
@@ -340,12 +306,30 @@ void Block::addRectPrismFaces(const ObjectPoolId& blockId, const std::vector<Vec
 
 void Block::addQuadFace(const ObjectPoolId& blockId, const std::vector<Vector3d>& pts) const
 {
-	Polygon poly;
+	Polygon newPoly;
 cout << "Adding quad face\n";
-	poly.setOwnerBlockId(blockId);
 	for (const auto& pt : pts)
-		poly.addVertex( _vertexPool.add(pt, ObjectPoolId(-1, blockId.getThreadIndex())));
-	_polygonPool.add(poly);
+		newPoly.addVertex( _vertexPool.add(pt, ObjectPoolId(-1, blockId.getThreadIndex())));
+	ObjectPoolId polyId = _polygonPool.add(newPoly, ObjectPoolId(-1, blockId.getThreadIndex()));
+
+	Polygon& poly = _polygonPool[polyId];
+	if (poly.getOwnerBlockId() == -1)
+		poly.setOwnerBlockId(blockId);
+	else {
+		assert(poly.getNeighborBlockId() == -1);
+		poly.setNeighborBlockId(blockId);
+	}
+}
+
+size_t Block::getHash() const
+{
+	return -1;
+}
+
+bool Block::operator < (const Block& rhs) const
+{
+	assert(!"cannot reverse lookup blocks.");
+	return false;
 }
 
 void Block::processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate)

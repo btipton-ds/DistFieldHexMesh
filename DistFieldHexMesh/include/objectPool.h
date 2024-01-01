@@ -12,7 +12,7 @@ namespace DFHM {
 template<class T>
 class ObjectPool {
 public:
-	ObjectPool() = default;
+	ObjectPool(bool needReverseLookup);
 
 	size_t getNumThreads() const;
 	virtual void setNumThreads(size_t val);
@@ -41,9 +41,16 @@ public:
 	size_t getNumUnloaded(size_t threadIndex = -1) const;
 private:
 	using ThreadLocalDataT10 = DFHM_ObjectPool::ThreadLocalData<T, 10>;
+	bool _needReverseLookup;
 
 	std::vector<ThreadLocalDataT10> _threadLocalData;
 };
+
+template<class T>
+inline ObjectPool<T>::ObjectPool(bool needReverseLookup)
+{
+	_needReverseLookup = needReverseLookup;
+}
 
 template<class T>
 size_t ObjectPool<T>::getNumThreads() const
@@ -57,7 +64,7 @@ void ObjectPool<T>::setNumThreads(size_t val)
 	assert(_threadLocalData.empty());
 	_threadLocalData.resize(val);
 	for (auto& tld : _threadLocalData)
-		tld.reserve(1000);
+		tld.init(_needReverseLookup, 1000);
 }
 
 template<class T>

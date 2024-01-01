@@ -3,6 +3,7 @@
 #include <vector>
 #include <segmentedVector.h>
 #include <stdexcept>
+#include <hashBTreeMap.h>
 
 namespace DFHM_ObjectPool {
 	using namespace DFHM;
@@ -14,8 +15,9 @@ namespace DFHM_ObjectPool {
 		void unload(size_t id); // Free the memory, but keep the id
 
 		void reset();
-		void reserve(size_t size);
+		void init(bool needReverseLookup, size_t size);
 		bool idExists(size_t id) const;
+		size_t idOf(const T& obj) const;
 		size_t add(const T& obj, size_t id = -1);
 		const T& operator[](size_t id) const;
 		T& operator[](size_t id);
@@ -26,12 +28,16 @@ namespace DFHM_ObjectPool {
 			_pool.iterateInOrder(f);
 		}
 
+		size_t find(const T& obj) const;
 		size_t getNumAllocated() const;
 		size_t getNumAvailable() const;
 		size_t getNumAvailableIds() const;
 		size_t getNumUnloaded() const;
 
 	private:
+		bool _needReverseLookup = false;
+		HashBTreeMap<size_t, T> _objToIdMap;
+
 		std::vector<size_t> _idToIndexMap;
 		std::vector<size_t> _availableData;
 		std::vector<size_t> _availableIds;
@@ -71,8 +77,9 @@ namespace DFHM_ObjectPool {
 	}
 
 	template<class T, int BITS>
-	inline void ThreadLocalData<T, BITS>::reserve(size_t size)
+	inline void ThreadLocalData<T, BITS>::init(bool needReverseLookup, size_t size)
 	{
+		_needReverseLookup = needReverseLookup;
 		_idToIndexMap.reserve(size);
 	}
 
@@ -114,6 +121,9 @@ namespace DFHM_ObjectPool {
 			}
 		}
 
+		if (_needReverseLookup) {
+			_objToIdMap.add(id, obj);
+		}
 		return id;
 	}
 
@@ -133,6 +143,12 @@ namespace DFHM_ObjectPool {
 			return _pool[_idToIndexMap[id]];
 
 		throw std::runtime_error("ThreadLocalData<T, BITS>::operator[] out of bounds");
+	}
+
+	template<class T, int BITS>
+	size_t ThreadLocalData<T, BITS>::find(const T& obj) const
+	{
+		return _objToIdMap.find(obj);
 	}
 
 	template<class T, int BITS>

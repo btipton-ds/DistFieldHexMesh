@@ -65,7 +65,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
  	"src/dataPool.cpp" 
- 	"src/vertexManager.cpp"
+ 	
 )
 
 add_executable (TestDFM         
@@ -79,7 +79,7 @@ add_executable (TestDFM
 	"src/vertex.cpp"
  	"src/blockTest.cpp" 
  	"src/dataPool.cpp" 
- 	"src/vertexManager.cpp"
+ 	
  )
 
 if (WIN32)

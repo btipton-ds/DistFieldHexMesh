@@ -610,20 +610,13 @@ CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 	auto diagDist = bbox.range().norm();
 	bbox.grow(diagDist * 0.05);
 
-	vector<CMeshPtr> results;
-	for (size_t i = 0; i < MultiCore::getNumCores(); i++) {
-		results.push_back(make_shared<CMesh>());
-		results.back()->reset(bbox);
-	}
-
 	Vector3d blockSpan;
 	for (int i = 0; i < 3; i++)
 		blockSpan[i] = _spanMeters[i] / _blockDim[i];
 
 //	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
-	MultiCore::runLambda([this, &blockSpan, &results, makeCells](size_t threadNum, size_t numThreads) {
+	MultiCore::runLambda([this, &blockSpan, makeCells](size_t threadNum, size_t numThreads) {
 		Vector3d blockOrigin;
-		auto result = results[threadNum];
 
 		Vector3i blockIdx;
 		for (blockIdx[0] = threadNum; blockIdx[0] < _blockDim[0]; blockIdx[0] += numThreads) {
@@ -635,16 +628,35 @@ CMeshPtr Volume::makeTris(bool makeCells, bool multiThread)
 					if (blockExists(blockIdx)) {
 						const Block& block = getBlock(blockIdx);
 						ObjectPoolId blockId = _blocks[calLinearBlockIndex(blockIdx)];
-						block.addBlockTris(blockId, blockOrigin, blockSpan, result, makeCells);
+						block.addBlockFaces(blockId, blockOrigin, blockSpan, makeCells);
 					}
 				}
 			}
 		}
 	}, multiThread && RUN_MULTI_THREAD);
+	CMeshPtr result = make_shared<CMesh>();
 
-	CMeshPtr result = results.back();
-	results.pop_back();
-	result->merge(results, true);
+	_polygonPool.iterateInOrder([&result](const Polygon& poly) {
+		if (poly.isOuter()) {
+			const auto& vertIds = poly.getVertexIds();
+			vector<Vector3d> pts;
+			for (const auto& vertId : vertIds) {
+				Vector3d pt = _vertexPool[vertId];
+				pts.push_back(pt);
+			}
+			switch (pts.size()) {
+				case 3:
+					result->addTriangle(pts[0], pts[1], pts[2]);
+					break;
+				case 4:
+					result->addQuad(pts[0], pts[1], pts[2], pts[3]);
+					break;
+				default:
+					break;
+			}
+		}
+	});
+
 	cout << "Num tris: " << (result->numTris()) << "\n";
 	cout << "Num cells: " << (result->numTris() / 12) << "\n";
 	return result;

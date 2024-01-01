@@ -18,6 +18,9 @@ public:
 	Block(const Block& src);
 	~Block(); // NOT virtual - do not inherit
 
+	size_t getHash() const;
+	bool operator < (const Block& rhs) const;
+
 	void processBlock(const TriMesh::CMeshPtr& pTriMesh, size_t blockRayIdx, const Vector3d& blockOrigin, const Vector3d& blockSpan, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(const TriMesh::CMeshPtr& pTriMesh, const Vector3d& origin, const Vector3d& blockSpan, std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void addCell(size_t ix, size_t iy, size_t iz, size_t threadNum = 0);
@@ -25,7 +28,7 @@ public:
 	void createCells(const std::vector<bool>& cellsToCreate, size_t threadNum = 0);
 	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
 	static size_t calcCellIndex(const Vector3i& cellIdx);
-	void addBlockTris(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, TriMesh::CMeshPtr& pMesh, bool useCells) const;
+	void addBlockFaces(const ObjectPoolId& blockId, const Vector3d& blockOrigin, const Vector3d& blockSpan, bool useCells) const;
 
 	size_t numCells() const;
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;
@@ -38,6 +41,7 @@ public:
 	void freeCell(const Vector3i& idx);
 
 	void fillEmpty();
+
 
 	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();

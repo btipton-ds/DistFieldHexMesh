@@ -5,11 +5,11 @@
 using namespace std;
 using namespace DFHM;
 
-VertexManager DataPool::_vertexPool;
-ObjectPool<Polygon> DataPool::_polygonPool;
-ObjectPool<Polyhedron> DataPool::_polyhedronPool;
-ObjectPool<Cell> DataPool::_cellPool;
-ObjectPool<Block> DataPool::_blockPool;
+ObjectPool<Vertex> DataPool::_vertexPool(true);
+ObjectPool<Polygon> DataPool::_polygonPool(true);
+ObjectPool<Polyhedron> DataPool::_polyhedronPool(true);
+ObjectPool<Cell> DataPool::_cellPool(false);
+ObjectPool<Block> DataPool::_blockPool(false);
 
 void DataPool::setNumThreads(size_t numThreads)
 {

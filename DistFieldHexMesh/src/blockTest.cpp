@@ -231,7 +231,7 @@ bool TestBlock::testBlock04()
 	TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
 	pMesh->reset(meshBB);
 
-	block.addBlockTris(ObjectPoolId(0, 0), blockOrigin, span, pMesh, true);
+	block.addBlockFaces(ObjectPoolId(0, 0), blockOrigin, span, true);
 
 	for (size_t i = 0; i < bd; i++) {
 		cellOrgin[0] = blockOrigin[0] + i * cellSpan[0];

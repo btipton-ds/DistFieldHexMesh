@@ -5,7 +5,7 @@ namespace DFHM {
 class ObjectPoolId
 {
 public:
-	ObjectPoolId(size_t index = 0, size_t threadIndex = 0);
+	ObjectPoolId(size_t index = -1, size_t threadIndex = 0);
 	ObjectPoolId(const ObjectPoolId& src) = default;
 
 	size_t getThreadIndex() const;
@@ -18,7 +18,7 @@ public:
 
 private:
 	size_t _threadIndex = 0;
-	size_t _index = 0;
+	size_t _index = -1;
 };
 
 inline ObjectPoolId::ObjectPoolId(size_t index, size_t threadIndex)

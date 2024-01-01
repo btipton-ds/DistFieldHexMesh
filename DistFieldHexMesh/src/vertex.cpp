@@ -17,3 +17,14 @@ void Vertex::removePolygonReference(const ObjectPoolId& polygonId)
 		_polygonIds.erase(pos);
 }
 
+const bool Vertex::operator < (const Vertex& rhs) const
+{
+	for (size_t idx = 0; idx < 3; idx++) {
+		if (_pt[idx] < rhs._pt[idx])
+			return true;
+		else if (rhs._pt[idx] < _pt[idx])
+			return false;
+	}
+
+	return false;
+}
