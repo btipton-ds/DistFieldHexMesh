@@ -4,7 +4,7 @@
 
 namespace DFHM {
 
-class Cell : public DataPool {
+class Cell {
 public:
 	enum VolumeType {
 		VT_UNKNOWN,

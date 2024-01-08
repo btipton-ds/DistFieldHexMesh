@@ -288,16 +288,15 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setBlockDim(8);
+    Block::setMinBlockDim(8);
 
-    double gap = 0.001 / 1;
-    if (gap <= 0)
-        gap = _pMesh->findMinGap();
-
-    double superCellSize = gap * Block::getBlockDim();
+    double defCellDim = 0.0005;
+    double blockSize = defCellDim * Block::getMinBlockDim();
 
     bool makeCells = true;
-    auto blockMesh = _volume->buildCFDHexes(_pMesh, superCellSize, makeCells);
+    auto blockMesh = _volume->buildCFDHexes(_pMesh, blockSize, makeCells);
+    auto dims = _volume->getBlockDims();
+
 //    _volume->dumpSections(_workDirName);
 
     if (blockMesh->numTris() > 0) {

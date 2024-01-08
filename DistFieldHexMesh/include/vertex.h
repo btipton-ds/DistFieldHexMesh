@@ -6,14 +6,19 @@
 
 namespace DFHM {
 
-class Vertex : public DataPool {
+class Vertex {
 public:
+	using FixedPt = Vector3<int>;
 	enum class LockType {
 		None,
 		Triangle,
 		Edge,
 		Vertex
 	};
+
+	static int fromDbl(double val);
+	static double toDbl(int iVal);
+	static double getFixedScale();
 
 	Vertex() = default;
 	Vertex(const Vertex& src) = default;
@@ -33,11 +38,6 @@ public:
 	const bool operator < (const Vertex& rhs) const;
 
 private:
-	using FixedPt = Vector3<int>;
-
-	static int fromDbl(double val);
-	static double toDbl(int iVal);
-	static double getFixedScale();
 
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;

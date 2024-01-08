@@ -4,7 +4,7 @@
 
 namespace DFHM {
 
-class Polyhedron : public DataPool {
+class Polyhedron {
 public:
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);

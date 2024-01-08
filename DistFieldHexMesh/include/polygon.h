@@ -6,35 +6,35 @@
 
 namespace DFHM {
 
-class Polygon : public DataPool {
+class Polygon {
 public:
-	bool unload(std::ostream& out, const ObjectPoolId& idSelf);
-	bool load(std::istream& out, const ObjectPoolId& idSelf);
+	bool unload(std::ostream& out, size_t idSelf);
+	bool load(std::istream& out, size_t idSelf);
 
-	void addVertex(const ObjectPoolId& vertId);
-	void setOwnerBlockId(const ObjectPoolId& blockId);
-	const ObjectPoolId& getOwnerBlockId() const;
-	void setNeighborBlockId(const ObjectPoolId& blockId);
-	const ObjectPoolId& getNeighborBlockId() const;
+	void addVertex(size_t vertId);
+	void setOwnerBlockId(size_t blockId);
+	size_t getOwnerBlockId() const;
+	void setNeighborBlockId(size_t blockId);
+	size_t getNeighborBlockId() const;
 
 	bool isOuter() const;
 
 	size_t getHash() const;
 	bool operator < (const Polygon& rhs) const;
 
-	const std::vector<ObjectPoolId>& getVertexIds() const;
+	const std::vector<size_t>& getVertexIds() const;
 private:
-	std::vector<ObjectPoolId> _vertexIds;
-	ObjectPoolId _ownerBlockId, _neighborBlockId;
+	std::vector<size_t> _vertexIds;
+	size_t _ownerBlockId, _neighborBlockId;
 	Vector3i _generatorCellIdx;
 };
 
-inline const ObjectPoolId& Polygon::getOwnerBlockId() const
+inline size_t Polygon::getOwnerBlockId() const
 {
 	return _ownerBlockId;
 }
 
-inline const ObjectPoolId& Polygon::getNeighborBlockId() const
+inline size_t Polygon::getNeighborBlockId() const
 {
 	return _neighborBlockId;
 }
@@ -44,7 +44,7 @@ inline bool Polygon::isOuter() const
 	return _neighborBlockId == -1;
 }
 
-inline const std::vector<ObjectPoolId>& Polygon::getVertexIds() const
+inline const std::vector<size_t>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }

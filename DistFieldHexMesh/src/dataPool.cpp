@@ -13,10 +13,12 @@ ObjectPool<Block> DataPool::_blockPool(false);
 
 void DataPool::setNumThreads(size_t numThreads)
 {
+#if 0
 	_vertexPool.setNumThreads(numThreads);
 	_polygonPool.setNumThreads(numThreads);
 	_polyhedronPool.setNumThreads(numThreads);
 	_cellPool.setNumThreads(numThreads);
 	_blockPool.setNumThreads(numThreads);
+#endif
 }
 

@@ -13,7 +13,6 @@
 #include <mutex>
 #include "indices.h"
 #include <triMesh.h>
-#include <objectPool.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <cell.h>
@@ -29,7 +28,7 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 
 
-class Volume : public DataPool {
+class Volume {
 public:
 	Volume(const Index3& size = Index3(0, 0, 0));
 	Volume(const Volume& src);
@@ -45,8 +44,8 @@ public:
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
 	bool blockExists(const Vector3i& blockIdx) const;
-	Block& addBlock(size_t ix, size_t iy, size_t iz, size_t threadNum);
-	Block& addBlock(const Vector3i& blockIdx, size_t threadNum);
+	Block& addBlock(size_t ix, size_t iy, size_t iz);
+	Block& addBlock(const Vector3i& blockIdx);
 	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block& getBlock(const Vector3i& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
@@ -63,8 +62,9 @@ public:
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
+	Vector3i calBlockIndexFromLinearIndex(size_t linearIdx) const;
+
 	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool makeCells, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
-//	bool doesBlockIntersectMesh(const TriMesh::CMeshPtr& pTriMesh, const Vector3i& blockIdx) const;
 	TriMesh::CMeshPtr makeTris();
 
 	void writePolyMesh(const std::string& dirName) const;
@@ -78,20 +78,18 @@ private:
 	using RayTriIntersectVec = Block::RayTriIntersectVec;
 	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
 
-	void createBlockRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, std::vector<bool>& blocksToCreate);
-	void createBlockCellRays(AxisIndex axisIdx, const TriMesh::CMeshPtr& pTriMesh, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
+	void createBlockRays(AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
+	void createBlockCellRays(AxisIndex axisIdx, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
 	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
 
-	mutable std::mutex _mutex;
+	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
 	Index3 _blockDim;
 
-	std::vector<ObjectPoolId> _faces;
-	std::vector<ObjectPoolId> _polyHedra;
-	std::vector<ObjectPoolId> _blocks;
+	std::vector<std::shared_ptr<Block>> _blocks;
 
 };
 
@@ -121,7 +119,7 @@ inline Block& Volume::getBlock(const Vector3i& blockIdx)
 inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 {
 	if (ix < _blockDim[0] && iy < _blockDim[1] && iz < _blockDim[2])
-	return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
+		return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
 
 	return -1;
 }
@@ -129,6 +127,31 @@ inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
 {
 	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
+}
+
+inline Vector3i Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
+{
+	Vector3i result;
+	size_t temp = linearIdx;
+
+//		ix + _blockDim[0] * iy + _blockDim[0] * _blockDim[1] * iz;
+
+
+	size_t denom = _blockDim[0] * _blockDim[1];
+	result[2] = temp / denom;
+	temp = temp % denom;
+
+	denom = _blockDim[0];
+
+	result[1] = temp / denom;
+	temp = temp % denom;
+	result[0] = temp;
+
+	if (calLinearBlockIndex(result) != linearIdx) {
+		throw std::runtime_error("calBlockIndexFromLinearIndex failed");
+	}
+
+	return result;
 }
 
 inline Cell& Volume::getCell(const Vector3i& cellIdx)

@@ -21,7 +21,7 @@ using namespace DFHM;
 
 void testBlock(size_t bd = 8)
 {
-	Block::setBlockDim(bd);
+	Block::setMinBlockDim(bd);
 	TestBlock tb;
 
 	if (!tb.testBlock00()) return;
