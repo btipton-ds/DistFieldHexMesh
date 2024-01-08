@@ -288,9 +288,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setMinBlockDim(16);
+    Block::setMinBlockDim(8);
 
-    double blockSize = 0.1;
+    double blockSize = 0.05;
 
     bool makeCells = true;
     auto blockMesh = _volume->buildCFDHexes(_pMesh, blockSize, makeCells);

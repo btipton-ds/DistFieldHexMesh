@@ -294,13 +294,26 @@ void Block::createCellsDeprecated(const vector<bool>& cellsToCreate)
 
 void Block::createCells()
 {
-	for (size_t idx = 0; idx < _cellLegIntersections.size(); idx++) {
-		if (_cellLegIntersections[idx]) {
-			const auto& vec = *_cellLegIntersections[idx];
-			auto cellIdx = calCellIndexFromLinear(idx);
-			auto pts = getCellCornerPts(cellIdx);
-			addRectPrismFaces(0, pts);
+	map<size_t, vector<RayTriHit>> cellIndices;
+	for (const auto& rayHit : _rayTriHits) {
+		auto iter = cellIndices.find(rayHit._cellIdx);
+		if (iter == cellIndices.end()) {
+			iter = cellIndices.insert(make_pair(rayHit._cellIdx, vector<RayTriHit>())).first;
 		}
+		auto& hits = iter->second;
+		hits.push_back(rayHit);
+	}
+
+	for (const auto& pair : cellIndices) {
+		Vector3i cellIdx = calCellIndexFromLinear(pair.first);
+		const auto& hits = pair.second;
+		if (hits.size() > 10) {
+			cout << "Dense cell\n";
+			// Need to organize the hits by block face
+			// Then subdivide here.
+		}
+		auto pts = getCellCornerPts(cellIdx);
+		addRectPrismFaces(0, pts);
 	}
 }
 
@@ -651,39 +664,94 @@ vector<LineSegment> Block::getCellEdges(const Vector3i& cellIdx) const
 	return edges;
 }
 
-void Block::setNumDivs()
+namespace
 {
-	const double segDistTol = 1.0e-5;
-	if (_cellLegIntersections.empty()) {
-		_cellLegIntersections.resize(_blockDim * _blockDim * _blockDim);
+	inline Vector3d interp(const Vector3d& p0, const Vector3d& p1, double t)
+	{
+		return p0 + t * (p1 - p0);
 	}
-	Vector3i cellIdx;
-	
-	// Need to scan each face of the BLOCK, then determine hits and cells.
-	// Not scan each cell. This is redundant and too time consuming.
-	for (cellIdx[0] = 0; cellIdx[0] < _blockDim; cellIdx[0]++) {
-		for (cellIdx[1] = 0; cellIdx[1] < _blockDim; cellIdx[1]++) {
-			for (cellIdx[2] = 0; cellIdx[2] < _blockDim; cellIdx[2]++) {
-				vector<LineSegment> edges = getCellEdges(cellIdx);
-				CellLegIntersect ci;
+}
 
-				for (ci._edgeNumber = 0; ci._edgeNumber < edges.size(); ci._edgeNumber++) {
-					const LineSegment& seg = edges[ci._edgeNumber];
-					Ray ray(seg._pts[0], seg.calcDir());
-					ci.hits.clear();
-					if (_pModelTriMesh->rayCast(seg, ci.hits) && ci.hits.size() > 1) {
-						size_t linearCellIdx = calLinearCellIndex(cellIdx);
-						subDivideCellIfNeeded(seg, ci.hits, cellIdx);
-						if (!_cellLegIntersections[linearCellIdx])
-							_cellLegIntersections[linearCellIdx] = make_shared<vector<CellLegIntersect>>();
-						
-						vector<CellLegIntersect>& intersects = *_cellLegIntersections[linearCellIdx];
-						intersects.push_back(ci);
+void Block::rayCastFace(int axis)
+{
+	auto pts = getCornerPts();
+	const Vector3d dir = axis == 0 ? Vector3d(1, 0, 0) : axis == 1 ? Vector3d(0, 1, 0) : Vector3d(0, 0, 1);
+	Vector3d pt00, pt01, pt10, pt11, origin;
+	for (int i = 0; i <= _blockDim; i++) {
+		double tI = i / (double)_blockDim;
+		for (int j = 0; j <= _blockDim; j++) {
+			double tJ = j / (double)_blockDim;
+			switch (axis) {
+				default:
+				case 0: // X axis is ray dir
+					pt00 = interp(pts[0], pts[3], tI);
+					pt01 = interp(pts[4], pts[7], tI);
+
+					pt10 = interp(pts[1], pts[2], tI);
+					pt11 = interp(pts[5], pts[6], tI);
+
+					break;
+				case 1: // Y axis is ray dir
+					pt00 = interp(pts[0], pts[1], tI);
+					pt01 = interp(pts[4], pts[5], tI);
+
+					pt10 = interp(pts[3], pts[2], tI);
+					pt11 = interp(pts[7], pts[6], tI);
+
+					break;
+				case 2: // Z axis is ray dir
+					pt00 = interp(pts[0], pts[1], tI);
+					pt01 = interp(pts[3], pts[2], tI);
+
+					pt10 = interp(pts[4], pts[5], tI);
+					pt11 = interp(pts[7], pts[6], tI);
+
+					break;
+			}
+
+			auto pt0 = interp(pt00, pt01, tJ);
+			auto pt1 = interp(pt10, pt11, tJ);
+			LineSegment seg(pt0, pt1);
+			double segLen = seg.calLength();
+			vector<RayHit> hits;
+			if (_pModelTriMesh->rayCast(seg, hits)) {
+				for (const auto& hit : hits) {
+					double t = hit.dist / segLen;
+					size_t rayIdx = (size_t)(t * _blockDim);
+					if (rayIdx >= _blockDim)
+						rayIdx = _blockDim - 1;
+					Vector3d pt;
+					Vector3i cellIdx;
+					switch (axis) {
+						default:
+						case 0:
+							cellIdx = Vector3i(rayIdx, i, j);
+							pt = Vector3d(t, tI, tJ);
+							break;
+						case 1:
+							cellIdx = Vector3i(i, rayIdx, j);
+							pt = Vector3d(tI, t, tJ);
+							break;
+						case 2:
+							cellIdx = Vector3i(i, j, rayIdx);
+							pt = Vector3d(tI, tJ, t);
+							break;
 					}
+					RayTriHit rtHit;
+					rtHit._cellIdx = calLinearCellIndex(cellIdx);
+					rtHit._triIdx = hit.triIdx;
+					rtHit._relPt = pt;
+					_rayTriHits.push_back(rtHit);
 				}
 			}
 		}
 	}
+}
+
+void Block::setNumDivs()
+{
+	for (int axis = 0; axis < 3; axis++)
+		rayCastFace(axis);
 }
 
 void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx)

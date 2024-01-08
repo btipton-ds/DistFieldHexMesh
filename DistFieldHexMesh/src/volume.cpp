@@ -593,9 +593,7 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize,
 		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
 	);
 
-	cout << "targetBlockSize: " << targetBlockSize << "\n";
 	setBlockDims(blockSize);
-	cout << "_blockDim: " << _blockDim[0] << ", " << _blockDim[1] << ", " << _blockDim[2] << "\n";
 
 	Vector3d blockSpan(_spanMeters[0] / _blockDim[0], _spanMeters[1] / _blockDim[1], _spanMeters[2] / _blockDim[2]);
 

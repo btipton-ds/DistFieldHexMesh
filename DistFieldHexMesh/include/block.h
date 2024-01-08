@@ -77,11 +77,13 @@ private:
 	friend class Volume;
 	friend class TestBlock;
 
-	struct CellLegIntersect {
-		size_t _edgeNumber;
-		std::vector<RayHit> hits;
+	struct RayTriHit {
+		size_t _cellIdx;
+		size_t _triIdx;
+		Vector3d _relPt;
 	};
 
+	void rayCastFace(int axis);
 	void setNumDivs();
 	void createIntersectionCells();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
@@ -99,7 +101,7 @@ private:
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vertex::FixedPt _corners[8];
 	std::vector<uint32_t> _cellDivs;
-	std::vector<std::shared_ptr<std::vector<CellLegIntersect>>> _cellLegIntersections;
+	std::vector<RayTriHit> _rayTriHits;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
