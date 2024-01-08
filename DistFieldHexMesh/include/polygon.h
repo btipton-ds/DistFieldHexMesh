@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <set>
-#include <dataPool.h>
+#include <vertex.h>
 
 namespace DFHM {
 
@@ -17,15 +17,17 @@ public:
 	void setNeighborBlockId(size_t blockId);
 	size_t getNeighborBlockId() const;
 
+	void finished(const ObjectPool<Vertex>& vertices);
+
 	bool isOuter() const;
 
-	size_t getHash() const;
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<size_t>& getVertexIds() const;
 private:
 	std::vector<size_t> _vertexIds;
-	size_t _ownerBlockId, _neighborBlockId;
+	size_t _ownerBlockId = -1, _neighborBlockId = -1;
+	Vertex::FixedPt _centroid;
 	Vector3i _generatorCellIdx;
 };
 

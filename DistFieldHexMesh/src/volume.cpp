@@ -318,10 +318,12 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 
 											for (int dy = -1; dy < 2; dy++) {
 												for (int dz = -1; dz < 2; dz++) {
+#if 0
 													size_t cIdx = Block::calcCellIndex(Vector3i(cellIdx, iyCell + dy, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
+#endif
 												}
 											}
 										}
@@ -386,10 +388,12 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 
 											for (int dx = -1; dx < 2; dx++) {
 												for (int dz = -1; dz < 2; dz++) {
+#if 0
 													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, cellIdx, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
+#endif
 												}
 											}
 										}
@@ -454,10 +458,12 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 
 											for (int dx = -1; dx < 2; dx++) {
 												for (int dy = -1; dy < 2; dy++) {
+#if 0
 													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, iyCell + dy, cellIdx));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
+#endif
 												}
 											}
 										}
@@ -582,9 +588,9 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize,
 	_spanMeters = bb.range();
 
 	Index3 blockSize(
-		(size_t)(_spanMeters[0] / targetBlockSize / Block::getMinBlockDim() + 0.5),
-		(size_t)(_spanMeters[1] / targetBlockSize / Block::getMinBlockDim() + 0.5),
-		(size_t)(_spanMeters[2] / targetBlockSize / Block::getMinBlockDim() + 0.5)
+		(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
+		(size_t)(_spanMeters[1] / targetBlockSize + 0.5),
+		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
 	);
 
 	cout << "targetBlockSize: " << targetBlockSize << "\n";
@@ -610,41 +616,39 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize,
 			CMesh::BoundingBox blbb;
 			blbb.merge(blockOrigin);
 			blbb.merge(blockOrigin + blockSpan);
+			double span = blbb.range().norm();
+			blbb.grow(0.05 * span);
 					
 			vector<size_t> triIndices;
 			if (_pModelTriMesh->findTris(blbb, triIndices, CMesh::BoxTestType::Intersects)) {
 				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
 				auto& bl = addBlock(blockIdx);
-				bl.processTris(_pModelTriMesh, triIndices);
+				bl.addTris(_pModelTriMesh, triIndices);
+				bl.processTris();
 			}
 		}
 	}, RUN_MULTI_THREAD);
 
-	cout << "Cell divs\n";
-	for (auto blockPtr : _blocks) {
-		if (blockPtr) {
-			bool isDivided = false;
-			for (const auto& c : blockPtr->getCellDivs()) {
-				if (c > 1) {
-					isDivided = true;
-					break;
-				}
-			}
-
-			if (!isDivided)
-				continue;
-
-			for (const auto& c : blockPtr->getCellDivs()) {
-				if (c > 1) {
-					cout << (Block::getMinBlockDim() * c) << " ,";
-				}
-			}
-			cout << "\n";
-
+#if 0
+	map<size_t, std::shared_ptr<Block>> orderedBlocks;
+	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
+		if (_blocks[linearIdx] && _blocks[linearIdx]->getModelMesh()) {
+			size_t numTris = _blocks[linearIdx]->getModelMesh()->numTris();
+			orderedBlocks.insert(make_pair(numTris, _blocks[linearIdx]));
 		}
 	}
 
-	CMeshPtr result = make_shared<CMesh>();// makeTris();
+	size_t count = 0;
+	for (auto iter = orderedBlocks.rbegin(); iter != orderedBlocks.rend(); iter++) {
+		iter->second->processTris();
+		count++;
+
+		if (count > 5)
+			break;
+	}
+#endif
+
+	CMeshPtr result = makeTris();
 
 	return result;
 }
@@ -657,46 +661,35 @@ CMeshPtr Volume::makeTris()
 	auto diagDist = bbox.range().norm();
 	bbox.grow(diagDist * 0.05);
 
-	vector<vector<size_t>> faceIds;
-	faceIds.resize(MultiCore::getNumCores());
-#if 0
-	MultiCore::runLambda([this, &faceIds](size_t threadNum, size_t numThreads) {
-		auto& threadFaceIds = faceIds[threadNum];
-		_polygonPool.iterateInOrder([this, &threadFaceIds](size_t id, const Polygon& poly) {
-			if (poly.isOuter())
-				threadFaceIds.push_back(id);
-			else
-				cout << "Found inner face\n";
+
+	CMeshPtr result = make_shared<CMesh>(bbox);
+	for (const auto& blockPtr : _blocks) {
+		if (!blockPtr)
+			continue;
+
+		const auto& polygons = blockPtr->getPolygons();
+		if (polygons.empty())
+			continue;
+
+		polygons.iterateInOrder([this, blockPtr, result](size_t id, const Polygon& poly) {
+			if (poly.isOuter()) {
+				const auto& vertIds = poly.getVertexIds();
+				if (vertIds.size() == 3 || vertIds.size() == 4) {
+					const auto& vertices = blockPtr->getVertices();
+					vector<Vector3d> pts;
+					for (size_t vertId : vertIds) {
+						const auto& vert = vertices[vertId];
+						pts.push_back(vert.getPoint());
+					}
+					if (pts.size() == 3) {
+						result->addTriangle(pts[0], pts[1], pts[2]);
+					} else {
+						result->addQuad(pts[0], pts[1], pts[2], pts[3]);
+					}
+				}
+			}
 		});
-	}, RUN_MULTI_THREAD);
-#endif	
-	//	for (blockIdx[0] = 0; blockIdx[0] < _blockDim[0]; blockIdx[0]++) {
-	CMeshPtr result = make_shared<CMesh>();
-
-#if 0
-	for (const auto& ids : faceIds) {
-		for (const auto& id : ids) {
-			Polygon& poly = _polygonPool[id];
-			const auto& vertIds = poly.getVertexIds();
-			vector<Vector3d> pts;
-			for (const auto& vertId : vertIds) {
-				Vector3d pt = _vertexPool[vertId];
-				pts.push_back(pt);
-			}
-
-			switch (pts.size()) {
-				case 3:
-					result->addTriangle(pts[0], pts[1], pts[2]);
-					break;
-				case 4:
-					result->addQuad(pts[0], pts[1], pts[2], pts[3]);
-					break;
-				default:
-					break;
-			}
-		}
 	}
-#endif
 
 	cout << "Num tris: " << (result->numTris()) << "\n";
 	cout << "Num cells: " << (result->numTris() / 12) << "\n";

@@ -32,14 +32,21 @@ void Polygon::setNeighborBlockId(size_t blockId)
 	_neighborBlockId = blockId;
 }
 
-size_t Polygon::getHash() const
+void Polygon::finished(const ObjectPool<Vertex>& vertices)
 {
-	size_t hash = 0;
-	for (auto vertId : _vertexIds) {
-//		const auto& vert = _vertexPool.get(vertId);
-//		hash += vert->getHash();
+	Vector3<int64_t> temp(0, 0, 0); // Use long int for overflow
+	for (size_t vertId : _vertexIds) {
+		const auto& vert = vertices[vertId];
+		const auto& iPt = vert.getFixedPt();
+		temp[0] += iPt[0];
+		temp[1] += iPt[1];
+		temp[2] += iPt[2];
 	}
-	return hash;
+
+	const size_t len = vertices.size();
+	_centroid[0] = (int)(temp[0] / len);
+	_centroid[1] = (int)(temp[1] / len);
+	_centroid[2] = (int)(temp[2] / len);
 }
 
 bool Polygon::operator < (const Polygon& rhs) const
@@ -49,15 +56,11 @@ bool Polygon::operator < (const Polygon& rhs) const
 	else if (_vertexIds.size() > rhs._vertexIds.size())
 		return false;
 
-	vector<size_t> lhsIndices(_vertexIds), rhsIndices(rhs._vertexIds);
-	sort(lhsIndices.begin(), lhsIndices.end());
-	sort(rhsIndices.begin(), rhsIndices.end());
-	for (size_t i = 0; i < lhsIndices.size(); i++) {
-		if (lhsIndices[i] < rhsIndices[i])
+	for (int i = 0; i < 3; i++) {
+		if (_centroid[i] < rhs._centroid[i])
 			return true;
-		else if (rhsIndices[i] < lhsIndices[i])
+		else if (rhs._centroid[i] < _centroid[i])
 			return false;
 	}
-
 	return false;
 }

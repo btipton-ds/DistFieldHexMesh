@@ -28,10 +28,13 @@ public:
 	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
 	void addCell(size_t ix, size_t iy, size_t iz);
 	void addCell(const Vector3i& cellIdx);
-	void createCells(const std::vector<bool>& cellsToCreate);
-	static size_t calcCellIndex(size_t ix, size_t iy, size_t iz);
-	static size_t calcCellIndex(const Vector3i& cellIdx);
+	void createCellsDeprecated(const std::vector<bool>& cellsToCreate);
+	void createCells();
+	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
+	size_t calLinearCellIndex(const Vector3i& cellIdx) const;
+	Vector3i calCellIndexFromLinear(size_t linearIdx) const;
 	void addBlockFaces(size_t blockId, bool makeCells);
+	void addCellFaces();
 	void createBlockFaces();
 
 	std::vector<Vector3d> getCornerPts() const;
@@ -52,12 +55,18 @@ public:
 
 	void fillEmpty();
 	void processTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
+	void processTris();
+	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
+	const TriMesh::CMeshPtr& getModelMesh() const;
 
 	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
+
+	const ObjectPool<Vertex>& getVertices() const;
+	const ObjectPool<Polygon>& getPolygons() const;
 
 protected:
 	enum class AxisIndex {
@@ -68,22 +77,13 @@ private:
 	friend class Volume;
 	friend class TestBlock;
 
-	struct RayTriIntersect {
-		double _w = -1;
-		size_t _triIdx = -1, _blockIdx = -1, _cellIdx = -1;
-	};
-
 	struct CellLegIntersect {
-		Vector3i _cellIdx;
 		size_t _edgeNumber;
 		std::vector<RayHit> hits;
 	};
 
-	using RayTriIntersectVec = std::vector<RayTriIntersect>;
-	using RayBlockIntersectVec = std::vector<RayTriIntersectVec>;
-
-	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	void setNumDivs();
+	void createIntersectionCells();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
 	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& pt) const;
 
@@ -99,10 +99,10 @@ private:
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vertex::FixedPt _corners[8];
 	std::vector<uint32_t> _cellDivs;
-	std::vector<CellLegIntersect> _cellLegIntersections;
+	std::vector<std::shared_ptr<std::vector<CellLegIntersect>>> _cellLegIntersections;
 
-	ObjectPool<Vertex> _vertexPool;
-	ObjectPool<Polygon> _polygonPool;
+	ObjectPool<Vertex> _vertices;
+	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedronPool;
 	ObjectPool<Cell> _cellPool;
 };
@@ -117,16 +117,16 @@ inline size_t Block::numCells() const
 	return _cellPool.size();
 }
 
-inline size_t Block::calcCellIndex(size_t ix, size_t iy, size_t iz)
+inline size_t Block::calLinearCellIndex(size_t ix, size_t iy, size_t iz) const
 {
-	if (ix < s_minBlockDim && iy < s_minBlockDim && iz < s_minBlockDim)
-		return ix + s_minBlockDim * (iy + s_minBlockDim * iz);
+	if (ix < _blockDim && iy < _blockDim && iz < _blockDim)
+		return ix + _blockDim * (iy + _blockDim * iz);
 	return -1;
 }
 
-inline size_t Block::calcCellIndex(const Vector3i& celIdx)
+inline size_t Block::calLinearCellIndex(const Vector3i& celIdx) const
 {
-	return calcCellIndex(celIdx[0], celIdx[1], celIdx[2]);
+	return calLinearCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
 inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
@@ -136,7 +136,7 @@ inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
 
 inline Cell& Block::getCell(const Vector3i& idx3)
 {
-	size_t idx = calcCellIndex(idx3);
+	size_t idx = calLinearCellIndex(idx3);
 	if (idx < _cellPool.size()) {
 		if (_cellPool.exists(idx)) {
 			auto& result = _cellPool[idx];
@@ -148,7 +148,7 @@ inline Cell& Block::getCell(const Vector3i& idx3)
 
 inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
 {
-	size_t idx = calcCellIndex(ix, iy, iz);
+	size_t idx = calLinearCellIndex(ix, iy, iz);
 	if (idx < _cellPool.size()) {
 		if (_cellPool.exists(idx)) {
 			auto& result = _cellPool[idx];
@@ -165,7 +165,7 @@ inline const Cell& Block::getCell(const Vector3i& idx) const
 
 inline void Block::freeCell(size_t ix, size_t iy, size_t iz)
 {
-	size_t idx = calcCellIndex(ix, iy, iz);
+	size_t idx = calLinearCellIndex(ix, iy, iz);
 	if (_cellPool.exists(idx)) {
 		_cellPool.free(idx);
 	}
@@ -184,6 +184,21 @@ inline bool Block::isUnloaded() const
 inline std::vector<uint32_t> Block::getCellDivs() const
 {
 	return _cellDivs;
+}
+
+inline const ObjectPool<Vertex>& Block::getVertices() const
+{
+	return _vertices;
+}
+
+inline const ObjectPool<Polygon>& Block::getPolygons() const
+{
+	return _polygons;
+}
+
+inline const TriMesh::CMeshPtr& Block::getModelMesh() const
+{
+	return _pModelTriMesh;
 }
 
 }

@@ -288,10 +288,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setMinBlockDim(8);
+    Block::setMinBlockDim(16);
 
-    double defCellDim = 0.0005;
-    double blockSize = defCellDim * Block::getMinBlockDim();
+    double blockSize = 0.1;
 
     bool makeCells = true;
     auto blockMesh = _volume->buildCFDHexes(_pMesh, blockSize, makeCells);
@@ -303,6 +302,7 @@ void AppData::doBuildCFDHexes()
         auto pCanvas = _pMainFrame->getCanvas();
 
         pCanvas->beginFaceTesselation();
+
         auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
             _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
 

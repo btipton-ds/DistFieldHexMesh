@@ -17,7 +17,9 @@ public:
 	};
 
 	static int fromDbl(double val);
+	static FixedPt fromDbl(const Vector3d& src);
 	static double toDbl(int iVal);
+	static Vector3d toDbl(const FixedPt& src);
 	static double getFixedScale();
 
 	Vertex() = default;
@@ -30,6 +32,7 @@ public:
 	void setPoint(const Vector3d& pt);
 	Vector3d getPoint() const;
 	operator Vector3d () const;
+	const FixedPt& getFixedPt() const;
 
 	void addPolygonReference(const ObjectPoolId& polygonId);
 	void removePolygonReference(const ObjectPoolId& polygonId);
@@ -56,12 +59,20 @@ inline int Vertex::fromDbl(double val)
 	return (int)(val / getFixedScale() * INT_MAX);
 }
 
+inline Vertex::FixedPt Vertex::fromDbl(const Vector3d& src)
+{
+	return FixedPt(fromDbl(src[0]), fromDbl(src[1]), fromDbl(src[2]));
+}
+
 inline double Vertex::toDbl(int iVal)
 {
 	return (iVal / (double)INT_MAX) * getFixedScale();
-
 }
 
+inline Vector3d Vertex::toDbl(const FixedPt& src)
+{
+	return Vector3d(toDbl(src[0]), toDbl(src[1]), toDbl(src[2]));
+}
 
 inline Vertex::Vertex(const Vector3d& pt)
 {
@@ -105,6 +116,11 @@ inline Vector3d Vertex::getPoint() const
 	pt[2] = toDbl(_pt[2]);
 
 	return pt;
+}
+
+inline const Vertex::FixedPt& Vertex::getFixedPt() const
+{
+	return _pt;
 }
 
 inline Vertex::operator Vector3d () const

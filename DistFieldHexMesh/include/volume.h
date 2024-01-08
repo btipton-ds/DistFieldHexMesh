@@ -73,10 +73,6 @@ public:
 
 private:
 	using AxisIndex = Block::AxisIndex;
-	using RayTriIntersect = Block::RayTriIntersect;
-
-	using RayTriIntersectVec = Block::RayTriIntersectVec;
-	using RayBlockIntersectVec = Block::RayBlockIntersectVec;
 
 	void createBlockRays(AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
 	void createBlockCellRays(AxisIndex axisIdx, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
