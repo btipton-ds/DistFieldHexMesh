@@ -9,18 +9,7 @@ using namespace DFHM;
 
 bool Cell::unload(ostream& out)
 {
-	out.write((char*)&volType, sizeof(volType));
-
-	{
-		// This writes out persistent ids
-		size_t numPolygons = _polygons.size();
-
-		// Write out the polygon ids
-		out.write((char*)&numPolygons, sizeof(numPolygons));
-		for (size_t i = 0; i < numPolygons; i++) {
-		}
-		_polygons.clear();
-	}
+	out.write((char*)&_volType, sizeof(_volType));
 
 	{
 		// This writes out persistent ids
@@ -28,9 +17,7 @@ bool Cell::unload(ostream& out)
 
 		// Write out the polygon ids
 		out.write((char*)&numPolyhedra, sizeof(numPolyhedra));
-		for (size_t i = 0; i < numPolyhedra; i++) {
-			ObjectPoolId id = _polyhedra[i];
-
+		for (size_t id : _polyhedra) {
 		}
 		_polyhedra.clear();
 	}
@@ -40,7 +27,7 @@ bool Cell::unload(ostream& out)
 
 bool Cell::load(istream& in)
 {
-	in.read((char*)&volType, sizeof(volType));
+	in.read((char*)&_volType, sizeof(_volType));
 
 
 	return true;

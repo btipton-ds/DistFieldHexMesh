@@ -314,7 +314,11 @@ void Block::createCellsDeprecated(const vector<bool>& cellsToCreate)
 
 void Block::createCells()
 {
+	if (_cells.empty()) {
+		_cells.resize(_blockDim * _blockDim * _blockDim);
+	}
 	map<size_t, vector<RayTriHit>> cellIndices;
+
 	for (const auto& rayHit : _rayTriHits) {
 		auto iter = cellIndices.find(rayHit._cellIdx);
 		if (iter == cellIndices.end()) {
@@ -332,7 +336,9 @@ void Block::createCells()
 			// Then subdivide here.
 		}
 		auto pts = getCellCornerPts(cellIdx);
-		addHexCell(pair.first, pts);
+		size_t polyHedraId = addHexCell(pair.first, pts);
+		size_t cellId = _cells.add(Cell(), pair.first);
+		_cells[cellId].addPolyhdra(polyHedraId);
 	}
 }
 

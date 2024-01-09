@@ -133,8 +133,11 @@ template<class T>
 void ObjectPool<T>::resize(size_t size)
 {
 	if (size > _idToIndexMap.size()) {
-		for (size_t id = _idToIndexMap.size() - 1; id < size; id++) {
-			_idToIndexMap.push_back(id);
+		_idToIndexMap.resize(size);
+		_data.reserve(size);
+		for (size_t id = 0; id < size; id++) {
+			_idToIndexMap[id] = _data.size();
+			_data.push_back(T());
 		}
 	}
 }
@@ -181,6 +184,8 @@ size_t ObjectPool<T>::add(const T& obj, size_t id)
 				_availableIndices.pop_back();
 			}
 			_idToIndexMap[id] = index;
+			if (index >= _data.size())
+				_data.resize(index + 1);
 			_data[index] = obj;
 		}
 	} else {
@@ -192,6 +197,8 @@ size_t ObjectPool<T>::add(const T& obj, size_t id)
 		} else {
 			index = _availableIndices.back();
 			_availableIndices.pop_back();
+			if (index >= _data.size())
+				_data.resize(index + 1);
 			_data[index] = obj;
 		}
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <dataPool.h>
+#include <set>
+#include <exception>
 
 namespace DFHM {
 
@@ -13,26 +14,30 @@ public:
 		VT_FLUID,
 	};
 
+	void addPolyhdra(size_t id);
+	void removePolyhdra(size_t id);
+
 	bool unload(std::ostream& out);
 	bool load(std::istream& in);
 
-	size_t getHash() const;
 	bool operator < (const Cell& rhs) const;
-
 private:
-	VolumeType volType = VT_UNKNOWN;
-	std::vector<ObjectPoolId> _polygons; // indices of polygons in this cell
-	std::vector<ObjectPoolId> _polyhedra;// indices of polyedra in this cell
+	VolumeType _volType = VT_UNKNOWN;
+	std::set<size_t> _polyhedra;// indices of polyedra in this cell
 };
 
-inline size_t Cell::getHash() const
+inline void Cell::addPolyhdra(size_t id)
 {
-	return -1;
+	_polyhedra.insert(id);
 }
 
+inline void Cell::removePolyhdra(size_t id)
+{
+	_polyhedra.erase(id);
+}
 inline bool Cell::operator < (const Cell& rhs) const
 {
-	assert(!"Cannot do reverse search on cells.");
+	throw std::runtime_error("Cell::operator < is not implmented");
 	return false;
 }
 
