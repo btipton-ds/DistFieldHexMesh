@@ -12,12 +12,13 @@ public:
 	bool load(std::istream& out, size_t idSelf);
 
 	void addVertex(size_t vertId);
-	void setOwnerBlockId(size_t blockId);
-	size_t getOwnerBlockId() const;
-	void setNeighborBlockId(size_t blockId);
-	size_t getNeighborBlockId() const;
+	void setOwnerCellId(size_t cellId);
+	size_t getOwnerCellId() const;
+	void setNeighborCellId(size_t cellId);
+	size_t getNeighborCellId() const;
 
-	void finished(const ObjectPool<Vertex>& vertices);
+	void doneCreating();
+	void pack();
 
 	bool isOuter() const;
 
@@ -25,25 +26,40 @@ public:
 
 	const std::vector<size_t>& getVertexIds() const;
 private:
-	std::vector<size_t> _vertexIds;
-	size_t _ownerBlockId = -1, _neighborBlockId = -1;
-	Vertex::FixedPt _centroid;
-	Vector3i _generatorCellIdx;
+	std::vector<size_t> _vertexIds, _sortedIds;
+	size_t _ownerCellId = -1, _neighborCellId = -1;
 };
 
-inline size_t Polygon::getOwnerBlockId() const
+inline void Polygon::addVertex(size_t vertId)
 {
-	return _ownerBlockId;
+	_vertexIds.push_back(vertId);
 }
 
-inline size_t Polygon::getNeighborBlockId() const
+inline void Polygon::setOwnerCellId(size_t cellId)
 {
-	return _neighborBlockId;
+	_ownerCellId = cellId;
+}
+
+inline void Polygon::setNeighborCellId(size_t cellId)
+{
+	assert(cellId != _ownerCellId);
+	_neighborCellId = cellId;
+}
+
+
+inline size_t Polygon::getOwnerCellId() const
+{
+	return _ownerCellId;
+}
+
+inline size_t Polygon::getNeighborCellId() const
+{
+	return _neighborCellId;
 }
 
 inline bool Polygon::isOuter() const
 {
-	return _neighborBlockId == -1;
+	return _neighborCellId == -1;
 }
 
 inline const std::vector<size_t>& Polygon::getVertexIds() const

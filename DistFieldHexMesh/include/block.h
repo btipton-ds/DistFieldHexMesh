@@ -33,7 +33,6 @@ public:
 	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearCellIndex(const Vector3i& cellIdx) const;
 	Vector3i calCellIndexFromLinear(size_t linearIdx) const;
-	void addBlockFaces(size_t blockId, bool makeCells);
 	void addCellFaces();
 	void createBlockFaces();
 
@@ -58,6 +57,7 @@ public:
 	void processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	const TriMesh::CMeshPtr& getModelMesh() const;
+	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 
 	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -83,14 +83,14 @@ private:
 		Vector3d _relPt;
 	};
 
-	void rayCastFace(int axis);
+	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
 	void setNumDivs();
 	void createIntersectionCells();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
 	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& pt) const;
 
-	void addRectPrismFaces(size_t blockId, const std::vector<Vector3d>& pts);
-	void addQuadFace(size_t blockId, const std::vector<Vector3d>& pts);
+	void addRectPrismFaces(size_t cellId, const std::vector<Vector3d>& pts);
+	void addQuadFace(size_t cellId, const std::vector<Vector3d>& pts);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	std::string _filename;

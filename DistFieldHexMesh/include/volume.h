@@ -39,7 +39,7 @@ public:
 	const Index3& getBlockDims() const;
 	const Index3& getDims() const;
 
-	TriMesh::CMeshPtr addAllBlocks();
+	std::vector<TriMesh::CMeshPtr> addAllBlocks();
 
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
@@ -64,8 +64,8 @@ public:
 	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
 	Vector3i calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	TriMesh::CMeshPtr buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool makeCells, const Vector3d& emptyVolRatio = Vector3d(10, 3, 3));
-	TriMesh::CMeshPtr makeTris();
+	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool outerFacesOnly);
+	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
 
 	void writePolyMesh(const std::string& dirName) const;
 

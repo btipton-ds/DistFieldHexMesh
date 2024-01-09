@@ -17,49 +17,28 @@ bool Polygon::load(std::istream& in, size_t idSelf)
 	return true;
 }
 
-void Polygon::addVertex(size_t vertId)
+void Polygon::doneCreating()
 {
-	_vertexIds.push_back(vertId);
+	_sortedIds = _vertexIds;
+	sort(_sortedIds.begin(), _sortedIds.end());
 }
 
-void Polygon::setOwnerBlockId(size_t blockId)
+void Polygon::pack()
 {
-	_ownerBlockId = blockId;
-}
-
-void Polygon::setNeighborBlockId(size_t blockId)
-{
-	_neighborBlockId = blockId;
-}
-
-void Polygon::finished(const ObjectPool<Vertex>& vertices)
-{
-	Vector3<int64_t> temp(0, 0, 0); // Use long int for overflow
-	for (size_t vertId : _vertexIds) {
-		const auto& vert = vertices[vertId];
-		const auto& iPt = vert.getFixedPt();
-		temp[0] += iPt[0];
-		temp[1] += iPt[1];
-		temp[2] += iPt[2];
-	}
-
-	const size_t len = vertices.size();
-	_centroid[0] = (int)(temp[0] / len);
-	_centroid[1] = (int)(temp[1] / len);
-	_centroid[2] = (int)(temp[2] / len);
+	_sortedIds.clear();
 }
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
-	if (_vertexIds.size() < rhs._vertexIds.size())
+	if (_sortedIds.size() < rhs._sortedIds.size())
 		return true;
-	else if (_vertexIds.size() > rhs._vertexIds.size())
+	else if (_sortedIds.size() > rhs._sortedIds.size())
 		return false;
 
-	for (int i = 0; i < 3; i++) {
-		if (_centroid[i] < rhs._centroid[i])
+	for (size_t i = 0; i < _sortedIds.size(); i++) {
+		if (_sortedIds[i] < rhs._sortedIds[i])
 			return true;
-		else if (rhs._centroid[i] < _centroid[i])
+		else if (_sortedIds[i] > rhs._sortedIds[i])
 			return false;
 	}
 	return false;

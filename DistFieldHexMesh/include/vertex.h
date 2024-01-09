@@ -56,7 +56,9 @@ inline double Vertex::getFixedScale()
 
 inline int Vertex::fromDbl(double val)
 {
-	return (int)(val / getFixedScale() * INT_MAX);
+	double r = val / getFixedScale();
+	assert(fabs(r) < 1.0);
+	return (int)(r * INT_MAX);
 }
 
 inline Vertex::FixedPt Vertex::fromDbl(const Vector3d& src)

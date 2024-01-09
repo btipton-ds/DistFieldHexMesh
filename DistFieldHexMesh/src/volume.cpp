@@ -486,6 +486,10 @@ Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 	const Vector3d zAxis(0, 0, 1);
 
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	auto pBlock = _blocks[idx];
+	if (pBlock)
+		return *pBlock;
+
 	Vector3d origin, span;
 	for (int i = 0; i < 3; i++) {
 		span[i] = _spanMeters[i] / _blockDim[i];
@@ -506,12 +510,10 @@ Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 		origin + zAxis * span[2] + yAxis * span[1],
 	};
 
-	auto pBlock = _blocks[idx];
-	if (!pBlock) {
-		pBlock = make_shared<Block>(pts);
-		_blocks[idx] = pBlock;
-	}
+	_blocks[idx] = make_shared<Block>(pts);
+
 	pBlock = _blocks[idx];
+
 	return *pBlock;
 }
 
@@ -520,7 +522,7 @@ Block& Volume::addBlock(const Vector3i& blockIdx)
 	return addBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-TriMesh::CMeshPtr Volume::addAllBlocks()
+std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
 {
 	Vector3d origin, blockSpan;
 	for (int i = 0; i < 3; i++) {
@@ -540,7 +542,7 @@ TriMesh::CMeshPtr Volume::addAllBlocks()
 		}
 	}
 
-	return makeTris();
+	return makeTris(true, true);
 }
 
 bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
@@ -580,7 +582,7 @@ Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
 	throw runtime_error("Volume::getBlock index out of range");
 }
 
-CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, bool makeCells, const Vector3d& emptyVolRatio)
+std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, bool outerFacesOnly)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -597,37 +599,36 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize,
 
 	Vector3d blockSpan(_spanMeters[0] / _blockDim[0], _spanMeters[1] / _blockDim[1], _spanMeters[2] / _blockDim[2]);
 
-	vector<bool> blocksToCreate;
-	blocksToCreate.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
+	size_t numBlocks = _blockDim[0] * _blockDim[1] * _blockDim[2];
 
-	MultiCore::runLambda([this, &blockSpan](size_t threadNum, size_t numThreads) {
+#define QUICK_TEST 0
+	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
-		for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
-			if (linearIdx % numThreads != threadNum)
-				continue;
 
-			Vector3i blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+		Vector3i blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 
-			blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
-			blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
-			blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
-			CMesh::BoundingBox blbb;
-			blbb.merge(blockOrigin);
-			blbb.merge(blockOrigin + blockSpan);
-			double span = blbb.range().norm();
-			blbb.grow(0.05 * span);
+		blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
+		blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
+		blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
+		CMesh::BoundingBox blbb;
+		blbb.merge(blockOrigin);
+		blbb.merge(blockOrigin + blockSpan);
+		double span = blbb.range().norm();
+		blbb.grow(0.05 * span);
 					
-			vector<size_t> triIndices;
-			if (_pModelTriMesh->findTris(blbb, triIndices, CMesh::BoxTestType::Intersects)) {
-				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-				auto& bl = addBlock(blockIdx);
-				bl.addTris(_pModelTriMesh, triIndices);
-				bl.processTris();
-			}
+		vector<size_t> triIndices;
+		if (_pModelTriMesh->findTris(blbb, triIndices, CMesh::BoxTestType::Intersects)) {
+			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
+			auto& bl = addBlock(blockIdx);
+			bl.addTris(_pModelTriMesh, triIndices);
+#if !QUICK_TEST
+			bl.processTris();
+#endif
 		}
-	}, RUN_MULTI_THREAD);
+		
+	}, numBlocks, RUN_MULTI_THREAD);
 
-#if 0
+#if QUICK_TEST
 	map<size_t, std::shared_ptr<Block>> orderedBlocks;
 	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
 		if (_blocks[linearIdx] && _blocks[linearIdx]->getModelMesh()) {
@@ -641,17 +642,17 @@ CMeshPtr Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize,
 		iter->second->processTris();
 		count++;
 
-		if (count > 5)
+		if (count > 3)
 			break;
 	}
 #endif
 
-	CMeshPtr result = makeTris();
+	auto result = makeTris(outerFacesOnly, true);
 
 	return result;
 }
 
-CMeshPtr Volume::makeTris()
+vector<TriMesh::CMeshPtr> Volume::makeTris(bool outerOnly, bool multiCore)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -660,37 +661,29 @@ CMeshPtr Volume::makeTris()
 	bbox.grow(diagDist * 0.05);
 
 
-	CMeshPtr result = make_shared<CMesh>(bbox);
-	for (const auto& blockPtr : _blocks) {
+	vector<TriMesh::CMeshPtr> temp;
+	temp.resize(_blocks.size());
+	MultiCore::runLambda([this, &temp, outerOnly](size_t index) {
+		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
-			continue;
+			return;
+		auto pMesh = blockPtr->getBlockTriMesh(outerOnly);
+		if (pMesh) {
+			temp[index] = pMesh;
+		}
+	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
 
-		const auto& polygons = blockPtr->getPolygons();
-		if (polygons.empty())
-			continue;
-
-		polygons.iterateInOrder([this, blockPtr, result](size_t id, const Polygon& poly) {
-			if (poly.isOuter()) {
-				const auto& vertIds = poly.getVertexIds();
-				if (vertIds.size() == 3 || vertIds.size() == 4) {
-					const auto& vertices = blockPtr->getVertices();
-					vector<Vector3d> pts;
-					for (size_t vertId : vertIds) {
-						const auto& vert = vertices[vertId];
-						pts.push_back(vert.getPoint());
-					}
-					if (pts.size() == 3) {
-						result->addTriangle(pts[0], pts[1], pts[2]);
-					} else {
-						result->addQuad(pts[0], pts[1], pts[2], pts[3]);
-					}
-				}
-			}
-		});
+	// Remove the null pointers from the result
+	vector<TriMesh::CMeshPtr> result;
+	size_t numTris = 0;
+	for (auto p : temp) {
+		if (p) {
+			numTris += p->numTris();
+			result.push_back(p);
+		}
 	}
 
-	cout << "Num tris: " << (result->numTris()) << "\n";
-	cout << "Num cells: " << (result->numTris() / 12) << "\n";
+	cout << "Num tris: " << numTris << "\n";
 	return result;
 }
 

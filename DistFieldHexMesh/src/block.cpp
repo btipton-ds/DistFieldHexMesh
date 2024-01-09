@@ -308,65 +308,11 @@ void Block::createCells()
 		Vector3i cellIdx = calCellIndexFromLinear(pair.first);
 		const auto& hits = pair.second;
 		if (hits.size() > 10) {
-			cout << "Dense cell\n";
 			// Need to organize the hits by block face
 			// Then subdivide here.
 		}
 		auto pts = getCellCornerPts(cellIdx);
-		addRectPrismFaces(0, pts);
-	}
-}
-
-void Block::addBlockFaces(size_t blockId, bool makeCells)
-{
-	Vector3d blockOrigin, blockSpan;
-	calBlockOriginSpan(blockOrigin, blockSpan);
-
-	if (makeCells && !_cellPool.empty()) {
-		const Vector3d vX(1, 0, 0), vY(0, 1, 0), vZ(0, 0, 1);
-		Vector3d cellOrigin(blockOrigin);
-		Vector3d cellSpan = blockSpan / s_minBlockDim;
-
-		for (size_t ix = 0; ix < s_minBlockDim; ix++) {
-			cellOrigin[0] = blockOrigin[0] + ix * cellSpan[0];
-			for (size_t iy = 0; iy < s_minBlockDim; iy++) {
-				cellOrigin[1] = blockOrigin[1] + iy * cellSpan[1];
-				for (size_t iz = 0; iz < s_minBlockDim; iz++) {
-					cellOrigin[2] = blockOrigin[2] + iz * cellSpan[2];
-
-					size_t cIdx = calLinearCellIndex(ix, iy, iz);
-					if ((cIdx != -1) && _cellPool.exists(cIdx)) {
-						vector<Vector3d> pts = {
-							cellOrigin,
-							cellOrigin + vX * cellSpan[0],
-							cellOrigin + vX * cellSpan[0] + vY * cellSpan[1],
-							cellOrigin +                    vY * cellSpan[1],
-
-							cellOrigin + vZ * cellSpan[2],
-							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0],
-							cellOrigin + vZ * cellSpan[2] + vX * cellSpan[0] + vY * cellSpan[1],
-							cellOrigin + vZ * cellSpan[2] +                    vY * cellSpan[1],
-						};
-
-						addRectPrismFaces(blockId, pts);
-					}
-				}
-			}
-		}
-	}
-	else {
-		vector<Vector3d> pts = {
-			Vector3d(blockOrigin[0], blockOrigin[1], blockOrigin[2]),
-			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1], blockOrigin[2]),
-			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
-			Vector3d(blockOrigin[0], blockOrigin[1] + blockSpan[1], blockOrigin[2]),
-
-			Vector3d(blockOrigin[0], blockOrigin[1], blockOrigin[2] + blockSpan[2]),
-			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1], blockOrigin[2] + blockSpan[2]),
-			Vector3d(blockOrigin[0] + blockSpan[0], blockOrigin[1] + blockSpan[1], blockOrigin[2] + blockSpan[2]),
-			Vector3d(blockOrigin[0], blockOrigin[1] + blockSpan[1], blockOrigin[2] + blockSpan[2]),
-		};
-		addRectPrismFaces(blockId, pts);
+		addRectPrismFaces(pair.first, pts);
 	}
 }
 
@@ -412,35 +358,34 @@ Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& i
 		index[2] / (double)_blockDim
 	);
 
-	Vector3d ptX00 = pts[0] + t[0] * (pts[1] - pts[0]);
-	Vector3d ptX01 = pts[3] + t[0] * (pts[2] - pts[3]);
-	Vector3d ptX10 = pts[4] + t[0] * (pts[5] - pts[4]);
-	Vector3d ptX11 = pts[7] + t[0] * (pts[6] - pts[7]);
+	auto result = TRI_LERP(pts, t[0], t[1], t[2]);
 
-	Vector3d ptY0 = ptX00 + t[1] * (ptX01 - ptX00);
-	Vector3d ptY1 = ptX10 + t[1] * (ptX11 - ptX10);
+#ifdef _DEBUG
+	Vertex::fromDbl(result[0]);
+	Vertex::fromDbl(result[1]);
+	Vertex::fromDbl(result[2]);
+#endif // DEBUG
 
-	Vector3d result = ptY0 + t[2] * (ptY1 - ptY0);
 
 	return result;
 }
 
-void Block::addRectPrismFaces(size_t blockId, const vector<Vector3d>& pts)
+void Block::addRectPrismFaces(size_t cellId, const vector<Vector3d>& pts)
 {
-	addQuadFace(blockId, { pts[0], pts[3], pts[2], pts[1] });
-	addQuadFace(blockId, { pts[4], pts[5], pts[6], pts[7] });
+	addQuadFace(cellId, { pts[0], pts[3], pts[2], pts[1] });
+	addQuadFace(cellId, { pts[4], pts[5], pts[6], pts[7] });
 
 	// add left and right
-	addQuadFace(blockId, { pts[0], pts[4], pts[7], pts[3] });
-	addQuadFace(blockId, { pts[1], pts[2], pts[6], pts[5] });
+	addQuadFace(cellId, { pts[0], pts[4], pts[7], pts[3] });
+	addQuadFace(cellId, { pts[1], pts[2], pts[6], pts[5] });
 
 	// add front and back
-	addQuadFace(blockId, { pts[0], pts[1], pts[5], pts[4] });
-	addQuadFace(blockId, { pts[2], pts[3], pts[7], pts[6] });
+	addQuadFace(cellId, { pts[0], pts[1], pts[5], pts[4] });
+	addQuadFace(cellId, { pts[2], pts[3], pts[7], pts[6] });
 
 }
 
-void Block::addQuadFace(size_t blockId, const vector<Vector3d>& pts)
+void Block::addQuadFace(size_t cellId, const vector<Vector3d>& pts)
 {
 
 	Polygon newPoly, revPoly;
@@ -450,8 +395,8 @@ void Block::addQuadFace(size_t blockId, const vector<Vector3d>& pts)
 	auto& verts = newPoly.getVertexIds();
 	for (size_t i = verts.size() - 1; i != -1; i--)
 		revPoly.addVertex(verts[i]);
-	newPoly.finished(_vertices);
-	revPoly.finished(_vertices);
+	newPoly.doneCreating();
+	revPoly.doneCreating();
 	assert(!(newPoly <  revPoly));
 	assert(!(revPoly < newPoly));
 
@@ -459,10 +404,11 @@ void Block::addQuadFace(size_t blockId, const vector<Vector3d>& pts)
 	if (pPoly) {
 		assert(!(*pPoly < newPoly));
 		assert(!(newPoly < *pPoly));
-		assert(pPoly->getNeighborBlockId() == -1);
-		pPoly->setNeighborBlockId(blockId);
+		assert(pPoly->getNeighborCellId() == -1);
+		pPoly->setNeighborCellId(cellId);
+		assert(!pPoly->isOuter());
 	} else {
-		newPoly.setOwnerBlockId(blockId);
+		newPoly.setOwnerCellId(cellId);
 		_polygons.add(newPoly);
 		pPoly = _polygons.get(newPoly);
 		Polygon* pRevPoly = _polygons.get(revPoly);
@@ -472,7 +418,8 @@ void Block::addQuadFace(size_t blockId, const vector<Vector3d>& pts)
 			assert(pPoly == _polygons.get(revPoly));
 			assert(!(*pPoly < newPoly));
 			assert(!(newPoly < *pPoly));
-			assert(pPoly->getNeighborBlockId() == -1);
+			assert(pPoly->getNeighborCellId() == -1);
+			assert(pPoly->isOuter());
 		}
 	}
 
@@ -591,11 +538,8 @@ void Block::fillEmpty()
 
 void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
 {
-#if 0
-	_pModelTriMesh = pSrcMesh;
-#else
 	addTris(pSrcMesh, triIndices);
-#endif
+
 	processTris();
 }
 
@@ -609,6 +553,8 @@ void Block::processTris()
 	setNumDivs();
 	createCells();
 	createIntersectionCells();
+
+	_pModelTriMesh = nullptr;
 }
 
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
@@ -635,6 +581,45 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& tri
 		}
 		_pModelTriMesh->addTriangle(pts);
 	}
+}
+
+TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
+{
+	if (_polygons.empty())
+		return nullptr;
+
+	TriMesh::CMesh::BoundingBox bbox;
+	_vertices.iterateInOrder([&bbox](size_t id, const Vertex& vert) {
+		auto pt = vert.getPoint();
+		bbox.merge(pt);
+	});
+	double span = bbox.range().norm();
+	bbox.grow(0.05 * span);
+
+	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
+	size_t skipped = 0;
+	_polygons.iterateInOrder([this, result, outerOnly, &skipped](size_t id, const Polygon& poly) {
+		if (!outerOnly || poly.isOuter()) {
+			const auto& vertIds = poly.getVertexIds();
+			if (vertIds.size() == 3 || vertIds.size() == 4) {
+				vector<Vector3d> pts;
+				for (size_t vertId : vertIds) {
+					const auto& vert = _vertices[vertId];
+					pts.push_back(vert.getPoint());
+				}
+				if (pts.size() == 3) {
+					result->addTriangle(pts[0], pts[1], pts[2]);
+				}
+				else {
+					result->addQuad(pts[0], pts[1], pts[2], pts[3]);
+				}
+			} 
+		} else
+			skipped++;
+	});
+
+//	cout << "Skipped " << skipped << "inner faces\n";
+	return result;
 }
 
 vector<LineSegment> Block::getCellEdges(const Vector3i& cellIdx) const
@@ -664,84 +649,94 @@ vector<LineSegment> Block::getCellEdges(const Vector3i& cellIdx) const
 	return edges;
 }
 
-namespace
+void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const
 {
-	inline Vector3d interp(const Vector3d& p0, const Vector3d& p1, double t)
-	{
-		return p0 + t * (p1 - p0);
-	}
-}
-
-void Block::rayCastFace(int axis)
-{
-	auto pts = getCornerPts();
+	const double tol = 1.0e-5;
 	const Vector3d dir = axis == 0 ? Vector3d(1, 0, 0) : axis == 1 ? Vector3d(0, 1, 0) : Vector3d(0, 0, 1);
-	Vector3d pt00, pt01, pt10, pt11, origin;
-	for (int i = 0; i <= _blockDim; i++) {
-		double tI = i / (double)_blockDim;
-		for (int j = 0; j <= _blockDim; j++) {
-			double tJ = j / (double)_blockDim;
+	Vector3d pt0, pt1, origin;
+	int ix, iy, iz;
+	double tx, ty, tz;
+	for (int i = 0; i <= samples; i++) {
+		for (int j = 0; j <= samples; j++) {
 			switch (axis) {
 				default:
-				case 0: // X axis is ray dir
-					pt00 = interp(pts[0], pts[3], tI);
-					pt01 = interp(pts[4], pts[7], tI);
+				case 0: { // X axis is ray dir
+					iy = i;
+					ty = iy / (double)samples;
 
-					pt10 = interp(pts[1], pts[2], tI);
-					pt11 = interp(pts[5], pts[6], tI);
+					iz = j;
+					tz = iz / (double)samples;
 
+					pt0 = BI_LERP(pts[0], pts[3], pts[7], pts[4], ty, tz);
+					pt1 = BI_LERP(pts[1], pts[2], pts[6], pts[5], ty, tz);
 					break;
-				case 1: // Y axis is ray dir
-					pt00 = interp(pts[0], pts[1], tI);
-					pt01 = interp(pts[4], pts[5], tI);
+				}
+				case 1: { // Y axis is ray dir
+					ix = i;
+					tx = ix / (double)samples;
 
-					pt10 = interp(pts[3], pts[2], tI);
-					pt11 = interp(pts[7], pts[6], tI);
+					iz = j;
+					tz = iz / (double)samples;
 
+					pt0 = BI_LERP(pts[0], pts[1], pts[5], pts[4], tx, tz);
+					pt1 = BI_LERP(pts[3], pts[2], pts[6], pts[7], tx, tz);
 					break;
-				case 2: // Z axis is ray dir
-					pt00 = interp(pts[0], pts[1], tI);
-					pt01 = interp(pts[3], pts[2], tI);
+				}
+				case 2: { // Z axis is ray dir
+					ix = i;
+					tx = ix / (double)samples;
 
-					pt10 = interp(pts[4], pts[5], tI);
-					pt11 = interp(pts[7], pts[6], tI);
-
+					iy = j;
+					ty = iy / (double)samples;
+					pt0 = BI_LERP(pts[0], pts[1], pts[2], pts[3], tx, ty);
+					pt1 = BI_LERP(pts[4], pts[5], pts[6], pts[7], tx, ty);
 					break;
+				}
 			}
 
-			auto pt0 = interp(pt00, pt01, tJ);
-			auto pt1 = interp(pt10, pt11, tJ);
 			LineSegment seg(pt0, pt1);
+			Ray ray(pt0, pt1 - pt0);
 			double segLen = seg.calLength();
 			vector<RayHit> hits;
-			if (_pModelTriMesh->rayCast(seg, hits)) {
+			if (_pModelTriMesh->rayCast(seg, hits, tol)) {
 				for (const auto& hit : hits) {
-					double t = hit.dist / segLen;
-					size_t rayIdx = (size_t)(t * _blockDim);
-					if (rayIdx >= _blockDim)
-						rayIdx = _blockDim - 1;
-					Vector3d pt;
+					double tRay = hit.dist / segLen;
+					size_t rayIdx = (size_t)(tRay * _blockDim);
+					if (rayIdx >= samples)
+						rayIdx = samples - 1;
 					Vector3i cellIdx;
 					switch (axis) {
 						default:
 						case 0:
-							cellIdx = Vector3i(rayIdx, i, j);
-							pt = Vector3d(t, tI, tJ);
+							cellIdx = Vector3i(rayIdx, iy, iz);
 							break;
 						case 1:
-							cellIdx = Vector3i(i, rayIdx, j);
-							pt = Vector3d(tI, t, tJ);
+							cellIdx = Vector3i(ix, rayIdx, iz);
 							break;
 						case 2:
-							cellIdx = Vector3i(i, j, rayIdx);
-							pt = Vector3d(tI, tJ, t);
+							cellIdx = Vector3i(ix, iy, rayIdx);
 							break;
 					}
-					RayTriHit rtHit;
-					rtHit._cellIdx = calLinearCellIndex(cellIdx);
-					rtHit._triIdx = hit.triIdx;
-					rtHit._relPt = pt;
-					_rayTriHits.push_back(rtHit);
+
+					// These hits are on cell boundaries. A cell must be added on both sides of the boundary, for all axes.
+					for (int dx = -1; dx <= 0; dx++) {
+						for (int dy = -1; dy <= 0; dy++) {
+							for (int dz = -1; dz <= 0; dz++) {
+								RayTriHit rtHit;
+								Vector3i cellIdx2(cellIdx + Vector3i(dx, dy, dz));
+								if (cellIdx2[0] < samples && cellIdx2[1] < samples && cellIdx2[2] < samples) {
+									rtHit._cellIdx = calLinearCellIndex(cellIdx2);
+									if (rtHit._cellIdx < (samples * samples * samples)) {
+										rtHit._triIdx = hit.triIdx;
+										rtHit._relPt = hit.hitPt;
+										rayTriHits.push_back(rtHit);
+									} else {
+										assert(!"Bad cellIdx");
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -750,8 +745,10 @@ void Block::rayCastFace(int axis)
 
 void Block::setNumDivs()
 {
-	for (int axis = 0; axis < 3; axis++)
-		rayCastFace(axis);
+	auto pts = getCornerPts();
+	rayCastFace(pts, _blockDim, 0, _rayTriHits);
+	rayCastFace(pts, _blockDim, 1, _rayTriHits);
+	rayCastFace(pts, _blockDim, 2, _rayTriHits);
 }
 
 void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx)
