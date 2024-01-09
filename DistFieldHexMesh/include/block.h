@@ -106,7 +106,7 @@ private:
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedronPool;
-	ObjectPool<Cell> _cellPool;
+	ObjectPool<Cell> _cells;
 };
 
 inline size_t Block::blockDim() const
@@ -116,7 +116,7 @@ inline size_t Block::blockDim() const
 
 inline size_t Block::numCells() const
 {
-	return _cellPool.size();
+	return _cells.size();
 }
 
 inline size_t Block::calLinearCellIndex(size_t ix, size_t iy, size_t iz) const
@@ -139,9 +139,9 @@ inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
 inline Cell& Block::getCell(const Vector3i& idx3)
 {
 	size_t idx = calLinearCellIndex(idx3);
-	if (idx < _cellPool.size()) {
-		if (_cellPool.exists(idx)) {
-			auto& result = _cellPool[idx];
+	if (idx < _cells.size()) {
+		if (_cells.exists(idx)) {
+			auto& result = _cells[idx];
 			return result;
 		}
 	}
@@ -151,9 +151,9 @@ inline Cell& Block::getCell(const Vector3i& idx3)
 inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
 {
 	size_t idx = calLinearCellIndex(ix, iy, iz);
-	if (idx < _cellPool.size()) {
-		if (_cellPool.exists(idx)) {
-			auto& result = _cellPool[idx];
+	if (idx < _cells.size()) {
+		if (_cells.exists(idx)) {
+			auto& result = _cells[idx];
 			return result;
 		}
 	}
@@ -168,8 +168,8 @@ inline const Cell& Block::getCell(const Vector3i& idx) const
 inline void Block::freeCell(size_t ix, size_t iy, size_t iz)
 {
 	size_t idx = calLinearCellIndex(ix, iy, iz);
-	if (_cellPool.exists(idx)) {
-		_cellPool.free(idx);
+	if (_cells.exists(idx)) {
+		_cells.free(idx);
 	}
 }
 

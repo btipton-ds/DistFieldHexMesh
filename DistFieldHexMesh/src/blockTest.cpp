@@ -15,7 +15,7 @@ using namespace DFHM;
 bool TestBlock::testBlock00()
 {
 #if 0
-	auto& cp = Block::_cellPool;
+	auto& cp = Block::_cells;
 	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();
@@ -49,7 +49,7 @@ bool TestBlock::testBlock00()
 bool TestBlock::testBlock01()
 {
 #if 0
-	auto& cp = Block::_cellPool;
+	auto& cp = Block::_cells;
 	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();
@@ -73,7 +73,7 @@ bool TestBlock::testBlock01()
 bool TestBlock::testBlock02()
 {
 #if 0
-	auto& cp = Block::_cellPool;
+	auto& cp = Block::_cells;
 	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();
@@ -157,7 +157,7 @@ bool TestBlock::testBlock02()
 bool TestBlock::testBlock03()
 {
 #if 0
-	auto& cp = Block::_cellPool;
+	auto& cp = Block::_cells;
 	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();
@@ -207,7 +207,7 @@ bool TestBlock::testBlock03()
 bool TestBlock::testBlock04()
 {
 #if 0
-	auto& cp = Block::_cellPool;
+	auto& cp = Block::_cells;
 	cp.testReset();
 
 	const size_t bd = Block::getBlockDim();

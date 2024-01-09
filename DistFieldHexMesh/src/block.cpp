@@ -41,7 +41,7 @@ Block::Block(vector<Vector3d>& pts)
 	: _vertices(true)
 	, _polygons(true)
 	, _polyhedronPool(false)
-	, _cellPool(false)
+	, _cells(false)
 	, _blockDim(s_minBlockDim)
 {
 	assert(pts.size() == 8);
@@ -61,7 +61,7 @@ Block::Block(const Block& src)
 	: _vertices(src._vertices)
 	, _polygons(src._polygons)
 	, _polyhedronPool(src._polyhedronPool)
-	, _cellPool(src._cellPool)
+	, _cells(src._cells)
 {
 
 }
@@ -93,7 +93,7 @@ Vector3i Block::calCellIndexFromLinear(size_t linearIdx) const
 
 bool Block::cellExists(size_t ix, size_t iy, size_t iz) const
 {
-//	return _cellPool.idExists(calLinearCellIndex(ix, iy, iz));
+//	return _cells.idExists(calLinearCellIndex(ix, iy, iz));
 	return false;
 }
 
@@ -251,10 +251,10 @@ bool Block::scanCreateCellsWhereNeeded(vector<bool>& cellsToCreate, const Vector
 
 void Block::addCell(size_t ix, size_t iy, size_t iz)
 {
-	if (_cellPool.empty())
-		_cellPool.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
+	if (_cells.empty())
+		_cells.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
 	size_t idx = calLinearCellIndex(ix, iy, iz);
-	_cellPool.add(Cell(), -1);
+	_cells.add(Cell(), -1);
 }
 
 void Block::addCell(const Vector3i& cellIdx)
@@ -264,10 +264,10 @@ void Block::addCell(const Vector3i& cellIdx)
 
 void Block::createCellsDeprecated(const vector<bool>& cellsToCreate)
 {
-	if (_cellPool.empty())
-		_cellPool.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
+	if (_cells.empty())
+		_cells.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
 
-	if (_cellPool.size() == cellsToCreate.size()) {
+	if (_cells.size() == cellsToCreate.size()) {
 		for (size_t i = 0; i < cellsToCreate.size(); i++) {
 			if (cellsToCreate[i]) {
 #ifdef _DEBUG
@@ -286,7 +286,7 @@ void Block::createCellsDeprecated(const vector<bool>& cellsToCreate)
 				assert(i == calLinearCellIndex(ix, iy, iz));
 #endif // _DEBUG
 
-				_cellPool.add(Cell(), i);
+				_cells.add(Cell(), i);
 			}
 		}
 	}
@@ -458,7 +458,7 @@ void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)
 				size_t bIdx = calLinearCellIndex(i, j, k);
 				if (cellsToCreate[bIdx]) {
 					Cell* pCell = nullptr;
-					_cellPool[bIdx] = _cellPool.getObj(bIdx, pCell, true);
+					_cells[bIdx] = _cells.getObj(bIdx, pCell, true);
 //					pCell->processBlock(pTriMesh, k, blockOrigin, blockSpan);
 				}
 			}
@@ -475,11 +475,11 @@ bool Block::unload(string& filename)
 			return false;
 		}
 
-		size_t count = _cellPool.size();
+		size_t count = _cells.size();
 		out.write((char*)&count, sizeof(count));
-		for (size_t id = 0; id < _cellPool.size(); id++) {
-			if (_cellPool.exists(id)) {
-				Cell& cell = _cellPool[id];
+		for (size_t id = 0; id < _cells.size(); id++) {
+			if (_cells.exists(id)) {
+				Cell& cell = _cells[id];
 				if (!cell.unload(out)) {
 					return false;
 				}
@@ -493,10 +493,10 @@ bool Block::unload(string& filename)
 	}
 
 #if 0
-	for (auto cellIdx : _cellPool) {
-		_cellPool.unload(cellIdx);
+	for (auto cellIdx : _cells) {
+		_cells.unload(cellIdx);
 	}
-	_cellPool.clear();
+	_cells.clear();
 #endif
 
 	return true;
@@ -513,14 +513,14 @@ bool Block::load()
 	in.read((char*) & size, sizeof(size));
 	if (!in.good()) return false;
 
-	_cellPool.resize(size);
+	_cells.resize(size);
 	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
 		Cell cell;
 		if (!cell.load(in)) {
 			// TODO cleanup here
 			return false;
 		}
-		_cellPool.add(cell, cellIdx);
+		_cells.add(cell, cellIdx);
 	}
 
 	_filename.clear();
@@ -532,8 +532,8 @@ void Block::fillEmpty()
 {
 	const size_t numCells = s_minBlockDim * s_minBlockDim * s_minBlockDim;
 
-	if (_cellPool.size() != numCells)
-		_cellPool.resize(numCells);
+	if (_cells.size() != numCells)
+		_cells.resize(numCells);
 }
 
 void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
@@ -784,11 +784,11 @@ void Block::createIntersectionCells()
 void Block::pack()
 {
 #if 0
-	for (auto id : _cellPool) {
+	for (auto id : _cells) {
 		if (id != -1)
 			return;
 	}
 
-	_cellPool.clear();
+	_cells.clear();
 #endif
 }
