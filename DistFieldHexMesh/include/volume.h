@@ -67,6 +67,9 @@ public:
 	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool outerFacesOnly);
 	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
 
+	size_t numFaces(bool includeInner) const;
+	size_t numPolyhedra() const;
+
 	void writePolyMesh(const std::string& dirName) const;
 
 	void dumpSections(const std::string& dirName) const;

@@ -5,6 +5,11 @@
 using namespace std;
 using namespace DFHM;
 
+Polyhedron::Polyhedron(const vector<size_t>& faceIds)
+	: _faceIds(faceIds)
+{
+}
+
 bool Polyhedron::unload(std::ostream& out)
 {
 	return true;
@@ -15,23 +20,14 @@ bool Polyhedron::load(std::istream& out)
 	return true;
 }
 
-size_t Polyhedron::getHash() const
-{
-	size_t result = 0;
-	for (const auto& val : _polygonIds)
-		result += val.getThreadIndex() + val.getIndex();
-
-	return result;
-}
-
 bool Polyhedron::operator < (const Polyhedron& rhs) const
 {
-	if (_polygonIds.size() < rhs._polygonIds.size())
+	if (_faceIds.size() < rhs._faceIds.size())
 		return true;
-	else if (_polygonIds.size() > rhs._polygonIds.size())
+	else if (_faceIds.size() > rhs._faceIds.size())
 		return false;
 
-	vector<ObjectPoolId> lhsIndices(_polygonIds), rhsIndices(rhs._polygonIds);
+	vector<size_t> lhsIndices(_faceIds), rhsIndices(rhs._faceIds);
 	sort(lhsIndices.begin(), lhsIndices.begin());
 	sort(rhsIndices.begin(), rhsIndices.begin());
 	for (size_t i = 0; i < lhsIndices.size(); i++) {

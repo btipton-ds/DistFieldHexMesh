@@ -52,6 +52,9 @@ public:
 
 	std::vector<uint32_t> getCellDivs() const;
 
+	size_t numFaces(bool includeInner) const;
+	size_t numPolyhedra() const;
+
 	void fillEmpty();
 	void processTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	void processTris();
@@ -89,8 +92,8 @@ private:
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
 	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& pt) const;
 
-	void addRectPrismFaces(size_t cellId, const std::vector<Vector3d>& pts);
-	void addQuadFace(size_t cellId, const std::vector<Vector3d>& pts);
+	size_t addHexCell(size_t cellId, const std::vector<Vector3d>& pts);
+	size_t addQuadFace(size_t cellId, const std::vector<Vector3d>& pts);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	std::string _filename;
@@ -105,7 +108,7 @@ private:
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
-	ObjectPool<Polyhedron> _polyhedronPool;
+	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
 };
 

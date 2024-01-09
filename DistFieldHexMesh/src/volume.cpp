@@ -647,6 +647,9 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 	}
 #endif
 
+	cout << "Num polyhedra: " << numPolyhedra() << "\n";
+	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
+
 	auto result = makeTris(outerFacesOnly, true);
 
 	return result;
@@ -684,6 +687,28 @@ vector<TriMesh::CMeshPtr> Volume::makeTris(bool outerOnly, bool multiCore)
 	}
 
 	cout << "Num tris: " << numTris << "\n";
+	return result;
+}
+
+size_t Volume::numFaces(bool includeInner) const
+{
+	size_t result = 0;
+	for (auto pBlock : _blocks) {
+		if (pBlock)
+			result += pBlock->numFaces(includeInner);
+	}
+
+	return result;
+}
+
+size_t Volume::numPolyhedra() const
+{
+	size_t result = 0;
+	for (auto pBlock : _blocks) {
+		if (pBlock)
+			result += pBlock->numPolyhedra();
+	}
+
 	return result;
 }
 

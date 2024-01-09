@@ -6,14 +6,17 @@ namespace DFHM {
 
 class Polyhedron {
 public:
+	Polyhedron() = default;
+	Polyhedron(const Polyhedron& src) = default;
+	Polyhedron(const std::vector<size_t>& faceIds);
+
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 
-	size_t getHash() const;
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<ObjectPoolId> _polygonIds;
+	std::vector<size_t> _faceIds;
 };
 
 }

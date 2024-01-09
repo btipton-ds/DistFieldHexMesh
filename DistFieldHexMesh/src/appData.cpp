@@ -292,7 +292,7 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setMinBlockDim(16);
+    Block::setMinBlockDim(8);
 
     double blockSize = 0.1;
 
