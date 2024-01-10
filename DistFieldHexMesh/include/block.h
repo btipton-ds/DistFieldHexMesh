@@ -24,26 +24,6 @@ class Polyhedron;
 
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
-class ScopedSideLock {
-public:
-	enum Side {
-		None = 0,
-		Front = 1,
-		Bottom = 2,
-		Left = 4,
-		Back = 8,
-		Top = 16,
-		Right = 32
-	};
-
-
-	ScopedSideLock(const Volume& vol, const Index3D& blockIdx, uint8_t sides);
-	~ScopedSideLock();
-
-	const Volume& _vol;
-	const Index3D& _blockIdx;
-	uint8_t _sides;
-};
 
 class Block {
 public:
@@ -58,11 +38,9 @@ public:
 	size_t getHash() const;
 	bool operator < (const Block& rhs) const;
 
+	void connectAdjacent(Volume& vol, const Index3D& idx);
 	void processBlock(size_t blockRayIdx, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Index3D& axisOrder);
-	void addCell(size_t ix, size_t iy, size_t iz);
-	void addCell(const Index3D& cellIdx);
-	void createCellsDeprecated(const std::vector<bool>& cellsToCreate);
 	void createCells();
 	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearCellIndex(const Index3D& cellIdx) const;
@@ -70,7 +48,7 @@ public:
 	void addCellFaces();
 	void createBlockFaces();
 
-	std::vector<Vector3d> getCornerPts() const;
+	std::vector<Vector3d> getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<Vector3d> getCellCornerPts(const Index3D& cellIdx) const;
 	std::vector<LineSegment> getCellEdges(const Index3D& cellIdx) const;
 
@@ -102,18 +80,13 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	const ObjectPool<Vertex>& getVertices() const;
-	const ObjectPool<Polygon>& getPolygons() const;
-
-protected:
-	enum class AxisIndex {
-		X, Y, Z
-	};
-
 private:
 	friend class Volume;
 	friend class TestBlock;
-	friend class ScopedSideLock;
+
+	enum class AxisIndex {
+		X, Y, Z
+	};
 
 	struct RayTriHit {
 		size_t _cellIdx;
@@ -121,10 +94,8 @@ private:
 		Vector3d _relPt;
 	};
 
-	void setSideMutexLocked(const Volume& vol, const Index3D& blockIdx, ScopedSideLock::Side side, bool locked) const;
 	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
 	void setNumDivs();
-	void createIntersectionCells();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
 	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Index3D& pt) const;
 
@@ -135,6 +106,7 @@ private:
 	std::string _filename;
 
 	static size_t s_minBlockDim;
+	Index3D _blockIdx;
 	size_t _blockDim;
 
 	TriMesh::CMeshPtr _pModelTriMesh;
@@ -147,7 +119,7 @@ private:
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
 
-	mutable std::mutex _frontSideMutex, _bottomSideMutex, _leftSideMutex;
+	std::shared_ptr<Block> _adjBack, _adjTop, _adjRight;
 };
 
 inline size_t Block::blockDim() const
@@ -227,16 +199,6 @@ inline bool Block::isUnloaded() const
 inline std::vector<uint32_t> Block::getCellDivs() const
 {
 	return _cellDivs;
-}
-
-inline const ObjectPool<Vertex>& Block::getVertices() const
-{
-	return _vertices;
-}
-
-inline const ObjectPool<Polygon>& Block::getPolygons() const
-{
-	return _polygons;
 }
 
 inline const TriMesh::CMeshPtr& Block::getModelMesh() const

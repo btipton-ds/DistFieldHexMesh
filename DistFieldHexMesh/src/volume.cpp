@@ -481,11 +481,16 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 
 Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 {
+	return addBlock(Index3D(ix, iy, iz));
+}
+
+Block& Volume::addBlock(const Index3D& blockIdx)
+{
 	const Vector3d xAxis(1, 0, 0);
 	const Vector3d yAxis(0, 1, 0);
 	const Vector3d zAxis(0, 0, 1);
 
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	size_t idx = calLinearBlockIndex(blockIdx);
 	auto pBlock = _blocks[idx];
 	if (pBlock)
 		return *pBlock;
@@ -495,9 +500,9 @@ Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 		span[i] = _spanMeters[i] / _blockDim[i];
 	}
 
-	origin[0] = _originMeters[0] + ix * span[0];
-	origin[1] = _originMeters[1] + iy * span[1];
-	origin[2] = _originMeters[2] + iz * span[2];
+	origin[0] = _originMeters[0] + blockIdx[0] * span[0];
+	origin[1] = _originMeters[1] + blockIdx[1] * span[1];
+	origin[2] = _originMeters[2] + blockIdx[2] * span[2];
 	vector<Vector3d> pts = {
 		origin,
 		origin + xAxis * span[0],
@@ -515,11 +520,6 @@ Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 	pBlock = _blocks[idx];
 
 	return *pBlock;
-}
-
-Block& Volume::addBlock(const Index3D& blockIdx)
-{
-	return addBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
@@ -628,6 +628,12 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
+	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->connectAdjacent(*this, calBlockIndexFromLinearIndex(linearIdx));
+		}
+	}, numBlocks, RUN_MULTI_THREAD);
+
 #if QUICK_TEST
 	map<size_t, std::shared_ptr<Block>> orderedBlocks;
 	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
@@ -645,6 +651,12 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		if (count > 3)
 			break;
 	}
+#else
+	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->processTris();
+		}
+		}, numBlocks, RUN_MULTI_THREAD);
 #endif
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";

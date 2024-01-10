@@ -269,49 +269,6 @@ bool Block::scanCreateCellsWhereNeeded(vector<bool>& cellsToCreate, const Index3
 	return result;
 }
 
-void Block::addCell(size_t ix, size_t iy, size_t iz)
-{
-	if (_cells.empty())
-		_cells.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
-	size_t idx = calLinearCellIndex(ix, iy, iz);
-	_cells.add(Cell(), -1);
-}
-
-void Block::addCell(const Index3D& cellIdx)
-{
-	addCell(cellIdx[0], cellIdx[1], cellIdx[2]);
-}
-
-void Block::createCellsDeprecated(const vector<bool>& cellsToCreate)
-{
-	if (_cells.empty())
-		_cells.resize(s_minBlockDim * s_minBlockDim * s_minBlockDim);
-
-	if (_cells.size() == cellsToCreate.size()) {
-		for (size_t i = 0; i < cellsToCreate.size(); i++) {
-			if (cellsToCreate[i]) {
-#ifdef _DEBUG
-
-
-				size_t temp = i;
-
-				size_t ix = temp % s_minBlockDim;
-				temp = temp / s_minBlockDim;
-
-				size_t iy = temp % s_minBlockDim;
-				temp = temp / s_minBlockDim;
-
-				size_t iz = temp % s_minBlockDim;
-
-				assert(i == calLinearCellIndex(ix, iy, iz));
-#endif // _DEBUG
-
-				_cells.add(Cell(), i);
-			}
-		}
-	}
-}
-
 void Block::createCells()
 {
 	if (_cells.empty()) {
@@ -435,7 +392,8 @@ size_t Block::addQuadFace(const vector<Vector3d>& pts)
 {
 	Polygon newPoly, revPoly;
 	for (const auto& pt : pts) {
-		newPoly.addVertex(_vertices.add(pt, -1));
+		auto vertId = _vertices.add(pt, -1);
+		newPoly.addVertex(vertId);
 	}
 	auto& verts = newPoly.getVertexIds();
 	for (size_t i = verts.size() - 1; i != -1; i--)
@@ -484,6 +442,24 @@ bool Block::operator < (const Block& rhs) const
 {
 	assert(!"cannot reverse lookup blocks.");
 	return false;
+}
+
+void Block::connectAdjacent(Volume& vol, const Index3D& idx)
+{
+	_blockIdx = idx;
+
+	Index3D adjBackIdx(idx), adjTopIdx(idx), adjRightIdx(idx);
+	adjBackIdx.adjY(Index3D::Positive);
+	if (vol.blockExists(adjBackIdx))
+		_adjBack = vol.getBlockPtr(adjBackIdx);
+
+	adjTopIdx.adjZ(Index3D::Positive);
+	if (vol.blockExists(adjTopIdx))
+		_adjTop = vol.getBlockPtr(adjTopIdx);
+
+	adjRightIdx.adjY(Index3D::Positive);
+	if (vol.blockExists(adjRightIdx))
+		_adjRight = vol.getBlockPtr(adjRightIdx);
 }
 
 void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)
@@ -602,7 +578,6 @@ void Block::processTris()
 
 	setNumDivs();
 	createCells();
-	createIntersectionCells();
 
 	_pModelTriMesh = nullptr;
 }
@@ -697,58 +672,6 @@ vector<LineSegment> Block::getCellEdges(const Index3D& cellIdx) const
 	};
 
 	return edges;
-}
-
-void Block::setSideMutexLocked(const Volume& vol, const Index3D& blockIdx, ScopedSideLock::Side side, bool locked) const
-{
-	mutex* pMutex = nullptr;
-	switch (side) {
-		default:
-			break;
-
-		case ScopedSideLock::Front:
-			pMutex = &_frontSideMutex;
-			break;
-		case ScopedSideLock::Bottom:
-			pMutex = &_bottomSideMutex;
-			break;
-		case ScopedSideLock::Left:
-			pMutex = &_leftSideMutex;
-			break;
-		case ScopedSideLock::Back: {
-			Index3D adjIdx(blockIdx.adjY(Index3D::Positive));
-			if (vol.blockExists(adjIdx)) {
-				const Block& adjBlock = vol.getBlock(adjIdx);
-				pMutex = &adjBlock._frontSideMutex;
-				break;
-			}
-			break;
-		}
-		case ScopedSideLock::Top: {
-			Index3D adjIdx(blockIdx.adjZ(Index3D::Positive));
-			if (vol.blockExists(adjIdx)) {
-				const Block& adjBlock = vol.getBlock(adjIdx);
-				pMutex = &adjBlock._bottomSideMutex;
-				break;
-			}
-			break;
-		}
-		case ScopedSideLock::Right: {
-			Index3D adjIdx(blockIdx.adjX(Index3D::Positive));
-			if (vol.blockExists(adjIdx)) {
-				const Block& adjBlock = vol.getBlock(adjIdx);
-				pMutex = &adjBlock._leftSideMutex;
-				break;
-			}
-			break;
-		}
-	}
-	if (pMutex) {
-		if (locked)
-			pMutex->lock();
-		else
-			pMutex->unlock();
-	}
 }
 
 void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const
@@ -879,10 +802,6 @@ void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayH
 
 }
 
-void Block::createIntersectionCells()
-{
-}
-
 void Block::pack()
 {
 #if 0
@@ -893,30 +812,6 @@ void Block::pack()
 
 	_cells.clear();
 #endif
-}
-
-ScopedSideLock::ScopedSideLock(const Volume& vol, const Index3D& blockIdx, uint8_t sides)
-	: _vol(vol)
-	, _blockIdx(blockIdx)
-	, _sides(sides)
-{
-	const Block& block = _vol.getBlock(_blockIdx);
-	for (uint8_t side = 0; side <= 6; side++) {
-		Side testSide = (Side)(1 << side);
-		if (testSide & _sides)
-			block.setSideMutexLocked(_vol, _blockIdx, testSide, true);
-	}
-}
-
-ScopedSideLock::~ScopedSideLock()
-{
-	const Block& block = _vol.getBlock(_blockIdx);
-	for (uint8_t side = 0; side <= 6; side++) {
-		Side testSide = (Side)(1 << side);
-		if (testSide & _sides) {
-			block.setSideMutexLocked(_vol, _blockIdx, testSide, false);
-		}
-	}
 }
 
 

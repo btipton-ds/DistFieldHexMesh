@@ -46,6 +46,7 @@ public:
 	bool blockExists(const Index3D& blockIdx) const;
 	Block& addBlock(size_t ix, size_t iy, size_t iz);
 	Block& addBlock(const Index3D& blockIdx);
+	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
 	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block& getBlock(const Index3D& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
@@ -103,6 +104,11 @@ inline void Volume::setOrigin(const Vector3d& origin)
 inline void Volume::setSpan(const Vector3d& span)
 {
 	_spanMeters = span;
+}
+
+inline std::shared_ptr<Block> Volume::getBlockPtr(const Index3D& blockIdx)
+{
+	return _blocks[calLinearBlockIndex(blockIdx)];
 }
 
 inline const Block& Volume::getBlock(const Index3D& blockIdx) const
