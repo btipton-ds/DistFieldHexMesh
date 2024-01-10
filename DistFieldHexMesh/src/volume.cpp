@@ -21,9 +21,9 @@ using namespace TriMesh;
 namespace
 {
 
-inline Vector3i assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder)
+inline Index3D assignAxes(const Index3D& indexIn, const Index3D& axisOrder)
 {
-	Vector3i result;
+	Index3D result;
 	result[axisOrder[0]] = indexIn[0];
 	result[axisOrder[1]] = indexIn[1];
 	result[axisOrder[2]] = indexIn[2];
@@ -32,7 +32,7 @@ inline Vector3i assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder)
 
 }
 
-Volume::Volume(const Index3& blockSize)
+Volume::Volume(const Index3D& blockSize)
 {
 	setBlockDims(blockSize);
 }
@@ -45,13 +45,13 @@ Volume::Volume(const Volume& src)
 {
 }
 
-void Volume::setBlockDims(const Index3& blockSize)
+void Volume::setBlockDims(const Index3D& blockSize)
 {
 	_blockDim = blockSize;
 	_blocks.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
 }
 
-const Index3& Volume::getBlockDims() const
+const Index3D& Volume::getBlockDims() const
 {
 	return _blockDim;
 }
@@ -59,8 +59,8 @@ const Index3& Volume::getBlockDims() const
 bool Volume::cellExists(size_t ix, size_t iy, size_t iz) const
 {
 	size_t blkDim = Block::getMinBlockDim();
-	Vector3i idx(ix, iy, iz);
-	Vector3i blockIdx, cellIdx;
+	Index3D idx(ix, iy, iz);
+	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
 		blockIdx[i] = idx[i] / blkDim;
 		cellIdx[i] = idx[i] % blkDim;
@@ -71,7 +71,7 @@ bool Volume::cellExists(size_t ix, size_t iy, size_t iz) const
 	return block.cellExists(cellIdx);
 }
 
-bool Volume::cellExists(const Vector3i& blockIdx) const
+bool Volume::cellExists(const Index3D& blockIdx) const
 {
 	return cellExists(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
@@ -79,8 +79,8 @@ bool Volume::cellExists(const Vector3i& blockIdx) const
 Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
 {
 	size_t blkDim = Block::getMinBlockDim();
-	Vector3i idx(ix, iy, iz);
-	Vector3i blockIdx, cellIdx;
+	Index3D idx(ix, iy, iz);
+	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
 		blockIdx[i] = idx[i] / blkDim;
 		cellIdx[i] = idx[i] % blkDim;
@@ -93,8 +93,8 @@ Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
 const Cell& Volume::getCell(size_t ix, size_t iy, size_t iz) const
 {
 	size_t blkDim = Block::getMinBlockDim();
-	Vector3i idx(ix, iy, iz);
-	Vector3i blockIdx, cellIdx;
+	Index3D idx(ix, iy, iz);
+	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
 		blockIdx[i] = idx[i] / blkDim;
 		cellIdx[i] = idx[i] % blkDim;
@@ -163,7 +163,7 @@ void Volume::createBlockRays(AxisIndex axisIdx, vector<bool>& blocksToCreate)
 								size_t ix = blockIdx;
 								for (int dy = -1; dy < 2; dy++) {
 									for (int dz = -1; dz < 2; dz++) {
-										size_t bIdx = calLinearBlockIndex(Vector3i(ix, iy + dy, iz + dz));
+										size_t bIdx = calLinearBlockIndex(Index3D(ix, iy + dy, iz + dz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
 									}
@@ -202,7 +202,7 @@ void Volume::createBlockRays(AxisIndex axisIdx, vector<bool>& blocksToCreate)
 								size_t iy = blockIdx;
 								for (int dx = -1; dx < 2; dx++) {
 									for (int dz = -1; dz < 2; dz++) {
-										size_t bIdx = calLinearBlockIndex(Vector3i(ix + dx, iy, iz + dz));
+										size_t bIdx = calLinearBlockIndex(Index3D(ix + dx, iy, iz + dz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
 									}
@@ -241,7 +241,7 @@ void Volume::createBlockRays(AxisIndex axisIdx, vector<bool>& blocksToCreate)
 								size_t iz = blockIdx;
 								for (int dx = -1; dx < 2; dx++) {
 									for (int dy = -1; dy < 2; dy++) {
-										size_t bIdx = calLinearBlockIndex(Vector3i(ix + dx, iy + dy, iz));
+										size_t bIdx = calLinearBlockIndex(Index3D(ix + dx, iy + dy, iz));
 										if (bIdx < blocksToCreate.size())
 											blocksToCreate[bIdx] = true;
 									}
@@ -319,7 +319,7 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 											for (int dy = -1; dy < 2; dy++) {
 												for (int dz = -1; dz < 2; dz++) {
 #if 0
-													size_t cIdx = Block::calcCellIndex(Vector3i(cellIdx, iyCell + dy, izCell + dz));
+													size_t cIdx = Block::calcCellIndex(Index3D(cellIdx, iyCell + dy, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -389,7 +389,7 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 											for (int dx = -1; dx < 2; dx++) {
 												for (int dz = -1; dz < 2; dz++) {
 #if 0
-													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, cellIdx, izCell + dz));
+													size_t cIdx = Block::calcCellIndex(Index3D(ixCell + dx, cellIdx, izCell + dz));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -459,7 +459,7 @@ void Volume::createBlockCellRays(AxisIndex axisIdx, const vector<bool>& blocksTo
 											for (int dx = -1; dx < 2; dx++) {
 												for (int dy = -1; dy < 2; dy++) {
 #if 0
-													size_t cIdx = Block::calcCellIndex(Vector3i(ixCell + dx, iyCell + dy, cellIdx));
+													size_t cIdx = Block::calcCellIndex(Index3D(ixCell + dx, iyCell + dy, cellIdx));
 													if (cIdx < blockCellsToCreate.size()) {
 														blockCellsToCreate[cIdx] = true;
 													}
@@ -517,7 +517,7 @@ Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
 	return *pBlock;
 }
 
-Block& Volume::addBlock(const Vector3i& blockIdx)
+Block& Volume::addBlock(const Index3D& blockIdx)
 {
 	return addBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
@@ -529,7 +529,7 @@ std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
 		blockSpan[i] = _spanMeters[i] / _blockDim[i];
 	}
 
-	Vector3i blkIdx;
+	Index3D blkIdx;
 	for (blkIdx[0] = 0; blkIdx[0] < _blockDim[0]; blkIdx[0]++) {
 		origin[1] = _originMeters[1] + blkIdx[0] * blockSpan[1];
 		for (blkIdx[1] = 0; blkIdx[1] < _blockDim[1]; blkIdx[1]++) {
@@ -553,7 +553,7 @@ bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
 	return _blocks[idx] != nullptr;
 }
 
-bool Volume::blockExists(const Vector3i& blockIdx) const
+bool Volume::blockExists(const Index3D& blockIdx) const
 {
 	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
@@ -589,7 +589,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
 
-	Index3 blockSize(
+	Index3D blockSize(
 		(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
 		(size_t)(_spanMeters[1] / targetBlockSize + 0.5),
 		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
@@ -605,7 +605,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
 
-		Vector3i blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 
 		blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
 		blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];

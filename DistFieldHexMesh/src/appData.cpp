@@ -12,7 +12,6 @@
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
-#include <dataPool.h>
 #include <vertex.h>
 
 using namespace std;
@@ -21,7 +20,6 @@ using namespace DFHM;
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
-    DataPool::setNumThreads(MultiCore::getNumCores());
 }
 
 void AppData::doOpen()
@@ -83,7 +81,7 @@ void AppData::doOpen()
             vector<float> normPts;
             vector<int> normIndices;
             for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
-                const Vector3i& triIndices = _pMesh->getTri(triIdx);
+                const Index3D& triIndices = _pMesh->getTri(triIdx);
                 const auto pt0 = pMesh->getVert(triIndices[0])._pt;
                 const auto pt1 = pMesh->getVert(triIndices[1])._pt;
                 const auto pt2 = pMesh->getVert(triIndices[2])._pt;
@@ -150,8 +148,8 @@ void AppData::doVerifyNormals()
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Vector3i& faceIndices0 = _pMesh->getTri(edge._faceIndex[0]);
-            const Vector3i& faceIndices1 = _pMesh->getTri(edge._faceIndex[1]);
+            const Index3D& faceIndices0 = _pMesh->getTri(edge._faceIndex[0]);
+            const Index3D& faceIndices1 = _pMesh->getTri(edge._faceIndex[1]);
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {
@@ -206,7 +204,7 @@ void AppData::doFindMinGap() const
     numX = (numX / 8 + 1) * 8;
     numY = (numY / 8 + 1) * 8;
     numZ = (numZ / 8 + 1) * 8;
-    Vector3i dim(numX, numY, numZ);
+    Index3D dim(numX, numY, numZ);
 
 
     MultiCore::runLambda([this, dim, bb](size_t threadNum, size_t numThreads) {
@@ -255,7 +253,7 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
-	Volume vol(Index3(2, 2, 2));
+	Volume vol(Index3D(2, 2, 2));
     vol.setOrigin(dlg.getBlockOrigin());
     vol.setSpan(dlg.getBlockSpan());
     

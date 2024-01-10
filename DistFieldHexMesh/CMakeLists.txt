@@ -64,7 +64,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- 	"src/dataPool.cpp" 
+ 	 
  	
 )
 
@@ -78,7 +78,7 @@ add_executable (TestDFM
 	"src/polyHedron.cpp"
 	"src/vertex.cpp"
  	"src/blockTest.cpp" 
- 	"src/dataPool.cpp" 
+ 	 
  	
  )
 

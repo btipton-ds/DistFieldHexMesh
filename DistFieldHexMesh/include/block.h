@@ -1,15 +1,49 @@
 #pragma once
 
+#include <stdexcept>
 #include <triMesh.h>
-#include <dataPool.h>
+#include <objectPool.h>
+#include <indices.h>
 #include <cell.h>
 #include <vertex.h>
+#include <mutex>
 #include <tm_vector3.h>
-#include <stdexcept>
 
 namespace DFHM {
 
 class Volume;
+class Polygon;
+class Polyhedron;
+
+/*
+	The multicore decomposition works on a single block at a time.
+	The race conditions occur when two adjacent blocks are working on faces or vertices which like in the common side face of the block.
+	Each block has a mutex for each positive face of the block - 3 mutexes
+	When working on any face, the common face must be locked. For the negative faces, that requires fetching the adjacent block and locking the matching
+	positive face.
+
+	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
+*/
+class ScopedSideLock {
+public:
+	enum Side {
+		None = 0,
+		Front = 1,
+		Bottom = 2,
+		Left = 4,
+		Back = 8,
+		Top = 16,
+		Right = 32
+	};
+
+
+	ScopedSideLock(const Volume& vol, const Index3D& blockIdx, uint8_t sides);
+	~ScopedSideLock();
+
+	const Volume& _vol;
+	const Index3D& _blockIdx;
+	uint8_t _sides;
+};
 
 class Block {
 public:
@@ -25,30 +59,30 @@ public:
 	bool operator < (const Block& rhs) const;
 
 	void processBlock(size_t blockRayIdx, std::vector<bool>& cellsToCreate);
-	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Vector3i& axisOrder);
+	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Index3D& axisOrder);
 	void addCell(size_t ix, size_t iy, size_t iz);
-	void addCell(const Vector3i& cellIdx);
+	void addCell(const Index3D& cellIdx);
 	void createCellsDeprecated(const std::vector<bool>& cellsToCreate);
 	void createCells();
 	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
-	size_t calLinearCellIndex(const Vector3i& cellIdx) const;
-	Vector3i calCellIndexFromLinear(size_t linearIdx) const;
+	size_t calLinearCellIndex(const Index3D& cellIdx) const;
+	Index3D calCellIndexFromLinear(size_t linearIdx) const;
 	void addCellFaces();
 	void createBlockFaces();
 
 	std::vector<Vector3d> getCornerPts() const;
-	std::vector<Vector3d> getCellCornerPts(const Vector3i& cellIdx) const;
-	std::vector<LineSegment> getCellEdges(const Vector3i& cellIdx) const;
+	std::vector<Vector3d> getCellCornerPts(const Index3D& cellIdx) const;
+	std::vector<LineSegment> getCellEdges(const Index3D& cellIdx) const;
 
 	size_t numCells() const;
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;
-	bool cellExists(const Vector3i& idx) const;
+	bool cellExists(const Index3D& idx) const;
 	Cell& getCell(size_t ix, size_t iy, size_t iz);
-	Cell& getCell(const Vector3i& idx);
+	Cell& getCell(const Index3D& idx);
 	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell& getCell(const Vector3i& idx) const;
+	const Cell& getCell(const Index3D& idx) const;
 	void freeCell(size_t ix, size_t iy, size_t iz);
-	void freeCell(const Vector3i& idx);
+	void freeCell(const Index3D& idx);
 
 	std::vector<uint32_t> getCellDivs() const;
 
@@ -79,6 +113,7 @@ protected:
 private:
 	friend class Volume;
 	friend class TestBlock;
+	friend class ScopedSideLock;
 
 	struct RayTriHit {
 		size_t _cellIdx;
@@ -86,11 +121,12 @@ private:
 		Vector3d _relPt;
 	};
 
+	void setSideMutexLocked(const Volume& vol, const Index3D& blockIdx, ScopedSideLock::Side side, bool locked) const;
 	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
 	void setNumDivs();
 	void createIntersectionCells();
-	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
-	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& pt) const;
+	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
+	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Index3D& pt) const;
 
 	size_t addHexCell(const std::vector<Vector3d>& pts);
 	size_t addQuadFace(const std::vector<Vector3d>& pts);
@@ -110,6 +146,8 @@ private:
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
+
+	mutable std::mutex _frontSideMutex, _bottomSideMutex, _leftSideMutex;
 };
 
 inline size_t Block::blockDim() const
@@ -129,17 +167,17 @@ inline size_t Block::calLinearCellIndex(size_t ix, size_t iy, size_t iz) const
 	return -1;
 }
 
-inline size_t Block::calLinearCellIndex(const Vector3i& celIdx) const
+inline size_t Block::calLinearCellIndex(const Index3D& celIdx) const
 {
 	return calLinearCellIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
 inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
 {
-	return getCell(Vector3i(ix, iy, iz));
+	return getCell(Index3D(ix, iy, iz));
 }
 
-inline Cell& Block::getCell(const Vector3i& idx3)
+inline Cell& Block::getCell(const Index3D& idx3)
 {
 	size_t idx = calLinearCellIndex(idx3);
 	if (idx < _cells.size()) {
@@ -163,7 +201,7 @@ inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
 	throw std::runtime_error("Block::getCell out of range");
 }
 
-inline const Cell& Block::getCell(const Vector3i& idx) const
+inline const Cell& Block::getCell(const Index3D& idx) const
 {
 	return getCell(idx[0], idx[1], idx[2]);
 }
@@ -176,7 +214,7 @@ inline void Block::freeCell(size_t ix, size_t iy, size_t iz)
 	}
 }
 
-inline void Block::freeCell(const Vector3i& idx)
+inline void Block::freeCell(const Index3D& idx)
 {
 	freeCell(idx[0], idx[1], idx[2]);
 }

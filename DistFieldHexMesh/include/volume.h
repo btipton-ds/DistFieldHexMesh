@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
-#include "indices.h"
+#include <indices.h>
 #include <triMesh.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -30,39 +30,39 @@ using CMesh = TriMesh::CMesh;
 
 class Volume {
 public:
-	Volume(const Index3& size = Index3(0, 0, 0));
+	Volume(const Index3D& size = Index3D(0, 0, 0));
 	Volume(const Volume& src);
 
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
-	void setBlockDims(const Index3& size);
-	const Index3& getBlockDims() const;
-	const Index3& getDims() const;
+	void setBlockDims(const Index3D& size);
+	const Index3D& getBlockDims() const;
+	const Index3D& getDims() const;
 
 	std::vector<TriMesh::CMeshPtr> addAllBlocks();
 
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
-	bool blockExists(const Vector3i& blockIdx) const;
+	bool blockExists(const Index3D& blockIdx) const;
 	Block& addBlock(size_t ix, size_t iy, size_t iz);
-	Block& addBlock(const Vector3i& blockIdx);
+	Block& addBlock(const Index3D& blockIdx);
 	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
-	const Block& getBlock(const Vector3i& blockIdx) const;
+	const Block& getBlock(const Index3D& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
-	Block& getBlock(const Vector3i& blockIdx);
+	Block& getBlock(const Index3D& blockIdx);
 
 	// Get the cell using a cell index
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;
-	bool cellExists(const Vector3i& blockIdx) const;
+	bool cellExists(const Index3D& blockIdx) const;
 	Cell& getCell(size_t ix, size_t iy, size_t iz);
-	Cell& getCell(const Vector3i& cellIdx);
+	Cell& getCell(const Index3D& cellIdx);
 	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell& getCell(const Vector3i& cellIdx) const;
+	const Cell& getCell(const Index3D& cellIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
-	size_t calLinearBlockIndex(const Vector3i& blockIdx) const;
-	Vector3i calBlockIndexFromLinearIndex(size_t linearIdx) const;
+	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
+	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
 	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool outerFacesOnly);
 	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
@@ -86,7 +86,7 @@ private:
 
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
-	Index3 _blockDim;
+	Index3D _blockDim;
 
 	std::vector<std::shared_ptr<Block>> _blocks;
 
@@ -105,12 +105,12 @@ inline void Volume::setSpan(const Vector3d& span)
 	_spanMeters = span;
 }
 
-inline const Block& Volume::getBlock(const Vector3i& blockIdx) const
+inline const Block& Volume::getBlock(const Index3D& blockIdx) const
 {
 	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-inline Block& Volume::getBlock(const Vector3i& blockIdx)
+inline Block& Volume::getBlock(const Index3D& blockIdx)
 {
 	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
@@ -123,14 +123,14 @@ inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
 	return -1;
 }
 
-inline size_t Volume::calLinearBlockIndex(const Vector3i& blockIdx) const
+inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
 	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-inline Vector3i Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
+inline Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 {
-	Vector3i result;
+	Index3D result;
 	size_t temp = linearIdx;
 
 //		ix + _blockDim[0] * iy + _blockDim[0] * _blockDim[1] * iz;
@@ -153,12 +153,12 @@ inline Vector3i Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 	return result;
 }
 
-inline Cell& Volume::getCell(const Vector3i& cellIdx)
+inline Cell& Volume::getCell(const Index3D& cellIdx)
 {
 	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }
 
-inline const Cell& Volume::getCell(const Vector3i& cellIdx) const
+inline const Cell& Volume::getCell(const Index3D& cellIdx) const
 {
 	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }

@@ -17,9 +17,9 @@ size_t Block::s_minBlockDim = 8;
 namespace
 {
 
-	inline Vector3i assignAxes(const Vector3i& indexIn, const Vector3i& axisOrder)
+	inline Index3D assignAxes(const Index3D& indexIn, const Index3D& axisOrder)
 	{
-		Vector3i result;
+		Index3D result;
 		result[axisOrder[0]] = indexIn[0];
 		result[axisOrder[1]] = indexIn[1];
 		result[axisOrder[2]] = indexIn[2];
@@ -90,9 +90,9 @@ size_t Block::numPolyhedra() const
 }
 
 
-Vector3i Block::calCellIndexFromLinear(size_t linearIdx) const
+Index3D Block::calCellIndexFromLinear(size_t linearIdx) const
 {
-	Vector3i result;
+	Index3D result;
 
 	size_t temp = linearIdx;
 
@@ -117,7 +117,7 @@ bool Block::cellExists(size_t ix, size_t iy, size_t iz) const
 	return false;
 }
 
-bool Block::cellExists(const Vector3i& idx) const
+bool Block::cellExists(const Index3D& idx) const
 {
 	return cellExists(idx[0], idx[1], idx[2]);
 }
@@ -136,7 +136,7 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-bool Block::scanCreateCellsWhereNeeded(vector<bool>& cellsToCreate, const Vector3i& axisOrder)
+bool Block::scanCreateCellsWhereNeeded(vector<bool>& cellsToCreate, const Index3D& axisOrder)
 {
 	static size_t numCells = 0;
 
@@ -277,7 +277,7 @@ void Block::addCell(size_t ix, size_t iy, size_t iz)
 	_cells.add(Cell(), -1);
 }
 
-void Block::addCell(const Vector3i& cellIdx)
+void Block::addCell(const Index3D& cellIdx)
 {
 	addCell(cellIdx[0], cellIdx[1], cellIdx[2]);
 }
@@ -329,7 +329,7 @@ void Block::createCells()
 	}
 
 	for (const auto& pair : cellIndices) {
-		Vector3i cellIdx = calCellIndexFromLinear(pair.first);
+		Index3D cellIdx = calCellIndexFromLinear(pair.first);
 		const auto& hits = pair.second;
 		if (hits.size() > 10) {
 			// Need to organize the hits by block face
@@ -358,25 +358,25 @@ vector<Vector3d> Block::getCornerPts() const
 	return result;
 }
 
-vector<Vector3d> Block::getCellCornerPts(const Vector3i& index) const
+vector<Vector3d> Block::getCellCornerPts(const Index3D& index) const
 {
 	vector<Vector3d> blockPts = getCornerPts();
 	vector<Vector3d> result = {
-		triLinInterp(blockPts, index + Vector3i(0, 0, 0)),
-		triLinInterp(blockPts, index + Vector3i(1, 0, 0)),
-		triLinInterp(blockPts, index + Vector3i(1, 1, 0)),
-		triLinInterp(blockPts, index + Vector3i(0, 1, 0)),
+		triLinInterp(blockPts, index + Index3D(0, 0, 0)),
+		triLinInterp(blockPts, index + Index3D(1, 0, 0)),
+		triLinInterp(blockPts, index + Index3D(1, 1, 0)),
+		triLinInterp(blockPts, index + Index3D(0, 1, 0)),
 
-		triLinInterp(blockPts, index + Vector3i(0, 0, 1)),
-		triLinInterp(blockPts, index + Vector3i(1, 0, 1)),
-		triLinInterp(blockPts, index + Vector3i(1, 1, 1)),
-		triLinInterp(blockPts, index + Vector3i(0, 1, 1)),
+		triLinInterp(blockPts, index + Index3D(0, 0, 1)),
+		triLinInterp(blockPts, index + Index3D(1, 0, 1)),
+		triLinInterp(blockPts, index + Index3D(1, 1, 1)),
+		triLinInterp(blockPts, index + Index3D(0, 1, 1)),
 	};
 
 	return result;
 }
 
-Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& index) const
+Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Index3D& index) const
 {
 	Vector3d t(
 		index[0] / (double) _blockDim,
@@ -672,7 +672,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 	return result;
 }
 
-vector<LineSegment> Block::getCellEdges(const Vector3i& cellIdx) const
+vector<LineSegment> Block::getCellEdges(const Index3D& cellIdx) const
 {
 	const vector<Vector3d> cellPoints = getCellCornerPts(cellIdx);
 
@@ -697,6 +697,58 @@ vector<LineSegment> Block::getCellEdges(const Vector3i& cellIdx) const
 	};
 
 	return edges;
+}
+
+void Block::setSideMutexLocked(const Volume& vol, const Index3D& blockIdx, ScopedSideLock::Side side, bool locked) const
+{
+	mutex* pMutex = nullptr;
+	switch (side) {
+		default:
+			break;
+
+		case ScopedSideLock::Front:
+			pMutex = &_frontSideMutex;
+			break;
+		case ScopedSideLock::Bottom:
+			pMutex = &_bottomSideMutex;
+			break;
+		case ScopedSideLock::Left:
+			pMutex = &_leftSideMutex;
+			break;
+		case ScopedSideLock::Back: {
+			Index3D adjIdx(blockIdx.adjY(Index3D::Positive));
+			if (vol.blockExists(adjIdx)) {
+				const Block& adjBlock = vol.getBlock(adjIdx);
+				pMutex = &adjBlock._frontSideMutex;
+				break;
+			}
+			break;
+		}
+		case ScopedSideLock::Top: {
+			Index3D adjIdx(blockIdx.adjZ(Index3D::Positive));
+			if (vol.blockExists(adjIdx)) {
+				const Block& adjBlock = vol.getBlock(adjIdx);
+				pMutex = &adjBlock._bottomSideMutex;
+				break;
+			}
+			break;
+		}
+		case ScopedSideLock::Right: {
+			Index3D adjIdx(blockIdx.adjX(Index3D::Positive));
+			if (vol.blockExists(adjIdx)) {
+				const Block& adjBlock = vol.getBlock(adjIdx);
+				pMutex = &adjBlock._leftSideMutex;
+				break;
+			}
+			break;
+		}
+	}
+	if (pMutex) {
+		if (locked)
+			pMutex->lock();
+		else
+			pMutex->unlock();
+	}
 }
 
 void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const
@@ -754,17 +806,17 @@ void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int ax
 					size_t rayIdx = (size_t)(tRay * _blockDim);
 					if (rayIdx >= samples)
 						rayIdx = samples - 1;
-					Vector3i cellIdx;
+					Index3D cellIdx;
 					switch (axis) {
 						default:
 						case 0:
-							cellIdx = Vector3i(rayIdx, iy, iz);
+							cellIdx = Index3D(rayIdx, iy, iz);
 							break;
 						case 1:
-							cellIdx = Vector3i(ix, rayIdx, iz);
+							cellIdx = Index3D(ix, rayIdx, iz);
 							break;
 						case 2:
-							cellIdx = Vector3i(ix, iy, rayIdx);
+							cellIdx = Index3D(ix, iy, rayIdx);
 							break;
 					}
 
@@ -773,7 +825,7 @@ void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int ax
 						for (int dy = -1; dy <= 0; dy++) {
 							for (int dz = -1; dz <= 0; dz++) {
 								RayTriHit rtHit;
-								Vector3i cellIdx2(cellIdx + Vector3i(dx, dy, dz));
+								Index3D cellIdx2(cellIdx + Index3D(dx, dy, dz));
 								if (cellIdx2[0] < samples && cellIdx2[1] < samples && cellIdx2[2] < samples) {
 									rtHit._cellIdx = calLinearCellIndex(cellIdx2);
 									if (rtHit._cellIdx < (samples * samples * samples)) {
@@ -801,7 +853,7 @@ void Block::setNumDivs()
 	rayCastFace(pts, _blockDim, 2, _rayTriHits);
 }
 
-void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx)
+void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx)
 {
 	if (hits.size() < 2)
 		return;
@@ -842,3 +894,29 @@ void Block::pack()
 	_cells.clear();
 #endif
 }
+
+ScopedSideLock::ScopedSideLock(const Volume& vol, const Index3D& blockIdx, uint8_t sides)
+	: _vol(vol)
+	, _blockIdx(blockIdx)
+	, _sides(sides)
+{
+	const Block& block = _vol.getBlock(_blockIdx);
+	for (uint8_t side = 0; side <= 6; side++) {
+		Side testSide = (Side)(1 << side);
+		if (testSide & _sides)
+			block.setSideMutexLocked(_vol, _blockIdx, testSide, true);
+	}
+}
+
+ScopedSideLock::~ScopedSideLock()
+{
+	const Block& block = _vol.getBlock(_blockIdx);
+	for (uint8_t side = 0; side <= 6; side++) {
+		Side testSide = (Side)(1 << side);
+		if (testSide & _sides) {
+			block.setSideMutexLocked(_vol, _blockIdx, testSide, false);
+		}
+	}
+}
+
+
