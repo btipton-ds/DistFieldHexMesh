@@ -336,7 +336,7 @@ void Block::createCells()
 			// Then subdivide here.
 		}
 		auto pts = getCellCornerPts(cellIdx);
-		size_t polyHedraId = addHexCell(pair.first, pts);
+		size_t polyHedraId = addHexCell(pts);
 		size_t cellId = _cells.add(Cell(), pair.first);
 		_cells[cellId].addPolyhdra(polyHedraId);
 	}
@@ -396,27 +396,42 @@ Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& i
 	return result;
 }
 
-size_t Block::addHexCell(size_t cellId, const vector<Vector3d>& pts)
+size_t Block::addHexCell(const vector<Vector3d>& pts)
 {
 	vector<size_t> faceIds;
 	faceIds.reserve(6);
 
-	faceIds.push_back(addQuadFace(cellId, { pts[0], pts[3], pts[2], pts[1] }));
-	faceIds.push_back(addQuadFace(cellId, { pts[4], pts[5], pts[6], pts[7] }));
+	faceIds.push_back(addQuadFace({ pts[0], pts[3], pts[2], pts[1] }));
+	faceIds.push_back(addQuadFace({ pts[4], pts[5], pts[6], pts[7] }));
 
 	// add left and right
-	faceIds.push_back(addQuadFace(cellId, { pts[0], pts[4], pts[7], pts[3] }));
-	faceIds.push_back(addQuadFace(cellId, { pts[1], pts[2], pts[6], pts[5] }));
+	faceIds.push_back(addQuadFace({ pts[0], pts[4], pts[7], pts[3] }));
+	faceIds.push_back(addQuadFace({ pts[1], pts[2], pts[6], pts[5] }));
 
 	// add front and back
-	faceIds.push_back(addQuadFace(cellId, { pts[0], pts[1], pts[5], pts[4] }));
-	faceIds.push_back(addQuadFace(cellId, { pts[2], pts[3], pts[7], pts[6] }));
+	faceIds.push_back(addQuadFace({ pts[0], pts[1], pts[5], pts[4] }));
+	faceIds.push_back(addQuadFace({ pts[2], pts[3], pts[7], pts[6] }));
 
 	size_t polyhedronId = _polyhedra.add(Polyhedron(faceIds));
+	auto pPoly = _polyhedra.get(polyhedronId);
+	assert(pPoly);
+	if (pPoly) {
+		const auto& faceIds = pPoly->getFaceIds();
+		for (size_t faceId : faceIds) {
+			auto pFace = _polygons.get(faceId);
+			if (pFace) {
+				if (pFace->getOwnerCellId() == -1)
+					pFace->setOwnerCellId(polyhedronId);
+				else 
+					pFace->setNeighborCellId(polyhedronId);
+			}
+		}
+	}
+
 	return polyhedronId;
 }
 
-size_t Block::addQuadFace(size_t cellId, const vector<Vector3d>& pts)
+size_t Block::addQuadFace(const vector<Vector3d>& pts)
 {
 	Polygon newPoly, revPoly;
 	for (const auto& pt : pts) {
@@ -436,11 +451,7 @@ size_t Block::addQuadFace(size_t cellId, const vector<Vector3d>& pts)
 		assert(pPoly);
 		assert(!(*pPoly < newPoly));
 		assert(!(newPoly < *pPoly));
-		assert(pPoly->getNeighborCellId() == -1);
-		pPoly->setNeighborCellId(cellId);
-		assert(!pPoly->isOuter());
 	} else {
-		newPoly.setOwnerCellId(cellId);
 		polyId = _polygons.add(newPoly);
 		auto pPoly = _polygons.get(polyId);
 		Polygon* pRevPoly = _polygons.get(revPoly);
@@ -450,8 +461,14 @@ size_t Block::addQuadFace(size_t cellId, const vector<Vector3d>& pts)
 			assert(pPoly == _polygons.get(revPoly));
 			assert(!(*pPoly < newPoly));
 			assert(!(newPoly < *pPoly));
-			assert(pPoly->getNeighborCellId() == -1);
-			assert(pPoly->isOuter());
+
+			const auto& vertIds = pPoly->getVertexIds();
+			for (size_t vertId : vertIds) {
+				auto pVert = _vertices.get(vertId);
+				if (pVert) {
+					pVert->addPolygonReference(polyId);
+				}
+			}
 		}
 	}
 

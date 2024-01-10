@@ -10,6 +10,7 @@ public:
 	Polyhedron(const Polyhedron& src) = default;
 	Polyhedron(const std::vector<size_t>& faceIds);
 
+	const std::vector<size_t>& getFaceIds() const;
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 
@@ -18,6 +19,11 @@ public:
 private:
 	std::vector<size_t> _faceIds;
 };
+
+inline const std::vector<size_t>& Polyhedron::getFaceIds() const
+{
+	return _faceIds;
+}
 
 }
 

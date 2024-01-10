@@ -92,8 +92,8 @@ private:
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Vector3i& cellIdx);
 	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Vector3i& pt) const;
 
-	size_t addHexCell(size_t cellId, const std::vector<Vector3d>& pts);
-	size_t addQuadFace(size_t cellId, const std::vector<Vector3d>& pts);
+	size_t addHexCell(const std::vector<Vector3d>& pts);
+	size_t addQuadFace(const std::vector<Vector3d>& pts);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	std::string _filename;
