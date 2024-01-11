@@ -39,6 +39,7 @@ public:
 	bool operator < (const Block& rhs) const;
 
 	void connectAdjacent(Volume& vol, const Index3D& idx);
+	void clearAdjacent();
 	void processBlock(size_t blockRayIdx, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Index3D& axisOrder);
 	void createCells();
@@ -114,7 +115,7 @@ private:
 	std::vector<uint32_t> _cellDivs;
 	std::vector<RayTriHit> _rayTriHits;
 
-	ObjectPool<Vertex> _vertices;
+	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;

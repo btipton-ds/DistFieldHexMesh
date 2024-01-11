@@ -45,6 +45,13 @@ Volume::Volume(const Volume& src)
 {
 }
 
+Volume::~Volume()
+{
+	// Clear the adjacent pointers or there's a deadlock on which smart pointer is cleared first.
+	for (const auto& bl : _blocks)
+		bl->clearAdjacent();
+}
+
 void Volume::setBlockDims(const Index3D& blockSize)
 {
 	_blockDim = blockSize;
@@ -621,9 +628,6 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
 			auto& bl = addBlock(blockIdx);
 			bl.addTris(_pModelTriMesh, triIndices);
-#if !QUICK_TEST
-			bl.processTris();
-#endif
 		}
 		
 	}, numBlocks, RUN_MULTI_THREAD);

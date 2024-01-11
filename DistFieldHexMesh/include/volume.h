@@ -32,6 +32,7 @@ class Volume {
 public:
 	Volume(const Index3D& size = Index3D(0, 0, 0));
 	Volume(const Volume& src);
+	~Volume();
 
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);

@@ -68,6 +68,7 @@ Block::Block(const Block& src)
 
 Block::~Block()
 {
+	clearAdjacent();
 }
 
 size_t Block::numFaces(bool includeInner) const
@@ -422,6 +423,7 @@ size_t Block::addQuadFace(const vector<Vector3d>& pts)
 
 			const auto& vertIds = pPoly->getVertexIds();
 			for (size_t vertId : vertIds) {
+				lock_guard g(_vertices);
 				auto pVert = _vertices.get(vertId);
 				if (pVert) {
 					pVert->addPolygonReference(polyId);
@@ -460,6 +462,13 @@ void Block::connectAdjacent(Volume& vol, const Index3D& idx)
 	adjRightIdx.adjY(Index3D::Positive);
 	if (vol.blockExists(adjRightIdx))
 		_adjRight = vol.getBlockPtr(adjRightIdx);
+}
+
+void Block::clearAdjacent()
+{
+	_adjBack = nullptr;
+	_adjTop = nullptr;
+	_adjRight = nullptr;
 }
 
 void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)
@@ -629,6 +638,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
 				for (size_t vertId : vertIds) {
+					lock_guard g(_vertices);
 					const auto& vert = _vertices[vertId];
 					pts.push_back(vert.getPoint());
 				}
