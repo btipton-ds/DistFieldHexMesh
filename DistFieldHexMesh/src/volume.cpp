@@ -565,6 +565,11 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
+bool Volume::blockInBounds(const Index3D& blockIdx) const
+{
+	return (blockIdx[0] < _blockDim[0] && blockIdx[1] < _blockDim[1] && blockIdx[2] < _blockDim[1]);
+}
+
 const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 {
 	size_t idx = calLinearBlockIndex(ix, iy, iz);
@@ -608,7 +613,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 
 	size_t numBlocks = _blockDim[0] * _blockDim[1] * _blockDim[2];
 
-#define QUICK_TEST 0
+#define QUICK_TEST 1
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
 
@@ -623,20 +628,20 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		double span = blbb.range().norm();
 		blbb.grow(0.05 * span);
 					
+		auto& bl = addBlock(blockIdx);
 		vector<size_t> triIndices;
 		if (_pModelTriMesh->findTris(blbb, triIndices, CMesh::BoxTestType::Intersects)) {
 			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-			auto& bl = addBlock(blockIdx);
 			bl.addTris(_pModelTriMesh, triIndices);
 		}
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
-	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
+	MultiCore::runLambda([this](size_t linearIdx) {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->connectAdjacent(*this, calBlockIndexFromLinearIndex(linearIdx));
 		}
-	}, numBlocks, RUN_MULTI_THREAD);
+	}, numBlocks, false && RUN_MULTI_THREAD);
 
 #if QUICK_TEST
 	map<size_t, std::shared_ptr<Block>> orderedBlocks;

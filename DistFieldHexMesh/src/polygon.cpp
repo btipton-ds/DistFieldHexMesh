@@ -38,7 +38,7 @@ bool Polygon::operator < (const Polygon& rhs) const
 	for (size_t i = 0; i < _sortedIds.size(); i++) {
 		if (_sortedIds[i] < rhs._sortedIds[i])
 			return true;
-		else if (_sortedIds[i] > rhs._sortedIds[i])
+		else if (rhs._sortedIds[i] < _sortedIds[i])
 			return false;
 	}
 	return false;

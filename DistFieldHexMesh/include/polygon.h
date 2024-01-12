@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <vertex.h>
+#include <UniversalIndex3D.h>
 
 namespace DFHM {
 
@@ -11,7 +12,7 @@ public:
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
-	void addVertex(size_t vertId);
+	void addVertex(const UniversalIndex3D& vertId);
 	void setOwnerCellId(size_t cellId);
 	size_t getOwnerCellId() const;
 	void setNeighborCellId(size_t cellId);
@@ -24,13 +25,13 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	const std::vector<size_t>& getVertexIds() const;
+	const std::vector<UniversalIndex3D>& getVertexIds() const;
 private:
-	std::vector<size_t> _vertexIds, _sortedIds;
+	std::vector<UniversalIndex3D> _vertexIds, _sortedIds;
 	size_t _ownerCellId = -1, _neighborCellId = -1;
 };
 
-inline void Polygon::addVertex(size_t vertId)
+inline void Polygon::addVertex(const UniversalIndex3D& vertId)
 {
 	_vertexIds.push_back(vertId);
 }
@@ -62,7 +63,7 @@ inline bool Polygon::isOuter() const
 	return _neighborCellId == -1;
 }
 
-inline const std::vector<size_t>& Polygon::getVertexIds() const
+inline const std::vector<UniversalIndex3D>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }

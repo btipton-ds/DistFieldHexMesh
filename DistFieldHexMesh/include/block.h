@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <triMesh.h>
 #include <objectPool.h>
-#include <indices.h>
+#include <Index3D.h>
 #include <cell.h>
 #include <vertex.h>
 #include <mutex>
@@ -27,6 +27,16 @@ class Polyhedron;
 
 class Block {
 public:
+	enum Side {
+		None = 0,
+		Left = 1,
+		Front = 2,
+		Bottom = 4,
+		Right = 8,
+		Back = 16,
+		Top = 32,
+	};
+
 	static void setMinBlockDim(size_t dim);
 	static size_t getMinBlockDim();
 
@@ -48,10 +58,6 @@ public:
 	Index3D calCellIndexFromLinear(size_t linearIdx) const;
 	void addCellFaces();
 	void createBlockFaces();
-
-	std::vector<Vector3d> getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	std::vector<Vector3d> getCellCornerPts(const Index3D& cellIdx) const;
-	std::vector<LineSegment> getCellEdges(const Index3D& cellIdx) const;
 
 	size_t numCells() const;
 	bool cellExists(size_t ix, size_t iy, size_t iz) const;
@@ -95,13 +101,36 @@ private:
 		Vector3d _relPt;
 	};
 
+	struct CrossBlockPoint {
+		inline operator const Vector3d& () const
+		{
+			return _pt;
+		}
+
+		Vector3d _pt;
+		uint8_t _lockMask = 0;
+	};
+
+	std::vector<Vector3d> getCornerPts() const; // Change to returning fractions so we can assign boundary values.
+	std::vector<CrossBlockPoint> getCellCornerPts(const Index3D& cellIdx) const;
+	std::vector<LineSegment> getCellEdges(const Index3D& cellIdx) const;
+
+	uint8_t lockMaskOfCellIndex(size_t cellIdx) const;
+
+	Block* getOwner(const Vector3i& blockIdx);
+	const Block* getOwner(const Vector3i& blockIdx) const;
+
+	// This gets the owner block from the lockMask of a vertex inclusively within this block
+	Block* getOwner(uint8_t lockMask);
+	const Block* getOwner(uint8_t lockMask) const;
+
 	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
 	void setNumDivs();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
-	Vector3d triLinInterp(const std::vector<Vector3d>& pts, const Index3D& pt) const;
+	CrossBlockPoint triLinInterp(const std::vector<Vector3d>& blockPts, const Index3D& pt) const;
 
-	size_t addHexCell(const std::vector<Vector3d>& pts);
-	size_t addQuadFace(const std::vector<Vector3d>& pts);
+	size_t addHexCell(const std::vector<CrossBlockPoint>& pts);
+	size_t addQuadFace(const std::vector<CrossBlockPoint>& pts);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	std::string _filename;
@@ -120,7 +149,7 @@ private:
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
 
-	std::shared_ptr<Block> _adjBack, _adjTop, _adjRight;
+	std::shared_ptr<Block> _pAdj[8]; // A 2x2x2 array of adjacent block pointers for the positive octant which may be null. This is at [1,1,1] and set to null
 };
 
 inline size_t Block::blockDim() const

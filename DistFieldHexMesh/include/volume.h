@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
-#include <indices.h>
+#include <Index3D.h>
 #include <triMesh.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -45,6 +45,9 @@ public:
 	// Get the block using a block index
 	bool blockExists(size_t ix, size_t iy, size_t iz) const;
 	bool blockExists(const Index3D& blockIdx) const;
+
+	bool blockInBounds(const Index3D& blockIdx) const;
+
 	Block& addBlock(size_t ix, size_t iy, size_t iz);
 	Block& addBlock(const Index3D& blockIdx);
 	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);

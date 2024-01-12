@@ -44,6 +44,9 @@ Block::Block(vector<Vector3d>& pts)
 	, _cells(false)
 	, _blockDim(s_minBlockDim)
 {
+	for (int i = 0; i < 8; i++)
+		_pAdj[i] = nullptr;
+
 	assert(pts.size() == 8);
 
 	for (size_t i = 0; i < pts.size(); i++) {
@@ -63,7 +66,8 @@ Block::Block(const Block& src)
 	, _polyhedra(src._polyhedra)
 	, _cells(src._cells)
 {
-
+	for (int i = 0; i < 8; i++)
+		_pAdj[i] = nullptr;
 }
 
 Block::~Block()
@@ -316,10 +320,10 @@ vector<Vector3d> Block::getCornerPts() const
 	return result;
 }
 
-vector<Vector3d> Block::getCellCornerPts(const Index3D& index) const
+vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Index3D& index) const
 {
 	vector<Vector3d> blockPts = getCornerPts();
-	vector<Vector3d> result = {
+	vector<CrossBlockPoint> result = {
 		triLinInterp(blockPts, index + Index3D(0, 0, 0)),
 		triLinInterp(blockPts, index + Index3D(1, 0, 0)),
 		triLinInterp(blockPts, index + Index3D(1, 1, 0)),
@@ -334,7 +338,7 @@ vector<Vector3d> Block::getCellCornerPts(const Index3D& index) const
 	return result;
 }
 
-Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Index3D& index) const
+Block::CrossBlockPoint Block::triLinInterp(const std::vector<Vector3d>& pts, const Index3D& index) const
 {
 	Vector3d t(
 		index[0] / (double) _blockDim,
@@ -342,19 +346,28 @@ Vector3d Block::triLinInterp(const std::vector<Vector3d>& pts, const Index3D& in
 		index[2] / (double)_blockDim
 	);
 
-	auto result = TRI_LERP(pts, t[0], t[1], t[2]);
+	CrossBlockPoint result;
+	result._pt = TRI_LERP(pts, t[0], t[1], t[2]);
 
-#ifdef _DEBUG
-	Vertex::fromDbl(result[0]);
-	Vertex::fromDbl(result[1]);
-	Vertex::fromDbl(result[2]);
-#endif // DEBUG
+	if (index[0] == 0)
+		result._lockMask |= Left;
+	else if (index[0] == _blockDim)
+		result._lockMask |= Right;
 
+	if (index[1] == 0)
+		result._lockMask |= Front;
+	else if (index[1] == _blockDim)
+		result._lockMask |= Back;
+
+	if (index[2] == 0)
+		result._lockMask |= Bottom;
+	else if (index[2] == _blockDim)
+		result._lockMask |= Top;
 
 	return result;
 }
 
-size_t Block::addHexCell(const vector<Vector3d>& pts)
+size_t Block::addHexCell(const vector<CrossBlockPoint>& pts)
 {
 	vector<size_t> faceIds;
 	faceIds.reserve(6);
@@ -389,11 +402,107 @@ size_t Block::addHexCell(const vector<Vector3d>& pts)
 	return polyhedronId;
 }
 
-size_t Block::addQuadFace(const vector<Vector3d>& pts)
+Block* Block::getOwner(const Vector3i& blockIdx)
+{
+	if (blockIdx == _blockIdx)
+		return this;
+
+	size_t i = (1 + blockIdx[0]) - _blockIdx[0];
+	size_t j = (1 + blockIdx[1]) - _blockIdx[1];
+	size_t k = (1 + blockIdx[2]) - _blockIdx[2];
+	if (i <= 1 && j <= 1 && k <= 1) {
+		size_t idx = i + 2 * (j + 2 * k);
+		if (idx < 8 && _pAdj[idx] && _pAdj[idx]->_blockIdx == blockIdx)
+			return _pAdj[idx].get();
+	}
+
+	return nullptr;
+}
+
+const Block* Block::getOwner(const Vector3i& blockIdx) const
+{
+	if (blockIdx == _blockIdx)
+		return this;
+
+	size_t i = (1 + blockIdx[0]) - _blockIdx[0];
+	size_t j = (1 + blockIdx[1]) - _blockIdx[1];
+	size_t k = (1 + blockIdx[2]) - _blockIdx[2];
+	if (i >= 0 && j >= 0 && k >= 0) {
+		size_t idx = k + 2 * (j + 2 * i);
+		if (idx < 8 && _pAdj[idx] && _pAdj[idx]->_blockIdx == blockIdx)
+			return _pAdj[idx].get();
+	}
+
+	return nullptr;
+}
+
+#define OTHER_BLOCK_MASK (Right | Back | Top)
+
+Block* Block::getOwner(uint8_t lockMask)
+{
+	if ((lockMask & OTHER_BLOCK_MASK) == 0)
+		return this;
+
+	Vector3<int> delta(0, 0, 0);
+
+	if (lockMask & Right)
+		delta[0] += 1;
+
+	if (lockMask & Back)
+		delta[1] += 1;
+
+	if (lockMask & Top)
+		delta[2] += 1;
+
+	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
+		size_t idx = delta[2] + 2 * (delta[1] + 2 * delta[0]);
+		if (idx < 8 && _pAdj[idx])
+			return _pAdj[idx].get();
+	}
+
+	return this;
+}
+
+const Block* Block::getOwner(uint8_t lockMask) const
+{
+	if ((lockMask & OTHER_BLOCK_MASK) == 0)
+		return this;
+
+	Vector3<int> delta(0, 0, 0);
+
+	if (lockMask & Right)
+		delta[0] += 1;
+
+	if (lockMask & Back)
+		delta[1] += 1;
+
+	if (lockMask & Top)
+		delta[2] += 1;
+
+	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
+		size_t idx = delta[2] + 2 * (delta[1] + 2 * delta[0]);
+		if (idx < 8 && _pAdj[idx])
+			return _pAdj[idx].get();
+	}
+
+	return this;
+}
+
+size_t Block::addQuadFace(const vector<CrossBlockPoint>& pts)
 {
 	Polygon newPoly, revPoly;
 	for (const auto& pt : pts) {
-		auto vertId = _vertices.add(pt, -1);
+		UniversalIndex3D vertId;
+		{
+			// Don't lock, the add method handles the lock itself. 
+			size_t currentId = -1;
+			Block* owner = getOwner(pt._lockMask);
+			if (!owner)
+				owner = this;
+			if (owner)
+				vertId = UniversalIndex3D(_blockIdx, owner->_vertices.add(pt._pt, currentId));
+		}
+
 		newPoly.addVertex(vertId);
 	}
 	auto& verts = newPoly.getVertexIds();
@@ -422,11 +531,15 @@ size_t Block::addQuadFace(const vector<Vector3d>& pts)
 			assert(!(newPoly < *pPoly));
 
 			const auto& vertIds = pPoly->getVertexIds();
-			for (size_t vertId : vertIds) {
+			for (const auto& vertId : vertIds) {
+
 				lock_guard g(_vertices);
-				auto pVert = _vertices.get(vertId);
-				if (pVert) {
-					pVert->addPolygonReference(polyId);
+				auto pOwner = getOwner(vertId.blockIdx());
+				if (pOwner) {
+					auto pVert = pOwner->_vertices.get(vertId.cellId());
+					if (pVert) {
+						pVert->addPolygonReference(polyId);
+					}
 				}
 			}
 		}
@@ -449,26 +562,37 @@ bool Block::operator < (const Block& rhs) const
 void Block::connectAdjacent(Volume& vol, const Index3D& idx)
 {
 	_blockIdx = idx;
+	const auto& blockDim = vol.getBlockDims();
 
-	Index3D adjBackIdx(idx), adjTopIdx(idx), adjRightIdx(idx);
-	adjBackIdx.adjY(Index3D::Positive);
-	if (vol.blockExists(adjBackIdx))
-		_adjBack = vol.getBlockPtr(adjBackIdx);
-
-	adjTopIdx.adjZ(Index3D::Positive);
-	if (vol.blockExists(adjTopIdx))
-		_adjTop = vol.getBlockPtr(adjTopIdx);
-
-	adjRightIdx.adjY(Index3D::Positive);
-	if (vol.blockExists(adjRightIdx))
-		_adjRight = vol.getBlockPtr(adjRightIdx);
+	for (int i = 0; i <= 1; i++) {
+		if (_blockIdx[0] + i > blockDim[0])
+			continue;
+		for (int j = 0; j <= 1; j++) {
+			if (_blockIdx[1] + j > blockDim[1])
+				continue;
+			for (int k = 0; k <= 1; k++) {
+				if (_blockIdx[2] + k > blockDim[2])
+					continue;
+				int adjIdx = i + 2 * (j + 2 * k);
+				if (i == 0 && j == 0 && k == 0) {
+					; // no op
+				} else {
+					Index3D adjBlockIdx(_blockIdx[0] + i, _blockIdx[1] + j, _blockIdx[2] + k);
+					if (vol.blockInBounds(adjBlockIdx)) {
+						auto pBlock = vol.getBlockPtr(adjBlockIdx);
+						assert(pBlock); // Must have been assigned during triangle assignment
+						_pAdj[adjIdx] = pBlock;
+					}
+				}
+			}
+		}
+	}
 }
 
 void Block::clearAdjacent()
 {
-	_adjBack = nullptr;
-	_adjTop = nullptr;
-	_adjRight = nullptr;
+	for (int i = 0; i < 8; i++)
+		_pAdj[i] = nullptr;
 }
 
 void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)
@@ -637,10 +761,13 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 			const auto& vertIds = poly.getVertexIds();
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
-				for (size_t vertId : vertIds) {
+				for (const auto& vertId : vertIds) {
 					lock_guard g(_vertices);
-					const auto& vert = _vertices[vertId];
-					pts.push_back(vert.getPoint());
+					auto pOwnerBlock = getOwner(vertId.blockIdx());
+					if (pOwnerBlock) {
+						const auto& vert = pOwnerBlock->_vertices[vertId.cellId()];
+						pts.push_back(vert.getPoint());
+					}
 				}
 				if (pts.size() == 3) {
 					result->addTriangle(pts[0], pts[1], pts[2]);
@@ -659,7 +786,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 
 vector<LineSegment> Block::getCellEdges(const Index3D& cellIdx) const
 {
-	const vector<Vector3d> cellPoints = getCellCornerPts(cellIdx);
+	const vector<CrossBlockPoint> cellPoints = getCellCornerPts(cellIdx);
 
 	vector<LineSegment> edges = {
 		// X legs

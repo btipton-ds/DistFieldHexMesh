@@ -68,42 +68,4 @@ inline bool Index3D::operator < (const Index3D& rhs) const
 	return false;
 }
 
-class UniversalIndex3D {
-public:
-	UniversalIndex3D() = default;
-	UniversalIndex3D(const UniversalIndex3D& src) = default;
-	UniversalIndex3D(const Index3D& blockIdx, const Index3D& cellIdx = Index3D());
-
-	const Index3D& blockIdx() const;
-	const Index3D& cellIdx() const;
-
-	bool operator < (const UniversalIndex3D& rhs) const;
-private:
-	Index3D _blockIdx, _cellIdx;
-};
-
-inline UniversalIndex3D::UniversalIndex3D(const Index3D& blockIdx, const Index3D& cellIdx)
-	: _blockIdx(blockIdx)
-	, _cellIdx(cellIdx)
-{
-}
-
-inline const Index3D& UniversalIndex3D::blockIdx() const
-{
-	return _blockIdx;
-}
-
-inline const Index3D& UniversalIndex3D::cellIdx() const
-{
-	return _cellIdx;
-}
-
-inline bool UniversalIndex3D::operator < (const UniversalIndex3D& rhs) const
-{
-	if (_blockIdx < rhs._blockIdx)
-		return true;
-	else if (rhs._blockIdx < _blockIdx)
-		return false;
-}
-
 }
