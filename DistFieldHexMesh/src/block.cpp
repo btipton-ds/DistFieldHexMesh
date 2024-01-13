@@ -43,17 +43,15 @@ size_t Block::getMinBlockDim()
 	return s_minBlockDim;
 }
 
-Block::Block(const Volume* pVol, vector<Vector3d>& pts)
+Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	: _vertices(true)
 	, _polygons(true)
 	, _polyhedra(false)
 	, _cells(false)
 	, _blockDim(s_minBlockDim)
 	, _pVol(pVol)
+	, _blockIdx(blockIdx)
 {
-	for (int i = 0; i < 8; i++)
-		_pAdj[i] = nullptr;
-
 	assert(pts.size() == 8);
 
 	for (size_t i = 0; i < pts.size(); i++) {
@@ -73,13 +71,10 @@ Block::Block(const Block& src)
 	, _polyhedra(src._polyhedra)
 	, _cells(src._cells)
 {
-	for (int i = 0; i < 8; i++)
-		_pAdj[i] = nullptr;
 }
 
 Block::~Block()
 {
-	clearAdjacent();
 }
 
 size_t Block::numFaces(bool includeInner) const
@@ -353,23 +348,17 @@ Block::CrossBlockPoint Block::triLinInterp(const std::vector<Vector3d>& pts, con
 		index[2] / (double)_blockDim
 	);
 
+	const Index3D blockDims = _pVol->getBlockDims();
+
 	CrossBlockPoint result;
 	result._pt = TRI_LERP(pts, t[0], t[1], t[2]);
+	result._ownerBlockIdx = _blockIdx;
 
-	if (index[0] == 0)
-		result._lockMask |= Left;
-	else if (index[0] == _blockDim)
-		result._lockMask |= Right;
-
-	if (index[1] == 0)
-		result._lockMask |= Front;
-	else if (index[1] == _blockDim)
-		result._lockMask |= Back;
-
-	if (index[2] == 0)
-		result._lockMask |= Bottom;
-	else if (index[2] == _blockDim)
-		result._lockMask |= Top;
+	for (int i = 0; i < 3; i++) {
+		if (index[i] >= _blockDim) {
+			result._ownerBlockIdx[i] = (result._ownerBlockIdx[i] + 1) % blockDims[i];
+		}
+	}
 
 	return result;
 }
@@ -424,95 +413,25 @@ size_t Block::addHexCell(const Index3D& cellIdx)
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
-	Block* pResult = this;
 	if (blockIdx == _blockIdx)
-		return pResult;
+		return this;
 
-	Index3D delta ((1 + blockIdx[0]) - _blockIdx[0], (1 + blockIdx[1]) - _blockIdx[1], (1 + blockIdx[2]) - _blockIdx[2]);
-	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
-		size_t idx = calAdjIdx(delta);
-		if (idx < 8 && _pAdj[idx] && _pAdj[idx]->_blockIdx == blockIdx) {
-			pResult = _pAdj[idx].get();
-		}
-	}
-
-	return pResult;
+	return _pVol->getBlockPtr(blockIdx).get();
 }
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-	const Block* pResult = this;
 	if (blockIdx == _blockIdx)
-		return pResult;
+		return this;
 
-	Index3D delta ((1 + blockIdx[0]) - _blockIdx[0], (1 + blockIdx[1]) - _blockIdx[1], (1 + blockIdx[2]) - _blockIdx[2]);
-	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
-		size_t idx = calAdjIdx(delta);
-		if (idx < 8 && _pAdj[idx] && _pAdj[idx]->_blockIdx == blockIdx) {
-			pResult = _pAdj[idx].get();
-		}
-	}
-
-	return pResult;
+	return _pVol->getBlockPtr(blockIdx).get();
 }
 
 #define OTHER_BLOCK_MASK (Right | Back | Top)
 
-Block* Block::getOwner(uint8_t lockMask)
-{
-	Block* pResult = this;
-	if ((lockMask & OTHER_BLOCK_MASK) == 0)
-		return pResult;
-
-	Index3D delta(0, 0, 0);
-
-	if (lockMask & Right)
-		delta[0] += 1;
-
-	if (lockMask & Back)
-		delta[1] += 1;
-
-	if (lockMask & Top)
-		delta[2] += 1;
-
-	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
-		size_t idx = calAdjIdx(delta);
-		if (idx < 8 && _pAdj[idx])
-			pResult = _pAdj[idx].get();
-	}
-
-	return pResult;
-}
-
-const Block* Block::getOwner(uint8_t lockMask) const
-{
-	const Block* pResult = this;
-	if ((lockMask & OTHER_BLOCK_MASK) == 0)
-		return pResult;
-
-	Index3D delta(0, 0, 0);
-
-	if (lockMask & Right)
-		delta[0] += 1;
-
-	if (lockMask & Back)
-		delta[1] += 1;
-
-	if (lockMask & Top)
-		delta[2] += 1;
-
-	if (delta[0] >= 0 && delta[1] >= 0 && delta[2] >= 0) {
-		size_t idx = calAdjIdx(delta);
-		if (idx < 8 && _pAdj[idx])
-			pResult = _pAdj[idx].get();
-	}
-
-	return pResult;
-}
-
 inline UniversalIndex3D Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
 {
-	Block* pOwner = getOwner(pt._lockMask);
+	Block* pOwner = getOwner(pt._ownerBlockIdx);
 	size_t vertId = pOwner->_vertices.add(pt._pt, currentId);
 	return UniversalIndex3D(pOwner->_blockIdx, vertId);
 }
@@ -547,31 +466,15 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 
 UniversalIndex3D Block::addFace(int axis, const Index3D& cellIdx, const vector<CrossBlockPoint>& pts)
 {
-	uint8_t polyLockMask = 0;
-	switch (axis) {
-	case 0:
-		if (cellIdx[axis] == 0)
-			polyLockMask = Left;
-		else if (cellIdx[axis] == _blockDim - 1)
-			polyLockMask = Right;
-		break;
+	Index3D polyBlockIdx(_blockIdx);
 
-	case 1:
-		if (cellIdx[axis] == 0)
-			polyLockMask = Front;
-		else if (cellIdx[axis] == _blockDim - 1)
-			polyLockMask = Back;
-		break;
-
-	case 2:
-		if (cellIdx[axis] == 0)
-			polyLockMask = Bottom;
-		else if (cellIdx[axis] == _blockDim - 1)
-			polyLockMask = Top;
-		break;
+	Index3D blockDims = _pVol->getBlockDims();
+	Index3D ownerBlockIdx(_blockIdx);
+	if (cellIdx[axis] == _blockDim - 1) {
+		ownerBlockIdx[axis] = (ownerBlockIdx[axis] + 1) % blockDims[axis];
 	}
 
-	Block* pPolygonOwner = getOwner(polyLockMask);
+	Block* pPolygonOwner = getOwner(ownerBlockIdx);
 
 	UniversalIndex3D polyId = pPolygonOwner->addFace(pts);
 
@@ -587,43 +490,6 @@ bool Block::operator < (const Block& rhs) const
 {
 	assert(!"cannot reverse lookup blocks.");
 	return false;
-}
-
-void Block::connectAdjacent(Volume& vol, const Index3D& idx)
-{
-	_blockIdx = idx;
-	const auto& blockDim = vol.getBlockDims();
-
-	Index3D delta;
-	for (delta[0] = 0; delta[0] <= 1; delta[0]++) {
-		if (_blockIdx[0] + delta[0] > blockDim[0])
-			continue;
-		for (delta[1] = 0; delta[1] <= 1; delta[1]++) {
-			if (_blockIdx[1] + delta[1] > blockDim[1])
-				continue;
-			for (delta[2] = 0; delta[2] <= 1; delta[2]++) {
-				if (_blockIdx[2] + delta[2] > blockDim[2])
-					continue;
-				if (delta[2] == 0 && delta[2] == 0 && delta[2] == 0) {
-					; // no op
-				} else {
-					size_t adjIdx = calAdjIdx(delta);
-					Index3D adjBlockIdx(_blockIdx + delta);
-					if (vol.blockInBounds(adjBlockIdx)) {
-						auto pBlock = vol.getBlockPtr(adjBlockIdx);
-						assert(pBlock); // Must have been assigned during triangle assignment
-						_pAdj[adjIdx] = pBlock;
-					}
-				}
-			}
-		}
-	}
-}
-
-void Block::clearAdjacent()
-{
-	for (int i = 0; i < 8; i++)
-		_pAdj[i] = nullptr;
 }
 
 void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)

@@ -47,9 +47,6 @@ Volume::Volume(const Volume& src)
 
 Volume::~Volume()
 {
-	// Clear the adjacent pointers or there's a deadlock on which smart pointer is cleared first.
-	for (const auto& bl : _blocks)
-		bl->clearAdjacent();
 }
 
 void Volume::setBlockDims(const Index3D& blockSize)
@@ -522,7 +519,7 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 		origin + zAxis * span[2] + yAxis * span[1],
 	};
 
-	_blocks[idx] = make_shared<Block>(this, pts);
+	_blocks[idx] = make_shared<Block>(this, blockIdx, pts);
 
 	pBlock = _blocks[idx];
 
@@ -637,12 +634,6 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
-	MultiCore::runLambda([this](size_t linearIdx) {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->connectAdjacent(*this, calBlockIndexFromLinearIndex(linearIdx));
-		}
-	}, numBlocks, false && RUN_MULTI_THREAD);
-
 #if QUICK_TEST
 	map<size_t, std::shared_ptr<Block>> orderedBlocks;
 	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
@@ -668,6 +659,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		}
 		}, numBlocks, RUN_MULTI_THREAD);
 #endif
+
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

@@ -50,7 +50,9 @@ public:
 
 	Block& addBlock(size_t ix, size_t iy, size_t iz);
 	Block& addBlock(const Index3D& blockIdx);
+
 	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
+
 	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block& getBlock(const Index3D& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);

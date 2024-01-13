@@ -27,20 +27,10 @@ class Polyhedron;
 
 class Block {
 public:
-	enum Side {
-		None = 0,
-		Left = 1,
-		Front = 2,
-		Bottom = 4,
-		Right = 8,
-		Back = 16,
-		Top = 32,
-	};
-
 	static void setMinBlockDim(size_t dim);
 	static size_t getMinBlockDim();
 
-	Block(const Volume* pVol, std::vector<Vector3d>& pts);
+	Block(Volume* pVol, const Index3D& blockIdx, std::vector<Vector3d>& pts);
 	Block(const Block& src);
 	~Block(); // NOT virtual - do not inherit
 
@@ -48,8 +38,6 @@ public:
 	size_t getHash() const;
 	bool operator < (const Block& rhs) const;
 
-	void connectAdjacent(Volume& vol, const Index3D& idx);
-	void clearAdjacent();
 	void processBlock(size_t blockRayIdx, std::vector<bool>& cellsToCreate);
 	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Index3D& axisOrder);
 	void createCells();
@@ -113,7 +101,7 @@ private:
 		}
 
 		Vector3d _pt;
-		uint8_t _lockMask = 0;
+		Index3D _ownerBlockIdx;
 	};
 
 	std::vector<Vector3d> getCornerPts() const; // Change to returning fractions so we can assign boundary values.
@@ -124,10 +112,6 @@ private:
 
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
-
-	// This gets the owner block from the lockMask of a vertex inclusively within this block
-	Block* getOwner(uint8_t lockMask);
-	const Block* getOwner(uint8_t lockMask) const;
 
 	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
 	void setNumDivs();
@@ -143,7 +127,7 @@ private:
 
 	std::string _filename;
 
-	const Volume* _pVol;
+	Volume* _pVol;
 	static size_t s_minBlockDim;
 	Index3D _blockIdx;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
@@ -157,8 +141,6 @@ private:
 	ObjectPoolWMutex<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
-
-	std::shared_ptr<Block> _pAdj[8]; // A 2x2x2 array of adjacent block pointers for the positive octant which may be null. This is at [1,1,1] and set to null
 };
 
 inline size_t Block::blockDim() const

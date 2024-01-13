@@ -290,9 +290,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setMinBlockDim(16);
+    Block::setMinBlockDim(32);
 
-    double blockSize = 0.4;
+    double blockSize = 0.2;
 
     bool outerFacesOnly = true;
     auto blockMeshes = _volume->buildCFDHexes(_pMesh, blockSize, outerFacesOnly);
