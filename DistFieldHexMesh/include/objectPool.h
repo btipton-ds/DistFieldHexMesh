@@ -43,30 +43,11 @@ public:
 		}
 	}
 
-	bool empty() const
-	{
-		return size() == 0;
-	}
-
-	size_t size() const
-	{
-		return getNumAllocated();
-	}
-
-	size_t getNumAllocated() const
-	{
-		return _data.size() - _availableIndices.size();
-	}
-
-	size_t getNumAvailable() const
-	{
-		return _availableIndices.size();
-	}
-
-	size_t getNumUnloaded(size_t threadIndex = -1) const
-	{
-		return -1;
-	}
+	bool empty() const;
+	size_t size() const;
+	size_t getNumAllocated() const;
+	size_t getNumAvailable() const;
+	size_t getNumUnloaded() const;
 
 private:
 	struct CompareFunctor
@@ -262,102 +243,33 @@ T& ObjectPool<T>::operator[](size_t id)
 }
 
 template<class T>
-class ObjectPoolWMutex {
-public:
-	ObjectPoolWMutex(bool supportsReverseLookup);
-	ObjectPoolWMutex(const ObjectPoolWMutex& rhs);
-	size_t add(const T& vert, size_t idx = -1);
-	const T* get(size_t idx) const;
-	T* get(size_t idx);
-	template<class F>
-	void iterateInOrder(F fLambda) const
-	{
-		std::lock_guard g(_mutex);
-		_data.iterateInOrder(fLambda);
-	}
-
-	const T& operator[](size_t id) const;
-	T& operator[](size_t id);
-	void lock() const;
-	bool tryLock() const;
-	void unlock() const;
-private:
-	mutable std::thread::id _lockedId = std::this_thread::get_id();
-
-	mutable std::mutex _mutex;
-	ObjectPool<T> _data;
-};
-
-template<class T>
-inline ObjectPoolWMutex<T>::ObjectPoolWMutex(bool supportsReverseLookup)
-	: _data(supportsReverseLookup)
+bool ObjectPool<T>::empty() const
 {
+	return size() == 0;
 }
 
 template<class T>
-inline ObjectPoolWMutex<T>::ObjectPoolWMutex(const ObjectPoolWMutex& rhs)
-	: _data(rhs._data)
+size_t ObjectPool<T>::size() const
 {
+	return getNumAllocated();
 }
 
 template<class T>
-inline size_t ObjectPoolWMutex<T>::add(const T& vert, size_t id)
+size_t ObjectPool<T>::getNumAllocated() const
 {
-	std::lock_guard g(_mutex);
-	return _data.add(vert, id);
+	return _data.size() - _availableIndices.size();
 }
 
 template<class T>
-inline const T* ObjectPoolWMutex<T>::get(size_t idx) const
+size_t ObjectPool<T>::getNumAvailable() const
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data.get(idx);
+	return _availableIndices.size();
 }
 
 template<class T>
-inline T* ObjectPoolWMutex<T>::get(size_t idx)
+size_t ObjectPool<T>::getNumUnloaded() const
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data.get(idx);
-}
-
-template<class T>
-inline const T& ObjectPoolWMutex<T>::operator[](size_t id) const
-{
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data[id];
-}
-
-template<class T>
-inline T& ObjectPoolWMutex<T>::operator[](size_t id)
-{
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data[id];
-}
-
-template<class T>
-inline void ObjectPoolWMutex<T>::lock() const {
-	_mutex.lock();
-	_lockedId = std::this_thread::get_id();
-}
-
-template<class T>
-inline bool ObjectPoolWMutex<T>::tryLock() const {
-	bool result = _mutex.tryLock();
-	if (result) {
-		_lockedId = std::this_thread::get_id();
-	}
-}
-
-template<class T>
-inline void ObjectPoolWMutex<T>::unlock() const {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	_mutex.unlock();
+	return -1;
 }
 
 }

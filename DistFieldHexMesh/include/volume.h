@@ -147,14 +147,14 @@ inline Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 
 
 	size_t denom = _blockDim[0] * _blockDim[1];
-	result[2] = temp / denom;
+	result[2] = (Index3DBaseType) (temp / denom);
 	temp = temp % denom;
 
 	denom = _blockDim[0];
 
-	result[1] = temp / denom;
+	result[1] = (Index3DBaseType)(temp / denom);
 	temp = temp % denom;
-	result[0] = temp;
+	result[0] = (Index3DBaseType)temp;
 
 	if (calLinearBlockIndex(result) != linearIdx) {
 		throw std::runtime_error("calBlockIndexFromLinearIndex failed");

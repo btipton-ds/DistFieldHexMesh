@@ -4,7 +4,9 @@
 
 namespace DFHM {
 
-class Index3D : public Vector3i
+using Index3DBaseType = unsigned short; // This is large enough for 65536 x 65536 x 65536 block
+
+class Index3D : public Vector3<Index3DBaseType>
 {
 public:
 	enum Dir {
@@ -14,6 +16,7 @@ public:
 
 	Index3D() = default;
 	Index3D(const Index3D& src) = default;
+	Index3D(const Vector3<Index3DBaseType>& src);
 	Index3D(size_t i, size_t j, size_t k);
 	Index3D(const Vector3i& src);
 
@@ -25,19 +28,24 @@ public:
 	Index3D adjZ(Dir dir) const;
 };
 
+inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
+	: Vector3<Index3DBaseType>(src)
+{
+}
+
 inline Index3D::Index3D(size_t i, size_t j, size_t k)
-	: Vector3i(i, j, k)
+	: Vector3<Index3DBaseType>((Index3DBaseType)i, (Index3DBaseType)j, (Index3DBaseType)k)
 {
 }
 
 inline Index3D::Index3D(const Vector3i& src)
-	: Vector3i(src)
+	: Vector3<Index3DBaseType>((Index3DBaseType)src[0], (Index3DBaseType)src[1], (Index3DBaseType)src[2])
 {
 }
 
 inline Index3D Index3D::operator + (const Index3D& rhs) const
 {
-	Vector3i temp(*this);
+	Vector3<Index3DBaseType> temp(*this);
 	temp += rhs;
 	return temp;
 }

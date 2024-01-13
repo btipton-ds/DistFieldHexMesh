@@ -39,7 +39,6 @@ MainFrame::MainFrame(wxWindow* parent,
     freopen("conin$", "r", stdin);
     freopen("conout$", "w", stdout);
     freopen("conout$", "w", stderr);
-    cout << "Console up\n";
 
 #pragma warning(pop)
 #endif // WIN32

@@ -290,9 +290,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Block::setMinBlockDim(8);
+    Block::setMinBlockDim(16);
 
-    double blockSize = 0.2;
+    double blockSize = 0.4;
 
     bool outerFacesOnly = true;
     auto blockMeshes = _volume->buildCFDHexes(_pMesh, blockSize, outerFacesOnly);
@@ -308,12 +308,14 @@ void AppData::doBuildCFDHexes()
         _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
 
     vector<const COglMultiVboHandler::OGLIndices*> tesselations;
-    tesselations.resize(blockMeshes.size());
+    tesselations.reserve(blockMeshes.size());
     for (size_t i = 0; i < blockMeshes.size(); i++) {
         auto pBlockMesh = blockMeshes[i];
-        auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh->getId(), pBlockMesh->getChangeNumber(), pBlockMesh->getGlPoints(), pBlockMesh->getGlNormals(false),
-            pBlockMesh->getGlParams(), pBlockMesh->getGlFaceIndices());
-        tesselations[i] = pBlockTess;
+        if (pBlockMesh->numTris() > 0) {
+            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh->getId(), pBlockMesh->getChangeNumber(), pBlockMesh->getGlPoints(), pBlockMesh->getGlNormals(false),
+                pBlockMesh->getGlParams(), pBlockMesh->getGlFaceIndices());
+            tesselations.push_back(pBlockTess);
+        }
     }
     pCanvas->endFaceTesselation(false);
 

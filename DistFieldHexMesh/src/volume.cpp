@@ -65,7 +65,7 @@ const Index3D& Volume::getBlockDims() const
 
 bool Volume::cellExists(size_t ix, size_t iy, size_t iz) const
 {
-	size_t blkDim = Block::getMinBlockDim();
+	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
 	Index3D idx(ix, iy, iz);
 	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
@@ -85,7 +85,7 @@ bool Volume::cellExists(const Index3D& blockIdx) const
 
 Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
 {
-	size_t blkDim = Block::getMinBlockDim();
+	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
 	Index3D idx(ix, iy, iz);
 	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
@@ -99,7 +99,7 @@ Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
 
 const Cell& Volume::getCell(size_t ix, size_t iy, size_t iz) const
 {
-	size_t blkDim = Block::getMinBlockDim();
+	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
 	Index3D idx(ix, iy, iz);
 	Index3D blockIdx, cellIdx;
 	for (int i = 0; i < 3; i++) {
@@ -522,7 +522,7 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 		origin + zAxis * span[2] + yAxis * span[1],
 	};
 
-	_blocks[idx] = make_shared<Block>(pts);
+	_blocks[idx] = make_shared<Block>(this, pts);
 
 	pBlock = _blocks[idx];
 
@@ -613,7 +613,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 
 	size_t numBlocks = _blockDim[0] * _blockDim[1] * _blockDim[2];
 
-#define QUICK_TEST 1
+#define QUICK_TEST 0
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
 
@@ -654,6 +654,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 
 	size_t count = 0;
 	for (auto iter = orderedBlocks.rbegin(); iter != orderedBlocks.rend(); iter++) {
+		const auto& idx = iter->second->getBlockIdx();
 		iter->second->processTris();
 		count++;
 

@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 #include <triMesh.h>
-#include <objectPool.h>
-#include <Index3D.h>
+#include <objectPoolWMutex.h>
+#include <UniversalIndex3D.h>
 #include <cell.h>
 #include <vertex.h>
 #include <mutex>
@@ -40,7 +40,7 @@ public:
 	static void setMinBlockDim(size_t dim);
 	static size_t getMinBlockDim();
 
-	Block(std::vector<Vector3d>& pts);
+	Block(const Volume* pVol, std::vector<Vector3d>& pts);
 	Block(const Block& src);
 	~Block(); // NOT virtual - do not inherit
 
@@ -73,6 +73,11 @@ public:
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
+
+	inline const Index3D& getBlockIdx()
+	{
+		return _blockIdx;
+	}
 
 	void fillEmpty();
 	void processTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
@@ -117,8 +122,8 @@ private:
 
 	uint8_t lockMaskOfCellIndex(size_t cellIdx) const;
 
-	Block* getOwner(const Vector3i& blockIdx);
-	const Block* getOwner(const Vector3i& blockIdx) const;
+	Block* getOwner(const Index3D& blockIdx);
+	const Block* getOwner(const Index3D& blockIdx) const;
 
 	// This gets the owner block from the lockMask of a vertex inclusively within this block
 	Block* getOwner(uint8_t lockMask);
@@ -129,15 +134,19 @@ private:
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
 	CrossBlockPoint triLinInterp(const std::vector<Vector3d>& blockPts, const Index3D& pt) const;
 
-	size_t addHexCell(const std::vector<CrossBlockPoint>& pts);
-	size_t addQuadFace(const std::vector<CrossBlockPoint>& pts);
+	size_t addHexCell(const Index3D& cellIdx);
+	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
+	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
+
+	UniversalIndex3D addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
 
 	std::string _filename;
 
+	const Volume* _pVol;
 	static size_t s_minBlockDim;
 	Index3D _blockIdx;
-	size_t _blockDim;
+	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vertex::FixedPt _corners[8];
@@ -145,7 +154,7 @@ private:
 	std::vector<RayTriHit> _rayTriHits;
 
 	ObjectPoolWMutex<Vertex> _vertices;
-	ObjectPool<Polygon> _polygons;
+	ObjectPoolWMutex<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<Cell> _cells;
 

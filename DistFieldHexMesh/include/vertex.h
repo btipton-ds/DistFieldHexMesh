@@ -1,7 +1,7 @@
 #pragma once
 
-
 #include <tm_vector3.h>
+#include <UniversalIndex3D.h>
 
 namespace DFHM {
 
@@ -33,8 +33,8 @@ public:
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
 
-	void addPolygonReference(size_t polygonId);
-	void removePolygonReference(size_t polygonId);
+	void addPolygonReference(const UniversalIndex3D& polygonId);
+	void removePolygonReference(const UniversalIndex3D& polygonId);
 
 	const size_t getHash() const;
 	const bool operator < (const Vertex& rhs) const;
@@ -45,7 +45,7 @@ private:
 	size_t _lockIdx = -1;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
-	std::vector<size_t> _polygonIds;
+	std::vector<UniversalIndex3D> _polygonIds;
 };
 
 inline double Vertex::getFixedScale()
