@@ -3,7 +3,7 @@
 /*
 * DistFieldHexMesh
 * 
-* cell.h
+* volume.h
 * 
 */
 
@@ -15,7 +15,7 @@
 #include <triMesh.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <cell.h>
+#include <subBlock.h>
 #include <block.h>
 
 namespace TriMesh {
@@ -58,20 +58,20 @@ public:
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
 	Block& getBlock(const Index3D& blockIdx);
 
-	// Get the cell using a cell index
-	bool cellExists(size_t ix, size_t iy, size_t iz) const;
-	bool cellExists(const Index3D& blockIdx) const;
-	Cell& getCell(size_t ix, size_t iy, size_t iz);
-	Cell& getCell(const Index3D& cellIdx);
-	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell& getCell(const Index3D& cellIdx) const;
+	// Get the subBlock using a subBlock index
+	bool subBlockExists(size_t ix, size_t iy, size_t iz) const;
+	bool subBlockExists(const Index3D& blockIdx) const;
+	SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz);
+	SubBlock& getSubBlock(const Index3D& subBlockIdx);
+	const SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz) const;
+	const SubBlock& getSubBlock(const Index3D& subBlockIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool outerFacesOnly);
+	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize, bool outerFacesOnly);
 	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
 	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
 
@@ -84,7 +84,7 @@ public:
 private:
 	using AxisIndex = Block::AxisIndex;
 
-	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
+	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx);
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
@@ -164,14 +164,14 @@ inline Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 	return result;
 }
 
-inline Cell& Volume::getCell(const Index3D& cellIdx)
+inline SubBlock& Volume::getSubBlock(const Index3D& subBlockIdx)
 {
-	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
+	return getSubBlock(subBlockIdx[0], subBlockIdx[1], subBlockIdx[2]);
 }
 
-inline const Cell& Volume::getCell(const Index3D& cellIdx) const
+inline const SubBlock& Volume::getSubBlock(const Index3D& subBlockIdx) const
 {
-	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
+	return getSubBlock(subBlockIdx[0], subBlockIdx[1], subBlockIdx[2]);
 }
 
 inline double Volume::getSharpAngleRad() const

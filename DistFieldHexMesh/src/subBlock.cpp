@@ -3,7 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-#include <cell.h>
+#include <subBlock.h>
 #include <block.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -12,13 +12,13 @@
 using namespace std;
 using namespace DFHM;
 
-void Cell::init(Block* pBlock, const Index3D& cellIdx)
+void SubBlock::init(Block* pBlock, const Index3D& cellIdx)
 {
 	_pBlock = pBlock;
 	_ourIdx = cellIdx;
 }
 
-void Cell::addRayHits(const Vector3d* cellCornerPts, size_t blockDim, const Index3D& cellIdx, const FaceRayHits rayTriHits[3])
+void SubBlock::addRayHits(const Vector3d* cellCornerPts, size_t blockDim, const Index3D& cellIdx, const FaceRayHits rayTriHits[3])
 {
 	const double tol = 1.0e-5;
 	CBoundingBox3Dd bbox;
@@ -84,7 +84,7 @@ void Cell::addRayHits(const Vector3d* cellCornerPts, size_t blockDim, const Inde
 	}
 }
 
-void Cell::addRayHit(int axis, size_t i, size_t j, const RayTriHit& hit)
+void SubBlock::addRayHit(int axis, size_t i, size_t j, const RayTriHit& hit)
 {
 	FaceRayHits& faceHits = _faceRayHits[axis];
 	if (faceHits.isEmpty()) {
@@ -95,7 +95,7 @@ void Cell::addRayHit(int axis, size_t i, size_t j, const RayTriHit& hit)
 	faceHits._data[i][j].push_back(hit);
 }
 
-size_t Cell::maxIntersectionsPerLeg() const
+size_t SubBlock::maxIntersectionsPerLeg() const
 {
 	size_t result = 0;
 	for (size_t axis = 0; axis < 3; axis++) {
@@ -112,11 +112,11 @@ size_t Cell::maxIntersectionsPerLeg() const
 	return result;
 }
 
-void Cell::divide()
+void SubBlock::divide()
 {
 	CBoundingBox3Dd cellBBox;
 	auto blockCornerPts = _pBlock->getCornerPts();
-	auto cellCornerCrossPts = _pBlock->getCellCornerPts(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+	auto cellCornerCrossPts = _pBlock->getSubBlockCornerPts(blockCornerPts, _pBlock->_blockDim, _ourIdx);
 	vector<Vector3d> cellCornerPts;
 	cellCornerPts.resize(cellCornerCrossPts.size());
 	for (size_t i = 0; i < cellCornerCrossPts.size(); i++) {
@@ -152,10 +152,10 @@ void Cell::divide()
 	auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
 	addPolyhdra(polyId);
 
-	_pBlock->divideCell(_ourIdx, mult);
+	_pBlock->divideSubBlock(_ourIdx, mult);
 }
 
-bool Cell::unload(ostream& out)
+bool SubBlock::unload(ostream& out)
 {
 	out.write((char*)&_volType, sizeof(_volType));
 
@@ -173,7 +173,7 @@ bool Cell::unload(ostream& out)
 	return true;
 }
 
-bool Cell::load(istream& in)
+bool SubBlock::load(istream& in)
 {
 	in.read((char*)&_volType, sizeof(_volType));
 

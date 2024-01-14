@@ -4,7 +4,7 @@
 #include <triMesh.h>
 #include <objectPoolWMutex.h>
 #include <UniversalIndex3D.h>
-#include <cell.h>
+#include <subBlock.h>
 #include <vertex.h>
 #include <mutex>
 #include <tm_vector3.h>
@@ -27,7 +27,7 @@ class Polyhedron;
 
 class Block {
 public:
-	friend class Cell;
+	friend class SubBlock;
 	static void setMinBlockDim(size_t dim);
 	static size_t getMinBlockDim();
 
@@ -37,22 +37,22 @@ public:
 
 	size_t blockDim() const;
 
-	void createCells();
-	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
-	size_t calLinearCellIndex(const Index3D& cellIdx) const;
-	Index3D calCellIndexFromLinear(size_t linearIdx) const;
-	void addCellFaces();
+	void createSubBlocks();
+	size_t calLinearSubBlockIndex(size_t ix, size_t iy, size_t iz) const;
+	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
+	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
+	void addSubBlockFaces();
 	void createBlockFaces();
 
-	size_t numCells() const;
-	bool cellExists(size_t ix, size_t iy, size_t iz) const;
-	bool cellExists(const Index3D& idx) const;
-	Cell& getCell(size_t ix, size_t iy, size_t iz);
-	Cell& getCell(const Index3D& idx);
-	const Cell& getCell(size_t ix, size_t iy, size_t iz) const;
-	const Cell& getCell(const Index3D& idx) const;
-	void freeCell(size_t ix, size_t iy, size_t iz);
-	void freeCell(const Index3D& idx);
+	size_t numSubBlocks() const;
+	bool subBlockExists(size_t ix, size_t iy, size_t iz) const;
+	bool subBlockExists(const Index3D& idx) const;
+	SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz);
+	SubBlock& getSubBlock(const Index3D& idx);
+	const SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz) const;
+	const SubBlock& getSubBlock(const Index3D& idx) const;
+	void freeSubBlock(size_t ix, size_t iy, size_t iz);
+	void freeSubBlock(const Index3D& idx);
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -69,7 +69,7 @@ public:
 	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 
-	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
+	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
@@ -94,8 +94,8 @@ private:
 	};
 
 	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	std::vector<CrossBlockPoint> getCellCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx) const;
-	std::vector<LineSegment> getCellEdges(const Vector3d* blockPts, const Index3D& cellIdx) const;
+	std::vector<CrossBlockPoint> getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx) const;
+	std::vector<LineSegment> getSubBlockEdges(const Vector3d* blockPts, const Index3D& subBlockIdx) const;
 
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
@@ -108,18 +108,18 @@ private:
 	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, size_t blockDim, const Index3D& pt) const;
 	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
-	void createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx);
-	void addCellIndicesForMeshVerts(std::set<Index3D>& cellIndices);
-	void addCellIndicesForRayHits(std::set<Index3D>& cellIndices);
-	void splitAtSharpVertices(const Vector3d* blockPts, const Index3D& cellIdx);
-	void splitAtLegIntersections(const Vector3d* blockPts, const Index3D& cellIdx);
+	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
+	void addSubBlockIndicesForMeshVerts(std::set<Index3D>& subBlockIndices);
+	void addSubBlockIndicesForRayHits(std::set<Index3D>& subBlockIndices);
+	void splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlockIdx);
+	void splitAtLegIntersections(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& cellIndices);
-	static void addIndexToMap(const Index3D& cellIdx, std::set<Index3D>& cellIndices);
-	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx);
+	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& subBlockIndices);
+	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
+	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
-	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
-	void divideCell(const Index3D& cellIdx, size_t divs);
+	UniversalIndex3D addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	UniversalIndex3D addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
@@ -140,7 +140,7 @@ private:
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
-	ObjectPool<Cell> _cells;
+	ObjectPool<SubBlock> _subBlocks;
 };
 
 inline size_t Block::blockDim() const
@@ -148,68 +148,68 @@ inline size_t Block::blockDim() const
 	return _blockDim;
 }
 
-inline size_t Block::numCells() const
+inline size_t Block::numSubBlocks() const
 {
-	return _cells.size();
+	return _subBlocks.size();
 }
 
-inline size_t Block::calLinearCellIndex(size_t ix, size_t iy, size_t iz) const
+inline size_t Block::calLinearSubBlockIndex(size_t ix, size_t iy, size_t iz) const
 {
 	if (ix < _blockDim && iy < _blockDim && iz < _blockDim)
 		return ix + _blockDim * (iy + _blockDim * iz);
 	return -1;
 }
 
-inline size_t Block::calLinearCellIndex(const Index3D& celIdx) const
+inline size_t Block::calLinearSubBlockIndex(const Index3D& celIdx) const
 {
-	return calLinearCellIndex(celIdx[0], celIdx[1], celIdx[2]);
+	return calLinearSubBlockIndex(celIdx[0], celIdx[1], celIdx[2]);
 }
 
-inline Cell& Block::getCell(size_t ix, size_t iy, size_t iz)
+inline SubBlock& Block::getSubBlock(size_t ix, size_t iy, size_t iz)
 {
-	return getCell(Index3D(ix, iy, iz));
+	return getSubBlock(Index3D(ix, iy, iz));
 }
 
-inline Cell& Block::getCell(const Index3D& idx3)
+inline SubBlock& Block::getSubBlock(const Index3D& idx3)
 {
-	size_t idx = calLinearCellIndex(idx3);
-	if (idx < _cells.size()) {
-		if (_cells.exists(idx)) {
-			auto& result = _cells[idx];
+	size_t idx = calLinearSubBlockIndex(idx3);
+	if (idx < _subBlocks.size()) {
+		if (_subBlocks.exists(idx)) {
+			auto& result = _subBlocks[idx];
 			return result;
 		}
 	}
-	throw std::runtime_error("Block::getCell out of range");
+	throw std::runtime_error("Block::getSubBlock out of range");
 }
 
-inline const Cell& Block::getCell(size_t ix, size_t iy, size_t iz) const
+inline const SubBlock& Block::getSubBlock(size_t ix, size_t iy, size_t iz) const
 {
-	size_t idx = calLinearCellIndex(ix, iy, iz);
-	if (idx < _cells.size()) {
-		if (_cells.exists(idx)) {
-			auto& result = _cells[idx];
+	size_t idx = calLinearSubBlockIndex(ix, iy, iz);
+	if (idx < _subBlocks.size()) {
+		if (_subBlocks.exists(idx)) {
+			auto& result = _subBlocks[idx];
 			return result;
 		}
 	}
-	throw std::runtime_error("Block::getCell out of range");
+	throw std::runtime_error("Block::getSubBlock out of range");
 }
 
-inline const Cell& Block::getCell(const Index3D& idx) const
+inline const SubBlock& Block::getSubBlock(const Index3D& idx) const
 {
-	return getCell(idx[0], idx[1], idx[2]);
+	return getSubBlock(idx[0], idx[1], idx[2]);
 }
 
-inline void Block::freeCell(size_t ix, size_t iy, size_t iz)
+inline void Block::freeSubBlock(size_t ix, size_t iy, size_t iz)
 {
-	size_t idx = calLinearCellIndex(ix, iy, iz);
-	if (_cells.exists(idx)) {
-		_cells.free(idx);
+	size_t idx = calLinearSubBlockIndex(ix, iy, iz);
+	if (_subBlocks.exists(idx)) {
+		_subBlocks.free(idx);
 	}
 }
 
-inline void Block::freeCell(const Index3D& idx)
+inline void Block::freeSubBlock(const Index3D& idx)
 {
-	freeCell(idx[0], idx[1], idx[2]);
+	freeSubBlock(idx[0], idx[1], idx[2]);
 }
 
 inline bool Block::isUnloaded() const

@@ -4,7 +4,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-#include <cell.h>
+#include <subBlock.h>
 #include <block.h>
 #include <volume.h>
 #include <vertex.h>
@@ -30,7 +30,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	: _vertices(true)
 	, _polygons(true)
 	, _polyhedra(false)
-	, _cells(false)
+	, _subBlocks(false)
 	, _blockDim(s_minBlockDim)
 	, _pVol(pVol)
 	, _blockIdx(blockIdx)
@@ -66,7 +66,7 @@ size_t Block::numPolyhedra() const
 }
 
 
-Index3D Block::calCellIndexFromLinear(size_t linearIdx) const
+Index3D Block::calSubBlockIndexFromLinear(size_t linearIdx) const
 {
 	Index3D result;
 
@@ -81,25 +81,25 @@ Index3D Block::calCellIndexFromLinear(size_t linearIdx) const
 	temp = temp % denom;
 
 	result[0] = (Index3DBaseType)temp;
-	if (calLinearCellIndex(result) != linearIdx) {
-		throw std::runtime_error("calCellIndexFromLinear failed.");
+	if (calLinearSubBlockIndex(result) != linearIdx) {
+		throw std::runtime_error("calSubBlockIndexFromLinear failed.");
 	}
 	return result;
 }
 
-bool Block::cellExists(size_t ix, size_t iy, size_t iz) const
+bool Block::subBlockExists(size_t ix, size_t iy, size_t iz) const
 {
-	return _cells.exists(calLinearCellIndex(ix, iy, iz));
+	return _subBlocks.exists(calLinearSubBlockIndex(ix, iy, iz));
 }
 
-bool Block::cellExists(const Index3D& idx) const
+bool Block::subBlockExists(const Index3D& idx) const
 {
-	return cellExists(idx[0], idx[1], idx[2]);
+	return subBlockExists(idx[0], idx[1], idx[2]);
 }
 
-void Block::divideCell(const Index3D& cellIdx, size_t divs)
+void Block::divideSubBlock(const Index3D& subBlockIdx, size_t divs)
 {
-	size_t linearIdx = calLinearCellIndex(cellIdx);
+	size_t linearIdx = calLinearSubBlockIndex(subBlockIdx);
 	Polyhedron* poly = _polyhedra.get(linearIdx);
 
 }
@@ -189,101 +189,101 @@ void Block::findSharpVertices(const CBoundingBox3Dd& bbox)
 	}
 }
 
-void Block::createCells()
+void Block::createSubBlocks()
 {
-	set<Index3D> cellIndices;
+	set<Index3D> subBlockIndices;
 
-	addCellIndicesForMeshVerts(cellIndices);
-	addCellIndicesForRayHits(cellIndices);
+	addSubBlockIndicesForMeshVerts(subBlockIndices);
+	addSubBlockIndicesForRayHits(subBlockIndices);
 
-	if (cellIndices.empty())
+	if (subBlockIndices.empty())
 		return;
 
-	if (_cells.empty()) {
-		_cells.resize(_blockDim * _blockDim * _blockDim);
+	if (_subBlocks.empty()) {
+		_subBlocks.resize(_blockDim * _blockDim * _blockDim);
 	}
 
 	const Vector3d* blockPts = getCornerPts();
 
 
-	for (const auto& cellIdx : cellIndices) {
-		createCellsForHexCell(blockPts, cellIdx);
+	for (const auto& subBlockIdx : subBlockIndices) {
+		createSubBlocksForHexSubBlock(blockPts, subBlockIdx);
 	}
 }
 
-void Block::addCellIndicesForMeshVerts(set<Index3D>& cellIndices)
+void Block::addSubBlockIndicesForMeshVerts(set<Index3D>& subBlockIndices)
 {
 	const Vector3d* pts = getCornerPts();
 	CBoundingBox3Dd bbox;
 	for (size_t i = 0; i < 8; i++)
 		bbox.merge(pts[i]);
 
-	// Make sure all vertices are surrounded by a cell
+	// Make sure all vertices are surrounded by a subBlock
 	size_t numTriVerts = _pModelTriMesh->numVertices();
 	for (size_t vertIdx = 0; vertIdx < numTriVerts; vertIdx++) {
 		const auto& vertPt = _pModelTriMesh->getVert(vertIdx)._pt;
 		if (bbox.contains(vertPt)) {
 			Vector3d interp = invTriLinIterp(pts, vertPt);
-			Index3D cellIdx;
+			Index3D subBlockIdx;
 			for (int i = 0; i < 3; i++) {
-				cellIdx[i] = (Index3DBaseType)(interp[i] * _blockDim);
+				subBlockIdx[i] = (Index3DBaseType)(interp[i] * _blockDim);
 			}
-			if (cellIdx[0] < _blockDim && cellIdx[1] < _blockDim && cellIdx[2] < _blockDim) {
-				auto cellPts = getCellCornerPts(pts, _blockDim, cellIdx);
-				CBoundingBox3Dd cellBbox;
+			if (subBlockIdx[0] < _blockDim && subBlockIdx[1] < _blockDim && subBlockIdx[2] < _blockDim) {
+				auto subBlockPts = getSubBlockCornerPts(pts, _blockDim, subBlockIdx);
+				CBoundingBox3Dd subBlockBbox;
 				for (size_t i = 0; i < 8; i++)
-					cellBbox.merge(cellPts[i]);
-				if (cellBbox.contains(vertPt))
-					addIndexToMap(cellIdx, cellIndices);
+					subBlockBbox.merge(subBlockPts[i]);
+				if (subBlockBbox.contains(vertPt))
+					addIndexToMap(subBlockIdx, subBlockIndices);
 			}
 		}
 	}
 }
 
-void Block::addCellIndicesForRayHits(set<Index3D>& cellIndices)
+void Block::addSubBlockIndicesForRayHits(set<Index3D>& subBlockIndices)
 {
-	// Make sure all grid to triangle intersection points are in a cell
+	// Make sure all grid to triangle intersection points are in a subBlock
 	for (size_t axis = 0; axis < 3; axis++) {
 		for (size_t i = 0; i < _blockDim; i++) {
 			for (size_t j = 0; j < _blockDim; j++) {
-				addHitsForRay(axis, i, j, 0, 0, cellIndices);
-				addHitsForRay(axis, i, j, 0, 1, cellIndices);
-				addHitsForRay(axis, i, j, 1, 1, cellIndices);
-				addHitsForRay(axis, i, j, 1, 0, cellIndices);
+				addHitsForRay(axis, i, j, 0, 0, subBlockIndices);
+				addHitsForRay(axis, i, j, 0, 1, subBlockIndices);
+				addHitsForRay(axis, i, j, 1, 1, subBlockIndices);
+				addHitsForRay(axis, i, j, 1, 0, subBlockIndices);
 			}
 		}
 	}
 }
 
-void Block::createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx)
+void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
-	size_t cellId = _cells.add(Cell());
-	auto& cell = _cells[cellId];
-	cell.init(this, cellIdx);
-	cell.addRayHits(blockPts, _blockDim, cellIdx, _rayTriHits);
-	cell.divide();
+	size_t subBlockId = _subBlocks.add(SubBlock());
+	auto& subBlock = _subBlocks[subBlockId];
+	subBlock.init(this, subBlockIdx);
+	subBlock.addRayHits(blockPts, _blockDim, subBlockIdx, _rayTriHits);
+	subBlock.divide();
 
-//	splitAtSharpVertices(blockPts, cellIdx);
-//	splitAtLegIntersections(blockPts, cellIdx);
+//	splitAtSharpVertices(blockPts, subBlockIdx);
+//	splitAtLegIntersections(blockPts, subBlockIdx);
 }
 
-void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& cellIdx)
+void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
 	// This a marching cubes style split. Create triangles between the leg intersections, cut and splice into 
-	size_t linearIdx = calLinearCellIndex(cellIdx);
-	auto& cell = _cells[linearIdx];
-	if (cell.numPolyhedra() == 0) {
-		auto polyId = addHexCell(blockPts, _blockDim, cellIdx);
-		cell.addPolyhdra(polyId);
+	size_t linearIdx = calLinearSubBlockIndex(subBlockIdx);
+	auto& subBlock = _subBlocks[linearIdx];
+	if (subBlock.numPolyhedra() == 0) {
+		auto polyId = addHexCell(blockPts, _blockDim, subBlockIdx);
+		subBlock.addPolyhdra(polyId);
 	}
 }
 
-void Block::splitAtLegIntersections(const Vector3d* blockPts, const Index3D& cellIdx)
+void Block::splitAtLegIntersections(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
 }
 
 
-void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, set<Index3D>& cellIndices)
+void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, set<Index3D>& subBlockIndices)
 {
 	size_t ix, iy, iz;
 
@@ -305,29 +305,29 @@ void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj,
 		case 0: {
 			iy = i;
 			iz = j;
-			addIndexToMap(Index3D(rayIdx0, iy, iz), cellIndices);
-			addIndexToMap(Index3D(rayIdx1, iy, iz), cellIndices);
+			addIndexToMap(Index3D(rayIdx0, iy, iz), subBlockIndices);
+			addIndexToMap(Index3D(rayIdx1, iy, iz), subBlockIndices);
 			break;
 		}
 		case 1:
 			ix = i;
 			iz = j;
-			addIndexToMap(Index3D(ix, rayIdx0, iz), cellIndices);
-			addIndexToMap(Index3D(ix, rayIdx1, iz), cellIndices);
+			addIndexToMap(Index3D(ix, rayIdx0, iz), subBlockIndices);
+			addIndexToMap(Index3D(ix, rayIdx1, iz), subBlockIndices);
 			break;
 		case 2:
 			ix = i;
 			iy = j;
-			addIndexToMap(Index3D(ix, iy, rayIdx0), cellIndices);
-			addIndexToMap(Index3D(ix, iy, rayIdx1), cellIndices);
+			addIndexToMap(Index3D(ix, iy, rayIdx0), subBlockIndices);
+			addIndexToMap(Index3D(ix, iy, rayIdx1), subBlockIndices);
 			break;
 		}
 	}
 }
 
-inline void Block::addIndexToMap(const Index3D& cellIdx, set<Index3D>& cellIndices)
+inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
 {
-	cellIndices.insert(cellIdx);
+	subBlockIndices.insert(subBlockIdx);
 }
 
 inline const Vector3d* Block::getCornerPts() const
@@ -335,7 +335,7 @@ inline const Vector3d* Block::getCornerPts() const
 	return _corners;
 }
 
-vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& index) const
+vector<Block::CrossBlockPoint> Block::getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& index) const
 {
 	vector<CrossBlockPoint> result = {
 		triLinInterp(blockPts, blockDim, index + Index3D(0, 0, 0)),
@@ -424,34 +424,34 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
 	return result;
 }
 
-size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx)
+size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx)
 {
-	auto pts = getCellCornerPts(blockPts, blockDim, cellIdx);
+	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
 	vector<UniversalIndex3D> faceIds;
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(0, cellIdx, { pts[0], pts[4], pts[7], pts[3] }));
-	faceIds.push_back(addFace(0, cellIdx, { pts[1], pts[2], pts[6], pts[5] }));
+	faceIds.push_back(addFace(0, subBlockIdx, { pts[0], pts[4], pts[7], pts[3] }));
+	faceIds.push_back(addFace(0, subBlockIdx, { pts[1], pts[2], pts[6], pts[5] }));
 
 	// add front and back
-	faceIds.push_back(addFace(1, cellIdx, { pts[0], pts[1], pts[5], pts[4] }));
-	faceIds.push_back(addFace(1, cellIdx, { pts[2], pts[3], pts[7], pts[6] }));
+	faceIds.push_back(addFace(1, subBlockIdx, { pts[0], pts[1], pts[5], pts[4] }));
+	faceIds.push_back(addFace(1, subBlockIdx, { pts[2], pts[3], pts[7], pts[6] }));
 
 	// add bottom and top
-	faceIds.push_back(addFace(2, cellIdx, { pts[0], pts[3], pts[2], pts[1] }));
-	faceIds.push_back(addFace(2, cellIdx, { pts[4], pts[5], pts[6], pts[7] }));
+	faceIds.push_back(addFace(2, subBlockIdx, { pts[0], pts[3], pts[2], pts[1] }));
+	faceIds.push_back(addFace(2, subBlockIdx, { pts[4], pts[5], pts[6], pts[7] }));
 
 #if 0
-	cout << "Adding hexCell to block: [" << _blockIdx[0] << ", " << _blockIdx[1] << ", " << _blockIdx[2] << "] at cellIdx[" << cellIdx[0] << ", " << cellIdx[1] << ", " << cellIdx[2] << "]\n";
+	cout << "Adding hexSubBlock to block: [" << _blockIdx[0] << ", " << _blockIdx[1] << ", " << _blockIdx[2] << "] at subBlockIdx[" << subBlockIdx[0] << ", " << subBlockIdx[1] << ", " << subBlockIdx[2] << "]\n";
 	for (const auto& faceId : faceIds) {
 		const auto& faceBlockIdx = faceId.blockIdx();
-		cout << "  faceBlockIdx: [" << faceBlockIdx[0] << ", " << faceBlockIdx[1] << ", " << faceBlockIdx[2] << "]: cellId - " << faceId.cellId() << "\n";
+		cout << "  faceBlockIdx: [" << faceBlockIdx[0] << ", " << faceBlockIdx[1] << ", " << faceBlockIdx[2] << "]: subBlockId - " << faceId.subBlockId() << "\n";
 	}
 #endif
 
 	UniversalIndex3D polyhedronId(_blockIdx, _polyhedra.add(Polyhedron(faceIds)));
-	auto pPoly = _polyhedra.get(polyhedronId.cellId());
+	auto pPoly = _polyhedra.get(polyhedronId.subBlockId());
 	assert(pPoly);
 
 	for (const auto& faceId : faceIds) {
@@ -460,16 +460,16 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		}
 		Block* pOwnerBlock = getOwner(faceId.blockIdx());
 		lock_guard g(pOwnerBlock->_polygons);
-		auto pFace = pOwnerBlock->_polygons.get(faceId.cellId());
+		auto pFace = pOwnerBlock->_polygons.get(faceId.subBlockId());
 		if (pFace) {
-			if (!pFace->getOwnerCellId().isValid())
-				pFace->setOwnerCellId(polyhedronId);
+			if (!pFace->getOwnerSubBlockId().isValid())
+				pFace->setOwnerSubBlockId(polyhedronId);
 			else 
-				pFace->setNeighborCellId(polyhedronId);
+				pFace->setNeighborSubBlockId(polyhedronId);
 		}
 	}
 
-	return polyhedronId.cellId(); // We cells are never shared across blocks, so we can drop the block index
+	return polyhedronId.subBlockId(); // We subBlocks are never shared across blocks, so we can drop the block index
 }
 
 inline Block* Block::getOwner(const Index3D& blockIdx)
@@ -509,14 +509,14 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 	UniversalIndex3D polyId(_blockIdx, _polygons.add(newPoly));
 
 	lock_guard g(_polygons);
-	auto pPoly = _polygons.get(polyId.cellId());
+	auto pPoly = _polygons.get(polyId.subBlockId());
 	assert(pPoly != nullptr);
 
 	const auto& vertIds = pPoly->getVertexIds();
 	for (const auto& vertId : vertIds) {
 		auto pVertexOwner = getOwner(vertId.blockIdx());
 		lock_guard g(pVertexOwner->_vertices);
-		auto pVert = pVertexOwner->_vertices.get(vertId.cellId());
+		auto pVert = pVertexOwner->_vertices.get(vertId.subBlockId());
 		if (pVert) {
 			pVert->addPolygonReference(polyId);
 		}
@@ -525,13 +525,13 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 	return polyId;
 }
 
-UniversalIndex3D Block::addFace(int axis, const Index3D& cellIdx, const vector<CrossBlockPoint>& pts)
+UniversalIndex3D Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
 {
 	Index3D polyBlockIdx(_blockIdx);
 
 	Index3D blockDims = _pVol->getBlockDims();
 	Index3D ownerBlockIdx(_blockIdx);
-	if (cellIdx[axis] == _blockDim - 1) {
+	if (subBlockIdx[axis] == _blockDim - 1) {
 		ownerBlockIdx[axis] = (ownerBlockIdx[axis] + 1) % blockDims[axis];
 	}
 
@@ -550,12 +550,12 @@ bool Block::unload(string& filename)
 			return false;
 		}
 
-		size_t count = _cells.size();
+		size_t count = _subBlocks.size();
 		out.write((char*)&count, sizeof(count));
-		for (size_t id = 0; id < _cells.size(); id++) {
-			if (_cells.exists(id)) {
-				Cell& cell = _cells[id];
-				if (!cell.unload(out)) {
+		for (size_t id = 0; id < _subBlocks.size(); id++) {
+			if (_subBlocks.exists(id)) {
+				SubBlock& subBlock = _subBlocks[id];
+				if (!subBlock.unload(out)) {
 					return false;
 				}
 			}
@@ -568,10 +568,10 @@ bool Block::unload(string& filename)
 	}
 
 #if 0
-	for (auto cellIdx : _cells) {
-		_cells.unload(cellIdx);
+	for (auto subBlockIdx : _subBlocks) {
+		_subBlocks.unload(subBlockIdx);
 	}
-	_cells.clear();
+	_subBlocks.clear();
 #endif
 
 	return true;
@@ -588,12 +588,12 @@ bool Block::load()
 	in.read((char*) & size, sizeof(size));
 	if (!in.good()) return false;
 
-	_cells.resize(size);
-	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
-		size_t idx = _cells.add(Cell(), cellIdx);
-		auto& cell = _cells[idx];
-		cell.init(this, calCellIndexFromLinear(cellIdx));
-		if (!cell.load(in)) {
+	_subBlocks.resize(size);
+	for (size_t subBlockIdx = 0; subBlockIdx < size; subBlockIdx++) {
+		size_t idx = _subBlocks.add(SubBlock(), subBlockIdx);
+		auto& subBlock = _subBlocks[idx];
+		subBlock.init(this, calSubBlockIndexFromLinear(subBlockIdx));
+		if (!subBlock.load(in)) {
 			// TODO cleanup here
 			return false;
 		}
@@ -619,7 +619,7 @@ void Block::processTris()
 
 	rayCastHexBlock(getCornerPts(), _blockDim, _rayTriHits);
 	findFeatures();
-	createCells();
+	createSubBlocks();
 }
 
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
@@ -671,7 +671,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 				for (const auto& vertId : vertIds) {
 					auto pVertexOwner = getOwner(vertId.blockIdx());
 					lock_guard g(pVertexOwner->_vertices);
-					const auto& vert = pVertexOwner->_vertices[vertId.cellId()];
+					const auto& vert = pVertexOwner->_vertices[vertId.subBlockId()];
 					pts.push_back(vert.getPoint());
 				}
 				if (pts.size() == 3) {
@@ -689,28 +689,28 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 	return result;
 }
 
-vector<LineSegment> Block::getCellEdges(const Vector3d* cellPoints, const Index3D& cellIdx) const
+vector<LineSegment> Block::getSubBlockEdges(const Vector3d* subBlockPoints, const Index3D& subBlockIdx) const
 {
-//	const vector<CrossBlockPoint> cellPoints = getCellCornerPts(cellIdx);
+//	const vector<CrossBlockPoint> subBlockPoints = getSubBlockCornerPts(subBlockIdx);
 
 	vector<LineSegment> edges = {
 		// X legs
-		LineSegment(cellPoints[0], cellPoints[1]),
-		LineSegment(cellPoints[3], cellPoints[2]),
-		LineSegment(cellPoints[4], cellPoints[5]),
-		LineSegment(cellPoints[7], cellPoints[6]),
+		LineSegment(subBlockPoints[0], subBlockPoints[1]),
+		LineSegment(subBlockPoints[3], subBlockPoints[2]),
+		LineSegment(subBlockPoints[4], subBlockPoints[5]),
+		LineSegment(subBlockPoints[7], subBlockPoints[6]),
 
 		// Y legs
-		LineSegment(cellPoints[0], cellPoints[3]),
-		LineSegment(cellPoints[1], cellPoints[2]),
-		LineSegment(cellPoints[4], cellPoints[7]),
-		LineSegment(cellPoints[5], cellPoints[6]),
+		LineSegment(subBlockPoints[0], subBlockPoints[3]),
+		LineSegment(subBlockPoints[1], subBlockPoints[2]),
+		LineSegment(subBlockPoints[4], subBlockPoints[7]),
+		LineSegment(subBlockPoints[5], subBlockPoints[6]),
 
 		// Z legs
-		LineSegment(cellPoints[0], cellPoints[4]),
-		LineSegment(cellPoints[1], cellPoints[5]),
-		LineSegment(cellPoints[2], cellPoints[6]),
-		LineSegment(cellPoints[3], cellPoints[7]),
+		LineSegment(subBlockPoints[0], subBlockPoints[4]),
+		LineSegment(subBlockPoints[1], subBlockPoints[5]),
+		LineSegment(subBlockPoints[2], subBlockPoints[6]),
+		LineSegment(subBlockPoints[3], subBlockPoints[7]),
 	};
 
 	return edges;
@@ -801,12 +801,12 @@ size_t Block::getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) co
 void Block::pack()
 {
 #if 0
-	for (auto id : _cells) {
+	for (auto id : _subBlocks) {
 		if (id != -1)
 			return;
 	}
 
-	_cells.clear();
+	_subBlocks.clear();
 #endif
 }
 

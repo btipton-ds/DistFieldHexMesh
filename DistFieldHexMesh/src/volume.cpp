@@ -7,7 +7,7 @@
 
 #include <triMesh.h>
 
-#include <cell.h>
+#include <subBlock.h>
 #include <block.h>
 #include <volume.h>
 #include <MultiCoreUtil.h>
@@ -20,7 +20,7 @@ using namespace DFHM;
 using namespace TriMesh;
 
 #define RUN_MULTI_THREAD true
-#define QUICK_TEST 1
+#define QUICK_TEST 0
 
 Volume::Volume(const Index3D& blockSize)
 {
@@ -51,55 +51,55 @@ const Index3D& Volume::getBlockDims() const
 	return _blockDim;
 }
 
-bool Volume::cellExists(size_t ix, size_t iy, size_t iz) const
+bool Volume::subBlockExists(size_t ix, size_t iy, size_t iz) const
 {
 	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
 	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, cellIdx;
+	Index3D blockIdx, subBlockIdx;
 	for (int i = 0; i < 3; i++) {
 		blockIdx[i] = idx[i] / blkDim;
-		cellIdx[i] = idx[i] % blkDim;
+		subBlockIdx[i] = idx[i] % blkDim;
 	}
 	if (!blockExists(blockIdx))
 		return false;
 	const auto& block = getBlock(blockIdx);
-	return block.cellExists(cellIdx);
+	return block.subBlockExists(subBlockIdx);
 }
 
-bool Volume::cellExists(const Index3D& blockIdx) const
+bool Volume::subBlockExists(const Index3D& blockIdx) const
 {
-	return cellExists(blockIdx[0], blockIdx[1], blockIdx[2]);
+	return subBlockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
-Cell& Volume::getCell(size_t ix, size_t iy, size_t iz)
-{
-	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
-	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, cellIdx;
-	for (int i = 0; i < 3; i++) {
-		blockIdx[i] = idx[i] / blkDim;
-		cellIdx[i] = idx[i] % blkDim;
-	}
-	auto& block = getBlock(blockIdx);
-	auto& cell = block.getCell(cellIdx);
-	return cell;
-}
-
-const Cell& Volume::getCell(size_t ix, size_t iy, size_t iz) const
+SubBlock& Volume::getSubBlock(size_t ix, size_t iy, size_t iz)
 {
 	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
 	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, cellIdx;
+	Index3D blockIdx, subBlockIdx;
 	for (int i = 0; i < 3; i++) {
 		blockIdx[i] = idx[i] / blkDim;
-		cellIdx[i] = idx[i] % blkDim;
+		subBlockIdx[i] = idx[i] % blkDim;
 	}
 	auto& block = getBlock(blockIdx);
-	auto& cell = block.getCell(cellIdx);
-	return cell;
+	auto& subBlock = block.getSubBlock(subBlockIdx);
+	return subBlock;
 }
 
-void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx)
+const SubBlock& Volume::getSubBlock(size_t ix, size_t iy, size_t iz) const
+{
+	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
+	Index3D idx(ix, iy, iz);
+	Index3D blockIdx, subBlockIdx;
+	for (int i = 0; i < 3; i++) {
+		blockIdx[i] = idx[i] / blkDim;
+		subBlockIdx[i] = idx[i] % blkDim;
+	}
+	auto& block = getBlock(blockIdx);
+	auto& subBlock = block.getSubBlock(subBlockIdx);
+	return subBlock;
+}
+
+void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx)
 {
 
 	double dist0 = triHit.dist;
@@ -116,9 +116,9 @@ void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& bl
 	double dist1 = dist0 - (blockIdx * blockSpan[rayAxis]);
 
 	double w1 = dist1 / blockSpan[rayAxis];
-	cellIdx = (size_t)(w1 * Block::getMinBlockDim());
-	if (cellIdx >= Block::getMinBlockDim())
-		cellIdx = Block::getMinBlockDim() - 1;
+	subBlockIdx = (size_t)(w1 * Block::getMinBlockDim());
+	if (subBlockIdx >= Block::getMinBlockDim())
+		subBlockIdx = Block::getMinBlockDim() - 1;
 }
 
 Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)

@@ -10,10 +10,10 @@ class UniversalIndex3D {
 public:
 	UniversalIndex3D() = default;
 	UniversalIndex3D(const UniversalIndex3D& src) = default;
-	UniversalIndex3D(const Index3D& blockIdx, size_t cellId = -1);
+	UniversalIndex3D(const Index3D& blockIdx, size_t subBlockId = -1);
 
 	const Index3D& blockIdx() const;
-	size_t cellId() const;
+	size_t subBlockId() const;
 
 	bool isValid() const;
 
@@ -23,12 +23,12 @@ public:
 
 private:
 	Index3D _blockIdx = Index3D(-1, -1, -1);
-	size_t _cellId = -1;
+	size_t _subBlockId = -1;
 };
 
-inline UniversalIndex3D::UniversalIndex3D(const Index3D& blockIdx, size_t cellId)
+inline UniversalIndex3D::UniversalIndex3D(const Index3D& blockIdx, size_t subBlockId)
 	: _blockIdx(blockIdx)
-	, _cellId(cellId)
+	, _subBlockId(subBlockId)
 {
 }
 
@@ -37,14 +37,14 @@ inline const Index3D& UniversalIndex3D::blockIdx() const
 	return _blockIdx;
 }
 
-inline size_t UniversalIndex3D::cellId() const
+inline size_t UniversalIndex3D::subBlockId() const
 {
-	return _cellId;
+	return _subBlockId;
 }
 
 inline bool UniversalIndex3D::isValid() const
 {
-	return _cellId != -1 && _blockIdx[0] != -1 && _blockIdx[1] != -1 && _blockIdx[2] != -1;
+	return _subBlockId != -1 && _blockIdx[0] != -1 && _blockIdx[1] != -1 && _blockIdx[2] != -1;
 }
 
 inline bool UniversalIndex3D::operator < (const UniversalIndex3D& rhs) const
@@ -54,7 +54,7 @@ inline bool UniversalIndex3D::operator < (const UniversalIndex3D& rhs) const
 	else if (rhs._blockIdx < _blockIdx)
 		return false;
 
-	return _cellId < rhs._cellId;
+	return _subBlockId < rhs._subBlockId;
 }
 
 inline bool UniversalIndex3D::operator == (const UniversalIndex3D& rhs) const
