@@ -113,6 +113,25 @@ void Block::createCells()
 {
 	map<Index3D, size_t> cellIndices;
 
+	addCellIndicesForMeshVerts(cellIndices);
+	addCellIndicesForRayHits(cellIndices);
+
+	if (cellIndices.empty())
+		return;
+
+	if (_cells.empty()) {
+		_cells.resize(_blockDim * _blockDim * _blockDim);
+	}
+
+	for (const auto& pair : cellIndices) {
+		Index3D cellIdx = pair.first;
+		size_t numIndicesInCell = pair.second;
+		createCellsForHexCell(cellIdx, numIndicesInCell);
+	}
+}
+
+void Block::addCellIndicesForMeshVerts(std::map<Index3D, size_t>& cellIndices)
+{
 	const Vector3d* pts = getCornerPts();
 	CBoundingBox3Dd bbox;
 	for (size_t i = 0; i < 8; i++)
@@ -138,7 +157,10 @@ void Block::createCells()
 			}
 		}
 	}
+}
 
+void Block::addCellIndicesForRayHits(std::map<Index3D, size_t>& cellIndices)
+{
 	// Make sure all grid to triangle intersection points are in a cell
 	for (size_t axis = 0; axis < 3; axis++) {
 		for (size_t i = 0; i < _blockDim; i++) {
@@ -149,16 +171,6 @@ void Block::createCells()
 				addHitsForRay(axis, i, j, 1, 0, cellIndices);
 			}
 		}
-	}
-
-	if (_cells.empty()) {
-		_cells.resize(_blockDim * _blockDim * _blockDim);
-	}
-
-	for (const auto& pair : cellIndices) {
-		Index3D cellIdx = pair.first;
-		size_t numIndicesInCell = pair.second;
-		createCellsForHexCell(cellIdx, numIndicesInCell);
 	}
 }
 

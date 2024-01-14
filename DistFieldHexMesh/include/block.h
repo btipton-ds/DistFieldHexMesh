@@ -128,7 +128,8 @@ private:
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, const Index3D& pt) const;
 	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
 	void createCellsForHexCell(const Index3D& cellIdx, size_t numIndicesInCell);
-
+	void addCellIndicesForMeshVerts(std::map<Index3D, size_t>& cellIndices);
+	void addCellIndicesForRayHits(std::map<Index3D, size_t>& cellIndices);
 
 	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::map<Index3D, size_t>& cellIndices);
 	static void addIndexToMap(const Index3D& cellIdx, std::map<Index3D, size_t>& cellIndices);
