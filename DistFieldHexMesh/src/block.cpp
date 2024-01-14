@@ -36,13 +36,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	assert(pts.size() == 8);
 
 	for (size_t i = 0; i < pts.size(); i++) {
-		const auto& pt = pts[i];
-		Vertex::FixedPt iPt(
-			Vertex::fromDbl(pt[0]),
-			Vertex::fromDbl(pt[1]),
-			Vertex::fromDbl(pt[2])
-			);
-		_corners[i] = iPt;
+		_corners[i] = pts[i];
 	}
 }
 
@@ -104,7 +98,7 @@ bool Block::cellExists(const Index3D& idx) const
 void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 {
 	Vector3d axis;
-	vector<Vector3d> pts = getCornerPts();
+	const Vector3d* pts = getCornerPts();
 	origin = pts[0];
 
 	span = Vector3d(
@@ -117,53 +111,81 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 void Block::createCells()
 {
+	set<Index3D> cellIndices;
+
+	for (size_t axis = 0; axis < 3; axis++) {
+		for (size_t i = 0; i < _blockDim; i++) {
+			for (size_t j = 0; j < _blockDim; j++) {
+				addHitsForRay(axis, i, j, 0, 0, cellIndices);
+				addHitsForRay(axis, i, j, 0, 1, cellIndices);
+				addHitsForRay(axis, i, j, 1, 1, cellIndices);
+				addHitsForRay(axis, i, j, 1, 0, cellIndices);
+			}
+		}
+	}
+
 	if (_cells.empty()) {
 		_cells.resize(_blockDim * _blockDim * _blockDim);
 	}
-	map<size_t, vector<RayTriHit>> cellIndices;
 
-	for (const auto& rayHit : _rayTriHits) {
-		auto iter = cellIndices.find(rayHit._cellIdx);
-		if (iter == cellIndices.end()) {
-			iter = cellIndices.insert(make_pair(rayHit._cellIdx, vector<RayTriHit>())).first;
-		}
-		auto& hits = iter->second;
-		hits.push_back(rayHit);
-	}
-
-	for (const auto& pair : cellIndices) {
-		Index3D cellIdx = calCellIndexFromLinear(pair.first);
-		const auto& hits = pair.second;
-		if (hits.size() > 10) {
-			// Need to organize the hits by block face
-			// Then subdivide here.
-		}
+	for (const auto& cellIdx : cellIndices) {
 
 		auto polyHedraId = addHexCell(cellIdx);
-		size_t cellId = _cells.add(Cell(), pair.first);
+		size_t cellId = _cells.add(Cell());
 		_cells[cellId].addPolyhdra(polyHedraId);
 	}
 }
 
-vector<Vector3d> Block::getCornerPts() const
+void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, set<Index3D>& cellIndices)
 {
-	vector<Vector3d> result;
+	size_t ix, iy, iz;
 
-	for (size_t i = 0; i < 8; i++) {
-		auto iPt = _corners[i];
-		Vector3d pt(
-			Vertex::toDbl(iPt[0]),
-			Vertex::toDbl(iPt[1]),
-			Vertex::toDbl(iPt[2])
-		);
-		result.push_back(pt);
+	const auto& faceHits = _rayTriHits[axis];
+	const RayTriHitVector& rayHits = faceHits._data[i + ii][j + jj];
+	for (const auto& rayHit : rayHits) {
+		double t = rayHit._dist / rayHit._segLen;
+
+		size_t rayIdx0 = (size_t)(_blockDim * t);
+		if (rayIdx0 >= _blockDim)
+			rayIdx0 = _blockDim - 1;
+
+		size_t rayIdx1 = rayIdx0 + 1;
+		if (rayIdx1 >= _blockDim)
+			rayIdx1 = _blockDim - 1;
+
+		switch (axis) {
+		default:
+		case 0: {
+			iy = i;
+			iz = j;
+			cellIndices.insert(Index3D(rayIdx0, iy, iz));
+			cellIndices.insert(Index3D(rayIdx1, iy, iz));
+			break;
+		}
+		case 1:
+			ix = i;
+			iz = j;
+			cellIndices.insert(Index3D(ix, rayIdx0, iz));
+			cellIndices.insert(Index3D(ix, rayIdx1, iz));
+			break;
+		case 2:
+			ix = i;
+			iy = j;
+			cellIndices.insert(Index3D(ix, iy, rayIdx0));
+			cellIndices.insert(Index3D(ix, iy, rayIdx1));
+			break;
+		}
 	}
-	return result;
+}
+
+const Vector3d* Block::getCornerPts() const
+{
+	return _corners;
 }
 
 vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Index3D& index) const
 {
-	vector<Vector3d> blockPts = getCornerPts();
+	const Vector3d* blockPts = getCornerPts();
 	vector<CrossBlockPoint> result = {
 		triLinInterp(blockPts, index + Index3D(0, 0, 0)),
 		triLinInterp(blockPts, index + Index3D(1, 0, 0)),
@@ -179,7 +201,7 @@ vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Index3D& index) con
 	return result;
 }
 
-Block::CrossBlockPoint Block::triLinInterp(const std::vector<Vector3d>& pts, const Index3D& index) const
+Block::CrossBlockPoint Block::triLinInterp(const Vector3d* pts, const Index3D& index) const
 {
 	Vector3d t(
 		index[0] / (double) _blockDim,
@@ -495,15 +517,16 @@ vector<LineSegment> Block::getCellEdges(const Index3D& cellIdx) const
 	return edges;
 }
 
-void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const
+void Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const
 {
 	const double tol = 1.0e-5;
 	const Vector3d dir = axis == 0 ? Vector3d(1, 0, 0) : axis == 1 ? Vector3d(0, 1, 0) : Vector3d(0, 0, 1);
 	Vector3d pt0, pt1, origin;
-	int ix, iy, iz;
+	size_t ix, iy, iz;
 	double tx, ty, tz;
-	for (int i = 0; i <= samples; i++) {
-		for (int j = 0; j <= samples; j++) {
+	rayTriHits.resize(samples + 1);
+	for (size_t i = 0; i <= samples; i++) {
+		for (size_t j = 0; j <= samples; j++) {
 			switch (axis) {
 				default:
 				case 0: { // X axis is ray dir
@@ -545,45 +568,16 @@ void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int ax
 			double segLen = seg.calLength();
 			vector<RayHit> hits;
 			if (_pModelTriMesh->rayCast(seg, hits, tol)) {
+				RayTriHitVector& faceSampleHits = rayTriHits._data[i][j];
 				for (const auto& hit : hits) {
-					double tRay = hit.dist / segLen;
-					size_t rayIdx = (size_t)(tRay * _blockDim);
-					if (rayIdx >= samples)
-						rayIdx = samples - 1;
-					Index3D cellIdx;
-					switch (axis) {
-						default:
-						case 0:
-							cellIdx = Index3D(rayIdx, iy, iz);
-							break;
-						case 1:
-							cellIdx = Index3D(ix, rayIdx, iz);
-							break;
-						case 2:
-							cellIdx = Index3D(ix, iy, rayIdx);
-							break;
-					}
-
-					// These hits are on cell boundaries. A cell must be added on both sides of the boundary, for all axes.
-					for (int dx = -1; dx <= 0; dx++) {
-						for (int dy = -1; dy <= 0; dy++) {
-							for (int dz = -1; dz <= 0; dz++) {
-								RayTriHit rtHit;
-								Index3D cellIdx2(cellIdx + Index3D(dx, dy, dz));
-								if (cellIdx2[0] < samples && cellIdx2[1] < samples && cellIdx2[2] < samples) {
-									rtHit._cellIdx = calLinearCellIndex(cellIdx2);
-									if (rtHit._cellIdx < (samples * samples * samples)) {
-										rtHit._triIdx = hit.triIdx;
-										rtHit._relPt = hit.hitPt;
-										rayTriHits.push_back(rtHit);
-									} else {
-										assert(!"Bad cellIdx");
-									}
-								}
-							}
-						}
-					}
+					RayTriHit rtHit;
+					rtHit._triIdx = hit.triIdx;
+					rtHit._hitPt = hit.hitPt;
+					rtHit._dist = hit.dist;
+					rtHit._segLen = segLen;
+					faceSampleHits.push_back(rtHit);
 				}
+				sort(faceSampleHits.begin(), faceSampleHits.end());
 			}
 		}
 	}
@@ -592,9 +586,9 @@ void Block::rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int ax
 void Block::setNumDivs()
 {
 	auto pts = getCornerPts();
-	rayCastFace(pts, _blockDim, 0, _rayTriHits);
-	rayCastFace(pts, _blockDim, 1, _rayTriHits);
-	rayCastFace(pts, _blockDim, 2, _rayTriHits);
+	rayCastFace(pts, _blockDim, 0, _rayTriHits[0]);
+	rayCastFace(pts, _blockDim, 1, _rayTriHits[1]);
+	rayCastFace(pts, _blockDim, 2, _rayTriHits[2]);
 }
 
 void Block::subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx)

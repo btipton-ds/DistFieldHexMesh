@@ -86,7 +86,24 @@ private:
 	struct RayTriHit {
 		size_t _cellIdx;
 		size_t _triIdx;
-		Vector3d _relPt;
+		Vector3d _hitPt;
+		double _segLen = 0;
+		double _dist = 0;
+
+		inline bool operator < (const RayTriHit& rhs) {
+			return _dist < rhs._dist;
+		}
+	};
+	using RayTriHitVector = std::vector<RayTriHit>;
+
+	struct FaceRayHits {
+		void resize(size_t samples)
+		{
+			_data.resize(samples);
+			for (auto& sub : _data)
+				sub.resize(samples);
+		}
+		std::vector<std::vector<RayTriHitVector>> _data;
 	};
 
 	struct CrossBlockPoint {
@@ -99,7 +116,7 @@ private:
 		Index3D _ownerBlockIdx;
 	};
 
-	std::vector<Vector3d> getCornerPts() const; // Change to returning fractions so we can assign boundary values.
+	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<CrossBlockPoint> getCellCornerPts(const Index3D& cellIdx) const;
 	std::vector<LineSegment> getCellEdges(const Index3D& cellIdx) const;
 
@@ -108,11 +125,12 @@ private:
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
 
-	void rayCastFace(const std::vector<Vector3d>& pts, size_t samples, int axis, std::vector<RayTriHit>& rayTriHits) const;
+	void rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
 	void setNumDivs();
 	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
-	CrossBlockPoint triLinInterp(const std::vector<Vector3d>& blockPts, const Index3D& pt) const;
+	CrossBlockPoint triLinInterp(const Vector3d* blockPts, const Index3D& pt) const;
 
+	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& cellIndices);
 	size_t addHexCell(const Index3D& cellIdx);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
 	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
@@ -128,9 +146,9 @@ private:
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
-	Vertex::FixedPt _corners[8];
+	Vector3d _corners[8];
 	std::vector<uint32_t> _cellDivs;
-	std::vector<RayTriHit> _rayTriHits;
+	FaceRayHits _rayTriHits[3];
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
