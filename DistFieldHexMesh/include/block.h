@@ -27,6 +27,7 @@ class Polyhedron;
 
 class Block {
 public:
+	friend class Cell;
 	static void setMinBlockDim(size_t dim);
 	static size_t getMinBlockDim();
 
@@ -65,6 +66,7 @@ public:
 	void processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	const TriMesh::CMeshPtr& getModelMesh() const;
+	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 
 	// pack removes the cell array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
@@ -79,29 +81,6 @@ private:
 
 	enum class AxisIndex {
 		X, Y, Z
-	};
-
-	struct RayTriHit {
-		size_t _cellIdx;
-		size_t _triIdx;
-		Vector3d _hitPt;
-		double _segLen = 0;
-		double _dist = 0;
-
-		inline bool operator < (const RayTriHit& rhs) {
-			return _dist < rhs._dist;
-		}
-	};
-	using RayTriHitVector = std::vector<RayTriHit>;
-
-	struct FaceRayHits {
-		void resize(size_t samples)
-		{
-			_data.resize(samples);
-			for (auto& sub : _data)
-				sub.resize(samples);
-		}
-		std::vector<std::vector<RayTriHitVector>> _data;
 	};
 
 	struct CrossBlockPoint {
@@ -121,16 +100,22 @@ private:
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
 
-	void rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
+	void findFeatures();
+	void findSharpVertices(const CBoundingBox3Dd& bbox);
+	void findSharpEdgeGroups(const CBoundingBox3Dd& bbox);
+
+	size_t rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
 	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, const Index3D& pt) const;
 	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
-	void createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx, size_t numIndicesInCell);
-	void addCellIndicesForMeshVerts(std::map<Index3D, size_t>& cellIndices);
-	void addCellIndicesForRayHits(std::map<Index3D, size_t>& cellIndices);
+	void createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx);
+	void addCellIndicesForMeshVerts(std::set<Index3D>& cellIndices);
+	void addCellIndicesForRayHits(std::set<Index3D>& cellIndices);
+	void splitAtSharpVertices(const Vector3d* blockPts, const Index3D& cellIdx);
+	void splitAtLegIntersections(const Vector3d* blockPts, const Index3D& cellIdx);
 
-	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::map<Index3D, size_t>& cellIndices);
-	static void addIndexToMap(const Index3D& cellIdx, std::map<Index3D, size_t>& cellIndices);
+	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& cellIndices);
+	static void addIndexToMap(const Index3D& cellIdx, std::set<Index3D>& cellIndices);
 	size_t addHexCell(const Vector3d* blockPts, const Index3D& cellIdx);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
 	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
@@ -148,6 +133,8 @@ private:
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _corners[8];
 	FaceRayHits _rayTriHits[3];
+
+	std::vector<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
@@ -233,5 +220,6 @@ inline const TriMesh::CMeshPtr& Block::getModelMesh() const
 {
 	return _pModelTriMesh;
 }
+
 
 }

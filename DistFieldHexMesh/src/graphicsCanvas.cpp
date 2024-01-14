@@ -367,7 +367,8 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
             case 1:
-                _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+                glLineWidth(2.0f);
+                _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0);
                 break;
             case 2:
                 if (!_showTriNormals)

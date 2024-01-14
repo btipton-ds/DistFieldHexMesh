@@ -1,6 +1,8 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 #include <cell.h>
 #include <block.h>
@@ -109,9 +111,80 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
+void Block::findFeatures()
+{
+	const double tol = 1.0e-3;
+
+	// This function is already running on multiple cores, DO NOT calculate centroids or normals using muliple cores.
+	_pModelTriMesh->buildCentroids(false);
+	_pModelTriMesh->buildNormals(false);
+
+	CBoundingBox3Dd bbox;
+	for (size_t i = 0; i < 8; i++)
+		bbox.merge(_corners[i]);
+	bbox.grow(tol);
+
+	findSharpVertices(bbox);
+	findSharpEdgeGroups(bbox);
+}
+
+void Block::findSharpEdgeGroups(const CBoundingBox3Dd& bbox)
+{
+	const double sinSharpAngle = sin(_pVol->getSharpAngleRad());
+	vector<size_t> indices;
+	_pModelTriMesh->findEdges(bbox, indices);
+	for (size_t edgeIdx : indices) {
+		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
+		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+			_sharpEdgeIndices.push_back(edgeIdx);
+		}
+	}
+}
+
+void Block::findSharpVertices(const CBoundingBox3Dd& bbox)
+{
+	const double cosSharpAngle = cos(M_PI - _pVol->getSharpAngleRad());
+	const double tol = 1.0e-3;
+
+	vector<size_t> vertIndices;
+	size_t numVerts = _pModelTriMesh->findVerts(bbox, vertIndices);
+	for (size_t vIdx : vertIndices) {
+		const auto& vert = _pModelTriMesh->getVert(vIdx);
+		if (!bbox.contains(vert._pt))
+			continue;
+		double maxDp = 1;
+		const auto& edgeIndices = vert._edgeIndices;
+		for (size_t i = 0; i < edgeIndices.size(); i++) {
+			auto edge0 = _pModelTriMesh->getEdge(edgeIndices[i]);
+			size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
+			const auto& vert0 = _pModelTriMesh->getVert(opIdx0);
+			Vector3d v0 = (vert0._pt - vert._pt).normalized();
+
+			for (size_t j = i + 1; j < edgeIndices.size(); j++) {
+				auto edge1 = _pModelTriMesh->getEdge(edgeIndices[j]);
+				size_t opIdx1 = edge1._vertIndex[0] == vIdx ? edge1._vertIndex[1] : edge1._vertIndex[0];
+				const auto& vert1 = _pModelTriMesh->getVert(opIdx1);
+				Vector3d v1 = (vert1._pt - vert._pt).normalized();
+
+				double dp = v0.dot(v1);
+				if (dp < maxDp) {
+					maxDp = dp;
+					if (maxDp < cosSharpAngle)
+						break;
+				}
+			}
+			if (maxDp < cosSharpAngle)
+				break;
+		}
+		if (maxDp > cosSharpAngle) {
+			_sharpVertIndices.push_back(vIdx);
+		}
+	}
+}
+
 void Block::createCells()
 {
-	map<Index3D, size_t> cellIndices;
+	set<Index3D> cellIndices;
 
 	addCellIndicesForMeshVerts(cellIndices);
 	addCellIndicesForRayHits(cellIndices);
@@ -125,14 +198,13 @@ void Block::createCells()
 
 	const Vector3d* blockPts = getCornerPts();
 
-	for (const auto& pair : cellIndices) {
-		Index3D cellIdx = pair.first;
-		size_t numIndicesInCell = pair.second;
-		createCellsForHexCell(blockPts, cellIdx, numIndicesInCell);
+
+	for (const auto& cellIdx : cellIndices) {
+		createCellsForHexCell(blockPts, cellIdx);
 	}
 }
 
-void Block::addCellIndicesForMeshVerts(std::map<Index3D, size_t>& cellIndices)
+void Block::addCellIndicesForMeshVerts(set<Index3D>& cellIndices)
 {
 	const Vector3d* pts = getCornerPts();
 	CBoundingBox3Dd bbox;
@@ -161,7 +233,7 @@ void Block::addCellIndicesForMeshVerts(std::map<Index3D, size_t>& cellIndices)
 	}
 }
 
-void Block::addCellIndicesForRayHits(std::map<Index3D, size_t>& cellIndices)
+void Block::addCellIndicesForRayHits(set<Index3D>& cellIndices)
 {
 	// Make sure all grid to triangle intersection points are in a cell
 	for (size_t axis = 0; axis < 3; axis++) {
@@ -176,16 +248,35 @@ void Block::addCellIndicesForRayHits(std::map<Index3D, size_t>& cellIndices)
 	}
 }
 
-void Block::createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx, size_t numIndicesInCell)
+void Block::createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx)
 {
-	auto polyHedraId = addHexCell(blockPts, cellIdx);
 	size_t cellId = _cells.add(Cell());
-	_cells[cellId].addPolyhdra(polyHedraId);
+	auto& cell = _cells[cellId];
+	cell.init(this, cellIdx);
+	cell.addRayHits(blockPts, _blockDim, cellIdx, _rayTriHits);
+	cell.divide();
 
-
+//	splitAtSharpVertices(blockPts, cellIdx);
+//	splitAtLegIntersections(blockPts, cellIdx);
 }
 
-void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, map<Index3D, size_t>& cellIndices)
+void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& cellIdx)
+{
+	// This a marching cubes style split. Create triangles between the leg intersections, cut and splice into 
+	size_t linearIdx = calLinearCellIndex(cellIdx);
+	auto& cell = _cells[linearIdx];
+	if (cell.numPolyhedra() == 0) {
+		auto polyId = addHexCell(blockPts, cellIdx);
+		cell.addPolyhdra(polyId);
+	}
+}
+
+void Block::splitAtLegIntersections(const Vector3d* blockPts, const Index3D& cellIdx)
+{
+}
+
+
+void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, set<Index3D>& cellIndices)
 {
 	size_t ix, iy, iz;
 
@@ -227,12 +318,12 @@ void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj,
 	}
 }
 
-inline void Block::addIndexToMap(const Index3D& cellIdx, std::map<Index3D, size_t>& cellIndices)
+inline void Block::addIndexToMap(const Index3D& cellIdx, set<Index3D>& cellIndices)
 {
-	cellIndices[cellIdx]++;
+	cellIndices.insert(cellIdx);
 }
 
-const Vector3d* Block::getCornerPts() const
+inline const Vector3d* Block::getCornerPts() const
 {
 	return _corners;
 }
@@ -492,12 +583,14 @@ bool Block::load()
 
 	_cells.resize(size);
 	for (size_t cellIdx = 0; cellIdx < size; cellIdx++) {
-		Cell cell;
+		size_t idx = _cells.add(Cell(), cellIdx);
+		auto& cell = _cells[idx];
+		cell.init(this, calCellIndexFromLinear(cellIdx));
 		if (!cell.load(in)) {
 			// TODO cleanup here
 			return false;
 		}
-		_cells.add(cell, cellIdx);
+
 	}
 
 	_filename.clear();
@@ -518,9 +611,8 @@ void Block::processTris()
 		return;
 
 	rayCastHexBlock(getCornerPts(), _blockDim, _rayTriHits);
+	findFeatures();
 	createCells();
-
-	_pModelTriMesh = nullptr;
 }
 
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
@@ -617,10 +709,13 @@ vector<LineSegment> Block::getCellEdges(const Vector3d* cellPoints, const Index3
 	return edges;
 }
 
-void Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const
+size_t Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const
 {
 	const double tol = 1.0e-5;
 	const Vector3d dir = axis == 0 ? Vector3d(1, 0, 0) : axis == 1 ? Vector3d(0, 1, 0) : Vector3d(0, 0, 1);
+
+	size_t numHits = 0;
+
 	Vector3d pt0, pt1, origin;
 	size_t ix, iy, iz;
 	double tx, ty, tz;
@@ -676,10 +771,12 @@ void Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHi
 					rtHit._dist = hit.dist;
 					rtHit._segLen = segLen;
 					faceSampleHits.push_back(rtHit);
+					numHits++;
 				}
 			}
 		}
 	}
+	return numHits;
 }
 
 void Block::rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3])
@@ -687,6 +784,11 @@ void Block::rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _r
 	rayCastFace(pts, blockDim, 0, _rayTriHits[0]);
 	rayCastFace(pts, blockDim, 1, _rayTriHits[1]);
 	rayCastFace(pts, blockDim, 2, _rayTriHits[2]);
+}
+
+size_t Block::getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const
+{
+	return 0;
 }
 
 void Block::pack()

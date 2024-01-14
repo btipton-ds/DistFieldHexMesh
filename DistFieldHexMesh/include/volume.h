@@ -73,9 +73,11 @@ public:
 
 	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minCellSize, bool outerFacesOnly);
 	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
+	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
+	double getSharpAngleRad() const;
 
 	void writePolyMesh(const std::string& dirName) const;
 
@@ -90,6 +92,7 @@ private:
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
 	Index3D _blockDim;
+	double _sharpAngleRad;
 
 	std::vector<std::shared_ptr<Block>> _blocks;
 
@@ -169,6 +172,11 @@ inline Cell& Volume::getCell(const Index3D& cellIdx)
 inline const Cell& Volume::getCell(const Index3D& cellIdx) const
 {
 	return getCell(cellIdx[0], cellIdx[1], cellIdx[2]);
+}
+
+inline double Volume::getSharpAngleRad() const
+{
+	return _sharpAngleRad;
 }
 
 } // end namespace DFHM

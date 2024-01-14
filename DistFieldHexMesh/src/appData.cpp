@@ -305,23 +305,59 @@ void AppData::doBuildCFDHexes()
     auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
         _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
 
-    vector<const COglMultiVboHandler::OGLIndices*> tesselations;
-    tesselations.reserve(blockMeshes.size());
+    vector<const COglMultiVboHandler::OGLIndices*> faceTesselations;
+    faceTesselations.reserve(blockMeshes.size());
     for (size_t i = 0; i < blockMeshes.size(); i++) {
         auto pBlockMesh = blockMeshes[i];
         if (pBlockMesh->numTris() > 0) {
             auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh->getId(), pBlockMesh->getChangeNumber(), pBlockMesh->getGlPoints(), pBlockMesh->getGlNormals(false),
                 pBlockMesh->getGlParams(), pBlockMesh->getGlFaceIndices());
-            tesselations.push_back(pBlockTess);
+            faceTesselations.push_back(pBlockTess);
         }
     }
     pCanvas->endFaceTesselation(false);
 
     pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
     pCanvas->includeFaceElementIndices(0, *triTess);
-    for (auto pBlockTess : tesselations) {
+    for (auto pBlockTess : faceTesselations) {
         if (pBlockTess)
             pCanvas->includeFaceElementIndices(1, *pBlockTess);
     }
     pCanvas->endSettingFaceElementIndices();
+
+#if 0
+    vector<vector<float>> edgeLoops;
+    _volume->getGLModelEdgeLoops(edgeLoops);
+
+    pCanvas->beginEdgeTesselation();
+    vector<const COglMultiVboHandler::OGLIndices*> edgeTesselations;
+    edgeTesselations.reserve(edgeLoops.size());
+    for (size_t i = 0; i < edgeLoops.size(); i++) {
+        const auto& segPts = edgeLoops[i];
+        if (segPts.size() > 1) {
+            vector<float> glSegs;
+            vector<int> indices;
+            size_t numSegs = segPts.size() / 3;
+            for (size_t j = 0; j < numSegs; j++) {
+                indices.push_back(j);
+                glSegs.push_back(segPts[3 * j + 0]);
+                glSegs.push_back(segPts[3 * j + 1]);
+                glSegs.push_back(segPts[3 * j + 2]);
+            }
+
+            auto pEdgeTess = pCanvas->setEdgeSegTessellation(i, 1, glSegs, indices);
+            edgeTesselations.push_back(pEdgeTess);
+        }
+    }
+
+    pCanvas->endEdgeTesselation();
+
+    pCanvas->beginSettingEdgeElementIndices(0xffffffffffffffff);
+    for (auto pEdgeTess : edgeTesselations) {
+        if (pEdgeTess)
+            pCanvas->includeEdgeElementIndices(1, *pEdgeTess);
+    }
+    pCanvas->endSettingEdgeElementIndices();
+
+#endif
 }

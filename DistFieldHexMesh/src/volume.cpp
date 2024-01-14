@@ -2,6 +2,9 @@
 #include <sstream>
 #include <fstream>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <triMesh.h>
 
 #include <cell.h>
@@ -17,24 +20,12 @@ using namespace DFHM;
 using namespace TriMesh;
 
 #define RUN_MULTI_THREAD true
-
-namespace
-{
-
-inline Index3D assignAxes(const Index3D& indexIn, const Index3D& axisOrder)
-{
-	Index3D result;
-	result[axisOrder[0]] = indexIn[0];
-	result[axisOrder[1]] = indexIn[1];
-	result[axisOrder[2]] = indexIn[2];
-	return result;
-}
-
-}
+#define QUICK_TEST 0
 
 Volume::Volume(const Index3D& blockSize)
 {
 	setBlockDims(blockSize);
+	_sharpAngleRad = 30.0 / 180.0 * M_PI;
 }
 
 Volume::Volume(const Volume& src)
@@ -257,7 +248,6 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 
 	size_t numBlocks = _blockDim[0] * _blockDim[1] * _blockDim[2];
 
-#define QUICK_TEST 0
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
 
@@ -349,6 +339,17 @@ vector<TriMesh::CMeshPtr> Volume::makeTris(bool outerOnly, bool multiCore)
 
 	cout << "Num tris: " << numTris << "\n";
 	return result;
+}
+
+size_t Volume::getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const
+{
+	edgeLoops.clear();
+	for (const auto& pBlock : _blocks) {
+		if (pBlock) {
+			pBlock->getGLModelEdgeLoops(edgeLoops);
+		}
+	}
+	return edgeLoops.size();
 }
 
 size_t Volume::numFaces(bool includeInner) const
