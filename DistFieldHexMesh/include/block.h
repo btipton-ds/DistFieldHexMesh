@@ -53,8 +53,6 @@ public:
 	void freeCell(size_t ix, size_t iy, size_t iz);
 	void freeCell(const Index3D& idx);
 
-	std::vector<uint32_t> getCellDivs() const;
-
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 
@@ -126,11 +124,14 @@ private:
 	const Block* getOwner(const Index3D& blockIdx) const;
 
 	void rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
-	void setNumDivs();
-	void subDivideCellIfNeeded(const LineSegment& seg, const std::vector<RayHit>& hits, const Index3D& cellIdx);
+	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, const Index3D& pt) const;
+	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
+	void createCellsForHexCell(const Index3D& cellIdx, size_t numIndicesInCell);
 
-	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& cellIndices);
+
+	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::map<Index3D, size_t>& cellIndices);
+	static void addIndexToMap(const Index3D& cellIdx, std::map<Index3D, size_t>& cellIndices);
 	size_t addHexCell(const Index3D& cellIdx);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
 	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
@@ -147,7 +148,6 @@ private:
 
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _corners[8];
-	std::vector<uint32_t> _cellDivs;
 	FaceRayHits _rayTriHits[3];
 
 	ObjectPoolWMutex<Vertex> _vertices;
@@ -228,11 +228,6 @@ inline void Block::freeCell(const Index3D& idx)
 inline bool Block::isUnloaded() const
 {
 	return !_filename.empty();
-}
-
-inline std::vector<uint32_t> Block::getCellDivs() const
-{
-	return _cellDivs;
 }
 
 inline const TriMesh::CMeshPtr& Block::getModelMesh() const
