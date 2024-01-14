@@ -14,35 +14,6 @@ using namespace DFHM;
 
 bool TestBlock::testBlock00()
 {
-#if 0
-	auto& cp = Block::_cells;
-	cp.testReset();
-
-	const size_t bd = Block::getBlockDim();
-
-	if (Block::getBlockDim() != bd) {
-		cout << "testBlock fail: Bad blockdim\n";
-		return false;
-	}
-
-	{
-		Block block;
-		block.fillEmpty();
-
-		if (block.numCells() != bd * bd * bd) {
-			cout << "testBlock fail: Bad cell count\n";
-			return false;
-		}
-		if (cp.getNumAllocated() != 0) {
-			cout << "testBlock fail: Allocated cell count mismatch\n";
-			return false;
-		}
-	}
-	if (cp.getNumAllocated() != 0) {
-		cout << "testBlock fail: Leaked cells\n";
-		return false;
-	}
-#endif
 	return true;
 }
 

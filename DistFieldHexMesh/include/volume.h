@@ -79,13 +79,9 @@ public:
 
 	void writePolyMesh(const std::string& dirName) const;
 
-	void dumpSections(const std::string& dirName) const;
-
 private:
 	using AxisIndex = Block::AxisIndex;
 
-	void createBlockRays(AxisIndex axisIdx, std::vector<bool>& blocksToCreate);
-	void createBlockCellRays(AxisIndex axisIdx, const std::vector<bool>& blocksToCreate, std::vector<std::vector<bool>>& cellsToCreate);
 	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& cellSpan, size_t& blockIdx, size_t& cellIdx);
 
 	void writePolyMeshPoints(const std::string& dirName) const;

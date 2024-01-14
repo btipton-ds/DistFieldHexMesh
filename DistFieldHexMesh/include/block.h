@@ -31,15 +31,11 @@ public:
 	static size_t getMinBlockDim();
 
 	Block(Volume* pVol, const Index3D& blockIdx, std::vector<Vector3d>& pts);
-	Block(const Block& src);
+	Block(const Block& src) = delete;
 	~Block(); // NOT virtual - do not inherit
 
 	size_t blockDim() const;
-	size_t getHash() const;
-	bool operator < (const Block& rhs) const;
 
-	void processBlock(size_t blockRayIdx, std::vector<bool>& cellsToCreate);
-	bool scanCreateCellsWhereNeeded(std::vector<bool>& blocksToCreate, const Index3D& axisOrder);
 	void createCells();
 	size_t calLinearCellIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearCellIndex(const Index3D& cellIdx) const;
@@ -67,7 +63,6 @@ public:
 		return _blockIdx;
 	}
 
-	void fillEmpty();
 	void processTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	void processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);

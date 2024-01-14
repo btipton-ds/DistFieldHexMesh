@@ -170,6 +170,7 @@ void MainFrame::OnInternalIdle()
         _editMenu->Enable(ID_VerifyNormals, _pAppData->getMesh() != nullptr);
         _editMenu->Enable(ID_AnalyzeGaps, _pAppData->getMesh() != nullptr);
         _editMenu->Enable(ID_FindMinimumGap, _pAppData->getMesh() != nullptr);
+        _editMenu->Enable(ID_BuildCFDHexes, _pAppData->getMesh() != nullptr);
     }
     if (_fileMenu) {
 

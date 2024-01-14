@@ -14,25 +14,6 @@ using namespace DFHM;
 
 size_t Block::s_minBlockDim = 8;
 
-namespace
-{
-
-	inline Index3D assignAxes(const Index3D& indexIn, const Index3D& axisOrder)
-	{
-		Index3D result;
-		result[axisOrder[0]] = indexIn[0];
-		result[axisOrder[1]] = indexIn[1];
-		result[axisOrder[2]] = indexIn[2];
-		return result;
-	}
-
-	template <class T>
-	inline size_t calAdjIdx(const T& delta) {
-		size_t idx = delta[0] + 2 * (delta[1] + 2 * delta[2]);
-		return idx;
-	}
-}
-
 void Block::setMinBlockDim(size_t dim)
 {
 	s_minBlockDim = dim;
@@ -63,14 +44,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 			);
 		_corners[i] = iPt;
 	}
-}
-
-Block::Block(const Block& src)
-	: _vertices(src._vertices)
-	, _polygons(src._polygons)
-	, _polyhedra(src._polyhedra)
-	, _cells(src._cells)
-{
 }
 
 Block::~Block()
@@ -120,8 +93,7 @@ Index3D Block::calCellIndexFromLinear(size_t linearIdx) const
 
 bool Block::cellExists(size_t ix, size_t iy, size_t iz) const
 {
-//	return _cells.idExists(calLinearCellIndex(ix, iy, iz));
-	return false;
+	return _cells.exists(calLinearCellIndex(ix, iy, iz));
 }
 
 bool Block::cellExists(const Index3D& idx) const
@@ -141,139 +113,6 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 		(pts[4] - origin).norm()
 	);
 
-}
-
-bool Block::scanCreateCellsWhereNeeded(vector<bool>& cellsToCreate, const Index3D& axisOrder)
-{
-	static size_t numCells = 0;
-
-	const int overFlow = 1;
-
-	bool result = false;
-	Vector3d axis;
-	Vector3d origin, blockSpan;
-	calBlockOriginSpan(origin, blockSpan);
-
-	Vector3d cellSpan = blockSpan * (1 / _blockDim);
-
-	Vector3d rayOrigin(origin);
-	switch (axisOrder[2]) {
-	case 0:
-		axis = Vector3d(1, 0, 0);
-		break;
-	case 1:
-		axis = Vector3d(0, 1, 0);
-		break;
-	case 2:
-		axis = Vector3d(0, 0, 1);
-		break;
-	}
-
-	size_t axisIdx0 = axisOrder[0];
-	size_t axisIdx1 = axisOrder[1];
-	size_t axisIdx2 = axisOrder[2];
-
-	size_t initialNumCells = numCells;
-	for (size_t i = 0; i < s_minBlockDim; i++) {
-		rayOrigin[axisIdx0] = origin[axisIdx0] + i * cellSpan[axisIdx0];
-
-		for (size_t j = 0; j < s_minBlockDim; j++) {
-			rayOrigin[axisIdx1] = origin[axisIdx1] + j * cellSpan[axisIdx1];
-
-			Ray ray(rayOrigin, rayOrigin + blockSpan[axisIdx2] * axis);
-
-			vector<RayHit> hits;
-			_pModelTriMesh->rayCast(ray, hits);
-			if (!hits.empty()) {
-				for (const auto hit : hits) {
-
-					double tk = hit.dist / blockSpan[axisIdx2];
-					size_t k = (size_t)(s_minBlockDim * tk);
-					if (0 <= k && k < s_minBlockDim) {
-						size_t ix, iy, iz;
-						switch (axisOrder[0]) {
-						case 0: ix = i; break;
-						case 1: iy = i; break;
-						case 2: iz = i; break;
-						}
-
-						switch (axisOrder[1]) {
-						case 0: ix = j; break;
-						case 1: iy = j; break;
-						case 2: iz = j; break;
-						}
-
-						switch (axisOrder[2]) {
-							case 0: {
-								ix = k;
-
-								for (int iiy = -1; iiy <= 1; iiy++) {
-									if (iy + iiy >= s_minBlockDim)
-										continue;
-									for (int iiz = -1; iiz <= 1; iiz++) {
-										if (iz + iiz >= s_minBlockDim)
-											continue;
-
-										size_t cIdx = calLinearCellIndex(ix, iy + iiy, iz + iiz);
-										if (cIdx < cellsToCreate.size()) {
-											result = true;
-											cellsToCreate[cIdx] = true;
-										}
-									}
-								}
-
-								break;
-							}
-							case 1:
-							{
-								iy = k;
-
-								for (int iix = -1; iix <= 1; iix++) {
-									if (ix + iix >= s_minBlockDim)
-										continue;
-									for (int iiz = -1; iiz <= 1; iiz++) {
-										if (iz + iiz >= s_minBlockDim)
-											continue;
-
-										size_t cIdx = calLinearCellIndex(ix + iix, iy, iz + iiz);
-										if (cIdx < cellsToCreate.size()) {
-											result = true;
-											cellsToCreate[cIdx] = true;
-										}
-									}
-								}
-
-								break;
-							}
-							case 2: {
-								iz = k;
-
-								for (int iix = -1; iix <= 1; iix++) {
-									if (ix + iix >= s_minBlockDim)
-										continue;
-									for (int iiy = -1; iiy <= 1; iiy++) {
-										if (iy + iiy >= s_minBlockDim)
-											continue;
-
-										size_t cIdx = calLinearCellIndex(ix + iix, iy + iiy, iz);
-										if (cIdx < cellsToCreate.size()) {
-											result = true;
-											cellsToCreate[cIdx] = true;
-										}
-									}
-								}
-
-								break;
-							}
-						}
-					}
-				}
-
-			}
-		}
-	}
-
-	return result;
 }
 
 void Block::createCells()
@@ -411,7 +250,7 @@ size_t Block::addHexCell(const Index3D& cellIdx)
 	return polyhedronId.cellId(); // We cells are never shared across blocks, so we can drop the block index
 }
 
-Block* Block::getOwner(const Index3D& blockIdx)
+inline Block* Block::getOwner(const Index3D& blockIdx)
 {
 	if (blockIdx == _blockIdx)
 		return this;
@@ -419,7 +258,7 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-const Block* Block::getOwner(const Index3D& blockIdx) const
+inline const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 	if (blockIdx == _blockIdx)
 		return this;
@@ -481,48 +320,6 @@ UniversalIndex3D Block::addFace(int axis, const Index3D& cellIdx, const vector<C
 	return polyId;
 }
 
-size_t Block::getHash() const
-{
-	return -1;
-}
-
-bool Block::operator < (const Block& rhs) const
-{
-	assert(!"cannot reverse lookup blocks.");
-	return false;
-}
-
-void Block::processBlock(size_t blockRayIdx, vector<bool>& cellsToCreate)
-{
-#if 0
-
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::X, cellsToCreate);
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Y, cellsToCreate);
-	processBlock(pTriMesh, blockRayIdx, blockOrigin, blockSpan, AxisIndex::Z, cellsToCreate);
-
-	Vector3d cellOrigin, cellSpan;
-	for (int i = 0; i < 3; i++)
-		cellSpan[i] = blockSpan[i] / bd;
-
-	for (size_t i = 0; i < bd; i++) {
-		cellOrigin[0] = blockOrigin[0] + i * cellSpan[0];
-		for (size_t j = 0; j < bd; j++) {
-			cellOrigin[1] = blockOrigin[1] + j * cellSpan[1];
-			for (size_t k = 0; k < bd; k++) {
-				cellOrigin[2] = blockOrigin[2] + k * cellSpan[2];
-
-				size_t bIdx = calLinearCellIndex(i, j, k);
-				if (cellsToCreate[bIdx]) {
-					Cell* pCell = nullptr;
-					_cells[bIdx] = _cells.getObj(bIdx, pCell, true);
-//					pCell->processBlock(pTriMesh, k, blockOrigin, blockSpan);
-				}
-			}
-		}
-	}
-#endif
-}
-
 bool Block::unload(string& filename)
 {
 	{
@@ -582,14 +379,6 @@ bool Block::load()
 	_filename.clear();
 
 	return true;
-}
-
-void Block::fillEmpty()
-{
-	const size_t numCells = s_minBlockDim * s_minBlockDim * s_minBlockDim;
-
-	if (_cells.size() != numCells)
-		_cells.resize(numCells);
 }
 
 void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)

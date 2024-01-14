@@ -298,8 +298,6 @@ void AppData::doBuildCFDHexes()
     auto blockMeshes = _volume->buildCFDHexes(_pMesh, blockSize, outerFacesOnly);
     auto dims = _volume->getBlockDims();
 
-//    _volume->dumpSections(_workDirName);
-
     auto pCanvas = _pMainFrame->getCanvas();
 
     pCanvas->beginFaceTesselation();
