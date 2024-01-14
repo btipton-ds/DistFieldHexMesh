@@ -94,7 +94,7 @@ private:
 	};
 
 	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	std::vector<CrossBlockPoint> getCellCornerPts(const Vector3d* blockPts, const Index3D& cellIdx) const;
+	std::vector<CrossBlockPoint> getCellCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx) const;
 	std::vector<LineSegment> getCellEdges(const Vector3d* blockPts, const Index3D& cellIdx) const;
 
 	Block* getOwner(const Index3D& blockIdx);
@@ -106,7 +106,7 @@ private:
 
 	size_t rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
 	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
-	CrossBlockPoint triLinInterp(const Vector3d* blockPts, const Index3D& pt) const;
+	CrossBlockPoint triLinInterp(const Vector3d* blockPts, size_t blockDim, const Index3D& pt) const;
 	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
 	void createCellsForHexCell(const Vector3d* blockPts, const Index3D& cellIdx);
 	void addCellIndicesForMeshVerts(std::set<Index3D>& cellIndices);
@@ -116,9 +116,10 @@ private:
 
 	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& cellIndices);
 	static void addIndexToMap(const Index3D& cellIdx, std::set<Index3D>& cellIndices);
-	size_t addHexCell(const Vector3d* blockPts, const Index3D& cellIdx);
+	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
 	UniversalIndex3D addFace(int axis, const Index3D& cellIdx, const std::vector<CrossBlockPoint>& pts);
+	void divideCell(const Index3D& cellIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
 	UniversalIndex3D addVertex(const CrossBlockPoint& pt, size_t currentId = -1);

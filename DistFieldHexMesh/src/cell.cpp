@@ -1,4 +1,8 @@
 #include <iostream>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <cell.h>
 #include <block.h>
 #include <polygon.h>
@@ -110,9 +114,45 @@ size_t Cell::maxIntersectionsPerLeg() const
 
 void Cell::divide()
 {
+	CBoundingBox3Dd cellBBox;
 	auto blockCornerPts = _pBlock->getCornerPts();
-	auto polyId = _pBlock->addHexCell(blockCornerPts, _ourIdx);
+	auto cellCornerCrossPts = _pBlock->getCellCornerPts(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+	vector<Vector3d> cellCornerPts;
+	cellCornerPts.resize(cellCornerCrossPts.size());
+	for (size_t i = 0; i < cellCornerCrossPts.size(); i++) {
+		cellCornerPts[i] = cellCornerCrossPts[i]._pt;
+		cellBBox.merge(cellCornerPts[i]);
+	}
+	
+	auto pMesh = _pBlock->_pModelTriMesh;
+	vector<size_t> vertIndices, edgeIndices;
+	pMesh->findEdges(cellBBox, edgeIndices);
+	pMesh->findVerts(cellBBox, vertIndices);
+
+	double avgCurvature = 0;
+	for (size_t edgeIdx : edgeIndices) {
+		avgCurvature += pMesh->edgeCurvature(edgeIdx);
+	}
+	for (size_t vertIdx : vertIndices) {
+		avgCurvature += pMesh->vertCurvature(vertIdx);
+	}
+	avgCurvature /= (edgeIndices.size() + vertIndices.size());
+
+	Vector3i divs(1, 1, 1);
+	if (avgCurvature > 0) {
+		Vector3d range = cellBBox.range();
+		double avgDia = 2.0 / avgCurvature;
+		for (int i = 0; i < 3; i++)
+			divs[i] = (size_t) (range[i] / avgDia);
+	}
+
+	size_t mult = (divs[0] + divs[1] + divs[2]) / 3;
+	if (mult > 2)
+		mult = 2;
+	auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
 	addPolyhdra(polyId);
+
+	_pBlock->divideCell(_ourIdx, mult);
 }
 
 bool Cell::unload(ostream& out)

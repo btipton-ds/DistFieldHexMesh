@@ -97,6 +97,13 @@ bool Block::cellExists(const Index3D& idx) const
 	return cellExists(idx[0], idx[1], idx[2]);
 }
 
+void Block::divideCell(const Index3D& cellIdx, size_t divs)
+{
+	size_t linearIdx = calLinearCellIndex(cellIdx);
+	Polyhedron* poly = _polyhedra.get(linearIdx);
+
+}
+
 void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 {
 	Vector3d axis;
@@ -222,7 +229,7 @@ void Block::addCellIndicesForMeshVerts(set<Index3D>& cellIndices)
 				cellIdx[i] = (Index3DBaseType)(interp[i] * _blockDim);
 			}
 			if (cellIdx[0] < _blockDim && cellIdx[1] < _blockDim && cellIdx[2] < _blockDim) {
-				auto cellPts = getCellCornerPts(pts, cellIdx);
+				auto cellPts = getCellCornerPts(pts, _blockDim, cellIdx);
 				CBoundingBox3Dd cellBbox;
 				for (size_t i = 0; i < 8; i++)
 					cellBbox.merge(cellPts[i]);
@@ -266,7 +273,7 @@ void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& cellId
 	size_t linearIdx = calLinearCellIndex(cellIdx);
 	auto& cell = _cells[linearIdx];
 	if (cell.numPolyhedra() == 0) {
-		auto polyId = addHexCell(blockPts, cellIdx);
+		auto polyId = addHexCell(blockPts, _blockDim, cellIdx);
 		cell.addPolyhdra(polyId);
 	}
 }
@@ -328,30 +335,30 @@ inline const Vector3d* Block::getCornerPts() const
 	return _corners;
 }
 
-vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Vector3d* blockPts, const Index3D& index) const
+vector<Block::CrossBlockPoint> Block::getCellCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& index) const
 {
 	vector<CrossBlockPoint> result = {
-		triLinInterp(blockPts, index + Index3D(0, 0, 0)),
-		triLinInterp(blockPts, index + Index3D(1, 0, 0)),
-		triLinInterp(blockPts, index + Index3D(1, 1, 0)),
-		triLinInterp(blockPts, index + Index3D(0, 1, 0)),
+		triLinInterp(blockPts, blockDim, index + Index3D(0, 0, 0)),
+		triLinInterp(blockPts, blockDim, index + Index3D(1, 0, 0)),
+		triLinInterp(blockPts, blockDim, index + Index3D(1, 1, 0)),
+		triLinInterp(blockPts, blockDim, index + Index3D(0, 1, 0)),
 
-		triLinInterp(blockPts, index + Index3D(0, 0, 1)),
-		triLinInterp(blockPts, index + Index3D(1, 0, 1)),
-		triLinInterp(blockPts, index + Index3D(1, 1, 1)),
-		triLinInterp(blockPts, index + Index3D(0, 1, 1)),
+		triLinInterp(blockPts, blockDim, index + Index3D(0, 0, 1)),
+		triLinInterp(blockPts, blockDim, index + Index3D(1, 0, 1)),
+		triLinInterp(blockPts, blockDim, index + Index3D(1, 1, 1)),
+		triLinInterp(blockPts, blockDim, index + Index3D(0, 1, 1)),
 	};
 
 	return result;
 }
 
 
-Block::CrossBlockPoint Block::triLinInterp(const Vector3d* pts, const Index3D& index) const
+Block::CrossBlockPoint Block::triLinInterp(const Vector3d* pts, size_t blockDim, const Index3D& index) const
 {
 	Vector3d t(
-		index[0] / (double) _blockDim,
-		index[1] / (double)_blockDim,
-		index[2] / (double)_blockDim
+		index[0] / (double) blockDim,
+		index[1] / (double) blockDim,
+		index[2] / (double) blockDim
 	);
 
 	const Index3D blockDims = _pVol->getBlockDims();
@@ -417,9 +424,9 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
 	return result;
 }
 
-size_t Block::addHexCell(const Vector3d* blockPts, const Index3D& cellIdx)
+size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& cellIdx)
 {
-	auto pts = getCellCornerPts(blockPts, cellIdx);
+	auto pts = getCellCornerPts(blockPts, blockDim, cellIdx);
 	vector<UniversalIndex3D> faceIds;
 	faceIds.reserve(6);
 
