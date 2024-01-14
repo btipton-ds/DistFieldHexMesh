@@ -60,7 +60,7 @@ inline const UniversalIndex3D& Polygon::getNeighborCellId() const
 
 inline bool Polygon::isOuter() const
 {
-	return _neighborCellId.isValid();
+	return !_neighborCellId.isValid();
 }
 
 inline const std::vector<UniversalIndex3D>& Polygon::getVertexIds() const

@@ -140,7 +140,7 @@ inline bool ObjectPool<T>::exists(size_t id) const
 }
 
 template<class T>
-size_t ObjectPool<T>::add(const T& obj, size_t id)
+size_t ObjectPool<T>::add(const T& obj, size_t currentId)
 {
 	if (_supportsReverseLookup) {
 		size_t id = findId(obj);
@@ -150,9 +150,9 @@ size_t ObjectPool<T>::add(const T& obj, size_t id)
 
 	size_t result = -1;
 	size_t index = -1;
-	if (id < _idToIndexMap.size()) {
-		result = id;
-		index = _idToIndexMap[id];
+	if (currentId < _idToIndexMap.size()) {
+		result = currentId;
+		index = _idToIndexMap[result];
 		if (index < _data.size()) {
 			_data[index] = obj;
 		} else {
@@ -162,7 +162,7 @@ size_t ObjectPool<T>::add(const T& obj, size_t id)
 				index = _availableIndices.back();
 				_availableIndices.pop_back();
 			}
-			_idToIndexMap[id] = index;
+			_idToIndexMap[result] = index;
 			if (index >= _data.size())
 				_data.resize(index + 1);
 			_data[index] = obj;
