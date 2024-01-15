@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 #include <vertex.h>
-#include <UniversalIndex3D.h>
+#include <Index3DFull.h>
 
 namespace DFHM {
 
@@ -12,11 +12,11 @@ public:
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
-	void addVertex(const UniversalIndex3D& vertId);
-	void setOwnerSubBlockId(const UniversalIndex3D& subBlockId);
-	const UniversalIndex3D& getOwnerSubBlockId() const;
-	void setNeighborSubBlockId(const UniversalIndex3D& subBlockId);
-	const UniversalIndex3D& getNeighborSubBlockId() const;
+	void addVertex(const Index3DFull& vertId);
+	void setOwnerSubBlockId(const Index3DFull& subBlockId);
+	const Index3DFull& getOwnerSubBlockId() const;
+	void setNeighborSubBlockId(const Index3DFull& subBlockId);
+	const Index3DFull& getNeighborSubBlockId() const;
 
 	void doneCreating();
 	void pack();
@@ -25,35 +25,35 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	const std::vector<UniversalIndex3D>& getVertexIds() const;
+	const std::vector<Index3DFull>& getVertexIds() const;
 private:
-	std::vector<UniversalIndex3D> _vertexIds, _sortedIds;
-	UniversalIndex3D _ownerSubBlockId, _neighborSubBlockId;
+	std::vector<Index3DFull> _vertexIds, _sortedIds;
+	Index3DFull _ownerSubBlockId, _neighborSubBlockId;
 };
 
-inline void Polygon::addVertex(const UniversalIndex3D& vertId)
+inline void Polygon::addVertex(const Index3DFull& vertId)
 {
 	_vertexIds.push_back(vertId);
 }
 
-inline void Polygon::setOwnerSubBlockId(const UniversalIndex3D& subBlockId)
+inline void Polygon::setOwnerSubBlockId(const Index3DFull& subBlockId)
 {
 	_ownerSubBlockId = subBlockId;
 }
 
-inline void Polygon::setNeighborSubBlockId(const UniversalIndex3D& subBlockId)
+inline void Polygon::setNeighborSubBlockId(const Index3DFull& subBlockId)
 {
 	assert(subBlockId != _ownerSubBlockId);
 	_neighborSubBlockId = subBlockId;
 }
 
 
-inline const UniversalIndex3D& Polygon::getOwnerSubBlockId() const
+inline const Index3DFull& Polygon::getOwnerSubBlockId() const
 {
 	return _ownerSubBlockId;
 }
 
-inline const UniversalIndex3D& Polygon::getNeighborSubBlockId() const
+inline const Index3DFull& Polygon::getNeighborSubBlockId() const
 {
 	return _neighborSubBlockId;
 }
@@ -63,7 +63,7 @@ inline bool Polygon::isOuter() const
 	return !_neighborSubBlockId.isValid();
 }
 
-inline const std::vector<UniversalIndex3D>& Polygon::getVertexIds() const
+inline const std::vector<Index3DFull>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }

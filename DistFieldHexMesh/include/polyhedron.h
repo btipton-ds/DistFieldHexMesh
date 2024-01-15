@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <UniversalIndex3D.h>
+#include <Index3DFull.h>
 
 namespace DFHM {
 
@@ -9,19 +9,19 @@ class Polyhedron {
 public:
 	Polyhedron() = default;
 	Polyhedron(const Polyhedron& src) = default;
-	Polyhedron(const std::vector<UniversalIndex3D>& faceIds);
+	Polyhedron(const std::vector<Index3DFull>& faceIds);
 
-	const std::vector<UniversalIndex3D>& getFaceIds() const;
+	const std::vector<Index3DFull>& getFaceIds() const;
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<UniversalIndex3D> _faceIds;
+	std::vector<Index3DFull> _faceIds;
 };
 
-inline const std::vector<UniversalIndex3D>& Polyhedron::getFaceIds() const
+inline const std::vector<Index3DFull>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
 }

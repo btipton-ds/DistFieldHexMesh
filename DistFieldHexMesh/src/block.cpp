@@ -419,7 +419,7 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
-	vector<UniversalIndex3D> faceIds;
+	vector<Index3DFull> faceIds;
 	faceIds.reserve(6);
 
 	// add left and right
@@ -442,7 +442,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	UniversalIndex3D polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	Index3DFull polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
 	auto pPoly = _polyhedra.get(polyhedronId.subBlockId());
 	assert(pPoly);
 
@@ -480,30 +480,30 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-inline UniversalIndex3D Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
+inline Index3DFull Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
 {
 	Block* pOwner = getOwner(pt._ownerBlockIdx);
 	size_t vertId = pOwner->_vertices.findOrAdd(pt._pt, currentId);
-	return UniversalIndex3D(pOwner->_blockIdx, vertId);
+	return Index3DFull(pOwner->_blockIdx, vertId);
 }
 
-UniversalIndex3D Block::addEdge(const UniversalIndex3D& vertId0, const UniversalIndex3D& vertId1)
+Index3DFull Block::addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1)
 {
 	Edge edge(_blockIdx, vertId0, vertId1);
-	UniversalIndex3D edgeId(_blockIdx, _edges.findOrAdd(edge));
+	Index3DFull edgeId(_blockIdx, _edges.findOrAdd(edge));
 	return edgeId;
 }
 
-UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
+Index3DFull Block::addFace(const std::vector<CrossBlockPoint>& pts)
 {
 	Polygon newPoly;
 	for (const auto& pt : pts) {
-		UniversalIndex3D vertId = addVertex(pt);
+		Index3DFull vertId = addVertex(pt);
 		newPoly.addVertex(vertId);
 	}
 	newPoly.doneCreating();
 
-	UniversalIndex3D faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	Index3DFull faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
 	auto pPoly = _polygons.get(faceId.subBlockId());
@@ -515,7 +515,7 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 		size_t j = (i + 1) % vertIds.size();
 		auto nextVertId = vertIds[j];
 
-		UniversalIndex3D edgeId = addEdge(vertId, nextVertId);
+		Index3DFull edgeId = addEdge(vertId, nextVertId);
 		{
 			lock_guard g(_edges);
 			auto& edge = _edges[edgeId.subBlockId()];
@@ -536,7 +536,7 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 	return faceId;
 }
 
-UniversalIndex3D Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
+Index3DFull Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
 {
 	Index3D polyBlockIdx(_blockIdx);
 
@@ -548,7 +548,7 @@ UniversalIndex3D Block::addFace(int axis, const Index3D& subBlockIdx, const vect
 
 	Block* pPolygonOwner = getOwner(ownerBlockIdx);
 
-	UniversalIndex3D faceId = pPolygonOwner->addFace(pts);
+	Index3DFull faceId = pPolygonOwner->addFace(pts);
 
 	return faceId;
 }

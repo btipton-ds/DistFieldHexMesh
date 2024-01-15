@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <triMesh.h>
 #include <objectPoolWMutex.h>
-#include <UniversalIndex3D.h>
+#include <Index3DFull.h>
 #include <subBlock.h>
 #include <vertex.h>
 #include <mutex>
@@ -116,14 +116,14 @@ private:
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
 
-	UniversalIndex3D addEdge(const UniversalIndex3D& vertId0, const UniversalIndex3D& vertId1);
-	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
-	UniversalIndex3D addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	Index3DFull addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1);
+	Index3DFull addFace(const std::vector<CrossBlockPoint>& pts);
+	Index3DFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 
-	UniversalIndex3D addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
+	Index3DFull addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
 
 	std::string _filename;
 
