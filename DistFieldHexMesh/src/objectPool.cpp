@@ -1,15 +1,17 @@
 
 #include <objectPool.h>
 #include <vertex.h>
+#include <edge.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <subBlock.h>
-#include <block.h>
 
 using namespace DFHM;
 
-thread_local const Vertex* ObjectPool<Vertex>::_tl_pCompareObj = nullptr;
-thread_local const Polygon* ObjectPool<Polygon>::_tl_pCompareObj = nullptr;
-thread_local const Polyhedron* ObjectPool<Polyhedron>::_tl_pCompareObj = nullptr;
-thread_local const SubBlock* ObjectPool<SubBlock>::_tl_pCompareObj = nullptr;
-thread_local const Block* ObjectPool<Block>::_tl_pCompareObj = nullptr;
+#define DECL_THREAD_LOCAL(CLASS_NAME) thread_local const CLASS_NAME* ObjectPool<CLASS_NAME>::_tl_pCompareObj = nullptr
+
+DECL_THREAD_LOCAL(Vertex);
+DECL_THREAD_LOCAL(Edge);
+DECL_THREAD_LOCAL(Polygon);
+DECL_THREAD_LOCAL(Polyhedron);
+DECL_THREAD_LOCAL(SubBlock);

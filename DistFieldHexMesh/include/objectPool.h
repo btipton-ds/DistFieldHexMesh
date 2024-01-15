@@ -21,7 +21,7 @@ public:
 	size_t findId(const T& obj) const;
 	bool exists(size_t id) const;
 
-	size_t add(const T& obj, size_t id = -1);
+	size_t findOrAdd(const T& obj, size_t id = -1);
 
 	const T* get(size_t id) const;
 	T* get(size_t id);
@@ -140,7 +140,7 @@ inline bool ObjectPool<T>::exists(size_t id) const
 }
 
 template<class T>
-size_t ObjectPool<T>::add(const T& obj, size_t currentId)
+size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 {
 	if (_supportsReverseLookup) {
 		size_t id = findId(obj);

@@ -46,19 +46,20 @@ endif()
 
 add_executable (DistFieldHexMesh         
 	${OpenGlPlatformDecl}
+	"src/app.cpp"
+    "src/appData.cpp"
+	"src/block.cpp"	
+    "src/edge.cpp"
+	"src/graphicsCanvas.cpp"
 	"src/main.cpp" 
-	"src/volume.cpp"
 	"src/mainFrame.cpp"
 	"src/makeBlockDlg.cpp"
-	"src/app.cpp"
-    	"src/appData.cpp"
-	"src/graphicsCanvas.cpp"
 	"src/objectPool.cpp" 
-	"src/block.cpp"	
-	"src/subBlock.cpp"
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
+	"src/subBlock.cpp"
 	"src/vertex.cpp"
+	"src/volume.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
@@ -69,17 +70,16 @@ add_executable (DistFieldHexMesh
 )
 
 add_executable (TestDFM         
-	"src/mainTest.cpp"
-	"src/volume.cpp"
-	"src/objectPool.cpp" 
 	"src/block.cpp"	
-	"src/subBlock.cpp"
+ 	"src/blockTest.cpp" 
+ 	"src/edge.cpp" 
+	"src/mainTest.cpp"
+	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
+	"src/subBlock.cpp"
 	"src/vertex.cpp"
- 	"src/blockTest.cpp" 
- 	 
- 	
+	"src/volume.cpp" 	
  )
 
 if (WIN32)

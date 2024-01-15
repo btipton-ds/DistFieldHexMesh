@@ -12,6 +12,7 @@
 namespace DFHM {
 
 class Volume;
+class Edge;
 class Polygon;
 class Polyhedron;
 
@@ -36,6 +37,8 @@ public:
 	~Block(); // NOT virtual - do not inherit
 
 	size_t blockDim() const;
+	Volume* getVolume();
+	const Volume* getVolume() const;
 
 	void createSubBlocks();
 	size_t calLinearSubBlockIndex(size_t ix, size_t iy, size_t iz) const;
@@ -139,6 +142,7 @@ private:
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
+	ObjectPoolWMutex<Edge> _edges;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<SubBlock> _subBlocks;
 };
@@ -146,6 +150,16 @@ private:
 inline size_t Block::blockDim() const
 {
 	return _blockDim;
+}
+
+inline Volume* Block::getVolume()
+{
+	return _pVol;
+}
+
+inline const Volume* Block::getVolume() const
+{
+	return _pVol;
 }
 
 inline size_t Block::numSubBlocks() const

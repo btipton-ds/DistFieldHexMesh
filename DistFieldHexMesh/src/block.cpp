@@ -4,11 +4,12 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
+#include <vertex.h>
+#include <edge.h>
+#include <polygon.h>
 #include <subBlock.h>
 #include <block.h>
 #include <volume.h>
-#include <vertex.h>
-#include <polygon.h>
 
 using namespace std;
 using namespace TriMesh;
@@ -28,6 +29,7 @@ size_t Block::getMinBlockDim()
 
 Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	: _vertices(true)
+	, _edges(true)
 	, _polygons(true)
 	, _polyhedra(false)
 	, _subBlocks(false)
@@ -257,7 +259,7 @@ void Block::addSubBlockIndicesForRayHits(set<Index3D>& subBlockIndices)
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
-	size_t subBlockId = _subBlocks.add(SubBlock());
+	size_t subBlockId = _subBlocks.findOrAdd(SubBlock());
 	auto& subBlock = _subBlocks[subBlockId];
 	subBlock.init(this, subBlockIdx);
 	subBlock.addRayHits(blockPts, _blockDim, subBlockIdx, _rayTriHits);
@@ -273,8 +275,8 @@ void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlo
 	size_t linearIdx = calLinearSubBlockIndex(subBlockIdx);
 	auto& subBlock = _subBlocks[linearIdx];
 	if (subBlock.numPolyhedra() == 0) {
-		auto polyId = addHexCell(blockPts, _blockDim, subBlockIdx);
-		subBlock.addPolyhdra(polyId);
+		auto cellId = addHexCell(blockPts, _blockDim, subBlockIdx);
+		subBlock.addPolyhdra(cellId);
 	}
 }
 
@@ -450,7 +452,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	UniversalIndex3D polyhedronId(_blockIdx, _polyhedra.add(Polyhedron(faceIds)));
+	UniversalIndex3D polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
 	auto pPoly = _polyhedra.get(polyhedronId.subBlockId());
 	assert(pPoly);
 
@@ -493,7 +495,7 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 inline UniversalIndex3D Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
 {
 	Block* pOwner = getOwner(pt._ownerBlockIdx);
-	size_t vertId = pOwner->_vertices.add(pt._pt, currentId);
+	size_t vertId = pOwner->_vertices.findOrAdd(pt._pt, currentId);
 	return UniversalIndex3D(pOwner->_blockIdx, vertId);
 }
 
@@ -506,23 +508,36 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 	}
 	newPoly.doneCreating();
 
-	UniversalIndex3D polyId(_blockIdx, _polygons.add(newPoly));
+	UniversalIndex3D faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
-	auto pPoly = _polygons.get(polyId.subBlockId());
+	auto pPoly = _polygons.get(faceId.subBlockId());
 	assert(pPoly != nullptr);
 
 	const auto& vertIds = pPoly->getVertexIds();
-	for (const auto& vertId : vertIds) {
-		auto pVertexOwner = getOwner(vertId.blockIdx());
-		lock_guard g(pVertexOwner->_vertices);
-		auto pVert = pVertexOwner->_vertices.get(vertId.subBlockId());
-		if (pVert) {
-			pVert->addPolygonReference(polyId);
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		auto vertId = vertIds[i];
+		auto nextVertId = vertIds[i];
+
+		UniversalIndex3D edgeId(_blockIdx, _edges.findOrAdd(Edge(vertId, nextVertId)));
+		{
+			lock_guard g(_edges);
+			auto& edge = _edges[edgeId.subBlockId()];
+			edge.addFaceId(faceId);
+		}
+		{
+			auto pVertexOwner = getOwner(vertId.blockIdx());
+			lock_guard g(pVertexOwner->_vertices);
+			auto pVert = pVertexOwner->_vertices.get(vertId.subBlockId());
+			if (pVert) {
+				pVert->addFaceId(faceId);
+				pVert->addEdgeId(edgeId);
+			}
 		}
 	}
 
-	return polyId;
+	return faceId;
 }
 
 UniversalIndex3D Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
@@ -537,9 +552,9 @@ UniversalIndex3D Block::addFace(int axis, const Index3D& subBlockIdx, const vect
 
 	Block* pPolygonOwner = getOwner(ownerBlockIdx);
 
-	UniversalIndex3D polyId = pPolygonOwner->addFace(pts);
+	UniversalIndex3D faceId = pPolygonOwner->addFace(pts);
 
-	return polyId;
+	return faceId;
 }
 
 bool Block::unload(string& filename)
@@ -590,7 +605,7 @@ bool Block::load()
 
 	_subBlocks.resize(size);
 	for (size_t subBlockIdx = 0; subBlockIdx < size; subBlockIdx++) {
-		size_t idx = _subBlocks.add(SubBlock(), subBlockIdx);
+		size_t idx = _subBlocks.findOrAdd(SubBlock(), subBlockIdx);
 		auto& subBlock = _subBlocks[idx];
 		subBlock.init(this, calSubBlockIndexFromLinear(subBlockIdx));
 		if (!subBlock.load(in)) {

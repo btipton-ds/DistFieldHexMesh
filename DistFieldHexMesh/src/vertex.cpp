@@ -3,18 +3,24 @@
 
 using namespace DFHM;
 
-void Vertex::addPolygonReference(const UniversalIndex3D& polygonId)
+void Vertex::addFaceId(const UniversalIndex3D& faceId)
 {
-	auto pos = std::find(_polygonIds.begin(), _polygonIds.end(), polygonId);
-	if (pos == _polygonIds.end())
-		_polygonIds.push_back(polygonId);
+	_faceIds.insert(faceId);
 }
 
-void Vertex::removePolygonReference(const UniversalIndex3D& polygonId)
+void Vertex::removeFaceId(const UniversalIndex3D& faceId)
 {
-	auto pos = std::find(_polygonIds.begin(), _polygonIds.end(), polygonId);
-	if (pos != _polygonIds.end())
-		_polygonIds.erase(pos);
+	_faceIds.erase(faceId);
+}
+
+void Vertex::addEdgeId(const UniversalIndex3D& edgeId)
+{
+	_edgeIds.insert(edgeId);
+}
+
+void Vertex::removeEdgeId(const UniversalIndex3D& edgeId)
+{
+	_edgeIds.erase(edgeId);
 }
 
 const bool Vertex::operator < (const Vertex& rhs) const

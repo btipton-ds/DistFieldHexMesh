@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <tm_vector3.h>
 #include <UniversalIndex3D.h>
 
@@ -33,10 +34,15 @@ public:
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
 
-	void addPolygonReference(const UniversalIndex3D& polygonId);
-	void removePolygonReference(const UniversalIndex3D& polygonId);
+	void addFaceId(const UniversalIndex3D& faceId);
+	void removeFaceId(const UniversalIndex3D& faceId);
 
-	const size_t getHash() const;
+	void addEdgeId(const UniversalIndex3D& edgeId);
+	void removeEdgeId(const UniversalIndex3D& edgeId);
+
+	const std::set<UniversalIndex3D>& getEdgeIds() const;
+	const std::set<UniversalIndex3D>& getFaceIds() const;
+
 	const bool operator < (const Vertex& rhs) const;
 
 private:
@@ -45,7 +51,7 @@ private:
 	size_t _lockIdx = -1;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
-	std::vector<UniversalIndex3D> _polygonIds;
+	std::set<UniversalIndex3D> _faceIds, _edgeIds;
 };
 
 inline double Vertex::getFixedScale()
@@ -78,11 +84,6 @@ inline Vector3d Vertex::toDbl(const FixedPt& src)
 inline Vertex::Vertex(const Vector3d& pt)
 {
 	setPoint(pt);
-}
-
-inline const size_t Vertex::getHash() const
-{
-	return _pt[0] + _pt[1] + _pt[2];
 }
 
 inline void Vertex::setLockType(LockType val, size_t idx)
@@ -127,6 +128,16 @@ inline const Vertex::FixedPt& Vertex::getFixedPt() const
 inline Vertex::operator Vector3d () const
 {
 	return getPoint();
+}
+
+inline const std::set<UniversalIndex3D>& Vertex::getEdgeIds() const
+{
+	return _edgeIds;
+}
+
+inline const std::set<UniversalIndex3D>& Vertex::getFaceIds() const
+{
+	return _faceIds;
 }
 
 }
