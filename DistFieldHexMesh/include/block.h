@@ -41,21 +41,16 @@ public:
 	const Volume* getVolume() const;
 
 	void createSubBlocks();
-	size_t calLinearSubBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
 	void addSubBlockFaces();
 	void createBlockFaces();
 
 	size_t numSubBlocks() const;
-	bool subBlockExists(size_t ix, size_t iy, size_t iz) const;
-	bool subBlockExists(const Index3D& idx) const;
-	SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz);
-	SubBlock& getSubBlock(const Index3D& idx);
-	const SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz) const;
-	const SubBlock& getSubBlock(const Index3D& idx) const;
-	void freeSubBlock(size_t ix, size_t iy, size_t iz);
-	void freeSubBlock(const Index3D& idx);
+	bool subBlockExists(const Index3D& subBlockIdx) const;
+	SubBlock& getSubBlock(const Index3D& subBlockIdx);
+	const SubBlock& getSubBlock(const Index3D& subBlockIdx) const;
+	void freeSubBlock(const Index3D& subBlockIdx);
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -170,26 +165,20 @@ inline size_t Block::numSubBlocks() const
 	return _subBlocks.size();
 }
 
-inline size_t Block::calLinearSubBlockIndex(size_t ix, size_t iy, size_t iz) const
+inline size_t Block::calLinearSubBlockIndex(const Index3D& subBlockIdx) const
 {
+	auto ix = subBlockIdx[0];
+	auto iy = subBlockIdx[1];
+	auto iz = subBlockIdx[2];
+
 	if (ix < _blockDim && iy < _blockDim && iz < _blockDim)
 		return ix + _blockDim * (iy + _blockDim * iz);
 	return -1;
 }
 
-inline size_t Block::calLinearSubBlockIndex(const Index3D& celIdx) const
+inline SubBlock& Block::getSubBlock(const Index3D& subBlockIdx)
 {
-	return calLinearSubBlockIndex(celIdx[0], celIdx[1], celIdx[2]);
-}
-
-inline SubBlock& Block::getSubBlock(size_t ix, size_t iy, size_t iz)
-{
-	return getSubBlock(Index3D(ix, iy, iz));
-}
-
-inline SubBlock& Block::getSubBlock(const Index3D& idx3)
-{
-	size_t idx = calLinearSubBlockIndex(idx3);
+	size_t idx = calLinearSubBlockIndex(subBlockIdx);
 	if (idx < _subBlocks.size()) {
 		if (_subBlocks.exists(idx)) {
 			auto& result = _subBlocks[idx];
@@ -199,9 +188,9 @@ inline SubBlock& Block::getSubBlock(const Index3D& idx3)
 	throw std::runtime_error("Block::getSubBlock out of range");
 }
 
-inline const SubBlock& Block::getSubBlock(size_t ix, size_t iy, size_t iz) const
+inline const SubBlock& Block::getSubBlock(const Index3D& subBlockIdx) const
 {
-	size_t idx = calLinearSubBlockIndex(ix, iy, iz);
+	size_t idx = calLinearSubBlockIndex(subBlockIdx);
 	if (idx < _subBlocks.size()) {
 		if (_subBlocks.exists(idx)) {
 			auto& result = _subBlocks[idx];
@@ -211,22 +200,12 @@ inline const SubBlock& Block::getSubBlock(size_t ix, size_t iy, size_t iz) const
 	throw std::runtime_error("Block::getSubBlock out of range");
 }
 
-inline const SubBlock& Block::getSubBlock(const Index3D& idx) const
+inline void Block::freeSubBlock(const Index3D& subBlockIdx)
 {
-	return getSubBlock(idx[0], idx[1], idx[2]);
-}
-
-inline void Block::freeSubBlock(size_t ix, size_t iy, size_t iz)
-{
-	size_t idx = calLinearSubBlockIndex(ix, iy, iz);
+	size_t idx = calLinearSubBlockIndex(subBlockIdx);
 	if (_subBlocks.exists(idx)) {
 		_subBlocks.free(idx);
 	}
-}
-
-inline void Block::freeSubBlock(const Index3D& idx)
-{
-	freeSubBlock(idx[0], idx[1], idx[2]);
 }
 
 inline bool Block::isUnloaded() const

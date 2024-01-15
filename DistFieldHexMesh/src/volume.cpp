@@ -20,7 +20,7 @@ using namespace DFHM;
 using namespace TriMesh;
 
 #define RUN_MULTI_THREAD true
-#define QUICK_TEST 1
+#define QUICK_TEST 0
 
 Volume::Volume(const Index3D& blockSize)
 {

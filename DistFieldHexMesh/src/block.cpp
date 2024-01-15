@@ -89,16 +89,6 @@ Index3D Block::calSubBlockIndexFromLinear(size_t linearIdx) const
 	return result;
 }
 
-bool Block::subBlockExists(size_t ix, size_t iy, size_t iz) const
-{
-	return _subBlocks.exists(calLinearSubBlockIndex(ix, iy, iz));
-}
-
-bool Block::subBlockExists(const Index3D& idx) const
-{
-	return subBlockExists(idx[0], idx[1], idx[2]);
-}
-
 void Block::divideSubBlock(const Index3D& subBlockIdx, size_t divs)
 {
 	size_t linearIdx = calLinearSubBlockIndex(subBlockIdx);
