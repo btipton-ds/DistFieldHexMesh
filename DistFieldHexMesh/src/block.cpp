@@ -442,8 +442,8 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	Index3DFull polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
-	auto pPoly = _polyhedra.get(polyhedronId.subBlockId());
+	Index3DFull polyhedronId(_blockIdx, subBlockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	auto pPoly = _polyhedra.get(polyhedronId.elementId());
 	assert(pPoly);
 
 	for (const auto& faceId : faceIds) {
@@ -452,7 +452,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		}
 		Block* pOwnerBlock = getOwner(faceId.blockIdx());
 		lock_guard g(pOwnerBlock->_polygons);
-		auto pFace = pOwnerBlock->_polygons.get(faceId.subBlockId());
+		auto pFace = pOwnerBlock->_polygons.get(faceId.elementId());
 		if (pFace) {
 			if (!pFace->getOwnerSubBlockId().isValid())
 				pFace->setOwnerSubBlockId(polyhedronId);
@@ -461,7 +461,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		}
 	}
 
-	return polyhedronId.subBlockId(); // We subBlocks are never shared across blocks, so we can drop the block index
+	return polyhedronId.elementId(); // We subBlocks are never shared across blocks, so we can drop the block index
 }
 
 inline Block* Block::getOwner(const Index3D& blockIdx)
@@ -506,7 +506,7 @@ Index3DFull Block::addFace(const std::vector<CrossBlockPoint>& pts)
 	Index3DFull faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
-	auto pPoly = _polygons.get(faceId.subBlockId());
+	auto pPoly = _polygons.get(faceId.elementId());
 	assert(pPoly != nullptr);
 
 	const auto& vertIds = pPoly->getVertexIds();
@@ -518,14 +518,14 @@ Index3DFull Block::addFace(const std::vector<CrossBlockPoint>& pts)
 		Index3DFull edgeId = addEdge(vertId, nextVertId);
 		{
 			lock_guard g(_edges);
-			auto& edge = _edges[edgeId.subBlockId()];
+			auto& edge = _edges[edgeId.elementId()];
 			edge.addFaceId(faceId);
 		}
 
 		{
 			auto pVertexOwner = getOwner(vertId.blockIdx());
 			lock_guard g(pVertexOwner->_vertices);
-			auto pVert = pVertexOwner->_vertices.get(vertId.subBlockId());
+			auto pVert = pVertexOwner->_vertices.get(vertId.elementId());
 			if (pVert) {
 				pVert->addFaceId(faceId);
 				pVert->addEdgeId(edgeId);
@@ -682,7 +682,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 				for (const auto& vertId : vertIds) {
 					auto pVertexOwner = getOwner(vertId.blockIdx());
 					lock_guard g(pVertexOwner->_vertices);
-					const auto& vert = pVertexOwner->_vertices[vertId.subBlockId()];
+					const auto& vert = pVertexOwner->_vertices[vertId.elementId()];
 					pts.push_back(vert.getPoint());
 				}
 				if (pts.size() == 3) {

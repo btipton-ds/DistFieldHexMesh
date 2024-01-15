@@ -9,6 +9,9 @@ using Index3DBaseType = unsigned short; // This is large enough for 65536 x 6553
 class Index3D : public Vector3<Index3DBaseType>
 {
 public:
+	static void setBlockDim(Index3DBaseType val);
+	static Index3DBaseType getBlockDim();
+
 	enum Dir {
 		Positive = 1,
 		Negetive = -1
@@ -30,6 +33,8 @@ public:
 		Index3DBaseType tBound = (Index3DBaseType)bound;
 		return (*this)[0] < tBound && (*this)[1] < tBound && (*this)[2] < tBound;
 	}
+private:
+	static Index3DBaseType _blockDim;
 };
 
 inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
