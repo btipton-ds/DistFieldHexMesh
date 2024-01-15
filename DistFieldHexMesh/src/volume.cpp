@@ -51,52 +51,26 @@ const Index3D& Volume::getBlockDims() const
 	return _blockDim;
 }
 
-bool Volume::subBlockExists(size_t ix, size_t iy, size_t iz) const
+Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 {
-	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
-	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, subBlockIdx;
-	for (int i = 0; i < 3; i++) {
-		blockIdx[i] = idx[i] / blkDim;
-		subBlockIdx[i] = idx[i] % blkDim;
-	}
-	if (!blockExists(blockIdx))
-		return false;
-	const auto& block = getBlock(blockIdx);
-	return block.subBlockExists(subBlockIdx);
-}
+	Index3D result;
+	size_t temp = linearIdx;
 
-bool Volume::subBlockExists(const Index3D& blockIdx) const
-{
-	return subBlockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
-}
+	size_t denom = _blockDim[0] * _blockDim[1];
+	result[2] = (Index3DBaseType)(temp / denom);
+	temp = temp % denom;
 
-SubBlock& Volume::getSubBlock(size_t ix, size_t iy, size_t iz)
-{
-	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
-	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, subBlockIdx;
-	for (int i = 0; i < 3; i++) {
-		blockIdx[i] = idx[i] / blkDim;
-		subBlockIdx[i] = idx[i] % blkDim;
-	}
-	auto& block = getBlock(blockIdx);
-	auto& subBlock = block.getSubBlock(subBlockIdx);
-	return subBlock;
-}
+	denom = _blockDim[0];
 
-const SubBlock& Volume::getSubBlock(size_t ix, size_t iy, size_t iz) const
-{
-	Index3DBaseType blkDim = (Index3DBaseType)Block::getMinBlockDim();
-	Index3D idx(ix, iy, iz);
-	Index3D blockIdx, subBlockIdx;
-	for (int i = 0; i < 3; i++) {
-		blockIdx[i] = idx[i] / blkDim;
-		subBlockIdx[i] = idx[i] % blkDim;
+	result[1] = (Index3DBaseType)(temp / denom);
+	temp = temp % denom;
+	result[0] = (Index3DBaseType)temp;
+
+	if (calLinearBlockIndex(result) != linearIdx) {
+		throw std::runtime_error("calBlockIndexFromLinearIndex failed");
 	}
-	auto& block = getBlock(blockIdx);
-	auto& subBlock = block.getSubBlock(subBlockIdx);
-	return subBlock;
+
+	return result;
 }
 
 void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx)
@@ -119,11 +93,6 @@ void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& bl
 	subBlockIdx = (size_t)(w1 * Block::getMinBlockDim());
 	if (subBlockIdx >= Block::getMinBlockDim())
 		subBlockIdx = Block::getMinBlockDim() - 1;
-}
-
-Block& Volume::addBlock(size_t ix, size_t iy, size_t iz)
-{
-	return addBlock(Index3D(ix, iy, iz));
 }
 
 Block& Volume::addBlock(const Index3D& blockIdx)

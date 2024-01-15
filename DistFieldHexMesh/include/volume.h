@@ -27,7 +27,6 @@ namespace DFHM {
 
 using CMesh = TriMesh::CMesh;
 
-
 class Volume {
 public:
 	Volume(const Index3D& size = Index3D(0, 0, 0));
@@ -44,25 +43,13 @@ public:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-
 	bool blockInBounds(const Index3D& blockIdx) const;
-
-	Block& addBlock(size_t ix, size_t iy, size_t iz);
 	Block& addBlock(const Index3D& blockIdx);
 
 	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
 
 	const Block& getBlock(const Index3D& blockIdx) const;
-	Block& getBlock(size_t ix, size_t iy, size_t iz);
 	Block& getBlock(const Index3D& blockIdx);
-
-	// Get the subBlock using a subBlock index
-	bool subBlockExists(size_t ix, size_t iy, size_t iz) const;
-	bool subBlockExists(const Index3D& blockIdx) const;
-	SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz);
-	SubBlock& getSubBlock(const Index3D& subBlockIdx);
-	const SubBlock& getSubBlock(size_t ix, size_t iy, size_t iz) const;
-	const SubBlock& getSubBlock(const Index3D& subBlockIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -123,41 +110,6 @@ inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 		return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
 
 	return -1;
-}
-
-inline Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
-{
-	Index3D result;
-	size_t temp = linearIdx;
-
-//		ix + _blockDim[0] * iy + _blockDim[0] * _blockDim[1] * iz;
-
-
-	size_t denom = _blockDim[0] * _blockDim[1];
-	result[2] = (Index3DBaseType) (temp / denom);
-	temp = temp % denom;
-
-	denom = _blockDim[0];
-
-	result[1] = (Index3DBaseType)(temp / denom);
-	temp = temp % denom;
-	result[0] = (Index3DBaseType)temp;
-
-	if (calLinearBlockIndex(result) != linearIdx) {
-		throw std::runtime_error("calBlockIndexFromLinearIndex failed");
-	}
-
-	return result;
-}
-
-inline SubBlock& Volume::getSubBlock(const Index3D& subBlockIdx)
-{
-	return getSubBlock(subBlockIdx[0], subBlockIdx[1], subBlockIdx[2]);
-}
-
-inline const SubBlock& Volume::getSubBlock(const Index3D& subBlockIdx) const
-{
-	return getSubBlock(subBlockIdx[0], subBlockIdx[1], subBlockIdx[2]);
 }
 
 inline double Volume::getSharpAngleRad() const
