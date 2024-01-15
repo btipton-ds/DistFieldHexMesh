@@ -23,7 +23,13 @@ public:
 	Index3D operator + (const Index3D& rhs) const;
 	bool operator < (const Index3D& rhs) const;
 	bool isInBounds(const Index3D& bounds) const;
-	bool isInBounds(Index3DBaseType bound) const;
+
+	template<class BOUND_TYPE>
+	inline bool isInBounds(BOUND_TYPE bound) const
+	{
+		Index3DBaseType tBound = (Index3DBaseType)bound;
+		return (*this)[0] < tBound && (*this)[1] < tBound && (*this)[2] < tBound;
+	}
 };
 
 inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
@@ -51,11 +57,6 @@ inline Index3D Index3D::operator + (const Index3D& rhs) const
 inline bool Index3D::isInBounds(const Index3D& bounds) const
 {
 	return (*this)[0] < bounds[0] && (*this)[1] < bounds[1] && (*this)[2] < bounds[2];
-}
-
-inline bool Index3D::isInBounds(Index3DBaseType bound) const
-{
-	return (*this)[0] < bound && (*this)[1] < bound && (*this)[2] < bound;
 }
 
 inline bool Index3D::operator < (const Index3D& rhs) const

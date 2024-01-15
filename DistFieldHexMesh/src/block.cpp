@@ -33,7 +33,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	, _polygons(true)
 	, _polyhedra(false)
 	, _subBlocks(false)
-	, _blockDim((Index3DBaseType)s_minBlockDim)
+	, _blockDim(s_minBlockDim)
 	, _pVol(pVol)
 	, _blockIdx(blockIdx)
 {

@@ -130,7 +130,7 @@ private:
 	Volume* _pVol;
 	static size_t s_minBlockDim;
 	Index3D _blockIdx;
-	Index3DBaseType _blockDim; // This the dimension of the block = the number of celss across the block
+	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _corners[8];
