@@ -22,10 +22,8 @@ public:
 
 	Index3D operator + (const Index3D& rhs) const;
 	bool operator < (const Index3D& rhs) const;
-
-	Index3D adjX(Dir dir) const;
-	Index3D adjY(Dir dir) const;
-	Index3D adjZ(Dir dir) const;
+	bool isInBounds(const Index3D& bounds) const;
+	bool isInBounds(Index3DBaseType bound) const;
 };
 
 inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
@@ -50,19 +48,14 @@ inline Index3D Index3D::operator + (const Index3D& rhs) const
 	return temp;
 }
 
-inline Index3D Index3D::adjX(Dir dir) const
+inline bool Index3D::isInBounds(const Index3D& bounds) const
 {
-	return *this + Index3D(dir, 0, 0);
+	return (*this)[0] < bounds[0] && (*this)[1] < bounds[1] && (*this)[2] < bounds[2];
 }
 
-inline Index3D Index3D::adjY(Dir dir) const
+inline bool Index3D::isInBounds(Index3DBaseType bound) const
 {
-	return *this + Index3D(0, dir, 0);
-}
-
-inline Index3D Index3D::adjZ(Dir dir) const
-{
-	return *this + Index3D(0, 0, dir);
+	return (*this)[0] < bound && (*this)[1] < bound && (*this)[2] < bound;
 }
 
 inline bool Index3D::operator < (const Index3D& rhs) const

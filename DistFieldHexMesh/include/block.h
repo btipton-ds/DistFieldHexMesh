@@ -130,7 +130,7 @@ private:
 	Volume* _pVol;
 	static size_t s_minBlockDim;
 	Index3D _blockIdx;
-	size_t _blockDim; // This the dimension of the block = the number of celss across the block
+	Index3DBaseType _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _corners[8];
@@ -167,12 +167,8 @@ inline size_t Block::numSubBlocks() const
 
 inline size_t Block::calLinearSubBlockIndex(const Index3D& subBlockIdx) const
 {
-	auto ix = subBlockIdx[0];
-	auto iy = subBlockIdx[1];
-	auto iz = subBlockIdx[2];
-
-	if (ix < _blockDim && iy < _blockDim && iz < _blockDim)
-		return ix + _blockDim * (iy + _blockDim * iz);
+	if (subBlockIdx.isInBounds(_blockDim))
+		return subBlockIdx[0] + _blockDim * (subBlockIdx[1] + _blockDim * subBlockIdx[2]);
 	return -1;
 }
 

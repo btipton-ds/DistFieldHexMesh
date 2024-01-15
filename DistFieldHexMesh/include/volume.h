@@ -102,12 +102,8 @@ inline std::shared_ptr<Block> Volume::getBlockPtr(const Index3D& blockIdx)
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	auto ix = blockIdx[0];
-	auto iy = blockIdx[1];
-	auto iz = blockIdx[2];
-
-	if (ix < _blockDim[0] && iy < _blockDim[1] && iz < _blockDim[2])
-		return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
+	if (blockIdx.isInBounds(_blockDim))
+		return blockIdx[0] + _blockDim[0] * (blockIdx[1] + _blockDim[1] * blockIdx[2]);
 
 	return -1;
 }
