@@ -1,5 +1,6 @@
 #include <edge.h>
 #include <block.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -42,6 +43,7 @@ bool Edge::operator < (const Edge& rhs) const
 UniversalIndex3D Edge::split(Block* pOwnerBlock, double t)
 {
 	Volume* pVol = pOwnerBlock->getVolume();
+	
 
 	return UniversalIndex3D();
 }

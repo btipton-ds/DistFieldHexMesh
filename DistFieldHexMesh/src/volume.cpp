@@ -20,7 +20,7 @@ using namespace DFHM;
 using namespace TriMesh;
 
 #define RUN_MULTI_THREAD true
-#define QUICK_TEST 0
+#define QUICK_TEST 1
 
 Volume::Volume(const Index3D& blockSize)
 {
@@ -187,17 +187,12 @@ std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
 	return makeTris(true, true);
 }
 
-bool Volume::blockExists(size_t ix, size_t iy, size_t iz) const
+bool Volume::blockExists(const Index3D& blockIdx) const
 {
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	size_t idx = calLinearBlockIndex(blockIdx);
 	if (idx >= _blocks.size())
 		return false;
 	return _blocks[idx] != nullptr;
-}
-
-bool Volume::blockExists(const Index3D& blockIdx) const
-{
-	return blockExists(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 bool Volume::blockInBounds(const Index3D& blockIdx) const
@@ -205,9 +200,9 @@ bool Volume::blockInBounds(const Index3D& blockIdx) const
 	return (blockIdx[0] < _blockDim[0] && blockIdx[1] < _blockDim[1] && blockIdx[2] < _blockDim[1]);
 }
 
-const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
+const Block& Volume::getBlock(const Index3D& blockIdx) const
 {
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	size_t idx = calLinearBlockIndex(blockIdx);
 	if (idx < _blocks.size()) {
 		auto pBlock = _blocks[idx];
 		if (!pBlock)
@@ -217,9 +212,9 @@ const Block& Volume::getBlock(size_t ix, size_t iy, size_t iz) const
 	throw runtime_error("Volume::getBlock index out of range");
 }
 
-Block& Volume::getBlock(size_t ix, size_t iy, size_t iz)
+Block& Volume::getBlock(const Index3D& blockIdx)
 {
-	size_t idx = calLinearBlockIndex(ix, iy, iz);
+	size_t idx = calLinearBlockIndex(blockIdx);
 	if (idx < _blocks.size()) {
 		auto pBlock = _blocks[idx];
 		if (!pBlock)

@@ -43,7 +43,6 @@ public:
 	std::vector<TriMesh::CMeshPtr> addAllBlocks();
 
 	// Get the block using a block index
-	bool blockExists(size_t ix, size_t iy, size_t iz) const;
 	bool blockExists(const Index3D& blockIdx) const;
 
 	bool blockInBounds(const Index3D& blockIdx) const;
@@ -53,7 +52,6 @@ public:
 
 	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
 
-	const Block& getBlock(size_t ix, size_t iy, size_t iz) const;
 	const Block& getBlock(const Index3D& blockIdx) const;
 	Block& getBlock(size_t ix, size_t iy, size_t iz);
 	Block& getBlock(const Index3D& blockIdx);
@@ -67,7 +65,6 @@ public:
 	const SubBlock& getSubBlock(const Index3D& subBlockIdx) const;
 
 	// Currently flow direction is along positive x axis.
-	size_t calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const;
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
@@ -116,27 +113,16 @@ inline std::shared_ptr<Block> Volume::getBlockPtr(const Index3D& blockIdx)
 	return _blocks[calLinearBlockIndex(blockIdx)];
 }
 
-inline const Block& Volume::getBlock(const Index3D& blockIdx) const
+inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
-}
+	auto ix = blockIdx[0];
+	auto iy = blockIdx[1];
+	auto iz = blockIdx[2];
 
-inline Block& Volume::getBlock(const Index3D& blockIdx)
-{
-	return getBlock(blockIdx[0], blockIdx[1], blockIdx[2]);
-}
-
-inline size_t Volume::calLinearBlockIndex(size_t ix, size_t iy, size_t iz) const
-{
 	if (ix < _blockDim[0] && iy < _blockDim[1] && iz < _blockDim[2])
 		return ix + _blockDim[0] * (iy + _blockDim[1] * iz);
 
 	return -1;
-}
-
-inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
-{
-	return calLinearBlockIndex(blockIdx[0], blockIdx[1], blockIdx[2]);
 }
 
 inline Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
