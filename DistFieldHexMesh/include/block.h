@@ -120,8 +120,11 @@ private:
 	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& subBlockIndices);
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
+
+	UniversalIndex3D addEdge(const UniversalIndex3D& vertId0, const UniversalIndex3D& vertId1);
 	UniversalIndex3D addFace(const std::vector<CrossBlockPoint>& pts);
 	UniversalIndex3D addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 

@@ -490,13 +490,18 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-#define OTHER_BLOCK_MASK (Right | Back | Top)
-
 inline UniversalIndex3D Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
 {
 	Block* pOwner = getOwner(pt._ownerBlockIdx);
 	size_t vertId = pOwner->_vertices.findOrAdd(pt._pt, currentId);
 	return UniversalIndex3D(pOwner->_blockIdx, vertId);
+}
+
+UniversalIndex3D Block::addEdge(const UniversalIndex3D& vertId0, const UniversalIndex3D& vertId1)
+{
+	Edge edge(_blockIdx, vertId0, vertId1);
+	UniversalIndex3D edgeId(_blockIdx, _edges.findOrAdd(edge));
+	return edgeId;
 }
 
 UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
@@ -516,16 +521,17 @@ UniversalIndex3D Block::addFace(const std::vector<CrossBlockPoint>& pts)
 
 	const auto& vertIds = pPoly->getVertexIds();
 	for (size_t i = 0; i < vertIds.size(); i++) {
-		size_t j = (i + 1) % vertIds.size();
 		auto vertId = vertIds[i];
-		auto nextVertId = vertIds[i];
+		size_t j = (i + 1) % vertIds.size();
+		auto nextVertId = vertIds[j];
 
-		UniversalIndex3D edgeId(_blockIdx, _edges.findOrAdd(Edge(vertId, nextVertId)));
+		UniversalIndex3D edgeId = addEdge(vertId, nextVertId);
 		{
 			lock_guard g(_edges);
 			auto& edge = _edges[edgeId.subBlockId()];
 			edge.addFaceId(faceId);
 		}
+
 		{
 			auto pVertexOwner = getOwner(vertId.blockIdx());
 			lock_guard g(pVertexOwner->_vertices);

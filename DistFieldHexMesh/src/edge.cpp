@@ -6,16 +6,15 @@ using namespace DFHM;
 
 void Edge::addFaceId(const UniversalIndex3D& faceId)
 {
-	auto pos = std::find(_faceIds.begin(), _faceIds.end(), faceId);
-	if (pos == _faceIds.end())
-		_faceIds.push_back(faceId);
+	if (_faceIds.size() > 0) {
+		int dbgBreak = 1;
+	}
+	_faceIds.insert(faceId);
 }
 
 void Edge::removeFaceId(const UniversalIndex3D& faceId)
 {
-	auto pos = std::find(_faceIds.begin(), _faceIds.end(), faceId);
-	if (pos != _faceIds.end())
-		_faceIds.erase(pos);
+	_faceIds.erase(faceId);
 }
 
 bool Edge::unload(std::ostream& out, size_t idSelf)
