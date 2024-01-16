@@ -2,7 +2,7 @@
 
 #include <set>
 #include <tm_vector3.h>
-#include <Index3D.h>
+#include <index3DFull.h>
 
 namespace DFHM {
 
@@ -34,14 +34,14 @@ public:
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
 
-	void addFaceId(const Index3D& faceId);
-	void removeFaceId(const Index3D& faceId);
+	void addFaceId(const Index3DFull& faceId);
+	void removeFaceId(const Index3DFull& faceId);
 
 	void addEdgeId(const Index3D& edgeId);
 	void removeEdgeId(const Index3D& edgeId);
 
 	const std::set<Index3D>& getEdgeIds() const;
-	const std::set<Index3D>& getFaceIds() const;
+	const std::set<Index3DFull>& getFaceIds() const;
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -51,7 +51,8 @@ private:
 	size_t _lockIdx = -1;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
-	std::set<Index3D> _faceIds, _edgeIds;
+	std::set<Index3DFull> _faceIds;
+	std::set<Index3D> _edgeIds;
 };
 
 inline double Vertex::getFixedScale()
@@ -135,7 +136,7 @@ inline const std::set<Index3D>& Vertex::getEdgeIds() const
 	return _edgeIds;
 }
 
-inline const std::set<Index3D>& Vertex::getFaceIds() const
+inline const std::set<Index3DFull>& Vertex::getFaceIds() const
 {
 	return _faceIds;
 }

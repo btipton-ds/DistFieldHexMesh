@@ -491,7 +491,7 @@ Index3DFull Block::addFace(const vector<CrossBlockPoint>& pts)
 	}
 	newPoly.doneCreating();
 
-	Index3D faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	Index3DFull faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
 	auto pPoly = _polygons.get(faceId.elementId());

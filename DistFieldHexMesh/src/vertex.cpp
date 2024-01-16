@@ -3,12 +3,12 @@
 
 using namespace DFHM;
 
-void Vertex::addFaceId(const Index3D& faceId)
+void Vertex::addFaceId(const Index3DFull& faceId)
 {
 	_faceIds.insert(faceId);
 }
 
-void Vertex::removeFaceId(const Index3D& faceId)
+void Vertex::removeFaceId(const Index3DFull& faceId)
 {
 	_faceIds.erase(faceId);
 }
