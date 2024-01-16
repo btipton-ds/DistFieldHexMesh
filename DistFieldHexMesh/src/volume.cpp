@@ -90,9 +90,9 @@ void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& bl
 	double dist1 = dist0 - (blockIdx * blockSpan[rayAxis]);
 
 	double w1 = dist1 / blockSpan[rayAxis];
-	subBlockIdx = (size_t)(w1 * Block::getMinBlockDim());
-	if (subBlockIdx >= Block::getMinBlockDim())
-		subBlockIdx = Block::getMinBlockDim() - 1;
+	subBlockIdx = (size_t)(w1 * Index3D::getBlockDim());
+	if (subBlockIdx >= Index3D::getBlockDim())
+		subBlockIdx = Index3D::getBlockDim() - 1;
 }
 
 Block& Volume::addBlock(const Index3D& blockIdx)

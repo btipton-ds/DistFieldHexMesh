@@ -65,9 +65,9 @@ inline bool Index3DFull::isValid() const
 inline Index3DFull& Index3DFull::operator += (const Index3D& idx)
 {
 	for (int i = 0; i < 3; i++) {
-		Index3DBaseType temp = _subBlockIdx[i] + idx[i];
-		_subBlockIdx[i] = temp % Index3D::getBlockDim();
-		_blockIdx[i] = temp / Index3D::getBlockDim();
+		size_t temp = _subBlockIdx[i] + idx[i];
+		_subBlockIdx[i] = (Index3DBaseType) (temp % Index3D::getBlockDim());
+		_blockIdx[i] = (Index3DBaseType) (temp / Index3D::getBlockDim());
 	}
 
 	return *this;
@@ -76,9 +76,9 @@ inline Index3DFull& Index3DFull::operator += (const Index3D& idx)
 inline Index3DFull& Index3DFull::operator -= (const Index3D& idx)
 {
 	for (int i = 0; i < 3; i++) {
-		Index3DBaseType temp = _subBlockIdx[i] - idx[i];
-		_subBlockIdx[i] = temp % Index3D::getBlockDim();
-		_blockIdx[i] = temp / Index3D::getBlockDim();
+		size_t temp = _subBlockIdx[i] - idx[i];
+		_subBlockIdx[i] = (Index3DBaseType)(temp % Index3D::getBlockDim());
+		_blockIdx[i] = (Index3DBaseType)(temp / Index3D::getBlockDim());
 	}
 
 	return *this;

@@ -29,8 +29,6 @@ class Polyhedron;
 class Block {
 public:
 	friend class SubBlock;
-	static void setMinBlockDim(size_t dim);
-	static size_t getMinBlockDim();
 
 	Block(Volume* pVol, const Index3D& blockIdx, std::vector<Vector3d>& pts);
 	Block(const Block& src) = delete;
@@ -128,7 +126,6 @@ private:
 	std::string _filename;
 
 	Volume* _pVol;
-	static size_t s_minBlockDim;
 	Index3D _blockIdx;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 

@@ -15,28 +15,16 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
-size_t Block::s_minBlockDim = 8;
-
-void Block::setMinBlockDim(size_t dim)
-{
-	s_minBlockDim = dim;
-}
-
-size_t Block::getMinBlockDim()
-{
-	return s_minBlockDim;
-}
-
 Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
 	: _vertices(true)
 	, _edges(true)
 	, _polygons(true)
 	, _polyhedra(false)
 	, _subBlocks(false)
-	, _blockDim(s_minBlockDim)
 	, _pVol(pVol)
 	, _blockIdx(blockIdx)
 {
+	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);
 
 	for (size_t i = 0; i < pts.size(); i++) {
