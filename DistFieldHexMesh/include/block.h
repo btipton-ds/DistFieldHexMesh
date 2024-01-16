@@ -114,11 +114,11 @@ private:
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
 
-	Index3DFull addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
-	Index3D addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1);
-	Index3DFull addFace(const std::vector<CrossBlockPoint>& pts);
-	Index3DFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
-	Vector3d getVertexPoint(const Index3DFull& vertIdx) const;
+	Index3DId addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
+	Index3DId addEdge(const Index3DId& vertId0, const Index3DId& vertId1);
+	Index3DIdFull addFace(const std::vector<CrossBlockPoint>& pts);
+	Index3DIdFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	std::mutex& getVertexMutex() const;
 	std::mutex& getEdgeMutex() const;

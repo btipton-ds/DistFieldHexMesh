@@ -5,6 +5,13 @@
 using namespace std;
 using namespace DFHM;
 
+void Polygon::addVertex(const Index3DId& vertId)
+{
+	assert(find(_vertexIds.begin(), _vertexIds.end(), vertId) == _vertexIds.end());
+	_vertexIds.push_back(vertId);
+}
+
+
 bool Polygon::unload(std::ostream& out, size_t idSelf)
 {
 
