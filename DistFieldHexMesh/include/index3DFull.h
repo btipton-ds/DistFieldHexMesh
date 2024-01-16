@@ -10,8 +10,9 @@ class Index3DFull {
 public:
 	Index3DFull() = default;
 	Index3DFull(const Index3DFull& src) = default;
-	Index3DFull(const Index3D& blockIdx, size_t elementId = -1);
-	Index3DFull(const Index3D& blockIdx, const Index3D& subBlockIdx, size_t elementId = -1);
+	explicit Index3DFull(const Index3D& blockIdx);
+	explicit Index3DFull(const Index3D& blockIdx, size_t elementId);
+	explicit Index3DFull(const Index3D& blockIdx, const Index3D& subBlockIdx, size_t elementId);
 
 	const Index3D& blockIdx() const;
 	const Index3D& subBlockIdx() const;
@@ -31,19 +32,21 @@ public:
 private:
 	Index3D _blockIdx = Index3D(-1, -1, -1);
 	Index3D _subBlockIdx = Index3D(-1, -1, -1);
-	size_t _elementId = -1;
 };
 
-inline Index3DFull::Index3DFull(const Index3D& blockIdx, size_t elementId)
+inline Index3DFull::Index3DFull(const Index3D& blockIdx)
 	: _blockIdx(blockIdx)
-	, _elementId(elementId)
+{
+}
+
+inline Index3DFull::Index3DFull(const Index3D& blockIdx, size_t elementId)
+	: _blockIdx(blockIdx, elementId)
 {
 }
 
 inline Index3DFull::Index3DFull(const Index3D& blockIdx, const Index3D& subBlockIdx, size_t elementId)
-	: _blockIdx(blockIdx)
+	: _blockIdx(blockIdx, elementId)
 	, _subBlockIdx(subBlockIdx)
-	, _elementId(elementId)
 {
 }
 
@@ -54,12 +57,12 @@ inline const Index3D& Index3DFull::blockIdx() const
 
 inline size_t Index3DFull::elementId() const
 {
-	return _elementId;
+	return _blockIdx.elementId();
 }
 
 inline bool Index3DFull::isValid() const
 {
-	return _elementId != -1 && _blockIdx[0] != -1 && _blockIdx[1] != -1 && _blockIdx[2] != -1;
+	return elementId() != -1 && _blockIdx[0] != -1 && _blockIdx[1] != -1 && _blockIdx[2] != -1;
 }
 
 inline Index3DFull& Index3DFull::operator += (const Index3D& idx)
@@ -110,7 +113,7 @@ inline bool Index3DFull::operator < (const Index3DFull& rhs) const
 	else if (rhs._subBlockIdx < _subBlockIdx)
 		return false;
 
-	return _elementId < rhs._elementId;
+	return elementId() < rhs.elementId();
 }
 
 inline bool Index3DFull::operator == (const Index3DFull& rhs) const
