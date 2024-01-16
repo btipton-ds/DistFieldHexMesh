@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <triMesh.h>
 #include <objectPoolWMutex.h>
-#include <Index3DFull.h>
+#include <index3D.h>
 #include <subBlock.h>
 #include <vertex.h>
 #include <mutex>
@@ -116,8 +116,8 @@ private:
 
 	Index3DId addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
 	Index3DId addEdge(const Index3DId& vertId0, const Index3DId& vertId1);
-	Index3DIdFull addFace(const std::vector<CrossBlockPoint>& pts);
-	Index3DIdFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	Index3DId addFace(const std::vector<CrossBlockPoint>& pts);
+	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	std::mutex& getVertexMutex() const;

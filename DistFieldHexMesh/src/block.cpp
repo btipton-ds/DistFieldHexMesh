@@ -407,7 +407,7 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
-	vector<Index3DIdFull> faceIds;
+	vector<Index3DId> faceIds;
 	faceIds.reserve(6);
 
 	// add left and right
@@ -430,22 +430,22 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	Index3DIdFull polyhedronId(_blockIdx, subBlockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	Index3DId polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
 	auto pPoly = _polyhedra.get(polyhedronId.elementId());
 	assert(pPoly);
 
 	for (const auto& faceId : faceIds) {
-		if (faceId.blockIdx() != _blockIdx) {
+		if (faceId != _blockIdx) {
 			int dbgBreak = 1;
 		}
-		Block* pOwnerBlock = getOwner(faceId.blockIdx());
+		Block* pOwnerBlock = getOwner(faceId);
 		lock_guard g(pOwnerBlock->_polygons);
 		auto pFace = pOwnerBlock->_polygons.get(faceId.elementId());
 		if (pFace) {
-			if (!pFace->getOwnerSubBlockId().isValid())
-				pFace->setOwnerSubBlockId(polyhedronId);
+			if (!pFace->getCreatorCellId().isValid())
+				pFace->setCreatorCellId(polyhedronId);
 			else 
-				pFace->setNeighborSubBlockId(polyhedronId);
+				pFace->setNeighborCellId(polyhedronId);
 		}
 	}
 
@@ -482,7 +482,7 @@ Index3DId Block::addEdge(const Index3DId& vertId0, const Index3DId& vertId1)
 	return edgeId;
 }
 
-Index3DIdFull Block::addFace(const vector<CrossBlockPoint>& pts)
+Index3DId Block::addFace(const vector<CrossBlockPoint>& pts)
 {
 	Polygon newPoly;
 	for (const auto& pt : pts) {
@@ -491,7 +491,7 @@ Index3DIdFull Block::addFace(const vector<CrossBlockPoint>& pts)
 	}
 	newPoly.doneCreating();
 
-	Index3DIdFull faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	Index3DId faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
 	auto pPoly = _polygons.get(faceId.elementId());
@@ -524,7 +524,7 @@ Index3DIdFull Block::addFace(const vector<CrossBlockPoint>& pts)
 	return faceId;
 }
 
-Index3DIdFull Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
+Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
 {
 	Index3D polyBlockIdx(_blockIdx);
 
@@ -536,7 +536,7 @@ Index3DIdFull Block::addFace(int axis, const Index3D& subBlockIdx, const vector<
 
 	Block* pPolygonOwner = getOwner(ownerBlockIdx);
 
-	Index3DIdFull faceId = pPolygonOwner->addFace(pts);
+	auto faceId = pPolygonOwner->addFace(pts);
 
 	return faceId;
 }

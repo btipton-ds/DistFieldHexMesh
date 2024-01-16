@@ -3,7 +3,7 @@
 #include <set>
 #include <exception>
 #include <tm_boundingBox.h>
-#include <Index3D.h>
+#include <index3D.h>
 
 namespace DFHM {
 

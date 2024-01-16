@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Index3D.h>
+#include <index3D.h>
 
 namespace DFHM {
 

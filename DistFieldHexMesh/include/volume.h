@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
-#include <Index3D.h>
+#include <index3D.h>
 #include <triMesh.h>
 #include <polygon.h>
 #include <polyhedron.h>

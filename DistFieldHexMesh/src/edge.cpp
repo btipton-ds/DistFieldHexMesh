@@ -5,7 +5,7 @@
 using namespace std;
 using namespace DFHM;
 
-void Edge::addFaceId(const Index3DIdFull& faceId)
+void Edge::addFaceId(const Index3DId& faceId)
 {
 	if (_faceIds.size() > 0) {
 		int dbgBreak = 1;
@@ -13,7 +13,7 @@ void Edge::addFaceId(const Index3DIdFull& faceId)
 	_faceIds.insert(faceId);
 }
 
-void Edge::removeFaceId(const Index3DIdFull& faceId)
+void Edge::removeFaceId(const Index3DId& faceId)
 {
 	_faceIds.erase(faceId);
 }

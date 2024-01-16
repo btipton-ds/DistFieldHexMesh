@@ -27,8 +27,11 @@ public:
 
 	Index3DBase operator + (const Index3DBase& rhs) const;
 	bool operator < (const Index3DBase& rhs) const;
-	bool operator == (const Index3DBase& rhs) const;
-	bool operator != (const Index3DBase& rhs) const;
+
+	template<class T>
+	bool operator == (const T& rhs) const;
+	template<class T>
+	bool operator != (const T& rhs) const;
 
 	bool isValid() const;
 	bool isInBounds(size_t bound) const;
@@ -115,12 +118,14 @@ inline Index3D::Index3D(const Vector3i& src)
 {
 }
 
-inline bool Index3DBase::operator == (const Index3DBase& rhs) const
+template<class T>
+inline bool Index3DBase::operator == (const T& rhs) const
 {
 	return Vector3<Index3DBaseType>::operator ==(rhs);
 }
 
-inline bool Index3DBase::operator != (const Index3DBase& rhs) const
+template<class T>
+inline bool Index3DBase::operator != (const T& rhs) const
 {
 	return !operator==(rhs);
 }

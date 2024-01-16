@@ -34,14 +34,14 @@ public:
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
 
-	void addFaceId(const Index3DIdFull& faceId);
-	void removeFaceId(const Index3DIdFull& faceId);
+	void addFaceId(const Index3DId& faceId);
+	void removeFaceId(const Index3DId& faceId);
 
 	void addEdgeId(const Index3DId& edgeId);
 	void removeEdgeId(const Index3DId& edgeId);
 
 	const std::set<Index3DId>& getEdgeIds() const;
-	const std::set<Index3DIdFull>& getFaceIds() const;
+	const std::set<Index3DId>& getFaceIds() const;
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -51,7 +51,7 @@ private:
 	size_t _lockIdx = -1;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
-	std::set<Index3DIdFull> _faceIds;
+	std::set<Index3DId> _faceIds;
 	std::set<Index3DId> _edgeIds;
 };
 
@@ -136,7 +136,7 @@ inline const std::set<Index3DId>& Vertex::getEdgeIds() const
 	return _edgeIds;
 }
 
-inline const std::set<Index3DIdFull>& Vertex::getFaceIds() const
+inline const std::set<Index3DId>& Vertex::getFaceIds() const
 {
 	return _faceIds;
 }

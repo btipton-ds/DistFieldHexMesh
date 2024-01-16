@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <set>
-#include <Index3DFull.h>
+#include <index3D.h>
 
 namespace DFHM {
 
@@ -15,10 +15,10 @@ public:
 	Edge(const Index3D& ownerBlockIdx, const Index3DId& vert0, const Index3DId& vert1);
 
 	const Index3D& getOwnerBlockIdx() const;
-	void addFaceId(const Index3DIdFull& faceId);
-	void removeFaceId(const Index3DIdFull& faceId);
+	void addFaceId(const Index3DId& faceId);
+	void removeFaceId(const Index3DId& faceId);
 	size_t numFaceIds() const;
-	const std::set<Index3DIdFull>& getFaceIds() const;
+	const std::set<Index3DId>& getFaceIds() const;
 
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
@@ -33,7 +33,7 @@ public:
 private:
 	Index3D _ownerBlockIdx;
 	Index3DId _vertexIds[2];
-	std::set<Index3DIdFull> _faceIds; // Should be 2, but this allows creation of nonmanifold edges if needed.
+	std::set<Index3DId> _faceIds; // Should be 2, but this allows creation of nonmanifold edges if needed.
 };
 
 inline Edge::Edge(const Index3D& ownerBlockIdx, const Index3DId& vert0, const Index3DId& vert1)
@@ -53,7 +53,7 @@ inline size_t Edge::numFaceIds() const
 	return _faceIds.size();
 }
 
-inline const std::set<Index3DIdFull>& Edge::getFaceIds() const
+inline const std::set<Index3DId>& Edge::getFaceIds() const
 {
 	return _faceIds;
 }

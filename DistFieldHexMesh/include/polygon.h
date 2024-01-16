@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 #include <vertex.h>
-#include <Index3DFull.h>
+#include <index3D.h>
 
 namespace DFHM {
 
@@ -13,10 +13,10 @@ public:
 	bool load(std::istream& out, size_t idSelf);
 
 	void addVertex(const Index3DId& vertId);
-	void setOwnerSubBlockId(const Index3DIdFull& subBlockId);
-	const Index3DIdFull& getOwnerSubBlockId() const;
-	void setNeighborSubBlockId(const Index3DIdFull& subBlockId);
-	const Index3DIdFull& getNeighborSubBlockId() const;
+	void setCreatorCellId(const Index3DId& cellId);
+	const Index3DId& getCreatorCellId() const;
+	void setNeighborCellId(const Index3DId& subBlockId);
+	const Index3DId& getNeighborCellId() const;
 
 	void doneCreating();
 	void pack();
@@ -28,34 +28,34 @@ public:
 	const std::vector<Index3DId>& getVertexIds() const;
 private:
 	std::vector<Index3DId> _vertexIds, _sortedIds;
-	Index3DIdFull _ownerSubBlockId, _neighborSubBlockId;
+	Index3DId _creatorCellId, _neighborCellId;
 };
 
-inline void Polygon::setOwnerSubBlockId(const Index3DIdFull& subBlockId)
+inline void Polygon::setCreatorCellId(const Index3DId& subBlockId)
 {
-	_ownerSubBlockId = subBlockId;
+	_creatorCellId = subBlockId;
 }
 
-inline void Polygon::setNeighborSubBlockId(const Index3DIdFull& subBlockId)
+inline void Polygon::setNeighborCellId(const Index3DId& subBlockId)
 {
-	assert(subBlockId != _ownerSubBlockId);
-	_neighborSubBlockId = subBlockId;
+	assert(subBlockId != _creatorCellId);
+	_neighborCellId = subBlockId;
 }
 
 
-inline const Index3DIdFull& Polygon::getOwnerSubBlockId() const
+inline const Index3DId& Polygon::getCreatorCellId() const
 {
-	return _ownerSubBlockId;
+	return _creatorCellId;
 }
 
-inline const Index3DIdFull& Polygon::getNeighborSubBlockId() const
+inline const Index3DId& Polygon::getNeighborCellId() const
 {
-	return _neighborSubBlockId;
+	return _neighborCellId;
 }
 
 inline bool Polygon::isOuter() const
 {
-	return !_neighborSubBlockId.isValid();
+	return !_neighborCellId.isValid();
 }
 
 inline const std::vector<Index3DId>& Polygon::getVertexIds() const
