@@ -341,7 +341,7 @@ Block::CrossBlockPoint Block::triLinInterp(const Vector3d* pts, size_t blockDim,
 		index[2] / (double) blockDim
 	);
 
-	const Index3D blockDims = _pVol->getBlockDims();
+	const Index3D blockDims = Volume::volDim();
 
 	CrossBlockPoint result;
 	result._pt = TRI_LERP(pts, t[0], t[1], t[2]);
@@ -528,7 +528,7 @@ Index3DFull Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Cr
 {
 	Index3D polyBlockIdx(_blockIdx);
 
-	Index3D blockDims = _pVol->getBlockDims();
+	Index3D blockDims = Volume::volDim();
 	Index3D ownerBlockIdx(_blockIdx);
 	if (subBlockIdx[axis] == _blockDim - 1) {
 		ownerBlockIdx[axis] = (ownerBlockIdx[axis] + 1) % blockDims[axis];

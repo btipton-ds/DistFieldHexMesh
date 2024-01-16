@@ -29,15 +29,16 @@ using CMesh = TriMesh::CMesh;
 
 class Volume {
 public:
-	Volume(const Index3D& size = Index3D(0, 0, 0));
+	Volume();
 	Volume(const Volume& src);
 	~Volume();
 
+	static void setVolDim(const Index3D& size);
+	static const Index3D& volDim();
+	static const Index3D& getDims();
+
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
-	void setBlockDims(const Index3D& size);
-	const Index3D& getBlockDims() const;
-	const Index3D& getDims() const;
 
 	std::vector<TriMesh::CMeshPtr> addAllBlocks();
 
@@ -73,9 +74,10 @@ private:
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
 
+	static Index3D s_volDim;
+
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
-	Index3D _blockDim;
 	double _sharpAngleRad;
 
 	std::vector<std::shared_ptr<Block>> _blocks;
@@ -102,8 +104,9 @@ inline std::shared_ptr<Block> Volume::getBlockPtr(const Index3D& blockIdx)
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	if (blockIdx.isInBounds(_blockDim))
-		return blockIdx[0] + _blockDim[0] * (blockIdx[1] + _blockDim[1] * blockIdx[2]);
+	const auto& dim = volDim();
+	if (blockIdx.isInBounds(dim))
+		return blockIdx[0] + dim[0] * (blockIdx[1] + dim[1] * blockIdx[2]);
 
 	return -1;
 }

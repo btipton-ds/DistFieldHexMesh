@@ -253,7 +253,8 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
-	Volume vol(Index3D(2, 2, 2));
+    Volume::setVolDim(Index3D(2, 2, 2));
+	Volume vol;
     vol.setOrigin(dlg.getBlockOrigin());
     vol.setSpan(dlg.getBlockSpan());
     
@@ -296,7 +297,6 @@ void AppData::doBuildCFDHexes()
 
     bool outerFacesOnly = true;
     auto blockMeshes = _volume->buildCFDHexes(_pMesh, blockSize, outerFacesOnly);
-    auto dims = _volume->getBlockDims();
 
     auto pCanvas = _pMainFrame->getCanvas();
 

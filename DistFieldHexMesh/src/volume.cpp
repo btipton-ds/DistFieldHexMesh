@@ -22,16 +22,16 @@ using namespace TriMesh;
 #define RUN_MULTI_THREAD true
 #define QUICK_TEST 0
 
-Volume::Volume(const Index3D& blockSize)
+Index3D Volume::s_volDim;
+
+Volume::Volume()
 {
-	setBlockDims(blockSize);
 	_sharpAngleRad = 30.0 / 180.0 * M_PI;
 }
 
 Volume::Volume(const Volume& src)
 	: _originMeters(src._originMeters) 
 	, _spanMeters(src._spanMeters)
-	, _blockDim(src._blockDim)
 	, _blocks(src._blocks)
 {
 }
@@ -40,27 +40,27 @@ Volume::~Volume()
 {
 }
 
-void Volume::setBlockDims(const Index3D& blockSize)
+void Volume::setVolDim(const Index3D& blockSize)
 {
-	_blockDim = blockSize;
-	_blocks.resize(_blockDim[0] * _blockDim[1] * _blockDim[2]);
+	s_volDim = blockSize;
 }
 
-const Index3D& Volume::getBlockDims() const
+const Index3D& Volume::volDim()
 {
-	return _blockDim;
+	return s_volDim;
 }
 
 Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 {
 	Index3D result;
 	size_t temp = linearIdx;
+	const auto& dim = volDim();
 
-	size_t denom = _blockDim[0] * _blockDim[1];
+	size_t denom = dim[0] * dim[1];
 	result[2] = (Index3DBaseType)(temp / denom);
 	temp = temp % denom;
 
-	denom = _blockDim[0];
+	denom = dim[0];
 
 	result[1] = (Index3DBaseType)(temp / denom);
 	temp = temp % denom;
@@ -75,6 +75,7 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 
 void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx)
 {
+	const auto& dim = volDim();
 
 	double dist0 = triHit.dist;
 	if (dist0 < 0)
@@ -84,9 +85,9 @@ void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& bl
 
 	double w0 = dist0 / _spanMeters[rayAxis];
 
-	blockIdx = (size_t)(w0 * _blockDim[rayAxis]);
-	if (blockIdx >= _blockDim[rayAxis])
-		blockIdx = _blockDim[rayAxis] - 1;
+	blockIdx = (size_t)(w0 * dim[rayAxis]);
+	if (blockIdx >= dim[rayAxis])
+		blockIdx = dim[rayAxis] - 1;
 	double dist1 = dist0 - (blockIdx * blockSpan[rayAxis]);
 
 	double w1 = dist1 / blockSpan[rayAxis];
@@ -97,6 +98,7 @@ void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& bl
 
 Block& Volume::addBlock(const Index3D& blockIdx)
 {
+	const auto& dim = volDim();
 	const Vector3d xAxis(1, 0, 0);
 	const Vector3d yAxis(0, 1, 0);
 	const Vector3d zAxis(0, 0, 1);
@@ -108,7 +110,7 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 
 	Vector3d origin, span;
 	for (int i = 0; i < 3; i++) {
-		span[i] = _spanMeters[i] / _blockDim[i];
+		span[i] = _spanMeters[i] / dim[i];
 	}
 
 	origin[0] = _originMeters[0] + blockIdx[0] * span[0];
@@ -135,18 +137,19 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 
 std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
 {
+	const auto& dim = volDim();
 	Vector3d origin, blockSpan;
 	for (int i = 0; i < 3; i++) {
-		blockSpan[i] = _spanMeters[i] / _blockDim[i];
+		blockSpan[i] = _spanMeters[i] / dim[i];
 	}
 
 	Index3D blkIdx;
-	for (blkIdx[0] = 0; blkIdx[0] < _blockDim[0]; blkIdx[0]++) {
+	for (blkIdx[0] = 0; blkIdx[0] < dim[0]; blkIdx[0]++) {
 		origin[1] = _originMeters[1] + blkIdx[0] * blockSpan[1];
-		for (blkIdx[1] = 0; blkIdx[1] < _blockDim[1]; blkIdx[1]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < dim[1]; blkIdx[1]++) {
 			origin[1] = _originMeters[1] + blkIdx[1] * blockSpan[1];
 
-			for (blkIdx[2] = 0; blkIdx[2] < _blockDim[2]; blkIdx[2]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < dim[2]; blkIdx[2]++) {
 				origin[2] = _originMeters[2] + blkIdx[2] * blockSpan[2];
 				Block& block = addBlock(blkIdx);
 			}
@@ -166,7 +169,8 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 
 bool Volume::blockInBounds(const Index3D& blockIdx) const
 {
-	return (blockIdx[0] < _blockDim[0] && blockIdx[1] < _blockDim[1] && blockIdx[2] < _blockDim[1]);
+	const auto& dim = volDim();
+	return (blockIdx[0] < dim[0] && blockIdx[1] < dim[1] && blockIdx[2] < dim[1]);
 }
 
 const Block& Volume::getBlock(const Index3D& blockIdx) const
@@ -206,11 +210,13 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
 	);
 
-	setBlockDims(blockSize);
+	setVolDim(blockSize);
 
-	Vector3d blockSpan(_spanMeters[0] / _blockDim[0], _spanMeters[1] / _blockDim[1], _spanMeters[2] / _blockDim[2]);
+	const auto& dim = volDim();
+	Vector3d blockSpan(_spanMeters[0] / dim[0], _spanMeters[1] / dim[1], _spanMeters[2] / dim[2]);
 
-	size_t numBlocks = _blockDim[0] * _blockDim[1] * _blockDim[2];
+	size_t numBlocks = dim[0] * dim[1] * dim[2];
+	_blocks.resize(numBlocks);
 
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
