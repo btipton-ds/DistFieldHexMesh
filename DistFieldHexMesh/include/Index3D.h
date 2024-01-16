@@ -19,6 +19,7 @@ public:
 
 	Index3D() = default;
 	Index3D(const Index3D& src) = default;
+	Index3D(const Index3D& src, size_t elementId);
 	Index3D(const Vector3<Index3DBaseType>& src);
 	Index3D(size_t i, size_t j, size_t k);
 	Index3D(const Vector3i& src);
@@ -26,6 +27,8 @@ public:
 	Index3D operator + (const Index3D& rhs) const;
 	bool operator < (const Index3D& rhs) const;
 	bool isInBounds(const Index3D& bounds) const;
+
+	size_t elementId() const;
 
 	template<class BOUND_TYPE>
 	inline bool isInBounds(BOUND_TYPE bound) const
@@ -35,6 +38,7 @@ public:
 	}
 private:
 	static Index3DBaseType s_blockDim;
+	size_t _elementId = -1;
 };
 
 inline void Index3D::setBlockDim(size_t val)
@@ -49,6 +53,12 @@ inline size_t Index3D::getBlockDim()
 
 inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
 	: Vector3<Index3DBaseType>(src)
+{
+}
+
+inline Index3D::Index3D(const Index3D& src, size_t elementId)
+	: Vector3<Index3DBaseType>(src)
+	, _elementId(elementId)
 {
 }
 
@@ -83,6 +93,11 @@ inline bool Index3D::operator < (const Index3D& rhs) const
 			return false;
 	}
 	return false;
+}
+
+inline size_t Index3D::elementId() const
+{
+	return _elementId;
 }
 
 }

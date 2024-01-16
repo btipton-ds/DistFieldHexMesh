@@ -2,7 +2,7 @@
 
 #include <set>
 #include <tm_vector3.h>
-#include <Index3DFull.h>
+#include <Index3D.h>
 
 namespace DFHM {
 
@@ -34,14 +34,14 @@ public:
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
 
-	void addFaceId(const Index3DFull& faceId);
-	void removeFaceId(const Index3DFull& faceId);
+	void addFaceId(const Index3D& faceId);
+	void removeFaceId(const Index3D& faceId);
 
-	void addEdgeId(const Index3DFull& edgeId);
-	void removeEdgeId(const Index3DFull& edgeId);
+	void addEdgeId(const Index3D& edgeId);
+	void removeEdgeId(const Index3D& edgeId);
 
-	const std::set<Index3DFull>& getEdgeIds() const;
-	const std::set<Index3DFull>& getFaceIds() const;
+	const std::set<Index3D>& getEdgeIds() const;
+	const std::set<Index3D>& getFaceIds() const;
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -51,7 +51,7 @@ private:
 	size_t _lockIdx = -1;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
-	std::set<Index3DFull> _faceIds, _edgeIds;
+	std::set<Index3D> _faceIds, _edgeIds;
 };
 
 inline double Vertex::getFixedScale()
@@ -130,12 +130,12 @@ inline Vertex::operator Vector3d () const
 	return getPoint();
 }
 
-inline const std::set<Index3DFull>& Vertex::getEdgeIds() const
+inline const std::set<Index3D>& Vertex::getEdgeIds() const
 {
 	return _edgeIds;
 }
 
-inline const std::set<Index3DFull>& Vertex::getFaceIds() const
+inline const std::set<Index3D>& Vertex::getFaceIds() const
 {
 	return _faceIds;
 }

@@ -475,10 +475,10 @@ inline Index3DFull Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
 	return Index3DFull(pOwner->_blockIdx, vertId);
 }
 
-Index3DFull Block::addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1)
+Index3D Block::addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1)
 {
 	Edge edge(_blockIdx, vertId0, vertId1);
-	Index3DFull edgeId(_blockIdx, _edges.findOrAdd(edge));
+	Index3D edgeId(_blockIdx, _edges.findOrAdd(edge));
 	return edgeId;
 }
 
@@ -491,7 +491,7 @@ Index3DFull Block::addFace(const vector<CrossBlockPoint>& pts)
 	}
 	newPoly.doneCreating();
 
-	Index3DFull faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	Index3D faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 
 	lock_guard g(_polygons);
 	auto pPoly = _polygons.get(faceId.elementId());
@@ -503,7 +503,7 @@ Index3DFull Block::addFace(const vector<CrossBlockPoint>& pts)
 		size_t j = (i + 1) % vertIds.size();
 		auto nextVertId = vertIds[j];
 
-		Index3DFull edgeId = addEdge(vertId, nextVertId);
+		auto edgeId = addEdge(vertId, nextVertId);
 		{
 			lock_guard g(_edges);
 			auto& edge = _edges[edgeId.elementId()];

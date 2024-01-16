@@ -114,7 +114,8 @@ private:
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
 
-	Index3DFull addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1);
+	Index3DFull addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
+	Index3D addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1);
 	Index3DFull addFace(const std::vector<CrossBlockPoint>& pts);
 	Index3DFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
 	Vector3d getVertexPoint(const Index3DFull& vertIdx) const;
@@ -125,8 +126,6 @@ private:
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-
-	Index3DFull addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
 
 	std::string _filename;
 

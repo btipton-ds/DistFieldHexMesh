@@ -5,7 +5,7 @@
 using namespace std;
 using namespace DFHM;
 
-void Edge::addFaceId(const Index3DFull& faceId)
+void Edge::addFaceId(const Index3D& faceId)
 {
 	if (_faceIds.size() > 0) {
 		int dbgBreak = 1;
@@ -13,7 +13,7 @@ void Edge::addFaceId(const Index3DFull& faceId)
 	_faceIds.insert(faceId);
 }
 
-void Edge::removeFaceId(const Index3DFull& faceId)
+void Edge::removeFaceId(const Index3D& faceId)
 {
 	_faceIds.erase(faceId);
 }
@@ -40,10 +40,10 @@ bool Edge::operator < (const Edge& rhs) const
 }
 
 // Should only be called from Polygon::split which will handle topology
-Index3DFull Edge::split(Block* pOwnerBlock, double t)
+Index3D Edge::split(Block* pOwnerBlock, double t)
 {
 	Volume* pVol = pOwnerBlock->getVolume();
 	
 
-	return Index3DFull();
+	return Index3D();
 }
