@@ -254,7 +254,8 @@ void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlo
 	auto& subBlock = _subBlocks[linearIdx];
 	if (subBlock.numPolyhedra() == 0) {
 		auto cellId = addHexCell(blockPts, _blockDim, subBlockIdx);
-		subBlock.addPolyhdra(cellId);
+		if (cellId != -1)
+			subBlock.addPolyhdra(cellId);
 	}
 }
 
@@ -407,6 +408,16 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
+
+	CBoundingBox3Dd bbox;
+	for (size_t i = 0; i < 8; i++) {
+		bbox.merge(pts[i]._pt);
+	}
+
+	vector<size_t> triIndices;
+	if (!_pModelTriMesh->findTris(bbox, triIndices))
+		return -1;
+
 	vector<Index3DId> faceIds;
 	faceIds.reserve(6);
 

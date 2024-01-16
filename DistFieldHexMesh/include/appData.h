@@ -41,6 +41,8 @@ public:
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
+    void addTriangles(GraphicsCanvas* pCanvas, bool outerFacesOnly);
+    void addFaceEdges(GraphicsCanvas* pCanvas, bool outerFacesOnly);
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;

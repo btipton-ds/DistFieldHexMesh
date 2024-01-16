@@ -67,6 +67,9 @@ public:
     bool showTriNormals() const;
     bool toggleShowTriNormals();
 
+    bool showFaceEdges() const;
+    bool toggleShowFaceEdges();
+
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
@@ -96,7 +99,7 @@ private:
     
     bool _initialized = false;
 
-    bool _showSharpEdges = false, _showTriNormals = false;
+    bool _showSharpEdges = false, _showTriNormals = false, _showFaceEdges = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     double _initAzRad, _initElRad;
     void initialize();
@@ -227,5 +230,9 @@ inline bool GraphicsCanvas::showTriNormals() const
     return _showTriNormals;
 }
 
+inline bool GraphicsCanvas::showFaceEdges() const
+{
+    return _showFaceEdges;
+}
 
 }

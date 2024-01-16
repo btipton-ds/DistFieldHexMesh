@@ -111,6 +111,13 @@ bool GraphicsCanvas::toggleShowTriNormals()
     return _showTriNormals;
 }
 
+bool GraphicsCanvas::toggleShowFaceEdges()
+{
+    _showFaceEdges = !_showFaceEdges;
+
+    return _showFaceEdges;
+}
+
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLoc = calMouseLoc(event.GetPosition());
@@ -378,6 +385,9 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
             case 3:
+                if (!_showFaceEdges)
+                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
+
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
                 break;

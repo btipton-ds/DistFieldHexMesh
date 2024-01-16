@@ -131,6 +131,9 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_TRI_NORMALS, "Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowTriNormals, this, ID_SHOW_TRI_NORMALS);
 
+    menu->Append(ID_SHOW_FACE_EDGES, "Show Face Edges", "Turns rendering of face edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowFaceEdges, this, ID_SHOW_FACE_EDGES);
+
     auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
     if (sharpItem)
         sharpItem->Check(getCanvas()->showSharpEdges());
@@ -138,6 +141,10 @@ void MainFrame::createViewMenu()
     auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
     if (normItem)
         normItem->Check(getCanvas()->showTriNormals());
+
+    auto faceEdgesItem = _menuBar->FindItem(ID_SHOW_FACE_EDGES);
+    if (faceEdgesItem)
+        faceEdgesItem->Check(getCanvas()->showFaceEdges());
 
     _menuBar->Append(menu, "&View");
 }
@@ -273,4 +280,13 @@ void MainFrame::OnShowTriNormals(wxCommandEvent& event)
     auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
     if (normItem)
         normItem->Check(getCanvas()->showTriNormals());
+}
+
+void MainFrame::OnShowFaceEdges(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowFaceEdges();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_FACE_EDGES);
+    if (normItem)
+        normItem->Check(getCanvas()->showFaceEdges());
 }
