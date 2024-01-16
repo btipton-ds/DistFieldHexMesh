@@ -62,8 +62,8 @@ public:
 	void processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
 	const TriMesh::CMeshPtr& getModelMesh() const;
-	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
+	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -117,6 +117,11 @@ private:
 	Index3DFull addEdge(const Index3DFull& vertId0, const Index3DFull& vertId1);
 	Index3DFull addFace(const std::vector<CrossBlockPoint>& pts);
 	Index3DFull addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	Vector3d getVertexPoint(const Index3DFull& vertIdx) const;
+
+	std::mutex& getVertexMutex() const;
+	std::mutex& getEdgeMutex() const;
+	std::mutex& getFaceMutex() const;
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
@@ -211,5 +216,19 @@ inline const TriMesh::CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
+inline std::mutex& Block::getVertexMutex() const
+{
+	return _vertices.getMutex();
+}
+
+inline std::mutex& Block::getEdgeMutex() const
+{
+	return _edges.getMutex();
+}
+
+inline std::mutex& Block::getFaceMutex() const
+{
+	return _polygons.getMutex();
+}
 
 }

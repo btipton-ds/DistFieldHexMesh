@@ -33,6 +33,8 @@ public:
 	bool empty() const;
 	size_t size() const;
 
+	std::mutex& getMutex() const;
+
 	void lock() const;
 	bool tryLock() const;
 	void unlock() const;
@@ -125,6 +127,12 @@ size_t ObjectPoolWMutex<T>::size() const
 {
 	std::lock_guard g(_mutex);
 	return _data.size();
+}
+
+template<class T>
+std::mutex& ObjectPoolWMutex<T>::getMutex() const
+{
+	return _mutex;
 }
 
 template<class T>

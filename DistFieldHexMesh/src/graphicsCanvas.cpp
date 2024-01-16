@@ -377,6 +377,10 @@ void GraphicsCanvas::drawEdges()
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
+            case 3:
+                glLineWidth(1.0f);
+                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
+                break;
         }
         _graphicsUBO.ambient = 1.0f;
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);

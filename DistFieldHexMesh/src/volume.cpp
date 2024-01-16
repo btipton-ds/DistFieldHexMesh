@@ -67,7 +67,7 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 	result[0] = (Index3DBaseType)temp;
 
 	if (calLinearBlockIndex(result) != linearIdx) {
-		throw std::runtime_error("calBlockIndexFromLinearIndex failed");
+		throw runtime_error("calBlockIndexFromLinearIndex failed");
 	}
 
 	return result;
@@ -135,7 +135,7 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 	return *pBlock;
 }
 
-std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
+void Volume::addAllBlocks(vector<TriMesh::CMeshPtr>& triMeshes, vector<shared_ptr<vector<float>>>& faceEdges)
 {
 	const auto& dim = volDim();
 	Vector3d origin, blockSpan;
@@ -156,7 +156,7 @@ std::vector<TriMesh::CMeshPtr> Volume::addAllBlocks()
 		}
 	}
 
-	return makeTris(true, true);
+	makeTris(triMeshes, true, true);
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -197,7 +197,7 @@ Block& Volume::getBlock(const Index3D& blockIdx)
 	throw runtime_error("Volume::getBlock index out of range");
 }
 
-std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, bool outerFacesOnly)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, bool outerFacesOnly)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -242,7 +242,7 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 	}, numBlocks, RUN_MULTI_THREAD);
 
 #if QUICK_TEST
-	map<size_t, std::shared_ptr<Block>> orderedBlocks;
+	map<size_t, shared_ptr<Block>> orderedBlocks;
 	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
 		if (_blocks[linearIdx] && _blocks[linearIdx]->getModelMesh()) {
 			size_t numTris = _blocks[linearIdx]->getModelMesh()->numTris();
@@ -270,13 +270,9 @@ std::vector<TriMesh::CMeshPtr> Volume::buildCFDHexes(const CMeshPtr& pTriMesh, d
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
-
-	auto result = makeTris(outerFacesOnly, true);
-
-	return result;
 }
 
-vector<TriMesh::CMeshPtr> Volume::makeTris(bool outerOnly, bool multiCore)
+void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, bool multiCore)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -298,28 +294,32 @@ vector<TriMesh::CMeshPtr> Volume::makeTris(bool outerOnly, bool multiCore)
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
 
 	// Remove the null pointers from the result
-	vector<TriMesh::CMeshPtr> result;
-	size_t numTris = 0;
+
 	for (auto p : temp) {
 		if (p) {
-			numTris += p->numTris();
-			result.push_back(p);
+			triMeshes.push_back(p);
 		}
 	}
-
-	cout << "Num tris: " << numTris << "\n";
-	return result;
 }
 
-size_t Volume::getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const
+void Volume::makeFaceEdges(vector<shared_ptr<vector<float>>>& faceEdges, bool outerOnly, bool multiCore)
 {
-	edgeLoops.clear();
-	for (const auto& pBlock : _blocks) {
-		if (pBlock) {
-			pBlock->getGLModelEdgeLoops(edgeLoops);
+	vector<shared_ptr<vector<float>>> temp;
+	temp.resize(_blocks.size());
+	MultiCore::runLambda([this, &temp, outerOnly](size_t index) {
+		const auto& blockPtr = _blocks[index];
+		if (!blockPtr)
+			return;
+		shared_ptr<vector<float>> pEdges =  blockPtr->makeFaceEdges(outerOnly);
+		if (pEdges && !pEdges->empty()) {
+			temp[index] = pEdges;
 		}
+	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
+
+	for (const auto& p : temp) {
+		if (p)
+			faceEdges.push_back(p);
 	}
-	return edgeLoops.size();
 }
 
 size_t Volume::numFaces(bool includeInner) const
@@ -368,7 +368,7 @@ void Volume::writePolyMesh(const string& dirNameIn) const
 	writePolyMeshPoints(dirName);
 }
 
-void Volume::writePolyMeshPoints(const std::string& dirName) const
+void Volume::writePolyMeshPoints(const string& dirName) const
 {
 #if 0
 	ofstream out(dirName + "/points", ios_base::binary);
@@ -395,7 +395,7 @@ void Volume::writePolyMeshPoints(const std::string& dirName) const
 #endif
 }
 
-void Volume::writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const
+void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const string& object) const
 {
 	out << "/*--------------------------------*- C++ -*----------------------------------*/\n";
 	out << "| =========                 |                                                 |\n";

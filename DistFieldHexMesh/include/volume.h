@@ -40,7 +40,7 @@ public:
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
 
-	std::vector<TriMesh::CMeshPtr> addAllBlocks();
+	void addAllBlocks(std::vector<TriMesh::CMeshPtr>& triMeshes, std::vector<std::shared_ptr<std::vector<float>>>& faceEdges);
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
@@ -56,9 +56,9 @@ public:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	std::vector<TriMesh::CMeshPtr> buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize, bool outerFacesOnly);
-	std::vector<TriMesh::CMeshPtr> makeTris(bool outerOnly, bool multiCore);
-	size_t getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const;
+	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize, bool outerFacesOnly);
+	void makeTris(std::vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, bool multiCore);
+	void makeFaceEdges(std::vector<std::shared_ptr<std::vector<float>>>& faceEdges, bool outerOnly, bool multiCore);
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;

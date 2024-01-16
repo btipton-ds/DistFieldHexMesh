@@ -72,7 +72,7 @@ Index3D Block::calSubBlockIndexFromLinear(size_t linearIdx) const
 
 	result[0] = (Index3DBaseType)temp;
 	if (calLinearSubBlockIndex(result) != linearIdx) {
-		throw std::runtime_error("calSubBlockIndexFromLinear failed.");
+		throw runtime_error("calSubBlockIndexFromLinear failed.");
 	}
 	return result;
 }
@@ -482,7 +482,7 @@ Index3DFull Block::addEdge(const Index3DFull& vertId0, const Index3DFull& vertId
 	return edgeId;
 }
 
-Index3DFull Block::addFace(const std::vector<CrossBlockPoint>& pts)
+Index3DFull Block::addFace(const vector<CrossBlockPoint>& pts)
 {
 	Polygon newPoly;
 	for (const auto& pt : pts) {
@@ -539,6 +539,13 @@ Index3DFull Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Cr
 	Index3DFull faceId = pPolygonOwner->addFace(pts);
 
 	return faceId;
+}
+
+Vector3d Block::getVertexPoint(const Index3DFull& vertIdx) const
+{
+	auto pOwner = getOwner(vertIdx.blockIdx());
+	lock_guard g(pOwner->_vertices);
+	return pOwner->_vertices[vertIdx.elementId()].getPoint();
 }
 
 bool Block::unload(string& filename)
@@ -688,6 +695,46 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 	return result;
 }
 
+shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
+{
+	shared_ptr<vector<float>> result;
+
+	size_t skipped = 0;
+	_edges.iterateInOrder([this, &result, outerOnly, &skipped](size_t id, const Edge& edge) {
+		const auto& faceIds = edge.getFaceIds();
+		bool isOuter = false;
+		for (const auto& faceId : faceIds) {
+			lock_guard g(_polygons);
+			const auto& poly = _polygons[faceId.elementId()];
+			if (poly.isOuter()) {
+				isOuter = true;
+				break;
+			}
+		}
+		if (!outerOnly || isOuter) {
+			if (!result)
+				result = make_shared<vector<float>>();
+			auto& vals = *result;
+
+			const auto* vertIds = edge.getVertexIds();
+
+			Vector3d pt = getVertexPoint(vertIds[0]);
+			vals.push_back((float)pt[0]);
+			vals.push_back((float)pt[1]);
+			vals.push_back((float)pt[2]);
+
+			pt = getVertexPoint(vertIds[1]);
+			vals.push_back((float)pt[0]);
+			vals.push_back((float)pt[1]);
+			vals.push_back((float)pt[2]);
+		}
+		else
+			skipped++;
+	});
+
+	return result;
+}
+
 vector<LineSegment> Block::getSubBlockEdges(const Vector3d* subBlockPoints, const Index3D& subBlockIdx) const
 {
 //	const vector<CrossBlockPoint> subBlockPoints = getSubBlockCornerPts(subBlockIdx);
@@ -790,11 +837,6 @@ void Block::rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _r
 	rayCastFace(pts, blockDim, 0, _rayTriHits[0]);
 	rayCastFace(pts, blockDim, 1, _rayTriHits[1]);
 	rayCastFace(pts, blockDim, 2, _rayTriHits[2]);
-}
-
-size_t Block::getGLModelEdgeLoops(std::vector<std::vector<float>>& edgeLoops) const
-{
-	return 0;
 }
 
 void Block::pack()
