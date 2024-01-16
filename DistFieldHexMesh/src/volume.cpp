@@ -218,6 +218,12 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
 
+	double sharpAngleRadians = 30.0 / 180.0 * M_PI;
+	_pModelTriMesh->buildCentroids(true);
+	_pModelTriMesh->buildNormals(true);
+	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
+	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
+
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
 
@@ -233,11 +239,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 		blbb.grow(0.05 * span);
 					
 		auto& bl = addBlock(blockIdx);
-		vector<size_t> triIndices;
-		if (_pModelTriMesh->findTris(blbb, triIndices, CMesh::BoxTestType::Intersects)) {
-			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-			bl.addTris(_pModelTriMesh, triIndices);
-		}
+		bl.addTris(_pModelTriMesh);
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
@@ -262,6 +264,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 #else
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		if (_blocks[linearIdx]) {
+			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
 			_blocks[linearIdx]->processTris();
 		}
 		}, numBlocks, RUN_MULTI_THREAD);

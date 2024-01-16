@@ -58,9 +58,9 @@ public:
 		return _blockIdx;
 	}
 
-	void processTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
+	void processTris(const TriMesh::CMeshPtr& pSrcMesh);
 	void processTris();
-	void addTris(const TriMesh::CMeshPtr& pSrcMesh, const std::vector<size_t>& triIndices);
+	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly) const;
@@ -91,7 +91,7 @@ private:
 
 	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<CrossBlockPoint> getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx) const;
-	std::vector<LineSegment> getSubBlockEdges(const Vector3d* blockPts, const Index3D& subBlockIdx) const;
+	void getBlockEdgeSegs(const Vector3d* blockPts, std::vector<LineSegment>& segs) const;
 
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;

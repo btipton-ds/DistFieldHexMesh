@@ -72,6 +72,7 @@ public:
 	bool operator < (const SubBlock& rhs) const;
 private:
 	void addRayHit(int axis, size_t i, size_t j, const RayTriHit& hit);
+	bool createDividedHexCell(const std::vector<Vector3d>& corners, size_t divs);
 
 	Block* _pBlock = nullptr;
 	Index3D _ourIdx;

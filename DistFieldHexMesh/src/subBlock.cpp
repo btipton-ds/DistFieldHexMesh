@@ -127,32 +127,68 @@ void SubBlock::divide()
 	auto pMesh = _pBlock->_pModelTriMesh;
 	vector<size_t> vertIndices, edgeIndices;
 	pMesh->findEdges(cellBBox, edgeIndices);
-	pMesh->findVerts(cellBBox, vertIndices);
 
+	size_t numCurveEdges = 0;
 	double avgCurvature = 0;
+	bool hasSharp = false;
 	for (size_t edgeIdx : edgeIndices) {
-		avgCurvature += pMesh->edgeCurvature(edgeIdx);
+		double c = pMesh->edgeCurvature(edgeIdx);
+		if (c >= 0) {
+			numCurveEdges++;
+			avgCurvature += pMesh->edgeCurvature(edgeIdx);
+		} else {
+			hasSharp = true;
+		}
 	}
-	for (size_t vertIdx : vertIndices) {
-		avgCurvature += pMesh->vertCurvature(vertIdx);
-	}
-	avgCurvature /= (edgeIndices.size() + vertIndices.size());
+	avgCurvature /= numCurveEdges;
 
 	Vector3i divs(1, 1, 1);
 	if (avgCurvature > 0) {
 		Vector3d range = cellBBox.range();
-		double avgDia = 2.0 / avgCurvature;
-		for (int i = 0; i < 3; i++)
-			divs[i] = (size_t) (range[i] / avgDia);
+		double avgRadius = 1.0 / avgCurvature;
+		double segPathLength = 2 * M_PI * avgRadius / 36;
+		for (int i = 0; i < 3; i++) {
+			divs[i] = (size_t)(range[i] / segPathLength + 0.5);
+			if (divs[i] < 1)
+				divs[i] = 1;
+		}
 	}
 
-	size_t mult = (divs[0] + divs[1] + divs[2]) / 3;
-	if (mult > 2)
-		mult = 2;
-	auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
-	addPolyhdra(polyId);
+	double multd = (divs[0] + divs[1] + divs[2]) / 3.0;
+	int l2 = (int)(log2(multd) + 0.5);
+	size_t mult = (size_t)pow(2, l2);
+	if (mult > 32)
+		mult = 32;
+	if (hasSharp && mult < 8)
+		mult = 8;
+	if (mult == 1) {
+		auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+		addPolyhdra(polyId);
+	} else {
+		if (!createDividedHexCell(cellCornerPts, mult)) {
+			auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+			addPolyhdra(polyId);
+		}
+	}
+}
 
-	_pBlock->divideSubBlock(_ourIdx, mult);
+bool SubBlock::createDividedHexCell(const std::vector<Vector3d>& srcCorners, size_t divs)
+{
+	bool hadHits = false;
+	Index3D idx;
+	for (idx[0] = 0; idx[0] < divs; idx[0]++) {
+		for (idx[1] = 0; idx[1] < divs; idx[1]++) {
+			for (idx[2] = 0; idx[2] < divs; idx[2]++) {
+				auto polyId = _pBlock->addHexCell(srcCorners.data(), divs, idx);
+				if (polyId != -1) {
+					hadHits = true;
+					addPolyhdra(polyId);
+				}
+			}
+		}
+	}
+
+	return hadHits;
 }
 
 bool SubBlock::unload(ostream& out)

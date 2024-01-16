@@ -409,13 +409,25 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
 
+
+	vector<Vector3d> blockCorners;
+	blockCorners.reserve(8);
 	CBoundingBox3Dd bbox;
 	for (size_t i = 0; i < 8; i++) {
+		blockCorners.push_back(pts[i]._pt);
 		bbox.merge(pts[i]._pt);
 	}
 
-	vector<size_t> triIndices;
-	if (!_pModelTriMesh->findTris(bbox, triIndices))
+	vector<LineSegment> edgeSegs;
+	getBlockEdgeSegs(blockCorners.data(), edgeSegs);
+	size_t numEdgeHits = 0;
+	for (const auto& seg : edgeSegs) {
+		vector<RayHit> hits;
+		if (_pModelTriMesh->rayCast(seg, hits)) {
+			numEdgeHits++;
+		}
+	}
+	if (numEdgeHits == 0)
 		return -1;
 
 	vector<Index3DId> faceIds;
@@ -622,9 +634,9 @@ bool Block::load()
 	return true;
 }
 
-void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
+void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh)
 {
-	addTris(pSrcMesh, triIndices);
+	addTris(pSrcMesh);
 
 	processTris();
 }
@@ -639,30 +651,9 @@ void Block::processTris()
 	createSubBlocks();
 }
 
-void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh, const vector<size_t>& triIndices)
+void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 {
-	CMesh::BoundingBox subBB;
-	for (size_t triIdx : triIndices) {
-		const auto& triIndices = pSrcMesh->getTri(triIdx);
-		for (int i = 0; i < 3; i++) {
-			const auto& vert = pSrcMesh->getVert(triIndices[i]);
-			subBB.merge(vert._pt);
-		}
-	}
-
-	double span = subBB.range().norm();
-	subBB.grow(0.05 * span);
-
-	_pModelTriMesh = make_shared<CMesh>(subBB);
-
-	for (size_t triIdx : triIndices) {
-		const auto& triIndices = pSrcMesh->getTri(triIdx);
-		Vector3d pts[3];
-		for (int i = 0; i < 3; i++) {
-			pts[i] = pSrcMesh->getVert(triIndices[i])._pt;
-		}
-		_pModelTriMesh->addTriangle(pts);
-	}
+	_pModelTriMesh = pSrcMesh;
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
@@ -746,31 +737,27 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
 	return result;
 }
 
-vector<LineSegment> Block::getSubBlockEdges(const Vector3d* subBlockPoints, const Index3D& subBlockIdx) const
+void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, std::vector<LineSegment>& segs) const
 {
-//	const vector<CrossBlockPoint> subBlockPoints = getSubBlockCornerPts(subBlockIdx);
+	segs.clear();
+	segs.reserve(12);
+	// X legs
+	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[1]));
+	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[2]));
+	segs.push_back(LineSegment(subBlockPoints[4], subBlockPoints[5]));
+	segs.push_back(LineSegment(subBlockPoints[7], subBlockPoints[6]));
 
-	vector<LineSegment> edges = {
-		// X legs
-		LineSegment(subBlockPoints[0], subBlockPoints[1]),
-		LineSegment(subBlockPoints[3], subBlockPoints[2]),
-		LineSegment(subBlockPoints[4], subBlockPoints[5]),
-		LineSegment(subBlockPoints[7], subBlockPoints[6]),
+	// Y legs
+	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[3]));
+	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[2]));
+	segs.push_back(LineSegment(subBlockPoints[4], subBlockPoints[7]));
+	segs.push_back(LineSegment(subBlockPoints[5], subBlockPoints[6]));
 
-		// Y legs
-		LineSegment(subBlockPoints[0], subBlockPoints[3]),
-		LineSegment(subBlockPoints[1], subBlockPoints[2]),
-		LineSegment(subBlockPoints[4], subBlockPoints[7]),
-		LineSegment(subBlockPoints[5], subBlockPoints[6]),
-
-		// Z legs
-		LineSegment(subBlockPoints[0], subBlockPoints[4]),
-		LineSegment(subBlockPoints[1], subBlockPoints[5]),
-		LineSegment(subBlockPoints[2], subBlockPoints[6]),
-		LineSegment(subBlockPoints[3], subBlockPoints[7]),
-	};
-
-	return edges;
+	// Z legs
+	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[4]));
+	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[5]));
+	segs.push_back(LineSegment(subBlockPoints[2], subBlockPoints[6]));
+	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[7]));
 }
 
 size_t Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const
