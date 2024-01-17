@@ -66,8 +66,15 @@ public:
 
 	void writePolyMesh(const std::string& dirName) const;
 
+	const std::set<size_t>& getSharpVertIndices() const;
+	const std::set<size_t>& getSharpEdgeIndices() const;
+
 private:
 	using AxisIndex = Block::AxisIndex;
+
+	void findFeatures();
+	void findSharpVertices();
+	void findSharpEdgeGroups();
 
 	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx);
 
@@ -80,7 +87,9 @@ private:
 	Vector3d _originMeters, _spanMeters;
 	double _sharpAngleRad;
 
+	std::vector<Vector3d> _cornerPts;
 	std::vector<std::shared_ptr<Block>> _blocks;
+	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 };
 
@@ -114,6 +123,17 @@ inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 inline double Volume::getSharpAngleRad() const
 {
 	return _sharpAngleRad;
+}
+
+inline const std::set<size_t>& Volume::getSharpVertIndices() const
+{
+	return _sharpVertIndices;
+}
+
+inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
+{
+	return _sharpEdgeIndices;
+
 }
 
 } // end namespace DFHM

@@ -129,10 +129,6 @@ private:
 	std::vector<CrossBlockPoint> getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx) const;
 	void getBlockEdgeSegs(const Vector3d* blockPts, std::vector<LineSegment>& segs) const;
 
-	void findFeatures();
-	void findSharpVertices(const CBoundingBox3Dd& bbox);
-	void findSharpEdgeGroups(const CBoundingBox3Dd& bbox);
-
 	size_t rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
 	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, size_t blockDim, const Index3D& pt) const;
@@ -160,8 +156,6 @@ private:
 	TriMesh::CMeshPtr _pModelTriMesh;
 	Vector3d _corners[8];
 	FaceRayHits _rayTriHits[3];
-
-	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;

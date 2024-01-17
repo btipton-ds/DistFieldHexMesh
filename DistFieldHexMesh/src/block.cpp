@@ -98,99 +98,28 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-void Block::findFeatures()
-{
-	const double tol = 1.0e-3;
-
-	// This function is already running on multiple cores, DO NOT calculate centroids or normals using muliple cores.
-	_pModelTriMesh->buildCentroids(false);
-	_pModelTriMesh->buildNormals(false);
-
-	CBoundingBox3Dd bbox;
-	for (size_t i = 0; i < 8; i++)
-		bbox.merge(_corners[i]);
-	bbox.grow(tol);
-
-	findSharpVertices(bbox);
-	findSharpEdgeGroups(bbox);
-}
-
-void Block::findSharpEdgeGroups(const CBoundingBox3Dd& bbox)
-{
-	const double sinSharpAngle = sin(_pVol->getSharpAngleRad());
-	vector<size_t> indices;
-	_pModelTriMesh->findEdges(bbox, indices);
-	for (size_t edgeIdx : indices) {
-		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
-		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
-			_sharpEdgeIndices.insert(edgeIdx);
-		}
-	}
-}
-
-void Block::findSharpVertices(const CBoundingBox3Dd& bbox)
-{
-	const double cosSharpAngle = cos(M_PI - _pVol->getSharpAngleRad());
-	const double tol = 1.0e-3;
-
-	vector<size_t> vertIndices;
-	size_t numVerts = _pModelTriMesh->findVerts(bbox, vertIndices);
-	for (size_t vIdx : vertIndices) {
-		const auto& vert = _pModelTriMesh->getVert(vIdx);
-		if (!bbox.contains(vert._pt))
-			continue;
-		double maxDp = 1;
-		const auto& edgeIndices = vert._edgeIndices;
-		for (size_t i = 0; i < edgeIndices.size(); i++) {
-			auto edge0 = _pModelTriMesh->getEdge(edgeIndices[i]);
-			size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
-			const auto& vert0 = _pModelTriMesh->getVert(opIdx0);
-			Vector3d v0 = (vert0._pt - vert._pt).normalized();
-
-			for (size_t j = i + 1; j < edgeIndices.size(); j++) {
-				auto edge1 = _pModelTriMesh->getEdge(edgeIndices[j]);
-				size_t opIdx1 = edge1._vertIndex[0] == vIdx ? edge1._vertIndex[1] : edge1._vertIndex[0];
-				const auto& vert1 = _pModelTriMesh->getVert(opIdx1);
-				Vector3d v1 = (vert1._pt - vert._pt).normalized();
-
-				double dp = v0.dot(v1);
-				if (dp < maxDp) {
-					maxDp = dp;
-					if (maxDp < cosSharpAngle)
-						break;
-				}
-			}
-			if (maxDp < cosSharpAngle)
-				break;
-		}
-		if (maxDp > cosSharpAngle) {
-			_sharpVertIndices.insert(vIdx);
-		}
-	}
-}
-
 size_t Block::createSubBlocks()
 {
-	set<Index3D> subBlockIndices;
+	const Vector3d* blockPts = getCornerPts();
+//	set<Index3D> subBlockIndices;
 
-	addSubBlockIndicesForMeshVerts(subBlockIndices);
-	addSubBlockIndicesForRayHits(subBlockIndices);
-
-	if (subBlockIndices.empty())
-		return 0;
+//	addSubBlockIndicesForMeshVerts(subBlockIndices);
+//	addSubBlockIndicesForRayHits(subBlockIndices);
 
 	if (_subBlocks.empty()) {
 		_subBlocks.resize(_blockDim * _blockDim * _blockDim);
 	}
 
-	const Vector3d* blockPts = getCornerPts();
-
-
-	for (const auto& subBlockIdx : subBlockIndices) {
-		createSubBlocksForHexSubBlock(blockPts, subBlockIdx);
+	Index3D idx;
+	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
+		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
+			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
+				addHexCell(blockPts, _blockDim, idx);
+			}
+		}
 	}
 
-	return subBlockIndices.size();
+	return 1;
 }
 
 void Block::addSubBlockIndicesForMeshVerts(set<Index3D>& subBlockIndices)
@@ -239,18 +168,9 @@ void Block::addSubBlockIndicesForRayHits(set<Index3D>& subBlockIndices)
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
-	size_t subBlockId = _subBlocks.findOrAdd(SubBlock());
-	auto& subBlock = _subBlocks[subBlockId];
-	subBlock.init(this, subBlockIdx);
-//	subBlock.addRayHits(blockPts, _blockDim, subBlockIdx, _rayTriHits);
 
 	auto blockCornerPts = getCornerPts();	
 	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx);
-	if (polyId != -1)
-		subBlock.addPolyhdra(polyId);
-
-//	splitAtSharpVertices(blockPts, subBlockIdx);
-//	splitAtLegIntersections(blockPts, subBlockIdx);
 }
 
 void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -435,17 +355,18 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 
 	if (numEdgeHits == 0) {
+		bool found = false;
 		vector<size_t> vertIndices;
-		if (!_pModelTriMesh->findVerts(bbox, vertIndices)) {
-			bool found = false;
+		if (_pModelTriMesh->findVerts(bbox, vertIndices)) {
 			for (size_t vertIdx : vertIndices) {
-				if (_sharpVertIndices.count(vertIdx) != 0) {
+				if (_pVol->getSharpVertIndices().count(vertIdx) != 0) {
 					found = true;
+					break;
 				}
 			}
-			if (!found)
-				return -1;
 		}
+		if (!found)
+			return -1;
 	}
 
 	vector<Index3DId> faceIds;
@@ -664,7 +585,6 @@ size_t Block::processTris()
 
 	// Get rid of the ray casting, it's not effective at this stage
 	rayCastHexBlock(getCornerPts(), _blockDim, _rayTriHits);
-	findFeatures();
 	size_t numCreated = createSubBlocks();
 
 	dividePolyhedra();
@@ -687,7 +607,7 @@ void Block::dividePolyhedraAtSharpVerts()
 {
 	_polyhedra.iterateInOrder([this](size_t index, Polyhedron& poly) {
 		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
-		for (size_t vertIdx : _sharpVertIndices) {
+		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
 			poly.split(this, pt);
 		}

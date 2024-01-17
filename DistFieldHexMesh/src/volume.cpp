@@ -73,6 +73,68 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 	return result;
 }
 
+void Volume::findFeatures()
+{
+	const double tol = 1.0e-3;
+
+	// This function is already running on multiple cores, DO NOT calculate centroids or normals using muliple cores.
+	_pModelTriMesh->buildCentroids(false);
+	_pModelTriMesh->buildNormals(false);
+
+	findSharpVertices();
+	findSharpEdgeGroups();
+}
+
+void Volume::findSharpEdgeGroups()
+{
+	const double sinSharpAngle = sin(getSharpAngleRad());
+	for (size_t edgeIdx = 0; edgeIdx < _pModelTriMesh->numEdges(); edgeIdx++) {
+		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
+		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+			_sharpEdgeIndices.insert(edgeIdx);
+		}
+	}
+}
+
+void Volume::findSharpVertices()
+{
+	const double cosSharpAngle = cos(M_PI - getSharpAngleRad());
+	const double tol = 1.0e-3;
+
+	size_t numVerts = _pModelTriMesh->numVertices();
+	for (size_t vIdx = 0; vIdx < numVerts; vIdx++) {
+		const auto& vert = _pModelTriMesh->getVert(vIdx);
+		double maxDp = 1;
+		const auto& edgeIndices = vert._edgeIndices;
+		for (size_t i = 0; i < edgeIndices.size(); i++) {
+			auto edge0 = _pModelTriMesh->getEdge(edgeIndices[i]);
+			size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
+			const auto& vert0 = _pModelTriMesh->getVert(opIdx0);
+			Vector3d v0 = (vert0._pt - vert._pt).normalized();
+
+			for (size_t j = i + 1; j < edgeIndices.size(); j++) {
+				auto edge1 = _pModelTriMesh->getEdge(edgeIndices[j]);
+				size_t opIdx1 = edge1._vertIndex[0] == vIdx ? edge1._vertIndex[1] : edge1._vertIndex[0];
+				const auto& vert1 = _pModelTriMesh->getVert(opIdx1);
+				Vector3d v1 = (vert1._pt - vert._pt).normalized();
+
+				double dp = v0.dot(v1);
+				if (dp < maxDp) {
+					maxDp = dp;
+					if (maxDp < cosSharpAngle)
+						break;
+				}
+			}
+			if (maxDp < cosSharpAngle)
+				break;
+		}
+		if (maxDp > cosSharpAngle) {
+			_sharpVertIndices.insert(vIdx);
+		}
+	}
+}
+
+
 void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx)
 {
 	const auto& dim = volDim();
@@ -223,6 +285,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 	_pModelTriMesh->buildNormals(true);
 	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
+	findFeatures();
 
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
 		Vector3d blockOrigin;
