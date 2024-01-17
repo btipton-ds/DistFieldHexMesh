@@ -6,6 +6,9 @@
 
 namespace DFHM {
 
+class Block;
+class Edge;
+
 class Vertex {
 public:
 	using FixedPt = Vector3<int>;
@@ -36,11 +39,6 @@ public:
 
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
-
-	void addEdgeId(const Index3DId& edgeId);
-	void removeEdgeId(const Index3DId& edgeId);
-
-	const std::set<Index3DId>& getEdgeIds() const;
 	const std::set<Index3DId>& getFaceIds() const;
 
 	const bool operator < (const Vertex& rhs) const;
@@ -52,7 +50,6 @@ private:
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
 	std::set<Index3DId> _faceIds;
-	std::set<Index3DId> _edgeIds;
 };
 
 inline double Vertex::getFixedScale()
@@ -129,11 +126,6 @@ inline const Vertex::FixedPt& Vertex::getFixedPt() const
 inline Vertex::operator Vector3d () const
 {
 	return getPoint();
-}
-
-inline const std::set<Index3DId>& Vertex::getEdgeIds() const
-{
-	return _edgeIds;
 }
 
 inline const std::set<Index3DId>& Vertex::getFaceIds() const

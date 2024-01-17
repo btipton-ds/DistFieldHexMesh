@@ -30,15 +30,20 @@ class Block {
 public:
 	friend class SubBlock;
 
-	Block(Volume* pVol, const Index3D& blockIdx, std::vector<Vector3d>& pts);
+	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
+
+	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src) = delete;
 	~Block(); // NOT virtual - do not inherit
 
 	size_t blockDim() const;
 	Volume* getVolume();
 	const Volume* getVolume() const;
+	Block* getOwner(const Index3D& blockIdx);
+	const Block* getOwner(const Index3D& blockIdx) const;
 
-	void createSubBlocks();
+	size_t createSubBlocks();
+
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
 	void addSubBlockFaces();
@@ -59,17 +64,40 @@ public:
 	}
 
 	void processTris(const TriMesh::CMeshPtr& pSrcMesh);
-	void processTris();
+	size_t processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly) const;
+
+	Index3DId addVertex(const Index3D& blockIdx, const Vector3d& pt, size_t currentId = -1);
+	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
+
+	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
+
+	template<class LAMBDA>
+	void vertexFunc(const Index3DId& vertId, LAMBDA func) const;
+
+	template<class LAMBDA>
+	void vertexFunc(const Index3DId& vertId, LAMBDA func);
+
+	template<class LAMBDA>
+	void faceFunc(const Index3DId& faceId, LAMBDA func) const;
+
+	template<class LAMBDA>
+	void faceFunc(const Index3DId& faceId, LAMBDA func);
+
+	template<class LAMBDA>
+	void facesFunc(LAMBDA func) const;
+
+	template<class LAMBDA>
+	void facesFunc(LAMBDA func);
 
 private:
 	friend class Volume;
@@ -89,12 +117,17 @@ private:
 		Index3D _ownerBlockIdx;
 	};
 
+	std::mutex& getEdgeMutex() const;
+	std::mutex& getFaceMutex() const;
+	std::mutex& getVertexMutex() const;
+
+	void dividePolyhedra();
+	void dividePolyhedraAtSharpVerts();
+	void dividePolyhedraByCurvature();
+
 	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<CrossBlockPoint> getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx) const;
 	void getBlockEdgeSegs(const Vector3d* blockPts, std::vector<LineSegment>& segs) const;
-
-	Block* getOwner(const Index3D& blockIdx);
-	const Block* getOwner(const Index3D& blockIdx) const;
 
 	void findFeatures();
 	void findSharpVertices(const CBoundingBox3Dd& bbox);
@@ -103,7 +136,6 @@ private:
 	size_t rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const;
 	void rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3]);
 	CrossBlockPoint triLinInterp(const Vector3d* blockPts, size_t blockDim, const Index3D& pt) const;
-	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 	void addSubBlockIndicesForMeshVerts(std::set<Index3D>& subBlockIndices);
 	void addSubBlockIndicesForRayHits(std::set<Index3D>& subBlockIndices);
@@ -113,16 +145,8 @@ private:
 	void addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, std::set<Index3D>& subBlockIndices);
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
-
-	Index3DId addVertex(const CrossBlockPoint& pt, size_t currentId = -1);
-	Index3DId addEdge(const Index3DId& vertId0, const Index3DId& vertId1);
 	Index3DId addFace(const std::vector<CrossBlockPoint>& pts);
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
-	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
-
-	std::mutex& getVertexMutex() const;
-	std::mutex& getEdgeMutex() const;
-	std::mutex& getFaceMutex() const;
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
@@ -137,11 +161,10 @@ private:
 	Vector3d _corners[8];
 	FaceRayHits _rayTriHits[3];
 
-	std::vector<size_t> _sharpVertIndices, _sharpEdgeIndices;
+	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
-	ObjectPoolWMutex<Edge> _edges;
 	ObjectPool<Polyhedron> _polyhedra;
 	ObjectPool<SubBlock> _subBlocks;
 };
@@ -220,14 +243,55 @@ inline std::mutex& Block::getVertexMutex() const
 	return _vertices.getMutex();
 }
 
-inline std::mutex& Block::getEdgeMutex() const
-{
-	return _edges.getMutex();
-}
-
 inline std::mutex& Block::getFaceMutex() const
 {
 	return _polygons.getMutex();
+}
+
+template<class LAMBDA>
+void Block::vertexFunc(const Index3DId& vertId, LAMBDA func) const
+{
+	auto pOwner = getOwner(vertId);
+	std::lock_guard g(pOwner->_vertices);
+	func(pOwner, pOwner->_vertices[vertId.elementId()]);
+}
+
+template<class LAMBDA>
+void Block::vertexFunc(const Index3DId& vertId, LAMBDA func)
+{
+	auto pOwner = getOwner(vertId);
+	std::lock_guard g(pOwner->_vertices);
+	func(pOwner, pOwner->_vertices[vertId.elementId()]);
+}
+
+template<class LAMBDA>
+void Block::faceFunc(const Index3DId& faceId, LAMBDA func) const
+{
+	auto pOwner = getOwner(faceId);
+	std::lock_guard g(pOwner->_polygons);
+	func(pOwner, pOwner->_polygons[faceId.elementId()]);
+}
+
+template<class LAMBDA>
+void Block::faceFunc(const Index3DId& faceId, LAMBDA func)
+{
+	auto pOwner = getOwner(faceId);
+	std::lock_guard g(pOwner->_polygons);
+	func(pOwner, pOwner->_polygons[faceId.elementId()]);
+}
+
+template<class LAMBDA>
+void Block::facesFunc(LAMBDA func) const
+{
+	std::lock_guard g(_polygons);
+	func(_polygons);
+}
+
+template<class LAMBDA>
+void Block::facesFunc(LAMBDA func)
+{
+	std::lock_guard g(_polygons);
+	func(_polygons);
 }
 
 }

@@ -7,6 +7,7 @@
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
+#include <polyhedron.h>
 #include <subBlock.h>
 #include <block.h>
 #include <volume.h>
@@ -15,9 +16,8 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
-Block::Block(Volume* pVol, const Index3D& blockIdx, vector<Vector3d>& pts)
+Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _vertices(true)
-	, _edges(true)
 	, _polygons(true)
 	, _polyhedra(false)
 	, _subBlocks(false)
@@ -123,7 +123,7 @@ void Block::findSharpEdgeGroups(const CBoundingBox3Dd& bbox)
 	for (size_t edgeIdx : indices) {
 		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
 		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
-			_sharpEdgeIndices.push_back(edgeIdx);
+			_sharpEdgeIndices.insert(edgeIdx);
 		}
 	}
 }
@@ -164,12 +164,12 @@ void Block::findSharpVertices(const CBoundingBox3Dd& bbox)
 				break;
 		}
 		if (maxDp > cosSharpAngle) {
-			_sharpVertIndices.push_back(vIdx);
+			_sharpVertIndices.insert(vIdx);
 		}
 	}
 }
 
-void Block::createSubBlocks()
+size_t Block::createSubBlocks()
 {
 	set<Index3D> subBlockIndices;
 
@@ -177,7 +177,7 @@ void Block::createSubBlocks()
 	addSubBlockIndicesForRayHits(subBlockIndices);
 
 	if (subBlockIndices.empty())
-		return;
+		return 0;
 
 	if (_subBlocks.empty()) {
 		_subBlocks.resize(_blockDim * _blockDim * _blockDim);
@@ -189,6 +189,8 @@ void Block::createSubBlocks()
 	for (const auto& subBlockIdx : subBlockIndices) {
 		createSubBlocksForHexSubBlock(blockPts, subBlockIdx);
 	}
+
+	return subBlockIndices.size();
 }
 
 void Block::addSubBlockIndicesForMeshVerts(set<Index3D>& subBlockIndices)
@@ -240,8 +242,12 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 	size_t subBlockId = _subBlocks.findOrAdd(SubBlock());
 	auto& subBlock = _subBlocks[subBlockId];
 	subBlock.init(this, subBlockIdx);
-	subBlock.addRayHits(blockPts, _blockDim, subBlockIdx, _rayTriHits);
-	subBlock.divide();
+//	subBlock.addRayHits(blockPts, _blockDim, subBlockIdx, _rayTriHits);
+
+	auto blockCornerPts = getCornerPts();	
+	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx);
+	if (polyId != -1)
+		subBlock.addPolyhdra(polyId);
 
 //	splitAtSharpVertices(blockPts, subBlockIdx);
 //	splitAtLegIntersections(blockPts, subBlockIdx);
@@ -427,8 +433,20 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 			numEdgeHits++;
 		}
 	}
-	if (numEdgeHits == 0)
-		return -1;
+
+	if (numEdgeHits == 0) {
+		vector<size_t> vertIndices;
+		if (!_pModelTriMesh->findVerts(bbox, vertIndices)) {
+			bool found = false;
+			for (size_t vertIdx : vertIndices) {
+				if (_sharpVertIndices.count(vertIdx) != 0) {
+					found = true;
+				}
+			}
+			if (!found)
+				return -1;
+		}
+	}
 
 	vector<Index3DId> faceIds;
 	faceIds.reserve(6);
@@ -491,57 +509,55 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-inline Index3DId Block::addVertex(const CrossBlockPoint& pt, size_t currentId)
+inline Index3DId Block::addVertex(const Index3D& ownerBlockIdx, const Vector3d& pt, size_t currentId)
 {
-	Block* pOwner = getOwner(pt._ownerBlockIdx);
-	size_t vertId = pOwner->_vertices.findOrAdd(pt._pt, currentId);
+	Block* pOwner = getOwner(ownerBlockIdx);
+	size_t vertId = pOwner->_vertices.findOrAdd(pt, currentId);
 	return Index3DId(pOwner->_blockIdx, vertId);
 }
 
-Index3DId Block::addEdge(const Index3DId& vertId0, const Index3DId& vertId1)
+set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 {
-	Edge edge(_blockIdx, vertId0, vertId1);
-	Index3DId edgeId(_blockIdx, _edges.findOrAdd(edge));
-	return edgeId;
+	std::set<Edge> result;
+	set<Index3DId> faceIds;
+	vertexFunc(vertexId, [&faceIds](const Block* pBlock, const Vertex& vert) {
+		faceIds = vert.getFaceIds();
+	});
+	for (const auto& faceId : faceIds) {
+		vector<Edge> edges;
+		faceFunc(faceId, [&edges](const Block* pBlock, const Polygon& face) {
+			edges = face.getEdges();
+		});
+		for (const auto& edge : edges) {
+			if (edge.containsVertex(vertexId)) {
+				result.insert(edge);
+			}
+		}
+	}
+
+	return result;
 }
 
 Index3DId Block::addFace(const vector<CrossBlockPoint>& pts)
 {
 	Polygon newPoly;
 	for (const auto& pt : pts) {
-		auto vertId = addVertex(pt);
+		auto vertId = addVertex(pt._ownerBlockIdx, pt._pt);
 		newPoly.addVertex(vertId);
 	}
 	newPoly.doneCreating();
 
 	Index3DId faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	vector<Index3DId> vertIds;
+	faceFunc(faceId, [this, &vertIds](const Block* pBlock, Polygon& face) {
+		face.setOwnerBlockIdx(_blockIdx);
+		vertIds = face.getVertexIds();
+	});
 
-	lock_guard g(_polygons);
-	auto pPoly = _polygons.get(faceId.elementId());
-	assert(pPoly != nullptr);
-
-	const auto& vertIds = pPoly->getVertexIds();
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		auto vertId = vertIds[i];
-		size_t j = (i + 1) % vertIds.size();
-		auto nextVertId = vertIds[j];
-
-		auto edgeId = addEdge(vertId, nextVertId);
-		{
-			lock_guard g(_edges);
-			auto& edge = _edges[edgeId.elementId()];
-			edge.addFaceId(faceId);
-		}
-
-		{
-			auto pVertexOwner = getOwner(vertId);
-			lock_guard g(pVertexOwner->_vertices);
-			auto pVert = pVertexOwner->_vertices.get(vertId.elementId());
-			if (pVert) {
-				pVert->addFaceId(faceId);
-				pVert->addEdgeId(edgeId);
-			}
-		}
+	for (const auto& vertId : vertIds) {
+		vertexFunc(vertId, [&faceId](const Block* pBlock, Vertex& vert) {
+			vert.addFaceId(faceId);
+		});
 	}
 
 	return faceId;
@@ -641,19 +657,47 @@ void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh)
 	processTris();
 }
 
-void Block::processTris()
+size_t Block::processTris()
 {
 	if (_pModelTriMesh->numTris() == 0)
-		return;
+		return 0;
 
+	// Get rid of the ray casting, it's not effective at this stage
 	rayCastHexBlock(getCornerPts(), _blockDim, _rayTriHits);
 	findFeatures();
-	createSubBlocks();
+	size_t numCreated = createSubBlocks();
+
+	dividePolyhedra();
+
+	return numCreated;
 }
 
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 {
 	_pModelTriMesh = pSrcMesh;
+}
+
+void Block::dividePolyhedra()
+{
+	dividePolyhedraAtSharpVerts();
+	dividePolyhedraByCurvature();
+}
+
+void Block::dividePolyhedraAtSharpVerts()
+{
+	_polyhedra.iterateInOrder([this](size_t index, Polyhedron& poly) {
+		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
+		for (size_t vertIdx : _sharpVertIndices) {
+			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
+			poly.split(this, pt);
+		}
+	});
+}
+
+void Block::dividePolyhedraByCurvature()
+{
+	_polyhedra.iterateInOrder([](size_t index, Polyhedron& poly) {
+		});
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
@@ -701,23 +745,19 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
 {
 	shared_ptr<vector<float>> result;
 
-	size_t skipped = 0;
-	_edges.iterateInOrder([this, &result, outerOnly, &skipped](size_t id, const Edge& edge) {
-		const auto& faceIds = edge.getFaceIds();
-		bool isOuter = false;
-		for (const auto& faceId : faceIds) {
-			lock_guard g(_polygons);
-			const auto& poly = _polygons[faceId.elementId()];
-			if (poly.isOuter()) {
-				isOuter = true;
-				break;
-			}
-		}
-		if (!outerOnly || isOuter) {
-			if (!result)
-				result = make_shared<vector<float>>();
-			auto& vals = *result;
+	set<Edge> edges;
 
+	_polygons.iterateInOrder([outerOnly, &edges](size_t faceId, const Polygon& face) {
+		if (!outerOnly || face.isOuter()) {
+			const auto& faceEdges = face.getEdges();
+			edges.insert(faceEdges.begin(), faceEdges.end());
+		}
+	});
+
+	if (!edges.empty()) {
+		result = make_shared<vector<float>>();
+		auto& vals = *result;
+		for (const auto& edge : edges) {
 			const auto* vertIds = edge.getVertexIds();
 
 			Vector3d pt = getVertexPoint(vertIds[0]);
@@ -730,10 +770,7 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
 			vals.push_back((float)pt[1]);
 			vals.push_back((float)pt[2]);
 		}
-		else
-			skipped++;
-	});
-
+	}
 	return result;
 }
 

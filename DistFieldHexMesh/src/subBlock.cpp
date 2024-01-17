@@ -114,62 +114,10 @@ size_t SubBlock::maxIntersectionsPerLeg() const
 
 void SubBlock::divide()
 {
-	CBoundingBox3Dd cellBBox;
-	auto blockCornerPts = _pBlock->getCornerPts();
-	auto cellCornerCrossPts = _pBlock->getSubBlockCornerPts(blockCornerPts, _pBlock->_blockDim, _ourIdx);
-	vector<Vector3d> cellCornerPts;
-	cellCornerPts.resize(cellCornerCrossPts.size());
-	for (size_t i = 0; i < cellCornerCrossPts.size(); i++) {
-		cellCornerPts[i] = cellCornerCrossPts[i]._pt;
-		cellBBox.merge(cellCornerPts[i]);
-	}
-	
-	auto pMesh = _pBlock->_pModelTriMesh;
-	vector<size_t> vertIndices, edgeIndices;
-	pMesh->findEdges(cellBBox, edgeIndices);
-
-	size_t numCurveEdges = 0;
-	double avgCurvature = 0;
-	bool hasSharp = false;
-	for (size_t edgeIdx : edgeIndices) {
-		double c = pMesh->edgeCurvature(edgeIdx);
-		if (c >= 0) {
-			numCurveEdges++;
-			avgCurvature += pMesh->edgeCurvature(edgeIdx);
-		} else {
-			hasSharp = true;
-		}
-	}
-	avgCurvature /= numCurveEdges;
-
-	Vector3i divs(1, 1, 1);
-	if (avgCurvature > 0) {
-		Vector3d range = cellBBox.range();
-		double avgRadius = 1.0 / avgCurvature;
-		double segPathLength = 2 * M_PI * avgRadius / 36;
-		for (int i = 0; i < 3; i++) {
-			divs[i] = (size_t)(range[i] / segPathLength + 0.5);
-			if (divs[i] < 1)
-				divs[i] = 1;
-		}
-	}
-
-	double multd = (divs[0] + divs[1] + divs[2]) / 3.0;
-	int l2 = (int)(log2(multd) + 0.5);
-	size_t mult = (size_t)pow(2, l2);
-	if (mult > 32)
-		mult = 32;
-	if (hasSharp && mult < 8)
-		mult = 8;
-	if (mult == 1) {
-		auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+	auto blockCornerPts = _pBlock->getCornerPts();	
+	auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+	if (polyId != -1)
 		addPolyhdra(polyId);
-	} else {
-		if (!createDividedHexCell(cellCornerPts, mult)) {
-			auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
-			addPolyhdra(polyId);
-		}
-	}
 }
 
 bool SubBlock::createDividedHexCell(const std::vector<Vector3d>& srcCorners, size_t divs)

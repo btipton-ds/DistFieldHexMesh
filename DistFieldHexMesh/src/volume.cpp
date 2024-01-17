@@ -243,32 +243,18 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
-#if QUICK_TEST
-	map<size_t, shared_ptr<Block>> orderedBlocks;
-	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
-		if (_blocks[linearIdx] && _blocks[linearIdx]->getModelMesh()) {
-			size_t numTris = _blocks[linearIdx]->getModelMesh()->numTris();
-			orderedBlocks.insert(make_pair(numTris, _blocks[linearIdx]));
-		}
-	}
-
 	size_t count = 0;
-	for (auto iter = orderedBlocks.rbegin(); iter != orderedBlocks.rend(); iter++) {
-		const auto& idx = iter->second->getBlockIdx();
-		iter->second->processTris();
-		count++;
-
-		if (count > 3)
-			break;
-	}
-#else
-	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
+	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx) {
 		if (_blocks[linearIdx]) {
 			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
+#if QUICK_TEST
+			if (count < 5 && _blocks[linearIdx]->processTris() > 0)
+				count++;
+#else
 			_blocks[linearIdx]->processTris();
-		}
-		}, numBlocks, RUN_MULTI_THREAD);
 #endif
+		}
+	}, numBlocks, RUN_MULTI_THREAD);
 
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";

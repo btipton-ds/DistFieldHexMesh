@@ -1,6 +1,12 @@
 #include <vector>
-#include <polyhedron.h>
+#include <map>
+
 #include <vertex.h>
+#include <edge.h>
+#include <polygon.h>
+#include <polyhedron.h>
+#include <block.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -38,5 +44,72 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 	}
 
 	return false;
+}
+
+vector<Index3DId> Polyhedron::getCornerIds(const Block* pBlock) const
+{
+	set<Index3DId> idSet;
+	for (const auto& faceId : _faceIds) {
+		pBlock->faceFunc(faceId, [&idSet](const Block* pBlock, const Polygon& face) {
+			const auto& vertexIds = face.getVertexIds();
+			idSet.insert(vertexIds.begin(), vertexIds.end());
+		});
+	}
+
+	vector<Index3DId> result;
+	result.insert(result.end(), idSet.begin(), idSet.end());
+
+	return result;
+}
+
+vector<Edge> Polyhedron::getEdges(const Block* pBlock) const
+{
+	set<Edge> idSet;
+	for (const auto& faceId : _faceIds) {
+		pBlock->faceFunc(faceId, [&idSet](const Block* pBlock, const Polygon& face) {
+			const auto& edges = face.getEdges();
+			idSet.insert(edges.begin(), edges.end());
+		});
+	}
+
+	vector<Edge> result;
+	result.insert(result.end(), idSet.begin(), idSet.end());
+
+	return result;
+}
+
+CBoundingBox3Dd Polyhedron::getBoundingBox(const Block* pBlock) const
+{
+	CBoundingBox3Dd bbox;
+	auto cornerIds = getCornerIds(pBlock);
+	for (const auto& vertId : cornerIds) {
+		bbox.merge(pBlock->getVertexPoint(vertId));
+	}
+
+	return bbox;
+}
+
+void Polyhedron::split(const Block* pBlock, const Vector3d& pt)
+{
+	map<Index3DId, Vector3d> edgePts, facePts;
+
+	for (const auto& faceId : _faceIds) {
+		pBlock->faceFunc(faceId, [&faceId, &facePts, &pt](const Block* pBlock, const Polygon& face) {
+			auto projPt = face.projectPoint(pBlock, pt);
+			facePts.insert(make_pair(faceId, projPt));
+		});
+	}
+
+	auto edges = getEdges(pBlock);
+	for (const auto& edge : edges) {
+		Vector3d projPt = edge.projectPt(pBlock, pt);
+	}
+
+	// Make a new hexCell at each corner
+	auto corners = getCornerIds(pBlock);
+	for (const auto& vertId : corners) {
+		set<Index3DId> vertEdges;
+		auto edges = pBlock->getVertexEdges(vertId);
+	}
 
 }

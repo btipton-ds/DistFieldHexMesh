@@ -1,6 +1,9 @@
 #include <vertex.h>
-#include <algorithm>
+#include <edge.h>
+#include <polygon.h>
+#include <block.h>
 
+using namespace std;
 using namespace DFHM;
 
 void Vertex::addFaceId(const Index3DId& faceId)
@@ -11,16 +14,6 @@ void Vertex::addFaceId(const Index3DId& faceId)
 void Vertex::removeFaceId(const Index3DId& faceId)
 {
 	_faceIds.erase(faceId);
-}
-
-void Vertex::addEdgeId(const Index3DId& edgeId)
-{
-	_edgeIds.insert(edgeId);
-}
-
-void Vertex::removeEdgeId(const Index3DId& edgeId)
-{
-	_edgeIds.erase(edgeId);
 }
 
 const bool Vertex::operator < (const Vertex& rhs) const

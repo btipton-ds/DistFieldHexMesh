@@ -43,6 +43,17 @@ public:
 		}
 	}
 
+	template<class F>
+	void iterateInOrder(F fLambda)
+	{
+		for (size_t id = 0; id < _idToIndexMap.size(); id++) {
+			size_t index = _idToIndexMap[id];
+			if (index < _data.size()) {
+				fLambda(id, _data[index]);
+			}
+		}
+	}
+
 	bool empty() const;
 	size_t size() const;
 	size_t getNumAllocated() const;
