@@ -19,8 +19,13 @@ public:
 	std::vector<Index3DId> getCornerIds(const Block* pBlock) const;
 	std::vector<Edge> getEdges(const Block* pBlock) const;
 
+	// Gets the edges for a vertex which belong to this polyhedron
+	std::set<Edge> getVertEdges(const Block* pBlock, const Index3DId& vertId) const;
+	// Gets the faces for a vertex which belong to this polyhedron
+	std::set<Index3DId> getVertFaces(const Block* pBlock, const Index3DId& vertId) const;
+
 	CBoundingBox3Dd getBoundingBox(const Block* pBlock) const;
-	void split(const Block* pBlock, const Vector3d& pt);
+	void split(Block* pBlock, const Vector3d& pt);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);

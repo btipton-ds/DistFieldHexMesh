@@ -78,6 +78,43 @@ vector<Edge> Polyhedron::getEdges(const Block* pBlock) const
 	return result;
 }
 
+// Gets the edges for a vertex which belong to this polyhedron
+set<Edge> Polyhedron::getVertEdges(const Block* pBlock, const Index3DId& vertId) const
+{
+	auto cellEdges = getEdges(pBlock);
+	set<Edge> cellEdgeSet;
+	cellEdgeSet.insert(cellEdges.begin(), cellEdges.end());
+	auto allVertEdges = pBlock->getVertexEdges(vertId);
+
+	set<Edge> result;
+	for (const auto& edge : allVertEdges) {
+		if (cellEdgeSet.count(edge))
+			result.insert(edge);
+	}
+
+	return result;
+}
+
+// Gets the faces for a vertex which belong to this polyhedron
+set<Index3DId> Polyhedron::getVertFaces(const Block* pBlock, const Index3DId& vertId) const
+{
+	auto cellFaces = getFaceIds();
+	set<Index3DId> cellFaceSet;
+	cellFaceSet.insert(cellFaces.begin(), cellFaces.end());
+	set<Index3DId> allVertFaces;
+	pBlock->vertexFunc(vertId, [&allVertFaces](const Block* pBlock, const Vertex& vert) {
+		allVertFaces = vert.getFaceIds();
+	});
+
+	set<Index3DId> result;
+	for (const auto& faceId : allVertFaces) {
+		if (cellFaceSet.count(faceId))
+			result.insert(faceId);
+	}
+
+	return result;
+}
+
 CBoundingBox3Dd Polyhedron::getBoundingBox(const Block* pBlock) const
 {
 	CBoundingBox3Dd bbox;
@@ -89,27 +126,90 @@ CBoundingBox3Dd Polyhedron::getBoundingBox(const Block* pBlock) const
 	return bbox;
 }
 
-void Polyhedron::split(const Block* pBlock, const Vector3d& pt)
+void Polyhedron::split(Block* pBlock, const Vector3d& ctr)
 {
-	map<Index3DId, Vector3d> edgePts, facePts;
-
-	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(faceId, [&faceId, &facePts, &pt](const Block* pBlock, const Polygon& face) {
-			auto projPt = face.projectPoint(pBlock, pt);
-			facePts.insert(make_pair(faceId, projPt));
-		});
-	}
-
-	auto edges = getEdges(pBlock);
-	for (const auto& edge : edges) {
-		Vector3d projPt = edge.projectPt(pBlock, pt);
-	}
-
+#if 0
 	// Make a new hexCell at each corner
 	auto corners = getCornerIds(pBlock);
 	for (const auto& vertId : corners) {
-		set<Index3DId> vertEdges;
-		auto edges = pBlock->getVertexEdges(vertId);
+		auto vertFaces = getVertFaces(pBlock, vertId);
+		auto vertEdges = getVertEdges(pBlock, vertId);
+		assert(vertFaces.size() == 3);
+		assert(vertEdges.size() == 3);
+
+		Edge edge0 = *vertEdges.begin(), edge1, edge2;
+		vertEdges.erase(edge0);
+		assert(vertEdges.size() == 2);
+		auto edgeFaces = edge0.getFaceIds(pBlock, vertFaces);
+		assert(edgeFaces.size() == 2);
+
+		auto faceId0 = *edgeFaces.begin();
+		edgeFaces.erase(faceId0);
+
+		auto faceId1 = *edgeFaces.begin();
+
+		vertFaces.erase(faceId0);
+		vertFaces.erase(faceId1);
+		auto faceId2 = *vertFaces.begin();
+
+		pBlock->faceFunc(faceId1, [&vertEdges, &edge1](const Block* pBlock, const Polygon& face) {
+			auto edges = face.getEdges();
+			for (const auto& edge : edges) {
+				if (vertEdges.count(edge) != 0) {
+					edge1 = edge;
+					break;
+				}
+			}
+		});
+		vertEdges.erase(edge1);
+		edge2 = *vertEdges.begin();
+
+		Vector3d vertPt = pBlock->getVertexPoint(vertId);
+		Vector3d facePt0, facePt1, facePt2;
+		pBlock->faceFunc(faceId0, [&facePt0](const Block* pBlock, const Polygon& face) {
+			facePt0 = face.getCentroid(pBlock);
+		});
+		pBlock->faceFunc(faceId1, [&facePt1](const Block* pBlock, const Polygon& face) {
+			facePt1 = face.getCentroid(pBlock);
+		});
+		pBlock->faceFunc(faceId2, [&facePt2](const Block* pBlock, const Polygon& face) {
+			facePt2 = face.getCentroid(pBlock);
+		});
+		Vector3d edgePt0 = edge0.getCenter(pBlock);
+		Vector3d edgePt1 = edge1.getCenter(pBlock);
+		Vector3d edgePt2 = edge1.getCenter(pBlock);
+
+		Vector3d pts[] = {
+			facePt0,
+			edgePt0,
+			facePt1,
+			ctr,
+			edgePt2,
+			vertPt,
+			edgePt1,
+			facePt2
+		};
+
+		vector<Index3DId> faceIds;
+		faceIds.reserve(6);
+
+		// add left and right
+		faceIds.push_back(pBlock->addFace(0, Index3D(), {pts[0], pts[4], pts[7], pts[3]}));
+		faceIds.push_back(pBlock->addFace(0, Index3D(), { pts[1], pts[2], pts[6], pts[5] }));
+
+		// add front and back
+		faceIds.push_back(pBlock->addFace(1, Index3D(), { pts[0], pts[1], pts[5], pts[4] }));
+		faceIds.push_back(pBlock->addFace(1, Index3D(), { pts[2], pts[3], pts[7], pts[6] }));
+
+		// add bottom and top
+		faceIds.push_back(pBlock->addFace(2, Index3D(), { pts[0], pts[3], pts[2], pts[1] }));
+		faceIds.push_back(pBlock->addFace(2, Index3D(), { pts[4], pts[5], pts[6], pts[7] }));
+		
+//		pBlock->_polyhedra.findOrAdd(Polyhedron(faceIds))
+//		pBlock->addHexCell(pts, pBlock->blockDim(), vertId);
+		int dbgBreak = 1;
+
 	}
+#endif
 
 }

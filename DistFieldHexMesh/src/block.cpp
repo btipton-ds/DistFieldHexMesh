@@ -502,13 +502,20 @@ void Block::dividePolyhedra()
 
 void Block::dividePolyhedraAtSharpVerts()
 {
-	_polyhedra.iterateInOrder([this](size_t index, Polyhedron& poly) {
+	vector<size_t> deadPolyhedra;
+	_polyhedra.iterateInOrder([this, &deadPolyhedra](size_t index, Polyhedron& poly) {
 		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
 		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
-			poly.split(this, pt);
+			if (bbox.contains(pt)) {
+//				poly.split(this, pt);
+//				deadPolyhedra.push_back(index);
+			}
 		}
 	});
+	for (const auto& polyIdx : deadPolyhedra) {
+		_polyhedra.free(polyIdx);
+	}
 }
 
 void Block::dividePolyhedraByCurvature()

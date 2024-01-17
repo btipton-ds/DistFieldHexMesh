@@ -40,6 +40,7 @@ public:
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
 	const std::set<Index3DId>& getFaceIds() const;
+	std::set<Index3DId> getFaceIds(const std::vector<Index3DId> availFaces) const;
 
 	const bool operator < (const Vertex& rhs) const;
 

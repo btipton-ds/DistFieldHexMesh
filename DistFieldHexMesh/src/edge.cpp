@@ -72,7 +72,7 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
 
-set<Index3DId> Edge::getFaceIds(const Block* pBlock)
+set<Index3DId> Edge::getFaceIds(const Block* pBlock) const
 {
 	set<Index3DId> result;
 
@@ -89,3 +89,16 @@ set<Index3DId> Edge::getFaceIds(const Block* pBlock)
 	return result;
 }
 
+set<Index3DId> Edge::getFaceIds(const Block* pBlock, set<Index3DId>& availFaces) const
+{
+	set<Index3DId> result;
+	set<Index3DId> edgeFaceIds = getFaceIds(pBlock);
+
+	for (const auto& faceId : edgeFaceIds) {
+		if (availFaces.count(faceId) != 0) {
+			result.insert(faceId);
+		}
+	}
+
+	return result;
+}

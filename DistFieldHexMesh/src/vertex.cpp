@@ -27,3 +27,15 @@ const bool Vertex::operator < (const Vertex& rhs) const
 
 	return false;
 }
+
+set<Index3DId> Vertex::getFaceIds(const vector<Index3DId> availFaces) const
+{
+	set<Index3DId> result, availSet;
+	availSet.insert(availFaces.begin(), availFaces.end());
+
+	for (const auto& faceId : _faceIds) {
+		if (availSet.count(faceId) != 0)
+			result.insert(faceId);
+	}
+	return result;
+}
