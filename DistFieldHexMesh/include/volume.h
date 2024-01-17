@@ -15,7 +15,6 @@
 #include <triMesh.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <subBlock.h>
 #include <block.h>
 
 namespace TriMesh {

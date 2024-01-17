@@ -3,7 +3,6 @@
 
 #include <triMesh.h>
 
-#include <subBlock.h>
 #include <block.h>
 #include <blockTest.h>
 #include <vertex.h>

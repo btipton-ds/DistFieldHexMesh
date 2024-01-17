@@ -8,7 +8,6 @@
 #include <edge.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <subBlock.h>
 #include <block.h>
 #include <volume.h>
 
@@ -20,7 +19,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _vertices(true)
 	, _polygons(true)
 	, _polyhedra(false)
-	, _subBlocks(false)
 	, _pVol(pVol)
 	, _blockIdx(blockIdx)
 {
@@ -106,10 +104,6 @@ size_t Block::createSubBlocks()
 //	addSubBlockIndicesForMeshVerts(subBlockIndices);
 //	addSubBlockIndicesForRayHits(subBlockIndices);
 
-	if (_subBlocks.empty()) {
-		_subBlocks.resize(_blockDim * _blockDim * _blockDim);
-	}
-
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
@@ -151,85 +145,11 @@ void Block::addSubBlockIndicesForMeshVerts(set<Index3D>& subBlockIndices)
 	}
 }
 
-void Block::addSubBlockIndicesForRayHits(set<Index3D>& subBlockIndices)
-{
-	// Make sure all grid to triangle intersection points are in a subBlock
-	for (size_t axis = 0; axis < 3; axis++) {
-		for (size_t i = 0; i < _blockDim; i++) {
-			for (size_t j = 0; j < _blockDim; j++) {
-				addHitsForRay(axis, i, j, 0, 0, subBlockIndices);
-				addHitsForRay(axis, i, j, 0, 1, subBlockIndices);
-				addHitsForRay(axis, i, j, 1, 1, subBlockIndices);
-				addHitsForRay(axis, i, j, 1, 0, subBlockIndices);
-			}
-		}
-	}
-}
-
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
 
 	auto blockCornerPts = getCornerPts();	
 	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx);
-}
-
-void Block::splitAtSharpVertices(const Vector3d* blockPts, const Index3D& subBlockIdx)
-{
-	// This a marching cubes style split. Create triangles between the leg intersections, cut and splice into 
-	size_t linearIdx = calLinearSubBlockIndex(subBlockIdx);
-	auto& subBlock = _subBlocks[linearIdx];
-	if (subBlock.numPolyhedra() == 0) {
-		auto cellId = addHexCell(blockPts, _blockDim, subBlockIdx);
-		if (cellId != -1)
-			subBlock.addPolyhdra(cellId);
-	}
-}
-
-void Block::splitAtLegIntersections(const Vector3d* blockPts, const Index3D& subBlockIdx)
-{
-}
-
-
-void Block::addHitsForRay(size_t axis, size_t i, size_t j, size_t ii, size_t jj, set<Index3D>& subBlockIndices)
-{
-	size_t ix, iy, iz;
-
-	const auto& faceHits = _rayTriHits[axis];
-	const RayTriHitVector& rayHits = faceHits._data[i + ii][j + jj];
-	for (const auto& rayHit : rayHits) {
-		double t = rayHit._dist / rayHit._segLen;
-
-		size_t rayIdx0 = (size_t)(_blockDim * t);
-		if (rayIdx0 >= _blockDim)
-			rayIdx0 = _blockDim - 1;
-
-		size_t rayIdx1 = rayIdx0 + 1;
-		if (rayIdx1 >= _blockDim)
-			rayIdx1 = _blockDim - 1;
-
-		switch (axis) {
-		default:
-		case 0: {
-			iy = i;
-			iz = j;
-			addIndexToMap(Index3D(rayIdx0, iy, iz), subBlockIndices);
-			addIndexToMap(Index3D(rayIdx1, iy, iz), subBlockIndices);
-			break;
-		}
-		case 1:
-			ix = i;
-			iz = j;
-			addIndexToMap(Index3D(ix, rayIdx0, iz), subBlockIndices);
-			addIndexToMap(Index3D(ix, rayIdx1, iz), subBlockIndices);
-			break;
-		case 2:
-			ix = i;
-			iy = j;
-			addIndexToMap(Index3D(ix, iy, rayIdx0), subBlockIndices);
-			addIndexToMap(Index3D(ix, iy, rayIdx1), subBlockIndices);
-			break;
-		}
-	}
 }
 
 inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
@@ -516,16 +436,6 @@ bool Block::unload(string& filename)
 			return false;
 		}
 
-		size_t count = _subBlocks.size();
-		out.write((char*)&count, sizeof(count));
-		for (size_t id = 0; id < _subBlocks.size(); id++) {
-			if (_subBlocks.exists(id)) {
-				SubBlock& subBlock = _subBlocks[id];
-				if (!subBlock.unload(out)) {
-					return false;
-				}
-			}
-		}
 		if (out.good()) {
 			_filename = filename;
 		} else {
@@ -554,18 +464,6 @@ bool Block::load()
 	in.read((char*) & size, sizeof(size));
 	if (!in.good()) return false;
 
-	_subBlocks.resize(size);
-	for (size_t subBlockIdx = 0; subBlockIdx < size; subBlockIdx++) {
-		size_t idx = _subBlocks.findOrAdd(SubBlock(), subBlockIdx);
-		auto& subBlock = _subBlocks[idx];
-		subBlock.init(this, calSubBlockIndexFromLinear(subBlockIdx));
-		if (!subBlock.load(in)) {
-			// TODO cleanup here
-			return false;
-		}
-
-	}
-
 	_filename.clear();
 
 	return true;
@@ -584,7 +482,6 @@ size_t Block::processTris()
 		return 0;
 
 	// Get rid of the ray casting, it's not effective at this stage
-	rayCastHexBlock(getCornerPts(), _blockDim, _rayTriHits);
 	size_t numCreated = createSubBlocks();
 
 	dividePolyhedra();
@@ -715,83 +612,6 @@ void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, std::vector<LineSeg
 	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[5]));
 	segs.push_back(LineSegment(subBlockPoints[2], subBlockPoints[6]));
 	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[7]));
-}
-
-size_t Block::rayCastFace(const Vector3d* pts, size_t samples, int axis, FaceRayHits& rayTriHits) const
-{
-	const double tol = 1.0e-5;
-	const Vector3d dir = axis == 0 ? Vector3d(1, 0, 0) : axis == 1 ? Vector3d(0, 1, 0) : Vector3d(0, 0, 1);
-
-	size_t numHits = 0;
-
-	Vector3d pt0, pt1, origin;
-	size_t ix, iy, iz;
-	double tx, ty, tz;
-	rayTriHits.resize(samples + 1);
-	for (size_t i = 0; i <= samples; i++) {
-		for (size_t j = 0; j <= samples; j++) {
-			switch (axis) {
-				default:
-				case 0: { // X axis is ray dir
-					iy = i;
-					ty = iy / (double)samples;
-
-					iz = j;
-					tz = iz / (double)samples;
-
-					pt0 = BI_LERP(pts[0], pts[3], pts[7], pts[4], ty, tz);
-					pt1 = BI_LERP(pts[1], pts[2], pts[6], pts[5], ty, tz);
-					break;
-				}
-				case 1: { // Y axis is ray dir
-					ix = i;
-					tx = ix / (double)samples;
-
-					iz = j;
-					tz = iz / (double)samples;
-
-					pt0 = BI_LERP(pts[0], pts[1], pts[5], pts[4], tx, tz);
-					pt1 = BI_LERP(pts[3], pts[2], pts[6], pts[7], tx, tz);
-					break;
-				}
-				case 2: { // Z axis is ray dir
-					ix = i;
-					tx = ix / (double)samples;
-
-					iy = j;
-					ty = iy / (double)samples;
-					pt0 = BI_LERP(pts[0], pts[1], pts[2], pts[3], tx, ty);
-					pt1 = BI_LERP(pts[4], pts[5], pts[6], pts[7], tx, ty);
-					break;
-				}
-			}
-
-			LineSegment seg(pt0, pt1);
-			Ray ray(pt0, pt1 - pt0);
-			double segLen = seg.calLength();
-			vector<RayHit> hits;
-			if (_pModelTriMesh->rayCast(seg, hits, tol)) {
-				RayTriHitVector& faceSampleHits = rayTriHits._data[i][j];
-				for (const auto& hit : hits) {
-					RayTriHit rtHit;
-					rtHit._triIdx = hit.triIdx;
-					rtHit._hitPt = hit.hitPt;
-					rtHit._dist = hit.dist;
-					rtHit._segLen = segLen;
-					faceSampleHits.push_back(rtHit);
-					numHits++;
-				}
-			}
-		}
-	}
-	return numHits;
-}
-
-void Block::rayCastHexBlock(const Vector3d* pts, size_t blockDim, FaceRayHits _rayTriHits[3])
-{
-	rayCastFace(pts, blockDim, 0, _rayTriHits[0]);
-	rayCastFace(pts, blockDim, 1, _rayTriHits[1]);
-	rayCastFace(pts, blockDim, 2, _rayTriHits[2]);
 }
 
 void Block::pack()
