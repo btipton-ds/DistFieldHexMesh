@@ -55,7 +55,7 @@ vector<Index3DId> Polyhedron::getCornerIds(const Block* pBlock) const
 			idSet.insert(vertexIds.begin(), vertexIds.end());
 		});
 	}
-
+	assert(idSet.size() == 8);
 	vector<Index3DId> result;
 	result.insert(result.end(), idSet.begin(), idSet.end());
 
@@ -129,23 +129,33 @@ CBoundingBox3Dd Polyhedron::getBoundingBox(const Block* pBlock) const
 Vector3d Polyhedron::calCentroid(const Block* pBlock) const
 {
 	Vector3d result(0, 0, 0);
-	auto cornerIds = getCornerIds(pBlock);
+	vector<Index3DId> cornerIds = getCornerIds(pBlock);
 	for (const auto& vertId : cornerIds) {
 		result += pBlock->getVertexPoint(vertId);
 	}
+	result /= cornerIds.size();
 
 	return result;
 }
 
-vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr)
+vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr, bool intersectingOnly)
 {
 	vector<size_t> result;
-#if 0
+#if 1
 	// Make a new hexCell at each corner
-	auto corners = getCornerIds(pBlock);
+	vector<Index3DId> corners = getCornerIds(pBlock);
+	auto bbox = getBoundingBox(pBlock);
+	assert(bbox.contains(ctr));
+
 	for (const auto& vertId : corners) {
 		auto vertFaces = getVertFaces(pBlock, vertId);
+		if (vertFaces.empty())
+			continue;
 		auto vertEdges = getVertEdges(pBlock, vertId);
+		if (vertFaces.empty()) {
+			assert(!"Should not be possible to reach this block.");
+			continue;
+		}
 		assert(vertFaces.size() == 3);
 		assert(vertEdges.size() == 3);
 
@@ -178,31 +188,43 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr)
 
 		Vector3d vertPt = pBlock->getVertexPoint(vertId);
 		Vector3d facePt0, facePt1, facePt2;
-		pBlock->faceFunc(faceId0, [&facePt0](const Block* pBlock, const Polygon& face) {
-			facePt0 = face.getCentroid(pBlock);
+		pBlock->faceFunc(faceId0, [&facePt0, &ctr](const Block* pBlock, const Polygon& face) {
+			facePt0 = face.projectPoint(pBlock, ctr);
 		});
-		pBlock->faceFunc(faceId1, [&facePt1](const Block* pBlock, const Polygon& face) {
-			facePt1 = face.getCentroid(pBlock);
+		pBlock->faceFunc(faceId1, [&facePt1, &ctr](const Block* pBlock, const Polygon& face) {
+			facePt1 = face.projectPoint(pBlock, ctr);
 		});
-		pBlock->faceFunc(faceId2, [&facePt2](const Block* pBlock, const Polygon& face) {
-			facePt2 = face.getCentroid(pBlock);
+		pBlock->faceFunc(faceId2, [&facePt2, &ctr](const Block* pBlock, const Polygon& face) {
+			facePt2 = face.projectPoint(pBlock, ctr);
 		});
-		Vector3d edgePt0 = edge0.getCenter(pBlock);
-		Vector3d edgePt1 = edge1.getCenter(pBlock);
-		Vector3d edgePt2 = edge1.getCenter(pBlock);
+
+		
+		Vector3d edgePt0 = edge0.projectPt(pBlock, ctr);
+		Vector3d edgePt1 = edge1.projectPt(pBlock, ctr);
+		Vector3d edgePt2 = edge2.projectPt(pBlock, ctr);
 
 		Vector3d pts[] = {
-			facePt0,
+			vertPt,
 			edgePt0,
 			facePt1,
-			ctr,
-			edgePt2,
-			vertPt,
 			edgePt1,
+			edgePt2,
+			facePt0,
+			ctr,
 			facePt2
 		};
 
-		size_t cellIdx = pBlock->addHexCell(pts, 2, pBlock->getBlockIdx(), true);
+		for (size_t i = 0; i < 8; i++) {
+			assert(bbox.contains(pts[i]));
+		}
+#if 0
+		cout << "Polyhedron::split pts:\n";
+		for (int i = 0; i < 8; i++) {
+			const auto& pt = pts[i];
+			cout << "  " << i << "(" << pt[0] << ", " << pt[1] << ", " << pt[2] << ")\n";
+		}
+#endif
+		size_t cellIdx = pBlock->addHexCell(pts, 2, pBlock->getBlockIdx(), intersectingOnly);
 		if (cellIdx != -1)
 			result.push_back(cellIdx);
 	}

@@ -31,16 +31,13 @@ Vector3d Edge::getPointAt(const Block* pBlock, double t) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
-	Vector3d v = pt1 - pt0;
-	v.normalize();
-	v = t * v;
 	
-	Vector3d result = pt0 + v;
+	Vector3d result = pt0 + t * (pt1 - pt0);
 
 	return result;
 }
 
-double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt) const
+double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
@@ -49,6 +46,7 @@ double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt) const
 
 	Vector3d v1 = pt - pt0;
 	double t = v.dot(v1);
+	inBounds = (t >= 0) && (t <= 1);
 
 	return t;
 }

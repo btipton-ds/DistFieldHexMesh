@@ -189,7 +189,7 @@ vector<size_t> Block::createSubBlocks(const Vector3d blockPts[8])
 	return newCells;
 }
 
-vector<size_t> Block::dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices)
+vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndices)
 {
 	const double minCurvature = 1; // 1 meter radius
 	const double kDiv = 1.0;
@@ -221,9 +221,9 @@ vector<size_t> Block::dividePolyhedraByCurvature(const std::vector<size_t>& cell
 			auto range = bbox.range();
 			double minBoxDim = min(range[0], min(range[1], range[2]));
 			if (kDiv * avgSurfArcLength > minBoxDim) {
-				auto splitCells = cell.split(this);
+				auto splitCells = cell.split(this, true);
 				if (!splitCells.empty())
-					newCells.insert(newCells.end(), splitCells.begin(), newCells.end());
+					newCells.insert(newCells.end(), splitCells.begin(), splitCells.end());
 			}
 		}
 	}
@@ -242,7 +242,7 @@ inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBl
 	subBlockIndices.insert(subBlockIdx);
 }
 
-inline const std::vector<Vector3d>& Block::getCornerPts() const
+inline const vector<Vector3d>& Block::getCornerPts() const
 {
 	return _corners;
 }
@@ -454,7 +454,7 @@ inline Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 
 set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 {
-	std::set<Edge> result;
+	set<Edge> result;
 	set<Index3DId> faceIds;
 	vertexFunc(vertexId, [&faceIds](const Block* pBlock, const Vertex& vert) {
 		faceIds = vert.getFaceIds();
@@ -571,13 +571,13 @@ void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh)
 
 size_t Block::processTris()
 {
-	const int numDivs = 3;
+	const int numDivs = 1;
 
 	if (_pModelTriMesh->numTris() == 0)
 		return 0;
 
 	// Get rid of the ray casting, it's not effective at this stage
-	std::vector<size_t> newCells = createSubBlocks(_corners.data());
+	vector<size_t> newCells = createSubBlocks(_corners.data());
 #if 1
 	if (!newCells.empty()) {
 		newCells = dividePolyhedraAtSharpVerts(newCells);
@@ -594,36 +594,41 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 	_pModelTriMesh = pSrcMesh;
 }
 
-std::vector<size_t> Block::dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices)
+vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndices)
 {
-	vector<size_t> deadCells, newCells;
+	set<size_t> deadCells, newCells;
 	for (size_t index : cellIndices) {
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
 		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
-		vector<size_t> splitCells;
+		set<size_t> splitCells;
 		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt)) {
-				std::vector<size_t> newSplitCells = poly.split(this, pt);
-				deadCells.push_back(index);
-				newCells.insert(newCells.end(), newSplitCells.begin(), newSplitCells.end());
-				splitCells.insert(splitCells.end(), splitCells.begin(), splitCells.end());
+				deadCells.insert(index);
+
+				vector<size_t> tempCells = poly.split(this, pt, false);
+				newCells.insert(tempCells.begin(), tempCells.end());
+				splitCells.insert(tempCells.begin(), tempCells.end());
 			}
 		}
 		if (splitCells.empty()) {
-			newCells.push_back(index);
+			newCells.insert(index);
 		} else {
-			auto subSplitCells = dividePolyhedraAtSharpVerts(splitCells);
-			newCells.insert(newCells.end(), subSplitCells.begin(), subSplitCells.end());
+			vector<size_t> temp;
+			temp.insert(temp.end(), splitCells.begin(), splitCells.end());
+			auto subSplitCells = dividePolyhedraAtSharpVerts(temp);
+			newCells.insert(subSplitCells.begin(), subSplitCells.end());
 		}
 	}
 	for (const auto& polyIdx : deadCells) {
 		_polyhedra.free(polyIdx);
 	}
 
-	return newCells;
+	vector<size_t> result;
+	result.insert(result.end(), newCells.begin(), newCells.end());
+	return result;
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
@@ -700,7 +705,7 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
 	return result;
 }
 
-void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, std::vector<LineSegment>& segs) const
+void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, vector<LineSegment>& segs) const
 {
 	segs.clear();
 	segs.reserve(12);

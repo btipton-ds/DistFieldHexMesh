@@ -26,8 +26,8 @@ public:
 
 	CBoundingBox3Dd getBoundingBox(const Block* pBlock) const;
 	Vector3d calCentroid(const Block* pBlock) const;
-	std::vector<size_t> split(Block* pBlock);
-	std::vector<size_t> split(Block* pBlock, const Vector3d& pt);
+	std::vector<size_t> split(Block* pBlock, bool intersectingOnly);
+	std::vector<size_t> split(Block* pBlock, const Vector3d& pt, bool intersectingOnly);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -43,9 +43,9 @@ inline const std::vector<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline std::vector<size_t> Polyhedron::split(Block* pBlock)
+inline std::vector<size_t> Polyhedron::split(Block* pBlock, bool intersectingOnly)
 {
-	return split(pBlock, calCentroid(pBlock));
+	return split(pBlock, calCentroid(pBlock), intersectingOnly);
 }
 
 }

@@ -125,8 +125,8 @@ Vector3d Polygon::projectPoint(const Block* pBlock, const Vector3d& pt) const
 	Vector3d ctr = getCentroid(pBlock);
 	Vector3d norm = getUnitNormal(pBlock);
 	Vector3d v = pt - ctr;
-	v = v - norm * v.dot(norm);
-	Vector3d result = ctr + v;
+	double dp = v.dot(norm);
+	Vector3d result = pt - dp * norm;
 
 	return result;
 }
