@@ -173,20 +173,61 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
-size_t Block::createSubBlocks()
+vector<size_t> Block::createSubBlocks(const Vector3d blockPts[8])
 {
-	const auto& blockPts = getCornerPts();
-
 	Index3D idx;
+	vector<size_t> newCells;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				addHexCell(blockPts.data(), _blockDim, idx);
+				size_t cellIdx = addHexCell(blockPts, _blockDim, idx);
+				if (cellIdx != -1)
+					newCells.push_back(cellIdx);
 			}
 		}
 	}
+	return newCells;
+}
 
-	return 1;
+vector<size_t> Block::dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices)
+{
+	const double minCurvature = 1; // 1 meter radius
+	const double kDiv = 1.0;
+
+	vector<size_t> newCells;
+	for (size_t idx : cellIndices) {
+		if (!_polyhedra.exists(idx))
+			continue;
+		auto& cell = _polyhedra[idx];
+		CBoundingBox3Dd bbox = cell.getBoundingBox(this);
+		vector<size_t> edgeIndices;
+		if (_pModelTriMesh->findEdges(bbox, edgeIndices)) {
+			double avgSurfCurvature = 0;
+			size_t numSamples = 0;
+			for (auto edgeIndex : edgeIndices) {
+				double edgeCurv = _pModelTriMesh->edgeCurvature(edgeIndex);
+				if (edgeCurv >= 0) {
+					avgSurfCurvature += edgeCurv;
+					numSamples++;
+				}
+			}
+
+			avgSurfCurvature /= edgeIndices.size();
+			if (avgSurfCurvature < minCurvature)
+				continue;
+			double avgSurfRadius = 1 / avgSurfCurvature;
+			double avgSurfCircumference = 2 * M_PI * avgSurfRadius;
+			double avgSurfArcLength = avgSurfCircumference / 72.0; // 5 deg arc
+			auto range = bbox.range();
+			double minBoxDim = min(range[0], min(range[1], range[2]));
+			if (kDiv * avgSurfArcLength > minBoxDim) {
+				auto splitCells = cell.split(this);
+				if (!splitCells.empty())
+					newCells.insert(newCells.end(), splitCells.begin(), newCells.end());
+			}
+		}
+	}
+	return newCells;
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -363,7 +404,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	Index3DId polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	const Index3DId polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
 	auto pPoly = _polyhedra.get(polyhedronId.elementId());
 	assert(pPoly);
 
@@ -382,7 +423,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		}
 	}
 
-	return polyhedronId.elementId(); // We subBlocks are never shared across blocks, so we can drop the block index
+	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
 inline Block* Block::getOwner(const Index3D& blockIdx)
@@ -528,15 +569,22 @@ void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh)
 
 size_t Block::processTris()
 {
+	const int numDivs = 3;
+
 	if (_pModelTriMesh->numTris() == 0)
 		return 0;
 
 	// Get rid of the ray casting, it's not effective at this stage
-	size_t numCreated = createSubBlocks();
-
-	dividePolyhedra();
-
-	return numCreated;
+	std::vector<size_t> newCells = createSubBlocks(_corners.data());
+#if 1
+	if (!newCells.empty()) {
+		newCells = dividePolyhedraAtSharpVerts(newCells);
+		for (size_t div = 0; div < numDivs; div++) {
+			newCells = dividePolyhedraByCurvature(newCells);
+		}
+	}
+#endif
+	return _polyhedra.size();
 }
 
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
@@ -544,34 +592,36 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 	_pModelTriMesh = pSrcMesh;
 }
 
-void Block::dividePolyhedra()
+std::vector<size_t> Block::dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices)
 {
-	dividePolyhedraAtSharpVerts();
-	dividePolyhedraByCurvature();
-}
-
-void Block::dividePolyhedraAtSharpVerts()
-{
-	vector<size_t> deadPolyhedra;
-	_polyhedra.iterateInOrder([this, &deadPolyhedra](size_t index, Polyhedron& poly) {
+	vector<size_t> deadCells, newCells;
+	for (size_t index : cellIndices) {
+		if (!_polyhedra.exists(index))
+			continue;
+		auto& poly = _polyhedra[index];
 		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
+		vector<size_t> splitCells;
 		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt)) {
-				poly.split(this, pt);
-				deadPolyhedra.push_back(index);
+				std::vector<size_t> newSplitCells = poly.split(this, pt);
+				deadCells.push_back(index);
+				newCells.insert(newCells.end(), newSplitCells.begin(), newSplitCells.end());
+				splitCells.insert(splitCells.end(), splitCells.begin(), splitCells.end());
 			}
 		}
-	});
-	for (const auto& polyIdx : deadPolyhedra) {
+		if (splitCells.empty()) {
+			newCells.push_back(index);
+		} else {
+			auto subSplitCells = dividePolyhedraAtSharpVerts(splitCells);
+			newCells.insert(newCells.end(), subSplitCells.begin(), subSplitCells.end());
+		}
+	}
+	for (const auto& polyIdx : deadCells) {
 		_polyhedra.free(polyIdx);
 	}
-}
 
-void Block::dividePolyhedraByCurvature()
-{
-	_polyhedra.iterateInOrder([](size_t index, Polyhedron& poly) {
-		});
+	return newCells;
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const

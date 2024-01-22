@@ -126,8 +126,20 @@ CBoundingBox3Dd Polyhedron::getBoundingBox(const Block* pBlock) const
 	return bbox;
 }
 
-void Polyhedron::split(Block* pBlock, const Vector3d& ctr)
+Vector3d Polyhedron::calCentroid(const Block* pBlock) const
 {
+	Vector3d result(0, 0, 0);
+	auto cornerIds = getCornerIds(pBlock);
+	for (const auto& vertId : cornerIds) {
+		result += pBlock->getVertexPoint(vertId);
+	}
+
+	return result;
+}
+
+vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr)
+{
+	vector<size_t> result;
 #if 0
 	// Make a new hexCell at each corner
 	auto corners = getCornerIds(pBlock);
@@ -193,5 +205,5 @@ void Polyhedron::split(Block* pBlock, const Vector3d& ctr)
 		pBlock->addHexCell(pts, 2, pBlock->getBlockIdx());
 	}
 #endif
-
+	return result;
 }

@@ -25,7 +25,9 @@ public:
 	std::set<Index3DId> getVertFaces(const Block* pBlock, const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBoundingBox(const Block* pBlock) const;
-	void split(Block* pBlock, const Vector3d& pt);
+	Vector3d calCentroid(const Block* pBlock) const;
+	std::vector<size_t> split(Block* pBlock);
+	std::vector<size_t> split(Block* pBlock, const Vector3d& pt);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -39,6 +41,11 @@ private:
 inline const std::vector<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
+}
+
+inline std::vector<size_t> Polyhedron::split(Block* pBlock)
+{
+	return split(pBlock, calCentroid(pBlock));
 }
 
 }

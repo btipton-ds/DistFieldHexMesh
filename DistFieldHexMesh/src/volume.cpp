@@ -317,7 +317,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 			_blocks[linearIdx]->processTris();
 #endif
 		}
-	}, numBlocks, RUN_MULTI_THREAD);
+	}, numBlocks, !QUICK_TEST && RUN_MULTI_THREAD);
 
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";

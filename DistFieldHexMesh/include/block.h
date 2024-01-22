@@ -48,7 +48,7 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
-	size_t createSubBlocks();
+	std::vector<size_t> createSubBlocks(const Vector3d blockPts[8]);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -114,9 +114,8 @@ private:
 	std::mutex& getFaceMutex() const;
 	std::mutex& getVertexMutex() const;
 
-	void dividePolyhedra();
-	void dividePolyhedraAtSharpVerts();
-	void dividePolyhedraByCurvature();
+	std::vector<size_t> dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices);
+	std::vector<size_t> dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices);
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;
