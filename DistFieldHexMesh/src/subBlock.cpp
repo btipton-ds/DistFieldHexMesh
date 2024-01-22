@@ -115,7 +115,7 @@ size_t SubBlock::maxIntersectionsPerLeg() const
 void SubBlock::divide()
 {
 	auto blockCornerPts = _pBlock->getCornerPts();	
-	auto polyId = _pBlock->addHexCell(blockCornerPts, _pBlock->_blockDim, _ourIdx);
+	auto polyId = _pBlock->addHexCell(blockCornerPts.data(), _pBlock->_blockDim, _ourIdx);
 	if (polyId != -1)
 		addPolyhdra(polyId);
 }

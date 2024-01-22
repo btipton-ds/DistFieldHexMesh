@@ -190,25 +190,7 @@ void Polyhedron::split(Block* pBlock, const Vector3d& ctr)
 			facePt2
 		};
 
-		vector<Index3DId> faceIds;
-		faceIds.reserve(6);
-
-		// add left and right
-		faceIds.push_back(pBlock->addFace(0, Index3D(), {pts[0], pts[4], pts[7], pts[3]}));
-		faceIds.push_back(pBlock->addFace(0, Index3D(), { pts[1], pts[2], pts[6], pts[5] }));
-
-		// add front and back
-		faceIds.push_back(pBlock->addFace(1, Index3D(), { pts[0], pts[1], pts[5], pts[4] }));
-		faceIds.push_back(pBlock->addFace(1, Index3D(), { pts[2], pts[3], pts[7], pts[6] }));
-
-		// add bottom and top
-		faceIds.push_back(pBlock->addFace(2, Index3D(), { pts[0], pts[3], pts[2], pts[1] }));
-		faceIds.push_back(pBlock->addFace(2, Index3D(), { pts[4], pts[5], pts[6], pts[7] }));
-		
-//		pBlock->_polyhedra.findOrAdd(Polyhedron(faceIds))
-//		pBlock->addHexCell(pts, pBlock->blockDim(), vertId);
-		int dbgBreak = 1;
-
+		pBlock->addHexCell(pts, 2, pBlock->getBlockIdx());
 	}
 #endif
 

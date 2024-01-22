@@ -34,7 +34,6 @@ public:
 
 	static void setVolDim(const Index3D& size);
 	static const Index3D& volDim();
-	static const Index3D& getDims();
 
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);

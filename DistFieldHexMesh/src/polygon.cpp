@@ -150,7 +150,7 @@ bool Polygon::insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DI
 
 Index3DId Polygon::insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt)
 {
-	auto newVertId = pBlock->addVertex(vert0, pt);
+	auto newVertId = pBlock->addVertex(pt);
 	insertVertex(pBlock, vert0, vert1, newVertId);
 
 	return newVertId;

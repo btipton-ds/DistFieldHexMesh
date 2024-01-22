@@ -4,6 +4,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
+#include <Index3D.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -24,10 +25,22 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 {
 	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);
-
+	_corners.resize(8);
 	for (size_t i = 0; i < pts.size(); i++) {
+		_boundBox.merge(pts[i]);
 		_corners[i] = pts[i];
 	}
+
+	_innerBoundBox.merge(_boundBox.getMin());
+	Vector3d range = _boundBox.range();
+	double k = 1.0 / 8;
+	Vector3d v(
+		(_blockDim - k) / _blockDim * range[0],
+		(_blockDim - k) / _blockDim * range[1],
+		(_blockDim - k) / _blockDim * range[2]
+		);
+	Vector3d pt = _boundBox.getMin() + v;
+	_innerBoundBox.merge(pt);
 }
 
 Block::~Block()
@@ -85,7 +98,7 @@ void Block::divideSubBlock(const Index3D& subBlockIdx, size_t divs)
 void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 {
 	Vector3d axis;
-	const Vector3d* pts = getCornerPts();
+	const auto& pts = getCornerPts();
 	origin = pts[0];
 
 	span = Vector3d(
@@ -96,19 +109,78 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
+Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
+{
+	const double tol = 1.0e-5;
+	const auto& volBounds = _pVol->volDim();
+	Index3D result(_blockIdx);
+	for (int i = 0; i < 3; i++) {
+		if (ratios[i] >= 1 - tol) {
+			result[i] += 1;
+
+			// Clamp it inside volume bounds. If it's shared by a block that doesn't exist, there's no chance
+			// of a thread access conflict on that boundary
+			if (result[i] >= volBounds[i])
+				result[i] = volBounds[i] - 1;
+		}
+	}
+
+	return result;
+}
+
+Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
+{
+	if (_innerBoundBox.contains(point))
+		return _blockIdx;
+
+	auto ratios = invTriLinIterp(point);
+	return determineOwnerBlockIdxFromRatios(ratios);
+}
+
+Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
+{
+	return determineOwnerBlockIdx(vert.getPoint());
+}
+
+Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
+{
+	const double tol = 1.0e-5;
+	auto volBounds = _pVol->volDim();
+
+	Vector3d avgRatio(0, 0, 0);
+	for (const auto& pt : points) {
+		avgRatio += invTriLinIterp(pt);
+	}
+	avgRatio = avgRatio / points.size();
+
+	return determineOwnerBlockIdxFromRatios(avgRatio);
+}
+
+Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
+{
+	const double tol = 1.0e-5;
+	auto volBounds = _pVol->volDim();
+
+	Vector3d avgRatio(0, 0, 0);
+	const auto& vertIds = face.getVertexIds();
+	for (const auto& vertId : vertIds) {
+		auto pt = getVertexPoint(vertId);
+		avgRatio += invTriLinIterp(pt);
+	}
+	avgRatio = avgRatio / vertIds.size();
+
+	return determineOwnerBlockIdxFromRatios(avgRatio);
+}
+
 size_t Block::createSubBlocks()
 {
-	const Vector3d* blockPts = getCornerPts();
-//	set<Index3D> subBlockIndices;
-
-//	addSubBlockIndicesForMeshVerts(subBlockIndices);
-//	addSubBlockIndicesForRayHits(subBlockIndices);
+	const auto& blockPts = getCornerPts();
 
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				addHexCell(blockPts, _blockDim, idx);
+				addHexCell(blockPts.data(), _blockDim, idx);
 			}
 		}
 	}
@@ -116,40 +188,11 @@ size_t Block::createSubBlocks()
 	return 1;
 }
 
-void Block::addSubBlockIndicesForMeshVerts(set<Index3D>& subBlockIndices)
-{
-	const Vector3d* pts = getCornerPts();
-	CBoundingBox3Dd bbox;
-	for (size_t i = 0; i < 8; i++)
-		bbox.merge(pts[i]);
-
-	// Make sure all vertices are surrounded by a subBlock
-	size_t numTriVerts = _pModelTriMesh->numVertices();
-	for (size_t vertIdx = 0; vertIdx < numTriVerts; vertIdx++) {
-		const auto& vertPt = _pModelTriMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(vertPt)) {
-			Vector3d interp = invTriLinIterp(pts, vertPt);
-			Index3D subBlockIdx;
-			for (int i = 0; i < 3; i++) {
-				subBlockIdx[i] = (Index3DBaseType)(interp[i] * _blockDim);
-			}
-			if (subBlockIdx[0] < _blockDim && subBlockIdx[1] < _blockDim && subBlockIdx[2] < _blockDim) {
-				auto subBlockPts = getSubBlockCornerPts(pts, _blockDim, subBlockIdx);
-				CBoundingBox3Dd subBlockBbox;
-				for (size_t i = 0; i < 8; i++)
-					subBlockBbox.merge(subBlockPts[i]);
-				if (subBlockBbox.contains(vertPt))
-					addIndexToMap(subBlockIdx, subBlockIndices);
-			}
-		}
-	}
-}
-
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
 
 	auto blockCornerPts = getCornerPts();	
-	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx);
+	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx);
 }
 
 inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
@@ -157,65 +200,59 @@ inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBl
 	subBlockIndices.insert(subBlockIdx);
 }
 
-inline const Vector3d* Block::getCornerPts() const
+inline const std::vector<Vector3d>& Block::getCornerPts() const
 {
 	return _corners;
 }
 
-vector<Block::CrossBlockPoint> Block::getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& index) const
+vector<Vector3d> Block::getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& index) const
 {
-	vector<CrossBlockPoint> result = {
-		triLinInterp(blockPts, blockDim, index + Index3D(0, 0, 0)),
-		triLinInterp(blockPts, blockDim, index + Index3D(1, 0, 0)),
-		triLinInterp(blockPts, blockDim, index + Index3D(1, 1, 0)),
-		triLinInterp(blockPts, blockDim, index + Index3D(0, 1, 0)),
+	vector<Vector3d> result = {
+		triLinInterp(blockPts, divs, index + Index3D(0, 0, 0)),
+		triLinInterp(blockPts, divs, index + Index3D(1, 0, 0)),
+		triLinInterp(blockPts, divs, index + Index3D(1, 1, 0)),
+		triLinInterp(blockPts, divs, index + Index3D(0, 1, 0)),
 
-		triLinInterp(blockPts, blockDim, index + Index3D(0, 0, 1)),
-		triLinInterp(blockPts, blockDim, index + Index3D(1, 0, 1)),
-		triLinInterp(blockPts, blockDim, index + Index3D(1, 1, 1)),
-		triLinInterp(blockPts, blockDim, index + Index3D(0, 1, 1)),
+		triLinInterp(blockPts, divs, index + Index3D(0, 0, 1)),
+		triLinInterp(blockPts, divs, index + Index3D(1, 0, 1)),
+		triLinInterp(blockPts, divs, index + Index3D(1, 1, 1)),
+		triLinInterp(blockPts, divs, index + Index3D(0, 1, 1)),
 	};
 
 	return result;
 }
 
 
-Block::CrossBlockPoint Block::triLinInterp(const Vector3d* pts, size_t blockDim, const Index3D& index) const
+Vector3d Block::triLinInterp(const Vector3d* pts, size_t divs, const Index3D& index) const
 {
 	Vector3d t(
-		index[0] / (double) blockDim,
-		index[1] / (double) blockDim,
-		index[2] / (double) blockDim
+		index[0] / (double) divs,
+		index[1] / (double) divs,
+		index[2] / (double) divs
 	);
 
-	const Index3D blockDims = Volume::volDim();
-
-	CrossBlockPoint result;
-	result._pt = TRI_LERP(pts, t[0], t[1], t[2]);
-	result._ownerBlockIdx = _blockIdx;
-
-	for (int i = 0; i < 3; i++) {
-		if (index[i] >= _blockDim) {
-			result._ownerBlockIdx[i] = (result._ownerBlockIdx[i] + 1) % blockDims[i];
-		}
-	}
+	Vector3d result;
+	result = TRI_LERP(pts, t[0], t[1], t[2]);
 
 	return result;
 }
 
-Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt)
+Vector3d Block::invTriLinIterp(const Vector3d& pt) const
+{
+	return invTriLinIterp(_corners.data(), pt);
+}
+
+Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const
 {
 	const double tol = 1.0e-8;
 	const double tolSqr = tol * tol;
-	CBoundingBox3Dd bbox;
-	for (size_t i = 0; i < 8; i++)
-		bbox.merge(blockPts[i]);
 
 	// Linearly interpolate based on the bounding box. This is precise for a paralelapiped set of blockPts
-	Vector3d vRange = bbox.range();
+	Vector3d vRange = _boundBox.range();
+	Vector3d delta = pt - _boundBox.getMin();
 	Vector3d result;
 	for (size_t i = 0; i < 3; i++) {
-		result[i] = (pt[i] - bbox.getMin()[i]) / vRange[i];
+		result[i] = delta[i] / vRange[i];
 	}
 
 	result = TRI_LERP(blockPts, result[0], result[1], result[2]);
@@ -255,17 +292,13 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
 
-
-	vector<Vector3d> blockCorners;
-	blockCorners.reserve(8);
 	CBoundingBox3Dd bbox;
 	for (size_t i = 0; i < 8; i++) {
-		blockCorners.push_back(pts[i]._pt);
-		bbox.merge(pts[i]._pt);
+		bbox.merge(pts[i]);
 	}
 
 	vector<LineSegment> edgeSegs;
-	getBlockEdgeSegs(blockCorners.data(), edgeSegs);
+	getBlockEdgeSegs(pts.data(), edgeSegs);
 	size_t numEdgeHits = 0;
 	for (const auto& seg : edgeSegs) {
 		vector<RayHit> hits;
@@ -350,8 +383,9 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-inline Index3DId Block::addVertex(const Index3D& ownerBlockIdx, const Vector3d& pt, size_t currentId)
+inline Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 {
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	size_t vertId = pOwner->_vertices.findOrAdd(pt, currentId);
 	return Index3DId(pOwner->_blockIdx, vertId);
@@ -379,15 +413,16 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	return result;
 }
 
-Index3DId Block::addFace(const vector<CrossBlockPoint>& pts)
+Index3DId Block::addFace(const vector<Vector3d>& pts)
 {
 	Polygon newPoly;
 	for (const auto& pt : pts) {
-		auto vertId = addVertex(pt._ownerBlockIdx, pt._pt);
+		auto vertId = addVertex(pt);
 		newPoly.addVertex(vertId);
 	}
 	newPoly.doneCreating();
 
+	Index3D ownerIdx = determineOwnerBlockIdx(pts);
 	Index3DId faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 	vector<Index3DId> vertIds;
 	faceFunc(faceId, [this, &vertIds](const Block* pBlock, Polygon& face) {
@@ -404,15 +439,12 @@ Index3DId Block::addFace(const vector<CrossBlockPoint>& pts)
 	return faceId;
 }
 
-Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<CrossBlockPoint>& pts)
+Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
 	Index3D polyBlockIdx(_blockIdx);
 
 	Index3D blockDims = Volume::volDim();
-	Index3D ownerBlockIdx(_blockIdx);
-	if (subBlockIdx[axis] == _blockDim - 1) {
-		ownerBlockIdx[axis] = (ownerBlockIdx[axis] + 1) % blockDims[axis];
-	}
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
 
 	Block* pPolygonOwner = getOwner(ownerBlockIdx);
 
@@ -508,8 +540,8 @@ void Block::dividePolyhedraAtSharpVerts()
 		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt)) {
-//				poly.split(this, pt);
-//				deadPolyhedra.push_back(index);
+				poly.split(this, pt);
+				deadPolyhedra.push_back(index);
 			}
 		}
 	});

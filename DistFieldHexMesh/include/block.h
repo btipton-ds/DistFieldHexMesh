@@ -29,7 +29,8 @@ class Block {
 public:
 	friend class SubBlock;
 
-	static Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt);
+	Vector3d invTriLinIterp(const Vector3d& pt) const;
+	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src) = delete;
@@ -40,6 +41,12 @@ public:
 	const Volume* getVolume() const;
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
+
+	// These method determine with block owns an entity based on it's location
+	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
+	Index3D determineOwnerBlockIdx(const Vertex& vert) const;
+	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
+	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	size_t createSubBlocks();
 
@@ -63,10 +70,11 @@ public:
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
 	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly) const;
 
-	Index3DId addVertex(const Index3D& blockIdx, const Vector3d& pt, size_t currentId = -1);
+	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);
 	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
+	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -100,15 +108,7 @@ private:
 		X, Y, Z
 	};
 
-	struct CrossBlockPoint {
-		inline operator const Vector3d& () const
-		{
-			return _pt;
-		}
-
-		Vector3d _pt;
-		Index3D _ownerBlockIdx;
-	};
+	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	std::mutex& getEdgeMutex() const;
 	std::mutex& getFaceMutex() const;
@@ -118,19 +118,16 @@ private:
 	void dividePolyhedraAtSharpVerts();
 	void dividePolyhedraByCurvature();
 
-	const Vector3d* getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	std::vector<CrossBlockPoint> getSubBlockCornerPts(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx) const;
+	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
+	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;
 	void getBlockEdgeSegs(const Vector3d* blockPts, std::vector<LineSegment>& segs) const;
 
-	CrossBlockPoint triLinInterp(const Vector3d* blockPts, size_t blockDim, const Index3D& pt) const;
+	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
-	void addSubBlockIndicesForMeshVerts(std::set<Index3D>& subBlockIndices);
-	void addSubBlockIndicesForRayHits(std::set<Index3D>& subBlockIndices);
 
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
-	size_t addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx);
-	Index3DId addFace(const std::vector<CrossBlockPoint>& pts);
-	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<CrossBlockPoint>& pts);
+	Index3DId addFace(const std::vector<Vector3d>& pts);
+	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
@@ -138,11 +135,17 @@ private:
 	std::string _filename;
 
 	Volume* _pVol;
+	CBoundingBox3Dd 
+		_boundBox, // The precise bounding box for this box
+		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
+						// must be tested to see if it belongs to this box or a neighbor box.
+						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
+						// locking the mutex.Objects which lie on the boundary do require locking.
 	Index3D _blockIdx;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
-	Vector3d _corners[8];
+	std::vector<Vector3d> _corners;
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
