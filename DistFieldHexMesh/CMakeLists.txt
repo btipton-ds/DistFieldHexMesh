@@ -58,7 +58,7 @@ add_executable (DistFieldHexMesh
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
-	"src/subBlock.cpp"
+	
 	"src/vertex.cpp"
 	"src/volume.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
@@ -79,7 +79,7 @@ add_executable (TestDFM
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
-	"src/subBlock.cpp"
+	
 	"src/vertex.cpp"
 	"src/volume.cpp" 	
  )

@@ -202,7 +202,9 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr)
 			facePt2
 		};
 
-		pBlock->addHexCell(pts, 2, pBlock->getBlockIdx());
+		size_t cellIdx = pBlock->addHexCell(pts, 2, pBlock->getBlockIdx(), true);
+		if (cellIdx != -1)
+			result.push_back(cellIdx);
 	}
 #endif
 	return result;

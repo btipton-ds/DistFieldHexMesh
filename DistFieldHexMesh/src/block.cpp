@@ -180,7 +180,7 @@ vector<size_t> Block::createSubBlocks(const Vector3d blockPts[8])
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				size_t cellIdx = addHexCell(blockPts, _blockDim, idx);
+				size_t cellIdx = addHexCell(blockPts, _blockDim, idx, true);
 				if (cellIdx != -1)
 					newCells.push_back(cellIdx);
 			}
@@ -234,7 +234,7 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 {
 
 	auto blockCornerPts = getCornerPts();	
-	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx);
+	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx, false);
 }
 
 inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
@@ -347,7 +347,7 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 	return result;
 }
 
-size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx)
+size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
 
@@ -356,29 +356,31 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		bbox.merge(pts[i]);
 	}
 
-	vector<LineSegment> edgeSegs;
-	getBlockEdgeSegs(pts.data(), edgeSegs);
-	size_t numEdgeHits = 0;
-	for (const auto& seg : edgeSegs) {
-		vector<RayHit> hits;
-		if (_pModelTriMesh->rayCast(seg, hits)) {
-			numEdgeHits++;
-		}
-	}
-
-	if (numEdgeHits == 0) {
-		bool found = false;
-		vector<size_t> vertIndices;
-		if (_pModelTriMesh->findVerts(bbox, vertIndices)) {
-			for (size_t vertIdx : vertIndices) {
-				if (_pVol->getSharpVertIndices().count(vertIdx) != 0) {
-					found = true;
-					break;
-				}
+	if (intersectingOnly) {
+		vector<LineSegment> edgeSegs;
+		getBlockEdgeSegs(pts.data(), edgeSegs);
+		size_t numEdgeHits = 0;
+		for (const auto& seg : edgeSegs) {
+			vector<RayHit> hits;
+			if (_pModelTriMesh->rayCast(seg, hits)) {
+				numEdgeHits++;
 			}
 		}
-		if (!found)
-			return -1;
+
+		if (numEdgeHits == 0) {
+			bool found = false;
+			vector<size_t> vertIndices;
+			if (_pModelTriMesh->findVerts(bbox, vertIndices)) {
+				for (size_t vertIdx : vertIndices) {
+					if (_pVol->getSharpVertIndices().count(vertIdx) != 0) {
+						found = true;
+						break;
+					}
+				}
+			}
+			if (!found)
+				return -1;
+		}
 	}
 
 	vector<Index3DId> faceIds;

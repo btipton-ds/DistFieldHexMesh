@@ -7,7 +7,6 @@
 
 #include <triMesh.h>
 
-#include <subBlock.h>
 #include <block.h>
 #include <volume.h>
 #include <MultiCoreUtil.h>

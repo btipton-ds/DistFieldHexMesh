@@ -27,8 +27,6 @@ class Polyhedron;
 
 class Block {
 public:
-	friend class SubBlock;
-
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
@@ -74,7 +72,7 @@ public:
 	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
-	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx);
+	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
