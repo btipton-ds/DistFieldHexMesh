@@ -113,6 +113,7 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 {
 	const double tol = 1.0e-5;
 	const auto& volBounds = _pVol->volDim();
+
 	Index3D result(_blockIdx);
 	for (int i = 0; i < 3; i++) {
 		if (ratios[i] >= 1 - tol) {
@@ -120,8 +121,9 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 
 			// Clamp it inside volume bounds. If it's shared by a block that doesn't exist, there's no chance
 			// of a thread access conflict on that boundary
-			if (result[i] >= volBounds[i])
+			if (result[i] >= volBounds[i]) {
 				result[i] = volBounds[i] - 1;
+			}
 		}
 	}
 
@@ -147,13 +149,13 @@ Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 	const double tol = 1.0e-5;
 	auto volBounds = _pVol->volDim();
 
-	Vector3d avgRatio(0, 0, 0);
+	Vector3d ctr(0, 0, 0);
 	for (const auto& pt : points) {
-		avgRatio += invTriLinIterp(pt);
+		ctr += pt;
 	}
-	avgRatio = avgRatio / points.size();
+	ctr = ctr / points.size();
 
-	return determineOwnerBlockIdxFromRatios(avgRatio);
+	return determineOwnerBlockIdx(ctr);
 }
 
 Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
@@ -161,15 +163,14 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	const double tol = 1.0e-5;
 	auto volBounds = _pVol->volDim();
 
-	Vector3d avgRatio(0, 0, 0);
+	Vector3d ctr(0, 0, 0);
 	const auto& vertIds = face.getVertexIds();
 	for (const auto& vertId : vertIds) {
 		auto pt = getVertexPoint(vertId);
-		avgRatio += invTriLinIterp(pt);
+		ctr += pt;
 	}
-	avgRatio = avgRatio / vertIds.size();
-
-	return determineOwnerBlockIdxFromRatios(avgRatio);
+	ctr = ctr / vertIds.size();
+	return determineOwnerBlockIdx(ctr);
 }
 
 size_t Block::createSubBlocks()
@@ -255,21 +256,37 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 		result[i] = delta[i] / vRange[i];
 	}
 
-	result = TRI_LERP(blockPts, result[0], result[1], result[2]);
+	Vector3d checkPt = TRI_LERP(blockPts, result[0], result[1], result[2]);
 
 	const double step = 1.0e-12;
-	Vector3d vErr = result - pt;
+	Vector3d vErr = checkPt - pt;
 	double errSqr = vErr.squaredNorm();
 	while (errSqr > tolSqr) {
 		// Compute gradient
 		Vector3d grad;
 		for (size_t axis = 0; axis < 3; axis++) {
-			grad[axis] = ((result[axis] + step) - pt[axis]) / step;
+			switch (axis) {
+			default:
+			case 0:
+				checkPt = TRI_LERP(blockPts, result[0] + step, result[1], result[2]);
+				break;
+			case 1:
+				checkPt = TRI_LERP(blockPts, result[0], result[1] + step, result[2]);
+				break;
+			case 2:
+				checkPt = TRI_LERP(blockPts, result[0], result[1], result[2] + step);
+				break;
+			}
+			grad[axis] = ((checkPt[axis]) - pt[axis]) / step;
 		}
 		grad.normalize();
 
-		Vector3d testPt0 = result - step * grad;
-		Vector3d testPt1 = result + step * grad;
+		Vector3d ratio0 = - step * grad;
+		Vector3d testPt0 = TRI_LERP(blockPts, ratio0[0], ratio0[1], ratio0[2] + step);
+
+		Vector3d ratio1 = step * grad;
+		Vector3d testPt1 = TRI_LERP(blockPts, ratio1[0], ratio1[1], ratio1[2] + step);
+
 		double y0 = (testPt0 - pt).norm();
 		double y1 = (result - pt).norm();
 		double y2 = (testPt1 - pt).norm();
@@ -281,7 +298,8 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 			break;
 		double dx = -b / (2 * a);
 		result = result + dx * grad;
-		vErr = result - pt;
+		checkPt = TRI_LERP(blockPts, result[0], result[1], result[2]);
+		vErr = checkPt - pt;
 		errSqr = vErr.squaredNorm();
 	}
 		
