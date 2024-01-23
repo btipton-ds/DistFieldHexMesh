@@ -5,6 +5,8 @@
 #include <vertex.h>
 #include <index3D.h>
 
+struct Plane;
+
 namespace DFHM {
 
 class Edge;
@@ -12,7 +14,7 @@ class Block;
 
 class Polygon {
 public:
-	void setOwnerBlockIdx(const Index3D& blockIdx);
+	void setOurId(const Index3DId& id);
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
@@ -30,7 +32,7 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
-	std::vector<Edge> getEdges() const;
+	std::vector<Edge> getEdges(const Block* pBlock) const;
 	bool containsEdge(const Edge& edge) const;
 
 	Vector3d getUnitNormal(const Block* pBlock) const;
@@ -39,19 +41,21 @@ public:
 	Vector3d projectPoint(const Block* pBlock, const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
-	bool insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVert);
+	bool insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId);
 	Index3DId insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
-	Index3DId insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, double t);
+	bool insertVertex(Block* pBlock, const Edge& edge, const Index3DId& newVertId);
+
+	Index3DId splitWithPlane(Block* pBlock, const Plane& splittingPlane);
 
 private:
-	Index3D _ownerBlockIdx;
+	Index3DId _ourId;
 	std::vector<Index3DId> _vertexIds, _sortedIds;
 	Index3DId _creatorCellId, _neighborCellId;
 };
 
-inline void Polygon::setOwnerBlockIdx(const Index3D& blockIdx)
+inline void Polygon::setOurId(const Index3DId& id)
 {
-	_ownerBlockIdx = blockIdx;
+	_ourId = id;
 }
 
 inline void Polygon::setCreatorCellId(const Index3DId& subBlockId)

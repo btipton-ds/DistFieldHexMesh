@@ -1,3 +1,4 @@
+#include <tm_math.h>
 #include <edge.h>
 #include <block.h>
 #include <volume.h>
@@ -20,6 +21,17 @@ bool Edge::operator < (const Edge& rhs) const
 			return false;
 	}
 	return false;
+}
+
+double Edge::sameParamTol(const Block* pBlock) const
+{
+	return Vertex::sameDistTol() / getLength(pBlock);
+}
+
+double Edge::getLength(const Block* pBlock) const
+{
+	LineSegment seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
+	return seg.calLength();
 }
 
 Vector3d Edge::getCenter(const Block* pBlock) const
@@ -99,4 +111,50 @@ set<Index3DId> Edge::getFaceIds(const Block* pBlock, set<Index3DId>& availFaces)
 	}
 
 	return result;
+}
+
+Index3DId Edge::splitAtParam(Block* pBlock, double t) const
+{
+	const double tol = sameParamTol(pBlock);
+	if (t > tol && t < 1.0 - tol) {
+		Vector3d pt = getPointAt(pBlock, t);
+		auto midVertId = pBlock->addVertex(pt);
+
+		set<Index3DId> faceIds = getFaceIds(pBlock);
+		for (const auto& faceId : faceIds) {
+			pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
+				if (!face.insertVertex(pBlock, *this, midVertId)) {
+					assert(!"Should never reach this code block.");
+					throw std::runtime_error("Failed insert a vertex in a polygon which must accept the vertex. Not supposed to be possible.");
+				}
+				});
+		}
+
+		return midVertId;
+	}
+
+	return Index3DId();
+}
+
+double Edge::intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) const
+{
+	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	LineSegment seg(pt0, pt1);
+	RayHit hit;
+	if (intersectLineSegPlane(seg, splittingPlane, hit)) {
+		double t = hit.dist / seg.calLength();
+		return t;
+	}
+	return -1;
+}
+
+Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane) const
+{
+	const double tol = sameParamTol(pBlock);
+	double t = intesectPlaneParam(pBlock, splittingPlane);
+	if (t > tol && t < 1.0 - tol) {
+		return splitAtParam(pBlock, t);
+	}
+	return Index3DId();
 }

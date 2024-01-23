@@ -72,6 +72,7 @@ public:
 	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
+	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
@@ -108,9 +109,9 @@ private:
 
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
-	std::mutex& getEdgeMutex() const;
-	std::mutex& getFaceMutex() const;
-	std::mutex& getVertexMutex() const;
+	std::recursive_mutex& getEdgeMutex() const;
+	std::recursive_mutex& getFaceMutex() const;
+	std::recursive_mutex& getVertexMutex() const;
 
 	std::vector<size_t> dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices);
 	std::vector<size_t> dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices);
@@ -181,12 +182,12 @@ inline const TriMesh::CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
-inline std::mutex& Block::getVertexMutex() const
+inline std::recursive_mutex& Block::getVertexMutex() const
 {
 	return _vertices.getMutex();
 }
 
-inline std::mutex& Block::getFaceMutex() const
+inline std::recursive_mutex& Block::getFaceMutex() const
 {
 	return _polygons.getMutex();
 }

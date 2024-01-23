@@ -33,7 +33,7 @@ public:
 	bool empty() const;
 	size_t size() const;
 
-	std::mutex& getMutex() const;
+	std::recursive_mutex& getMutex() const;
 
 	void lock() const;
 	bool tryLock() const;
@@ -41,7 +41,7 @@ public:
 private:
 	mutable std::thread::id _lockedId = std::this_thread::get_id();
 
-	mutable std::mutex _mutex;
+	mutable std::recursive_mutex _mutex;
 	ObjectPool<T> _data;
 };
 
@@ -130,7 +130,7 @@ size_t ObjectPoolWMutex<T>::size() const
 }
 
 template<class T>
-std::mutex& ObjectPoolWMutex<T>::getMutex() const
+std::recursive_mutex& ObjectPoolWMutex<T>::getMutex() const
 {
 	return _mutex;
 }

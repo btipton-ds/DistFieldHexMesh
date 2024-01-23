@@ -66,8 +66,8 @@ vector<Edge> Polyhedron::getEdges(const Block* pBlock) const
 {
 	set<Edge> idSet;
 	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(faceId, [&idSet](const Block* pBlock, const Polygon& face) {
-			const auto& edges = face.getEdges();
+		pBlock->faceFunc(faceId, [&pBlock , &idSet](const Block* pBlock, const Polygon& face) {
+			const auto& edges = face.getEdges(pBlock);
 			idSet.insert(edges.begin(), edges.end());
 		});
 	}
@@ -133,7 +133,7 @@ Vector3d Polyhedron::calCentroid(const Block* pBlock) const
 	for (const auto& vertId : cornerIds) {
 		result += pBlock->getVertexPoint(vertId);
 	}
-	result /= cornerIds.size();
+	result /= (double) cornerIds.size();
 
 	return result;
 }
@@ -142,6 +142,25 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr, bool inters
 {
 	vector<size_t> result;
 #if 1
+	auto edges = getEdges(pBlock);
+	vector<Index3DId> newVertIds;
+	Plane horizontal(ctr, Vector3d(0, 0, 1));
+	for (const auto& edge : edges) {
+		auto newVertId = edge.splitWithPlane(pBlock, horizontal);
+		if (newVertId.isValid()) {
+			newVertIds.push_back(newVertId);
+		}
+	}
+
+	cout << "Num new verts: " << newVertIds.size() << "\n";
+
+	if (newVertIds.size() >= 3) {
+		if (newVertIds.size() > 3) {
+		}
+		auto newFaceId = pBlock->addFace(newVertIds);
+	}	
+
+#else
 	// Make a new hexCell at each corner
 	vector<Index3DId> corners = getCornerIds(pBlock);
 	auto bbox = getBoundingBox(pBlock);
@@ -175,7 +194,7 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr, bool inters
 		auto faceId2 = *vertFaces.begin();
 
 		pBlock->faceFunc(faceId1, [&vertEdges, &edge1](const Block* pBlock, const Polygon& face) {
-			auto edges = face.getEdges();
+			auto edges = face.getEdges(pBlock);
 			for (const auto& edge : edges) {
 				if (vertEdges.count(edge) != 0) {
 					edge1 = edge;

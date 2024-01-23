@@ -24,6 +24,7 @@ public:
 	static double toDbl(int iVal);
 	static Vector3d toDbl(const FixedPt& src);
 	static double getFixedScale();
+	static double sameDistTol();
 
 	Vertex() = default;
 	Vertex(const Vertex& src) = default;
@@ -78,6 +79,11 @@ inline double Vertex::toDbl(int iVal)
 inline Vector3d Vertex::toDbl(const FixedPt& src)
 {
 	return Vector3d(toDbl(src[0]), toDbl(src[1]), toDbl(src[2]));
+}
+
+inline double Vertex::sameDistTol()
+{
+	return 1.0e-5;
 }
 
 inline Vertex::Vertex(const Vector3d& pt)

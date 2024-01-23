@@ -4,12 +4,15 @@
 #include <set>
 #include <index3D.h>
 
+struct Plane;
+
 namespace DFHM {
 
 class Block;
 
 class Edge {
 public:
+
 	Edge() = default;
 	Edge(const Edge& src) = default;
 	Edge(const Index3DId& vert0, const Index3DId& vert1);
@@ -19,6 +22,8 @@ public:
 
 	const Index3DId* getVertexIds() const;
 
+	double sameParamTol(const Block* pBlock) const;
+	double getLength(const Block* pBlock) const;
 	Vector3d getCenter(const Block* pBlock) const;
 	Vector3d getPointAt(const Block* pBlock, double t) const;
 	double paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const;
@@ -26,6 +31,10 @@ public:
 	bool containsVertex(const Index3DId& vert) const;
 	std::set<Index3DId> getFaceIds(const Block* pBlock) const;
 	std::set<Index3DId> getFaceIds(const Block* pBlock, std::set<Index3DId>& availFaces) const;
+
+	double intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) const;
+	Index3DId splitAtParam(Block* pBlock, double t) const;
+	Index3DId splitWithPlane(Block* pBlock, const Plane& splittingPlane) const;
 
 private:
 	Index3DId _vertexIds[2];

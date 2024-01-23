@@ -347,6 +347,19 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 	return result;
 }
 
+Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
+{
+	Polygon newFace;
+	for (const auto& vertId : vertIndices) {
+		newFace.addVertex(vertId);
+	}
+	auto ownerIdx = determineOwnerBlockIdx(newFace);
+	Block* pOwner = getOwner(ownerIdx);
+	lock_guard g(pOwner->_polygons);
+	size_t faceId = _polygons.findOrAdd(newFace);
+	return Index3DId(ownerIdx, faceId);
+}
+
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
@@ -462,7 +475,7 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	for (const auto& faceId : faceIds) {
 		vector<Edge> edges;
 		faceFunc(faceId, [&edges](const Block* pBlock, const Polygon& face) {
-			edges = face.getEdges();
+			edges = face.getEdges(pBlock);
 		});
 		for (const auto& edge : edges) {
 			if (edge.containsVertex(vertexId)) {
@@ -486,8 +499,8 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 	Index3D ownerIdx = determineOwnerBlockIdx(pts);
 	Index3DId faceId(_blockIdx, _polygons.findOrAdd(newPoly));
 	vector<Index3DId> vertIds;
-	faceFunc(faceId, [this, &vertIds](const Block* pBlock, Polygon& face) {
-		face.setOwnerBlockIdx(_blockIdx);
+	faceFunc(faceId, [this, &faceId, &vertIds](const Block* pBlock, Polygon& face) {
+		face.setOurId(faceId);
 		vertIds = face.getVertexIds();
 	});
 
@@ -678,9 +691,9 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrder([outerOnly, &edges](size_t faceId, const Polygon& face) {
+	_polygons.iterateInOrder([this, outerOnly, &edges](size_t faceId, const Polygon& face) {
 		if (!outerOnly || face.isOuter()) {
-			const auto& faceEdges = face.getEdges();
+			const auto& faceEdges = face.getEdges(this);
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}
 	});
