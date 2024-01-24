@@ -3,8 +3,9 @@
 #include <vector>
 #include <map>
 #include <mutex>
-#include <tm_vector3.h>
 #include <stdexcept>
+#include <Index3D.h>
+#include <tm_vector3.h>
 
 namespace DFHM {
 
@@ -22,6 +23,7 @@ public:
 	bool exists(size_t id) const;
 
 	size_t findOrAdd(const T& obj, size_t id = -1);
+	Index3DId findOrAdd(const Index3D& blockIdx, const T& obj, size_t id = -1);
 
 	const T* get(size_t id) const;
 	T* get(size_t id);
@@ -166,7 +168,8 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 		index = _idToIndexMap[result];
 		if (index < _data.size()) {
 			_data[index] = obj;
-		} else {
+		}
+		else {
 			if (_availableIndices.empty())
 				index = _data.size();
 			else {
@@ -178,13 +181,15 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 				_data.resize(index + 1);
 			_data[index] = obj;
 		}
-	} else {
+	}
+	else {
 		result = _idToIndexMap.size();
 		if (_availableIndices.empty()) {
 			index = _data.size();
 			_idToIndexMap.push_back(index);
 			_data.push_back(obj);
-		} else {
+		}
+		else {
 			index = _availableIndices.back();
 			_availableIndices.pop_back();
 			if (index >= _data.size())
@@ -199,6 +204,20 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 	}
 
 	return result;
+}
+
+template<class T>
+Index3DId ObjectPool<T>::findOrAdd(const Index3D& blockIdx, const T& obj, size_t currentId)
+{
+	size_t result = findOrAdd(obj, currentId);
+	Index3DId entId(blockIdx, result);
+	T* p = get(result);
+	if (p)
+		p->setId(entId);
+
+	assert(entId.isValid());
+
+	return entId;
 }
 
 template<class T>

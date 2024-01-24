@@ -12,6 +12,7 @@ void Polygon::addVertex(const Index3DId& vertId)
 {
 	assert(find(_vertexIds.begin(), _vertexIds.end(), vertId) == _vertexIds.end());
 	_vertexIds.push_back(vertId);
+	_needSort = true;
 }
 
 bool Polygon::unload(std::ostream& out, size_t idSelf)
@@ -26,10 +27,13 @@ bool Polygon::load(std::istream& in, size_t idSelf)
 	return true;
 }
 
-void Polygon::doneCreating()
+void Polygon::sortIds() const
 {
-	_sortedIds = _vertexIds;
-	sort(_sortedIds.begin(), _sortedIds.end());
+	if (_needSort) {
+		_sortedIds = _vertexIds;
+		sort(_sortedIds.begin(), _sortedIds.end());
+		_needSort = false;
+	}
 }
 
 void Polygon::pack()
@@ -39,6 +43,9 @@ void Polygon::pack()
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
+	sortIds();
+	rhs.sortIds();
+
 	if (_sortedIds.size() < rhs._sortedIds.size())
 		return true;
 	else if (_sortedIds.size() > rhs._sortedIds.size())
@@ -57,7 +64,7 @@ vector<Edge> Polygon::getEdges(const Block* pBlock) const
 {
 	vector<Edge> result;
 
-	pBlock->faceFunc(_ourId, [this, &result](const Block* pBlock, const Polygon& face) {
+	pBlock->faceFunc(_thisId, [this, &result](const Block* pBlock, const Polygon& face) {
 		const auto& vertIds = face._vertexIds;
 		for (size_t i = 0; i < vertIds.size(); i++) {
 			size_t j = (i + 1) % vertIds.size();
@@ -82,6 +89,15 @@ bool Polygon::containsEdge(const Edge& edge) const
 			return true;
 	}
 
+	return false;
+}
+
+bool Polygon::containsVert(const Index3DId& vertId) const
+{
+	for (const auto& id : _vertexIds) {
+		if (id == vertId)
+			return true;
+	}
 	return false;
 }
 
@@ -151,36 +167,37 @@ Index3DId Polygon::insertVertex(Block* pBlock, const Index3DId& vert0, const Ind
 bool Polygon::insertVertex(Block* pBlock, const Edge& edge, const Index3DId& newVertId)
 {
 	bool result = false;
-	Block* pOwner = pBlock->getOwner(_ourId);
-	pOwner->faceFunc(_ourId, [this, &edge, &newVertId, &result](Block* pBlock, Polygon& face) {
-		auto& vertIds = face._vertexIds;
-		size_t idx0 = -1, idx1 = 1;
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			const auto& vert0 = vertIds[i];
-			const auto& vert1 = vertIds[j];
-			if (
-				(vert0 == edge.getVertexIds()[0] && vert1 == edge.getVertexIds()[1]) || 
-				(vert0 == edge.getVertexIds()[1] && vert1 == edge.getVertexIds()[0])
-				) { // The input edge matches the current vertex pair
-				idx0 = i;
-				idx1 = j;
-				break;
-			}
+	auto& vertIds = _vertexIds;
+	size_t idx0 = -1, idx1 = 1;
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		const auto& vert0 = vertIds[i];
+		const auto& vert1 = vertIds[j];
+		if (
+			(vert0 == edge.getVertexIds()[0] && vert1 == edge.getVertexIds()[1]) ||
+			(vert0 == edge.getVertexIds()[1] && vert1 == edge.getVertexIds()[0])
+			) { // The input edge matches the current vertex pair
+			idx0 = i;
+			idx1 = j;
+			break;
 		}
-		if (idx0 != -1 && idx1 != -1) {
-			if (idx0 > idx1)
-				swap(idx0, idx1);
+	}
+	if (idx0 != -1 && idx1 != -1) {
+		if (idx0 > idx1)
+			swap(idx0, idx1);
 
-			auto pos = vertIds.begin() + idx1; // The location to insert infront of
-			vertIds.insert(pos, newVertId);
-			result = true;
+		if (idx1 - idx0 > 1 && idx0 == 0 && idx1 == vertIds.size() -1) {
+			// New vertex goes at the end
+			vertIds.push_back(newVertId);
+		} else {
+			vertIds.insert(vertIds.begin() + idx1, newVertId);
 		}
-	});
+		result = true;
+	}
 
 	if (result) {
 		pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
-			vert.addFaceId(_ourId);
+			vert.addFaceId(_thisId);
 		});
 	}
 	return result;
@@ -203,61 +220,56 @@ struct SplitEdgeRec
 
 }
 
-Index3DId Polygon::splitWithPlane(Block* pBlock, const Plane& splittingPlane)
+Index3DId Polygon::splitWithEdge(Block* pBlock, const Edge& splittingEdge)
 {
 	Index3DId newFaceId;
 
-	vector<SplitEdgeRec> splitEdges;
-	auto edges = getEdges(pBlock);
+	pBlock->faceFunc(_thisId, [this, &splittingEdge, &newFaceId](Block* pBlock, Polygon& face) {
+		size_t idx0 = -1, idx1 = -1;
+		auto& vertIds = face._vertexIds;
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			// remove this reference from all vertices
+			pBlock->vertexFunc(vertIds[i], [this](Block* pBlock, Vertex& vert) {
+				vert.removeFaceId(_thisId);
+			});
 
-	for (const auto& edge : edges) {
-		const double tol = edge.sameParamTol(pBlock);
-		double t = edge.intesectPlaneParam(pBlock, splittingPlane);
-		if (t > tol && t < 1.0 - tol) {
-			auto vertId = edge.splitAtParam(pBlock, t);
-			if (vertId.isValid()) {
-				splitEdges.push_back(SplitEdgeRec(edge, vertId));
+			const auto& vertId = vertIds[i];
+			if ((vertId == splittingEdge.getVertexIds()[0]) || (vertId == splittingEdge.getVertexIds()[1])) {
+				if (idx0 == -1)
+					idx0 = i;
+				else
+					idx1 = i;
 			}
 		}
-	}
 
-	if (!splitEdges.empty()) {
-		pBlock->faceFunc(_ourId, [this, &splitEdges, &newFaceId](Block* pBlock, Polygon& face) {
-			size_t idx0 = -1, idx1 = -1;
-			auto& vertIds = face._vertexIds;
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				const auto& vertId = vertIds[i];
-				if ((vertId == splitEdges[0]._splitVertId) || (vertId == splitEdges[1]._splitVertId)) {
-					if (idx0 == -1)
-						idx0 = i;
-					else
-						idx1 = i;
-				}
-			}
+		vector<Index3DId> face0Verts, face1Verts;
 
-			vector<Index3DId> face0Verts, face1Verts;
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			size_t index = (i + idx0) % vertIds.size();
+			face0Verts.push_back(vertIds[index]);
+			if (vertIds[index] == vertIds[idx1])
+				break;
+		}
 
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t index = (i + idx0) % vertIds.size();
-				face0Verts.push_back(vertIds[index]);
-				if (vertIds[index] == vertIds[idx1])
-					break;
-			}
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			size_t index = (i + idx1) % vertIds.size();
+			face1Verts.push_back(vertIds[index]);
+			if (vertIds[index] == vertIds[idx0])
+				break;
+		}
 
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t index = (i + idx1) % vertIds.size();
-				face1Verts.push_back(vertIds[index]);
-				if (vertIds[index] == vertIds[idx0])
-					break;
-			}
+		if (face1Verts.size() < face0Verts.size())
+			swap(face0Verts, face1Verts);
 
-			if (face1Verts.size() < face0Verts.size())
-				swap(face0Verts, face1Verts);
+		face._vertexIds = face0Verts;
+		for (const auto& vertId : face0Verts) {
+			pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+				vert.addFaceId(_thisId);
+			});
+		}
 
-			vertIds = face0Verts;
-			newFaceId = pBlock->addFace(face1Verts);
-		});
-	}
+		newFaceId = pBlock->addFace(face1Verts);
+	});
 
 	return newFaceId;
 }

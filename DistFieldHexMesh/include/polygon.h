@@ -14,7 +14,7 @@ class Block;
 
 class Polygon {
 public:
-	void setOurId(const Index3DId& id);
+	void setId(const Index3DId& id);
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
@@ -24,7 +24,7 @@ public:
 	void setNeighborCellId(const Index3DId& subBlockId);
 	const Index3DId& getNeighborCellId() const;
 
-	void doneCreating();
+	// Required for use with object pool
 	void pack();
 
 	bool isOuter() const;
@@ -34,6 +34,7 @@ public:
 	const std::vector<Index3DId>& getVertexIds() const;
 	std::vector<Edge> getEdges(const Block* pBlock) const;
 	bool containsEdge(const Edge& edge) const;
+	bool containsVert(const Index3DId& vertId) const;
 
 	Vector3d getUnitNormal(const Block* pBlock) const;
 	Vector3d getCentroid(const Block* pBlock) const;
@@ -45,17 +46,23 @@ public:
 	Index3DId insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
 	bool insertVertex(Block* pBlock, const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitWithPlane(Block* pBlock, const Plane& splittingPlane);
+	Index3DId splitWithEdge(Block* pBlock, const Edge& splittingEdge);
 
 private:
-	Index3DId _ourId;
-	std::vector<Index3DId> _vertexIds, _sortedIds;
+	void sortIds() const;
+
+	Index3DId _thisId;
+	std::vector<Index3DId> _vertexIds;
 	Index3DId _creatorCellId, _neighborCellId;
+
+	mutable bool _needSort = true;
+	mutable std::vector<Index3DId> _sortedIds;
 };
 
-inline void Polygon::setOurId(const Index3DId& id)
+inline void Polygon::setId(const Index3DId& id)
 {
-	_ourId = id;
+	_thisId = id;
+	assert(_thisId.isValid());
 }
 
 inline void Polygon::setCreatorCellId(const Index3DId& subBlockId)

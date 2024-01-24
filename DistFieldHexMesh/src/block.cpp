@@ -222,8 +222,9 @@ vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndic
 			double minBoxDim = min(range[0], min(range[1], range[2]));
 			if (kDiv * avgSurfArcLength > minBoxDim) {
 				auto splitCells = cell.split(this, true);
-				if (!splitCells.empty())
-					newCells.insert(newCells.end(), splitCells.begin(), splitCells.end());
+				for (const auto& cellId : splitCells) {
+					newCells.push_back(cellId);
+				}
 			}
 		}
 	}
@@ -353,11 +354,28 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
+
 	auto ownerIdx = determineOwnerBlockIdx(newFace);
 	Block* pOwner = getOwner(ownerIdx);
 	lock_guard g(pOwner->_polygons);
-	size_t faceId = _polygons.findOrAdd(newFace);
-	return Index3DId(ownerIdx, faceId);
+	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner->getBlockIdx(), newFace);
+
+	for (const auto& vertId : vertIndices) {
+		vertexFunc(vertId, [&faceId](Block* pBlock, Vertex& vert) {
+			vert.addFaceId(faceId);
+		});
+	}
+
+	return faceId;
+}
+
+size_t Block::addCell(const std::vector<Index3DId>& faceIds)
+{
+	Polyhedron cell(faceIds);
+	size_t cellId = _polyhedra.findOrAdd(cell);
+	_polyhedra[cellId].setId(Index3DId(_blockIdx, cellId));
+
+	return cellId;
 }
 
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
@@ -419,9 +437,9 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	const Index3DId polyhedronId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
-	auto pPoly = _polyhedra.get(polyhedronId.elementId());
-	assert(pPoly);
+	const Index3DId polyhedronId = _polyhedra.findOrAdd(_blockIdx, Polyhedron(faceIds));
+	assert(polyhedronId.isValid());
+	_polyhedra[polyhedronId.elementId()].setId(polyhedronId);
 
 	for (const auto& faceId : faceIds) {
 		if (faceId != _blockIdx) {
@@ -461,8 +479,8 @@ inline Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
-	size_t vertId = pOwner->_vertices.findOrAdd(pt, currentId);
-	return Index3DId(pOwner->_blockIdx, vertId);
+	Index3DId vertId = pOwner->_vertices.findOrAdd(pOwner->_blockIdx, pt, currentId);
+	return vertId;
 }
 
 set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
@@ -494,13 +512,12 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 		auto vertId = addVertex(pt);
 		newPoly.addVertex(vertId);
 	}
-	newPoly.doneCreating();
 
 	Index3D ownerIdx = determineOwnerBlockIdx(pts);
-	Index3DId faceId(_blockIdx, _polygons.findOrAdd(newPoly));
+	Block* pOwner = getOwner(ownerIdx);
+	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner->_blockIdx, newPoly);
 	vector<Index3DId> vertIds;
 	faceFunc(faceId, [this, &faceId, &vertIds](const Block* pBlock, Polygon& face) {
-		face.setOurId(faceId);
 		vertIds = face.getVertexIds();
 	});
 
@@ -621,7 +638,7 @@ vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndi
 			if (bbox.contains(pt)) {
 				deadCells.insert(index);
 
-				vector<size_t> tempCells = poly.split(this, pt, false);
+				auto tempCells = poly.split(this, pt, false);
 				newCells.insert(tempCells.begin(), tempCells.end());
 				splitCells.insert(tempCells.begin(), tempCells.end());
 			}
@@ -630,17 +647,21 @@ vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndi
 			newCells.insert(index);
 		} else {
 			vector<size_t> temp;
-			temp.insert(temp.end(), splitCells.begin(), splitCells.end());
+			for (const auto& cellId : splitCells)
+				temp.push_back(cellId);
 			auto subSplitCells = dividePolyhedraAtSharpVerts(temp);
 			newCells.insert(subSplitCells.begin(), subSplitCells.end());
 		}
 	}
-	for (const auto& polyIdx : deadCells) {
-		_polyhedra.free(polyIdx);
+	for (const auto& polyId : deadCells) {
+		_polyhedra.free(polyId);
 	}
 
 	vector<size_t> result;
-	result.insert(result.end(), newCells.begin(), newCells.end());
+	for (const auto& cellId : newCells) {
+		result.push_back(cellId);
+	}
+
 	return result;
 }
 

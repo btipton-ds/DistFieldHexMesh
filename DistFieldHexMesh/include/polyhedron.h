@@ -9,12 +9,20 @@ namespace DFHM {
 class Block;
 class Edge;
 
+// Polyhedra are never cross block, so they use size_t for indexing.
+// Faces and vertices in a cell are cross block
 class Polyhedron {
 public:
 	Polyhedron() = default;
 	Polyhedron(const Polyhedron& src) = default;
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 
+	// Required for use with object pool
+	void setId(const Index3DId& thisId);
+	Index3DId getIndex() const;
+
+	void addFace(const Index3DId& faceId);
+	bool removeFace(const Index3DId& faceId);
 	const std::vector<Index3DId>& getFaceIds() const;
 	std::vector<Index3DId> getCornerIds(const Block* pBlock) const;
 	std::vector<Edge> getEdges(const Block* pBlock) const;
@@ -35,8 +43,23 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
+	std::vector<size_t> split(Block* pBlock, const Vector3d& pt, const Vector3d& normal, bool intersectingOnly);
+	void orderVertIds(Block* pBlock, std::vector<Index3DId>& vertIds) const;
+
+	Index3DId _thisId;
 	std::vector<Index3DId> _faceIds;
 };
+
+inline void Polyhedron::setId(const Index3DId& thisId)
+{
+	_thisId = thisId;
+	assert(_thisId.isValid());
+}
+
+inline Index3DId Polyhedron::getIndex() const
+{
+	return _thisId;
+}
 
 inline const std::vector<Index3DId>& Polyhedron::getFaceIds() const
 {

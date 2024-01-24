@@ -113,9 +113,35 @@ set<Index3DId> Edge::getFaceIds(const Block* pBlock, set<Index3DId>& availFaces)
 	return result;
 }
 
+Index3DId Edge::getCommonFace(const Block* pBlock) const
+{
+	set<Index3DId> faceSet0;
+	pBlock->vertexFunc(_vertexIds[0], [&faceSet0](const Block* pBlock, const Vertex& vert) {
+		faceSet0 = vert.getFaceIds();
+	});
+
+	for (auto iter = faceSet0.begin(); iter != faceSet0.end(); iter++) {
+		const auto& faceId = *iter;
+		size_t count = 0;
+		pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
+			// Do not use containsEdge. It requires adjacency and this function doesn't
+			const auto& vertIds = face.getVertexIds();
+			for (const auto& vertId : vertIds) {
+				if ((vertId == _vertexIds[0]) || (vertId == _vertexIds[1]))
+					count++;
+			}
+		});
+
+		if (count == 2)
+			return faceId;
+	}
+
+	return Index3DId();
+}
+
 Index3DId Edge::splitAtParam(Block* pBlock, double t) const
 {
-	const double tol = sameParamTol(pBlock);
+	const double tol = 0;
 	if (t > tol && t < 1.0 - tol) {
 		Vector3d pt = getPointAt(pBlock, t);
 		auto midVertId = pBlock->addVertex(pt);
@@ -151,7 +177,7 @@ double Edge::intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) cons
 
 Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane) const
 {
-	const double tol = sameParamTol(pBlock);
+	const double tol = 0;
 	double t = intesectPlaneParam(pBlock, splittingPlane);
 	if (t > tol && t < 1.0 - tol) {
 		return splitAtParam(pBlock, t);

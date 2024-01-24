@@ -46,6 +46,23 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 	return false;
 }
 
+void Polyhedron::addFace(const Index3DId& faceId)
+{
+	if (find(_faceIds.begin(), _faceIds.end(), faceId) == _faceIds.end())
+		_faceIds.push_back(faceId);
+}
+
+bool Polyhedron::removeFace(const Index3DId& faceId)
+{
+	auto pos = find(_faceIds.begin(), _faceIds.end(), faceId);
+	if (pos != _faceIds.end()) {
+		_faceIds.erase(pos);
+		return true;
+	}
+
+	return false;
+}
+
 vector<Index3DId> Polyhedron::getCornerIds(const Block* pBlock) const
 {
 	set<Index3DId> idSet;
@@ -55,7 +72,7 @@ vector<Index3DId> Polyhedron::getCornerIds(const Block* pBlock) const
 			idSet.insert(vertexIds.begin(), vertexIds.end());
 		});
 	}
-	assert(idSet.size() == 8);
+
 	vector<Index3DId> result;
 	result.insert(result.end(), idSet.begin(), idSet.end());
 
@@ -138,15 +155,43 @@ Vector3d Polyhedron::calCentroid(const Block* pBlock) const
 	return result;
 }
 
-vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr, bool intersectingOnly)
+vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, bool intersectingOnly)
+{
+	set<size_t> cellSet;
+	cellSet.insert(_thisId.elementId());
+	for (int i = 0; i < 3; i++) {
+		set<size_t> resultSet;
+		Vector3d normal(0, 0, 0);
+		normal[i] = 1.0;
+		for (size_t cellId : cellSet) {
+			vector<size_t> splitCells;
+			pBlock->cellFunc(cellId, [this, &splitPoint, &normal, intersectingOnly, &splitCells](Block* pBlock, Polyhedron& cell) {
+				// TODO FIX ASAP. Adding a cell causes the data to move, causing data corruption during the operation.
+				// Smart pointer will fix this, but it's heavier than needed.
+				// Maybe reserve space?
+				splitCells = cell.split(pBlock, splitPoint, normal, intersectingOnly);
+			});
+			if (!splitCells.empty())
+				resultSet.insert(splitCells.begin(), splitCells.end());
+		}
+		if (!resultSet.empty())
+			cellSet.insert(resultSet.begin(), resultSet.end());
+	}
+
+	vector<size_t> result;
+	result.insert(result.end(), cellSet.begin(), cellSet.end());
+
+	return result;
+}
+
+vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, const Vector3d& normal, bool intersectingOnly)
 {
 	vector<size_t> result;
-#if 1
 	auto edges = getEdges(pBlock);
 	vector<Index3DId> newVertIds;
-	Plane horizontal(ctr, Vector3d(0, 0, 1));
+	Plane cutPlane(splitPoint, normal);
 	for (const auto& edge : edges) {
-		auto newVertId = edge.splitWithPlane(pBlock, horizontal);
+		auto newVertId = edge.splitWithPlane(pBlock, cutPlane);
 		if (newVertId.isValid()) {
 			newVertIds.push_back(newVertId);
 		}
@@ -154,99 +199,103 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& ctr, bool inters
 
 	cout << "Num new verts: " << newVertIds.size() << "\n";
 
+	// Add the splitting face
+	Index3DId splittingFace;
+	set<Index3DId> newFaceIdSet;
 	if (newVertIds.size() >= 3) {
-		if (newVertIds.size() > 3) {
-		}
-		auto newFaceId = pBlock->addFace(newVertIds);
-	}	
+		orderVertIds(pBlock, newVertIds);
+		splittingFace = pBlock->addFace(newVertIds);
+	} else {
+		assert(!"Less then 3 verts. Cannot form a face");
+	}
 
-#else
-	// Make a new hexCell at each corner
-	vector<Index3DId> corners = getCornerIds(pBlock);
-	auto bbox = getBoundingBox(pBlock);
-	assert(bbox.contains(ctr));
+	// Split the cell faces with split edges
+	for (size_t i = 0; i < newVertIds.size(); i++) {
+		size_t j = (i + 1) % newVertIds.size();
+		Edge edge(newVertIds[i], newVertIds[j]);
 
-	for (const auto& vertId : corners) {
-		auto vertFaces = getVertFaces(pBlock, vertId);
-		if (vertFaces.empty())
-			continue;
-		auto vertEdges = getVertEdges(pBlock, vertId);
-		if (vertFaces.empty()) {
-			assert(!"Should not be possible to reach this block.");
-			continue;
-		}
-		assert(vertFaces.size() == 3);
-		assert(vertEdges.size() == 3);
+		const auto& faceId = edge.getCommonFace(pBlock);
+		Index3DId newFaceId;
+		pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
+			// These are the 1/2 faces of original faces
+			newFaceId = face.splitWithEdge(pBlock, edge);
+			addFace(newFaceId);
+		});
 
-		Edge edge0 = *vertEdges.begin(), edge1, edge2;
-		vertEdges.erase(edge0);
-		assert(vertEdges.size() == 2);
-		auto edgeFaces = edge0.getFaceIds(pBlock, vertFaces);
-		assert(edgeFaces.size() == 2);
+	}
 
-		auto faceId0 = *edgeFaces.begin();
-		edgeFaces.erase(faceId0);
-
-		auto faceId1 = *edgeFaces.begin();
-
-		vertFaces.erase(faceId0);
-		vertFaces.erase(faceId1);
-		auto faceId2 = *vertFaces.begin();
-
-		pBlock->faceFunc(faceId1, [&vertEdges, &edge1](const Block* pBlock, const Polygon& face) {
-			auto edges = face.getEdges(pBlock);
-			for (const auto& edge : edges) {
-				if (vertEdges.count(edge) != 0) {
-					edge1 = edge;
-					break;
-				}
+	// Collect the faces below the splitting plane to form a new cell
+	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
+	vector<Index3DId> deadFaceIds;
+	for (const auto& faceId : _faceIds) {
+		pBlock->faceFunc(faceId, [this, &cutPlane, &newFaceIdSet, &faceId, &deadFaceIds](const Block* pBlock, const Polygon& face) {
+			Vector3d ctr = face.getCentroid(pBlock);
+			Vector3d v = ctr - cutPlane._origin;
+			if (v.dot(cutPlane._normal) < 0) {
+				deadFaceIds.push_back(faceId);
+				newFaceIdSet.insert(faceId);
 			}
 		});
-		vertEdges.erase(edge1);
-		edge2 = *vertEdges.begin();
+	}
+	for (const auto& deadFaceId : deadFaceIds) {
+		removeFace(deadFaceId);
+	}
+	addFace(splittingFace);
 
-		Vector3d vertPt = pBlock->getVertexPoint(vertId);
-		Vector3d facePt0, facePt1, facePt2;
-		pBlock->faceFunc(faceId0, [&facePt0, &ctr](const Block* pBlock, const Polygon& face) {
-			facePt0 = face.projectPoint(pBlock, ctr);
-		});
-		pBlock->faceFunc(faceId1, [&facePt1, &ctr](const Block* pBlock, const Polygon& face) {
-			facePt1 = face.projectPoint(pBlock, ctr);
-		});
-		pBlock->faceFunc(faceId2, [&facePt2, &ctr](const Block* pBlock, const Polygon& face) {
-			facePt2 = face.projectPoint(pBlock, ctr);
+	vector<Index3DId> newFaceIds;
+	newFaceIds.insert(newFaceIds.end(), newFaceIdSet.begin(), newFaceIdSet.end());
+	newFaceIds.push_back(splittingFace);
+	Index3DId newCellId(_thisId, pBlock->addCell(newFaceIds));
+
+	pBlock->faceFunc(splittingFace, [this, &newCellId](Block* pBlock, Polygon& face) {
+		face.setCreatorCellId(_thisId);
+		face.setNeighborCellId(newCellId);
+	});
+
+	if (_thisId.isValid())
+		result.push_back(_thisId.elementId());
+	if (newCellId.isValid())
+		result.push_back(newCellId.elementId());
+	return result;
+}
+
+void Polyhedron::orderVertIds(Block* pBlock, vector<Index3DId>& vertIds) const
+{
+	set<Index3DId> vertSet;
+	vertSet.insert(vertIds.begin(), vertIds.end());
+	vertIds.clear();
+
+	vertIds.push_back(*vertSet.begin());
+	vertSet.erase(vertIds.back());
+	while (!vertSet.empty()) {
+		// Find next vertex by walking faces
+		const auto& vertId = vertIds.back();
+
+		// Get cell faces connected to this vertex
+		set<Index3DId> faceIds;
+		pBlock->vertexFunc(vertId, [this, &faceIds](Block* pBlock, Vertex& vert) {
+			faceIds = vert.getFaceIds(_faceIds);
 		});
 
 		
-		Vector3d edgePt0 = edge0.projectPt(pBlock, ctr);
-		Vector3d edgePt1 = edge1.projectPt(pBlock, ctr);
-		Vector3d edgePt2 = edge2.projectPt(pBlock, ctr);
+		for (const auto& faceId : faceIds) {
+			Index3DId nextVertId;
+			pBlock->faceFunc(faceId, [&vertId, &vertSet, &nextVertId](Block* pBlock, Polygon& face) {
+				const auto& faceVerts = face.getVertexIds();
+				for (const auto& faceVertId : faceVerts) {
+					if (vertSet.count(faceVertId) != 0) {
+						nextVertId = faceVertId;
+						return;
+					}
+				}
+			});
 
-		Vector3d pts[] = {
-			vertPt,
-			edgePt0,
-			facePt1,
-			edgePt1,
-			edgePt2,
-			facePt0,
-			ctr,
-			facePt2
-		};
-
-		for (size_t i = 0; i < 8; i++) {
-			assert(bbox.contains(pts[i]));
+			if (nextVertId.isValid()) {
+				vertIds.push_back(nextVertId);
+				vertSet.erase(nextVertId);
+				break;
+			}
 		}
-#if 0
-		cout << "Polyhedron::split pts:\n";
-		for (int i = 0; i < 8; i++) {
-			const auto& pt = pts[i];
-			cout << "  " << i << "(" << pt[0] << ", " << pt[1] << ", " << pt[2] << ")\n";
-		}
-#endif
-		size_t cellIdx = pBlock->addHexCell(pts, 2, pBlock->getBlockIdx(), intersectingOnly);
-		if (cellIdx != -1)
-			result.push_back(cellIdx);
 	}
-#endif
-	return result;
+
 }

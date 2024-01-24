@@ -73,6 +73,7 @@ public:
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
+	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
@@ -94,10 +95,10 @@ public:
 	void faceFunc(const Index3DId& faceId, LAMBDA func);
 
 	template<class LAMBDA>
-	void facesFunc(LAMBDA func) const;
+	void cellFunc(const size_t& cellId, LAMBDA func) const;
 
 	template<class LAMBDA>
-	void facesFunc(LAMBDA func);
+	void cellFunc(const size_t& cellId, LAMBDA func);
 
 private:
 	friend class Volume;
@@ -225,17 +226,15 @@ void Block::faceFunc(const Index3DId& faceId, LAMBDA func)
 }
 
 template<class LAMBDA>
-void Block::facesFunc(LAMBDA func) const
+void Block::cellFunc(const size_t& cellId, LAMBDA func) const
 {
-	std::lock_guard g(_polygons);
-	func(_polygons);
+	func(this, _polyhedra[cellId]);
 }
 
 template<class LAMBDA>
-void Block::facesFunc(LAMBDA func)
+void Block::cellFunc(const size_t& cellId, LAMBDA func)
 {
-	std::lock_guard g(_polygons);
-	func(_polygons);
+	func(this, _polyhedra[cellId]);
 }
 
 }

@@ -2,7 +2,7 @@
 
 #include <set>
 #include <tm_vector3.h>
-#include <index3DFull.h>
+#include <index3D.h>
 
 namespace DFHM {
 
@@ -18,6 +18,9 @@ public:
 		Edge,
 		Vertex
 	};
+
+	// Required for use with object pool
+	void setId(const Index3DId& id);
 
 	static int fromDbl(double val);
 	static FixedPt fromDbl(const Vector3d& src);
@@ -53,6 +56,11 @@ private:
 	FixedPt _pt; // Fixed point representation of a double precisions point
 	std::set<Index3DId> _faceIds;
 };
+
+inline void Vertex::setId(const Index3DId& id)
+{
+
+}
 
 inline double Vertex::getFixedScale()
 {

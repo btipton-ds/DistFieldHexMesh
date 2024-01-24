@@ -31,6 +31,7 @@ public:
 	bool containsVertex(const Index3DId& vert) const;
 	std::set<Index3DId> getFaceIds(const Block* pBlock) const;
 	std::set<Index3DId> getFaceIds(const Block* pBlock, std::set<Index3DId>& availFaces) const;
+	Index3DId getCommonFace(const Block* pBlock) const;
 
 	double intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) const;
 	Index3DId splitAtParam(Block* pBlock, double t) const;
