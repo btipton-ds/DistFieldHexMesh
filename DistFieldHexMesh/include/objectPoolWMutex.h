@@ -7,7 +7,7 @@ namespace DFHM {
 template<class T>
 class ObjectPoolWMutex {
 public:
-	ObjectPoolWMutex(bool supportsReverseLookup);
+	ObjectPoolWMutex(bool supportsReverseLookup, size_t objectSegmentSize = 512);
 	ObjectPoolWMutex(const ObjectPoolWMutex& rhs);
 
 	size_t findId(const T& obj) const;
@@ -46,8 +46,8 @@ private:
 };
 
 template<class T>
-inline ObjectPoolWMutex<T>::ObjectPoolWMutex(bool supportsReverseLookup)
-	: _data(supportsReverseLookup)
+inline ObjectPoolWMutex<T>::ObjectPoolWMutex(bool supportsReverseLookup, size_t objectSegmentSize)
+	: _data(supportsReverseLookup, objectSegmentSize)
 {
 }
 
