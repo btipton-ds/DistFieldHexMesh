@@ -15,6 +15,10 @@ class Block;
 class Polygon {
 public:
 	void setId(const Index3DId& id);
+	const Index3DId& getId() const;
+	void setNumSplits(size_t val);
+	size_t getNumSplits() const;
+
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
@@ -32,6 +36,7 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
+	void setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts);
 	std::vector<Edge> getEdges(const Block* pBlock) const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsVert(const Index3DId& vertId) const;
@@ -46,11 +51,13 @@ public:
 	Index3DId insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
 	bool insertVertex(Block* pBlock, const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitWithEdge(Block* pBlock, const Edge& splittingEdge);
+	Index3DId splitBetweenVertices(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
 
 private:
 	void sortIds() const;
+	void verifyVertsConvex(Block* pBlock, const std::vector<Index3DId>& vertIds) const;
 
+	size_t _numSplits = 0;
 	Index3DId _thisId;
 	std::vector<Index3DId> _vertexIds;
 	Index3DId _creatorCellId, _neighborCellId;
@@ -63,6 +70,21 @@ inline void Polygon::setId(const Index3DId& id)
 {
 	_thisId = id;
 	assert(_thisId.isValid());
+}
+
+inline const Index3DId& Polygon::getId() const
+{
+	return _thisId;
+}
+
+inline void Polygon::setNumSplits(size_t val)
+{
+	_numSplits = val;
+}
+
+inline size_t Polygon::getNumSplits() const
+{
+	return _numSplits;
 }
 
 inline void Polygon::setCreatorCellId(const Index3DId& subBlockId)

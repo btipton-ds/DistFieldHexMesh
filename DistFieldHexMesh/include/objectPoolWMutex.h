@@ -10,6 +10,9 @@ public:
 	ObjectPoolWMutex(bool supportsReverseLookup, size_t objectSegmentSize = 512);
 	ObjectPoolWMutex(const ObjectPoolWMutex& rhs);
 
+	bool free(size_t id); // Permanently delete it
+	bool removeFromLookup(size_t id);
+	void addToLookup(size_t id);
 	size_t findId(const T& obj) const;
 
 	Index3DId findOrAdd(const Index3D& blockIdx, const T& obj, size_t id = -1);
@@ -55,6 +58,27 @@ template<class T>
 inline ObjectPoolWMutex<T>::ObjectPoolWMutex(const ObjectPoolWMutex& rhs)
 	: _data(rhs._data)
 {
+}
+
+template<class T>
+bool ObjectPoolWMutex<T>::free(size_t id) // Permanently delete it
+{
+	std::lock_guard g(_mutex);
+	return _data.free(id);
+}
+
+template<class T>
+inline bool ObjectPoolWMutex<T>::removeFromLookup(size_t id)
+{
+	std::lock_guard g(_mutex);
+	return _data.removeFromLookup(id);
+}
+
+template<class T>
+inline void ObjectPoolWMutex<T>::addToLookup(size_t id)
+{
+	std::lock_guard g(_mutex);
+	_data.addToLookup(id);
 }
 
 template<class T>

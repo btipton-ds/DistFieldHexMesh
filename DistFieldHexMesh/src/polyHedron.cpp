@@ -194,7 +194,7 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, cons
 	size_t numIntersections = 0;
 	for (const auto& edge : edges) {
 		double t = edge.intesectPlaneParam(pBlock, cutPlane);
-		if (t > 0 && t < 1) {
+		if (t >= 0 && t <= 1) {
 			numIntersections++;
 		}
 	}
@@ -202,15 +202,17 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, cons
 	if (numIntersections < 3)
 		return result;
 
-	vector<Index3DId> newVertIds;
+	set<Index3DId> vertIdSet;
 	for (const auto& edge : edges) {
 		auto newVertId = edge.splitWithPlane(pBlock, cutPlane);
 		if (newVertId.isValid()) {
-			newVertIds.push_back(newVertId);
+			vertIdSet.insert(newVertId);
 		}
 	}
 
-	cout << "Num new verts: " << newVertIds.size() << "\n";
+	vector<Index3DId> newVertIds;
+	newVertIds.insert(newVertIds.end(), vertIdSet.begin(), vertIdSet.end());
+	assert(newVertIds.size() >= 3);
 
 	// Add the splitting face
 	Index3DId splittingFace;
@@ -231,7 +233,7 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, cons
 		Index3DId newFaceId;
 		pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
 			// These are the 1/2 faces of original faces
-			newFaceId = face.splitWithEdge(pBlock, edge);
+			newFaceId = face.splitBetweenVertices(pBlock, edge.getVertexIds()[0], edge.getVertexIds()[1]);
 			addFace(newFaceId);
 		});
 

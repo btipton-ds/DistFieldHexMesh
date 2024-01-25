@@ -505,6 +505,15 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	return result;
 }
 
+void Block::addToLookup(const Polygon& face)
+{
+	Block* pOwner = getOwner(face.getId());
+	if (pOwner == this)
+		_polygons.addToLookup(face.getId().elementId());
+	else
+		pOwner->addToLookup(face);
+}
+
 Index3DId Block::addFace(const vector<Vector3d>& pts)
 {
 	Polygon newPoly;
@@ -542,6 +551,15 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	auto faceId = pPolygonOwner->addFace(pts);
 
 	return faceId;
+}
+
+bool Block::removeFromLookUp(const Polygon& face)
+{
+	Block* pOwner = getOwner(face.getId());
+	if (pOwner == this) {
+		return _polygons.removeFromLookup(face.getId().elementId());
+	} else
+		return pOwner->removeFromLookUp(face);
 }
 
 Vector3d Block::getVertexPoint(const Index3DId& vertIdx) const
@@ -651,7 +669,7 @@ vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndi
 	return result;
 }
 
-TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
+TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) const
 {
 	if (_polygons.empty())
 		return nullptr;
@@ -666,8 +684,8 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 
 	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
 	size_t skipped = 0;
-	_polygons.iterateInOrder([this, result, outerOnly, &skipped](size_t id, const Polygon& poly) {
-		if (!outerOnly || poly.isOuter()) {
+	_polygons.iterateInOrder([this, result, outerOnly, &skipped, minSplitNum](size_t id, const Polygon& poly) {
+		if ((!outerOnly || poly.isOuter()) && poly.getNumSplits() >= minSplitNum) {
 			const auto& vertIds = poly.getVertexIds();
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
@@ -692,14 +710,14 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly) const
 	return result;
 }
 
-shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly) const
+shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly, size_t minSplitNum) const
 {
 	shared_ptr<vector<float>> result;
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrder([this, outerOnly, &edges](size_t faceId, const Polygon& face) {
-		if (!outerOnly || face.isOuter()) {
+	_polygons.iterateInOrder([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
+		if ((!outerOnly || face.isOuter()) && face.getNumSplits() >= minSplitNum) {
 			const auto& faceEdges = face.getEdges(this);
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}

@@ -154,6 +154,7 @@ public:
 
 	bool isValid() const;
 	size_t elementId() const;
+	Index3D blockIdx() const;
 
 private:
 	size_t _elementId = -1;
@@ -208,6 +209,11 @@ inline bool Index3DId::isValid() const
 inline size_t Index3DId::elementId() const
 {
 	return _elementId;
+}
+
+inline Index3D Index3DId::blockIdx() const
+{
+	return Index3D(*this);
 }
 
 }

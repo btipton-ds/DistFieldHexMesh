@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -217,7 +217,7 @@ void Volume::addAllBlocks(vector<TriMesh::CMeshPtr>& triMeshes, vector<shared_pt
 		}
 	}
 
-	makeTris(triMeshes, true, true);
+	makeTris(triMeshes, true, 1, true);
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -262,7 +262,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
-//	bb.growPercent(0.05);
+	bb.growPercent(0.05);
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
 
@@ -324,7 +324,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
-void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, bool multiCore)
+void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, size_t minSplitNum, bool multiCore)
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -335,11 +335,11 @@ void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, bool
 
 	vector<TriMesh::CMeshPtr> temp;
 	temp.resize(_blocks.size());
-	MultiCore::runLambda([this, &temp, outerOnly](size_t index) {
+	MultiCore::runLambda([this, &temp, outerOnly, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
-		auto pMesh = blockPtr->getBlockTriMesh(outerOnly);
+		auto pMesh = blockPtr->getBlockTriMesh(outerOnly, minSplitNum);
 		if (pMesh) {
 			temp[index] = pMesh;
 		}
@@ -354,15 +354,15 @@ void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, bool
 	}
 }
 
-void Volume::makeFaceEdges(vector<shared_ptr<vector<float>>>& faceEdges, bool outerOnly, bool multiCore)
+void Volume::makeFaceEdges(vector<shared_ptr<vector<float>>>& faceEdges, bool outerOnly, size_t minSplitNum, bool multiCore)
 {
 	vector<shared_ptr<vector<float>>> temp;
 	temp.resize(_blocks.size());
-	MultiCore::runLambda([this, &temp, outerOnly](size_t index) {
+	MultiCore::runLambda([this, &temp, outerOnly, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
-		shared_ptr<vector<float>> pEdges =  blockPtr->makeFaceEdges(outerOnly);
+		shared_ptr<vector<float>> pEdges =  blockPtr->makeFaceEdges(outerOnly, minSplitNum);
 		if (pEdges && !pEdges->empty()) {
 			temp[index] = pEdges;
 		}

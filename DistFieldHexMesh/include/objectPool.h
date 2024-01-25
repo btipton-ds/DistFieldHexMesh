@@ -15,7 +15,9 @@ public:
 	ObjectPool(bool supportsReverseLookup, size_t objectSegmentSize = 512);
 
 	void testReset();
-	void free(size_t id); // Permanently delete it
+	bool free(size_t id); // Permanently delete it
+	bool removeFromLookup(size_t id);
+	void addToLookup(size_t id);
 
 	void resize(size_t size);
 
@@ -141,20 +143,48 @@ inline const T* ObjectPool<T>::getEntry(size_t index) const
 }
 
 template<class T>
-void ObjectPool<T>::free(size_t id)
+bool ObjectPool<T>::free(size_t id)
 {
 	if (id >= _idToIndexMap.size())
-		return;
+		return false;
 
 	size_t index = _idToIndexMap[id];
 	if (index >= _data.size())
-		return;
+		return false;
+
+	removeFromLookup(id);
+
+	T* p = getEntry(index);
+	if (p) {
+		*p = T();
+	}
 
 	_idToIndexMap[id] = -1; // Clear this id so it won't be used again
-	T* p = getEntry(index);
-	if (p)
-		*p = T();
 	_availableIndices.push_back(index);
+
+	return true;
+}
+
+template<class T>
+inline bool ObjectPool<T>::removeFromLookup(size_t id)
+{
+	if (_supportsReverseLookup) {
+		auto iter = _objToIdMap.find(id);
+		if (iter != _objToIdMap.end()) {
+			_objToIdMap.erase(iter);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+template<class T>
+inline void ObjectPool<T>::addToLookup(size_t id)
+{
+	if (_supportsReverseLookup) {
+		_objToIdMap.insert(std::make_pair(id, id));
+	}
 
 }
 
@@ -285,9 +315,7 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 
 	}
 
-	if (_supportsReverseLookup) {
-		_objToIdMap.insert(std::make_pair(result, result));
-	}
+	addToLookup(result);
 
 	return result;
 }

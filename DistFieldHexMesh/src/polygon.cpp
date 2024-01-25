@@ -228,11 +228,11 @@ struct SplitEdgeRec
 
 }
 
-Index3DId Polygon::splitWithEdge(Block* pBlock, const Edge& splittingEdge)
+Index3DId Polygon::splitBetweenVertices(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1)
 {
 	Index3DId newFaceId;
 
-	pBlock->faceFunc(_thisId, [this, &splittingEdge, &newFaceId](Block* pBlock, Polygon& face) {
+	pBlock->faceFunc(_thisId, [this, &vert0, &vert1, &newFaceId](Block* pBlock, Polygon& face) {
 		size_t idx0 = -1, idx1 = -1;
 		auto& vertIds = face._vertexIds;
 		for (size_t i = 0; i < vertIds.size(); i++) {
@@ -242,7 +242,7 @@ Index3DId Polygon::splitWithEdge(Block* pBlock, const Edge& splittingEdge)
 			});
 
 			const auto& vertId = vertIds[i];
-			if ((vertId == splittingEdge.getVertexIds()[0]) || (vertId == splittingEdge.getVertexIds()[1])) {
+			if ((vertId == vert0) || (vertId == vert1)) {
 				if (idx0 == -1)
 					idx0 = i;
 				else
@@ -269,18 +269,69 @@ Index3DId Polygon::splitWithEdge(Block* pBlock, const Edge& splittingEdge)
 		if (face1Verts.size() < face0Verts.size())
 			swap(face0Verts, face1Verts);
 
-		assert(face0Verts.size() == 4);
-		assert(face1Verts.size() == 4);
+		verifyVertsConvex(pBlock, face0Verts);
+		verifyVertsConvex(pBlock, face1Verts);
 
-		face._vertexIds = face0Verts;
-		for (const auto& vertId : face0Verts) {
-			pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
-				vert.addFaceId(_thisId);
-			});
-		}
+		pBlock->removeFromLookUp(*this);
+		setVertexIds(pBlock, face0Verts);
+		pBlock->addToLookup(*this);
+		_numSplits++;
 
 		newFaceId = pBlock->addFace(face1Verts);
+		pBlock->faceFunc(newFaceId, [](Block* pBlock, Polygon& face) {
+			face._numSplits++;
+		});
 	});
 
 	return newFaceId;
+}
+
+void Polygon::setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts)
+{
+
+	for (const auto& vertId : _vertexIds) {
+		pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+			vert.removeFaceId(_thisId);
+		});
+	}
+
+	for (const auto& vertId : verts) {
+		pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+			vert.addFaceId(_thisId);
+		});
+	}
+
+	assert(_thisId.blockIdx() == pBlock->getBlockIdx());
+
+	lock_guard g(pBlock->getFaceMutex());
+	_vertexIds = verts;
+	_needSort = true;
+}
+
+void Polygon::verifyVertsConvex(Block* pBlock, const std::vector<Index3DId>& vertIds) const
+{
+#ifdef _DEBUG
+	assert(vertIds.size() == 4);
+	Vector3d ctr(0, 0, 0);
+	for (const auto& vertId : vertIds) {
+		Vector3d pt = pBlock->getVertexPoint(vertId);
+		ctr += pt;
+	}
+	ctr /= (double)vertIds.size();
+
+	Vector3d norm0(0, 0, 0);
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		Vector3d v0 = ctr - pBlock->getVertexPoint(vertIds[i]);
+		v0.normalize();
+		Vector3d v1 = ctr - pBlock->getVertexPoint(vertIds[j]);
+		v1.normalize();
+		if (i == 0) {
+			norm0 = v1.cross(v0);
+		} else {
+			Vector3d norm1 = v1.cross(v0);
+			assert(norm0.dot(norm1) > 0);
+		}
+	}
+#endif // _DEBUG
 }

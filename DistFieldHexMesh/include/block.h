@@ -65,14 +65,17 @@ public:
 	size_t processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
-	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly) const;
-	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly) const;
+	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly, size_t minSplitNum) const;
+	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly, size_t minSplitNum) const;
 
 	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);
 	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
+	void addToLookup(const Polygon& face);
+	bool removeFromLookUp(const Polygon& face);
+
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
@@ -81,6 +84,10 @@ public:
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
+
+	std::recursive_mutex& getEdgeMutex() const;
+	std::recursive_mutex& getFaceMutex() const;
+	std::recursive_mutex& getVertexMutex() const;
 
 	template<class LAMBDA>
 	void vertexFunc(const Index3DId& vertId, LAMBDA func) const;
@@ -109,10 +116,6 @@ private:
 	};
 
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
-
-	std::recursive_mutex& getEdgeMutex() const;
-	std::recursive_mutex& getFaceMutex() const;
-	std::recursive_mutex& getVertexMutex() const;
 
 	std::vector<size_t> dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices);
 	std::vector<size_t> dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices);

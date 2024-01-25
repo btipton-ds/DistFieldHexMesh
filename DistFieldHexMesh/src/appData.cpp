@@ -295,21 +295,21 @@ void AppData::doBuildCFDHexes()
 
     Index3D::setBlockDim(2);
 
-    double blockSize = 0.1;
+    double blockSize = 0.3;
 
     bool outerFacesOnly = true;
     _volume->buildCFDHexes(_pMesh, blockSize, outerFacesOnly);
 
     auto pCanvas = _pMainFrame->getCanvas();
 
-    addTriangles(pCanvas, outerFacesOnly);
-    addFaceEdges(pCanvas, outerFacesOnly);
+    addTriangles(pCanvas, outerFacesOnly, 1);
+    addFaceEdges(pCanvas, outerFacesOnly, 1);
 }
 
-void AppData::addTriangles(GraphicsCanvas* pCanvas, bool outerFacesOnly)
+void AppData::addTriangles(GraphicsCanvas* pCanvas, bool outerFacesOnly, size_t minSplitNum)
 {
     vector<TriMesh::CMeshPtr> blockMeshes;
-    _volume->makeTris(blockMeshes, outerFacesOnly, true);
+    _volume->makeTris(blockMeshes, outerFacesOnly, minSplitNum, true);
 
     pCanvas->beginFaceTesselation();
 
@@ -337,10 +337,10 @@ void AppData::addTriangles(GraphicsCanvas* pCanvas, bool outerFacesOnly)
     pCanvas->endSettingFaceElementIndices();
 }
 
-void AppData::addFaceEdges(GraphicsCanvas* pCanvas, bool outerFacesOnly)
+void AppData::addFaceEdges(GraphicsCanvas* pCanvas, bool outerFacesOnly, size_t minSplitNum)
 {
     vector<shared_ptr<vector<float>>> faceEdgeSets;
-    _volume->makeFaceEdges(faceEdgeSets, outerFacesOnly, true);
+    _volume->makeFaceEdges(faceEdgeSets, outerFacesOnly, minSplitNum, true);
 
     pCanvas->beginEdgeTesselation();
 
