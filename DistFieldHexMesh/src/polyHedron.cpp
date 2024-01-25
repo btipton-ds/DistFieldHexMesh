@@ -159,7 +159,7 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, bool
 {
 	set<size_t> cellSet;
 	cellSet.insert(_thisId.elementId());
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 1; i++) {
 		set<size_t> resultSet;
 		Vector3d normal(0, 0, 0);
 		normal[i] = 1.0;
@@ -187,9 +187,22 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, bool
 vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, const Vector3d& normal, bool intersectingOnly)
 {
 	vector<size_t> result;
+	const Plane cutPlane(splitPoint, normal);
+
 	auto edges = getEdges(pBlock);
+
+	size_t numIntersections = 0;
+	for (const auto& edge : edges) {
+		double t = edge.intesectPlaneParam(pBlock, cutPlane);
+		if (t > 0 && t < 1) {
+			numIntersections++;
+		}
+	}
+
+	if (numIntersections < 3)
+		return result;
+
 	vector<Index3DId> newVertIds;
-	Plane cutPlane(splitPoint, normal);
 	for (const auto& edge : edges) {
 		auto newVertId = edge.splitWithPlane(pBlock, cutPlane);
 		if (newVertId.isValid()) {
@@ -226,19 +239,17 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, cons
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
-	vector<Index3DId> deadFaceIds;
 	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(faceId, [this, &cutPlane, &newFaceIdSet, &faceId, &deadFaceIds](const Block* pBlock, const Polygon& face) {
+		pBlock->faceFunc(faceId, [this, &cutPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
 			Vector3d ctr = face.getCentroid(pBlock);
 			Vector3d v = ctr - cutPlane._origin;
 			if (v.dot(cutPlane._normal) < 0) {
-				deadFaceIds.push_back(faceId);
 				newFaceIdSet.insert(faceId);
 			}
 		});
 	}
-	for (const auto& deadFaceId : deadFaceIds) {
-		removeFace(deadFaceId);
+	for (const auto& faceId : newFaceIdSet) {
+		removeFace(faceId);
 	}
 	addFace(splittingFace);
 

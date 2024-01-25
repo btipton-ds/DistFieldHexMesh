@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -262,6 +262,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
+//	bb.growPercent(0.05);
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
 

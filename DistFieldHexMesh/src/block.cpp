@@ -611,9 +611,11 @@ size_t Block::processTris()
 #if 1
 	if (!newCells.empty()) {
 		newCells = dividePolyhedraAtSharpVerts(newCells);
+#if 0
 		for (size_t div = 0; div < numDivs; div++) {
 			newCells = dividePolyhedraByCurvature(newCells);
 		}
+#endif
 	}
 #endif
 	return _polyhedra.size();
@@ -626,35 +628,19 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 
 vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndices)
 {
-	set<size_t> deadCells, newCells;
+	set<size_t> newCells;
 	for (size_t index : cellIndices) {
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
 		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
-		set<size_t> splitCells;
 		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
 			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt)) {
-				deadCells.insert(index);
-
 				auto tempCells = poly.split(this, pt, false);
 				newCells.insert(tempCells.begin(), tempCells.end());
-				splitCells.insert(tempCells.begin(), tempCells.end());
 			}
 		}
-		if (splitCells.empty()) {
-			newCells.insert(index);
-		} else {
-			vector<size_t> temp;
-			for (const auto& cellId : splitCells)
-				temp.push_back(cellId);
-			auto subSplitCells = dividePolyhedraAtSharpVerts(temp);
-			newCells.insert(subSplitCells.begin(), subSplitCells.end());
-		}
-	}
-	for (const auto& polyId : deadCells) {
-		_polyhedra.free(polyId);
 	}
 
 	vector<size_t> result;

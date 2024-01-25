@@ -125,6 +125,7 @@ Vector3d Polygon::getUnitNormal(const Block* pBlock) const
 
 Vector3d Polygon::getPointAt(const Block* pBlock, double t, double u) const
 {
+	assert(_vertexIds.size() == 4);
 	Vector3d pts[] = {
 		pBlock->getVertexPoint(_vertexIds[0]),
 		pBlock->getVertexPoint(_vertexIds[1]),
@@ -137,7 +138,14 @@ Vector3d Polygon::getPointAt(const Block* pBlock, double t, double u) const
 
 Vector3d Polygon::getCentroid(const Block* pBlock) const
 {
-	return getPointAt(pBlock, 0.5, 0.5);
+	Vector3d ctr(0, 0, 0);
+	for (const auto& vertId : _vertexIds) {
+		Vector3d pt = pBlock->getVertexPoint(vertId);
+		ctr += pt;
+	}
+
+	ctr /= (double)_vertexIds.size();
+	return ctr;
 }
 
 Vector3d Polygon::projectPoint(const Block* pBlock, const Vector3d& pt) const
@@ -260,6 +268,9 @@ Index3DId Polygon::splitWithEdge(Block* pBlock, const Edge& splittingEdge)
 
 		if (face1Verts.size() < face0Verts.size())
 			swap(face0Verts, face1Verts);
+
+		assert(face0Verts.size() == 4);
+		assert(face1Verts.size() == 4);
 
 		face._vertexIds = face0Verts;
 		for (const auto& vertId : face0Verts) {
