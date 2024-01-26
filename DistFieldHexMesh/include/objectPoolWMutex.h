@@ -16,7 +16,7 @@ public:
 	size_t findId(const T& obj) const;
 	bool exists(size_t id) const;
 
-	Index3DId findOrAdd(const Index3D& blockIdx, const T& obj, size_t id = -1);
+	Index3DId findOrAdd(ObjectPoolOwner* pBlock, const T& obj, size_t id = -1);
 
 	const T* get(size_t idx) const;
 	T* get(size_t idx);
@@ -97,10 +97,10 @@ bool ObjectPoolWMutex<T>::exists(size_t id) const
 }
 
 template<class T>
-inline Index3DId ObjectPoolWMutex<T>::findOrAdd(const Index3D& blockIdx, const T& vert, size_t id)
+inline Index3DId ObjectPoolWMutex<T>::findOrAdd(ObjectPoolOwner* pBlock, const T& vert, size_t id)
 {
 	std::lock_guard g(_mutex);
-	return _data.findOrAdd(blockIdx, vert, id);
+	return _data.findOrAdd(pBlock, vert, id);
 }
 
 template<class T>

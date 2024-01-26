@@ -9,6 +9,11 @@
 
 namespace DFHM {
 
+class ObjectPoolOwner {
+public:
+	virtual const Index3D& getBlockIdx() const = 0;
+};
+
 template<class T>
 class ObjectPool {
 public:
@@ -24,8 +29,7 @@ public:
 	size_t findId(const T& obj) const;
 	bool exists(size_t id) const;
 
-	size_t findOrAdd(const T& obj, size_t id = -1);
-	Index3DId findOrAdd(const Index3D& blockIdx, const T& obj, size_t id = -1);
+	Index3DId findOrAdd(ObjectPoolOwner* pBlock, const T& obj, size_t id = -1);
 
 	const T* get(size_t id) const;
 	T* get(size_t id);
@@ -240,12 +244,12 @@ inline bool ObjectPool<T>::exists(size_t id) const
 }
 
 template<class T>
-size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
+Index3DId ObjectPool<T>::findOrAdd(ObjectPoolOwner* pBlock, const T& obj, size_t currentId)
 {
 	if (_supportsReverseLookup) {
 		size_t id = findId(obj);
 		if (id != -1)
-			return id;
+			return Index3DId(pBlock->getBlockIdx(), id);
 	}
 
 	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
@@ -319,26 +323,13 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 				segData.resize(index + 1);
 			segData[segIdx] = obj;
 		}
-
 	}
+
+	getEntry(result)->setId(pBlock, result);
 
 	addToLookup(result);
 
-	return result;
-}
-
-template<class T>
-Index3DId ObjectPool<T>::findOrAdd(const Index3D& blockIdx, const T& obj, size_t currentId)
-{
-	size_t result = findOrAdd(obj, currentId);
-	Index3DId entId(blockIdx, result);
-	T* p = get(result);
-	if (p)
-		p->setId(entId);
-
-	assert(entId.isValid());
-
-	return entId;
+	return Index3DId(pBlock->getBlockIdx(), result);
 }
 
 template<class T>

@@ -34,12 +34,12 @@ double Edge::getLength(const Block* pBlock) const
 	return seg.calLength();
 }
 
-Vector3d Edge::getCenter(const Block* pBlock) const
+Vector3d Edge::calCenter(const Block* pBlock) const
 {
-	return getPointAt(pBlock, 0.5);
+	return calPointAt(pBlock, 0.5);
 }
 
-Vector3d Edge::getPointAt(const Block* pBlock, double t) const
+Vector3d Edge::calPointAt(const Block* pBlock, double t) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
@@ -125,7 +125,7 @@ Index3DId Edge::getCommonFace(const Block* pBlock) const
 		size_t count = 0;
 		pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
 			// Do not use containsEdge. It requires adjacency and this function doesn't
-			const auto vertIds = face.getVertexIds(pBlock);
+			const auto vertIds = face.getVertexIds();
 			for (const auto& vertId : vertIds) {
 				if ((vertId == _vertexIds[0]) || (vertId == _vertexIds[1]))
 					count++;
@@ -143,13 +143,15 @@ Index3DId Edge::splitAtParam(Block* pBlock, double t) const
 {
 	const double tol = 0;
 	if (t > tol && t < 1.0 - tol) {
-		Vector3d pt = getPointAt(pBlock, t);
+		Vector3d pt = calPointAt(pBlock, t);
 		auto midVertId = pBlock->addVertex(pt);
 
 		set<Index3DId> faceIds = getFaceIds(pBlock);
 		for (const auto& faceId : faceIds) {
 			pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
-				if (!face.insertVertex(pBlock, *this, midVertId)) {
+				if (face.containsVert(midVertId)) // This face was already split with this vertex
+					return;
+				if (!face.insertVertexNTS(*this, midVertId)) {
 					assert(!"Should never reach this code block.");
 					throw std::runtime_error("Failed insert a vertex in a polygon which must accept the vertex. Not supposed to be possible.");
 				}

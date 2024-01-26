@@ -3,6 +3,7 @@
 #include <set>
 #include <tm_vector3.h>
 #include <index3D.h>
+#include <objectPool.h>
 
 namespace DFHM {
 
@@ -20,7 +21,7 @@ public:
 	};
 
 	// Required for use with object pool
-	void setId(const Index3DId& id);
+	void setId(ObjectPoolOwner* pBlock, size_t id);
 
 	static int fromDbl(double val);
 	static FixedPt fromDbl(const Vector3d& src);
@@ -60,9 +61,9 @@ private:
 	std::set<Index3DId> _faceIds;
 };
 
-inline void Vertex::setId(const Index3DId& id)
+inline void Vertex::setId(ObjectPoolOwner* pBlock, size_t id)
 {
-	_thisId = id;
+	_thisId = Index3DId(pBlock->getBlockIdx(), id);
 }
 
 inline double Vertex::getFixedScale()

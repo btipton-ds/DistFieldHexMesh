@@ -14,12 +14,13 @@ class Block;
 
 class Polygon {
 public:
-	void setId(const Index3DId& id);
+	void setId(ObjectPoolOwner* pBlock, size_t id);
 	const Index3DId& getId() const;
 	void setNumSplits(size_t val);
 	size_t getNumSplits() const;
-	void verifyVertsConvex(const Block* pBlock) const;
-	bool verifyTopology(const Block* pBlock) const;
+	static bool verifyVertsConvex(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+	bool verifyVertsConvex() const;
+	bool verifyTopology() const;
 
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
@@ -39,38 +40,38 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	std::vector<Index3DId> getVertexIds(const Block* pBlock) const;
+	std::vector<Index3DId> getVertexIds() const;
 	const std::vector<Index3DId>& getVertexIdsNTS() const;
-	void setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts);
-	std::vector<Edge> getEdges(const Block* pBlock) const;
+	void setVertexIds(const std::vector<Index3DId>& verts);
+	std::vector<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsVert(const Index3DId& vertId) const;
 
-	Vector3d getUnitNormal(const Block* pBlock) const;
-	Vector3d getCentroid(const Block* pBlock) const;
-	Vector3d getPointAt(const Block* pOwnerBlock, double t, double u) const;
-	Vector3d projectPoint(const Block* pBlock, const Vector3d& pt) const;
+	Vector3d getUnitNormal() const;
+	Vector3d getCentroid() const;
+	Vector3d getPointAt(double t, double u) const;
+	Vector3d projectPoint(const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
-	bool insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId);
-	Index3DId insertVertex(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
-	bool insertVertex(Block* pBlock, const Edge& edge, const Index3DId& newVertId);
+	bool insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId);
+	Index3DId insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
+	bool insertVertexNTS(const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitBetweenVertices(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
+	Index3DId splitBetweenVertices(const Index3DId& vert0, const Index3DId& vert1);
 
 private:
 	void sortIds() const;
-	static void verifyVertsConvex(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 
 	template<class LAMBDA>
-	void faceFuncSelf(const Block* pBlock, LAMBDA func) const;
+	void faceFuncSelf(LAMBDA func) const;
 
 	template<class LAMBDA>
-	void faceFuncSelf(Block* pBlock, LAMBDA func);
+	void faceFuncSelf(LAMBDA func);
 
 	std::vector<Edge> getEdgesNTS() const;
-	Index3DId splitBetweenVerticesNTS(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
+	Index3DId splitBetweenVerticesNTS(const Index3DId& vert0, const Index3DId& vert1);
 
+	Block* _pBlock = nullptr;
 	size_t _numSplits = 0;
 	Index3DId _thisId;
 	std::vector<Index3DId> _vertexIds;
@@ -79,12 +80,6 @@ private:
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
 };
-
-inline void Polygon::setId(const Index3DId& id)
-{
-	_thisId = id;
-	assert(_thisId.isValid());
-}
 
 inline const Index3DId& Polygon::getId() const
 {
@@ -101,9 +96,9 @@ inline size_t Polygon::getNumSplits() const
 	return _numSplits;
 }
 
-inline void Polygon::verifyVertsConvex(const Block* pBlock) const
+inline bool Polygon::verifyVertsConvex() const
 {
-	verifyVertsConvex(pBlock, _vertexIds);
+	return verifyVertsConvex(_pBlock, _vertexIds);
 }
 
 inline void Polygon::addCell(const Index3DId& cellId)

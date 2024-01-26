@@ -47,6 +47,11 @@ Block::~Block()
 {
 }
 
+const Index3D& Block::getBlockIdx() const
+{
+	return _blockIdx;
+}
+
 size_t Block::numFaces(bool includeInner) const
 {
 	if (includeInner)
@@ -158,13 +163,23 @@ Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 	return determineOwnerBlockIdx(ctr);
 }
 
+Index3D Block::determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const
+{
+	vector<Vector3d> pts;
+	pts.resize(verts.size());
+	for (size_t i = 0; i < verts.size(); i++) {
+		pts[i] = getVertexPoint(verts[i]);
+	}
+	return determineOwnerBlockIdx(pts);
+}
+
 Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 {
 	const double tol = 1.0e-5;
 	auto volBounds = _pVol->volDim();
 
 	Vector3d ctr(0, 0, 0);
-	const auto& vertIds = face.getVertexIds(this);
+	const auto& vertIds = face.getVertexIds();
 	for (const auto& vertId : vertIds) {
 		auto pt = getVertexPoint(vertId);
 		ctr += pt;
@@ -184,7 +199,7 @@ bool Block::verifyTopology() const
 	});
 
 	_polygons.iterateInOrderTS([this, &result](size_t id, const Polygon& face) {
-		bool pass = face.verifyTopology(this);
+		bool pass = face.verifyTopology();
 		if (!pass)
 			result = false;
 	});
@@ -215,14 +230,14 @@ Polyhedron& Block::getPolyhedron(const Index3DId& cellId)
 		return pOwner->getPolyhedron(cellId);
 }
 
-vector<size_t> Block::createSubBlocks(const Vector3d blockPts[8])
+vector<size_t> Block::createSubBlocks()
 {
 	Index3D idx;
 	vector<size_t> newCells;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				size_t cellIdx = addHexCell(blockPts, _blockDim, idx, true);
+				size_t cellIdx = addHexCell(_corners.data(), _blockDim, idx, true);
 				if (cellIdx != -1)
 					newCells.push_back(cellIdx);
 			}
@@ -280,12 +295,12 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx, false);
 }
 
-inline void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
+void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
 {
 	subBlockIndices.insert(subBlockIdx);
 }
 
-inline const vector<Vector3d>& Block::getCornerPts() const
+const vector<Vector3d>& Block::getCornerPts() const
 {
 	return _corners;
 }
@@ -329,7 +344,7 @@ Vector3d Block::invTriLinIterp(const Vector3d& pt) const
 
 Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const
 {
-	const double tol = 1.0e-8;
+	const double tol = 1.0e-5;
 	const double tolSqr = tol * tol;
 
 	// Linearly interpolate based on the bounding box. This is precise for a paralelapiped set of blockPts
@@ -338,6 +353,11 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 	Vector3d result;
 	for (size_t i = 0; i < 3; i++) {
 		result[i] = delta[i] / vRange[i];
+		assert(-tol <= result[i] && result[i] <= 1 + tol);
+		if (result[i] < 0)
+			result[i] = 0;
+		else if (result[i] > 1)
+			result[i] = 1;
 	}
 
 	Vector3d checkPt = TRI_LERP(blockPts, result[0], result[1], result[2]);
@@ -387,22 +407,28 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 		errSqr = vErr.squaredNorm();
 	}
 		
+	for (int i = 0; i < 3; i++) {
+		assert(0 <= result[i] && result[i] <= 1);
+	}
 	return result;
 }
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
+	if (!Polygon::verifyVertsConvex(this, vertIndices)) {
+		return Index3DId();
+	}
+
+	auto ownerIdx = determineOwnerBlockIdx(vertIndices);
 	Polygon newFace;
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
-	newFace.verifyVertsConvex(this);
 
-	auto ownerIdx = determineOwnerBlockIdx(newFace);
 	Block* pOwner = getOwner(ownerIdx);
 	if (pOwner == this) {
 		lock_guard g(_polygons);
-		Index3DId faceId = _polygons.findOrAdd(_blockIdx, newFace);
+		Index3DId faceId = _polygons.findOrAdd(this, newFace);
 
 		for (const auto& vertId : vertIndices) {
 			vertexFunc(vertId, [&faceId](Block* pBlock, Vertex& vert) {
@@ -416,9 +442,8 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 size_t Block::addCell(const std::vector<Index3DId>& faceIds)
 {
-	Index3DId cellId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	Index3DId cellId = _polyhedra.findOrAdd(this, Polyhedron(faceIds));
 	auto& cell = _polyhedra[cellId.elementId()];
-	cell.setId(cellId);
 	for (auto& faceId : cell.getFaceIds()) {
 		faceFunc(faceId, [&cellId](Block* pBlock, Polygon& face) {
 			face.addCell(cellId);
@@ -486,9 +511,8 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 #endif
 
-	const Index3DId polyhedronId = _polyhedra.findOrAdd(_blockIdx, Polyhedron(faceIds));
+	const Index3DId polyhedronId = _polyhedra.findOrAdd(this, Polyhedron(faceIds));
 	assert(polyhedronId.isValid());
-	_polyhedra[polyhedronId.elementId()].setId(polyhedronId);
 
 	for (const auto& faceId : faceIds) {
 		if (faceId != _blockIdx) {
@@ -505,7 +529,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
-inline Block* Block::getOwner(const Index3D& blockIdx)
+Block* Block::getOwner(const Index3D& blockIdx)
 {
 	if (blockIdx == _blockIdx)
 		return this;
@@ -513,7 +537,7 @@ inline Block* Block::getOwner(const Index3D& blockIdx)
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-inline const Block* Block::getOwner(const Index3D& blockIdx) const
+const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 	if (blockIdx == _blockIdx)
 		return this;
@@ -521,12 +545,22 @@ inline const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx).get();
 }
 
-inline Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
+Index3DId Block::idOfPoint(const Vector3d& pt)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	if (pOwner == this)
-		return _vertices.findOrAdd(_blockIdx, pt, currentId);
+		return Index3DId(_blockIdx, _vertices.findId(pt));
+	else
+		return Index3DId(pOwner->_blockIdx, pOwner->_vertices.findId(pt));
+}
+
+Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
+{
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	Block* pOwner = getOwner(ownerBlockIdx);
+	if (pOwner == this)
+		return _vertices.findOrAdd(this, pt, currentId);
 	else
 		return pOwner->addVertex(pt, currentId);
 }
@@ -541,7 +575,7 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	for (const auto& faceId : faceIds) {
 		vector<Edge> edges;
 		faceFunc(faceId, [&edges](const Block* pBlock, const Polygon& face) {
-			edges = face.getEdges(pBlock);
+			edges = face.getEdges();
 		});
 		for (const auto& edge : edges) {
 			if (edge.containsVertex(vertexId)) {
@@ -572,7 +606,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 
 	Index3D ownerIdx = determineOwnerBlockIdx(pts);
 	Block* pOwner = getOwner(ownerIdx);
-	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner->_blockIdx, newPoly);
+	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner, newPoly);
 	vector<Index3DId> vertIds;
 	faceFunc(faceId, [this, &faceId, &vertIds](const Block* pBlock, Polygon& face) {
 		vertIds = face.getVertexIdsNTS();
@@ -658,13 +692,6 @@ bool Block::load()
 	return true;
 }
 
-void Block::processTris(const TriMesh::CMeshPtr& pSrcMesh)
-{
-	addTris(pSrcMesh);
-
-	processTris();
-}
-
 size_t Block::processTris()
 {
 	const int numDivs = 1;
@@ -672,12 +699,14 @@ size_t Block::processTris()
 	if (_pModelTriMesh->numTris() == 0)
 		return 0;
 
-	// Get rid of the ray casting, it's not effective at this stage
-	vector<size_t> newCells = createSubBlocks(_corners.data());
+	set<size_t> newCells;
+	_polyhedra.iterateInOrder([&newCells](size_t id, Polyhedron& cell) {
+		newCells.insert(id);
+	});
+
 #if 1
 	if (!newCells.empty()) {
 #if 0
-		newCells = dividePolyhedraAtSharpVerts(newCells);
 		for (size_t div = 0; div < numDivs; div++) {
 			newCells = dividePolyhedraByCurvature(newCells);
 		}
@@ -690,35 +719,26 @@ size_t Block::processTris()
 void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 {
 	_pModelTriMesh = pSrcMesh;
+
 }
 
-vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndices)
+void Block::splitCellsWithPlane(const Plane& splitPlane)
 {
 	assert(verifyTopology());
 
-	set<size_t> newCells;
+	set<size_t> cellIndices;
+	_polyhedra.iterateInOrder([&cellIndices](size_t id, const Polyhedron& cell) {
+		cellIndices.insert(id);
+	});
+
 	for (size_t index : cellIndices) {
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
-		CBoundingBox3Dd bbox = poly.getBoundingBox(this);
-		for (size_t vertIdx : _pVol->getSharpVertIndices()) {
-			auto pt = _pModelTriMesh->getVert(vertIdx)._pt;
-			if (bbox.contains(pt)) {
-				auto tempCells = poly.split(this, pt, false);
-				newCells.insert(tempCells.begin(), tempCells.end());
-			}
-		}
-	}
-
-	vector<size_t> result;
-	for (const auto& cellId : newCells) {
-		result.push_back(cellId);
+		poly.splitCellsWithPlane(this, splitPlane);
 	}
 
 	assert(verifyTopology());
-
-	return result;
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) const
@@ -753,7 +773,15 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 				else {
 					result->addQuad(pts[0], pts[1], pts[2], pts[3]);
 				}
-			} 
+			} else if (vertIds.size() > 4) {
+				Vector3d ctr = poly.getCentroid();
+				for (size_t i = 0; i < vertIds.size(); i++) {
+					size_t j = (i + 1) % vertIds.size();
+					Vector3d pt0 = getVertexPoint(vertIds[i]);
+					Vector3d pt1 = getVertexPoint(vertIds[j]);
+					result->addTriangle(ctr, pt0, pt1);
+				}
+			}
 		} else
 			skipped++;
 	});
@@ -770,7 +798,7 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly, size_t minSplitNu
 
 	_polygons.iterateInOrderTS([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
 		if ((!outerOnly || face.isOuter()) && face.getNumSplits() >= minSplitNum) {
-			const auto& faceEdges = face.getEdges(this);
+			const auto& faceEdges = face.getEdges();
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}
 	});

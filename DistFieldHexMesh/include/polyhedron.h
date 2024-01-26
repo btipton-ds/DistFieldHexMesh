@@ -3,6 +3,8 @@
 #include <iostream>
 #include <tm_boundingBox.h>
 #include <index3D.h>
+#include <objectPool.h>
+#include <block.h>
 
 namespace DFHM {
 
@@ -19,7 +21,7 @@ public:
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 
 	// Required for use with object pool
-	void setId(const Index3DId& thisId);
+	void setId(ObjectPoolOwner* pBlock, size_t id);
 	Index3DId getIndex() const;
 
 	void addFace(Block* pBlock, const Index3DId& faceId);
@@ -35,6 +37,7 @@ public:
 
 	CBoundingBox3Dd getBoundingBox(const Block* pBlock) const;
 	Vector3d calCentroid(const Block* pBlock) const;
+	void splitCellsWithPlane(Block* pBlock, const Plane& splitPlane);
 	std::vector<size_t> split(Block* pBlock, bool intersectingOnly);
 	std::vector<size_t> split(Block* pBlock, const Vector3d& pt, bool intersectingOnly);
 
@@ -45,16 +48,16 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<size_t> splitNTS(Block* pBlock, const Vector3d& pt, const Vector3d& normal, bool intersectingOnly);
+	std::vector<size_t> split(Block* pBlock, const Plane& splitPlane, bool intersectingOnly);
 	void orderVertIdsNTS(Block* pBlock, std::vector<Index3DId>& vertIds) const;
 
 	Index3DId _thisId;
 	std::set<Index3DId> _faceIds;
 };
 
-inline void Polyhedron::setId(const Index3DId& thisId)
+inline void Polyhedron::setId(ObjectPoolOwner* pBlock, size_t id)
 {
-	_thisId = thisId;
+	_thisId = Index3DId(pBlock->getBlockIdx(), id);
 	assert(_thisId.isValid());
 }
 

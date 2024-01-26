@@ -24,8 +24,8 @@ public:
 
 	double sameParamTol(const Block* pBlock) const;
 	double getLength(const Block* pBlock) const;
-	Vector3d getCenter(const Block* pBlock) const;
-	Vector3d getPointAt(const Block* pBlock, double t) const;
+	Vector3d calCenter(const Block* pBlock) const;
+	Vector3d calPointAt(const Block* pBlock, double t) const;
 	double paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const;
 	Vector3d projectPt(const Block* pBlock, const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vert) const;

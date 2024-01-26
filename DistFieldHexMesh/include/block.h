@@ -25,8 +25,10 @@ class Polyhedron;
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
 
-class Block {
+class Block : public ObjectPoolOwner {
 public:
+	const Index3D& getBlockIdx() const override;
+
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
@@ -44,11 +46,12 @@ public:
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 	Index3D determineOwnerBlockIdx(const Vertex& vert) const;
 	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
+	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	bool verifyTopology() const;
 
-	std::vector<size_t> createSubBlocks(const Vector3d blockPts[8]);
+	std::vector<size_t> createSubBlocks();
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -58,18 +61,14 @@ public:
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 
-	inline const Index3D& getBlockIdx()
-	{
-		return _blockIdx;
-	}
-
-	void processTris(const TriMesh::CMeshPtr& pSrcMesh);
 	size_t processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly, size_t minSplitNum) const;
 	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly, size_t minSplitNum) const;
+	void splitCellsWithPlane(const Plane& splitPlane);
 
+	Index3DId idOfPoint(const Vector3d& pt);
 	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);
 	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
 
@@ -126,7 +125,6 @@ private:
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	std::vector<size_t> dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices);
-	std::vector<size_t> dividePolyhedraAtSharpVerts(const std::vector<size_t>& cellIndices);
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;

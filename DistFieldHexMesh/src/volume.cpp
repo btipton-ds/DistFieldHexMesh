@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -288,25 +288,37 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 	findFeatures();
 
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
-		Vector3d blockOrigin;
-
-		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-
-		blockOrigin[0] = _originMeters[0] + blockIdx[0] * blockSpan[0];
-		blockOrigin[1] = _originMeters[1] + blockIdx[1] * blockSpan[1];
-		blockOrigin[2] = _originMeters[2] + blockIdx[2] * blockSpan[2];
-		CMesh::BoundingBox blbb;
-		blbb.merge(blockOrigin);
-		blbb.merge(blockOrigin + blockSpan);
-		double span = blbb.range().norm();
-		blbb.grow(0.05 * span);
-					
+		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);					
 		auto& bl = addBlock(blockIdx);
-		bl.addTris(_pModelTriMesh);
-		
+		bl.addTris(_pModelTriMesh);		
 	}, numBlocks, RUN_MULTI_THREAD);
 
+	// Cannot create subBlocks until all blocks are created
+	MultiCore::runLambda([this, &blockSpan](size_t linearIdx) {
+		if (_blocks[linearIdx])
+			_blocks[linearIdx]->createSubBlocks();		
+	}, numBlocks, RUN_MULTI_THREAD);
+
+#if 1
 	assert(verifyTopology());
+	auto sharpVerts = getSharpVertIndices();
+	vector<Vector3d> splittingPoints;
+	for (size_t vertIdx : sharpVerts) {
+		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
+	}
+	for (const auto& splitPt : splittingPoints) {
+		for (int i = 0; i < 3; i++) {
+			Vector3d norm(0, 0, 0);
+			norm[i] = 1.0;
+			Plane splitPlane(splitPt, norm);
+			MultiCore::runLambda([this, &splitPlane](size_t linearIdx) {
+				if (_blocks[linearIdx]) {
+					_blocks[linearIdx]->splitCellsWithPlane(splitPlane);
+				}
+			}, numBlocks, false && RUN_MULTI_THREAD);
+
+		}
+	}
 
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx) {
@@ -320,6 +332,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 #endif
 		}
 	}, numBlocks, !QUICK_TEST && RUN_MULTI_THREAD);
+#endif
 
 	assert(verifyTopology());
 

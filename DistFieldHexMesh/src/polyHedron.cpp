@@ -40,7 +40,7 @@ bool Polyhedron::verifyTopology(const Block* pBlock) const
 				bool pass = face.ownedByCell(_thisId);
 				if (!pass)
 					valid = false;
-				pass = face.verifyTopology(pBlock);
+				pass = face.verifyTopology();
 				if (!pass)
 					valid = false;
 			});
@@ -92,7 +92,7 @@ vector<Index3DId> Polyhedron::getCornerIds(const Block* pBlock) const
 	set<Index3DId> idSet;
 	for (const auto& faceId : _faceIds) {
 		pBlock->faceFunc(faceId, [&idSet](const Block* pBlock, const Polygon& face) {
-			const auto vertexIds = face.getVertexIds(pBlock);
+			const auto vertexIds = face.getVertexIds();
 			idSet.insert(vertexIds.begin(), vertexIds.end());
 		});
 	}
@@ -108,7 +108,7 @@ vector<Edge> Polyhedron::getEdges(const Block* pBlock) const
 	set<Edge> idSet;
 	for (const auto& faceId : _faceIds) {
 		pBlock->faceFunc(faceId, [&pBlock , &idSet](const Block* pBlock, const Polygon& face) {
-			const auto& edges = face.getEdges(pBlock);
+			const auto& edges = face.getEdges();
 			idSet.insert(edges.begin(), edges.end());
 		});
 	}
@@ -187,13 +187,14 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, bool
 		set<size_t> resultSet;
 		Vector3d normal(0, 0, 0);
 		normal[i] = 1.0;
+		Plane splitPlane(splitPoint, normal);
 		for (size_t cellId : cellSet) {
-			vector<size_t> splitCells;
-			pBlock->cellFunc(cellId, [this, &splitPoint, &normal, intersectingOnly, &splitCells](Block* pBlock, Polyhedron& cell) {
+		vector<size_t> splitCells;
+			pBlock->cellFunc(cellId, [this, &splitPlane, intersectingOnly, &splitCells](Block* pBlock, Polyhedron& cell) {
 				// TODO FIX ASAP. Adding a cell causes the data to move, causing data corruption during the operation.
 				// Smart pointer will fix this, but it's heavier than needed.
 				// Maybe reserve space?
-				splitCells = cell.splitNTS(pBlock, splitPoint, normal, intersectingOnly);
+				splitCells = cell.split(pBlock, splitPlane, intersectingOnly);
 			});
 			if (!splitCells.empty())
 				resultSet.insert(splitCells.begin(), splitCells.end());
@@ -208,16 +209,20 @@ vector<size_t> Polyhedron::split(Block* pBlock, const Vector3d& splitPoint, bool
 	return result;
 }
 
-vector<size_t> Polyhedron::splitNTS(Block* pBlock, const Vector3d& splitPoint, const Vector3d& normal, bool intersectingOnly)
+void Polyhedron::splitCellsWithPlane(Block* pBlock, const Plane& splitPlane)
+{
+	split(pBlock, splitPlane, false);
+}
+
+vector<size_t> Polyhedron::split(Block* pBlock, const Plane& splitPlane, bool intersectingOnly)
 {
 	vector<size_t> result;
-	const Plane cutPlane(splitPoint, normal);
 
 	auto edges = getEdges(pBlock);
 
 	size_t numIntersections = 0;
 	for (const auto& edge : edges) {
-		double t = edge.intesectPlaneParam(pBlock, cutPlane);
+		double t = edge.intesectPlaneParam(pBlock, splitPlane);
 		if (t >= 0 && t <= 1) {
 			numIntersections++;
 		}
@@ -228,7 +233,7 @@ vector<size_t> Polyhedron::splitNTS(Block* pBlock, const Vector3d& splitPoint, c
 
 	set<Index3DId> vertIdSet;
 	for (const auto& edge : edges) {
-		auto newVertId = edge.splitWithPlane(pBlock, cutPlane);
+		auto newVertId = edge.splitWithPlane(pBlock, splitPlane);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
 		}
@@ -262,18 +267,19 @@ vector<size_t> Polyhedron::splitNTS(Block* pBlock, const Vector3d& splitPoint, c
 		Index3DId newFaceId;
 		pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
 			// These are the 1/2 faces of original faces
-			newFaceId = face.splitBetweenVertices(pBlock, edge.getVertexIds()[0], edge.getVertexIds()[1]);
-			addFace(pBlock, newFaceId);
+			newFaceId = face.splitBetweenVertices(edge.getVertexIds()[0], edge.getVertexIds()[1]);
+			if (newFaceId.isValid())
+				addFace(pBlock, newFaceId);
 		});
 	}
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
 	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(faceId, [this, &cutPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
-			Vector3d ctr = face.getCentroid(pBlock);
-			Vector3d v = ctr - cutPlane._origin;
-			if (v.dot(cutPlane._normal) < 0) {
+		pBlock->faceFunc(faceId, [this, &splitPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
+			Vector3d ctr = face.getCentroid();
+			Vector3d v = ctr - splitPlane._origin;
+			if (v.dot(splitPlane._normal) < 0) {
 				newFaceIdSet.insert(faceId);
 			}
 		});
