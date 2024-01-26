@@ -49,7 +49,7 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
-	bool verifyTopology() const;
+	bool verifyTopology(bool all) const;
 
 	std::vector<size_t> createSubBlocks();
 
@@ -66,7 +66,7 @@ public:
 	const TriMesh::CMeshPtr& getModelMesh() const;
 	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly, size_t minSplitNum) const;
 	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly, size_t minSplitNum) const;
-	void splitCellsWithPlane(const Plane& splitPlane);
+	size_t splitCellsWithPlane(const Plane& splitPlane);
 
 	Index3DId idOfPoint(const Vector3d& pt);
 	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);
@@ -74,8 +74,8 @@ public:
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
-	void addToLookup(const Polygon& face);
-	bool removeFromLookUp(const Polygon& face);
+	void addToLookup(const Index3DId& faceId);
+	bool removeFromLookUp(const Index3DId& faceId);
 
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);

@@ -119,6 +119,19 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 	return false;
 }
 
+bool Polygon::vertsContainFace() const
+{
+	bool result = true;
+	for (const auto& vertId : _vertexIds) {
+		_pBlock->vertexFunc(vertId, [this, &result](const Block* pBlock, const Vertex& vert) {
+			bool pass = vert.connectedToFace(_thisId);
+			if (!pass)
+				result = false;
+		});
+	}
+	return result;
+}
+
 Vector3d Polygon::getUnitNormal() const
 {
 	Vector3d norm(0, 0, 0);
@@ -201,11 +214,12 @@ bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
 {
 	assert(!containsVert(newVertId));
 	bool result = false;
+	vector<Index3DId> vertIds = _vertexIds;
 	size_t idx0 = -1, idx1 = 1;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		const auto& vert0 = _vertexIds[i];
-		const auto& vert1 = _vertexIds[j];
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		const auto& vert0 = vertIds[i];
+		const auto& vert1 = vertIds[j];
 		if (
 			(vert0 == edge.getVertexIds()[0] && vert1 == edge.getVertexIds()[1]) ||
 			(vert0 == edge.getVertexIds()[1] && vert1 == edge.getVertexIds()[0])
@@ -219,20 +233,24 @@ bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
 		if (idx0 > idx1)
 			swap(idx0, idx1);
 
-		if (idx1 - idx0 > 1 && idx0 == 0 && idx1 == _vertexIds.size() -1) {
+		if (idx1 - idx0 > 1 && idx0 == 0 && idx1 == vertIds.size() -1) {
 			// New vertex goes at the end
-			_vertexIds.push_back(newVertId);
+			vertIds.push_back(newVertId);
 		} else {
-			_vertexIds.insert(_vertexIds.begin() + idx1, newVertId);
+			vertIds.insert(vertIds.begin() + idx1, newVertId);
 		}
 		result = true;
 	}
+	_pBlock->removeFromLookUp(_thisId);
+	setVertexIds(vertIds);
+	_pBlock->addToLookup(_thisId);
 
 	if (result) {
 		_pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
 			vert.addFaceId(_thisId);
 		});
 	}
+
 	return result;
 }
 
@@ -308,9 +326,9 @@ Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3D
 	verifyVertsConvex(_pBlock, face0Verts);
 	verifyVertsConvex(_pBlock, face1Verts);
 
-	_pBlock->removeFromLookUp(*this);
+	_pBlock->removeFromLookUp(_thisId);
 	setVertexIds(face0Verts);
-	_pBlock->addToLookup(*this);
+	_pBlock->addToLookup(_thisId);
 	_numSplits++;
 
 	newFaceId = _pBlock->addFace(face1Verts);
@@ -324,7 +342,7 @@ Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3D
 		auto& cell = _pBlock->getPolyhedron(cellId);
 		cell.addFace(newFaceId);
 	}
-
+	_pBlock->verifyTopology(true);
 
 	return newFaceId;
 }
@@ -341,23 +359,23 @@ void Polygon::setVertexIds(const vector<Index3DId>& verts)
 	}
 #endif
 
+	lock_guard g(_pBlock->getFaceMutex());
+	assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
+
 	for (const auto& vertId : _vertexIds) {
 		_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
 			vert.removeFaceId(_thisId);
 			});
 	}
 
-	for (const auto& vertId : verts) {
-		_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
-			vert.addFaceId(_thisId);
-			});
-	}
-
-	assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
-
-	lock_guard g(_pBlock->getFaceMutex());
 	_vertexIds = verts;
 	_needSort = true;
+
+	for (const auto& vertId : _vertexIds) {
+		_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+			vert.addFaceId(_thisId);
+		});
+	}
 }
 
 bool Polygon::verifyVertsConvex(const Block* pBlock, const vector<Index3DId>& vertIds)

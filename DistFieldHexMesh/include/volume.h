@@ -54,7 +54,7 @@ public:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize, bool outerFacesOnly);
+	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize);
 	void makeTris(std::vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, size_t minSplitNum, bool multiCore);
 	void makeFaceEdges(std::vector<std::shared_ptr<std::vector<float>>>& faceEdges, bool outerOnly, size_t minSplitNum, bool multiCore);
 

@@ -60,7 +60,10 @@ bool Vertex::verifyTopology() const
 				bool pass = face.containsVert(_thisId);
 				if (!pass)
 					valid = false;
-				});
+				pass = face.vertsContainFace();
+				if (!pass)
+					valid = false;
+			});
 		} else
 			valid = false;
 	}

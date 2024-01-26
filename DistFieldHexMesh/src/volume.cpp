@@ -258,7 +258,7 @@ Block& Volume::getBlock(const Index3D& blockIdx)
 	throw runtime_error("Volume::getBlock index out of range");
 }
 
-void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, bool outerFacesOnly)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -299,6 +299,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 			_blocks[linearIdx]->createSubBlocks();		
 	}, numBlocks, RUN_MULTI_THREAD);
 
+	verifyTopology();
+
 #if 0
 	assert(verifyTopology());
 	auto sharpVerts = getSharpVertIndices();
@@ -306,17 +308,25 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 	for (size_t vertIdx : sharpVerts) {
 		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
 	}
-	for (const auto& splitPt : splittingPoints) {
+
+	for (size_t i = 0; i < splittingPoints.size(); i++) {
+		if (i != 0)
+			return;
+		const auto& splitPt = splittingPoints[i];
 		for (int i = 0; i < 3; i++) {
 			Vector3d norm(0, 0, 0);
 			norm[i] = 1.0;
 			Plane splitPlane(splitPt, norm);
-			MultiCore::runLambda([this, &splitPlane](size_t linearIdx) {
+
+			numBlocks = _blocks.size();
+			MultiCore::runLambda([this, &splitPlane, i](size_t linearIdx) {
 				if (_blocks[linearIdx]) {
-					_blocks[linearIdx]->splitCellsWithPlane(splitPlane);
+					if (i == 1 && linearIdx == 12) {
+						int dbgBreak = 1;
+					}
+					size_t numNewCells = _blocks[linearIdx]->splitCellsWithPlane(splitPlane);
 				}
 			}, numBlocks, false && RUN_MULTI_THREAD);
-
 		}
 	}
 
@@ -490,9 +500,10 @@ void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const strin
 bool Volume::verifyTopology() const
 {
 	bool result = true;
+
 	for (const auto& pBlock : _blocks) {
 		if (pBlock)
-			result = pBlock->verifyTopology() && result;
+			result = pBlock->verifyTopology(false) && result;
 	}
 	return result;
 }

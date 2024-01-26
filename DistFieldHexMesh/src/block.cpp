@@ -188,9 +188,11 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
-bool Block::verifyTopology() const
+bool Block::verifyTopology(bool all) const
 {
 	bool result = true;
+	if (all)
+		return _pVol->verifyTopology();
 
 	_vertices.iterateInOrderTS([&result](size_t id, const Vertex& vert) {
 		bool pass = vert.verifyTopology();
@@ -587,13 +589,13 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	return result;
 }
 
-void Block::addToLookup(const Polygon& face)
+void Block::addToLookup(const Index3DId& faceId)
 {
-	Block* pOwner = getOwner(face.getId());
+	Block* pOwner = getOwner(faceId);
 	if (pOwner == this)
-		_polygons.addToLookup(face.getId().elementId());
+		_polygons.addToLookup(faceId.elementId());
 	else
-		pOwner->addToLookup(face);
+		pOwner->_polygons.addToLookup(faceId.elementId());
 }
 
 Index3DId Block::addFace(const vector<Vector3d>& pts)
@@ -607,16 +609,14 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 	Index3D ownerIdx = determineOwnerBlockIdx(pts);
 	Block* pOwner = getOwner(ownerIdx);
 	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner, newPoly);
-	vector<Index3DId> vertIds;
-	faceFunc(faceId, [this, &faceId, &vertIds](const Block* pBlock, Polygon& face) {
-		vertIds = face.getVertexIdsNTS();
+	faceFunc(faceId, [this, &faceId](const Block* pBlock, Polygon& face) {
+		const auto& vertIds = face.getVertexIdsNTS();
+		for (const auto& vertId : vertIds) {
+			vertexFunc(vertId, [&faceId](const Block* pBlock, Vertex& vert) {
+				vert.addFaceId(faceId);
+			});
+		}
 	});
-
-	for (const auto& vertId : vertIds) {
-		vertexFunc(vertId, [&faceId](const Block* pBlock, Vertex& vert) {
-			vert.addFaceId(faceId);
-		});
-	}
 
 	return faceId;
 }
@@ -635,13 +635,13 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-bool Block::removeFromLookUp(const Polygon& face)
+bool Block::removeFromLookUp(const Index3DId& faceId)
 {
-	Block* pOwner = getOwner(face.getId());
+	Block* pOwner = getOwner(faceId);
 	if (pOwner == this) {
-		return _polygons.removeFromLookup(face.getId().elementId());
+		return _polygons.removeFromLookup(faceId.elementId());
 	} else
-		return pOwner->removeFromLookUp(face);
+		return pOwner->_polygons.removeFromLookup(faceId.elementId());
 }
 
 Vector3d Block::getVertexPoint(const Index3DId& vertIdx) const
@@ -722,9 +722,10 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 
 }
 
-void Block::splitCellsWithPlane(const Plane& splitPlane)
+size_t Block::splitCellsWithPlane(const Plane& splitPlane)
 {
-	assert(verifyTopology());
+	size_t numSplit = 0;
+	assert(verifyTopology(true));
 
 	set<size_t> cellIndices;
 	_polyhedra.iterateInOrder([&cellIndices](size_t id, const Polyhedron& cell) {
@@ -735,10 +736,12 @@ void Block::splitCellsWithPlane(const Plane& splitPlane)
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
-		poly.splitCellsWithPlane(splitPlane);
+		auto newCells = poly.split(splitPlane, false);
+		numSplit += newCells.size();
 	}
 
-	assert(verifyTopology());
+	assert(verifyTopology(true));
+	return numSplit;
 }
 
 TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) const
@@ -757,7 +760,8 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
 	size_t skipped = 0;
 	_polygons.iterateInOrderTS([this, result, outerOnly, &skipped, minSplitNum](size_t id, const Polygon& poly) {
-		if ((!outerOnly || poly.isOuter()) && poly.getNumSplits() >= minSplitNum) {
+
+		if ((minSplitNum == 0 && (!outerOnly || poly.isOuter())) || poly.getNumSplits() >= minSplitNum) {
 			const auto& vertIds = poly.getVertexIdsNTS();
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
@@ -797,7 +801,7 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly, size_t minSplitNu
 	set<Edge> edges;
 
 	_polygons.iterateInOrderTS([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
-		if ((!outerOnly || face.isOuter()) && face.getNumSplits() >= minSplitNum) {
+		if ((minSplitNum == 0 && (!outerOnly || face.isOuter())) || face.getNumSplits() >= minSplitNum) {
 			const auto& faceEdges = face.getEdges();
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}

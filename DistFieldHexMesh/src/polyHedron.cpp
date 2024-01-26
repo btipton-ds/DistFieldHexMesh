@@ -76,7 +76,8 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 
 void Polyhedron::addFace(const Index3DId& faceId)
 {
-	if (_faceIds.insert(faceId).second) {
+	if (_faceIds.count(faceId) == 0) {
+		_faceIds.insert(faceId);
 		_pBlock->faceFunc(faceId, [this](Block* pBlock, Polygon& face) {
 			face.addCell(_thisId);
 		});
@@ -85,7 +86,8 @@ void Polyhedron::addFace(const Index3DId& faceId)
 
 bool Polyhedron::removeFace(const Index3DId& faceId)
 {
-	if (_faceIds.erase(faceId) != 0) {
+	if (_faceIds.count(faceId) != 0) {
+		_faceIds.erase(faceId);
 		_pBlock->faceFunc(faceId, [this](Block* _pBlock, Polygon& face) {
 			face.removeCell(_thisId);
 		});
@@ -217,30 +219,24 @@ vector<size_t> Polyhedron::split(const Vector3d& splitPoint, bool intersectingOn
 	return result;
 }
 
-void Polyhedron::splitCellsWithPlane(const Plane& splitPlane)
-{
-	split(splitPlane, false);
-}
-
 vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 {
 	vector<size_t> result;
 
-	auto edges = getEdges();
+	vector<Edge> edges = getEdges(), edgesToSplit;
 
-	size_t numIntersections = 0;
 	for (const auto& edge : edges) {
 		double t = edge.intesectPlaneParam(splitPlane);
 		if (t >= 0 && t <= 1) {
-			numIntersections++;
+			edgesToSplit.push_back(edge);
 		}
 	}
 
-	if (numIntersections < 3)
+	if (edgesToSplit.size() < 3)
 		return result;
 
 	set<Index3DId> vertIdSet;
-	for (const auto& edge : edges) {
+	for (const auto& edge : edgesToSplit) {
 		auto newVertId = edge.splitWithPlane(splitPlane);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
@@ -264,7 +260,7 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	} else {
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
-	verifyTopology();
+	_pBlock->verifyTopology(true);
 
 	// Split the cell faces with split edges
 	for (size_t i = 0; i < newVertIds.size(); i++) {
@@ -309,8 +305,7 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	});
 
 	// Face owner cells are messed up by splitting. Need to fix that.
-	verifyTopology();
-	_pBlock->getPolyhedron(newCellId).verifyTopology();
+	_pBlock->verifyTopology(true);
 
 	if (_thisId.isValid())
 		result.push_back(_thisId.elementId());

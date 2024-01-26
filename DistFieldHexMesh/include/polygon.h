@@ -46,6 +46,7 @@ public:
 	std::vector<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsVert(const Index3DId& vertId) const;
+	bool vertsContainFace() const;
 
 	Vector3d getUnitNormal() const;
 	Vector3d getCentroid() const;

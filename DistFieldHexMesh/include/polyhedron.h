@@ -37,7 +37,7 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	Vector3d calCentroid() const;
-	void splitCellsWithPlane(const Plane& splitPlane);
+	std::vector<size_t> split(const Plane& splitPlane, bool intersectingOnly);
 	std::vector<size_t> split(bool intersectingOnly);
 	std::vector<size_t> split(const Vector3d& pt, bool intersectingOnly);
 
@@ -48,7 +48,6 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<size_t> split(const Plane& splitPlane, bool intersectingOnly);
 	void orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
 	Block* _pBlock = nullptr;
