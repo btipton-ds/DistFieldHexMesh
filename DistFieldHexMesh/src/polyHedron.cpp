@@ -60,7 +60,7 @@ bool Polyhedron::verifyTopology() const
 	faceSet.insert(_faceIds.begin(), _faceIds.end());
 	auto edges = getEdges();
 	for (const auto& edge : edges) {
-		auto edgeFaces = edge.getFaceIds(_pBlock, faceSet);
+		auto edgeFaces = edge.getFaceIds(faceSet);
 		bool pass = edgeFaces.size() == 2;
 		if (!pass)
 			valid = false;
@@ -230,7 +230,7 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 
 	size_t numIntersections = 0;
 	for (const auto& edge : edges) {
-		double t = edge.intesectPlaneParam(_pBlock, splitPlane);
+		double t = edge.intesectPlaneParam(splitPlane);
 		if (t >= 0 && t <= 1) {
 			numIntersections++;
 		}
@@ -241,7 +241,7 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 
 	set<Index3DId> vertIdSet;
 	for (const auto& edge : edges) {
-		auto newVertId = edge.splitWithPlane(_pBlock, splitPlane);
+		auto newVertId = edge.splitWithPlane(splitPlane);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
 		}
@@ -269,9 +269,9 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	// Split the cell faces with split edges
 	for (size_t i = 0; i < newVertIds.size(); i++) {
 		size_t j = (i + 1) % newVertIds.size();
-		Edge edge(newVertIds[i], newVertIds[j]);
+		Edge edge(_pBlock, newVertIds[i], newVertIds[j]);
 
-		const auto& faceId = edge.getCommonFace(_pBlock);
+		const auto& faceId = edge.getCommonFace();
 		Index3DId newFaceId;
 		_pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
 			// These are the 1/2 faces of original faces

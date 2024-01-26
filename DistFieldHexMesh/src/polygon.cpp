@@ -89,7 +89,7 @@ vector<Edge> Polygon::getEdgesNTS() const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge edge(vertId0, vertId1);
+		Edge edge(_pBlock, vertId0, vertId1);
 		result.push_back(edge);
 	}
 
@@ -102,7 +102,7 @@ bool Polygon::containsEdge(const Edge& edge) const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge testEdge(vertId0, vertId1);
+		Edge testEdge(_pBlock, vertId0, vertId1);
 		if (testEdge == edge)
 			return true;
 	}
@@ -180,7 +180,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 bool Polygon::insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId)
 {
 	if (!containsVert(newVertId))
-		return insertVertexNTS(Edge(vert0, vert1), newVertId);
+		return insertVertexNTS(Edge(_pBlock, vert0, vert1), newVertId);
 	return false;
 }
 
@@ -192,7 +192,7 @@ Index3DId Polygon::insertVertexNTS(const Index3DId& vert0, const Index3DId& vert
 		newVertId = _pBlock->addVertex(pt);
 
 	if (!containsVert(newVertId))
-		insertVertexNTS(Edge(vert0, vert1), newVertId);
+		insertVertexNTS(Edge(_pBlock, vert0, vert1), newVertId);
 
 	return newVertId;
 }

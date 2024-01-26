@@ -6,6 +6,20 @@
 using namespace std;
 using namespace DFHM;
 
+Edge::Edge(ObjectPoolOwner* pBlock, const Index3DId& vert0, const Index3DId& vert1)
+{
+	_pBlock = dynamic_cast<Block*>(pBlock);
+	if (vert0 < vert1) {
+		_vertexIds[0] = vert0;
+		_vertexIds[1] = vert1;
+	}
+	else {
+		_vertexIds[0] = vert1;
+		_vertexIds[1] = vert0;
+	}
+}
+
+
 bool Edge::operator == (const Edge& rhs) const
 {
 	return (_vertexIds[0] == rhs._vertexIds[0]) && (_vertexIds[1] == rhs._vertexIds[1]);
@@ -23,36 +37,36 @@ bool Edge::operator < (const Edge& rhs) const
 	return false;
 }
 
-double Edge::sameParamTol(const Block* pBlock) const
+double Edge::sameParamTol() const
 {
-	return Vertex::sameDistTol() / getLength(pBlock);
+	return Vertex::sameDistTol() / getLength();
 }
 
-double Edge::getLength(const Block* pBlock) const
+double Edge::getLength() const
 {
-	LineSegment seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
+	LineSegment seg(_pBlock->getVertexPoint(_vertexIds[0]), _pBlock->getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
-Vector3d Edge::calCenter(const Block* pBlock) const
+Vector3d Edge::calCenter() const
 {
-	return calPointAt(pBlock, 0.5);
+	return calPointAt(0.5);
 }
 
-Vector3d Edge::calPointAt(const Block* pBlock, double t) const
+Vector3d Edge::calPointAt(double t) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
 	
 	Vector3d result = pt0 + t * (pt1 - pt0);
 
 	return result;
 }
 
-double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const
+double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -63,10 +77,10 @@ double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) 
 	return t;
 }
 
-Vector3d Edge::projectPt(const Block* pBlock, const Vector3d& pt) const
+Vector3d Edge::projectPt(const Vector3d& pt) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -82,16 +96,16 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
 
-set<Index3DId> Edge::getFaceIds(const Block* pBlock) const
+set<Index3DId> Edge::getFaceIds() const
 {
 	set<Index3DId> result;
 
 	set<Index3DId> faceIds;
-	pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Block* pBlock, const Vertex& vert) {
+	_pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Block* pBlock, const Vertex& vert) {
 		faceIds = vert.getFaceIds();
 	});
 	for (const auto& faceId : faceIds) {
-		pBlock->faceFunc(faceId, [this, &result, &faceId](const Block* pBlock, const Polygon& face) {
+		_pBlock->faceFunc(faceId, [this, &result, &faceId](const Block* pBlock, const Polygon& face) {
 			if (face.containsEdge(*this))
 				result.insert(faceId);
 		});
@@ -99,10 +113,10 @@ set<Index3DId> Edge::getFaceIds(const Block* pBlock) const
 	return result;
 }
 
-set<Index3DId> Edge::getFaceIds(const Block* pBlock, set<Index3DId>& availFaces) const
+set<Index3DId> Edge::getFaceIds(set<Index3DId>& availFaces) const
 {
 	set<Index3DId> result;
-	set<Index3DId> edgeFaceIds = getFaceIds(pBlock);
+	set<Index3DId> edgeFaceIds = getFaceIds();
 
 	for (const auto& faceId : edgeFaceIds) {
 		if (availFaces.count(faceId) != 0) {
@@ -113,17 +127,17 @@ set<Index3DId> Edge::getFaceIds(const Block* pBlock, set<Index3DId>& availFaces)
 	return result;
 }
 
-Index3DId Edge::getCommonFace(const Block* pBlock) const
+Index3DId Edge::getCommonFace() const
 {
 	set<Index3DId> faceSet0;
-	pBlock->vertexFunc(_vertexIds[0], [&faceSet0](const Block* pBlock, const Vertex& vert) {
+	_pBlock->vertexFunc(_vertexIds[0], [&faceSet0](const Block* pBlock, const Vertex& vert) {
 		faceSet0 = vert.getFaceIds();
 	});
 
 	for (auto iter = faceSet0.begin(); iter != faceSet0.end(); iter++) {
 		const auto& faceId = *iter;
 		size_t count = 0;
-		pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
+		_pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
 			// Do not use containsEdge. It requires adjacency and this function doesn't
 			const auto vertIds = face.getVertexIds();
 			for (const auto& vertId : vertIds) {
@@ -139,16 +153,16 @@ Index3DId Edge::getCommonFace(const Block* pBlock) const
 	return Index3DId();
 }
 
-Index3DId Edge::splitAtParam(Block* pBlock, double t) const
+Index3DId Edge::splitAtParam(double t) const
 {
 	const double tol = 0;
 	if (t > tol && t < 1.0 - tol) {
-		Vector3d pt = calPointAt(pBlock, t);
-		auto midVertId = pBlock->addVertex(pt);
+		Vector3d pt = calPointAt(t);
+		auto midVertId = _pBlock->addVertex(pt);
 
-		set<Index3DId> faceIds = getFaceIds(pBlock);
+		set<Index3DId> faceIds = getFaceIds();
 		for (const auto& faceId : faceIds) {
-			pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
+			_pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
 				if (face.containsVert(midVertId)) // This face was already split with this vertex
 					return;
 				if (!face.insertVertexNTS(*this, midVertId)) {
@@ -164,10 +178,10 @@ Index3DId Edge::splitAtParam(Block* pBlock, double t) const
 	return Index3DId();
 }
 
-double Edge::intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) const
+double Edge::intesectPlaneParam(const Plane& splittingPlane) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
 	LineSegment seg(pt0, pt1);
 	RayHit hit;
 	if (intersectLineSegPlane(seg, splittingPlane, hit)) {
@@ -177,12 +191,12 @@ double Edge::intesectPlaneParam(Block* pBlock, const Plane& splittingPlane) cons
 	return -1;
 }
 
-Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane) const
+Index3DId Edge::splitWithPlane(const Plane& splittingPlane) const
 {
 	const double tol = 0;
-	double t = intesectPlaneParam(pBlock, splittingPlane);
+	double t = intesectPlaneParam(splittingPlane);
 	if (t > tol && t < 1.0 - tol) {
-		return splitAtParam(pBlock, t);
+		return splitAtParam(t);
 	}
 	return Index3DId();
 }
