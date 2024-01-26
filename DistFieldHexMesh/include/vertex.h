@@ -44,7 +44,9 @@ public:
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
 	const std::set<Index3DId>& getFaceIds() const;
-	std::set<Index3DId> getFaceIds(const std::vector<Index3DId> availFaces) const;
+	std::set<Index3DId> getFaceIds(const std::set<Index3DId> availFaces) const;
+	bool connectedToFace(const Index3DId& faceId) const;
+	bool verifyTopology(const Block* pBlock) const;
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -53,13 +55,14 @@ private:
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;
 
+	Index3DId _thisId;
 	FixedPt _pt; // Fixed point representation of a double precisions point
 	std::set<Index3DId> _faceIds;
 };
 
 inline void Vertex::setId(const Index3DId& id)
 {
-
+	_thisId = id;
 }
 
 inline double Vertex::getFixedScale()

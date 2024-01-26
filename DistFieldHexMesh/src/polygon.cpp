@@ -3,6 +3,7 @@
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
+#include <polyhedron.h>
 #include <block.h>
 
 using namespace std;
@@ -15,13 +16,13 @@ void Polygon::addVertex(const Index3DId& vertId)
 	_needSort = true;
 }
 
-bool Polygon::unload(std::ostream& out, size_t idSelf)
+bool Polygon::unload(ostream& out, size_t idSelf)
 {
 
 	return true;
 }
 
-bool Polygon::load(std::istream& in, size_t idSelf)
+bool Polygon::load(istream& in, size_t idSelf)
 {
 
 	return true;
@@ -64,16 +65,24 @@ vector<Edge> Polygon::getEdges(const Block* pBlock) const
 {
 	vector<Edge> result;
 
-	pBlock->faceFunc(_thisId, [this, &result](const Block* pBlock, const Polygon& face) {
-		const auto& vertIds = face._vertexIds;
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			const auto& vertId0 = vertIds[i];
-			const auto& vertId1 = vertIds[j];
-			Edge edge(vertId0, vertId1);
-			result.push_back(edge);
-		}
+	faceFuncSelf(pBlock, [this, &result](const Block* pBlock) {
+		result = getEdgesNTS();
 	});
+
+	return result;
+}
+
+vector<Edge> Polygon::getEdgesNTS() const
+{
+	vector<Edge> result;
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		const auto& vertId0 = _vertexIds[i];
+		const auto& vertId1 = _vertexIds[j];
+		Edge edge(vertId0, vertId1);
+		result.push_back(edge);
+	}
 
 	return result;
 }
@@ -232,61 +241,77 @@ Index3DId Polygon::splitBetweenVertices(Block* pBlock, const Index3DId& vert0, c
 {
 	Index3DId newFaceId;
 
-	pBlock->faceFunc(_thisId, [this, &vert0, &vert1, &newFaceId](Block* pBlock, Polygon& face) {
-		size_t idx0 = -1, idx1 = -1;
-		auto& vertIds = face._vertexIds;
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			// remove this reference from all vertices
-			pBlock->vertexFunc(vertIds[i], [this](Block* pBlock, Vertex& vert) {
-				vert.removeFaceId(_thisId);
-			});
-
-			const auto& vertId = vertIds[i];
-			if ((vertId == vert0) || (vertId == vert1)) {
-				if (idx0 == -1)
-					idx0 = i;
-				else
-					idx1 = i;
-			}
-		}
-
-		vector<Index3DId> face0Verts, face1Verts;
-
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t index = (i + idx0) % vertIds.size();
-			face0Verts.push_back(vertIds[index]);
-			if (vertIds[index] == vertIds[idx1])
-				break;
-		}
-
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t index = (i + idx1) % vertIds.size();
-			face1Verts.push_back(vertIds[index]);
-			if (vertIds[index] == vertIds[idx0])
-				break;
-		}
-
-		if (face1Verts.size() < face0Verts.size())
-			swap(face0Verts, face1Verts);
-
-		verifyVertsConvex(pBlock, face0Verts);
-		verifyVertsConvex(pBlock, face1Verts);
-
-		pBlock->removeFromLookUp(*this);
-		setVertexIds(pBlock, face0Verts);
-		pBlock->addToLookup(*this);
-		_numSplits++;
-
-		newFaceId = pBlock->addFace(face1Verts);
-		pBlock->faceFunc(newFaceId, [](Block* pBlock, Polygon& face) {
-			face._numSplits++;
-		});
+	faceFuncSelf(pBlock, [this, &vert0, &vert1, &newFaceId](Block* pBlock) {
+		newFaceId = splitBetweenVerticesNTS(pBlock, vert0, vert1);
 	});
 
 	return newFaceId;
 }
 
-void Polygon::setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts)
+Index3DId Polygon::splitBetweenVerticesNTS(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1)
+{
+	Index3DId newFaceId;
+
+	size_t idx0 = -1, idx1 = -1;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		// remove this reference from all vertices
+		pBlock->vertexFunc(_vertexIds[i], [this](Block* pBlock, Vertex& vert) {
+			vert.removeFaceId(_thisId);
+			});
+
+		const auto& vertId = _vertexIds[i];
+		if ((vertId == vert0) || (vertId == vert1)) {
+			if (idx0 == -1)
+				idx0 = i;
+			else
+				idx1 = i;
+		}
+	}
+
+	vector<Index3DId> face0Verts, face1Verts;
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t index = (i + idx0) % _vertexIds.size();
+		face0Verts.push_back(_vertexIds[index]);
+		if (_vertexIds[index] == _vertexIds[idx1])
+			break;
+	}
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t index = (i + idx1) % _vertexIds.size();
+		face1Verts.push_back(_vertexIds[index]);
+		if (_vertexIds[index] == _vertexIds[idx0])
+			break;
+	}
+
+	if (face1Verts.size() < face0Verts.size())
+		swap(face0Verts, face1Verts);
+
+	verifyVertsConvex(pBlock, face0Verts);
+	verifyVertsConvex(pBlock, face1Verts);
+
+	pBlock->removeFromLookUp(*this);
+	setVertexIds(pBlock, face0Verts);
+	pBlock->addToLookup(*this);
+	_numSplits++;
+
+	newFaceId = pBlock->addFace(face1Verts);
+	pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
+		// Assign our cellIds to the new face
+		face._cellIds = _cellIds;
+		face._numSplits++;
+	});
+
+	for (const auto& cellId : _cellIds) {
+		auto& cell = pBlock->getPolyhedron(cellId);
+		cell.addFace(pBlock, newFaceId);
+	}
+		
+
+	return newFaceId;
+}
+
+void Polygon::setVertexIds(Block* pBlock, const vector<Index3DId>& verts)
 {
 
 	for (const auto& vertId : _vertexIds) {
@@ -308,7 +333,7 @@ void Polygon::setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts)
 	_needSort = true;
 }
 
-void Polygon::verifyVertsConvex(Block* pBlock, const std::vector<Index3DId>& vertIds) const
+void Polygon::verifyVertsConvex(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 #ifdef _DEBUG
 	assert(vertIds.size() == 4);
@@ -334,4 +359,55 @@ void Polygon::verifyVertsConvex(Block* pBlock, const std::vector<Index3DId>& ver
 		}
 	}
 #endif // _DEBUG
+}
+
+bool Polygon::verifyTopology(const Block* pBlock) const
+{
+	vector<Index3DId> vertIds;
+	faceFuncSelf(pBlock, [this, &vertIds](const Block* pBlock) {
+		vertIds = getVertexIdsNTS();
+	});
+
+	bool valid = true;
+	for (const auto& vertId : vertIds) {
+		pBlock->vertexFunc(vertId, [this, &valid](const Block* pBlock, const Vertex& vert) {
+			bool pass = vert.connectedToFace(_thisId) && valid;
+			if (!pass)
+				valid = false;
+		});
+	}
+
+	if (_cellIds.size() > 2)
+		valid = false;
+
+	for (const auto& cellId : _cellIds) {
+		if (!pBlock->polyhedronExists(cellId))
+			valid = false;
+	}
+	return valid;
+}
+
+vector<Index3DId> Polygon::getVertexIds(const Block* pBlock) const
+{
+	vector<Index3DId> result;
+	faceFuncSelf(pBlock, [this, &result](const Block* pBlock) {
+		result = getVertexIdsNTS();
+	});
+	return result;
+}
+
+template<class LAMBDA>
+void Polygon::faceFuncSelf(const Block* pBlock, LAMBDA func) const
+{
+	auto pOwner = pBlock->getOwner(_thisId);
+	lock_guard g(pOwner->getFaceMutex());
+	func(pOwner);
+}
+
+template<class LAMBDA>
+void Polygon::faceFuncSelf(Block* pBlock, LAMBDA func)
+{
+	auto pOwner = pBlock->getOwner(_thisId);
+	lock_guard g(pOwner->getFaceMutex());
+	func(pOwner);
 }

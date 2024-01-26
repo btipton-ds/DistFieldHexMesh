@@ -28,14 +28,35 @@ const bool Vertex::operator < (const Vertex& rhs) const
 	return false;
 }
 
-set<Index3DId> Vertex::getFaceIds(const vector<Index3DId> availFaces) const
+set<Index3DId> Vertex::getFaceIds(const set<Index3DId> availFaces) const
 {
-	set<Index3DId> result, availSet;
-	availSet.insert(availFaces.begin(), availFaces.end());
+	set<Index3DId> result;
 
 	for (const auto& faceId : _faceIds) {
-		if (availSet.count(faceId) != 0)
+		if (availFaces.count(faceId) != 0)
 			result.insert(faceId);
 	}
 	return result;
+}
+
+bool Vertex::connectedToFace(const Index3DId& faceId) const
+{
+	return _faceIds.count(faceId) != 0;
+}
+
+bool Vertex::verifyTopology(const Block* pBlock) const
+{
+	bool valid = true;
+	for (const auto& faceId : _faceIds) {
+		if (pBlock->polygonExists(faceId)) {
+			pBlock->faceFunc(faceId, [this, &faceId, &valid](const Block* pBlock, const Polygon& face) {
+				bool pass = face.containsVert(_thisId);
+				if (!pass)
+					valid = false;
+				});
+		} else
+			valid = false;
+	}
+
+	return valid;
 }

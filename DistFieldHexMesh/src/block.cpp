@@ -53,7 +53,7 @@ size_t Block::numFaces(bool includeInner) const
 		return _polygons.size();
 
 	size_t result = 0;
-	_polygons.iterateInOrder([&result](size_t id, const Polygon& poly) {
+	_polygons.iterateInOrderTS([&result](size_t id, const Polygon& poly) {
 		if (poly.isOuter())
 			result++;
 	});
@@ -164,13 +164,55 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	auto volBounds = _pVol->volDim();
 
 	Vector3d ctr(0, 0, 0);
-	const auto& vertIds = face.getVertexIds();
+	const auto& vertIds = face.getVertexIds(this);
 	for (const auto& vertId : vertIds) {
 		auto pt = getVertexPoint(vertId);
 		ctr += pt;
 	}
 	ctr = ctr / vertIds.size();
 	return determineOwnerBlockIdx(ctr);
+}
+
+bool Block::verifyTopology() const
+{
+	bool result = true;
+
+	_vertices.iterateInOrderTS([this, &result](size_t id, const Vertex& vert) {
+		bool pass = vert.verifyTopology(this);
+		if (!pass)
+			result = false;
+	});
+
+	_polygons.iterateInOrderTS([this, &result](size_t id, const Polygon& face) {
+		bool pass = face.verifyTopology(this);
+		if (!pass)
+			result = false;
+	});
+
+	_polyhedra.iterateInOrder([this, &result](size_t id, const Polyhedron& cell) {
+		bool pass = cell.verifyTopology(this) && result;
+		if (!pass)
+			result = false;
+	});
+	return result;
+}
+
+const Polyhedron& Block::getPolyhedron(const Index3DId& cellId) const
+{
+	auto pOwner = getOwner(cellId);
+	if (pOwner == this)
+		return _polyhedra[cellId.elementId()];
+	else
+		return pOwner->getPolyhedron(cellId);
+}
+
+Polyhedron& Block::getPolyhedron(const Index3DId& cellId)
+{
+	auto pOwner = getOwner(cellId);
+	if (pOwner == this)
+		return _polyhedra[cellId.elementId()];
+	else
+		return pOwner->getPolyhedron(cellId);
 }
 
 vector<size_t> Block::createSubBlocks(const Vector3d blockPts[8])
@@ -354,28 +396,35 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
+	newFace.verifyVertsConvex(this);
 
 	auto ownerIdx = determineOwnerBlockIdx(newFace);
 	Block* pOwner = getOwner(ownerIdx);
-	lock_guard g(pOwner->_polygons);
-	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner->getBlockIdx(), newFace);
+	if (pOwner == this) {
+		lock_guard g(_polygons);
+		Index3DId faceId = _polygons.findOrAdd(_blockIdx, newFace);
 
-	for (const auto& vertId : vertIndices) {
-		vertexFunc(vertId, [&faceId](Block* pBlock, Vertex& vert) {
-			vert.addFaceId(faceId);
-		});
-	}
-
-	return faceId;
+		for (const auto& vertId : vertIndices) {
+			vertexFunc(vertId, [&faceId](Block* pBlock, Vertex& vert) {
+				vert.addFaceId(faceId);
+			});
+		}
+		return faceId;
+	} else
+		return pOwner->addFace(vertIndices);
 }
 
 size_t Block::addCell(const std::vector<Index3DId>& faceIds)
 {
-	Polyhedron cell(faceIds);
-	size_t cellId = _polyhedra.findOrAdd(cell);
-	_polyhedra[cellId].setId(Index3DId(_blockIdx, cellId));
-
-	return cellId;
+	Index3DId cellId(_blockIdx, _polyhedra.findOrAdd(Polyhedron(faceIds)));
+	auto& cell = _polyhedra[cellId.elementId()];
+	cell.setId(cellId);
+	for (auto& faceId : cell.getFaceIds()) {
+		faceFunc(faceId, [&cellId](Block* pBlock, Polygon& face) {
+			face.addCell(cellId);
+		});
+	}
+	return cellId.elementId();
 }
 
 size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
@@ -449,10 +498,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		lock_guard g(pOwnerBlock->_polygons);
 		auto pFace = pOwnerBlock->_polygons.get(faceId.elementId());
 		if (pFace) {
-			if (!pFace->getCreatorCellId().isValid())
-				pFace->setCreatorCellId(polyhedronId);
-			else 
-				pFace->setNeighborCellId(polyhedronId);
+			pFace->addCell(polyhedronId);
 		}
 	}
 
@@ -479,8 +525,10 @@ inline Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
-	Index3DId vertId = pOwner->_vertices.findOrAdd(pOwner->_blockIdx, pt, currentId);
-	return vertId;
+	if (pOwner == this)
+		return _vertices.findOrAdd(_blockIdx, pt, currentId);
+	else
+		return pOwner->addVertex(pt, currentId);
 }
 
 set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
@@ -527,7 +575,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 	Index3DId faceId = pOwner->_polygons.findOrAdd(pOwner->_blockIdx, newPoly);
 	vector<Index3DId> vertIds;
 	faceFunc(faceId, [this, &faceId, &vertIds](const Block* pBlock, Polygon& face) {
-		vertIds = face.getVertexIds();
+		vertIds = face.getVertexIdsNTS();
 	});
 
 	for (const auto& vertId : vertIds) {
@@ -628,8 +676,8 @@ size_t Block::processTris()
 	vector<size_t> newCells = createSubBlocks(_corners.data());
 #if 1
 	if (!newCells.empty()) {
-		newCells = dividePolyhedraAtSharpVerts(newCells);
 #if 0
+		newCells = dividePolyhedraAtSharpVerts(newCells);
 		for (size_t div = 0; div < numDivs; div++) {
 			newCells = dividePolyhedraByCurvature(newCells);
 		}
@@ -646,6 +694,8 @@ void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
 
 vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndices)
 {
+	assert(verifyTopology());
+
 	set<size_t> newCells;
 	for (size_t index : cellIndices) {
 		if (!_polyhedra.exists(index))
@@ -666,6 +716,8 @@ vector<size_t> Block::dividePolyhedraAtSharpVerts(const vector<size_t>& cellIndi
 		result.push_back(cellId);
 	}
 
+	assert(verifyTopology());
+
 	return result;
 }
 
@@ -675,7 +727,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 		return nullptr;
 
 	TriMesh::CMesh::BoundingBox bbox;
-	_vertices.iterateInOrder([&bbox](size_t id, const Vertex& vert) {
+	_vertices.iterateInOrderTS([&bbox](size_t id, const Vertex& vert) {
 		auto pt = vert.getPoint();
 		bbox.merge(pt);
 	});
@@ -684,9 +736,9 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 
 	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
 	size_t skipped = 0;
-	_polygons.iterateInOrder([this, result, outerOnly, &skipped, minSplitNum](size_t id, const Polygon& poly) {
+	_polygons.iterateInOrderTS([this, result, outerOnly, &skipped, minSplitNum](size_t id, const Polygon& poly) {
 		if ((!outerOnly || poly.isOuter()) && poly.getNumSplits() >= minSplitNum) {
-			const auto& vertIds = poly.getVertexIds();
+			const auto& vertIds = poly.getVertexIdsNTS();
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
 				for (const auto& vertId : vertIds) {
@@ -716,7 +768,7 @@ shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly, size_t minSplitNu
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrder([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
+	_polygons.iterateInOrderTS([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
 		if ((!outerOnly || face.isOuter()) && face.getNumSplits() >= minSplitNum) {
 			const auto& faceEdges = face.getEdges(this);
 			edges.insert(faceEdges.begin(), faceEdges.end());
@@ -764,6 +816,35 @@ void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, vector<LineSegment>
 	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[5]));
 	segs.push_back(LineSegment(subBlockPoints[2], subBlockPoints[6]));
 	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[7]));
+}
+
+bool Block::vertexExists(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	if (pOwner == this)
+		return _vertices.exists(id.elementId());
+	else
+		return pOwner->_vertices.exists(id.elementId());
+}
+
+
+bool Block::polygonExists(const Index3DId& id) const
+
+{
+	auto pOwner = getOwner(id);
+	if (pOwner == this)
+		return _polygons.exists(id.elementId());
+	else
+		return pOwner->_polygons.exists(id.elementId());
+}
+
+bool Block::polyhedronExists(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	if (pOwner == this)
+		return _polyhedra.exists(id.elementId());
+	else
+		return pOwner->_polyhedra.exists(id.elementId());
 }
 
 void Block::pack()

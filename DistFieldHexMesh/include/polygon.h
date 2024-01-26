@@ -18,15 +18,19 @@ public:
 	const Index3DId& getId() const;
 	void setNumSplits(size_t val);
 	size_t getNumSplits() const;
+	void verifyVertsConvex(const Block* pBlock) const;
+	bool verifyTopology(const Block* pBlock) const;
 
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
 	void addVertex(const Index3DId& vertId);
-	void setCreatorCellId(const Index3DId& cellId);
-	const Index3DId& getCreatorCellId() const;
-	void setNeighborCellId(const Index3DId& subBlockId);
-	const Index3DId& getNeighborCellId() const;
+
+	void addCell(const Index3DId& cellId);
+	void removeCell(const Index3DId& cellId);
+	bool numCells() const;
+	const std::set<Index3DId>& getCellIds() const;
+	bool ownedByCell(const Index3DId& cellId) const;
 
 	// Required for use with object pool
 	void pack();
@@ -35,7 +39,8 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	const std::vector<Index3DId>& getVertexIds() const;
+	std::vector<Index3DId> getVertexIds(const Block* pBlock) const;
+	const std::vector<Index3DId>& getVertexIdsNTS() const;
 	void setVertexIds(Block* pBlock, const std::vector<Index3DId>& verts);
 	std::vector<Edge> getEdges(const Block* pBlock) const;
 	bool containsEdge(const Edge& edge) const;
@@ -55,12 +60,21 @@ public:
 
 private:
 	void sortIds() const;
-	void verifyVertsConvex(Block* pBlock, const std::vector<Index3DId>& vertIds) const;
+	static void verifyVertsConvex(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+
+	template<class LAMBDA>
+	void faceFuncSelf(const Block* pBlock, LAMBDA func) const;
+
+	template<class LAMBDA>
+	void faceFuncSelf(Block* pBlock, LAMBDA func);
+
+	std::vector<Edge> getEdgesNTS() const;
+	Index3DId splitBetweenVerticesNTS(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
 
 	size_t _numSplits = 0;
 	Index3DId _thisId;
 	std::vector<Index3DId> _vertexIds;
-	Index3DId _creatorCellId, _neighborCellId;
+	std::set<Index3DId> _cellIds;
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -87,34 +101,43 @@ inline size_t Polygon::getNumSplits() const
 	return _numSplits;
 }
 
-inline void Polygon::setCreatorCellId(const Index3DId& subBlockId)
+inline void Polygon::verifyVertsConvex(const Block* pBlock) const
 {
-	_creatorCellId = subBlockId;
+	verifyVertsConvex(pBlock, _vertexIds);
 }
 
-inline void Polygon::setNeighborCellId(const Index3DId& subBlockId)
+inline void Polygon::addCell(const Index3DId& cellId)
 {
-	assert(subBlockId != _creatorCellId);
-	_neighborCellId = subBlockId;
+	_cellIds.insert(cellId);
+	assert(_cellIds.size() <= 2);
 }
 
-
-inline const Index3DId& Polygon::getCreatorCellId() const
+inline void Polygon::removeCell(const Index3DId& cellId)
 {
-	return _creatorCellId;
+	_cellIds.erase(cellId);
 }
 
-inline const Index3DId& Polygon::getNeighborCellId() const
+inline bool Polygon::numCells() const
 {
-	return _neighborCellId;
+	return _cellIds.size();
+}
+
+inline const std::set<Index3DId>& Polygon::getCellIds() const
+{
+	return _cellIds;
+}
+
+inline bool Polygon::ownedByCell(const Index3DId& cellId) const
+{
+	return _cellIds.count(cellId) != 0;
 }
 
 inline bool Polygon::isOuter() const
 {
-	return !_neighborCellId.isValid();
+	return _cellIds.size() == 1;
 }
 
-inline const std::vector<Index3DId>& Polygon::getVertexIds() const
+inline const std::vector<Index3DId>& Polygon::getVertexIdsNTS() const
 {
 	return _vertexIds;
 }

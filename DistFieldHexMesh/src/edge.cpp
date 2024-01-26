@@ -125,7 +125,7 @@ Index3DId Edge::getCommonFace(const Block* pBlock) const
 		size_t count = 0;
 		pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
 			// Do not use containsEdge. It requires adjacency and this function doesn't
-			const auto& vertIds = face.getVertexIds();
+			const auto vertIds = face.getVertexIds(pBlock);
 			for (const auto& vertId : vertIds) {
 				if ((vertId == _vertexIds[0]) || (vertId == _vertexIds[1]))
 					count++;

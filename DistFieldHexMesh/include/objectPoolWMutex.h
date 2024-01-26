@@ -14,6 +14,7 @@ public:
 	bool removeFromLookup(size_t id);
 	void addToLookup(size_t id);
 	size_t findId(const T& obj) const;
+	bool exists(size_t id) const;
 
 	Index3DId findOrAdd(const Index3D& blockIdx, const T& obj, size_t id = -1);
 
@@ -24,7 +25,7 @@ public:
 	T* get(const T& obj);
 
 	template<class F>
-	void iterateInOrder(F fLambda) const
+	void iterateInOrderTS(F fLambda) const
 	{
 		std::lock_guard g(_mutex);
 		_data.iterateInOrder(fLambda);
@@ -86,6 +87,13 @@ inline size_t ObjectPoolWMutex<T>::findId(const T& obj) const
 {
 	std::lock_guard g(_mutex);
 	return _data.findId(obj);
+}
+
+template<class T>
+bool ObjectPoolWMutex<T>::exists(size_t id) const
+{
+	std::lock_guard g(_mutex);
+	return _data.exists(id);
 }
 
 template<class T>

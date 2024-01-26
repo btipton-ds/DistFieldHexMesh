@@ -46,6 +46,8 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
+	bool verifyTopology() const;
+
 	std::vector<size_t> createSubBlocks(const Vector3d blockPts[8]);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
@@ -78,6 +80,12 @@ public:
 
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+	const Polyhedron& getPolyhedron(const Index3DId& cellId) const;
+	Polyhedron& getPolyhedron(const Index3DId& cellId);
+
+	bool vertexExists(const Index3DId& id) const;
+	bool polygonExists(const Index3DId& id) const;
+	bool polyhedronExists(const Index3DId& id) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();

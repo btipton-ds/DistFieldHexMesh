@@ -302,8 +302,9 @@ void AppData::doBuildCFDHexes()
 
     auto pCanvas = _pMainFrame->getCanvas();
 
-    addTriangles(pCanvas, outerFacesOnly, 1);
-    addFaceEdges(pCanvas, outerFacesOnly, 1);
+    size_t minSplits = 0;
+    addTriangles(pCanvas, outerFacesOnly, minSplits);
+    addFaceEdges(pCanvas, outerFacesOnly, minSplits);
 }
 
 void AppData::addTriangles(GraphicsCanvas* pCanvas, bool outerFacesOnly, size_t minSplitNum)

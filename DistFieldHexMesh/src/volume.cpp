@@ -262,7 +262,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
-	bb.growPercent(0.05);
+	bb.growPercent(0.0125);
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
 
@@ -306,6 +306,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 		
 	}, numBlocks, RUN_MULTI_THREAD);
 
+	assert(verifyTopology());
+
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx) {
 		if (_blocks[linearIdx]) {
@@ -319,6 +321,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize, boo
 		}
 	}, numBlocks, !QUICK_TEST && RUN_MULTI_THREAD);
 
+	assert(verifyTopology());
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
@@ -471,3 +474,12 @@ void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const strin
 
 }
 
+bool Volume::verifyTopology() const
+{
+	bool result = true;
+	for (const auto& pBlock : _blocks) {
+		if (pBlock)
+			result = pBlock->verifyTopology() && result;
+	}
+	return result;
+}

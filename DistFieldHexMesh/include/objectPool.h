@@ -93,7 +93,9 @@ private:
 	std::vector<size_t> 
 		_idToIndexMap,
 		_availableIndices;
-	std::vector<std::shared_ptr<std::vector<T>>> _data;
+
+	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
+	std::vector<ObjectSegPtr> _objectSegs;
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
 	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices, polygons and polyhedra.
@@ -119,7 +121,7 @@ inline bool ObjectPool<T>::calIndices(size_t index, size_t& segNum, size_t& segI
 {
 	segNum = index / _objectSegmentSize;
 	segIdx = index % _objectSegmentSize;
-	return segNum < _data.size() && segIdx < (*_data[segNum]).size();
+	return segNum < _objectSegs.size() && segIdx < (*_objectSegs[segNum]).size();
 }
 
 template<class T>
@@ -127,7 +129,7 @@ inline T* ObjectPool<T>::getEntry(size_t index)
 {
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
-		return &((*_data[segNum])[segIdx]);
+		return &((*_objectSegs[segNum])[segIdx]);
 	}
 	return nullptr;
 }
@@ -137,7 +139,7 @@ inline const T* ObjectPool<T>::getEntry(size_t index) const
 {
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
-		return &((*_data[segNum])[segIdx]);
+		return &((*_objectSegs[segNum])[segIdx]);
 	}
 	return nullptr;
 }
@@ -149,7 +151,7 @@ bool ObjectPool<T>::free(size_t id)
 		return false;
 
 	size_t index = _idToIndexMap[id];
-	if (index >= _data.size())
+	if (index >= _objectSegs.size())
 		return false;
 
 	removeFromLookup(id);
@@ -194,20 +196,20 @@ void ObjectPool<T>::resize(size_t size)
 	if (size > _idToIndexMap.size()) {
 		_idToIndexMap.resize(size);
 		size_t numSegs = size / _objectSegmentSize + 1;
-		_data.resize(numSegs);
+		_objectSegs.resize(numSegs);
 		for (size_t id = 0; id < size; id++) {
-			_idToIndexMap[id] = _data.size();
+			_idToIndexMap[id] = _objectSegs.size();
 		}
 		size_t remaining = size;
 		for (size_t i = 0; i < numSegs; i++) {
 			// Reserve the segment size so the array won't resize during use
-			_data[i] = std::make_shared<std::vector<T>>();
-			_data[i]->reserve(_objectSegmentSize);
+			_objectSegs[i] = std::make_shared<std::vector<T>>();
+			_objectSegs[i]->reserve(_objectSegmentSize);
 			if (size > _objectSegmentSize) {
-				_data[i]->resize(_objectSegmentSize);
+				_objectSegs[i]->resize(_objectSegmentSize);
 				size -= _objectSegmentSize;
 			} else {
-				_data[i]->resize(size);
+				_objectSegs[i]->resize(size);
 				size = 0;
 			}
 		}
@@ -229,7 +231,12 @@ size_t ObjectPool<T>::findId(const T& obj) const
 template<class T>
 inline bool ObjectPool<T>::exists(size_t id) const
 {
-	return (id < _idToIndexMap.size() && _idToIndexMap[id] != -1);
+	bool result (id < _idToIndexMap.size() && _idToIndexMap[id] != -1);
+	if (!result) {
+		int dbgBreak = 1;
+	}
+
+	return result;
 }
 
 template<class T>
@@ -247,19 +254,19 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 		index = _idToIndexMap[result];
 
 		calIndices(index, segNum, segIdx);
-		if (segNum >= _data.size()) {
+		if (segNum >= _objectSegs.size()) {
 			// Reserve the segment size so the array won't resize during use
-			_data.push_back(std::make_shared<std::vector<T>>());
-			_data.back()->reserve(_objectSegmentSize);
+			_objectSegs.push_back(std::make_shared<std::vector<T>>());
+			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
-		auto& segData = *_data[segNum];
+		auto& segData = *_objectSegs[segNum];
 
 		if (segIdx < segData.size()) {
 			segData[segIdx] = obj;
 		}
 		else {
 			if (_availableIndices.empty())
-				index = _data.size();
+				index = _objectSegs.size();
 			else {
 				index = _availableIndices.back();
 				_availableIndices.pop_back();
@@ -267,12 +274,12 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 			_idToIndexMap[result] = index;
 
 			calIndices(index, segNum, segIdx);
-			if (segNum >= _data.size()) {
+			if (segNum >= _objectSegs.size()) {
 				// Reserve the segment size so the array won't resize during use
-				_data.push_back(std::make_shared<std::vector<T>>());
-				_data.back()->reserve(_objectSegmentSize);
+				_objectSegs.push_back(std::make_shared<std::vector<T>>());
+				_objectSegs.back()->reserve(_objectSegmentSize);
 			}
-			auto& segData = *_data[segNum];
+			auto& segData = *_objectSegs[segNum];
 
 			if (index >= segData.size())
 				segData.resize(index + 1);
@@ -282,14 +289,14 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 	else {
 		result = _idToIndexMap.size();
 		if (_availableIndices.empty()) {
-			if (_data.empty() || _data.back()->size() >= _objectSegmentSize) {
+			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
 				// Reserve the segment size so the array won't resize during use
-				_data.push_back(make_shared<std::vector<T>>());
-				_data.back()->reserve(_objectSegmentSize);
+				_objectSegs.push_back(make_shared<std::vector<T>>());
+				_objectSegs.back()->reserve(_objectSegmentSize);
 			}
-			segNum = _data.size() - 1;
+			segNum = _objectSegs.size() - 1;
 
-			auto& segData = *_data.back();
+			auto& segData = *_objectSegs.back();
 
 			segIdx = segData.size();
 			segData.push_back(obj);
@@ -301,12 +308,12 @@ size_t ObjectPool<T>::findOrAdd(const T& obj, size_t currentId)
 			_availableIndices.pop_back();
 
 			calIndices(index, segNum, segIdx);
-			if (segNum >= _data.size()) {
+			if (segNum >= _objectSegs.size()) {
 				// Reserve the segment size so the array won't resize during use
-				_data.push_back(std::make_shared<std::vector<T>>());
-				_data.back()->reserve(_objectSegmentSize);
+				_objectSegs.push_back(std::make_shared<std::vector<T>>());
+				_objectSegs.back()->reserve(_objectSegmentSize);
 			}
-			auto& segData = *_data[segNum];
+			auto& segData = *_objectSegs[segNum];
 
 			if (segIdx >= segData.size())
 				segData.resize(index + 1);
@@ -400,7 +407,7 @@ template<class T>
 size_t ObjectPool<T>::getNumAllocated() const
 {
 	size_t size = 0;
-	for (const auto& p : _data) {
+	for (const auto& p : _objectSegs) {
 		if (p)
 			size += p->size();
 	}

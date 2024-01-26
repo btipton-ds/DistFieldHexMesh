@@ -67,6 +67,8 @@ public:
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 
+	bool verifyTopology() const;
+
 private:
 	using AxisIndex = Block::AxisIndex;
 

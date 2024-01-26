@@ -15,15 +15,16 @@ class Polyhedron {
 public:
 	Polyhedron() = default;
 	Polyhedron(const Polyhedron& src) = default;
+	Polyhedron(const std::set<Index3DId>& faceIds);
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 
 	// Required for use with object pool
 	void setId(const Index3DId& thisId);
 	Index3DId getIndex() const;
 
-	void addFace(const Index3DId& faceId);
-	bool removeFace(const Index3DId& faceId);
-	const std::vector<Index3DId>& getFaceIds() const;
+	void addFace(Block* pBlock, const Index3DId& faceId);
+	bool removeFace(Block* pBlock, const Index3DId& faceId);
+	const std::set<Index3DId>& getFaceIds() const;
 	std::vector<Index3DId> getCornerIds(const Block* pBlock) const;
 	std::vector<Edge> getEdges(const Block* pBlock) const;
 
@@ -40,14 +41,15 @@ public:
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 
+	bool verifyTopology(const Block* pBlock) const;
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<size_t> split(Block* pBlock, const Vector3d& pt, const Vector3d& normal, bool intersectingOnly);
-	void orderVertIds(Block* pBlock, std::vector<Index3DId>& vertIds) const;
+	std::vector<size_t> splitNTS(Block* pBlock, const Vector3d& pt, const Vector3d& normal, bool intersectingOnly);
+	void orderVertIdsNTS(Block* pBlock, std::vector<Index3DId>& vertIds) const;
 
 	Index3DId _thisId;
-	std::vector<Index3DId> _faceIds;
+	std::set<Index3DId> _faceIds;
 };
 
 inline void Polyhedron::setId(const Index3DId& thisId)
@@ -61,7 +63,7 @@ inline Index3DId Polyhedron::getIndex() const
 	return _thisId;
 }
 
-inline const std::vector<Index3DId>& Polyhedron::getFaceIds() const
+inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
 }
