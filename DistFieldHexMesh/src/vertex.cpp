@@ -6,6 +6,13 @@
 using namespace std;
 using namespace DFHM;
 
+void Vertex::setId(ObjectPoolOwner* pBlock, size_t id)
+{
+	_pBlock = dynamic_cast<Block*> (pBlock);
+	_thisId = Index3DId(pBlock->getBlockIdx(), id);
+}
+
+
 void Vertex::addFaceId(const Index3DId& faceId)
 {
 	_faceIds.insert(faceId);
@@ -44,12 +51,12 @@ bool Vertex::connectedToFace(const Index3DId& faceId) const
 	return _faceIds.count(faceId) != 0;
 }
 
-bool Vertex::verifyTopology(const Block* pBlock) const
+bool Vertex::verifyTopology() const
 {
 	bool valid = true;
 	for (const auto& faceId : _faceIds) {
-		if (pBlock->polygonExists(faceId)) {
-			pBlock->faceFunc(faceId, [this, &faceId, &valid](const Block* pBlock, const Polygon& face) {
+		if (_pBlock->polygonExists(faceId)) {
+			_pBlock->faceFunc(faceId, [this, &faceId, &valid](const Block* pBlock, const Polygon& face) {
 				bool pass = face.containsVert(_thisId);
 				if (!pass)
 					valid = false;

@@ -24,42 +24,37 @@ public:
 	void setId(ObjectPoolOwner* pBlock, size_t id);
 	Index3DId getIndex() const;
 
-	void addFace(Block* pBlock, const Index3DId& faceId);
-	bool removeFace(Block* pBlock, const Index3DId& faceId);
+	void addFace(const Index3DId& faceId);
+	bool removeFace(const Index3DId& faceId);
 	const std::set<Index3DId>& getFaceIds() const;
-	std::vector<Index3DId> getCornerIds(const Block* pBlock) const;
-	std::vector<Edge> getEdges(const Block* pBlock) const;
+	std::vector<Index3DId> getCornerIds() const;
+	std::vector<Edge> getEdges() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
-	std::set<Edge> getVertEdges(const Block* pBlock, const Index3DId& vertId) const;
+	std::set<Edge> getVertEdges(const Index3DId& vertId) const;
 	// Gets the faces for a vertex which belong to this polyhedron
-	std::set<Index3DId> getVertFaces(const Block* pBlock, const Index3DId& vertId) const;
+	std::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
-	CBoundingBox3Dd getBoundingBox(const Block* pBlock) const;
-	Vector3d calCentroid(const Block* pBlock) const;
-	void splitCellsWithPlane(Block* pBlock, const Plane& splitPlane);
-	std::vector<size_t> split(Block* pBlock, bool intersectingOnly);
-	std::vector<size_t> split(Block* pBlock, const Vector3d& pt, bool intersectingOnly);
+	CBoundingBox3Dd getBoundingBox() const;
+	Vector3d calCentroid() const;
+	void splitCellsWithPlane(const Plane& splitPlane);
+	std::vector<size_t> split(bool intersectingOnly);
+	std::vector<size_t> split(const Vector3d& pt, bool intersectingOnly);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 
-	bool verifyTopology(const Block* pBlock) const;
+	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	std::vector<size_t> split(Block* pBlock, const Plane& splitPlane, bool intersectingOnly);
-	void orderVertIdsNTS(Block* pBlock, std::vector<Index3DId>& vertIds) const;
+	std::vector<size_t> split(const Plane& splitPlane, bool intersectingOnly);
+	void orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
+	Block* _pBlock = nullptr;
 	Index3DId _thisId;
 	std::set<Index3DId> _faceIds;
 };
-
-inline void Polyhedron::setId(ObjectPoolOwner* pBlock, size_t id)
-{
-	_thisId = Index3DId(pBlock->getBlockIdx(), id);
-	assert(_thisId.isValid());
-}
 
 inline Index3DId Polyhedron::getIndex() const
 {
@@ -71,9 +66,9 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline std::vector<size_t> Polyhedron::split(Block* pBlock, bool intersectingOnly)
+inline std::vector<size_t> Polyhedron::split(bool intersectingOnly)
 {
-	return split(pBlock, calCentroid(pBlock), intersectingOnly);
+	return split(calCentroid(), intersectingOnly);
 }
 
 }

@@ -322,7 +322,7 @@ Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3D
 
 	for (const auto& cellId : _cellIds) {
 		auto& cell = _pBlock->getPolyhedron(cellId);
-		cell.addFace(_pBlock, newFaceId);
+		cell.addFace(newFaceId);
 	}
 
 

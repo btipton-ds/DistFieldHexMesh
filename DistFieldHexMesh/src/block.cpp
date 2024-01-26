@@ -192,20 +192,20 @@ bool Block::verifyTopology() const
 {
 	bool result = true;
 
-	_vertices.iterateInOrderTS([this, &result](size_t id, const Vertex& vert) {
-		bool pass = vert.verifyTopology(this);
+	_vertices.iterateInOrderTS([&result](size_t id, const Vertex& vert) {
+		bool pass = vert.verifyTopology();
 		if (!pass)
 			result = false;
 	});
 
-	_polygons.iterateInOrderTS([this, &result](size_t id, const Polygon& face) {
+	_polygons.iterateInOrderTS([&result](size_t id, const Polygon& face) {
 		bool pass = face.verifyTopology();
 		if (!pass)
 			result = false;
 	});
 
 	_polyhedra.iterateInOrder([this, &result](size_t id, const Polyhedron& cell) {
-		bool pass = cell.verifyTopology(this) && result;
+		bool pass = cell.verifyTopology();
 		if (!pass)
 			result = false;
 	});
@@ -256,7 +256,7 @@ vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndic
 		if (!_polyhedra.exists(idx))
 			continue;
 		auto& cell = _polyhedra[idx];
-		CBoundingBox3Dd bbox = cell.getBoundingBox(this);
+		CBoundingBox3Dd bbox = cell.getBoundingBox();
 		vector<size_t> edgeIndices;
 		if (_pModelTriMesh->findEdges(bbox, edgeIndices)) {
 			double avgSurfCurvature = 0;
@@ -278,7 +278,7 @@ vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndic
 			auto range = bbox.range();
 			double minBoxDim = min(range[0], min(range[1], range[2]));
 			if (kDiv * avgSurfArcLength > minBoxDim) {
-				auto splitCells = cell.split(this, true);
+				auto splitCells = cell.split(true);
 				for (const auto& cellId : splitCells) {
 					newCells.push_back(cellId);
 				}
@@ -735,7 +735,7 @@ void Block::splitCellsWithPlane(const Plane& splitPlane)
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
-		poly.splitCellsWithPlane(this, splitPlane);
+		poly.splitCellsWithPlane(splitPlane);
 	}
 
 	assert(verifyTopology());
