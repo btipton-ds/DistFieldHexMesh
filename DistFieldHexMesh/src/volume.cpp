@@ -309,23 +309,34 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
 	}
 
-	for (size_t i = 0; i < splittingPoints.size(); i++) {
-		if (i != 0)
-			return;
-		const auto& splitPt = splittingPoints[i];
+	bool done = false;
+	for (size_t ipt = 0; ipt < splittingPoints.size(); ipt++) {
+		const auto& splitPt = splittingPoints[ipt];
 		for (int i = 0; i < 3; i++) {
 			Vector3d norm(0, 0, 0);
 			norm[i] = 1.0;
 			Plane splitPlane(splitPt, norm);
 
 			numBlocks = _blocks.size();
-			MultiCore::runLambda([this, &splitPlane, i](size_t linearIdx) {
-				if (_blocks[linearIdx]) {
+			MultiCore::runLambda([this, &splitPlane, i, &done](size_t linearIdx) {
+				if (!done && _blocks[linearIdx]) {
 					size_t numNewCells = _blocks[linearIdx]->splitCellsWithPlane(splitPlane);
+					if (numNewCells == -1) {
+						done = false;
+						return;
+					}
 				}
 			}, numBlocks, false && RUN_MULTI_THREAD);
+
+			if (!done)
+				break;
 		}
+		if (!done)
+			break;
 	}
+
+	if (!done)
+		return;
 
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx) {
@@ -368,7 +379,7 @@ void Volume::makeTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool m
 		triMeshes[Block::MT_OUTER][index] = blockPtr->getBlockTriMesh(Block::MT_OUTER, minSplitNum);
 		triMeshes[Block::MT_INNER][index] = blockPtr->getBlockTriMesh(Block::MT_INNER, minSplitNum);
 		triMeshes[Block::MT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(Block::MT_BLOCK_BOUNDARY, minSplitNum);
-	}, _blocks.size(), false && multiCore && RUN_MULTI_THREAD);
+	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
 }
 
 void Volume::makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const

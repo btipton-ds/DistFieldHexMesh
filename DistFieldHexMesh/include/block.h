@@ -151,7 +151,7 @@ private:
 
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
-	std::vector<size_t> dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices);
+	bool dividePolyhedraByCurvature(const std::vector<size_t>& cellIndices, std::vector<size_t>& newCells);
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;

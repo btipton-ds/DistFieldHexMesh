@@ -189,7 +189,7 @@ Vector3d Polyhedron::calCentroid() const
 	return result;
 }
 
-vector<size_t> Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly)
+bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector<size_t>& newFaces)
 {
 	set<size_t> cellSet;
 	cellSet.insert(_thisId.elementId());
@@ -200,29 +200,30 @@ vector<size_t> Polyhedron::split(const Vector3d& splitPoint, bool intersectingOn
 		Plane splitPlane(splitPoint, normal);
 		for (size_t cellId : cellSet) {
 		vector<size_t> splitCells;
-			_pBlock->cellFunc(cellId, [this, &splitPlane, intersectingOnly, &splitCells](Block* pBlock, Polyhedron& cell) {
-				// TODO FIX ASAP. Adding a cell causes the data to move, causing data corruption during the operation.
-				// Smart pointer will fix this, but it's heavier than needed.
-				// Maybe reserve space?
-				splitCells = cell.split(splitPlane, intersectingOnly);
-			});
-			if (!splitCells.empty())
-				resultSet.insert(splitCells.begin(), splitCells.end());
+		bool pass = true;
+		_pBlock->cellFunc(cellId, [this, &splitPlane, intersectingOnly, &splitCells, &pass](Block* pBlock, Polyhedron& cell) {
+			// TODO FIX ASAP. Adding a cell causes the data to move, causing data corruption during the operation.
+			// Smart pointer will fix this, but it's heavier than needed.
+			// Maybe reserve space?
+			if (!cell.split(splitPlane, intersectingOnly, splitCells))
+				pass = false;
+		});
+		if (!pass)
+			return false;
+		if (!splitCells.empty())
+			resultSet.insert(splitCells.begin(), splitCells.end());
 		}
 		if (!resultSet.empty())
 			cellSet.insert(resultSet.begin(), resultSet.end());
 	}
 
-	vector<size_t> result;
-	result.insert(result.end(), cellSet.begin(), cellSet.end());
+	newFaces.insert(newFaces.end(), cellSet.begin(), cellSet.end());
 
-	return result;
+	return true;
 }
 
-vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
+bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<size_t>& result)
 {
-	vector<size_t> result;
-
 	vector<Edge> edges = getEdges(), edgesToSplit;
 
 	for (const auto& edge : edges) {
@@ -233,7 +234,7 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	}
 
 	if (edgesToSplit.size() < 3)
-		return result;
+		return true;
 
 	set<Index3DId> vertIdSet;
 	for (const auto& edge : edgesToSplit) {
@@ -260,7 +261,9 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	} else {
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
-	_pBlock->verifyTopology(true);
+
+	if (!_pBlock->verifyTopology(true))
+		return false;
 
 	// Split the cell faces with split edges
 	for (size_t i = 0; i < newVertIds.size(); i++) {
@@ -305,13 +308,15 @@ vector<size_t> Polyhedron::split(const Plane& splitPlane, bool intersectingOnly)
 	});
 
 	// Face owner cells are messed up by splitting. Need to fix that.
-	_pBlock->verifyTopology(true);
+	if (!_pBlock->verifyTopology(true))
+		return false;
 
 	if (_thisId.isValid())
 		result.push_back(_thisId.elementId());
 	if (newCellId.isValid())
 		result.push_back(newCellId.elementId());
-	return result;
+
+	return true;
 }
 
 void Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const

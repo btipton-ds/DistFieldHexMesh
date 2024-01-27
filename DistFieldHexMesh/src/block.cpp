@@ -260,12 +260,11 @@ vector<size_t> Block::createSubBlocks()
 	return newCells;
 }
 
-vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndices)
+bool Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndices, vector<size_t>& newCells)
 {
 	const double minCurvature = 1; // 1 meter radius
 	const double kDiv = 1.0;
 
-	vector<size_t> newCells;
 	for (size_t idx : cellIndices) {
 		if (!_polyhedra.exists(idx))
 			continue;
@@ -292,14 +291,16 @@ vector<size_t> Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndic
 			auto range = bbox.range();
 			double minBoxDim = min(range[0], min(range[1], range[2]));
 			if (kDiv * avgSurfArcLength > minBoxDim) {
-				auto splitCells = cell.split(true);
+				vector<size_t> splitCells;
+				if (!cell.split(true, splitCells))
+					return false;
 				for (const auto& cellId : splitCells) {
 					newCells.push_back(cellId);
 				}
 			}
 		}
 	}
-	return newCells;
+	return true;
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -477,22 +478,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 
 	if (intersectingOnly) {
 		vector<size_t> triIndices;
-		bool found = false;
-		if (_pModelTriMesh->findTris(bbox, triIndices)) {
-			for (size_t triIdx : triIndices) {
-				const auto& tri = _pModelTriMesh->getTri(triIdx);
-				const auto& pt0 = _pModelTriMesh->getVert(tri[0])._pt;
-				const auto& pt1 = _pModelTriMesh->getVert(tri[1])._pt;
-				const auto& pt2 = _pModelTriMesh->getVert(tri[2])._pt;
-				LineSegment seg0(pt0, pt1);
-				LineSegment seg1(pt1, pt2);
-				LineSegment seg2(pt2, pt0);
-				if (bbox.intersects(seg0) || bbox.intersects(seg1) || bbox.intersects(seg2)) {
-					found = true;
-					break;
-				}
-			}
-		}
+		bool found = _pModelTriMesh->findTris(bbox, triIndices);
 
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
@@ -766,7 +752,8 @@ size_t Block::splitCellsWithPlane(const Plane& splitPlane)
 		if (!_polyhedra.exists(index))
 			continue;
 		auto& poly = _polyhedra[index];
-		auto newCells = poly.split(splitPlane, false);
+		vector<size_t> newCells;
+		poly.split(splitPlane, false, newCells);
 		numSplit += newCells.size();
 	}
 

@@ -37,9 +37,9 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	Vector3d calCentroid() const;
-	std::vector<size_t> split(const Plane& splitPlane, bool intersectingOnly);
-	std::vector<size_t> split(bool intersectingOnly);
-	std::vector<size_t> split(const Vector3d& pt, bool intersectingOnly);
+	bool split(const Plane& splitPlane, bool intersectingOnly, std::vector<size_t>& newFaces);
+	bool split(bool intersectingOnly, std::vector<size_t>& newFaces);
+	bool split(const Vector3d& pt, bool intersectingOnly, std::vector<size_t>& newFaces);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -65,9 +65,9 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline std::vector<size_t> Polyhedron::split(bool intersectingOnly)
+inline bool Polyhedron::split(bool intersectingOnly, std::vector<size_t>& newFaces)
 {
-	return split(calCentroid(), intersectingOnly);
+	return split(calCentroid(), intersectingOnly, newFaces);
 }
 
 }
