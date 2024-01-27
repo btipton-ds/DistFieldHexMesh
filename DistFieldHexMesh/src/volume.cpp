@@ -321,9 +321,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 			numBlocks = _blocks.size();
 			MultiCore::runLambda([this, &splitPlane, i](size_t linearIdx) {
 				if (_blocks[linearIdx]) {
-					if (i == 1 && linearIdx == 12) {
-						int dbgBreak = 1;
-					}
 					size_t numNewCells = _blocks[linearIdx]->splitCellsWithPlane(splitPlane);
 				}
 			}, numBlocks, false && RUN_MULTI_THREAD);

@@ -464,30 +464,30 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 
 	if (intersectingOnly) {
-		vector<LineSegment> edgeSegs;
-		getBlockEdgeSegs(pts.data(), edgeSegs);
-		size_t numEdgeHits = 0;
-		for (const auto& seg : edgeSegs) {
-			vector<RayHit> hits;
-			if (_pModelTriMesh->rayCast(seg, hits)) {
-				numEdgeHits++;
-			}
-		}
-
-		if (numEdgeHits == 0) {
+		vector<size_t> triIndices;
+		if (!_pModelTriMesh->findTris(bbox, triIndices)) {
 			bool found = false;
-			vector<size_t> vertIndices;
-			if (_pModelTriMesh->findVerts(bbox, vertIndices)) {
-				for (size_t vertIdx : vertIndices) {
-					if (_pVol->getSharpVertIndices().count(vertIdx) != 0) {
-						found = true;
-						break;
-					}
+			auto sharps = _pVol->getSharpVertIndices();
+			for (const auto& vertIdx : sharps) {
+				if (bbox.contains(_pModelTriMesh->getVert(vertIdx)._pt)) {
+					found = true;
+					break;
 				}
 			}
 			if (!found)
 				return -1;
 		}
+#if 0
+		vector<LineSegment> edgeSegs;
+		getBlockEdgeSegs(pts.data(), edgeSegs);
+		for (const auto& seg : edgeSegs) {
+			vector<RayHit> hits;
+			if (_pModelTriMesh->rayCast(seg, hits)) {
+				hasContents = true;
+				break;
+			}
+		}
+#endif
 	}
 
 	vector<Index3DId> faceIds;
@@ -561,9 +561,10 @@ Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
-	if (pOwner == this)
+	if (pOwner == this) {
+		assert(_boundBox.contains(pt));
 		return _vertices.findOrAdd(this, pt, currentId);
-	else
+	} else
 		return pOwner->addVertex(pt, currentId);
 }
 
@@ -727,6 +728,7 @@ size_t Block::splitCellsWithPlane(const Plane& splitPlane)
 	size_t numSplit = 0;
 	assert(verifyTopology(true));
 
+	// Make a copy of the indices because the master will change size as we go.
 	set<size_t> cellIndices;
 	_polyhedra.iterateInOrder([&cellIndices](size_t id, const Polyhedron& cell) {
 		cellIndices.insert(id);
@@ -749,11 +751,7 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 	if (_polygons.empty())
 		return nullptr;
 
-	TriMesh::CMesh::BoundingBox bbox;
-	_vertices.iterateInOrderTS([&bbox](size_t id, const Vertex& vert) {
-		auto pt = vert.getPoint();
-		bbox.merge(pt);
-	});
+	TriMesh::CMesh::BoundingBox bbox = _boundBox;
 	double span = bbox.range().norm();
 	bbox.grow(0.05 * span);
 
