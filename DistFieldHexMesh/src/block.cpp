@@ -16,6 +16,18 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
+atomic<size_t> Block::GlPoints::_statId = 0;
+
+Block::GlPoints::GlPoints()
+{
+	_id = _statId++;
+}
+Block::GlPoints::GlPoints(const GlPoints& src)
+	: vector<float>(src)
+{
+	_id = _statId++;
+}
+
 Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _vertices(true)
 	, _polygons(true)
@@ -811,9 +823,10 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 	return result;
 }
 
-shared_ptr<vector<float>> Block::makeFaceEdges(MeshType meshType, size_t minSplitNum) const
+Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 {
-	shared_ptr<vector<float>> result;
+	if (_blockEdges.empty())
+		_blockEdges.resize(MT_ALL);
 
 	set<Edge> edges;
 
@@ -824,8 +837,11 @@ shared_ptr<vector<float>> Block::makeFaceEdges(MeshType meshType, size_t minSpli
 		}
 	});
 
+	glPointsPtr result;
 	if (!edges.empty()) {
-		result = make_shared<vector<float>>();
+		result = _blockEdges[meshType];
+		if (!result)
+			result = make_shared< GlPoints>();
 		auto& vals = *result;
 		for (const auto& edge : edges) {
 			const auto* vertIds = edge.getVertexIds();

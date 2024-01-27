@@ -27,6 +27,26 @@ class Polyhedron;
 
 class Block : public ObjectPoolOwner {
 public:
+	class GlPoints : public std::vector<float>
+	{
+	public:
+		GlPoints();
+		GlPoints(const GlPoints& src);
+		size_t getId() const;
+		size_t changeNumber() const;
+		void changed();
+	private:
+		static std::atomic<size_t> _statId;
+		size_t _id, _changeNumber = 0;
+	};
+
+	using glPointsPtr = std::shared_ptr<GlPoints>;
+	using glPointsVector = std::vector<glPointsPtr>;
+	using glPointsGroup = std::vector<glPointsVector>;
+
+	using TriMeshVector = std::vector<TriMesh::CMeshPtr>;
+	using TriMeshGroup = std::vector<TriMeshVector>;
+
 	enum MeshType {
 		MT_OUTER,
 		MT_INNER,
@@ -72,7 +92,7 @@ public:
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
 	TriMesh::CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
-	std::shared_ptr<std::vector<float>> makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
+	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
 	size_t splitCellsWithPlane(const Plane& splitPlane);
 
 	Index3DId idOfPoint(const Vector3d& pt);
@@ -161,13 +181,29 @@ private:
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
-	std::vector<TriMesh::CMeshPtr> _blockMeshes;
+	glPointsVector _blockEdges;
+	TriMeshVector _blockMeshes;
 	std::vector<Vector3d> _corners;
 
 	ObjectPoolWMutex<Vertex> _vertices;
 	ObjectPoolWMutex<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
+
+inline size_t Block::GlPoints::getId() const
+{
+	return _id;
+}
+
+inline size_t Block::GlPoints::changeNumber() const
+{
+	return _changeNumber;
+}
+
+inline void Block::GlPoints::changed()
+{
+	_changeNumber++;
+}
 
 inline size_t Block::blockDim() const
 {

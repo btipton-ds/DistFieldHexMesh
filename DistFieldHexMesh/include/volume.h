@@ -28,11 +28,6 @@ using CMesh = TriMesh::CMesh;
 
 class Volume {
 public:
-	using glPoints = std::vector<float>;
-	using glPointsPtr = std::shared_ptr<glPoints>;
-	using glPointsGroup = std::vector<std::vector<glPointsPtr>>;
-	using TriMeshGroup = std::vector<std::vector<TriMesh::CMeshPtr>>;
-
 	Volume();
 	Volume(const Volume& src);
 	~Volume();
@@ -43,7 +38,7 @@ public:
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
 
-	void addAllBlocks(std::vector<std::vector<TriMesh::CMeshPtr>>& triMeshes, std::vector<std::vector<glPointsPtr>>& faceEdges);
+	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
@@ -60,8 +55,8 @@ public:
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
 	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize);
-	void makeTris(TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
-	void makeFaceEdges(glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
+	void makeTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
+	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;

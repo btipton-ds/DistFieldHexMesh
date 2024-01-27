@@ -406,13 +406,13 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
             case DS_BLOCK_MESH + DSS_OUTER:
+            case DS_BLOCK_MESH + DSS_INNER:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
                 break;
-            case DS_BLOCK_MESH + DSS_INNER:
             case DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY:
                 glLineWidth(1.0f);
-                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.750f);
+                _graphicsUBO.defColor = p3f(0.75f, 0, 0);
                 break;
         }
         _graphicsUBO.ambient = 1.0f;
@@ -538,12 +538,16 @@ void GraphicsCanvas::changeEdgeViewElements()
                 if (pBlockTess)
                     _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
-        } else if (DSS_INNER < _edgeTessellations.size()) {
+        } 
+        
+        if (!_showOuter && DSS_INNER < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_INNER]) {
                 if (pBlockTess)
                     _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
             }
-        } else if (DSS_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+        }
+        
+        if (!_showOuter && DSS_BLOCK_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
                     _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);

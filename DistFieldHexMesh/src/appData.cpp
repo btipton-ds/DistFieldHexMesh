@@ -253,8 +253,8 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     pCanvas->beginFaceTesselation();
     auto triTess = pCanvas->setFaceTessellation(_pMesh);
 
-    Volume::TriMeshGroup blockMeshes;
-    std::vector<std::vector<Volume::glPointsPtr>> faceEdges;
+    Block::TriMeshGroup blockMeshes;
+    Block::glPointsGroup faceEdges;
     vol.addAllBlocks(blockMeshes, faceEdges);
     vector<vector<const COglMultiVboHandler::OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
@@ -304,7 +304,7 @@ void AppData::doBuildCFDHexes()
 
 void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
 {
-    Volume::TriMeshGroup blockMeshes;
+    Block::TriMeshGroup blockMeshes;
     _volume->makeTris(blockMeshes, minSplitNum, true);
 
     pCanvas->beginFaceTesselation();
@@ -330,7 +330,7 @@ void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
 
 void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
 {
-    Volume::glPointsGroup faceEdgeSets;
+    Block::glPointsGroup faceEdgeSets;
     _volume->makeFaceEdges(faceEdgeSets, minSplitNum, true);
 
     pCanvas->beginEdgeTesselation();
@@ -345,7 +345,7 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
 
     if (!normPts.empty())
         normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
-#if 0
+
     vector<vector<const COglMultiVboHandler::OGLIndices*>> edgeTesselations;
     edgeTesselations.reserve(faceEdgeSets.size());
     for (size_t mode = 0; mode < faceEdgeSets.size(); mode++) {
@@ -358,13 +358,13 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
                 for (size_t j = 0; j < faceEdges.size(); j++)
                     indices.push_back(j);
                 if (!faceEdges.empty()) {
-                    auto pEdgeTess = pCanvas->setEdgeSegTessellation(GraphicsCanvas::DS_BLOCK_MESH + mode, 1, faceEdges, indices);
+                    auto pEdgeTess = pCanvas->setEdgeSegTessellation(faceEdgesPtr->getId(), faceEdgesPtr->changeNumber(), faceEdges, indices);
                     if (pEdgeTess)
                         edgeTesselations[mode].push_back(pEdgeTess);
                 }
             }
         }
     }
-#endif
-    pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess /*, edgeTesselations*/);
+
+    pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess, edgeTesselations);
 }
