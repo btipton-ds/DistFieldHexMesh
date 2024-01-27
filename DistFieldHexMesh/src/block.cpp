@@ -477,8 +477,24 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 
 	if (intersectingOnly) {
 		vector<size_t> triIndices;
-		if (!_pModelTriMesh->findTris(bbox, triIndices)) {
-			bool found = false;
+		bool found = false;
+		if (_pModelTriMesh->findTris(bbox, triIndices)) {
+			for (size_t triIdx : triIndices) {
+				const auto& tri = _pModelTriMesh->getTri(triIdx);
+				const auto& pt0 = _pModelTriMesh->getVert(tri[0])._pt;
+				const auto& pt1 = _pModelTriMesh->getVert(tri[1])._pt;
+				const auto& pt2 = _pModelTriMesh->getVert(tri[2])._pt;
+				LineSegment seg0(pt0, pt1);
+				LineSegment seg1(pt1, pt2);
+				LineSegment seg2(pt2, pt0);
+				if (bbox.intersects(seg0) || bbox.intersects(seg1) || bbox.intersects(seg2)) {
+					found = true;
+					break;
+				}
+			}
+		}
+
+		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
 			for (const auto& vertIdx : sharps) {
 				if (bbox.contains(_pModelTriMesh->getVert(vertIdx)._pt)) {
@@ -486,9 +502,9 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 					break;
 				}
 			}
-			if (!found)
-				return -1;
 		}
+		if (!found)
+			return -1;
 #if 0
 		vector<LineSegment> edgeSegs;
 		getBlockEdgeSegs(pts.data(), edgeSegs);

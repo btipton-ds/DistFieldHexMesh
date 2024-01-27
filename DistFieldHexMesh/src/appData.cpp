@@ -289,9 +289,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Index3D::setBlockDim(2);
+    Index3D::setBlockDim(8);
 
-    double blockSize = 0.3;
+    double blockSize = 0.25;
 
     _volume->buildCFDHexes(_pMesh, blockSize);
 
