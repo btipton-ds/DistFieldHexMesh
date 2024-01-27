@@ -746,7 +746,27 @@ size_t Block::splitCellsWithPlane(const Plane& splitPlane)
 	return numSplit;
 }
 
-TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) const
+bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const
+{
+	bool result = false;
+	switch (meshType) {
+	default:
+	case MT_ALL:
+		result = true;
+		break;
+	case MT_INNER:
+		result = !face.isOuter();
+		break;
+	case MT_OUTER:
+		result = face.isOuter();
+		break;
+	}
+	result = result && face.getNumSplits() >= minSplitNum;
+
+	return result;
+}
+
+TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
 {
 	if (_polygons.empty())
 		return nullptr;
@@ -757,9 +777,8 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 
 	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
 	size_t skipped = 0;
-	_polygons.iterateInOrderTS([this, result, outerOnly, &skipped, minSplitNum](size_t id, const Polygon& poly) {
-
-		if ((minSplitNum == 0 && (!outerOnly || poly.isOuter())) || poly.getNumSplits() >= minSplitNum) {
+	_polygons.iterateInOrderTS([this, result, meshType, &skipped, minSplitNum](size_t id, const Polygon& poly) {
+		if (includeFace(meshType, minSplitNum, poly)) {
 			const auto& vertIds = poly.getVertexIdsNTS();
 			if (vertIds.size() == 3 || vertIds.size() == 4) {
 				vector<Vector3d> pts;
@@ -792,14 +811,14 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(bool outerOnly, size_t minSplitNum) con
 	return result;
 }
 
-shared_ptr<vector<float>> Block::makeFaceEdges(bool outerOnly, size_t minSplitNum) const
+shared_ptr<vector<float>> Block::makeFaceEdges(MeshType meshType, size_t minSplitNum) const
 {
 	shared_ptr<vector<float>> result;
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrderTS([this, outerOnly, &edges, minSplitNum](size_t faceId, const Polygon& face) {
-		if ((minSplitNum == 0 && (!outerOnly || face.isOuter())) || face.getNumSplits() >= minSplitNum) {
+	_polygons.iterateInOrderTS([this, meshType, &edges, minSplitNum](size_t faceId, const Polygon& face) {
+		if (includeFace(meshType, minSplitNum, face)) {
 			const auto& faceEdges = face.getEdges();
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}

@@ -27,6 +27,12 @@ class Polyhedron;
 
 class Block : public ObjectPoolOwner {
 public:
+	enum MeshType {
+		MT_ALL,
+		MT_OUTER,
+		MT_INNER,
+		MT_BOUNDARY
+	};
 	const Index3D& getBlockIdx() const override;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
@@ -64,8 +70,8 @@ public:
 	size_t processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
-	TriMesh::CMeshPtr getBlockTriMesh(bool outerOnly, size_t minSplitNum) const;
-	std::shared_ptr<std::vector<float>> makeFaceEdges(bool outerOnly, size_t minSplitNum) const;
+	TriMesh::CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum) const;
+	std::shared_ptr<std::vector<float>> makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
 	size_t splitCellsWithPlane(const Plane& splitPlane);
 
 	Index3DId idOfPoint(const Vector3d& pt);
@@ -139,6 +145,7 @@ private:
 
 	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
+	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
 	std::string _filename;
 

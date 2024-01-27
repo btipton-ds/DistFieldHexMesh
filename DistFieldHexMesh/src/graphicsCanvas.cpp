@@ -56,8 +56,8 @@ namespace
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
-    , _faceVBO(GL_TRIANGLES, 10)
-    , _edgeVBO(GL_LINES, 10)
+    , _faceVBO(GL_TRIANGLES, 20)
+    , _edgeVBO(GL_LINES, 20)
 {
     _pContext = make_shared<wxGLContext>(this);
 
@@ -100,6 +100,7 @@ GraphicsCanvas::~GraphicsCanvas()
 bool GraphicsCanvas::toggleShowSharpEdges()
 {
     _showSharpEdges = !_showSharpEdges;
+    changeEdgeViewElements();
 
     return _showSharpEdges;
 }
@@ -107,15 +108,35 @@ bool GraphicsCanvas::toggleShowSharpEdges()
 bool GraphicsCanvas::toggleShowTriNormals()
 {
     _showTriNormals = !_showTriNormals;
+    changeEdgeViewElements();
 
     return _showTriNormals;
 }
 
-bool GraphicsCanvas::toggleShowFaceEdges()
+bool GraphicsCanvas::toggleShowFaces()
 {
-    _showFaceEdges = !_showFaceEdges;
+    _showFaces = !_showFaces;
+    changeFaceViewElements();
 
-    return _showFaceEdges;
+    return _showFaces;
+}
+
+bool GraphicsCanvas::toggleShowEdges()
+{
+    _showEdges = !_showEdges;
+    changeFaceViewElements();
+    changeEdgeViewElements();
+
+    return _showEdges;
+}
+
+bool GraphicsCanvas::toggleShowOuter()
+{
+    _showOuter = !_showOuter;
+    changeFaceViewElements();
+    changeEdgeViewElements();
+
+    return _showOuter;
 }
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
@@ -329,11 +350,14 @@ void GraphicsCanvas::drawFaces()
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
             default:
-            case 0:
+            case 0: // Model
                 _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
                 break;
-            case 1:
+            case DS_BLOCK_MESH + DSS_OUTER:
                 _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+                break;
+            case DS_BLOCK_MESH + DSS_INNER:
+                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0.5f);
                 break;
         }
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
@@ -367,9 +391,6 @@ void GraphicsCanvas::drawEdges()
         switch (key) {
             default:
             case 0:
-                if (!_showSharpEdges)
-                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
-
                 glLineWidth(2.0f);
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
@@ -378,18 +399,16 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0);
                 break;
             case 2:
-                if (!_showTriNormals)
-                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
-
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
-            case 3:
-                if (!_showFaceEdges)
-                    return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
-
+            case DS_BLOCK_MESH + DSS_OUTER:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
+                break;
+            case DS_BLOCK_MESH + DSS_INNER:
+                glLineWidth(1.0f);
+                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.750f);
                 break;
         }
         _graphicsUBO.ambient = 1.0f;
@@ -456,4 +475,53 @@ void GraphicsCanvas::updateView()
     for (int i = 0; i < 16; i++) {
         pf[i] = (float)trans(i);
     }
+}
+
+void GraphicsCanvas::changeFaceViewElements()
+{
+    beginSettingFaceElementIndices(0xffffffffffffffff);
+    if (_pTriTess)
+        includeFaceElementIndices(GraphicsCanvas::DS_MODEL, *_pTriTess);
+    if (_showFaces && !_faceTessellations.empty()) {
+        if (_showOuter && DSS_OUTER < _faceTessellations.size()) {
+            for (auto pBlockTess : _faceTessellations[DSS_OUTER]) {
+                if (pBlockTess)
+                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+            }
+        } else if (DSS_INNER < _faceTessellations.size()) {
+            for (auto pBlockTess : _faceTessellations[DSS_INNER]) {
+                if (pBlockTess)
+                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+            }
+        }
+    }
+    endSettingFaceElementIndices();
+}
+
+void GraphicsCanvas::changeEdgeViewElements()
+{
+    _edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+
+    if (_showSharpEdges && _pSharpEdgeTess) {
+        _edgeVBO.includeElementIndices(1, *_pSharpEdgeTess);
+    }
+    if (_showTriNormals && _pNormalTess) {
+        _edgeVBO.includeElementIndices(2, *_pNormalTess);
+    }
+    if (_showEdges && !_edgeTessellations.empty()) {
+        if (_showOuter && DSS_OUTER < _edgeTessellations.size()) {
+            for (auto pBlockTess : _edgeTessellations[DSS_OUTER]) {
+                if (pBlockTess)
+                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+            }
+        }
+        else if (DSS_INNER < _edgeTessellations.size()) {
+            for (auto pBlockTess : _edgeTessellations[DSS_INNER]) {
+                if (pBlockTess)
+                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+            }
+        }
+    }
+    _edgeVBO.endSettingElementIndices();
+
 }

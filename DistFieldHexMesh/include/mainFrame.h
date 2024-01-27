@@ -28,7 +28,9 @@ enum DFHM_MENU_ID
 
     ID_SHOW_SHARP_EDGES,
     ID_SHOW_TRI_NORMALS,
-    ID_SHOW_FACE_EDGES,
+    ID_SHOW_EDGES,
+    ID_SHOW_FACES,
+    ID_SHOW_OUTER
 };
 
 class GraphicsCanvas;
@@ -82,7 +84,9 @@ private:
 
     void OnShowSharpEdges(wxCommandEvent& event);
     void OnShowTriNormals(wxCommandEvent& event);
-    void OnShowFaceEdges(wxCommandEvent& event);
+    void OnShowFaces(wxCommandEvent& event);
+    void OnShowEdges(wxCommandEvent& event);
+    void OnShowOuter(wxCommandEvent& event);
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

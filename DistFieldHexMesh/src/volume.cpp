@@ -196,7 +196,7 @@ Block& Volume::addBlock(const Index3D& blockIdx)
 	return *pBlock;
 }
 
-void Volume::addAllBlocks(vector<TriMesh::CMeshPtr>& triMeshes, vector<shared_ptr<vector<float>>>& faceEdges)
+void Volume::addAllBlocks(vector<vector<TriMesh::CMeshPtr>>& triMeshes, vector<vector<glPointsPtr>>& faceEdges)
 {
 	const auto& dim = volDim();
 	Vector3d origin, blockSpan;
@@ -217,7 +217,7 @@ void Volume::addAllBlocks(vector<TriMesh::CMeshPtr>& triMeshes, vector<shared_pt
 		}
 	}
 
-	makeTris(triMeshes, true, 1, true);
+	makeTris(triMeshes, 1, true);
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -347,7 +347,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
-void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, size_t minSplitNum, bool multiCore)
+void Volume::makeTris(TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -356,45 +356,31 @@ void Volume::makeTris(vector<TriMesh::CMeshPtr>& triMeshes, bool outerOnly, size
 	bbox.grow(diagDist * 0.05);
 
 
-	vector<TriMesh::CMeshPtr> temp;
-	temp.resize(_blocks.size());
-	MultiCore::runLambda([this, &temp, outerOnly, minSplitNum](size_t index) {
+	triMeshes.resize(2);
+	triMeshes[0].resize(_blocks.size());
+	triMeshes[1].resize(_blocks.size());
+	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
-		auto pMesh = blockPtr->getBlockTriMesh(outerOnly, minSplitNum);
-		if (pMesh) {
-			temp[index] = pMesh;
-		}
+
+		triMeshes[0][index] = blockPtr->getBlockTriMesh(Block::MT_OUTER, minSplitNum);
+		triMeshes[1][index] = blockPtr->getBlockTriMesh(Block::MT_INNER, minSplitNum);
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
-
-	// Remove the null pointers from the result
-
-	for (auto p : temp) {
-		if (p) {
-			triMeshes.push_back(p);
-		}
-	}
 }
 
-void Volume::makeFaceEdges(vector<shared_ptr<vector<float>>>& faceEdges, bool outerOnly, size_t minSplitNum, bool multiCore)
+void Volume::makeFaceEdges(glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
 {
-	vector<shared_ptr<vector<float>>> temp;
-	temp.resize(_blocks.size());
-	MultiCore::runLambda([this, &temp, outerOnly, minSplitNum](size_t index) {
+	faceEdges.resize(2);
+	faceEdges[0].resize(_blocks.size());
+	faceEdges[1].resize(_blocks.size());
+	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
-		shared_ptr<vector<float>> pEdges =  blockPtr->makeFaceEdges(outerOnly, minSplitNum);
-		if (pEdges && !pEdges->empty()) {
-			temp[index] = pEdges;
-		}
+		faceEdges[0][index] = blockPtr->makeFaceEdges(Block::MT_OUTER, minSplitNum);
+		faceEdges[1][index] = blockPtr->makeFaceEdges(Block::MT_INNER, minSplitNum);
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
-
-	for (const auto& p : temp) {
-		if (p)
-			faceEdges.push_back(p);
-	}
 }
 
 size_t Volume::numFaces(bool includeInner) const

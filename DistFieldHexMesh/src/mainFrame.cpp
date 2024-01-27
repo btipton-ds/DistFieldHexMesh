@@ -131,8 +131,14 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_TRI_NORMALS, "Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowTriNormals, this, ID_SHOW_TRI_NORMALS);
 
-    menu->Append(ID_SHOW_FACE_EDGES, "Show Face Edges", "Turns rendering of face edges on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowFaceEdges, this, ID_SHOW_FACE_EDGES);
+    menu->Append(ID_SHOW_FACES, "Show Faces", "Turns rendering of faces on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowFaces, this, ID_SHOW_FACES);
+
+    menu->Append(ID_SHOW_EDGES, "Show Edges", "Turns rendering of edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowEdges, this, ID_SHOW_EDGES);
+
+    menu->Append(ID_SHOW_OUTER, "Show Outer", "Turns rendering of edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_OUTER);
 
     auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
     if (sharpItem)
@@ -142,9 +148,17 @@ void MainFrame::createViewMenu()
     if (normItem)
         normItem->Check(getCanvas()->showTriNormals());
 
-    auto faceEdgesItem = _menuBar->FindItem(ID_SHOW_FACE_EDGES);
-    if (faceEdgesItem)
-        faceEdgesItem->Check(getCanvas()->showFaceEdges());
+    auto facesItem = _menuBar->FindItem(ID_SHOW_FACES);
+    if (facesItem)
+        facesItem->Check(getCanvas()->showFaces());
+
+    auto edgesItem = _menuBar->FindItem(ID_SHOW_EDGES);
+    if (edgesItem)
+        edgesItem->Check(getCanvas()->showEdges());
+
+    auto outerItem = _menuBar->FindItem(ID_SHOW_OUTER);
+    if (outerItem)
+        outerItem->Check(getCanvas()->showOuter());
 
     _menuBar->Append(menu, "&View");
 }
@@ -282,11 +296,29 @@ void MainFrame::OnShowTriNormals(wxCommandEvent& event)
         normItem->Check(getCanvas()->showTriNormals());
 }
 
-void MainFrame::OnShowFaceEdges(wxCommandEvent& event)
+void MainFrame::OnShowFaces(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowFaceEdges();
+    getCanvas()->toggleShowFaces();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_FACE_EDGES);
+    auto normItem = _menuBar->FindItem(ID_SHOW_FACES);
     if (normItem)
-        normItem->Check(getCanvas()->showFaceEdges());
+        normItem->Check(getCanvas()->showFaces());
+}
+
+void MainFrame::OnShowEdges(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowEdges();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_EDGES);
+    if (normItem)
+        normItem->Check(getCanvas()->showEdges());
+}
+
+void MainFrame::OnShowOuter(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowOuter();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_OUTER);
+    if (normItem)
+        normItem->Check(getCanvas()->showOuter());
 }

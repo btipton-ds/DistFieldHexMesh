@@ -28,7 +28,14 @@ class GraphicsCanvas : public GraphicsCanvasBase
 #endif
 {
 public:
-
+    enum DrawStates {
+        DS_MODEL = 0,
+        DS_BLOCK_MESH = 10,
+    };
+    enum DrawSubStates {
+        DSS_OUTER = 0,
+        DSS_INNER = 1,
+    };
     GraphicsCanvas(wxFrame* parent);
     ~GraphicsCanvas();
 
@@ -39,7 +46,8 @@ public:
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const COglMultiVboHandler::OGLIndices* setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices);
-    void endFaceTesselation(bool smoothNormals);
+    void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, bool smoothNormals);
+    void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& faceTess, bool smoothNormals);
 
     void beginSettingFaceElementIndices(size_t layerBitMask);
     void includeFaceElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
@@ -48,11 +56,9 @@ public:
     void beginEdgeTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const COglMultiVboHandler::OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<int>& indices);
-    void endEdgeTesselation();
-
-    void beginSettingEdgeElementIndices(size_t layerBitMask);
-    void includeEdgeElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId = 0);
-    void endSettingEdgeElementIndices();
+    void endEdgeTesselation(const COglMultiVboHandler::OGLIndices* pSharpEdgeTess, const COglMultiVboHandler::OGLIndices* pNormalTess);
+    void endEdgeTesselation(const COglMultiVboHandler::OGLIndices* pSharpEdgeTess, const COglMultiVboHandler::OGLIndices* pNormalTess,
+        const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& edgeTess);
 
     void setViewOrigin(const Vector3d& origin);
     void setViewScale(double scale);
@@ -67,8 +73,14 @@ public:
     bool showTriNormals() const;
     bool toggleShowTriNormals();
 
-    bool showFaceEdges() const;
-    bool toggleShowFaceEdges();
+    bool showFaces() const;
+    bool toggleShowFaces();
+
+    bool showEdges() const;
+    bool toggleShowEdges();
+
+    bool showOuter() const;
+    bool toggleShowOuter();
 
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
@@ -92,6 +104,8 @@ private:
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
     void updateView();
+    void changeFaceViewElements();
+    void changeEdgeViewElements();
     void drawFaces();
     void drawEdges();
 
@@ -99,7 +113,7 @@ private:
     
     bool _initialized = false;
 
-    bool _showSharpEdges = false, _showTriNormals = false, _showFaceEdges = false;
+    bool _showSharpEdges = false, _showTriNormals = false, _showEdges = true, _showFaces = true, _showOuter = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     double _initAzRad, _initElRad;
     void initialize();
@@ -114,6 +128,12 @@ private:
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
+
+    const COglMultiVboHandler::OGLIndices
+        *_pTriTess = nullptr,
+        *_pSharpEdgeTess = nullptr,
+        *_pNormalTess = nullptr;
+    std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>> _faceTessellations, _edgeTessellations;
 
     COglMultiVboHandler _faceVBO, _edgeVBO;
 protected:
@@ -136,10 +156,22 @@ inline const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellatio
     return _faceVBO.setFaceTessellation(entityKey, changeNumber, points, normals, parameters, vertiIndices);
 }
 
-inline void GraphicsCanvas::endFaceTesselation(bool smoothNormals)
+inline void GraphicsCanvas::endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, bool smoothNormals)
 {
     _faceVBO.endFaceTesselation(smoothNormals);
+    _pTriTess = pTriTess;
+    _faceTessellations.clear();
 
+    changeFaceViewElements();
+}
+
+inline void GraphicsCanvas::endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& faceTess, bool smoothNormals)
+{
+    _faceVBO.endFaceTesselation(smoothNormals);
+    _pTriTess = pTriTess;
+    _faceTessellations = faceTess;
+
+    changeFaceViewElements();
 }
 
 inline void GraphicsCanvas::beginSettingFaceElementIndices(size_t layerBitMask)
@@ -168,24 +200,27 @@ inline const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setEdgeSegTessella
     return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-inline void GraphicsCanvas::endEdgeTesselation()
+inline void GraphicsCanvas::endEdgeTesselation(const COglMultiVboHandler::OGLIndices* pSharpEdgeTess, const COglMultiVboHandler::OGLIndices* pNormalTess)
 {
     _edgeVBO.endEdgeTesselation();
+
+    _pSharpEdgeTess = pSharpEdgeTess;
+    _pNormalTess = pNormalTess;
+    _edgeTessellations.clear();
+
+    changeEdgeViewElements();
 }
 
-inline void GraphicsCanvas::beginSettingEdgeElementIndices(size_t layerBitMask)
+inline void GraphicsCanvas::endEdgeTesselation(const COglMultiVboHandler::OGLIndices* pSharpEdgeTess, const COglMultiVboHandler::OGLIndices* pNormalTess,
+    const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& edgeTess)
 {
-    _edgeVBO.beginSettingElementIndices(layerBitMask);
-}
+    _edgeVBO.endEdgeTesselation();
 
-inline void GraphicsCanvas::includeEdgeElementIndices(int key, const COglMultiVboHandler::OGLIndices& batchIndices, GLuint texId)
-{
-    _edgeVBO.includeElementIndices(key, batchIndices, texId);
-}
+    _pSharpEdgeTess = pSharpEdgeTess;
+    _pNormalTess = pNormalTess;
+    _edgeTessellations = edgeTess;
 
-inline void GraphicsCanvas::endSettingEdgeElementIndices()
-{
-    _edgeVBO.endSettingElementIndices();
+    changeEdgeViewElements();
 }
 
 inline void GraphicsCanvas::setViewOrigin(const Vector3d& origin)
@@ -230,9 +265,19 @@ inline bool GraphicsCanvas::showTriNormals() const
     return _showTriNormals;
 }
 
-inline bool GraphicsCanvas::showFaceEdges() const
+inline bool GraphicsCanvas::showFaces() const
 {
-    return _showFaceEdges;
+    return _showFaces;
+}
+
+inline bool GraphicsCanvas::showEdges() const
+{
+    return _showEdges;
+}
+
+inline bool GraphicsCanvas::showOuter() const
+{
+    return _showOuter;
 }
 
 }
