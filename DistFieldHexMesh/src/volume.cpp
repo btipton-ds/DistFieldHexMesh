@@ -356,30 +356,34 @@ void Volume::makeTris(TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCor
 	bbox.grow(diagDist * 0.05);
 
 
-	triMeshes.resize(2);
-	triMeshes[0].resize(_blocks.size());
-	triMeshes[1].resize(_blocks.size());
+	triMeshes.resize(3);
+	triMeshes[Block::MT_OUTER].resize(_blocks.size());
+	triMeshes[Block::MT_INNER].resize(_blocks.size());
+	triMeshes[Block::MT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
 
-		triMeshes[0][index] = blockPtr->getBlockTriMesh(Block::MT_OUTER, minSplitNum);
-		triMeshes[1][index] = blockPtr->getBlockTriMesh(Block::MT_INNER, minSplitNum);
-	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
+		triMeshes[Block::MT_OUTER][index] = blockPtr->getBlockTriMesh(Block::MT_OUTER, minSplitNum);
+		triMeshes[Block::MT_INNER][index] = blockPtr->getBlockTriMesh(Block::MT_INNER, minSplitNum);
+		triMeshes[Block::MT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(Block::MT_BLOCK_BOUNDARY, minSplitNum);
+	}, _blocks.size(), false && multiCore && RUN_MULTI_THREAD);
 }
 
 void Volume::makeFaceEdges(glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
 {
-	faceEdges.resize(2);
-	faceEdges[0].resize(_blocks.size());
-	faceEdges[1].resize(_blocks.size());
+	faceEdges.resize(3);
+	faceEdges[Block::MT_OUTER].resize(_blocks.size());
+	faceEdges[Block::MT_INNER].resize(_blocks.size());
+	faceEdges[Block::MT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index) {
 		const auto& blockPtr = _blocks[index];
 		if (!blockPtr)
 			return;
-		faceEdges[0][index] = blockPtr->makeFaceEdges(Block::MT_OUTER, minSplitNum);
-		faceEdges[1][index] = blockPtr->makeFaceEdges(Block::MT_INNER, minSplitNum);
+		faceEdges[Block::MT_OUTER][index] = blockPtr->makeFaceEdges(Block::MT_OUTER, minSplitNum);
+		faceEdges[Block::MT_INNER][index] = blockPtr->makeFaceEdges(Block::MT_INNER, minSplitNum);
+		faceEdges[Block::MT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(Block::MT_BLOCK_BOUNDARY, minSplitNum);
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
 }
 

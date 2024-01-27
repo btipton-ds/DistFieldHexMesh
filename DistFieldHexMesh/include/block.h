@@ -28,10 +28,11 @@ class Polyhedron;
 class Block : public ObjectPoolOwner {
 public:
 	enum MeshType {
-		MT_ALL,
 		MT_OUTER,
 		MT_INNER,
-		MT_BOUNDARY
+		MT_BLOCK_BOUNDARY,
+		MT_BOUNDARY,
+		MT_ALL,
 	};
 	const Index3D& getBlockIdx() const override;
 
@@ -70,7 +71,7 @@ public:
 	size_t processTris();
 	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
 	const TriMesh::CMeshPtr& getModelMesh() const;
-	TriMesh::CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum) const;
+	TriMesh::CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
 	std::shared_ptr<std::vector<float>> makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
 	size_t splitCellsWithPlane(const Plane& splitPlane);
 
@@ -160,6 +161,7 @@ private:
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	TriMesh::CMeshPtr _pModelTriMesh;
+	std::vector<TriMesh::CMeshPtr> _blockMeshes;
 	std::vector<Vector3d> _corners;
 
 	ObjectPoolWMutex<Vertex> _vertices;

@@ -750,23 +750,26 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 {
 	bool result = false;
 	switch (meshType) {
-	default:
-	case MT_ALL:
-		result = true;
-		break;
-	case MT_INNER:
-		result = !face.isOuter();
-		break;
-	case MT_OUTER:
-		result = face.isOuter();
-		break;
+		default:
+		case MT_ALL:
+			result = true;
+			break;
+		case MT_INNER:
+			result = !face.isOuter() && !face.isBlockBoundary();
+			break;
+		case MT_OUTER:
+			result = face.isOuter();
+			break;
+		case MT_BLOCK_BOUNDARY:
+			result = face.isBlockBoundary();
+			break;
 	}
 	result = result && face.getNumSplits() >= minSplitNum;
 
 	return result;
 }
 
-TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
+TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 {
 	if (_polygons.empty())
 		return nullptr;
@@ -775,36 +778,33 @@ TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) 
 	double span = bbox.range().norm();
 	bbox.grow(0.05 * span);
 
-	TriMesh::CMeshPtr result = make_shared<TriMesh::CMesh>(bbox);
-	size_t skipped = 0;
-	_polygons.iterateInOrderTS([this, result, meshType, &skipped, minSplitNum](size_t id, const Polygon& poly) {
-		if (includeFace(meshType, minSplitNum, poly)) {
-			const auto& vertIds = poly.getVertexIdsNTS();
-			if (vertIds.size() == 3 || vertIds.size() == 4) {
-				vector<Vector3d> pts;
-				for (const auto& vertId : vertIds) {
-					auto pVertexOwner = getOwner(vertId);
-					lock_guard g(pVertexOwner->_vertices);
-					const auto& vert = pVertexOwner->_vertices[vertId.elementId()];
-					pts.push_back(vert.getPoint());
-				}
-				if (pts.size() == 3) {
-					result->addTriangle(pts[0], pts[1], pts[2]);
-				}
-				else {
-					result->addQuad(pts[0], pts[1], pts[2], pts[3]);
-				}
-			} else if (vertIds.size() > 4) {
-				Vector3d ctr = poly.getCentroid();
-				for (size_t i = 0; i < vertIds.size(); i++) {
-					size_t j = (i + 1) % vertIds.size();
-					Vector3d pt0 = getVertexPoint(vertIds[i]);
-					Vector3d pt1 = getVertexPoint(vertIds[j]);
-					result->addTriangle(ctr, pt0, pt1);
-				}
+	if (_blockMeshes.empty()) {
+		_blockMeshes.resize(MT_ALL);
+	}
+	TriMesh::CMeshPtr result;
+	_polygons.iterateInOrderTS([this, &result, &bbox, meshType, minSplitNum](size_t id, const Polygon& face) {
+		if (includeFace(meshType, minSplitNum, face)) {
+			if (!result) {
+				if (!_blockMeshes[meshType])
+					_blockMeshes[meshType] = make_shared<TriMesh::CMesh>(bbox);
+				result = _blockMeshes[meshType];
 			}
-		} else
-			skipped++;
+			const auto& vertIds = face.getVertexIdsNTS();
+			vector<Vector3d> pts;
+			pts.reserve(vertIds.size());
+			for (const auto& vertId : vertIds) {
+				pts.push_back(getVertexPoint(vertId));
+			}
+
+			for (size_t i = 1; i < pts.size() - 1; i++) {
+				size_t idx0 = 0;
+				size_t idx1 = i;
+				size_t idx2 = i + 1;
+				result->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+			}
+
+			result->changed();
+		}
 	});
 
 //	cout << "Skipped " << skipped << "inner faces\n";

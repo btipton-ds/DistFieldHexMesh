@@ -37,6 +37,7 @@ public:
 	void pack();
 
 	bool isOuter() const;
+	bool isBlockBoundary() const;
 
 	bool operator < (const Polygon& rhs) const;
 

@@ -70,6 +70,16 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
+bool Polygon::isBlockBoundary() const
+{
+	if (_cellIds.size() == 2) {
+		auto iter0 = _cellIds.begin();
+		auto iter1 = iter0++;
+		return (iter0->blockIdx() != iter1->blockIdx());
+	}
+	return false;
+}
+
 vector<Edge> Polygon::getEdges() const
 {
 	vector<Edge> result;

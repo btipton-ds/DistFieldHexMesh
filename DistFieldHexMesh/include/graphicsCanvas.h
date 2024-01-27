@@ -5,6 +5,7 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
+#include <triMesh.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
@@ -35,6 +36,7 @@ public:
     enum DrawSubStates {
         DSS_OUTER = 0,
         DSS_INNER = 1,
+        DSS_BLOCK_BOUNDARY = 2,
     };
     GraphicsCanvas(wxFrame* parent);
     ~GraphicsCanvas();
@@ -45,7 +47,7 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const COglMultiVboHandler::OGLIndices* setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices);
+    const COglMultiVboHandler::OGLIndices* setFaceTessellation(const TriMesh::CMeshPtr& pMesh);
     void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, bool smoothNormals);
     void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& faceTess, bool smoothNormals);
 
@@ -148,12 +150,6 @@ inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
 inline void GraphicsCanvas::beginFaceTesselation()
 {
     _faceVBO.beginFaceTesselation();
-}
-
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-inline const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<float>& normals, const std::vector<float>& parameters, const std::vector<unsigned int>& vertiIndices)
-{
-    return _faceVBO.setFaceTessellation(entityKey, changeNumber, points, normals, parameters, vertiIndices);
 }
 
 inline void GraphicsCanvas::endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, bool smoothNormals)

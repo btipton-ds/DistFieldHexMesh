@@ -354,10 +354,13 @@ void GraphicsCanvas::drawFaces()
                 _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
                 break;
             case DS_BLOCK_MESH + DSS_OUTER:
-                _graphicsUBO.defColor = p3f(0.0f, 1.0f, 0);
+                _graphicsUBO.defColor = p3f(0.0f, 0.8f, 0);
                 break;
             case DS_BLOCK_MESH + DSS_INNER:
-                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0.5f);
+                _graphicsUBO.defColor = p3f(0.75f, 1, 1);
+                break;
+            case DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY:
+                _graphicsUBO.defColor = p3f(1.0f, 0.5f, 0.5f);
                 break;
         }
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
@@ -407,6 +410,7 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
                 break;
             case DS_BLOCK_MESH + DSS_INNER:
+            case DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.750f);
                 break;
@@ -477,6 +481,17 @@ void GraphicsCanvas::updateView()
     }
 }
 
+// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
+const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(const TriMesh::CMeshPtr& pMesh)
+{
+    const auto& points = pMesh->getGlPoints();
+    const auto& normals = pMesh->getGlNormals(false);
+    const auto& parameters = pMesh->getGlParams();
+    const auto& vertIndices = pMesh->getGlFaceIndices();
+    return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, vertIndices);
+}
+
+
 void GraphicsCanvas::changeFaceViewElements()
 {
     beginSettingFaceElementIndices(0xffffffffffffffff);
@@ -488,10 +503,19 @@ void GraphicsCanvas::changeFaceViewElements()
                 if (pBlockTess)
                     includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
-        } else if (DSS_INNER < _faceTessellations.size()) {
+        } 
+        
+        if (!_showOuter && DSS_INNER < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_INNER]) {
                 if (pBlockTess)
                     includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+            }
+        } 
+        
+        if (!_showOuter && DSS_BLOCK_BOUNDARY < _faceTessellations.size()) {
+            for (auto pBlockTess : _faceTessellations[DSS_BLOCK_BOUNDARY]) {
+                if (pBlockTess)
+                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }
@@ -514,11 +538,15 @@ void GraphicsCanvas::changeEdgeViewElements()
                 if (pBlockTess)
                     _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
-        }
-        else if (DSS_INNER < _edgeTessellations.size()) {
+        } else if (DSS_INNER < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_INNER]) {
                 if (pBlockTess)
                     _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+            }
+        } else if (DSS_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+            for (auto pBlockTess : _edgeTessellations[DSS_BLOCK_BOUNDARY]) {
+                if (pBlockTess)
+                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }

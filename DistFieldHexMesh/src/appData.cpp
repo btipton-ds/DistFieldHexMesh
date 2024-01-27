@@ -97,13 +97,8 @@ void AppData::doOpen()
             _pMesh = pMesh;
             auto pCanvas = _pMainFrame->getCanvas();
 
-            const auto& pts = _pMesh->getGlPoints();
-            const auto& norms = _pMesh->getGlNormals(false);
-            const auto& params = _pMesh->getGlParams();
-            const auto& indices = _pMesh->getGlFaceIndices();
-
             pCanvas->beginFaceTesselation();
-            auto faceTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), pts, norms, params, indices);
+            auto faceTess = pCanvas->setFaceTessellation(_pMesh);
             pCanvas->endFaceTesselation(faceTess, false);
 
             vector<float> sharpPts, normPts;
@@ -256,8 +251,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->beginFaceTesselation();
-    auto triTess = pCanvas->setFaceTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
-        _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+    auto triTess = pCanvas->setFaceTessellation(_pMesh);
 
     Volume::TriMeshGroup blockMeshes;
     std::vector<std::vector<Volume::glPointsPtr>> faceEdges;
@@ -267,8 +261,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
         faceTesselations.push_back(vector<const COglMultiVboHandler::OGLIndices*>());
         for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
             auto pBlockMesh = blockMeshes[mode][i];
-            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh->getId(), pBlockMesh->getChangeNumber(), pBlockMesh->getGlPoints(), pBlockMesh->getGlNormals(false),
-            pBlockMesh->getGlParams(), pBlockMesh->getGlFaceIndices());
+            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
             if (pBlockTess)
                 faceTesselations[mode].push_back(pBlockTess);
         }
@@ -316,19 +309,19 @@ void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
 
     pCanvas->beginFaceTesselation();
 
-    const COglMultiVboHandler::OGLIndices* triTess = pCanvas->setFaceTessellation(GraphicsCanvas::DS_MODEL, _pMesh->getChangeNumber(), _pMesh->getGlPoints(), _pMesh->getGlNormals(false),
-        _pMesh->getGlParams(), _pMesh->getGlFaceIndices());
+    const COglMultiVboHandler::OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh);
 
     vector<vector<const COglMultiVboHandler::OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
+        auto& thisGroup = blockMeshes[mode];
         faceTesselations.push_back(vector<const COglMultiVboHandler::OGLIndices*>());
-        for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
-            auto pBlockMesh = blockMeshes[mode][i];
-            if (pBlockMesh->numTris() > 0) {
-                auto pBlockTess = pCanvas->setFaceTessellation(GraphicsCanvas::DS_BLOCK_MESH + mode, pBlockMesh->getChangeNumber(), pBlockMesh->getGlPoints(), pBlockMesh->getGlNormals(false),
-                    pBlockMesh->getGlParams(), pBlockMesh->getGlFaceIndices());
+        faceTesselations.back().reserve(thisGroup.size());
+
+        for (const auto& pBlockMesh : thisGroup) {
+            if (pBlockMesh && pBlockMesh->numTris() > 0) {
+                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
                 if (pBlockTess)
-                    faceTesselations[mode].push_back(pBlockTess);
+                    faceTesselations.back().push_back(pBlockTess);
             }
         }
     }
@@ -352,7 +345,7 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
 
     if (!normPts.empty())
         normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
-
+#if 0
     vector<vector<const COglMultiVboHandler::OGLIndices*>> edgeTesselations;
     edgeTesselations.reserve(faceEdgeSets.size());
     for (size_t mode = 0; mode < faceEdgeSets.size(); mode++) {
@@ -372,6 +365,6 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
             }
         }
     }
-
-    pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess, edgeTesselations);
+#endif
+    pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess /*, edgeTesselations*/);
 }
