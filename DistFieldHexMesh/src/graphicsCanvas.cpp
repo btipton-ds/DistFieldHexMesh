@@ -105,6 +105,14 @@ bool GraphicsCanvas::toggleShowSharpEdges()
     return _showSharpEdges;
 }
 
+bool GraphicsCanvas::toggleShowSharpVerts()
+{
+    _showSharpVerts = !_showSharpVerts;
+    changeEdgeViewElements();
+
+    return _showSharpVerts;
+}
+
 bool GraphicsCanvas::toggleShowTriNormals()
 {
     _showTriNormals = !_showTriNormals;
@@ -350,8 +358,11 @@ void GraphicsCanvas::drawFaces()
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
             default:
-            case 0: // Model
+            case DS_MODEL:
                 _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
+                break;
+            case DS_MODEL_SHARP_VERTS:
+                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
                 break;
             case DS_BLOCK_MESH + DSS_OUTER:
                 _graphicsUBO.defColor = p3f(0.0f, 0.8f, 0);
@@ -393,15 +404,15 @@ void GraphicsCanvas::drawEdges()
     auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
         switch (key) {
             default:
-            case 0:
+            case DS_MODEL:
                 glLineWidth(2.0f);
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
-            case 1:
+            case DS_MODEL_SHARP_EDGES:
                 glLineWidth(2.0f);
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0);
                 break;
-            case 2:
+            case DS_MODEL_NORMALS:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
@@ -482,7 +493,7 @@ void GraphicsCanvas::updateView()
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
+const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
 {
     const auto& points = pMesh->getGlPoints();
     const auto& normals = pMesh->getGlNormals(false);
@@ -494,32 +505,36 @@ const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(const
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    beginSettingFaceElementIndices(0xffffffffffffffff);
+    _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     if (_pTriTess)
-        includeFaceElementIndices(GraphicsCanvas::DS_MODEL, *_pTriTess);
+        _faceVBO.includeElementIndices(GraphicsCanvas::DS_MODEL, *_pTriTess);
+
+    if (_showSharpVerts && _pSharpVertTess)
+        _faceVBO.includeElementIndices(GraphicsCanvas::DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
+
     if (_showFaces && !_faceTessellations.empty()) {
         if (_showOuter && DSS_OUTER < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_OUTER]) {
                 if (pBlockTess)
-                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
         } 
         
         if (!_showOuter && DSS_INNER < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_INNER]) {
                 if (pBlockTess)
-                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
             }
         } 
         
         if (!_showOuter && DSS_BLOCK_BOUNDARY < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
-                    includeFaceElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
+                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }
-    endSettingFaceElementIndices();
+    _faceVBO.endSettingElementIndices();
 }
 
 void GraphicsCanvas::changeEdgeViewElements()
@@ -527,10 +542,10 @@ void GraphicsCanvas::changeEdgeViewElements()
     _edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
     if (_showSharpEdges && _pSharpEdgeTess) {
-        _edgeVBO.includeElementIndices(1, *_pSharpEdgeTess);
+        _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
     }
     if (_showTriNormals && _pNormalTess) {
-        _edgeVBO.includeElementIndices(2, *_pNormalTess);
+        _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
     }
     if (_showEdges && !_edgeTessellations.empty()) {
         if (_showOuter && DSS_OUTER < _edgeTessellations.size()) {

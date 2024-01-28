@@ -125,8 +125,11 @@ void MainFrame::createViewMenu()
 {
     wxMenu* menu= new wxMenu;
 
-    menu->Append(ID_SHOW_SHARP_EDGES, "Show Sharps", "Turns rendering of sharp edges on/off", true);
+    menu->Append(ID_SHOW_SHARP_EDGES, "Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowSharpEdges, this, ID_SHOW_SHARP_EDGES);
+
+    menu->Append(ID_SHOW_SHARP_VERTS, "Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSharpVerts, this, ID_SHOW_SHARP_VERTS);
 
     menu->Append(ID_SHOW_TRI_NORMALS, "Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowTriNormals, this, ID_SHOW_TRI_NORMALS);
@@ -140,27 +143,31 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_OUTER, "Show Outer", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_OUTER);
 
-    auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
-    if (sharpItem)
-        sharpItem->Check(getCanvas()->showSharpEdges());
-
-    auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
-    if (normItem)
-        normItem->Check(getCanvas()->showTriNormals());
-
-    auto facesItem = _menuBar->FindItem(ID_SHOW_FACES);
-    if (facesItem)
-        facesItem->Check(getCanvas()->showFaces());
-
-    auto edgesItem = _menuBar->FindItem(ID_SHOW_EDGES);
-    if (edgesItem)
-        edgesItem->Check(getCanvas()->showEdges());
-
-    auto outerItem = _menuBar->FindItem(ID_SHOW_OUTER);
-    if (outerItem)
-        outerItem->Check(getCanvas()->showOuter());
-
     _menuBar->Append(menu, "&View");
+
+    auto item = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    if (item)
+        item->Check(getCanvas()->showSharpEdges());
+
+    item = _menuBar->FindItem(ID_SHOW_SHARP_VERTS);
+    if (item)
+        item->Check(getCanvas()->showSharpVerts());
+
+    item = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
+    if (item)
+        item->Check(getCanvas()->showTriNormals());
+
+    item = _menuBar->FindItem(ID_SHOW_FACES);
+    if (item)
+        item->Check(getCanvas()->showFaces());
+
+    item = _menuBar->FindItem(ID_SHOW_EDGES);
+    if (item)
+        item->Check(getCanvas()->showEdges());
+
+    item = _menuBar->FindItem(ID_SHOW_OUTER);
+    if (item)
+        item->Check(getCanvas()->showOuter());
 }
 
 void MainFrame::createHelpMenu()
@@ -281,10 +288,18 @@ void MainFrame::OnShowSharpEdges(wxCommandEvent& event)
 {
     getCanvas()->toggleShowSharpEdges();
 
-    auto sharpItem = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
-    if (sharpItem)
-        sharpItem->Check(getCanvas()->showSharpEdges());
+    auto item = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    if (item)
+        item->Check(getCanvas()->showSharpEdges());
+}
 
+void MainFrame::OnShowSharpVerts(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowSharpVerts();
+
+    auto item = _menuBar->FindItem(ID_SHOW_SHARP_VERTS);
+    if (item)
+        item->Check(getCanvas()->showSharpVerts());
 }
 
 void MainFrame::OnShowTriNormals(wxCommandEvent& event)

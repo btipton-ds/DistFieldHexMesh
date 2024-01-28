@@ -27,6 +27,7 @@ enum DFHM_MENU_ID
     ID_WRITE_POLYMESH,
 
     ID_SHOW_SHARP_EDGES,
+    ID_SHOW_SHARP_VERTS,
     ID_SHOW_TRI_NORMALS,
     ID_SHOW_EDGES,
     ID_SHOW_FACES,
@@ -83,6 +84,7 @@ private:
     void OnBuildCFDHexes(wxCommandEvent& event);
 
     void OnShowSharpEdges(wxCommandEvent& event);
+    void OnShowSharpVerts(wxCommandEvent& event);
     void OnShowTriNormals(wxCommandEvent& event);
     void OnShowFaces(wxCommandEvent& event);
     void OnShowEdges(wxCommandEvent& event);

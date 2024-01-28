@@ -106,8 +106,8 @@ void AppData::doOpen()
             getEdgeData(sharpPts, sharpIndices, normPts, normIndices);
 
             pCanvas->beginEdgeTesselation();
-            const COglMultiVboHandler::OGLIndices* sharpEdgeTess = nullptr;
-            const COglMultiVboHandler::OGLIndices* normEdgeTess = nullptr;
+            const OGLIndices* sharpEdgeTess = nullptr;
+            const OGLIndices* normEdgeTess = nullptr;
 
             if (!sharpPts.empty())
                 sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), sharpPts, sharpIndices);
@@ -257,9 +257,9 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     Block::TriMeshGroup blockMeshes;
     Block::glPointsGroup faceEdges;
     vol.addAllBlocks(blockMeshes, faceEdges);
-    vector<vector<const COglMultiVboHandler::OGLIndices*>> faceTesselations;
+    vector<vector<const OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
-        faceTesselations.push_back(vector<const COglMultiVboHandler::OGLIndices*>());
+        faceTesselations.push_back(vector<const OGLIndices*>());
         for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
             auto pBlockMesh = blockMeshes[mode][i];
             auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
@@ -268,17 +268,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
         }
     }
 
-    pCanvas->endFaceTesselation(triTess, faceTesselations, false);
-
-    pCanvas->beginSettingFaceElementIndices(0xffffffffffffffff);
-    pCanvas->includeFaceElementIndices(0, *triTess);
-    for (size_t mode = 0; mode <= faceTesselations.size(); mode++) {
-        for (auto pBlockTess : faceTesselations[mode]) {
-            if (pBlockTess)
-                pCanvas->includeFaceElementIndices(mode + 1, *pBlockTess);
-        }
-    }
-    pCanvas->endSettingFaceElementIndices();
+    pCanvas->endFaceTesselation(triTess, nullptr, faceTesselations, false);
 }
 
 void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
@@ -306,16 +296,19 @@ void AppData::doBuildCFDHexes()
 void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
 {
     Block::TriMeshGroup blockMeshes;
-    _volume->makeTris(blockMeshes, minSplitNum, true);
+    _volume->makeFaceTris(blockMeshes, minSplitNum, true);
+
+    CMeshPtr pSharpPtsMesh = getSharpVertMesh();
 
     pCanvas->beginFaceTesselation();
 
-    const COglMultiVboHandler::OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh);
+    const OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh);
+    const OGLIndices* sharpPointTess = pCanvas->setFaceTessellation(pSharpPtsMesh);
 
-    vector<vector<const COglMultiVboHandler::OGLIndices*>> faceTesselations;
+    vector<vector<const OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
         auto& thisGroup = blockMeshes[mode];
-        faceTesselations.push_back(vector<const COglMultiVboHandler::OGLIndices*>());
+        faceTesselations.push_back(vector<const OGLIndices*>());
         faceTesselations.back().reserve(thisGroup.size());
 
         for (const auto& pBlockMesh : thisGroup) {
@@ -326,7 +319,7 @@ void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
             }
         }
     }
-    pCanvas->endFaceTesselation(triTess, faceTesselations, false);
+    pCanvas->endFaceTesselation(triTess, sharpPointTess, faceTesselations, false);
 }
 
 void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
@@ -336,21 +329,10 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
 
     pCanvas->beginEdgeTesselation();
 
-    const COglMultiVboHandler::OGLIndices* sharpEdgeTess = nullptr;
-    const COglMultiVboHandler::OGLIndices* normEdgeTess = nullptr;
-    vector<float> sharpPts, normPts;
-    vector<int> sharpIndices, normIndices;
-    getEdgeData(sharpPts, sharpIndices, normPts, normIndices);
-    if (!sharpPts.empty())
-        sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), sharpPts, sharpIndices);
-
-    if (!normPts.empty())
-        normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
-
-    vector<vector<const COglMultiVboHandler::OGLIndices*>> edgeTesselations;
+    vector<vector<const OGLIndices*>> edgeTesselations;
     edgeTesselations.reserve(faceEdgeSets.size());
     for (size_t mode = 0; mode < faceEdgeSets.size(); mode++) {
-        edgeTesselations.push_back(vector<const COglMultiVboHandler::OGLIndices*>());
+        edgeTesselations.push_back(vector<const OGLIndices*>());
         for (const auto& faceEdgesPtr : faceEdgeSets[mode]) {
             if (faceEdgesPtr) {
                 const auto& faceEdges = *faceEdgesPtr;
@@ -367,5 +349,51 @@ void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
         }
     }
 
-    pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess, edgeTesselations);
+    pCanvas->endEdgeTesselation(edgeTesselations);
+}
+
+CMeshPtr AppData::getSharpVertMesh() const
+{
+    auto bBox = _pMesh->getBBox();
+    double span = bBox.range().norm();
+    double radius = span / 100;
+    bBox.grow(2 * radius);
+    CMeshPtr pMesh = make_shared<CMesh>(bBox);
+
+    auto sVerts = _volume->getSharpVertIndices();
+    for (size_t vertIdx : sVerts) {
+        auto pt = _pMesh->getVert(vertIdx)._pt;
+        addPointMarker(pMesh, pt, radius);
+    }
+
+    return pMesh;
+}
+
+void AppData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
+{
+    Vector3d xAxis(radius, 0, 0), yAxis(0, radius, 0), zAxis(0, 0, radius);
+    size_t stepsI = 36;
+    size_t stepsJ = stepsI / 2;
+    for (size_t i = 0; i < stepsI; i++) {
+        double alpha0 = 2 * M_PI * i / (double)stepsI;
+        double alpha1 = 2 * M_PI * (i + 1) / (double)stepsI;
+
+        for (size_t j = 0; j < stepsJ; j++) {
+            double phi0 = M_PI * (-0.5 + j / (double)stepsJ);
+            double phi1 = M_PI * (-0.5 + (j + 1) / (double)stepsJ);
+
+            Vector3d pt00 = origin + cos(phi0) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi0) * zAxis;
+            Vector3d pt01 = origin + cos(phi0) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi0) * zAxis;
+            Vector3d pt10 = origin + cos(phi1) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi1) * zAxis;
+            Vector3d pt11 = origin + cos(phi1) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi1) * zAxis;
+            if (j == 0) {
+                pMesh->addTriangle(pt00, pt11, pt10);
+            } else if (j == stepsJ - 1) {
+                pMesh->addTriangle(pt00, pt01, pt11);
+            } else {
+                pMesh->addTriangle(pt00, pt01, pt11);
+                pMesh->addTriangle(pt00, pt11, pt10);
+            }
+        }
+    }
 }

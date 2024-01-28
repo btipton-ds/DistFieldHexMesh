@@ -217,7 +217,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 		}
 	}
 
-	makeTris(triMeshes, 1, true);
+	makeFaceTris(triMeshes, 1, true);
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -353,7 +353,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
-void Volume::makeTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const
+void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);

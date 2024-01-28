@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <triMesh.h>
+#include <OGLMultiVboHandler.h>
 #include <volume.h>
 
 namespace DFHM {
@@ -19,6 +20,8 @@ class MakeBlockDlg;
 
 class AppData {
 public:
+    using OGLIndices = COglMultiVboHandler::OGLIndices;
+
     AppData(MainFrame* pMainFrame = nullptr);
     void doOpen();
     void doVerifyClosed();
@@ -44,6 +47,8 @@ private:
     void addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum);
     void addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum);
     void getEdgeData(std::vector<float>& sharpPts, std::vector<int>& sharpIndices, std::vector<float>& normPts, std::vector<int>& normIndices) const;
+    CMeshPtr getSharpVertMesh() const;
+    void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
