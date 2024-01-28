@@ -86,7 +86,7 @@ void AppData::doOpen()
     _workDirName = openFileDialog.GetDirectory();
     wxString pathStr = openFileDialog.GetPath();
     if (pathStr.find(".stl") != 0) {
-        TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
+        CMeshPtr pMesh = make_shared<CMesh>();
         CReadSTL reader(pMesh);
 
         wstring filename(openFileDialog.GetFilename().ToStdWstring());
@@ -291,7 +291,7 @@ void AppData::doBuildCFDHexes()
 
     Index3D::setBlockDim(1);
 
-    double blockSize = 0.1;
+    double blockSize = 0.3;
 
     _volume->buildCFDHexes(_pMesh, blockSize);
 

@@ -222,6 +222,7 @@ Index3DId Polygon::insertVertexNTS(const Index3DId& vert0, const Index3DId& vert
 
 bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
 {
+	assert(vertifyUnique(_vertexIds));
 	assert(!containsVert(newVertId));
 	bool result = false;
 	vector<Index3DId> vertIds = _vertexIds;
@@ -251,6 +252,9 @@ bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
 		}
 		result = true;
 	}
+
+	assert(vertifyUnique(vertIds));
+
 	_pBlock->removeFromLookUp(_thisId);
 	setVertexIds(vertIds);
 	_pBlock->addToLookup(_thisId);
@@ -295,6 +299,12 @@ Index3DId Polygon::splitBetweenVertices(const Index3DId& vert0, const Index3DId&
 Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3DId& vert1)
 {
 	Index3DId newFaceId;
+	if (_thisId == Index3DId(Index3D(2, 0, 1), 3)) {
+		int dbgBreak = 1;
+	}
+	
+	assert(verifyTopology());
+	assert(_pBlock->verifyTopology(true));
 
 	size_t idx0 = -1, idx1 = -1;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -333,8 +343,10 @@ Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3D
 	if (face1Verts.size() < face0Verts.size())
 		swap(face0Verts, face1Verts);
 
-	verifyVertsConvex(_pBlock, face0Verts);
-	verifyVertsConvex(_pBlock, face1Verts);
+	assert(vertifyUnique(face0Verts));
+	assert(vertifyUnique(face1Verts));
+	assert(verifyVertsConvex(_pBlock, face0Verts));
+	assert(verifyVertsConvex(_pBlock, face1Verts));
 
 	_pBlock->removeFromLookUp(_thisId);
 	setVertexIds(face0Verts);
@@ -352,7 +364,9 @@ Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3D
 		auto& cell = _pBlock->getPolyhedron(cellId);
 		cell.addFace(newFaceId);
 	}
-	_pBlock->verifyTopology(true);
+
+	assert(verifyTopology());
+	assert(_pBlock->verifyTopology(true));
 
 	return newFaceId;
 }
@@ -423,6 +437,19 @@ bool Polygon::verifyVertsConvex(const Block* pBlock, const vector<Index3DId>& ve
 	return result;
 }
 
+bool Polygon::vertifyUnique(const vector<Index3DId>& vertIds)
+{
+	bool valid = true;
+
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		for (size_t j = i + 1; j < vertIds.size(); j++) {
+			if (vertIds[i] == vertIds[j])
+				valid = false;
+		}
+	}
+	return valid;
+}
+
 bool Polygon::verifyTopology() const
 {
 	vector<Index3DId> vertIds;
@@ -430,15 +457,8 @@ bool Polygon::verifyTopology() const
 		vertIds = getVertexIdsNTS();
 	});
 
-	bool valid = true;
+	bool valid = vertifyUnique(vertIds);
 
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		for (size_t j = i + 1; j < vertIds.size(); j++) {
-			if (vertIds[i] == vertIds[j])
-				valid = false;
-
-		}
-	}
 	for (const auto& vertId : vertIds) {
 		_pBlock->vertexFunc(vertId, [this, &valid](const Block* pBlock, const Vertex& vert) {
 			bool pass = vert.connectedToFace(_thisId) && valid;

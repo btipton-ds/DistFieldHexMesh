@@ -28,7 +28,7 @@ public:
     void doBuildCFDHexes();
     void doNew(const MakeBlockDlg& dlg);
 
-	inline TriMesh::CMeshPtr getMesh() const
+	inline CMeshPtr getMesh() const
     {
         return _pMesh;
     }
@@ -47,7 +47,7 @@ private:
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    TriMesh::CMeshPtr _pMesh;
+    CMeshPtr _pMesh;
     VolumePtr _volume;
 
     std::vector<double> _binSizes;

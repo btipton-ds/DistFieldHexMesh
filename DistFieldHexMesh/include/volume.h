@@ -24,8 +24,6 @@ namespace TriMesh {
 
 namespace DFHM {
 
-using CMesh = TriMesh::CMesh;
-
 class Volume {
 public:
 	Volume();
@@ -54,7 +52,7 @@ public:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	void buildCFDHexes(const TriMesh::CMeshPtr& pTriMesh, double minSubBlockSize);
+	void buildCFDHexes(const CMeshPtr& pTriMesh, double minSubBlockSize);
 	void makeTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
 	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
 
@@ -83,7 +81,7 @@ private:
 
 	static Index3D s_volDim;
 
-	TriMesh::CMeshPtr _pModelTriMesh;
+	CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
 	double _sharpAngleRad;
 

@@ -21,6 +21,7 @@ public:
 	static bool verifyVertsConvex(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
+	static bool vertifyUnique(const std::vector<Index3DId>& vertIds);
 
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);

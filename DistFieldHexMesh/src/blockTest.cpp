@@ -204,10 +204,10 @@ bool TestBlock::testBlock04()
 	for (int i = 0; i < 3; i++)
 		subBlockSpan[i] = span[i] / bd;
 
-	TriMesh::CMesh::BoundingBox meshBB(blockOrigin, blockOrigin + span);
+	CMesh::BoundingBox meshBB(blockOrigin, blockOrigin + span);
 	meshBB.grow(0.1);
 
-	TriMesh::CMeshPtr pMesh = make_shared<TriMesh::CMesh>();
+	CMeshPtr pMesh = make_shared<CMesh>();
 	pMesh->reset(meshBB);
 
 	block.addBlockFaces(ObjectPoolId(0, 0), blockOrigin, span, true);

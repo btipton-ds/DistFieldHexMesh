@@ -163,6 +163,9 @@ Index3DId Edge::splitAtParam(double t) const
 		set<Index3DId> faceIds = getFaceIds();
 		for (const auto& faceId : faceIds) {
 			_pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
+				if (midVertId == Index3DId(Index3D(3, 0, 1), 3)) {
+					int dbgBreak = 1;
+				}
 				if (face.containsVert(midVertId)) // This face was already split with this vertex
 					return;
 				if (!face.insertVertexNTS(*this, midVertId)) {

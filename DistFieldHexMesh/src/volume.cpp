@@ -322,20 +322,20 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 				if (!done && _blocks[linearIdx]) {
 					size_t numNewCells = _blocks[linearIdx]->splitCellsWithPlane(splitPlane);
 					if (numNewCells == -1) {
-						done = false;
+						done = true;
 						return;
 					}
 				}
 			}, numBlocks, false && RUN_MULTI_THREAD);
 
-			if (!done)
+			if (done)
 				break;
 		}
-		if (!done)
+		if (done)
 			break;
 	}
 
-	if (!done)
+	if (done)
 		return;
 
 	size_t count = 0;

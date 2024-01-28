@@ -16,6 +16,9 @@ class COglShader;
 
 namespace DFHM {
 
+using CMesh = TriMesh::CMesh;
+using CMeshPtr = TriMesh::CMeshPtr;
+
 #define USING_VULKAN 0
 #if USING_VULKAN
 #else
@@ -47,7 +50,7 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const COglMultiVboHandler::OGLIndices* setFaceTessellation(const TriMesh::CMeshPtr& pMesh);
+    const COglMultiVboHandler::OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
     void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, bool smoothNormals);
     void endFaceTesselation(const COglMultiVboHandler::OGLIndices* pTriTess, const std::vector<std::vector<const COglMultiVboHandler::OGLIndices*>>& faceTess, bool smoothNormals);
 

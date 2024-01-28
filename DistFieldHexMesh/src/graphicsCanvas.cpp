@@ -482,7 +482,7 @@ void GraphicsCanvas::updateView()
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(const TriMesh::CMeshPtr& pMesh)
+const COglMultiVboHandler::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
 {
     const auto& points = pMesh->getGlPoints();
     const auto& normals = pMesh->getGlNormals(false);

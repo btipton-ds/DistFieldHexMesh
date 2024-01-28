@@ -270,11 +270,12 @@ bool Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndices, vector
 			continue;
 		auto& cell = _polyhedra[idx];
 		CBoundingBox3Dd bbox = cell.getBoundingBox();
-		vector<size_t> edgeIndices;
-		if (_pModelTriMesh->findEdges(bbox, edgeIndices)) {
+		vector<CMesh::SearchEntry> edgeEntries;
+		if (_pModelTriMesh->findEdges(bbox, edgeEntries)) {
 			double avgSurfCurvature = 0;
 			size_t numSamples = 0;
-			for (auto edgeIndex : edgeIndices) {
+			for (auto edgeEntry : edgeEntries) {
+				size_t edgeIndex = edgeEntry.getIndex();
 				double edgeCurv = _pModelTriMesh->edgeCurvature(edgeIndex);
 				if (edgeCurv >= 0) {
 					avgSurfCurvature += edgeCurv;
@@ -282,7 +283,7 @@ bool Block::dividePolyhedraByCurvature(const vector<size_t>& cellIndices, vector
 				}
 			}
 
-			avgSurfCurvature /= edgeIndices.size();
+			avgSurfCurvature /= edgeEntries.size();
 			if (avgSurfCurvature < minCurvature)
 				continue;
 			double avgSurfRadius = 1 / avgSurfCurvature;
@@ -477,7 +478,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	}
 
 	if (intersectingOnly) {
-		vector<size_t> triIndices;
+		vector<CMesh::SearchEntry> triIndices;
 		bool found = _pModelTriMesh->findTris(bbox, triIndices);
 
 		if (!found) {
@@ -576,7 +577,11 @@ Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	if (pOwner == this) {
-		assert(_boundBox.contains(pt));
+#ifdef _DEBUG
+		CBoundingBox3Dd tolBox(_boundBox);
+		tolBox.grow(1.0e-6);
+		assert(tolBox.contains(pt));
+#endif
 		return _vertices.findOrAdd(this, pt, currentId);
 	} else
 		return pOwner->addVertex(pt, currentId);
@@ -731,7 +736,7 @@ size_t Block::processTris()
 	return _polyhedra.size();
 }
 
-void Block::addTris(const TriMesh::CMeshPtr& pSrcMesh)
+void Block::addTris(const CMeshPtr& pSrcMesh)
 {
 	_pModelTriMesh = pSrcMesh;
 
@@ -753,7 +758,11 @@ size_t Block::splitCellsWithPlane(const Plane& splitPlane)
 			continue;
 		auto& poly = _polyhedra[index];
 		vector<size_t> newCells;
+
+		assert(poly.verifyTopology());
 		poly.split(splitPlane, false, newCells);
+		assert(poly.verifyTopology());
+
 		numSplit += newCells.size();
 	}
 
@@ -784,24 +793,24 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 	return result;
 }
 
-TriMesh::CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
+CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 {
 	if (_polygons.empty())
 		return nullptr;
 
-	TriMesh::CMesh::BoundingBox bbox = _boundBox;
+	CMesh::BoundingBox bbox = _boundBox;
 	double span = bbox.range().norm();
 	bbox.grow(0.05 * span);
 
 	if (_blockMeshes.empty()) {
 		_blockMeshes.resize(MT_ALL);
 	}
-	TriMesh::CMeshPtr result;
+	CMeshPtr result;
 	_polygons.iterateInOrderTS([this, &result, &bbox, meshType, minSplitNum](size_t id, const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
 			if (!result) {
 				if (!_blockMeshes[meshType])
-					_blockMeshes[meshType] = make_shared<TriMesh::CMesh>(bbox);
+					_blockMeshes[meshType] = make_shared<CMesh>(bbox);
 				result = _blockMeshes[meshType];
 			}
 			const auto& vertIds = face.getVertexIdsNTS();

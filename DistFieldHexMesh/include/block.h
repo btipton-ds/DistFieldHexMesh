@@ -10,6 +10,9 @@
 
 namespace DFHM {
 
+using CMesh = TriMesh::CMesh;
+using CMeshPtr = TriMesh::CMeshPtr;
+
 class Volume;
 class Edge;
 class Polygon;
@@ -44,7 +47,7 @@ public:
 	using glPointsVector = std::vector<glPointsPtr>;
 	using glPointsGroup = std::vector<glPointsVector>;
 
-	using TriMeshVector = std::vector<TriMesh::CMeshPtr>;
+	using TriMeshVector = std::vector<CMeshPtr>;
 	using TriMeshGroup = std::vector<TriMeshVector>;
 
 	enum MeshType {
@@ -89,9 +92,9 @@ public:
 	size_t numPolyhedra() const;
 
 	size_t processTris();
-	void addTris(const TriMesh::CMeshPtr& pSrcMesh);
-	const TriMesh::CMeshPtr& getModelMesh() const;
-	TriMesh::CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
+	void addTris(const CMeshPtr& pSrcMesh);
+	const CMeshPtr& getModelMesh() const;
+	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
 	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
 	size_t splitCellsWithPlane(const Plane& splitPlane);
 
@@ -180,7 +183,7 @@ private:
 	Index3D _blockIdx;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
-	TriMesh::CMeshPtr _pModelTriMesh;
+	CMeshPtr _pModelTriMesh;
 	glPointsVector _blockEdges;
 	TriMeshVector _blockMeshes;
 	std::vector<Vector3d> _corners;
@@ -232,7 +235,7 @@ inline bool Block::isUnloaded() const
 	return !_filename.empty();
 }
 
-inline const TriMesh::CMeshPtr& Block::getModelMesh() const
+inline const CMeshPtr& Block::getModelMesh() const
 {
 	return _pModelTriMesh;
 }
