@@ -68,6 +68,19 @@ bool Polyhedron::verifyTopology() const
 	return valid;
 }
 
+bool Polyhedron::verifyTopologyAdj() const
+{
+	bool result = verifyTopology();
+	set<Index3DId> adjacentCells = getAdjacentCells();
+	if (!adjacentCells.empty()) {
+		for (const auto& cellId : adjacentCells) {
+			const auto& cell = _pBlock->getPolyhedron(cellId);
+			result = cell.verifyTopology() && result;
+		}
+	}
+	return result;
+}
+
 bool Polyhedron::operator < (const Polyhedron& rhs) const
 {
 	assert(!"Polyhdra aren't sorted. Should never call this.");
@@ -127,6 +140,34 @@ vector<Edge> Polyhedron::getEdges() const
 	result.insert(result.end(), idSet.begin(), idSet.end());
 
 	return result;
+}
+
+set<Index3DId> Polyhedron::getAdjacentCells() const
+{
+	auto cornerIds = getCornerIds();
+	set<Index3DId> faceIds, cellIds;
+
+	for (const auto& vertId : cornerIds) {
+		_pBlock->vertexFunc(vertId, [&faceIds](const Block* pBlock, const Vertex& vert) {
+			const auto& vertFaceIds = vert.getFaceIds();
+			if (!vertFaceIds.empty())
+				faceIds.insert(vertFaceIds.begin(), vertFaceIds.end());
+		});
+	}
+
+	for (const auto& faceId : faceIds) {
+		_pBlock->faceFunc(faceId, [this, &cellIds](const Block* pBlock, const Polygon& face) {
+			const auto& temp = face.getCellIds();
+			if (!temp.empty()) {
+				for (auto cellId : temp) {
+					if (cellId != _thisId)
+						cellIds.insert(cellId);
+				}
+			}
+		});
+	}
+
+	return cellIds;
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
@@ -199,17 +240,8 @@ bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector
 		normal[i] = 1.0;
 		Plane splitPlane(splitPoint, normal);
 		for (size_t cellId : cellSet) {
-		vector<size_t> splitCells;
-		bool pass = true;
-		_pBlock->cellFunc(cellId, [this, &splitPlane, intersectingOnly, &splitCells, &pass](Block* pBlock, Polyhedron& cell) {
-			// TODO FIX ASAP. Adding a cell causes the data to move, causing data corruption during the operation.
-			// Smart pointer will fix this, but it's heavier than needed.
-			// Maybe reserve space?
-			if (!cell.split(splitPlane, intersectingOnly, splitCells))
-				pass = false;
-		});
-		if (!pass)
-			return false;
+		vector<size_t> splitCells = splitWithPlane(splitPlane, intersectingOnly);
+
 		if (!splitCells.empty())
 			resultSet.insert(splitCells.begin(), splitCells.end());
 		}
@@ -222,8 +254,10 @@ bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector
 	return true;
 }
 
-bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<size_t>& result)
+vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly)
 {
+	vector<size_t> result;
+
 	vector<Edge> edges = getEdges(), edgesToSplit;
 
 	for (const auto& edge : edges) {
@@ -234,7 +268,7 @@ bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<si
 	}
 
 	if (edgesToSplit.size() < 3)
-		return true;
+		return result;
 
 	set<Index3DId> vertIdSet;
 	for (const auto& edge : edgesToSplit) {
@@ -262,29 +296,30 @@ bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<si
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
 
-	if (!_pBlock->verifyTopology(true))
-		return false;
-
 	// Split the cell faces with split edges
 	for (size_t i = 0; i < newVertIds.size(); i++) {
 		size_t j = (i + 1) % newVertIds.size();
 		Edge edge(_pBlock, newVertIds[i], newVertIds[j]);
 
 		const auto& faceId = edge.getCommonFace();
-		Index3DId newFaceId;
-		_pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
-			// These are the 1/2 faces of original faces
-			newFaceId = face.splitBetweenVertices(edge.getVertexIds()[0], edge.getVertexIds()[1]);
-			if (newFaceId.isValid())
-				addFace(newFaceId);
-		});
+		if (faceId.isValid()) {
+			Index3DId newFaceId;
+			_pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
+				// These are the 1/2 faces of original faces
+				newFaceId = face.splitBetweenVertices(edge.getVertexIds()[0], edge.getVertexIds()[1]);
+				if (newFaceId.isValid())
+					addFace(newFaceId);
+			});
+		} else {
+			int dbgBreak = 1;
+		}
 	}
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
 	for (const auto& faceId : _faceIds) {
 		_pBlock->faceFunc(faceId, [this, &splitPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
-			Vector3d ctr = face.getCentroid();
+			Vector3d ctr = face.calCentroid();
 			Vector3d v = ctr - splitPlane._origin;
 			if (v.dot(splitPlane._normal) < 0) {
 				newFaceIdSet.insert(faceId);
@@ -292,6 +327,9 @@ bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<si
 		});
 	}
 
+	if (newFaceIdSet.size() < 4) { // A tetrohedron has the minimum number of planar faces - 4.
+		return result;
+	}
 	for (const auto& faceId : newFaceIdSet) {
 		removeFace(faceId);
 	}
@@ -307,16 +345,12 @@ bool Polyhedron::split(const Plane& splitPlane, bool intersectingOnly, vector<si
 		face.addCell(newCellId);
 	});
 
-	// Face owner cells are messed up by splitting. Need to fix that.
-	if (!_pBlock->verifyTopology(true))
-		return false;
-
 	if (_thisId.isValid())
 		result.push_back(_thisId.elementId());
 	if (newCellId.isValid())
 		result.push_back(newCellId.elementId());
 
-	return true;
+	return result;
 }
 
 void Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const

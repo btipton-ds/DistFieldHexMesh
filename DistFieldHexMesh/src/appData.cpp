@@ -198,7 +198,7 @@ void AppData::doFindMinGap() const
     Index3D dim(numX, numY, numZ);
 
 
-    MultiCore::runLambda([this, dim, bb](size_t threadNum, size_t numThreads) {
+    MultiCore::runLambda([this, dim, bb](size_t threadNum, size_t numThreads)->bool {
         auto range = bb.range();
         auto bbMin = bb.getMin();
         Vector3d zAxis(0, 0, 1);
@@ -217,7 +217,8 @@ void AppData::doFindMinGap() const
                 }
             }
         }
-        }, true);
+        return true;
+    }, true);
 
 
     stringstream ss;

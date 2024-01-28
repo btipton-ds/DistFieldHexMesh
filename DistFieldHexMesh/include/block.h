@@ -79,7 +79,7 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
-	bool verifyTopology(bool all) const;
+	bool verifyTopology() const;
 
 	std::vector<size_t> createSubBlocks();
 
@@ -96,7 +96,7 @@ public:
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
 	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
-	size_t splitCellsWithPlane(const Plane& splitPlane);
+	size_t splitCellsAtPoint(const Vector3d& splitPt);
 
 	Index3DId idOfPoint(const Vector3d& pt);
 	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);

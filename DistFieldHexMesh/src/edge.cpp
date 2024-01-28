@@ -175,7 +175,6 @@ Index3DId Edge::splitAtParam(double t) const
 				});
 		}
 
-		_pBlock->verifyTopology(true);
 		return midVertId;
 	}
 

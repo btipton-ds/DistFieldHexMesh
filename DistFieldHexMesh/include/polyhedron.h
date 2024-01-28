@@ -30,6 +30,8 @@ public:
 	std::vector<Index3DId> getCornerIds() const;
 	std::vector<Edge> getEdges() const;
 
+	std::set<Index3DId> getAdjacentCells() const;
+
 	// Gets the edges for a vertex which belong to this polyhedron
 	std::set<Edge> getVertEdges(const Index3DId& vertId) const;
 	// Gets the faces for a vertex which belong to this polyhedron
@@ -37,7 +39,7 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	Vector3d calCentroid() const;
-	bool split(const Plane& splitPlane, bool intersectingOnly, std::vector<size_t>& newFaces);
+	std::vector<size_t> splitWithPlane(const Plane& splitPlane, bool intersectingOnly);
 	bool split(bool intersectingOnly, std::vector<size_t>& newFaces);
 	bool split(const Vector3d& pt, bool intersectingOnly, std::vector<size_t>& newFaces);
 
@@ -45,6 +47,7 @@ public:
 	bool load(std::istream& out);
 
 	bool verifyTopology() const;
+	bool verifyTopologyAdj() const;
 	bool operator < (const Polyhedron& rhs) const;
 
 private:

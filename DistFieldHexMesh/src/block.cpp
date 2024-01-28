@@ -200,12 +200,9 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
-bool Block::verifyTopology(bool all) const
+bool Block::verifyTopology() const
 {
 	bool result = true;
-	if (all)
-		return _pVol->verifyTopology();
-
 	_vertices.iterateInOrderTS([&result](size_t id, const Vertex& vert) {
 		bool pass = vert.verifyTopology();
 		if (!pass)
@@ -431,7 +428,7 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
-	if (!Polygon::verifyVertsConvex(this, vertIndices)) {
+	if (!Polygon::verifyVertsConvexStat(this, vertIndices)) {
 		return Index3DId();
 	}
 
@@ -742,31 +739,41 @@ void Block::addTris(const CMeshPtr& pSrcMesh)
 
 }
 
-size_t Block::splitCellsWithPlane(const Plane& splitPlane)
+size_t Block::splitCellsAtPoint(const Vector3d& splitPt)
 {
 	size_t numSplit = 0;
-	assert(verifyTopology(true));
+	_polyhedra.iterateInOrder([this, &splitPt, &numSplit](size_t id, Polyhedron& ignoredCell) {
+		size_t maxSplits = 2;
+		if (numSplit >= maxSplits)
+			return;
+		set<size_t> cellsToSplit;
+		cellsToSplit.insert(id);
+		for (int i = 0; i < 3; i++) {
+			vector<size_t> newCells;
+			for (size_t cellIdx : cellsToSplit) {
+				Vector3d norm(0, 0, 0);
+				norm[i] = 1.0;
+				Plane splitPlane(splitPt, norm);
 
-	// Make a copy of the indices because the master will change size as we go.
-	set<size_t> cellIndices;
-	_polyhedra.iterateInOrder([&cellIndices](size_t id, const Polyhedron& cell) {
-		cellIndices.insert(id);
+				auto& cell = _polyhedra[cellIdx];
+
+				newCells = cell.splitWithPlane(splitPlane, false);
+				if (!newCells.empty()) {
+					numSplit++;
+					for (size_t idx : newCells) {
+						if (!_polyhedra[id].verifyTopologyAdj())
+							return;
+					}
+					if (numSplit >= maxSplits)
+						return;
+				}
+			}
+			cellsToSplit.insert(newCells.begin(), newCells.end());
+			if (numSplit >= maxSplits)
+				return;
+		}
 	});
 
-	for (size_t index : cellIndices) {
-		if (!_polyhedra.exists(index))
-			continue;
-		auto& poly = _polyhedra[index];
-		vector<size_t> newCells;
-
-		assert(poly.verifyTopology());
-		poly.split(splitPlane, false, newCells);
-		assert(poly.verifyTopology());
-
-		numSplit += newCells.size();
-	}
-
-	assert(verifyTopology(true));
 	return numSplit;
 }
 

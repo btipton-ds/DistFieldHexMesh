@@ -14,14 +14,16 @@ class Block;
 
 class Polygon {
 public:
+	static bool vertifyUniqueStat(const std::vector<Index3DId>& vertIds);
+	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
+	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+
 	void setId(ObjectPoolOwner* pBlock, size_t id);
 	const Index3DId& getId() const;
 	void setNumSplits(size_t val);
 	size_t getNumSplits() const;
-	static bool verifyVertsConvex(const Block* pBlock, const std::vector<Index3DId>& vertIds);
-	bool verifyVertsConvex() const;
-	bool verifyTopology() const;
-	static bool vertifyUnique(const std::vector<Index3DId>& vertIds);
 
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
@@ -50,9 +52,13 @@ public:
 	bool containsVert(const Index3DId& vertId) const;
 	bool vertsContainFace() const;
 
-	Vector3d getUnitNormal() const;
-	Vector3d getCentroid() const;
-	Vector3d getPointAt(double t, double u) const;
+	bool vertifyUnique() const;
+	bool verifyVertsConvex() const;
+	bool verifyTopology() const;
+	double calVertexAngle(size_t index) const;
+	Vector3d calUnitNormal() const;
+	Vector3d calCentroid() const;
+	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
@@ -99,9 +105,14 @@ inline size_t Polygon::getNumSplits() const
 	return _numSplits;
 }
 
+inline bool Polygon::vertifyUnique() const
+{
+	return vertifyUniqueStat(_vertexIds);
+}
+
 inline bool Polygon::verifyVertsConvex() const
 {
-	return verifyVertsConvex(_pBlock, _vertexIds);
+	return verifyVertsConvexStat(_pBlock, _vertexIds);
 }
 
 inline void Polygon::addCell(const Index3DId& cellId)
