@@ -51,7 +51,7 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
-	void orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
+	bool orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
 	Block* _pBlock = nullptr;
 	Index3DId _thisId;

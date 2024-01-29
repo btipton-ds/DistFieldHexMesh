@@ -104,13 +104,17 @@ public:
 
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
-	void addToLookup(const Index3DId& faceId);
-	bool removeFromLookUp(const Index3DId& faceId);
+	void addFaceToLookup(const Index3DId& faceId);
+	bool removeFaceFromLookUp(const Index3DId& faceId);
 
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
-	const Polyhedron& getPolyhedron(const Index3DId& cellId) const;
-	Polyhedron& getPolyhedron(const Index3DId& cellId);
+
+	const Polyhedron& getPolyhedronNTS(const Index3DId& cellId) const;
+	Polyhedron& getPolyhedronNTS(const Index3DId& cellId);
+
+	const Polygon& getPolygonNTS(const Index3DId& id) const;
+	Polygon& getPolygonNTS(const Index3DId& id);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;

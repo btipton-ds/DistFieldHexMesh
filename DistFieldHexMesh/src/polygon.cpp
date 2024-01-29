@@ -20,11 +20,20 @@ void Polygon::setId(ObjectPoolOwner* pBlock, size_t id)
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	if (find(_vertexIds.begin(), _vertexIds.end(), vertId) == _vertexIds.end()) {
+	if (_pBlock) {
+		lock_guard g(_pBlock->getFaceMutex());
+
+		if (!containsVert(vertId)) {
+			_pBlock->removeFaceFromLookUp(_thisId);
+
+			_vertexIds.push_back(vertId);
+
+			_pBlock->addFaceToLookup(_thisId);
+		}
+	} else {
 		_vertexIds.push_back(vertId);
-		_needSort = true;
-	} else
-		assert(!"Adding duplicate vertex");
+	}
+	_needSort = true;
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -82,9 +91,9 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-vector<Edge> Polygon::getEdges() const
+set<Edge> Polygon::getEdges() const
 {
-	vector<Edge> result;
+	set<Edge> result;
 
 	faceFuncSelf([this, &result]() {
 		result = getEdgesNTS();
@@ -93,16 +102,16 @@ vector<Edge> Polygon::getEdges() const
 	return result;
 }
 
-vector<Edge> Polygon::getEdgesNTS() const
+set<Edge> Polygon::getEdgesNTS() const
 {
-	vector<Edge> result;
+	set<Edge> result;
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
 		Edge edge(_pBlock, vertId0, vertId1);
-		result.push_back(edge);
+		result.insert(edge);
 	}
 
 	return result;
@@ -236,23 +245,18 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
-bool Polygon::insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId)
+Index3DId Polygon::insertVertexNTS(const Edge& edge, const Vector3d& pt)
 {
-	if (!containsVert(newVertId))
-		return insertVertexNTS(Edge(_pBlock, vert0, vert1), newVertId);
-	return false;
-}
+	Index3DId newVertId;
+	auto edgeSet = getEdges();
+	if (edgeSet.count(edge) != 0) {
+		newVertId = _pBlock->idOfPoint(pt);
+		if (!newVertId.isValid())
+			newVertId = _pBlock->addVertex(pt);
 
-Index3DId Polygon::insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt)
-{
-	// Don't 
-	Index3DId newVertId = _pBlock->idOfPoint(pt);
-	if (!newVertId.isValid())
-		newVertId = _pBlock->addVertex(pt);
-
-	if (!containsVert(newVertId))
-		insertVertexNTS(Edge(_pBlock, vert0, vert1), newVertId);
-
+		if (!containsVert(newVertId))
+			insertVertexNTS(edge, newVertId);
+	}
 	return newVertId;
 }
 
@@ -261,46 +265,43 @@ bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
 	assert(vertifyUnique());
 	assert(!containsVert(newVertId));
 	bool result = false;
-	vector<Index3DId> vertIds = _vertexIds;
-	size_t idx0 = -1, idx1 = 1;
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		size_t j = (i + 1) % vertIds.size();
-		const auto& vert0 = vertIds[i];
-		const auto& vert1 = vertIds[j];
-		if (
-			(vert0 == edge.getVertexIds()[0] && vert1 == edge.getVertexIds()[1]) ||
-			(vert0 == edge.getVertexIds()[1] && vert1 == edge.getVertexIds()[0])
-			) { // The input edge matches the current vertex pair
-			idx0 = i;
-			idx1 = j;
-			break;
+
+	auto edgeSet = getEdges();
+	if (edgeSet.count(edge) != 0) {
+		vector<Index3DId> vertIds = _vertexIds;
+		size_t idx0 = -1, idx1 = 1;
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			if (edge.containsVertex(vertIds[i])) {
+				if (idx0 == -1)
+					idx0 = i;
+				else
+					idx1 = i;
+			}
 		}
-	}
-	if (idx0 != -1 && idx1 != -1) {
+		if (idx0 == -1 || idx1 == -1)
+			return false;
+
 		if (idx0 > idx1)
 			swap(idx0, idx1);
 
-		if (idx1 - idx0 > 1 && idx0 == 0 && idx1 == vertIds.size() -1) {
+		if (idx1 < vertIds.size())
+			vertIds.insert(vertIds.begin() + idx1, newVertId);
+		else {
 			// New vertex goes at the end
 			vertIds.push_back(newVertId);
-		} else {
-			vertIds.insert(vertIds.begin() + idx1, newVertId);
 		}
 		result = true;
+
+		assert(vertifyUniqueStat(vertIds));
+
+		setVertexIds(vertIds);
+
+		if (result) {
+			_pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
+				vert.addFaceId(_thisId);
+				});
+		}
 	}
-
-	assert(vertifyUniqueStat(vertIds));
-
-	_pBlock->removeFromLookUp(_thisId);
-	setVertexIds(vertIds);
-	_pBlock->addToLookup(_thisId);
-
-	if (result) {
-		_pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
-			vert.addFaceId(_thisId);
-		});
-	}
-
 	return result;
 }
 
@@ -321,82 +322,69 @@ struct SplitEdgeRec
 
 }
 
-Index3DId Polygon::splitBetweenVertices(const Index3DId& vert0, const Index3DId& vert1)
+Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
 {
 	Index3DId newFaceId;
 
-	faceFuncSelf([this, &vert0, &vert1, &newFaceId]() {
-		newFaceId = splitBetweenVerticesNTS(vert0, vert1);
-	});
+	auto otherEdges = otherFace.getEdges();
+	auto ourEdges = getEdges();
+	for (const auto& edge : ourEdges) {
+		Index3DId vertId0 = edge.getVertexIds()[0];
+		Index3DId vertId1 = edge.getVertexIds()[1];
+		if (otherEdges.count(edge) == 0 && otherFace.containsVert(vertId0) && otherFace.containsVert(vertId1)) {
+			// other face does not have this edge but has both vertices to form an edge
+			size_t idx0 = -1, idx1 = -1;
+			for (size_t i = 0; i < _vertexIds.size(); i++) {
+				const auto& vertId = _vertexIds[i];
+				if ((vertId == vertId0) || (vertId == vertId1)) {
+					if (idx0 == -1)
+						idx0 = i;
+					else
+						idx1 = i;
+				}
+			}
 
-	return newFaceId;
-}
+			vector<Index3DId> face0Verts, face1Verts;
 
-Index3DId Polygon::splitBetweenVerticesNTS(const Index3DId& vert0, const Index3DId& vert1)
-{
-	Index3DId newFaceId;
-	if (_thisId == Index3DId(Index3D(2, 0, 1), 3)) {
-		int dbgBreak = 1;
-	}
-	
-	size_t idx0 = -1, idx1 = -1;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		// remove this reference from all vertices
-		_pBlock->vertexFunc(_vertexIds[i], [this](Block* pBlock, Vertex& vert) {
-			vert.removeFaceId(_thisId);
+			for (size_t i = 0; i < _vertexIds.size(); i++) {
+				size_t index = (i + idx0) % _vertexIds.size();
+				face0Verts.push_back(_vertexIds[index]);
+				if (_vertexIds[index] == _vertexIds[idx1])
+					break;
+			}
+
+			for (size_t i = 0; i < _vertexIds.size(); i++) {
+				size_t index = (i + idx1) % _vertexIds.size();
+				face1Verts.push_back(_vertexIds[index]);
+				if (_vertexIds[index] == _vertexIds[idx0])
+					break;
+			}
+
+			if (face1Verts.size() < face0Verts.size())
+				swap(face0Verts, face1Verts);
+
+			assert(vertifyUniqueStat(face0Verts));
+			assert(vertifyUniqueStat(face1Verts));
+			assert(verifyVertsConvexStat(_pBlock, face0Verts));
+			assert(verifyVertsConvexStat(_pBlock, face1Verts));
+
+			setVertexIds(face0Verts);
+			_numSplits++;
+
+			newFaceId = _pBlock->addFace(face1Verts);
+			_pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
+				// Assign our cellIds to the new face
+				face._cellIds = _cellIds;
+				face._numSplits++;
 			});
 
-		const auto& vertId = _vertexIds[i];
-		if ((vertId == vert0) || (vertId == vert1)) {
-			if (idx0 == -1)
-				idx0 = i;
-			else
-				idx1 = i;
+			for (const auto& cellId : _cellIds) {
+				auto& cell = _pBlock->getPolyhedronNTS(cellId);
+				cell.addFace(newFaceId);
+			}
 		}
 	}
-	if ((idx0 == 0 && idx1 == _vertexIds.size() - 1) || ((idx1 - idx0) == 1)) // Insertion points are adjacent, should be a noop
-		return Index3DId();
 
-	vector<Index3DId> face0Verts, face1Verts;
-
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t index = (i + idx0) % _vertexIds.size();
-		face0Verts.push_back(_vertexIds[index]);
-		if (_vertexIds[index] == _vertexIds[idx1])
-			break;
-	}
-
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t index = (i + idx1) % _vertexIds.size();
-		face1Verts.push_back(_vertexIds[index]);
-		if (_vertexIds[index] == _vertexIds[idx0])
-			break;
-	}
-
-	if (face1Verts.size() < face0Verts.size())
-		swap(face0Verts, face1Verts);
-
-	assert(vertifyUniqueStat(face0Verts));
-	assert(vertifyUniqueStat(face1Verts));
-	assert(verifyVertsConvexStat(_pBlock, face0Verts));
-	assert(verifyVertsConvexStat(_pBlock, face1Verts));
-
-	_pBlock->removeFromLookUp(_thisId);
-	setVertexIds(face0Verts);
-	_pBlock->addToLookup(_thisId);
-	_numSplits++;
-
-	newFaceId = _pBlock->addFace(face1Verts);
-	_pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
-		// Assign our cellIds to the new face
-		face._cellIds = _cellIds;
-		face._numSplits++;
-		});
-
-	for (const auto& cellId : _cellIds) {
-		auto& cell = _pBlock->getPolyhedron(cellId);
-		cell.addFace(newFaceId);
-	}
 
 	return newFaceId;
 }
@@ -413,23 +401,29 @@ void Polygon::setVertexIds(const vector<Index3DId>& verts)
 	}
 #endif
 
-	lock_guard g(_pBlock->getFaceMutex());
-	assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
+	_pBlock->removeFaceFromLookUp(_thisId);
 
-	for (const auto& vertId : _vertexIds) {
-		_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
-			vert.removeFaceId(_thisId);
-			});
+	{
+		lock_guard g(_pBlock->getFaceMutex());
+		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
+
+		for (const auto& vertId : _vertexIds) {
+			_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+				vert.removeFaceId(_thisId);
+				});
+		}
+
+		_vertexIds = verts;
+		_needSort = true;
+
+		for (const auto& vertId : _vertexIds) {
+			_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+				vert.addFaceId(_thisId);
+				});
+		}
 	}
 
-	_vertexIds = verts;
-	_needSort = true;
-
-	for (const auto& vertId : _vertexIds) {
-		_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
-			vert.addFaceId(_thisId);
-		});
-	}
+	_pBlock->addFaceToLookup(_thisId);
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)

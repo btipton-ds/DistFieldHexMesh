@@ -223,22 +223,28 @@ bool Block::verifyTopology() const
 	return result;
 }
 
-const Polyhedron& Block::getPolyhedron(const Index3DId& cellId) const
+const Polyhedron& Block::getPolyhedronNTS(const Index3DId& cellId) const
 {
 	auto pOwner = getOwner(cellId);
-	if (pOwner == this)
-		return _polyhedra[cellId.elementId()];
-	else
-		return pOwner->getPolyhedron(cellId);
+	return pOwner->_polyhedra[cellId.elementId()];
 }
 
-Polyhedron& Block::getPolyhedron(const Index3DId& cellId)
+Polyhedron& Block::getPolyhedronNTS(const Index3DId& cellId)
 {
 	auto pOwner = getOwner(cellId);
-	if (pOwner == this)
-		return _polyhedra[cellId.elementId()];
-	else
-		return pOwner->getPolyhedron(cellId);
+	return pOwner->_polyhedra[cellId.elementId()];
+}
+
+const Polygon& Block::getPolygonNTS(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	return pOwner->_polygons[id.elementId()];
+}
+
+Polygon& Block::getPolygonNTS(const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	return pOwner->_polygons[id.elementId()];
 }
 
 vector<size_t> Block::createSubBlocks()
@@ -563,10 +569,7 @@ Index3DId Block::idOfPoint(const Vector3d& pt)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
-	if (pOwner == this)
-		return Index3DId(_blockIdx, _vertices.findId(pt));
-	else
-		return Index3DId(pOwner->_blockIdx, pOwner->_vertices.findId(pt));
+	return Index3DId(pOwner->_blockIdx, pOwner->_vertices.findId(pt));
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
@@ -574,11 +577,6 @@ Index3DId Block::addVertex(const Vector3d& pt, size_t currentId)
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	if (pOwner == this) {
-#ifdef _DEBUG
-		CBoundingBox3Dd tolBox(_boundBox);
-		tolBox.grow(1.0e-6);
-		assert(tolBox.contains(pt));
-#endif
 		return _vertices.findOrAdd(this, pt, currentId);
 	} else
 		return pOwner->addVertex(pt, currentId);
@@ -592,7 +590,7 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 		faceIds = vert.getFaceIds();
 	});
 	for (const auto& faceId : faceIds) {
-		vector<Edge> edges;
+		set<Edge> edges;
 		faceFunc(faceId, [&edges](const Block* pBlock, const Polygon& face) {
 			edges = face.getEdges();
 		});
@@ -606,7 +604,7 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	return result;
 }
 
-void Block::addToLookup(const Index3DId& faceId)
+void Block::addFaceToLookup(const Index3DId& faceId)
 {
 	Block* pOwner = getOwner(faceId);
 	if (pOwner == this)
@@ -652,7 +650,7 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-bool Block::removeFromLookUp(const Index3DId& faceId)
+bool Block::removeFaceFromLookUp(const Index3DId& faceId)
 {
 	Block* pOwner = getOwner(faceId);
 	if (pOwner == this) {

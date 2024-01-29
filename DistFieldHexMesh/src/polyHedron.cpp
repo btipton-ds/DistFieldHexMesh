@@ -74,7 +74,7 @@ bool Polyhedron::verifyTopologyAdj() const
 	set<Index3DId> adjacentCells = getAdjacentCells();
 	if (!adjacentCells.empty()) {
 		for (const auto& cellId : adjacentCells) {
-			const auto& cell = _pBlock->getPolyhedron(cellId);
+			const auto& cell = _pBlock->getPolyhedronNTS(cellId);
 			result = cell.verifyTopology() && result;
 		}
 	}
@@ -283,48 +283,50 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	assert(newVertIds.size() >= 3);
 
 	// Add the splitting face
-	Index3DId splittingFace;
+	Index3DId splittingFaceId;
 	set<Index3DId> newFaceIdSet;
 	if (newVertIds.size() >= 3) {
-		orderVertIdsNTS(newVertIds);
-		splittingFace = _pBlock->addFace(newVertIds);
-
-		_pBlock->faceFunc(splittingFace, [](Block* pBlock, Polygon& face) {
-			face.setNumSplits(1);
-		});
+		if (!orderVertIdsNTS(newVertIds))
+			return result;
+		splittingFaceId = _pBlock->addFace(newVertIds);
 	} else {
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
 
-	// Split the cell faces with split edges
-	for (size_t i = 0; i < newVertIds.size(); i++) {
-		size_t j = (i + 1) % newVertIds.size();
-		Edge edge(_pBlock, newVertIds[i], newVertIds[j]);
-
-		const auto& faceId = edge.getCommonFace();
-		if (faceId.isValid()) {
-			Index3DId newFaceId;
-			_pBlock->faceFunc(faceId, [this, &edge, &newFaceId](Block* pBlock, Polygon& face) {
-				// These are the 1/2 faces of original faces
-				newFaceId = face.splitBetweenVertices(edge.getVertexIds()[0], edge.getVertexIds()[1]);
-				if (newFaceId.isValid())
-					addFace(newFaceId);
-			});
-		} else {
-			int dbgBreak = 1;
+	_pBlock->faceFunc(splittingFaceId, [this, &newFaceIdSet, &splittingFaceId](Block* pBlock, Polygon& spittingFace) {
+		spittingFace.setNumSplits(1);
+		for (auto& faceId : _faceIds) {
+			if (faceId.blockIdx() == splittingFaceId.blockIdx()) {
+				// Use the same mutex we already hold
+				auto& face = _pBlock->getPolygonNTS(faceId);
+				auto newFaceId = face.splitWithFaceNTS(spittingFace);
+				newFaceIdSet.insert(newFaceId);
+			} else {
+				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace](Block* pBlock, Polygon& face) {
+					auto newFaceId = face.splitWithFaceNTS(spittingFace);
+					newFaceIdSet.insert(newFaceId);
+				});
+			}
 		}
-	}
+	});
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
 	for (const auto& faceId : _faceIds) {
-		_pBlock->faceFunc(faceId, [this, &splitPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
-			Vector3d ctr = face.calCentroid();
-			Vector3d v = ctr - splitPlane._origin;
-			if (v.dot(splitPlane._normal) < 0) {
-				newFaceIdSet.insert(faceId);
+		bool allVertsAbovePlane = true;
+		_pBlock->faceFunc(faceId, [this, &allVertsAbovePlane, &splitPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
+			auto vertIds = face.getVertexIds();
+			for (const auto& vertId : vertIds) {
+				Vector3d pt = pBlock->getVertexPoint(vertId);
+				Vector3d v = pt - splitPlane._origin;
+				if (v.dot(splitPlane._normal) < 0) {
+					allVertsAbovePlane = false;
+				}
 			}
 		});
+
+		if (allVertsAbovePlane)
+			newFaceIdSet.insert(faceId);
 	}
 
 	if (newFaceIdSet.size() < 4) { // A tetrohedron has the minimum number of planar faces - 4.
@@ -333,14 +335,14 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	for (const auto& faceId : newFaceIdSet) {
 		removeFace(faceId);
 	}
-	addFace(splittingFace);
+	addFace(splittingFaceId);
 
 	vector<Index3DId> newFaceIds;
 	newFaceIds.insert(newFaceIds.end(), newFaceIdSet.begin(), newFaceIdSet.end());
-	newFaceIds.push_back(splittingFace);
+	newFaceIds.push_back(splittingFaceId);
 	Index3DId newCellId(_thisId, _pBlock->addCell(newFaceIds));
 
-	_pBlock->faceFunc(splittingFace, [this, &newCellId](Block* pBlock, Polygon& face) {
+	_pBlock->faceFunc(splittingFaceId, [this, &newCellId](Block* pBlock, Polygon& face) {
 		face.addCell(_thisId);
 		face.addCell(newCellId);
 	});
@@ -353,8 +355,65 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	return result;
 }
 
-void Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
+bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 {
+#if 1
+	set<Edge> edgeSet;
+	for (const auto& faceId : _faceIds) {
+		_pBlock->faceFunc(faceId, [this, &edgeSet, &vertIds](const Block* pBlock, const Polygon& face) {
+			set<Index3DId> vertsInFace;
+			for (const auto& vertId : vertIds) {
+				if (face.containsVert(vertId))
+					vertsInFace.insert(vertId);
+			}
+			if (vertsInFace.size() == 2) {
+				auto iter = vertsInFace.begin();
+				const Index3DId& vertId0 = *iter++;
+				const Index3DId& vertId1 = *iter;
+				edgeSet.insert(Edge(_pBlock, vertId0, vertId1));
+			}
+		});
+	}
+
+	vector<Index3DId> result;
+	const Edge& e = *edgeSet.begin();
+	result.push_back(e.getVertexIds()[0]);
+	result.push_back(e.getVertexIds()[1]);
+
+	edgeSet.erase(edgeSet.begin());
+	bool found = true;
+	while (found && !edgeSet.empty()) {
+		found = false;
+		const auto& lastVert = result.back();
+		for (auto iter = edgeSet.begin(); iter != edgeSet.end(); iter++) {
+			const auto& e = *iter;
+			if (e.getVertexIds()[0] == lastVert) {
+				result.push_back(e.getVertexIds()[1]);
+				edgeSet.erase(iter);
+				found = true;
+				break;
+			} else if (e.getVertexIds()[1] == lastVert) {
+				result.push_back(e.getVertexIds()[0]);
+				edgeSet.erase(iter);
+				found = true;
+				break;
+			}
+		}
+	}
+
+	if (result.front() != result.back()) {
+		assert(!"Last vert should match first vert.");
+		return false;
+	}
+
+	result.pop_back();
+	if (result.size() != vertIds.size()) {
+		assert(!"Ordered list does not match size of input list.");
+		return false;
+	}
+	vertIds = result;
+	return true;
+#else
 	set<Index3DId> vertSet;
 	vertSet.insert(vertIds.begin(), vertIds.end());
 	vertIds.clear();
@@ -391,5 +450,5 @@ void Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 			}
 		}
 	}
-
+#endif
 }

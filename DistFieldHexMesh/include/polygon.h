@@ -47,7 +47,7 @@ public:
 	std::vector<Index3DId> getVertexIds() const;
 	const std::vector<Index3DId>& getVertexIdsNTS() const;
 	void setVertexIds(const std::vector<Index3DId>& verts);
-	std::vector<Edge> getEdges() const;
+	std::set<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsVert(const Index3DId& vertId) const;
 	bool vertsContainFace() const;
@@ -62,11 +62,10 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
-	bool insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Index3DId& newVertId);
-	Index3DId insertVertexNTS(const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt);
+	Index3DId insertVertexNTS(const Edge& edge, const Vector3d& pt);
 	bool insertVertexNTS(const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitBetweenVertices(const Index3DId& vert0, const Index3DId& vert1);
+	Index3DId splitWithFaceNTS(const Polygon& otherFace);
 
 private:
 	void sortIds() const;
@@ -77,8 +76,7 @@ private:
 	template<class LAMBDA>
 	void faceFuncSelf(LAMBDA func);
 
-	std::vector<Edge> getEdgesNTS() const;
-	Index3DId splitBetweenVerticesNTS(const Index3DId& vert0, const Index3DId& vert1);
+	std::set<Edge> getEdgesNTS() const;
 
 	Block* _pBlock = nullptr;
 	size_t _numSplits = 0;
