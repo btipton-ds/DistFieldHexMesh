@@ -49,6 +49,7 @@ public:
 	void setVertexIds(const std::vector<Index3DId>& verts);
 	std::set<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
+	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
 	bool vertsContainFace() const;
 
@@ -62,8 +63,8 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
-	Index3DId insertVertexNTS(const Edge& edge, const Vector3d& pt);
-	bool insertVertexNTS(const Edge& edge, const Index3DId& newVertId);
+	Index3DId insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt);
+	bool insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId);
 
 	Index3DId splitWithFaceNTS(const Polygon& otherFace);
 

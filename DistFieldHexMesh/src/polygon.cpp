@@ -119,15 +119,25 @@ set<Edge> Polygon::getEdgesNTS() const
 
 bool Polygon::containsEdge(const Edge& edge) const
 {
+	size_t idx0, idx1;
+	return containsEdge(edge, idx0, idx1);
+}
+
+bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
+{
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
 		Edge testEdge(_pBlock, vertId0, vertId1);
-		if (testEdge == edge)
+		if (testEdge == edge) {
+			idx0 = i;
+			idx1 = j;
 			return true;
+		}
 	}
 
+	idx0 = idx1 = -1;
 	return false;
 }
 
@@ -245,7 +255,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
-Index3DId Polygon::insertVertexNTS(const Edge& edge, const Vector3d& pt)
+Index3DId Polygon::insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt)
 {
 	Index3DId newVertId;
 	auto edgeSet = getEdges();
@@ -255,34 +265,19 @@ Index3DId Polygon::insertVertexNTS(const Edge& edge, const Vector3d& pt)
 			newVertId = _pBlock->addVertex(pt);
 
 		if (!containsVert(newVertId))
-			insertVertexNTS(edge, newVertId);
+			insertVertexInEdgeNTS(edge, newVertId);
 	}
 	return newVertId;
 }
 
-bool Polygon::insertVertexNTS(const Edge& edge, const Index3DId& newVertId)
+bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId)
 {
 	assert(vertifyUnique());
 	assert(!containsVert(newVertId));
 	bool result = false;
-
-	auto edgeSet = getEdges();
-	if (edgeSet.count(edge) != 0) {
+	size_t idx0 = -1, idx1 = 1;
+	if (containsEdge(edge, idx0, idx1)) { // This face does not already contain the new edge
 		vector<Index3DId> vertIds = _vertexIds;
-		size_t idx0 = -1, idx1 = 1;
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			if (edge.containsVertex(vertIds[i])) {
-				if (idx0 == -1)
-					idx0 = i;
-				else
-					idx1 = i;
-			}
-		}
-		if (idx0 == -1 || idx1 == -1)
-			return false;
-
-		if (idx0 > idx1)
-			swap(idx0, idx1);
 
 		if (idx1 < vertIds.size())
 			vertIds.insert(vertIds.begin() + idx1, newVertId);
@@ -326,16 +321,17 @@ Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
 {
 	Index3DId newFaceId;
 
+	const auto& thisFace = *this;
 	auto otherEdges = otherFace.getEdges();
 	auto ourEdges = getEdges();
-	for (const auto& edge : ourEdges) {
-		Index3DId vertId0 = edge.getVertexIds()[0];
-		Index3DId vertId1 = edge.getVertexIds()[1];
-		if (otherEdges.count(edge) == 0 && otherFace.containsVert(vertId0) && otherFace.containsVert(vertId1)) {
+	for (const auto& otherEdge : otherEdges) {
+		Index3DId vertId0 = otherEdge.getVertexIds()[0];
+		Index3DId vertId1 = otherEdge.getVertexIds()[1];
+		if (ourEdges.count(otherEdge) == 0 && thisFace.containsVert(vertId0) && thisFace.containsVert(vertId1)) {
 			// other face does not have this edge but has both vertices to form an edge
 			size_t idx0 = -1, idx1 = -1;
-			for (size_t i = 0; i < _vertexIds.size(); i++) {
-				const auto& vertId = _vertexIds[i];
+			for (size_t i = 0; i < thisFace._vertexIds.size(); i++) {
+				const auto& vertId = thisFace._vertexIds[i];
 				if ((vertId == vertId0) || (vertId == vertId1)) {
 					if (idx0 == -1)
 						idx0 = i;
@@ -346,17 +342,17 @@ Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
 
 			vector<Index3DId> face0Verts, face1Verts;
 
-			for (size_t i = 0; i < _vertexIds.size(); i++) {
-				size_t index = (i + idx0) % _vertexIds.size();
-				face0Verts.push_back(_vertexIds[index]);
-				if (_vertexIds[index] == _vertexIds[idx1])
+			for (size_t i = 0; i < thisFace._vertexIds.size(); i++) {
+				size_t index = (i + idx0) % thisFace._vertexIds.size();
+				face0Verts.push_back(thisFace._vertexIds[index]);
+				if (thisFace._vertexIds[index] == thisFace._vertexIds[idx1])
 					break;
 			}
 
-			for (size_t i = 0; i < _vertexIds.size(); i++) {
-				size_t index = (i + idx1) % _vertexIds.size();
-				face1Verts.push_back(_vertexIds[index]);
-				if (_vertexIds[index] == _vertexIds[idx0])
+			for (size_t i = 0; i < thisFace._vertexIds.size(); i++) {
+				size_t index = (i + idx1) % thisFace._vertexIds.size();
+				face1Verts.push_back(thisFace._vertexIds[index]);
+				if (thisFace._vertexIds[index] == thisFace._vertexIds[idx0])
 					break;
 			}
 

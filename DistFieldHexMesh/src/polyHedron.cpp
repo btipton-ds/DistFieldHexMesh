@@ -259,18 +259,23 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	vector<size_t> result;
 
 	vector<Edge> edges = getEdges(), edgesToSplit;
+	set<Index3DId> vertIdSet;
 
 	for (const auto& edge : edges) {
 		double t = edge.intesectPlaneParam(splitPlane);
 		if (t >= 0 && t <= 1) {
-			edgesToSplit.push_back(edge);
+			Vector3d pt = edge.calPointAt(t);
+			Index3DId vertId = _pBlock->idOfPoint(pt);
+			if (vertId.isValid())
+				vertIdSet.insert(vertId);
+			else
+				edgesToSplit.push_back(edge);
 		}
 	}
 
-	if (edgesToSplit.size() < 3)
+	if (edgesToSplit.size() + vertIdSet.size() < 3 || edgesToSplit.empty())
 		return result;
 
-	set<Index3DId> vertIdSet;
 	for (const auto& edge : edgesToSplit) {
 		auto newVertId = edge.splitWithPlane(splitPlane);
 		if (newVertId.isValid()) {
@@ -296,17 +301,18 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	_pBlock->faceFunc(splittingFaceId, [this, &newFaceIdSet, &splittingFaceId](Block* pBlock, Polygon& spittingFace) {
 		spittingFace.setNumSplits(1);
 		for (auto& faceId : _faceIds) {
+			Index3DId newFaceId;
 			if (faceId.blockIdx() == splittingFaceId.blockIdx()) {
 				// Use the same mutex we already hold
 				auto& face = _pBlock->getPolygonNTS(faceId);
-				auto newFaceId = face.splitWithFaceNTS(spittingFace);
-				newFaceIdSet.insert(newFaceId);
+				newFaceId = face.splitWithFaceNTS(spittingFace);
 			} else {
-				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace](Block* pBlock, Polygon& face) {
-					auto newFaceId = face.splitWithFaceNTS(spittingFace);
-					newFaceIdSet.insert(newFaceId);
+				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &newFaceId](Block* pBlock, Polygon& face) {
+					newFaceId = face.splitWithFaceNTS(spittingFace);
 				});
 			}
+			if (newFaceId.isValid())
+				newFaceIdSet.insert(newFaceId);
 		}
 	});
 
@@ -340,7 +346,7 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	vector<Index3DId> newFaceIds;
 	newFaceIds.insert(newFaceIds.end(), newFaceIdSet.begin(), newFaceIdSet.end());
 	newFaceIds.push_back(splittingFaceId);
-	Index3DId newCellId(_thisId, _pBlock->addCell(newFaceIds));
+	Index3DId newCellId = Index3DId(_thisId, _pBlock->addCell(newFaceIds));
 
 	_pBlock->faceFunc(splittingFaceId, [this, &newCellId](Block* pBlock, Polygon& face) {
 		face.addCell(_thisId);

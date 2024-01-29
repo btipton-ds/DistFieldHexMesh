@@ -168,7 +168,7 @@ Index3DId Edge::splitAtParam(double t) const
 				}
 				if (face.containsVert(midVertId)) // This face was already split with this vertex
 					return;
-				if (!face.insertVertexNTS(*this, midVertId)) {
+				if (!face.insertVertexInEdgeNTS(*this, midVertId)) {
 					assert(!"Should never reach this code block.");
 					throw std::runtime_error("Failed insert a vertex in a polygon which must accept the vertex. Not supposed to be possible.");
 				}
