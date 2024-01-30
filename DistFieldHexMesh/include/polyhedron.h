@@ -4,7 +4,6 @@
 #include <tm_boundingBox.h>
 #include <index3D.h>
 #include <objectPool.h>
-#include <block.h>
 
 namespace DFHM {
 
@@ -39,6 +38,7 @@ public:
 	std::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBoundingBox() const;
+	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	std::vector<size_t> splitWithPlane(const Plane& splitPlane, bool intersectingOnly);
 	bool split(bool intersectingOnly, std::vector<size_t>& newFaces);

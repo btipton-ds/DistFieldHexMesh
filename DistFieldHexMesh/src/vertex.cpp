@@ -59,10 +59,11 @@ bool Vertex::verifyTopology() const
 		if (!_pBlock->polygonExists(faceId))
 			valid = false;
 
-		_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face) {
+		_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face)->bool {
 			const auto& vertIds = face.getVertexIdsNTS();
 			if (find(vertIds.begin(), vertIds.end(), _thisId) == vertIds.end())
 				valid = false;
+			return true;
 		});
 	}
 #endif

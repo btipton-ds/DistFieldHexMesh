@@ -295,7 +295,7 @@ Index3DId ObjectPool<T>::findOrAdd(ObjectPoolOwner* pBlock, const T& obj, size_t
 		if (_availableIndices.empty()) {
 			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
 				// Reserve the segment size so the array won't resize during use
-				_objectSegs.push_back(make_shared<std::vector<T>>());
+				_objectSegs.push_back(std::make_shared<std::vector<T>>());
 				_objectSegs.back()->reserve(_objectSegmentSize);
 			}
 			segNum = _objectSegs.size() - 1;

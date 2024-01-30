@@ -190,6 +190,31 @@ CBoundingBox3Dd Polyhedron::getBoundingBox() const
 	return bbox;
 }
 
+bool Polyhedron::contains(const Vector3d& pt) const
+{
+	bool result = true;
+	Vector3d ctr = calCentroid();
+	for (const auto& faceId : _faceIds) {
+		_pBlock->faceFunc(faceId, [this, &pt, &ctr, &result](Block* pBlock, Polygon& face) {
+			Vector3d faceCtr = face.calCentroid();
+			Vector3d norm = face.calUnitNormal();
+
+			Vector3d vCtr = ctr - faceCtr;
+			vCtr.normalize();
+			if (vCtr.dot(norm) > 0)
+				norm = -norm;
+
+			Vector3d vTestPt = pt - faceCtr;
+			vTestPt.normalize();
+
+			if (norm.dot(vTestPt) > 0)
+				result = false;
+		});
+	}
+
+	return result;
+}
+
 Vector3d Polyhedron::calCentroid() const
 {
 	Vector3d result(0, 0, 0);
@@ -278,15 +303,10 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 		spittingFace.setNumSplits(1);
 		for (auto& faceId : _faceIds) {
 			vector<Index3DId> splittingFaces;
-			if (faceId.blockIdx() == splittingFaceId.blockIdx()) {
-				// Use the same mutex we already hold
-				auto& face = _pBlock->getPolygonNTS(faceId);
+			_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &splittingFaces](Block* pBlock, Polygon& face) {
 				splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
-			} else {
-				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &splittingFaces](Block* pBlock, Polygon& face) {
-					splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
-				});
-			}
+			});
+
 			if (splittingFaces.size() == 2) {
 				newFaceIdSet.insert(splittingFaces.begin(), splittingFaces.end());
 			}

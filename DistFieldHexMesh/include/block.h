@@ -5,10 +5,11 @@
 #include <chrono>
 #include <mutex>
 
-#include <triMesh.h>
-#include <objectPool.h>
-#include <index3D.h>
 #include <tm_vector3.h>
+#include <triMesh.h>
+#include <index3D.h>
+#include <objectPool.h>
+#include <blockData.h>
 
 namespace DFHM {
 
@@ -30,7 +31,7 @@ class Polyhedron;
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
 
-class Block : public ObjectPoolOwner {
+class Block  : public BlockData {
 public:
 	class GlPoints : public std::vector<float>
 	{
@@ -66,7 +67,6 @@ public:
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src) = delete;
-	~Block(); // NOT virtual - do not inherit
 
 	size_t blockDim() const;
 	Volume* getVolume();
@@ -90,15 +90,12 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	size_t numFaces(bool includeInner) const;
-	size_t numPolyhedra() const;
-
 	size_t processTris();
 	void addTris(const CMeshPtr& pSrcMesh);
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
 	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
-	size_t splitCellsAtPoint(const Vector3d& splitPt);
+	size_t splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt);
 
 	Index3DId idOfPoint(const Vector3d& pt);
 	Index3DId addVertex(const Vector3d& pt, size_t currentId = -1);
@@ -112,10 +109,7 @@ public:
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
-	bool addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId);
-
-	const Polygon& getPolygonNTS(const Index3DId& id) const;
-	Polygon& getPolygonNTS(const Index3DId& id);
+	void addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
@@ -130,16 +124,22 @@ public:
 	std::recursive_timed_mutex& getMutex() const;
 
 	template<class LAMBDA>
-	void vertexFunc(const Index3DId& vertId, LAMBDA func) const;
+	void vertexFunc(const Index3DId& id, LAMBDA func) const;
 
 	template<class LAMBDA>
-	void vertexFunc(const Index3DId& vertId, LAMBDA func);
+	void vertexFunc(const Index3DId& id, LAMBDA func);
 
 	template<class LAMBDA>
-	void faceFunc(const Index3DId& faceId, LAMBDA func) const;
+	void faceFunc(const Index3DId& id, LAMBDA func) const;
 
 	template<class LAMBDA>
-	void faceFunc(const Index3DId& faceId, LAMBDA func);
+	void faceFunc(const Index3DId& id, LAMBDA func);
+
+	template<class LAMBDA>
+	void cellFunc(const Index3DId& id, LAMBDA func) const;
+
+	template<class LAMBDA>
+	void cellFunc(const Index3DId& id, LAMBDA func);
 
 private:
 	friend class Volume;
@@ -147,16 +147,6 @@ private:
 
 	enum class AxisIndex {
 		X, Y, Z
-	};
-
-	class patient_lock_guard {
-	public:
-		patient_lock_guard(std::recursive_timed_mutex& mutex);
-		~patient_lock_guard();
-
-	private:
-		bool _locked = false;
-		std::recursive_timed_mutex& _mutex;
 	};
 
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
@@ -174,11 +164,8 @@ private:
 	Index3DId addFace(const std::vector<Vector3d>& pts);
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
-	void divideSubBlock(const Index3D& subBlockIdx, size_t divs);
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
-
-	mutable std::recursive_timed_mutex _mutex;
 
 	Volume* _pVol;
 	CBoundingBox3Dd 
@@ -197,9 +184,6 @@ private:
 
 	std::string _filename;
 
-	ObjectPool<Vertex> _vertices;
-	ObjectPool<Polygon> _polygons;
-	ObjectPool<Polyhedron> _polyhedra;
 };
 
 inline size_t Block::GlPoints::getId() const
@@ -251,52 +235,49 @@ inline const CMeshPtr& Block::getModelMesh() const
 
 inline std::recursive_timed_mutex& Block::getMutex() const
 {
-	return _mutex;
-}
-
-inline Block::patient_lock_guard::patient_lock_guard(std::recursive_timed_mutex& mutex)
-	: _mutex(mutex)
-{
-	using namespace std::chrono_literals;
-	_locked = _mutex.try_lock_for(500ms);
-}
-
-inline Block::patient_lock_guard::~patient_lock_guard()
-{
-	if (_locked)
-		_mutex.unlock();
+	return BlockData::getMutex();
 }
 
 template<class LAMBDA>
-void Block::vertexFunc(const Index3DId& vertId, LAMBDA func) const
+inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) const
 {
-	auto pOwner = getOwner(vertId);
-	patient_lock_guard g(pOwner->_mutex);
-	func(pOwner, pOwner->_vertices[vertId.elementId()]);
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::vertexFunc(id.elementId(), func);
 }
 
 template<class LAMBDA>
-void Block::vertexFunc(const Index3DId& vertId, LAMBDA func)
+inline void Block::vertexFunc(const Index3DId& id, LAMBDA func)
 {
-	auto pOwner = getOwner(vertId);
-	patient_lock_guard g(pOwner->_mutex);
-	func(pOwner, pOwner->_vertices[vertId.elementId()]);
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::vertexFunc(id.elementId(), func);
 }
 
 template<class LAMBDA>
-void Block::faceFunc(const Index3DId& faceId, LAMBDA func) const
+inline void Block::faceFunc(const Index3DId& id, LAMBDA func) const
 {
-	const Block* pOwner = getOwner(faceId);
-	patient_lock_guard g(pOwner->_mutex);
-	func(pOwner, pOwner->_polygons[faceId.elementId()]);
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::faceFunc(id.elementId(), func);
 }
 
 template<class LAMBDA>
-void Block::faceFunc(const Index3DId& faceId, LAMBDA func)
+inline void Block::faceFunc(const Index3DId& id, LAMBDA func)
 {
-	auto pOwner = getOwner(faceId);
-	patient_lock_guard g(_mutex);
-	func(pOwner, pOwner->_polygons[faceId.elementId()]);
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::faceFunc(id.elementId(), func);
+}
+
+template<class LAMBDA>
+inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const
+{
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::cellFunc(id.elementId(), func);
+}
+
+template<class LAMBDA>
+inline void Block::cellFunc(const Index3DId& id, LAMBDA func)
+{
+	auto pOwner = getOwner(id);
+	return pOwner->BlockData::cellFunc(id.elementId(), func);
 }
 
 }

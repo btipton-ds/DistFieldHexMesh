@@ -317,12 +317,12 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 		numBlocks = _blocks.size();
 		MultiCore::runLambda([this, &splitPt, &numSplit](size_t linearIdx)-> bool {
 			if (_blocks[linearIdx]) {
-				size_t numNewCells = _blocks[linearIdx]->splitCellsAtPoint(splitPt);
+				size_t numNewCells = _blocks[linearIdx]->splitAllCellsWithPrinicpalPlanesAtPoint(splitPt);
 				if (numNewCells > 0)
 					numSplit++;
 			}
 			return true;
-		}, numBlocks, false && RUN_MULTI_THREAD);
+		}, numBlocks, RUN_MULTI_THREAD);
 
 	}
 #endif

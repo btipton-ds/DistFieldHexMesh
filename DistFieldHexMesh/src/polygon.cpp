@@ -289,7 +289,7 @@ bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId
 
 		assert(vertifyUniqueStat(vertIds));
 
-		setVertexIds(vertIds);
+		setVertexIdsNTS(vertIds);
 
 		if (result) {
 			_pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
@@ -394,7 +394,7 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(verifyVertsConvexStat(_pBlock, face0Verts));
 			assert(verifyVertsConvexStat(_pBlock, face1Verts));
 
-			setVertexIds(face0Verts);
+			setVertexIdsNTS(face0Verts);
 			_numSplits++;
 
 			Index3DId newFaceId = _pBlock->addFace(face1Verts);
@@ -437,7 +437,7 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 	return splitFaceIds;
 }
 
-void Polygon::setVertexIds(const vector<Index3DId>& verts)
+void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 {
 #ifdef _DEBUG
 	for (size_t i = 0; i < verts.size(); i++) {
@@ -452,7 +452,7 @@ void Polygon::setVertexIds(const vector<Index3DId>& verts)
 	_pBlock->removeFaceFromLookUp(_thisId);
 
 	{
-		lock_guard g(_pBlock->getMutex());
+		patient_lock_guard g(_pBlock->getMutex());
 		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
 
 		for (const auto& vertId : _vertexIds) {
@@ -549,7 +549,7 @@ template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func) const
 {
 	auto pOwner = _pBlock->getOwner(_thisId);
-	lock_guard g(pOwner->getMutex());
+	patient_lock_guard g(pOwner->getMutex());
 	func();
 }
 
@@ -557,6 +557,6 @@ template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func)
 {
 	auto pOwner = _pBlock->getOwner(_thisId);
-	lock_guard g(pOwner->getMutex());
+	patient_lock_guard g(pOwner->getMutex());
 	func();
 }

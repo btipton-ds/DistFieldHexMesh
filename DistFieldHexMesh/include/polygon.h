@@ -46,7 +46,7 @@ public:
 
 	std::vector<Index3DId> getVertexIds() const;
 	const std::vector<Index3DId>& getVertexIdsNTS() const;
-	void setVertexIds(const std::vector<Index3DId>& verts);
+	void setVertexIdsNTS(const std::vector<Index3DId>& verts);
 	std::set<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
