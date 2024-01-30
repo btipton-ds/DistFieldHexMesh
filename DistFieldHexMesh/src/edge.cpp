@@ -125,21 +125,6 @@ set<Index3DId> Edge::getFaceIds() const
 	return result;
 }
 
-set<Index3DId> Edge::getFaceIds(const Polyhedron& cell) const
-{
-	set<Index3DId> result;
-	set<Index3DId> edgeFaceIds = getFaceIds();
-	auto cellFaces = cell.getFaceIds();
-
-	for (const auto& faceId : edgeFaceIds) {
-		if (cellFaces.count(faceId) != 0) {
-			result.insert(faceId);
-		}
-	}
-
-	return result;
-}
-
 Index3DId Edge::getOtherVert(const Index3DId& vert) const
 {
 	if (vert == _vertexIds[0])

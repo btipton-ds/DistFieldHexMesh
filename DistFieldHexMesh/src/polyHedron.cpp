@@ -45,8 +45,9 @@ bool Polyhedron::verifyTopologyAdj() const
 	set<Index3DId> adjacentCells = getAdjacentCells();
 	if (!adjacentCells.empty()) {
 		for (const auto& cellId : adjacentCells) {
-			const auto& cell = _pBlock->getPolyhedronNTS(cellId);
-			result = cell.verifyTopology() && result;
+			if (!_pBlock->verifyPolyhedronTopology(cellId)) {
+				result = false;
+			}
 		}
 	}
 	return result;
@@ -392,18 +393,17 @@ bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 		}
 	}
 
-	if (result.front() != result.back()) {
-		assert(!"Last vert should match first vert.");
-		return false;
+	if (result.front() == result.back()) {
+		result.pop_back();
+		if (result.size() == vertIds.size()) {
+			vertIds = result;
+			return true;
+		} else {
+			assert(!"Ordered list does not match size of input list.");
+		}
 	}
 
-	result.pop_back();
-	if (result.size() != vertIds.size()) {
-		assert(!"Ordered list does not match size of input list.");
-		return false;
-	}
-	vertIds = result;
-	return true;
+	return false;
 }
 
 bool Polyhedron::verifyTopology() const

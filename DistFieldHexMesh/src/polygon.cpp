@@ -5,7 +5,6 @@
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
-#include <polyhedron.h>
 #include <block.h>
 
 using namespace std;
@@ -21,19 +20,20 @@ void Polygon::setId(ObjectPoolOwner* pBlock, size_t id)
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	if (_pBlock) {
-		lock_guard g(_pBlock->getFaceMutex());
+		_pBlock->faceFunc(_thisId, [&vertId](Block* pBlock, Polygon& face) {
+			if (!face.containsVert(vertId)) {
+				pBlock->removeFaceFromLookUp(face._thisId);
 
-		if (!containsVert(vertId)) {
-			_pBlock->removeFaceFromLookUp(_thisId);
+				face._vertexIds.push_back(vertId);
 
-			_vertexIds.push_back(vertId);
-
-			_pBlock->addFaceToLookup(_thisId);
-		}
+				pBlock->addFaceToLookup(face._thisId);
+			}
+			face._needSort = true;
+		});
 	} else {
 		_vertexIds.push_back(vertId);
+		_needSort = true;
 	}
-	_needSort = true;
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -405,8 +405,7 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			});
 
 			for (const auto& cellId : _cellIds) {
-				auto& cell = _pBlock->getPolyhedronNTS(cellId);
-				cell.addFace(newFaceId);
+				_pBlock->addFaceToPolyhedron(newFaceId, cellId);
 			}
 
 #if 1 && defined(_DEBUG)
@@ -453,7 +452,7 @@ void Polygon::setVertexIds(const vector<Index3DId>& verts)
 	_pBlock->removeFaceFromLookUp(_thisId);
 
 	{
-		lock_guard g(_pBlock->getFaceMutex());
+		lock_guard g(_pBlock->getMutex());
 		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
 
 		for (const auto& vertId : _vertexIds) {
@@ -550,7 +549,7 @@ template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func) const
 {
 	auto pOwner = _pBlock->getOwner(_thisId);
-	lock_guard g(pOwner->getFaceMutex());
+	lock_guard g(pOwner->getMutex());
 	func();
 }
 
@@ -558,6 +557,6 @@ template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func)
 {
 	auto pOwner = _pBlock->getOwner(_thisId);
-	lock_guard g(pOwner->getFaceMutex());
+	lock_guard g(pOwner->getMutex());
 	func();
 }

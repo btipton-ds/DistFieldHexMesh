@@ -102,7 +102,7 @@ private:
 	std::vector<ObjectSegPtr> _objectSegs;
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
-	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices, polygons and polyhedra.
+	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices and polygons.
 	std::map<size_t, size_t, CompareFunctor> _objToIdMap;
 	thread_local static const T* _tl_pCompareObj;
 };

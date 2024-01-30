@@ -27,7 +27,7 @@ public:
 	template<class F>
 	void iterateInOrderTS(F fLambda) const
 	{
-		std::lock_guard g(_mutex);
+		patient_lock_guard g(_mutex);
 		_data.iterateInOrder(fLambda);
 	}
 
@@ -64,42 +64,42 @@ inline ObjectPoolWMutex<T>::ObjectPoolWMutex(const ObjectPoolWMutex& rhs)
 template<class T>
 bool ObjectPoolWMutex<T>::free(size_t id) // Permanently delete it
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.free(id);
 }
 
 template<class T>
 inline bool ObjectPoolWMutex<T>::removeFromLookup(size_t id)
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.removeFromLookup(id);
 }
 
 template<class T>
 inline void ObjectPoolWMutex<T>::addToLookup(size_t id)
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	_data.addToLookup(id);
 }
 
 template<class T>
 inline size_t ObjectPoolWMutex<T>::findId(const T& obj) const
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.findId(obj);
 }
 
 template<class T>
 bool ObjectPoolWMutex<T>::exists(size_t id) const
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.exists(id);
 }
 
 template<class T>
 inline Index3DId ObjectPoolWMutex<T>::findOrAdd(ObjectPoolOwner* pBlock, const T& vert, size_t id)
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.findOrAdd(pBlock, vert, id);
 }
 
@@ -157,7 +157,7 @@ bool ObjectPoolWMutex<T>::empty() const
 template<class T>
 size_t ObjectPoolWMutex<T>::size() const
 {
-	std::lock_guard g(_mutex);
+	patient_lock_guard g(_mutex);
 	return _data.size();
 }
 

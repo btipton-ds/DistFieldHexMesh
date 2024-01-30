@@ -1,11 +1,13 @@
 #pragma once
 
 #include <stdexcept>
-#include <triMesh.h>
-#include <objectPoolWMutex.h>
-#include <index3D.h>
 #include <vertex.h>
+#include <chrono>
 #include <mutex>
+
+#include <triMesh.h>
+#include <objectPool.h>
+#include <index3D.h>
 #include <tm_vector3.h>
 
 namespace DFHM {
@@ -20,10 +22,10 @@ class Polyhedron;
 
 /*
 	The multicore decomposition works on a single block at a time.
-	The race conditions occur when two adjacent blocks are working on faces or vertices which like in the common side face of the block.
-	Each block has a mutex for each positive face of the block - 3 mutexes
-	When working on any face, the common face must be locked. For the negative faces, that requires fetching the adjacent block and locking the matching
-	positive face.
+	The race conditions occur when two adjacent blocks are working on faces or vertices which lie in the common side of the block.
+	Each block has a recursive_mutex.
+	Lock the mutex whenever a block is being accessed or manipulated. Most hits will be within the block and the lock/unlock will have
+	near zero overhead. When an operation on a block requires another block both blocks need to be locked.
 
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
@@ -80,7 +82,7 @@ public:
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	bool verifyTopology() const;
-
+	bool verifyPolyhedronTopology(const Index3DId& cellId) const;
 	std::vector<size_t> createSubBlocks();
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
@@ -110,8 +112,7 @@ public:
 	size_t addCell(const std::vector<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
-	const Polyhedron& getPolyhedronNTS(const Index3DId& cellId) const;
-	Polyhedron& getPolyhedronNTS(const Index3DId& cellId);
+	bool addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId);
 
 	const Polygon& getPolygonNTS(const Index3DId& id) const;
 	Polygon& getPolygonNTS(const Index3DId& id);
@@ -126,9 +127,7 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	std::recursive_mutex& getEdgeMutex() const;
-	std::recursive_mutex& getFaceMutex() const;
-	std::recursive_mutex& getVertexMutex() const;
+	std::recursive_timed_mutex& getMutex() const;
 
 	template<class LAMBDA>
 	void vertexFunc(const Index3DId& vertId, LAMBDA func) const;
@@ -142,18 +141,22 @@ public:
 	template<class LAMBDA>
 	void faceFunc(const Index3DId& faceId, LAMBDA func);
 
-	template<class LAMBDA>
-	void cellFunc(const size_t& cellId, LAMBDA func) const;
-
-	template<class LAMBDA>
-	void cellFunc(const size_t& cellId, LAMBDA func);
-
 private:
 	friend class Volume;
 	friend class TestBlock;
 
 	enum class AxisIndex {
 		X, Y, Z
+	};
+
+	class patient_lock_guard {
+	public:
+		patient_lock_guard(std::recursive_timed_mutex& mutex);
+		~patient_lock_guard();
+
+	private:
+		bool _locked = false;
+		std::recursive_timed_mutex& _mutex;
 	};
 
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
@@ -175,7 +178,7 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
-	std::string _filename;
+	mutable std::recursive_timed_mutex _mutex;
 
 	Volume* _pVol;
 	CBoundingBox3Dd 
@@ -192,8 +195,10 @@ private:
 	TriMeshVector _blockMeshes;
 	std::vector<Vector3d> _corners;
 
-	ObjectPoolWMutex<Vertex> _vertices;
-	ObjectPoolWMutex<Polygon> _polygons;
+	std::string _filename;
+
+	ObjectPool<Vertex> _vertices;
+	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
 
@@ -244,21 +249,29 @@ inline const CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
-inline std::recursive_mutex& Block::getVertexMutex() const
+inline std::recursive_timed_mutex& Block::getMutex() const
 {
-	return _vertices.getMutex();
+	return _mutex;
 }
 
-inline std::recursive_mutex& Block::getFaceMutex() const
+inline Block::patient_lock_guard::patient_lock_guard(std::recursive_timed_mutex& mutex)
+	: _mutex(mutex)
 {
-	return _polygons.getMutex();
+	using namespace std::chrono_literals;
+	_locked = _mutex.try_lock_for(500ms);
+}
+
+inline Block::patient_lock_guard::~patient_lock_guard()
+{
+	if (_locked)
+		_mutex.unlock();
 }
 
 template<class LAMBDA>
 void Block::vertexFunc(const Index3DId& vertId, LAMBDA func) const
 {
 	auto pOwner = getOwner(vertId);
-	std::lock_guard g(pOwner->_vertices);
+	patient_lock_guard g(pOwner->_mutex);
 	func(pOwner, pOwner->_vertices[vertId.elementId()]);
 }
 
@@ -266,15 +279,15 @@ template<class LAMBDA>
 void Block::vertexFunc(const Index3DId& vertId, LAMBDA func)
 {
 	auto pOwner = getOwner(vertId);
-	std::lock_guard g(pOwner->_vertices);
+	patient_lock_guard g(pOwner->_mutex);
 	func(pOwner, pOwner->_vertices[vertId.elementId()]);
 }
 
 template<class LAMBDA>
 void Block::faceFunc(const Index3DId& faceId, LAMBDA func) const
 {
-	auto pOwner = getOwner(faceId);
-	std::lock_guard g(pOwner->_polygons);
+	const Block* pOwner = getOwner(faceId);
+	patient_lock_guard g(pOwner->_mutex);
 	func(pOwner, pOwner->_polygons[faceId.elementId()]);
 }
 
@@ -282,20 +295,8 @@ template<class LAMBDA>
 void Block::faceFunc(const Index3DId& faceId, LAMBDA func)
 {
 	auto pOwner = getOwner(faceId);
-	std::lock_guard g(pOwner->_polygons);
+	patient_lock_guard g(_mutex);
 	func(pOwner, pOwner->_polygons[faceId.elementId()]);
-}
-
-template<class LAMBDA>
-void Block::cellFunc(const size_t& cellId, LAMBDA func) const
-{
-	func(this, _polyhedra[cellId]);
-}
-
-template<class LAMBDA>
-void Block::cellFunc(const size_t& cellId, LAMBDA func)
-{
-	func(this, _polyhedra[cellId]);
 }
 
 }

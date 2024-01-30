@@ -70,7 +70,7 @@ size_t Block::numFaces(bool includeInner) const
 		return _polygons.size();
 
 	size_t result = 0;
-	_polygons.iterateInOrderTS([&result](size_t id, const Polygon& poly) {
+	_polygons.iterateInOrder([&result](size_t id, const Polygon& poly) {
 		if (poly.isOuter())
 			result++;
 	});
@@ -204,13 +204,13 @@ bool Block::verifyTopology() const
 {
 	bool result = true;
 #ifdef _DEBUG 
-	_vertices.iterateInOrderTS([&result](size_t id, const Vertex& vert) {
+	_vertices.iterateInOrder([&result](size_t id, const Vertex& vert) {
 		bool pass = vert.verifyTopology();
 		if (!pass)
 			result = false;
 	});
 
-	_polygons.iterateInOrderTS([&result](size_t id, const Polygon& face) {
+	_polygons.iterateInOrder([&result](size_t id, const Polygon& face) {
 		bool pass = face.verifyTopology();
 		if (!pass)
 			result = false;
@@ -226,16 +226,26 @@ bool Block::verifyTopology() const
 	return result;
 }
 
-const Polyhedron& Block::getPolyhedronNTS(const Index3DId& cellId) const
+bool Block::verifyPolyhedronTopology(const Index3DId& cellId) const
 {
 	auto pOwner = getOwner(cellId);
-	return pOwner->_polyhedra[cellId.elementId()];
+	if (pOwner != this)
+		return pOwner->verifyPolyhedronTopology(cellId);
+
+	patient_lock_guard g(_mutex);
+	return verifyTopology();
 }
 
-Polyhedron& Block::getPolyhedronNTS(const Index3DId& cellId)
+bool Block::addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId)
 {
 	auto pOwner = getOwner(cellId);
-	return pOwner->_polyhedra[cellId.elementId()];
+	patient_lock_guard g(pOwner->_mutex);
+	if (!pOwner->_polyhedra.exists(cellId.elementId())) {
+		auto& cell = pOwner->_polyhedra[cellId.elementId()];
+		cell.addFace(faceId);
+		return true;
+	}
+	return false;
 }
 
 const Polygon& Block::getPolygonNTS(const Index3DId& id) const
@@ -449,7 +459,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 	Block* pOwner = getOwner(ownerIdx);
 	if (pOwner == this) {
-		lock_guard g(_polygons);
+		lock_guard g(_mutex);
 		Index3DId faceId = _polygons.findOrAdd(this, newFace);
 
 		for (const auto& vertId : vertIndices) {
@@ -542,7 +552,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 			int dbgBreak = 1;
 		}
 		Block* pOwnerBlock = getOwner(faceId);
-		lock_guard g(pOwnerBlock->_polygons);
+		lock_guard g(_mutex);
 		auto pFace = pOwnerBlock->_polygons.get(faceId.elementId());
 		if (pFace) {
 			pFace->addCell(polyhedronId);
@@ -667,7 +677,7 @@ bool Block::removeFaceFromLookUp(const Index3DId& faceId)
 Vector3d Block::getVertexPoint(const Index3DId& vertIdx) const
 {
 	auto pOwner = getOwner(vertIdx);
-	lock_guard g(pOwner->_vertices);
+	lock_guard g(_mutex);
 	return pOwner->_vertices[vertIdx.elementId()].getPoint();
 }
 
@@ -746,9 +756,6 @@ size_t Block::splitCellsAtPoint(const Vector3d& splitPt)
 {
 	size_t numSplit = 0;
 	_polyhedra.iterateInOrder([this, &splitPt, &numSplit](size_t id, Polyhedron& ignoredCell) {
-		size_t maxSplits = 2;
-		if (numSplit >= maxSplits)
-			return;
 		set<size_t> cellsToSplit;
 		cellsToSplit.insert(id);
 		for (int i = 0; i < 3; i++) {
@@ -767,13 +774,9 @@ size_t Block::splitCellsAtPoint(const Vector3d& splitPt)
 						if (!_polyhedra[id].verifyTopologyAdj())
 							return;
 					}
-					if (numSplit >= maxSplits)
-						return;
 				}
 			}
 			cellsToSplit.insert(newCells.begin(), newCells.end());
-			if (numSplit >= maxSplits)
-				return;
 		}
 	});
 
@@ -816,7 +819,7 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 		_blockMeshes.resize(MT_ALL);
 	}
 	CMeshPtr result;
-	_polygons.iterateInOrderTS([this, &result, &bbox, meshType, minSplitNum](size_t id, const Polygon& face) {
+	_polygons.iterateInOrder([this, &result, &bbox, meshType, minSplitNum](size_t id, const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
 			if (!result) {
 				if (!_blockMeshes[meshType])
@@ -852,7 +855,7 @@ Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrderTS([this, meshType, &edges, minSplitNum](size_t faceId, const Polygon& face) {
+	_polygons.iterateInOrder([this, meshType, &edges, minSplitNum](size_t faceId, const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
 			const auto& faceEdges = face.getEdges();
 			edges.insert(faceEdges.begin(), faceEdges.end());

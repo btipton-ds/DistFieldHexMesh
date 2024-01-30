@@ -33,7 +33,6 @@ public:
 	Vector3d projectPt(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertexId) const;
 	std::set<Index3DId> getFaceIds() const;
-	std::set<Index3DId> getFaceIds(const Polyhedron& face) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
 	double intesectPlaneParam(const Plane& splittingPlane) const;
