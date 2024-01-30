@@ -301,10 +301,9 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 		return true;
 	}, numBlocks, RUN_MULTI_THREAD);
 
-	verifyTopology();
-
-#if 1
 	assert(verifyTopology());
+
+#if 0
 	auto sharpVerts = getSharpVertIndices();
 	vector<Vector3d> splittingPoints;
 	for (size_t vertIdx : sharpVerts) {

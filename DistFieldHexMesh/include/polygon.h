@@ -66,10 +66,11 @@ public:
 	Index3DId insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt);
 	bool insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitWithFaceNTS(const Polygon& otherFace);
+	std::vector<Index3DId> splitWithFaceEdgesNTS(const Polygon& splittingFace);
 
 private:
 	void sortIds() const;
+	Index3DId findExistingSplitFaceId(const Edge& edge) const;
 
 	template<class LAMBDA>
 	void faceFuncSelf(LAMBDA func) const;

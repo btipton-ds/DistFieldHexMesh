@@ -29,6 +29,7 @@ public:
 	const std::set<Index3DId>& getFaceIds() const;
 	std::vector<Index3DId> getCornerIds() const;
 	std::vector<Edge> getEdges() const;
+	std::set<Index3DId> getEdgeFaceIds(const auto& edge) const;
 
 	std::set<Index3DId> getAdjacentCells() const;
 
@@ -51,6 +52,7 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
+	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
 	Block* _pBlock = nullptr;
@@ -72,6 +74,12 @@ inline bool Polyhedron::split(bool intersectingOnly, std::vector<size_t>& newFac
 {
 	return split(calCentroid(), intersectingOnly, newFaces);
 }
+
+inline std::set<Index3DId> Polyhedron::getEdgeFaceIds(const auto& edge) const
+{
+	return edge.getFaceIds(*this);
+}
+
 
 }
 

@@ -10,6 +10,7 @@ struct Plane;
 namespace DFHM {
 
 class Block;
+class Polyhedron;
 
 class Edge {
 public:
@@ -18,6 +19,7 @@ public:
 	Edge(const Edge& src) = default;
 	Edge(ObjectPoolOwner* pBlock, const Index3DId& vert0, const Index3DId& vert1);
 
+	bool isValid() const;
 	bool operator < (const Edge& rhs) const;
 	bool operator == (const Edge& rhs) const;
 
@@ -31,8 +33,8 @@ public:
 	Vector3d projectPt(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertexId) const;
 	std::set<Index3DId> getFaceIds() const;
-	std::set<Index3DId> getFaceIds(std::set<Index3DId>& availFaces) const;
-	Index3DId getCommonFace() const;
+	std::set<Index3DId> getFaceIds(const Polyhedron& face) const;
+	Index3DId getOtherVert(const Index3DId& vert) const;
 
 	double intesectPlaneParam(const Plane& splittingPlane) const;
 	Index3DId splitAtParam(double t) const;

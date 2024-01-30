@@ -317,17 +317,47 @@ struct SplitEdgeRec
 
 }
 
-Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
+Index3DId Polygon::findExistingSplitFaceId(const Edge& edge) const
 {
-	Index3DId newFaceId;
+	Vector3d ourNormal = calUnitNormal();
+	auto edgeFaceIds = edge.getFaceIds();
+	Index3DId result;
+	for (const auto& faceId : edgeFaceIds) {
+		_pBlock->faceFunc(faceId, [this, &ourNormal, &result](const Block* pBlock, const Polygon& face) {
+			const double tol = 1.0e-5;
+			Vector3d testNormal = face.calUnitNormal();
+			if (fabs(1 - testNormal.dot(testNormal)) < tol) {
+				result = face.getId();
+			}
+		});
+		if (result.isValid())
+			break;
+	}
+
+	return result;
+}
+
+vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
+{
+	vector<Index3DId> splitFaceIds;
+	splitFaceIds.push_back(_thisId);
 
 	const auto& thisFace = *this;
-	auto otherEdges = otherFace.getEdges();
+	auto otherEdges = splittingFace.getEdges();
 	auto ourEdges = getEdges();
-	for (const auto& otherEdge : otherEdges) {
-		Index3DId vertId0 = otherEdge.getVertexIds()[0];
-		Index3DId vertId1 = otherEdge.getVertexIds()[1];
-		if (ourEdges.count(otherEdge) == 0 && thisFace.containsVert(vertId0) && thisFace.containsVert(vertId1)) {
+	for (const auto& splittingEdge : otherEdges) {
+		if (ourEdges.count(splittingEdge) != 0) {
+			// Our face already contains the splitting edge. It cannot be split again
+			Index3DId existingSplitFaceId = findExistingSplitFaceId(splittingEdge);
+			if (existingSplitFaceId.isValid())
+				splitFaceIds.push_back(existingSplitFaceId);
+			else
+				assert(!"This should be impossible.");
+			return splitFaceIds;
+		}
+		Index3DId vertId0 = splittingEdge.getVertexIds()[0];
+		Index3DId vertId1 = splittingEdge.getVertexIds()[1];
+		if (thisFace.containsVert(vertId0) && thisFace.containsVert(vertId1)) {
 			// other face does not have this edge but has both vertices to form an edge
 			size_t idx0 = -1, idx1 = -1;
 			for (size_t i = 0; i < thisFace._vertexIds.size(); i++) {
@@ -367,7 +397,7 @@ Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
 			setVertexIds(face0Verts);
 			_numSplits++;
 
-			newFaceId = _pBlock->addFace(face1Verts);
+			Index3DId newFaceId = _pBlock->addFace(face1Verts);
 			_pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
 				// Assign our cellIds to the new face
 				face._cellIds = _cellIds;
@@ -378,11 +408,34 @@ Index3DId Polygon::splitWithFaceNTS(const Polygon& otherFace)
 				auto& cell = _pBlock->getPolyhedronNTS(cellId);
 				cell.addFace(newFaceId);
 			}
+
+#if 1 && defined(_DEBUG)
+			// assert the vertex to face back linkage
+			for (const auto& vertId : _vertexIds) {
+				_pBlock->vertexFunc(vertId, [this](const Block* pBlock, const Vertex& vert) {
+					assert(vert.connectedToFace(_thisId));
+				});
+			}
+
+			for (const auto& vertId : splittingFace._vertexIds) {
+				_pBlock->vertexFunc(vertId, [&splittingFace](const Block* pBlock, const Vertex& vert) {
+					assert(vert.connectedToFace(splittingFace._thisId));
+				});
+			}
+
+			auto splittingEdgeFaces = splittingEdge.getFaceIds();
+			assert(splittingEdgeFaces.count(_thisId) != 0);
+			assert(splittingEdgeFaces.count(newFaceId) != 0);
+#endif // _DEBUG
+
+			break;
+
+			splitFaceIds.push_back(newFaceId);
 		}
 	}
 
 
-	return newFaceId;
+	return splitFaceIds;
 }
 
 void Polygon::setVertexIds(const vector<Index3DId>& verts)
@@ -448,12 +501,15 @@ bool Polygon::vertifyUniqueStat(const vector<Index3DId>& vertIds)
 
 bool Polygon::verifyTopology() const
 {
+	bool valid = true;
+#ifdef _DEBUG 
 	vector<Index3DId> vertIds;
 	faceFuncSelf([this, &vertIds]() {
 		vertIds = getVertexIdsNTS();
 	});
 
-	bool valid = vertifyUniqueStat(vertIds);
+	if (!vertifyUniqueStat(vertIds))
+		valid = false;
 
 	for (const auto& vertId : vertIds) {
 		_pBlock->vertexFunc(vertId, [this, &valid](const Block* pBlock, const Vertex& vert) {
@@ -466,10 +522,18 @@ bool Polygon::verifyTopology() const
 	if (_cellIds.size() > 2)
 		valid = false;
 
+	auto edges = getEdges();
+	for (const auto& edge : edges) {
+		auto faceIds = edge.getFaceIds();
+		if (faceIds.count(_thisId) == 0) // edge does not link back to this face
+			valid = false;
+	}
+
 	for (const auto& cellId : _cellIds) {
 		if (!_pBlock->polyhedronExists(cellId))
 			valid = false;
 	}
+#endif
 	return valid;
 }
 

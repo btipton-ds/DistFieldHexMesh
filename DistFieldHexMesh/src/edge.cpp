@@ -26,6 +26,11 @@ bool Edge::operator == (const Edge& rhs) const
 
 }
 
+bool Edge::isValid() const
+{
+	return _pBlock != nullptr && _vertexIds[0].isValid() && _vertexIds[1].isValid();
+}
+
 bool Edge::operator < (const Edge& rhs) const
 {
 	for (int i = 0; i < 2; i++) {
@@ -104,6 +109,13 @@ set<Index3DId> Edge::getFaceIds() const
 	_pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Block* pBlock, const Vertex& vert) {
 		faceIds = vert.getFaceIds();
 	});
+
+	_pBlock->vertexFunc(_vertexIds[1], [&faceIds](const Block* pBlock, const Vertex& vert) {
+		auto temp = vert.getFaceIds();
+		if (!temp.empty()) 
+			faceIds.insert(temp.begin(), temp.end());
+	});
+
 	for (const auto& faceId : faceIds) {
 		_pBlock->faceFunc(faceId, [this, &result, &faceId](const Block* pBlock, const Polygon& face) {
 			if (face.containsEdge(*this))
@@ -113,13 +125,14 @@ set<Index3DId> Edge::getFaceIds() const
 	return result;
 }
 
-set<Index3DId> Edge::getFaceIds(set<Index3DId>& availFaces) const
+set<Index3DId> Edge::getFaceIds(const Polyhedron& cell) const
 {
 	set<Index3DId> result;
 	set<Index3DId> edgeFaceIds = getFaceIds();
+	auto cellFaces = cell.getFaceIds();
 
 	for (const auto& faceId : edgeFaceIds) {
-		if (availFaces.count(faceId) != 0) {
+		if (cellFaces.count(faceId) != 0) {
 			result.insert(faceId);
 		}
 	}
@@ -127,29 +140,12 @@ set<Index3DId> Edge::getFaceIds(set<Index3DId>& availFaces) const
 	return result;
 }
 
-Index3DId Edge::getCommonFace() const
+Index3DId Edge::getOtherVert(const Index3DId& vert) const
 {
-	set<Index3DId> faceSet0;
-	_pBlock->vertexFunc(_vertexIds[0], [&faceSet0](const Block* pBlock, const Vertex& vert) {
-		faceSet0 = vert.getFaceIds();
-	});
-
-	for (auto iter = faceSet0.begin(); iter != faceSet0.end(); iter++) {
-		const auto& faceId = *iter;
-		size_t count = 0;
-		_pBlock->faceFunc(faceId, [this, &count](const Block* pBlock, const Polygon& face) {
-			// Do not use containsEdge. It requires adjacency and this function doesn't
-			const auto vertIds = face.getVertexIds();
-			for (const auto& vertId : vertIds) {
-				if ((vertId == _vertexIds[0]) || (vertId == _vertexIds[1]))
-					count++;
-			}
-		});
-
-		if (count == 2)
-			return faceId;
-	}
-
+	if (vert == _vertexIds[0])
+		return _vertexIds[1];
+	else if (vert == _vertexIds[1])
+		return _vertexIds[0];
 	return Index3DId();
 }
 

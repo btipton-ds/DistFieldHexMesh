@@ -203,6 +203,7 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 bool Block::verifyTopology() const
 {
 	bool result = true;
+#ifdef _DEBUG 
 	_vertices.iterateInOrderTS([&result](size_t id, const Vertex& vert) {
 		bool pass = vert.verifyTopology();
 		if (!pass)
@@ -220,6 +221,8 @@ bool Block::verifyTopology() const
 		if (!pass)
 			result = false;
 	});
+#endif
+
 	return result;
 }
 
@@ -545,6 +548,8 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 			pFace->addCell(polyhedronId);
 		}
 	}
+
+	verifyTopology();
 
 	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }

@@ -29,43 +29,14 @@ void Polyhedron::setId(ObjectPoolOwner* pBlock, size_t id)
 }
 
 
-bool Polyhedron::unload(std::ostream& out)
+bool Polyhedron::unload(ostream& out)
 {
 	return true;
 }
 
-bool Polyhedron::load(std::istream& out)
+bool Polyhedron::load(istream& out)
 {
 	return true;
-}
-
-bool Polyhedron::verifyTopology() const
-{
-	bool valid = true;
-	for (const auto& faceId : _faceIds) {
-		if (_pBlock->polygonExists(faceId)) {
-			_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face) {
-				bool pass = face.ownedByCell(_thisId);
-				if (!pass)
-					valid = false;
-				pass = face.verifyTopology();
-				if (!pass)
-					valid = false;
-			});
-		} else
-			valid = false;
-	}
-
-	set<Index3DId> faceSet;
-	faceSet.insert(_faceIds.begin(), _faceIds.end());
-	auto edges = getEdges();
-	for (const auto& edge : edges) {
-		auto edgeFaces = edge.getFaceIds(faceSet);
-		bool pass = edgeFaces.size() == 2;
-		if (!pass)
-			valid = false;
-	}
-	return valid;
 }
 
 bool Polyhedron::verifyTopologyAdj() const
@@ -257,6 +228,10 @@ bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector
 vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly)
 {
 	vector<size_t> result;
+	Index3DId breakId(Index3D(3, 0, 1), 0);
+	if (breakId == _thisId) {
+		int dbgBreak = 1;
+	}
 
 	vector<Edge> edges = getEdges(), edgesToSplit;
 	set<Index3DId> vertIdSet;
@@ -301,18 +276,19 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	_pBlock->faceFunc(splittingFaceId, [this, &newFaceIdSet, &splittingFaceId](Block* pBlock, Polygon& spittingFace) {
 		spittingFace.setNumSplits(1);
 		for (auto& faceId : _faceIds) {
-			Index3DId newFaceId;
+			vector<Index3DId> splittingFaces;
 			if (faceId.blockIdx() == splittingFaceId.blockIdx()) {
 				// Use the same mutex we already hold
 				auto& face = _pBlock->getPolygonNTS(faceId);
-				newFaceId = face.splitWithFaceNTS(spittingFace);
+				splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
 			} else {
-				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &newFaceId](Block* pBlock, Polygon& face) {
-					newFaceId = face.splitWithFaceNTS(spittingFace);
+				_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &splittingFaces](Block* pBlock, Polygon& face) {
+					splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
 				});
 			}
-			if (newFaceId.isValid())
-				newFaceIdSet.insert(newFaceId);
+			if (splittingFaces.size() == 2) {
+				newFaceIdSet.insert(splittingFaces.begin(), splittingFaces.end());
+			}
 		}
 	});
 
@@ -361,9 +337,11 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 	return result;
 }
 
-bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
+set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 {
-#if 1
+
+	// This function takes vertices and looks for faces which contain exactly 2 of the available verts.
+	// The edge may already exist.
 	set<Edge> edgeSet;
 	for (const auto& faceId : _faceIds) {
 		_pBlock->faceFunc(faceId, [this, &edgeSet, &vertIds](const Block* pBlock, const Polygon& face) {
@@ -376,31 +354,38 @@ bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 				auto iter = vertsInFace.begin();
 				const Index3DId& vertId0 = *iter++;
 				const Index3DId& vertId1 = *iter;
-				edgeSet.insert(Edge(_pBlock, vertId0, vertId1));
+				Edge newEdge(_pBlock, vertId0, vertId1);
+
+
+				edgeSet.insert(newEdge);
 			}
 		});
 	}
 
+	return edgeSet;
+}
+
+bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
+{
+
 	vector<Index3DId> result;
-	const Edge& e = *edgeSet.begin();
+	auto newEdgeSet = createEdgesFromVerts(vertIds);
+
+	const Edge& e = *newEdgeSet.begin();
 	result.push_back(e.getVertexIds()[0]);
 	result.push_back(e.getVertexIds()[1]);
 
-	edgeSet.erase(edgeSet.begin());
+	newEdgeSet.erase(newEdgeSet.begin());
 	bool found = true;
-	while (found && !edgeSet.empty()) {
+	while (found && !newEdgeSet.empty()) {
 		found = false;
 		const auto& lastVert = result.back();
-		for (auto iter = edgeSet.begin(); iter != edgeSet.end(); iter++) {
-			const auto& e = *iter;
-			if (e.getVertexIds()[0] == lastVert) {
-				result.push_back(e.getVertexIds()[1]);
-				edgeSet.erase(iter);
-				found = true;
-				break;
-			} else if (e.getVertexIds()[1] == lastVert) {
-				result.push_back(e.getVertexIds()[0]);
-				edgeSet.erase(iter);
+		for (auto iter = newEdgeSet.begin(); iter != newEdgeSet.end(); iter++) {
+			const Edge& e = *iter;
+			const auto& otherVert = e.getOtherVert(lastVert);
+			if (otherVert.isValid()) {
+				result.push_back(otherVert);
+				newEdgeSet.erase(iter);
 				found = true;
 				break;
 			}
@@ -419,42 +404,28 @@ bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 	}
 	vertIds = result;
 	return true;
-#else
-	set<Index3DId> vertSet;
-	vertSet.insert(vertIds.begin(), vertIds.end());
-	vertIds.clear();
+}
 
-	vertIds.push_back(*vertSet.begin());
-	vertSet.erase(vertIds.back());
-	while (!vertSet.empty()) {
-		// Find next vertex by walking faces
-		const auto& vertId = vertIds.back();
+bool Polyhedron::verifyTopology() const
+{
+	bool valid = true;
+#ifdef _DEBUG 
 
-		// Get cell faces connected to this vertex
-		set<Index3DId> faceIds;
-		_pBlock->vertexFunc(vertId, [this, &faceIds](Block* pBlock, Vertex& vert) {
-			faceIds = vert.getFaceIds(_faceIds);
-		});
-
-		
-		for (const auto& faceId : faceIds) {
-			Index3DId nextVertId;
-			_pBlock->faceFunc(faceId, [&vertId, &vertSet, &nextVertId](Block* pBlock, Polygon& face) {
-				const auto& faceVerts = face.getVertexIdsNTS();
-				for (const auto& faceVertId : faceVerts) {
-					if (vertSet.count(faceVertId) != 0) {
-						nextVertId = faceVertId;
-						return;
-					}
-				}
-			});
-
-			if (nextVertId.isValid()) {
-				vertIds.push_back(nextVertId);
-				vertSet.erase(nextVertId);
-				break;
-			}
+	for (const auto& faceId : _faceIds) {
+		if (_pBlock->polygonExists(faceId)) {
+			_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face) {
+				bool pass = face.ownedByCell(_thisId);
+				if (!pass)
+					valid = false;
+				pass = face.verifyTopology();
+				if (!pass)
+					valid = false;
+				});
 		}
+		else
+			valid = false;
 	}
-#endif
+#endif // _DEBUG 
+
+	return valid;
 }

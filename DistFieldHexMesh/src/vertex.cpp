@@ -54,19 +54,24 @@ bool Vertex::connectedToFace(const Index3DId& faceId) const
 bool Vertex::verifyTopology() const
 {
 	bool valid = true;
+
+#ifdef _DEBUG 
 	for (const auto& faceId : _faceIds) {
-		if (_pBlock->polygonExists(faceId)) {
-			_pBlock->faceFunc(faceId, [this, &faceId, &valid](const Block* pBlock, const Polygon& face) {
-				bool pass = face.containsVert(_thisId);
-				if (!pass)
-					valid = false;
-				pass = face.vertsContainFace();
-				if (!pass)
+		if (!_pBlock->polygonExists(faceId))
+			valid = false;
+
+		vector<Index3DId> vertIds;
+		_pBlock->faceFunc(faceId, [this, &vertIds](const Block* pBlock, const Polygon& face) {
+			vertIds = face.getVertexIds();
+		});
+		for (const auto& vertId : vertIds) {
+			_pBlock->vertexFunc(vertId, [this, &valid](const Block& pBlock, const Vertex& vert) {
+				if (!vert.connectedToFace(_thisId))
 					valid = false;
 			});
-		} else
-			valid = false;
+		}
 	}
+#endif
 
 	return valid;
 }
