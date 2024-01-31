@@ -163,6 +163,16 @@ bool Polygon::vertsContainFace() const
 	return result;
 }
 
+bool Polygon::ownedByCellNTS(const Index3DId& cellId) const
+{
+	return _cellIds.contains(cellId);
+}
+
+bool Polygon::wasSplitFromNTS(const Index3DId& faceId) const
+{
+	return _splitsFaceIds.contains(faceId);
+}
+
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
@@ -317,11 +327,54 @@ struct SplitEdgeRec
 
 }
 
-Index3DId Polygon::findExistingSplitFaceId(const Edge& edge) const
+bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
 {
+	bool allAbove = true;
+
+	faceFuncSelf([this, &splitPlane, &allAbove, tol]() {
+		auto vertIds = getVertexIds();
+		for (const auto& vertId : vertIds) {
+			Vector3d pt = _pBlock->getVertexPoint(vertId);
+			Vector3d v = pt - splitPlane._origin;
+			double dp = v.dot(splitPlane._normal);
+			if (fabs(dp) > tol) {
+				if (dp < 0) {
+					allAbove = false;
+					break;
+				}
+			}
+		}
+	});
+
+	return allAbove;
+}
+
+Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
+{
+	Index3DId result;
+#if 1
+	assert(containsEdge(edge));
+	size_t numFound = 0;
+	auto edgeFaceIds = edge.getFaceIds();
+	for (const auto& otherFaceId : edgeFaceIds) {
+		bool found;
+		_pBlock->faceFunc(otherFaceId, [this, &found](const Block* pBlock, const Polygon& otherFace) {
+			found = (otherFace.wasSplitFromNTS(_thisId) || wasSplitFromNTS(otherFace._thisId));
+		});
+
+		if (found) {
+			result = otherFaceId;
+			numFound++;
+		}
+	}
+
+	assert(numFound == 1);
+	if (numFound == 1 && result.isValid())
+		return result;
+	return Index3DId();
+#else
 	Vector3d ourNormal = calUnitNormal();
 	auto edgeFaceIds = edge.getFaceIds();
-	Index3DId result;
 	for (const auto& faceId : edgeFaceIds) {
 		_pBlock->faceFunc(faceId, [this, &ourNormal, &result](const Block* pBlock, const Polygon& face) {
 			const double tol = 1.0e-5;
@@ -333,7 +386,7 @@ Index3DId Polygon::findExistingSplitFaceId(const Edge& edge) const
 		if (result.isValid())
 			break;
 	}
-
+#endif
 	return result;
 }
 
@@ -344,11 +397,10 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 
 	const auto& thisFace = *this;
 	auto otherEdges = splittingFace.getEdges();
-	auto ourEdges = getEdges();
 	for (const auto& splittingEdge : otherEdges) {
-		if (ourEdges.count(splittingEdge) != 0) {
+		if (containsEdge(splittingEdge)) {
 			// Our face already contains the splitting edge. It cannot be split again
-			Index3DId existingSplitFaceId = findExistingSplitFaceId(splittingEdge);
+			Index3DId existingSplitFaceId = findOtherSplitFaceId(splittingEdge);
 			if (existingSplitFaceId.isValid())
 				splitFaceIds.push_back(existingSplitFaceId);
 			else
@@ -395,13 +447,13 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(verifyVertsConvexStat(_pBlock, face1Verts));
 
 			setVertexIdsNTS(face0Verts);
-			_numSplits++;
 
 			Index3DId newFaceId = _pBlock->addFace(face1Verts);
+			_splitsFaceIds.insert(newFaceId);
 			_pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
 				// Assign our cellIds to the new face
 				face._cellIds = _cellIds;
-				face._numSplits++;
+				face._splitsFaceIds.insert(_thisId);
 			});
 
 			for (const auto& cellId : _cellIds) {
@@ -548,15 +600,13 @@ vector<Index3DId> Polygon::getVertexIds() const
 template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func) const
 {
-	auto pOwner = _pBlock->getOwner(_thisId);
-	patient_lock_guard g(pOwner->getMutex());
+	patient_lock_guard g(_pBlock->getMutex());
 	func();
 }
 
 template<class LAMBDA>
 void Polygon::faceFuncSelf(LAMBDA func)
 {
-	auto pOwner = _pBlock->getOwner(_thisId);
-	patient_lock_guard g(pOwner->getMutex());
+	patient_lock_guard g(_pBlock->getMutex());
 	func();
 }

@@ -29,9 +29,8 @@ Block::GlPoints::GlPoints(const GlPoints& src)
 }
 
 Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
-	: BlockData()
+	: BlockData(blockIdx)
 	, _pVol(pVol)
-	, _blockIdx(blockIdx)
 {
 	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);
@@ -130,7 +129,6 @@ Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
 
 Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 {
-	const double tol = 1.0e-5;
 	auto volBounds = _pVol->volDim();
 
 	Vector3d ctr(0, 0, 0);
@@ -154,7 +152,6 @@ Index3D Block::determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const
 
 Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 {
-	const double tol = 1.0e-5;
 	auto volBounds = _pVol->volDim();
 
 	Vector3d ctr(0, 0, 0);
@@ -430,6 +427,7 @@ size_t Block::addCell(const std::vector<Index3DId>& faceIds)
 				face.addCell(cellId);
 			});
 		}
+		assert(cell.verifyTopology());
 	});
 	return cellId.elementId();
 }
@@ -576,6 +574,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 				vert.addFaceId(faceId);
 			});
 		}
+		assert(face.verifyTopology());
 	});
 
 	return faceId;
@@ -584,10 +583,9 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
+	Block* pOwner = getOwner(ownerBlockIdx);
 
-	Block* pPolygonOwner = getOwner(ownerBlockIdx);
-
-	auto faceId = pPolygonOwner->addFace(pts);
+	auto faceId = pOwner->addFace(pts);
 
 	return faceId;
 }
@@ -680,15 +678,44 @@ void Block::addTris(const CMeshPtr& pSrcMesh)
 size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
 {
 	size_t numSplit = 0;
-	for (int i = 0; i < 3; i++) {
-		Vector3d norm(0, 0, 0);
-		norm[i] = 1;
-		Plane splitPlane(splitPt, norm);
-		allCellFunc([this, &splitPlane](size_t id, Polyhedron& cell) {
-			if (cell.contains(splitPlane._origin))
-				cell.splitWithPlane(splitPlane, false);
+	size_t nCells0, nCells1;
+
+	nCells0 = numPolyhedra();
+	set<size_t> nextCells0, nextCells1;
+	allCellFunc([this, &splitPt, &nextCells0](size_t id, Polyhedron& cell) {
+		Plane splitPlane(splitPt, Vector3d(1, 0, 0));
+		if (cell.contains(splitPlane._origin)) {
+			auto temp = cell.splitWithPlane(splitPlane, false);
+
+			nextCells0.insert(temp.begin(), temp.end());
+		}
+	});
+	nCells1 = numPolyhedra();
+
+	nCells0 = nCells1;
+
+	for (const auto& cellId : nextCells0) {
+		BlockData::cellFunc(cellId, [&splitPt, &nextCells1](Block* pBlock, Polyhedron& cell) {
+			Plane splitPlane(splitPt, Vector3d(0, 1, 0));
+			auto temp = cell.splitWithPlane(splitPlane, false);
+			nextCells1.insert(temp.begin(), temp.end());
 		});
 	}
+
+	nCells1 = numPolyhedra();
+
+	nCells0 = nCells1;
+
+	nextCells0.clear();
+	for (const auto& cellId : nextCells1) {
+		BlockData::cellFunc(cellId, [&splitPt, &nextCells0](Block* pBlock, Polyhedron& cell) {
+			Plane splitPlane(splitPt, Vector3d(0, 0, 1));
+			auto temp = cell.splitWithPlane(splitPlane, false);
+			nextCells0.insert(temp.begin(), temp.end());
+		});
+	}
+
+	nCells1 = numPolyhedra();
 
 	return numSplit;
 }

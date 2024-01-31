@@ -22,7 +22,6 @@ public:
 
 	void setId(ObjectPoolOwner* pBlock, size_t id);
 	const Index3DId& getId() const;
-	void setNumSplits(size_t val);
 	size_t getNumSplits() const;
 
 	bool unload(std::ostream& out, size_t idSelf);
@@ -52,6 +51,9 @@ public:
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
 	bool vertsContainFace() const;
+	bool ownedByCellNTS(const Index3DId& cellId) const;
+	bool wasSplitFromNTS(const Index3DId& faceId) const;
+	bool isAbovePlane(const Plane& plane, double tol) const;
 
 	bool vertifyUnique() const;
 	bool verifyVertsConvex() const;
@@ -70,7 +72,7 @@ public:
 
 private:
 	void sortIds() const;
-	Index3DId findExistingSplitFaceId(const Edge& edge) const;
+	Index3DId findOtherSplitFaceId(const Edge& edge) const;
 
 	template<class LAMBDA>
 	void faceFuncSelf(LAMBDA func) const;
@@ -81,8 +83,8 @@ private:
 	std::set<Edge> getEdgesNTS() const;
 
 	Block* _pBlock = nullptr;
-	size_t _numSplits = 0;
-	Index3DId _thisId;
+	Index3DId _thisId; // Id of the face this face was split from
+	std::set<Index3DId> _splitsFaceIds;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 
@@ -95,14 +97,9 @@ inline const Index3DId& Polygon::getId() const
 	return _thisId;
 }
 
-inline void Polygon::setNumSplits(size_t val)
-{
-	_numSplits = val;
-}
-
 inline size_t Polygon::getNumSplits() const
 {
-	return _numSplits;
+	return _splitsFaceIds.size();
 }
 
 inline bool Polygon::vertifyUnique() const

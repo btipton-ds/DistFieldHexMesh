@@ -37,7 +37,7 @@ private:
 
 class BlockData : public ObjectPoolOwner {
 public:
-	BlockData();
+	BlockData(const Index3D& blockIdx);
 	BlockData(const BlockData& src) = delete;
 	std::recursive_timed_mutex& getMutex() const;
 
@@ -110,6 +110,8 @@ public:
 	template<class LAMBDA>
 	void allCellFunc(LAMBDA func);
 
+protected:
+	Index3D _blockIdx;
 private:
 	mutable std::recursive_timed_mutex _mutex;
 	ObjectPool<Vertex> _vertices;
@@ -139,6 +141,7 @@ template<class LAMBDA>
 void BlockData::vertexFunc(size_t vertId, LAMBDA func) const
 {
 	patient_lock_guard g(_mutex);
+	// TODO change all these lambdas to take an Index3DId instead of the Block*.
 	func((const Block*)this, _vertices[vertId]);
 }
 

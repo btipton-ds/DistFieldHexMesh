@@ -28,7 +28,7 @@ public:
 	const std::set<Index3DId>& getFaceIds() const;
 	std::vector<Index3DId> getCornerIds() const;
 	std::vector<Edge> getEdges() const;
-	std::set<Index3DId> getEdgeFaceIds(const auto& edge) const;
+	std::set<Index3DId> getEdgeFaceIds(const Edge& edge) const;
 
 	std::set<Index3DId> getAdjacentCells() const;
 
@@ -46,7 +46,9 @@ public:
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
+	void dumpFaces() const;
 
+	bool isClosed() const;
 	bool verifyTopology() const;
 	bool verifyTopologyAdj() const;
 	bool operator < (const Polyhedron& rhs) const;
@@ -74,12 +76,6 @@ inline bool Polyhedron::split(bool intersectingOnly, std::vector<size_t>& newFac
 {
 	return split(calCentroid(), intersectingOnly, newFaces);
 }
-
-inline std::set<Index3DId> Polyhedron::getEdgeFaceIds(const auto& edge) const
-{
-	return edge.getFaceIds(*this);
-}
-
 
 }
 

@@ -3,8 +3,9 @@
 using namespace std;
 using namespace DFHM;
 
-BlockData::BlockData()
-	: _vertices(true)
+BlockData::BlockData(const Index3D& blockIdx)
+	: _blockIdx(blockIdx)
+	, _vertices(true)
 	, _polygons(true)
 	, _polyhedra(false)
 {

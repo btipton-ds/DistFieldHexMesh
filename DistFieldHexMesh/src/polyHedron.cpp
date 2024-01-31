@@ -28,6 +28,23 @@ void Polyhedron::setId(ObjectPoolOwner* pBlock, size_t id)
 	assert(_thisId.isValid());
 }
 
+void Polyhedron::dumpFaces() const
+{
+	size_t idx = 0;
+	for (const auto& faceId : _faceIds) {
+		cout << "face[" << idx++ << "]\n";
+		_pBlock->faceFunc(faceId, [](const Block* pBlock, const Polygon& face) {
+			Vector3d n = face.calUnitNormal();
+			cout << "  n: (" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
+			const auto& vertIds = face.getVertexIdsNTS();
+			for (const auto& vertId : vertIds) {
+				Vector3d pt = pBlock->getVertexPoint(vertId);
+				cout << "  p: (" << pt[0] << ", " << pt[1] << ", " << pt[2] << ")\n";
+			}
+		});
+	}
+}
+
 
 bool Polyhedron::unload(ostream& out)
 {
@@ -196,6 +213,7 @@ bool Polyhedron::contains(const Vector3d& pt) const
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
 		_pBlock->faceFunc(faceId, [this, &pt, &ctr, &result](Block* pBlock, Polygon& face) {
+			const double tol = 1.0e-5;
 			Vector3d faceCtr = face.calCentroid();
 			Vector3d norm = face.calUnitNormal();
 
@@ -207,7 +225,7 @@ bool Polyhedron::contains(const Vector3d& pt) const
 			Vector3d vTestPt = pt - faceCtr;
 			vTestPt.normalize();
 
-			if (norm.dot(vTestPt) > 0)
+			if (norm.dot(vTestPt) > tol)
 				result = false;
 		});
 	}
@@ -253,18 +271,17 @@ bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector
 
 vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly)
 {
+	const double tol = 1.0e-6;
 	vector<size_t> result;
-	Index3DId breakId(Index3D(3, 0, 1), 0);
-	if (breakId == _thisId) {
-		int dbgBreak = 1;
-	}
+
+	assert(isClosed());
 
 	vector<Edge> edges = getEdges(), edgesToSplit;
 	set<Index3DId> vertIdSet;
 
 	for (const auto& edge : edges) {
 		double t = edge.intesectPlaneParam(splitPlane);
-		if (t >= 0 && t <= 1) {
+		if (t >= -tol && t <= 1 + tol) {
 			Vector3d pt = edge.calPointAt(t);
 			Index3DId vertId = _pBlock->idOfPoint(pt);
 			if (vertId.isValid())
@@ -290,7 +307,7 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 
 	// Add the splitting face
 	Index3DId splittingFaceId;
-	set<Index3DId> newFaceIdSet;
+	set<Index3DId> splitFaceIdSet;
 	if (newVertIds.size() >= 3) {
 		if (!orderVertIdsNTS(newVertIds))
 			return result;
@@ -299,49 +316,47 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
 
-	_pBlock->faceFunc(splittingFaceId, [this, &newFaceIdSet, &splittingFaceId](Block* pBlock, Polygon& spittingFace) {
-		spittingFace.setNumSplits(1);
+	_pBlock->faceFunc(splittingFaceId, [this, &splitFaceIdSet, &splittingFaceId](Block* pBlock, Polygon& spittingFace) {
 		for (auto& faceId : _faceIds) {
 			vector<Index3DId> splittingFaces;
-			_pBlock->faceFunc(faceId, [this, &newFaceIdSet, &spittingFace, &splittingFaces](Block* pBlock, Polygon& face) {
+			_pBlock->faceFunc(faceId, [this, &splitFaceIdSet, &spittingFace, &splittingFaces](Block* pBlock, Polygon& face) {
 				splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
 			});
 
 			if (splittingFaces.size() == 2) {
-				newFaceIdSet.insert(splittingFaces.begin(), splittingFaces.end());
+				splitFaceIdSet.insert(splittingFaces.begin(), splittingFaces.end());
 			}
 		}
 	});
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.
-	for (const auto& faceId : _faceIds) {
-		bool allVertsAbovePlane = true;
-		_pBlock->faceFunc(faceId, [this, &allVertsAbovePlane, &splitPlane, &newFaceIdSet, &faceId](const Block* pBlock, const Polygon& face) {
-			auto vertIds = face.getVertexIds();
-			for (const auto& vertId : vertIds) {
-				Vector3d pt = pBlock->getVertexPoint(vertId);
-				Vector3d v = pt - splitPlane._origin;
-				if (v.dot(splitPlane._normal) < 0) {
-					allVertsAbovePlane = false;
-				}
-			}
-		});
+	set<Index3DId> faceSet0, faceSet1;
 
-		if (allVertsAbovePlane)
-			newFaceIdSet.insert(faceId);
+	splitFaceIdSet.insert(_faceIds.begin(), _faceIds.end());
+	for (const auto& faceId : splitFaceIdSet) {
+		_pBlock->faceFunc(faceId, [&faceId, &splitPlane, &faceSet0, &faceSet1](const Block* pBlock, const Polygon& face) {
+			const double tol = 1.0e-5;
+			if (face.isAbovePlane(splitPlane, tol))
+				faceSet0.insert(faceId);
+			else
+				faceSet1.insert(faceId);
+		});
 	}
 
-	if (newFaceIdSet.size() < 4) { // A tetrohedron has the minimum number of planar faces - 4.
+	if (faceSet0.size() < 4 || faceSet1.size() < 4) { // A tetrohedron has the minimum number of planar faces - 4.
 		return result;
 	}
-	for (const auto& faceId : newFaceIdSet) {
+	if (faceSet1.size() > faceSet0.size())
+		swap(faceSet0, faceSet1);
+
+	for (const auto& faceId : faceSet1) {
 		removeFace(faceId);
 	}
 	addFace(splittingFaceId);
 
 	vector<Index3DId> newFaceIds;
-	newFaceIds.insert(newFaceIds.end(), newFaceIdSet.begin(), newFaceIdSet.end());
+	newFaceIds.insert(newFaceIds.end(), faceSet1.begin(), faceSet1.end());
 	newFaceIds.push_back(splittingFaceId);
 	Index3DId newCellId = Index3DId(_thisId, _pBlock->addCell(newFaceIds));
 
@@ -349,6 +364,8 @@ vector<size_t> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersec
 		face.addCell(_thisId);
 		face.addCell(newCellId);
 	});
+
+	assert(verifyTopology());
 
 	if (_thisId.isValid())
 		result.push_back(_thisId.elementId());
@@ -426,6 +443,44 @@ bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 	return false;
 }
 
+set<Index3DId> Polyhedron::getEdgeFaceIds(const Edge& edge) const
+{
+	// This function returns the faced ids which belong to this edge AND to this cell. 
+	// It should always be two for closed cell.
+	set<Index3DId> result;
+
+	_pBlock->cellFunc(_thisId, [&edge, &result](const Block* pBlock, const Polyhedron& cell) {
+		for (const auto& faceId : cell._faceIds) {
+			pBlock->faceFunc(faceId, [&edge, &faceId, &result](const Block* pBlock, const Polygon& face) {
+				if (face.containsEdge(edge)) {
+					result.insert(faceId);
+				}
+			});
+		}
+	});
+
+	return result;
+}
+
+bool Polyhedron::isClosed() const
+{
+	bool result = true;
+	_pBlock->cellFunc(_thisId, [&result](const Block* pBlock, const Polyhedron& cell) {
+		vector<Edge> edges = cell.getEdges();
+		for (const auto& edge : edges) {
+			if (cell.getEdgeFaceIds(edge).size() != 2) {
+				result = false;
+				break;
+			}
+		}
+
+		if (!result)
+			cell.dumpFaces();
+	});
+
+	return result;
+}
+
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
@@ -433,6 +488,8 @@ bool Polyhedron::verifyTopology() const
 
 	for (const auto& faceId : _faceIds) {
 		if (_pBlock->polygonExists(faceId)) {
+			if (!isClosed())
+				valid = false;
 			_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face) {
 				bool pass = face.ownedByCell(_thisId);
 				if (!pass)

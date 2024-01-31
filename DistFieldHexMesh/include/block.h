@@ -174,7 +174,6 @@ private:
 						// must be tested to see if it belongs to this box or a neighbor box.
 						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
 						// locking the mutex.Objects which lie on the boundary do require locking.
-	Index3D _blockIdx;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	CMeshPtr _pModelTriMesh;
