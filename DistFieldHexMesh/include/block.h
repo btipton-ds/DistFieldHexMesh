@@ -121,7 +121,7 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	std::recursive_timed_mutex& getMutex() const;
+	MutexType& getMutex() const;
 
 	template<class LAMBDA>
 	void vertexFunc(const Index3DId& id, LAMBDA func) const;
@@ -232,7 +232,7 @@ inline const CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
-inline std::recursive_timed_mutex& Block::getMutex() const
+inline MutexType& Block::getMutex() const
 {
 	return BlockData::getMutex();
 }

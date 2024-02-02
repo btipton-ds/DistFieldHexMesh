@@ -6,6 +6,7 @@
 #include <mutex>
 
 #include <index3D.h>
+#include <patient_lock_guard.h>
 #include <objectPool.h>
 #include <vertex.h>
 #include <polygon.h>
@@ -25,21 +26,11 @@ class Block;
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
 
-class patient_lock_guard {
-public:
-	patient_lock_guard(std::recursive_timed_mutex& mutex);
-	~patient_lock_guard();
-
-private:
-	bool _locked = false;
-	std::recursive_timed_mutex& _mutex;
-};
-
 class BlockData : public ObjectPoolOwner {
 public:
 	BlockData(const Index3D& blockIdx);
 	BlockData(const BlockData& src) = delete;
-	std::recursive_timed_mutex& getMutex() const;
+	MutexType& getMutex() const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -113,26 +104,13 @@ public:
 protected:
 	Index3D _blockIdx;
 private:
-	mutable std::recursive_timed_mutex _mutex;
+	mutable MutexType _mutex;
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
 
-inline patient_lock_guard::patient_lock_guard(std::recursive_timed_mutex& mutex)
-	: _mutex(mutex)
-{
-	using namespace std::chrono_literals;
-	_locked = _mutex.try_lock_for(10ms);
-}
-
-inline patient_lock_guard::~patient_lock_guard()
-{
-	if (_locked)
-		_mutex.unlock();
-}
-
-inline std::recursive_timed_mutex& BlockData::getMutex() const
+inline MutexType& BlockData::getMutex() const
 {
 	return _mutex;
 }
