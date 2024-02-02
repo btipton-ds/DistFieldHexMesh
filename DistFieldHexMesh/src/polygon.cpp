@@ -95,8 +95,8 @@ set<Edge> Polygon::getEdges() const
 {
 	set<Edge> result;
 
-	faceFuncSelf([this, &result]() {
-		result = getEdgesNTS();
+	_pBlock->faceFunc(_thisId, [&result](const Block* pBlock, const Polygon& self) {
+		result = self.getEdgesNTS();
 	});
 
 	return result;
@@ -331,10 +331,10 @@ bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
 {
 	bool allAbove = true;
 
-	faceFuncSelf([this, &splitPlane, &allAbove, tol]() {
-		auto vertIds = getVertexIds();
+	_pBlock->faceFunc(_thisId, [&splitPlane, &allAbove, tol](const Block* pBlock, const Polygon& face) {
+		auto vertIds = face.getVertexIds();
 		for (const auto& vertId : vertIds) {
-			Vector3d pt = _pBlock->getVertexPoint(vertId);
+			Vector3d pt = pBlock->getVertexPoint(vertId);
 			Vector3d v = pt - splitPlane._origin;
 			double dp = v.dot(splitPlane._normal);
 			if (fabs(dp) > tol) {
@@ -504,7 +504,6 @@ void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 	_pBlock->removeFaceFromLookUp(_thisId);
 
 	{
-		patient_lock_guard g(_pBlock->getMutex());
 		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
 
 		for (const auto& vertId : _vertexIds) {
@@ -555,8 +554,8 @@ bool Polygon::verifyTopology() const
 	bool valid = true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
-	faceFuncSelf([this, &vertIds]() {
-		vertIds = getVertexIdsNTS();
+	_pBlock->faceFunc(_thisId, [&vertIds](const Block* pBlock, const Polygon& face) {
+		vertIds = face.getVertexIdsNTS();
 	});
 
 	if (!vertifyUniqueStat(vertIds))
@@ -591,22 +590,8 @@ bool Polygon::verifyTopology() const
 vector<Index3DId> Polygon::getVertexIds() const
 {
 	vector<Index3DId> result;
-	faceFuncSelf([this, &result]() {
-		result = getVertexIdsNTS();
+	_pBlock->faceFunc(_thisId, [&result](const Block* pBlock, const Polygon& self) {
+		result = self.getVertexIdsNTS();
 	});
 	return result;
-}
-
-template<class LAMBDA>
-void Polygon::faceFuncSelf(LAMBDA func) const
-{
-	patient_lock_guard g(_pBlock->getMutex());
-	func();
-}
-
-template<class LAMBDA>
-void Polygon::faceFuncSelf(LAMBDA func)
-{
-	patient_lock_guard g(_pBlock->getMutex());
-	func();
 }

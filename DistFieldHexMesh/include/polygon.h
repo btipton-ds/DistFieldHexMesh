@@ -74,12 +74,6 @@ private:
 	void sortIds() const;
 	Index3DId findOtherSplitFaceId(const Edge& edge) const;
 
-	template<class LAMBDA>
-	void faceFuncSelf(LAMBDA func) const;
-
-	template<class LAMBDA>
-	void faceFuncSelf(LAMBDA func);
-
 	std::set<Edge> getEdgesNTS() const;
 
 	Block* _pBlock = nullptr;

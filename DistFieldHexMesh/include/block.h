@@ -121,8 +121,6 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	MutexType& getMutex() const;
-
 	template<class LAMBDA>
 	void vertexFunc(const Index3DId& id, LAMBDA func) const;
 
@@ -230,11 +228,6 @@ inline bool Block::isUnloaded() const
 inline const CMeshPtr& Block::getModelMesh() const
 {
 	return _pModelTriMesh;
-}
-
-inline MutexType& Block::getMutex() const
-{
-	return BlockData::getMutex();
 }
 
 template<class LAMBDA>

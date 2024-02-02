@@ -32,37 +32,31 @@ size_t BlockData::numPolyhedra() const
 
 void BlockData::addFaceToLookup(size_t faceId)
 {
-	patient_lock_guard g(_mutex);
 	_polygons.addToLookup(faceId);
 }
 
 bool BlockData::removeFaceFromLookUp(size_t faceId)
 {
-	patient_lock_guard g(_mutex);
 	return _polygons.removeFromLookup(faceId);
 }
 
 Vector3d BlockData::getVertexPoint(size_t vertId) const
 {
-	patient_lock_guard g(_mutex);
 	return _vertices[vertId].getPoint();
 }
 
 bool BlockData::vertexExists(size_t id) const
 {
-	patient_lock_guard g(_mutex);
 	return _vertices.exists(id);
 }
 
 bool BlockData::polygonExists(size_t id) const
 {
-	patient_lock_guard g(_mutex);
 	return _polygons.exists(id);
 }
 
 bool BlockData::polyhedronExists(size_t id) const
 {
-	patient_lock_guard g(_mutex);
 	return _polyhedra.exists(id);
 }
 

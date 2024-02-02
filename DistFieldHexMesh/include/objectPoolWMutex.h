@@ -1,5 +1,6 @@
 #pragma once
 
+#include <patient_lock_guard.h>
 #include <objectPool.h>
 
 namespace DFHM {
@@ -37,7 +38,7 @@ public:
 	bool empty() const;
 	size_t size() const;
 
-	std::recursive_mutex& getMutex() const;
+	MutexType& getMutex() const;
 
 	void lock() const;
 	bool tryLock() const;
@@ -45,7 +46,7 @@ public:
 private:
 	mutable std::thread::id _lockedId = std::this_thread::get_id();
 
-	mutable std::recursive_mutex _mutex;
+	mutable MutexType _mutex;
 	ObjectPool<T> _data;
 };
 
@@ -162,7 +163,7 @@ size_t ObjectPoolWMutex<T>::size() const
 }
 
 template<class T>
-std::recursive_mutex& ObjectPoolWMutex<T>::getMutex() const
+MutexType& ObjectPoolWMutex<T>::getMutex() const
 {
 	return _mutex;
 }
