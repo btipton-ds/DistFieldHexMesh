@@ -144,9 +144,6 @@ public:
 	Index3DId() = default;
 	Index3DId(const Index3DId& src) = default;
 	Index3DId(const Index3DBase& src, size_t elementId);
-	Index3DId(const Vector3<Index3DBaseType>& src);
-	Index3DId(size_t i, size_t j, size_t k);
-	Index3DId(const Vector3i& src);
 
 	bool operator < (const Index3DId& rhs) const;
 	bool operator == (const Index3DId& rhs) const;
@@ -163,21 +160,6 @@ private:
 inline Index3DId::Index3DId(const Index3DBase& src, size_t elementId)
 	: Index3DBase(src)
 	, _elementId(elementId)
-{
-}
-
-inline Index3DId::Index3DId(const Vector3<Index3DBaseType>& src)
-	: Index3DBase(src)
-{
-}
-
-inline Index3DId::Index3DId(size_t i, size_t j, size_t k)
-	: Index3DBase(i, j, k)
-{
-}
-
-inline Index3DId::Index3DId(const Vector3i& src)
-	: Index3DBase(src)
 {
 }
 

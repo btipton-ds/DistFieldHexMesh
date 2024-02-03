@@ -48,7 +48,7 @@ add_executable (DistFieldHexMesh
 	${OpenGlPlatformDecl}
 	"src/app.cpp"
     "src/appData.cpp"
-	"src/blockData.cpp"
+	
 	"src/block.cpp"	
     "src/edge.cpp"
     "src/index3D.cpp"
@@ -70,7 +70,7 @@ add_executable (DistFieldHexMesh
  	 )
 
 add_executable (TestDFM         
-	"src/blockData.cpp"
+	
 	"src/block.cpp"	
  	"src/blockTest.cpp" 
  	"src/edge.cpp" 

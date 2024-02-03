@@ -17,7 +17,7 @@ public:
 
 	Edge() = default;
 	Edge(const Edge& src) = default;
-	Edge(ObjectPoolOwner* pBlock, const Index3DId& vert0, const Index3DId& vert1);
+	Edge(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
 
 	bool isValid() const;
 	bool operator < (const Edge& rhs) const;

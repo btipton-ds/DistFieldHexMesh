@@ -2,8 +2,9 @@
 
 #include <vector>
 #include <set>
-#include <vertex.h>
+#include <patient_lock_guard.h>
 #include <index3D.h>
+#include <vertex.h>
 
 struct Plane;
 
@@ -19,6 +20,14 @@ public:
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+
+	Polygon() = default;
+	Polygon(const Polygon& src);
+	Polygon& operator = (const Polygon& rhs);
+
+	MutexType& getMutex() const;
+	const Block* getBlockPtr() const;
+	Block* getBlockPtr();
 
 	void setId(ObjectPoolOwner* pBlock, size_t id);
 	const Index3DId& getId() const;
@@ -43,8 +52,7 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	std::vector<Index3DId> getVertexIds() const;
-	const std::vector<Index3DId>& getVertexIdsNTS() const;
+	const std::vector<Index3DId>& getVertexIds() const;
 	void setVertexIdsNTS(const std::vector<Index3DId>& verts);
 	std::set<Edge> getEdges() const;
 	bool containsEdge(const Edge& edge) const;
@@ -78,6 +86,7 @@ private:
 
 	Block* _pBlock = nullptr;
 	Index3DId _thisId; // Id of the face this face was split from
+	mutable MutexType _mutex;
 	std::set<Index3DId> _splitsFaceIds;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
@@ -89,6 +98,21 @@ private:
 inline const Index3DId& Polygon::getId() const
 {
 	return _thisId;
+}
+
+inline MutexType& Polygon::getMutex() const
+{
+	return _mutex;
+}
+
+inline const Block* Polygon::getBlockPtr() const
+{
+	return _pBlock;
+}
+
+inline Block* Polygon::getBlockPtr()
+{
+	return _pBlock;
 }
 
 inline size_t Polygon::getNumSplits() const
@@ -137,7 +161,7 @@ inline bool Polygon::isOuter() const
 	return _cellIds.size() == 1;
 }
 
-inline const std::vector<Index3DId>& Polygon::getVertexIdsNTS() const
+inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }

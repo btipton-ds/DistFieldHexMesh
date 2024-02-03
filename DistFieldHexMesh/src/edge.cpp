@@ -6,9 +6,9 @@
 using namespace std;
 using namespace DFHM;
 
-Edge::Edge(ObjectPoolOwner* pBlock, const Index3DId& vert0, const Index3DId& vert1)
+Edge::Edge(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1)
 {
-	_pBlock = dynamic_cast<Block*>(pBlock);
+	_pBlock = pBlock;
 	if (vert0 < vert1) {
 		_vertexIds[0] = vert0;
 		_vertexIds[1] = vert1;
@@ -18,7 +18,6 @@ Edge::Edge(ObjectPoolOwner* pBlock, const Index3DId& vert0, const Index3DId& ver
 		_vertexIds[1] = vert0;
 	}
 }
-
 
 bool Edge::operator == (const Edge& rhs) const
 {
@@ -103,26 +102,39 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 
 set<Index3DId> Edge::getFaceIds() const
 {
+#if 1
+	set<Index3DId> result;
+	const auto& faceIds0 = _pBlock->getVertexFaceIds(_vertexIds[0]);
+	const auto& faceIds1 = _pBlock->getVertexFaceIds(_vertexIds[1]);
+
+	for (const auto& faceId : faceIds0) {
+		if (faceIds1.contains(faceId))
+			result.insert(faceId);
+	}
+	return result;
+#else
+
 	set<Index3DId> result;
 
 	set<Index3DId> faceIds;
-	_pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Block* pBlock, const Vertex& vert) {
+	_pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Vertex& vert) {
 		faceIds = vert.getFaceIds();
 	});
 
-	_pBlock->vertexFunc(_vertexIds[1], [&faceIds](const Block* pBlock, const Vertex& vert) {
+	_pBlock->vertexFunc(_vertexIds[1], [&faceIds](const Vertex& vert) {
 		auto temp = vert.getFaceIds();
 		if (!temp.empty()) 
 			faceIds.insert(temp.begin(), temp.end());
 	});
 
 	for (const auto& faceId : faceIds) {
-		_pBlock->faceFunc(faceId, [this, &result, &faceId](const Block* pBlock, const Polygon& face) {
+		_pBlock->faceFunc(faceId, [this, &result, &faceId](const Polygon& face) {
 			if (face.containsEdge(*this))
 				result.insert(faceId);
 		});
 	}
 	return result;
+#endif
 }
 
 Index3DId Edge::getOtherVert(const Index3DId& vert) const
@@ -143,7 +155,7 @@ Index3DId Edge::splitAtParam(double t) const
 
 		set<Index3DId> faceIds = getFaceIds();
 		for (const auto& faceId : faceIds) {
-			_pBlock->faceFunc(faceId, [this, &midVertId](Block* pBlock, Polygon& face) {
+			_pBlock->faceFunc(faceId, [this, &midVertId](Polygon& face) {
 				if (midVertId == Index3DId(Index3D(3, 0, 1), 3)) {
 					int dbgBreak = 1;
 				}

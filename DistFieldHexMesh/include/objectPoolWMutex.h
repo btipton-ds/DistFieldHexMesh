@@ -8,32 +8,30 @@ namespace DFHM {
 template<class T>
 class ObjectPoolWMutex {
 public:
-	ObjectPoolWMutex(bool supportsReverseLookup, size_t objectSegmentSize = 512);
+	ObjectPoolWMutex(ObjectPoolOwner* pBlock, bool supportsReverseLookup, size_t objectSegmentSize = 512);
 	ObjectPoolWMutex(const ObjectPoolWMutex& rhs);
 
-	bool free(size_t id); // Permanently delete it
-	bool removeFromLookup(size_t id);
-	void addToLookup(size_t id);
-	size_t findId(const T& obj) const;
-	bool exists(size_t id) const;
+	bool free(const Index3DId& id); // Permanently delete it
+	bool removeFromLookup(const Index3DId& id);
+	void addToLookup(const Index3DId& id);
+	Index3DId findId(const T& obj) const;
+	bool exists(const Index3DId& id) const;
 
-	Index3DId findOrAdd(ObjectPoolOwner* pBlock, const T& obj, size_t id = -1);
+	Index3DId findOrAdd(const T& obj, const Index3DId& currentId = Index3DId());
 
-	const T* get(size_t idx) const;
-	T* get(size_t idx);
+	const T* get(const Index3DId& id ) const;
+	T* get(const Index3DId& id);
 
 	const T* get(const T& obj) const;
 	T* get(const T& obj);
 
 	template<class F>
-	void iterateInOrderTS(F fLambda) const
-	{
-		patient_lock_guard g(_mutex);
-		_data.iterateInOrder(fLambda);
-	}
+	void iterateInOrderTS(F fLambda) const;
+	template<class F>
+	void iterateInOrderTS(F fLambda);
 
-	const T& operator[](size_t id) const;
-	T& operator[](size_t id);
+	const T& operator[](const Index3DId& id) const;
+	T& operator[](const Index3DId& id);
 
 	bool empty() const;
 	size_t size() const;
@@ -51,8 +49,8 @@ private:
 };
 
 template<class T>
-inline ObjectPoolWMutex<T>::ObjectPoolWMutex(bool supportsReverseLookup, size_t objectSegmentSize)
-	: _data(supportsReverseLookup, objectSegmentSize)
+inline ObjectPoolWMutex<T>::ObjectPoolWMutex(ObjectPoolOwner* pBlock, bool supportsReverseLookup, size_t objectSegmentSize)
+	: _data(pBlock, supportsReverseLookup, objectSegmentSize)
 {
 }
 
@@ -63,61 +61,61 @@ inline ObjectPoolWMutex<T>::ObjectPoolWMutex(const ObjectPoolWMutex& rhs)
 }
 
 template<class T>
-bool ObjectPoolWMutex<T>::free(size_t id) // Permanently delete it
+bool ObjectPoolWMutex<T>::free(const Index3DId& id) // Permanently delete it
 {
 	patient_lock_guard g(_mutex);
 	return _data.free(id);
 }
 
 template<class T>
-inline bool ObjectPoolWMutex<T>::removeFromLookup(size_t id)
+inline bool ObjectPoolWMutex<T>::removeFromLookup(const Index3DId& id)
 {
 	patient_lock_guard g(_mutex);
 	return _data.removeFromLookup(id);
 }
 
 template<class T>
-inline void ObjectPoolWMutex<T>::addToLookup(size_t id)
+inline void ObjectPoolWMutex<T>::addToLookup(const Index3DId& id)
 {
 	patient_lock_guard g(_mutex);
 	_data.addToLookup(id);
 }
 
 template<class T>
-inline size_t ObjectPoolWMutex<T>::findId(const T& obj) const
+inline Index3DId ObjectPoolWMutex<T>::findId(const T& obj) const
 {
 	patient_lock_guard g(_mutex);
 	return _data.findId(obj);
 }
 
 template<class T>
-bool ObjectPoolWMutex<T>::exists(size_t id) const
+bool ObjectPoolWMutex<T>::exists(const Index3DId& id) const
 {
 	patient_lock_guard g(_mutex);
 	return _data.exists(id);
 }
 
 template<class T>
-inline Index3DId ObjectPoolWMutex<T>::findOrAdd(ObjectPoolOwner* pBlock, const T& vert, size_t id)
+inline Index3DId ObjectPoolWMutex<T>::findOrAdd(const T& vert, const Index3DId& currentId)
 {
 	patient_lock_guard g(_mutex);
-	return _data.findOrAdd(pBlock, vert, id);
+	return _data.findOrAdd(vert, currentId);
 }
 
 template<class T>
-inline const T* ObjectPoolWMutex<T>::get(size_t idx) const
+inline const T* ObjectPoolWMutex<T>::get(const Index3DId& id) const
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data.get(idx);
+	if (exists(id))
+		return _data.get(id);
+	return nullptr;
 }
 
 template<class T>
-inline T* ObjectPoolWMutex<T>::get(size_t idx)
+inline T* ObjectPoolWMutex<T>::get(const Index3DId& id)
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
-	return _data.get(idx);
+	if (exists(id))
+		return _data.get(id);
+	return nullptr;
 }
 
 template<class T>
@@ -133,24 +131,54 @@ inline T* ObjectPoolWMutex<T>::get(const T& obj)
 }
 
 template<class T>
-inline const T& ObjectPoolWMutex<T>::operator[](size_t id) const
+template<class F>
+inline void ObjectPoolWMutex<T>::iterateInOrderTS(F fLambda) const
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
+	size_t numIds = size();
+
+	const auto& blockIdx = _data.getBlockPtr()->getBlockIdx();
+	for (size_t id = 0; id < numIds; id++) {
+		auto* pEntry = _data.get(Index3DId(blockIdx, id));
+		if (pEntry) {
+			patient_lock_guard g(pEntry->getMutex());
+			fLambda(*pEntry);
+		}
+	}
+}
+
+template<class T>
+template<class F>
+inline void ObjectPoolWMutex<T>::iterateInOrderTS(F fLambda)
+{
+	size_t numIds = size();
+
+	const auto& blockIdx = _data.getBlockPtr()->getBlockIdx();
+	for (size_t id = 0; id < numIds; id++) {
+		auto* pEntry = _data.get(Index3DId(blockIdx, id));
+		if (pEntry) {
+			patient_lock_guard g(pEntry->getMutex());
+			fLambda(*pEntry);
+		}
+	}
+}
+
+
+template<class T>
+inline const T& ObjectPoolWMutex<T>::operator[](const Index3DId& id) const
+{
 	return _data[id];
 }
 
 template<class T>
-inline T& ObjectPoolWMutex<T>::operator[](size_t id)
+inline T& ObjectPoolWMutex<T>::operator[](const Index3DId& id)
 {
-	if (_lockedId != std::this_thread::get_id())
-		throw std::runtime_error("object pool mutex is not locked.");
 	return _data[id];
 }
 
 template<class T>
 bool ObjectPoolWMutex<T>::empty() const
 {
+	patient_lock_guard g(_mutex);
 	return _data.empty();
 }
 

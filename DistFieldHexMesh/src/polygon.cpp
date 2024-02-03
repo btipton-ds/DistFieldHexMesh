@@ -10,6 +10,28 @@
 using namespace std;
 using namespace DFHM;
 
+Polygon::Polygon(const Polygon& src)
+	: _pBlock(src._pBlock)
+	, _thisId(src._thisId)
+	, _splitsFaceIds(src._splitsFaceIds)
+	, _vertexIds(src._vertexIds)
+	, _cellIds(src._cellIds)
+	, _needSort(true)
+{
+}
+
+Polygon& Polygon::operator = (const Polygon& rhs)
+{
+	_pBlock = rhs._pBlock;
+	_thisId = rhs._thisId;
+	_splitsFaceIds = rhs._splitsFaceIds;
+	_vertexIds = rhs._vertexIds;
+	_cellIds = rhs._cellIds;
+	_needSort = true;
+
+	return *this;
+}
+
 void Polygon::setId(ObjectPoolOwner* pBlock, size_t id)
 {
 	_pBlock = dynamic_cast<Block*> (pBlock);
@@ -20,13 +42,13 @@ void Polygon::setId(ObjectPoolOwner* pBlock, size_t id)
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	if (_pBlock) {
-		_pBlock->faceFunc(_thisId, [&vertId](Block* pBlock, Polygon& face) {
+		_pBlock->faceFunc(_thisId, [this, &vertId](Polygon& face) {
 			if (!face.containsVert(vertId)) {
-				pBlock->removeFaceFromLookUp(face._thisId);
+				_pBlock->removeFaceFromLookUp(face._thisId);
 
 				face._vertexIds.push_back(vertId);
 
-				pBlock->addFaceToLookup(face._thisId);
+				_pBlock->addFaceToLookup(face._thisId);
 			}
 			face._needSort = true;
 		});
@@ -95,7 +117,7 @@ set<Edge> Polygon::getEdges() const
 {
 	set<Edge> result;
 
-	_pBlock->faceFunc(_thisId, [&result](const Block* pBlock, const Polygon& self) {
+	_pBlock->faceFunc(_thisId, [&result](const Polygon& self) {
 		result = self.getEdgesNTS();
 	});
 
@@ -154,7 +176,7 @@ bool Polygon::vertsContainFace() const
 {
 	bool result = true;
 	for (const auto& vertId : _vertexIds) {
-		_pBlock->vertexFunc(vertId, [this, &result](const Block* pBlock, const Vertex& vert) {
+		_pBlock->vertexFunc(vertId, [this, &result](const Vertex& vert) {
 			bool pass = vert.connectedToFace(_thisId);
 			if (!pass)
 				result = false;
@@ -302,7 +324,7 @@ bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId
 		setVertexIdsNTS(vertIds);
 
 		if (result) {
-			_pBlock->vertexFunc(newVertId, [this](Block* pBlock, Vertex& vert) {
+			_pBlock->vertexFunc(newVertId, [this](Vertex& vert) {
 				vert.addFaceId(_thisId);
 				});
 		}
@@ -331,10 +353,10 @@ bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
 {
 	bool allAbove = true;
 
-	_pBlock->faceFunc(_thisId, [&splitPlane, &allAbove, tol](const Block* pBlock, const Polygon& face) {
+	_pBlock->faceFunc(_thisId, [this, &splitPlane, &allAbove, tol](const Polygon& face) {
 		auto vertIds = face.getVertexIds();
 		for (const auto& vertId : vertIds) {
-			Vector3d pt = pBlock->getVertexPoint(vertId);
+			Vector3d pt = _pBlock->getVertexPoint(vertId);
 			Vector3d v = pt - splitPlane._origin;
 			double dp = v.dot(splitPlane._normal);
 			if (fabs(dp) > tol) {
@@ -358,7 +380,7 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	auto edgeFaceIds = edge.getFaceIds();
 	for (const auto& otherFaceId : edgeFaceIds) {
 		bool found;
-		_pBlock->faceFunc(otherFaceId, [this, &found](const Block* pBlock, const Polygon& otherFace) {
+		_pBlock->faceFunc(otherFaceId, [this, &found](const Polygon& otherFace) {
 			found = (otherFace.wasSplitFromNTS(_thisId) || wasSplitFromNTS(otherFace._thisId));
 		});
 
@@ -376,7 +398,7 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	Vector3d ourNormal = calUnitNormal();
 	auto edgeFaceIds = edge.getFaceIds();
 	for (const auto& faceId : edgeFaceIds) {
-		_pBlock->faceFunc(faceId, [this, &ourNormal, &result](const Block* pBlock, const Polygon& face) {
+		_pBlock->faceFunc(faceId, [this, &ourNormal, &result](const Polygon& face) {
 			const double tol = 1.0e-5;
 			Vector3d testNormal = face.calUnitNormal();
 			if (fabs(1 - testNormal.dot(testNormal)) < tol) {
@@ -392,6 +414,9 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 
 vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 {
+	assert(verifyTopology());
+	assert(splittingFace.verifyTopology());
+
 	vector<Index3DId> splitFaceIds;
 	splitFaceIds.push_back(_thisId);
 
@@ -450,7 +475,7 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 
 			Index3DId newFaceId = _pBlock->addFace(face1Verts);
 			_splitsFaceIds.insert(newFaceId);
-			_pBlock->faceFunc(newFaceId, [this](Block* pBlock, Polygon& face) {
+			_pBlock->faceFunc(newFaceId, [this](Polygon& face) {
 				// Assign our cellIds to the new face
 				face._cellIds = _cellIds;
 				face._splitsFaceIds.insert(_thisId);
@@ -462,17 +487,9 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 
 #if 1 && defined(_DEBUG)
 			// assert the vertex to face back linkage
-			for (const auto& vertId : _vertexIds) {
-				_pBlock->vertexFunc(vertId, [this](const Block* pBlock, const Vertex& vert) {
-					assert(vert.connectedToFace(_thisId));
-				});
-			}
+			assert(verifyTopology());
+			assert(splittingFace.verifyTopology());
 
-			for (const auto& vertId : splittingFace._vertexIds) {
-				_pBlock->vertexFunc(vertId, [&splittingFace](const Block* pBlock, const Vertex& vert) {
-					assert(vert.connectedToFace(splittingFace._thisId));
-				});
-			}
 
 			auto splittingEdgeFaces = splittingEdge.getFaceIds();
 			assert(splittingEdgeFaces.count(_thisId) != 0);
@@ -507,7 +524,7 @@ void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
 
 		for (const auto& vertId : _vertexIds) {
-			_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+			_pBlock->vertexFunc(vertId, [this](Vertex& vert) {
 				vert.removeFaceId(_thisId);
 				});
 		}
@@ -516,7 +533,7 @@ void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 		_needSort = true;
 
 		for (const auto& vertId : _vertexIds) {
-			_pBlock->vertexFunc(vertId, [this](Block* pBlock, Vertex& vert) {
+			_pBlock->vertexFunc(vertId, [this](Vertex& vert) {
 				vert.addFaceId(_thisId);
 				});
 		}
@@ -554,15 +571,15 @@ bool Polygon::verifyTopology() const
 	bool valid = true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
-	_pBlock->faceFunc(_thisId, [&vertIds](const Block* pBlock, const Polygon& face) {
-		vertIds = face.getVertexIdsNTS();
+	_pBlock->faceFunc(_thisId, [&vertIds](const Polygon& face) {
+		vertIds = face.getVertexIds();
 	});
 
 	if (!vertifyUniqueStat(vertIds))
 		valid = false;
 
 	for (const auto& vertId : vertIds) {
-		_pBlock->vertexFunc(vertId, [this, &valid](const Block* pBlock, const Vertex& vert) {
+		_pBlock->vertexFunc(vertId, [this, &valid](const Vertex& vert) {
 			bool pass = vert.connectedToFace(_thisId) && valid;
 			if (!pass)
 				valid = false;
@@ -585,13 +602,4 @@ bool Polygon::verifyTopology() const
 	}
 #endif
 	return valid;
-}
-
-vector<Index3DId> Polygon::getVertexIds() const
-{
-	vector<Index3DId> result;
-	_pBlock->faceFunc(_thisId, [&result](const Block* pBlock, const Polygon& self) {
-		result = self.getVertexIdsNTS();
-	});
-	return result;
 }

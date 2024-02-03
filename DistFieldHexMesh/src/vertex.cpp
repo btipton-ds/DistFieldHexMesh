@@ -6,6 +6,27 @@
 using namespace std;
 using namespace DFHM;
 
+Vertex::Vertex(const Vertex& src)
+	: _lockType(src._lockType)
+	, _lockIdx(src._lockIdx)
+	, _pBlock(src._pBlock)
+	, _thisId(src._thisId)
+	, _pt(src._pt)
+	, _faceIds(src._faceIds)
+{
+}
+
+Vertex& Vertex::operator = (const Vertex& rhs)
+{
+	_lockType = rhs._lockType;
+	_pBlock = rhs._pBlock;
+	_thisId = rhs._thisId;
+	_pt = rhs._pt;
+	_faceIds = rhs._faceIds;
+
+	return *this;
+}
+
 void Vertex::setId(ObjectPoolOwner* pBlock, size_t id)
 {
 	_pBlock = dynamic_cast<Block*> (pBlock);
@@ -58,13 +79,6 @@ bool Vertex::verifyTopology() const
 	for (const auto& faceId : _faceIds) {
 		if (!_pBlock->polygonExists(faceId))
 			valid = false;
-
-		_pBlock->faceFunc(faceId, [this, &valid](const Block* pBlock, const Polygon& face)->bool {
-			const auto& vertIds = face.getVertexIdsNTS();
-			if (find(vertIds.begin(), vertIds.end(), _thisId) == vertIds.end())
-				valid = false;
-			return true;
-		});
 	}
 #endif
 

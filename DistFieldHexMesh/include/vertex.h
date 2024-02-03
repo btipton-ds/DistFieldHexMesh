@@ -3,6 +3,7 @@
 #include <set>
 #include <tm_vector3.h>
 #include <index3D.h>
+#include <patient_lock_guard.h>
 #include <objectPool.h>
 
 namespace DFHM {
@@ -22,6 +23,7 @@ public:
 
 	// Required for use with object pool
 	void setId(ObjectPoolOwner* pBlock, size_t id);
+	MutexType& getMutex() const;
 
 	static int fromDbl(double val);
 	static FixedPt fromDbl(const Vector3d& src);
@@ -31,8 +33,9 @@ public:
 	static double sameDistTol();
 
 	Vertex() = default;
-	Vertex(const Vertex& src) = default;
+	Vertex(const Vertex& src);
 	Vertex(const Vector3d& pt);
+	Vertex& operator = (const Vertex& rhs);
 
 	void setLockType(LockType val, size_t idx);
 	LockType getLockType(size_t& idx) const;
@@ -55,6 +58,8 @@ private:
 
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;
+
+	mutable MutexType _mutex;
 
 	Block* _pBlock = nullptr;
 	Index3DId _thisId;
@@ -97,6 +102,11 @@ inline double Vertex::sameDistTol()
 inline Vertex::Vertex(const Vector3d& pt)
 {
 	setPoint(pt);
+}
+
+inline MutexType& Vertex::getMutex() const
+{
+	return _mutex;
 }
 
 inline void Vertex::setLockType(LockType val, size_t idx)

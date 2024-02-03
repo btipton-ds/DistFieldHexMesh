@@ -15,11 +15,13 @@ class Edge;
 class Polyhedron {
 public:
 	Polyhedron() = default;
-	Polyhedron(const Polyhedron& src) = default;
 	Polyhedron(const std::set<Index3DId>& faceIds);
 	Polyhedron(const std::vector<Index3DId>& faceIds);
+	Polyhedron(const Polyhedron& src);
+	Polyhedron& operator = (const Polyhedron& rhs);
 
 	// Required for use with object pool
+	MutexType& getMutex() const;
 	void setId(ObjectPoolOwner* pBlock, size_t id);
 	Index3DId getIndex() const;
 
@@ -40,9 +42,9 @@ public:
 	CBoundingBox3Dd getBoundingBox() const;
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
-	std::vector<size_t> splitWithPlane(const Plane& splitPlane, bool intersectingOnly);
-	bool split(bool intersectingOnly, std::vector<size_t>& newFaces);
-	bool split(const Vector3d& pt, bool intersectingOnly, std::vector<size_t>& newFaces);
+	std::vector<Index3DId> splitWithPlane(const Plane& splitPlane, bool intersectingOnly);
+	bool split(bool intersectingOnly, std::vector<Index3DId>& newCellIds);
+	bool split(const Vector3d& pt, bool intersectingOnly, std::vector<Index3DId>& newCellIds);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -58,9 +60,15 @@ private:
 	bool orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
 	Block* _pBlock = nullptr;
+	mutable MutexType _mutex;
 	Index3DId _thisId;
 	std::set<Index3DId> _faceIds;
 };
+
+inline MutexType& Polyhedron::getMutex() const
+{
+	return _mutex;
+}
 
 inline Index3DId Polyhedron::getIndex() const
 {
@@ -72,9 +80,9 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline bool Polyhedron::split(bool intersectingOnly, std::vector<size_t>& newFaces)
+inline bool Polyhedron::split(bool intersectingOnly, std::vector<Index3DId>& newCellIds)
 {
-	return split(calCentroid(), intersectingOnly, newFaces);
+	return split(calCentroid(), intersectingOnly, newCellIds);
 }
 
 }
