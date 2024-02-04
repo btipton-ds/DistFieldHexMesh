@@ -102,7 +102,6 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 
 set<Index3DId> Edge::getFaceIds() const
 {
-#if 1
 	set<Index3DId> result;
 	const auto& faceIds0 = getBlockPtr()->getVertexFaceIds(_vertexIds[0]);
 	const auto& faceIds1 = getBlockPtr()->getVertexFaceIds(_vertexIds[1]);
@@ -112,29 +111,6 @@ set<Index3DId> Edge::getFaceIds() const
 			result.insert(faceId);
 	}
 	return result;
-#else
-
-	set<Index3DId> result;
-
-	set<Index3DId> faceIds;
-	getBlockPtr()->vertexFunc(_vertexIds[0], [&faceIds](const Vertex& vert) {
-		faceIds = vert.getFaceIds();
-	});
-
-	getBlockPtr()->vertexFunc(_vertexIds[1], [&faceIds](const Vertex& vert) {
-		auto temp = vert.getFaceIds();
-		if (!temp.empty()) 
-			faceIds.insert(temp.begin(), temp.end());
-	});
-
-	for (const auto& faceId : faceIds) {
-		getBlockPtr()->faceFunc(faceId, [this, &result, &faceId](const Polygon& face) {
-			if (face.containsEdge(*this))
-				result.insert(faceId);
-		});
-	}
-	return result;
-#endif
 }
 
 Index3DId Edge::getOtherVert(const Index3DId& vert) const

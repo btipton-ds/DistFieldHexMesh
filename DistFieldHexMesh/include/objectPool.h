@@ -29,10 +29,14 @@ public:
 	const Block* getBlockPtr() const;
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
+	bool isOnBoundary() const;
+	void setIsOnBoundary(bool val);
+
 protected:
 	Index3DId _thisId;
 
 private:
+	bool _isOnBoundary = true;
 	ObjectPoolOwner* _pPoolOwner = nullptr;
 };
 
@@ -134,6 +138,16 @@ private:
 	std::map<size_t, size_t, CompareFunctor> _objToIdMap;
 	thread_local static const T* _tl_pCompareObj;
 };
+
+inline bool ObjectPoolOwnerUser::isOnBoundary() const
+{
+	return _isOnBoundary;
+}
+
+inline void ObjectPoolOwnerUser::setIsOnBoundary(bool val)
+{
+	_isOnBoundary = val;
+}
 
 template<class T>
 inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize)

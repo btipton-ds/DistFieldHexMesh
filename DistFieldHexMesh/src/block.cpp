@@ -95,42 +95,48 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
+Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios, bool& isOnBoundary) const
 {
 	const double tol = 1.0e-5;
 	const auto& volBounds = _pVol->volDim();
+
+	bool boundary[] = {false, false, false};
 
 	Index3D result(_blockIdx);
 	for (int i = 0; i < 3; i++) {
 		if (ratios[i] >= 1 - tol) {
 			result[i] += 1;
+			boundary[i] = true;
 
 			// Clamp it inside volume bounds. If it's shared by a block that doesn't exist, there's no chance
 			// of a thread access conflict on that boundary
 			if (result[i] >= volBounds[i]) {
 				result[i] = volBounds[i] - 1;
+				boundary[i] = false;
 			}
 		}
 	}
 
+	isOnBoundary = boundary[0] || boundary[1] || boundary[2];
+
 	return result;
 }
 
-Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
+Index3D Block::determineOwnerBlockIdx(const Vector3d& point, bool& isOnBoundary) const
 {
 	if (_innerBoundBox.contains(point))
 		return _blockIdx;
 
 	auto ratios = invTriLinIterp(point);
-	return determineOwnerBlockIdxFromRatios(ratios);
+	return determineOwnerBlockIdxFromRatios(ratios, isOnBoundary);
 }
 
-Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
+Index3D Block::determineOwnerBlockIdx(const Vertex& vert, bool& isOnBoundary) const
 {
-	return determineOwnerBlockIdx(vert.getPoint());
+	return determineOwnerBlockIdx(vert.getPoint(), isOnBoundary);
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
+Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points, bool& isOnBoundary) const
 {
 	auto volBounds = _pVol->volDim();
 
@@ -140,20 +146,20 @@ Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 	}
 	ctr = ctr / points.size();
 
-	return determineOwnerBlockIdx(ctr);
+	return determineOwnerBlockIdx(ctr, isOnBoundary);
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Index3DId>& verts) const
+Index3D Block::determineOwnerBlockIdx(const vector<Index3DId>& verts, bool& isOnBoundary) const
 {
 	vector<Vector3d> pts;
 	pts.resize(verts.size());
 	for (size_t i = 0; i < verts.size(); i++) {
 		pts[i] = getVertexPoint(verts[i]);
 	}
-	return determineOwnerBlockIdx(pts);
+	return determineOwnerBlockIdx(pts, isOnBoundary);
 }
 
-Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
+Index3D Block::determineOwnerBlockIdx(const Polygon& face, bool& isOnBoundary) const
 {
 	auto volBounds = _pVol->volDim();
 
@@ -164,7 +170,7 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 		ctr += pt;
 	}
 	ctr = ctr / vertIds.size();
-	return determineOwnerBlockIdx(ctr);
+	return determineOwnerBlockIdx(ctr, isOnBoundary);
 }
 
 size_t Block::numFaces(bool includeInner) const
@@ -431,8 +437,10 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 		return Index3DId();
 	}
 
-	auto ownerIdx = determineOwnerBlockIdx(vertIndices);
+	bool isOnBoundary = false;
+	auto ownerIdx = determineOwnerBlockIdx(vertIndices, isOnBoundary);
 	Polygon newFace;
+	newFace.setIsOnBoundary(isOnBoundary);
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
@@ -458,7 +466,8 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 
 Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
-	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
+	bool isOnBoundary = false;
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts, isOnBoundary);
 	Block* pOwner = getOwner(ownerBlockIdx);
 
 	auto faceId = pOwner->addFace(pts);
@@ -471,11 +480,17 @@ size_t Block::addCell(const vector<Index3DId>& faceIds)
 	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 
 	cellFunc(cellId, [this, &cellId](Polyhedron& cell) {
+		bool isOnBoundary = false;
 		for (auto& faceId : cell.getFaceIds()) {
-			faceFunc(faceId, [&cellId](Polygon& face) {
+			faceFunc(faceId, [&cellId, &isOnBoundary](Polygon& face) {
 				face.addCell(cellId);
+				if (face.isOnBoundary())
+					isOnBoundary = true;
 			});
 		}
+		if (isOnBoundary)
+			cell.setIsOnBoundary(isOnBoundary);
+
 		assert(cell.verifyTopology());
 	});
 	return cellId.elementId();
@@ -536,11 +551,15 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	const Index3DId polyhedronId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 	assert(polyhedronId.isValid());
 
+	bool isOnBoundary = false;
 	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [&polyhedronId](Polygon& face) {
+		faceFunc(faceId, [&polyhedronId, &isOnBoundary](Polygon& face) {
 			face.addCell(polyhedronId);
+			if (face.isOnBoundary())
+				isOnBoundary = true;
 		});
 	}
+	_polyhedra[polyhedronId].setIsOnBoundary(isOnBoundary);
 
 	verifyTopology();
 
@@ -565,16 +584,20 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Index3DId Block::idOfPoint(const Vector3d& pt)
 {
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	bool isOnBoundary = false;
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt, isOnBoundary);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	return pOwner->_vertices.findId(pt);
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	bool isOnBoundary = false;
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt, isOnBoundary);
 	Block* pOwner = getOwner(ownerBlockIdx);
-	return pOwner->_vertices.findOrAdd(pt, currentId);
+	Vertex vert(pt);
+	vert.setIsOnBoundary(isOnBoundary);
+	return pOwner->_vertices.findOrAdd(vert, currentId);
 }
 
 set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
