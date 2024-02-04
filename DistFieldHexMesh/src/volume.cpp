@@ -133,30 +133,6 @@ void Volume::findSharpVertices()
 	}
 }
 
-
-void Volume::processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx)
-{
-	const auto& dim = volDim();
-
-	double dist0 = triHit.dist;
-	if (dist0 < 0)
-		dist0 = 0;
-	else if (dist0 >= _spanMeters[rayAxis])
-		dist0 = _spanMeters[rayAxis];
-
-	double w0 = dist0 / _spanMeters[rayAxis];
-
-	blockIdx = (size_t)(w0 * dim[rayAxis]);
-	if (blockIdx >= dim[rayAxis])
-		blockIdx = dim[rayAxis] - 1;
-	double dist1 = dist0 - (blockIdx * blockSpan[rayAxis]);
-
-	double w1 = dist1 / blockSpan[rayAxis];
-	subBlockIdx = (size_t)(w1 * Index3D::getBlockDim());
-	if (subBlockIdx >= Index3D::getBlockDim())
-		subBlockIdx = Index3D::getBlockDim() - 1;
-}
-
 Block& Volume::addBlock(const Index3D& blockIdx)
 {
 	const auto& dim = volDim();
@@ -226,36 +202,6 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	if (idx >= _blocks.size())
 		return false;
 	return _blocks[idx] != nullptr;
-}
-
-bool Volume::blockInBounds(const Index3D& blockIdx) const
-{
-	const auto& dim = volDim();
-	return (blockIdx[0] < dim[0] && blockIdx[1] < dim[1] && blockIdx[2] < dim[1]);
-}
-
-const Block& Volume::getBlock(const Index3D& blockIdx) const
-{
-	size_t idx = calLinearBlockIndex(blockIdx);
-	if (idx < _blocks.size()) {
-		auto pBlock = _blocks[idx];
-		if (!pBlock)
-			throw runtime_error("Volume::getBlock block not allocated");
-		return *pBlock;
-	}
-	throw runtime_error("Volume::getBlock index out of range");
-}
-
-Block& Volume::getBlock(const Index3D& blockIdx)
-{
-	size_t idx = calLinearBlockIndex(blockIdx);
-	if (idx < _blocks.size()) {
-		auto pBlock = _blocks[idx];
-		if (!pBlock)
-			throw runtime_error("Volume::getBlock not allocated");
-		return *pBlock;
-	}
-	throw runtime_error("Volume::getBlock index out of range");
 }
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)

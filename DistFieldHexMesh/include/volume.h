@@ -40,13 +40,9 @@ public:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-	bool blockInBounds(const Index3D& blockIdx) const;
 	Block& addBlock(const Index3D& blockIdx);
 
 	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
-
-	const Block& getBlock(const Index3D& blockIdx) const;
-	Block& getBlock(const Index3D& blockIdx);
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -73,8 +69,6 @@ private:
 	void findFeatures();
 	void findSharpVertices();
 	void findSharpEdgeGroups();
-
-	void processRayHit(const RayHit& triHit, int rayAxis, const Vector3d& blockSpan, const Vector3d& subBlockSpan, size_t& blockIdx, size_t& subBlockIdx);
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
