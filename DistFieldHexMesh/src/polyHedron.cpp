@@ -324,18 +324,15 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
 
-	getBlockPtr()->faceFunc(splittingFaceId, [this, &splitFaceIdSet, &splittingFaceId](Polygon& spittingFace) {
-		for (auto& faceId : _faceIds) {
-			vector<Index3DId> splittingFaces;
-			getBlockPtr()->faceFunc(faceId, [this, &splitFaceIdSet, &spittingFace, &splittingFaces](Polygon& face) {
-				splittingFaces = face.splitWithFaceEdgesNTS(spittingFace);
-			});
+	for (auto& faceId : _faceIds) {
+		Index3DId newFaceId;
+		getBlockPtr()->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
+			newFaceId = face.splitWithFaceEdgesNTS(splittingFace);
+		});
 
-			if (splittingFaces.size() == 2) {
-				splitFaceIdSet.insert(splittingFaces.begin(), splittingFaces.end());
-			}
-		}
-	});
+		if (newFaceId.isValid())
+			splitFaceIdSet.insert(newFaceId);
+	}
 
 	// Collect the faces below the splitting plane to form a new cell
 	// Collect the faces to be removed in a separate list to avoid items moving around in the list being deleted.

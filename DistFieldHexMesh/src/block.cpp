@@ -907,6 +907,12 @@ bool Block::polyhedronExists(const Index3DId& id) const
 	return pOwner->_polyhedra.exists(id);
 }
 
+Polygon& Block::getPolygon_UNSAFE(const Index3DId& id)
+{
+	assert(_blockIdx == id.blockIdx());
+	return _polygons[id];
+}
+
 void Block::pack()
 {
 #if 0

@@ -12,7 +12,8 @@ using namespace DFHM;
 
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
-	, _splitsFaceIds(src._splitsFaceIds)
+	, _numSplits(src._numSplits)
+	, _splitFromFaceId(src._splitFromFaceId)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _needSort(true)
@@ -23,7 +24,8 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 {
 	ObjectPoolOwnerUser::operator=(rhs);
 
-	_splitsFaceIds = rhs._splitsFaceIds;
+	_numSplits = rhs._numSplits;
+	_splitFromFaceId = rhs._splitFromFaceId;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_needSort = true;
@@ -48,6 +50,18 @@ void Polygon::addVertex(const Index3DId& vertId)
 		_vertexIds.push_back(vertId);
 		_needSort = true;
 	}
+}
+
+void Polygon::setSplitFromData(const Index3DId& sourceFaceId, const std::set<Index3DId>& sourceCellIds)
+{
+	_numSplits++;
+	_splitFromFaceId = sourceFaceId;
+	_cellIds = sourceCellIds;
+}
+
+void Polygon::clearSplitFromId()
+{
+	_splitFromFaceId = Index3DId();
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -184,7 +198,7 @@ bool Polygon::ownedByCellNTS(const Index3DId& cellId) const
 
 bool Polygon::wasSplitFromNTS(const Index3DId& faceId) const
 {
-	return _splitsFaceIds.contains(faceId);
+	return _splitFromFaceId == faceId;
 }
 
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
@@ -404,13 +418,10 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	return result;
 }
 
-vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
+Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 {
 	assert(verifyTopology());
 	assert(splittingFace.verifyTopology());
-
-	vector<Index3DId> splitFaceIds;
-	splitFaceIds.push_back(_thisId);
 
 	const auto& thisFace = *this;
 	auto otherEdges = splittingFace.getEdges();
@@ -419,10 +430,7 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			// Our face already contains the splitting edge. It cannot be split again
 			Index3DId existingSplitFaceId = findOtherSplitFaceId(splittingEdge);
 			if (existingSplitFaceId.isValid())
-				splitFaceIds.push_back(existingSplitFaceId);
-			else
-				assert(!"This should be impossible.");
-			return splitFaceIds;
+				return existingSplitFaceId;
 		}
 		Index3DId vertId0 = splittingEdge.getVertexIds()[0];
 		Index3DId vertId1 = splittingEdge.getVertexIds()[1];
@@ -466,12 +474,8 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			setVertexIdsNTS(face0Verts);
 
 			Index3DId newFaceId = getBlockPtr()->addFace(face1Verts);
-			_splitsFaceIds.insert(newFaceId);
-			getBlockPtr()->faceFunc(newFaceId, [this](Polygon& face) { // TODO use direct storage
-				// Assign our cellIds to the new face
-				face._cellIds = _cellIds;
-				face._splitsFaceIds.insert(_thisId);
-			});
+			auto& newFace = getBlockPtr()->getPolygon_UNSAFE(newFaceId); // This is safe because we know the new face is in the block and no one can use it yet.
+			newFace.setSplitFromData(_thisId, _cellIds);
 
 			for (const auto& cellId : _cellIds) { // TODO Remove this and let the splitter do it
 				getBlockPtr()->addFaceToPolyhedron(newFaceId, cellId);
@@ -487,15 +491,11 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(splittingEdgeFaces.count(_thisId) != 0);
 			assert(splittingEdgeFaces.count(newFaceId) != 0);
 #endif // _DEBUG
-
-			break;
-
-			splitFaceIds.push_back(newFaceId);
+			return newFaceId;
 		}
 	}
 
-
-	return splitFaceIds;
+	return Index3DId();
 }
 
 void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)

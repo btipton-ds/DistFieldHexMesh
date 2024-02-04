@@ -124,6 +124,8 @@ public:
 	bool polygonExists(const Index3DId& id) const;
 	bool polyhedronExists(const Index3DId& id) const;
 
+	Polygon& getPolygon_UNSAFE(const Index3DId& id);
+
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool isUnloaded() const;
@@ -145,6 +147,9 @@ public:
 
 	template<class LAMBDA>
 	void faceFunc(const Index3DId& id, LAMBDA func);
+
+	template<class LAMBDA>
+	void faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func);
 
 	template<class LAMBDA>
 	void cellFunc(const Index3DId& id, LAMBDA func) const;
@@ -309,6 +314,25 @@ inline void Block::faceFunc(const Index3DId& id, LAMBDA func)
 	func(face);
 	pOwner->logRelease("face", id);
 }
+
+template<class LAMBDA>
+void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)
+{
+	if (id1 < id0) {
+		faceFunc(id1, [this, &id0, &func](Polygon& face1) {
+			faceFunc(id0, [&face1, &func](Polygon& face0) {
+				func(face0, face1);
+			});
+		});
+	} else {
+		faceFunc(id0, [this, &id1, &func](Polygon& face0) {
+			faceFunc(id1, [&face0, &func](Polygon& face1) {
+				func(face0, face1);
+			});
+		});
+	}
+}
+
 
 template<class LAMBDA>
 inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const

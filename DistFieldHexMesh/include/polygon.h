@@ -40,6 +40,8 @@ public:
 	void removeCell(const Index3DId& cellId);
 	bool numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
+	void setSplitFromData(const Index3DId& sourceFaceId, const std::set<Index3DId>& sourceCellIds);
+	void clearSplitFromId();
 	bool ownedByCell(const Index3DId& cellId) const;
 
 	// Required for use with object pool
@@ -74,7 +76,7 @@ public:
 	Index3DId insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt);
 	bool insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId);
 
-	std::vector<Index3DId> splitWithFaceEdgesNTS(const Polygon& splittingFace);
+	Index3DId splitWithFaceEdgesNTS(const Polygon& splittingFace);
 
 private:
 	void sortIds() const;
@@ -83,7 +85,8 @@ private:
 	std::set<Edge> getEdgesNTS() const;
 
 	mutable MutexType _mutex;
-	std::set<Index3DId> _splitsFaceIds;
+	size_t _numSplits = 0;
+	Index3DId _splitFromFaceId;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 
@@ -103,7 +106,7 @@ inline MutexType& Polygon::getMutex() const
 
 inline size_t Polygon::getNumSplits() const
 {
-	return _splitsFaceIds.size();
+	return _numSplits;
 }
 
 inline bool Polygon::vertifyUnique() const
