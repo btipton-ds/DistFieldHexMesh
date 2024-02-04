@@ -96,10 +96,10 @@ bool ObjectPoolWMutex<T>::exists(const Index3DId& id) const
 }
 
 template<class T>
-inline Index3DId ObjectPoolWMutex<T>::findOrAdd(const T& vert, const Index3DId& currentId)
+inline Index3DId ObjectPoolWMutex<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 {
 	patient_lock_guard g(_mutex);
-	return _data.findOrAdd(vert, currentId);
+	return _data.findOrAdd(obj, currentId);
 }
 
 template<class T>

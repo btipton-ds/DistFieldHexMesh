@@ -4,6 +4,7 @@
 #include <set>
 #include <patient_lock_guard.h>
 #include <index3D.h>
+#include <objectPool.h>
 #include <vertex.h>
 
 struct Plane;
@@ -13,7 +14,7 @@ namespace DFHM {
 class Edge;
 class Block;
 
-class Polygon {
+class Polygon : public ObjectPoolOwnerUser {
 public:
 	static bool vertifyUniqueStat(const std::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
@@ -26,10 +27,7 @@ public:
 	Polygon& operator = (const Polygon& rhs);
 
 	MutexType& getMutex() const;
-	const Block* getBlockPtr() const;
-	Block* getBlockPtr();
 
-	void setId(ObjectPoolOwner* pBlock, size_t id);
 	const Index3DId& getId() const;
 	size_t getNumSplits() const;
 
@@ -84,8 +82,6 @@ private:
 
 	std::set<Edge> getEdgesNTS() const;
 
-	Block* _pBlock = nullptr;
-	Index3DId _thisId; // Id of the face this face was split from
 	mutable MutexType _mutex;
 	std::set<Index3DId> _splitsFaceIds;
 	std::vector<Index3DId> _vertexIds;
@@ -105,16 +101,6 @@ inline MutexType& Polygon::getMutex() const
 	return _mutex;
 }
 
-inline const Block* Polygon::getBlockPtr() const
-{
-	return _pBlock;
-}
-
-inline Block* Polygon::getBlockPtr()
-{
-	return _pBlock;
-}
-
 inline size_t Polygon::getNumSplits() const
 {
 	return _splitsFaceIds.size();
@@ -127,7 +113,7 @@ inline bool Polygon::vertifyUnique() const
 
 inline bool Polygon::verifyVertsConvex() const
 {
-	return verifyVertsConvexStat(_pBlock, _vertexIds);
+	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
 }
 
 inline void Polygon::addCell(const Index3DId& cellId)

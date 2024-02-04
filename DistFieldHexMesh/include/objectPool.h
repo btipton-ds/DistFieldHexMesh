@@ -9,16 +9,37 @@
 
 namespace DFHM {
 
+class Block;
+
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
 public:
 	virtual const Index3D& getBlockIdx() const = 0;
 };
 
+class ObjectPoolOwnerUser {
+public:
+	ObjectPoolOwnerUser() = default;
+	ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src) = default;
+	ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id = -1);
+
+	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
+
+	Block* getBlockPtr();
+	const Block* getBlockPtr() const;
+	void setId(const ObjectPoolOwner* poolOwner, size_t id);
+
+protected:
+	Index3DId _thisId;
+
+private:
+	ObjectPoolOwner* _pPoolOwner = nullptr;
+};
+
 template<class T>
 class ObjectPool {
 public:
-	ObjectPool(ObjectPoolOwner* pBlock, bool supportsReverseLookup, size_t objectSegmentSize = 512);
+	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 512);
 
 	const ObjectPoolOwner* getBlockPtr() const;
 	ObjectPoolOwner* getBlockPtr();
@@ -99,7 +120,7 @@ private:
 	const T* getEntry(size_t index) const;
 
 	bool _supportsReverseLookup;
-	ObjectPoolOwner* _pBlock;
+	ObjectPoolOwner* _pPoolOwner;
 	const size_t _objectSegmentSize;
 	std::vector<size_t> 
 		_idToIndexMap,
@@ -115,8 +136,8 @@ private:
 };
 
 template<class T>
-inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pBlock, bool supportsReverseLookup, size_t objectSegmentSize)
-	: _pBlock(pBlock)
+inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize)
+	: _pPoolOwner(pPoolOwner)
 	, _objToIdMap(CompareFunctor(*this))
 	, _objectSegmentSize(objectSegmentSize)
 {
@@ -126,13 +147,13 @@ inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pBlock, bool supportsReverseLo
 template<class T>
 inline const ObjectPoolOwner* ObjectPool<T>::getBlockPtr() const
 {
-	return _pBlock;
+	return _pPoolOwner;
 }
 
 template<class T>
 inline ObjectPoolOwner* ObjectPool<T>::getBlockPtr()
 {
-	return _pBlock;
+	return _pPoolOwner;
 }
 
 template<class T>
@@ -247,7 +268,7 @@ Index3DId ObjectPool<T>::findId(const T& obj) const
 		_tl_pCompareObj = &obj;
 		auto iter = _objToIdMap.find(-1);
 		if (iter != _objToIdMap.end())
-			return Index3DId(_pBlock->getBlockIdx(), iter->second);
+			return Index3DId(_pPoolOwner->getBlockIdx(), iter->second);
 	}
 	return Index3DId();
 }
@@ -273,7 +294,7 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 	}
 
 	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
-	if ((currentId.blockIdx() == _pBlock->getBlockIdx()) && currentId.elementId() < _idToIndexMap.size()) {
+	if ((currentId.blockIdx() == _pPoolOwner->getBlockIdx()) && currentId.elementId() < _idToIndexMap.size()) {
 		result = currentId.elementId();
 		index = _idToIndexMap[result];
 
@@ -345,11 +366,11 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 		}
 	}
 
-	getEntry(result)->setId(_pBlock, result);
+	getEntry(result)->setId(_pPoolOwner, result);
 
-	addToLookup(Index3DId(_pBlock->getBlockIdx(), result));
+	addToLookup(Index3DId(_pPoolOwner->getBlockIdx(), result));
 
-	return Index3DId(_pBlock->getBlockIdx(), result);
+	return Index3DId(_pPoolOwner->getBlockIdx(), result);
 }
 
 template<class T>
@@ -370,7 +391,7 @@ const T* ObjectPool<T>::get(const Index3DId& id) const
 {
 	if (!id.isValid())
 		return _tl_pCompareObj;
-	else if ((id.blockIdx() == _pBlock->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
+	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
 		size_t index = _idToIndexMap[id.elementId()];
 		return getEntry(index);
 	}
@@ -382,7 +403,7 @@ T* ObjectPool<T>::get(const Index3DId& id)
 {
 	if (!id.isValid())
 		return (T*)_tl_pCompareObj;
-	else if ((id.blockIdx() == _pBlock->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
+	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
 		size_t index = _idToIndexMap[id.elementId()];
 		return getEntry(index);
 	}
@@ -406,14 +427,14 @@ T* ObjectPool<T>::get(const T& obj)
 template<class T>
 const T& ObjectPool<T>::operator[](const Index3DId& id) const
 {
-	assert(id.blockIdx() == _pBlock->getBlockIdx());
+	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
 	return *getEntry(_idToIndexMap[id.elementId()]);
 }
 
 template<class T>
 T& ObjectPool<T>::operator[](const Index3DId& id)
 {
-	assert(id.blockIdx() == _pBlock->getBlockIdx());
+	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
 	return *getEntry(_idToIndexMap[id.elementId()]);
 }
 

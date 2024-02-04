@@ -11,8 +11,7 @@ using namespace std;
 using namespace DFHM;
 
 Polygon::Polygon(const Polygon& src)
-	: _pBlock(src._pBlock)
-	, _thisId(src._thisId)
+	: ObjectPoolOwnerUser(src)
 	, _splitsFaceIds(src._splitsFaceIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
@@ -22,8 +21,8 @@ Polygon::Polygon(const Polygon& src)
 
 Polygon& Polygon::operator = (const Polygon& rhs)
 {
-	_pBlock = rhs._pBlock;
-	_thisId = rhs._thisId;
+	ObjectPoolOwnerUser::operator=(rhs);
+
 	_splitsFaceIds = rhs._splitsFaceIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
@@ -32,23 +31,16 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	return *this;
 }
 
-void Polygon::setId(ObjectPoolOwner* pBlock, size_t id)
-{
-	_pBlock = dynamic_cast<Block*> (pBlock);
-	_thisId = Index3DId(pBlock->getBlockIdx(), id);
-	assert(_thisId.isValid());
-}
-
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	if (_pBlock) {
-		_pBlock->faceFunc(_thisId, [this, &vertId](Polygon& face) {
+	if (getBlockPtr()) {
+		getBlockPtr()->faceFunc(_thisId, [this, &vertId](Polygon& face) {
 			if (!face.containsVert(vertId)) {
-				_pBlock->removeFaceFromLookUp(face._thisId);
+				getBlockPtr()->removeFaceFromLookUp(face._thisId);
 
 				face._vertexIds.push_back(vertId);
 
-				_pBlock->addFaceToLookup(face._thisId);
+				getBlockPtr()->addFaceToLookup(face._thisId);
 			}
 			face._needSort = true;
 		});
@@ -117,7 +109,7 @@ set<Edge> Polygon::getEdges() const
 {
 	set<Edge> result;
 
-	_pBlock->faceFunc(_thisId, [&result](const Polygon& self) {
+	getBlockPtr()->faceFunc(_thisId, [&result](const Polygon& self) {
 		result = self.getEdgesNTS();
 	});
 
@@ -132,7 +124,7 @@ set<Edge> Polygon::getEdgesNTS() const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge edge(_pBlock, vertId0, vertId1);
+		Edge edge(getBlockPtr(), vertId0, vertId1);
 		result.insert(edge);
 	}
 
@@ -151,7 +143,7 @@ bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge testEdge(_pBlock, vertId0, vertId1);
+		Edge testEdge(getBlockPtr(), vertId0, vertId1);
 		if (testEdge == edge) {
 			idx0 = i;
 			idx1 = j;
@@ -176,7 +168,7 @@ bool Polygon::vertsContainFace() const
 {
 	bool result = true;
 	for (const auto& vertId : _vertexIds) {
-		_pBlock->vertexFunc(vertId, [this, &result](const Vertex& vert) {
+		getBlockPtr()->vertexFunc(vertId, [this, &result](const Vertex& vert) {
 			bool pass = vert.connectedToFace(_thisId);
 			if (!pass)
 				result = false;
@@ -219,7 +211,7 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index
 
 Vector3d Polygon::calUnitNormal() const
 {
-	return calUnitNormalStat(_pBlock, _vertexIds);
+	return calUnitNormalStat(getBlockPtr(), _vertexIds);
 }
 
 double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t idx1)
@@ -248,17 +240,17 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3
 
 double Polygon::calVertexAngle(size_t idx1) const
 {
-	return calVertexAngleStat(_pBlock, _vertexIds, idx1);
+	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);
 }
 
 Vector3d Polygon::interpolatePoint(double t, double u) const
 {
 	assert(_vertexIds.size() == 4);
 	Vector3d pts[] = {
-		_pBlock->getVertexPoint(_vertexIds[0]),
-		_pBlock->getVertexPoint(_vertexIds[1]),
-		_pBlock->getVertexPoint(_vertexIds[2]),
-		_pBlock->getVertexPoint(_vertexIds[3]),
+		getBlockPtr()->getVertexPoint(_vertexIds[0]),
+		getBlockPtr()->getVertexPoint(_vertexIds[1]),
+		getBlockPtr()->getVertexPoint(_vertexIds[2]),
+		getBlockPtr()->getVertexPoint(_vertexIds[3]),
 	};
 
 	return BI_LERP(pts[0], pts[1], pts[2], pts[3], t, u);
@@ -268,7 +260,7 @@ Vector3d Polygon::calCentroid() const
 {
 	Vector3d ctr(0, 0, 0);
 	for (const auto& vertId : _vertexIds) {
-		Vector3d pt = _pBlock->getVertexPoint(vertId);
+		Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
 		ctr += pt;
 	}
 
@@ -292,9 +284,9 @@ Index3DId Polygon::insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt)
 	Index3DId newVertId;
 	auto edgeSet = getEdges();
 	if (edgeSet.count(edge) != 0) {
-		newVertId = _pBlock->idOfPoint(pt);
+		newVertId = getBlockPtr()->idOfPoint(pt);
 		if (!newVertId.isValid())
-			newVertId = _pBlock->addVertex(pt);
+			newVertId = getBlockPtr()->addVertex(pt);
 
 		if (!containsVert(newVertId))
 			insertVertexInEdgeNTS(edge, newVertId);
@@ -324,7 +316,7 @@ bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId
 		setVertexIdsNTS(vertIds);
 
 		if (result) {
-			_pBlock->vertexFunc(newVertId, [this](Vertex& vert) {
+			getBlockPtr()->vertexFunc(newVertId, [this](Vertex& vert) {
 				vert.addFaceId(_thisId);
 				});
 		}
@@ -353,10 +345,10 @@ bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
 {
 	bool allAbove = true;
 
-	_pBlock->faceFunc(_thisId, [this, &splitPlane, &allAbove, tol](const Polygon& face) {
+	getBlockPtr()->faceFunc(_thisId, [this, &splitPlane, &allAbove, tol](const Polygon& face) {
 		auto vertIds = face.getVertexIds();
 		for (const auto& vertId : vertIds) {
-			Vector3d pt = _pBlock->getVertexPoint(vertId);
+			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
 			Vector3d v = pt - splitPlane._origin;
 			double dp = v.dot(splitPlane._normal);
 			if (fabs(dp) > tol) {
@@ -380,7 +372,7 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	auto edgeFaceIds = edge.getFaceIds();
 	for (const auto& otherFaceId : edgeFaceIds) {
 		bool found;
-		_pBlock->faceFunc(otherFaceId, [this, &found](const Polygon& otherFace) {
+		getBlockPtr()->faceFunc(otherFaceId, [this, &found](const Polygon& otherFace) {
 			found = (otherFace.wasSplitFromNTS(_thisId) || wasSplitFromNTS(otherFace._thisId));
 		});
 
@@ -398,7 +390,7 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	Vector3d ourNormal = calUnitNormal();
 	auto edgeFaceIds = edge.getFaceIds();
 	for (const auto& faceId : edgeFaceIds) {
-		_pBlock->faceFunc(faceId, [this, &ourNormal, &result](const Polygon& face) {
+		getBlockPtr()->faceFunc(faceId, [this, &ourNormal, &result](const Polygon& face) {
 			const double tol = 1.0e-5;
 			Vector3d testNormal = face.calUnitNormal();
 			if (fabs(1 - testNormal.dot(testNormal)) < tol) {
@@ -468,21 +460,21 @@ vector<Index3DId> Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 
 			assert(vertifyUniqueStat(face0Verts));
 			assert(vertifyUniqueStat(face1Verts));
-			assert(verifyVertsConvexStat(_pBlock, face0Verts));
-			assert(verifyVertsConvexStat(_pBlock, face1Verts));
+			assert(verifyVertsConvexStat(getBlockPtr(), face0Verts));
+			assert(verifyVertsConvexStat(getBlockPtr(), face1Verts));
 
 			setVertexIdsNTS(face0Verts);
 
-			Index3DId newFaceId = _pBlock->addFace(face1Verts);
+			Index3DId newFaceId = getBlockPtr()->addFace(face1Verts);
 			_splitsFaceIds.insert(newFaceId);
-			_pBlock->faceFunc(newFaceId, [this](Polygon& face) {
+			getBlockPtr()->faceFunc(newFaceId, [this](Polygon& face) { // TODO use direct storage
 				// Assign our cellIds to the new face
 				face._cellIds = _cellIds;
 				face._splitsFaceIds.insert(_thisId);
 			});
 
-			for (const auto& cellId : _cellIds) {
-				_pBlock->addFaceToPolyhedron(newFaceId, cellId);
+			for (const auto& cellId : _cellIds) { // TODO Remove this and let the splitter do it
+				getBlockPtr()->addFaceToPolyhedron(newFaceId, cellId);
 			}
 
 #if 1 && defined(_DEBUG)
@@ -518,13 +510,13 @@ void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 	}
 #endif
 
-	_pBlock->removeFaceFromLookUp(_thisId);
+	getBlockPtr()->removeFaceFromLookUp(_thisId);
 
 	{
-		assert(_thisId.blockIdx() == _pBlock->getBlockIdx());
+		assert(_thisId.blockIdx() == getBlockPtr()->getBlockIdx());
 
 		for (const auto& vertId : _vertexIds) {
-			_pBlock->vertexFunc(vertId, [this](Vertex& vert) {
+			getBlockPtr()->vertexFunc(vertId, [this](Vertex& vert) {
 				vert.removeFaceId(_thisId);
 				});
 		}
@@ -533,13 +525,13 @@ void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
 		_needSort = true;
 
 		for (const auto& vertId : _vertexIds) {
-			_pBlock->vertexFunc(vertId, [this](Vertex& vert) {
+			getBlockPtr()->vertexFunc(vertId, [this](Vertex& vert) {
 				vert.addFaceId(_thisId);
 				});
 		}
 	}
 
-	_pBlock->addFaceToLookup(_thisId);
+	getBlockPtr()->addFaceToLookup(_thisId);
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
@@ -571,7 +563,7 @@ bool Polygon::verifyTopology() const
 	bool valid = true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
-	_pBlock->faceFunc(_thisId, [&vertIds](const Polygon& face) {
+	getBlockPtr()->faceFunc(_thisId, [&vertIds](const Polygon& face) {
 		vertIds = face.getVertexIds();
 	});
 
@@ -579,7 +571,7 @@ bool Polygon::verifyTopology() const
 		valid = false;
 
 	for (const auto& vertId : vertIds) {
-		_pBlock->vertexFunc(vertId, [this, &valid](const Vertex& vert) {
+		getBlockPtr()->vertexFunc(vertId, [this, &valid](const Vertex& vert) {
 			bool pass = vert.connectedToFace(_thisId) && valid;
 			if (!pass)
 				valid = false;
@@ -597,7 +589,7 @@ bool Polygon::verifyTopology() const
 	}
 
 	for (const auto& cellId : _cellIds) {
-		if (!_pBlock->polyhedronExists(cellId))
+		if (!getBlockPtr()->polyhedronExists(cellId))
 			valid = false;
 	}
 #endif

@@ -12,7 +12,7 @@ class Edge;
 
 // Polyhedra are never cross block, so they use size_t for indexing.
 // Faces and vertices in a cell are cross block
-class Polyhedron {
+class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
 	Polyhedron(const std::set<Index3DId>& faceIds);
@@ -22,7 +22,6 @@ public:
 
 	// Required for use with object pool
 	MutexType& getMutex() const;
-	void setId(ObjectPoolOwner* pBlock, size_t id);
 	Index3DId getIndex() const;
 
 	void addFace(const Index3DId& faceId);
@@ -59,9 +58,7 @@ private:
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
-	Block* _pBlock = nullptr;
 	mutable MutexType _mutex;
-	Index3DId _thisId;
 	std::set<Index3DId> _faceIds;
 };
 

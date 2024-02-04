@@ -12,12 +12,12 @@ namespace DFHM {
 class Block;
 class Polyhedron;
 
-class Edge {
+class Edge : public ObjectPoolOwnerUser {
 public:
 
 	Edge() = default;
 	Edge(const Edge& src) = default;
-	Edge(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1);
+	Edge(const ObjectPoolOwner* pPoolOwner, const Index3DId& vert0, const Index3DId& vert1);
 
 	bool isValid() const;
 	bool operator < (const Edge& rhs) const;
@@ -36,11 +36,10 @@ public:
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
 	double intesectPlaneParam(const Plane& splittingPlane) const;
-	Index3DId splitAtParam(double t) const;
-	Index3DId splitWithPlane(const Plane& splittingPlane) const;
+	Index3DId splitAtParam(double t);
+	Index3DId splitWithPlane(const Plane& splittingPlane);
 
 private:
-	Block* _pBlock = nullptr;
 	Index3DId _vertexIds[2];
 };
 

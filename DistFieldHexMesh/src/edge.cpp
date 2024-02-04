@@ -6,9 +6,9 @@
 using namespace std;
 using namespace DFHM;
 
-Edge::Edge(Block* pBlock, const Index3DId& vert0, const Index3DId& vert1)
+Edge::Edge(const ObjectPoolOwner* pPoolOwner, const Index3DId& vert0, const Index3DId& vert1)
+	: ObjectPoolOwnerUser(pPoolOwner)
 {
-	_pBlock = pBlock;
 	if (vert0 < vert1) {
 		_vertexIds[0] = vert0;
 		_vertexIds[1] = vert1;
@@ -27,7 +27,7 @@ bool Edge::operator == (const Edge& rhs) const
 
 bool Edge::isValid() const
 {
-	return _pBlock != nullptr && _vertexIds[0].isValid() && _vertexIds[1].isValid();
+	return getBlockPtr() != nullptr && _vertexIds[0].isValid() && _vertexIds[1].isValid();
 }
 
 bool Edge::operator < (const Edge& rhs) const
@@ -48,7 +48,7 @@ double Edge::sameParamTol() const
 
 double Edge::getLength() const
 {
-	LineSegment seg(_pBlock->getVertexPoint(_vertexIds[0]), _pBlock->getVertexPoint(_vertexIds[1]));
+	LineSegment seg(getBlockPtr()->getVertexPoint(_vertexIds[0]), getBlockPtr()->getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
@@ -59,8 +59,8 @@ Vector3d Edge::calCenter() const
 
 Vector3d Edge::calPointAt(double t) const
 {
-	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	
 	Vector3d result = pt0 + t * (pt1 - pt0);
 
@@ -69,8 +69,8 @@ Vector3d Edge::calPointAt(double t) const
 
 double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 {
-	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -83,8 +83,8 @@ double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 
 Vector3d Edge::projectPt(const Vector3d& pt) const
 {
-	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -104,8 +104,8 @@ set<Index3DId> Edge::getFaceIds() const
 {
 #if 1
 	set<Index3DId> result;
-	const auto& faceIds0 = _pBlock->getVertexFaceIds(_vertexIds[0]);
-	const auto& faceIds1 = _pBlock->getVertexFaceIds(_vertexIds[1]);
+	const auto& faceIds0 = getBlockPtr()->getVertexFaceIds(_vertexIds[0]);
+	const auto& faceIds1 = getBlockPtr()->getVertexFaceIds(_vertexIds[1]);
 
 	for (const auto& faceId : faceIds0) {
 		if (faceIds1.contains(faceId))
@@ -117,18 +117,18 @@ set<Index3DId> Edge::getFaceIds() const
 	set<Index3DId> result;
 
 	set<Index3DId> faceIds;
-	_pBlock->vertexFunc(_vertexIds[0], [&faceIds](const Vertex& vert) {
+	getBlockPtr()->vertexFunc(_vertexIds[0], [&faceIds](const Vertex& vert) {
 		faceIds = vert.getFaceIds();
 	});
 
-	_pBlock->vertexFunc(_vertexIds[1], [&faceIds](const Vertex& vert) {
+	getBlockPtr()->vertexFunc(_vertexIds[1], [&faceIds](const Vertex& vert) {
 		auto temp = vert.getFaceIds();
 		if (!temp.empty()) 
 			faceIds.insert(temp.begin(), temp.end());
 	});
 
 	for (const auto& faceId : faceIds) {
-		_pBlock->faceFunc(faceId, [this, &result, &faceId](const Polygon& face) {
+		getBlockPtr()->faceFunc(faceId, [this, &result, &faceId](const Polygon& face) {
 			if (face.containsEdge(*this))
 				result.insert(faceId);
 		});
@@ -146,16 +146,16 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-Index3DId Edge::splitAtParam(double t) const
+Index3DId Edge::splitAtParam(double t)
 {
 	const double tol = 0;
 	if (t > tol && t < 1.0 - tol) {
 		Vector3d pt = calPointAt(t);
-		auto midVertId = _pBlock->addVertex(pt);
+		auto midVertId = getBlockPtr()->addVertex(pt);
 
 		set<Index3DId> faceIds = getFaceIds();
 		for (const auto& faceId : faceIds) {
-			_pBlock->faceFunc(faceId, [this, &midVertId](Polygon& face) {
+			getBlockPtr()->faceFunc(faceId, [this, &midVertId](Polygon& face) {
 				if (midVertId == Index3DId(Index3D(3, 0, 1), 3)) {
 					int dbgBreak = 1;
 				}
@@ -176,8 +176,8 @@ Index3DId Edge::splitAtParam(double t) const
 
 double Edge::intesectPlaneParam(const Plane& splittingPlane) const
 {
-	Vector3d pt0 = _pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = _pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	LineSegment seg(pt0, pt1);
 	RayHit hit;
 	if (intersectLineSegPlane(seg, splittingPlane, hit)) {
@@ -187,7 +187,7 @@ double Edge::intesectPlaneParam(const Plane& splittingPlane) const
 	return -1;
 }
 
-Index3DId Edge::splitWithPlane(const Plane& splittingPlane) const
+Index3DId Edge::splitWithPlane(const Plane& splittingPlane)
 {
 	const double tol = 0;
 	double t = intesectPlaneParam(splittingPlane);

@@ -3,6 +3,7 @@
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <block.h>
 
 using namespace DFHM;
 
@@ -11,3 +12,33 @@ using namespace DFHM;
 DECL_THREAD_LOCAL(Vertex);
 DECL_THREAD_LOCAL(Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
+
+ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id)
+{
+	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
+	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
+}
+
+ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser& rhs)
+{
+	_pPoolOwner = rhs._pPoolOwner;
+	_thisId = rhs._thisId;
+
+	return *this;
+}
+
+Block* ObjectPoolOwnerUser::getBlockPtr()
+{
+	return dynamic_cast<Block*>(_pPoolOwner);
+}
+
+const Block* ObjectPoolOwnerUser::getBlockPtr() const
+{
+	return const_cast<const Block*>(dynamic_cast<Block*>(_pPoolOwner));
+}
+
+void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
+{
+	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
+	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
+}

@@ -11,7 +11,7 @@ namespace DFHM {
 class Block;
 class Edge;
 
-class Vertex {
+class Vertex : public ObjectPoolOwnerUser {
 public:
 	using FixedPt = Vector3<int>;
 	enum class LockType {
@@ -22,7 +22,6 @@ public:
 	};
 
 	// Required for use with object pool
-	void setId(ObjectPoolOwner* pBlock, size_t id);
 	MutexType& getMutex() const;
 
 	static int fromDbl(double val);
@@ -61,8 +60,6 @@ private:
 
 	mutable MutexType _mutex;
 
-	Block* _pBlock = nullptr;
-	Index3DId _thisId;
 	FixedPt _pt; // Fixed point representation of a double precisions point
 	std::set<Index3DId> _faceIds;
 };
