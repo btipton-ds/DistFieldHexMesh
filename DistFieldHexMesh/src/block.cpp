@@ -722,6 +722,20 @@ void Block::addTris(const CMeshPtr& pSrcMesh)
 
 }
 
+size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
+{
+	size_t numSplits = 0;
+	_polyhedra.iterateInOrderTS([&splittingPlane, &numSplits](Polyhedron& cell) {
+		auto temp = cell.splitWithPlane(splittingPlane, false);
+		numSplits += temp.size();
+	});
+
+	_polygons.iterateInOrderTS([](Polygon& face) {
+		face.clearSplitFromId();
+	});
+	return numSplits;
+}
+
 size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
 {
 	size_t numSplit = 0;
@@ -928,12 +942,6 @@ bool Block::polyhedronExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
 	return pOwner->_polyhedra.exists(id);
-}
-
-Polygon& Block::getPolygon_UNSAFE(const Index3DId& id)
-{
-	assert(_blockIdx == id.blockIdx());
-	return _polygons[id];
 }
 
 void Block::pack()

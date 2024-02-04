@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -92,6 +92,36 @@ void Volume::findSharpEdgeGroups()
 		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
 			_sharpEdgeIndices.insert(edgeIdx);
 		}
+	}
+}
+
+void Volume::splitAllCellsWithPlanesAtSharpVertices()
+{
+	size_t numBlocks;
+	auto sharpVerts = getSharpVertIndices();
+	vector<Vector3d> splittingPoints;
+	for (size_t vertIdx : sharpVerts) {
+		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
+	}
+
+	atomic<size_t> numSplit = 0;
+	for (size_t ipt = 0; ipt < splittingPoints.size(); ipt++) {
+		const auto& splitPt = splittingPoints[ipt];
+		for (int i = 0; i < 3; i++) {
+			Vector3d norm(0, 0, 0);
+			norm[i] = 1;
+			Plane splittingPlane(splitPt, norm);
+			numBlocks = _blocks.size();
+			MultiCore::runLambda([this, &splittingPlane, &numSplit](size_t linearIdx)-> bool {
+				if (_blocks[linearIdx]) {
+					size_t numNewCells = _blocks[linearIdx]->splitAllCellsWithPlane(splittingPlane);
+					numSplit++;
+				}
+				return true;
+			}, numBlocks, RUN_MULTI_THREAD);
+		}
+
+
 	}
 }
 
@@ -250,27 +280,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	assert(verifyTopology());
 
 #if 1
-	auto sharpVerts = getSharpVertIndices();
-	vector<Vector3d> splittingPoints;
-	for (size_t vertIdx : sharpVerts) {
-		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
-	}
-
-	atomic<size_t> numSplit = 0;
-	for (size_t ipt = 0; ipt < splittingPoints.size(); ipt++) {
-		const auto& splitPt = splittingPoints[ipt];
-
-		numBlocks = _blocks.size();
-		MultiCore::runLambda([this, &splitPt, &numSplit](size_t linearIdx)-> bool {
-			if (_blocks[linearIdx]) {
-				size_t numNewCells = _blocks[linearIdx]->splitAllCellsWithPrinicpalPlanesAtPoint(splitPt);
-				if (numNewCells > 0)
-					numSplit++;
-			}
-			return true;
-		}, numBlocks, RUN_MULTI_THREAD);
-
-	}
+	splitAllCellsWithPlanesAtSharpVertices();
 #endif
 
 #if 0

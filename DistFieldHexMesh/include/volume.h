@@ -69,6 +69,7 @@ private:
 	void findFeatures();
 	void findSharpVertices();
 	void findSharpEdgeGroups();
+	void splitAllCellsWithPlanesAtSharpVertices();
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;

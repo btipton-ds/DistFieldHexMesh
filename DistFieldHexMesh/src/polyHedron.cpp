@@ -326,12 +326,18 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 
 	for (auto& faceId : _faceIds) {
 		Index3DId newFaceId;
+		Index3DId dbgCheck(Index3D(4, 0, 1), 2);
+		if (faceId == dbgCheck) {
+			int dbgBreak = 1;
+		}
+
 		getBlockPtr()->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
 			newFaceId = face.splitWithFaceEdgesNTS(splittingFace);
 		});
 
-		if (newFaceId.isValid())
+		if (newFaceId.isValid()) {
 			splitFaceIdSet.insert(newFaceId);
+		}
 	}
 
 	// Collect the faces below the splitting plane to form a new cell

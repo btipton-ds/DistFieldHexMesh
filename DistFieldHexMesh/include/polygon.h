@@ -40,7 +40,7 @@ public:
 	void removeCell(const Index3DId& cellId);
 	bool numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
-	void setSplitFromData(const Index3DId& sourceFaceId, const std::set<Index3DId>& sourceCellIds);
+	void setSplitFromData(const Index3DId& sourceFaceId);
 	void clearSplitFromId();
 	bool ownedByCell(const Index3DId& cellId) const;
 
@@ -86,7 +86,7 @@ private:
 
 	mutable MutexType _mutex;
 	size_t _numSplits = 0;
-	Index3DId _splitFromFaceId;
+	std::set<Index3DId> _splitFromFaceIds;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 

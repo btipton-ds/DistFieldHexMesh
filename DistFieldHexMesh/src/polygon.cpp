@@ -13,7 +13,7 @@ using namespace DFHM;
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
 	, _numSplits(src._numSplits)
-	, _splitFromFaceId(src._splitFromFaceId)
+	, _splitFromFaceIds(src._splitFromFaceIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _needSort(true)
@@ -25,7 +25,7 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 
 	_numSplits = rhs._numSplits;
-	_splitFromFaceId = rhs._splitFromFaceId;
+	_splitFromFaceIds = rhs._splitFromFaceIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_needSort = true;
@@ -52,16 +52,15 @@ void Polygon::addVertex(const Index3DId& vertId)
 	}
 }
 
-void Polygon::setSplitFromData(const Index3DId& sourceFaceId, const std::set<Index3DId>& sourceCellIds)
+void Polygon::setSplitFromData(const Index3DId& sourceFaceId)
 {
 	_numSplits++;
-	_splitFromFaceId = sourceFaceId;
-	_cellIds = sourceCellIds;
+	_splitFromFaceIds.insert(sourceFaceId);
 }
 
 void Polygon::clearSplitFromId()
 {
-	_splitFromFaceId = Index3DId();
+	_splitFromFaceIds.clear();
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -198,7 +197,7 @@ bool Polygon::ownedByCellNTS(const Index3DId& cellId) const
 
 bool Polygon::wasSplitFromNTS(const Index3DId& faceId) const
 {
-	return _splitFromFaceId == faceId;
+	return _splitFromFaceIds.contains(faceId);
 }
 
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
@@ -380,41 +379,35 @@ bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
 Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 {
 	Index3DId result;
-#if 1
-	assert(containsEdge(edge));
-	size_t numFound = 0;
-	auto edgeFaceIds = edge.getFaceIds();
-	for (const auto& otherFaceId : edgeFaceIds) {
-		bool found;
-		getBlockPtr()->faceFunc(otherFaceId, [this, &found](const Polygon& otherFace) {
-			found = (otherFace.wasSplitFromNTS(_thisId) || wasSplitFromNTS(otherFace._thisId));
-		});
 
-		if (found) {
-			result = otherFaceId;
-			numFound++;
-		}
-	}
+	Vector3d faceCtr = calCentroid();
+	Vector3d edgeCtr = edge.calCenter();
+	Vector3d thisFaceVec = edgeCtr - faceCtr; // This one points from the face center to the edge center
+	Vector3d edgeDir = edge.calUnitDir();
+	thisFaceVec = thisFaceVec - edgeDir.dot(thisFaceVec) * edgeDir;
+	thisFaceVec.normalize();
 
-	assert(numFound == 1);
-	if (numFound == 1 && result.isValid())
-		return result;
-	return Index3DId();
-#else
-	Vector3d ourNormal = calUnitNormal();
 	auto edgeFaceIds = edge.getFaceIds();
+	double maxDp = -DBL_MAX;
 	for (const auto& faceId : edgeFaceIds) {
-		getBlockPtr()->faceFunc(faceId, [this, &ourNormal, &result](const Polygon& face) {
-			const double tol = 1.0e-5;
-			Vector3d testNormal = face.calUnitNormal();
-			if (fabs(1 - testNormal.dot(testNormal)) < tol) {
+		if (faceId == _thisId)
+			continue;
+		getBlockPtr()->faceFunc(faceId, [this, &thisFaceVec, &result, &edgeCtr, &edgeDir, &maxDp](const Polygon& face) {
+			Vector3d faceCtr = face.calCentroid();
+			Vector3d testFaceVec = faceCtr - edgeCtr; // This one points from the edge center to the other face center
+			testFaceVec = testFaceVec - edgeDir.dot(testFaceVec) * edgeDir;
+			testFaceVec.normalize();
+			// An ideal value is 1.0. Others should be less
+			auto dp = thisFaceVec.dot(testFaceVec);
+			if (dp > maxDp) {
+				maxDp = dp;
 				result = face.getId();
 			}
 		});
-		if (result.isValid())
-			break;
 	}
-#endif
+
+	assert(maxDp > 0.9);
+	assert(result.isValid());
 	return result;
 }
 
@@ -474,8 +467,10 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			setVertexIdsNTS(face0Verts);
 
 			Index3DId newFaceId = getBlockPtr()->addFace(face1Verts);
-			auto& newFace = getBlockPtr()->getPolygon_UNSAFE(newFaceId); // This is safe because we know the new face is in the block and no one can use it yet.
-			newFace.setSplitFromData(_thisId, _cellIds);
+			getBlockPtr()->faceFunc(newFaceId, [this](Polygon& newFace) {
+				newFace.setSplitFromData(_thisId);
+				assert(newFace.wasSplitFromNTS(_thisId));
+			});
 
 			for (const auto& cellId : _cellIds) { // TODO Remove this and let the splitter do it
 				getBlockPtr()->addFaceToPolyhedron(newFaceId, cellId);

@@ -57,6 +57,15 @@ Vector3d Edge::calCenter() const
 	return calPointAt(0.5);
 }
 
+Vector3d Edge::calUnitDir() const
+{
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d v = pt1 - pt0;
+	v.normalize();
+	return v;
+}
+
 Vector3d Edge::calPointAt(double t) const
 {
 	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);

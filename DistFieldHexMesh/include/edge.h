@@ -28,6 +28,7 @@ public:
 	double sameParamTol() const;
 	double getLength() const;
 	Vector3d calCenter() const;
+	Vector3d calUnitDir() const;
 	Vector3d calPointAt(double t) const;
 	double paramOfPt(const Vector3d& pt, bool& inBounds) const;
 	Vector3d projectPt(const Vector3d& pt) const;

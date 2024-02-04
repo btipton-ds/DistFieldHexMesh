@@ -100,6 +100,7 @@ public:
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
 	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
+	size_t splitAllCellsWithPlane(const Plane& splittingPlane);
 	size_t splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt);
 
 	Index3DId idOfPoint(const Vector3d& pt);
@@ -123,8 +124,6 @@ public:
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
 	bool polyhedronExists(const Index3DId& id) const;
-
-	Polygon& getPolygon_UNSAFE(const Index3DId& id);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
