@@ -425,12 +425,6 @@ const vector<Index3DId>& Block::getFaceVertexIds(const Index3DId& vertexId) cons
 	return pOwner->_polygons[vertexId].getVertexIds();
 }
 
-set<Edge> Block::getFaceEdges(const Index3DId& vertexId) const
-{
-	auto pOwner = getOwner(vertexId);
-	return pOwner->_polygons[vertexId].getEdges();
-}
-
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
 	if (!Polygon::verifyVertsConvexStat(this, vertIndices)) {
@@ -605,9 +599,9 @@ set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
 	set<Edge> result;
 	set<Index3DId> faceIds = getVertexFaceIds(vertexId);
 	for (const auto& faceId : faceIds) {
-		auto edges = getFaceEdges(faceId);
+		set<Edge> edges;
 		faceFunc(faceId, [&edges](const Polygon& face) {
-			edges = face.getEdges();
+			edges = face.getEdgesNTS();
 		});
 		for (const auto& edge : edges) {
 			if (edge.containsVertex(vertexId)) {
@@ -875,7 +869,7 @@ Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 
 	_polygons.iterateInOrderTS([this, meshType, &edges, minSplitNum](const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
-			const auto& faceEdges = face.getEdges();
+			const auto& faceEdges = face.getEdgesNTS();
 			edges.insert(faceEdges.begin(), faceEdges.end());
 		}
 	});

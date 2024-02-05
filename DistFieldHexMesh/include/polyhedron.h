@@ -28,7 +28,7 @@ public:
 	bool removeFace(const Index3DId& faceId);
 	const std::set<Index3DId>& getFaceIds() const;
 	std::vector<Index3DId> getCornerIds() const;
-	std::vector<Edge> getEdges() const;
+	std::set<Edge> getEdges() const;
 	std::set<Index3DId> getEdgeFaceIds(const Edge& edge) const;
 
 	std::set<Index3DId> getAdjacentCells() const;

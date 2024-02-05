@@ -118,17 +118,6 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-set<Edge> Polygon::getEdges() const
-{
-	set<Edge> result;
-
-	getBlockPtr()->faceFunc(_thisId, [&result](const Polygon& self) {
-		result = self.getEdgesNTS();
-	});
-
-	return result;
-}
-
 set<Edge> Polygon::getEdgesNTS() const
 {
 	set<Edge> result;
@@ -295,7 +284,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 Index3DId Polygon::insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt)
 {
 	Index3DId newVertId;
-	auto edgeSet = getEdges();
+	auto edgeSet = getEdgesNTS();
 	if (edgeSet.count(edge) != 0) {
 		newVertId = getBlockPtr()->idOfPoint(pt);
 		if (!newVertId.isValid())
@@ -417,7 +406,7 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 	assert(splittingFace.verifyTopology());
 
 	const auto& thisFace = *this;
-	auto otherEdges = splittingFace.getEdges();
+	auto otherEdges = splittingFace.getEdgesNTS();
 	for (const auto& splittingEdge : otherEdges) {
 		if (containsEdge(splittingEdge)) {
 			// Our face already contains the splitting edge. It cannot be split again
@@ -576,7 +565,7 @@ bool Polygon::verifyTopology() const
 	if (_cellIds.size() > 2)
 		valid = false;
 
-	auto edges = getEdges();
+	auto edges = getEdgesNTS();
 	for (const auto& edge : edges) {
 		auto faceIds = edge.getFaceIds();
 		if (faceIds.count(_thisId) == 0) // edge does not link back to this face

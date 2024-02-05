@@ -1,10 +1,8 @@
 #pragma once
 
-#include <mutex>
+#include <mutexType.h>
 
 namespace DFHM {
-
-using MutexType = std::recursive_timed_mutex;
 
 class patient_lock_guard {
 public:

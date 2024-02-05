@@ -111,7 +111,6 @@ public:
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& vertexId) const;
-	std::set<Edge> getFaceEdges(const Index3DId& vertexId) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);

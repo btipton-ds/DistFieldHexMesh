@@ -123,18 +123,15 @@ vector<Index3DId> Polyhedron::getCornerIds() const
 	return result;
 }
 
-vector<Edge> Polyhedron::getEdges() const
+set<Edge> Polyhedron::getEdges() const
 {
-	set<Edge> idSet;
+	set<Edge> result;
 	for (const auto& faceId : _faceIds) {
-		getBlockPtr()->faceFunc(faceId, [&idSet](const Polygon& face) {
-			const auto& edges = face.getEdges();
-			idSet.insert(edges.begin(), edges.end());
+		getBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
+			const auto& edges = face.getEdgesNTS();
+			result.insert(edges.begin(), edges.end());
 		});
 	}
-
-	vector<Edge> result;
-	result.insert(result.end(), idSet.begin(), idSet.end());
 
 	return result;
 }
@@ -284,7 +281,8 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 
 	assert(isClosed());
 
-	vector<Edge> edges = getEdges(), edgesToSplit;
+	set<Edge> edges = getEdges();
+	vector<Edge> edgesToSplit;
 	set<Index3DId> vertIdSet;
 
 	for (const auto& edge : edges) {
@@ -474,7 +472,7 @@ set<Index3DId> Polyhedron::getEdgeFaceIds(const Edge& edge) const
 bool Polyhedron::isClosed() const
 {
 	bool result = true;
-	vector<Edge> edges = getEdges();
+	auto edges = getEdges();
 	for (const auto& edge : edges) {
 		if (getEdgeFaceIds(edge).size() != 2) {
 			result = false;

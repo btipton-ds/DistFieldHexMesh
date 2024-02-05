@@ -54,7 +54,7 @@ public:
 
 	const std::vector<Index3DId>& getVertexIds() const;
 	void setVertexIdsNTS(const std::vector<Index3DId>& verts);
-	std::set<Edge> getEdges() const;
+	std::set<Edge> getEdgesNTS() const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
@@ -81,8 +81,6 @@ public:
 private:
 	void sortIds() const;
 	Index3DId findOtherSplitFaceId(const Edge& edge) const;
-
-	std::set<Edge> getEdgesNTS() const;
 
 	mutable MutexType _mutex;
 	size_t _numSplits = 0;
