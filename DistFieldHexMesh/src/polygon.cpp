@@ -126,7 +126,7 @@ set<Edge> Polygon::getEdgesNTS() const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge edge(getBlockPtr(), vertId0, vertId1);
+		Edge edge(vertId0, vertId1);
 		result.insert(edge);
 	}
 
@@ -145,7 +145,7 @@ bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge testEdge(getBlockPtr(), vertId0, vertId1);
+		Edge testEdge(vertId0, vertId1);
 		if (testEdge == edge) {
 			idx0 = i;
 			idx1 = j;
@@ -313,7 +313,7 @@ bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId
 		}
 		result = true;
 
-		assert(vertifyUniqueStat(vertIds));
+		assert(verifyUniqueStat(vertIds));
 
 		setVertexIdsNTS(vertIds);
 
@@ -370,13 +370,13 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	Index3DId result;
 
 	Vector3d faceCtr = calCentroid();
-	Vector3d edgeCtr = edge.calCenter();
+	Vector3d edgeCtr = edge.calCenter(getBlockPtr());
 	Vector3d thisFaceVec = edgeCtr - faceCtr; // This one points from the face center to the edge center
-	Vector3d edgeDir = edge.calUnitDir();
+	Vector3d edgeDir = edge.calUnitDir(getBlockPtr());
 	thisFaceVec = thisFaceVec - edgeDir.dot(thisFaceVec) * edgeDir;
 	thisFaceVec.normalize();
 
-	auto edgeFaceIds = edge.getFaceIds();
+	auto edgeFaceIds = edge.getFaceIds(getBlockPtr());
 	double maxDp = -DBL_MAX;
 	for (const auto& faceId : edgeFaceIds) {
 		if (faceId == _thisId)
@@ -448,8 +448,8 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			if (face1Verts.size() < face0Verts.size())
 				swap(face0Verts, face1Verts);
 
-			assert(vertifyUniqueStat(face0Verts));
-			assert(vertifyUniqueStat(face1Verts));
+			assert(verifyUniqueStat(face0Verts));
+			assert(verifyUniqueStat(face1Verts));
 			assert(verifyVertsConvexStat(getBlockPtr(), face0Verts));
 			assert(verifyVertsConvexStat(getBlockPtr(), face1Verts));
 
@@ -529,7 +529,7 @@ bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>
 	return true;
 }
 
-bool Polygon::vertifyUniqueStat(const vector<Index3DId>& vertIds)
+bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 {
 	bool valid = true;
 
@@ -551,7 +551,7 @@ bool Polygon::verifyTopology() const
 		vertIds = face.getVertexIds();
 	});
 
-	if (!vertifyUniqueStat(vertIds))
+	if (!verifyUniqueStat(vertIds))
 		valid = false;
 
 	for (const auto& vertId : vertIds) {

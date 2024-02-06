@@ -16,7 +16,7 @@ class Block;
 
 class Polygon : public ObjectPoolOwnerUser {
 public:
-	static bool vertifyUniqueStat(const std::vector<Index3DId>& vertIds);
+	static bool verifyUniqueStat(const std::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
@@ -109,7 +109,7 @@ inline size_t Polygon::getNumSplits() const
 
 inline bool Polygon::vertifyUnique() const
 {
-	return vertifyUniqueStat(_vertexIds);
+	return verifyUniqueStat(_vertexIds);
 }
 
 inline bool Polygon::verifyVertsConvex() const

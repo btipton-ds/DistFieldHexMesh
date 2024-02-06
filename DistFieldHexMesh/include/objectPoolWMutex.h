@@ -138,7 +138,11 @@ inline void ObjectPoolWMutex<T>::iterateInOrderTS(F fLambda) const
 
 	const auto& blockIdx = _data.getBlockPtr()->getBlockIdx();
 	for (size_t id = 0; id < numIds; id++) {
-		auto* pEntry = _data.get(Index3DId(blockIdx, id));
+		const T* pEntry;
+		{
+			patient_lock_guard g(_mutex);
+			pEntry =_data.get(Index3DId(blockIdx, id));
+		}
 		if (pEntry) {
 			patient_lock_guard g(pEntry->getMutex());
 			fLambda(*pEntry);
@@ -154,7 +158,11 @@ inline void ObjectPoolWMutex<T>::iterateInOrderTS(F fLambda)
 
 	const auto& blockIdx = _data.getBlockPtr()->getBlockIdx();
 	for (size_t id = 0; id < numIds; id++) {
-		auto* pEntry = _data.get(Index3DId(blockIdx, id));
+		T* pEntry;
+		{
+			patient_lock_guard g(_mutex);
+			pEntry = _data.get(Index3DId(blockIdx, id));
+		}
 		if (pEntry) {
 			patient_lock_guard g(pEntry->getMutex());
 			fLambda(*pEntry);

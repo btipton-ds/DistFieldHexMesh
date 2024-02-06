@@ -455,6 +455,8 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 		auto vertId = addVertex(pt);
 		vertIds.push_back(vertId);
 	}
+	if (!Polygon::verifyUniqueStat(vertIds))
+		return Index3DId();
 	return addFace(vertIds);
 }
 

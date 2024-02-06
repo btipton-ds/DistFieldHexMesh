@@ -286,9 +286,9 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	set<Index3DId> vertIdSet;
 
 	for (const auto& edge : edges) {
-		double t = edge.intesectPlaneParam(splitPlane);
+		double t = edge.intesectPlaneParam(getBlockPtr(), splitPlane);
 		if (t >= -tol && t <= 1 + tol) {
-			Vector3d pt = edge.calPointAt(t);
+			Vector3d pt = edge.calPointAt(getBlockPtr(), t);
 			Index3DId vertId = getBlockPtr()->idOfPoint(pt);
 			if (vertId.isValid())
 				vertIdSet.insert(vertId);
@@ -301,9 +301,16 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 		return result;
 
 	for (auto& edge : edgesToSplit) {
-		auto newVertId = edge.splitWithPlane(splitPlane);
+		set<Index3DId> faceIds;
+		auto newVertId = edge.splitWithPlane(getBlockPtr(), splitPlane, faceIds);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
+			for (const auto& faceId : faceIds) {
+				getBlockPtr()->faceFunc(faceId, [&edge, &newVertId](Polygon& splitFace) {
+					if (!splitFace.containsVert(newVertId))
+						splitFace.insertVertexInEdgeNTS(edge, newVertId);
+				});
+			}
 		}
 	}
 
@@ -401,8 +408,7 @@ set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 				auto iter = vertsInFace.begin();
 				const Index3DId& vertId0 = *iter++;
 				const Index3DId& vertId1 = *iter;
-				Edge newEdge(getBlockPtr(), vertId0, vertId1);
-
+				Edge newEdge(vertId0, vertId1);
 
 				edgeSet.insert(newEdge);
 			}
