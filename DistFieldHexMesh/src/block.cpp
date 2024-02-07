@@ -254,9 +254,9 @@ vector<size_t> Block::createSubBlocks()
 	return newCells;
 }
 
-bool Block::dividePolyhedraByCurvature(const vector<Index3DId>& cellIndices, vector<Index3DId>& newCells)
+set<Index3DId> Block::dividePolyhedraByCurvature(const set<Index3DId>& cellIndices)
 {
-	bool result = true;
+	set<Index3DId> result;
 	for (auto id : cellIndices) {
 		auto pCell = _polyhedra.get(id);
 		if (!pCell)
@@ -280,7 +280,7 @@ bool Block::dividePolyhedraByCurvature(const vector<Index3DId>& cellIndices, vec
 
 			avgSurfCurvature /= edgeEntries.size();
 			if (avgSurfCurvature < minCurvature)
-				return false;
+				return result;
 			double avgSurfRadius = 1 / avgSurfCurvature;
 			double avgSurfCircumference = 2 * M_PI * avgSurfRadius;
 			double avgSurfArcLength = avgSurfCircumference / 72.0; // 5 deg arc
@@ -289,16 +289,16 @@ bool Block::dividePolyhedraByCurvature(const vector<Index3DId>& cellIndices, vec
 			if (kDiv * avgSurfArcLength > minBoxDim) {
 				vector<Index3DId> splitCells;
 				if (!pCell->split(true, splitCells)) {
-					return false;
+					return result;
 				}
 				for (const auto& cellId : splitCells) {
-					newCells.push_back(cellId);
+					result.insert(cellId);
 				}
 			}
 		}
 	}
 
-	return true;
+	return result;
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -693,9 +693,9 @@ size_t Block::processTris()
 		newCells.insert(cell.getId());
 	});
 
-#if 1
-	if (!newCells.empty()) {
 #if 0
+	if (!newCells.empty()) {
+#if 1
 		for (size_t div = 0; div < numDivs; div++) {
 			newCells = dividePolyhedraByCurvature(newCells);
 		}

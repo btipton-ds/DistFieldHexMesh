@@ -283,7 +283,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	splitAllCellsWithPlanesAtSharpVertices();
 #endif
 
-#if 0
+#if 1
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {

@@ -49,6 +49,14 @@ void MultiLockGuard::create(set<Index3D>& indexSet, thread::id creatorId)
 		cout << "Attempting to lock block: " << _pBlock->getBlockIdx() << "\n";
 	}
 #endif
+
+	/*
+	* TODO There's a dead lock condition during attempting to lock so many mutexes.
+	* In theory, as long as only one thread is requesting locks and does not block releasing of locks
+	* It should not need the g_waitQueue or ordering of locks.
+	* 
+	* Unfortunately, it hasn't worked yet.
+	*/
 	{
 		lock_guard mlg(g_requestMultiLockMutex);
 		g_waitQueue.push_back(_pBlock);

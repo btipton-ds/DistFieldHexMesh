@@ -314,7 +314,7 @@ bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector
 {
 	set<Index3DId> cellSet;
 	cellSet.insert(_thisId);
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < 3; i++) {
 		set<Index3DId> resultSet;
 		Vector3d normal(0, 0, 0);
 		normal[i] = 1.0;
