@@ -216,6 +216,28 @@ Vector3d Polygon::calUnitNormal() const
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
 }
 
+void Polygon::calAreaAndCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, double& area, Vector3d& centroid)
+{
+	area = 0;
+	centroid = Vector3d(0, 0, 0);
+	Vector3d pt0 = pBlock->getVertexPoint(vertIds[0]);
+	for (size_t j = 1; j < vertIds.size() - 1; j++) {
+		size_t k = j + 1;
+		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
+		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
+		Vector3d cp = v1.cross(v0);
+		double triArea = cp.norm() / 2.0;
+
+		centroid += triCtr * triArea;
+		area += triArea;
+	}
+
+	centroid /= area;
+}
+
 double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t idx1)
 {
 	const size_t sz = vertIds.size();
@@ -260,14 +282,15 @@ Vector3d Polygon::interpolatePoint(double t, double u) const
 
 Vector3d Polygon::calCentroid() const
 {
-	Vector3d ctr(0, 0, 0);
-	for (const auto& vertId : _vertexIds) {
-		Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
-		ctr += pt;
-	}
-
-	ctr /= (double)_vertexIds.size();
+	double area;
+	Vector3d ctr;
+	calAreaAndCentroid(area, ctr);
 	return ctr;
+}
+
+void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
+{
+	calAreaAndCentroidStat(getBlockPtr(), _vertexIds, area, centroid);
 }
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const

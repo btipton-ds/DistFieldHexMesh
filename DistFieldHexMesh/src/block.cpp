@@ -254,53 +254,6 @@ vector<size_t> Block::createSubBlocks()
 	return newCells;
 }
 
-set<Index3DId> Block::dividePolyhedraByCurvature(const set<Index3DId>& cellIndices)
-{
-	set<Index3DId> result;
-	for (auto id : cellIndices) {
-		auto pCell = _polyhedra.get(id);
-		if (!pCell)
-			continue;
-		const double minCurvature = 1; // 1 meter radius
-		const double kDiv = 1.0;
-
-		CBoundingBox3Dd bbox = pCell->getBoundingBox();
-		vector<CMesh::SearchEntry> edgeEntries;
-		if (_pModelTriMesh->findEdges(bbox, edgeEntries)) {
-			double avgSurfCurvature = 0;
-			size_t numSamples = 0;
-			for (const auto& edgeEntry : edgeEntries) {
-				size_t edgeIndex = edgeEntry.getIndex();
-				double edgeCurv = _pModelTriMesh->edgeCurvature(edgeIndex);
-				if (edgeCurv >= 0) {
-					avgSurfCurvature += edgeCurv;
-					numSamples++;
-				}
-			}
-
-			avgSurfCurvature /= edgeEntries.size();
-			if (avgSurfCurvature < minCurvature)
-				return result;
-			double avgSurfRadius = 1 / avgSurfCurvature;
-			double avgSurfCircumference = 2 * M_PI * avgSurfRadius;
-			double avgSurfArcLength = avgSurfCircumference / 72.0; // 5 deg arc
-			auto range = bbox.range();
-			double minBoxDim = min(range[0], min(range[1], range[2]));
-			if (kDiv * avgSurfArcLength > minBoxDim) {
-				vector<Index3DId> splitCells;
-				if (!pCell->split(true, splitCells)) {
-					return result;
-				}
-				for (const auto& cellId : splitCells) {
-					result.insert(cellId);
-				}
-			}
-		}
-	}
-
-	return result;
-}
-
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
 {
 
@@ -680,28 +633,19 @@ bool Block::load()
 
 size_t Block::processTris()
 {
-	const int numDivs = 1;
-
-	if (_pModelTriMesh->numTris() == 0)
-		return 0;
-
-	size_t count = 0;
-	set<Index3DId> newCells;
-	_polyhedra.iterateInOrder([&newCells, &count](Polyhedron& cell) {
-		MultiLockGuard g(cell);
-		count++;
-		newCells.insert(cell.getId());
-	});
-
-#if 0
-	if (!newCells.empty()) {
 #if 1
-		for (size_t div = 0; div < numDivs; div++) {
-			newCells = dividePolyhedraByCurvature(newCells);
-		}
-#endif
+	size_t count = _polyhedra.size();
+
+	for (size_t i = 0; i < 2; i++) {
+		_polyhedra.iterateInOrder([this](Polyhedron& cell) {
+			size_t circleDivs = 72;
+			MultiLockGuard g(cell);
+			cell.splitByCurvature(_pModelTriMesh, circleDivs);
+		});
 	}
+
 #endif
+	count = _polyhedra.size() - count;
 	return count;
 }
 

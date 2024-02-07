@@ -1,6 +1,9 @@
 #include <vector>
 #include <map>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -300,38 +303,108 @@ bool Polyhedron::contains(const Vector3d& pt) const
 
 Vector3d Polyhedron::calCentroid() const
 {
-	Vector3d result(0, 0, 0);
-	vector<Index3DId> cornerIds = getCornerIds();
-	for (const auto& vertId : cornerIds) {
-		result += getBlockPtr()->getVertexPoint(vertId);
-	}
-	result /= (double) cornerIds.size();
+	auto bbox = getBoundingBox();
+	Vector3d testCtr = (bbox.getMin() + bbox.getMax()) * 0.5;
+	double area = 0;
+	Vector3d ctr(0, 0, 0);
 
-	return result;
+	for (const auto& faceId : _faceIds) {
+		getBlockPtr()->faceFunc(faceId, [&area, &ctr](const Polygon& face) {
+			double faceArea;
+			Vector3d faceCtr;
+			face.calAreaAndCentroid(faceArea, faceCtr);
+			area += faceArea;
+			ctr += faceArea * faceCtr;
+		});
+	}
+	ctr /= area;
+
+	Vector3d err = ctr - testCtr;
+	return ctr;
 }
 
-bool Polyhedron::split(const Vector3d& splitPoint, bool intersectingOnly, vector<Index3DId>& newCellIds)
+bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool intersectingOnly, vector<Index3DId>& newCellIds)
 {
 	set<Index3DId> cellSet;
-	cellSet.insert(_thisId);
-	for (int i = 0; i < 3; i++) {
-		set<Index3DId> resultSet;
-		Vector3d normal(0, 0, 0);
-		normal[i] = 1.0;
-		Plane splitPlane(splitPoint, normal);
-		for (auto cellId : cellSet) {
-		vector<Index3DId> splitCells = splitWithPlane(splitPlane, intersectingOnly);
 
-		if (!splitCells.empty())
-			resultSet.insert(splitCells.begin(), splitCells.end());
-		}
-		if (!resultSet.empty())
-			cellSet.insert(resultSet.begin(), resultSet.end());
+	set<Index3DId> resultSet;
+	vector<Index3DId> splitCells = splitWithPlane(Plane(splitPoint, Vector3d(1, 0, 0)), intersectingOnly);
+
+	if (!splitCells.empty())
+		resultSet.insert(splitCells.begin(), splitCells.end());
+
+	if (!resultSet.empty())
+		cellSet.insert(resultSet.begin(), resultSet.end());
+
+	resultSet.clear();
+	for (auto cellId : cellSet) {
+		getBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 1, 0)), intersectingOnly);
+
+			if (!splitCells.empty())
+				resultSet.insert(splitCells.begin(), splitCells.end());
+		});
 	}
 
-	newCellIds.insert(newCellIds.end(), cellSet.begin(), cellSet.end());
+	if (!resultSet.empty())
+		cellSet.insert(resultSet.begin(), resultSet.end());
+
+	resultSet.clear();
+	for (auto cellId : cellSet) {
+		getBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 0, 1)), intersectingOnly);
+
+			if (!splitCells.empty())
+				resultSet.insert(splitCells.begin(), splitCells.end());
+		});
+	}
+
+	newCellIds.insert(newCellIds.end(), resultSet.begin(), resultSet.end());
 
 	return true;
+}
+
+void Polyhedron::splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circleDivs)
+{
+	const double sinEdgeAngle = sin(30.0 / 180.0 * M_PI);
+	const double minCurvature = 0.1; // 1 meter radius
+	const double kDiv = 4.0;
+
+	CBoundingBox3Dd bbox = getBoundingBox();
+	vector<CMesh::SearchEntry> triEntries;
+	if (pTriMesh->findTris(bbox, triEntries)) {
+		double avgSurfCurvature = 0;
+		size_t numSamples = 0;
+		for (const auto& triEntry : triEntries) {
+			size_t triIndex = triEntry.getIndex();
+			Vector3i tri = pTriMesh->getTri(triIndex);
+			for (int i = 0; i < 3; i++) {
+				int j = (i + 1) & 3;
+				size_t edgeIdx = pTriMesh->findEdge(tri[i], tri[j]);
+				double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
+				if (edgeCurv > 0) {
+					avgSurfCurvature += edgeCurv;
+					numSamples++;
+				}
+			}
+		}
+
+		avgSurfCurvature /= numSamples;
+		if (avgSurfCurvature < minCurvature)
+			return;
+		double avgSurfRadius = 1 / avgSurfCurvature;
+		cout << "Surf radius: " << avgSurfRadius << "\n";
+		double avgSurfCircumference = 2 * M_PI * avgSurfRadius;
+		double avgSurfArcLength = avgSurfCircumference / circleDivs; // 5 deg arc
+		auto range = bbox.range();
+		double minBoxDim = min(range[0], min(range[1], range[2]));
+		if (kDiv * avgSurfArcLength > minBoxDim) {
+			vector<Index3DId> splitCells;
+			if (!splitWithPlanesAtCentroid(false, splitCells)) {
+				return;
+			}
+		}
+	}
 }
 
 vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly)

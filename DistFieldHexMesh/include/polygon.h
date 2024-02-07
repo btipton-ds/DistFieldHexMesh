@@ -21,6 +21,7 @@ public:
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+	static void calAreaAndCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, double& area, Vector3d& centroid);
 
 	Polygon() = default;
 	Polygon(const Polygon& src);
@@ -67,6 +68,7 @@ public:
 	double calVertexAngle(size_t index) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
+	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 

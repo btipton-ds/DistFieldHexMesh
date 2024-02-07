@@ -280,10 +280,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	assert(verifyTopology());
 
 #if 1
-	splitAllCellsWithPlanesAtSharpVertices();
-#endif
-
-#if 1
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -300,6 +296,11 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 #endif
 
 	assert(verifyTopology());
+
+#if 0
+	splitAllCellsWithPlanesAtSharpVertices();
+	assert(verifyTopology());
+#endif
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

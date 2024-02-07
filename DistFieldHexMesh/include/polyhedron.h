@@ -4,6 +4,7 @@
 #include <tm_boundingBox.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <triMesh.h>
 
 namespace DFHM {
 
@@ -44,8 +45,9 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	std::vector<Index3DId> splitWithPlane(const Plane& splitPlane, bool intersectingOnly);
-	bool split(bool intersectingOnly, std::vector<Index3DId>& newCellIds);
-	bool split(const Vector3d& pt, bool intersectingOnly, std::vector<Index3DId>& newCellIds);
+	bool splitWithPlanesAtCentroid(bool intersectingOnly, std::vector<Index3DId>& newCellIds);
+	bool splitWithPlanesAtPoint(const Vector3d& pt, bool intersectingOnly, std::vector<Index3DId>& newCellIds);
+	void splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circleDivs);
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -74,9 +76,9 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline bool Polyhedron::split(bool intersectingOnly, std::vector<Index3DId>& newCellIds)
+inline bool Polyhedron::splitWithPlanesAtCentroid(bool intersectingOnly, std::vector<Index3DId>& newCellIds)
 {
-	return split(calCentroid(), intersectingOnly, newCellIds);
+	return splitWithPlanesAtPoint(calCentroid(), intersectingOnly, newCellIds);
 }
 
 }
