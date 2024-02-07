@@ -445,7 +445,6 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	bool isOnBoundary = false;
 	auto ownerIdx = determineOwnerBlockIdx(vertIndices, isOnBoundary);
 	Polygon newFace;
-	newFace.setIsOnBoundary(isOnBoundary);
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
@@ -487,16 +486,11 @@ size_t Block::addCell(const vector<Index3DId>& faceIds)
 	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 
 	cellFunc(cellId, [this, &cellId](Polyhedron& cell) {
-		bool isOnBoundary = false;
 		for (auto& faceId : cell.getFaceIds()) {
-			faceFunc(faceId, [&cellId, &isOnBoundary](Polygon& face) {
+			faceFunc(faceId, [&cellId](Polygon& face) {
 				face.addCell(cellId);
-				if (face.isOnBoundary())
-					isOnBoundary = true;
 			});
 		}
-		if (isOnBoundary)
-			cell.setIsOnBoundary(isOnBoundary);
 
 		assert(cell.verifyTopology());
 	});
@@ -558,15 +552,11 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	const Index3DId polyhedronId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 	assert(polyhedronId.isValid());
 
-	bool isOnBoundary = false;
 	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [&polyhedronId, &isOnBoundary](Polygon& face) {
+		faceFunc(faceId, [&polyhedronId](Polygon& face) {
 			face.addCell(polyhedronId);
-			if (face.isOnBoundary())
-				isOnBoundary = true;
 		});
 	}
-	_polyhedra[polyhedronId].setIsOnBoundary(isOnBoundary);
 
 	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -601,7 +591,6 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt, isOnBoundary);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	Vertex vert(pt);
-	vert.setIsOnBoundary(isOnBoundary);
 	return pOwner->_vertices.findOrAdd(vert, currentId);
 }
 
