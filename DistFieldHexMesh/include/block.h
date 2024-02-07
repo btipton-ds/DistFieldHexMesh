@@ -184,6 +184,7 @@ private:
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
 	mutable MutexType _mutex;
+	Index3D _blockIdx;
 
 	Volume* _pVol;
 	CBoundingBox3Dd 
@@ -201,7 +202,6 @@ private:
 
 	std::string _filename;
 
-	Index3D _blockIdx;
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
@@ -281,6 +281,7 @@ inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
 	auto pOwner = getOwner(id); \
 	assert(pOwner && pOwner->isMutexLocked()); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
+	patient_lock_guard g(obj.getMutex(), std::this_thread::get_id(), pOwner->isGranularLocking()); \
 	func(obj); \
 }
 #define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \

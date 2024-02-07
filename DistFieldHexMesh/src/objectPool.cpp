@@ -13,6 +13,22 @@ DECL_THREAD_LOCAL(Vertex);
 DECL_THREAD_LOCAL(Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
 
+void ObjectPoolOwner::setGranularLocking(bool val)
+{
+	_isGranularLocking = val;
+}
+
+bool ObjectPoolOwner::isGranularLocking() const
+{
+	return _isGranularLocking;
+}
+
+ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)
+{
+	_pPoolOwner = src._pPoolOwner;
+	_thisId = src._thisId;
+}
+
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id)
 {
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
@@ -41,4 +57,9 @@ void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
 {
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
 	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
+}
+
+MutexType& ObjectPoolOwnerUser::getMutex() const
+{
+	return _mutex;
 }

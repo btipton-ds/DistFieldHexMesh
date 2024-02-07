@@ -235,7 +235,7 @@ void Block::addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId
 vector<size_t> Block::createSubBlocks()
 {
 	vector<size_t> newCells;
-	MultiLockGuard g(this, this_thread::get_id());
+	setGranularLocking(true);
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
@@ -246,6 +246,7 @@ vector<size_t> Block::createSubBlocks()
 			}
 		}
 	}
+	setGranularLocking(false);
 
 	return newCells;
 }
