@@ -205,7 +205,7 @@ bool Block::verifyTopology() const
 			int dbgBreak = 1;
 		}
 		// make sure we get block 3,1,1
-		MultiLockGuard g(cell, this_thread::get_id());
+		MultiLockGuard g(cell);
 		bool pass = cell.verifyTopology();
 		if (!pass)
 			result = false;
@@ -235,7 +235,11 @@ void Block::addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId
 vector<size_t> Block::createSubBlocks()
 {
 	vector<size_t> newCells;
-	setGranularLocking(true);
+#if 0
+	ScopedGranularLock g(*this, true);
+#else
+	MultiLockGuard g(this);
+#endif
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
@@ -246,7 +250,6 @@ vector<size_t> Block::createSubBlocks()
 			}
 		}
 	}
-	setGranularLocking(false);
 
 	return newCells;
 }
@@ -685,7 +688,7 @@ size_t Block::processTris()
 	size_t count = 0;
 	set<Index3DId> newCells;
 	_polyhedra.iterateInOrder([&newCells, &count](Polyhedron& cell) {
-		MultiLockGuard g(cell, this_thread::get_id());
+		MultiLockGuard g(cell);
 		count++;
 		newCells.insert(cell.getId());
 	});
@@ -715,7 +718,7 @@ size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
 		if (cell.getId() == Index3DId(Index3D(0, 0, 1), 0)) {
 			int dbgBreak = 1;
 		}
-		MultiLockGuard g(cell, this_thread::get_id());
+		MultiLockGuard g(cell);
 		auto temp = cell.splitWithPlane(splittingPlane, false);
 		numSplits += temp.size();
 	});
@@ -736,7 +739,7 @@ size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
 	nCells0 = _polyhedra.size();
 	set<Index3DId> nextCells0, nextCells1;
 	_polyhedra.iterateInOrder([&splitPt, &nextCells0](Polyhedron& cell) {
-		MultiLockGuard g(cell, this_thread::get_id());
+		MultiLockGuard g(cell);
 		Plane splitPlane(splitPt, Vector3d(1, 0, 0));
 		if (cell.contains(splitPlane._origin)) {
 			auto temp = cell.splitWithPlane(splitPlane, false);

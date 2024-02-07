@@ -13,8 +13,8 @@ class Polyhedron;
 class MultiLockGuard
 {
 public:
-	MultiLockGuard(const Block* pBlock, std::thread::id creatorId);
-	MultiLockGuard(const Polyhedron& cell, std::thread::id creatorId);
+	MultiLockGuard(const Block* pBlock, std::thread::id creatorId = std::this_thread::get_id());
+	MultiLockGuard(const Polyhedron& cell, std::thread::id creatorId = std::this_thread::get_id());
 	~MultiLockGuard();
 private:
 	void create(std::set<Index3D>& indexSet, std::thread::id creatorId);

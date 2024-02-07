@@ -13,6 +13,17 @@ DECL_THREAD_LOCAL(Vertex);
 DECL_THREAD_LOCAL(Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
 
+ObjectPoolOwner::ScopedGranularLock::ScopedGranularLock(ObjectPoolOwner& self, bool val)
+	: _self(self)
+{
+	_wasLocked = _self.isGranularLocking();
+	_self.setGranularLocking(val);
+}
+ObjectPoolOwner::ScopedGranularLock::~ScopedGranularLock()
+{
+	_self.setGranularLocking(_wasLocked);
+}
+
 void ObjectPoolOwner::setGranularLocking(bool val)
 {
 	_isGranularLocking = val;

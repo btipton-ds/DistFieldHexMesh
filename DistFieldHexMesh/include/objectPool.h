@@ -15,12 +15,24 @@ class MutexType;
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
 public:
+	class ScopedGranularLock {
+	public:
+		ScopedGranularLock(ObjectPoolOwner& self, bool val);
+		~ScopedGranularLock();
+	private:
+		ObjectPoolOwner& _self;
+		bool _wasLocked;
+	};
 	virtual const Index3D& getBlockIdx() const = 0;
 
-	void setGranularLocking(bool val);
 	bool isGranularLocking() const;
 
 private:
+	friend ObjectPoolOwner;
+
+	// TODO granular locking worked in the old code for block creation, but occasionally has race conditions now.
+	void setGranularLocking(bool val);
+
 	bool _isGranularLocking = false;
 };
 
