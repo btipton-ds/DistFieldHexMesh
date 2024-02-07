@@ -67,7 +67,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- 	 )
+ 	  "src/multiLockGuard.cpp")
 
 add_executable (TestDFM         
 	
@@ -81,7 +81,7 @@ add_executable (TestDFM
 	"src/polyHedron.cpp"
 	
 	"src/vertex.cpp"
-	"src/volume.cpp" 	)
+	"src/volume.cpp" 	 "src/multiLockGuard.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

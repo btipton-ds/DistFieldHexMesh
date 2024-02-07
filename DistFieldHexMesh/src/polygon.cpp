@@ -471,7 +471,7 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(splittingFace.verifyTopology());
 
 
-			auto splittingEdgeFaces = splittingEdge.getFaceIds();
+			auto splittingEdgeFaces = splittingEdge.getFaceIds(getBlockPtr());
 			assert(splittingEdgeFaces.count(_thisId) != 0);
 			assert(splittingEdgeFaces.count(newFaceId) != 0);
 #endif // _DEBUG
@@ -567,7 +567,7 @@ bool Polygon::verifyTopology() const
 
 	auto edges = getEdgesNTS();
 	for (const auto& edge : edges) {
-		auto faceIds = edge.getFaceIds();
+		auto faceIds = edge.getFaceIds(getBlockPtr());
 		if (faceIds.count(_thisId) == 0) // edge does not link back to this face
 			valid = false;
 	}

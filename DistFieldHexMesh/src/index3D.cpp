@@ -15,3 +15,11 @@ bool Index3DBase::operator < (const Index3DBase& rhs) const
 	assert((*this) == rhs);
 	return false;
 }
+
+void Index3DBase::clampInBounds(size_t bound)
+{
+	for (size_t i = 0; i < 3; i++) {
+		if ((*this)[i] >= bound)
+			(*this)[i] = (Index3DBaseType) (bound - 1);
+	}
+}

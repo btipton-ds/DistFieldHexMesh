@@ -35,6 +35,23 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	return *this;
 }
 
+void Polyhedron::getBlocksToLock(std::set<Index3D>& blocksToLock) const
+{
+	blocksToLock.insert(_thisId.blockIdx());
+	for (const auto& faceId : _faceIds) {
+		blocksToLock.insert(faceId.blockIdx());
+		auto pOwner = getBlockPtr()->getOwner(faceId);
+		vector<Index3DId> vertIds;
+		{
+			patient_lock_guard g(pOwner->getMutex(), this_thread::get_id());
+			vertIds = pOwner->getFaceVertexIds(faceId);
+		}
+		for (const auto& vertId : vertIds)
+			blocksToLock.insert(vertId.blockIdx());
+	}
+}
+
+
 void Polyhedron::dumpFaces() const
 {
 	size_t idx = 0;
@@ -514,3 +531,4 @@ bool Polyhedron::verifyTopology() const
 
 	return valid;
 }
+

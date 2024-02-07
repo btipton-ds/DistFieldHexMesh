@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include <Index3D.h>
+#include <multiLockGuard.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -95,6 +96,19 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
+void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
+{
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			for (int k = -1; k <= 1; k++) {
+				Index3D idx = _blockIdx + Index3D(i, j, k);
+				idx.clampInBounds(_pVol->volDim());
+				indices.insert(idx);
+			}
+		}
+	}
+}
+
 Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios, bool& isOnBoundary) const
 {
 	const double tol = 1.0e-5;
@@ -176,7 +190,7 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face, bool& isOnBoundary) c
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;
-	_polygons.iterateInOrderTS([&result, includeInner](const Polygon& face) {
+	_polygons.iterateInOrder([&result, includeInner](const Polygon& face) {
 		if (includeInner || face.isOuter())
 			result++;
 	});
@@ -192,19 +206,8 @@ bool Block::verifyTopology() const
 {
 	bool result = true;
 #ifdef _DEBUG 
-	_vertices.iterateInOrderTS([&result](const Vertex& vert) {
-		bool pass = vert.verifyTopology();
-		if (!pass)
-			result = false;
-	});
-
-	_polygons.iterateInOrderTS([&result](const Polygon& face) {
-		bool pass = face.verifyTopology();
-		if (!pass)
-			result = false;
-	});
-
-	_polyhedra.iterateInOrderTS([&result](const Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&result](const Polyhedron& cell) {
+		MultiLockGuard g(cell, this_thread::get_id());
 		bool pass = cell.verifyTopology();
 		if (!pass)
 			result = false;
@@ -233,8 +236,9 @@ void Block::addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId
 
 vector<size_t> Block::createSubBlocks()
 {
-	Index3D idx;
 	vector<size_t> newCells;
+	MultiLockGuard g(this, this_thread::get_id());
+	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
@@ -244,6 +248,7 @@ vector<size_t> Block::createSubBlocks()
 			}
 		}
 	}
+
 	return newCells;
 }
 
@@ -419,11 +424,13 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 	return result;
 }
 
-const vector<Index3DId>& Block::getFaceVertexIds(const Index3DId& vertexId) const
+const vector<Index3DId>& Block::getFaceVertexIds(const Index3DId& faceId) const
 {
-	auto pOwner = getOwner(vertexId);
-	return pOwner->_polygons[vertexId].getVertexIds();
+	auto pOwner = getOwner(faceId);
+	return pOwner->_polygons[faceId].getVertexIds();
 }
+
+
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
@@ -556,8 +563,6 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 		});
 	}
 	_polyhedra[polyhedronId].setIsOnBoundary(isOnBoundary);
-
-	verifyTopology();
 
 	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -695,9 +700,10 @@ size_t Block::processTris()
 
 	size_t count = 0;
 	set<Index3DId> newCells;
-	_polyhedra.iterateInOrderTS([&newCells, &count](Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&newCells, &count](Polyhedron& cell) {
+		MultiLockGuard g(cell, this_thread::get_id());
 		count++;
-		newCells.insert(cell.getIndex());
+		newCells.insert(cell.getId());
 	});
 
 #if 1
@@ -721,14 +727,17 @@ void Block::addTris(const CMeshPtr& pSrcMesh)
 size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
 {
 	size_t numSplits = 0;
-	_polyhedra.iterateInOrderTS([&splittingPlane, &numSplits](Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&splittingPlane, &numSplits](Polyhedron& cell) {
+		MultiLockGuard g(cell, this_thread::get_id());
 		auto temp = cell.splitWithPlane(splittingPlane, false);
 		numSplits += temp.size();
 	});
 
-	_polygons.iterateInOrderTS([](Polygon& face) {
+	/*
+	_polygons.iterateInOrder([](Polygon& face) {
 		face.clearSplitFromId();
 	});
+	*/
 	return numSplits;
 }
 
@@ -739,7 +748,8 @@ size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
 
 	nCells0 = _polyhedra.size();
 	set<Index3DId> nextCells0, nextCells1;
-	_polyhedra.iterateInOrderTS([&splitPt, &nextCells0](Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&splitPt, &nextCells0](Polyhedron& cell) {
+		MultiLockGuard g(cell, this_thread::get_id());
 		Plane splitPlane(splitPt, Vector3d(1, 0, 0));
 		if (cell.contains(splitPlane._origin)) {
 			auto temp = cell.splitWithPlane(splitPlane, false);
@@ -801,25 +811,6 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 	return result;
 }
 
-namespace {
-	mutex coutMutex;
-}
-void Block::logLockAttempt(const std::string& name, const Index3DId& id) const
-{
-#if 0
-	lock_guard g(coutMutex);
-	cout << "Attempting to lock " << name <<": " << _pVol->calLinearBlockIndex(_blockIdx) << "-" << id.elementId() << "\n";
-#endif
-}
-
-void Block::logRelease(const std::string& name, const Index3DId& id) const
-{
-#if 0
-	lock_guard g(coutMutex);
-	cout << "Releaseing locked " << name << ": " << _pVol->calLinearBlockIndex(_blockIdx) << "-" << id.elementId() << "\n";
-#endif
-}
-
 CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 {
 	if (numFaces(true) == 0)
@@ -833,7 +824,7 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 		_blockMeshes.resize(MT_ALL);
 	}
 	CMeshPtr result;
-	_polygons.iterateInOrderTS([this, &result, &bbox, meshType, minSplitNum](const Polygon& face) {
+	_polygons.iterateInOrder([this, &result, &bbox, meshType, minSplitNum](const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
 			if (!result) {
 				if (!_blockMeshes[meshType])
@@ -869,7 +860,7 @@ Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrderTS([this, meshType, &edges, minSplitNum](const Polygon& face) {
+	_polygons.iterateInOrder([this, meshType, &edges, minSplitNum](const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
 			const auto& faceEdges = face.getEdgesNTS();
 			edges.insert(faceEdges.begin(), faceEdges.end());
@@ -951,5 +942,3 @@ void Block::pack()
 	_subBlocks.clear();
 #endif
 }
-
-

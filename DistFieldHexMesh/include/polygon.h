@@ -26,8 +26,6 @@ public:
 	Polygon(const Polygon& src);
 	Polygon& operator = (const Polygon& rhs);
 
-	MutexType& getMutex() const;
-
 	const Index3DId& getId() const;
 	size_t getNumSplits() const;
 
@@ -82,7 +80,6 @@ private:
 	void sortIds() const;
 	Index3DId findOtherSplitFaceId(const Edge& edge) const;
 
-	mutable MutexType _mutex;
 	size_t _numSplits = 0;
 	std::set<Index3DId> _splitFromFaceIds;
 	std::vector<Index3DId> _vertexIds;
@@ -95,11 +92,6 @@ private:
 inline const Index3DId& Polygon::getId() const
 {
 	return _thisId;
-}
-
-inline MutexType& Polygon::getMutex() const
-{
-	return _mutex;
 }
 
 inline size_t Polygon::getNumSplits() const

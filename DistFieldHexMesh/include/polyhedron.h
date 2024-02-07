@@ -20,9 +20,9 @@ public:
 	Polyhedron(const Polyhedron& src);
 	Polyhedron& operator = (const Polyhedron& rhs);
 
+	void getBlocksToLock(std::set<Index3D>& blocksToLock) const;
 	// Required for use with object pool
-	MutexType& getMutex() const;
-	Index3DId getIndex() const;
+	Index3DId getId() const;
 
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
@@ -55,19 +55,14 @@ public:
 	bool operator < (const Polyhedron& rhs) const;
 
 private:
+	friend class Block;
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIdsNTS(std::vector<Index3DId>& vertIds) const;
 
-	mutable MutexType _mutex;
 	std::set<Index3DId> _faceIds;
 };
 
-inline MutexType& Polyhedron::getMutex() const
-{
-	return _mutex;
-}
-
-inline Index3DId Polyhedron::getIndex() const
+inline Index3DId Polyhedron::getId() const
 {
 	return _thisId;
 }

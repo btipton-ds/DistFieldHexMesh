@@ -33,6 +33,12 @@ class Polyhedron;
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
 
+#define LAMBDA_FUNC_DECL(NAMEFunc, CONST) template<class LAMBDA> \
+void NAMEFunc(const Index3DId& id, LAMBDA func) CONST
+#define LAMBDA_FUNC_PAIR_DECL(NAMEFunc) \
+LAMBDA_FUNC_DECL(NAMEFunc, const); \
+LAMBDA_FUNC_DECL(NAMEFunc,)
+
 class Block : public ObjectPoolOwner {
 public:
 	class GlPoints : public std::vector<float>
@@ -63,6 +69,8 @@ public:
 		MT_ALL,
 	};
 	const Index3D& getBlockIdx() const;
+	bool isMutexLocked() const;
+	MutexType& getMutex() const;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
@@ -110,7 +118,7 @@ public:
 	std::set<Index3DId> getVertexFaceIds(const Index3DId& vertexId, const std::set<Index3DId>& availFaces) const;	
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
-	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& vertexId) const;
+	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& faceId) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
@@ -134,35 +142,24 @@ public:
 	// its own thread safety. They are passed by reference because if the object is not in storage
 	// that's fatal error for all agorithms and there is no recovery from that.
 
-	template<class LAMBDA>
-	void vertexFunc(const Index3DId& id, LAMBDA func) const;
-
-	template<class LAMBDA>
-	void vertexFunc(const Index3DId& id, LAMBDA func);
-
-	template<class LAMBDA>
-	void faceFunc(const Index3DId& id, LAMBDA func) const;
-
-	template<class LAMBDA>
-	void faceFunc(const Index3DId& id, LAMBDA func);
+	LAMBDA_FUNC_PAIR_DECL(vertexFunc);
+	LAMBDA_FUNC_PAIR_DECL(faceFunc);
+	LAMBDA_FUNC_PAIR_DECL(cellFunc);
 
 	template<class LAMBDA>
 	void faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func);
 
-	template<class LAMBDA>
-	void cellFunc(const Index3DId& id, LAMBDA func) const;
-
-	template<class LAMBDA>
-	void cellFunc(const Index3DId& id, LAMBDA func);
-
 private:
 	friend class Volume;
 	friend class TestBlock;
+	friend class MultiLockGuard;
 
 	enum class AxisIndex {
 		X, Y, Z
 	};
 
+
+	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios, bool& isOnBoundary) const;
 
 	bool dividePolyhedraByCurvature(const std::vector<Index3DId>& cellIndices, std::vector<Index3DId>& newCells);
@@ -181,8 +178,7 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
-	void logLockAttempt(const std::string& name, const Index3DId& id) const;
-	void logRelease(const std::string& name, const Index3DId& id) const;
+	mutable MutexType _mutex;
 
 	Volume* _pVol;
 	CBoundingBox3Dd 
@@ -201,10 +197,20 @@ private:
 	std::string _filename;
 
 	Index3D _blockIdx;
-	ObjectPoolWMutex<Vertex> _vertices;
-	ObjectPoolWMutex<Polygon> _polygons;
-	ObjectPoolWMutex<Polyhedron> _polyhedra;
+	ObjectPool<Vertex> _vertices;
+	ObjectPool<Polygon> _polygons;
+	ObjectPool<Polyhedron> _polyhedra;
 };
+
+inline bool Block::isMutexLocked() const
+{
+	return _mutex.isLocked();
+}
+
+inline MutexType& Block::getMutex() const
+{
+	return _mutex;
+}
 
 inline size_t Block::GlPoints::getId() const
 {
@@ -253,77 +259,22 @@ inline const CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
-template<class LAMBDA>
-inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) const
-{
-	auto pOwner = getOwner(id);
-	// This fetches the object in a thread safe manner
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& vert = pOwner->_vertices[id];
-	if (vert.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("vertex", id);
-		patient_lock_guard g(vert.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(vert);
-		pOwner->logRelease("vertex", id);
-	} else 
-		func(vert);
+#define LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, CONST) \
+template<class LAMBDA> \
+inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
+{ \
+	auto pOwner = getOwner(id); \
+	assert(pOwner && pOwner->isMutexLocked()); \
+	auto& obj = pOwner->MEMBER_NAME[id]; \
+	func(obj); \
 }
+#define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \
+LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, const); \
+LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, )
 
-template<class LAMBDA>
-inline void Block::vertexFunc(const Index3DId& id, LAMBDA func)
-{
-	auto pOwner = getOwner(id);
-	// This locks and unlocks the storage
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& vert = pOwner->_vertices[id];
-	if (vert.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("vertex", id);
-		patient_lock_guard g(vert.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(vert);
-		pOwner->logRelease("vertex", id);
-	} else
-		func(vert);
-}
-
-template<class LAMBDA>
-inline void Block::faceFunc(const Index3DId& id, LAMBDA func) const
-{
-	auto pOwner = getOwner(id);
-	// This locks and unlocks the storage
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& face = pOwner->_polygons[id];
-	if (face.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("face", id);
-		patient_lock_guard g(face.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(face);
-		pOwner->logRelease("face", id);
-	} else
-		func(face);
-}
-
-template<class LAMBDA>
-inline void Block::faceFunc(const Index3DId& id, LAMBDA func)
-{
-	auto pOwner = getOwner(id);
-	// This locks and unlocks the storage
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& face = pOwner->_polygons[id];
-	if (face.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("face", id);
-		patient_lock_guard g(face.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(face);
-		pOwner->logRelease("face", id);
-	} else
-		func(face);
-}
+LAMBDA_FUNC_PAIR_IMPL(vertexFunc, _vertices);
+LAMBDA_FUNC_PAIR_IMPL(faceFunc, _polygons);
+LAMBDA_FUNC_PAIR_IMPL(cellFunc, _polyhedra);
 
 template<class LAMBDA>
 void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)
@@ -343,41 +294,5 @@ void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)
 	}
 }
 
-
-template<class LAMBDA>
-inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const
-{
-	auto pOwner = getOwner(id);
-	// This locks and unlocks the storage
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& cell = pOwner->_polyhedra[id];
-	if (cell.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("cell", id);
-		patient_lock_guard g(cell.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(cell);
-		pOwner->logRelease("cell", id);
-	} else
-		func(cell);
-}
-
-template<class LAMBDA>
-inline void Block::cellFunc(const Index3DId& id, LAMBDA func)
-{
-	auto pOwner = getOwner(id);
-	// This locks and unlocks the storage
-	// The storage is grow only with pointer based blocks, so it can't move and is thread safe itself
-	auto& cell = pOwner->_polyhedra[id];
-	if (cell.isOnBoundary()) {
-		// now, lock the object so it's contents are thread safe.
-		pOwner->logLockAttempt("cell", id);
-		patient_lock_guard g(cell.getMutex());
-		// now call the llambda on thread safe storage with a thread safe object - only the mutex for this object can cause a dead lock.
-		func(cell);
-		pOwner->logRelease("cell", id);
-	} else
-		func(cell);
-}
 
 }

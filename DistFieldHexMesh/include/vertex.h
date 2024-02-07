@@ -22,7 +22,6 @@ public:
 	};
 
 	// Required for use with object pool
-	MutexType& getMutex() const;
 
 	static int fromDbl(double val);
 	static FixedPt fromDbl(const Vector3d& src);
@@ -57,8 +56,6 @@ private:
 
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;
-
-	mutable MutexType _mutex;
 
 	FixedPt _pt; // Fixed point representation of a double precisions point
 	std::set<Index3DId> _faceIds;
@@ -99,11 +96,6 @@ inline double Vertex::sameDistTol()
 inline Vertex::Vertex(const Vector3d& pt)
 {
 	setPoint(pt);
-}
-
-inline MutexType& Vertex::getMutex() const
-{
-	return _mutex;
 }
 
 inline void Vertex::setLockType(LockType val, size_t idx)

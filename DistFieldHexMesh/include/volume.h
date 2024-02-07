@@ -38,6 +38,30 @@ public:
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
+	void buildCFDHexes(const CMeshPtr& pTriMesh, double minSubBlockSize);
+	void makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
+	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
+
+	size_t numFaces(bool includeInner) const;
+	size_t numPolyhedra() const;
+	double getSharpAngleRad() const;
+
+	const std::set<size_t>& getSharpVertIndices() const;
+	const std::set<size_t>& getSharpEdgeIndices() const;
+
+	void writePolyMesh(const std::string& dirName) const;
+
+	bool verifyTopology() const;
+
+private:
+	friend class Vertex;
+	friend class Edge;
+	friend class Polygon;
+	friend class Polyhedron;
+	friend class Block;
+
+	using AxisIndex = Block::AxisIndex;
+
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
 	Block& addBlock(const Index3D& blockIdx);
@@ -48,24 +72,6 @@ public:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	void buildCFDHexes(const CMeshPtr& pTriMesh, double minSubBlockSize);
-	void makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
-	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
-
-	size_t numFaces(bool includeInner) const;
-	size_t numPolyhedra() const;
-	double getSharpAngleRad() const;
-
-	void writePolyMesh(const std::string& dirName) const;
-
-	const std::set<size_t>& getSharpVertIndices() const;
-	const std::set<size_t>& getSharpEdgeIndices() const;
-
-	bool verifyTopology() const;
-
-private:
-	using AxisIndex = Block::AxisIndex;
-
 	void findFeatures();
 	void findSharpVertices();
 	void findSharpEdgeGroups();
@@ -73,6 +79,7 @@ private:
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
+
 
 	static Index3D s_volDim;
 

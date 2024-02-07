@@ -35,9 +35,12 @@ public:
 
 	bool isValid() const;
 	bool isInBounds(size_t bound) const;
+	void clampInBounds(size_t bound);
 
 	template<class BOUND_TYPE>
 	bool isInBounds(const Vector3<BOUND_TYPE>& bounds) const;
+	template<class BOUND_TYPE>
+	void clampInBounds(const Vector3<BOUND_TYPE>& bounds);
 
 private:
 	static Index3DBaseType s_blockDim;
@@ -91,6 +94,15 @@ template<class BOUND_TYPE>
 inline bool Index3DBase::isInBounds(const Vector3<BOUND_TYPE>& bounds) const
 {
 	return (*this)[0] < (Index3DBaseType)bounds[0] && (*this)[1] < (Index3DBaseType)bounds[1] && (*this)[2] < (Index3DBaseType)bounds[2];
+}
+
+template<class BOUND_TYPE>
+void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
+{
+	for (int i = 0; i < 3; i++) {
+		if ((*this)[i] >= bounds[i])
+			(*this)[i] = bounds[i] - 1;
+	}
 }
 
 class Index3D : public Index3DBase
