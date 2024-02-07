@@ -109,48 +109,42 @@ void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
 	}
 }
 
-Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 {
 	const double tol = 1.0e-5;
 	const auto& volBounds = _pVol->volDim();
-
-	bool boundary[] = {false, false, false};
 
 	Index3D result(_blockIdx);
 	for (int i = 0; i < 3; i++) {
 		if (ratios[i] >= 1 - tol) {
 			result[i] += 1;
-			boundary[i] = true;
 
 			// Clamp it inside volume bounds. If it's shared by a block that doesn't exist, there's no chance
 			// of a thread access conflict on that boundary
 			if (result[i] >= volBounds[i]) {
 				result[i] = volBounds[i] - 1;
-				boundary[i] = false;
 			}
 		}
 	}
 
-	isOnBoundary = boundary[0] || boundary[1] || boundary[2];
-
 	return result;
 }
 
-Index3D Block::determineOwnerBlockIdx(const Vector3d& point, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
 	if (_innerBoundBox.contains(point))
 		return _blockIdx;
 
 	auto ratios = invTriLinIterp(point);
-	return determineOwnerBlockIdxFromRatios(ratios, isOnBoundary);
+	return determineOwnerBlockIdxFromRatios(ratios);
 }
 
-Index3D Block::determineOwnerBlockIdx(const Vertex& vert, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
 {
-	return determineOwnerBlockIdx(vert.getPoint(), isOnBoundary);
+	return determineOwnerBlockIdx(vert.getPoint());
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 {
 	auto volBounds = _pVol->volDim();
 
@@ -160,20 +154,20 @@ Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points, bool& isOn
 	}
 	ctr = ctr / points.size();
 
-	return determineOwnerBlockIdx(ctr, isOnBoundary);
+	return determineOwnerBlockIdx(ctr);
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Index3DId>& verts, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdx(const vector<Index3DId>& verts) const
 {
 	vector<Vector3d> pts;
 	pts.resize(verts.size());
 	for (size_t i = 0; i < verts.size(); i++) {
 		pts[i] = getVertexPoint(verts[i]);
 	}
-	return determineOwnerBlockIdx(pts, isOnBoundary);
+	return determineOwnerBlockIdx(pts);
 }
 
-Index3D Block::determineOwnerBlockIdx(const Polygon& face, bool& isOnBoundary) const
+Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 {
 	auto volBounds = _pVol->volDim();
 
@@ -184,7 +178,7 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face, bool& isOnBoundary) c
 		ctr += pt;
 	}
 	ctr = ctr / vertIds.size();
-	return determineOwnerBlockIdx(ctr, isOnBoundary);
+	return determineOwnerBlockIdx(ctr);
 }
 
 size_t Block::numFaces(bool includeInner) const
@@ -442,8 +436,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 		return Index3DId();
 	}
 
-	bool isOnBoundary = false;
-	auto ownerIdx = determineOwnerBlockIdx(vertIndices, isOnBoundary);
+	auto ownerIdx = determineOwnerBlockIdx(vertIndices);
 	Polygon newFace;
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
@@ -472,8 +465,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 
 Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
-	bool isOnBoundary = false;
-	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts, isOnBoundary);
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
 	Block* pOwner = getOwner(ownerBlockIdx);
 
 	auto faceId = pOwner->addFace(pts);
@@ -579,16 +571,14 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Index3DId Block::idOfPoint(const Vector3d& pt)
 {
-	bool isOnBoundary = false;
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt, isOnBoundary);
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	return pOwner->_vertices.findId(pt);
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
-	bool isOnBoundary = false;
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt, isOnBoundary);
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	Block* pOwner = getOwner(ownerBlockIdx);
 	Vertex vert(pt);
 	return pOwner->_vertices.findOrAdd(vert, currentId);

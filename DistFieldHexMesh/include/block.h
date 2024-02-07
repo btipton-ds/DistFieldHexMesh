@@ -85,11 +85,11 @@ public:
 	const Block* getOwner(const Index3D& blockIdx) const;
 
 	// These method determine with block owns an entity based on it's location
-	Index3D determineOwnerBlockIdx(const Vector3d& point, bool& isOnBoundary) const;
-	Index3D determineOwnerBlockIdx(const Vertex& vert, bool& isOnBoundary) const;
-	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points, bool& isOnBoundary) const;
-	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts, bool& isOnBoundary) const;
-	Index3D determineOwnerBlockIdx(const Polygon& face, bool& isOnBoundary) const;
+	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
+	Index3D determineOwnerBlockIdx(const Vertex& vert) const;
+	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
+	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
+	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -165,7 +165,7 @@ private:
 
 
 	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
-	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios, bool& isOnBoundary) const;
+	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	bool dividePolyhedraByCurvature(const std::vector<Index3DId>& cellIndices, std::vector<Index3DId>& newCells);
 
