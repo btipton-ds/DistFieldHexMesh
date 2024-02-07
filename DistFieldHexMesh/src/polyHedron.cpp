@@ -184,19 +184,42 @@ set<Index3DId> Polyhedron::getAdjacentCells() const
 set<Index3D> Polyhedron::getAdjacentBlockIndices_UNSAFE() const
 {
 	set<Index3D> result;
+	set<Index3DId> cornerVerts;
 	result.insert(_thisId.blockIdx());
 
 	for (const auto& faceId : _faceIds) {
-		result.insert(faceId.blockIdx());
-		auto pOwner = getBlockPtr()->getOwner(faceId);
-		const auto& face = pOwner->getFace_UNSFAFE(faceId);
-		for (const auto& vertId : face.getVertexIds()) {
-			result.insert(vertId.blockIdx());
-		}
-		for (const auto& cellId : face.getCellIds()) {
-			result.insert(cellId.blockIdx());
+		{
+			auto pOwner = getBlockPtr()->getOwner(faceId);
+			patient_lock_guard g(pOwner->getMutex(), this_thread::get_id());
+			const auto& face = pOwner->getFace_UNSFAFE(faceId);
+			for (const Index3DId& vertId : face.getVertexIds())
+				cornerVerts.insert(vertId);
 		}
 	}
+
+	for (const auto& vertId : cornerVerts) {
+		set<Index3DId> subFaceIds;
+		{
+			auto pOwner = getBlockPtr()->getOwner(vertId);
+			patient_lock_guard g(pOwner->getMutex(), this_thread::get_id());
+			const auto& vert = pOwner->getVertex_UNSFAFE(vertId);
+			subFaceIds = vert.getFaceIds();
+		}
+
+		for (const auto& subFaceId : subFaceIds) {
+			auto pOwner = getBlockPtr()->getOwner(subFaceId);
+			patient_lock_guard g(pOwner->getMutex(), this_thread::get_id());
+			const auto& subFace = pOwner->getFace_UNSFAFE(subFaceId);
+
+			for (const auto& cellId : subFace.getCellIds()) {
+				result.insert(cellId.blockIdx());
+			}
+			for (const auto& vertId : subFace.getVertexIds()) {
+				result.insert(vertId.blockIdx());
+			}
+		}
+	}
+	
 
 	return result;
 }

@@ -207,6 +207,10 @@ bool Block::verifyTopology() const
 	bool result = true;
 #ifdef _DEBUG 
 	_polyhedra.iterateInOrder([&result](const Polyhedron& cell) {
+		if (cell.getId() == Index3DId(Index3D(2, 0, 0), 0)) {
+			int dbgBreak = 1;
+		}
+		// make sure we get block 3,1,1
 		MultiLockGuard g(cell, this_thread::get_id());
 		bool pass = cell.verifyTopology();
 		if (!pass)
@@ -728,6 +732,9 @@ size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
 {
 	size_t numSplits = 0;
 	_polyhedra.iterateInOrder([&splittingPlane, &numSplits](Polyhedron& cell) {
+		if (cell.getId() == Index3DId(Index3D(0, 0, 1), 0)) {
+			int dbgBreak = 1;
+		}
 		MultiLockGuard g(cell, this_thread::get_id());
 		auto temp = cell.splitWithPlane(splittingPlane, false);
 		numSplits += temp.size();

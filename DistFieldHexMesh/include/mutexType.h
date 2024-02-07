@@ -12,7 +12,7 @@ public:
     MutexType& operator = (const MutexType& rhs) = delete;
 
     inline _NODISCARD_TRY_CHANGE_STATE bool lock(std::thread::id creatorId) {
-        const auto time = std::chrono::microseconds(50);
+        const auto time = std::chrono::microseconds(10);
         if (_mutex.try_lock_for(time)) {
             if (_numLocks == 0)
                 _ownerThreadId = creatorId;

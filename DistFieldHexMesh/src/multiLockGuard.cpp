@@ -8,9 +8,13 @@
 using namespace std;
 using namespace DFHM;
 
+#define WRITE_RESULTS 0
+
 namespace
 {
+#if WRITE_RESULTS
 	mutex g_CoutMutex;
+#endif
 	mutex g_requestMultiLockMutex;
 	list<const Block*> g_waitQueue;
 }
@@ -39,11 +43,12 @@ void MultiLockGuard::create(set<Index3D>& indexSet, thread::id creatorId)
 	for (const auto& idx : indexSet)
 		_lockedBlocks.push_back(_pBlock->getOwner(idx));
 
+#if WRITE_RESULTS
 	{
 		lock_guard g(g_CoutMutex);
 		cout << "Attempting to lock block: " << _pBlock->getBlockIdx() << "\n";
 	}
-
+#endif
 	{
 		lock_guard mlg(g_requestMultiLockMutex);
 		g_waitQueue.push_back(_pBlock);
@@ -68,16 +73,15 @@ void MultiLockGuard::create(set<Index3D>& indexSet, thread::id creatorId)
 				}
 				else
 					unlockStack(lockedBlocks);
-				this_thread::sleep_for(chrono::milliseconds(50));
 			}
 		}
-		if (inWaitQueue)
-			this_thread::sleep_for(chrono::milliseconds(100));
 	}
 	// Lock ascending
 	if (_isLocked) {
+#if WRITE_RESULTS
 		lock_guard g(g_CoutMutex);
 		cout << "Locked block: " << _pBlock->getBlockIdx() << "\n";
+#endif
 	}
 	else
 		assert(!"request for lock timed out");
@@ -88,8 +92,10 @@ MultiLockGuard::~MultiLockGuard()
 	if (!_isLocked)
 		return;
 	unlockStack(_lockedBlocks);
+#if WRITE_RESULTS
 	lock_guard g(g_CoutMutex);
 	cout << "Unlocked block: " << _pBlock->getBlockIdx() << "\n";
+#endif
 }
 
 bool MultiLockGuard::tryToLockAll(vector<const Block*>& lockedBlocks)
