@@ -32,6 +32,8 @@ public:
 	std::set<Index3DId> getEdgeFaceIds(const Edge& edge) const;
 
 	std::set<Index3DId> getAdjacentCells() const;
+	// Must be callable from MultiLockGuard's constructor
+	std::set<Index3D> getAdjacentBlockIndices_UNSAFE() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	std::set<Edge> getVertEdges(const Index3DId& vertId) const;

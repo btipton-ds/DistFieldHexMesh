@@ -8,7 +8,7 @@
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <index3D.h>
-#include <objectPoolWMutex.h>
+#include <objectPool.h>
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -131,6 +131,11 @@ public:
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
 	bool polyhedronExists(const Index3DId& id) const;
+
+	// Exists to support mutex locking and does it's own mutex locking
+	const Vertex& getVertex_UNSFAFE(const Index3DId& id) const;
+	// Exists to support mutex locking and does it's own mutex locking
+	const Polygon& getFace_UNSFAFE(const Index3DId& id) const; 
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -257,6 +262,16 @@ inline bool Block::isUnloaded() const
 inline const CMeshPtr& Block::getModelMesh() const
 {
 	return _pModelTriMesh;
+}
+
+inline const Vertex& Block::getVertex_UNSFAFE(const Index3DId& id) const
+{
+	return _vertices[id];
+}
+
+inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
+{
+	return _polygons[id];
 }
 
 #define LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, CONST) \

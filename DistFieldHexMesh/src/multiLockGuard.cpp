@@ -28,13 +28,8 @@ MultiLockGuard::MultiLockGuard(const Polyhedron& cell, thread::id creatorId)
 	: _pBlock(cell.getBlockPtr())
 	, _creatorId(creatorId)
 {
-	set<Index3DId> adjCellSet = cell.getAdjacentCells();
-	adjCellSet.insert(cell.getId());
+	set<Index3D> adjBlockSet = cell.getAdjacentBlockIndices_UNSAFE();
 
-	set<Index3D> adjBlockSet;
-	for (const auto& cellId : adjCellSet) {
-		adjBlockSet.insert(cellId.blockIdx());
-	}
 	create(adjBlockSet, creatorId);
 }
 

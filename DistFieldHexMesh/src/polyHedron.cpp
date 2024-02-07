@@ -181,6 +181,26 @@ set<Index3DId> Polyhedron::getAdjacentCells() const
 	return cellIds;
 }
 
+set<Index3D> Polyhedron::getAdjacentBlockIndices_UNSAFE() const
+{
+	set<Index3D> result;
+	result.insert(_thisId.blockIdx());
+
+	for (const auto& faceId : _faceIds) {
+		result.insert(faceId.blockIdx());
+		auto pOwner = getBlockPtr()->getOwner(faceId);
+		const auto& face = pOwner->getFace_UNSFAFE(faceId);
+		for (const auto& vertId : face.getVertexIds()) {
+			result.insert(vertId.blockIdx());
+		}
+		for (const auto& cellId : face.getCellIds()) {
+			result.insert(cellId.blockIdx());
+		}
+	}
+
+	return result;
+}
+
 // Gets the edges for a vertex which belong to this polyhedron
 set<Edge> Polyhedron::getVertEdges(const Index3DId& vertId) const
 {
