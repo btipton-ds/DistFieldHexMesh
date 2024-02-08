@@ -279,7 +279,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 
 	assert(verifyTopology());
 
-#if 1
+#if 0
 	size_t count = 0;
 	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {

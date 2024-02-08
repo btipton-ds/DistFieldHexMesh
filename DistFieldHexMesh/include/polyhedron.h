@@ -1,9 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <set>
 #include <tm_boundingBox.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <multiLockGuard.h>
 #include <triMesh.h>
 
 namespace DFHM {
@@ -13,7 +15,7 @@ class Edge;
 
 // Polyhedra are never cross block, so they use size_t for indexing.
 // Faces and vertices in a cell are cross block
-class Polyhedron : public ObjectPoolOwnerUser {
+class Polyhedron : public ObjectPoolOwnerUser, public MultiLock::lockable_object {
 public:
 	Polyhedron() = default;
 	Polyhedron(const std::set<Index3DId>& faceIds);
@@ -21,7 +23,13 @@ public:
 	Polyhedron(const Polyhedron& src);
 	Polyhedron& operator = (const Polyhedron& rhs);
 
-	void getBlocksToLock(std::set<Index3D>& blocksToLock) const;
+	const DFHM::Index3D& getBlockIdx() const override;
+	MultiLock::MutexType& getMutex() const override;
+	bool isMutexLocked() const override;
+
+	// Include (this) in allRequiredLockables
+	void getRequredLockableObjects(std::set<lockable_object*>& allRequiredLockables) const override;
+
 	// Required for use with object pool
 	Index3DId getId() const;
 
@@ -34,7 +42,6 @@ public:
 
 	std::set<Index3DId> getAdjacentCells() const;
 	// Must be callable from MultiLockGuard's constructor
-	std::set<Index3D> getAdjacentBlockIndices_UNSAFE() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	std::set<Edge> getVertEdges(const Index3DId& vertId) const;

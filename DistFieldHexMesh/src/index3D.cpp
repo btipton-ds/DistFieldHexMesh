@@ -1,5 +1,7 @@
+#include <iostream>
 #include <index3D.h>
 
+using namespace std;
 using namespace DFHM;
 
 Index3DBaseType Index3DBase::s_blockDim = 8;
@@ -22,4 +24,17 @@ void Index3DBase::clampInBounds(size_t bound)
 		if ((*this)[i] >= bound)
 			(*this)[i] = (Index3DBaseType) (bound - 1);
 	}
+}
+
+ostream& DFHM::operator << (ostream& out, const Index3D& rhs)
+{
+	out << "(" << rhs[0] << ", " << rhs[1] << ", " << rhs[2] << ")\n";
+	return out;
+}
+
+ostream& DFHM::operator << (ostream& out, const Index3DId& rhs)
+{
+	const auto& idx = rhs.blockIdx();
+	out << "(" << idx[0] << ", " << idx[1] << ", " << idx[2] << "):" << rhs.elementId() << "\n";
+	return out;
 }

@@ -96,19 +96,6 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
-{
-	for (int i = -1; i <= 1; i++) {
-		for (int j = -1; j <= 1; j++) {
-			for (int k = -1; k <= 1; k++) {
-				Index3D idx = _blockIdx + Index3D(i, j, k);
-				idx.clampInBounds(_pVol->volDim());
-				indices.insert(idx);
-			}
-		}
-	}
-}
-
 Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 {
 	const double tol = 1.0e-5;
@@ -181,6 +168,31 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
+MultiLock::MutexType& Block::getMutex() const
+{
+	return _mutex;
+}
+
+bool Block::isMutexLocked() const
+{
+	return _mutex.isLocked();
+}
+
+// Include (this) in allRequiredLockables
+void Block::getRequredLockableObjects(std::set<lockable_object*>& allRequiredLockables) const
+{
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			for (int k = -1; k <= 1; k++) {
+				Index3D idx = _blockIdx + Index3D(i, j, k);
+				idx.clampInBounds(_pVol->volDim());
+				auto p = const_cast<Block*>(getOwner(idx));
+				allRequiredLockables.insert(p);
+			}
+		}
+	}
+}
+
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;
@@ -205,7 +217,7 @@ bool Block::verifyTopology() const
 			int dbgBreak = 1;
 		}
 		// make sure we get block 3,1,1
-		MultiLockGuard g(cell);
+		MultiLock::lock_guard_multi g(cell);
 		bool pass = cell.verifyTopology();
 		if (!pass)
 			result = false;
@@ -238,7 +250,7 @@ vector<size_t> Block::createSubBlocks()
 #if 0
 	ScopedGranularLock g(*this, true);
 #else
-	MultiLockGuard g(this);
+	MultiLock::lock_guard_multi g(this);
 #endif
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
@@ -639,7 +651,7 @@ size_t Block::processTris()
 	for (size_t i = 0; i < 2; i++) {
 		_polyhedra.iterateInOrder([this](Polyhedron& cell) {
 			size_t circleDivs = 72;
-			MultiLockGuard g(cell);
+			MultiLock::lock_guard_multi g(cell);
 			cell.splitByCurvature(_pModelTriMesh, circleDivs);
 		});
 	}
@@ -662,7 +674,7 @@ size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
 		if (cell.getId() == Index3DId(Index3D(0, 0, 1), 0)) {
 			int dbgBreak = 1;
 		}
-		MultiLockGuard g(cell);
+		MultiLock::lock_guard_multi g(cell);
 		auto temp = cell.splitWithPlane(splittingPlane, false);
 		numSplits += temp.size();
 	});
@@ -683,7 +695,7 @@ size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
 	nCells0 = _polyhedra.size();
 	set<Index3DId> nextCells0, nextCells1;
 	_polyhedra.iterateInOrder([&splitPt, &nextCells0](Polyhedron& cell) {
-		MultiLockGuard g(cell);
+		MultiLock::lock_guard_multi g(cell);
 		Plane splitPlane(splitPt, Vector3d(1, 0, 0));
 		if (cell.contains(splitPlane._origin)) {
 			auto temp = cell.splitWithPlane(splitPlane, false);

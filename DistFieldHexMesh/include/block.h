@@ -9,6 +9,7 @@
 #include <triMesh.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <multiLockGuard.h>
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -39,7 +40,7 @@ void NAMEFunc(const Index3DId& id, LAMBDA func) CONST
 LAMBDA_FUNC_DECL(NAMEFunc, const); \
 LAMBDA_FUNC_DECL(NAMEFunc,)
 
-class Block : public ObjectPoolOwner {
+class Block : public ObjectPoolOwner, public MultiLock::lockable_object {
 public:
 	class GlPoints : public std::vector<float>
 	{
@@ -69,8 +70,6 @@ public:
 		MT_ALL,
 	};
 	const Index3D& getBlockIdx() const;
-	bool isMutexLocked() const;
-	MutexType& getMutex() const;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
@@ -90,6 +89,12 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
 	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
+
+	MultiLock::MutexType& getMutex() const override;
+	bool isMutexLocked() const override;
+
+	// Include (this) in allRequiredLockables
+	void getRequredLockableObjects(std::set<lockable_object*>& allRequiredLockables) const override;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -133,9 +138,9 @@ public:
 	bool polyhedronExists(const Index3DId& id) const;
 
 	// Exists to support mutex locking and does it's own mutex locking
-	const Vertex& getVertex_UNSFAFE(const Index3DId& id) const;
+	const Vertex& getVertex_UNSAFE(const Index3DId& id) const;
 	// Exists to support mutex locking and does it's own mutex locking
-	const Polygon& getFace_UNSFAFE(const Index3DId& id) const; 
+	const Polygon& getFace_UNSAFE(const Index3DId& id) const; 
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -157,14 +162,11 @@ public:
 private:
 	friend class Volume;
 	friend class TestBlock;
-	friend class MultiLockGuard;
 
 	enum class AxisIndex {
 		X, Y, Z
 	};
 
-
-	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
@@ -181,7 +183,6 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
-	mutable MutexType _mutex;
 	Index3D _blockIdx;
 
 	Volume* _pVol;
@@ -203,17 +204,9 @@ private:
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
+
+	mutable MutexType _mutex;
 };
-
-inline bool Block::isMutexLocked() const
-{
-	return _mutex.isLocked();
-}
-
-inline MutexType& Block::getMutex() const
-{
-	return _mutex;
-}
 
 inline size_t Block::GlPoints::getId() const
 {
@@ -262,12 +255,12 @@ inline const CMeshPtr& Block::getModelMesh() const
 	return _pModelTriMesh;
 }
 
-inline const Vertex& Block::getVertex_UNSFAFE(const Index3DId& id) const
+inline const Vertex& Block::getVertex_UNSAFE(const Index3DId& id) const
 {
 	return _vertices[id];
 }
 
-inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
+inline const Polygon& Block::getFace_UNSAFE(const Index3DId& id) const
 {
 	return _polygons[id];
 }
@@ -279,7 +272,7 @@ inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
 	auto pOwner = getOwner(id); \
 	assert(pOwner && pOwner->isMutexLocked()); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
-	patient_lock_guard g(obj.getMutex(), std::this_thread::get_id(), pOwner->isGranularLocking()); \
+	patient_lock_guard g(obj.getMutex(), pOwner->isGranularLocking()); \
 	func(obj); \
 }
 #define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \

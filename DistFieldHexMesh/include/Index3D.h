@@ -210,4 +210,8 @@ inline Index3D Index3DId::blockIdx() const
 	return Index3D(*this);
 }
 
+std::ostream& operator << (std::ostream& out, const Index3D& rhs);
+
+std::ostream& operator << (std::ostream& out, const Index3DId& rhs);
+
 }
