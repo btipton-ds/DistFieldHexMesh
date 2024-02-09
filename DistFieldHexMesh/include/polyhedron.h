@@ -21,7 +21,6 @@ public:
 	Polyhedron(const Polyhedron& src);
 	Polyhedron& operator = (const Polyhedron& rhs);
 
-	void getBlocksToLock(std::set<Index3D>& blocksToLock) const;
 	// Required for use with object pool
 	Index3DId getId() const;
 
@@ -33,8 +32,6 @@ public:
 	std::set<Index3DId> getEdgeFaceIds(const Edge& edge) const;
 
 	std::set<Index3DId> getAdjacentCells() const;
-	// Must be callable from MultiLockGuard's constructor
-	std::set<Index3D> getAdjacentBlockIndices_UNSAFE() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	std::set<Edge> getVertEdges(const Index3DId& vertId) const;

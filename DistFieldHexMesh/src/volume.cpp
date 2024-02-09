@@ -263,25 +263,25 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
 
-	MultiCore::runLambda([this, &blockSpan](size_t linearIdx)->bool {
-		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);					
+	runLambda([this, &blockSpan](size_t linearIdx)->bool {
+		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto& bl = addBlock(blockIdx);
 		bl.addTris(_pModelTriMesh);
 		return true;
-	}, numBlocks, RUN_MULTI_THREAD);
+	}, RUN_MULTI_THREAD);
 
 	// Cannot create subBlocks until all blocks are created
-	MultiCore::runLambda([this, &blockSpan](size_t linearIdx)->bool {
+	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		if (_blocks[linearIdx])
 			_blocks[linearIdx]->createSubBlocks();
 		return true;
-	}, numBlocks, RUN_MULTI_THREAD);
+	}, RUN_MULTI_THREAD);
 
 	assert(verifyTopology());
 
-#if 1
+#if 0
 	size_t count = 0;
-	MultiCore::runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
+	runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
 #if QUICK_TEST
@@ -292,12 +292,12 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 #endif
 		}
 		return true;
-	}, numBlocks, !QUICK_TEST && RUN_MULTI_THREAD);
+	}, !QUICK_TEST && RUN_MULTI_THREAD);
 #endif
 
 	assert(verifyTopology());
 
-#if 0
+#if 1
 	splitAllCellsWithPlanesAtSharpVertices();
 	assert(verifyTopology());
 #endif
@@ -449,9 +449,65 @@ bool Volume::verifyTopology() const
 {
 	bool result = true;
 
-	for (const auto& pBlock : _blocks) {
-		if (pBlock && !pBlock->verifyTopology())
-			result = false;
-	}
+	runLambda([this, &result](size_t linearIdx)->bool {
+		result = result && _blocks[linearIdx]->verifyTopology();
+		return true;
+	}, RUN_MULTI_THREAD);
 	return result;
+}
+
+template<class L>
+void Volume::runLambda(L fLambda, bool multiCore) const
+{
+	const Index3DBaseType stride = 3;
+	Index3D phaseIdx;
+
+	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
+			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+
+				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t threadNum, size_t numThreads) {
+					Index3D idx;
+					for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+						for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
+							for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
+								size_t linearIdx = calLinearBlockIndex(idx);
+								if ((linearIdx % numThreads) == threadNum)
+									fLambda(linearIdx);
+							}
+						}
+					}
+				}, multiCore);
+
+			}
+		}
+	}
+}
+
+template<class L>
+void Volume::runLambda(L fLambda, bool multiCore)
+{
+	const Index3DBaseType stride = 3;
+	Index3D phaseIdx;
+
+	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
+			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+
+				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t threadNum, size_t numThreads) {
+					Index3D idx;
+					for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+						for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
+							for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
+								size_t linearIdx = calLinearBlockIndex(idx);
+								if ((linearIdx % numThreads) == threadNum)
+									fLambda(linearIdx);
+							}
+						}
+					}
+				}, multiCore);
+
+			}
+		}
+	}
 }

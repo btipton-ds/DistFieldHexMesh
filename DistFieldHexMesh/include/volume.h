@@ -80,6 +80,10 @@ private:
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
 
+	template<class L>
+	void runLambda(L fLambda, bool multiCore) const;
+	template<class L>
+	void runLambda(L fLambda, bool multiCore);
 
 	static Index3D s_volDim;
 

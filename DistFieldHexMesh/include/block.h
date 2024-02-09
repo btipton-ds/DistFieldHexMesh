@@ -69,8 +69,6 @@ public:
 		MT_ALL,
 	};
 	const Index3D& getBlockIdx() const;
-	bool isMutexLocked() const;
-	MutexType& getMutex() const;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
@@ -181,7 +179,6 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
 
-	mutable MutexType _mutex;
 	Index3D _blockIdx;
 
 	Volume* _pVol;
@@ -204,16 +201,6 @@ private:
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
-
-inline bool Block::isMutexLocked() const
-{
-	return _mutex.isLocked();
-}
-
-inline MutexType& Block::getMutex() const
-{
-	return _mutex;
-}
 
 inline size_t Block::GlPoints::getId() const
 {
@@ -277,7 +264,6 @@ template<class LAMBDA> \
 inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
 { \
 	auto pOwner = getOwner(id); \
-	assert(pOwner && pOwner->isMutexLocked()); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
 	patient_lock_guard g(obj.getMutex(), std::this_thread::get_id(), pOwner->isGranularLocking()); \
 	func(obj); \
