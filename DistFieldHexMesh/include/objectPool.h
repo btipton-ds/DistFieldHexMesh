@@ -26,10 +26,8 @@ public:
 
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
-	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
-	const Block* getSrcBlockPtr(const Index3DId& blockIdx) const;
-	Block* getWritableBlockPtr() const;
+	Block* getOutBlockPtr(const Index3DId& blockIdx) const;
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
 	MutexType& getMutex() const;
@@ -131,6 +129,7 @@ inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsRever
 	, _objToIdMap(CompareFunctor(*this))
 	, _objectSegmentSize(objectSegmentSize)
 {
+	assert(_pPoolOwner);
 	_supportsReverseLookup = supportsReverseLookup;
 }
 

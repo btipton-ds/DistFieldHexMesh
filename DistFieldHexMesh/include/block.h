@@ -74,14 +74,12 @@ public:
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
-	Block(const Block& src) = default;
 
 	size_t blockDim() const;
 	Volume* getVolume();
 	const Volume* getVolume() const;
-	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
-	const Block* getSrcBlockPtr(const Index3D& blockIdx) const;
+	Block* getOutBlockPtr(const Index3D& blockIdx) const;
 
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
@@ -257,18 +255,18 @@ inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
 	return _polygons[id];
 }
 
-#define LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, CONST) \
+#define LAMBDA_FUNC_IMPL(NAMEFunc, GETTER, MEMBER_NAME, CONST) \
 template<class LAMBDA> \
 inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
 { \
-	auto pOwner = getOwner(id); \
+	auto pOwner = GETTER(id); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
 	patient_lock_guard g(obj.getMutex()); \
 	func(obj); \
 }
 #define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \
-LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, const); \
-LAMBDA_FUNC_IMPL(NAMEFunc, MEMBER_NAME, )
+LAMBDA_FUNC_IMPL(NAMEFunc, getOwner, MEMBER_NAME, const); \
+LAMBDA_FUNC_IMPL(NAMEFunc, getOutBlockPtr, MEMBER_NAME, )
 
 LAMBDA_FUNC_PAIR_IMPL(vertexFunc, _vertices);
 LAMBDA_FUNC_PAIR_IMPL(faceFunc, _polygons);

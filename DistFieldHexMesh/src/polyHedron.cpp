@@ -91,7 +91,7 @@ void Polyhedron::addFace(const Index3DId& faceId)
 {
 	if (_faceIds.count(faceId) == 0) {
 		_faceIds.insert(faceId);
-		getBlockPtr()->faceFunc(faceId, [this](Polygon& face) {
+		getOutBlockPtr(_thisId)->faceFunc(faceId, [this](Polygon& face) {
 			face.addCell(_thisId);
 		});
 	}
@@ -101,7 +101,7 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 {
 	if (_faceIds.count(faceId) != 0) {
 		_faceIds.erase(faceId);
-		getBlockPtr()->faceFunc(faceId, [this](Polygon& face) {
+		getOutBlockPtr(_thisId)->faceFunc(faceId, [this](Polygon& face) {
 			face.removeCell(_thisId);
 		});
 		return true;
@@ -178,7 +178,7 @@ void Polyhedron::getPrincipalEdges(set<Edge>& result) const
 	getPrincipalPolygons(principalPolygonIds);
 	for (const auto& faceId : principalPolygonIds) {
 		set<Edge> faceEdges;
-		getBlockPtr()->faceFunc(faceId, [&faceEdges, &allEdges, &result](const Polygon& face) { face.getEdges(faceEdges); });
+		getOutBlockPtr(_thisId)->faceFunc(faceId, [&faceEdges, &allEdges, &result](const Polygon& face) { face.getEdges(faceEdges); });
 		// This assures that REAL edges have ALL their faces attached so they will be split when
 		// a vertex is inserted
 		for (const auto& faceEdge : faceEdges) {
@@ -193,11 +193,6 @@ void Polyhedron::getPrincipalEdges(set<Edge>& result) const
 
 void Polyhedron::getPrincipalPolygons(set<Index3DId>& result) const
 {
-	for (const auto& faceId : _faceIds) {
-		getBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
-			result.insert(face.getPrincipal());
-		});
-	}
 }
 
 set<Index3DId> Polyhedron::getAdjacentCells() const
@@ -331,7 +326,7 @@ bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool interse
 
 	resultSet.clear();
 	for (auto cellId : cellSet) {
-		getWritableBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+		getOutBlockPtr(_thisId)->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
 			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 1, 0)), intersectingOnly);
 
 			if (!splitCells.empty())
@@ -344,7 +339,7 @@ bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool interse
 
 	resultSet.clear();
 	for (auto cellId : cellSet) {
-		getWritableBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+		getOutBlockPtr(_thisId)->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
 			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 0, 1)), intersectingOnly);
 
 			if (!splitCells.empty())
@@ -438,11 +433,11 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	for (auto& edge : edgesToSplit) {
 		assert(edge.onPrincipalAxis(getBlockPtr()));
 		set<Index3DId> faceIds;
-		auto newVertId = edge.splitWithPlane(getWritableBlockPtr(), splitPlane, faceIds);
+		auto newVertId = edge.splitWithPlane(getOutBlockPtr(_thisId), splitPlane, faceIds);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
 			for (const auto& faceId : faceIds) {
-				getWritableBlockPtr()->faceFunc(faceId, [&edge, &newVertId](Polygon& splitFace) {
+				getOutBlockPtr(_thisId)->faceFunc(faceId, [&edge, &newVertId](Polygon& splitFace) {
 					if (!splitFace.containsVert(newVertId))
 						splitFace.insertVertexInEdge(edge, newVertId);
 				});
@@ -460,7 +455,7 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	if (newVertIds.size() >= 3) {
 		if (!orderVertIds(newVertIds))
 			return result;
-		splittingFaceId = getWritableBlockPtr()->addFace(newVertIds);
+		splittingFaceId = getOutBlockPtr(_thisId)->addFace(newVertIds);
 	} else {
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
@@ -472,7 +467,7 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 			int dbgBreak = 1;
 		}
 
-		getWritableBlockPtr()->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
+		getOutBlockPtr(_thisId)->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
 			newFaceId = face.splitWithFaceEdges(splittingFace);
 		});
 
@@ -506,15 +501,15 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	faceSet0.insert(splittingFaceId);
 	faceSet1.insert(splittingFaceId);
 
-	Index3DId newCellId0 = Index3DId(_thisId, getWritableBlockPtr()->addCell(faceSet0));
-	Index3DId newCellId1 = Index3DId(_thisId, getWritableBlockPtr()->addCell(faceSet1));
+	Index3DId newCellId0 = Index3DId(_thisId, getOutBlockPtr(_thisId)->addCell(faceSet0));
+	Index3DId newCellId1 = Index3DId(_thisId, getOutBlockPtr(_thisId)->addCell(faceSet1));
 
-	getWritableBlockPtr()->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
+	getOutBlockPtr(_thisId)->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
 		face.addCell(newCellId0);
 		face.addCell(newCellId1);
 	});
 
-	getWritableBlockPtr()->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
+	getOutBlockPtr(_thisId)->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
 		face.addCell(newCellId0);
 		face.addCell(newCellId1);
 	});

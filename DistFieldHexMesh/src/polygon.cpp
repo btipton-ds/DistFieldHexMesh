@@ -33,14 +33,15 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	if (getBlockPtr()) {
-		getBlockPtr()->faceFunc(_thisId, [this, &vertId](Polygon& face) {
+	Block* pBlock = getOutBlockPtr(_thisId);
+	if (pBlock) {
+		pBlock->faceFunc(_thisId, [this, pBlock, &vertId](Polygon& face) {
 			if (!face.containsVert(vertId)) {
-				getBlockPtr()->removeFaceFromLookUp(face._thisId);
+				pBlock->removeFaceFromLookUp(face._thisId);
 
 				face._vertexIds.push_back(vertId);
 
-				getBlockPtr()->addFaceToLookup(face._thisId);
+				pBlock->addFaceToLookup(face._thisId);
 			}
 			face._needSort = true;
 		});
@@ -229,6 +230,11 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
+void Polygon::getPrincipalEdges(std::set<Edge>& edges) const
+{
+
+}
+
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
 	set<Edge> edges;
@@ -301,7 +307,7 @@ Index3DId Polygon::insertVertexInEdge(const Edge& edge, const Vector3d& pt)
 	if (edgeSet.count(edge) != 0) {
 		newVertId = getBlockPtr()->idOfPoint(pt);
 		if (!newVertId.isValid())
-			newVertId = getBlockPtr()->addVertex(pt);
+			newVertId = getOutBlockPtr(_thisId)->addVertex(pt);
 
 		if (!containsVert(newVertId))
 			insertVertexInEdge(edge, newVertId);
@@ -469,14 +475,10 @@ Index3DId Polygon::splitWithFaceEdges(const Polygon& splittingFace)
 
 			setVertexIds(face0Verts);
 
-			Index3DId newFaceId = getBlockPtr()->addFace(face1Verts);
-			getBlockPtr()->faceFunc(newFaceId, [this](Polygon& newFace) {
-				newFace.setSplitFromData(_thisId);
-				assert(newFace.wasSplitFrom(_thisId));
-			});
+			Index3DId newFaceId = getOutBlockPtr(_thisId)->addFace(face1Verts);
 
 			for (const auto& cellId : _cellIds) { // TODO Remove this and let the splitter do it
-				getBlockPtr()->addFaceToPolyhedron(newFaceId, cellId);
+				getOutBlockPtr(_thisId)->addFaceToPolyhedron(newFaceId, cellId);
 			}
 
 #if 1 && defined(_DEBUG)
@@ -500,12 +502,12 @@ void Polygon::setVertexIds(const vector<Index3DId>& verts)
 {
 	assert(verifyUnique());
 
-	getBlockPtr()->removeFaceFromLookUp(_thisId);
+	getOutBlockPtr(_thisId)->removeFaceFromLookUp(_thisId);
 
 	_vertexIds = verts;
 	_needSort = true;
 
-	getBlockPtr()->addFaceToLookup(_thisId);
+	getOutBlockPtr(_thisId)->addFaceToLookup(_thisId);
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)

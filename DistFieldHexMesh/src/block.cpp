@@ -396,7 +396,8 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	for (const auto& edge : edges) {
 		assert(edge.onPrincipalAxis(this));
 	}
-	Block* pOwner = getOwner(ownerIdx);
+
+	auto* pOwner = getOutBlockPtr(ownerIdx);
 	Index3DId faceId = pOwner->_polygons.findOrAdd(newFace);
 	return faceId;
 }
@@ -415,7 +416,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
-	Block* pOwner = getOwner(ownerBlockIdx);
+	auto* pOwner = getOutBlockPtr(ownerBlockIdx);
 
 	auto faceId = pOwner->addFace(pts);
 
@@ -502,14 +503,6 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
-Block* Block::getOwner(const Index3D& blockIdx)
-{
-	if (blockIdx == _blockIdx)
-		return this;
-
-	return _pVol->getBlockPtr(blockIdx);
-}
-
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 	if (blockIdx == _blockIdx)
@@ -518,9 +511,9 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 	return _pVol->getBlockPtr(blockIdx);
 }
 
-const Block* Block::getSrcBlockPtr(const Index3D& blockIdx) const
+Block* Block::getOutBlockPtr(const Index3D& blockIdx) const
 {
-	return _pVol->getSrcBlockPtr(blockIdx);
+	return _pVol->getOutBlockPtr(blockIdx);
 }
 
 Index3DId Block::idOfPoint(const Vector3d& pt) const
@@ -533,20 +526,20 @@ Index3DId Block::idOfPoint(const Vector3d& pt) const
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
-	Block* pOwner = getOwner(ownerBlockIdx);
+	auto* pOwner = getOutBlockPtr(ownerBlockIdx);
 	Vertex vert(pt);
 	return pOwner->_vertices.findOrAdd(vert, currentId);
 }
 
 void Block::addFaceToLookup(const Index3DId& faceId)
 {
-	auto pOwner = getOwner(faceId);
+	auto pOwner = getOutBlockPtr(faceId);
 	pOwner->_polygons.addToLookup(faceId);
 }
 
 bool Block::removeFaceFromLookUp(const Index3DId& faceId)
 {
-	Block* pOwner = getOwner(faceId);
+	auto* pOwner = getOutBlockPtr(faceId);
 	return pOwner->_polygons.removeFromLookup(faceId);
 }
 
