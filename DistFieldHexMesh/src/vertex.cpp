@@ -6,11 +6,23 @@
 using namespace std;
 using namespace DFHM;
 
+const bool FixedPt::operator < (const FixedPt& rhs) const
+{
+	for (size_t idx = 0; idx < 3; idx++) {
+		if ((*this)[idx] < rhs[idx])
+			return true;
+		else if (rhs[idx] < (*this)[idx])
+			return false;
+	}
+
+	return false;
+}
+
 Vertex::Vertex(const Vertex& src)
 	: _lockType(src._lockType)
 	, _lockIdx(src._lockIdx)
 	, _pt(src._pt)
-	, _faceIds(src._faceIds)
+	, _searchPt(src._searchPt)
 {
 }
 
@@ -18,58 +30,16 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 {
 	_lockType = rhs._lockType;
 	_pt = rhs._pt;
-	_faceIds = rhs._faceIds;
+	_searchPt = rhs._searchPt;
 
 	return *this;
 }
 
-void Vertex::addFaceId(const Index3DId& faceId)
-{
-	_faceIds.insert(faceId);
-}
-
-void Vertex::removeFaceId(const Index3DId& faceId)
-{
-	_faceIds.erase(faceId);
-}
-
 const bool Vertex::operator < (const Vertex& rhs) const
 {
-	for (size_t idx = 0; idx < 3; idx++) {
-		if (_pt[idx] < rhs._pt[idx])
-			return true;
-		else if (rhs._pt[idx] < _pt[idx])
-			return false;
-	}
-
-	return false;
-}
-
-set<Index3DId> Vertex::getFaceIds(const set<Index3DId> availFaces) const
-{
-	set<Index3DId> result;
-
-	for (const auto& faceId : _faceIds) {
-		if (availFaces.count(faceId) != 0)
-			result.insert(faceId);
-	}
-	return result;
-}
-
-bool Vertex::connectedToFace(const Index3DId& faceId) const
-{
-	return _faceIds.count(faceId) != 0;
-}
-
-bool Vertex::verifyTopology() const
-{
-	bool valid = true;
-#ifdef _DEBUG 
-	for (const auto& faceId : _faceIds) {
-		if (!getBlockPtr()->polygonExists(faceId))
-			valid = false;
-	}
+#if USE_FIXED_PT
+	return _pt < rhs._pt;
+#else
+	return _searchPt < rhs._searchPt;
 #endif
-
-	return valid;
 }

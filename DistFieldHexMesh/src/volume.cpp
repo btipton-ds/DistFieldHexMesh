@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -37,6 +37,22 @@ Volume::Volume(const Volume& src)
 
 Volume::~Volume()
 {
+}
+
+void Volume::startOperation()
+{
+	// Make a copy of all blocks into _srcBlocks
+	_srcBlocks.clear();
+	_srcBlocks.resize(_blocks.size());
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		if (_blocks[i])
+			_srcBlocks[i] = make_shared<Block>(*_blocks[i]);
+	}
+}
+
+void Volume::endOperation()
+{
+	_srcBlocks.clear();
 }
 
 void Volume::setVolDim(const Index3D& blockSize)
@@ -74,8 +90,6 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
 
 void Volume::findFeatures()
 {
-	const double tol = 1.0e-3;
-
 	// This function is already running on multiple cores, DO NOT calculate centroids or normals using muliple cores.
 	_pModelTriMesh->buildCentroids(false);
 	_pModelTriMesh->buildNormals(false);
@@ -128,7 +142,6 @@ void Volume::splitAllCellsWithPlanesAtSharpVertices()
 void Volume::findSharpVertices()
 {
 	const double cosSharpAngle = cos(M_PI - getSharpAngleRad());
-	const double tol = 1.0e-3;
 
 	size_t numVerts = _pModelTriMesh->numVertices();
 	for (size_t vIdx = 0; vIdx < numVerts; vIdx++) {

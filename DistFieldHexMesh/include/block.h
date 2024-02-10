@@ -74,13 +74,14 @@ public:
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
-	Block(const Block& src) = delete;
+	Block(const Block& src) = default;
 
 	size_t blockDim() const;
 	Volume* getVolume();
 	const Volume* getVolume() const;
 	Block* getOwner(const Index3D& blockIdx);
 	const Block* getOwner(const Index3D& blockIdx) const;
+	const Block* getSrcBlockPtr(const Index3D& blockIdx) const;
 
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
@@ -109,11 +110,8 @@ public:
 	size_t splitAllCellsWithPlane(const Plane& splittingPlane);
 	size_t splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt);
 
-	Index3DId idOfPoint(const Vector3d& pt);
+	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
-	std::set<Edge> getVertexEdges(const Index3DId& vertexId) const;
-	const std::set<Index3DId>& getVertexFaceIds(const Index3DId& vertexId) const;
-	std::set<Index3DId> getVertexFaceIds(const Index3DId& vertexId, const std::set<Index3DId>& availFaces) const;	
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& faceId) const;
@@ -121,7 +119,7 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	size_t addCell(const std::vector<Index3DId>& faceIds);
+	size_t addCell(const std::set<Index3DId>& faceIds);
 	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	void addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId);
@@ -265,7 +263,7 @@ inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
 { \
 	auto pOwner = getOwner(id); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
-	patient_lock_guard g(obj.getMutex(), std::this_thread::get_id(), pOwner->isGranularLocking()); \
+	patient_lock_guard g(obj.getMutex()); \
 	func(obj); \
 }
 #define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \

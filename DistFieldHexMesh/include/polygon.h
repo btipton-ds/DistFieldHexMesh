@@ -21,7 +21,6 @@ public:
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
-	static void calAreaAndCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, double& area, Vector3d& centroid);
 
 	Polygon() = default;
 	Polygon(const Polygon& src);
@@ -39,8 +38,6 @@ public:
 	void removeCell(const Index3DId& cellId);
 	bool numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
-	void setSplitFromData(const Index3DId& sourceFaceId);
-	void clearSplitFromId();
 	bool ownedByCell(const Index3DId& cellId) const;
 
 	// Required for use with object pool
@@ -52,17 +49,17 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
-	void setVertexIdsNTS(const std::vector<Index3DId>& verts);
-	std::set<Edge> getEdgesNTS() const;
+	void setVertexIds(const std::vector<Index3DId>& verts);
+	void getEdges(std::set<Edge>& edgeSet) const;
+
+	bool isOrphan() const; // No longer used by a cell
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
-	bool vertsContainFace() const;
-	bool ownedByCellNTS(const Index3DId& cellId) const;
-	bool wasSplitFromNTS(const Index3DId& faceId) const;
 	bool isAbovePlane(const Plane& plane, double tol) const;
+	bool allEdgesPrincipal() const;
 
-	bool vertifyUnique() const;
+	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
 	double calVertexAngle(size_t index) const;
@@ -73,17 +70,16 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	// inserts a vertex between vert0 and vert1.
-	Index3DId insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt);
-	bool insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId);
+	Index3DId insertVertexInEdge(const Edge& edge, const Vector3d& pt);
+	bool insertVertexInEdge(const Edge& edge, const Index3DId& newVertId);
 
-	Index3DId splitWithFaceEdgesNTS(const Polygon& splittingFace);
+	Index3DId splitWithFaceEdges(const Polygon& splittingFace);
 
 private:
 	void sortIds() const;
 	Index3DId findOtherSplitFaceId(const Edge& edge) const;
 
 	size_t _numSplits = 0;
-	std::set<Index3DId> _splitFromFaceIds;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 
@@ -101,7 +97,12 @@ inline size_t Polygon::getNumSplits() const
 	return _numSplits;
 }
 
-inline bool Polygon::vertifyUnique() const
+inline bool Polygon::isOrphan() const
+{
+	return _cellIds.empty();
+}
+
+inline bool Polygon::verifyUnique() const
 {
 	return verifyUniqueStat(_vertexIds);
 }

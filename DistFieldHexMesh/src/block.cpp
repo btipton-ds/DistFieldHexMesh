@@ -110,7 +110,7 @@ void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
 
 Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 {
-	const double tol = 1.0e-5;
+	const double tol = Tolerance::paramTol();
 	const auto& volBounds = _pVol->volDim();
 
 	Index3D result(_blockIdx);
@@ -303,7 +303,7 @@ Vector3d Block::invTriLinIterp(const Vector3d& pt) const
 
 Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const
 {
-	const double tol = 1.0e-5;
+	const double tol = Tolerance::looseParamTol();
 	const double tolSqr = tol * tol;
 
 	// Linearly interpolate based on the bounding box. This is precise for a paralelapiped set of blockPts
@@ -391,14 +391,13 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	for (const auto& vertId : vertIndices) {
 		newFace.addVertex(vertId);
 	}
-
+	set<Edge> edges;
+	newFace.getEdges(edges);
+	for (const auto& edge : edges) {
+		assert(edge.onPrincipalAxis(this));
+	}
 	Block* pOwner = getOwner(ownerIdx);
 	Index3DId faceId = pOwner->_polygons.findOrAdd(newFace);
-	for (const auto& vertId : vertIndices) {
-		vertexFunc(vertId, [&faceId](Vertex& vert) {
-			vert.addFaceId(faceId);
-		});
-	}
 	return faceId;
 }
 Index3DId Block::addFace(const vector<Vector3d>& pts)
@@ -423,7 +422,7 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-size_t Block::addCell(const vector<Index3DId>& faceIds)
+size_t Block::addCell(const set<Index3DId>& faceIds)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 
@@ -508,7 +507,7 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	if (blockIdx == _blockIdx)
 		return this;
 
-	return _pVol->getBlockPtr(blockIdx).get();
+	return _pVol->getBlockPtr(blockIdx);
 }
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
@@ -516,13 +515,18 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 	if (blockIdx == _blockIdx)
 		return this;
 
-	return _pVol->getBlockPtr(blockIdx).get();
+	return _pVol->getBlockPtr(blockIdx);
 }
 
-Index3DId Block::idOfPoint(const Vector3d& pt)
+const Block* Block::getSrcBlockPtr(const Index3D& blockIdx) const
+{
+	return _pVol->getSrcBlockPtr(blockIdx);
+}
+
+Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
-	Block* pOwner = getOwner(ownerBlockIdx);
+	auto* pOwner = getOwner(ownerBlockIdx);
 	return pOwner->_vertices.findId(pt);
 }
 
@@ -532,37 +536,6 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	Block* pOwner = getOwner(ownerBlockIdx);
 	Vertex vert(pt);
 	return pOwner->_vertices.findOrAdd(vert, currentId);
-}
-
-set<Edge> Block::getVertexEdges(const Index3DId& vertexId) const
-{
-	set<Edge> result;
-	set<Index3DId> faceIds = getVertexFaceIds(vertexId);
-	for (const auto& faceId : faceIds) {
-		set<Edge> edges;
-		faceFunc(faceId, [&edges](const Polygon& face) {
-			edges = face.getEdgesNTS();
-		});
-		for (const auto& edge : edges) {
-			if (edge.containsVertex(vertexId)) {
-				result.insert(edge);
-			}
-		}
-	}
-
-	return result;
-}
-
-const set<Index3DId>& Block::getVertexFaceIds(const Index3DId& vertexId) const
-{
-	auto pOwner = getOwner(vertexId);
-	return pOwner->_vertices[vertexId].getFaceIds();
-}
-
-set<Index3DId> Block::getVertexFaceIds(const Index3DId& vertexId, const set<Index3DId>& availFaces) const
-{
-	auto pOwner = getOwner(vertexId);
-	return pOwner->_vertices[vertexId].getFaceIds(availFaces);
 }
 
 void Block::addFaceToLookup(const Index3DId& faceId)
@@ -650,13 +623,21 @@ void Block::addTris(const CMeshPtr& pSrcMesh)
 size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
 {
 	size_t numSplits = 0;
-	_polyhedra.iterateInOrder([&splittingPlane, &numSplits](Polyhedron& cell) {
+	set<Index3DId> deadCells;
+	_polyhedra.iterateInOrder([&splittingPlane, &numSplits, &deadCells](Polyhedron& cell) {
 		if (cell.getId() == Index3DId(Index3D(0, 0, 1), 0)) {
 			int dbgBreak = 1;
 		}
 		auto temp = cell.splitWithPlane(splittingPlane, false);
-		numSplits += temp.size();
+		if (!temp.empty()) {
+			deadCells.insert(cell.getId());
+			numSplits += temp.size();
+		}
 	});
+
+	for (const auto& cellId : deadCells) {
+		_polyhedra.free(cellId);
+	}
 
 	/*
 	_polygons.iterateInOrder([](Polygon& face) {
@@ -786,8 +767,7 @@ Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 
 	_polygons.iterateInOrder([this, meshType, &edges, minSplitNum](const Polygon& face) {
 		if (includeFace(meshType, minSplitNum, face)) {
-			const auto& faceEdges = face.getEdgesNTS();
-			edges.insert(faceEdges.begin(), faceEdges.end());
+			face.getEdges(edges);
 		}
 	});
 

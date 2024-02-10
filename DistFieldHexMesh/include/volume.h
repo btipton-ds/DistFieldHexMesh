@@ -33,6 +33,9 @@ public:
 	static void setVolDim(const Index3D& size);
 	static const Index3D& volDim();
 
+	void startOperation();
+	void endOperation();
+
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
 
@@ -59,6 +62,7 @@ private:
 	friend class Polygon;
 	friend class Polyhedron;
 	friend class Block;
+	friend class ObjectPoolOwnerUser;
 
 	using AxisIndex = Block::AxisIndex;
 
@@ -66,7 +70,8 @@ private:
 	bool blockExists(const Index3D& blockIdx) const;
 	Block& addBlock(const Index3D& blockIdx);
 
-	std::shared_ptr<Block> getBlockPtr(const Index3D& blockIdx);
+	Block* getBlockPtr(const Index3D& blockIdx);
+	const Block* getSrcBlockPtr(const Index3D& blockIdx) const;
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -92,7 +97,7 @@ private:
 	double _sharpAngleRad;
 
 	std::vector<Vector3d> _cornerPts;
-	std::vector<std::shared_ptr<Block>> _blocks;
+	std::vector<std::shared_ptr<Block>> _blocks, _srcBlocks;
 	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 };
@@ -110,9 +115,16 @@ inline void Volume::setSpan(const Vector3d& span)
 	_spanMeters = span;
 }
 
-inline std::shared_ptr<Block> Volume::getBlockPtr(const Index3D& blockIdx)
+inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
-	return _blocks[calLinearBlockIndex(blockIdx)];
+	return _blocks[calLinearBlockIndex(blockIdx)].get();
+}
+
+inline Block* Volume::getSrcBlockPtr(const Index3D& blockIdx)
+{
+	if (_blocks.size() == _srcBlocks.size())
+		return _srcBlocks[calLinearBlockIndex(blockIdx)].get();
+	return nullptr;
 }
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const

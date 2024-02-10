@@ -4,6 +4,7 @@
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
+#include <volume.h>
 
 using namespace DFHM;
 
@@ -12,27 +13,6 @@ using namespace DFHM;
 DECL_THREAD_LOCAL(Vertex);
 DECL_THREAD_LOCAL(Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
-
-ObjectPoolOwner::ScopedGranularLock::ScopedGranularLock(ObjectPoolOwner& self, bool val)
-	: _self(self)
-{
-	_wasLocked = _self.isGranularLocking();
-	_self.setGranularLocking(val);
-}
-ObjectPoolOwner::ScopedGranularLock::~ScopedGranularLock()
-{
-	_self.setGranularLocking(_wasLocked);
-}
-
-void ObjectPoolOwner::setGranularLocking(bool val)
-{
-	_isGranularLocking = val;
-}
-
-bool ObjectPoolOwner::isGranularLocking() const
-{
-	return _isGranularLocking;
-}
 
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)
 {
@@ -62,6 +42,17 @@ Block* ObjectPoolOwnerUser::getBlockPtr()
 const Block* ObjectPoolOwnerUser::getBlockPtr() const
 {
 	return const_cast<const Block*>(dynamic_cast<Block*>(_pPoolOwner));
+}
+
+const Block* ObjectPoolOwnerUser::getSrcBlockPtr(const Index3DId& blockIdx) const
+{
+	auto pOwner = getBlockPtr();
+	pOwner->getVolume()->getSrcBlockPtr(blockIdx);
+}
+
+Block* ObjectPoolOwnerUser::getWritableBlockPtr() const
+{
+	return dynamic_cast<Block*>(_pPoolOwner);
 }
 
 void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)

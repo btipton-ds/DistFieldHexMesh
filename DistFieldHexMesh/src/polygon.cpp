@@ -13,7 +13,6 @@ using namespace DFHM;
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
 	, _numSplits(src._numSplits)
-	, _splitFromFaceIds(src._splitFromFaceIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _needSort(true)
@@ -25,7 +24,6 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 
 	_numSplits = rhs._numSplits;
-	_splitFromFaceIds = rhs._splitFromFaceIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_needSort = true;
@@ -50,17 +48,6 @@ void Polygon::addVertex(const Index3DId& vertId)
 		_vertexIds.push_back(vertId);
 		_needSort = true;
 	}
-}
-
-void Polygon::setSplitFromData(const Index3DId& sourceFaceId)
-{
-	_numSplits++;
-	_splitFromFaceIds.insert(sourceFaceId);
-}
-
-void Polygon::clearSplitFromId()
-{
-	_splitFromFaceIds.clear();
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -118,19 +105,18 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-set<Edge> Polygon::getEdgesNTS() const
+void Polygon::getEdges(std::set<Edge>& edgeSet) const
 {
-	set<Edge> result;
-
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		const auto& vertId0 = _vertexIds[i];
-		const auto& vertId1 = _vertexIds[j];
-		Edge edge(vertId0, vertId1);
-		result.insert(edge);
+		// If the edges is aready in the set, we get the existing one, not the new one?
+		set<Index3DId> faceSet;
+		faceSet.insert(_thisId);
+		auto result = edgeSet.insert(Edge(_vertexIds[i], _vertexIds[j], faceSet));
+		// Set entries are const to prevent breaking the sort order
+		// The _faceIds do not affect the sort, so this is safe
+		// We cannot do this during creation, because we must accumulate the faces as the are added to the set
 	}
-
-	return result;
 }
 
 bool Polygon::containsEdge(const Edge& edge) const
@@ -166,29 +152,6 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 	return false;
 }
 
-bool Polygon::vertsContainFace() const
-{
-	bool result = true;
-	for (const auto& vertId : _vertexIds) {
-		getBlockPtr()->vertexFunc(vertId, [this, &result](const Vertex& vert) {
-			bool pass = vert.connectedToFace(_thisId);
-			if (!pass)
-				result = false;
-		});
-	}
-	return result;
-}
-
-bool Polygon::ownedByCellNTS(const Index3DId& cellId) const
-{
-	return _cellIds.contains(cellId);
-}
-
-bool Polygon::wasSplitFromNTS(const Index3DId& faceId) const
-{
-	return _splitFromFaceIds.contains(faceId);
-}
-
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
@@ -214,28 +177,6 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index
 Vector3d Polygon::calUnitNormal() const
 {
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
-}
-
-void Polygon::calAreaAndCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, double& area, Vector3d& centroid)
-{
-	area = 0;
-	centroid = Vector3d(0, 0, 0);
-	Vector3d pt0 = pBlock->getVertexPoint(vertIds[0]);
-	for (size_t j = 1; j < vertIds.size() - 1; j++) {
-		size_t k = j + 1;
-		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
-		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
-		Vector3d v0 = pt0 - pt1;
-		Vector3d v1 = pt2 - pt1;
-		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
-		Vector3d cp = v1.cross(v0);
-		double triArea = cp.norm() / 2.0;
-
-		centroid += triCtr * triArea;
-		area += triArea;
-	}
-
-	centroid /= area;
 }
 
 double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t idx1)
@@ -290,7 +231,55 @@ Vector3d Polygon::calCentroid() const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
-	calAreaAndCentroidStat(getBlockPtr(), _vertexIds, area, centroid);
+	set<Edge> edges;
+	getPrincipalEdges(edges);
+
+	vector<Index3DId> orderedVertIds;
+	const auto& edge = *edges.begin();
+	orderedVertIds.push_back(edge.getVertexIds()[0]);
+	orderedVertIds.push_back(edge.getVertexIds()[1]);
+	edges.erase(edge);
+	while (!edges.empty()) {
+		bool found = false;
+		for (const auto& edge : edges) {
+			if (edge.getVertexIds()[0] == orderedVertIds.back()) {
+				orderedVertIds.push_back(edge.getVertexIds()[1]);
+				edges.erase(edge);
+				found = true;
+				break;
+			}
+			else if (edge.getVertexIds()[1] == orderedVertIds.back()) {
+				orderedVertIds.push_back(edge.getVertexIds()[0]);
+				edges.erase(edge);
+				found = true;
+				break;
+			}
+		}
+		assert(found);
+	}
+	if (orderedVertIds.front() == orderedVertIds.back())
+		orderedVertIds.pop_back();
+	else
+		assert(!"Should never reach this point.");
+
+	area = 0;
+	centroid = Vector3d(0, 0, 0);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(orderedVertIds[0]);
+	for (size_t j = 1; j < orderedVertIds.size() - 1; j++) {
+		size_t k = j + 1;
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(orderedVertIds[j]);
+		Vector3d pt2 = getBlockPtr()->getVertexPoint(orderedVertIds[k]);
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
+		Vector3d cp = v1.cross(v0);
+		double triArea = cp.norm() / 2.0;
+
+		centroid += triCtr * triArea;
+		area += triArea;
+	}
+
+	centroid /= area;
 }
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
@@ -304,24 +293,25 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
-Index3DId Polygon::insertVertexInEdgeNTS(const Edge& edge, const Vector3d& pt)
+Index3DId Polygon::insertVertexInEdge(const Edge& edge, const Vector3d& pt)
 {
 	Index3DId newVertId;
-	auto edgeSet = getEdgesNTS();
+	set<Edge> edgeSet;
+	getEdges(edgeSet);
 	if (edgeSet.count(edge) != 0) {
 		newVertId = getBlockPtr()->idOfPoint(pt);
 		if (!newVertId.isValid())
 			newVertId = getBlockPtr()->addVertex(pt);
 
 		if (!containsVert(newVertId))
-			insertVertexInEdgeNTS(edge, newVertId);
+			insertVertexInEdge(edge, newVertId);
 	}
 	return newVertId;
 }
 
-bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId)
+bool Polygon::insertVertexInEdge(const Edge& edge, const Index3DId& newVertId)
 {
-	assert(vertifyUnique());
+	assert(verifyUnique());
 	assert(!containsVert(newVertId));
 	bool result = false;
 	size_t idx0 = -1, idx1 = 1;
@@ -338,13 +328,12 @@ bool Polygon::insertVertexInEdgeNTS(const Edge& edge, const Index3DId& newVertId
 
 		assert(verifyUniqueStat(vertIds));
 
-		setVertexIdsNTS(vertIds);
-
-		if (result) {
-			getBlockPtr()->vertexFunc(newVertId, [this](Vertex& vert) {
-				vert.addFaceId(_thisId);
-				});
-		}
+		setVertexIds(vertIds);
+	}
+	set<Edge> edges;
+	getEdges(edges);
+	for (const auto& edge : edges) {
+		assert(edge.onPrincipalAxis(getBlockPtr()));
 	}
 	return result;
 }
@@ -399,7 +388,7 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	thisFaceVec = thisFaceVec - edgeDir.dot(thisFaceVec) * edgeDir;
 	thisFaceVec.normalize();
 
-	auto edgeFaceIds = edge.getFaceIds(getBlockPtr());
+	auto edgeFaceIds = edge.getFaceIds();
 	double maxDp = -DBL_MAX;
 	for (const auto& faceId : edgeFaceIds) {
 		if (faceId == _thisId)
@@ -423,14 +412,16 @@ Index3DId Polygon::findOtherSplitFaceId(const Edge& edge) const
 	return result;
 }
 
-Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
+Index3DId Polygon::splitWithFaceEdges(const Polygon& splittingFace)
 {
 	assert(verifyTopology());
 	assert(splittingFace.verifyTopology());
 
 	const auto& thisFace = *this;
-	auto otherEdges = splittingFace.getEdgesNTS();
+	set<Edge> otherEdges;
+	splittingFace.getEdges(otherEdges);
 	for (const auto& splittingEdge : otherEdges) {
+		assert(splittingEdge.onPrincipalAxis(getBlockPtr()));
 		if (containsEdge(splittingEdge)) {
 			// Our face already contains the splitting edge. It cannot be split again
 			Index3DId existingSplitFaceId = findOtherSplitFaceId(splittingEdge);
@@ -476,12 +467,12 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(verifyVertsConvexStat(getBlockPtr(), face0Verts));
 			assert(verifyVertsConvexStat(getBlockPtr(), face1Verts));
 
-			setVertexIdsNTS(face0Verts);
+			setVertexIds(face0Verts);
 
 			Index3DId newFaceId = getBlockPtr()->addFace(face1Verts);
 			getBlockPtr()->faceFunc(newFaceId, [this](Polygon& newFace) {
 				newFace.setSplitFromData(_thisId);
-				assert(newFace.wasSplitFromNTS(_thisId));
+				assert(newFace.wasSplitFrom(_thisId));
 			});
 
 			for (const auto& cellId : _cellIds) { // TODO Remove this and let the splitter do it
@@ -494,7 +485,7 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 			assert(splittingFace.verifyTopology());
 
 
-			auto splittingEdgeFaces = splittingEdge.getFaceIds(getBlockPtr());
+			auto splittingEdgeFaces = splittingEdge.getFaceIds();
 			assert(splittingEdgeFaces.count(_thisId) != 0);
 			assert(splittingEdgeFaces.count(newFaceId) != 0);
 #endif // _DEBUG
@@ -505,38 +496,14 @@ Index3DId Polygon::splitWithFaceEdgesNTS(const Polygon& splittingFace)
 	return Index3DId();
 }
 
-void Polygon::setVertexIdsNTS(const vector<Index3DId>& verts)
+void Polygon::setVertexIds(const vector<Index3DId>& verts)
 {
-#ifdef _DEBUG
-	for (size_t i = 0; i < verts.size(); i++) {
-		for (size_t j = i + 1; j < verts.size(); j++) {
-			if (verts[i] == verts[j]) {
-				assert(!"duplicate vertex in polygon");
-			}
-		}
-	}
-#endif
+	assert(verifyUnique());
 
 	getBlockPtr()->removeFaceFromLookUp(_thisId);
 
-	{
-		assert(_thisId.blockIdx() == getBlockPtr()->getBlockIdx());
-
-		for (const auto& vertId : _vertexIds) {
-			getBlockPtr()->vertexFunc(vertId, [this](Vertex& vert) {
-				vert.removeFaceId(_thisId);
-				});
-		}
-
-		_vertexIds = verts;
-		_needSort = true;
-
-		for (const auto& vertId : _vertexIds) {
-			getBlockPtr()->vertexFunc(vertId, [this](Vertex& vert) {
-				vert.addFaceId(_thisId);
-				});
-		}
-	}
+	_vertexIds = verts;
+	_needSort = true;
 
 	getBlockPtr()->addFaceToLookup(_thisId);
 }
@@ -577,20 +544,13 @@ bool Polygon::verifyTopology() const
 	if (!verifyUniqueStat(vertIds))
 		valid = false;
 
-	for (const auto& vertId : vertIds) {
-		getBlockPtr()->vertexFunc(vertId, [this, &valid](const Vertex& vert) {
-			bool pass = vert.connectedToFace(_thisId) && valid;
-			if (!pass)
-				valid = false;
-		});
-	}
-
 	if (_cellIds.size() > 2)
 		valid = false;
 
-	auto edges = getEdgesNTS();
+	set<Edge> edges;
+	getEdges(edges);
 	for (const auto& edge : edges) {
-		auto faceIds = edge.getFaceIds(getBlockPtr());
+		auto faceIds = edge.getFaceIds();
 		if (faceIds.count(_thisId) == 0) // edge does not link back to this face
 			valid = false;
 	}

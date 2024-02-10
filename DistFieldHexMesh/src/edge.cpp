@@ -6,16 +6,23 @@
 using namespace std;
 using namespace DFHM;
 
-Edge::Edge(const Index3DId& vert0, const Index3DId& vert1)
+Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds)
+	: _faceIds(faceIds)
 {
 	if (vert0 < vert1) {
 		_vertexIds[0] = vert0;
 		_vertexIds[1] = vert1;
-	}
-	else {
+	} else {
 		_vertexIds[0] = vert1;
 		_vertexIds[1] = vert0;
 	}
+}
+
+Edge::Edge(const Edge& src, const std::set<Index3DId>& faceIds)
+	: _faceIds(faceIds)
+{
+	_vertexIds[0] = src._vertexIds[0];
+	_vertexIds[1] = src._vertexIds[1];
 }
 
 bool Edge::operator == (const Edge& rhs) const
@@ -42,7 +49,7 @@ bool Edge::operator < (const Edge& rhs) const
 
 double Edge::sameParamTol(const Block* pBlock) const
 {
-	return Vertex::sameDistTol() / getLength(pBlock);
+	return Tolerance::sameDistTol() / getLength(pBlock);
 }
 
 double Edge::getLength(const Block* pBlock) const
@@ -103,22 +110,69 @@ Vector3d Edge::projectPt(const Block* pBlock, const Vector3d& pt) const
 	return result;
 }
 
+bool Edge::onPrincipalAxis(const Block* pBlock) const
+{
+	const double tol = Tolerance::paramTol();
+	Vector3d dir = calUnitDir(pBlock);
+	bool result = false;
+	for (int i = 0; i < 3; i++) {
+		Vector3d axis(0, 0, 0);
+		axis[i] = 1;
+		if (axis.cross(dir).norm() < tol)
+			return true;
+	}
+	return false;
+}
+
+bool Edge::isColinearWith(const Block* pBlock, const Edge& other) const
+{
+	LineSegment seg(getSegment(pBlock));
+	Vector3d pt0 = pBlock->getVertexPoint(other._vertexIds[0]);
+
+	if (seg.distanceToPoint(pt0) > Tolerance::sameDistTol())
+		return false;
+
+	Vector3d pt1 = pBlock->getVertexPoint(other._vertexIds[1]);
+	if (seg.distanceToPoint(pt1) > Tolerance::sameDistTol())
+		return false;
+
+	return true;
+}
+
+bool Edge::isConnectedTo(const Edge& other) const
+{
+	for (int i = 0; i < 2; i++) {
+		if (other.containsVertex(_vertexIds[i]))
+			return true;
+	}
+	return false;
+}
+
+LineSegment Edge::getSegment(const Block* pBlock) const
+{
+	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	LineSegment result(pt0, pt1);
+	return result;
+}
+
+bool Edge::canBeRemoved(const Block* pBlock) const
+{
+	bool result = false;
+	if (_faceIds.size() != 2)
+		return result;
+
+	auto iter = _faceIds.begin();
+	Vector3d norm0, norm1;
+	pBlock->faceFunc(*iter++, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
+	pBlock->faceFunc(*iter, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
+
+	return norm1.cross(norm0).norm() < Tolerance::angleTol();
+}
+
 bool Edge::containsVertex(const Index3DId& vertexId) const
 {
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
-}
-
-set<Index3DId> Edge::getFaceIds(const Block* pBlock) const
-{
-	set<Index3DId> result;
-	const auto& faceIds0 = pBlock->getVertexFaceIds(_vertexIds[0]);
-	const auto& faceIds1 = pBlock->getVertexFaceIds(_vertexIds[1]);
-
-	for (const auto& faceId : faceIds0) {
-		if (faceIds1.contains(faceId))
-			result.insert(faceId);
-	}
-	return result;
 }
 
 Index3DId Edge::getOtherVert(const Index3DId& vert) const
@@ -130,30 +184,19 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-Index3DId Edge::splitAtParam(Block* pBlock, double t, set<Index3DId>& faceIds)
+void Edge::getFaceIds(std::set<Index3DId>& faceIds) const
 {
-	const double tol = 0;
+	faceIds.insert(_faceIds.begin(), _faceIds.end());
+}
+
+Index3DId Edge::splitAtParam(Block* pBlock, double t, set<Index3DId>& faceIds) const
+{
+	const double tol = Tolerance::paramTol();
 	if (t > tol && t < 1.0 - tol) {
 		Vector3d pt = calPointAt(pBlock, t);
 		auto midVertId = pBlock->addVertex(pt);
 
-		faceIds = getFaceIds(pBlock);
-#if 0
-		for (const auto& faceId : faceIds) {
-			pBlock->faceFunc(faceId, [this, &midVertId](Polygon& face) {
-				if (midVertId == Index3DId(Index3D(3, 0, 1), 3)) {
-					int dbgBreak = 1;
-				}
-				if (face.containsVert(midVertId)) // This face was already split with this vertex
-					return;
-				if (!face.insertVertexInEdgeNTS(*this, midVertId)) {
-					face.insertVertexInEdgeNTS(*this, midVertId);
-					assert(!"Should never reach this code block.");
-					throw std::runtime_error("Failed insert a vertex in a polygon which must accept the vertex. Not supposed to be possible.");
-				}
-				});
-		}
-#endif
+		getFaceIds(faceIds);
 		return midVertId;
 	}
 
@@ -173,9 +216,9 @@ double Edge::intesectPlaneParam(const Block* pBlock, const Plane& splittingPlane
 	return -1;
 }
 
-Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, std::set<Index3DId>& faceIds)
+Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, std::set<Index3DId>& faceIds) const
 {
-	const double tol = 0;
+	const double tol = Tolerance::paramTol();
 	double t = intesectPlaneParam(pBlock, splittingPlane);
 	if (t > tol && t < 1.0 - tol) {
 		return splitAtParam(pBlock, t, faceIds);

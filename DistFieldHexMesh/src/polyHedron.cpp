@@ -110,47 +110,101 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 	return false;
 }
 
-vector<Index3DId> Polyhedron::getCornerIds() const
+void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 {
-	set<Index3DId> idSet;
 	for (const auto& faceId : _faceIds) {
-		getBlockPtr()->faceFunc(faceId, [&idSet](const Polygon& face) {
+		getBlockPtr()->faceFunc(faceId, [&vertIds](const Polygon& face) {
 			const auto vertexIds = face.getVertexIds();
-			idSet.insert(vertexIds.begin(), vertexIds.end());
+			vertIds.insert(vertexIds.begin(), vertexIds.end());
 		});
 	}
-
-	vector<Index3DId> result;
-	result.insert(result.end(), idSet.begin(), idSet.end());
-
-	return result;
 }
 
-set<Edge> Polyhedron::getEdges() const
+void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
 {
-	set<Edge> result;
+	map<Edge, set<Index3DId>> edgeToFaceMap;
+	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		getBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
-			const auto& edges = face.getEdgesNTS();
-			result.insert(edges.begin(), edges.end());
+		getBlockPtr()->faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds](const Polygon& face) {
+			auto temp = face.getCellIds();
+			adjCellIds.insert(temp.begin(), temp.end());
+			set<Edge> edges;
+			face.getEdges(edges);
+			for (const auto& edge : edges) {
+				auto iter = edgeToFaceMap.find(edge);
+				if (iter == edgeToFaceMap.end()) {
+					set<Index3DId> data;
+					iter = edgeToFaceMap.insert(make_pair(edge, data)).first;
+				}
+				iter->second.insert(faceId);
+			}
 		});
 	}
 
-	return result;
+	if (includeNeighborFaces) {
+		adjCellIds.erase(_thisId);
+		for (const auto& adjCellId : adjCellIds) {
+			set<Index3DId> faceIds;
+			getBlockPtr()->cellFunc(adjCellId, [&faceIds](const Polyhedron& cell) {
+				faceIds = cell.getFaceIds();
+			});
+			for (const auto& faceId : faceIds) {
+				getBlockPtr()->faceFunc(faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
+					set<Edge> edges;
+					face.getEdges(edges);
+					for (const auto& edge : edges) {
+						auto iter = edgeToFaceMap.find(edge);
+						if (iter != edgeToFaceMap.end()) {
+							iter->second.insert(faceId);
+						}
+					}
+				});
+			}
+		}
+
+	}
+
+	for (const auto& pair : edgeToFaceMap) {
+		edges.insert(Edge(pair.first, pair.second));
+	}
+}
+
+void Polyhedron::getPrincipalEdges(set<Edge>& result) const
+{
+	set<Edge> allEdges;
+	getEdges(allEdges, true);
+
+	set<Index3DId> principalPolygonIds;
+	getPrincipalPolygons(principalPolygonIds);
+	for (const auto& faceId : principalPolygonIds) {
+		set<Edge> faceEdges;
+		getBlockPtr()->faceFunc(faceId, [&faceEdges, &allEdges, &result](const Polygon& face) { face.getEdges(faceEdges); });
+		// This assures that REAL edges have ALL their faces attached so they will be split when
+		// a vertex is inserted
+		for (const auto& faceEdge : faceEdges) {
+			auto iter = allEdges.find(faceEdge);
+			if (iter != allEdges.end())
+				result.insert(*iter);
+			else
+				result.insert(faceEdge);
+		}
+	}
+}
+
+void Polyhedron::getPrincipalPolygons(set<Index3DId>& result) const
+{
+	for (const auto& faceId : _faceIds) {
+		getBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
+			result.insert(face.getPrincipal());
+		});
+	}
 }
 
 set<Index3DId> Polyhedron::getAdjacentCells() const
 {
-	auto cornerIds = getCornerIds();
+	set<Index3DId> cornerIds;
+	getVertIds(cornerIds);
 	set<Index3DId> faceIds, cellIds;
-
-	for (const auto& vertId : cornerIds) {
-		getBlockPtr()->vertexFunc(vertId, [&faceIds](const Vertex& vert) {
-			const auto& vertFaceIds = vert.getFaceIds();
-			if (!vertFaceIds.empty())
-				faceIds.insert(vertFaceIds.begin(), vertFaceIds.end());
-		});
-	}
 
 	for (const auto& faceId : faceIds) {
 		getBlockPtr()->faceFunc(faceId, [this, &cellIds](const Polygon& face) {
@@ -170,14 +224,18 @@ set<Index3DId> Polyhedron::getAdjacentCells() const
 // Gets the edges for a vertex which belong to this polyhedron
 set<Edge> Polyhedron::getVertEdges(const Index3DId& vertId) const
 {
-	auto cellEdges = getEdges();
 	set<Edge> cellEdgeSet;
-	cellEdgeSet.insert(cellEdges.begin(), cellEdges.end());
-	auto allVertEdges = getBlockPtr()->getVertexEdges(vertId);
+	getEdges(cellEdgeSet, true);
+	set<Index3DId> adjCells = getAdjacentCells();
+	for (const auto& adjCellId : adjCells) {
+		getBlockPtr()->cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
+			adjCell.getEdges(cellEdgeSet, true);
+		});
+	}
 
 	set<Edge> result;
-	for (const auto& edge : allVertEdges) {
-		if (cellEdgeSet.count(edge))
+	for (const auto& edge : cellEdgeSet) {
+		if (edge.containsVertex(vertId))
 			result.insert(edge);
 	}
 
@@ -187,18 +245,12 @@ set<Edge> Polyhedron::getVertEdges(const Index3DId& vertId) const
 // Gets the faces for a vertex which belong to this polyhedron
 set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 {
-	auto cellFaces = getFaceIds();
-	set<Index3DId> cellFaceSet;
-	cellFaceSet.insert(cellFaces.begin(), cellFaces.end());
-	set<Index3DId> allVertFaces;
-	getBlockPtr()->vertexFunc(vertId, [&allVertFaces](const Vertex& vert) {
-		allVertFaces = vert.getFaceIds();
-	});
-
 	set<Index3DId> result;
-	for (const auto& faceId : allVertFaces) {
-		if (cellFaceSet.count(faceId))
-			result.insert(faceId);
+
+	auto vertEdges = getVertEdges(vertId);
+
+	for (const Edge& edge : vertEdges) {
+		edge.getFaceIds(result);
 	}
 
 	return result;
@@ -207,7 +259,8 @@ set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 CBoundingBox3Dd Polyhedron::getBoundingBox() const
 {
 	CBoundingBox3Dd bbox;
-	auto cornerIds = getCornerIds();
+	set<Index3DId> cornerIds;
+	getVertIds(cornerIds);
 	for (const auto& vertId : cornerIds) {
 		bbox.merge(getBlockPtr()->getVertexPoint(vertId));
 	}
@@ -221,7 +274,7 @@ bool Polyhedron::contains(const Vector3d& pt) const
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
 		getBlockPtr()->faceFunc(faceId, [this, &pt, &ctr, &result](const Polygon& face) {
-			const double tol = 1.0e-5;
+			const double tol = Tolerance::sameDistTol();
 			Vector3d faceCtr = face.calCentroid();
 			Vector3d norm = face.calUnitNormal();
 
@@ -263,7 +316,7 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
-bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool intersectingOnly, vector<Index3DId>& newCellIds)
+bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool intersectingOnly, vector<Index3DId>& newCellIds) const
 {
 	set<Index3DId> cellSet;
 
@@ -278,7 +331,7 @@ bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool interse
 
 	resultSet.clear();
 	for (auto cellId : cellSet) {
-		getBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+		getWritableBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
 			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 1, 0)), intersectingOnly);
 
 			if (!splitCells.empty())
@@ -291,7 +344,7 @@ bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool interse
 
 	resultSet.clear();
 	for (auto cellId : cellSet) {
-		getBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
+		getWritableBlockPtr()->cellFunc(cellId, [&splitPoint, intersectingOnly, &resultSet](Polyhedron& cell) {
 			auto splitCells = cell.splitWithPlane(Plane(splitPoint, Vector3d(0, 0, 1)), intersectingOnly);
 
 			if (!splitCells.empty())
@@ -304,7 +357,7 @@ bool Polyhedron::splitWithPlanesAtPoint(const Vector3d& splitPoint, bool interse
 	return true;
 }
 
-void Polyhedron::splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circleDivs)
+void Polyhedron::splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circleDivs) const
 {
 	const double sinEdgeAngle = sin(30.0 / 180.0 * M_PI);
 	const double minCurvature = 0.1; // 1 meter radius
@@ -347,26 +400,35 @@ void Polyhedron::splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circ
 	}
 }
 
-vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly)
+vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool intersectingOnly) const
 {
-	const double tol = 1.0e-6;
+	const double tol = Tolerance::paramTol();
 	vector<Index3DId> result;
 
 	assert(isClosed());
 
-	set<Edge> edges = getEdges();
+	/*
+	* collect all the splitting vertices based on the principal edges.
+	* In some cases they will be existing vertices from a prior split 
+	*/
+	set<Edge> principalEdges;
+	getPrincipalEdges(principalEdges);
+	assert(principalEdges.size() == 12);
 	vector<Edge> edgesToSplit;
 	set<Index3DId> vertIdSet;
 
-	for (const auto& edge : edges) {
+	for (const auto& edge : principalEdges) {
+		assert(edge.onPrincipalAxis(getBlockPtr()));
 		double t = edge.intesectPlaneParam(getBlockPtr(), splitPlane);
 		if (t >= -tol && t <= 1 + tol) {
 			Vector3d pt = edge.calPointAt(getBlockPtr(), t);
 			Index3DId vertId = getBlockPtr()->idOfPoint(pt);
 			if (vertId.isValid())
 				vertIdSet.insert(vertId);
-			else
+			else {
+				// In this case, the principal edge has not been split by this plane
 				edgesToSplit.push_back(edge);
+			}
 		}
 	}
 
@@ -374,14 +436,15 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 		return result;
 
 	for (auto& edge : edgesToSplit) {
+		assert(edge.onPrincipalAxis(getBlockPtr()));
 		set<Index3DId> faceIds;
-		auto newVertId = edge.splitWithPlane(getBlockPtr(), splitPlane, faceIds);
+		auto newVertId = edge.splitWithPlane(getWritableBlockPtr(), splitPlane, faceIds);
 		if (newVertId.isValid()) {
 			vertIdSet.insert(newVertId);
 			for (const auto& faceId : faceIds) {
-				getBlockPtr()->faceFunc(faceId, [&edge, &newVertId](Polygon& splitFace) {
+				getWritableBlockPtr()->faceFunc(faceId, [&edge, &newVertId](Polygon& splitFace) {
 					if (!splitFace.containsVert(newVertId))
-						splitFace.insertVertexInEdgeNTS(edge, newVertId);
+						splitFace.insertVertexInEdge(edge, newVertId);
 				});
 			}
 		}
@@ -395,9 +458,9 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	Index3DId splittingFaceId;
 	set<Index3DId> splitFaceIdSet;
 	if (newVertIds.size() >= 3) {
-		if (!orderVertIdsNTS(newVertIds))
+		if (!orderVertIds(newVertIds))
 			return result;
-		splittingFaceId = getBlockPtr()->addFace(newVertIds);
+		splittingFaceId = getWritableBlockPtr()->addFace(newVertIds);
 	} else {
 		assert(!"Less then 3 verts. Cannot form a face");
 	}
@@ -409,8 +472,8 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 			int dbgBreak = 1;
 		}
 
-		getBlockPtr()->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
-			newFaceId = face.splitWithFaceEdgesNTS(splittingFace);
+		getWritableBlockPtr()->faceFunc2(faceId, splittingFaceId, [this, &newFaceId](Polygon& face, Polygon& splittingFace) {
+			newFaceId = face.splitWithFaceEdges(splittingFace);
 		});
 
 		if (newFaceId.isValid()) {
@@ -425,7 +488,7 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	splitFaceIdSet.insert(_faceIds.begin(), _faceIds.end());
 	for (const auto& faceId : splitFaceIdSet) {
 		getBlockPtr()->faceFunc(faceId, [&faceId, &splitPlane, &faceSet0, &faceSet1](const Polygon& face) {
-			const double tol = 1.0e-5;
+			const double tol = Tolerance::paramTol();
 			if (face.isAbovePlane(splitPlane, tol))
 				faceSet0.insert(faceId);
 			else
@@ -439,27 +502,27 @@ vector<Index3DId> Polyhedron::splitWithPlane(const Plane& splitPlane, bool inter
 	if (faceSet1.size() > faceSet0.size())
 		swap(faceSet0, faceSet1);
 
-	for (const auto& faceId : faceSet1) {
-		removeFace(faceId);
-	}
-	addFace(splittingFaceId);
 
-	vector<Index3DId> newFaceIds;
-	newFaceIds.insert(newFaceIds.end(), faceSet1.begin(), faceSet1.end());
-	newFaceIds.push_back(splittingFaceId);
-	Index3DId newCellId = Index3DId(_thisId, getBlockPtr()->addCell(newFaceIds));
+	faceSet0.insert(splittingFaceId);
+	faceSet1.insert(splittingFaceId);
 
-	getBlockPtr()->faceFunc(splittingFaceId, [this, &newCellId](Polygon& face) {
-		face.addCell(_thisId);
-		face.addCell(newCellId);
+	Index3DId newCellId0 = Index3DId(_thisId, getWritableBlockPtr()->addCell(faceSet0));
+	Index3DId newCellId1 = Index3DId(_thisId, getWritableBlockPtr()->addCell(faceSet1));
+
+	getWritableBlockPtr()->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
+		face.addCell(newCellId0);
+		face.addCell(newCellId1);
 	});
 
-	assert(verifyTopology());
+	getWritableBlockPtr()->faceFunc(splittingFaceId, [this, &newCellId0, &newCellId1](Polygon& face) {
+		face.addCell(newCellId0);
+		face.addCell(newCellId1);
+	});
 
-	if (_thisId.isValid())
-		result.push_back(_thisId);
-	if (newCellId.isValid())
-		result.push_back(newCellId);
+	if (newCellId0.isValid())
+		result.push_back(newCellId0);
+	if (newCellId1.isValid())
+		result.push_back(newCellId1);
 
 	return result;
 }
@@ -491,7 +554,7 @@ set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 	return edgeSet;
 }
 
-bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
+bool Polyhedron::orderVertIds(vector<Index3DId>& vertIds) const
 {
 
 	vector<Index3DId> result;
@@ -531,29 +594,13 @@ bool Polyhedron::orderVertIdsNTS(vector<Index3DId>& vertIds) const
 	return false;
 }
 
-set<Index3DId> Polyhedron::getEdgeFaceIds(const Edge& edge) const
-{
-	// This function returns the faced ids which belong to this edge AND to this cell. 
-	// It should always be two for closed cell.
-	set<Index3DId> result;
-
-	for (const auto& faceId : _faceIds) {
-		getBlockPtr()->faceFunc(faceId, [&edge, &faceId, &result](const Polygon& face) {
-			if (face.containsEdge(edge)) {
-				result.insert(faceId);
-			}
-		});
-	}
-
-	return result;
-}
-
 bool Polyhedron::isClosed() const
 {
 	bool result = true;
-	auto edges = getEdges();
+	set<Edge> edges;
+	getEdges(edges, false);
 	for (const auto& edge : edges) {
-		if (getEdgeFaceIds(edge).size() != 2) {
+		if (edge.getFaceIds().size() != 2) {
 			result = false;
 			break;
 		}

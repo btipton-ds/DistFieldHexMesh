@@ -282,7 +282,7 @@ void AppData::doBuildCFDHexes()
 
     Index3D::setBlockDim(1);
 
-    double blockSize = 0.15;
+    double blockSize = 0.3;
 
     _volume->buildCFDHexes(_pMesh, blockSize);
 

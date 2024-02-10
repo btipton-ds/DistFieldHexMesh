@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <map>
-#include <mutex>
+#include <mutexType.h>
 #include <stdexcept>
 #include <tm_vector3.h>
 #include <Index3D.h>
@@ -11,29 +11,11 @@
 namespace DFHM {
 
 class Block;
-class MutexType;
+
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
 public:
-	class ScopedGranularLock {
-	public:
-		ScopedGranularLock(ObjectPoolOwner& self, bool val);
-		~ScopedGranularLock();
-	private:
-		ObjectPoolOwner& _self;
-		bool _wasLocked;
-	};
 	virtual const Index3D& getBlockIdx() const = 0;
-
-	bool isGranularLocking() const;
-
-private:
-	friend ObjectPoolOwner;
-
-	// TODO granular locking worked in the old code for block creation, but occasionally has race conditions now.
-	void setGranularLocking(bool val);
-
-	bool _isGranularLocking = false;
 };
 
 class ObjectPoolOwnerUser {
@@ -46,15 +28,18 @@ public:
 
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
+	const Block* getSrcBlockPtr(const Index3DId& blockIdx) const;
+	Block* getWritableBlockPtr() const;
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
 	MutexType& getMutex() const;
+
 protected:
+	mutable MutexType _mutex;
 	Index3DId _thisId;
 
 private:
 	ObjectPoolOwner* _pPoolOwner = nullptr;
-	mutable MutexType _mutex;
 };
 
 template<class T>
@@ -66,7 +51,7 @@ public:
 	ObjectPoolOwner* getBlockPtr();
 
 	void testReset();
-	bool free(size_t id); // Permanently delete it
+	bool free(const Index3DId& id); // Permanently delete it
 	bool removeFromLookup(const Index3DId& id);
 	void addToLookup(const Index3DId& id);
 
@@ -120,7 +105,6 @@ private:
 		const ObjectPool& _owner;
 	};
 
-	mutable MutexType _mutex;
 	bool calIndices(size_t index, size_t& segNum, size_t& segIdx) const;
 	T* getEntry(size_t index);
 	const T* getEntry(size_t index) const;
@@ -196,10 +180,9 @@ inline const T* ObjectPool<T>::getEntry(size_t index) const
 }
 
 template<class T>
-bool ObjectPool<T>::free(size_t id)
+bool ObjectPool<T>::free(const Index3DId& globalId)
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
-
+	size_t id = globalId.elementId();
 	if (id >= _idToIndexMap.size())
 		return false;
 
@@ -207,7 +190,7 @@ bool ObjectPool<T>::free(size_t id)
 	if (index >= _objectSegs.size())
 		return false;
 
-	removeFromLookup(id);
+	removeFromLookup(globalId);
 
 	T* p = getEntry(index);
 	if (p) {
@@ -224,7 +207,6 @@ template<class T>
 inline bool ObjectPool<T>::removeFromLookup(const Index3DId& id)
 {
 	if (_supportsReverseLookup) {
-		patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 		auto iter = _objToIdMap.find(id.elementId());
 		if (iter != _objToIdMap.end()) {
 			_objToIdMap.erase(iter);
@@ -239,7 +221,6 @@ template<class T>
 inline void ObjectPool<T>::addToLookup(const Index3DId& id)
 {
 	if (_supportsReverseLookup) {
-		patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 		_objToIdMap.insert(std::make_pair(id.elementId(), id.elementId()));
 	}
 
@@ -248,7 +229,6 @@ inline void ObjectPool<T>::addToLookup(const Index3DId& id)
 template<class T>
 void ObjectPool<T>::resize(size_t size)
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	if (size > _idToIndexMap.size()) {
 		_idToIndexMap.resize(size);
 		size_t numSegs = size / _objectSegmentSize + 1;
@@ -276,7 +256,6 @@ template<class T>
 Index3DId ObjectPool<T>::findId(const T& obj) const
 {
 	if (_supportsReverseLookup) {
-		patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 		_tl_pCompareObj = &obj;
 		auto iter = _objToIdMap.find(-1);
 		if (iter != _objToIdMap.end())
@@ -288,7 +267,6 @@ Index3DId ObjectPool<T>::findId(const T& obj) const
 template<class T>
 inline bool ObjectPool<T>::exists(const Index3DId& id) const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	bool result(id.elementId() < _idToIndexMap.size() && _idToIndexMap[id.elementId()] != -1);
 	if (!result) {
 		int dbgBreak = 1;
@@ -300,7 +278,6 @@ inline bool ObjectPool<T>::exists(const Index3DId& id) const
 template<class T>
 Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	if (_supportsReverseLookup) {
 		auto id = findId(obj);
 		if (id.isValid())
@@ -390,7 +367,6 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 template<class T>
 const T* ObjectPool<T>::getSize_t(size_t id) const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	if (id == -1)
 		return _tl_pCompareObj;
 	else if (id < _idToIndexMap.size()) {
@@ -404,7 +380,6 @@ const T* ObjectPool<T>::getSize_t(size_t id) const
 template<class T>
 const T* ObjectPool<T>::get(const Index3DId& id) const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	if (!id.isValid())
 		return _tl_pCompareObj;
 	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
@@ -417,7 +392,6 @@ const T* ObjectPool<T>::get(const Index3DId& id) const
 template<class T>
 T* ObjectPool<T>::get(const Index3DId& id)
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	if (!id.isValid())
 		return (T*)_tl_pCompareObj;
 	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
@@ -444,7 +418,6 @@ T* ObjectPool<T>::get(const T& obj)
 template<class T>
 const T& ObjectPool<T>::operator[](const Index3DId& id) const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
 	return *getEntry(_idToIndexMap[id.elementId()]);
 }
@@ -452,7 +425,6 @@ const T& ObjectPool<T>::operator[](const Index3DId& id) const
 template<class T>
 T& ObjectPool<T>::operator[](const Index3DId& id)
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
 	return *getEntry(_idToIndexMap[id.elementId()]);
 }
@@ -461,20 +433,11 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
-	size_t num;
-	{
-		patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
-		num = _idToIndexMap.size();
-	}
-	for (size_t id = 0; id < num; id++) {
-		size_t index;
-		{
-			patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
-			index = _idToIndexMap[id];
-		}
+	for (size_t id = 0; id < _idToIndexMap.size(); id++) {
+		size_t index = _idToIndexMap[id];
 		if (index != -1) {
 			auto p = getEntry(index);
-			patient_lock_guard g(p->getMutex(), std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
+			patient_lock_guard g(p->getMutex());
 			fLambda(*p);
 		}
 	}
@@ -484,34 +447,24 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
-	size_t num;
-	{
-		patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
-		num = _idToIndexMap.size();
-	}
-	for (size_t id = 0; id < num; id++) {
-		size_t index;
-		{
-			patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
-			index = _idToIndexMap[id];
-		}
+	for (size_t id = 0; id < _idToIndexMap.size(); id++) {
+		size_t index = _idToIndexMap[id];
 		if (index != -1) {
 			auto p = getEntry(index);
-			patient_lock_guard g(p->getMutex(), std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
+			patient_lock_guard g(p->getMutex());
 			fLambda(*p);
 		}
 	}
 }
 
 template<class T>
-bool ObjectPool<T>::empty() const
+inline bool ObjectPool<T>::empty() const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	return size() == 0;
 }
 
 template<class T>
-size_t ObjectPool<T>::size() const
+inline size_t ObjectPool<T>::size() const
 {
 	return getNumAllocated();
 }
@@ -519,7 +472,6 @@ size_t ObjectPool<T>::size() const
 template<class T>
 size_t ObjectPool<T>::getNumAllocated() const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	size_t size = 0;
 	for (const auto& p : _objectSegs) {
 		if (p)
@@ -531,7 +483,6 @@ size_t ObjectPool<T>::getNumAllocated() const
 template<class T>
 size_t ObjectPool<T>::getNumAvailable() const
 {
-	patient_lock_guard g(_mutex, std::this_thread::get_id(), _pPoolOwner->isGranularLocking());
 	return _availableIndices.size();
 }
 
