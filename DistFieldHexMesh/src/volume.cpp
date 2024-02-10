@@ -476,35 +476,19 @@ bool Volume::verifyTopology() const
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore) const
 {
-	const Index3DBaseType stride = 3;
-	Index3D phaseIdx;
 
-	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
-		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
-			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
-
-				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t threadNum, size_t numThreads) {
-					Index3D idx;
-					for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
-						for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
-							for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
-								size_t linearIdx = calLinearBlockIndex(idx);
-								if ((linearIdx % numThreads) == threadNum)
-									fLambda(linearIdx);
-							}
-						}
-					}
-				}, multiCore);
-
-			}
+	MultiCore::runLambda([this, fLambda](size_t threadNum, size_t numThreads) {
+		Index3D idx;
+		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
+			fLambda(i);
 		}
-	}
+	}, multiCore);
 }
 
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore)
 {
-	const Index3DBaseType stride = 3;
+	const Index3DBaseType stride = 2;
 	Index3D phaseIdx;
 
 	startOperation();
