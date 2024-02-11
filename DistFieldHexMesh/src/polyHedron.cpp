@@ -90,6 +90,16 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 	return false;
 }
 
+void Polyhedron::addChild(const Index3DId& id)
+{
+	_children.insert(id);
+}
+
+void Polyhedron::setParent(const Index3DId& id)
+{
+	_parent = id;
+}
+
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 {
 	for (const auto& faceId : _faceIds) {
@@ -265,7 +275,7 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
-bool Polyhedron::splitAtPoint(const Vector3d& pt, set<Index3DId>& newCellIds) const
+bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds) const
 {
 	set<Index3DId> vertIds;
 	getVertIds(vertIds);
@@ -282,7 +292,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& pt, set<Index3DId>& newCellIds) co
 		}
 		vector<Edge> orderedEdges;
 		if (orderVertEdges(vertEdges, orderedEdges)) {
-			Index3DId cellCenterPtId = getOutBlockPtr()->addVertex(pt);
+			Index3DId cellCenterPtId = getOutBlockPtr()->addVertex(centerPoint);
 
 			vector<Index3DId> edgePtIds, facePtIds, sourceFaceIds;
 			for (size_t i = 0; i < orderedEdges.size(); i++) {
@@ -292,11 +302,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& pt, set<Index3DId>& newCellIds) co
 				bool found = false;
 				for (const auto& faceId0 : edge.getFaceIds()) {
 					if (edge1.getFaceIds().contains(faceId0)) {
-						faceFunc(faceId0, [this, &pt, &edge, &edgePtIds, &facePtIds, &sourceFaceIds](const Polygon& face) {
-							Vector3d faceCtr = face.projectPoint(pt);
+						faceFunc(faceId0, [this, &centerPoint, &edge, &edgePtIds, &facePtIds, &sourceFaceIds](const Polygon& face) {
+							Vector3d faceCtr = face.projectPoint(centerPoint);
 							facePtIds.push_back(getOutBlockPtr()->addVertex(faceCtr));
 
-							Vector3d edgeCtr = edge.projectPt(getBlockPtr(), pt);
+							Vector3d edgeCtr = edge.projectPt(getBlockPtr(), centerPoint);
 							edgePtIds.push_back(getOutBlockPtr()->addVertex(edgeCtr));
 							sourceFaceIds.push_back(face.getId());
 						});
@@ -326,13 +336,41 @@ bool Polyhedron::splitAtPoint(const Vector3d& pt, set<Index3DId>& newCellIds) co
 			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[3], corners[7], corners[4] })));
 
 			Index3DId newCellId = getOutBlockPtr()->addCell(faceIds);
+			newCellIds.insert(newCellId);
+			/*
 			for (const auto& faceId : faceIds) {
-				faceOutFunc(faceId, [&newCellId](Polygon& face) { face.addCell(newCellId); });
+				faceOutFunc(faceId, [&newCellId](Polygon& face) {
+					face.addCell(newCellId);
+					});
 			}
+			*/
 
-			faceOutFunc(sourceFaceIds[0], [](Polygon& face) { face.addChildId(face.getId()); });
-			faceOutFunc(sourceFaceIds[5], [](Polygon& face) { face.addChildId(face.getId()); });
-			faceOutFunc(sourceFaceIds[2], [](Polygon& face) { face.addChildId(face.getId()); });
+			faceOutFunc(faceIds[0], [&sourceFaceIds](Polygon& face) { 
+				face.setParentId(sourceFaceIds[0]); 
+				});
+			faceOutFunc(faceIds[5], [&sourceFaceIds](Polygon& face) { 
+				face.setParentId(sourceFaceIds[1]); 
+				});
+			faceOutFunc(faceIds[2], [&sourceFaceIds](Polygon& face) { 
+				face.setParentId(sourceFaceIds[2]); 
+				});
+
+			faceOutFunc(sourceFaceIds[0], [&faceIds](Polygon& face) { 
+				face.addChildId(faceIds[0]); 
+				});
+			faceOutFunc(sourceFaceIds[1], [&faceIds](Polygon& face) { 
+				face.addChildId(faceIds[5]); 
+				});
+			faceOutFunc(sourceFaceIds[2], [&faceIds](Polygon& face) { 
+				face.addChildId(faceIds[2]); 
+				});
+
+			cellOutFunc(_thisId, [&newCellId](Polyhedron& thisCell) {
+				thisCell.addChild(newCellId);
+			});
+			cellOutFunc(newCellId, [this](Polyhedron& newCell) {
+				newCell.setParent(_thisId);
+			});
 		}
 	}
 

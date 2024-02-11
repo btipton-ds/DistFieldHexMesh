@@ -271,7 +271,9 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
-	Plane pl(pt, calUnitNormal());
+	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds[0]); // And point will do
+	Vector3d normal = calUnitNormal();
+	Plane pl(origin, normal);
 	auto result = pl.projectPoint(pt);
 
 	return result;

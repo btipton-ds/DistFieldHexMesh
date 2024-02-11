@@ -24,9 +24,12 @@ public:
 
 	// Required for use with object pool
 	Index3DId getId() const;
+	bool isActive() const;
 
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
+	void addChild(const Index3DId& id);
+	void setParent(const Index3DId& id);
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
 	void getEdges(std::set<Edge>& edgeSet, bool includeNeighborFaces) const;
@@ -66,13 +69,18 @@ private:
 	void copyToOut() const;
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
-	std::vector<Index3DId> _children;
+	std::set<Index3DId> _children;
 	std::set<Index3DId> _faceIds;
 };
 
 inline Index3DId Polyhedron::getId() const
 {
 	return _thisId;
+}
+
+inline bool Polyhedron::isActive() const
+{
+	return _children.empty();
 }
 
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
