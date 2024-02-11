@@ -36,14 +36,15 @@ ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser&
 
 const Block* ObjectPoolOwnerUser::getBlockPtr() const
 {
-	return const_cast<const Block*>(dynamic_cast<Block*>(_pPoolOwner));
+	auto pBlock =  dynamic_cast<const Block*>(_pPoolOwner);
+	return pBlock->getOwner(_thisId);
 }
 
-Block* ObjectPoolOwnerUser::getOutBlockPtr(const Index3DId& blockIdx) const
+Block* ObjectPoolOwnerUser::getOutBlockPtr() const
 {
-	auto pOwner = getBlockPtr();
+	auto pOwner = dynamic_cast<const Block*>(_pPoolOwner);
 	if (pOwner)
-		return pOwner->getVolume()->getOutBlockPtr(blockIdx);
+		return pOwner->getVolume()->getOutBlockPtr(_thisId);
 	return nullptr;
 }
 

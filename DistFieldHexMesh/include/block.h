@@ -9,6 +9,7 @@
 #include <triMesh.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <lambdaMacros.h>
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -33,11 +34,6 @@ class Polyhedron;
 	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
 */
 
-#define LAMBDA_FUNC_DECL(NAMEFunc, CONST) template<class LAMBDA> \
-void NAMEFunc(const Index3DId& id, LAMBDA func) CONST
-#define LAMBDA_FUNC_PAIR_DECL(NAMEFunc) \
-LAMBDA_FUNC_DECL(NAMEFunc, const); \
-LAMBDA_FUNC_DECL(NAMEFunc,)
 
 class Block : public ObjectPoolOwner {
 public:
@@ -68,19 +64,19 @@ public:
 		MT_BOUNDARY,
 		MT_ALL,
 	};
-	const Index3D& getBlockIdx() const;
+
+	Volume* getVolume() override;
+	const Volume* getVolume() const override;
+	const Index3D& getBlockIdx() const override;
+	const Block* getOwner(const Index3D& blockIdx) const override;
+	Block* getOutBlockPtr(const Index3D& blockIdx) const override;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
-	Block(Volume* pVol, bool isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	Block(Volume* pVol, bool _isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 
 	size_t blockDim() const;
-	Volume* getVolume();
-	const Volume* getVolume() const;
-	const Block* getOwner(const Index3D& blockIdx) const;
-	Block* getOutBlockPtr(const Index3D& blockIdx) const;
-	void setIsOutput(bool val);
 
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
@@ -94,19 +90,17 @@ public:
 
 	bool verifyTopology() const;
 	bool verifyPolyhedronTopology(const Index3DId& cellId) const;
-	std::vector<size_t> createSubBlocks();
+	std::vector<Index3DId> createSubBlocks();
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	size_t processTris();
+	size_t processTris() const;
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum) const;
 	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
-	size_t splitAllCellsWithPlane(const Plane& splittingPlane);
-	size_t splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -117,10 +111,8 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	size_t addCell(const std::set<Index3DId>& faceIds);
-	size_t addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
-
-	void addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId);
+	Index3DId addCell(const std::set<Index3DId>& faceIds);
+	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
@@ -141,9 +133,9 @@ public:
 	// its own thread safety. They are passed by reference because if the object is not in storage
 	// that's fatal error for all agorithms and there is no recovery from that.
 
-	LAMBDA_FUNC_PAIR_DECL(vertexFunc);
-	LAMBDA_FUNC_PAIR_DECL(faceFunc);
-	LAMBDA_FUNC_PAIR_DECL(cellFunc);
+	LAMBDA_FUNC_PAIR_DECL(vertex);
+	LAMBDA_FUNC_PAIR_DECL(face);
+	LAMBDA_FUNC_PAIR_DECL(cell);
 
 	template<class LAMBDA>
 	void faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func);
@@ -157,7 +149,7 @@ private:
 		X, Y, Z
 	};
 
-
+	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
@@ -174,11 +166,13 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
+	size_t splitAllCellsAtPoint(const Vector3d& pt) const;
+	size_t splitByCurvature(double arcAngleDegrees) const;
 
 	Index3D _blockIdx;
 
-	Volume* _pVol;
 	bool _isOutput;
+	Volume* _pVol;
 	CBoundingBox3Dd 
 		_boundBox, // The precise bounding box for this box
 		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
@@ -255,22 +249,9 @@ inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
 	return _polygons[id];
 }
 
-#define LAMBDA_FUNC_IMPL(NAMEFunc, GETTER, MEMBER_NAME, CONST) \
-template<class LAMBDA> \
-inline void Block::NAMEFunc(const Index3DId& id, LAMBDA func) CONST \
-{ \
-	auto pOwner = GETTER(id); \
-	auto& obj = pOwner->MEMBER_NAME[id]; \
-	patient_lock_guard g(obj.getMutex()); \
-	func(obj); \
-}
-#define LAMBDA_FUNC_PAIR_IMPL(NAMEFunc, MEMBER_NAME) \
-LAMBDA_FUNC_IMPL(NAMEFunc, getOwner, MEMBER_NAME, const); \
-LAMBDA_FUNC_IMPL(NAMEFunc, getOutBlockPtr, MEMBER_NAME, )
-
-LAMBDA_FUNC_PAIR_IMPL(vertexFunc, _vertices);
-LAMBDA_FUNC_PAIR_IMPL(faceFunc, _polygons);
-LAMBDA_FUNC_PAIR_IMPL(cellFunc, _polyhedra);
+LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices);
+LAMBDA_FUNC_PAIR_IMPL(face, _polygons);
+LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra);
 
 template<class LAMBDA>
 void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)

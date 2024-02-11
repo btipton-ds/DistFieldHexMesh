@@ -229,24 +229,16 @@ bool Block::verifyPolyhedronTopology(const Index3DId& cellId) const
 	return result;
 }
 
-void Block::addFaceToPolyhedron(const Index3DId& faceId, const Index3DId& cellId)
+vector<Index3DId> Block::createSubBlocks()
 {
-	cellFunc(cellId, [&faceId](Polyhedron& cell) {
-		cell.addFace(faceId);
-	});
-
-}
-
-vector<size_t> Block::createSubBlocks()
-{
-	vector<size_t> newCells;
+	vector<Index3DId> newCells;
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				size_t cellIdx = addHexCell(_corners.data(), _blockDim, idx, true);
-				if (cellIdx != -1)
-					newCells.push_back(cellIdx);
+				auto cellId = addHexCell(_corners.data(), _blockDim, idx, true);
+				if (cellId.isValid())
+					newCells.push_back(cellId);
 			}
 		}
 	}
@@ -430,23 +422,14 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-size_t Block::addCell(const set<Index3DId>& faceIds)
+Index3DId Block::addCell(const set<Index3DId>& faceIds)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 
-	cellFunc(cellId, [this, &cellId](Polyhedron& cell) {
-		for (auto& faceId : cell.getFaceIds()) {
-			faceFunc(faceId, [&cellId](Polygon& face) {
-				face.addCell(cellId);
-			});
-		}
-
-		assert(cell.verifyTopology());
-	});
-	return cellId.elementId();
+	return cellId;
 }
 
-size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
+Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
 
@@ -469,7 +452,7 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 			}
 		}
 		if (!found)
-			return -1;
+			return Index3DId();
 #if 0
 		vector<LineSegment> edgeSegs;
 		getBlockEdgeSegs(pts.data(), edgeSegs);
@@ -500,21 +483,17 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 
 	const Index3DId polyhedronId = _polyhedra.findOrAdd(Polyhedron(faceIds));
 	assert(polyhedronId.isValid());
-
 	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [&polyhedronId](Polygon& face) {
+		faceOutFunc(faceId, [&polyhedronId](Polygon& face) {
 			face.addCell(polyhedronId);
 		});
 	}
 
-	return polyhedronId.elementId(); // SubBlocks are never shared across blocks, so we can drop the block index
+	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-	if (blockIdx == _blockIdx)
-		return this;
-
 	return _pVol->getBlockPtr(_isOutput, blockIdx);
 }
 
@@ -597,15 +576,16 @@ bool Block::load()
 	return true;
 }
 
-size_t Block::processTris()
+size_t Block::processTris() const
 {
 #if 1
-	size_t count = _polyhedra.size();
+	double arcAngleDegrees = 360.0 / 20;
+	size_t count = splitByCurvature(arcAngleDegrees);
 
 	for (size_t i = 0; i < 2; i++) {
-		_polyhedra.iterateInOrder([this](Polyhedron& cell) {
-			size_t circleDivs = 72;
-			cell.splitByCurvature(getModelMesh(), circleDivs);
+		_polyhedra.iterateInOrder([this](const Polyhedron& cell) {
+			double arcAngleDegrees = 360.0 / 20;
+			cell.splitByCurvature(arcAngleDegrees);
 		});
 	}
 
@@ -614,77 +594,27 @@ size_t Block::processTris()
 	return count;
 }
 
-size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
+size_t Block::splitAllCellsAtPoint(const Vector3d& pt) const
 {
-	size_t numSplits = 0;
-	set<Index3DId> deadCells;
-	_polyhedra.iterateInOrder([&splittingPlane, &numSplits, &deadCells](Polyhedron& cell) {
-		if (cell.getId() == Index3DId(Index3D(0, 0, 1), 0)) {
-			int dbgBreak = 1;
-		}
-		auto temp = cell.splitWithPlane(splittingPlane, false);
-		if (!temp.empty()) {
-			deadCells.insert(cell.getId());
-			numSplits += temp.size();
-		}
+	size_t count = _polyhedra.size();
+	_polyhedra.iterateInOrder([this, pt](const Polyhedron& cell) {
+		// TODO, we do need a cell finder at some point
+		set<Index3DId> newCellIds;
+		if (cell.contains(pt))
+			cell.splitAtPoint(pt, newCellIds);
 	});
-
-	for (const auto& cellId : deadCells) {
-		_polyhedra.free(cellId);
-	}
-
-	/*
-	_polygons.iterateInOrder([](Polygon& face) {
-		face.clearSplitFromId();
-	});
-	*/
-	return numSplits;
+	count = _polyhedra.size() - count;
+	return count;
 }
 
-size_t Block::splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt)
+size_t Block::splitByCurvature(double arcAngleDegrees) const
 {
-	size_t numSplit = 0;
-	size_t nCells0, nCells1;
-
-	nCells0 = _polyhedra.size();
-	set<Index3DId> nextCells0, nextCells1;
-	_polyhedra.iterateInOrder([&splitPt, &nextCells0](Polyhedron& cell) {
-		Plane splitPlane(splitPt, Vector3d(1, 0, 0));
-		if (cell.contains(splitPlane._origin)) {
-			auto temp = cell.splitWithPlane(splitPlane, false);
-
-			nextCells0.insert(temp.begin(), temp.end());
-		}
+	size_t count = _polyhedra.size();
+	_polyhedra.iterateInOrder([this, arcAngleDegrees](const Polyhedron& cell) {
+		cell.splitByCurvature(arcAngleDegrees);
 	});
-
-	nCells1 = _polyhedra.size();
-
-	nCells0 = nCells1;
-
-	for (const auto& cellId : nextCells0) {
-		cellFunc(cellId, [&splitPt, &nextCells1](Polyhedron& cell) {
-			Plane splitPlane(splitPt, Vector3d(0, 1, 0));
-			auto temp = cell.splitWithPlane(splitPlane, false);
-			nextCells1.insert(temp.begin(), temp.end());
-		});
-	}
-
-	nCells1 = _polyhedra.size();
-
-	nCells0 = nCells1;
-
-	nextCells0.clear();
-	for (const auto& cellId : nextCells1) {
-		cellFunc(cellId, [&splitPt, &nextCells0](Polyhedron& cell) {
-			Plane splitPlane(splitPt, Vector3d(0, 0, 1));
-			auto temp = cell.splitWithPlane(splitPlane, false);
-			nextCells0.insert(temp.begin(), temp.end());
-		});
-	}
-
-	nCells1 = _polyhedra.size();
-
-	return numSplit;
+	count = _polyhedra.size() - count;
+	return count;
 }
 
 bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const
@@ -820,19 +750,19 @@ void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, vector<LineSegment>
 bool Block::vertexExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
-	return pOwner->_vertices.exists(id);
+	return pOwner && pOwner->_vertices.exists(id);
 }
 
 bool Block::polygonExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
-	return pOwner->_polygons.exists(id);
+	return pOwner && pOwner->_polygons.exists(id);
 }
 
 bool Block::polyhedronExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
-	return pOwner->_polyhedra.exists(id);
+	return pOwner && pOwner->_polyhedra.exists(id);
 }
 
 void Block::pack()

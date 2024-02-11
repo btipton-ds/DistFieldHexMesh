@@ -32,6 +32,7 @@ Volume::Volume(const Volume& src)
 	: _originMeters(src._originMeters) 
 	, _spanMeters(src._spanMeters)
 	, _blocks(src._blocks)
+	, _outBlocks(src._outBlocks)
 {
 }
 
@@ -53,8 +54,10 @@ void Volume::endOperation()
 {
 	assert(_outBlocks.size() == _blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
-		if (_outBlocks[i])
+		if (_outBlocks[i]) {
+			_outBlocks[i]->setIsOutput(false);
 			_blocks[i] = _outBlocks[i];
+		}
 		_outBlocks[i] = nullptr;
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
@@ -116,7 +119,7 @@ void Volume::findSharpEdgeGroups()
 	}
 }
 
-void Volume::splitAllCellsWithPlanesAtSharpVertices()
+void Volume::splitAllCellsAtSharpVertices()
 {
 	size_t numBlocks;
 	auto sharpVerts = getSharpVertIndices();
@@ -128,19 +131,14 @@ void Volume::splitAllCellsWithPlanesAtSharpVertices()
 	atomic<size_t> numSplit = 0;
 	for (size_t ipt = 0; ipt < splittingPoints.size(); ipt++) {
 		const auto& splitPt = splittingPoints[ipt];
-		for (int i = 0; i < 3; i++) {
-			Vector3d norm(0, 0, 0);
-			norm[i] = 1;
-			Plane splittingPlane(splitPt, norm);
-			numBlocks = _blocks.size();
-			MultiCore::runLambda([this, &splittingPlane, &numSplit](size_t linearIdx)-> bool {
-				if (_blocks[linearIdx]) {
-					size_t numNewCells = _outBlocks[linearIdx]->splitAllCellsWithPlane(splittingPlane);
-					numSplit++;
-				}
-				return true;
-			}, numBlocks, RUN_MULTI_THREAD);
-		}
+		numBlocks = _blocks.size();
+		MultiCore::runLambda([this, &splitPt, &numSplit](size_t linearIdx)-> bool {
+			if (_blocks[linearIdx]) {
+				size_t numNewCells = _blocks[linearIdx]->splitAllCellsAtPoint(splitPt);
+				numSplit++;
+			}
+			return true;
+		}, numBlocks, RUN_MULTI_THREAD);
 
 
 	}
@@ -297,7 +295,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	assert(verifyTopology());
+	assert(verifyTopology(false));
 
 #if 0
 	size_t count = 0;
@@ -315,7 +313,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	}, !QUICK_TEST && RUN_MULTI_THREAD);
 #endif
 
-	assert(verifyTopology());
+	assert(verifyTopology(false));
 
 #if 0
 	splitAllCellsWithPlanesAtSharpVertices();
@@ -465,12 +463,15 @@ void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const strin
 
 }
 
-bool Volume::verifyTopology() const
+bool Volume::verifyTopology(bool isOutput) const
 {
 	bool result = true;
 
-	runLambda([this, &result](size_t linearIdx)->bool {
-		result = result && _blocks[linearIdx]->verifyTopology();
+	runLambda([this, isOutput, &result](size_t linearIdx)->bool {
+		if (isOutput)
+			result = result && _outBlocks[linearIdx]->verifyTopology();
+		else
+			result = result && _blocks[linearIdx]->verifyTopology();
 		return true;
 	}, RUN_MULTI_THREAD);
 	return result;

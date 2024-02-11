@@ -42,7 +42,6 @@ public:
 	bool isColinearWith(const Block* pBlock, const Edge& other) const;
 	bool isConnectedTo(const Edge& other) const;
 	LineSegment getSegment(const Block* pBlock) const;
-	bool canBeRemoved(const Block* pBlock) const;
 
 	double intesectPlaneParam(const Block* pBlock, const Plane& splittingPlane) const;
 	Index3DId splitAtParam(Block* pBlock, double t, std::set<Index3DId>& faceIds) const;

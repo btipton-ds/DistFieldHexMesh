@@ -156,20 +156,6 @@ LineSegment Edge::getSegment(const Block* pBlock) const
 	return result;
 }
 
-bool Edge::canBeRemoved(const Block* pBlock) const
-{
-	bool result = false;
-	if (_faceIds.size() != 2)
-		return result;
-
-	auto iter = _faceIds.begin();
-	Vector3d norm0, norm1;
-	pBlock->faceFunc(*iter++, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
-	pBlock->faceFunc(*iter, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
-
-	return norm1.cross(norm0).norm() < Tolerance::angleTol();
-}
-
 bool Edge::containsVertex(const Index3DId& vertexId) const
 {
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;

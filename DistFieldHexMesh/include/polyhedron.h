@@ -1,10 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <triMesh.h>
 #include <tm_boundingBox.h>
 #include <index3D.h>
 #include <objectPool.h>
-#include <triMesh.h>
+#include <lambdaMacros.h>
 
 namespace DFHM {
 
@@ -29,13 +30,11 @@ public:
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
 	void getEdges(std::set<Edge>& edgeSet, bool includeNeighborFaces) const;
-	void getPrincipalEdges(std::set<Edge>& result) const;
-	void getPrincipalPolygons(std::set<Index3DId>& result) const;
 
 	std::set<Index3DId> getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
-	std::set<Edge> getVertEdges(const Index3DId& vertId) const;
+	void getVertEdges(const Index3DId& vertId, std::set<Edge>& edges, bool includeAdjacentCells) const;
 	// Gets the faces for a vertex which belong to this polyhedron
 	std::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
@@ -44,10 +43,8 @@ public:
 	Vector3d calCentroid() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	std::vector<Index3DId> splitWithPlane(const Plane& splitPlane, bool intersectingOnly) const;
-	bool splitWithPlanesAtCentroid(bool intersectingOnly, std::vector<Index3DId>& newCellIds) const;
-	bool splitWithPlanesAtPoint(const Vector3d& pt, bool intersectingOnly, std::vector<Index3DId>& newCellIds) const;
-	void splitByCurvature(const TriMesh::CMeshPtr& pTriMesh, size_t circleDivs) const;
+	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds) const;
+	void splitByCurvature(double maxArcAngleDegrees) const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -55,14 +52,19 @@ public:
 
 	bool isClosed() const;
 	bool verifyTopology() const;
-	bool verifyTopologyAdj() const;
 	bool operator < (const Polyhedron& rhs) const;
+
+	LAMBDA_FUNC_PAIR_DECL(vertex);
+	LAMBDA_FUNC_PAIR_DECL(face);
+	LAMBDA_FUNC_PAIR_DECL(cell);
 
 private:
 	friend class Block;
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 
+	Index3DId _parent; // This records the id of the polygon this polygon was split from
+	std::vector<Index3DId> _children;
 	std::set<Index3DId> _faceIds;
 };
 
@@ -76,10 +78,9 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 	return _faceIds;
 }
 
-inline bool Polyhedron::splitWithPlanesAtCentroid(bool intersectingOnly, std::vector<Index3DId>& newCellIds) const
-{
-	return splitWithPlanesAtPoint(calCentroid(), intersectingOnly, newCellIds);
-}
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
 
 }
 

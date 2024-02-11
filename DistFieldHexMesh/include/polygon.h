@@ -5,6 +5,7 @@
 #include <patient_lock_guard.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <lambdaMacros.h>
 #include <vertex.h>
 
 struct Plane;
@@ -49,7 +50,6 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
-	void setVertexIds(const std::vector<Index3DId>& verts);
 	void getEdges(std::set<Edge>& edgeSet) const;
 
 	bool isOrphan() const; // No longer used by a cell
@@ -57,7 +57,6 @@ public:
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
 	bool isAbovePlane(const Plane& plane, double tol) const;
-	bool allEdgesPrincipal() const;
 
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
@@ -65,24 +64,23 @@ public:
 	double calVertexAngle(size_t index) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
-	void getPrincipalEdges(std::set<Edge>& edges) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	// inserts a vertex between vert0 and vert1.
-	Index3DId insertVertexInEdge(const Edge& edge, const Vector3d& pt);
-	bool insertVertexInEdge(const Edge& edge, const Index3DId& newVertId);
-
-	Index3DId splitWithFaceEdges(const Polygon& splittingFace);
+	LAMBDA_FUNC_PAIR_DECL(vertex);
+	LAMBDA_FUNC_PAIR_DECL(face);
+	LAMBDA_FUNC_PAIR_DECL(cell);
 
 private:
 	void sortIds() const;
-	Index3DId findOtherSplitFaceId(const Edge& edge) const;
 
 	size_t _numSplits = 0;
+	Index3DId _parent; // This records the id of the polygon this polygon was split from
+	std::vector<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
+
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -149,4 +147,7 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell);
 }

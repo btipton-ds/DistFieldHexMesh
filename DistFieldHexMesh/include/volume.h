@@ -59,7 +59,7 @@ public:
 
 	void writePolyMesh(const std::string& dirName) const;
 
-	bool verifyTopology() const;
+	bool verifyTopology(bool isOutput) const;
 
 private:
 	friend class Vertex;
@@ -82,7 +82,7 @@ private:
 	void findFeatures();
 	void findSharpVertices();
 	void findSharpEdgeGroups();
-	void splitAllCellsWithPlanesAtSharpVertices();
+	void splitAllCellsAtSharpVertices();
 
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
@@ -127,13 +127,13 @@ inline const Block* Volume::getBlockPtr(bool isOutput, const Index3D& blockIdx) 
 	const Block* pResult = nullptr;
 
 	auto idx = calLinearBlockIndex(blockIdx);
-	if (isOutput && idx < _outBlocks.size() && _outBlocks[idx]) {
+	if (isOutput && !pResult && idx < _outBlocks.size() && _outBlocks[idx])
 		pResult = _outBlocks[idx].get();
-	} 
 
 	if (!pResult && idx < _blocks.size() && _blocks[idx])
 		pResult = _blocks[idx].get();
 
+	assert(pResult);
 	return pResult;
 }
 
@@ -143,6 +143,7 @@ inline Block* Volume::getOutBlockPtr(const Index3D& blockIdx) const
 	if (_blocks.size() == _outBlocks.size() && _outBlocks[idx]) {
 		return _outBlocks[idx].get();
 	}
+	assert(!"Failed to block pointer");
 	return nullptr;
 }
 

@@ -11,11 +11,18 @@
 namespace DFHM {
 
 class Block;
+class Volume;
 
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
 public:
 	virtual const Index3D& getBlockIdx() const = 0;
+
+	virtual Volume* getVolume() = 0;
+	virtual const Volume* getVolume() const = 0;
+
+	virtual const Block* getOwner(const Index3D& blockIdx) const = 0;
+	virtual Block* getOutBlockPtr(const Index3D& blockIdx) const = 0;
 };
 
 class ObjectPoolOwnerUser {
@@ -27,7 +34,7 @@ public:
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
 	const Block* getBlockPtr() const;
-	Block* getOutBlockPtr(const Index3DId& blockIdx) const;
+	Block* getOutBlockPtr() const;
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
 	MutexType& getMutex() const;
