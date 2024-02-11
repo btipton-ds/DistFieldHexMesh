@@ -28,9 +28,10 @@ Block::GlPoints::GlPoints(const GlPoints& src)
 	_id = _statId++;
 }
 
-Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
+Block::Block(Volume* pVol, bool isOutput, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
+	, _isOutput(isOutput)
 	, _vertices(this, true)
 	, _polygons(this, true)
 	, _polyhedra(this, false)
@@ -94,6 +95,12 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 	);
 
 }
+
+const CMeshPtr& Block::getModelMesh() const
+{
+	return _pVol->getModelMesh();
+}
+
 
 void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
 {
@@ -450,12 +457,12 @@ size_t Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3
 
 	if (intersectingOnly) {
 		vector<CMesh::SearchEntry> triIndices;
-		bool found = _pModelTriMesh->findTris(bbox, triIndices);
+		bool found = getModelMesh()->findTris(bbox, triIndices);
 
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
 			for (const auto& vertIdx : sharps) {
-				if (bbox.contains(_pModelTriMesh->getVert(vertIdx)._pt)) {
+				if (bbox.contains(getModelMesh()->getVert(vertIdx)._pt)) {
 					found = true;
 					break;
 				}
@@ -508,7 +515,7 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 	if (blockIdx == _blockIdx)
 		return this;
 
-	return _pVol->getBlockPtr(blockIdx);
+	return _pVol->getBlockPtr(_isOutput, blockIdx);
 }
 
 Block* Block::getOutBlockPtr(const Index3D& blockIdx) const
@@ -598,19 +605,13 @@ size_t Block::processTris()
 	for (size_t i = 0; i < 2; i++) {
 		_polyhedra.iterateInOrder([this](Polyhedron& cell) {
 			size_t circleDivs = 72;
-			cell.splitByCurvature(_pModelTriMesh, circleDivs);
+			cell.splitByCurvature(getModelMesh(), circleDivs);
 		});
 	}
 
 #endif
 	count = _polyhedra.size() - count;
 	return count;
-}
-
-void Block::addTris(const CMeshPtr& pSrcMesh)
-{
-	_pModelTriMesh = pSrcMesh;
-
 }
 
 size_t Block::splitAllCellsWithPlane(const Plane& splittingPlane)
@@ -709,7 +710,7 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 	return result;
 }
 
-CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
+CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
 {
 	if (numFaces(true) == 0)
 		return nullptr;
@@ -727,7 +728,11 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 			if (!result) {
 				if (!_blockMeshes[meshType])
 					_blockMeshes[meshType] = make_shared<CMesh>(bbox);
+				else
+					_blockMeshes[meshType]->reset(bbox);
+
 				result = _blockMeshes[meshType];
+				result->changed();
 			}
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
@@ -751,7 +756,7 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum)
 	return result;
 }
 
-Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
+Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum) const
 {
 	if (_blockEdges.empty())
 		_blockEdges.resize(MT_ALL);
@@ -770,6 +775,8 @@ Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum)
 		if (!result)
 			result = make_shared< GlPoints>();
 		auto& vals = *result;
+		vals.clear();
+		vals.changed();
 		for (const auto& edge : edges) {
 			const auto* vertIds = edge.getVertexIds();
 

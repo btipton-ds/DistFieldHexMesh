@@ -36,9 +36,10 @@ public:
 	void startOperation();
 	void endOperation();
 
-	const Block* getBlockPtr(const Index3D& blockIdx) const;
+	const Block* getBlockPtr(bool isOutput, const Index3D& blockIdx) const;
 	Block* getOutBlockPtr(const Index3D& blockIdx) const;
 
+	const CMeshPtr& getModelMesh() const;
 
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
@@ -72,7 +73,7 @@ private:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
+	std::shared_ptr<Block> createBlock(bool isOutput, const Index3D& blockIdx);
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -98,13 +99,18 @@ private:
 	double _sharpAngleRad;
 
 	std::vector<Vector3d> _cornerPts;
-	std::vector<std::shared_ptr<Block>> _blocks, _outBlocks;
+	std::vector<std::shared_ptr<const Block>> _blocks;
+	std::vector<std::shared_ptr<Block>> _outBlocks;
 	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
 
+inline const CMeshPtr& Volume::getModelMesh() const
+{
+	return _pModelTriMesh;
+}
 
 inline void Volume::setOrigin(const Vector3d& origin)
 {
@@ -116,13 +122,19 @@ inline void Volume::setSpan(const Vector3d& span)
 	_spanMeters = span;
 }
 
-inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
+inline const Block* Volume::getBlockPtr(bool isOutput, const Index3D& blockIdx) const
 {
-	auto idx = calLinearBlockIndex(blockIdx);
-	if (_blocks[idx])
-		return _blocks[idx].get();
+	const Block* pResult = nullptr;
 
-	return nullptr;
+	auto idx = calLinearBlockIndex(blockIdx);
+	if (isOutput && idx < _outBlocks.size() && _outBlocks[idx]) {
+		pResult = _outBlocks[idx].get();
+	} 
+
+	if (!pResult && idx < _blocks.size() && _blocks[idx])
+		pResult = _blocks[idx].get();
+
+	return pResult;
 }
 
 inline Block* Volume::getOutBlockPtr(const Index3D& blockIdx) const

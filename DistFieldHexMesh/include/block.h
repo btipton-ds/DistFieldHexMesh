@@ -73,13 +73,14 @@ public:
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
-	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	Block(Volume* pVol, bool isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 
 	size_t blockDim() const;
 	Volume* getVolume();
 	const Volume* getVolume() const;
 	const Block* getOwner(const Index3D& blockIdx) const;
 	Block* getOutBlockPtr(const Index3D& blockIdx) const;
+	void setIsOutput(bool val);
 
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
@@ -101,10 +102,9 @@ public:
 	void createBlockFaces();
 
 	size_t processTris();
-	void addTris(const CMeshPtr& pSrcMesh);
 	const CMeshPtr& getModelMesh() const;
-	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum);
-	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum);
+	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum) const;
+	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
 	size_t splitAllCellsWithPlane(const Plane& splittingPlane);
 	size_t splitAllCellsWithPrinicpalPlanesAtPoint(const Vector3d& splitPt);
 
@@ -178,6 +178,7 @@ private:
 	Index3D _blockIdx;
 
 	Volume* _pVol;
+	bool _isOutput;
 	CBoundingBox3Dd 
 		_boundBox, // The precise bounding box for this box
 		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
@@ -186,9 +187,8 @@ private:
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
-	CMeshPtr _pModelTriMesh;
-	glPointsVector _blockEdges;
-	TriMeshVector _blockMeshes;
+	mutable glPointsVector _blockEdges;
+	mutable TriMeshVector _blockMeshes;
 	std::vector<Vector3d> _corners;
 
 	std::string _filename;
@@ -197,6 +197,11 @@ private:
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
+
+inline void Block::setIsOutput(bool val)
+{
+	_isOutput = val;
+}
 
 inline size_t Block::GlPoints::getId() const
 {
@@ -238,11 +243,6 @@ inline size_t Block::calLinearSubBlockIndex(const Index3D& subBlockIdx) const
 inline bool Block::isUnloaded() const
 {
 	return !_filename.empty();
-}
-
-inline const CMeshPtr& Block::getModelMesh() const
-{
-	return _pModelTriMesh;
 }
 
 inline const Vertex& Block::getVertex_UNSFAFE(const Index3DId& id) const

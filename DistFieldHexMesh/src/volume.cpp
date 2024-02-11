@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 #define QUICK_TEST false
 
 Index3D Volume::s_volDim;
@@ -44,7 +44,7 @@ void Volume::startOperation()
 	_outBlocks.resize(_blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
 		auto idx = calBlockIndexFromLinearIndex(i);
-		_outBlocks[i] = createBlock(idx);
+		_outBlocks[i] = createBlock(true, idx);
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
 }
@@ -135,7 +135,7 @@ void Volume::splitAllCellsWithPlanesAtSharpVertices()
 			numBlocks = _blocks.size();
 			MultiCore::runLambda([this, &splittingPlane, &numSplit](size_t linearIdx)-> bool {
 				if (_blocks[linearIdx]) {
-					size_t numNewCells = _blocks[linearIdx]->splitAllCellsWithPlane(splittingPlane);
+					size_t numNewCells = _outBlocks[linearIdx]->splitAllCellsWithPlane(splittingPlane);
 					numSplit++;
 				}
 				return true;
@@ -183,7 +183,7 @@ void Volume::findSharpVertices()
 	}
 }
 
-shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
+shared_ptr<Block> Volume::createBlock(bool isOutput, const Index3D& blockIdx)
 {
 	const auto& dim = volDim();
 	const Vector3d xAxis(1, 0, 0);
@@ -191,7 +191,7 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	const Vector3d zAxis(0, 0, 1);
 
 	size_t idx = calLinearBlockIndex(blockIdx);
-	auto pBlock = _blocks[idx];
+	auto pBlock = _outBlocks[idx];
 	if (pBlock)
 		return pBlock;
 
@@ -215,7 +215,7 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 		origin + zAxis * span[2] + yAxis * span[1],
 	};
 
-	return make_shared<Block>(this, blockIdx, pts);
+	return make_shared<Block>(this, isOutput, blockIdx, pts);
 }
 
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
@@ -235,7 +235,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 			for (blkIdx[2] = 0; blkIdx[2] < dim[2]; blkIdx[2]++) {
 				origin[2] = _originMeters[2] + blkIdx[2] * blockSpan[2];
 				auto linearIdx = calLinearBlockIndex(blkIdx);
-				_blocks[linearIdx] = createBlock(blkIdx);
+				_blocks[linearIdx] = createBlock(false, blkIdx);
 			}
 		}
 	}
@@ -279,13 +279,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
 	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
-
-	runLambda([this, &blockSpan](size_t linearIdx)->bool {
-		Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-		_outBlocks[linearIdx] = createBlock(blockIdx);
-		_outBlocks[linearIdx]->addTris(_pModelTriMesh);
-		return true;
-	}, RUN_MULTI_THREAD);
 
 	// Cannot create subBlocks until all blocks are created
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
@@ -476,7 +469,6 @@ bool Volume::verifyTopology() const
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore) const
 {
-
 	MultiCore::runLambda([this, fLambda](size_t threadNum, size_t numThreads) {
 		Index3D idx;
 		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
