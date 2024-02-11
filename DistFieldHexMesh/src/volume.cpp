@@ -46,6 +46,7 @@ void Volume::startOperation()
 		auto idx = calBlockIndexFromLinearIndex(i);
 		if (_blocks[i]) {
 			_outBlocks[i] = make_shared<Block>(*_blocks[i]);
+			_outBlocks[i]->setIsOutput(true);
 		} else
 			_outBlocks[i] = createBlock(true, idx);
 		_outBlocks[i]->setIsOutput(true);
@@ -266,7 +267,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 			minSpan = _spanMeters[i];
 		}
 	}
-	double targetBlockSize = minSpan / 6;
+	double targetBlockSize = minSpan / 4;
 	size_t blockDim = (size_t) (targetBlockSize / maxBlockSize + 0.5);
 	Index3D::setBlockDim(blockDim);
 

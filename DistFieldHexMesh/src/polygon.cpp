@@ -328,6 +328,8 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;
+	if (!isActive())
+		return true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
 	faceFunc(_thisId, [&vertIds](const Polygon& face) {

@@ -337,13 +337,19 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 
 			Index3DId newCellId = getOutBlockPtr()->addCell(faceIds);
 			newCellIds.insert(newCellId);
-			/*
+			
+			for (const auto& faceId : _faceIds) {
+				faceOutFunc(faceId, [this](Polygon& face) {
+					face.removeCell(_thisId);
+				});
+			}
+
 			for (const auto& faceId : faceIds) {
 				faceOutFunc(faceId, [&newCellId](Polygon& face) {
 					face.addCell(newCellId);
-					});
+				});
 			}
-			*/
+			
 
 			faceOutFunc(faceIds[0], [&sourceFaceIds](Polygon& face) { 
 				face.setParentId(sourceFaceIds[0]); 
@@ -548,12 +554,14 @@ bool Polyhedron::isClosed() const
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
+	if (!isActive())
+		return valid;
 #ifdef _DEBUG 
 
+	if (!isClosed())
+		valid = false;
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
-			if (!isClosed())
-				valid = false;
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
 				bool pass = face.ownedByCell(_thisId);
 				if (!pass)

@@ -280,7 +280,7 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    double maxBlockSize = 0.1 / 1;
+    double maxBlockSize = 0.3 / 1;
 
     _volume->buildCFDHexes(_pMesh, maxBlockSize);
 

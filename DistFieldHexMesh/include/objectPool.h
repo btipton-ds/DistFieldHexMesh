@@ -51,7 +51,7 @@ template<class T>
 class ObjectPool {
 public:
 	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 512);
-	ObjectPool(const ObjectPool& src);
+	ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src);
 
 	const ObjectPoolOwner* getBlockPtr() const;
 	ObjectPoolOwner* getBlockPtr();
@@ -142,8 +142,8 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLooku
 }
 
 template<class T>
-ObjectPool<T>::ObjectPool(const ObjectPool& src)
-	: _pPoolOwner(src._pPoolOwner)
+ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
+	: _pPoolOwner(pPoolOwner)
 	, _objToIdMap(CompareFunctor(*this))
 	, _objectSegmentSize(src._objectSegmentSize)
 	, _supportsReverseLookup(src._supportsReverseLookup)

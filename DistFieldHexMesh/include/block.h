@@ -75,7 +75,7 @@ public:
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, bool _isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
-	Block(const Block& src, bool isOutput);
+	Block(const Block& src);
 
 	size_t blockDim() const;
 

@@ -36,6 +36,7 @@ public:
 	void addVertex(const Index3DId& vertId);
 	void setParentId(const Index3DId& id);
 	void addChildId(const Index3DId& id);
+	bool isActive() const;
 
 	void addCell(const Index3DId& cellId);
 	void removeCell(const Index3DId& cellId);
@@ -121,6 +122,11 @@ inline void Polygon::setParentId(const Index3DId& id)
 inline void Polygon::addChildId(const Index3DId& id)
 {
 	_children.insert(id);
+}
+
+inline bool Polygon::isActive() const
+{
+	return _children.empty();
 }
 
 inline void Polygon::addCell(const Index3DId& cellId)

@@ -56,9 +56,9 @@ Block::Block(Volume* pVol, bool isOutput, const Index3D& blockIdx, const vector<
 	_innerBoundBox.merge(pt);
 }
 
-Block::Block(const Block& src, bool isOutput)
+Block::Block(const Block& src)
 	: _blockIdx(src._blockIdx)
-	, _isOutput(isOutput)
+	, _isOutput(src._isOutput)
 	, _pVol(src._pVol)
 	, _boundBox(src._boundBox)
 	, _innerBoundBox(src._innerBoundBox)
@@ -67,9 +67,9 @@ Block::Block(const Block& src, bool isOutput)
 	, _blockMeshes()
 	, _corners(src._corners)
 	, _filename(src._filename)
-	, _vertices(src._vertices)
-	, _polygons(src._polygons)
-	, _polyhedra(src._polyhedra)
+	, _vertices(this, src._vertices)
+	, _polygons(this, src._polygons)
+	, _polyhedra(this, src._polyhedra)
 {
 }
 
@@ -608,13 +608,6 @@ size_t Block::processTris() const
 	double arcAngleDegrees = 360.0 / 20;
 	size_t count = splitByCurvature(arcAngleDegrees);
 
-	for (size_t i = 0; i < 2; i++) {
-		_polyhedra.iterateInOrder([this](const Polyhedron& cell) {
-			double arcAngleDegrees = 360.0 / 20;
-			cell.splitByCurvature(arcAngleDegrees);
-		});
-	}
-
 #endif
 	count = _polyhedra.size() - count;
 	return count;
@@ -645,6 +638,9 @@ size_t Block::splitByCurvature(double arcAngleDegrees) const
 
 bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const
 {
+	if (!face.isActive())
+		return false;
+
 	bool result = false;
 	switch (meshType) {
 		default:
