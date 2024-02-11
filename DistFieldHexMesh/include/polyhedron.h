@@ -62,6 +62,8 @@ private:
 	friend class Block;
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
+	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
+	void copyToOut() const;
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::vector<Index3DId> _children;

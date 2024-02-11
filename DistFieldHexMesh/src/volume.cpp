@@ -18,8 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
-#define QUICK_TEST false
+#define RUN_MULTI_THREAD false
 
 Index3D Volume::s_volDim;
 
@@ -45,7 +44,11 @@ void Volume::startOperation()
 	_outBlocks.resize(_blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
 		auto idx = calBlockIndexFromLinearIndex(i);
-		_outBlocks[i] = createBlock(true, idx);
+		if (_blocks[i]) {
+			_outBlocks[i] = make_shared<Block>(*_blocks[i]);
+		} else
+			_outBlocks[i] = createBlock(true, idx);
+		_outBlocks[i]->setIsOutput(true);
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
 }
@@ -297,28 +300,18 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 	assert(verifyTopology(false));
 
-#if 0
+#if 1
 	size_t count = 0;
 	runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-#if QUICK_TEST
-			if (count < 5 && _blocks[linearIdx]->processTris() > 0)
-				count++;
-#else
 			_blocks[linearIdx]->processTris();
-#endif
 		}
 		return true;
-	}, !QUICK_TEST && RUN_MULTI_THREAD);
+	}, RUN_MULTI_THREAD);
 #endif
 
 	assert(verifyTopology(false));
-
-#if 0
-	splitAllCellsWithPlanesAtSharpVertices();
-	assert(verifyTopology());
-#endif
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

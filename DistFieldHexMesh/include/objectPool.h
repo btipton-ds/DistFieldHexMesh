@@ -51,6 +51,7 @@ template<class T>
 class ObjectPool {
 public:
 	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 512);
+	ObjectPool(const ObjectPool& src);
 
 	const ObjectPoolOwner* getBlockPtr() const;
 	ObjectPoolOwner* getBlockPtr();
@@ -131,13 +132,30 @@ private:
 };
 
 template<class T>
-inline ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize)
+ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize)
 	: _pPoolOwner(pPoolOwner)
 	, _objToIdMap(CompareFunctor(*this))
 	, _objectSegmentSize(objectSegmentSize)
+	, _supportsReverseLookup(supportsReverseLookup)
 {
 	assert(_pPoolOwner);
-	_supportsReverseLookup = supportsReverseLookup;
+}
+
+template<class T>
+ObjectPool<T>::ObjectPool(const ObjectPool& src)
+	: _pPoolOwner(src._pPoolOwner)
+	, _objToIdMap(CompareFunctor(*this))
+	, _objectSegmentSize(src._objectSegmentSize)
+	, _supportsReverseLookup(src._supportsReverseLookup)
+	, _idToIndexMap(src._idToIndexMap)
+	, _availableIndices(src._availableIndices)
+	, _objectSegs(src._objectSegs)
+{
+	if (!src._objToIdMap.empty()) {
+		for (const auto& pair : src._objToIdMap) {
+			_objToIdMap.insert(pair);
+		}
+	}
 }
 
 template<class T>

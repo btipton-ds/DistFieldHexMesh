@@ -34,6 +34,8 @@ public:
 	bool load(std::istream& out, size_t idSelf);
 
 	void addVertex(const Index3DId& vertId);
+	void setParentId(const Index3DId& id);
+	void addChildId(const Index3DId& id);
 
 	void addCell(const Index3DId& cellId);
 	void removeCell(const Index3DId& cellId);
@@ -77,7 +79,7 @@ private:
 
 	size_t _numSplits = 0;
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
-	std::vector<Index3DId> _children;
+	std::set<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 
@@ -109,6 +111,16 @@ inline bool Polygon::verifyUnique() const
 inline bool Polygon::verifyVertsConvex() const
 {
 	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
+}
+
+inline void Polygon::setParentId(const Index3DId& id)
+{
+	_parent = id;
+}
+
+inline void Polygon::addChildId(const Index3DId& id)
+{
+	_children.insert(id);
 }
 
 inline void Polygon::addCell(const Index3DId& cellId)

@@ -56,6 +56,23 @@ Block::Block(Volume* pVol, bool isOutput, const Index3D& blockIdx, const vector<
 	_innerBoundBox.merge(pt);
 }
 
+Block::Block(const Block& src, bool isOutput)
+	: _blockIdx(src._blockIdx)
+	, _isOutput(isOutput)
+	, _pVol(src._pVol)
+	, _boundBox(src._boundBox)
+	, _innerBoundBox(src._innerBoundBox)
+	, _blockDim(src._blockDim)
+	, _blockEdges()
+	, _blockMeshes()
+	, _corners(src._corners)
+	, _filename(src._filename)
+	, _vertices(src._vertices)
+	, _polygons(src._polygons)
+	, _polyhedra(src._polyhedra)
+{
+}
+
 const Index3D& Block::getBlockIdx() const
 {
 	return _blockIdx;
@@ -425,6 +442,15 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 Index3DId Block::addCell(const set<Index3DId>& faceIds)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
+
+	return cellId;
+}
+
+Index3DId Block::addCell(const vector<Index3DId>& faceIds)
+{
+	set<Index3DId> faceSet;
+	faceSet.insert(faceIds.begin(), faceIds.end());
+	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceSet));
 
 	return cellId;
 }

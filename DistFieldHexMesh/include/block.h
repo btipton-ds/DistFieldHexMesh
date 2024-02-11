@@ -75,6 +75,7 @@ public:
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, bool _isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	Block(const Block& src, bool isOutput);
 
 	size_t blockDim() const;
 
@@ -112,6 +113,7 @@ public:
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
+	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	bool vertexExists(const Index3DId& id) const;

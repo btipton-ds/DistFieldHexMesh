@@ -174,7 +174,7 @@ set<Index3DId> Polyhedron::getAdjacentCells() const
 void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool includeAdjacentCells) const
 {
 	set<Edge> cellEdgeSet;
-	getEdges(cellEdgeSet, true);
+	getEdges(cellEdgeSet, includeAdjacentCells);
 	if (includeAdjacentCells) {
 		set<Index3DId> adjCells = getAdjacentCells();
 		for (const auto& adjCellId : adjCells) {
@@ -265,7 +265,7 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
-bool Polyhedron::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds) const
+bool Polyhedron::splitAtPoint(const Vector3d& pt, set<Index3DId>& newCellIds) const
 {
 	set<Index3DId> vertIds;
 	getVertIds(vertIds);
@@ -276,6 +276,103 @@ bool Polyhedron::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellId
 
 		set<Edge> vertEdges;
 		getVertEdges(vertId, vertEdges, false);
+		if (vertEdges.size() != 3) {
+			assert(!"This case is not supported yet");
+			continue;
+		}
+		vector<Edge> orderedEdges;
+		if (orderVertEdges(vertEdges, orderedEdges)) {
+			Index3DId cellCenterPtId = getOutBlockPtr()->addVertex(pt);
+
+			vector<Index3DId> edgePtIds, facePtIds, sourceFaceIds;
+			for (size_t i = 0; i < orderedEdges.size(); i++) {
+				size_t j = (i + 1) % orderedEdges.size();
+				const auto& edge = orderedEdges[i];
+				const auto& edge1 = orderedEdges[j];
+				bool found = false;
+				for (const auto& faceId0 : edge.getFaceIds()) {
+					if (edge1.getFaceIds().contains(faceId0)) {
+						faceFunc(faceId0, [this, &pt, &edge, &edgePtIds, &facePtIds, &sourceFaceIds](const Polygon& face) {
+							Vector3d faceCtr = face.projectPoint(pt);
+							facePtIds.push_back(getOutBlockPtr()->addVertex(faceCtr));
+
+							Vector3d edgeCtr = edge.projectPt(getBlockPtr(), pt);
+							edgePtIds.push_back(getOutBlockPtr()->addVertex(edgeCtr));
+							sourceFaceIds.push_back(face.getId());
+						});
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					assert(!"Could not find mid face");
+					return false;
+				}
+			}
+
+			vector<Index3DId> corners = {
+				vertId, edgePtIds[0], facePtIds[0], edgePtIds[1],
+				edgePtIds[2], facePtIds[2], cellCenterPtId, facePtIds[1]
+			};
+
+			vector<Index3DId> faceIds;
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[1], corners[2], corners[3] })));
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[4], corners[5], corners[6], corners[7] })));
+
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[1], corners[5], corners[4] })));
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[3], corners[2], corners[6], corners[7] })));
+
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[1], corners[2], corners[6], corners[5] })));
+			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[3], corners[7], corners[4] })));
+
+			Index3DId newCellId = getOutBlockPtr()->addCell(faceIds);
+			for (const auto& faceId : faceIds) {
+				faceOutFunc(faceId, [&newCellId](Polygon& face) { face.addCell(newCellId); });
+			}
+
+			faceOutFunc(sourceFaceIds[0], [](Polygon& face) { face.addChildId(face.getId()); });
+			faceOutFunc(sourceFaceIds[5], [](Polygon& face) { face.addChildId(face.getId()); });
+			faceOutFunc(sourceFaceIds[2], [](Polygon& face) { face.addChildId(face.getId()); });
+		}
+	}
+
+	return true;
+}
+
+bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
+{
+	orderedEdges.clear();
+	set<Edge> edges(edgesIn);
+	while (!edges.empty()) {
+		Edge lastEdge;
+		if (orderedEdges.empty()) {
+			lastEdge = *edges.begin();
+			orderedEdges.push_back(lastEdge);
+			edges.erase(lastEdge);
+		} else {
+			lastEdge = orderedEdges.back();
+		}
+
+		const auto& edgeFaces = lastEdge.getFaceIds();
+		assert(edgeFaces.size() == 2);
+
+		bool found = false;
+		for (const auto& otherEdge : edges) {
+			const auto& otherEdgeFaces = otherEdge.getFaceIds();
+
+			for (const auto& faceId : otherEdgeFaces) {
+				if (edgeFaces.contains(faceId)) {
+					found = true;
+					orderedEdges.push_back(otherEdge);
+					edges.erase(otherEdge);
+					break;
+				}
+			}
+			if (found)
+				break;
+		}
+		if (!found)
+			return false;
 	}
 
 	return true;

@@ -271,11 +271,8 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
-	Vector3d ctr = calCentroid();
-	Vector3d norm = calUnitNormal();
-	Vector3d v = pt - ctr;
-	double dp = v.dot(norm);
-	Vector3d result = pt - dp * norm;
+	Plane pl(pt, calUnitNormal());
+	auto result = pl.projectPoint(pt);
 
 	return result;
 }
