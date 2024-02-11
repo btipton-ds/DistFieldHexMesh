@@ -280,11 +280,9 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    Index3D::setBlockDim(4);
+    double maxBlockSize = 0.1 / 2;
 
-    double blockSize = 0.05;
-
-    _volume->buildCFDHexes(_pMesh, blockSize);
+    _volume->buildCFDHexes(_pMesh, maxBlockSize);
 
     auto pCanvas = _pMainFrame->getCanvas();
 

@@ -251,13 +251,23 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double targetBlockSize)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
 	bb.growPercent(0.0125);
 	_originMeters = bb.getMin();
 	_spanMeters = bb.range();
+
+	double minSpan = DBL_MAX;
+	for (int i = 0; i < 3; i++) {
+		if (_spanMeters[i] < minSpan) {
+			minSpan = _spanMeters[i];
+		}
+	}
+	double targetBlockSize = minSpan / 6;
+	size_t blockDim = (size_t) (targetBlockSize / maxBlockSize + 0.5);
+	Index3D::setBlockDim(blockDim);
 
 	Index3D blockSize(
 		(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
@@ -481,26 +491,29 @@ template<class L>
 void Volume::runLambda(L fLambda, bool multiCore)
 {
 	const Index3DBaseType stride = 2;
-	Index3D phaseIdx;
+	Index3D phaseIdx, idx;
 
 	startOperation();
 
 	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
 		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
 			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+				// Collect the indices for all blocks in this phase
+				vector<size_t> blocksToProcess;
 
-				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t threadNum, size_t numThreads) {
-					Index3D idx;
-					for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
-						for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
-							for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
-								size_t linearIdx = calLinearBlockIndex(idx);
-								if ((linearIdx % numThreads) == threadNum)
-									fLambda(linearIdx);
-							}
+				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
+						for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
+							size_t linearIdx = calLinearBlockIndex(idx);
+							blocksToProcess.push_back(linearIdx);
 						}
 					}
-				}, multiCore);
+				}
+
+				// Process those blocks in undetermined order
+				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t linearIdx)->bool {
+					return fLambda(linearIdx);
+				}, blocksToProcess, multiCore);
 
 			}
 		}

@@ -46,7 +46,7 @@ public:
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildCFDHexes(const CMeshPtr& pTriMesh, double minSubBlockSize);
+	void buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
 	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
 
