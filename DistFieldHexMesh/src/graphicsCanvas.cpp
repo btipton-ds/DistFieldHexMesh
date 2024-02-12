@@ -507,30 +507,30 @@ void GraphicsCanvas::changeFaceViewElements()
 {
     _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     if (_pTriTess)
-        _faceVBO.includeElementIndices(GraphicsCanvas::DS_MODEL, *_pTriTess);
+        _faceVBO.includeElementIndices(DS_MODEL, *_pTriTess);
 
     if (_showSharpVerts && _pSharpVertTess)
-        _faceVBO.includeElementIndices(GraphicsCanvas::DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
+        _faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
 
     if (_showFaces && !_faceTessellations.empty()) {
         if (_showOuter && DSS_OUTER < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_OUTER]) {
                 if (pBlockTess)
-                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+                    _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
         } 
         
         if (!_showOuter && DSS_INNER < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_INNER]) {
                 if (pBlockTess)
-                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+                    _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
             }
         } 
         
         if (!_showOuter && DSS_BLOCK_BOUNDARY < _faceTessellations.size()) {
             for (auto pBlockTess : _faceTessellations[DSS_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
-                    _faceVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
+                    _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }
@@ -551,21 +551,21 @@ void GraphicsCanvas::changeEdgeViewElements()
         if (_showOuter && DSS_OUTER < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_OUTER]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
         } 
         
         if (!_showOuter && DSS_INNER < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_INNER]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
             }
         }
         
         if (!_showOuter && DSS_BLOCK_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[DSS_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(GraphicsCanvas::DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
+                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }

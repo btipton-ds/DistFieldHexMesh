@@ -275,6 +275,35 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
+Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds) const
+{
+#if _DEBUG
+	set<Edge> edgeSet;
+	Polygon::createEdgesStat(vertIds, edgeSet);
+	for (const auto& edge : edgeSet) {
+		assert(edge.getLength(getOutBlockPtr()) > Tolerance::sameDistTol());
+		assert(edge.onPrincipalAxis(getOutBlockPtr()));
+	}
+#endif
+	Index3DId result = getOutBlockPtr()->findFace(vertIds);
+	if (!result.isValid())
+		result = getOutBlockPtr()->addFace(vertIds);
+
+	return result;
+}
+
+void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, std::vector<Index3DId>& faceIds) const
+{
+	faceIds.push_back(createFace({ corners[0], corners[1], corners[2], corners[3] }));
+	faceIds.push_back(createFace({ corners[4], corners[5], corners[6], corners[7] }));
+
+	faceIds.push_back(createFace({ corners[0], corners[1], corners[5], corners[4] }));
+	faceIds.push_back(createFace({ corners[3], corners[2], corners[6], corners[7] }));
+
+	faceIds.push_back(createFace({ corners[1], corners[2], corners[6], corners[5] }));
+	faceIds.push_back(createFace({ corners[0], corners[3], corners[7], corners[4] }));
+}
+
 bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds) const
 {
 	set<Index3DId> vertIds;
@@ -292,6 +321,12 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		}
 		vector<Edge> orderedEdges;
 		if (orderVertEdges(vertEdges, orderedEdges)) {
+			for (const auto& faceId : _faceIds) {
+				faceOutFunc(faceId, [this](Polygon& face) {
+					face.removeCell(_thisId);
+				});
+			}
+
 			Index3DId cellCenterPtId = getOutBlockPtr()->addVertex(centerPoint);
 
 			vector<Index3DId> edgePtIds, facePtIds, sourceFaceIds;
@@ -326,24 +361,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			};
 
 			vector<Index3DId> faceIds;
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[1], corners[2], corners[3] })));
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[4], corners[5], corners[6], corners[7] })));
-
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[1], corners[5], corners[4] })));
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[3], corners[2], corners[6], corners[7] })));
-
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[1], corners[2], corners[6], corners[5] })));
-			faceIds.push_back(getOutBlockPtr()->addFace(vector({ corners[0], corners[3], corners[7], corners[4] })));
+			createHexahedralFaces(corners, faceIds);
 
 			Index3DId newCellId = getOutBlockPtr()->addCell(faceIds);
 			newCellIds.insert(newCellId);
 			
-			for (const auto& faceId : _faceIds) {
-				faceOutFunc(faceId, [this](Polygon& face) {
-					face.removeCell(_thisId);
-				});
-			}
-
 			for (const auto& faceId : faceIds) {
 				faceOutFunc(faceId, [&newCellId](Polygon& face) {
 					face.addCell(newCellId);
@@ -381,6 +403,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	}
 
 	return true;
+}
+
+bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds) const
+{
+	return splitAtPoint(calCentroid(), newCellIds);
 }
 
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
@@ -554,7 +581,7 @@ bool Polyhedron::isClosed() const
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
-	if (!isActive())
+	if (!isIntact())
 		return valid;
 #ifdef _DEBUG 
 

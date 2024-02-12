@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 
 Index3D Volume::s_volDim;
 
@@ -328,16 +328,16 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 
 
 	triMeshes.resize(3);
-	triMeshes[Block::MT_OUTER].resize(_blocks.size());
-	triMeshes[Block::MT_INNER].resize(_blocks.size());
-	triMeshes[Block::MT_BLOCK_BOUNDARY].resize(_blocks.size());
+	triMeshes[MT_OUTER].resize(_blocks.size());
+	triMeshes[MT_INNER].resize(_blocks.size());
+	triMeshes[MT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 
-			triMeshes[Block::MT_OUTER][index] = blockPtr->getBlockTriMesh(Block::MT_OUTER, minSplitNum);
-			triMeshes[Block::MT_INNER][index] = blockPtr->getBlockTriMesh(Block::MT_INNER, minSplitNum);
-			triMeshes[Block::MT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(Block::MT_BLOCK_BOUNDARY, minSplitNum);
+			triMeshes[MT_OUTER][index] = blockPtr->getBlockTriMesh(MT_OUTER, minSplitNum);
+			triMeshes[MT_INNER][index] = blockPtr->getBlockTriMesh(MT_INNER, minSplitNum);
+			triMeshes[MT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(MT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
@@ -346,15 +346,15 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 void Volume::makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
 {
 	faceEdges.resize(3);
-	faceEdges[Block::MT_OUTER].resize(_blocks.size());
-	faceEdges[Block::MT_INNER].resize(_blocks.size());
-	faceEdges[Block::MT_BLOCK_BOUNDARY].resize(_blocks.size());
+	faceEdges[MT_OUTER].resize(_blocks.size());
+	faceEdges[MT_INNER].resize(_blocks.size());
+	faceEdges[MT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
-			faceEdges[Block::MT_OUTER][index] = blockPtr->makeFaceEdges(Block::MT_OUTER, minSplitNum);
-			faceEdges[Block::MT_INNER][index] = blockPtr->makeFaceEdges(Block::MT_INNER, minSplitNum);
-			faceEdges[Block::MT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(Block::MT_BLOCK_BOUNDARY, minSplitNum);
+			faceEdges[MT_OUTER][index] = blockPtr->makeFaceEdges(MT_OUTER, minSplitNum);
+			faceEdges[MT_INNER][index] = blockPtr->makeFaceEdges(MT_INNER, minSplitNum);
+			faceEdges[MT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(MT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);

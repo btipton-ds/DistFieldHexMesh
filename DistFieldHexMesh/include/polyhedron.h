@@ -24,7 +24,7 @@ public:
 
 	// Required for use with object pool
 	Index3DId getId() const;
-	bool isActive() const;
+	bool isIntact() const;
 
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
@@ -46,6 +46,7 @@ public:
 	Vector3d calCentroid() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
+	bool splitAtCentroid(std::set<Index3DId>& newCellIds) const;
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds) const;
 	void splitByCurvature(double maxArcAngleDegrees) const;
 
@@ -67,6 +68,8 @@ private:
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
+	Index3DId createFace(const std::vector<Index3DId>& vertIds) const;
+	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds) const;
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
@@ -78,7 +81,7 @@ inline Index3DId Polyhedron::getId() const
 	return _thisId;
 }
 
-inline bool Polyhedron::isActive() const
+inline bool Polyhedron::isIntact() const
 {
 	return _children.empty();
 }

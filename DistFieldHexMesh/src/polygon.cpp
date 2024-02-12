@@ -12,18 +12,24 @@ using namespace DFHM;
 
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
-	, _numSplits(src._numSplits)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _needSort(true)
 {
 }
 
+Polygon::Polygon(const std::vector<Index3DId>& verts)
+	: _vertexIds(verts)
+	, _needSort(true)
+{
+
+}
+
+
 Polygon& Polygon::operator = (const Polygon& rhs)
 {
 	ObjectPoolOwnerUser::operator=(rhs);
 
-	_numSplits = rhs._numSplits;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_needSort = true;
@@ -31,10 +37,30 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	return *this;
 }
 
+size_t Polygon::numSplits() const
+{
+	size_t result = 0;
+	auto parent = _parent;
+	while (_parent.isValid()) {
+		result++;
+		Index3DId nextParent;
+		faceFunc(parent, [&nextParent](const Polygon& face) {
+			nextParent = face.getParentId();
+		});
+		parent = nextParent;
+	}
+
+	return result;
+}
+
+
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	_vertexIds.push_back(vertId);
-	_needSort = true;
+	if (isIntact()) {
+		_vertexIds.push_back(vertId);
+		_needSort = true;
+	} else
+		assert(!"Cannot modify a face which has already been split");
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -94,16 +120,7 @@ bool Polygon::isBlockBoundary() const
 
 void Polygon::getEdges(std::set<Edge>& edgeSet) const
 {
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		// If the edges is aready in the set, we get the existing one, not the new one?
-		set<Index3DId> faceSet;
-		faceSet.insert(_thisId);
-		auto result = edgeSet.insert(Edge(_vertexIds[i], _vertexIds[j], faceSet));
-		// Set entries are const to prevent breaking the sort order
-		// The _faceIds do not affect the sort, so this is safe
-		// We cannot do this during creation, because we must accumulate the faces as the are added to the set
-	}
+	createEdgesStat(_vertexIds, edgeSet, _thisId);
 }
 
 bool Polygon::containsEdge(const Edge& edge) const
@@ -137,6 +154,18 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 			return true;
 	}
 	return false;
+}
+
+void Polygon::createEdgesStat(const std::vector<Index3DId>& verts, std::set<Edge>& edgeSet, const Index3DId& polygonId)
+{
+	for (size_t i = 0; i < verts.size(); i++) {
+		size_t j = (i + 1) % verts.size();
+		// If the edges is aready in the set, we get the existing one, not the new one?
+		set<Index3DId> faceSet;
+		if (polygonId.isValid())
+			faceSet.insert(polygonId);
+		edgeSet.insert(Edge(verts[i], verts[j], faceSet));
+	}
 }
 
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
@@ -279,28 +308,6 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
-bool Polygon::isAbovePlane(const Plane& splitPlane, double tol) const
-{
-	bool allAbove = true;
-
-	faceOutFunc(_thisId, [this, &splitPlane, &allAbove, tol](const Polygon& face) {
-		auto vertIds = face.getVertexIds();
-		for (const auto& vertId : vertIds) {
-			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
-			Vector3d v = pt - splitPlane._origin;
-			double dp = v.dot(splitPlane._normal);
-			if (fabs(dp) > tol) {
-				if (dp < 0) {
-					allAbove = false;
-					break;
-				}
-			}
-		}
-	});
-
-	return allAbove;
-}
-
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {
@@ -328,8 +335,13 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;
-	if (!isActive())
-		return true;
+	if (!isIntact()) {
+#ifdef _DEBUG 
+		if (!_cellIds.empty())
+			valid = false;
+#endif
+		return valid;
+	}
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
 	faceFunc(_thisId, [&vertIds](const Polygon& face) {

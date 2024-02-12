@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tm_vector3.h>
+#include <enums.h>
 
 namespace DFHM {
 
@@ -19,11 +20,6 @@ protected:
 public:
 	static void setBlockDim(size_t val);
 	static size_t getBlockDim();
-
-	enum Dir {
-		Positive = 1,
-		Negetive = -1
-	};
 
 	Index3DBase operator + (const Index3DBase& rhs) const;
 	bool operator < (const Index3DBase& rhs) const;
@@ -147,11 +143,6 @@ class Index3DId : public Index3DBase
 public:
 	static void setBlockDim(size_t val);
 	static size_t getBlockDim();
-
-	enum Dir {
-		Positive = 1,
-		Negetive = -1
-	};
 
 	Index3DId() = default;
 	Index3DId(const Index3DId& src) = default;

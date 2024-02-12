@@ -394,7 +394,12 @@ const vector<Index3DId>& Block::getFaceVertexIds(const Index3DId& faceId) const
 	return pOwner->_polygons[faceId].getVertexIds();
 }
 
-
+Index3DId Block::findFace(const std::vector<Index3DId>& vertIndices) const
+{
+	Polygon tempFace(vertIndices);
+	auto ownerIdx = determineOwnerBlockIdx(tempFace);
+	return getOwner(ownerIdx)->_polygons.findId(tempFace);
+}
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
@@ -402,11 +407,8 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 		return Index3DId();
 	}
 
-	auto ownerIdx = determineOwnerBlockIdx(vertIndices);
-	Polygon newFace;
-	for (const auto& vertId : vertIndices) {
-		newFace.addVertex(vertId);
-	}
+	Polygon newFace(vertIndices);
+	auto ownerIdx = determineOwnerBlockIdx(newFace);
 	set<Edge> edges;
 	newFace.getEdges(edges);
 	for (const auto& edge : edges) {
@@ -606,9 +608,23 @@ size_t Block::processTris() const
 {
 #if 1
 	double arcAngleDegrees = 360.0 / 20;
-	size_t count = splitByCurvature(arcAngleDegrees);
+	size_t count = _polyhedra.size();
+	for (int i = 0; i < 2; i++)
+		splitAllCellsAtCentroid();
+//	size_t count = splitByCurvature(arcAngleDegrees);
 
 #endif
+	count = _polyhedra.size() - count;
+	return count;
+}
+
+size_t Block::splitAllCellsAtCentroid() const
+{
+	size_t count = _polyhedra.size();
+	_polyhedra.iterateInOrder([this](const Polyhedron& cell) {
+		set<Index3DId> newCellIds;
+		cell.splitAtCentroid(newCellIds);
+	});
 	count = _polyhedra.size() - count;
 	return count;
 }
@@ -638,7 +654,7 @@ size_t Block::splitByCurvature(double arcAngleDegrees) const
 
 bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const
 {
-	if (!face.isActive())
+	if (!face.isIntact())
 		return false;
 
 	bool result = false;
@@ -657,7 +673,7 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 			result = face.isBlockBoundary();
 			break;
 	}
-	result = result && face.getNumSplits() >= minSplitNum;
+	result = result && face.numSplits() >= minSplitNum;
 
 	return result;
 }

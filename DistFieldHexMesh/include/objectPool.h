@@ -44,6 +44,8 @@ protected:
 	Index3DId _thisId;
 
 private:
+	template<class T>
+	friend class ObjectPool;
 	ObjectPoolOwner* _pPoolOwner = nullptr;
 };
 
@@ -151,11 +153,9 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	, _availableIndices(src._availableIndices)
 	, _objectSegs(src._objectSegs)
 {
-	if (!src._objToIdMap.empty()) {
-		for (const auto& pair : src._objToIdMap) {
-			_objToIdMap.insert(pair);
-		}
-	}
+	iterateInOrder([this](T& obj) {
+		obj._pPoolOwner = _pPoolOwner;
+	});
 }
 
 template<class T>

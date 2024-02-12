@@ -7,6 +7,7 @@
 
 #include <tm_vector3.h>
 #include <triMesh.h>
+#include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
@@ -57,14 +58,6 @@ public:
 	using TriMeshVector = std::vector<CMeshPtr>;
 	using TriMeshGroup = std::vector<TriMeshVector>;
 
-	enum MeshType {
-		MT_OUTER,
-		MT_INNER,
-		MT_BLOCK_BOUNDARY,
-		MT_BOUNDARY,
-		MT_ALL,
-	};
-
 	Volume* getVolume() override;
 	const Volume* getVolume() const override;
 	const Index3D& getBlockIdx() const override;
@@ -108,6 +101,7 @@ public:
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
 	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& faceId) const;
+	Index3DId findFace(const std::vector<Index3DId>& vertIndices) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
@@ -168,6 +162,7 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
+	size_t splitAllCellsAtCentroid() const;
 	size_t splitAllCellsAtPoint(const Vector3d& pt) const;
 	size_t splitByCurvature(double arcAngleDegrees) const;
 

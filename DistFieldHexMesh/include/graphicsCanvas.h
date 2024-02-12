@@ -11,6 +11,7 @@
 #include <OGLExtensions.h>
 
 #include <tm_vector3.h>
+#include <enums.h>
 
 class COglShader;
 
@@ -34,18 +35,6 @@ class GraphicsCanvas : public GraphicsCanvasBase
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
-    enum DrawStates {
-        DS_MODEL = 0,
-        DS_MODEL_SHARP_EDGES = 1,
-        DS_MODEL_SHARP_VERTS = 2,
-        DS_MODEL_NORMALS = 3,
-        DS_BLOCK_MESH = 10,
-    };
-    enum DrawSubStates {
-        DSS_OUTER = 0,
-        DSS_INNER = 1,
-        DSS_BLOCK_BOUNDARY = 2,
-    };
     GraphicsCanvas(wxFrame* parent);
     ~GraphicsCanvas();
 
