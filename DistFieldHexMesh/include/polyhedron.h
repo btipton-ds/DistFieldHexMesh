@@ -24,7 +24,6 @@ public:
 
 	// Required for use with object pool
 	Index3DId getId() const;
-	bool isIntact() const;
 
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
@@ -49,6 +48,7 @@ public:
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds) const;
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds) const;
 	void splitByCurvature(double maxArcAngleDegrees) const;
+	void finishCellSplits() const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -79,11 +79,6 @@ private:
 inline Index3DId Polyhedron::getId() const
 {
 	return _thisId;
-}
-
-inline bool Polyhedron::isIntact() const
-{
-	return _children.empty();
 }
 
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const

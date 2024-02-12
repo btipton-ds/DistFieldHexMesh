@@ -36,17 +36,19 @@ public:
 	const Index3DId& getParentId() const;
 	void addChildId(const Index3DId& id);
 	const std::set<Index3DId>& getChildIds() const;
+	void clearChildIds();
 
-	void addCell(const Index3DId& cellId);
-	void removeCell(const Index3DId& cellId);
+	void addCellId(const Index3DId& cellId);
+	void removeCellId(const Index3DId& cellId);
 	size_t numCells() const;
 	size_t numSplits() const;
 	const std::set<Index3DId>& getCellIds() const;
 
 	bool ownedByCell(const Index3DId& cellId) const;
-	bool isIntact() const; // If not intact, then it cannot be part of a cell and should be replaced with it's child faces.
 	bool isOuter() const;
 	bool isBlockBoundary() const;
+	bool containsPt(const Vector3d& pt) const;
+	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
@@ -58,15 +60,18 @@ public:
 
 	const std::vector<Index3DId>& getVertexIds() const;
 	void getEdges(std::set<Edge>& edgeSet) const;
+	Index3DId getNeighborCellId(const Index3DId& thisCellId) const;
 
 	double calVertexAngle(size_t index) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
+	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	// Required for use with object pool
+	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const;
+
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
@@ -77,12 +82,13 @@ public:
 
 private:
 	void sortIds() const;
+	Index3DId createFace(const Polygon& face) const;
+	void setChildIds(const std::set<Index3DId>& childFaceIds);
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
-
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -123,18 +129,18 @@ inline const std::set<Index3DId>& Polygon::getChildIds() const
 	return _children;
 }
 
-inline bool Polygon::isIntact() const
+inline void Polygon::clearChildIds()
 {
-	return _children.empty();
+	_children.clear();
 }
 
-inline void Polygon::addCell(const Index3DId& cellId)
+inline void Polygon::addCellId(const Index3DId& cellId)
 {
 	_cellIds.insert(cellId);
 	assert(_cellIds.size() <= 2);
 }
 
-inline void Polygon::removeCell(const Index3DId& cellId)
+inline void Polygon::removeCellId(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
 }

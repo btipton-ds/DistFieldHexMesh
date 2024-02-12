@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 
 Index3D Volume::s_volDim;
 
@@ -328,16 +328,16 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 
 
 	triMeshes.resize(3);
-	triMeshes[MT_OUTER].resize(_blocks.size());
-	triMeshes[MT_INNER].resize(_blocks.size());
-	triMeshes[MT_BLOCK_BOUNDARY].resize(_blocks.size());
+	triMeshes[FT_OUTER].resize(_blocks.size());
+	triMeshes[FT_INNER].resize(_blocks.size());
+	triMeshes[FT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 
-			triMeshes[MT_OUTER][index] = blockPtr->getBlockTriMesh(MT_OUTER, minSplitNum);
-			triMeshes[MT_INNER][index] = blockPtr->getBlockTriMesh(MT_INNER, minSplitNum);
-			triMeshes[MT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(MT_BLOCK_BOUNDARY, minSplitNum);
+			triMeshes[FT_OUTER][index] = blockPtr->getBlockTriMesh(FT_OUTER, minSplitNum);
+			triMeshes[FT_INNER][index] = blockPtr->getBlockTriMesh(FT_INNER, minSplitNum);
+			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
@@ -346,15 +346,15 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 void Volume::makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
 {
 	faceEdges.resize(3);
-	faceEdges[MT_OUTER].resize(_blocks.size());
-	faceEdges[MT_INNER].resize(_blocks.size());
-	faceEdges[MT_BLOCK_BOUNDARY].resize(_blocks.size());
+	faceEdges[FT_OUTER].resize(_blocks.size());
+	faceEdges[FT_INNER].resize(_blocks.size());
+	faceEdges[FT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
-			faceEdges[MT_OUTER][index] = blockPtr->makeFaceEdges(MT_OUTER, minSplitNum);
-			faceEdges[MT_INNER][index] = blockPtr->makeFaceEdges(MT_INNER, minSplitNum);
-			faceEdges[MT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(MT_BLOCK_BOUNDARY, minSplitNum);
+			faceEdges[FT_OUTER][index] = blockPtr->makeFaceEdges(FT_OUTER, minSplitNum);
+			faceEdges[FT_INNER][index] = blockPtr->makeFaceEdges(FT_INNER, minSplitNum);
+			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(FT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
@@ -485,11 +485,14 @@ void Volume::runLambda(L fLambda, bool multiCore) const
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore)
 {
-	const Index3DBaseType stride = 2;
+	const Index3DBaseType stride = 3;
 	Index3D phaseIdx, idx;
 
 	startOperation();
 
+	// Pass one, process all cells. That can leave faces in an interim state.
+	// If the interim cell is also modified, it should be taken care of on pass 1
+	// Adjacents cells with face splits or vertex insertions may be left behind
 	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
 		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
 			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
@@ -506,13 +509,20 @@ void Volume::runLambda(L fLambda, bool multiCore)
 				}
 
 				// Process those blocks in undetermined order
-				MultiCore::runLambda([this, &phaseIdx, stride, fLambda](size_t linearIdx)->bool {
+				MultiCore::runLambda([fLambda](size_t linearIdx)->bool {
 					return fLambda(linearIdx);
 				}, blocksToProcess, multiCore);
 
 			}
 		}
 	}
+
+	// Pass two. Any faces which have been split or had their edges split, are added to the cell and the original phase is removed.
+	// Process those blocks in undetermined order. This pass has not cross block race conditions and doesn't need a stride
+	MultiCore::runLambda([this](size_t linearIdx)->bool {
+		_outBlocks[linearIdx]->finishCellSplits();
+		return true;
+	}, _outBlocks.size(), multiCore);
 
 	endOperation();
 }

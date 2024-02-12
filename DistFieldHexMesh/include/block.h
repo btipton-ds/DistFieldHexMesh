@@ -82,6 +82,7 @@ public:
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 
+	bool isOutput() const;
 	bool verifyTopology() const;
 	bool verifyPolyhedronTopology(const Index3DId& cellId) const;
 	std::vector<Index3DId> createSubBlocks();
@@ -93,8 +94,8 @@ public:
 
 	size_t processTris() const;
 	const CMeshPtr& getModelMesh() const;
-	CMeshPtr getBlockTriMesh(MeshType meshType, size_t minSplitNum) const;
-	glPointsPtr makeFaceEdges(MeshType meshType, size_t minSplitNum) const;
+	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum) const;
+	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum) const;
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -103,6 +104,7 @@ public:
 	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& faceId) const;
 	Index3DId findFace(const std::vector<Index3DId>& vertIndices) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
+	Index3DId addFace(const Polygon& face);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
@@ -161,10 +163,11 @@ private:
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const;
+	bool includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const;
 	size_t splitAllCellsAtCentroid() const;
 	size_t splitAllCellsAtPoint(const Vector3d& pt) const;
 	size_t splitByCurvature(double arcAngleDegrees) const;
+	size_t finishCellSplits() const;
 
 	Index3D _blockIdx;
 
@@ -192,6 +195,11 @@ private:
 inline void Block::setIsOutput(bool val)
 {
 	_isOutput = val;
+}
+
+inline bool Block::isOutput() const
+{
+	return _isOutput;
 }
 
 inline size_t Block::GlPoints::getId() const

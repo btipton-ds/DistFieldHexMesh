@@ -15,13 +15,26 @@ enum Trinary
 	IS_FALSE
 };
 
-enum MeshType {
-	MT_OUTER,
-	MT_INNER,
-	MT_BLOCK_BOUNDARY,
-	MT_BOUNDARY,
-	MT_ALL,
+enum FaceType {
+	FT_OUTER,
+	FT_INNER,
+	FT_BLOCK_BOUNDARY,
+	FT_BOUNDARY,
+	FT_ALL,
 };
+
+/*
+
+enum TopolgyState
+{
+	TS_UNKNOWN         = 0,
+	TS_ALL_CLEAN       = 1, // Has no split edges or faces
+	TS_HAS_SPLIT_EDGES = 2, // TODO Probably never needed and can be deleted
+	TS_HAS_SPLIT_FACES = 4,
+	TS_PARTIALLY_SPLIT = 8, // Has split edges or faces
+	TS_REFERENCE       = 16, // Has been split and no longer in use. It's kept as reference for working on it's sub topology
+};
+*/
 
 enum DrawStates {
     DS_MODEL = 0,
@@ -35,5 +48,6 @@ enum DrawSubStates {
     DSS_INNER = 1,
     DSS_BLOCK_BOUNDARY = 2,
 };
+
 
 }

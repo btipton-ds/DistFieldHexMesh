@@ -56,11 +56,26 @@ size_t Polygon::numSplits() const
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	if (isIntact()) {
+	if (_children.empty()) {
 		_vertexIds.push_back(vertId);
 		_needSort = true;
 	} else
-		assert(!"Cannot modify a face which has already been split");
+		assert(!"Cannot modify a which has already be split. Create a new face");
+}
+
+Index3DId Polygon::getNeighborCellId(const Index3DId& thisCellId) const
+{
+	Index3DId result;
+	if (_cellIds.size() == 2) {
+		for (const auto& id : _cellIds) {
+			if (id != thisCellId) {
+				result = id;
+				break;
+			}
+		}
+	}
+
+	return result;
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -121,6 +136,33 @@ bool Polygon::isBlockBoundary() const
 void Polygon::getEdges(std::set<Edge>& edgeSet) const
 {
 	createEdgesStat(_vertexIds, edgeSet, _thisId);
+}
+
+bool Polygon::containsPt(const Vector3d& pt) const
+{
+	if (!isPointOnPlane(pt))
+		return false;
+
+	Vector3d norm = calUnitNormal();
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d v1 = (pt1 - pt0).normalized();
+		Vector3d v0 = pt - pt0;
+		v0 = v0 - v0.dot(v1) * v1;
+		Vector3d cp = v1.cross(v0);
+		double dist = norm.dot(cp);
+	
+		if (dist < -Tolerance::sameDistTol())
+			return false;
+	}
+	return true;
+}
+
+bool Polygon::isPointOnPlane(const Vector3d& pt) const {
+	return distFromPlane(pt) < Tolerance::sameDistTol();
 }
 
 bool Polygon::containsEdge(const Edge& edge) const
@@ -245,6 +287,12 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
+double Polygon::distFromPlane(const Vector3d& pt) const
+{
+	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal());
+	return pl.distanceToPoint(pt);
+}
+
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
 	set<Edge> edges;
@@ -308,6 +356,76 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
+bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const
+{
+	// Returns the new faces in the output storage.
+	// Each new face has four vertices with the facePoint at index 0 in right hand order relative to this face's normal
+	// Dry run tests if the split will work without making changes
+	// It will return true if everything works
+
+	if (!_children.empty()) {
+		assert(!"Cannot split a face which is not clean, split its parent face instead.");
+		return false;
+	}
+	vector<Vector3d> edgePts;
+	edgePts.resize(_vertexIds.size());
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+
+		// Be sure to project directly to the edge itself. 
+		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
+		Vector3d edgePt = edge.projectPt(getBlockPtr(), pt);
+		bool inBounds;
+		double t = edge.paramOfPt(getBlockPtr(), edgePt, inBounds);
+		if (inBounds)
+			edgePts[i] = edgePt;
+		else
+			return false;
+	}
+
+	Vector3d facePt = projectPoint(pt);
+	if (!containsPt(facePt))
+		return false;
+
+	if (dryRun)
+		return true; // Report that everything is good to go and return without touching anything
+
+	Index3DId faceId = getOutBlockPtr()->addVertex(facePt);
+	vector<Index3DId> edgePtIds;
+	for (const auto& edgePt : edgePts) {
+		edgePtIds.push_back(getOutBlockPtr()->addVertex(edgePt));
+	}
+
+	newFaceIds.clear();
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
+		auto priorEdgeId = edgePtIds[j];
+		auto vertId = _vertexIds[i];
+		auto nextEdgeId = edgePtIds[i];
+		Polygon face({ faceId, priorEdgeId, vertId, nextEdgeId});
+		face.setParentId(_thisId);
+
+		newFaceIds.insert(createFace(face));
+	}
+	faceOutFunc(_thisId, [&newFaceIds](Polygon& modifiableFace) {
+		modifiableFace.setChildIds(newFaceIds);
+	});
+
+	return true;
+}
+
+Index3DId Polygon::createFace(const Polygon& face) const
+{
+	return getOutBlockPtr()->addFace(face);
+}
+
+void Polygon::setChildIds(const std::set<Index3DId>& childFaceIds)
+{
+	_children = childFaceIds;
+	_cellIds.clear(); // make this face an orphan
+}
+
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {
@@ -335,7 +453,7 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;
-	if (!isIntact()) {
+	if (!_children.empty()) {
 #ifdef _DEBUG 
 		if (!_cellIds.empty())
 			valid = false;

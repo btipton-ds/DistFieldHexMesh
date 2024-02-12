@@ -306,6 +306,35 @@ void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, st
 
 bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds) const
 {
+#if 1
+	// Make A NEW VERSION in output, don't touch the one that's there.
+	if (!_children.empty()) {
+		bool result;
+		assert(_parent.isValid());
+		cellOutFunc(_parent, [&result, &centerPoint , &newCellIds](Polyhedron& parentCell) {
+			result = parentCell.splitAtPoint(centerPoint, newCellIds);
+		});
+		return result;
+	}
+
+	set<Index3DId> cleanFaces;
+	set<Index3DId> discardableChildFaces;
+	for (const auto& faceId : _faceIds) {
+		faceOutFunc(faceId, [&cleanFaces, &discardableChildFaces](Polygon& face) {
+			if (face.getChildIds().empty()) {
+				assert(face.getBlockPtr()->isOutput());
+				cleanFaces.insert(face.getId()); // This face can be split directly
+			} else {
+				// This face already has split edges, and now we're splitting it fully.
+				// need to discard the face with split the split edges and replace it with new split faces.
+				// We don't need for reference, so it can be truly deleted
+				cleanFaces.insert(face.getParentId());
+				discardableChildFaces.insert(face.getChildIds().begin(), face.getChildIds().end());
+				face.clearChildIds();
+			}
+		});
+	}
+#else
 	set<Index3DId> vertIds;
 	getVertIds(vertIds);
 
@@ -337,13 +366,22 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 				bool found = false;
 				for (const auto& faceId0 : edge.getFaceIds()) {
 					if (edge1.getFaceIds().contains(faceId0)) {
-						faceFunc(faceId0, [this, &centerPoint, &edge, &edgePtIds, &facePtIds, &sourceFaceIds](const Polygon& face) {
+						Index3DId neighborCellId;
+						Index3DId edgePtId, facePtId;
+						faceFunc(faceId0, [this, &centerPoint, &edge, &edgePtId, &facePtId, &sourceFaceIds, &neighborCellId](const Polygon& face) {
+							neighborCellId = face.getNeighborCellId(_thisId);
 							Vector3d faceCtr = face.projectPoint(centerPoint);
-							facePtIds.push_back(getOutBlockPtr()->addVertex(faceCtr));
+							facePtId = getOutBlockPtr()->addVertex(faceCtr);
 
 							Vector3d edgeCtr = edge.projectPt(getBlockPtr(), centerPoint);
-							edgePtIds.push_back(getOutBlockPtr()->addVertex(edgeCtr));
+							edgePtId = getOutBlockPtr()->addVertex(edgeCtr);
 							sourceFaceIds.push_back(face.getId());
+							// 	void insertVertex(const Index3DId& faceId, const Edge& edge, const Index3DId& newVertexId) const;
+						});
+						edgePtIds.push_back(edgePtId);
+						facePtIds.push_back(getOutBlockPtr()->addVertex(facePtId));
+						cellOutFunc(neighborCellId, [&edge, &edgePtId, &facePtId](Polyhedron& nCell) {
+							nCell.insertVertex(facePtId, edge, edgePtId);
 						});
 						found = true;
 						break;
@@ -401,8 +439,37 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			});
 		}
 	}
-
+#endif
 	return true;
+}
+
+void Polyhedron::finishCellSplits() const
+{
+	set<Index3DId> newFaceIds;
+	bool needsPromotion = false;
+	for (const auto& faceId : _faceIds) {
+		faceOutFunc(faceId, [this, &needsPromotion, &newFaceIds](Polygon& face) {
+			const auto& childIds = face.getChildIds();
+			if (childIds.empty()) {
+				newFaceIds.insert(face.getId()); // This one's fine, just move it to the new list
+			} else {
+				needsPromotion = true;
+				newFaceIds.insert(childIds.begin(), childIds.end());
+			}
+		});
+	}
+
+	if (needsPromotion) {
+		cellOutFunc(_thisId, [this, &newFaceIds](Polyhedron& outputCell) {
+
+			outputCell._faceIds = newFaceIds;
+			for (const auto& faceId : outputCell._faceIds) {
+				faceOutFunc(faceId, [&outputCell, &newFaceIds](Polygon& newFace) {
+					newFace.addCellId(outputCell.getId());
+				});
+			}
+		});
+	}
 }
 
 bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds) const
@@ -581,7 +648,7 @@ bool Polyhedron::isClosed() const
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
-	if (!isIntact())
+	if (_children.empty())
 		return valid;
 #ifdef _DEBUG 
 

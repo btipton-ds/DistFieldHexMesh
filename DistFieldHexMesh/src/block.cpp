@@ -417,6 +417,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 	auto* pOwner = getOutBlockPtr(ownerIdx);
 	Index3DId faceId = pOwner->_polygons.findOrAdd(newFace);
+
 	return faceId;
 }
 Index3DId Block::addFace(const vector<Vector3d>& pts)
@@ -513,7 +514,7 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	assert(polyhedronId.isValid());
 	for (const auto& faceId : faceIds) {
 		faceOutFunc(faceId, [&polyhedronId](Polygon& face) {
-			face.addCell(polyhedronId);
+			face.addCellId(polyhedronId);
 		});
 	}
 
@@ -543,6 +544,13 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto* pOwner = getOutBlockPtr(ownerBlockIdx);
 	Vertex vert(pt);
 	return pOwner->_vertices.findOrAdd(vert, currentId);
+}
+
+Index3DId Block::addFace(const Polygon& face)
+{
+	auto ownerBlockIdx = determineOwnerBlockIdx(face);
+	auto* pOwner = getOutBlockPtr(ownerBlockIdx);
+	return pOwner->_polygons.findOrAdd(face);
 }
 
 void Block::addFaceToLookup(const Index3DId& faceId)
@@ -609,7 +617,7 @@ size_t Block::processTris() const
 #if 1
 	double arcAngleDegrees = 360.0 / 20;
 	size_t count = _polyhedra.size();
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 1; i++)
 		splitAllCellsAtCentroid();
 //	size_t count = splitByCurvature(arcAngleDegrees);
 
@@ -652,24 +660,35 @@ size_t Block::splitByCurvature(double arcAngleDegrees) const
 	return count;
 }
 
-bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& face) const
+size_t Block::finishCellSplits() const
 {
-	if (!face.isIntact())
+	// The first pass can leave neighbor cells with split faces which need to be promoted to full faces
+	size_t count = _polyhedra.size();
+	_polyhedra.iterateInOrder([](const Polyhedron& cell) {
+		cell.finishCellSplits();
+	});
+	count = _polyhedra.size() - count;
+	return count;
+}
+
+bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const
+{
+	if (!face.getChildIds().empty()) // face was split, show the child faces
 		return false;
 
 	bool result = false;
 	switch (meshType) {
 		default:
-		case MT_ALL:
+		case FT_ALL:
 			result = true;
 			break;
-		case MT_INNER:
+		case FT_INNER:
 			result = !face.isOuter() && !face.isBlockBoundary();
 			break;
-		case MT_OUTER:
+		case FT_OUTER:
 			result = face.isOuter();
 			break;
-		case MT_BLOCK_BOUNDARY:
+		case FT_BLOCK_BOUNDARY:
 			result = face.isBlockBoundary();
 			break;
 	}
@@ -678,7 +697,7 @@ bool Block::includeFace(MeshType meshType, size_t minSplitNum, const Polygon& fa
 	return result;
 }
 
-CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
+CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum) const
 {
 	if (numFaces(true) == 0)
 		return nullptr;
@@ -688,7 +707,7 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
 	bbox.grow(0.05 * span);
 
 	if (_blockMeshes.empty()) {
-		_blockMeshes.resize(MT_ALL);
+		_blockMeshes.resize(FT_ALL);
 	}
 	CMeshPtr result;
 	_polygons.iterateInOrder([this, &result, &bbox, meshType, minSplitNum](const Polygon& face) {
@@ -724,10 +743,10 @@ CMeshPtr Block::getBlockTriMesh(MeshType meshType, size_t minSplitNum) const
 	return result;
 }
 
-Block::glPointsPtr Block::makeFaceEdges(MeshType meshType, size_t minSplitNum) const
+Block::glPointsPtr Block::makeFaceEdges(FaceType meshType, size_t minSplitNum) const
 {
 	if (_blockEdges.empty())
-		_blockEdges.resize(MT_ALL);
+		_blockEdges.resize(FT_ALL);
 
 	set<Edge> edges;
 
