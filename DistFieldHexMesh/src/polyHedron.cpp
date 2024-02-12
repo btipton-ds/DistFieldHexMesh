@@ -317,23 +317,100 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		return result;
 	}
 
-	set<Index3DId> cleanFaces;
-	set<Index3DId> discardableChildFaces;
+	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
-		faceOutFunc(faceId, [&cleanFaces, &discardableChildFaces](Polygon& face) {
-			if (face.getChildIds().empty()) {
+		faceOutFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
+			if (canSplitAll) {
 				assert(face.getBlockPtr()->isOutput());
-				cleanFaces.insert(face.getId()); // This face can be split directly
-			} else {
-				// This face already has split edges, and now we're splitting it fully.
-				// need to discard the face with split the split edges and replace it with new split faces.
-				// We don't need for reference, so it can be truly deleted
-				cleanFaces.insert(face.getParentId());
-				discardableChildFaces.insert(face.getChildIds().begin(), face.getChildIds().end());
-				face.clearChildIds();
+				set<Index3DId> newFaceIds;
+				const auto& childIds = face.getChildIds();
+				if (childIds.empty()) {
+					if (!face.splitAtPoint(centerPoint, newFaceIds, true)) {
+						canSplitAll = false;
+						assert(!"Cannot split this face, try parent");
+					}
+				} else {
+					if (childIds.size() == 4)
+						canSplitAll = false;
+				}
 			}
 		});
 	}
+	
+	if (!canSplitAll)
+		return false;
+
+	Vector3d ctr = calCentroid();
+	Index3DId cellMidId = getOutBlockPtr()->addVertex(ctr);
+	set<Index3DId> newFaces;
+	for (const auto& faceId : _faceIds) {
+		faceOutFunc(faceId, [&newFaces, &centerPoint](Polygon& face) {
+			assert(face.getBlockPtr()->isOutput());
+			const auto& childIds = face.getChildIds();
+			if (childIds.empty()) {
+				if (!face.splitAtPoint(centerPoint, newFaces, false)) {
+					assert(!"Face cannot be split");
+				}
+			} else {
+				newFaces.insert(childIds.begin(), childIds.end());
+			}
+		});
+	}
+
+	set<Index3DId> corners;
+	getVertIds(corners);
+	while (!corners.empty()) {
+		Index3DId vert = *corners.begin();
+		corners.erase(vert);
+		set<Index3DId> vertFaces;
+		for (const auto& faceId : newFaces) {
+			faceFunc(faceId, [&vert, &vertFaces](const Polygon& face) {
+				if (face.containsVert(vert))
+					vertFaces.insert(face.getId());
+			});
+		}
+		if (vertFaces.size() == 3) {
+			vector<Polygon> orderedFaces;
+			for (const auto& faceId : vertFaces) {
+				newFaces.erase(faceId);
+				// vertex order 		Polygon face({ faceId, priorEdgeId, vertId, nextEdgeId});
+				vector<Index3DId> faceVerts;
+				faceOutFunc(faceId, [&orderedFaces](const Polygon& face) {
+					orderedFaces.push_back(face);
+				});
+			}
+			for (size_t i = 0; i < orderedFaces.size(); i++) {
+				size_t j = (i + 1) % orderedFaces.size();
+
+				const auto& face0 = orderedFaces[i];
+				const auto& face1 = orderedFaces[j];
+
+				vector<Index3DId> verts = {
+					face0.getVertexIds()[3],
+					face0.getVertexIds()[0],
+					cellMidId,
+					face1.getVertexIds()[0],
+				};
+				vertFaces.insert(addFace(verts));
+			}
+			assert(vertFaces.size() == 6);
+			Polyhedron newCell(vertFaces);
+			newCell.setParent(_thisId);
+			auto newCellId = getOutBlockPtr()->addCell(newCell);
+			for (const auto& faceId : vertFaces) {
+				faceOutFunc(faceId, [&newCellId](Polygon& face) {
+					face.addCellId(newCellId);
+				});
+			}
+
+			cellOutFunc(_thisId, [&newCellId](Polyhedron& self) {
+				self.addChild(newCellId);
+			});
+		}
+		else
+			assert(!"Verts with other than 3 faces is not supported yet.");
+	}
+
 #else
 	set<Index3DId> vertIds;
 	getVertIds(vertIds);
@@ -442,6 +519,21 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 #endif
 	return true;
 }
+
+Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds) const
+{
+	Polygon face(vertIds);
+#if _DEBUG
+	set<Edge> edges;
+	face.getEdges(edges);
+	for (const auto& edge : edges) {
+		assert(edge.onPrincipalAxis(getBlockPtr()));
+	}
+#endif
+
+	return getOutBlockPtr()->addFace(face);
+}
+
 
 void Polyhedron::finishCellSplits() const
 {

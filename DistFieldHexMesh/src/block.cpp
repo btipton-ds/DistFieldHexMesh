@@ -442,11 +442,16 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-Index3DId Block::addCell(const set<Index3DId>& faceIds)
+Index3DId Block::addCell(const Polyhedron& cell)
 {
-	Index3DId cellId = _polyhedra.findOrAdd(Polyhedron(faceIds));
+	Index3DId cellId = _polyhedra.findOrAdd(cell);
 
 	return cellId;
+}
+
+Index3DId Block::addCell(const set<Index3DId>& faceIds)
+{
+	return addCell(Polyhedron(faceIds));
 }
 
 Index3DId Block::addCell(const vector<Index3DId>& faceIds)

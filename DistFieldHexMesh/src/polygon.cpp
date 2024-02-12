@@ -397,7 +397,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 		edgePtIds.push_back(getOutBlockPtr()->addVertex(edgePt));
 	}
 
-	newFaceIds.clear();
+	need to insert mid vertex in adjacent faces
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
 		auto priorEdgeId = edgePtIds[j];
@@ -408,6 +408,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 
 		newFaceIds.insert(createFace(face));
 	}
+
 	faceOutFunc(_thisId, [&newFaceIds](Polygon& modifiableFace) {
 		modifiableFace.setChildIds(newFaceIds);
 	});

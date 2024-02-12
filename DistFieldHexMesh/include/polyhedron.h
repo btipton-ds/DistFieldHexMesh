@@ -70,6 +70,7 @@ private:
 	void copyToOut() const;
 	Index3DId createFace(const std::vector<Index3DId>& vertIds) const;
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds) const;
+	Index3DId addFace(const std::vector<Index3DId>& vertIds) const;
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
