@@ -311,15 +311,17 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 	assert(verifyTopology());
 
-#if 0
+#if 1
 	size_t count = 0;
-	runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-			_blocks[linearIdx]->processTris();
-		}
-		return true;
-	}, RUN_MULTI_THREAD);
+	for (size_t i = 0; i < 2; i++) {
+		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
+				_blocks[linearIdx]->splitAllCellsAtCentroid();
+			}
+			return true;
+		}, RUN_MULTI_THREAD);
+	}
 	assert(verifyTopology());
 #endif
 
@@ -524,14 +526,6 @@ void Volume::runLambda(L fLambda, bool multiCore)
 			}
 		}
 	}
-
-	// Pass two. Any faces which have been split or had their edges split, are added to the cell and the original phase is removed.
-	// Process those blocks in undetermined order. This pass has not cross block race conditions and doesn't need a stride
-	MultiCore::runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx])
-			_blocks[linearIdx]->finishCellSplits();
-		return true;
-	}, _blocks.size(), multiCore);
 
 	endOperation();
 }

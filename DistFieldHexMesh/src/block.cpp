@@ -235,15 +235,6 @@ bool Block::verifyTopology() const
 	return result;
 }
 
-bool Block::verifyPolyhedronTopology(const Index3DId& cellId) const
-{
-	bool result = false;
-	cellFunc(cellId, [&result](const Polyhedron& cell) {
-		result = cell.verifyTopology();
-	});
-	return result;
-}
-
 vector<Index3DId> Block::createSubBlocks()
 {
 	vector<Index3DId> newCells;
@@ -443,6 +434,14 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 Index3DId Block::addCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
+	const auto& cellFaceIds = cell.getFaceIds();
+	for (const auto& faceId : cellFaceIds) {
+		faceFunc(faceId, [&cellId](Polygon& cellFace) {
+			cellFace.setWriteLocked(false);
+			cellFace.addCellId(cellId);
+			cellFace.setWriteLocked(true);
+		});
+	}
 
 	return cellId;
 }
@@ -553,7 +552,9 @@ Index3DId Block::addFace(const Polygon& face)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	return pOwner->_polygons.findOrAdd(face);
+	auto result = pOwner->_polygons.findOrAdd(face);
+	pOwner->_polygons[result].setWriteLocked(true);
+	return result;
 }
 
 void Block::addFaceToLookup(const Index3DId& faceId)
@@ -658,17 +659,6 @@ size_t Block::splitByCurvature(double arcAngleDegrees)
 	size_t count = _polyhedra.size();
 	_polyhedra.iterateInOrder([this, arcAngleDegrees](Polyhedron& cell) {
 		cell.splitByCurvature(arcAngleDegrees);
-	});
-	count = _polyhedra.size() - count;
-	return count;
-}
-
-size_t Block::finishCellSplits()
-{
-	// The first pass can leave neighbor cells with split faces which need to be promoted to full faces
-	size_t count = _polyhedra.size();
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.finishCellSplits();
 	});
 	count = _polyhedra.size() - count;
 	return count;

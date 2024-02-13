@@ -19,7 +19,7 @@ size_t Polygon::numSplits() const
 {
 	size_t result = 0;
 	auto parent = _parent;
-	while (_parent.isValid()) {
+	while (parent.isValid()) {
 		result++;
 		Index3DId nextParent;
 		faceFunc(parent, [&nextParent](const Polygon& face) {
@@ -34,6 +34,7 @@ size_t Polygon::numSplits() const
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
+	assert(!_writeLocked);
 	if (_children.empty()) {
 		_vertexIds.push_back(vertId);
 		_needSort = true;
@@ -336,6 +337,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 
 bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun)
 {
+	assert(_writeLocked);
 	if (!_children.empty()) {
 		if (_children.size() == 1) {
 			// This face has split edges, but no split faces
@@ -390,6 +392,10 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId});
 		face.setParentId(_thisId);
 
+		// The split face separates the same cells as the original, until new cells are created. They 
+		// The original cell must replace its id the id of a child cell when the child cell is created
+		face.setCellIds(_cellIds);
+
 		auto newFaceId = createFace(face);
 		newFaceIds.insert(newFaceId);
 	}
@@ -403,6 +409,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 
 bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 {
+	assert(!_writeLocked);
 	bool result = false;
 	set<Edge> edgeSet;
 	getEdges(edgeSet);
@@ -420,6 +427,7 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 
 bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
 {
+	assert(!_writeLocked);
 	bool inBounds;
 	size_t i, j;
 	if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(getBlockPtr(), vertId, inBounds) && inBounds) {
@@ -443,7 +451,6 @@ Index3DId Polygon::createFace(const Polygon& face)
 void Polygon::setChildIds(const std::set<Index3DId>& childFaceIds)
 {
 	_children = childFaceIds;
-	_cellIds.clear(); // make this face an orphan
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
@@ -473,13 +480,6 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;
-	if (!_children.empty()) {
-#ifdef _DEBUG 
-		if (!_cellIds.empty())
-			valid = false;
-#endif
-		return valid;
-	}
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
 	faceFunc(_thisId, [&vertIds](const Polygon& face) {

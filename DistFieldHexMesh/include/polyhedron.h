@@ -26,6 +26,7 @@ public:
 
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
+	bool containsFace(const Index3DId& faceId) const;
 	void addChild(const Index3DId& id);
 	void setParent(const Index3DId& id);
 	const std::set<Index3DId>& getFaceIds() const;
@@ -47,7 +48,6 @@ public:
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
 	void splitByCurvature(double maxArcAngleDegrees);
-	void finishCellSplits();
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -61,6 +61,11 @@ public:
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
 
+	inline void setWriteLocked(bool val)
+	{
+		_writeLocked = val;
+	}
+
 private:
 	friend class Block;
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
@@ -69,8 +74,9 @@ private:
 	void copyToOut() const;
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
-	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 
+	bool _writeLocked = false;
+	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
 	std::set<Index3DId> _faceIds;

@@ -76,6 +76,11 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 	return false;
 }
 
+inline bool Polyhedron::containsFace(const Index3DId& faceId) const
+{
+	return _faceIds.contains(faceId);
+}
+
 void Polyhedron::addChild(const Index3DId& id)
 {
 	_children.insert(id);
@@ -102,6 +107,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
 	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds](const Polygon& face) {
+			assert(face.ownedByCell(_thisId));
 			auto temp = face.getCellIds();
 			adjCellIds.insert(temp.begin(), temp.end());
 			set<Edge> edges;
@@ -297,6 +303,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
+			face.setWriteLocked(true);
 			if (canSplitAll) {
 				set<Index3DId> newFaceIds;
 				canSplitAll = face.splitAtPoint(centerPoint, newFaceIds, true);
@@ -311,19 +318,32 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 
 	Vector3d ctr = calCentroid();
 	Index3DId cellMidId = getBlockPtr()->addVertex(ctr);
+	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&centerPoint](Polygon& face) {
-			set<Index3DId> temp;
-			face.splitAtPoint(centerPoint, temp, false);
+		faceFunc(faceId, [this, &centerPoint, &vertToFaceMap](Polygon& face) {
+			face.setWriteLocked(true);
+			set<Index3DId> tempFaces;
+			face.splitAtPoint(centerPoint, tempFaces, false);
+			for (const auto& childFaceId : tempFaces) {
+				faceFunc(childFaceId, [&vertToFaceMap](const Polygon& childFace) {
+					for (const auto& vertId : childFace.getVertexIds()) {
+						auto iter = vertToFaceMap.find(vertId);
+						if (iter == vertToFaceMap.end()) {
+							iter = vertToFaceMap.insert(make_pair(vertId, set<Index3DId>())).first;
+						}
+						iter->second.insert(childFace.getId());
+					}
+				});
+			}
+
 		});
 	}
 
 	set<Index3DId> corners;
 	getVertIds(corners);
-	while (!corners.empty()) {
-		Index3DId vert = *corners.begin();
-		corners.erase(vert);
-		auto vertFaces = getVertFaces(vert);
+	for (const auto& vert : corners) {
+		auto vertFaces = vertToFaceMap.find(vert)->second;
+		assert(!vertFaces.contains(_thisId));
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
 		for (const auto& faceId : vertFaces) {
 			faceFunc(faceId, [&vert, &vertEdgeFaceMap, &vertFaces](const Polygon& face) {
@@ -364,24 +384,26 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			};
 			vertFaces.insert(addFace(verts));
 		}
-		assert(vertFaces.size() == 6);
-		Polyhedron newCell(vertFaces);
-		newCell.setParent(_thisId);
-		auto newCellId = getBlockPtr()->addCell(newCell);
-		cellFunc(newCellId, [&newCellId](Polyhedron& newCell) {
-			assert(newCell.isClosed());
-		});
 
-		for (const auto& faceId : vertFaces) {
-			faceFunc(faceId, [&newCellId](Polygon& face) {
-				face.addCellId(newCellId);
+		for (const auto& newFaceId : vertFaces) {
+			faceFunc(newFaceId, [this](Polygon& newFace) {
+				assert(!containsFace(newFace.getId()));
+
+				newFace.setWriteLocked(false);
+				newFace.removeCellId(_thisId);
+				newFace.setWriteLocked(true);
 			});
 		}
 
-		cellFunc(_thisId, [&newCellId](Polyhedron& self) {
-			self.addChild(newCellId);
+		Polyhedron newCell(vertFaces);
+		newCell.setParent(_thisId);
+		auto newCellId = getBlockPtr()->addCell(newCell);
+		cellFunc(newCellId, [this, &newCellId](Polyhedron& newCell) {
+			assert(newCell.verifyTopology());
 		});
-	}	
+
+		addChild(newCellId);
+	}
 
 	return true;
 }
@@ -398,48 +420,6 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 #endif
 
 	return getBlockPtr()->addFace(face);
-}
-
-
-void Polyhedron::finishCellSplits()
-{
-	set<Index3DId> newFaceSet;
-	bool needsPromotion = false;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &needsPromotion, &newFaceSet](Polygon& face) {
-			const auto& childIds = face.getChildIds();
-			if (childIds.empty()) {
-				newFaceSet.insert(face.getId()); // This one's fine, just move it to the new list
-			} else {
-				needsPromotion = true;
-				newFaceSet.insert(childIds.begin(), childIds.end());
-			}
-		});
-	}
-
-	vector<Index3DId> newFaceIds;
-	newFaceIds.insert(newFaceIds.end(), newFaceSet.begin(), newFaceSet.end());
-	for (size_t i = 0; i < newFaceIds.size(); i++) {
-		for (size_t j = i + 1; j < newFaceIds.size(); j++) {
-			faceFunc(newFaceIds[i], [this, &newFaceIds, j](Polygon& face0) {
-				faceFunc(newFaceIds[j], [&face0](Polygon& face1) {
-					face0.imprintFaceVertices(face1);
-					face1.imprintFaceVertices(face0);
-				});
-			});
-		}
-	}
-
-	if (needsPromotion) {
-		cellFunc(_thisId, [this, &newFaceSet](Polyhedron& outputCell) {
-			outputCell._faceIds = newFaceSet;
-			for (const auto& faceId : outputCell._faceIds) {
-				faceFunc(faceId, [&outputCell](Polygon& newFace) {
-					newFace.addCellId(outputCell.getId());
-				});
-			}
-		});
-	}
 }
 
 bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
@@ -617,8 +597,6 @@ bool Polyhedron::isClosed() const
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
-	if (_children.empty())
-		return valid;
 #ifdef _DEBUG 
 
 	if (!isClosed())

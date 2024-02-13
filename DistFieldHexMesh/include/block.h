@@ -72,7 +72,6 @@ public:
 	size_t numPolyhedra() const;
 
 	bool verifyTopology() const;
-	bool verifyPolyhedronTopology(const Index3DId& cellId) const;
 	std::vector<Index3DId> createSubBlocks();
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
@@ -156,7 +155,6 @@ private:
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
 	size_t splitByCurvature(double arcAngleDegrees);
-	size_t finishCellSplits();
 
 	Index3D _blockIdx;
 
