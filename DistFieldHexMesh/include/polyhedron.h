@@ -74,6 +74,7 @@ private:
 	void copyToOut() const;
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
+	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const;
 
 	bool _writeLocked = false;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);

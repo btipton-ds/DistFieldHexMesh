@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 
 Index3D Volume::s_volDim;
 
@@ -313,11 +313,11 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 #if 1
 	size_t count = 0;
-	for (size_t i = 0; i < 2; i++) {
+	for (size_t i = 0; i < 1; i++) {
 		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-				_blocks[linearIdx]->splitAllCellsAtCentroid();
+				_blocks[linearIdx]->splitAllCellsByCurvature(10.0);
 			}
 			return true;
 		}, RUN_MULTI_THREAD);

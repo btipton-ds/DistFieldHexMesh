@@ -466,20 +466,12 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
+double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const
 {
-	const double sinEdgeAngle = sin(30.0 / 180.0 * M_PI);
-	const double minCurvature = 0.1; // 1 meter radius
-	const double kDiv = 4.0;
-	const size_t circleDivs = (size_t)(360.0 / maxArcAngleDegrees);
-
-	auto pTriMesh =getBlockPtr()->getModelMesh();
-
-	CBoundingBox3Dd bbox = getBoundingBox();
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	double maxCurvature = 0;
 	vector<CMesh::SearchEntry> triEntries;
 	if (pTriMesh->findTris(bbox, triEntries)) {
-		double avgSurfCurvature = 0;
-		size_t numSamples = 0;
 		for (const auto& triEntry : triEntries) {
 			size_t triIndex = triEntry.getIndex();
 			Vector3i tri = pTriMesh->getTri(triIndex);
@@ -487,27 +479,53 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
 				int j = (i + 1) % 3;
 				size_t edgeIdx = pTriMesh->findEdge(tri[i], tri[j]);
 				double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
-				if (edgeCurv > 0) {
-					avgSurfCurvature += edgeCurv;
-					numSamples++;
+				if (edgeCurv > maxCurvature) {
+					maxCurvature = edgeCurv;
 				}
 			}
 		}
 
-		avgSurfCurvature /= numSamples;
-		if (avgSurfCurvature < minCurvature)
-			return;
-		double avgSurfRadius = 1 / avgSurfCurvature;
-		cout << "Surf radius: " << avgSurfRadius << "\n";
-		double avgSurfCircumference = 2 * M_PI * avgSurfRadius;
-		double avgSurfArcLength = avgSurfCircumference / circleDivs; // 5 deg arc
-		auto range = bbox.range();
-		double minBoxDim = min(range[0], min(range[1], range[2]));
-		if (kDiv * avgSurfArcLength > minBoxDim) {
-			set<Index3DId> splitCells;
-			if (!splitAtCentroid(splitCells)) {
-				return;
+		if (maxCurvature > 0)
+			return 1 / maxCurvature;
+		return -1;
+	}
+	return 0;
+}
+
+void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
+{
+	CBoundingBox3Dd bbox = getBoundingBox();
+	const double maxRadius = 0.1; // meters
+	const double kDiv = 4.0;
+	const size_t circleDivs = (size_t)(360.0 / maxArcAngleDegrees);
+
+	bool needToSplit = false;
+	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
+	for (size_t vertIdx : sharpVerts) {
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
+		if (bbox.contains(pt)) {
+			needToSplit = true;
+			break;
+		}
+	}
+	if (!needToSplit) {
+		double minRadius = calMinSurfaceRadius(bbox);
+		if (minRadius > 0) {
+			double surfCircumference = 2 * M_PI * minRadius;
+			double arcLength = surfCircumference / circleDivs;
+			auto range = bbox.range();
+			double minBoxDim = min(range[0], min(range[1], range[2]));
+			if (kDiv * arcLength < minBoxDim) {
+				needToSplit = true;
 			}
+		}
+	}
+
+	if (needToSplit) {
+		set<Index3DId> splitCells;
+		if (!splitAtCentroid(splitCells)) {
+			return;
 		}
 	}
 }

@@ -154,7 +154,7 @@ private:
 	bool includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const;
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
-	size_t splitByCurvature(double arcAngleDegrees);
+	size_t splitAllCellsByCurvature(double arcAngleDegrees);
 
 	Index3D _blockIdx;
 

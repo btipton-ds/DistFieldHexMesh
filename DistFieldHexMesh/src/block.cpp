@@ -654,7 +654,7 @@ size_t Block::splitAllCellsAtPoint(const Vector3d& pt)
 	return count;
 }
 
-size_t Block::splitByCurvature(double arcAngleDegrees)
+size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 {
 	size_t count = _polyhedra.size();
 	_polyhedra.iterateInOrder([this, arcAngleDegrees](Polyhedron& cell) {
