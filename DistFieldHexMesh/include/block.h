@@ -51,12 +51,12 @@ public:
 	const Volume* getVolume() const override;
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
-	Block* getOutBlockPtr(const Index3D& blockIdx) const override;
+	Block* getOwner(const Index3D& blockIdx) override;
 
 	Vector3d invTriLinIterp(const Vector3d& pt) const;
 	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
-	Block(Volume* pVol, bool _isOutput, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
 
 	size_t blockDim() const;
@@ -71,7 +71,6 @@ public:
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 
-	bool isOutput() const;
 	bool verifyTopology() const;
 	bool verifyPolyhedronTopology(const Index3DId& cellId) const;
 	std::vector<Index3DId> createSubBlocks();
@@ -81,7 +80,7 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	size_t processTris() const;
+	size_t processTris();
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum) const;
 	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum) const;
@@ -101,6 +100,9 @@ public:
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+
+	bool freePolygon(const Index3DId& id);
+	bool freePolyhedron(const Index3DId& id);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
@@ -124,9 +126,6 @@ public:
 	LAMBDA_FUNC_PAIR_DECL(vertex);
 	LAMBDA_FUNC_PAIR_DECL(face);
 	LAMBDA_FUNC_PAIR_DECL(cell);
-
-	template<class LAMBDA>
-	void faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func);
 
 private:
 	friend class Volume;
@@ -154,14 +153,13 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const;
-	size_t splitAllCellsAtCentroid() const;
-	size_t splitAllCellsAtPoint(const Vector3d& pt) const;
-	size_t splitByCurvature(double arcAngleDegrees) const;
-	size_t finishCellSplits() const;
+	size_t splitAllCellsAtCentroid();
+	size_t splitAllCellsAtPoint(const Vector3d& pt);
+	size_t splitByCurvature(double arcAngleDegrees);
+	size_t finishCellSplits();
 
 	Index3D _blockIdx;
 
-	bool _isOutput;
 	Volume* _pVol;
 	CBoundingBox3Dd 
 		_boundBox, // The precise bounding box for this box
@@ -181,16 +179,6 @@ private:
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 };
-
-inline void Block::setIsOutput(bool val)
-{
-	_isOutput = val;
-}
-
-inline bool Block::isOutput() const
-{
-	return _isOutput;
-}
 
 inline size_t Block::GlPoints::getId() const
 {
@@ -253,24 +241,5 @@ LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
 LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
 LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
 LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
-
-template<class LAMBDA>
-void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)
-{
-	if (id1 < id0) {
-		faceFunc(id1, [this, &id0, &func](Polygon& face1) {
-			faceFunc(id0, [&face1, &func](Polygon& face0) {
-				func(face0, face1);
-			});
-		});
-	} else {
-		faceFunc(id0, [this, &id1, &func](Polygon& face0) {
-			faceFunc(id1, [&face0, &func](Polygon& face1) {
-				func(face0, face1);
-			});
-		});
-	}
-}
-
 
 }

@@ -44,23 +44,22 @@ public:
 	Vector3d calCentroid() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	bool splitAtCentroid(std::set<Index3DId>& newCellIds) const;
-	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds) const;
-	void splitByCurvature(double maxArcAngleDegrees) const;
-	void finishCellSplits() const;
+	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
+	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
+	void splitByCurvature(double maxArcAngleDegrees);
+	void finishCellSplits();
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 	void dumpFaces() const;
 
 	bool isClosed() const;
-	bool hasBeenSplit() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
-	LAMBDA_FUNC_PAIR_DECL(vertex);
-	LAMBDA_FUNC_PAIR_DECL(face);
-	LAMBDA_FUNC_PAIR_DECL(cell);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(vertex);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
 
 private:
 	friend class Block;
@@ -68,9 +67,9 @@ private:
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
-	Index3DId createFace(const std::vector<Index3DId>& vertIds) const;
-	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds) const;
-	Index3DId addFace(const std::vector<Index3DId>& vertIds) const;
+	Index3DId createFace(const std::vector<Index3DId>& vertIds);
+	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
+	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;

@@ -22,7 +22,7 @@ public:
 	virtual const Volume* getVolume() const = 0;
 
 	virtual const Block* getOwner(const Index3D& blockIdx) const = 0;
-	virtual Block* getOutBlockPtr(const Index3D& blockIdx) const = 0;
+	virtual Block* getOwner(const Index3D& blockIdx) = 0;
 };
 
 class ObjectPoolOwnerUser {
@@ -34,7 +34,7 @@ public:
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
 	const Block* getBlockPtr() const;
-	Block* getOutBlockPtr() const;
+	Block* getBlockPtr();
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
 protected:
@@ -454,8 +454,9 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
-	for (size_t id = 0; id < _idToIndexMap.size(); id++) {
-		size_t index = _idToIndexMap[id];
+	auto temp = _idToIndexMap; // Don't modify this while we're in the loop
+	for (size_t id = 0; id < temp.size(); id++) {
+		size_t index = temp[id];
 		if (index != -1) {
 			auto p = getEntry(index);
 			fLambda(*p);
@@ -467,8 +468,9 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
-	for (size_t id = 0; id < _idToIndexMap.size(); id++) {
-		size_t index = _idToIndexMap[id];
+	auto temp = _idToIndexMap; // Don't modify this while we're in the loop
+	for (size_t id = 0; id < temp.size(); id++) {
+		size_t index = temp[id];
 		if (index != -1) {
 			auto p = getEntry(index);
 			fLambda(*p);

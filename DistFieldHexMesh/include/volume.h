@@ -36,8 +36,8 @@ public:
 	void startOperation();
 	void endOperation();
 
-	const Block* getBlockPtr(bool isOutput, const Index3D& blockIdx) const;
-	Block* getOutBlockPtr(const Index3D& blockIdx) const;
+	const Block* getBlockPtr(const Index3D& blockIdx) const;
+	Block* getBlockPtr(const Index3D& blockIdx);
 
 	const CMeshPtr& getModelMesh() const;
 
@@ -59,7 +59,7 @@ public:
 
 	void writePolyMesh(const std::string& dirName) const;
 
-	bool verifyTopology(bool isOutput) const;
+	bool verifyTopology() const;
 
 private:
 	friend class Vertex;
@@ -73,7 +73,7 @@ private:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-	std::shared_ptr<Block> createBlock(bool isOutput, const Index3D& blockIdx);
+	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -99,8 +99,8 @@ private:
 	double _sharpAngleRad;
 
 	std::vector<Vector3d> _cornerPts;
-	std::vector<std::shared_ptr<const Block>> _blocks;
-	std::vector<std::shared_ptr<Block>> _outBlocks;
+	std::vector<std::shared_ptr<Block>> _blocks;
+//	std::vector<std::shared_ptr<Block>> _outBlocks;
 	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
 };
@@ -122,28 +122,21 @@ inline void Volume::setSpan(const Vector3d& span)
 	_spanMeters = span;
 }
 
-inline const Block* Volume::getBlockPtr(bool isOutput, const Index3D& blockIdx) const
+inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
 {
-	const Block* pResult = nullptr;
-
 	auto idx = calLinearBlockIndex(blockIdx);
-	if (isOutput && !pResult && idx < _outBlocks.size() && _outBlocks[idx])
-		pResult = _outBlocks[idx].get();
+	if (idx < _blocks.size() && _blocks[idx])
+		return _blocks[idx].get();
 
-	if (!pResult && idx < _blocks.size() && _blocks[idx])
-		pResult = _blocks[idx].get();
-
-	assert(pResult);
-	return pResult;
+	return nullptr;
 }
 
-inline Block* Volume::getOutBlockPtr(const Index3D& blockIdx) const
+inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
 	auto idx = calLinearBlockIndex(blockIdx);
-	if (_blocks.size() == _outBlocks.size() && _outBlocks[idx]) {
-		return _outBlocks[idx].get();
-	}
-	assert(!"Failed to block pointer");
+	if (idx < _blocks.size() && _blocks[idx])
+		return _blocks[idx].get();
+
 	return nullptr;
 }
 

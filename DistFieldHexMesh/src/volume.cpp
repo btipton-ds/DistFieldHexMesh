@@ -31,7 +31,7 @@ Volume::Volume(const Volume& src)
 	: _originMeters(src._originMeters) 
 	, _spanMeters(src._spanMeters)
 	, _blocks(src._blocks)
-	, _outBlocks(src._outBlocks)
+//	, _outBlocks(src._outBlocks)
 {
 }
 
@@ -41,6 +41,7 @@ Volume::~Volume()
 
 void Volume::startOperation()
 {
+/*
 	_outBlocks.resize(_blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
 		auto idx = calBlockIndexFromLinearIndex(i);
@@ -52,10 +53,12 @@ void Volume::startOperation()
 		_outBlocks[i]->setIsOutput(true);
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
+*/
 }
 
 void Volume::endOperation()
 {
+/*
 	assert(_outBlocks.size() == _blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
 		if (_outBlocks[i]) {
@@ -67,6 +70,7 @@ void Volume::endOperation()
 	}, _blocks.size(), RUN_MULTI_THREAD);
 
 	_outBlocks.clear();
+*/
 }
 
 void Volume::setVolDim(const Index3D& blockSize)
@@ -185,7 +189,7 @@ void Volume::findSharpVertices()
 	}
 }
 
-shared_ptr<Block> Volume::createBlock(bool isOutput, const Index3D& blockIdx)
+shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 {
 	const auto& dim = volDim();
 	const Vector3d xAxis(1, 0, 0);
@@ -193,7 +197,7 @@ shared_ptr<Block> Volume::createBlock(bool isOutput, const Index3D& blockIdx)
 	const Vector3d zAxis(0, 0, 1);
 
 	size_t idx = calLinearBlockIndex(blockIdx);
-	auto pBlock = _outBlocks[idx];
+	auto pBlock = _blocks[idx];
 	if (pBlock)
 		return pBlock;
 
@@ -217,7 +221,7 @@ shared_ptr<Block> Volume::createBlock(bool isOutput, const Index3D& blockIdx)
 		origin + zAxis * span[2] + yAxis * span[1],
 	};
 
-	return make_shared<Block>(this, isOutput, blockIdx, pts);
+	return make_shared<Block>(this, blockIdx, pts);
 }
 
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
@@ -237,7 +241,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 			for (blkIdx[2] = 0; blkIdx[2] < dim[2]; blkIdx[2]++) {
 				origin[2] = _originMeters[2] + blkIdx[2] * blockSpan[2];
 				auto linearIdx = calLinearBlockIndex(blkIdx);
-				_blocks[linearIdx] = createBlock(false, blkIdx);
+				_blocks[linearIdx] = createBlock(blkIdx);
 			}
 		}
 	}
@@ -267,7 +271,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 			minSpan = _spanMeters[i];
 		}
 	}
-	double targetBlockSize = minSpan / 10;
+	double targetBlockSize = minSpan / 8;
 	size_t blockDim = (size_t) (targetBlockSize / maxBlockSize + 0.5);
 	Index3D::setBlockDim(blockDim);
 
@@ -292,14 +296,20 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
 
+	MultiCore::runLambda([this, &blockSpan](size_t linearIdx)->bool {
+		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+		_blocks[linearIdx] = createBlock(blockIdx);
+		return true;
+	}, _blocks.size(), RUN_MULTI_THREAD);
+
 	// Cannot create subBlocks until all blocks are created
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
-		if (_outBlocks[linearIdx])
-			_outBlocks[linearIdx]->createSubBlocks();
+		if (_blocks[linearIdx])
+			_blocks[linearIdx]->createSubBlocks();
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	assert(verifyTopology(false));
+	assert(verifyTopology());
 
 #if 0
 	size_t count = 0;
@@ -310,9 +320,9 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 		}
 		return true;
 	}, RUN_MULTI_THREAD);
+	assert(verifyTopology());
 #endif
 
-	assert(verifyTopology(false));
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
@@ -457,14 +467,12 @@ void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const strin
 
 }
 
-bool Volume::verifyTopology(bool isOutput) const
+bool Volume::verifyTopology() const
 {
 	bool result = true;
 
-	runLambda([this, isOutput, &result](size_t linearIdx)->bool {
-		if (isOutput)
-			result = result && _outBlocks[linearIdx]->verifyTopology();
-		else
+	runLambda([this, &result](size_t linearIdx)->bool {
+		if (_blocks[linearIdx])
 			result = result && _blocks[linearIdx]->verifyTopology();
 		return true;
 	}, RUN_MULTI_THREAD);
@@ -520,9 +528,10 @@ void Volume::runLambda(L fLambda, bool multiCore)
 	// Pass two. Any faces which have been split or had their edges split, are added to the cell and the original phase is removed.
 	// Process those blocks in undetermined order. This pass has not cross block race conditions and doesn't need a stride
 	MultiCore::runLambda([this](size_t linearIdx)->bool {
-		_outBlocks[linearIdx]->finishCellSplits();
+		if (_blocks[linearIdx])
+			_blocks[linearIdx]->finishCellSplits();
 		return true;
-	}, _outBlocks.size(), multiCore);
+	}, _blocks.size(), multiCore);
 
 	endOperation();
 }

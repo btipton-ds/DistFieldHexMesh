@@ -334,19 +334,23 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	return result;
 }
 
-bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const
+bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun)
 {
-	newFaceIds.clear();
-	// Returns the new faces in the output storage.
-	// Each new face has four vertices with the facePoint at index 0 in right hand order relative to this face's normal
-	// Dry run tests if the split will work without making changes
-	// It will return true if everything works
-
 	if (!_children.empty()) {
-		assert(!"Cannot split a face which is not clean, split its parent face instead.");
-		return false;
+		if (_children.size() == 1) {
+			// This face has split edges, but no split faces
+			if (!dryRun) {
+				// This face needs to be resplit and replaced. Delete it and clear it
+				getBlockPtr()->freePolygon(*_children.begin());
+				_children.clear();
+			}
+		} else {
+			newFaceIds = _children;
+			return true;
+		}
 	}
 
+	newFaceIds.clear();
 	assert(_vertexIds.size() == 4);
 	vector<Vector3d> edgePts;
 	edgePts.resize(_vertexIds.size());
@@ -372,10 +376,10 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 	if (dryRun)
 		return true; // Report that everything is good to go and return without touching anything
 
-	Index3DId facePtId = getOutBlockPtr()->addVertex(facePt);
+	Index3DId facePtId = getBlockPtr()->addVertex(facePt);
 	vector<Index3DId> edgePtIds;
 	for (const auto& edgePt : edgePts) {
-		edgePtIds.push_back(getOutBlockPtr()->addVertex(edgePt));
+		edgePtIds.push_back(getBlockPtr()->addVertex(edgePt));
 	}
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -390,7 +394,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 		newFaceIds.insert(newFaceId);
 	}
 	assert(newFaceIds.size() == 4);
-	faceOutFunc(_thisId, [&newFaceIds](Polygon& writableThis) {
+	faceFunc(_thisId, [&newFaceIds](Polygon& writableThis) {
 		writableThis.setChildIds(newFaceIds);
 	});
 
@@ -420,20 +424,20 @@ bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
 	size_t i, j;
 	if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(getBlockPtr(), vertId, inBounds) && inBounds) {
 		// the vertex is not in this polygon and lies between i and j
-		getOutBlockPtr()->removeFaceFromLookUp(_thisId);
+		getBlockPtr()->removeFaceFromLookUp(_thisId);
 
 		_vertexIds.insert(_vertexIds.begin() + j, vertId);
 		_needSort = true;
 
-		getOutBlockPtr()->addFaceToLookup(_thisId);
+		getBlockPtr()->addFaceToLookup(_thisId);
 		return true;
 	}
 	return false;
 }
 
-Index3DId Polygon::createFace(const Polygon& face) const
+Index3DId Polygon::createFace(const Polygon& face)
 {
-	return getOutBlockPtr()->addFace(face);
+	return getBlockPtr()->addFace(face);
 }
 
 void Polygon::setChildIds(const std::set<Index3DId>& childFaceIds)
@@ -502,9 +506,4 @@ bool Polygon::verifyTopology() const
 	}
 #endif
 	return valid;
-}
-
-bool Polygon::hasBeenSplit() const
-{
-	return !_children.empty() || _parent.isValid();
 }

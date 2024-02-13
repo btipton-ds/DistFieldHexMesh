@@ -261,24 +261,24 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
-Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds) const
+Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds)
 {
 #if _DEBUG
 	set<Edge> edgeSet;
 	Polygon::createEdgesStat(vertIds, edgeSet);
 	for (const auto& edge : edgeSet) {
-		assert(edge.getLength(getOutBlockPtr()) > Tolerance::sameDistTol());
-		assert(edge.onPrincipalAxis(getOutBlockPtr()));
+		assert(edge.getLength(getBlockPtr()) > Tolerance::sameDistTol());
+		assert(edge.onPrincipalAxis(getBlockPtr()));
 	}
 #endif
-	Index3DId result = getOutBlockPtr()->findFace(vertIds);
+	Index3DId result = getBlockPtr()->findFace(vertIds);
 	if (!result.isValid())
-		result = getOutBlockPtr()->addFace(vertIds);
+		result = getBlockPtr()->addFace(vertIds);
 
 	return result;
 }
 
-void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, std::vector<Index3DId>& faceIds) const
+void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, std::vector<Index3DId>& faceIds)
 {
 	faceIds.push_back(createFace({ corners[0], corners[1], corners[2], corners[3] }));
 	faceIds.push_back(createFace({ corners[4], corners[5], corners[6], corners[7] }));
@@ -290,28 +290,16 @@ void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, st
 	faceIds.push_back(createFace({ corners[0], corners[3], corners[7], corners[4] }));
 }
 
-bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds) const
+bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds)
 {
-	// Make A NEW VERSION in output, don't touch the one that's there.
-	if (hasBeenSplit()) {
-		bool result;
-		assert(_parent.isValid());
-		cellOutFunc(_parent, [&result, &centerPoint , &newCellIds](Polyhedron& parentCell) {
-			result = parentCell.splitAtPoint(centerPoint, newCellIds);
-		});
-		return result;
-	}
-
+	if (!_children.empty())
+		return false; // We've been split, don't split again. However, our child faces CAN be split
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
-		faceOutFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
+		faceFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
 			if (canSplitAll) {
-				assert(face.getBlockPtr()->isOutput());
 				set<Index3DId> newFaceIds;
-				if (!face.hasBeenSplit() && !face.splitAtPoint(centerPoint, newFaceIds, true)) {
-					canSplitAll = false;
-					assert(!"Cannot split this face, try parent");
-				}
+				canSplitAll = face.splitAtPoint(centerPoint, newFaceIds, true);
 			}
 		});
 		if (!canSplitAll)
@@ -322,21 +310,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		return false;
 
 	Vector3d ctr = calCentroid();
-	Index3DId cellMidId = getOutBlockPtr()->addVertex(ctr);
-	set<Index3DId> newFaces;
+	Index3DId cellMidId = getBlockPtr()->addVertex(ctr);
 	for (const auto& faceId : _faceIds) {
-		faceOutFunc(faceId, [&newFaces, &centerPoint](Polygon& face) {
-			assert(face.getBlockPtr()->isOutput());
-			const auto& childIds = face.getChildIds();
+		faceFunc(faceId, [&centerPoint](Polygon& face) {
 			set<Index3DId> temp;
-			if (childIds.empty()) {
-				if (!face.splitAtPoint(centerPoint, temp, false)) {
-					assert(!"Face cannot be split");
-				}
-			} else {
-				temp = childIds;
-			}
-			newFaces.insert(temp.begin(), temp.end());
+			face.splitAtPoint(centerPoint, temp, false);
 		});
 	}
 
@@ -345,9 +323,9 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	while (!corners.empty()) {
 		Index3DId vert = *corners.begin();
 		corners.erase(vert);
+		auto vertFaces = getVertFaces(vert);
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
-		set<Index3DId> vertFaces;
-		for (const auto& faceId : newFaces) {
+		for (const auto& faceId : vertFaces) {
 			faceFunc(faceId, [&vert, &vertEdgeFaceMap, &vertFaces](const Polygon& face) {
 				set<Edge> faceEdges;
 				face.getEdges(faceEdges);
@@ -363,7 +341,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			});
 		}
 
-	for (const auto& pair : vertEdgeFaceMap) {
+		for (const auto& pair : vertEdgeFaceMap) {
 			const auto& edge = pair.first;
 			const auto& edgeFaces = pair.second;
 
@@ -389,18 +367,18 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		assert(vertFaces.size() == 6);
 		Polyhedron newCell(vertFaces);
 		newCell.setParent(_thisId);
-		auto newCellId = getOutBlockPtr()->addCell(newCell);
-		cellOutFunc(newCellId, [&newCellId](Polyhedron& newCell) {
+		auto newCellId = getBlockPtr()->addCell(newCell);
+		cellFunc(newCellId, [&newCellId](Polyhedron& newCell) {
 			assert(newCell.isClosed());
 		});
 
 		for (const auto& faceId : vertFaces) {
-			faceOutFunc(faceId, [&newCellId](Polygon& face) {
+			faceFunc(faceId, [&newCellId](Polygon& face) {
 				face.addCellId(newCellId);
 			});
 		}
 
-		cellOutFunc(_thisId, [&newCellId](Polyhedron& self) {
+		cellFunc(_thisId, [&newCellId](Polyhedron& self) {
 			self.addChild(newCellId);
 		});
 	}	
@@ -408,7 +386,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	return true;
 }
 
-Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds) const
+Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 {
 	Polygon face(vertIds);
 #if _DEBUG
@@ -419,16 +397,16 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds) const
 	}
 #endif
 
-	return getOutBlockPtr()->addFace(face);
+	return getBlockPtr()->addFace(face);
 }
 
 
-void Polyhedron::finishCellSplits() const
+void Polyhedron::finishCellSplits()
 {
 	set<Index3DId> newFaceSet;
 	bool needsPromotion = false;
 	for (const auto& faceId : _faceIds) {
-		faceOutFunc(faceId, [this, &needsPromotion, &newFaceSet](Polygon& face) {
+		faceFunc(faceId, [this, &needsPromotion, &newFaceSet](Polygon& face) {
 			const auto& childIds = face.getChildIds();
 			if (childIds.empty()) {
 				newFaceSet.insert(face.getId()); // This one's fine, just move it to the new list
@@ -443,8 +421,8 @@ void Polyhedron::finishCellSplits() const
 	newFaceIds.insert(newFaceIds.end(), newFaceSet.begin(), newFaceSet.end());
 	for (size_t i = 0; i < newFaceIds.size(); i++) {
 		for (size_t j = i + 1; j < newFaceIds.size(); j++) {
-			faceOutFunc(newFaceIds[i], [this, &newFaceIds, j](Polygon& face0) {
-				faceOutFunc(newFaceIds[j], [&face0](Polygon& face1) {
+			faceFunc(newFaceIds[i], [this, &newFaceIds, j](Polygon& face0) {
+				faceFunc(newFaceIds[j], [&face0](Polygon& face1) {
 					face0.imprintFaceVertices(face1);
 					face1.imprintFaceVertices(face0);
 				});
@@ -453,10 +431,10 @@ void Polyhedron::finishCellSplits() const
 	}
 
 	if (needsPromotion) {
-		cellOutFunc(_thisId, [this, &newFaceSet](Polyhedron& outputCell) {
+		cellFunc(_thisId, [this, &newFaceSet](Polyhedron& outputCell) {
 			outputCell._faceIds = newFaceSet;
 			for (const auto& faceId : outputCell._faceIds) {
-				faceOutFunc(faceId, [&outputCell](Polygon& newFace) {
+				faceFunc(faceId, [&outputCell](Polygon& newFace) {
 					newFace.addCellId(outputCell.getId());
 				});
 			}
@@ -464,7 +442,7 @@ void Polyhedron::finishCellSplits() const
 	}
 }
 
-bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds) const
+bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
 {
 	return splitAtPoint(calCentroid(), newCellIds);
 }
@@ -508,7 +486,7 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-void Polyhedron::splitByCurvature(double maxArcAngleDegrees) const
+void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
 {
 	const double sinEdgeAngle = sin(30.0 / 180.0 * M_PI);
 	const double minCurvature = 0.1; // 1 meter radius
@@ -516,7 +494,6 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees) const
 	const size_t circleDivs = (size_t)(360.0 / maxArcAngleDegrees);
 
 	auto pTriMesh =getBlockPtr()->getModelMesh();
-	Vector3d centroid = calCentroid();
 
 	CBoundingBox3Dd bbox = getBoundingBox();
 	vector<CMesh::SearchEntry> triEntries;
@@ -548,7 +525,7 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees) const
 		double minBoxDim = min(range[0], min(range[1], range[2]));
 		if (kDiv * avgSurfArcLength > minBoxDim) {
 			set<Index3DId> splitCells;
-			if (!splitAtPoint(centroid, splitCells)) {
+			if (!splitAtCentroid(splitCells)) {
 				return;
 			}
 		}
@@ -634,15 +611,6 @@ bool Polyhedron::isClosed() const
 		}
 	}
 
-	return result;
-}
-
-bool Polyhedron::hasBeenSplit() const
-{
-	if (_parent.isValid() || !_children.empty())
-		return true;
-
-	bool result = false;
 	return result;
 }
 

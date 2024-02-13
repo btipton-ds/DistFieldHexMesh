@@ -51,7 +51,6 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
-	bool hasBeenSplit() const;
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
@@ -70,21 +69,23 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const;
-	bool imprintFaceVertices(const Polygon& otherFace);
-
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
-	LAMBDA_FUNC_PAIR_DECL(vertex);
-	LAMBDA_FUNC_PAIR_DECL(face);
-	LAMBDA_FUNC_PAIR_DECL(cell);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(vertex);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
+	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
 
 private:
+	friend class Polyhedron;
+
 	void sortIds() const;
-	Index3DId createFace(const Polygon& face) const;
+	Index3DId createFace(const Polygon& face);
 	void setChildIds(const std::set<Index3DId>& childFaceIds);
+	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
+	bool imprintFaceVertices(const Polygon& otherFace);
+
 	bool imprintVertexInEdge(const Index3DId& vertId, const Edge& edge);
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
