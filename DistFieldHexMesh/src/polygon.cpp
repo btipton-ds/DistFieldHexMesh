@@ -10,31 +10,9 @@
 using namespace std;
 using namespace DFHM;
 
-Polygon::Polygon(const Polygon& src)
-	: ObjectPoolOwnerUser(src)
-	, _vertexIds(src._vertexIds)
-	, _cellIds(src._cellIds)
-	, _needSort(true)
-{
-}
-
 Polygon::Polygon(const std::vector<Index3DId>& verts)
 	: _vertexIds(verts)
-	, _needSort(true)
 {
-
-}
-
-
-Polygon& Polygon::operator = (const Polygon& rhs)
-{
-	ObjectPoolOwnerUser::operator=(rhs);
-
-	_vertexIds = rhs._vertexIds;
-	_cellIds = rhs._cellIds;
-	_needSort = true;
-
-	return *this;
 }
 
 size_t Polygon::numSplits() const
@@ -358,6 +336,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 
 bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const
 {
+	newFaceIds.clear();
 	// Returns the new faces in the output storage.
 	// Each new face has four vertices with the facePoint at index 0 in right hand order relative to this face's normal
 	// Dry run tests if the split will work without making changes
@@ -367,6 +346,8 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 		assert(!"Cannot split a face which is not clean, split its parent face instead.");
 		return false;
 	}
+
+	assert(_vertexIds.size() == 4);
 	vector<Vector3d> edgePts;
 	edgePts.resize(_vertexIds.size());
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -391,29 +372,63 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 	if (dryRun)
 		return true; // Report that everything is good to go and return without touching anything
 
-	Index3DId faceId = getOutBlockPtr()->addVertex(facePt);
+	Index3DId facePtId = getOutBlockPtr()->addVertex(facePt);
 	vector<Index3DId> edgePtIds;
 	for (const auto& edgePt : edgePts) {
 		edgePtIds.push_back(getOutBlockPtr()->addVertex(edgePt));
 	}
 
-	need to insert mid vertex in adjacent faces
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
 		auto priorEdgeId = edgePtIds[j];
 		auto vertId = _vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
-		Polygon face({ faceId, priorEdgeId, vertId, nextEdgeId});
+		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId});
 		face.setParentId(_thisId);
 
-		newFaceIds.insert(createFace(face));
+		auto newFaceId = createFace(face);
+		newFaceIds.insert(newFaceId);
 	}
-
-	faceOutFunc(_thisId, [&newFaceIds](Polygon& modifiableFace) {
-		modifiableFace.setChildIds(newFaceIds);
+	assert(newFaceIds.size() == 4);
+	faceOutFunc(_thisId, [&newFaceIds](Polygon& writableThis) {
+		writableThis.setChildIds(newFaceIds);
 	});
 
 	return true;
+}
+
+bool Polygon::imprintFaceVertices(const Polygon& otherFace)
+{
+	bool result = false;
+	set<Edge> edgeSet;
+	getEdges(edgeSet);
+	for (const auto& otherVert : otherFace.getVertexIds()) {
+		for (const auto& edge : edgeSet) {
+			result = imprintVertexInEdge(otherVert, edge);
+			if (result)
+				break;
+		}
+		edgeSet.clear();
+		getEdges(edgeSet);
+	}
+	return result;
+}
+
+bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
+{
+	bool inBounds;
+	size_t i, j;
+	if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(getBlockPtr(), vertId, inBounds) && inBounds) {
+		// the vertex is not in this polygon and lies between i and j
+		getOutBlockPtr()->removeFaceFromLookUp(_thisId);
+
+		_vertexIds.insert(_vertexIds.begin() + j, vertId);
+		_needSort = true;
+
+		getOutBlockPtr()->addFaceToLookup(_thisId);
+		return true;
+	}
+	return false;
 }
 
 Index3DId Polygon::createFace(const Polygon& face) const
@@ -487,4 +502,9 @@ bool Polygon::verifyTopology() const
 	}
 #endif
 	return valid;
+}
+
+bool Polygon::hasBeenSplit() const
+{
+	return !_children.empty() || _parent.isValid();
 }

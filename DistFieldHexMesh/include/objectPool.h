@@ -37,10 +37,7 @@ public:
 	Block* getOutBlockPtr() const;
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 
-	MutexType& getMutex() const;
-
 protected:
-	mutable MutexType _mutex;
 	Index3DId _thisId;
 
 private:
@@ -461,7 +458,6 @@ void ObjectPool<T>::iterateInOrder(F fLambda) const
 		size_t index = _idToIndexMap[id];
 		if (index != -1) {
 			auto p = getEntry(index);
-			patient_lock_guard g(p->getMutex());
 			fLambda(*p);
 		}
 	}
@@ -475,7 +471,6 @@ void ObjectPool<T>::iterateInOrder(F fLambda)
 		size_t index = _idToIndexMap[id];
 		if (index != -1) {
 			auto p = getEntry(index);
-			patient_lock_guard g(p->getMutex());
 			fLambda(*p);
 		}
 	}

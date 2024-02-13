@@ -6,11 +6,10 @@ void NAME##Func(const Index3DId& id, LAMBDA func) CONST;
 
 #define LAMBDA_FUNC_IMPL(NAME, GET_OWNER_FUNC, MEMBER_NAME, CONST) \
 template<class LAMBDA> \
-inline void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
+void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
 	auto pOwner = GET_OWNER_FUNC(id); \
 	auto& obj = pOwner->MEMBER_NAME[id]; \
-	patient_lock_guard g(obj.getMutex()); \
 	func(obj); \
 }
 
@@ -26,7 +25,7 @@ LAMBDA_FUNC_IMPL(NAME##Out, getOutBlockPtr, MEMBER_NAME, const)
 
 #define CLIENT_LAMBDA_FUNC_IMPL(CLASS, NAME, CONST) \
 template<class LAMBDA> \
-inline void CLASS::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
+void CLASS::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
 	getBlockPtr()->NAME##Func(id, func); \
 }

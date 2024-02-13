@@ -139,6 +139,24 @@ bool Edge::isColinearWith(const Block* pBlock, const Edge& other) const
 	return true;
 }
 
+bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, bool& inBounds) const
+{
+	Vector3d pt = pBlock->getVertexPoint(vert);
+	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+
+	Vector3d v = pt1 - pt0;
+	v.normalize();
+
+	Vector3d v1 = pt - pt0;
+	double t = v.dot(v1);
+	inBounds = -Tolerance::paramTol() < t && t < (1 + Tolerance::paramTol());
+	v1 = v1 - t * v;
+	double dist = v1.norm();
+
+	return fabs(dist) < Tolerance::sameDistTol();
+}
+
 bool Edge::isConnectedTo(const Edge& other) const
 {
 	for (int i = 0; i < 2; i++) {

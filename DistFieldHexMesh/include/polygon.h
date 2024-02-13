@@ -26,8 +26,7 @@ public:
 
 	Polygon() = default;
 	Polygon(const std::vector<Index3DId>& verts);
-	Polygon(const Polygon& src);
-	Polygon& operator = (const Polygon& rhs);
+	Polygon(const Polygon& src) = default;
 
 	const Index3DId& getId() const;
 
@@ -52,6 +51,7 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
+	bool hasBeenSplit() const;
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
@@ -71,6 +71,7 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun) const;
+	bool imprintFaceVertices(const Polygon& otherFace);
 
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
@@ -84,6 +85,7 @@ private:
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face) const;
 	void setChildIds(const std::set<Index3DId>& childFaceIds);
+	bool imprintVertexInEdge(const Index3DId& vertId, const Edge& edge);
 
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
@@ -170,7 +172,15 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell);
+/*
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
+*/
+
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
+
+
 }

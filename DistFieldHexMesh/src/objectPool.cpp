@@ -53,8 +53,3 @@ void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
 	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
 }
-
-MutexType& ObjectPoolOwnerUser::getMutex() const
-{
-	return _mutex;
-}

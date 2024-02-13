@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 
 Index3D Volume::s_volDim;
 
@@ -267,7 +267,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 			minSpan = _spanMeters[i];
 		}
 	}
-	double targetBlockSize = minSpan / 4;
+	double targetBlockSize = minSpan / 10;
 	size_t blockDim = (size_t) (targetBlockSize / maxBlockSize + 0.5);
 	Index3D::setBlockDim(blockDim);
 
@@ -301,7 +301,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 	assert(verifyTopology(false));
 
-#if 1
+#if 0
 	size_t count = 0;
 	runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {

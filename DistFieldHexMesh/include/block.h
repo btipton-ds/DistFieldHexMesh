@@ -25,17 +25,6 @@ class Edge;
 class Polygon;
 class Polyhedron;
 
-/*
-	The multicore decomposition works on a single block at a time.
-	The race conditions occur when two adjacent blocks are working on faces or vertices which lie in the common side of the block.
-	Each block has a recursive_mutex.
-	Lock the mutex whenever a block is being accessed or manipulated. Most hits will be within the block and the lock/unlock will have
-	near zero overhead. When an operation on a block requires another block both blocks need to be locked.
-
-	On this scheme, there is a single mutex for each paired face. There are extra, unused mutexes on the other positive faces.
-*/
-
-
 class Block : public ObjectPoolOwner {
 public:
 	class GlPoints : public std::vector<float>
@@ -255,9 +244,15 @@ inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
 	return _polygons[id];
 }
 
-LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices);
-LAMBDA_FUNC_PAIR_IMPL(face, _polygons);
-LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra);
+/*
+LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
+LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
+LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
+*/
+
+LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
+LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
+LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
 
 template<class LAMBDA>
 void Block::faceFunc2(const Index3DId& id0, const Index3DId& id1, LAMBDA func)

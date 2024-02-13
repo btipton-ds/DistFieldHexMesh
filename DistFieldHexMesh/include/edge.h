@@ -40,6 +40,7 @@ public:
 	Vector3d projectPt(const Block* pBlock, const Vector3d& pt) const;
 	bool onPrincipalAxis(const Block* pBlock) const;
 	bool isColinearWith(const Block* pBlock, const Edge& other) const;
+	bool isColinearWith(const Block* pBlock, const Index3DId& vert, bool& inBounds) const;
 	bool isConnectedTo(const Edge& other) const;
 	LineSegment getSegment(const Block* pBlock) const;
 

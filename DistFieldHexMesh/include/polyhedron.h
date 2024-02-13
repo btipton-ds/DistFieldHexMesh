@@ -19,8 +19,7 @@ public:
 	Polyhedron() = default;
 	Polyhedron(const std::set<Index3DId>& faceIds);
 	Polyhedron(const std::vector<Index3DId>& faceIds);
-	Polyhedron(const Polyhedron& src);
-	Polyhedron& operator = (const Polyhedron& rhs);
+	Polyhedron(const Polyhedron& src) = default;
 
 	// Required for use with object pool
 	Index3DId getId() const;
@@ -55,6 +54,7 @@ public:
 	void dumpFaces() const;
 
 	bool isClosed() const;
+	bool hasBeenSplit() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
@@ -86,6 +86,12 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
 }
+
+/*
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
+*/
 
 CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
 CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
