@@ -41,8 +41,12 @@ public:
 	void removeCellId(const Index3DId& cellId);
 	void setCellIds(const std::set<Index3DId>& cellIds);
 	size_t numCells() const;
-	size_t numSplits() const;
+	size_t numSplits() const; // This counts upward to show how many times this was split
+	bool tooManyChildLevels() const;
 	const std::set<Index3DId>& getCellIds() const;
+
+	void setMarkVal(int val) const;
+	int getMarkVal() const;
 
 	bool ownedByCell(const Index3DId& cellId) const;
 	bool isOuter() const;
@@ -62,6 +66,7 @@ public:
 	void getEdges(std::set<Edge>& edgeSet) const;
 	Index3DId getNeighborCellId(const Index3DId& thisCellId) const;
 
+	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
@@ -73,11 +78,6 @@ public:
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
-
-	inline void setWriteLocked(bool val)
-	{
-		_writeLocked = val;
-	}
 
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(vertex);
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
@@ -94,12 +94,12 @@ private:
 
 	bool imprintVertexInEdge(const Index3DId& vertId, const Edge& edge);
 
+	mutable int _markVal = 0;
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
 
-	bool _writeLocked = false;
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
 };
@@ -107,6 +107,16 @@ private:
 inline const Index3DId& Polygon::getId() const
 {
 	return _thisId;
+}
+
+inline void Polygon::setMarkVal(int val) const
+{
+	_markVal = val;
+}
+
+inline int Polygon::getMarkVal() const
+{
+	return _markVal;
 }
 
 inline bool Polygon::verifyUnique() const
@@ -146,21 +156,18 @@ inline void Polygon::clearChildIds()
 
 inline void Polygon::addCellId(const Index3DId& cellId)
 {
-	assert(!_writeLocked);
 	_cellIds.insert(cellId);
 	assert(_cellIds.size() <= 2);
 }
 
 inline void Polygon::removeCellId(const Index3DId& cellId)
 {
-	assert(!_writeLocked);
 	assert(_children.empty());
 	_cellIds.erase(cellId);
 }
 
 inline void Polygon::setCellIds(const std::set<Index3DId>& cellIds)
 {
-	assert(!_writeLocked);
 	_cellIds = cellIds;
 }
 

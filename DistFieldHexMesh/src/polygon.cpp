@@ -31,10 +31,23 @@ size_t Polygon::numSplits() const
 	return result;
 }
 
+bool Polygon::tooManyChildLevels() const
+{
+	size_t depth = _children.empty() ? 0 : 1;
+	for (const auto& childId : _children) {
+		faceFunc(childId, [&depth](const Polygon& face) {
+			if (!face._children.empty()) {
+				depth++;
+			}
+		});
+		if (depth > 1)
+			return true;
+	}
+	return false;
+}
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	assert(!_writeLocked);
 	if (_children.empty()) {
 		_vertexIds.push_back(vertId);
 		_needSort = true;
@@ -240,6 +253,20 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3
 	return nanf("");
 }
 
+double Polygon::getShortestEdge() const
+{
+	double minDist = DBL_MAX;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+		double l = (pt1 - pt0).norm();
+		if (l < minDist)
+			minDist = l;
+	}
+	return minDist;
+}
+
 double Polygon::calVertexAngle(size_t idx1) const
 {
 	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);
@@ -337,7 +364,6 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 
 bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun)
 {
-	assert(_writeLocked);
 	if (!_children.empty()) {
 		if (_children.size() == 1) {
 			// This face has split edges, but no split faces
@@ -409,7 +435,6 @@ bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, 
 
 bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 {
-	assert(!_writeLocked);
 	bool result = false;
 	set<Edge> edgeSet;
 	getEdges(edgeSet);
@@ -427,7 +452,6 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 
 bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
 {
-	assert(!_writeLocked);
 	bool inBounds;
 	size_t i, j;
 	if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(getBlockPtr(), vertId, inBounds) && inBounds) {

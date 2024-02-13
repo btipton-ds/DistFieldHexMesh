@@ -437,9 +437,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	const auto& cellFaceIds = cell.getFaceIds();
 	for (const auto& faceId : cellFaceIds) {
 		faceFunc(faceId, [&cellId](Polygon& cellFace) {
-			cellFace.setWriteLocked(false);
 			cellFace.addCellId(cellId);
-			cellFace.setWriteLocked(true);
 		});
 	}
 
@@ -553,7 +551,6 @@ Index3DId Block::addFace(const Polygon& face)
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	auto result = pOwner->_polygons.findOrAdd(face);
-	pOwner->_polygons[result].setWriteLocked(true);
 	return result;
 }
 
@@ -660,13 +657,16 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 	_polyhedra.iterateInOrder([this, arcAngleDegrees](Polyhedron& cell) {
 		cell.splitByCurvature(arcAngleDegrees);
 	});
+	_polyhedra.iterateInOrder([this, arcAngleDegrees](Polyhedron& cell) {
+		cell.splitIfTooManyFaceSplits();
+	});
 	count = _polyhedra.size() - count;
 	return count;
 }
 
 bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const
 {
-	if (!face.getChildIds().empty()) // face was split, show the child faces
+	if (face.getMarkVal() != 1) // face was split, show the child faces
 		return false;
 
 	bool result = false;
@@ -692,6 +692,12 @@ bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& fa
 
 CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum) const
 {
+	_polyhedra.iterateInOrder([](const Polyhedron& cell) {
+		if (cell.intersectsModel()) {
+			cell.markFaces(1);
+		}
+	});
+
 	if (numFaces(true) == 0)
 		return nullptr;
 

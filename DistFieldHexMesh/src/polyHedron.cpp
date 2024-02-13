@@ -267,6 +267,33 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
+bool Polyhedron::intersectsModel() const
+{
+	if (_children.empty()) {
+		CBoundingBox3Dd bbox = getBoundingBox();
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
+		for (size_t idx : sharps) {
+			if (bbox.contains(pTriMesh->getVert(idx)._pt))
+				return true;
+		}
+		vector<CMesh::SearchEntry> triEntries;
+		return pTriMesh->findTris(bbox, triEntries);
+	}
+	return false; // Don't test split cells
+}
+
+void Polyhedron::markFaces(int markVal) const
+{
+	if (_children.empty()) {
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [markVal](const Polygon& face) {
+				face.setMarkVal(markVal);
+			});
+		}
+	}
+}
+
 Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds)
 {
 #if _DEBUG
@@ -303,7 +330,6 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
-			face.setWriteLocked(true);
 			if (canSplitAll) {
 				set<Index3DId> newFaceIds;
 				canSplitAll = face.splitAtPoint(centerPoint, newFaceIds, true);
@@ -321,7 +347,6 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &centerPoint, &vertToFaceMap](Polygon& face) {
-			face.setWriteLocked(true);
 			set<Index3DId> tempFaces;
 			face.splitAtPoint(centerPoint, tempFaces, false);
 			for (const auto& childFaceId : tempFaces) {
@@ -388,10 +413,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		for (const auto& newFaceId : vertFaces) {
 			faceFunc(newFaceId, [this](Polygon& newFace) {
 				assert(!containsFace(newFace.getId()));
-
-				newFace.setWriteLocked(false);
 				newFace.removeCellId(_thisId);
-				newFace.setWriteLocked(true);
 			});
 		}
 
@@ -501,12 +523,15 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
 
 	bool needToSplit = false;
 	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	for (size_t vertIdx : sharpVerts) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
-			needToSplit = true;
-			break;
+	double minEdgeLen = getShortestEdge();
+	if (minEdgeLen > 0.01) {
+		for (size_t vertIdx : sharpVerts) {
+			auto pTriMesh = getBlockPtr()->getModelMesh();
+			Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
+			if (bbox.contains(pt)) {
+				needToSplit = true;
+				break;
+			}
 		}
 	}
 	if (!needToSplit) {
@@ -528,6 +553,38 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
 			return;
 		}
 	}
+}
+
+void Polyhedron::splitIfTooManyFaceSplits()
+{
+	bool needToSplit = false;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&needToSplit](const Polygon& face) {
+			if (face.tooManyChildLevels()) {
+				needToSplit = true;
+			}
+		});
+		if (needToSplit)
+			break;
+	}
+	if (needToSplit) {
+		set<Index3DId> newCellIds;
+		splitAtCentroid(newCellIds);
+	}
+}
+
+double Polyhedron::getShortestEdge() const
+{
+	double minDist = DBL_MAX;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&minDist](const Polygon& face) {
+			double l = face.getShortestEdge();
+			if (l < minDist)
+				minDist = l;
+		});
+	}
+
+	return minDist;
 }
 
 set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const

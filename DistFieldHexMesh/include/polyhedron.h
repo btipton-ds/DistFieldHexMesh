@@ -43,11 +43,15 @@ public:
 	CBoundingBox3Dd getBoundingBox() const;
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
+	bool intersectsModel() const;
+	void markFaces(int markVal) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
 	void splitByCurvature(double maxArcAngleDegrees);
+	void splitIfTooManyFaceSplits();
+	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -61,11 +65,6 @@ public:
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
 	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
 
-	inline void setWriteLocked(bool val)
-	{
-		_writeLocked = val;
-	}
-
 private:
 	friend class Block;
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
@@ -76,7 +75,6 @@ private:
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const;
 
-	bool _writeLocked = false;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
