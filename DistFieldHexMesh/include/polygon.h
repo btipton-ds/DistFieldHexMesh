@@ -45,8 +45,9 @@ public:
 	bool tooManyChildLevels() const;
 	const std::set<Index3DId>& getCellIds() const;
 
-	void setMarkVal(int val) const;
-	int getMarkVal() const;
+	void setMarkVal(unsigned int val) const;
+	void clearMarkVal(unsigned int val) const;
+	bool isMarkSet(unsigned int val) const;
 
 	bool ownedByCell(const Index3DId& cellId) const;
 	bool isOuter() const;
@@ -94,7 +95,7 @@ private:
 
 	bool imprintVertexInEdge(const Index3DId& vertId, const Edge& edge);
 
-	mutable int _markVal = 0;
+	mutable unsigned int _markVal = 0;
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
@@ -109,14 +110,19 @@ inline const Index3DId& Polygon::getId() const
 	return _thisId;
 }
 
-inline void Polygon::setMarkVal(int val) const
+inline void Polygon::setMarkVal(unsigned int val) const
 {
-	_markVal = val;
+	_markVal |= val;
 }
 
-inline int Polygon::getMarkVal() const
+inline void Polygon::clearMarkVal(unsigned int val) const
 {
-	return _markVal;
+	_markVal &= ~val;
+}
+
+inline bool Polygon::isMarkSet(unsigned int val) const
+{
+	return _markVal & val;
 }
 
 inline bool Polygon::verifyUnique() const

@@ -313,7 +313,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 #if 1
 	size_t count = 0;
-	for (size_t i = 0; i < 7; i++) {
+	for (size_t i = 0; i < 8; i++) {
 		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
