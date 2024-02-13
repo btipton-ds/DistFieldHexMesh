@@ -283,7 +283,7 @@ bool Polyhedron::intersectsModel() const
 	return false; // Don't test split cells
 }
 
-void Polyhedron::markFaces(int markVal) const
+void Polyhedron::markFaces(unsigned int markVal) const
 {
 	if (_children.empty()) {
 		for (const auto& faceId : _faceIds) {

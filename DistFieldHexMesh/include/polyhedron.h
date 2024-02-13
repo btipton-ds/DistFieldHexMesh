@@ -44,7 +44,7 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	void markFaces(int markVal) const;
+	void markFaces(unsigned int markVal) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);

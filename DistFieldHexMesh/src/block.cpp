@@ -666,7 +666,7 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 
 bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const
 {
-	if (face.getMarkVal() != 1) // face was split, show the child faces
+	if (face.isMarkSet(1)) // face was split, show the child faces
 		return false;
 
 	bool result = false;
