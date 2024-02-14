@@ -54,12 +54,9 @@ public:
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
-    void setViewOrigin(const Vector3d& origin);
-    void setViewScale(double scale);
-    void setViewEulerAnglesRad(double az, double el);
-    void getViewOrigin(Vector3d& origin);
-    void getViewScale(double& scale);
-    void getViewEulerAnglesRad(double& az, double& el);
+    void moveOrigin(const Vector3d& delta);
+    void applyScale(double scale);
+    void applyRotation(double deltaAz, double deltaEl);
 
     bool showSharpEdges() const;
     bool toggleShowSharpEdges();
@@ -113,15 +110,14 @@ private:
 
     bool _showSharpEdges = false, _showSharpVerts = false, _showTriNormals = false, _showEdges = true, _showFaces = true, _showOuter = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
-    double _initAzRad, _initElRad;
     void initialize();
     void loadShaders();
 
-    Eigen::Vector2d _mouseStartLoc;
     Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
-    Vector3d _viewOrigin = Vector3d(0, 0, 0);
-    double _viewScale = 1, _viewAzRad = 0, _viewElRad = 0;
+    Eigen::Vector2d _mouseStartLoc;
+    Vector3d _origin;
+    Eigen::Matrix4d _trans, _intitialTrans, _proj;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
@@ -197,38 +193,6 @@ inline void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<con
     _edgeTessellations = edgeTess;
 
     changeEdgeViewElements();
-}
-
-inline void GraphicsCanvas::setViewOrigin(const Vector3d& origin)
-{
-    _viewOrigin = origin;
-}
-
-inline void GraphicsCanvas::setViewScale(double scale)
-{
-    _viewScale = scale;
-}
-
-inline void GraphicsCanvas::setViewEulerAnglesRad(double az, double el)
-{
-    _viewAzRad = az;
-    _viewElRad = el;
-}
-
-inline void GraphicsCanvas::getViewOrigin(Vector3d& origin)
-{
-    origin = _viewOrigin;
-}
-
-inline void GraphicsCanvas::getViewScale(double& scale)
-{
-    scale = _viewScale;
-}
-
-inline void GraphicsCanvas::getViewEulerAnglesRad(double& az, double& el)
-{
-    az = _viewAzRad;
-    el = _viewElRad;
 }
 
 inline bool GraphicsCanvas::showSharpEdges() const

@@ -58,6 +58,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _faceVBO(GL_TRIANGLES, 20)
     , _edgeVBO(GL_LINES, 20)
+    , _origin(0, 0, 0)
 {
     _pContext = make_shared<wxGLContext>(this);
 
@@ -83,6 +84,20 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
 
         _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
     }
+
+    _trans.setIdentity();
+    _intitialTrans = _trans;
+    _proj.setIdentity();
+
+    double xRotAngleRad = -90 * M_PI / 180;
+    Eigen::Matrix4d rotToGl;
+    rotToGl.setIdentity();
+    rotToGl(1, 1) = cos(xRotAngleRad);
+    rotToGl(1, 2) = -sin(xRotAngleRad);
+    rotToGl(2, 1) = sin(xRotAngleRad);
+    rotToGl(2, 2) = cos(xRotAngleRad);
+
+    _trans *= rotToGl;
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -151,7 +166,7 @@ bool GraphicsCanvas::toggleShowOuter()
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLoc = calMouseLoc(event.GetPosition());
-    getViewEulerAnglesRad(_initAzRad, _initElRad);
+    _intitialTrans = _trans;
     _leftDown = true;
 }
 
@@ -163,7 +178,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
     _mouseStartLoc = calMouseLoc(event.GetPosition());
-    getViewEulerAnglesRad(_initAzRad, _initElRad);
+    _intitialTrans = _trans;
     _middleDown = true;
 }
 
@@ -175,7 +190,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
 {
     _mouseStartLoc = calMouseLoc(event.GetPosition());
-    getViewEulerAnglesRad(_initAzRad, _initElRad);
+    _intitialTrans = _trans;
     _rightDown = true;
 }
 
@@ -198,9 +213,10 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
     Eigen::Vector2d delta;
     if (_leftDown) {
         delta = pos - _mouseStartLoc;
-        double az = _initAzRad - delta[0] * M_PI / 2;
-        double el = _initElRad - delta[1] * M_PI / 2;
-        setViewEulerAnglesRad(az, el);
+        double deltaAz = delta[0] * M_PI / 2;
+        double deltaEl = delta[1] * M_PI / 2;
+        applyRotation(-deltaAz, -deltaEl);
+
     } else if (_middleDown) {
         delta = pos - _mouseStartLoc;
         cout << "Mouse middle delta: " << delta[0] << ", " << delta[1] << "\n";
@@ -213,14 +229,16 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
-    double scale = 1 + t * 0.01;
+    double scaleMult = 1 + t * 0.01;
+    double scale = 1.0;
+
     if (event.m_wheelRotation > 0) {
-        _viewScale *= scale;
-        updateView();
+        scale *= scaleMult;
     } else if (event.m_wheelRotation < 0) {
-        _viewScale /= scale;
-        updateView();
-    }
+        scale /= scaleMult;
+    } else
+        return;
+    applyScale(scale);
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
@@ -463,59 +481,78 @@ void GraphicsCanvas::drawEdges()
     _edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
-void GraphicsCanvas::updateView()
+inline void GraphicsCanvas::moveOrigin(const Vector3d& delta)
 {
-    Eigen::Matrix4d rot, rotZ, rotX, rotToGl, scale, pan, trans, proj;
-    
-    rot.setIdentity();
-    rotZ.setIdentity();
-    rotX.setIdentity();
-    rotToGl.setIdentity();
+    Eigen::Matrix4d pan, panInv;
+    Vector3d newOrigin = _origin + delta;
+    pan.setIdentity();
+    panInv.setIdentity();
+    for (int i = 0; i < 3; i++) {
+        pan(3, i) = newOrigin[i];
+        panInv(3, i) = _origin[i];
+    }
+    panInv.inverse();
+    _trans *= panInv;
+    _trans *= pan;
+
+    _origin = newOrigin;
+}
+
+inline void GraphicsCanvas::applyScale(double scaleFact)
+{
+    Eigen::Matrix4d pan, scale;
     scale.setIdentity();
     pan.setIdentity();
-    trans.setIdentity();
-    proj.setIdentity();
     for (int i = 0; i < 3; i++) {
-        if (i == 2)
-            scale(i, i) = 1.0;
-        else
-            scale(i, i) = _viewScale;
-
-        pan(3, i) = _viewOrigin[i];
+        scale(i, i) = scaleFact;
+        pan(3, i) = _origin[i];
     }
     Eigen::Matrix4d panInv(pan.inverse());
 
-    rotZ(0, 0) = cos(_viewAzRad);
-    rotZ(0, 1) = -sin(_viewAzRad);
-    rotZ(1, 0) = sin(_viewAzRad);
-    rotZ(1, 1) = cos(_viewAzRad);
+    _trans *= panInv;
+    _trans *= scale;
+    _trans *= pan;
 
-    rotX(1, 1) = cos(-_viewElRad);
-    rotX(1, 2) = sin(-_viewElRad);
-    rotX(2, 1) = -sin(-_viewElRad);
-    rotX(2, 2) = cos(-_viewElRad);
+    _proj *= scaleFact;
+    _proj(2, 2) = 1;
+}
 
-    double xRotAngleRad = -90 * M_PI / 180;
-    rotToGl(1, 1) = cos(xRotAngleRad);
-    rotToGl(1, 2) = -sin(xRotAngleRad);
-    rotToGl(2, 1) = sin(xRotAngleRad);
-    rotToGl(2, 2) = cos(xRotAngleRad);
+inline void GraphicsCanvas::applyRotation(double deltaAz, double deltaEl)
+{
+    Eigen::Matrix4d rot, rotZ, rotX, pan;
+    rot.setIdentity();
+    rotZ.setIdentity();
+    rotX.setIdentity();
+    pan.setIdentity();
+    for (int i = 0; i < 3; i++) {
+        pan(3, i) = _origin[i];
+    }
+    Eigen::Matrix4d panInv(pan.inverse());
 
-    trans *= rotToGl;
-    trans *= panInv;
-    trans *= rotX;
-    trans *= rotZ;
-    trans *= pan;
-    trans *= pan;
+    rotZ(0, 0) = cos(deltaAz);
+    rotZ(0, 1) = -sin(deltaAz);
+    rotZ(1, 0) = sin(deltaAz);
+    rotZ(1, 1) = cos(deltaAz);
 
-    proj *= scale;
+    rotX(1, 1) = cos(-deltaEl);
+    rotX(1, 2) = sin(-deltaEl);
+    rotX(2, 1) = -sin(-deltaEl);
+    rotX(2, 2) = cos(-deltaEl);
 
+    _trans = _intitialTrans;
+    _trans *= panInv;
+    _trans *= rotX;
+    _trans *= rotZ;
+    _trans *= pan;
+}
+
+void GraphicsCanvas::updateView()
+{
     float* pMV = _graphicsUBO.modelView;
-
     float* pPr = _graphicsUBO.proj;
     for (int i = 0; i < 16; i++) {
-        pMV[i] = (float)trans(i);
-        pPr[i] = (float)proj(i);
+        pMV[i] = (float)_trans(i);
+        pPr[i] = (float)_proj(i);
     }
 }
 
