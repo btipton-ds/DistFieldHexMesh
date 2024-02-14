@@ -46,7 +46,14 @@ public:
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize);
+	struct BuildCFDParams {
+		size_t minBlocksPerSide = 6;
+		size_t numSimpleDivs = 2;
+		size_t numCurvatureDivs = 4;
+		double sharpAngleDegrees = 30.0;
+		double curvatureArcAngle = 5.0;
+	};
+	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
 	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
 

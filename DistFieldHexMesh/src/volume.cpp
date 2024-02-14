@@ -250,7 +250,7 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -264,8 +264,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 			minSpan = _spanMeters[i];
 		}
 	}
-	double targetBlockSize = minSpan / 8;
-	size_t blockDim = 1; // (size_t)(targetBlockSize / maxBlockSize + 0.5);
+	double targetBlockSize = minSpan / params.minBlocksPerSide;
+	size_t blockDim = 1;
 	Index3D::setBlockDim(blockDim);
 
 	Index3D blockSize(
@@ -282,7 +282,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
 
-	double sharpAngleRadians = 30.0 / 180.0 * M_PI;
+	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
 	_pModelTriMesh->buildCentroids(true);
 	_pModelTriMesh->buildNormals(true);
 	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
@@ -305,10 +305,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	assert(verifyTopology());
 
 #if 1
-	size_t numSimpleDivs = 2;
-	size_t numCurvatureDivs = 4;
-
-	for (size_t i = 0; i < numSimpleDivs; i++) {
+	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 		runLambda([this, &blockSpan](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->splitAllCellsAtCentroid();
@@ -318,10 +315,10 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	}
 	assert(verifyTopology());
 
-	for (size_t i = 0; i < numCurvatureDivs; i++) {
-		runLambda([this, &blockSpan](size_t linearIdx)->bool {
+	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
+		runLambda([this, &blockSpan, &params](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitAllCellsByCurvature(5.0);
+				_blocks[linearIdx]->splitAllCellsByCurvature(params.curvatureArcAngle);
 			}
 			return true;
 		}, RUN_MULTI_THREAD);

@@ -280,9 +280,13 @@ void AppData::doBuildCFDHexes()
     if (!_volume)
         _volume = make_shared<Volume>();
 
-    double maxBlockSize = 0.1 / 2;
+    Volume::BuildCFDParams params;
 
-    _volume->buildCFDHexes(_pMesh, maxBlockSize);
+    params.numSimpleDivs = 2;
+    params.numCurvatureDivs = 2;
+ //   params.sharpAngleDegrees = 20;
+
+    _volume->buildCFDHexes(_pMesh, params);
 
     auto pCanvas = _pMainFrame->getCanvas();
 
