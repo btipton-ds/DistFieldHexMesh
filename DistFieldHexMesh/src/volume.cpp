@@ -58,19 +58,12 @@ void Volume::startOperation()
 
 void Volume::endOperation()
 {
-/*
-	assert(_outBlocks.size() == _blocks.size());
 	MultiCore::runLambda([this](size_t i)->bool {
-		if (_outBlocks[i]) {
-			_outBlocks[i]->setIsOutput(false);
-			_blocks[i] = _outBlocks[i];
+		if (_blocks[i]) {
+			_blocks[i]->setCellDepths();
 		}
-		_outBlocks[i] = nullptr;
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
-
-	_outBlocks.clear();
-*/
 }
 
 void Volume::setVolDim(const Index3D& blockSize)
@@ -312,23 +305,23 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 	assert(verifyTopology());
 
 #if 1
-	size_t count = 0;
-	for (size_t i = 0; i < 2; i++) {
-		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
+	size_t numSimpleDivs = 2;
+	size_t numCurvatureDivs = 4;
+
+	for (size_t i = 0; i < numSimpleDivs; i++) {
+		runLambda([this, &blockSpan](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
 				_blocks[linearIdx]->splitAllCellsAtCentroid();
 			}
 			return true;
-			}, RUN_MULTI_THREAD);
+		}, RUN_MULTI_THREAD);
 	}
 	assert(verifyTopology());
 
-	for (size_t i = 0; i < 0; i++) {
-		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
+	for (size_t i = 0; i < numCurvatureDivs; i++) {
+		runLambda([this, &blockSpan](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
-				_blocks[linearIdx]->splitAllCellsByCurvature(10.0);
+				_blocks[linearIdx]->splitAllCellsByCurvature(5.0);
 			}
 			return true;
 		}, RUN_MULTI_THREAD);
@@ -350,9 +343,10 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 	bbox.grow(diagDist * 0.05);
 
 
-	triMeshes.resize(3);
+	triMeshes.resize(4);
 	triMeshes[FT_OUTER].resize(_blocks.size());
 	triMeshes[FT_INNER].resize(_blocks.size());
+	triMeshes[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	triMeshes[FT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
@@ -360,6 +354,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 
 			triMeshes[FT_OUTER][index] = blockPtr->getBlockTriMesh(FT_OUTER, minSplitNum);
 			triMeshes[FT_INNER][index] = blockPtr->getBlockTriMesh(FT_INNER, minSplitNum);
+			triMeshes[FT_LAYER_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_LAYER_BOUNDARY, minSplitNum);
 			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;
@@ -368,15 +363,17 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 
 void Volume::makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
 {
-	faceEdges.resize(3);
+	faceEdges.resize(4);
 	faceEdges[FT_OUTER].resize(_blocks.size());
 	faceEdges[FT_INNER].resize(_blocks.size());
+	faceEdges[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	faceEdges[FT_BLOCK_BOUNDARY].resize(_blocks.size());
 	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 			faceEdges[FT_OUTER][index] = blockPtr->makeFaceEdges(FT_OUTER, minSplitNum);
 			faceEdges[FT_INNER][index] = blockPtr->makeFaceEdges(FT_INNER, minSplitNum);
+			faceEdges[FT_LAYER_BOUNDARY][index] = blockPtr->makeFaceEdges(FT_BLOCK_BOUNDARY, minSplitNum);
 			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(FT_BLOCK_BOUNDARY, minSplitNum);
 		}
 		return true;

@@ -76,11 +76,6 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 	return false;
 }
 
-inline bool Polyhedron::containsFace(const Index3DId& faceId) const
-{
-	return _faceIds.contains(faceId);
-}
-
 void Polyhedron::addChild(const Index3DId& id)
 {
 	_children.insert(id);
@@ -309,8 +304,9 @@ void Polyhedron::setParentLevel()
 {
 	if (intersectsModel()) {
 		_level = 0;
-		incrementLevel(_level);
-	}
+//		incrementLevel(_level);
+	} else
+		_level = 1;
 }
 
 Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds)
@@ -352,12 +348,6 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			if (canSplitAll) {
 				set<Index3DId> childFaceIds;
 				canSplitAll = face.splitAtPoint(centerPoint, childFaceIds, true);
-				// It's possible that the child faces were owned by this cell. Remove our id to be sure
-				for (const auto& childFaceId : childFaceIds) {
-					faceFunc(childFaceId, [this](Polygon& childFace) {
-						childFace.removeCellId(_thisId);
-					});
-				}
 			}
 		});
 		if (!canSplitAll)
@@ -435,15 +425,9 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			vertFaces.insert(addFace(verts));
 		}
 
-		for (const auto& newFaceId : vertFaces) {
-			faceFunc(newFaceId, [this](Polygon& newFace) {
-				assert(!containsFace(newFace.getId()));
-				newFace.removeCellId(_thisId);
-			});
-		}
-
 		Polyhedron newCell(vertFaces);
 		newCell.setParent(_thisId);
+		newCell._numSplits = _numSplits + 1;
 		auto newCellId = getBlockPtr()->addCell(newCell);
 		cellFunc(newCellId, [this, &newCellId](Polyhedron& newCell) {
 			assert(newCell.verifyTopology());

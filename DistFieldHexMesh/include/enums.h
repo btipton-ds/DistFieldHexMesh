@@ -15,14 +15,6 @@ enum Trinary
 	IS_FALSE
 };
 
-enum FaceType {
-	FT_OUTER,
-	FT_INNER,
-	FT_BLOCK_BOUNDARY,
-	FT_BOUNDARY,
-	FT_ALL,
-};
-
 /*
 
 enum TopolgyState
@@ -36,6 +28,14 @@ enum TopolgyState
 };
 */
 
+enum FaceType {
+	FT_OUTER,
+	FT_INNER,
+	FT_LAYER_BOUNDARY,
+	FT_BLOCK_BOUNDARY,
+	FT_ALL,
+};
+
 enum DrawStates {
     DS_MODEL = 0,
     DS_MODEL_SHARP_EDGES = 1,
@@ -43,10 +43,12 @@ enum DrawStates {
     DS_MODEL_NORMALS = 3,
     DS_BLOCK_MESH = 10,
 };
+
 enum DrawSubStates {
     DSS_OUTER = 0,
     DSS_INNER = 1,
-    DSS_BLOCK_BOUNDARY = 2,
+	DSS_LAYER_BOUNDARY = 2,
+	DSS_BLOCK_BOUNDARY = 3,
 };
 
 

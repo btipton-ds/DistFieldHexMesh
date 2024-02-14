@@ -81,7 +81,7 @@ private:
 	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
-	size_t _level = 0;
+	size_t _level = 0, _numSplits = 0;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
@@ -106,6 +106,11 @@ inline size_t Polyhedron::getLevel() const
 inline void Polyhedron::resetLevel()
 {
 	_level = 0;
+}
+
+inline bool Polyhedron::containsFace(const Index3DId& faceId) const
+{
+	return _faceIds.contains(faceId);
 }
 
 /*

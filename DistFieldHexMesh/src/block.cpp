@@ -434,13 +434,24 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 Index3DId Block::addCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
-	const auto& cellFaceIds = cell.getFaceIds();
+	const auto& cellFaceIds = _polyhedra[cellId].getFaceIds();
+
 	for (const auto& faceId : cellFaceIds) {
-		faceFunc(faceId, [&cellId](Polygon& cellFace) {
+		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
+			// Removed broken face to owner cell linkages.
+			auto cellIds = cellFace.getCellIds();
+			for (const auto& cellId : cellIds) {
+				cellFunc(cellId, [&cellIds, &cellFace](Polyhedron& cell) {
+					if (!cell.containsFace(cellFace.getId())) {
+						cellFace.removeCellId(cell.getId());
+					}
+				});
+			}
+
+			// Add linkage to the new cell
 			cellFace.addCellId(cellId);
 		});
 	}
-
 	return cellId;
 }
 
@@ -613,18 +624,14 @@ bool Block::load()
 	return true;
 }
 
-size_t Block::processTris()
+void Block::setCellDepths()
 {
-#if 1
-	double arcAngleDegrees = 360.0 / 20;
-	size_t count = _polyhedra.size();
-	for (int i = 0; i < 1; i++)
-		splitAllCellsAtCentroid();
-//	size_t count = splitByCurvature(arcAngleDegrees);
-
-#endif
-	count = _polyhedra.size() - count;
-	return count;
+	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		cell.resetLevel();
+	});
+	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		cell.setParentLevel();
+	});
 }
 
 size_t Block::splitAllCellsAtCentroid()
@@ -680,19 +687,27 @@ bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& fa
 	if (!result)
 		return false;
 	
+	size_t level;
+	bool isOuter = face.isOuter();
+	bool isBlockBoundary = face.isBlockBoundary();
+	bool isLevelBoundary  = face.isLevelBoundary(level);
+
 	switch (meshType) {
 		default:
 		case FT_ALL:
 			result = true;
 			break;
 		case FT_INNER:
-			result = !face.isOuter() && !face.isBlockBoundary();
+			result = !isOuter && !isBlockBoundary && !isLevelBoundary;
 			break;
 		case FT_OUTER:
-			result = face.isOuter();
+			result = isOuter;
+			break;
+		case FT_LAYER_BOUNDARY:
+			result = isLevelBoundary;
 			break;
 		case FT_BLOCK_BOUNDARY:
-			result = face.isBlockBoundary();
+			result = isBlockBoundary;
 			break;
 	}
 

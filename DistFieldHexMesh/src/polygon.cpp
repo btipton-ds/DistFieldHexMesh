@@ -115,6 +115,33 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
+bool Polygon::isLevelBoundary(size_t& innerLevel) const
+{
+	if (_cellIds.size() == 1) {
+		const auto& cellId0 = *_cellIds.begin();
+
+		size_t level0;
+		cellFunc(cellId0, [&level0](const Polyhedron& c) { level0 = c.getLevel(); });
+		innerLevel = level0;
+		return true;
+	} else if (_cellIds.size() == 2) {
+		auto iter = _cellIds.begin();
+		const auto& cellId0 = *iter++;
+		const auto& cellId1 = *iter;
+
+		size_t level0, level1;
+		cellFunc(cellId0, [&level0](const Polyhedron& c) { level0 = c.getLevel(); });
+		cellFunc(cellId1, [&level1](const Polyhedron& c) { level1 = c.getLevel(); });
+		if (level0 == level1)
+			return false;
+		innerLevel = std::min(level0, level1);
+		return true;
+	} else {
+		assert(!"A face cannot be owned by more than two cells");
+	}
+	return true;
+}
+
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {
@@ -360,6 +387,12 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	auto result = pl.projectPoint(pt);
 
 	return result;
+}
+
+void Polygon::addCellId(const Index3DId& cellId)
+{
+	_cellIds.insert(cellId);
+	assert(_cellIds.size() <= 2);
 }
 
 bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun)

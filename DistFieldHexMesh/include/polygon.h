@@ -39,6 +39,7 @@ public:
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
+	void clearCellIds();
 	void setCellIds(const std::set<Index3DId>& cellIds);
 	size_t numCells() const;
 	size_t numSplits() const; // This counts upward to show how many times this was split
@@ -51,6 +52,7 @@ public:
 
 	bool ownedByCell(const Index3DId& cellId) const;
 	bool isOuter() const;
+	bool isLevelBoundary(size_t& innerLevel) const;
 	bool isBlockBoundary() const;
 	bool containsPt(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;
@@ -160,21 +162,19 @@ inline void Polygon::clearChildIds()
 	_children.clear();
 }
 
-inline void Polygon::addCellId(const Index3DId& cellId)
-{
-	_cellIds.insert(cellId);
-	assert(_cellIds.size() <= 2);
-}
-
 inline void Polygon::removeCellId(const Index3DId& cellId)
 {
-	assert(_children.empty());
 	_cellIds.erase(cellId);
 }
 
 inline void Polygon::setCellIds(const std::set<Index3DId>& cellIds)
 {
 	_cellIds = cellIds;
+}
+
+inline void Polygon::clearCellIds()
+{
+	_cellIds.clear();
 }
 
 inline size_t Polygon::numCells() const

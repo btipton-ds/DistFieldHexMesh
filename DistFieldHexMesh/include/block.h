@@ -79,7 +79,6 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	size_t processTris();
 	const CMeshPtr& getModelMesh() const;
 	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum);
 	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum);
@@ -152,6 +151,7 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const;
+	void setCellDepths();
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
 	size_t splitAllCellsByCurvature(double arcAngleDegrees);
