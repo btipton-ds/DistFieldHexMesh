@@ -239,7 +239,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 		}
 	}
 
-	makeFaceTris(triMeshes, 1, true);
+	makeFaceTris(triMeshes, true);
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -331,7 +331,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
-void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const
+void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 {
 	CBoundingBox3Dd bbox;
 	bbox.merge(_originMeters);
@@ -345,33 +345,33 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bo
 	triMeshes[FT_INNER].resize(_blocks.size());
 	triMeshes[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	triMeshes[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	MultiCore::runLambda([this, &triMeshes, minSplitNum](size_t index)->bool {
+	MultiCore::runLambda([this, &triMeshes](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 
-			triMeshes[FT_OUTER][index] = blockPtr->getBlockTriMesh(FT_OUTER, minSplitNum);
-			triMeshes[FT_INNER][index] = blockPtr->getBlockTriMesh(FT_INNER, minSplitNum);
-			triMeshes[FT_LAYER_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_LAYER_BOUNDARY, minSplitNum);
-			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY, minSplitNum);
+			triMeshes[FT_OUTER][index] = blockPtr->getBlockTriMesh(FT_OUTER);
+			triMeshes[FT_INNER][index] = blockPtr->getBlockTriMesh(FT_INNER);
+			triMeshes[FT_LAYER_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_LAYER_BOUNDARY);
+			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
 }
 
-void Volume::makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const
+void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 {
 	faceEdges.resize(4);
 	faceEdges[FT_OUTER].resize(_blocks.size());
 	faceEdges[FT_INNER].resize(_blocks.size());
 	faceEdges[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	faceEdges[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	MultiCore::runLambda([this, &faceEdges, minSplitNum](size_t index)->bool {
+	MultiCore::runLambda([this, &faceEdges](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
-			faceEdges[FT_OUTER][index] = blockPtr->makeFaceEdges(FT_OUTER, minSplitNum);
-			faceEdges[FT_INNER][index] = blockPtr->makeFaceEdges(FT_INNER, minSplitNum);
-			faceEdges[FT_LAYER_BOUNDARY][index] = blockPtr->makeFaceEdges(FT_BLOCK_BOUNDARY, minSplitNum);
-			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeFaceEdges(FT_BLOCK_BOUNDARY, minSplitNum);
+			faceEdges[FT_OUTER][index] = blockPtr->makeEdgeSets(FT_OUTER);
+			faceEdges[FT_INNER][index] = blockPtr->makeEdgeSets(FT_INNER);
+			faceEdges[FT_LAYER_BOUNDARY][index] = blockPtr->makeEdgeSets(FT_BLOCK_BOUNDARY);
+			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeEdgeSets(FT_BLOCK_BOUNDARY);
 		}
 		return true;
 	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);

@@ -80,8 +80,8 @@ public:
 	void createBlockFaces();
 
 	const CMeshPtr& getModelMesh() const;
-	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum);
-	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum);
+	CMeshPtr getBlockTriMesh(FaceType meshType);
+	glPointsPtr makeEdgeSets(FaceType meshType);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -150,7 +150,7 @@ private:
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const;
+	bool includeFace(FaceType meshType, const Polygon& face) const;
 	void setCellDepths();
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);

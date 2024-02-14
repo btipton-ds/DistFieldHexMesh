@@ -671,7 +671,7 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 	return count;
 }
 
-bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const
+bool Block::includeFace(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
 	assert(!face.getCellIds().empty());
@@ -714,7 +714,7 @@ bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& fa
 	return result;
 }
 
-CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum)
+CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 {
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.resetLevel();
@@ -735,8 +735,8 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum)
 		_blockMeshes.resize(FT_ALL);
 	}
 	CMeshPtr result;
-	_polygons.iterateInOrder([this, &result, &bbox, meshType, minSplitNum](const Polygon& face) {
-		if (includeFace(meshType, minSplitNum, face)) {
+	_polygons.iterateInOrder([this, &result, &bbox, meshType](const Polygon& face) {
+		if (includeFace(meshType, face)) {
 			if (!result) {
 				if (!_blockMeshes[meshType])
 					_blockMeshes[meshType] = make_shared<CMesh>(bbox);
@@ -768,15 +768,15 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum)
 	return result;
 }
 
-Block::glPointsPtr Block::makeFaceEdges(FaceType meshType, size_t minSplitNum)
+Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 {
 	if (_blockEdges.empty())
 		_blockEdges.resize(FT_ALL);
 
 	set<Edge> edges;
 
-	_polygons.iterateInOrder([this, meshType, &edges, minSplitNum](const Polygon& face) {
-		if (includeFace(meshType, minSplitNum, face)) {
+	_polygons.iterateInOrder([this, meshType, &edges](const Polygon& face) {
+		if (includeFace(meshType, face)) {
 			face.getEdges(edges);
 		}
 	});

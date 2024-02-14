@@ -44,8 +44,8 @@ public:
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
-    void addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum);
-    void addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum);
+    void addFacesToScene(GraphicsCanvas* pCanvas);
+    void addEdgesToScene(GraphicsCanvas* pCanvas);
     void getEdgeData(std::vector<float>& sharpPts, std::vector<int>& sharpIndices, std::vector<float>& normPts, std::vector<int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;

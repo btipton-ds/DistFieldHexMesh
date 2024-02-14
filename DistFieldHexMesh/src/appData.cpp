@@ -283,22 +283,21 @@ void AppData::doBuildCFDHexes()
     Volume::BuildCFDParams params;
 
     params.numSimpleDivs = 2;
-    params.numCurvatureDivs = 2;
+    params.numCurvatureDivs = 4;
  //   params.sharpAngleDegrees = 20;
 
     _volume->buildCFDHexes(_pMesh, params);
 
     auto pCanvas = _pMainFrame->getCanvas();
 
-    size_t minSplits = 0;
-    addTriangles(pCanvas, minSplits);
-    addFaceEdges(pCanvas, minSplits);
+    addFacesToScene(pCanvas);
+    addEdgesToScene(pCanvas);
 }
 
-void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
+void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
 {
     Block::TriMeshGroup blockMeshes;
-    _volume->makeFaceTris(blockMeshes, minSplitNum, true);
+    _volume->makeFaceTris(blockMeshes, true);
 
     CMeshPtr pSharpPtsMesh = getSharpVertMesh();
 
@@ -324,18 +323,18 @@ void AppData::addTriangles(GraphicsCanvas* pCanvas, size_t minSplitNum)
     pCanvas->endFaceTesselation(triTess, sharpPointTess, faceTesselations, false);
 }
 
-void AppData::addFaceEdges(GraphicsCanvas* pCanvas, size_t minSplitNum)
+void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
 {
-    Block::glPointsGroup faceEdgeSets;
-    _volume->makeFaceEdges(faceEdgeSets, minSplitNum, true);
+    Block::glPointsGroup edgeSets;
+    _volume->makeEdgeSets(edgeSets, true);
 
     pCanvas->beginEdgeTesselation();
 
     vector<vector<const OGLIndices*>> edgeTesselations;
-    edgeTesselations.reserve(faceEdgeSets.size());
-    for (size_t mode = 0; mode < faceEdgeSets.size(); mode++) {
+    edgeTesselations.reserve(edgeSets.size());
+    for (size_t mode = 0; mode < edgeSets.size(); mode++) {
         edgeTesselations.push_back(vector<const OGLIndices*>());
-        for (const auto& faceEdgesPtr : faceEdgeSets[mode]) {
+        for (const auto& faceEdgesPtr : edgeSets[mode]) {
             if (faceEdgesPtr) {
                 const auto& faceEdges = *faceEdgesPtr;
                 vector<int> indices;

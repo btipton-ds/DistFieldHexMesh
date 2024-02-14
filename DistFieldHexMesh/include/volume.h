@@ -54,8 +54,8 @@ public:
 		double curvatureArcAngle = 5.0;
 	};
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params);
-	void makeFaceTris(Block::TriMeshGroup& triMeshes, size_t minSplitNum, bool multiCore) const;
-	void makeFaceEdges(Block::glPointsGroup& faceEdges, size_t minSplitNum, bool multiCore) const;
+	void makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const;
+	void makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
