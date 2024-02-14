@@ -674,7 +674,9 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 bool Block::includeFace(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
-	assert(!face.getCellIds().empty());
+	if (!face.getChildIds().empty())
+		return false;
+
 	for (const auto& cellId : face.getCellIds()) {
 		cellFunc(cellId, [&result](const Polyhedron& cell) {
 
@@ -683,9 +685,10 @@ bool Block::includeFace(FaceType meshType, const Polygon& face) const
 		if (result)
 			break;
 	}
-	
 	if (!result)
 		return false;
+
+
 	
 	size_t level;
 	bool isOuter = face.isOuter();
