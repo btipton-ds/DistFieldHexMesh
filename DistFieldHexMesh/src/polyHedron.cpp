@@ -497,33 +497,35 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const
+double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEdgeAngle) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	double maxCurvature = 0;
-	vector<CMesh::SearchEntry> triEntries;
-	if (pTriMesh->findTris(bbox, triEntries) > 0) {
-		for (const auto& triEntry : triEntries) {
-			size_t triIndex = triEntry.getIndex();
-			Vector3i tri = pTriMesh->getTri(triIndex);
-			for (int i = 0; i < 3; i++) {
-				int j = (i + 1) % 3;
-				size_t edgeIdx = pTriMesh->findEdge(tri[i], tri[j]);
-				double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
-				if (edgeCurv > maxCurvature) {
-					maxCurvature = edgeCurv;
-				}
-			}
+	vector<CMesh::SearchEntry> edgeEntries;
+	if (pTriMesh->findEdges(bbox, edgeEntries) > 0) {
+		vector<double> edgeRadii;
+		for (const auto& edgeEntry : edgeEntries) {
+			size_t edgeIdx = edgeEntry.getIndex();
+			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
+			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
+			if (edgeRad < 1 && !pTriMesh->isEdgeSharp(edgeIdx, sinEdgeAngle))
+				edgeRadii.push_back(edgeRad);
 		}
-
-		if (maxCurvature > 0)
-			return 1 / maxCurvature;
+		sort(edgeRadii.begin(), edgeRadii.end());
+		size_t num = std::min((size_t)10, edgeRadii.size());
+		if (num == 0)
+			return -1;
+		double avgRad = 0;
+		for (size_t i = 0; i < num; i++)
+			avgRad += edgeRadii[i];
+		avgRad /= num;
+		if (avgRad > 0)
+			return avgRad;
 		return -1;
 	}
 	return 0;
 }
 
-void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
+void Polyhedron::splitByCurvature(double maxArcAngleDegrees, double sinEdgeAngle)
 {
 	CBoundingBox3Dd bbox = getBoundingBox();
 	const double maxRadius = 0.1; // meters
@@ -544,13 +546,13 @@ void Polyhedron::splitByCurvature(double maxArcAngleDegrees)
 		}
 	}
 	if (!needToSplit) {
-		double minRadius = calMinSurfaceRadius(bbox);
+		double minRadius = calMinSurfaceRadius(bbox, sinEdgeAngle);
 		if (minRadius > 0) {
 			double surfCircumference = 2 * M_PI * minRadius;
 			double arcLength = surfCircumference / circleDivs;
 			auto range = bbox.range();
-			double minBoxDim = min(range[0], min(range[1], range[2]));
-			if (kDiv * arcLength < minBoxDim) {
+			double minDim = min(range[0], min(range[1], range[2])) / kDiv;
+			if (arcLength < minDim) {
 				needToSplit = true;
 			}
 		}

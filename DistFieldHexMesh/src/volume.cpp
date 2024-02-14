@@ -283,6 +283,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	_blocks.resize(numBlocks);
 
 	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
+	double sinEdgeAngle = sin(sharpAngleRadians);
 	_pModelTriMesh->buildCentroids(true);
 	_pModelTriMesh->buildNormals(true);
 	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
@@ -316,9 +317,9 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	assert(verifyTopology());
 
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
-		runLambda([this, &blockSpan, &params](size_t linearIdx)->bool {
+		runLambda([this, &blockSpan, &params, sinEdgeAngle](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitAllCellsByCurvature(params.curvatureArcAngle);
+				_blocks[linearIdx]->splitAllCellsByCurvature(params.curvatureArcAngleDegrees, sinEdgeAngle);
 			}
 			return true;
 		}, RUN_MULTI_THREAD);
