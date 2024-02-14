@@ -671,6 +671,13 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees, double sinEdgeAng
 	return count;
 }
 
+void Block::promoteSplitFacesWithSplitEdges()
+{
+	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		cell.promoteSplitFacesWithSplitEdges();
+	});
+}
+
 bool Block::includeFace(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;

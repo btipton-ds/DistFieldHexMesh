@@ -307,7 +307,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 #if 1
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
-		runLambda([this, &blockSpan](size_t linearIdx)->bool {
+		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->splitAllCellsAtCentroid();
 			}
@@ -317,7 +317,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	assert(verifyTopology());
 
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
-		runLambda([this, &blockSpan, &params, sinEdgeAngle](size_t linearIdx)->bool {
+		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->splitAllCellsByCurvature(params.curvatureArcAngleDegrees, sinEdgeAngle);
 			}
@@ -327,6 +327,14 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	assert(verifyTopology());
 #endif
 
+	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->promoteSplitFacesWithSplitEdges();
+			}
+			return true;
+		}, RUN_MULTI_THREAD);
+	}
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

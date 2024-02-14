@@ -55,6 +55,7 @@ public:
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
 	void splitByCurvature(double maxArcAngleDegrees, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
+	void promoteSplitFacesWithSplitEdges();
 	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);

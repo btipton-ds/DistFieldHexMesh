@@ -584,6 +584,43 @@ void Polyhedron::splitIfTooManyFaceSplits()
 	}
 }
 
+void Polyhedron::promoteSplitFacesWithSplitEdges()
+{
+	bool changed = false;
+	set<Index3DId> newFaceIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&changed, &newFaceIds](const Polygon& face) {
+			auto cellIds = face.getCellIds();
+			const auto& childIds = face.getChildIds();
+			if (childIds.empty()) {
+				newFaceIds.insert(face.getId());
+			} else {
+				changed = true;
+				newFaceIds.insert(childIds.begin(), childIds.end());
+			}
+		});
+	}
+
+	if (!changed)
+		return;
+
+	_faceIds = newFaceIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](Polygon& face) {
+			auto cellIds = face.getCellIds();
+			for (const auto& cellId : cellIds) {
+				cellFunc(cellId, [&face](const Polyhedron& cell) {
+					if (!cell.containsFace(face.getId())) {
+						face.removeCellId(cell.getId());
+					}
+				});
+			}
+			face.addCellId(_thisId);
+		});
+	}
+
+}
+
 double Polyhedron::getShortestEdge() const
 {
 	double minDist = DBL_MAX;
