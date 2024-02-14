@@ -86,6 +86,7 @@ public:
     void onMouseRightDown(wxMouseEvent& event);
     void onMouseRightUp(wxMouseEvent& event);
     void onMouseMove(wxMouseEvent& event);
+    void onMouseWheel(wxMouseEvent& event);
 
 private:
     struct GraphicsUBO {

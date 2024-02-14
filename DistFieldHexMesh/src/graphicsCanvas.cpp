@@ -91,6 +91,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     Bind(wxEVT_RIGHT_DOWN, &GraphicsCanvas::onMouseRightDown, this);
     Bind(wxEVT_RIGHT_UP, &GraphicsCanvas::onMouseRightUp, this);
     Bind(wxEVT_MOTION, &GraphicsCanvas::onMouseMove, this);
+    Bind(wxEVT_MOUSEWHEEL, &GraphicsCanvas::onMouseWheel, this);
 }
 
 GraphicsCanvas::~GraphicsCanvas()
@@ -206,6 +207,19 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
     } else if (_rightDown) {
         delta = pos - _mouseStartLoc;
         cout << "Mouse right delta: " << delta[0] << ", " << delta[1] << "\n";
+    }
+}
+
+void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
+{
+    double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
+    double scale = 1 + t * 0.01;
+    if (event.m_wheelRotation > 0) {
+        _viewScale *= scale;
+        updateView();
+    } else if (event.m_wheelRotation < 0) {
+        _viewScale /= scale;
+        updateView();
     }
 }
 
@@ -451,7 +465,7 @@ void GraphicsCanvas::drawEdges()
 
 void GraphicsCanvas::updateView()
 {
-    Eigen::Matrix4d rot, rotZ, rotX, rotToGl, scale, pan, trans;
+    Eigen::Matrix4d rot, rotZ, rotX, rotToGl, scale, pan, trans, proj;
     
     rot.setIdentity();
     rotZ.setIdentity();
@@ -460,8 +474,13 @@ void GraphicsCanvas::updateView()
     scale.setIdentity();
     pan.setIdentity();
     trans.setIdentity();
+    proj.setIdentity();
     for (int i = 0; i < 3; i++) {
-        scale(i, i) = _viewScale;
+        if (i == 2)
+            scale(i, i) = 1.0;
+        else
+            scale(i, i) = _viewScale;
+
         pan(3, i) = _viewOrigin[i];
     }
     Eigen::Matrix4d panInv(pan.inverse());
@@ -488,11 +507,15 @@ void GraphicsCanvas::updateView()
     trans *= rotZ;
     trans *= pan;
     trans *= pan;
-    trans *= scale;
 
-    float* pf = _graphicsUBO.modelView;
+    proj *= scale;
+
+    float* pMV = _graphicsUBO.modelView;
+
+    float* pPr = _graphicsUBO.proj;
     for (int i = 0; i < 16; i++) {
-        pf[i] = (float)trans(i);
+        pMV[i] = (float)trans(i);
+        pPr[i] = (float)proj(i);
     }
 }
 
