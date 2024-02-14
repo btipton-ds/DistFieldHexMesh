@@ -272,7 +272,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 		}
 	}
 	double targetBlockSize = minSpan / 8;
-	size_t blockDim = (size_t) (targetBlockSize / maxBlockSize + 0.5);
+	size_t blockDim = 1; // (size_t)(targetBlockSize / maxBlockSize + 0.5);
 	Index3D::setBlockDim(blockDim);
 
 	Index3D blockSize(
@@ -313,7 +313,18 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, double maxBlockSize)
 
 #if 1
 	size_t count = 0;
-	for (size_t i = 0; i < 8; i++) {
+	for (size_t i = 0; i < 2; i++) {
+		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";
+				_blocks[linearIdx]->splitAllCellsAtCentroid();
+			}
+			return true;
+			}, RUN_MULTI_THREAD);
+	}
+	assert(verifyTopology());
+
+	for (size_t i = 0; i < 0; i++) {
 		runLambda([this, &blockSpan, &count](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				cout << "Processing : " << (linearIdx * 100.0 / _blocks.size()) << "%\n";

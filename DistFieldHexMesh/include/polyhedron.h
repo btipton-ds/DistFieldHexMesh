@@ -32,6 +32,10 @@ public:
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
 	void getEdges(std::set<Edge>& edgeSet, bool includeNeighborFaces) const;
+	size_t getLevel() const;
+	void resetLevel();
+	void incrementLevel(size_t newLevel);
+	void setParentLevel();
 
 	std::set<Index3DId> getAdjacentCells() const;
 
@@ -44,7 +48,7 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	void markFaces(unsigned int markVal) const;
+	void markFaces(unsigned int markVal);
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
@@ -58,6 +62,7 @@ public:
 	void dumpFaces() const;
 
 	bool isClosed() const;
+	bool isActive() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
@@ -75,6 +80,8 @@ private:
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const;
 
+	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
+	size_t _level = 0;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	Index3DId _parent; // This records the id of the polygon this polygon was split from
 	std::set<Index3DId> _children;
@@ -89,6 +96,16 @@ inline Index3DId Polyhedron::getId() const
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
+}
+
+inline size_t Polyhedron::getLevel() const
+{
+	return _level;
+}
+
+inline void Polyhedron::resetLevel()
+{
+	_level = 0;
 }
 
 /*

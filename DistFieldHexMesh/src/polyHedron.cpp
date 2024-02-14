@@ -269,7 +269,7 @@ Vector3d Polyhedron::calCentroid() const
 
 bool Polyhedron::intersectsModel() const
 {
-	if (_children.empty()) {
+	if (_intersectsModel == IS_UNKNOWN) {
 		CBoundingBox3Dd bbox = getBoundingBox();
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
@@ -278,19 +278,38 @@ bool Polyhedron::intersectsModel() const
 				return true;
 		}
 		vector<CMesh::SearchEntry> triEntries;
-		return pTriMesh->findTris(bbox, triEntries);
+		_intersectsModel = pTriMesh->findTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
 	}
-	return false; // Don't test split cells
+
+	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-void Polyhedron::markFaces(unsigned int markVal) const
+void Polyhedron::markFaces(unsigned int markVal)
 {
 	if (_children.empty()) {
 		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [markVal](const Polygon& face) {
+			faceFunc(faceId, [markVal](Polygon& face) {
 				face.setMarkVal(markVal);
 			});
 		}
+	}
+}
+inline void Polyhedron::incrementLevel(size_t newLevel)
+{
+	if (newLevel > _level)
+		_level = newLevel;
+	if (_parent.isValid()) {
+		cellFunc(_parent, [this](Polyhedron& par) {
+			par.incrementLevel(_level + 1);
+		});
+	}
+}
+
+void Polyhedron::setParentLevel()
+{
+	if (intersectsModel()) {
+		_level = 0;
+		incrementLevel(_level);
 	}
 }
 
@@ -329,10 +348,16 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		return false; // We've been split, don't split again. However, our child faces CAN be split
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&centerPoint, &canSplitAll](Polygon& face) {
+		faceFunc(faceId, [this, &centerPoint, &canSplitAll](Polygon& face) {
 			if (canSplitAll) {
-				set<Index3DId> newFaceIds;
-				canSplitAll = face.splitAtPoint(centerPoint, newFaceIds, true);
+				set<Index3DId> childFaceIds;
+				canSplitAll = face.splitAtPoint(centerPoint, childFaceIds, true);
+				// It's possible that the child faces were owned by this cell. Remove our id to be sure
+				for (const auto& childFaceId : childFaceIds) {
+					faceFunc(childFaceId, [this](Polygon& childFace) {
+						childFace.removeCellId(_thisId);
+					});
+				}
 			}
 		});
 		if (!canSplitAll)
@@ -493,7 +518,7 @@ double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	double maxCurvature = 0;
 	vector<CMesh::SearchEntry> triEntries;
-	if (pTriMesh->findTris(bbox, triEntries)) {
+	if (pTriMesh->findTris(bbox, triEntries) > 0) {
 		for (const auto& triEntry : triEntries) {
 			size_t triIndex = triEntry.getIndex();
 			Vector3i tri = pTriMesh->getTri(triIndex);
@@ -667,6 +692,11 @@ bool Polyhedron::isClosed() const
 	}
 
 	return result;
+}
+
+bool Polyhedron::isActive() const
+{
+	return _children.empty();
 }
 
 bool Polyhedron::verifyTopology() const

@@ -469,7 +469,7 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 
 	if (intersectingOnly) {
 		vector<CMesh::SearchEntry> triIndices;
-		bool found = getModelMesh()->findTris(bbox, triIndices);
+		bool found = getModelMesh()->findTris(bbox, triIndices) > 0;
 
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
@@ -666,10 +666,20 @@ size_t Block::splitAllCellsByCurvature(double arcAngleDegrees)
 
 bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& face) const
 {
-	if (face.isMarkSet(1)) // face was split, show the child faces
-		return false;
-
 	bool result = false;
+	assert(!face.getCellIds().empty());
+	for (const auto& cellId : face.getCellIds()) {
+		cellFunc(cellId, [&result](const Polyhedron& cell) {
+
+			result = cell.intersectsModel() && cell.isActive();
+		});
+		if (result)
+			break;
+	}
+	
+	if (!result)
+		return false;
+	
 	switch (meshType) {
 		default:
 		case FT_ALL:
@@ -685,17 +695,18 @@ bool Block::includeFace(FaceType meshType, size_t minSplitNum, const Polygon& fa
 			result = face.isBlockBoundary();
 			break;
 	}
-	result = result && face.numSplits() >= minSplitNum;
 
 	return result;
 }
 
-CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum) const
+CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum)
 {
-	_polyhedra.iterateInOrder([](const Polyhedron& cell) {
-		if (cell.intersectsModel()) {
-			cell.markFaces(1);
-		}
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.resetLevel();
+	});
+
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.setParentLevel();
 	});
 
 	if (numFaces(true) == 0)
@@ -742,7 +753,7 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType, size_t minSplitNum) const
 	return result;
 }
 
-Block::glPointsPtr Block::makeFaceEdges(FaceType meshType, size_t minSplitNum) const
+Block::glPointsPtr Block::makeFaceEdges(FaceType meshType, size_t minSplitNum)
 {
 	if (_blockEdges.empty())
 		_blockEdges.resize(FT_ALL);

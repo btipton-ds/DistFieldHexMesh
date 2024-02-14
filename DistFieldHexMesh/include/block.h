@@ -81,8 +81,8 @@ public:
 
 	size_t processTris();
 	const CMeshPtr& getModelMesh() const;
-	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum) const;
-	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum) const;
+	CMeshPtr getBlockTriMesh(FaceType meshType, size_t minSplitNum);
+	glPointsPtr makeFaceEdges(FaceType meshType, size_t minSplitNum);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
