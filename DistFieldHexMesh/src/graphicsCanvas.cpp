@@ -185,6 +185,13 @@ void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 {
     _middleDown = false;
+
+    Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
+    Vector3d sp = screenToModel(_mouseStartLoc);
+    Vector3d ep = screenToModel(pos);
+    Vector3d delta = ep - sp;
+    delta *= 2;
+    _origin += delta;
 }
 
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
@@ -210,26 +217,27 @@ Eigen::Vector2d GraphicsCanvas::calMouseLoc(const wxPoint& pt)
 void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 {
     Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
-    Eigen::Vector2d delta;
     if (_leftDown) {
-        delta = pos - _mouseStartLoc;
+        Eigen::Vector2d delta = pos - _mouseStartLoc;
         double deltaAz = delta[0] * M_PI / 2;
         double deltaEl = delta[1] * M_PI / 2;
         applyRotation(-deltaAz, -deltaEl);
 
     } else if (_middleDown) {
-        delta = pos - _mouseStartLoc;
-        cout << "Mouse middle delta: " << delta[0] << ", " << delta[1] << "\n";
+        Vector3d sp = screenToModel(_mouseStartLoc);
+        Vector3d ep = screenToModel(pos);
+        Vector3d delta = ep - sp;
+        delta *= 2;
+
+        moveOrigin(delta);
     } else if (_rightDown) {
-        delta = pos - _mouseStartLoc;
-        cout << "Mouse right delta: " << delta[0] << ", " << delta[1] << "\n";
     }
 }
 
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
-    double scaleMult = 1 + t * 0.01;
+    double scaleMult = 1 + t * 0.05;
     double scale = 1.0;
 
     if (event.m_wheelRotation > 0) {
@@ -481,31 +489,38 @@ void GraphicsCanvas::drawEdges()
     _edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
-inline void GraphicsCanvas::moveOrigin(const Vector3d& delta)
+Vector3d GraphicsCanvas::screenToModel(const Eigen::Vector2d& pt2d) const
 {
-    Eigen::Matrix4d pan, panInv;
-    Vector3d newOrigin = _origin + delta;
-    pan.setIdentity();
-    panInv.setIdentity();
-    for (int i = 0; i < 3; i++) {
-        pan(3, i) = newOrigin[i];
-        panInv(3, i) = _origin[i];
-    }
-    panInv.inverse();
-    _trans *= panInv;
-    _trans *= pan;
+    Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
+    Eigen::Vector4d r = _trans.inverse() * pt3d;
+    return Vector3d(r[0], r[1], r[2]);
+}
 
-    _origin = newOrigin;
+Eigen::Matrix4d GraphicsCanvas::createTranslation(const Vector3d& delta)
+{
+    Eigen::Transform<double, 3, Eigen::Affine> t = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+    Eigen::Vector3d x(delta);
+    t.translate(x);
+    Eigen::Matrix4d result(t.matrix());
+    return result;
+}
+
+void GraphicsCanvas::moveOrigin(const Vector3d& delta)
+{
+    Eigen::Matrix4d pan(createTranslation(delta));
+
+    _trans = _intitialTrans;
+    _trans *= pan;
 }
 
 inline void GraphicsCanvas::applyScale(double scaleFact)
 {
     Eigen::Matrix4d pan, scale;
     scale.setIdentity();
-    pan.setIdentity();
+    pan = createTranslation(_origin);
+
     for (int i = 0; i < 3; i++) {
         scale(i, i) = scaleFact;
-        pan(3, i) = _origin[i];
     }
     Eigen::Matrix4d panInv(pan.inverse());
 
@@ -514,7 +529,7 @@ inline void GraphicsCanvas::applyScale(double scaleFact)
     _trans *= pan;
 
     _proj *= scaleFact;
-    _proj(2, 2) = 1;
+    _proj(2, 2) = 0.1;
 }
 
 inline void GraphicsCanvas::applyRotation(double deltaAz, double deltaEl)
@@ -523,10 +538,8 @@ inline void GraphicsCanvas::applyRotation(double deltaAz, double deltaEl)
     rot.setIdentity();
     rotZ.setIdentity();
     rotX.setIdentity();
-    pan.setIdentity();
-    for (int i = 0; i < 3; i++) {
-        pan(3, i) = _origin[i];
-    }
+    pan = createTranslation(_origin);
+
     Eigen::Matrix4d panInv(pan.inverse());
 
     rotZ(0, 0) = cos(deltaAz);

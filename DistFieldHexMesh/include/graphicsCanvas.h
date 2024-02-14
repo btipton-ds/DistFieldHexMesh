@@ -54,6 +54,7 @@ public:
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
+    Vector3d screenToModel(const Eigen::Vector2d& pt2d) const;
     void moveOrigin(const Vector3d& delta);
     void applyScale(double scale);
     void applyRotation(double deltaAz, double deltaEl);
@@ -112,6 +113,7 @@ private:
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     void initialize();
     void loadShaders();
+    static Eigen::Matrix4d createTranslation(const Vector3d& delta);
 
     Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
