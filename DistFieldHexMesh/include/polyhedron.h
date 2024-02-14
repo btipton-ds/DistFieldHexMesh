@@ -53,8 +53,9 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
-	void splitByCurvature(double maxArcAngleDegrees);
+	void splitByCurvature(double maxArcAngleDegrees, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
+	void promoteSplitFacesWithSplitEdges();
 	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);
@@ -78,7 +79,7 @@ private:
 	void copyToOut() const;
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
-	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox) const;
+	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEdgeAngle) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	size_t _level = 0, _numSplits = 0;

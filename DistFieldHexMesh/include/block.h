@@ -154,7 +154,8 @@ private:
 	void setCellDepths();
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
-	size_t splitAllCellsByCurvature(double arcAngleDegrees);
+	size_t splitAllCellsByCurvature(double arcAngleDegrees, double sinEdgeAngle);
+	void promoteSplitFacesWithSplitEdges();
 
 	Index3D _blockIdx;
 
