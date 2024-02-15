@@ -22,10 +22,15 @@
 //Not necessary, but if it was, it needs to be replaced by process.h AND io.h
 #endif
 
+#include <cmath>
+#include <Eigen/Geometry>
+#include <Eigen/src/Core/Matrix.h>
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
 #include <OGLMath.h>
-#include <cmath>
+#include <triMesh.h>
+#include <volume.h>
+#include <appData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -37,7 +42,6 @@ END_EVENT_TABLE()
 
 namespace
 {
-
     inline float toRad(float v)
     {
         return v * M_PI / 180.0f;
@@ -52,10 +56,57 @@ namespace
 #endif
         0
     };
+#if 0
+    template<class T, int n, int m>
+    Eigen::Matrix<T, n, n> changeMatrixSize(const Eigen::Matrix<T, m, m>& src)
+    {
+        Eigen::Matrix<T, n, n> result;
+        int l = min(n, m);
+        for (int i = 0; i < l; i++) {
+            for (int j = 0; j < l; j++) {
+                result(i, j) = src(i, j);
+            }
+        }
+        return result;
+    }
+#else
+    template<class A, class B>
+    A changeSize(const B& src)
+    {
+        A result;
+        result.setZero();
+        if (src.cols() == src.rows()) {
+            int l = min(src.rows(), result.rows());
+            for (int i = 0; i < l; i++) {
+                for (int j = 0; j < l; j++) {
+                    result(i, j) = src(i, j);
+                }
+            }
+        } else {
+            int l = min(src.rows(), result.rows());
+            for (int i = 0; i < l; i++) {
+                result(i, 0) = src(i, 0);
+            }
+        }
+        return result;
+    }
+#endif
+
+    template<class T, int n, int m>
+    Eigen::Matrix<T, n, 1> changeVectorSize(const Eigen::Matrix<T, m, 1>& src)
+    {
+        Eigen::Matrix<T, n, 1> result;
+        int l = min(n, m);
+        for (int i = 0; i < l; i++) {
+            result[i] = src[i];
+        }
+        return result;
+    }
 }
 
-GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
+GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
+    , _pAppData(pAppData)
     , _faceVBO(GL_TRIANGLES, 20)
     , _edgeVBO(GL_LINES, 20)
     , _origin(0, 0, 0)
@@ -90,14 +141,11 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent)
     _proj.setIdentity();
 
     double xRotAngleRad = -90 * M_PI / 180;
-    Eigen::Matrix4d rotToGl;
-    rotToGl.setIdentity();
-    rotToGl(1, 1) = cos(xRotAngleRad);
-    rotToGl(1, 2) = -sin(xRotAngleRad);
-    rotToGl(2, 1) = sin(xRotAngleRad);
-    rotToGl(2, 2) = cos(xRotAngleRad);
-
-    _trans *= rotToGl;
+    _rotToGl.setIdentity();
+    _rotToGl(1, 1) = cos(xRotAngleRad);
+    _rotToGl(1, 2) = -sin(xRotAngleRad);
+    _rotToGl(2, 1) = sin(xRotAngleRad);
+    _rotToGl(2, 2) = cos(xRotAngleRad);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -165,7 +213,28 @@ bool GraphicsCanvas::toggleShowOuter()
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
-    _mouseStartLoc = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
+    _mouseStartLoc3D = screenPointToModel(_mouseStartLoc2D);
+    CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
+    if (pMesh) {
+        Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
+        dir.normalize();
+        Ray ray(_mouseStartLoc3D, dir);
+        vector<RayHit> hits;
+        if (pMesh->rayCast(ray, hits)) {
+            cout << "Hit model\n";
+            _mouseStartLoc3D = hits.front().hitPt;
+        }
+        else {
+            cout << "Missed model\n";
+            auto bbox = pMesh->getBBox();
+            Vector3d ctr = (bbox.getMin() + bbox.getMax()) * 0.5;
+            Vector3d v = ctr - _mouseStartLoc3D;
+            double dp = v.dot(dir);
+            _mouseStartLoc3D += dp * dir;
+        }
+    }
+
     _intitialTrans = _trans;
     _leftDown = true;
 }
@@ -177,7 +246,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
-    _mouseStartLoc = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
     _intitialTrans = _trans;
     _middleDown = true;
 }
@@ -187,8 +256,8 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
     _middleDown = false;
 
     Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
-    Vector3d sp = screenToModel(_mouseStartLoc);
-    Vector3d ep = screenToModel(pos);
+    Vector3d sp = screenPointToModel(_mouseStartLoc2D);
+    Vector3d ep = screenPointToModel(pos);
     Vector3d delta = ep - sp;
     delta *= 2;
     _origin += delta;
@@ -196,7 +265,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
 {
-    _mouseStartLoc = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
     _intitialTrans = _trans;
     _rightDown = true;
 }
@@ -209,25 +278,30 @@ void GraphicsCanvas::onMouseRightUp(wxMouseEvent& event)
 Eigen::Vector2d GraphicsCanvas::calMouseLoc(const wxPoint& pt)
 {
     wxSize frameSize = GetSize();
-    double x = pt.x / (double)frameSize.x;
-    double y = pt.y / (double)frameSize.y;
+    double x = -1 + 2 * pt.x / (double)frameSize.x;
+    double y = -1 + 2 * pt.y / (double)frameSize.y;
     return Eigen::Vector2d(x, y);
 }
 
 void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 {
     Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
+    {
+        Vector3d temp = screenPointToModel(pos);
+        _mouseLoc3D = Vector3f((float)temp[0], (float)temp[1], (float)temp[2]);
+    }
     if (_leftDown) {
-        Eigen::Vector2d delta = pos - _mouseStartLoc;
-        double deltaAz = delta[0] * M_PI / 2;
-        double deltaEl = delta[1] * M_PI / 2;
-        applyRotation(-deltaAz, -deltaEl);
+        Eigen::Vector2d delta = pos - _mouseStartLoc2D;
+        Eigen::Vector2d orth(-delta[1], delta[0]);
+        Vector3d axis(screenVectorToModel(orth, 0));
+        axis.normalize();
+        double angle = delta.norm() * M_PI / 2;
+        applyRotation(angle, _mouseStartLoc3D, axis);
 
     } else if (_middleDown) {
-        Vector3d sp = screenToModel(_mouseStartLoc);
-        Vector3d ep = screenToModel(pos);
+        Vector3d sp = screenPointToModel(_mouseStartLoc2D);
+        Vector3d ep = screenPointToModel(pos);
         Vector3d delta = ep - sp;
-        delta *= 2;
 
         moveOrigin(delta);
     } else if (_rightDown) {
@@ -385,11 +459,38 @@ layout(binding = 0) uniform UniformBufferObject {
 //    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
+    drawMousePos3D();
     drawFaces();
     drawEdges();
 
     SwapBuffers();
     _phongShader->unBind();
+}
+
+void GraphicsCanvas::drawMousePos3D()
+{
+    float len = 0.1f;
+    const Vector3f x(len, 0, 0), y(0, len, 0), z(0, 0, len);
+
+    Vector3f x0 = _mouseLoc3D - x;
+    Vector3f x1 = _mouseLoc3D + x;
+
+    Vector3f y0 = _mouseLoc3D - y;
+    Vector3f y1 = _mouseLoc3D + y;
+
+    Vector3f z0 = _mouseLoc3D - z;
+    Vector3f z1 = _mouseLoc3D + z;
+
+    glBegin(GL_LINES);
+    glVertex3f(x0[0], x0[1], x0[2]);
+    glVertex3f(x1[0], x1[1], x1[2]);
+
+    glVertex3f(y0[0], y0[1], y0[2]);
+    glVertex3f(y1[0], y1[1], y1[2]);
+
+    glVertex3f(z0[0], z0[1], z0[2]);
+    glVertex3f(z1[0], z1[1], z1[2]);
+    glEnd();
 }
 
 void GraphicsCanvas::drawFaces()
@@ -489,11 +590,21 @@ void GraphicsCanvas::drawEdges()
     _edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
-Vector3d GraphicsCanvas::screenToModel(const Eigen::Vector2d& pt2d) const
+Vector3d GraphicsCanvas::screenPointToModel(const Eigen::Vector2d& pt2d) const
 {
     Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
-    Eigen::Vector4d r = _trans.inverse() * pt3d;
-    return Vector3d(r[0], r[1], r[2]);
+    Eigen::Vector4d r = cumTransform().inverse() * pt3d;
+    return changeSize<Vector3d, Eigen::Vector4d>(r);
+}
+Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z) const
+{
+    return screenVectorToModel(Vector3d(v[0], v[1], z));
+}
+Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector3d& v) const
+{
+    Eigen::Vector4d pt3d(v[0], -v[1], v[2], 0);
+    Eigen::Vector4d r = cumTransform().inverse() * pt3d;
+    return changeSize<Vector3d, Eigen::Vector4d>(r);
 }
 
 Eigen::Matrix4d GraphicsCanvas::createTranslation(const Vector3d& delta)
@@ -532,39 +643,31 @@ inline void GraphicsCanvas::applyScale(double scaleFact)
     _proj(2, 2) = 0.1;
 }
 
-inline void GraphicsCanvas::applyRotation(double deltaAz, double deltaEl)
+inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
 {
-    Eigen::Matrix4d rot, rotZ, rotX, pan;
-    rot.setIdentity();
-    rotZ.setIdentity();
-    rotX.setIdentity();
-    pan = createTranslation(_origin);
-
-    Eigen::Matrix4d panInv(pan.inverse());
-
-    rotZ(0, 0) = cos(deltaAz);
-    rotZ(0, 1) = -sin(deltaAz);
-    rotZ(1, 0) = sin(deltaAz);
-    rotZ(1, 1) = cos(deltaAz);
-
-    rotX(1, 1) = cos(-deltaEl);
-    rotX(1, 2) = sin(-deltaEl);
-    rotX(2, 1) = -sin(-deltaEl);
-    rotX(2, 2) = cos(-deltaEl);
+    Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, rotationAxis).toRotationMatrix();
+    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3));
+    rot(3, 3) = 1;
 
     _trans = _intitialTrans;
-    _trans *= panInv;
-    _trans *= rotX;
-    _trans *= rotZ;
-    _trans *= pan;
+    _trans *= createTranslation(-rotationCenter);
+    _trans *= rot;
+    _trans *= createTranslation(rotationCenter);
+}
+
+inline Eigen::Matrix4d GraphicsCanvas::cumTransform() const
+{
+    return _rotToGl * _trans;
 }
 
 void GraphicsCanvas::updateView()
 {
+    Eigen::Matrix4d m = cumTransform();
+
     float* pMV = _graphicsUBO.modelView;
     float* pPr = _graphicsUBO.proj;
     for (int i = 0; i < 16; i++) {
-        pMV[i] = (float)_trans(i);
+        pMV[i] = (float)m(i);
         pPr[i] = (float)_proj(i);
     }
 }

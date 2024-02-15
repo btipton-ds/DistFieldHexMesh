@@ -43,10 +43,10 @@ MainFrame::MainFrame(wxWindow* parent,
 #pragma warning(pop)
 #endif // WIN32
 
-    _pCanvas = new GraphicsCanvas(this);
+    _pAppData = make_shared<AppData>(this);
+    _pCanvas = new GraphicsCanvas(this, _pAppData);
     _pCanvas->setBackColor(rgbaColor(1.0f, 1.0f, 1.0f));
 
-    _pAppData = make_shared<AppData>(this);
     addMenus();
     addStatusBar();
 }

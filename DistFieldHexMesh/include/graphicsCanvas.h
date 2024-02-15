@@ -20,6 +20,12 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+class AppData;
+using AppDataPtr = std::shared_ptr<AppData>;
+
+class Volume;
+using VolumePtr = std::shared_ptr<Volume>;
+
 #define USING_VULKAN 0
 #if USING_VULKAN
 #else
@@ -35,7 +41,7 @@ class GraphicsCanvas : public GraphicsCanvasBase
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
-    GraphicsCanvas(wxFrame* parent);
+    GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
 
     void doPaint(wxPaintEvent& event);
@@ -54,10 +60,12 @@ public:
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
-    Vector3d screenToModel(const Eigen::Vector2d& pt2d) const;
+    Vector3d screenPointToModel(const Eigen::Vector2d& pt2d) const;
+    Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
+    Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
     void moveOrigin(const Vector3d& delta);
     void applyScale(double scale);
-    void applyRotation(double deltaAz, double deltaEl);
+    void applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis);
 
     bool showSharpEdges() const;
     bool toggleShowSharpEdges();
@@ -96,17 +104,20 @@ private:
         p3f lightDir[8];
     };
 
+    Eigen::Matrix4d cumTransform() const;
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
     void updateView();
     void changeFaceViewElements();
     void changeEdgeViewElements();
+    void drawMousePos3D();
     void drawFaces();
     void drawEdges();
 
     std::shared_ptr<wxGLContext> _pContext;
     
+    const AppDataPtr _pAppData;
     bool _initialized = false;
 
     bool _showSharpEdges = false, _showSharpVerts = false, _showTriNormals = false, _showEdges = true, _showFaces = true, _showOuter = true;
@@ -117,9 +128,10 @@ private:
 
     Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
-    Eigen::Vector2d _mouseStartLoc;
-    Vector3d _origin;
-    Eigen::Matrix4d _trans, _intitialTrans, _proj;
+    Eigen::Vector2d _mouseStartLoc2D;
+    Vector3d _origin, _mouseStartLoc3D;
+    Vector3f _mouseLoc3D;
+    Eigen::Matrix4d _rotToGl, _trans, _intitialTrans, _proj;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
