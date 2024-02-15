@@ -28,6 +28,7 @@
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
 #include <OGLMath.h>
+#include <tm_vector3.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <appData.h>
@@ -39,6 +40,8 @@ BEGIN_EVENT_TABLE(GraphicsCanvas, wxGLCanvas)
 EVT_PAINT(GraphicsCanvas::doPaint)
 EVT_SIZE(GraphicsCanvas::onSize)
 END_EVENT_TABLE()
+
+#define DRAW_MOUSE_POSITION 0
 
 namespace
 {
@@ -214,25 +217,24 @@ bool GraphicsCanvas::toggleShowOuter()
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLoc2D = calMouseLoc(event.GetPosition());
-    _mouseStartLoc3D = screenPointToModel(_mouseStartLoc2D);
+    Vector3d dir(screenVectorToModel(Vector3d(0, 0, -1)));
     CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
     if (pMesh) {
-        Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
+        Vector3d temp = screenPointToModel(_mouseStartLoc2D);
         dir.normalize();
-        Ray ray(_mouseStartLoc3D, dir);
+        Ray ray(temp, dir);
         vector<RayHit> hits;
         if (pMesh->rayCast(ray, hits)) {
-            cout << "Hit model\n";
+            // Rotate about hit point
             _mouseStartLoc3D = hits.front().hitPt;
-        }
-        else {
-            cout << "Missed model\n";
+        } else {
+            // Rotate about model center
             auto bbox = pMesh->getBBox();
-            Vector3d ctr = (bbox.getMin() + bbox.getMax()) * 0.5;
-            Vector3d v = ctr - _mouseStartLoc3D;
-            double dp = v.dot(dir);
-            _mouseStartLoc3D += dp * dir;
+            _mouseStartLoc3D = (bbox.getMin() + bbox.getMax()) * 0.5;
         }
+    } else {
+        // Rotate about point hit at arbitrary depth
+        _mouseStartLoc3D = screenPointToModel(_mouseStartLoc2D);
     }
 
     _intitialTrans = _trans;
@@ -295,21 +297,23 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
         Eigen::Vector2d orth(-delta[1], delta[0]);
         Vector3d axis(screenVectorToModel(orth, 0));
         axis.normalize();
-        double angle = delta.norm() * M_PI / 2;
+        double angle = delta.norm() * M_PI / 4;
         applyRotation(angle, _mouseStartLoc3D, axis);
 
     } else if (_middleDown) {
-        Vector3d sp = screenPointToModel(_mouseStartLoc2D);
-        Vector3d ep = screenPointToModel(pos);
-        Vector3d delta = ep - sp;
+        Eigen::Vector2d delta2D = pos - _mouseStartLoc2D;
+        Vector3d delta3D(screenVectorToModel(delta2D, 0));
 
-        moveOrigin(delta);
+        moveOrigin(delta3D);
     } else if (_rightDown) {
     }
 }
 
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
+    Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
+    Vector3d centerPt = screenPointToModel(pos);
+
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
     double scaleMult = 1 + t * 0.05;
     double scale = 1.0;
@@ -459,7 +463,7 @@ layout(binding = 0) uniform UniformBufferObject {
 //    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
-    drawMousePos3D();
+    drawMousePos3D(); // Available for mouse position testing
     drawFaces();
     drawEdges();
 
@@ -469,6 +473,7 @@ layout(binding = 0) uniform UniformBufferObject {
 
 void GraphicsCanvas::drawMousePos3D()
 {
+#if  DRAW_MOUSE_POSITION
     float len = 0.1f;
     const Vector3f x(len, 0, 0), y(0, len, 0), z(0, 0, len);
 
@@ -491,6 +496,8 @@ void GraphicsCanvas::drawMousePos3D()
     glVertex3f(z0[0], z0[1], z0[2]);
     glVertex3f(z1[0], z1[1], z1[2]);
     glEnd();
+
+#endif //  DRAW_MOUSE_POSITION
 }
 
 void GraphicsCanvas::drawFaces()
@@ -593,7 +600,7 @@ void GraphicsCanvas::drawEdges()
 Vector3d GraphicsCanvas::screenPointToModel(const Eigen::Vector2d& pt2d) const
 {
     Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
-    Eigen::Vector4d r = cumTransform().inverse() * pt3d;
+    Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
     return changeSize<Vector3d, Eigen::Vector4d>(r);
 }
 Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z) const
@@ -603,7 +610,7 @@ Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z)
 Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector3d& v) const
 {
     Eigen::Vector4d pt3d(v[0], -v[1], v[2], 0);
-    Eigen::Vector4d r = cumTransform().inverse() * pt3d;
+    Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
     return changeSize<Vector3d, Eigen::Vector4d>(r);
 }
 
@@ -646,23 +653,26 @@ inline void GraphicsCanvas::applyScale(double scaleFact)
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
 {
     Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, rotationAxis).toRotationMatrix();
-    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3));
+    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3)), translate(createTranslation(rotationCenter)), unTranslate(createTranslation(-rotationCenter));
     rot(3, 3) = 1;
 
     _trans = _intitialTrans;
-    _trans *= createTranslation(-rotationCenter);
+    _trans *= translate;
     _trans *= rot;
-    _trans *= createTranslation(rotationCenter);
+    _trans *= unTranslate;
 }
 
-inline Eigen::Matrix4d GraphicsCanvas::cumTransform() const
+inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
-    return _rotToGl * _trans;
+    if (withProjection)
+        return _rotToGl * _trans * _proj;
+    else
+        return _rotToGl * _trans;
 }
 
 void GraphicsCanvas::updateView()
 {
-    Eigen::Matrix4d m = cumTransform();
+    Eigen::Matrix4d m = cumTransform(false);
 
     float* pMV = _graphicsUBO.modelView;
     float* pPr = _graphicsUBO.proj;

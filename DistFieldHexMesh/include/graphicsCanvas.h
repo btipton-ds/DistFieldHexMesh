@@ -104,7 +104,7 @@ private:
         p3f lightDir[8];
     };
 
-    Eigen::Matrix4d cumTransform() const;
+    Eigen::Matrix4d cumTransform(bool withProjection) const;
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
