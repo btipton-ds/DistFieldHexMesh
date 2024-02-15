@@ -45,7 +45,6 @@ public:
     ~GraphicsCanvas();
 
     void doPaint(wxPaintEvent& event);
-    void onSize(wxSizeEvent& event);
     void setBackColor(const rgbaColor& color);
 
     void beginFaceTesselation();
@@ -105,6 +104,7 @@ private:
     };
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
+    Eigen::Matrix4d getProjection() const;
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
@@ -131,7 +131,7 @@ private:
     Eigen::Vector2d _mouseStartLoc2D;
     Vector3d _origin, _mouseStartLoc3D;
     Vector3f _mouseLoc3D;
-    Eigen::Matrix4d _rotToGl, _trans, _intitialTrans, _proj;
+    Eigen::Matrix4d _rotToGl, _trans, _intitialTrans;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;

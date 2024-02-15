@@ -38,7 +38,6 @@ using namespace DFHM;
 
 BEGIN_EVENT_TABLE(GraphicsCanvas, wxGLCanvas)
 EVT_PAINT(GraphicsCanvas::doPaint)
-EVT_SIZE(GraphicsCanvas::onSize)
 END_EVENT_TABLE()
 
 #define DRAW_MOUSE_POSITION 0
@@ -141,7 +140,6 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     _trans.setIdentity();
     _intitialTrans = _trans;
-    _proj.setIdentity();
 
     double xRotAngleRad = -90 * M_PI / 180;
     _rotToGl.setIdentity();
@@ -330,29 +328,6 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }
-
-void GraphicsCanvas::onSize(wxSizeEvent& event)
-{
-    // Adjust the projection matrix to keep the pixel aspect ratio constant
-    float ratio;
-    Eigen::Matrix4f proj(Eigen::Matrix4f::Identity());
-    if (event.m_size.x > event.m_size.y) {
-        ratio = event.m_size.y / (float)event.m_size.x;
-        proj(0, 0) = ratio;
-        proj(1, 1) = 1;
-    } else {
-        ratio = event.m_size.x / (float)event.m_size.y;
-        proj(0, 0) = 1;
-        proj(1, 1) = ratio;
-
-    }
-
-    float* pf = _graphicsUBO.proj;
-    for (int i = 0; i < 16; i++) {
-        pf[i] = (float)proj(i);
-    }
-}
-
 
 void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
@@ -646,8 +621,6 @@ inline void GraphicsCanvas::applyScale(double scaleFact)
     _trans *= scale;
     _trans *= pan;
 
-    _proj *= scaleFact;
-    _proj(2, 2) = 0.1;
 }
 
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
@@ -665,20 +638,35 @@ inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotation
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
     if (withProjection)
-        return _rotToGl * _trans * _proj;
+        return _rotToGl * _trans * getProjection();
     else
         return _rotToGl * _trans;
 }
 
+Eigen::Matrix4d GraphicsCanvas::getProjection() const
+{
+    Eigen::Matrix4d result;
+    result.setIdentity();
+
+    wxSize frameSize = GetSize();
+    double ratio = frameSize.y / (double)frameSize.x;
+    if (ratio >= 1)
+        result(1, 1) = 1 / ratio;
+    else
+        result(0, 0) = ratio;
+
+    return result;
+}
+
 void GraphicsCanvas::updateView()
 {
-    Eigen::Matrix4d m = cumTransform(false);
+    Eigen::Matrix4d m(cumTransform(false)), proj(getProjection());
 
     float* pMV = _graphicsUBO.modelView;
     float* pPr = _graphicsUBO.proj;
     for (int i = 0; i < 16; i++) {
         pMV[i] = (float)m(i);
-        pPr[i] = (float)_proj(i);
+        pPr[i] = (float)proj(i);
     }
 }
 
