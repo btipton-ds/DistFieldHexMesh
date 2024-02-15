@@ -63,7 +63,6 @@ public:
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
     Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
     void moveOrigin(const Vector3d& delta);
-    void applyScale(double scale);
     void applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis);
 
     bool showSharpEdges() const;
@@ -128,6 +127,7 @@ private:
 
     Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
+    double _viewScale = 1;
     Eigen::Vector2d _mouseStartLoc2D;
     Vector3d _origin, _mouseStartLoc3D;
     Vector3f _mouseLoc3D;

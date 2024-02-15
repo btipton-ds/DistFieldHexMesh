@@ -322,7 +322,7 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
         scale /= scaleMult;
     } else
         return;
-    applyScale(scale);
+    _viewScale *= scale;
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
@@ -606,23 +606,6 @@ void GraphicsCanvas::moveOrigin(const Vector3d& delta)
     _trans *= pan;
 }
 
-inline void GraphicsCanvas::applyScale(double scaleFact)
-{
-    Eigen::Matrix4d pan, scale;
-    scale.setIdentity();
-    pan = createTranslation(_origin);
-
-    for (int i = 0; i < 3; i++) {
-        scale(i, i) = scaleFact;
-    }
-    Eigen::Matrix4d panInv(pan.inverse());
-
-    _trans *= panInv;
-    _trans *= scale;
-    _trans *= pan;
-
-}
-
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
 {
     Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, rotationAxis).toRotationMatrix();
@@ -655,6 +638,8 @@ Eigen::Matrix4d GraphicsCanvas::getProjection() const
     else
         result(0, 0) = ratio;
 
+    for (int i = 0; i < 2; i++)
+        result(i, i) *= _viewScale;
     return result;
 }
 
