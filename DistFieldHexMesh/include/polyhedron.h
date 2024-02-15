@@ -82,6 +82,7 @@ private:
 	double calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEdgeAngle) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
+	bool _needsCurvatureCheck = true;
 	size_t _level = 0, _numSplits = 0;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	Index3DId _parent; // This records the id of the polygon this polygon was split from

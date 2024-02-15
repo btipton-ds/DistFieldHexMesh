@@ -120,31 +120,6 @@ void Volume::findSharpEdgeGroups()
 	}
 }
 
-void Volume::splitAllCellsAtSharpVertices()
-{
-	size_t numBlocks;
-	auto sharpVerts = getSharpVertIndices();
-	vector<Vector3d> splittingPoints;
-	for (size_t vertIdx : sharpVerts) {
-		splittingPoints.push_back(_pModelTriMesh->getVert(vertIdx)._pt);
-	}
-
-	atomic<size_t> numSplit = 0;
-	for (size_t ipt = 0; ipt < splittingPoints.size(); ipt++) {
-		const auto& splitPt = splittingPoints[ipt];
-		numBlocks = _blocks.size();
-		MultiCore::runLambda([this, &splitPt, &numSplit](size_t linearIdx)-> bool {
-			if (_blocks[linearIdx]) {
-				size_t numNewCells = _blocks[linearIdx]->splitAllCellsAtPoint(splitPt);
-				numSplit++;
-			}
-			return true;
-		}, numBlocks, RUN_MULTI_THREAD);
-
-
-	}
-}
-
 void Volume::findSharpVertices()
 {
 	const double cosSharpAngle = cos(M_PI - getSharpAngleRad());
