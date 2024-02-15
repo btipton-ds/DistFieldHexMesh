@@ -17,6 +17,8 @@
 using namespace std;
 using namespace DFHM;
 
+#define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
+
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
@@ -29,7 +31,7 @@ void AppData::getEdgeData(std::vector<float>& sharpPts, std::vector<int>& sharpI
     normPts.clear();
     normIndices.clear();
 
-    const vector<size_t>& sharps = _pMesh->getSharpEdgeIndices(15 * M_PI / 180.0);
+    const vector<size_t>& sharps = _pMesh->getSharpEdgeIndices(SHARP_EDGE_ANGLE);
     if (!sharps.empty()) {
         for (size_t i : sharps) {
             const auto& edge = _pMesh->getEdge(i);
@@ -81,6 +83,7 @@ void AppData::doOpen()
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return;     // the user changed idea...
 
+
     // proceed loading the file chosen by the user;
     // this can be done with e.g. wxWidgets input streams:
     _workDirName = openFileDialog.GetDirectory();
@@ -98,7 +101,7 @@ void AppData::doOpen()
             auto pCanvas = _pMainFrame->getCanvas();
 
             pCanvas->beginFaceTesselation();
-            auto faceTess = pCanvas->setFaceTessellation(_pMesh);
+            auto faceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
             pCanvas->endFaceTesselation(faceTess, false);
 
             vector<float> sharpPts, normPts;
@@ -252,7 +255,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->beginFaceTesselation();
-    auto triTess = pCanvas->setFaceTessellation(_pMesh);
+    auto triTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
 
     Block::TriMeshGroup blockMeshes;
     Block::glPointsGroup faceEdges;
@@ -262,7 +265,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
         faceTesselations.push_back(vector<const OGLIndices*>());
         for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
             auto pBlockMesh = blockMeshes[mode][i];
-            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
+            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh, -1);
             if (pBlockTess)
                 faceTesselations[mode].push_back(pBlockTess);
         }
@@ -304,8 +307,8 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
 
     pCanvas->beginFaceTesselation();
 
-    const OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh);
-    const OGLIndices* sharpPointTess = pCanvas->setFaceTessellation(pSharpPtsMesh);
+    const OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
+    const OGLIndices* sharpPointTess = pCanvas->setFaceTessellation(pSharpPtsMesh, SHARP_EDGE_ANGLE);
 
     vector<vector<const OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
@@ -315,7 +318,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
 
         for (const auto& pBlockMesh : thisGroup) {
             if (pBlockMesh && pBlockMesh->numTris() > 0) {
-                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
+                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh, -1);
                 if (pBlockTess)
                     faceTesselations.back().push_back(pBlockTess);
             }

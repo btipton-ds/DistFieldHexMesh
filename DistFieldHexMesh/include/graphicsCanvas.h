@@ -49,7 +49,7 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
+    const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians);
     void endFaceTesselation(const OGLIndices* pTriTess, bool smoothNormals);
     void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, const std::vector<std::vector<const OGLIndices*>>& faceTess, bool smoothNormals);
 
