@@ -134,6 +134,9 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_TRI_NORMALS, "Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowTriNormals, this, ID_SHOW_TRI_NORMALS);
 
+    menu->Append(ID_SHOW_CURVATURE, "Show Curvature", "Turns rendering of curvature on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowCurvature, this, ID_SHOW_CURVATURE);
+
     menu->Append(ID_SHOW_FACES, "Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowFaces, this, ID_SHOW_FACES);
 
@@ -309,6 +312,15 @@ void MainFrame::OnShowTriNormals(wxCommandEvent& event)
     auto normItem = _menuBar->FindItem(ID_SHOW_TRI_NORMALS);
     if (normItem)
         normItem->Check(getCanvas()->showTriNormals());
+}
+
+void MainFrame::OnShowCurvature(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowCurvature();
+
+    auto item = _menuBar->FindItem(DS_MODEL_CURVATURE);
+    if (item)
+        item->Check(getCanvas()->showCurvature());
 }
 
 void MainFrame::OnShowFaces(wxCommandEvent& event)

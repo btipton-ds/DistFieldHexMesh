@@ -38,9 +38,10 @@ enum FaceType {
 
 enum DrawStates {
     DS_MODEL = 0,
-    DS_MODEL_SHARP_EDGES = 1,
-    DS_MODEL_SHARP_VERTS = 2,
-    DS_MODEL_NORMALS = 3,
+	DS_MODEL_CURVATURE = 1,
+	DS_MODEL_SHARP_EDGES = 2,
+    DS_MODEL_SHARP_VERTS = 3,
+    DS_MODEL_NORMALS = 4,
     DS_BLOCK_MESH = 10,
 };
 

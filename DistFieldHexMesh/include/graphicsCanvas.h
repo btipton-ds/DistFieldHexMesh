@@ -77,6 +77,9 @@ public:
     bool showFaces() const;
     bool toggleShowFaces();
 
+    bool showCurvature() const;
+    bool toggleShowCurvature();
+
     bool showEdges() const;
     bool toggleShowEdges();
 
@@ -119,7 +122,14 @@ private:
     const AppDataPtr _pAppData;
     bool _initialized = false;
 
-    bool _showSharpEdges = false, _showSharpVerts = false, _showTriNormals = false, _showEdges = true, _showFaces = true, _showOuter = true;
+    bool 
+        _showSharpEdges = false, 
+        _showSharpVerts = false, 
+        _showTriNormals = false, 
+        _showEdges = true, 
+        _showFaces = true, 
+        _showOuter = true,
+        _showCurvature = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     void initialize();
     void loadShaders();
@@ -227,6 +237,11 @@ inline bool GraphicsCanvas::showTriNormals() const
 inline bool GraphicsCanvas::showFaces() const
 {
     return _showFaces;
+}
+
+inline bool GraphicsCanvas::showCurvature() const
+{
+    return _showCurvature;
 }
 
 inline bool GraphicsCanvas::showEdges() const
