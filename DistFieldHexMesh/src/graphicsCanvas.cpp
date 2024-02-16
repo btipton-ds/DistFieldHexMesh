@@ -494,7 +494,7 @@ void GraphicsCanvas::drawFaces()
                 break;
             case DS_MODEL_CURVATURE:
                 result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
-                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1.0f);
+                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
                 break;
             case DS_MODEL_SHARP_VERTS:
                 _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
@@ -688,14 +688,14 @@ namespace
         return v1;
     }
 
-    unsigned int HSLToRGB(float h, float s, float l) {
-        unsigned int r = 0;
-        unsigned int g = 0;
-        unsigned int b = 0;
+    rgbaColor HSLToRGB(float h, float s, float l) {
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
 
         if (s == 0)
         {
-            r = g = b = (unsigned char)(l * 255);
+            r = g = b = (uint8_t)(l * 255);
         }
         else
         {
@@ -705,15 +705,15 @@ namespace
             v2 = (l < 0.5) ? (l * (1 + s)) : ((l + s) - (l * s));
             v1 = 2 * l - v2;
 
-            r = (unsigned char)(255 * HueToRGB(v1, v2, hue + (1.0f / 3)));
-            g = (unsigned char)(255 * HueToRGB(v1, v2, hue));
-            b = (unsigned char)(255 * HueToRGB(v1, v2, hue - (1.0f / 3)));
+            r = (uint8_t)(255 * HueToRGB(v1, v2, hue + (1.0f / 3)));
+            g = (uint8_t)(255 * HueToRGB(v1, v2, hue));
+            b = (uint8_t)(255 * HueToRGB(v1, v2, hue - (1.0f / 3)));
         }
 
-        return (r << 24) | (g << 16) | (b << 8) | 0xff;
+        return rgbaColor(r, g , b, 0xff);
     }
 
-    unsigned int curvatureToColor(float cur)
+    rgbaColor curvatureToColor(float cur)
     {
         float hue = cur / 400.0f;
         if (hue < 0)
@@ -732,7 +732,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         const auto& normals = pMesh->getGlNormals(false);
         const auto& parameters = pMesh->getGlParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
-        vector<unsigned int> colors;
+        vector<rgbaColor> colors;
         if (!curvatures.empty()) {
             colors.resize(curvatures.size());
             for (size_t i = 0; i < curvatures.size(); i++) {
