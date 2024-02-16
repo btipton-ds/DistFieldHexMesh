@@ -724,7 +724,8 @@ namespace
             hue = 0;
         else while (hue > 1)
             hue -= 1;
-        return HSVToRGB(360 * hue, 1, 1);
+        hue = 360 * hue + 90;
+        return HSVToRGB(hue, 1, 1);
     }
 }
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
@@ -736,7 +737,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         const auto& normals = pMesh->getGlNormals(false);
         const auto& parameters = pMesh->getGlParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
-        vector<float> colors;
+        vector<float> colors; // TODO - change this to uint8_t or rgbaColor to reduce size
         if (!curvatures.empty()) {
             colors.resize(3 * curvatures.size());
             for (size_t i = 0; i < curvatures.size(); i++) {
