@@ -688,39 +688,43 @@ namespace
         return v1;
     }
 
-    rgbaColor HSLToRGB(float h, float s, float l) {
-        uint8_t r = 0;
-        uint8_t g = 0;
-        uint8_t b = 0;
-
-        if (s == 0)
-        {
-            r = g = b = (uint8_t)(l * 255);
+    rgbaColor HSVToRGB(float h, float s, float v) {
+        float C = s * v;
+        float X = C * (1 - abs(fmod(h / 60.0, 2) - 1));
+        float m = v - C;
+        float r, g, b;
+        if (h >= 0 && h < 60) {
+            r = C, g = X, b = 0;
         }
-        else
-        {
-            float v1, v2;
-            float hue = (float)h / 360;
-
-            v2 = (l < 0.5) ? (l * (1 + s)) : ((l + s) - (l * s));
-            v1 = 2 * l - v2;
-
-            r = (uint8_t)(255 * HueToRGB(v1, v2, hue + (1.0f / 3)));
-            g = (uint8_t)(255 * HueToRGB(v1, v2, hue));
-            b = (uint8_t)(255 * HueToRGB(v1, v2, hue - (1.0f / 3)));
+        else if (h >= 60 && h < 120) {
+            r = X, g = C, b = 0;
         }
-
-        return rgbaColor(r, g , b, 0xff);
+        else if (h >= 120 && h < 180) {
+            r = 0, g = C, b = X;
+        }
+        else if (h >= 180 && h < 240) {
+            r = 0, g = X, b = C;
+        }
+        else if (h >= 240 && h < 300) {
+            r = X, g = 0, b = C;
+        }
+        else {
+            r = C, g = 0, b = X;
+        }
+        uint8_t R = (uint8_t) ((r + m) * 255);
+        uint8_t G = (uint8_t) ((g + m) * 255);
+        uint8_t B = (uint8_t) ((b + m) * 255);
+        return rgbaColor(r + m, g + m, b + m, 1);
     }
 
     rgbaColor curvatureToColor(float cur)
     {
-        float hue = cur / 400.0f;
+        float hue = cur / 500.0f;
         if (hue < 0)
             hue = 0;
         else while (hue > 1)
             hue -= 1;
-        return HSLToRGB(360 * hue, 1, 0.5);
+        return HSVToRGB(360 * hue, 1, 1);
     }
 }
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
@@ -732,11 +736,13 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         const auto& normals = pMesh->getGlNormals(false);
         const auto& parameters = pMesh->getGlParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
-        vector<rgbaColor> colors;
+        vector<float> colors;
         if (!curvatures.empty()) {
-            colors.resize(curvatures.size());
+            colors.resize(3 * curvatures.size());
             for (size_t i = 0; i < curvatures.size(); i++) {
-                colors[i] = curvatureToColor(curvatures[i]);
+                rgbaColor c = curvatureToColor(curvatures[i]);
+                for (int j = 0; j < 3; j++)
+                colors[3 * i + j] = c._rgba[j] / 255.0f;
             }
         }
         return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
