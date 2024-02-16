@@ -722,9 +722,8 @@ namespace
         float hue = cur / 500.0f;
         if (hue < 0)
             hue = 0;
-        else while (hue > 1)
-            hue -= 1;
-        hue = 360 * hue + 90;
+        hue = fmod(hue, 1.0f);
+        hue = fmod(360 * hue + 90, 360);
         return HSVToRGB(hue, 1, 1);
     }
 }
@@ -733,7 +732,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
 {
     if (sharpEdgeAngleRadians > 0) {
         const auto& points = pMesh->getGlPoints();
-        const auto& curvatures = pMesh->getGlCurvatures(sharpEdgeAngleRadians);
+        const auto& curvatures = pMesh->getGlCurvatures(sharpEdgeAngleRadians, false);
         const auto& normals = pMesh->getGlNormals(false);
         const auto& parameters = pMesh->getGlParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();

@@ -285,8 +285,8 @@ void AppData::doBuildCFDHexes()
 
     Volume::BuildCFDParams params;
 
-    params.numSimpleDivs = 2;
-    params.numCurvatureDivs = 5;
+    params.numSimpleDivs = 1;
+    params.numCurvatureDivs = 6;
     params.curvatureArcAngleDegrees = 10;
  //   params.sharpAngleDegrees = 20;
 

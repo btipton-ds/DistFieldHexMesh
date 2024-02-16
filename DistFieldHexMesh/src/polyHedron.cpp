@@ -590,17 +590,18 @@ void Polyhedron::splitIfTooManyFaceSplits()
 
 void Polyhedron::promoteSplitFacesWithSplitEdges()
 {
+	if (!_children.empty()) // We've been split
+		return;
 	bool changed = false;
 	set<Index3DId> newFaceIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&changed, &newFaceIds](const Polygon& face) {
-			auto cellIds = face.getCellIds();
-			const auto& childIds = face.getChildIds();
-			if (childIds.empty()) {
+			const auto& faceChildIds = face.getChildIds();
+			if (faceChildIds.empty()) {
 				newFaceIds.insert(face.getId());
 			} else {
 				changed = true;
-				newFaceIds.insert(childIds.begin(), childIds.end());
+				newFaceIds.insert(faceChildIds.begin(), faceChildIds.end());
 			}
 		});
 	}
