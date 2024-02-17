@@ -719,11 +719,13 @@ namespace
 
     rgbaColor curvatureToColor(float cur)
     {
-        float hue = cur / 500.0f;
-        if (hue < 0)
-            hue = 0;
-        hue = fmod(hue, 1.0f);
-        hue = fmod(360 * hue + 90, 360);
+        const float minRad = 0.003f;
+        const float maxCurv = 1 / minRad;
+        if (cur > maxCurv)
+            cur = maxCurv;
+        float hue = fmod(cur / maxCurv, 1);
+        hue = 2 / 3.0f * (1 - hue);
+        hue = 360 * hue;
         return HSVToRGB(hue, 1, 1);
     }
 }
@@ -732,7 +734,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
 {
     if (sharpEdgeAngleRadians > 0) {
         const auto& points = pMesh->getGlPoints();
-        const auto& curvatures = pMesh->getGlCurvatures(sharpEdgeAngleRadians, false);
+        const auto& curvatures = pMesh->getGlTriCurvatures(sharpEdgeAngleRadians, false);
         const auto& normals = pMesh->getGlNormals(false);
         const auto& parameters = pMesh->getGlParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
