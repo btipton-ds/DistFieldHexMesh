@@ -740,7 +740,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         const auto& curvatures = pMesh->getGlTriCurvatures(sharpEdgeAngleRadians, false);
         const auto& normals = pMesh->getGlTriNormals(false);
         const auto& parameters = pMesh->getGlTriParams();
-        const auto& vertIndices = pMesh->getGlFaceIndices();
+        const auto& vertIndices = pMesh->getGlTriIndices();
         vector<float> colors; // TODO - change this to uint8_t or rgbaColor to reduce size
         if (!curvatures.empty()) {
             colors.resize(3 * curvatures.size());
@@ -756,7 +756,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         const auto& points = pMesh->getGlTriPoints();
         const auto& normals = pMesh->getGlTriNormals(false);
         const auto& parameters = pMesh->getGlTriParams();
-        const auto& vertIndices = pMesh->getGlFaceIndices();
+        const auto& vertIndices = pMesh->getGlTriIndices();
         return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, vertIndices);
 
     }
@@ -769,33 +769,27 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long en
     return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians)
 {
-    const auto& points = pMesh->getGlEdgePoints();
-    const auto& edgeIndices = pMesh->getGlEdgeIndices();
+    bool multiCore = false;
+    const auto& points = pMesh->getGlNonPlanarEdgePoints(sharpEdgeAngleRadians, multiCore);
+    const auto& edgeIndices = pMesh->getGlNonPlanarEdgeIndices(sharpEdgeAngleRadians, multiCore);
     if (sharpEdgeAngleRadians > 0) {
+        vector<float> colors;
         double sinSharpAngle = sin(sharpEdgeAngleRadians);
-        size_t numEdges = pMesh->numEdges();
-        vector<float> colors; // TODO - change this to uint8_t or rgbaColor to reduce size
-        colors.resize(2 * 3 * numEdges, 0);
-        for (size_t edgeIdx = 0; edgeIdx < numEdges; edgeIdx++) {
-            size_t baseIdx = 2 * 3 * edgeIdx;
-            if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
-                for (size_t i = 0; i < 2; i++) {
-                    colors[baseIdx + 3 * i + 0] = 1; // red
-                    colors[baseIdx + 3 * i + 1] = 0; // green
-                    colors[baseIdx + 3 * i + 2] = 0; // blue
+        const auto& edgeCurvatures = pMesh->getGlEdgeCurvatures(sharpEdgeAngleRadians, multiCore);
+        for (size_t i = 0; i < edgeCurvatures.size(); i++) {
+            float cur = edgeCurvatures[i];
+            rgbaColor rgb;
+            if (cur > 10000)
+                rgb = rgbaColor(1, 0, 0);
+            else
+                rgb = curvatureToColor(cur);
+            
+            for (size_t i = 0; i < 2; i++) {
+                for (size_t j = 0; j < 3; j++) {
+                    colors.push_back(rgb._rgba[j] / 255.0f);
                 }
-            } else {
-#if 1
-                double cur = pMesh->edgeCurvature(edgeIdx);
-                rgbaColor rgb = curvatureToColor(cur);
-                for (size_t i = 0; i < 2; i++) {
-                    for (size_t j = 0; j < 3; j++)
-                        colors[baseIdx + 3 * i + j] = rgb._rgba[j] / 255.0f; // red
-                }
-#endif
             }
         }
         return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, edgeIndices);

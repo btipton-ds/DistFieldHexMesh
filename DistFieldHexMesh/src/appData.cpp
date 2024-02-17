@@ -79,7 +79,7 @@ void AppData::doOpen()
             _pMesh = pMesh;
             _pMesh->buildCentroids();
             _pMesh->buildCentroids();
-            _pMesh->calCurvatures(SHARP_EDGE_ANGLE);
+            _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
             auto pCanvas = _pMainFrame->getCanvas();
 
             pCanvas->beginFaceTesselation();
