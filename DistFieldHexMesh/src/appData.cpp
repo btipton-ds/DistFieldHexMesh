@@ -24,31 +24,10 @@ AppData::AppData(MainFrame* pMainFrame)
 {
 }
 
-void AppData::getEdgeData(std::vector<float>& sharpPts, std::vector<int>& sharpIndices, std::vector<float>& normPts, std::vector<int>& normIndices) const
+void AppData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
 {
-    sharpPts.clear();
-    sharpIndices.clear();
     normPts.clear();
     normIndices.clear();
-
-    const vector<size_t>& sharps = _pMesh->getSharpEdgeIndices(SHARP_EDGE_ANGLE);
-    if (!sharps.empty()) {
-        for (size_t i : sharps) {
-            const auto& edge = _pMesh->getEdge(i);
-            const auto pt0 = _pMesh->getVert(edge._vertIndex[0]);
-            const auto pt1 = _pMesh->getVert(edge._vertIndex[1]);
-
-            for (int j = 0; j < 3; j++)
-                sharpPts.push_back((float)pt0._pt[j]);
-
-            for (int j = 0; j < 3; j++)
-                sharpPts.push_back((float)pt1._pt[j]);
-
-            sharpIndices.push_back((int)sharpIndices.size());
-            sharpIndices.push_back((int)sharpIndices.size());
-        }
-
-    }
 
     for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
         const Index3D& triIndices = _pMesh->getTri(triIdx);
@@ -98,22 +77,24 @@ void AppData::doOpen()
         path = path.substr(0, pos);
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
+            _pMesh->buildCentroids();
+            _pMesh->buildCentroids();
+            _pMesh->calCurvatures(SHARP_EDGE_ANGLE);
             auto pCanvas = _pMainFrame->getCanvas();
 
             pCanvas->beginFaceTesselation();
             auto faceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
             pCanvas->endFaceTesselation(faceTess, false);
 
-            vector<float> sharpPts, normPts;
-            vector<int> sharpIndices, normIndices;
-            getEdgeData(sharpPts, sharpIndices, normPts, normIndices);
+            vector<float> normPts;
+            vector<unsigned int> normIndices;
+            getEdgeData(normPts, normIndices);
 
             pCanvas->beginEdgeTesselation();
             const OGLIndices* sharpEdgeTess = nullptr;
             const OGLIndices* normEdgeTess = nullptr;
 
-            if (!sharpPts.empty())
-                sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId(), _pMesh->getChangeNumber(), sharpPts, sharpIndices);
+            sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
 
             if (!normPts.empty())
                 normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
@@ -341,7 +322,7 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
         for (const auto& faceEdgesPtr : edgeSets[mode]) {
             if (faceEdgesPtr) {
                 const auto& faceEdges = *faceEdgesPtr;
-                vector<int> indices;
+                vector<unsigned int> indices;
                 indices.reserve(faceEdges.size());
                 for (size_t j = 0; j < faceEdges.size(); j++)
                     indices.push_back(j);

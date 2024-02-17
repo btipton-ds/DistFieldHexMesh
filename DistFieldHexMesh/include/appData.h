@@ -46,7 +46,7 @@ private:
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void addFacesToScene(GraphicsCanvas* pCanvas);
     void addEdgesToScene(GraphicsCanvas* pCanvas);
-    void getEdgeData(std::vector<float>& sharpPts, std::vector<int>& sharpIndices, std::vector<float>& normPts, std::vector<int>& normIndices) const;
+    void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 

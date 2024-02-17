@@ -540,6 +540,7 @@ void GraphicsCanvas::drawFaces()
 void GraphicsCanvas::drawEdges()
 {
     auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
+        COglMultiVBO::DrawVertexColorMode result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         switch (key) {
             default:
             case DS_MODEL:
@@ -547,8 +548,9 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
             case DS_MODEL_SHARP_EDGES:
-                glLineWidth(2.0f);
-                _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0);
+                glLineWidth(1.0f);
+                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0);
+                result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
                 break;
             case DS_MODEL_NORMALS:
                 glLineWidth(1.0f);
@@ -569,8 +571,9 @@ void GraphicsCanvas::drawEdges()
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        return COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        };
+
+        return result;
+    };
 
     auto postDraw = [this]() {
         };
@@ -719,7 +722,7 @@ namespace
 
     rgbaColor curvatureToColor(float cur)
     {
-        const float minRad = 0.003f;
+        const float minRad = 0.01f;
         const float maxCurv = 1 / minRad;
         if (cur > maxCurv)
             cur = maxCurv;
@@ -733,10 +736,10 @@ namespace
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians)
 {
     if (sharpEdgeAngleRadians > 0) {
-        const auto& points = pMesh->getGlPoints();
+        const auto& points = pMesh->getGlTriPoints();
         const auto& curvatures = pMesh->getGlTriCurvatures(sharpEdgeAngleRadians, false);
-        const auto& normals = pMesh->getGlNormals(false);
-        const auto& parameters = pMesh->getGlParams();
+        const auto& normals = pMesh->getGlTriNormals(false);
+        const auto& parameters = pMesh->getGlTriParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
         vector<float> colors; // TODO - change this to uint8_t or rgbaColor to reduce size
         if (!curvatures.empty()) {
@@ -750,15 +753,58 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
         return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
 
     } else {
-        const auto& points = pMesh->getGlPoints();
-        const auto& normals = pMesh->getGlNormals(false);
-        const auto& parameters = pMesh->getGlParams();
+        const auto& points = pMesh->getGlTriPoints();
+        const auto& normals = pMesh->getGlTriNormals(false);
+        const auto& parameters = pMesh->getGlTriParams();
         const auto& vertIndices = pMesh->getGlFaceIndices();
         return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, vertIndices);
 
     }
 }
 
+// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
+const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, 
+    const std::vector<unsigned int>& indices)
+{
+    return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
+}
+
+
+const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians)
+{
+    const auto& points = pMesh->getGlEdgePoints();
+    const auto& edgeIndices = pMesh->getGlEdgeIndices();
+    if (sharpEdgeAngleRadians > 0) {
+        double sinSharpAngle = sin(sharpEdgeAngleRadians);
+        size_t numEdges = pMesh->numEdges();
+        vector<float> colors; // TODO - change this to uint8_t or rgbaColor to reduce size
+        colors.resize(2 * 3 * numEdges, 0);
+        for (size_t edgeIdx = 0; edgeIdx < numEdges; edgeIdx++) {
+            size_t baseIdx = 2 * 3 * edgeIdx;
+            if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+                for (size_t i = 0; i < 2; i++) {
+                    colors[baseIdx + 3 * i + 0] = 1; // red
+                    colors[baseIdx + 3 * i + 1] = 0; // green
+                    colors[baseIdx + 3 * i + 2] = 0; // blue
+                }
+            } else {
+#if 1
+                double cur = pMesh->edgeCurvature(edgeIdx);
+                rgbaColor rgb = curvatureToColor(cur);
+                for (size_t i = 0; i < 2; i++) {
+                    for (size_t j = 0; j < 3; j++)
+                        colors[baseIdx + 3 * i + j] = rgb._rgba[j] / 255.0f; // red
+                }
+#endif
+            }
+        }
+        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, edgeIndices);
+    }
+    else {
+        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, edgeIndices);
+    }
+
+}
 
 void GraphicsCanvas::changeFaceViewElements()
 {

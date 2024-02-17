@@ -55,7 +55,8 @@ public:
 
     void beginEdgeTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<int>& indices);
+    const OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
+    const OGLIndices* setEdgeSegTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians);
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
@@ -191,12 +192,6 @@ inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const
 inline void GraphicsCanvas::beginEdgeTesselation()
 {
     _edgeVBO.beginEdgeTesselation();
-}
-
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-inline const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<int>& indices)
-{
-    return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
 inline void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
