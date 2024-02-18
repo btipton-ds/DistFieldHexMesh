@@ -54,6 +54,10 @@ private:
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pMesh;
     VolumePtr _volume;
+    const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
+    const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
+    const COglMultiVboHandler::OGLIndices* _modelNormalTess = nullptr;
+    const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
 
     std::vector<double> _binSizes;
     std::vector<std::vector<int>> _bins;

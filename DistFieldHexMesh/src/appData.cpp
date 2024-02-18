@@ -82,24 +82,25 @@ void AppData::doOpen()
             _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
             auto pCanvas = _pMainFrame->getCanvas();
 
+            auto pSharpVertMesh = getSharpVertMesh();
             pCanvas->beginFaceTesselation();
-            auto faceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
-            pCanvas->endFaceTesselation(faceTess, false);
+            _modelFaceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
+            if (pSharpVertMesh)
+                _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh, SHARP_EDGE_ANGLE);
+            pCanvas->endFaceTesselation(_modelFaceTess, false);
 
             vector<float> normPts;
             vector<unsigned int> normIndices;
             getEdgeData(normPts, normIndices);
 
             pCanvas->beginEdgeTesselation();
-            const OGLIndices* sharpEdgeTess = nullptr;
-            const OGLIndices* normEdgeTess = nullptr;
 
-            sharpEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
+            _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
 
             if (!normPts.empty())
-                normEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
+                _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
 
-            pCanvas->endEdgeTesselation(sharpEdgeTess, normEdgeTess);
+            pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
         }
     }
 }
@@ -267,8 +268,8 @@ void AppData::doBuildCFDHexes()
     Volume::BuildCFDParams params;
 
     params.numSimpleDivs = 1;
-    params.numCurvatureDivs = 6;
-    params.curvatureArcAngleDegrees = 10;
+    params.numCurvatureDivs = 3;
+    params.curvatureArcAngleDegrees = 15;
  //   params.sharpAngleDegrees = 20;
 
     _volume->buildCFDHexes(_pMesh, params);
@@ -284,12 +285,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
     Block::TriMeshGroup blockMeshes;
     _volume->makeFaceTris(blockMeshes, true);
 
-    CMeshPtr pSharpPtsMesh = getSharpVertMesh();
-
     pCanvas->beginFaceTesselation();
-
-    const OGLIndices* triTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
-    const OGLIndices* sharpPointTess = pCanvas->setFaceTessellation(pSharpPtsMesh, SHARP_EDGE_ANGLE);
 
     vector<vector<const OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
@@ -305,7 +301,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
             }
         }
     }
-    pCanvas->endFaceTesselation(triTess, sharpPointTess, faceTesselations, false);
+    pCanvas->endFaceTesselation(_modelFaceTess, _sharpPointTess, faceTesselations, false);
 }
 
 void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
@@ -346,13 +342,16 @@ CMeshPtr AppData::getSharpVertMesh() const
     bBox.grow(2 * radius);
     CMeshPtr pMesh = make_shared<CMesh>(bBox);
 
-    auto sVerts = _volume->getSharpVertIndices();
-    for (size_t vertIdx : sVerts) {
-        auto pt = _pMesh->getVert(vertIdx)._pt;
-        addPointMarker(pMesh, pt, radius);
-    }
+    if (_volume) {
+        auto sVerts = _volume->getSharpVertIndices();
+        for (size_t vertIdx : sVerts) {
+            auto pt = _pMesh->getVert(vertIdx)._pt;
+            addPointMarker(pMesh, pt, radius);
+        }
 
-    return pMesh;
+        return pMesh;
+    }
+    return nullptr;
 }
 
 void AppData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
