@@ -722,12 +722,12 @@ namespace
 
     rgbaColor curvatureToColor(float cur)
     {
-        const float minRad = 0.01f;
+        const float minRad = 0.001f;
         const float maxCurv = 1 / minRad;
         if (cur > maxCurv)
             cur = maxCurv;
-        float hue = fmod(cur / maxCurv, 1);
-        hue = 2 / 3.0f * (1 - hue);
+        float hue = cur / maxCurv;
+        hue = 1 / 3.0f - 2 / 3.0f * hue;
         hue = 360 * hue;
         return HSVToRGB(hue, 1, 1);
     }
@@ -771,31 +771,27 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long en
 
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians)
 {
-    bool multiCore = false;
-    const auto& points = pMesh->getGlNonPlanarEdgePoints(sharpEdgeAngleRadians, multiCore);
-    const auto& edgeIndices = pMesh->getGlNonPlanarEdgeIndices(sharpEdgeAngleRadians, multiCore);
-    if (sharpEdgeAngleRadians > 0) {
-        vector<float> colors;
-        double sinSharpAngle = sin(sharpEdgeAngleRadians);
-        const auto& edgeCurvatures = pMesh->getGlEdgeCurvatures(sharpEdgeAngleRadians, multiCore);
-        for (size_t i = 0; i < edgeCurvatures.size(); i++) {
-            float cur = edgeCurvatures[i];
-            rgbaColor rgb;
-            if (cur > 10000)
-                rgb = rgbaColor(1, 0, 0);
-            else
-                rgb = curvatureToColor(cur);
-            
-            for (size_t i = 0; i < 2; i++) {
-                for (size_t j = 0; j < 3; j++) {
-                    colors.push_back(rgb._rgba[j] / 255.0f);
-                }
-            }
+    bool multiCore = false, allEdges = false;
+    vector<float> points, colors;
+    vector<unsigned int> indices;
+    auto colorFunc = [allEdges, sharpEdgeAngleRadians](float curvature, float rgb[3])->bool {
+        if (allEdges || (sharpEdgeAngleRadians > 0 && curvature > 1.0e-8)) {
+            rgbaColor c = curvature >= 10000 ? rgbaColor (0.5f, 0, 1) : curvatureToColor(curvature);
+            for (int i = 0; i < 3; i++)
+                rgb[i] = c._rgba[i] / 255.0f;
+            return true;
         }
-        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, edgeIndices);
+
+        return false;
+    };
+
+    pMesh->getGlEdges(colorFunc, sharpEdgeAngleRadians, points, colors, indices, false);
+
+    if (sharpEdgeAngleRadians > 0) {
+        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
     }
     else {
-        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, edgeIndices);
+        return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, indices);
     }
 
 }
