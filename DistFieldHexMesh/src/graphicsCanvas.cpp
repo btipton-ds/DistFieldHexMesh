@@ -722,12 +722,17 @@ namespace
 
     rgbaColor curvatureToColor(float cur)
     {
-        const float minRad = 0.001f;
-        const float maxCurv = 1 / minRad;
-        if (cur > maxCurv)
-            cur = maxCurv;
-        float hue = cur / maxCurv;
-        hue = 1 / 3.0f - 2 / 3.0f * hue;
+        const float maxRadius = 0.5f; // meter
+        const float minRadius = 0.001f; // meter
+        float radius = 1 / cur;
+        float t = (radius - minRadius) / (maxRadius - minRadius);
+        if (t < 0)
+            t = 0;
+        else if (t > 1)
+            t = 1;
+
+        t = 1 - t;
+        float hue = 2 / 3.0f - 2 / 3.0f * t;
         hue = 360 * hue;
         return HSVToRGB(hue, 1, 1);
     }

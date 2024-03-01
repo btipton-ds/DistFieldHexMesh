@@ -41,7 +41,7 @@ void AppData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>
         Vector3d n = v1.cross(v0);
         double area = n.norm() / 2;
         double charLen = sqrt(area);
-        Vector3d ptEnd = ctr + n.normalized() * charLen;
+        Vector3d ptEnd = ctr + n.normalized() * 0.01;// *charLen;
 
         for (int j = 0; j < 3; j++)
             normPts.push_back((float)ctr[j]);
@@ -124,8 +124,8 @@ void AppData::doVerifyNormals()
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Index3D& faceIndices0 = _pMesh->getTri(edge._faceIndex[0]);
-            const Index3D& faceIndices1 = _pMesh->getTri(edge._faceIndex[1]);
+            const Index3D& faceIndices0 = _pMesh->getTri(edge._faceIndices[0]);
+            const Index3D& faceIndices1 = _pMesh->getTri(edge._faceIndices[1]);
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {
