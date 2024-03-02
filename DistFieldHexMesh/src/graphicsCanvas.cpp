@@ -741,6 +741,8 @@ namespace
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh, double sharpEdgeAngleRadians)
 {
     if (sharpEdgeAngleRadians > 0) {
+        pMesh->calCurvatures(sharpEdgeAngleRadians, true);
+
         const auto& points = pMesh->getGlTriPoints();
         const auto& curvatures = pMesh->getGlTriCurvatures(sharpEdgeAngleRadians, false);
         const auto& normals = pMesh->getGlTriNormals(false);

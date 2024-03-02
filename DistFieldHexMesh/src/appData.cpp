@@ -77,7 +77,7 @@ void AppData::doOpen()
         path = path.substr(0, pos);
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
-            _pMesh->buildCentroids();
+            _pMesh->squeezeShortSharpEdges();
             _pMesh->buildCentroids();
             _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
             auto pCanvas = _pMainFrame->getCanvas();
