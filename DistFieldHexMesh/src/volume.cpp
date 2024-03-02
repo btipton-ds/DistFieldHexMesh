@@ -18,7 +18,7 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 
 Index3D Volume::s_volDim;
 
