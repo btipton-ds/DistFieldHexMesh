@@ -75,32 +75,36 @@ void AppData::doOpen()
         wstring path(pathStr.ToStdWstring());
         auto pos = path.find(filename);
         path = path.substr(0, pos);
-        if (reader.read(path, filename)) {
-            _pMesh = pMesh;
-            _pMesh->squeezeSkinnyTriangles(0.75);
-            _pMesh->buildCentroids();
-            _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
-            auto pCanvas = _pMainFrame->getCanvas();
+        try {
+            if (reader.read(path, filename)) {
+                _pMesh = pMesh;
+                _pMesh->squeezeSkinnyTriangles(0.1);
+                _pMesh->buildCentroids();
+                _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
+                auto pCanvas = _pMainFrame->getCanvas();
 
-            auto pSharpVertMesh = getSharpVertMesh();
-            pCanvas->beginFaceTesselation();
-            _modelFaceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
-            if (pSharpVertMesh)
-                _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh, SHARP_EDGE_ANGLE);
-            pCanvas->endFaceTesselation(_modelFaceTess, false);
+                auto pSharpVertMesh = getSharpVertMesh();
+                pCanvas->beginFaceTesselation();
+                _modelFaceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
+                if (pSharpVertMesh)
+                    _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh, SHARP_EDGE_ANGLE);
+                pCanvas->endFaceTesselation(_modelFaceTess, false);
 
-            vector<float> normPts;
-            vector<unsigned int> normIndices;
-            getEdgeData(normPts, normIndices);
+                vector<float> normPts;
+                vector<unsigned int> normIndices;
+                getEdgeData(normPts, normIndices);
 
-            pCanvas->beginEdgeTesselation();
+                pCanvas->beginEdgeTesselation();
 
-            _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
+                _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
 
-            if (!normPts.empty())
-                _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
+                if (!normPts.empty())
+                    _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
 
-            pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
+                pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
+            }
+        } catch (const char* errStr) {
+            cout << errStr << "\n";
         }
     }
 }
@@ -262,22 +266,26 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 
 void AppData::doBuildCFDHexes()
 {
-    if (!_volume)
-        _volume = make_shared<Volume>();
+    try {
+        if (!_volume)
+            _volume = make_shared<Volume>();
 
-    Volume::BuildCFDParams params;
+        Volume::BuildCFDParams params;
 
-    params.numSimpleDivs = 2;
-    params.numCurvatureDivs = 4;
-    params.curvatureArcAngleDegrees = 15;
- //   params.sharpAngleDegrees = 20;
+        params.numSimpleDivs = 2;
+        params.numCurvatureDivs = 4;
+        params.curvatureArcAngleDegrees = 10;
+     //   params.sharpAngleDegrees = 20;
 
-    _volume->buildCFDHexes(_pMesh, params);
+        _volume->buildCFDHexes(_pMesh, params);
 
-    auto pCanvas = _pMainFrame->getCanvas();
+        auto pCanvas = _pMainFrame->getCanvas();
 
-    addFacesToScene(pCanvas);
-    addEdgesToScene(pCanvas);
+        addFacesToScene(pCanvas);
+        addEdgesToScene(pCanvas);
+    } catch (const char* errStr) {
+        cout << errStr << "\n";
+    }
 }
 
 void AppData::addFacesToScene(GraphicsCanvas* pCanvas)

@@ -141,12 +141,15 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     _trans.setIdentity();
     _intitialTrans = _trans;
 
-    double xRotAngleRad = -90 * M_PI / 180;
     _rotToGl.setIdentity();
-    _rotToGl(1, 1) = cos(xRotAngleRad);
-    _rotToGl(1, 2) = -sin(xRotAngleRad);
-    _rotToGl(2, 1) = sin(xRotAngleRad);
-    _rotToGl(2, 2) = cos(xRotAngleRad);
+
+    double angle = -90.0 * M_PI / 180.0;
+    Vector3d axis(1, 0, 0);
+    Eigen::AngleAxisd aad(angle, axis);
+    Eigen::Matrix3d rot3 = aad.toRotationMatrix();
+
+    _rotToGl = changeSize<Eigen::Matrix4d>(rot3);
+    _rotToGl(3, 3) = 1;
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -302,7 +305,7 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
         Eigen::Vector2d orth(-delta[1], delta[0]);
         Vector3d axis(screenVectorToModel(orth, 0));
         axis.normalize();
-        double angle = delta.norm() * M_PI / 4;
+        double angle = -delta.norm() * M_PI / 4;
         applyRotation(angle, _mouseStartLoc3D, axis);
 
     } else if (_middleDown) {
@@ -635,10 +638,13 @@ inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotation
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
+    Eigen::Matrix4d correctY;
+    correctY.setIdentity();
+    correctY(2, 2) = -1; // TODO - This puts z into the screen, but OGL documentation says it should be out.
     if (withProjection)
-        return _rotToGl * _trans * getProjection();
+        return correctY * _rotToGl * _trans * getProjection();
     else
-        return _rotToGl * _trans;
+        return correctY * _rotToGl * _trans;
 }
 
 Eigen::Matrix4d GraphicsCanvas::getProjection() const
@@ -655,6 +661,7 @@ Eigen::Matrix4d GraphicsCanvas::getProjection() const
 
     for (int i = 0; i < 2; i++)
         result(i, i) *= _viewScale;
+
     return result;
 }
 

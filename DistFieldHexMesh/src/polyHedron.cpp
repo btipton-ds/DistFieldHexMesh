@@ -511,7 +511,7 @@ double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEd
 				edgeRadii.push_back(edgeRad);
 		}
 		sort(edgeRadii.begin(), edgeRadii.end());
-		size_t num = std::min((size_t)4, edgeRadii.size());
+		size_t num = std::min((size_t)3, edgeRadii.size());
 		if (num == 0)
 			return -1;
 		double avgRad = 0;
