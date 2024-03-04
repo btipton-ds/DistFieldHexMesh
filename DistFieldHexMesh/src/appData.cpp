@@ -85,9 +85,9 @@ void AppData::doOpen()
 
                 auto pSharpVertMesh = getSharpVertMesh();
                 pCanvas->beginFaceTesselation();
-                _modelFaceTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
+                _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
                 if (pSharpVertMesh)
-                    _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh, SHARP_EDGE_ANGLE);
+                    _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
                 pCanvas->endFaceTesselation(_modelFaceTess, false);
 
                 vector<float> normPts;
@@ -96,7 +96,7 @@ void AppData::doOpen()
 
                 pCanvas->beginEdgeTesselation();
 
-                _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh, SHARP_EDGE_ANGLE);
+                _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh);
 
                 if (!normPts.empty())
                     _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
@@ -241,7 +241,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->beginFaceTesselation();
-    auto triTess = pCanvas->setFaceTessellation(_pMesh, SHARP_EDGE_ANGLE);
+    auto triTess = pCanvas->setFaceTessellation(_pMesh);
 
     Block::TriMeshGroup blockMeshes;
     Block::glPointsGroup faceEdges;
@@ -251,7 +251,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
         faceTesselations.push_back(vector<const OGLIndices*>());
         for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
             auto pBlockMesh = blockMeshes[mode][i];
-            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh, -1);
+            auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
             if (pBlockTess)
                 faceTesselations[mode].push_back(pBlockTess);
         }
@@ -303,7 +303,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
 
         for (const auto& pBlockMesh : thisGroup) {
             if (pBlockMesh && pBlockMesh->numTris() > 0) {
-                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh, -1);
+                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
                 if (pBlockTess)
                     faceTesselations.back().push_back(pBlockTess);
             }
