@@ -47,13 +47,13 @@ public:
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
 
-    void beginFaceTesselation();
+    void beginFaceTesselation(bool useModel);
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
     void endFaceTesselation(const OGLIndices* pTriTess, bool smoothNormals);
-    void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, const std::vector<std::vector<const OGLIndices*>>& faceTess, bool smoothNormals);
+    void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
 
-    void beginEdgeTesselation();
+    void beginEdgeTesselation(bool useModel);
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
     const OGLIndices* setEdgeSegTessellation(const CMeshPtr& pMesh);
@@ -114,6 +114,8 @@ private:
     void updateView();
     void changeFaceViewElements();
     void changeEdgeViewElements();
+    void changeFaceViewElements(bool isModel);
+    void changeEdgeViewElements(bool isModel);
     void drawMousePos3D();
     void drawFaces();
     void drawEdges();
@@ -148,14 +150,20 @@ private:
     std::shared_ptr<COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
 
-    const OGLIndices
-        *_pTriTess = nullptr,
-        *_pSharpVertTess = nullptr,
-        *_pSharpEdgeTess = nullptr,
-        *_pNormalTess = nullptr;
-    std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+    struct VBORec {
+        VBORec();
+        const OGLIndices
+            * _pTriTess = nullptr,
+            * _pSharpVertTess = nullptr,
+            * _pSharpEdgeTess = nullptr,
+            * _pNormalTess = nullptr;
+        std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
 
-    COglMultiVboHandler _faceVBO, _edgeVBO;
+        COglMultiVboHandler _faceVBO, _edgeVBO;
+    };
+
+    std::shared_ptr<VBORec> _modelVBOs, _meshVBOs, _activeVBOs;
+
 protected:
     DECLARE_EVENT_TABLE()
 };
@@ -165,51 +173,51 @@ inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
     _backColor = color;
 }
 
-inline void GraphicsCanvas::beginFaceTesselation()
+inline void GraphicsCanvas::beginFaceTesselation(bool useModel)
 {
-    _faceVBO.beginFaceTesselation();
+    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
+    _activeVBOs->_faceVBO.beginFaceTesselation();
 }
 
 inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, bool smoothNormals)
 {
-    _faceVBO.endFaceTesselation(smoothNormals);
-    _pTriTess = pTriTess;
-    _faceTessellations.clear();
+    _activeVBOs->_faceVBO.endFaceTesselation(smoothNormals);
+    _activeVBOs->_pTriTess = pTriTess;
+    _activeVBOs->_faceTessellations.clear();
 
     changeFaceViewElements();
 }
 
-inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, const std::vector<std::vector<const OGLIndices*>>& faceTess, bool smoothNormals)
+inline void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
 {
-    _faceVBO.endFaceTesselation(smoothNormals);
-    _pTriTess = pTriTess;
-    _pSharpVertTess = pSharpVertTess;
-    _faceTessellations = faceTess;
+    _activeVBOs->_faceVBO.endFaceTesselation(false);
+    _activeVBOs->_faceTessellations = faceTess;
 
     changeFaceViewElements();
 }
 
-inline void GraphicsCanvas::beginEdgeTesselation()
+inline void GraphicsCanvas::beginEdgeTesselation(bool useModel)
 {
-    _edgeVBO.beginEdgeTesselation();
+    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
+    _activeVBOs->_edgeVBO.beginEdgeTesselation();
 }
 
 inline void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
 {
-    _edgeVBO.endEdgeTesselation();
+    _activeVBOs->_edgeVBO.endEdgeTesselation();
 
-    _pSharpEdgeTess = pSharpEdgeTess;
-    _pNormalTess = pNormalTess;
-    _edgeTessellations.clear();
+    _activeVBOs->_pSharpEdgeTess = pSharpEdgeTess;
+    _activeVBOs->_pNormalTess = pNormalTess;
+    _activeVBOs->_edgeTessellations.clear();
 
     changeEdgeViewElements();
 }
 
 inline void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
 {
-    _edgeVBO.endEdgeTesselation();
+    _activeVBOs->_edgeVBO.endEdgeTesselation();
 
-    _edgeTessellations = edgeTess;
+    _activeVBOs->_edgeTessellations = edgeTess;
 
     changeEdgeViewElements();
 }

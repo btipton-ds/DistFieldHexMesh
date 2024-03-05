@@ -106,13 +106,20 @@ namespace
     }
 }
 
+GraphicsCanvas::VBORec::VBORec()
+    : _faceVBO(GL_TRIANGLES, 20)
+    , _edgeVBO(GL_LINES, 20)
+{
+}
+
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
-    , _faceVBO(GL_TRIANGLES, 20)
-    , _edgeVBO(GL_LINES, 20)
     , _origin(0, 0, 0)
 {
+    _modelVBOs = make_shared<VBORec>();
+    _meshVBOs = make_shared<VBORec>();
+
     _pContext = make_shared<wxGLContext>(this);
 
     float lightAz[] = { 
@@ -369,8 +376,12 @@ void GraphicsCanvas::loadShaders()
     _phongShader->setVertexSrcFile(path + "phong.vert");
     _phongShader->setFragmentSrcFile(path + "phong.frag");
     _phongShader->load();
-    _faceVBO.setShader(_phongShader.get());
-    _edgeVBO.setShader(_phongShader.get());
+
+    _modelVBOs->_faceVBO.setShader(_phongShader.get());
+    _modelVBOs->_edgeVBO.setShader(_phongShader.get());
+
+    _meshVBOs->_faceVBO.setShader(_phongShader.get());
+    _meshVBOs->_edgeVBO.setShader(_phongShader.get());
 }
 
 void GraphicsCanvas::glClearColor(const rgbaColor& color)
@@ -537,7 +548,8 @@ void GraphicsCanvas::drawFaces()
     auto postTexDraw = [this]() {
         };
 
-    _faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
 void GraphicsCanvas::drawEdges()
@@ -587,7 +599,8 @@ void GraphicsCanvas::drawEdges()
     auto postTexDraw = [this]() {
         };
 
-    _edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
 Vector3d GraphicsCanvas::screenPointToModel(const Eigen::Vector2d& pt2d) const
@@ -760,14 +773,14 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
     };
 
     const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-    return _faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
+    return _activeVBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, 
     const std::vector<unsigned int>& indices)
 {
-    return _edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
+    return _activeVBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
@@ -790,96 +803,110 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
 
     pMesh->getGlEdges(colorFunc, points, colors, indices, false);
 
-    return _edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
+    return _activeVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
-    if (_pTriTess) {
-        if (_showCurvature)
-            _faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *_pTriTess);
-        else
-            _faceVBO.includeElementIndices(DS_MODEL, *_pTriTess);
-    }
-
-    if (_showSharpVerts && _pSharpVertTess)
-        _faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
-
-    if (_showFaces) {
-        if (_showOuter) {
-            if (DSS_OUTER < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[DSS_OUTER]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
-                }
-            }
-
-            if (DSS_LAYER_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[DSS_LAYER_BOUNDARY]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
-                }
-            }
-        }
-        else {
-            if (DSS_INNER < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[DSS_INNER]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
-                }
-            }
-
-            if (DSS_BLOCK_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[DSS_BLOCK_BOUNDARY]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
-                }
-            }
-        }
-    }
-    _faceVBO.endSettingElementIndices();
+    changeFaceViewElements(true);
+    changeFaceViewElements(false);
 }
 
 void GraphicsCanvas::changeEdgeViewElements()
 {
-    _edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+    changeEdgeViewElements(true);
+    changeEdgeViewElements(false);
+}
 
-    if (_showSharpEdges && _pSharpEdgeTess) {
-        _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
+void GraphicsCanvas::changeFaceViewElements(bool isModel)
+{
+    auto& vbo = isModel ? *_modelVBOs : *_meshVBOs;
+    vbo._faceVBO.beginSettingElementIndices(0xffffffffffffffff);
+    if (vbo._pTriTess) {
+        if (_showCurvature)
+            vbo._faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *vbo._pTriTess);
+        else
+            vbo._faceVBO.includeElementIndices(DS_MODEL, *vbo._pTriTess);
     }
-    if (_showTriNormals && _pNormalTess) {
-        _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
+
+    if (_showSharpVerts && vbo._pSharpVertTess)
+        vbo._faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *vbo._pSharpVertTess);
+
+    if (_showFaces) {
+        if (_showOuter) {
+            if (DSS_OUTER < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[DSS_OUTER]) {
+                    if (pBlockTess)
+                        vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+                }
+            }
+
+            if (DSS_LAYER_BOUNDARY < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[DSS_LAYER_BOUNDARY]) {
+                    if (pBlockTess)
+                        vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
+                }
+            }
+        }
+        else {
+            if (DSS_INNER < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[DSS_INNER]) {
+                    if (pBlockTess)
+                        vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+                }
+            }
+
+            if (DSS_BLOCK_BOUNDARY < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[DSS_BLOCK_BOUNDARY]) {
+                    if (pBlockTess)
+                        vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
+                }
+            }
+        }
     }
-    if (_showEdges && !_edgeTessellations.empty()) {
-        if (_showOuter && DSS_OUTER < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[DSS_OUTER]) {
+    vbo._faceVBO.endSettingElementIndices();
+}
+
+void GraphicsCanvas::changeEdgeViewElements(bool isModel)
+{
+    auto& vbo = isModel ? *_modelVBOs : *_meshVBOs;
+    vbo._edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+
+    if (_showSharpEdges && vbo._pSharpEdgeTess) {
+        vbo._edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *vbo._pSharpEdgeTess);
+    }
+    if (_showTriNormals && vbo._pNormalTess) {
+        vbo._edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *vbo._pNormalTess);
+    }
+    if (_showEdges && !vbo._edgeTessellations.empty()) {
+        if (_showOuter && DSS_OUTER < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[DSS_OUTER]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
+                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
             }
         } 
         
-        if (_showOuter && DSS_LAYER_BOUNDARY < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[DSS_LAYER_BOUNDARY]) {
+        if (_showOuter && DSS_LAYER_BOUNDARY < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[DSS_LAYER_BOUNDARY]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
+                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
             }
         }
 
-        if (!_showOuter && DSS_INNER < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[DSS_INNER]) {
+        if (!_showOuter && DSS_INNER < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[DSS_INNER]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
+                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_INNER, *pBlockTess);
             }
         }
         
-        if (!_showOuter && DSS_BLOCK_BOUNDARY < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[DSS_BLOCK_BOUNDARY]) {
+        if (!_showOuter && DSS_BLOCK_BOUNDARY < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[DSS_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
+                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY, *pBlockTess);
             }
         }
     }
-    _edgeVBO.endSettingElementIndices();
+    vbo._edgeVBO.endSettingElementIndices();
 
 }

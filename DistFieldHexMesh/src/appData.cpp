@@ -83,8 +83,8 @@ void AppData::doOpen()
                 _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
                 auto pCanvas = _pMainFrame->getCanvas();
 
+                pCanvas->beginFaceTesselation(true);
                 auto pSharpVertMesh = getSharpVertMesh();
-                pCanvas->beginFaceTesselation();
                 _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
                 if (pSharpVertMesh)
                     _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
@@ -94,7 +94,7 @@ void AppData::doOpen()
                 vector<unsigned int> normIndices;
                 getEdgeData(normPts, normIndices);
 
-                pCanvas->beginEdgeTesselation();
+                pCanvas->beginEdgeTesselation(true);
 
                 _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh);
 
@@ -240,7 +240,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     vol.setSpan(dlg.getBlockSpan());
     
     auto pCanvas = _pMainFrame->getCanvas();
-    pCanvas->beginFaceTesselation();
+    pCanvas->beginFaceTesselation(true);
     auto triTess = pCanvas->setFaceTessellation(_pMesh);
 
     Block::TriMeshGroup blockMeshes;
@@ -257,7 +257,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
         }
     }
 
-    pCanvas->endFaceTesselation(triTess, nullptr, faceTesselations, false);
+    pCanvas->endFaceTesselation(faceTesselations);
 }
 
 void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
@@ -273,9 +273,9 @@ void AppData::doBuildCFDHexes()
         Volume::BuildCFDParams params;
 
         params.numSimpleDivs = 2;
-        params.numCurvatureDivs = 4;
+        params.numCurvatureDivs = 2;
         params.curvatureArcAngleDegrees = 10;
-     //   params.sharpAngleDegrees = 20;
+        params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
 
         _volume->buildCFDHexes(_pMesh, params);
 
@@ -293,7 +293,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
     Block::TriMeshGroup blockMeshes;
     _volume->makeFaceTris(blockMeshes, true);
 
-    pCanvas->beginFaceTesselation();
+    pCanvas->beginFaceTesselation(false);
 
     vector<vector<const OGLIndices*>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
@@ -309,7 +309,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
             }
         }
     }
-    pCanvas->endFaceTesselation(_modelFaceTess, _sharpPointTess, faceTesselations, false);
+    pCanvas->endFaceTesselation(faceTesselations);
 }
 
 void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
@@ -317,7 +317,7 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
     Block::glPointsGroup edgeSets;
     _volume->makeEdgeSets(edgeSets, true);
 
-    pCanvas->beginEdgeTesselation();
+    pCanvas->beginEdgeTesselation(false);
 
     vector<vector<const OGLIndices*>> edgeTesselations;
     edgeTesselations.reserve(edgeSets.size());
