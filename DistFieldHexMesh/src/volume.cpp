@@ -294,7 +294,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
 		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitAllCellsByCurvature(params.curvatureArcAngleDegrees, sinEdgeAngle);
+				_blocks[linearIdx]->splitAllCellsByCurvature(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
 			}
 			return true;
 		}, RUN_MULTI_THREAD);

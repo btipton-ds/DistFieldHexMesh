@@ -51,7 +51,8 @@ public:
 		size_t numSimpleDivs = 2;
 		size_t numCurvatureDivs = 4;
 		double sharpAngleDegrees = 30.0;
-		double curvatureArcAngleDegrees = 15.0;
+		double maxCurvatureRadius = 0.1; // 10 cm
+		int divsPerRadius = 2;
 	};
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const;

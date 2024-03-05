@@ -81,6 +81,14 @@ void AppData::doOpen()
                 _pMesh->squeezeSkinnyTriangles(0.1);
                 _pMesh->buildCentroids();
                 _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
+                vector<double> radii;
+                radii.reserve(_pMesh->numEdges());
+                for (size_t i = 0; i < _pMesh->numEdges(); i++) {
+                    auto curv = _pMesh->edgeCurvature(i);
+                    if (curv > 0)
+                        radii.push_back(1 / curv);
+                }
+                sort(radii.begin(), radii.end());
                 auto pCanvas = _pMainFrame->getCanvas();
 
                 pCanvas->beginFaceTesselation(true);
@@ -273,8 +281,9 @@ void AppData::doBuildCFDHexes()
         Volume::BuildCFDParams params;
 
         params.numSimpleDivs = 2;
-        params.numCurvatureDivs = 2;
-        params.curvatureArcAngleDegrees = 10;
+        params.numCurvatureDivs = 8;
+        params.divsPerRadius = 4;
+        params.maxCurvatureRadius = 0.1; // 50 cm
         params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
 
         _volume->buildCFDHexes(_pMesh, params);

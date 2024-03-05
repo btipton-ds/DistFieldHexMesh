@@ -205,9 +205,9 @@ set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 CBoundingBox3Dd Polyhedron::getBoundingBox() const
 {
 	CBoundingBox3Dd bbox;
-	set<Index3DId> cornerIds;
-	getVertIds(cornerIds);
-	for (const auto& vertId : cornerIds) {
+	set<Index3DId> vertIds;
+	getVertIds(vertIds);
+	for (const auto& vertId : vertIds) {
 		bbox.merge(getBlockPtr()->getVertexPoint(vertId));
 	}
 
@@ -497,7 +497,7 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEdgeAngle) const
+double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	vector<CMesh::SearchEntry> edgeEntries;
@@ -507,11 +507,25 @@ double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEd
 			size_t edgeIdx = edgeEntry.getIndex();
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
 			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
-			if (edgeRad < 1 && !pTriMesh->isEdgeSharp(edgeIdx, sinEdgeAngle))
+			if (edgeRad > 0 && edgeRad < maxCurvatureRadius)
 				edgeRadii.push_back(edgeRad);
 		}
+		if (edgeRadii.empty())
+			return 1e6;
+
 		sort(edgeRadii.begin(), edgeRadii.end());
-		size_t num = std::min((size_t)3, edgeRadii.size());
+#if 0
+		{
+			static mutex m;
+			lock_guard g(m);
+			size_t idx = getBlockPtr()->getVolume()->calLinearBlockIndex(getId());
+			cout << "Cell idx: " << idx << "\n";
+			for (double r : edgeRadii)
+				cout << "r: " << r << "\n";
+			cout << "\n";
+		}
+#endif
+		size_t num = std::min((size_t)10, edgeRadii.size());
 		if (num == 0)
 			return -1;
 		double avgRad = 0;
@@ -525,38 +539,34 @@ double Polyhedron::calMinSurfaceRadius(const CBoundingBox3Dd& bbox, double sinEd
 	return 0;
 }
 
-void Polyhedron::splitByCurvature(double maxArcAngleDegrees, double sinEdgeAngle)
+void Polyhedron::splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 	if (!_needsCurvatureCheck)
 		return;
 	_needsCurvatureCheck = false;
 
 	CBoundingBox3Dd bbox = getBoundingBox();
-	const double maxRadius = 0.1; // meters
-	const double kDiv = 4.0;
-	const size_t circleDivs = (size_t)(360.0 / maxArcAngleDegrees);
 
 	bool needToSplit = false;
+#if 0
 	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	double minEdgeLen = getShortestEdge();
-	if (minEdgeLen > 0.01) {
-		for (size_t vertIdx : sharpVerts) {
-			auto pTriMesh = getBlockPtr()->getModelMesh();
-			Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-			if (bbox.contains(pt)) {
-				needToSplit = true;
-				break;
-			}
+	for (size_t vertIdx : sharpVerts) {
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
+		if (bbox.contains(pt)) {
+			needToSplit = true;
+			break;
 		}
 	}
+#endif
+
 	if (!needToSplit) {
-		double minRadius = calMinSurfaceRadius(bbox, sinEdgeAngle);
-		if (minRadius > 0) {
-			double surfCircumference = 2 * M_PI * minRadius;
-			double arcLength = surfCircumference / circleDivs;
+		double refRadius = calReferenceSurfaceRadius(bbox, maxCurvatureRadius, sinEdgeAngle);
+		if (refRadius > 0 && refRadius < maxCurvatureRadius) {
+			double maxLength = refRadius / divsPerRadius;
 			auto range = bbox.range();
-			double minDim = min(range[0], min(range[1], range[2])) / kDiv;
-			if (arcLength < minDim) {
+			double minDim = min(range[0], min(range[1], range[2]));
+			if (minDim > maxLength) {
 				needToSplit = true;
 			}
 		}

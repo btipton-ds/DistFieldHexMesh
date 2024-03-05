@@ -658,13 +658,13 @@ size_t Block::splitAllCellsAtPoint(const Vector3d& pt)
 	return count;
 }
 
-size_t Block::splitAllCellsByCurvature(double arcAngleDegrees, double sinEdgeAngle)
+size_t Block::splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 	size_t count = _polyhedra.size();
-	_polyhedra.iterateInOrder([this, arcAngleDegrees, sinEdgeAngle](Polyhedron& cell) {
-		cell.splitByCurvature(arcAngleDegrees, sinEdgeAngle);
+	_polyhedra.iterateInOrder([this, divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
+		cell.splitByCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
 	});
-	_polyhedra.iterateInOrder([this, arcAngleDegrees](Polyhedron& cell) {
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.splitIfTooManyFaceSplits();
 	});
 	count = _polyhedra.size() - count;
