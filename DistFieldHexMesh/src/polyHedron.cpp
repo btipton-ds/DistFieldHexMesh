@@ -480,7 +480,7 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 			const auto& otherEdgeFaces = otherEdge.getFaceIds();
 
 			for (const auto& faceId : otherEdgeFaces) {
-				if (edgeFaces.contains(faceId)) {
+				if (edgeFaces.count(faceId) != 0) {
 					found = true;
 					orderedEdges.push_back(otherEdge);
 					edges.erase(otherEdge);

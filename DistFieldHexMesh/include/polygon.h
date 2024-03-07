@@ -202,15 +202,4 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-/*
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
-*/
-
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
-
-
 }

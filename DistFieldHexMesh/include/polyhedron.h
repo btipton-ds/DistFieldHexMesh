@@ -112,18 +112,8 @@ inline void Polyhedron::resetLevel()
 
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
-	return _faceIds.contains(faceId);
+	return _faceIds.count(faceId) != 0;
 }
-
-/*
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
-*/
-
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
 
 }
 

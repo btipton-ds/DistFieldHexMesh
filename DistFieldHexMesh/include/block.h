@@ -4,6 +4,7 @@
 #include <vertex.h>
 #include <chrono>
 #include <mutex>
+#include <atomic>
 
 #include <tm_vector3.h>
 #include <triMesh.h>
@@ -240,5 +241,25 @@ LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
 LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
 LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
 LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
+
+/*
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
+*/
+
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
+
+/*
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
+*/
+
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
+CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
 
 }
