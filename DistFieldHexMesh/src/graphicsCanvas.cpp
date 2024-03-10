@@ -14,7 +14,7 @@
 #ifdef __WXMAC__
 #include <GLUT/glut.h>
 #else
-#include <GL/glu.h>
+//#include <GL/glu.h>
 #endif
 
 #ifndef WIN32

@@ -2,15 +2,10 @@
 # project specific logic here.
 #
 
-set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/${CMAKE_BUILD_TYPE}")
-
 find_package(wxWidgets)
 include(${wxWidgets_USE_FILE})
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
-set(triMeshLibDir "../../triMesh/x64/${CMAKE_BUILD_TYPE}")
 
 if(WIN32)
 set(OpenGlPlatform "win")
@@ -19,6 +14,12 @@ else(WIN32)
 set(OpenGlPlatform "linux")
 set(OpenGlPlatformDecl )
 endif(WIN32)
+
+if(WIN32)
+set(triMeshLibDir "../../triMesh/x64/win/${CMAKE_BUILD_TYPE}")
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
 
 include_directories(
 	"include"
@@ -30,6 +31,23 @@ include_directories(
 	"${OpenGlDir}/include/${OpenGlPlatform}/"
 	"${wxWidgets_INCLUDE_DIRS}"
 )
+else()
+set(triMeshLibDir "../../triMesh/x64/linux/${CMAKE_BUILD_TYPE}")
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+include_directories(
+	"include"
+	"usr/include/GL/"
+	"../../ThirdParty/eigen/"
+	"../../triMesh/triMesh/include/"
+	"../../triMesh/stlReader/include/"
+	"../../utilities/threads/include/"
+	"${OpenGlDir}/include/"
+	"${OpenGlDir}/include/${OpenGlPlatform}/"
+	"${wxWidgets_INCLUDE_DIRS}"
+)
+endif()
 
 if(WIN32)
 link_directories(
@@ -38,8 +56,8 @@ link_directories(
 )
 else()
 link_directories(
-	"/usr/local/lib/libwx_gtk3u-3.2"
-	"/usr/local/lib/x86_64-linux-gnu"
+	"/usr/local/lib/"
+	"/usr/lib/x86_64-linux-gnu/"
 	${triMeshLibDir}
 )
 endif()
@@ -152,7 +170,7 @@ if(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-enum-enum-conversion")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-enum-enum-conversion -lX11")
 target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20)
 endif(WIN32)
 
