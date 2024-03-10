@@ -175,6 +175,8 @@ private:
 
 	std::string _filename;
 
+	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
+
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;

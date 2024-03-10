@@ -88,9 +88,7 @@ public:
 	void setPoint(const Vector3d& pt);
 	Vector3d getPoint() const;
 	operator Vector3d () const;
-#if USE_FIXED_PT
 	const FixedPt& getFixedPt() const;
-#endif
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -180,12 +178,10 @@ inline Vector3d Vertex::getPoint() const
 #endif
 }
 
-#if USE_FIXED_PT
 inline const FixedPt& Vertex::getFixedPt() const
 {
-	return _pt;
+	return _searchPt;
 }
-#endif
 
 inline Vertex::operator Vector3d () const
 {

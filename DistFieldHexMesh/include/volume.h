@@ -65,7 +65,7 @@ public:
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 
-	void writePolyMesh(const std::string& dirName) const;
+	void writePolyMesh(const std::string& dirName);
 
 	bool verifyTopology() const;
 
@@ -91,7 +91,9 @@ private:
 	void findSharpVertices();
 	void findSharpEdgeGroups();
 
+	void consolidateBlocks();
 	void writePolyMeshPoints(const std::string& dirName) const;
+	void writePolyMeshFaces(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
 
 	template<class L>
@@ -110,6 +112,7 @@ private:
 //	std::vector<std::shared_ptr<Block>> _outBlocks;
 	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
 
+	std::vector<size_t> _consolidatedVertexIndices, _consolidatedPolygonIndices, _consolidatedPolygons, _consolidatedPolyHedraIndices;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

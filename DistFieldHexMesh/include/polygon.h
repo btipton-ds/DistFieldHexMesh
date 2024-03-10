@@ -78,6 +78,7 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
+	void orient();
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);

@@ -390,16 +390,79 @@ namespace {
 			dirName += "/";
 		dirName += str;
 	}
+
+	void unifyDirectorySeparator(string& dirName)
+	{
+		auto pos = dirName.find("\\");
+		while (pos != string::npos) {
+			dirName.replace(pos, 1, "/");
+			pos = dirName.find("\\");
+		}
+	}
 }
 
-void Volume::writePolyMesh(const string& dirNameIn) const
+void Volume::consolidateBlocks()
 {
+	_consolidatedVertexIndices.clear();
+	_consolidatedPolygonIndices.clear();
+	_consolidatedPolygons.clear();
+	_consolidatedPolyHedraIndices.clear();
+
+	map<FixedPt, size_t> vertMap;
+	Vector3i blkIdx;
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				size_t linIdx = calLinearBlockIndex(blkIdx);
+				auto& pBlk = _blocks[linIdx];
+				if (!pBlk)
+					continue;
+				const auto& blkFaces = pBlk->_polygons;
+				blkFaces.iterateInOrder([this, pBlk, &vertMap](const Polygon& face) {
+					_consolidatedPolygonIndices.push_back(_consolidatedPolygonIds.size());
+					const auto& vertIds = face.getVertexIds();
+					for (const Index3DId& vertId : vertIds) {
+						const auto& verts = pBlk->getOwner(vertId)->_vertices;
+						const auto& fpt = verts[vertId].getFixedPt();
+						auto iter = vertMap.find(fpt);
+						size_t vertIdx = -1;
+						if (iter == vertMap.end()) {
+							vertIdx = _consolidatedVertexIndices.size();
+							iter = vertMap.insert(make_pair(fpt, vertIdx)).first;
+						}
+					}
+				});
+			}
+		}
+	}
+
+}
+
+void Volume::writePolyMesh(const string& dirNameIn)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		auto pBlk = _blocks[linearIdx];
+		if (!pBlk)
+			return true;
+		auto& blk = pBlk->_polygons;
+		blk.iterateInOrder([this](Polygon& face) {
+			face.orient();
+		});
+		return true;
+	}, false && RUN_MULTI_THREAD);
 
 	string dirName(dirNameIn);
-	if (dirName.find("constant") == string::npos)
+
+	unifyDirectorySeparator(dirName);
+
+	auto pos = dirName.find("constant");
+	if (pos == string::npos) {
 		appendDir(dirName, "constant");
+	} else {
+		dirName = dirName.substr(0, pos + 9);
+	}
 	if (dirName.find("polyMesh") == string::npos)
-		appendDir(dirName, "polyMesh");
+		appendDir(dirName, "polyMesh/");
 	
 	filesystem::path dirPath(dirName);
 	filesystem::remove_all(dirPath);
@@ -409,29 +472,83 @@ void Volume::writePolyMesh(const string& dirNameIn) const
 
 void Volume::writePolyMeshPoints(const string& dirName) const
 {
-#if 0
 	ofstream out(dirName + "/points", ios_base::binary);
 	writeFOAMHeader(out, "vectorField", "points");
 	size_t numPoints = 0;
-	_vertexPool.iterateInOrder([&numPoints](const ObjectPoolId& id, const Vertex& vert) {
-		numPoints++;
-	});
+
+	Vector3i blkIdx;
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				size_t linIdx = calLinearBlockIndex(blkIdx);
+				auto& pBlk = _blocks[linIdx];
+				if (!pBlk)
+					continue;
+				pBlk->_baseIdxVerts = numPoints;
+				const auto& blkVerts = pBlk->_vertices;
+				blkVerts.iterateInOrder([&numPoints](const Vertex& vert) {
+					numPoints++;
+				});
+			}
+		}
+	}
+
 	out << numPoints << "\n";
-	_vertexPool.iterateInOrder([&out, &numPoints](const ObjectPoolId& id, const Vertex& vert) {
-		char openParen = '(';
-		char closeParen = ')';
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				size_t linIdx = calLinearBlockIndex(blkIdx);
+				const auto& pBlk = _blocks[linIdx];
+				if (!pBlk)
+					continue;
+				const auto& blkVerts = pBlk->_vertices;
+				blkVerts.iterateInOrder([&numPoints, &out](const Vertex& vert) {
+					char openParen = '(';
+					char closeParen = ')';
+					auto pt = vert.getPoint();
 
-		const double& x = vert.getPoint()[0];
-		const double& y = vert.getPoint()[1];
-		const double& z = vert.getPoint()[2];
+					const double& x = pt[0];
+					const double& y = pt[1];
+					const double& z = pt[2];
 
-		out.write(&openParen, 1);
-		out.write((char*)&x, sizeof(x));
-		out.write((char*)&y, sizeof(y));
-		out.write((char*)&z, sizeof(z));
-		out.write(&closeParen, 1);
-	});
-#endif
+					out.write(&openParen, 1);
+					out.write((char*)&x, sizeof(x));
+					out.write((char*)&y, sizeof(y));
+					out.write((char*)&z, sizeof(z));
+					out.write(&closeParen, 1);
+				});
+			}
+		}
+	}
+
+}
+
+void Volume::writePolyMeshFaces(const string& dirName) const
+{
+	ofstream out(dirName + "/faces", ios_base::binary);
+	writeFOAMHeader(out, "faceCompactList", "faces");
+	vector<size_t> startIndices, vertIndices;
+
+	Vector3i blkIdx;
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				size_t linIdx = calLinearBlockIndex(blkIdx);
+				auto& pBlk = _blocks[linIdx];
+				if (!pBlk)
+					continue;
+				pBlk->_baseIdxPolygons = startIndices.size();
+				const auto& blkPolygons = pBlk->_polygons;
+				blkPolygons.iterateInOrder([&startIndices](const Polygon& face) {
+					const auto& vertIds = face.getVertexIds();
+					startIndices.push_back(vertIds.size());
+				});
+			}
+		}
+	}
+
+	out << startIndices.size() << "\n";
+
 }
 
 void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const string& object) const

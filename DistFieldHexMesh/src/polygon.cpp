@@ -91,6 +91,11 @@ void Polygon::sortIds() const
 	}
 }
 
+void Polygon::orient()
+{
+
+}
+
 void Polygon::pack()
 {
 	_sortedIds.clear();

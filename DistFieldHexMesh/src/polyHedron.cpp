@@ -383,7 +383,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	getVertIds(corners);
 	for (const auto& vert : corners) {
 		auto vertFaces = vertToFaceMap.find(vert)->second;
-		assert(vertFaces.count(_thisId) != 0);
+		assert(vertFaces.count(_thisId) == 0);
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
 		for (const auto& faceId : vertFaces) {
 			faceFunc(faceId, [&vert, &vertEdgeFaceMap, &vertFaces](const Polygon& face) {
