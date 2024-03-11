@@ -85,6 +85,9 @@ public:
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 
+	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds) const;
+	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds) const;
+
 	void writePolyMesh(const std::string& dirName);
 
 	bool verifyTopology() const;

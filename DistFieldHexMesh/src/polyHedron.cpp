@@ -173,24 +173,20 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
 	}
 }
 
-set<Index3DId> Polyhedron::getAdjacentCells() const
+set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 {
-	set<Index3DId> cornerIds;
-	getVertIds(cornerIds);
-	set<Index3DId> faceIds, cellIds;
+	set<Index3DId> cellIds;
 
-	for (const auto& faceId : faceIds) {
+	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &cellIds](const Polygon& face) {
 			const auto& temp = face.getCellIds();
-			if (!temp.empty()) {
-				for (auto cellId : temp) {
-					if (cellId != _thisId)
-						cellIds.insert(cellId);
-				}
-			}
+			cellIds.insert(temp.begin(), temp.end());
 		});
 	}
 
+	// TODO implement includeCornerCells case
+
+	cellIds.erase(_thisId);
 	return cellIds;
 }
 
@@ -200,7 +196,7 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool i
 	set<Edge> cellEdgeSet;
 	getEdges(cellEdgeSet, includeAdjacentCells);
 	if (includeAdjacentCells) {
-		set<Index3DId> adjCells = getAdjacentCells();
+		set<Index3DId> adjCells = getAdjacentCells(false);
 		for (const auto& adjCellId : adjCells) {
 			getBlockPtr()->cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
 				adjCell.getEdges(cellEdgeSet, true);
@@ -629,15 +625,25 @@ void Polyhedron::promoteSplitFacesWithSplitEdges()
 {
 	if (!_children.empty()) // We've been split
 		return;
+
+	Index3DId dbgId(Index3D(3, 2, 5), 6);
+	if (dbgId == _thisId) {
+		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/cell_0.obj", { _thisId });
+		int dbgBreak = 1;
+	}
+
 	bool changed = false;
 	set<Index3DId> newFaceIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&changed, &newFaceIds](const Polygon& face) {
+		faceFunc(faceId, [this, &changed, &newFaceIds](Polygon& face) {
 			const auto& faceChildIds = face.getChildIds();
 			if (faceChildIds.empty()) {
 				newFaceIds.insert(face.getId());
-			} else {
+			}
+			else {
 				changed = true;
+				// This face is dead. Detach it
+				face.clearCellIds();
 				newFaceIds.insert(faceChildIds.begin(), faceChildIds.end());
 			}
 		});
@@ -646,21 +652,67 @@ void Polyhedron::promoteSplitFacesWithSplitEdges()
 	if (!changed)
 		return;
 
-	_faceIds = newFaceIds;
-	for (const auto& faceId : _faceIds) {
+	if (dbgId == _thisId) {
+		int dbgBreak = 1;
+	}
+
+	for (const auto& faceId : newFaceIds) {
 		faceFunc(faceId, [this](Polygon& face) {
-			auto cellIds = face.getCellIds();
-			for (const auto& cellId : cellIds) {
-				cellFunc(cellId, [&face](const Polyhedron& cell) {
-					if (!cell.containsFace(face.getId())) {
-						face.removeCellId(cell.getId());
-					}
-				});
+			if (!face.ownedByCell(_thisId)) {
+				face.addCellId(_thisId);
 			}
-			face.addCellId(_thisId);
 		});
 	}
 
+	_faceIds = newFaceIds;
+
+	// Need to insert mid vertices in unsplit edges;
+	set<Index3DId> cellVertIds;
+	getVertIds(cellVertIds);
+
+	auto adjCellIds = getAdjacentCells(false);
+	for (const auto& adjCellId : adjCellIds) {
+		cellFunc(adjCellId, [&cellVertIds](const Polyhedron& adjCell) {
+			adjCell.getVertIds(cellVertIds);
+		});
+	}
+
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &cellVertIds](Polygon& face) {
+			auto pBlk = getBlockPtr();
+			vector<Edge> edgesToImprint;
+			vector<Index3DId> vertsToImprint;
+			const auto& faceVertIds = face.getVertexIds();
+			for (size_t i = 0; i < faceVertIds.size(); i++) {
+				size_t j = (i + 1) % faceVertIds.size();
+				Edge edge(faceVertIds[i], faceVertIds[j]);
+				auto seg = edge.getSegment(pBlk);
+				for (const auto& cellVertId : cellVertIds) {
+					Vector3d pt = pBlk->getVertexPoint(cellVertId);
+					double t, dist;
+					dist = seg.distanceToPoint(pt, t);
+					if (dist < Tolerance::sameDistTol() && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+						edgesToImprint.push_back(edge);
+						vertsToImprint.push_back(cellVertId);
+					}
+				}
+			}
+
+			if (!edgesToImprint.empty()) {
+				face.imprintVertices(vertsToImprint, edgesToImprint);
+			}
+		});
+	}
+
+	if (dbgId == _thisId) {
+		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/cell_1.obj", { _thisId });
+		int dbgBreak = 1;
+	}
+
+	set<Edge> testEdges;
+	getEdges(testEdges, false);
+
+	assert(verifyTopology());
 }
 
 double Polyhedron::getShortestEdge() const
@@ -768,6 +820,9 @@ bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
 #ifdef _DEBUG 
+
+	if (!isActive())
+		return valid;
 
 	if (!isClosed())
 		valid = false;

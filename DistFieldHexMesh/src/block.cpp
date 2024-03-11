@@ -229,6 +229,29 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
+size_t Block::pointOpenFoamLabel(const Index3DId& id) const
+{
+	auto pBlk = getOwner(id);
+	return pBlk->_baseIdxVerts + _vertices.getRawIndex(id);
+}
+
+size_t Block::faceOpenFoamLabel(const Index3DId& id) const
+{
+	auto pBlk = getOwner(id);
+	return pBlk->_baseIdxPolygons + _polygons.getRawIndex(id);
+}
+
+size_t Block::cellOpenFoamLabel(const Index3DId& id) const
+{
+	auto pBlk = getOwner(id);
+	return pBlk->_baseIdxPolyhedra + _polyhedra.getRawIndex(id);
+}
+
+Index3DId Block::maxCellId(const Index3DId& id0, const Index3DId& id1) const
+{
+	return (cellOpenFoamLabel(id0) > cellOpenFoamLabel(id1)) ? id0 : id1;
+}
+
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;

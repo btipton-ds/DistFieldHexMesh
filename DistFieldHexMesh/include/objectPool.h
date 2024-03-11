@@ -90,6 +90,7 @@ public:
 
 	void resize(size_t size);
 
+	size_t getRawIndex(const Index3DId& id) const;
 	Index3DId findId(const T& obj) const;
 	bool exists(const Index3DId& id) const;
 
@@ -299,6 +300,12 @@ void ObjectPool<T>::resize(size_t size)
 			}
 		}
 	}
+}
+
+template<class T>
+inline size_t ObjectPool<T>::getRawIndex(const Index3DId& id) const
+{
+	return _idToIndexMap[id.elementId()];
 }
 
 template<class T>

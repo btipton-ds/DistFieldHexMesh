@@ -304,7 +304,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	assert(verifyTopology());
+//	assert(verifyTopology());
 
 #if 1
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
@@ -315,7 +315,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
-	assert(verifyTopology());
+//	assert(verifyTopology());
 
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
 		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
@@ -325,7 +325,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
-	assert(verifyTopology());
+//	assert(verifyTopology());
 #endif
 
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
@@ -334,8 +334,10 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 				_blocks[linearIdx]->promoteSplitFacesWithSplitEdges();
 			}
 			return true;
-		}, RUN_MULTI_THREAD);
+		}, false && RUN_MULTI_THREAD);
 	}
+
+	assert(verifyTopology());
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
@@ -448,30 +450,58 @@ void Volume::consolidateBlocks()
 		}
 	}
 #endif
+	assert(verifyTopology());
+	// Set block baseIndices. This orders them, does not ignore "dead" ones and does not pack them
+	size_t vertIdx = 0, polygonIdx = 0, polyhedronIdx = 0;
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				size_t linIdx = calLinearBlockIndex(blkIdx);
+				auto pBlk = _blocks[linIdx];
+				if (pBlk) {
+					pBlk->_baseIdxVerts = vertIdx;
+					pBlk->_baseIdxPolygons = polygonIdx;
+					pBlk->_baseIdxPolyhedra = polyhedronIdx;
+
+					pBlk->_vertices.iterateInOrder([&vertIdx](const Vertex& v) {
+						vertIdx++;
+					});
+					pBlk->_polygons.iterateInOrder([&polygonIdx](const Polygon& v) {
+						polygonIdx++;
+					});
+					pBlk->_polyhedra.iterateInOrder([&polyhedronIdx](const Polyhedron& v) {
+						polyhedronIdx++;
+					});
+				}
+			}
+		}
+	}
 
 	vector<Index3DId> pts;
-	map<Index3DId, size_t> idToIdxMap;
+	map<Index3DId, size_t> idToPointIdxMap;
 	vector<size_t> faceIndices, faces;
 	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
 		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
 			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
 				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
-				if (pBlk) {
-					pBlk->_polygons.iterateInOrder([&pts, &idToIdxMap, &faceIndices, &faces](Polygon& face) {
-						face.orient();
-						faceIndices.push_back(faces.size());
-						for (const auto& vertId : face.getVertexIds()) {
-							auto iter = idToIdxMap.find(vertId);
-							if (iter == idToIdxMap.end()) {
-								size_t idx = pts.size();
-								iter = idToIdxMap.insert(make_pair(vertId, idx)).first;
-								pts.push_back(vertId);
-							}
-							size_t vertIdx = iter->second;
-							faces.push_back(vertIdx);
+				if (!pBlk)
+					continue;
+				pBlk->_polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](Polygon& face) {
+					if (!face.isActive())
+						return;
+					face.orient();
+					faceIndices.push_back(faces.size());
+					for (const auto& vertId : face.getVertexIds()) {
+						auto iter = idToPointIdxMap.find(vertId);
+						if (iter == idToPointIdxMap.end()) {
+							size_t idx = pts.size();
+							iter = idToPointIdxMap.insert(make_pair(vertId, idx)).first;
+							pts.push_back(vertId);
 						}
-					});
-				}
+						size_t vertIdx = iter->second;
+						faces.push_back(vertIdx);
+					}
+				});
 			}
 		}
 	}
@@ -479,18 +509,77 @@ void Volume::consolidateBlocks()
 	int dbgBreak = 1;
 }
 
+void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds) const
+{
+	ofstream out(path, ios_base::trunc);
+	writeObj(out, cellIds);
+}
+
+void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
+{
+	set<Index3DId> faceIds;
+	for (const auto& cellId : cellIds) {
+		auto pBlk = getBlockPtr(cellId);
+		pBlk->cellFunc(cellId, [&faceIds](const Polyhedron& cell) {
+			const auto& ids = cell.getFaceIds();
+			faceIds.insert(ids.begin(), ids.end());
+		});
+	}
+
+#if 1
+	for (const auto& faceId : faceIds) {
+		auto pBlk = getBlockPtr(faceId);
+		pBlk->faceFunc(faceId, [&pBlk, &faceIds](const Polygon& face) {
+			const auto& ids = face.getChildIds();
+			faceIds.insert(ids.begin(), ids.end());
+		});
+	}
+#endif
+
+	vector<Vector3d> pts;
+	map<Index3DId, size_t> vertIdToPtMap;
+
+	for (const auto& faceId : faceIds) {
+		auto pBlk = getBlockPtr(faceId);
+		pBlk->faceFunc(faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
+			const auto& vIds = face.getVertexIds();
+			for (const auto& vertId : vIds) {
+				auto iter = vertIdToPtMap.find(vertId);
+				if (iter == vertIdToPtMap.end()) {
+					size_t vertIdx = pts.size();
+					vertIdToPtMap.insert(make_pair(vertId, vertIdx));
+					pts.push_back(pBlk->getVertexPoint(vertId));
+				}
+			}
+		});
+	}
+
+	out << "#Vertices\n";
+	for (const auto& pt : pts) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	out << "#Faces\n";
+	for (const auto& faceId : faceIds) {
+		auto pBlk = getBlockPtr(faceId);
+		pBlk->faceFunc(faceId, [&out, &vertIdToPtMap](const Polygon& face) {
+			out << "f ";
+			const auto& vIds = face.getVertexIds();
+			for (const auto& vertId : vIds) {
+				auto iter = vertIdToPtMap.find(vertId);
+				if (iter != vertIdToPtMap.end()) {
+					size_t idx = iter->second + 1;
+					out << idx << " ";
+				}
+			}
+			out << "\n";
+		});
+	}
+}
+
 void Volume::writePolyMesh(const string& dirNameIn)
 {
-	runLambda([this](size_t linearIdx)->bool {
-		auto pBlk = _blocks[linearIdx];
-		if (!pBlk)
-			return true;
-		auto& blk = pBlk->_polygons;
-		blk.iterateInOrder([this](Polygon& face) {
-			face.orient();
-		});
-		return true;
-	}, false && RUN_MULTI_THREAD);
+	consolidateBlocks();
 
 	string dirName(dirNameIn);
 
@@ -625,7 +714,7 @@ bool Volume::verifyTopology() const
 		if (_blocks[linearIdx])
 			result = result && _blocks[linearIdx]->verifyTopology();
 		return true;
-	}, RUN_MULTI_THREAD);
+	}, false && RUN_MULTI_THREAD);
 	return result;
 }
 

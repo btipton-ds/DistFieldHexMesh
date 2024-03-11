@@ -86,6 +86,7 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
+	bool isActive() const;
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
@@ -123,7 +124,8 @@ private:
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
-	bool imprintVertexInEdge(const Index3DId& vertId, const Edge& edge);
+	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
+	bool imprintVertices(const std::vector<Index3DId>& vertIds, const std::vector<Edge>& edges);
 
 	unsigned int _markVal = 0;
 	Index3DId _parent; // This records the id of the polygon this polygon was split from

@@ -64,7 +64,7 @@ public:
 	void incrementLevel(size_t newLevel);
 	void setParentLevel();
 
-	std::set<Index3DId> getAdjacentCells() const;
+	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	void getVertEdges(const Index3DId& vertId, std::set<Edge>& edges, bool includeAdjacentCells) const;

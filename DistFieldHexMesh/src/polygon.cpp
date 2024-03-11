@@ -37,7 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Polygon::Polygon(const std::vector<Index3DId>& verts)
+Polygon::Polygon(const vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
 }
@@ -120,7 +120,34 @@ void Polygon::sortIds() const
 
 void Polygon::orient()
 {
+	Index3DId ownerCellId;
+	switch (_cellIds.size()) {
+		default:
+			return;
+		case 1: { // Outer polygon
+			ownerCellId = *_cellIds.begin();
+			break;
+		}
+		case 2: { // Inner polygon
+			auto iter = _cellIds.begin();
+			auto id0 = *iter++;
+			auto id1 = *iter;
 
+			ownerCellId = getBlockPtr()->maxCellId(id0, id1);
+			break;
+		}
+	}
+
+	Vector3d norm = calUnitNormal();
+	Vector3d faceCtr = calCentroid();
+	Vector3d cellCtr;
+	cellFunc(ownerCellId, [&cellCtr](const Polyhedron& cell) {
+		cellCtr = cell.calCentroid();
+		});
+	Vector3d v = cellCtr - faceCtr;
+	if (v.dot(norm) < Tolerance::paramTol()) {
+		reverse(_vertexIds.begin(), _vertexIds.end());
+	}
 }
 
 void Polygon::pack()
@@ -166,7 +193,7 @@ bool Polygon::isLevelBoundary(size_t& innerLevel) const
 		cellFunc(cellId1, [&level1](const Polyhedron& c) { level1 = c.getLevel(); });
 		if (level0 == level1)
 			return false;
-		innerLevel = std::min(level0, level1);
+		innerLevel = min(level0, level1);
 		return true;
 	} else {
 		assert(!"A face cannot be owned by more than two cells");
@@ -184,7 +211,7 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-void Polygon::getEdges(std::set<Edge>& edgeSet) const
+void Polygon::getEdges(set<Edge>& edgeSet) const
 {
 	createEdgesStat(_vertexIds, edgeSet, _thisId);
 }
@@ -249,7 +276,18 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 	return false;
 }
 
-void Polygon::createEdgesStat(const std::vector<Index3DId>& verts, std::set<Edge>& edgeSet, const Index3DId& polygonId)
+bool Polygon::isActive() const
+{
+	bool result = false;
+	for (const auto& cellId : _cellIds) {
+		cellFunc(cellId, [&result](const Polyhedron& cell) {
+			result = cell.isActive() || result;
+		});
+	}
+	return result;
+}
+
+void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
 		size_t j = (i + 1) % verts.size();
@@ -261,7 +299,7 @@ void Polygon::createEdgesStat(const std::vector<Index3DId>& verts, std::set<Edge
 	}
 }
 
-Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds)
+Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
 
@@ -288,7 +326,7 @@ Vector3d Polygon::calUnitNormal() const
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
 }
 
-double Polygon::calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t idx1)
+double Polygon::calVertexAngleStat(const Block* pBlock, const vector<Index3DId>& vertIds, size_t idx1)
 {
 	const size_t sz = vertIds.size();
 	if (idx1 < sz) {
@@ -427,7 +465,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 	assert(_cellIds.size() <= 2);
 }
 
-bool Polygon::splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun)
+bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
 {
 	if (!_children.empty()) {
 		if (_children.size() == 1) {
@@ -505,7 +543,7 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 	getEdges(edgeSet);
 	for (const auto& otherVert : otherFace.getVertexIds()) {
 		for (const auto& edge : edgeSet) {
-			result = imprintVertexInEdge(otherVert, edge);
+			result = imprintVertex(otherVert, edge);
 			if (result)
 				break;
 		}
@@ -515,7 +553,7 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 	return result;
 }
 
-bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
+bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 {
 	bool inBounds;
 	size_t i, j;
@@ -532,12 +570,32 @@ bool Polygon::imprintVertexInEdge(const Index3DId& vertId, const Edge& edge)
 	return false;
 }
 
+bool Polygon::imprintVertices(const vector<Index3DId>& vertIdsIn, const vector<Edge>& edgesIn)
+{
+	bool result = false;
+	if (vertIdsIn.size() > 1) {
+		int dbgBreak = 1;
+	}
+
+	vector<Index3DId> vertIds(vertIdsIn);
+	vector<Edge> edges(edgesIn);
+
+	while (!vertIds.empty()) {
+		auto vertId = vertIds.back();
+		auto edge = edges.back();
+		vertIds.pop_back();
+		edges.pop_back();
+		result = imprintVertex(vertId, edge) || result;
+	}
+	return result;
+}
+
 Index3DId Polygon::createFace(const Polygon& face)
 {
 	return getBlockPtr()->addFace(face);
 }
 
-void Polygon::setChildIds(const std::set<Index3DId>& childFaceIds)
+void Polygon::setChildIds(const set<Index3DId>& childFaceIds)
 {
 	_children = childFaceIds;
 }

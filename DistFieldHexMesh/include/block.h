@@ -96,6 +96,11 @@ public:
 	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
+	size_t pointOpenFoamLabel(const Index3DId& id) const;
+	size_t faceOpenFoamLabel(const Index3DId& id) const;
+	size_t cellOpenFoamLabel(const Index3DId& id) const;
+	Index3DId maxCellId(const Index3DId& id0, const Index3DId& id1) const;
+
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 
