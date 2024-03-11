@@ -111,8 +111,6 @@ private:
 	std::vector<std::shared_ptr<Block>> _blocks;
 //	std::vector<std::shared_ptr<Block>> _outBlocks;
 	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
-
-	std::vector<size_t> _consolidatedVertexIndices, _consolidatedPolygonIndices, _consolidatedPolygons, _consolidatedPolyHedraIndices;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

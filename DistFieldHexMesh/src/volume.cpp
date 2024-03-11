@@ -403,39 +403,54 @@ namespace {
 
 void Volume::consolidateBlocks()
 {
-	_consolidatedVertexIndices.clear();
-	_consolidatedPolygonIndices.clear();
-	_consolidatedPolygons.clear();
-	_consolidatedPolyHedraIndices.clear();
+	Index3D blkIdx;
+#if 0 && defined(_DEBUG)
+	set<FixedPt> pts;
 
-	map<FixedPt, size_t> vertMap;
-	Vector3i blkIdx;
 	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
 		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
 			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				size_t linIdx = calLinearBlockIndex(blkIdx);
-				auto& pBlk = _blocks[linIdx];
-				if (!pBlk)
-					continue;
-				const auto& blkFaces = pBlk->_polygons;
-				blkFaces.iterateInOrder([this, pBlk, &vertMap](const Polygon& face) {
-					_consolidatedPolygonIndices.push_back(_consolidatedPolygonIds.size());
-					const auto& vertIds = face.getVertexIds();
-					for (const Index3DId& vertId : vertIds) {
-						const auto& verts = pBlk->getOwner(vertId)->_vertices;
-						const auto& fpt = verts[vertId].getFixedPt();
-						auto iter = vertMap.find(fpt);
-						size_t vertIdx = -1;
-						if (iter == vertMap.end()) {
-							vertIdx = _consolidatedVertexIndices.size();
-							iter = vertMap.insert(make_pair(fpt, vertIdx)).first;
+				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
+				if (pBlk) {
+					pBlk->_vertices.iterateInOrder([&pts](const Vertex& vert) {
+						auto fpt = vert.getFixedPt();
+						assert(pts.count(fpt) == 0);
+						pts.insert(fpt);
+					});
+				}
+			}
+		}
+	}
+#endif
+
+	vector<Index3DId> pts;
+	map<Index3DId, size_t> idToIdxMap;
+	vector<size_t> faceIndices, faces;
+	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
+		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
+			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
+				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
+				if (pBlk) {
+					pBlk->_polygons.iterateInOrder([&pts, &idToIdxMap, &faceIndices, &faces](Polygon& face) {
+						face.orient();
+						faceIndices.push_back(faces.size());
+						for (const auto& vertId : face.getVertexIds()) {
+							auto iter = idToIdxMap.find(vertId);
+							if (iter == idToIdxMap.end()) {
+								size_t idx = pts.size();
+								iter = idToIdxMap.insert(make_pair(vertId, idx)).first;
+								pts.push_back(vertId);
+							}
+							size_t vertIdx = iter->second;
+							faces.push_back(vertIdx);
 						}
-					}
-				});
+					});
+				}
 			}
 		}
 	}
 
+	int dbgBreak = 1;
 }
 
 void Volume::writePolyMesh(const string& dirNameIn)
@@ -467,6 +482,7 @@ void Volume::writePolyMesh(const string& dirNameIn)
 	filesystem::path dirPath(dirName);
 	filesystem::remove_all(dirPath);
 	filesystem::create_directories(dirPath);
+	consolidateBlocks();
 	writePolyMeshPoints(dirName);
 }
 
