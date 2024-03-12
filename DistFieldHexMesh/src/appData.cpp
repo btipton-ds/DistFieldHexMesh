@@ -44,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+#define RUN_MULTI_THREAD true
 #define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
 
 AppData::AppData(MainFrame* pMainFrame)
@@ -307,27 +308,27 @@ void AppData::doBuildCFDHexes()
 
         Volume::BuildCFDParams params;
 
-        params.numSimpleDivs = 1;
-        params.numCurvatureDivs = 0;
+        params.numSimpleDivs = 0;
+        params.numCurvatureDivs = 1;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
         params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
 
-        _volume->buildCFDHexes(_pMesh, params);
+        _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
 
         auto pCanvas = _pMainFrame->getCanvas();
 
-        addFacesToScene(pCanvas);
-        addEdgesToScene(pCanvas);
+        addFacesToScene(pCanvas, RUN_MULTI_THREAD);
+        addEdgesToScene(pCanvas, RUN_MULTI_THREAD);
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
 }
 
-void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
+void AppData::addFacesToScene(GraphicsCanvas* pCanvas, bool multiCore)
 {
     Block::TriMeshGroup blockMeshes;
-    _volume->makeFaceTris(blockMeshes, true);
+    _volume->makeFaceTris(blockMeshes, multiCore);
 
     pCanvas->beginFaceTesselation(false);
 
@@ -348,10 +349,10 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas)
     pCanvas->endFaceTesselation(faceTesselations);
 }
 
-void AppData::addEdgesToScene(GraphicsCanvas* pCanvas)
+void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, bool multiCore)
 {
     Block::glPointsGroup edgeSets;
-    _volume->makeEdgeSets(edgeSets, true);
+    _volume->makeEdgeSets(edgeSets, multiCore);
 
     pCanvas->beginEdgeTesselation(false);
 

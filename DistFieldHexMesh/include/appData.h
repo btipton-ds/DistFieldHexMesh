@@ -70,8 +70,8 @@ public:
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
-    void addFacesToScene(GraphicsCanvas* pCanvas);
-    void addEdgesToScene(GraphicsCanvas* pCanvas);
+    void addFacesToScene(GraphicsCanvas* pCanvas, bool multiCore);
+    void addEdgesToScene(GraphicsCanvas* pCanvas, bool multiCore);
     void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;

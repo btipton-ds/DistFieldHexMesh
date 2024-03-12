@@ -50,8 +50,6 @@ using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
 
-#define RUN_MULTI_THREAD true
-
 Index3D Volume::s_volDim;
 
 Volume::Volume()
@@ -237,7 +235,7 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params)
+void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
@@ -287,14 +285,14 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
-	}, _blocks.size(), RUN_MULTI_THREAD);
+	}, _blocks.size(), multiCore);
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		if (_blocks[linearIdx])
 			_blocks[linearIdx]->createSubBlocks();
 		return true;
-	}, RUN_MULTI_THREAD);
+	}, multiCore);
 
 #ifdef _WIN32
 	LARGE_INTEGER endCount;
@@ -311,7 +309,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 				_blocks[linearIdx]->splitAllCellsAtCentroid();
 			}
 			return true;
-		}, RUN_MULTI_THREAD);
+		}, multiCore);
 	}
 #ifdef _WIN32
 	QueryPerformanceCounter(&endCount);
@@ -327,7 +325,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 				_blocks[linearIdx]->splitAllCellsByCurvature(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
 			}
 			return true;
-		}, RUN_MULTI_THREAD);
+		}, multiCore);
 	}
 #ifdef _WIN32
 	QueryPerformanceCounter(&endCount);
@@ -335,7 +333,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 	startCount = endCount;
 #endif // _WIN32
-	assert(verifyTopology());
+	assert(verifyTopology(multiCore));
 #endif
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
@@ -365,7 +363,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY);
 		}
 		return true;
-	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
+	}, _blocks.size(), multiCore);
 }
 
 void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
@@ -384,7 +382,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeEdgeSets(FT_BLOCK_BOUNDARY);
 		}
 		return true;
-	}, _blocks.size(), multiCore && RUN_MULTI_THREAD);
+	}, _blocks.size(), multiCore);
 }
 
 size_t Volume::numFaces(bool includeInner) const
@@ -448,7 +446,7 @@ void Volume::consolidateBlocks()
 		}
 	}
 #endif
-	assert(verifyTopology());
+	assert(verifyTopology(true));
 	// Set block baseIndices. This orders them, does not ignore "dead" ones and does not pack them
 	size_t vertIdx = 0, polygonIdx = 0, polyhedronIdx = 0;
 	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
@@ -704,7 +702,7 @@ void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const strin
 
 }
 
-bool Volume::verifyTopology() const
+bool Volume::verifyTopology(bool multiCore) const
 {
 	bool result = true;
 
@@ -712,7 +710,7 @@ bool Volume::verifyTopology() const
 		if (_blocks[linearIdx])
 			result = result && _blocks[linearIdx]->verifyTopology();
 		return true;
-	}, RUN_MULTI_THREAD);
+	}, multiCore);
 	return result;
 }
 

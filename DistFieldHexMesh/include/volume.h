@@ -74,7 +74,7 @@ public:
 		double maxCurvatureRadius = 0.1; // 10 cm
 		int divsPerRadius = 2;
 	};
-	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params);
+	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const;
 	void makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const;
 
@@ -90,7 +90,7 @@ public:
 
 	void writePolyMesh(const std::string& dirName);
 
-	bool verifyTopology() const;
+	bool verifyTopology(bool multiCore) const;
 
 private:
 	friend class Vertex;
