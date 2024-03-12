@@ -702,31 +702,25 @@ size_t Block::splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRad
 {
 	size_t count = _polyhedra.size();
 	_polyhedra.iterateInOrder([this, divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
-		cell.splitByCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
+		if (cell.isActive())
+			cell.splitByCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
 	});
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.splitIfTooManyFaceSplits();
+		if (cell.isActive())
+			cell.splitIfTooManyFaceSplits();
 	});
 	count = _polyhedra.size() - count;
 	return count;
 }
 
-void Block::promoteSplitFacesWithSplitEdges()
-{
-	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		cell.promoteSplitFacesWithSplitEdges();
-	});
-}
-
 bool Block::includeFace(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
-	if (!face.getChildIds().empty())
+	if (!face.isActive())
 		return false;
 
 	for (const auto& cellId : face.getCellIds()) {
 		cellFunc(cellId, [&result](const Polyhedron& cell) {
-
 			result = cell.intersectsModel() && cell.isActive();
 		});
 		if (result)

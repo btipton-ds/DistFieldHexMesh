@@ -69,7 +69,6 @@ public:
 	void clearCellIds();
 	void setCellIds(const std::set<Index3DId>& cellIds);
 	size_t numCells() const;
-	size_t numSplits() const; // This counts upward to show how many times this was split
 	bool tooManyChildLevels() const;
 	const std::set<Index3DId>& getCellIds() const;
 
@@ -124,10 +123,12 @@ private:
 	bool imprintFaceVertices(const Polygon& otherFace);
 
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
+	bool imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge);
 	bool imprintVertices(const std::vector<Index3DId>& vertIds, const std::vector<Edge>& edges);
 
 	unsigned int _markVal = 0;
-	Index3DId _parent; // This records the id of the polygon this polygon was split from
+	Index3DId _parentId; // This is the id of the polyhedron this polyhedron was split from - may be null
+	Index3DId _sourceId, _duplicateId; // This pair the ids of the original polyhedron and it's modified duplicate.
 	std::set<Index3DId> _children;
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
@@ -168,12 +169,12 @@ inline bool Polygon::verifyVertsConvex() const
 
 inline void Polygon::setParentId(const Index3DId& id)
 {
-	_parent = id;
+	_parentId = id;
 }
 
 inline const Index3DId& Polygon::getParentId() const
 {
-	return _parent;
+	return _parentId;
 }
 
 inline void Polygon::addChildId(const Index3DId& id)

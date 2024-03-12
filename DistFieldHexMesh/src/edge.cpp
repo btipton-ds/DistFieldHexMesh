@@ -166,7 +166,7 @@ bool Edge::isColinearWith(const Block* pBlock, const Edge& other) const
 	return true;
 }
 
-bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, bool& inBounds) const
+bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const
 {
 	Vector3d pt = pBlock->getVertexPoint(vert);
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
@@ -176,9 +176,8 @@ bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, bool& inBo
 	v.normalize();
 
 	Vector3d v1 = pt - pt0;
-	double t = v.dot(v1);
-	inBounds = -Tolerance::paramTol() < t && t < (1 + Tolerance::paramTol());
-	v1 = v1 - t * v;
+	param = v.dot(v1);
+	v1 = v1 - param * v;
 	double dist = v1.norm();
 
 	return fabs(dist) < Tolerance::sameDistTol();

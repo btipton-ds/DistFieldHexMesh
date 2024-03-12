@@ -42,22 +42,6 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 {
 }
 
-size_t Polygon::numSplits() const
-{
-	size_t result = 0;
-	auto parent = _parent;
-	while (parent.isValid()) {
-		result++;
-		Index3DId nextParent;
-		faceFunc(parent, [&nextParent](const Polygon& face) {
-			nextParent = face.getParentId();
-		});
-		parent = nextParent;
-	}
-
-	return result;
-}
-
 bool Polygon::tooManyChildLevels() const
 {
 	size_t depth = _children.empty() ? 0 : 1;
@@ -251,6 +235,12 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 
 bool Polygon::isActive() const
 {
+	if (!_children.empty())
+		return false;
+
+	if (_duplicateId.isValid())
+		return false;
+
 	bool result = false;
 	for (const auto& cellId : _cellIds) {
 		cellFunc(cellId, [&result](const Polyhedron& cell) {
@@ -441,18 +431,11 @@ void Polygon::addCellId(const Index3DId& cellId)
 bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
 {
 	if (!_children.empty()) {
-		if (_children.size() == 1) {
-			// This face has split edges, but no split faces
-			if (!dryRun) {
-				// This face needs to be resplit and replaced. Delete it and clear it
-				getBlockPtr()->freePolygon(*_children.begin());
-				_children.clear();
-			}
-		} else {
-			newFaceIds = _children;
-			return true;
-		}
+		newFaceIds = _children;
+		return true;
 	}
+
+	assert(!_sourceId.isValid());
 
 	newFaceIds.clear();
 	assert(_vertexIds.size() == 4);
@@ -528,19 +511,47 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 
 bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 {
-	bool inBounds;
-	size_t i, j;
-	if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(getBlockPtr(), vertId, inBounds) && inBounds) {
-		// the vertex is not in this polygon and lies between i and j
-		getBlockPtr()->removeFaceFromLookUp(_thisId);
+	return imprintVertex(getBlockPtr(), vertId, edge);
+}
 
-		_vertexIds.insert(_vertexIds.begin() + j, vertId);
-		_needSort = true;
+bool Polygon::imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge)
+{
+	if (_sourceId.isValid()) {
+		// This is the duplicate, work on this
+		double t;
+		size_t i, j;
+		if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+			// the vertex is not in this polygon and lies between i and j
+			if (_thisId.isValid())
+				pBlk->removeFaceFromLookUp(_thisId);
 
-		getBlockPtr()->addFaceToLookup(_thisId);
-		return true;
+			_vertexIds.insert(_vertexIds.begin() + j, vertId);
+			_needSort = true;
+
+			if (_thisId.isValid())
+				pBlk->addFaceToLookup(_thisId);
+			return true;
+		}
+		return false;
 	}
-	return false;
+
+	if (!_duplicateId.isValid()) {
+		// This has not been duplicated, duplicate it, then work on the duplicate
+		Polygon dup(_vertexIds);
+		dup._sourceId = _thisId;
+		if (dup.imprintVertex(pBlk, vertId, edge)) { // Must imprint now
+			_duplicateId = pBlk->addFace(dup);
+			return true;
+		}
+		return false;
+	}
+
+	// Hand off to the duplicate face where the modifications will be made
+	bool result;
+	faceFunc(_duplicateId, [&vertId, &edge, &result](Polygon& _duplicateFace) {
+		result = _duplicateFace.imprintVertex(vertId, edge);
+	});
+	return result;
 }
 
 bool Polygon::imprintVertices(const vector<Index3DId>& vertIdsIn, const vector<Edge>& edgesIn)
@@ -599,6 +610,9 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 
 bool Polygon::verifyTopology() const
 {
+	if (!isActive())
+		return true;
+
 	bool valid = true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;

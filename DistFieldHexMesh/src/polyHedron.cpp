@@ -349,13 +349,9 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &centerPoint, &canSplitAll](Polygon& face) {
-			if (canSplitAll) {
-				set<Index3DId> childFaceIds;
-				canSplitAll = face.splitAtPoint(centerPoint, childFaceIds, true);
-			}
+			set<Index3DId> childFaceIds;
+			canSplitAll = canSplitAll && face.splitAtPoint(centerPoint, childFaceIds, true);
 		});
-		if (!canSplitAll)
-			break;
 	}
 	
 	if (!canSplitAll)
@@ -383,8 +379,38 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		});
 	}
 
+	set<Edge> edges;
+	getEdges(edges, true);
+	for (const auto& edge : edges) {
+		const auto& faceIds = edge.getFaceIds();
+		for (const auto& faceId : faceIds) {
+			if (_faceIds.count(faceId) == 0) {
+				// not one of our faces;
+				faceFunc(faceId, [this, &vertToFaceMap](Polygon& adjFace) {
+					const auto& adjFaceVertIds = adjFace.getVertexIds();
+					vector<Index3DId> impVerts;
+					vector<Edge> impEdges;
+					for (size_t i = 0; i < adjFaceVertIds.size(); i++) {
+						size_t j = (i + 1) % adjFaceVertIds.size();
+						Edge edge(adjFaceVertIds[i], adjFaceVertIds[j]);
+						for (const auto& pair : vertToFaceMap) {
+							const auto& vertId = pair.first;
+							double t;
+							if (!edge.containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+								impVerts.push_back(vertId);
+								impEdges.push_back(edge);
+							}
+						}
+					}
+					adjFace.imprintVertices(impVerts, impEdges);
+				});
+			}
+		}
+	}
+
 	set<Index3DId> corners;
 	getVertIds(corners);
+
 	for (const auto& vert : corners) {
 		auto vertFaces = vertToFaceMap.find(vert)->second;
 		assert(vertFaces.count(_thisId) == 0);
@@ -458,7 +484,8 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 
 bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
 {
-	return splitAtPoint(calCentroid(), newCellIds);
+	auto ctr = calCentroid();
+	return splitAtPoint(ctr, newCellIds);
 }
 
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
@@ -551,7 +578,7 @@ void Polyhedron::splitByCurvature(int divsPerRadius, double maxCurvatureRadius, 
 	CBoundingBox3Dd bbox = getBoundingBox();
 
 	bool needToSplit = false;
-#if 0
+#if 1
 	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 	for (size_t vertIdx : sharpVerts) {
 		auto pTriMesh = getBlockPtr()->getModelMesh();
@@ -599,100 +626,6 @@ void Polyhedron::splitIfTooManyFaceSplits()
 		set<Index3DId> newCellIds;
 		splitAtCentroid(newCellIds);
 	}
-}
-
-void Polyhedron::promoteSplitFacesWithSplitEdges()
-{
-	if (!_children.empty()) // We've been split
-		return;
-
-	Index3DId dbgId(Index3D(3, 2, 5), 6);
-	if (dbgId == _thisId) {
-		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/cell_0.obj", { _thisId });
-		int dbgBreak = 1;
-	}
-
-	bool changed = false;
-	set<Index3DId> newFaceIds;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &changed, &newFaceIds](Polygon& face) {
-			const auto& faceChildIds = face.getChildIds();
-			if (faceChildIds.empty()) {
-				newFaceIds.insert(face.getId());
-			}
-			else {
-				changed = true;
-				// This face is dead. Detach it
-				face.clearCellIds();
-				newFaceIds.insert(faceChildIds.begin(), faceChildIds.end());
-			}
-		});
-	}
-
-	if (!changed)
-		return;
-
-	if (dbgId == _thisId) {
-		int dbgBreak = 1;
-	}
-
-	for (const auto& faceId : newFaceIds) {
-		faceFunc(faceId, [this](Polygon& face) {
-			if (!face.ownedByCell(_thisId)) {
-				face.addCellId(_thisId);
-			}
-		});
-	}
-
-	_faceIds = newFaceIds;
-
-	// Need to insert mid vertices in unsplit edges;
-	set<Index3DId> cellVertIds;
-	getVertIds(cellVertIds);
-
-	auto adjCellIds = getAdjacentCells(false);
-	for (const auto& adjCellId : adjCellIds) {
-		cellFunc(adjCellId, [&cellVertIds](const Polyhedron& adjCell) {
-			adjCell.getVertIds(cellVertIds);
-		});
-	}
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &cellVertIds](Polygon& face) {
-			auto pBlk = getBlockPtr();
-			vector<Edge> edgesToImprint;
-			vector<Index3DId> vertsToImprint;
-			const auto& faceVertIds = face.getVertexIds();
-			for (size_t i = 0; i < faceVertIds.size(); i++) {
-				size_t j = (i + 1) % faceVertIds.size();
-				Edge edge(faceVertIds[i], faceVertIds[j]);
-				auto seg = edge.getSegment(pBlk);
-				for (const auto& cellVertId : cellVertIds) {
-					Vector3d pt = pBlk->getVertexPoint(cellVertId);
-					double t, dist;
-					dist = seg.distanceToPoint(pt, t);
-					if (dist < Tolerance::sameDistTol() && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-						edgesToImprint.push_back(edge);
-						vertsToImprint.push_back(cellVertId);
-					}
-				}
-			}
-
-			if (!edgesToImprint.empty()) {
-				face.imprintVertices(vertsToImprint, edgesToImprint);
-			}
-		});
-	}
-
-	if (dbgId == _thisId) {
-		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/cell_1.obj", { _thisId });
-		int dbgBreak = 1;
-	}
-
-	set<Edge> testEdges;
-	getEdges(testEdges, false);
-
-	assert(verifyTopology());
 }
 
 double Polyhedron::getShortestEdge() const
@@ -793,7 +726,10 @@ bool Polyhedron::isClosed() const
 
 bool Polyhedron::isActive() const
 {
-	return _children.empty();
+	if (!_children.empty())
+		return false;
+
+	return true;
 }
 
 bool Polyhedron::verifyTopology() const

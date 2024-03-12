@@ -57,7 +57,6 @@ Volume::Volume(const Volume& src)
 	: _originMeters(src._originMeters) 
 	, _spanMeters(src._spanMeters)
 	, _blocks(src._blocks)
-//	, _outBlocks(src._outBlocks)
 {
 }
 
@@ -306,19 +305,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
-//	assert(verifyTopology());
+	assert(verifyTopology());
 #endif
-
-	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->promoteSplitFacesWithSplitEdges();
-			}
-			return true;
-		}, false && RUN_MULTI_THREAD);
-	}
-
-//	assert(verifyTopology());
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
@@ -695,7 +683,7 @@ bool Volume::verifyTopology() const
 		if (_blocks[linearIdx])
 			result = result && _blocks[linearIdx]->verifyTopology();
 		return true;
-	}, false && RUN_MULTI_THREAD);
+	}, RUN_MULTI_THREAD);
 	return result;
 }
 

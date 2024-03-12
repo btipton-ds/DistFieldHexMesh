@@ -77,7 +77,6 @@ public:
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
 	void splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
-	void promoteSplitFacesWithSplitEdges();
 	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);
@@ -109,7 +108,6 @@ private:
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
 	Index3DId _parentId; // This is the id of the polyhedron this polyhedron was split from - may be null
-	Index3DId _sourceId, _modifiedDuplicateId; // This pair the ids of the original polyhedron and it's modified duplicate.
 	std::set<Index3DId> _children; // Children are specifically polyhedra which have been split from their parent.
 	std::set<Index3DId> _faceIds;
 };

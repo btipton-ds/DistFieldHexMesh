@@ -812,7 +812,6 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long en
 
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
 {
-    bool multiCore = false;
     vector<float> points, colors;
     vector<unsigned int> indices;
     auto colorFunc = [](float curvature, float rgb[3])->bool {
