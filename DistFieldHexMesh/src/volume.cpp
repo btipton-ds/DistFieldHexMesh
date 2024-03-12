@@ -40,6 +40,12 @@ This file is part of the DistFieldHexMesh application/library.
 #include <filesystem>
 #include <stdexcept>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <profileapi.h>
+#endif // _WIN32
+
+
 using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
@@ -271,20 +277,32 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
 
+#ifdef _WIN32
+	LARGE_INTEGER startCount, freq;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&startCount);
+#endif // _WIN32
+
 	MultiCore::runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
 	}, _blocks.size(), RUN_MULTI_THREAD);
 
-	// Cannot create subBlocks until all blocks are created
+	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		if (_blocks[linearIdx])
 			_blocks[linearIdx]->createSubBlocks();
 		return true;
 	}, RUN_MULTI_THREAD);
 
-//	assert(verifyTopology());
+#ifdef _WIN32
+	LARGE_INTEGER endCount;
+	QueryPerformanceCounter(&endCount);
+	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	cout << "Time for createSubBlocks: " << deltaT << " secs\n";
+	startCount = endCount;
+#endif // _WIN32
 
 #if 1
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
@@ -295,7 +313,13 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
-//	assert(verifyTopology());
+#ifdef _WIN32
+	QueryPerformanceCounter(&endCount);
+	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
+	startCount = endCount;
+#endif // _WIN32
+	//	assert(verifyTopology());
 
 	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
 		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
@@ -305,6 +329,12 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
+#ifdef _WIN32
+	QueryPerformanceCounter(&endCount);
+	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
+	startCount = endCount;
+#endif // _WIN32
 	assert(verifyTopology());
 #endif
 
@@ -319,7 +349,6 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 	bbox.merge(_originMeters + _spanMeters);
 	auto diagDist = bbox.range().norm();
 	bbox.grow(diagDist * 0.05);
-
 
 	triMeshes.resize(4);
 	triMeshes[FT_OUTER].resize(_blocks.size());

@@ -307,7 +307,7 @@ void AppData::doBuildCFDHexes()
 
         Volume::BuildCFDParams params;
 
-        params.numSimpleDivs = 2;
+        params.numSimpleDivs = 1;
         params.numCurvatureDivs = 0;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm

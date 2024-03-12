@@ -88,8 +88,6 @@ Block::Block(const Block& src)
 	, _boundBox(src._boundBox)
 	, _innerBoundBox(src._innerBoundBox)
 	, _blockDim(src._blockDim)
-	, _blockEdges()
-	, _blockMeshes()
 	, _corners(src._corners)
 	, _filename(src._filename)
 	, _vertices(this, src._vertices)
@@ -763,20 +761,11 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 	double span = bbox.range().norm();
 	bbox.grow(0.05 * span);
 
-	if (_blockMeshes.empty()) {
-		_blockMeshes.resize(FT_ALL);
-	}
 	CMeshPtr result;
 	_polygons.iterateInOrder([this, &result, &bbox, meshType](const Polygon& face) {
 		if (includeFace(meshType, face)) {
 			if (!result) {
-				if (!_blockMeshes[meshType])
-					_blockMeshes[meshType] = make_shared<CMesh>(bbox);
-				else
-					_blockMeshes[meshType]->reset(bbox);
-
-				result = _blockMeshes[meshType];
-				result->changed();
+				result = make_shared<CMesh>(bbox);
 			}
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
@@ -802,9 +791,6 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 
 Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 {
-	if (_blockEdges.empty())
-		_blockEdges.resize(FT_ALL);
-
 	set<Edge> edges;
 
 	_polygons.iterateInOrder([this, meshType, &edges](const Polygon& face) {
@@ -815,7 +801,6 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 
 	glPointsPtr result;
 	if (!edges.empty()) {
-		result = _blockEdges[meshType];
 		if (!result)
 			result = make_shared< GlPoints>();
 		auto& vals = *result;

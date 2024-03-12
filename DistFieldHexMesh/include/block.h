@@ -199,8 +199,6 @@ private:
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
-	mutable glPointsVector _blockEdges;
-	mutable TriMeshVector _blockMeshes;
 	std::vector<Vector3d> _corners;
 
 	std::string _filename;
