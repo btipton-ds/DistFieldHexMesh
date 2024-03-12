@@ -79,7 +79,6 @@ public:
 
 	bool ownedByCell(const Index3DId& cellId) const;
 	bool isOuter() const;
-	bool isLevelBoundary(size_t& innerLevel) const;
 	bool isBlockBoundary() const;
 	bool containsPt(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;

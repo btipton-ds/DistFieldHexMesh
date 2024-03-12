@@ -674,16 +674,6 @@ bool Block::load()
 	return true;
 }
 
-void Block::setCellDepths()
-{
-	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		cell.resetLevel();
-	});
-	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		cell.setParentLevel();
-	});
-}
-
 size_t Block::splitAllCellsAtCentroid()
 {
 	size_t count = _polyhedra.size();
@@ -745,12 +735,8 @@ bool Block::includeFace(FaceType meshType, const Polygon& face) const
 	if (!result)
 		return false;
 
-
-	
-	size_t level;
 	bool isOuter = face.isOuter();
 	bool isBlockBoundary = face.isBlockBoundary();
-	bool isLevelBoundary  = face.isLevelBoundary(level);
 
 	switch (meshType) {
 		default:
@@ -758,16 +744,16 @@ bool Block::includeFace(FaceType meshType, const Polygon& face) const
 			result = true;
 			break;
 		case FT_INNER:
-			result = !isOuter && !isBlockBoundary && !isLevelBoundary;
+			result = !isOuter && !isBlockBoundary;
 			break;
 		case FT_OUTER:
 			result = isOuter;
 			break;
 		case FT_LAYER_BOUNDARY:
-			result = isLevelBoundary;
+//			result = !isOuter && isLevelBoundary;
 			break;
 		case FT_BLOCK_BOUNDARY:
-			result = isBlockBoundary;
+			result = !isOuter && isBlockBoundary;
 			break;
 	}
 
@@ -776,14 +762,6 @@ bool Block::includeFace(FaceType meshType, const Polygon& face) const
 
 CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 {
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.resetLevel();
-	});
-
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.setParentLevel();
-	});
-
 	if (numFaces(true) == 0)
 		return nullptr;
 

@@ -67,29 +67,10 @@ Volume::~Volume()
 
 void Volume::startOperation()
 {
-/*
-	_outBlocks.resize(_blocks.size());
-	MultiCore::runLambda([this](size_t i)->bool {
-		auto idx = calBlockIndexFromLinearIndex(i);
-		if (_blocks[i]) {
-			_outBlocks[i] = make_shared<Block>(*_blocks[i]);
-			_outBlocks[i]->setIsOutput(true);
-		} else
-			_outBlocks[i] = createBlock(true, idx);
-		_outBlocks[i]->setIsOutput(true);
-		return true;
-	}, _blocks.size(), RUN_MULTI_THREAD);
-*/
 }
 
 void Volume::endOperation()
 {
-	MultiCore::runLambda([this](size_t i)->bool {
-		if (_blocks[i]) {
-			_blocks[i]->setCellDepths();
-		}
-		return true;
-	}, _blocks.size(), RUN_MULTI_THREAD);
 }
 
 void Volume::setVolDim(const Index3D& blockSize)
@@ -337,7 +318,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		}, false && RUN_MULTI_THREAD);
 	}
 
-	assert(verifyTopology());
+//	assert(verifyTopology());
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

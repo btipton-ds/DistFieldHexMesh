@@ -184,7 +184,6 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, const Polygon& face) const;
-	void setCellDepths();
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
 	size_t splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);

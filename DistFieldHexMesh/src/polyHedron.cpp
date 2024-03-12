@@ -110,7 +110,7 @@ void Polyhedron::addChild(const Index3DId& id)
 
 void Polyhedron::setParent(const Index3DId& id)
 {
-	_parent = id;
+	_parentId = id;
 }
 
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
@@ -312,25 +312,6 @@ void Polyhedron::markFaces(unsigned int markVal)
 		}
 	}
 }
-inline void Polyhedron::incrementLevel(size_t newLevel)
-{
-	if (newLevel > _level)
-		_level = newLevel;
-	if (_parent.isValid()) {
-		cellFunc(_parent, [this](Polyhedron& par) {
-			par.incrementLevel(_level + 1);
-		});
-	}
-}
-
-void Polyhedron::setParentLevel()
-{
-	if (intersectsModel()) {
-		_level = 0;
-//		incrementLevel(_level);
-	} else
-		_level = 1;
-}
 
 Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds)
 {
@@ -450,7 +431,6 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 
 		Polyhedron newCell(vertFaces);
 		newCell.setParent(_thisId);
-		newCell._numSplits = _numSplits + 1;
 		auto newCellId = getBlockPtr()->addCell(newCell);
 		cellFunc(newCellId, [this, &newCellId](Polyhedron& newCell) {
 			assert(newCell.verifyTopology());
