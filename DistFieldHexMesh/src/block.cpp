@@ -541,17 +541,6 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 		}
 		if (!found)
 			return Index3DId();
-#if 0
-		vector<LineSegment> edgeSegs;
-		getBlockEdgeSegs(pts.data(), edgeSegs);
-		for (const auto& seg : edgeSegs) {
-			vector<RayHit> hits;
-			if (_pModelTriMesh->rayCast(seg, hits)) {
-				hasContents = true;
-				break;
-			}
-		}
-#endif
 	}
 
 	vector<Index3DId> faceIds;
@@ -672,6 +661,41 @@ bool Block::load()
 	return true;
 }
 
+void Block::setNeedsSimpleSplit()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.setNeedToSplitAtCentroid(true);
+	});
+}
+
+void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+{
+	_polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
+		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
+	});
+}
+
+void Block::splitPolygonsNeedingSplit()
+{
+	_polygons.iterateInOrder([](Polygon& face) {
+		face.splitIfRequred();
+	});
+}
+
+void Block::splitPolyhedraNeedingSplit()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.splitIfRequred();
+	});
+}
+
+void Block::imprintPolyhedraVertices()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.imprintVertices();
+	});
+}
+
 size_t Block::splitAllCellsAtCentroid()
 {
 	size_t count = _polyhedra.size();
@@ -774,13 +798,20 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 				pts.push_back(getVertexPoint(vertId));
 			}
 
-			for (size_t i = 1; i < pts.size() - 1; i++) {
-				size_t idx0 = 0;
-				size_t idx1 = i;
-				size_t idx2 = i + 1;
-				result->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+			if (pts.size() > 4) {
+				Vector3d ctr = face.calCentroid();
+				for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+					size_t idx1 = (idx0 + 1) % pts.size();
+					result->addTriangle(ctr, pts[idx0], pts[idx1]);
+				}
+			} else {
+				for (size_t i = 1; i < pts.size() - 1; i++) {
+					size_t idx0 = 0;
+					size_t idx1 = i;
+					size_t idx2 = i + 1;
+					result->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+				}
 			}
-
 			result->changed();
 		}
 	});
@@ -821,29 +852,6 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 		}
 	}
 	return result;
-}
-
-void Block::getBlockEdgeSegs(const Vector3d* subBlockPoints, vector<LineSegment>& segs) const
-{
-	segs.clear();
-	segs.reserve(12);
-	// X legs
-	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[1]));
-	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[2]));
-	segs.push_back(LineSegment(subBlockPoints[4], subBlockPoints[5]));
-	segs.push_back(LineSegment(subBlockPoints[7], subBlockPoints[6]));
-
-	// Y legs
-	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[3]));
-	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[2]));
-	segs.push_back(LineSegment(subBlockPoints[4], subBlockPoints[7]));
-	segs.push_back(LineSegment(subBlockPoints[5], subBlockPoints[6]));
-
-	// Z legs
-	segs.push_back(LineSegment(subBlockPoints[0], subBlockPoints[4]));
-	segs.push_back(LineSegment(subBlockPoints[1], subBlockPoints[5]));
-	segs.push_back(LineSegment(subBlockPoints[2], subBlockPoints[6]));
-	segs.push_back(LineSegment(subBlockPoints[3], subBlockPoints[7]));
 }
 
 bool Block::freePolygon(const Index3DId& id)

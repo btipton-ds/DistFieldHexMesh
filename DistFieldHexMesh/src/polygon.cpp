@@ -42,28 +42,11 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 {
 }
 
-bool Polygon::tooManyChildLevels() const
-{
-	size_t depth = _children.empty() ? 0 : 1;
-	for (const auto& childId : _children) {
-		faceFunc(childId, [&depth](const Polygon& face) {
-			if (!face._children.empty()) {
-				depth++;
-			}
-		});
-		if (depth > 1)
-			return true;
-	}
-	return false;
-}
-
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	if (_children.empty()) {
-		_vertexIds.push_back(vertId);
-		_needSort = true;
-	} else
-		assert(!"Cannot modify a which has already be split. Create a new face");
+	assert(!_isReference);
+	_vertexIds.push_back(vertId);
+	_needSort = true;
 }
 
 Index3DId Polygon::getNeighborCellId(const Index3DId& thisCellId) const
@@ -158,6 +141,27 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
+bool Polygon::hasSplits() const
+{
+	const double tolSinAngle = sin(Tolerance::angleTol());
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		size_t k = (j + 1) % _vertexIds.size();
+
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[k]);
+
+		Vector3d v0 = (pt1 - pt0).normalized();
+		Vector3d v1 = (pt2 - pt1).normalized();
+		double dp = v1.cross(v0).norm();
+		if (dp < tolSinAngle)
+			return true;
+	}
+
+	return false;
+}
+
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {
@@ -235,10 +239,7 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 
 bool Polygon::isActive() const
 {
-	if (!_children.empty())
-		return false;
-
-	if (_duplicateId.isValid())
+	if (_isReference)
 		return false;
 
 	bool result = false;
@@ -361,6 +362,7 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
+#if 0
 	set<Edge> edges;
 	getEdges(edges);
 
@@ -391,14 +393,15 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 		orderedVertIds.pop_back();
 	else
 		assert(!"Should never reach this point.");
+#endif
 
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(orderedVertIds[0]);
-	for (size_t j = 1; j < orderedVertIds.size() - 1; j++) {
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	for (size_t j = 1; j < _vertexIds.size() - 1; j++) {
 		size_t k = j + 1;
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(orderedVertIds[j]);
-		Vector3d pt2 = getBlockPtr()->getVertexPoint(orderedVertIds[k]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[k]);
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
 		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
@@ -428,15 +431,37 @@ void Polygon::addCellId(const Index3DId& cellId)
 	assert(_cellIds.size() <= 2);
 }
 
-bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
+void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
 {
-	if (!_children.empty()) {
-		newFaceIds = _children;
-		return true;
+	_needsSplit = val ? Trinary::IS_TRUE : Trinary::IS_FALSE;
+	_splitPt = pt;
+}
+
+void Polygon::splitIfRequred()
+{
+	if (_needsSplit == Trinary::IS_TRUE) {
+		_splitIds.clear();
+		splitAtPoint(_splitPt, _splitIds, false);
 	}
 
-	assert(!_sourceId.isValid());
+	_needsSplit = Trinary::IS_FALSE;
+}
 
+bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
+{
+	Polygon srcPoly(*this);
+	if (hasSplits()) {
+		assert(_sourceId.isValid());
+		faceFunc(_sourceId, [&srcPoly](const Polygon& src) {
+			srcPoly = src;
+		});
+	}
+
+	return srcPoly.splitAtPointInner(pt, newFaceIds, dryRun);
+}
+
+bool Polygon::splitAtPointInner(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
+{
 	newFaceIds.clear();
 	assert(_vertexIds.size() == 4);
 	vector<Vector3d> edgePts;
@@ -463,6 +488,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool 
 	if (dryRun)
 		return true; // Report that everything is good to go and return without touching anything
 
+	_isReference = true;
 	Index3DId facePtId = getBlockPtr()->addVertex(facePt);
 	vector<Index3DId> edgePtIds;
 	for (const auto& edgePt : edgePts) {
@@ -475,7 +501,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool 
 		auto vertId = _vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId});
-		face.setParentId(_thisId);
+		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 		// The split face separates the same cells as the original, until new cells are created. They 
 		// The original cell must replace its id the id of a child cell when the child cell is created
@@ -485,9 +511,6 @@ bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool 
 		newFaceIds.insert(newFaceId);
 	}
 	assert(newFaceIds.size() == 4);
-	faceFunc(_thisId, [&newFaceIds](Polygon& writableThis) {
-		writableThis.setChildIds(newFaceIds);
-	});
 
 	return true;
 }
@@ -535,53 +558,12 @@ bool Polygon::imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& ed
 		return false;
 	}
 
-	if (!_duplicateId.isValid()) {
-		// This has not been duplicated, duplicate it, then work on the duplicate
-		Polygon dup(_vertexIds);
-		dup._sourceId = _thisId;
-		if (dup.imprintVertex(pBlk, vertId, edge)) { // Must imprint now
-			_duplicateId = pBlk->addFace(dup);
-			return true;
-		}
-		return false;
-	}
-
-	// Hand off to the duplicate face where the modifications will be made
-	bool result;
-	faceFunc(_duplicateId, [&vertId, &edge, &result](Polygon& _duplicateFace) {
-		result = _duplicateFace.imprintVertex(vertId, edge);
-	});
-	return result;
-}
-
-bool Polygon::imprintVertices(const vector<Index3DId>& vertIdsIn, const vector<Edge>& edgesIn)
-{
-	bool result = false;
-	if (vertIdsIn.size() > 1) {
-		int dbgBreak = 1;
-	}
-
-	vector<Index3DId> vertIds(vertIdsIn);
-	vector<Edge> edges(edgesIn);
-
-	while (!vertIds.empty()) {
-		auto vertId = vertIds.back();
-		auto edge = edges.back();
-		vertIds.pop_back();
-		edges.pop_back();
-		result = imprintVertex(vertId, edge) || result;
-	}
-	return result;
+	return true;
 }
 
 Index3DId Polygon::createFace(const Polygon& face)
 {
 	return getBlockPtr()->addFace(face);
-}
-
-void Polygon::setChildIds(const set<Index3DId>& childFaceIds)
-{
-	_children = childFaceIds;
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)

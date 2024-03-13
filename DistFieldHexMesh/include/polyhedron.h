@@ -39,8 +39,17 @@ namespace DFHM {
 class Block;
 class Edge;
 
-// Polyhedra are never cross block, so they use size_t for indexing.
-// Faces and vertices in a cell are cross block
+/*
+	Mark all faces and cells to split on one pass
+	Split all the faces with a map from old faces to new faces
+	Split all the cells usnig the map of old to new to populate the new cells
+
+*/
+// Polyhedra are owned by a single block, but their faces may belong to different blocks.
+// Once a polyhedron is split, it is kept for reference but is otherwise dead.
+// If a face or edge is split, the polyhedron must also be split.
+// If a polyhdron has been split, it can be split again but DOES NOT become reference.
+
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
@@ -54,7 +63,6 @@ public:
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
 	bool containsFace(const Index3DId& faceId) const;
-	void addChild(const Index3DId& id);
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
 	void getEdges(std::set<Edge>& edgeSet, bool includeNeighborFaces) const;
@@ -70,11 +78,16 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	void markFaces(unsigned int markVal);
+	bool hasSplits() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
+	void setNeedToSplitAtCentroid(bool val);
+	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void splitIfRequred();
+	void imprintVertices();
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
+	void markIfNeedsSplitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
 	double getShortestEdge() const;
@@ -95,7 +108,7 @@ public:
 private:
 	friend class Block;
 
-	void setParent(const Index3DId& id);
+	void setSourceId(const Index3DId& id);
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
@@ -106,9 +119,10 @@ private:
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
-	bool _needsCurvatureCheck = true;
-	Index3DId _parentId; // This is the id of the polyhedron this polyhedron was split from - may be null
-	std::set<Index3DId> _children; // Children are specifically polyhedra which have been split from their parent.
+	bool _needsCurvatureCheck = true, 
+		_isReference = false;
+	Trinary _needsSplit = Trinary::IS_UNKNOWN;
+	Index3DId _sourceId; // This is the id of the polyhedron this polyhedron was split from - may be null
 	std::set<Index3DId> _faceIds;
 };
 

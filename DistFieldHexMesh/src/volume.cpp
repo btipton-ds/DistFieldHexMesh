@@ -303,14 +303,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif // _WIN32
 
 #if 1
-	for (size_t i = 0; i < params.numSimpleDivs; i++) {
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitAllCellsAtCentroid();
-			}
-			return true;
-		}, multiCore);
-	}
+	splitSimple(params, multiCore);
 #ifdef _WIN32
 	QueryPerformanceCounter(&endCount);
 	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
@@ -319,14 +312,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif // _WIN32
 	//	assert(verifyTopology());
 
-	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
-		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitAllCellsByCurvature(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
-			}
-			return true;
-		}, multiCore);
-	}
+	splitAtCurvature(params, multiCore);
+
 #ifdef _WIN32
 	QueryPerformanceCounter(&endCount);
 	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
@@ -338,6 +325,76 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
+}
+
+void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
+{
+	for (size_t i = 0; i < params.numSimpleDivs; i++) {
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->setNeedsSimpleSplit();
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolygonsNeedingSplit();
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolyhedraNeedingSplit();
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->imprintPolyhedraVertices();
+			}
+			return true;
+		}, multiCore);
+	}
+}
+
+void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
+{
+	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
+	double sinEdgeAngle = sin(sharpAngleRadians);
+
+	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
+		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolygonsNeedingSplit();
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolyhedraNeedingSplit();
+			}
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->imprintPolyhedraVertices();
+			}
+			return true;
+		}, multiCore);
+	}
+
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
@@ -521,16 +578,6 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 			faceIds.insert(ids.begin(), ids.end());
 		});
 	}
-
-#if 1
-	for (const auto& faceId : faceIds) {
-		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(faceId, [&pBlk, &faceIds](const Polygon& face) {
-			const auto& ids = face.getChildIds();
-			faceIds.insert(ids.begin(), ids.end());
-		});
-	}
-#endif
 
 	vector<Vector3d> pts;
 	map<Index3DId, size_t> vertIdToPtMap;
@@ -726,9 +773,8 @@ void Volume::runLambda(L fLambda, bool multiCore) const
 }
 
 template<class L>
-void Volume::runLambda(L fLambda, bool multiCore)
+void Volume::runLambda(L fLambda, bool multiCore, unsigned int stride)
 {
-	const Index3DBaseType stride = 3;
 	Index3D phaseIdx, idx;
 
 	startOperation();

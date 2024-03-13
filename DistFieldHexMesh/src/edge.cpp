@@ -114,11 +114,12 @@ double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) 
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
+	double len = v.norm();
 	v.normalize();
 
 	Vector3d v1 = pt - pt0;
-	double t = v.dot(v1);
-	inBounds = (t >= 0) && (t <= 1);
+	double t = v.dot(v1) / len;
+	inBounds = (t > -Tolerance::paramTol()) && (t < 1 + Tolerance::paramTol());
 
 	return t;
 }

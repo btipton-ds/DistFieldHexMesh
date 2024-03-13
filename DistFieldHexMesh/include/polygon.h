@@ -42,6 +42,11 @@ namespace DFHM {
 class Edge;
 class Block;
 
+// A polygon is owned by a single block, but it's vertices may belong to more than one block.
+// Once a polygon is split, it is kept for reference but is otherwise dead.
+// If an edge is split, the polygon must also be split.
+// If a polygon has been split, it can be split again but DOES NOT become reference.
+
 class Polygon : public ObjectPoolOwnerUser {
 public:
 	static bool verifyUniqueStat(const std::vector<Index3DId>& vertIds);
@@ -58,25 +63,18 @@ public:
 	const Index3DId& getId() const;
 
 	void addVertex(const Index3DId& vertId);
-	void setParentId(const Index3DId& id);
-	const Index3DId& getParentId() const;
-	void addChildId(const Index3DId& id);
-	const std::set<Index3DId>& getChildIds() const;
-	void clearChildIds();
+	void setSourceId(const Index3DId& id);
+	const Index3DId& getSourceId() const;
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
 	void clearCellIds();
 	void setCellIds(const std::set<Index3DId>& cellIds);
 	size_t numCells() const;
-	bool tooManyChildLevels() const;
 	const std::set<Index3DId>& getCellIds() const;
 
-	void setMarkVal(unsigned int val);
-	void clearMarkVal(unsigned int val);
-	bool isMarkSet(unsigned int val) const;
-
 	bool ownedByCell(const Index3DId& cellId) const;
+	bool hasSplits() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
 	bool containsPt(const Vector3d& pt) const;
@@ -103,6 +101,8 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
+	void setNeedToSplitAtPoint(bool val, const Vector3d& pt);
+	void splitIfRequred();
 
 	void orient();
 	void pack();
@@ -118,20 +118,19 @@ private:
 
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face);
-	void setChildIds(const std::set<Index3DId>& childFaceIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
+	bool splitAtPointInner(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
 	bool imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge);
-	bool imprintVertices(const std::vector<Index3DId>& vertIds, const std::vector<Edge>& edges);
 
-	unsigned int _markVal = 0;
-	Index3DId _parentId; // This is the id of the polyhedron this polyhedron was split from - may be null
-	Index3DId _sourceId, _duplicateId; // This pair the ids of the original polyhedron and it's modified duplicate.
-	std::set<Index3DId> _children;
+	bool _isReference = false;
+	Trinary _needsSplit = Trinary::IS_UNKNOWN;
+	Vector3d _splitPt;
+	Index3DId _sourceId; // This points to the original refence polygon used to create this one.
 	std::vector<Index3DId> _vertexIds;
-	std::set<Index3DId> _cellIds;
+	std::set<Index3DId> _cellIds, _splitIds;
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -140,21 +139,6 @@ private:
 inline const Index3DId& Polygon::getId() const
 {
 	return _thisId;
-}
-
-inline void Polygon::setMarkVal(unsigned int val)
-{
-	_markVal |= val;
-}
-
-inline void Polygon::clearMarkVal(unsigned int val)
-{
-	_markVal &= ~val;
-}
-
-inline bool Polygon::isMarkSet(unsigned int val) const
-{
-	return _markVal & val;
 }
 
 inline bool Polygon::verifyUnique() const
@@ -167,29 +151,14 @@ inline bool Polygon::verifyVertsConvex() const
 	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
 }
 
-inline void Polygon::setParentId(const Index3DId& id)
+inline void Polygon::setSourceId(const Index3DId& id)
 {
-	_parentId = id;
+	_sourceId = id;
 }
 
-inline const Index3DId& Polygon::getParentId() const
+inline const Index3DId& Polygon::getSourceId() const
 {
-	return _parentId;
-}
-
-inline void Polygon::addChildId(const Index3DId& id)
-{
-	_children.insert(id);
-}
-
-inline const std::set<Index3DId>& Polygon::getChildIds() const
-{
-	return _children;
-}
-
-inline void Polygon::clearChildIds()
-{
-	_children.clear();
+	return _sourceId;
 }
 
 inline void Polygon::removeCellId(const Index3DId& cellId)
@@ -231,5 +200,6 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }
+
 
 }

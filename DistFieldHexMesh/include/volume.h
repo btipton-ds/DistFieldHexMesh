@@ -110,6 +110,9 @@ private:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
+	void splitSimple(const BuildCFDParams& params, bool multiCore);
+	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
+
 	void findFeatures();
 	void findSharpVertices();
 	void findSharpEdgeGroups();
@@ -122,7 +125,7 @@ private:
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
-	void runLambda(L fLambda, bool multiCore);
+	void runLambda(L fLambda, bool multiCore, unsigned int stride = 2);
 
 	static Index3D s_volDim;
 

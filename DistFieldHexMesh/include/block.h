@@ -173,7 +173,6 @@ private:
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;
-	void getBlockEdgeSegs(const Vector3d* blockPts, std::vector<LineSegment>& segs) const;
 
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
@@ -184,6 +183,13 @@ private:
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, const Polygon& face) const;
+
+	void setNeedsSimpleSplit();
+	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void splitPolygonsNeedingSplit();
+	void splitPolyhedraNeedingSplit();
+	void imprintPolyhedraVertices();
+
 	size_t splitAllCellsAtCentroid();
 	size_t splitAllCellsAtPoint(const Vector3d& pt);
 	size_t splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
