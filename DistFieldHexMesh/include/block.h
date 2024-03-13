@@ -127,7 +127,7 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	Index3DId addCell(const Polyhedron& cell);
+	Index3DId addCell(const Polyhedron& cell, bool addLinkage = true);
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
@@ -186,8 +186,10 @@ private:
 
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void setPolygonCellIds();
 	void splitPolygonsNeedingSplit();
 	void splitPolyhedraNeedingSplit();
+	void replacePolyhedraSplitFaces();
 	void imprintPolyhedraVertices();
 
 	size_t splitAllCellsAtCentroid();

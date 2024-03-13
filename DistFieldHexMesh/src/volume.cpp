@@ -310,8 +310,11 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
 	startCount = endCount;
 #endif // _WIN32
-	//	assert(verifyTopology());
+	assert(verifyTopology(multiCore));
 
+#ifdef _WIN32
+	startCount = endCount;
+#endif // _WIN32
 	splitAtCurvature(params, multiCore);
 
 #ifdef _WIN32
@@ -337,26 +340,7 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, multiCore);
 
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolygonsNeedingSplit();
-			}
-			return true;
-		}, multiCore);
-
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolyhedraNeedingSplit();
-			}
-			return true;
-		}, multiCore);
-
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->imprintPolyhedraVertices();
-			}
-			return true;
-		}, multiCore);
+		finishSplits(false, multiCore);
 	}
 }
 
@@ -373,20 +357,35 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, multiCore);
 
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolygonsNeedingSplit();
-			}
-			return true;
-		}, multiCore);
+		finishSplits(true, multiCore);
+	}
 
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolyhedraNeedingSplit();
-			}
-			return true;
-		}, multiCore);
+}
 
+void Volume::finishSplits(bool needImprint, bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolygonsNeedingSplit();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraNeedingSplit();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->replacePolyhedraSplitFaces();
+		}
+		return true;
+	}, multiCore);
+
+	if (needImprint) {
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->imprintPolyhedraVertices();
@@ -395,6 +394,12 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		}, multiCore);
 	}
 
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->setPolygonCellIds();
+		}
+		return true;
+	}, multiCore);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const

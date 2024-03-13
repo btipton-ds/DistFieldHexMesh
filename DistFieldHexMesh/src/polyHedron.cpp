@@ -123,10 +123,11 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
 	map<Edge, set<Index3DId>> edgeToFaceMap;
 	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds](const Polygon& face) {
-			assert(face.ownedByCell(_thisId));
-			auto temp = face.getCellIds();
-			adjCellIds.insert(temp.begin(), temp.end());
+		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeNeighborFaces](const Polygon& face) {
+			if (includeNeighborFaces) {
+				auto temp = face.getCellIds();
+				adjCellIds.insert(temp.begin(), temp.end());
+			}
 			set<Edge> edges;
 			face.getEdges(edges);
 			for (const auto& edge : edges) {
@@ -174,7 +175,7 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &cellIds](const Polygon& face) {
-			const auto& temp = face.getCellIds();
+			const auto temp = face.getCellIds();
 			cellIds.insert(temp.begin(), temp.end());
 		});
 	}
@@ -385,6 +386,15 @@ struct VertEdgePair {
 };
 }
 
+void Polyhedron::setPolygonsCellId()
+{
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](Polygon& face) {
+			face.addCellId(_thisId);
+		});
+	}
+}
+
 void Polyhedron::splitIfRequred()
 {
 	if (_needsSplit == Trinary::IS_TRUE) {
@@ -395,6 +405,37 @@ void Polyhedron::splitIfRequred()
 	_needsSplit = Trinary::IS_FALSE;
 }
 
+void Polyhedron::replaceSplitFaces()
+{
+	if (_isReference || !hasSplits())
+		return;
+
+	if (!_sourceId.isValid()) {
+		setReference();
+		Polyhedron dup(_faceIds);
+		dup._sourceId = _thisId;
+		auto newCellId = getBlockPtr()->addCell(dup);
+		cellFunc(newCellId, [](Polyhedron& dupCell) {
+			dupCell.replaceSplitFaces();
+		});
+
+		return;
+	}
+
+	set<Index3DId> newFaceIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&newFaceIds](const Polygon& face) {
+			if (face._splitIds.empty()) {
+				newFaceIds.insert(face.getId());
+			} else {
+				const auto& subIds = face._splitIds;
+				newFaceIds.insert(subIds.begin(), subIds.end());
+			}
+		});
+	}
+	_faceIds = newFaceIds;
+}
+
 void Polyhedron::imprintVertices()
 {
 }
@@ -403,6 +444,19 @@ bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
 {
 	auto ctr = calCentroid();
 	return splitAtPoint(ctr, newCellIds);
+}
+
+void Polyhedron::setReference()
+{
+	if (_isReference)
+		return;
+
+	_isReference = true;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](Polygon& face) {
+			face.removeCellId(_thisId);
+		});
+	}
 }
 
 bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds)
@@ -420,7 +474,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	if (!canSplitAll)
 		return false;
 
-	_isReference = true;
+	setReference();
 
 	Index3DId cellMidId = getBlockPtr()->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
@@ -428,7 +482,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		faceFunc(faceId, [this, &centerPoint, &vertToFaceMap](Polygon& face) {
 			set<Index3DId> childFaceIds = face._splitIds;
 			for (const auto& childFaceId : childFaceIds) {
-				faceFunc(childFaceId, [&vertToFaceMap](const Polygon& childFace) {
+				faceFunc(childFaceId, [this, &vertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = vertToFaceMap.find(vertId);
 						if (iter == vertToFaceMap.end()) {
@@ -486,16 +540,23 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 				cellMidId,
 				faceVert1,
 			};
-			vertFaces.insert(addFace(verts));
+
+			auto newFaceId = addFace(verts);
+			faceFunc(newFaceId, [](const Polygon& newFace) {
+				if (!newFace._splitIds.empty()) {
+					int dbgBreak = 1;
+				}
+				if (!newFace.getCellIds().empty()) {
+					int dbgBreak = 1;
+				}
+			});
+			vertFaces.insert(newFaceId);
 		}
 
 		Polyhedron newCell(vertFaces);
 		// Do not set sourceId, it's only used for imprints
-		auto newCellId = getBlockPtr()->addCell(newCell);
+		auto newCellId = getBlockPtr()->addCell(newCell, false);
 		newCellIds.insert(newCellId);
-		cellFunc(newCellId, [this, &newCellId](Polyhedron& newCell) {
-			assert(newCell.verifyTopology());
-		});
 	}
 
 	return true;

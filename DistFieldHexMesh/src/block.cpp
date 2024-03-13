@@ -479,13 +479,13 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-Index3DId Block::addCell(const Polyhedron& cell)
+Index3DId Block::addCell(const Polyhedron& cell, bool addLinkage)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	const auto& cellFaceIds = _polyhedra[cellId].getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
-		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
+		faceFunc(faceId, [this, &cellId, addLinkage](Polygon& cellFace) {
 			// Removed broken face to owner cell linkages.
 			auto cellIds = cellFace.getCellIds();
 			for (const auto& cellId : cellIds) {
@@ -496,8 +496,10 @@ Index3DId Block::addCell(const Polyhedron& cell)
 				});
 			}
 
-			// Add linkage to the new cell
-			cellFace.addCellId(cellId);
+			if (addLinkage) {
+				// Add linkage to the new cell
+				cellFace.addCellId(cellId);
+			}
 		});
 	}
 	return cellId;
@@ -675,6 +677,14 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	});
 }
 
+void Block::setPolygonCellIds()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		if (cell.isActive())
+			cell.setPolygonsCellId();
+	});
+}
+
 void Block::splitPolygonsNeedingSplit()
 {
 	_polygons.iterateInOrder([](Polygon& face) {
@@ -685,7 +695,15 @@ void Block::splitPolygonsNeedingSplit()
 void Block::splitPolyhedraNeedingSplit()
 {
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.splitIfRequred();
+		if (cell.needsSplit() == Trinary::IS_TRUE)
+			cell.splitIfRequred();
+	});
+}
+
+void Block::replacePolyhedraSplitFaces()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.replaceSplitFaces();
 	});
 }
 
@@ -741,7 +759,8 @@ bool Block::includeFace(FaceType meshType, const Polygon& face) const
 	if (!face.isActive())
 		return false;
 
-	for (const auto& cellId : face.getCellIds()) {
+	auto ids = face.getCellIds();
+	for (const auto& cellId : ids) {
 		cellFunc(cellId, [&result](const Polyhedron& cell) {
 			result = cell.intersectsModel() && cell.isActive();
 		});

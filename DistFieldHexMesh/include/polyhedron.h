@@ -79,11 +79,14 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 	bool hasSplits() const;
+	Trinary needsSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid(bool val);
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void setPolygonsCellId();
 	void splitIfRequred();
+	void replaceSplitFaces();
 	void imprintVertices();
 	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
 	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
@@ -109,6 +112,7 @@ private:
 	friend class Block;
 
 	void setSourceId(const Index3DId& id);
+	void setReference();
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
@@ -139,6 +143,11 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
+}
+
+inline Trinary Polyhedron::needsSplit() const
+{
+	return _needsSplit;
 }
 
 }

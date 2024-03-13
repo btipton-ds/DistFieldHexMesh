@@ -117,9 +117,10 @@ private:
 	friend class Polyhedron;
 
 	void sortIds() const;
+	void setReference();
 	Index3DId createFace(const Polygon& face);
-	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
-	bool splitAtPointInner(const Vector3d& pt, std::set<Index3DId>& newFaceIds, bool dryRun);
+	bool splitAtPoint(const Vector3d& pt, bool dryRun);
+	static bool splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d& pt, bool dryRun);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);

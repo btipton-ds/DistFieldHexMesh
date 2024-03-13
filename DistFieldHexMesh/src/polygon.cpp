@@ -428,7 +428,17 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 void Polygon::addCellId(const Index3DId& cellId)
 {
 	_cellIds.insert(cellId);
-	assert(_cellIds.size() <= 2);
+#if 0
+	if (_cellIds.size() > 2) {
+		for (const auto& cellId : _cellIds) {
+			cellFunc(cellId, [this](const Polyhedron& cell) {
+				assert(cell.isActive());
+				assert(cell.containsFace(_thisId));
+			});
+		}
+		assert(_cellIds.size() <= 2);
+	}
+#endif
 }
 
 void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
@@ -439,80 +449,86 @@ void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
 
 void Polygon::splitIfRequred()
 {
-	if (_needsSplit == Trinary::IS_TRUE) {
+	if (!_isReference && _needsSplit == Trinary::IS_TRUE) {
 		_splitIds.clear();
-		splitAtPoint(_splitPt, _splitIds, false);
+		splitAtPoint(_splitPt, false);
 	}
 
 	_needsSplit = Trinary::IS_FALSE;
 }
 
-bool Polygon::splitAtPoint(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
+bool Polygon::splitAtPoint(const Vector3d& pt, bool dryRun)
 {
-	Polygon srcPoly(*this);
+	Polygon* pSource = this;
 	if (hasSplits()) {
 		assert(_sourceId.isValid());
-		faceFunc(_sourceId, [&srcPoly](const Polygon& src) {
-			srcPoly = src;
+		faceFunc(_sourceId, [&pSource](Polygon& src) {
+			pSource = &src;
 		});
 	}
-
-	return srcPoly.splitAtPointInner(pt, newFaceIds, dryRun);
+	return splitAtPointInner(*pSource, *this, pt, dryRun);
 }
 
-bool Polygon::splitAtPointInner(const Vector3d& pt, set<Index3DId>& newFaceIds, bool dryRun)
-{
-	newFaceIds.clear();
-	assert(_vertexIds.size() == 4);
+bool Polygon::splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d& pt, bool dryRun) {
+	auto pBlk = self.getBlockPtr();
+	assert(!self._isReference);
+	assert(srcPoly._vertexIds.size() == 4);
 	vector<Vector3d> edgePts;
-	edgePts.resize(_vertexIds.size());
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
+	edgePts.resize(srcPoly._vertexIds.size());
+	for (size_t i = 0; i < srcPoly._vertexIds.size(); i++) {
+		size_t j = (i + 1) % srcPoly._vertexIds.size();
+		Edge edge(srcPoly._vertexIds[i], srcPoly._vertexIds[j]);
 
 		// Be sure to project directly to the edge itself. 
 		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(getBlockPtr(), pt);
+		Vector3d edgePt = edge.projectPt(pBlk, pt);
 		bool inBounds;
-		double t = edge.paramOfPt(getBlockPtr(), edgePt, inBounds);
+		double t = edge.paramOfPt(pBlk, edgePt, inBounds);
 		if (inBounds)
 			edgePts[i] = edgePt;
 		else
 			return false;
 	}
 
-	Vector3d facePt = projectPoint(pt);
-	if (!containsPt(facePt))
+	Vector3d facePt = srcPoly.projectPoint(pt);
+	if (!srcPoly.containsPt(facePt))
 		return false;
 
 	if (dryRun)
 		return true; // Report that everything is good to go and return without touching anything
 
-	_isReference = true;
-	Index3DId facePtId = getBlockPtr()->addVertex(facePt);
+	srcPoly.setReference();
+
+	Index3DId facePtId = pBlk->addVertex(facePt);
 	vector<Index3DId> edgePtIds;
 	for (const auto& edgePt : edgePts) {
-		edgePtIds.push_back(getBlockPtr()->addVertex(edgePt));
+		edgePtIds.push_back(pBlk->addVertex(edgePt));
 	}
 
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
+	for (size_t i = 0; i < srcPoly._vertexIds.size(); i++) {
+		size_t j = (i + srcPoly._vertexIds.size() - 1) % srcPoly._vertexIds.size();
 		auto priorEdgeId = edgePtIds[j];
-		auto vertId = _vertexIds[i];
+		auto vertId = srcPoly._vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId});
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
-		// The split face separates the same cells as the original, until new cells are created. They 
-		// The original cell must replace its id the id of a child cell when the child cell is created
-		face.setCellIds(_cellIds);
-
-		auto newFaceId = createFace(face);
-		newFaceIds.insert(newFaceId);
+		auto newFaceId = self.createFace(face);
+		self._splitIds.insert(newFaceId);
 	}
-	assert(newFaceIds.size() == 4);
+	assert(self._splitIds.size() == 4);
 
 	return true;
+}
+
+void Polygon::setReference()
+{
+	if (!_isReference)
+		return;
+
+	_isReference = true;
+	getBlockPtr()->removeFaceFromLookUp(_thisId);
+	_cellIds.clear();
 }
 
 bool Polygon::imprintFaceVertices(const Polygon& otherFace)
