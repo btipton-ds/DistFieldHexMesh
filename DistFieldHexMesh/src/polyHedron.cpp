@@ -128,7 +128,7 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 
 void Polyhedron::setSourceId(const Index3DId& id)
 {
-	_sourceId = id;
+	_referenceEntityId = id;
 }
 
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
@@ -407,13 +407,13 @@ void Polyhedron::splitIfRequred()
 
 void Polyhedron::replaceSplitFaces()
 {
-	if (_isReference || !hasSplits())
+	if (isReference() || !hasSplits())
 		return;
 
-	if (!_sourceId.isValid()) {
+	if (!_referenceEntityId.isValid()) {
 		setReference();
 		Polyhedron dup(_faceIds);
-		dup._sourceId = _thisId;
+		dup._referenceEntityId = _thisId;
 		auto newCellId = getBlockPtr()->addCell(dup);
 		cellFunc(newCellId, [](Polyhedron& dupCell) {
 			dupCell.replaceSplitFaces();
@@ -425,13 +425,13 @@ void Polyhedron::replaceSplitFaces()
 	set<Index3DId> newFaceIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &newFaceIds](Polygon& face) {
-			face.removeCellId(_sourceId);
-			if (face._splitIds.empty()) {
+			face.removeCellId(_referenceEntityId);
+			if (face._referencingEntityIds.empty()) {
 				face.addCellId(_thisId);
 				newFaceIds.insert(face.getId());
 			} else {
-				assert(face._isReference);
-				const auto& subIds = face._splitIds;
+				assert(face.isReference());
+				const auto& subIds = face._referencingEntityIds;
 				newFaceIds.insert(subIds.begin(), subIds.end());
 				for (const auto& subFaceId : subIds) {
 					faceFunc(subFaceId, [this](Polygon& subFace) {
@@ -492,10 +492,10 @@ bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
 
 void Polyhedron::setReference()
 {
-	if (_isReference)
+	if (isReference())
 		return;
 
-	_isReference = true;
+//	isReference() = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this](Polygon& face) {
 			face.removeCellId(_thisId);
@@ -510,7 +510,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	bool canSplitAll = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &centerPoint, &canSplitAll](Polygon& face) {
-			set<Index3DId> childFaceIds = face._splitIds;
+			set<Index3DId> childFaceIds = face._referencingEntityIds;
 			canSplitAll = canSplitAll && !childFaceIds.empty();
 		});
 	}
@@ -524,7 +524,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &centerPoint, &vertToFaceMap](Polygon& face) {
-			set<Index3DId> childFaceIds = face._splitIds;
+			set<Index3DId> childFaceIds = face._referencingEntityIds;
 			for (const auto& childFaceId : childFaceIds) {
 				faceFunc(childFaceId, [this, &vertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
@@ -936,7 +936,7 @@ bool Polyhedron::isClosed() const
 
 bool Polyhedron::isActive() const
 {
-	return !_isReference;
+	return !isReference();
 }
 
 bool Polyhedron::verifyTopology() const

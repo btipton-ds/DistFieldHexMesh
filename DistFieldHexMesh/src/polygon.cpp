@@ -44,7 +44,7 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	assert(!_isReference);
+	assert(!isReference());
 	_vertexIds.push_back(vertId);
 	_needSort = true;
 }
@@ -143,7 +143,7 @@ bool Polygon::operator < (const Polygon& rhs) const
 
 bool Polygon::hasSplits() const
 {
-	if (_isReference || !_splitIds.empty())
+	if (isReference() || !_referencingEntityIds.empty())
 		return true;
 
 	const double tolSinAngle = sin(Tolerance::angleTol());
@@ -242,7 +242,7 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 
 bool Polygon::isActive() const
 {
-	if (_isReference)
+	if (isReference())
 		return false;
 
 	bool result = false;
@@ -452,8 +452,8 @@ void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
 
 void Polygon::splitIfRequred()
 {
-	if (!_isReference && _needsSplit == Trinary::IS_TRUE) {
-		_splitIds.clear();
+	if (!isReference() && _needsSplit == Trinary::IS_TRUE) {
+		_referencingEntityIds.clear();
 		splitAtPoint(_splitPt, false);
 	}
 
@@ -464,8 +464,8 @@ bool Polygon::splitAtPoint(const Vector3d& pt, bool dryRun)
 {
 	Polygon* pSource = this;
 	if (hasSplits()) {
-		assert(_sourceId.isValid());
-		faceFunc(_sourceId, [&pSource](Polygon& src) {
+		assert(_referenceEntityId.isValid());
+		faceFunc(_referenceEntityId, [&pSource](Polygon& src) {
 			pSource = &src;
 		});
 	}
@@ -474,7 +474,7 @@ bool Polygon::splitAtPoint(const Vector3d& pt, bool dryRun)
 
 bool Polygon::splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d& pt, bool dryRun) {
 	auto pBlk = self.getBlockPtr();
-	assert(!self._isReference);
+	assert(!self.isReference());
 	assert(srcPoly._vertexIds.size() == 4);
 	vector<Vector3d> edgePts;
 	edgePts.resize(srcPoly._vertexIds.size());
@@ -517,19 +517,19 @@ bool Polygon::splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d&
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 		auto newFaceId = self.createFace(face);
-		srcPoly._splitIds.insert(newFaceId);
+		srcPoly._referencingEntityIds.insert(newFaceId);
 	}
-	assert(srcPoly._splitIds.size() == 4);
+	assert(srcPoly._referencingEntityIds.size() == 4);
 
 	return true;
 }
 
 void Polygon::setReference()
 {
-	if (!_isReference)
+	if (!isReference())
 		return;
 
-	_isReference = true;
+//	isReference() = true;
 	getBlockPtr()->removeFaceFromLookUp(_thisId);
 	_cellIds.clear();
 }
@@ -558,7 +558,7 @@ bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 
 bool Polygon::imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge)
 {
-	if (_sourceId.isValid()) {
+	if (_referenceEntityId.isValid()) {
 		// This is the duplicate, work on this
 		double t;
 		size_t i, j;

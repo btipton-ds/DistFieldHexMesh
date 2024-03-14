@@ -63,8 +63,7 @@ public:
 	const Index3DId& getId() const;
 
 	void addVertex(const Index3DId& vertId);
-	void setSourceId(const Index3DId& id);
-	const Index3DId& getSourceId() const;
+	const Index3DId& getReferenceEntityId() const;
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
@@ -74,6 +73,7 @@ public:
 	const std::set<Index3DId>& getCellIds() const;
 
 	bool ownedByCell(const Index3DId& cellId) const;
+	bool isReference() const;
 	bool hasSplits() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
@@ -126,12 +126,14 @@ private:
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
 	bool imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge);
 
-	bool _isReference = false;
 	Trinary _needsSplit = Trinary::IS_UNKNOWN;
 	Vector3d _splitPt;
-	Index3DId _sourceId; // This points to the original refence polygon used to create this one.
+
+	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
+	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
+
 	std::vector<Index3DId> _vertexIds;
-	std::set<Index3DId> _cellIds, _splitIds;
+	std::set<Index3DId> _cellIds;
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -152,14 +154,9 @@ inline bool Polygon::verifyVertsConvex() const
 	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
 }
 
-inline void Polygon::setSourceId(const Index3DId& id)
+inline const Index3DId& Polygon::getReferenceEntityId() const
 {
-	_sourceId = id;
-}
-
-inline const Index3DId& Polygon::getSourceId() const
-{
-	return _sourceId;
+	return _referenceEntityId;
 }
 
 inline void Polygon::removeCellId(const Index3DId& cellId)
@@ -190,6 +187,11 @@ inline const std::set<Index3DId>& Polygon::getCellIds() const
 inline bool Polygon::ownedByCell(const Index3DId& cellId) const
 {
 	return _cellIds.count(cellId) != 0;
+}
+
+inline bool Polygon::isReference() const
+{
+	return !_referencingEntityIds.empty();
 }
 
 inline bool Polygon::isOuter() const

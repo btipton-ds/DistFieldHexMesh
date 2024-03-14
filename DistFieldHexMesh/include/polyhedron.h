@@ -79,6 +79,7 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 	bool hasSplits() const;
+	bool isReference() const;
 	Trinary needsSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
@@ -123,10 +124,11 @@ private:
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
-	bool _needsCurvatureCheck = true, 
-		_isReference = false;
+	bool _needsCurvatureCheck = true;
 	Trinary _needsSplit = Trinary::IS_UNKNOWN;
-	Index3DId _sourceId; // This is the id of the polyhedron this polyhedron was split from - may be null
+
+	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
+	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
 	std::set<Index3DId> _faceIds;
 };
 
@@ -149,6 +151,12 @@ inline Trinary Polyhedron::needsSplit() const
 {
 	return _needsSplit;
 }
+
+inline bool Polyhedron::isReference() const
+{
+	return !_referencingEntityIds.empty();
+}
+
 
 }
 
