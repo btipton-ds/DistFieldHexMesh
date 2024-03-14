@@ -395,12 +395,12 @@ void Polyhedron::setPolygonsCellId()
 	}
 }
 
-void Polyhedron::splitIfRequred()
+void Polyhedron::splitIfRequred(int phase)
 {
-	if (_needsSplit == Trinary::IS_TRUE) {
+	if (phase == _splitPhase) {
 		assert(!isReference());
 		splitAtCentroid();
-		_needsSplit = Trinary::IS_FALSE;
+		_splitPhase = -1;
 	}
 }
 
@@ -429,7 +429,7 @@ void Polyhedron::replaceSplitFaces()
 				face.addCellId(_thisId);
 				newFaceIds.insert(face.getId());
 			} else {
-				assert(face.isReference());
+				assert(!face.isReference());
 				const auto& subIds = face._referencingEntityIds;
 				newFaceIds.insert(subIds.begin(), subIds.end());
 				for (const auto& subFaceId : subIds) {
@@ -613,15 +613,20 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 	return getBlockPtr()->addFace(face);
 }
 
-void Polyhedron::setNeedToSplitAtCentroid(bool val)
+void Polyhedron::setNeedToSplitAtCentroid(int phase)
 {
 	if (isReference())
 		return;
-	_needsSplit = val ? Trinary::IS_TRUE : Trinary::IS_FALSE;
+
+	if (phase <= _splitPhase)
+		return;
+
+	_splitPhase = phase;
+	getBlockPtr()->increaseSplitPhase(_splitPhase);
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [val, &ctr](Polygon& face) {
-			face.setNeedToSplitAtPoint(val, ctr);
+		faceFunc(faceId, [&ctr, phase](Polygon& face) {
+			face.setNeedToSplitAtPoint(ctr, phase);
 		});
 	}
 }
@@ -656,7 +661,7 @@ void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureR
 	}
 
 	if (needToSplit) {
-		setNeedToSplitAtCentroid(true);
+		setNeedToSplitAtCentroid(0);
 	}
 }
 
@@ -739,50 +744,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 		return -1;
 	}
 	return 0;
-}
-
-void Polyhedron::markIfNeedsSplitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
-{
-	if (!_needsCurvatureCheck)
-		return;
-	_needsCurvatureCheck = false;
-
-	CBoundingBox3Dd bbox = getBoundingBox();
-
-	bool needToSplit = false;
-#if 1
-	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	for (size_t vertIdx : sharpVerts) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
-			needToSplit = true;
-			break;
-		}
-	}
-#endif
-
-	if (!needToSplit) {
-		double refRadius = calReferenceSurfaceRadius(bbox, maxCurvatureRadius, sinEdgeAngle);
-		if (refRadius > 0 && refRadius < maxCurvatureRadius) {
-			double maxLength = refRadius / divsPerRadius;
-			auto range = bbox.range();
-			double minDim = min(range[0], min(range[1], range[2]));
-			if (minDim > maxLength) {
-				needToSplit = true;
-			}
-		}
-	}
-
-	if (needToSplit) {
-		setNeedToSplitAtCentroid(true);
-		Vector3d ctr = calCentroid();
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [&ctr](Polygon& face) {
-				face.setNeedToSplitAtPoint(true, ctr);
-			});
-		}
-	}
 }
 
 void Polyhedron::splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)

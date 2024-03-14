@@ -430,20 +430,35 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
+void Polygon::setNeedToSplitAtPoint(const Vector3d& pt, int phase)
 {
 	if (isReference())
 		return;
-	_needsSplit = val ? Trinary::IS_TRUE : Trinary::IS_FALSE;
+	if (phase <= _splitPhase)
+		return;
+
+	_splitPhase = phase;
+	getBlockPtr()->increaseSplitPhase(_splitPhase);
+
 	_splitPt = pt;
+
+	if (_referenceEntityId.isValid()) {
+		for (const auto& cellId : _cellIds) {
+			cellFunc(cellId, [phase](Polyhedron& cell) {
+				if (cell.getSplitPhase() < phase) {
+					cell.setNeedToSplitAtCentroid(phase + 1);
+				}
+			});
+		}
+	}
 }
 
-void Polygon::splitIfRequred()
+void Polygon::splitIfRequred(int phase)
 {
-	if (_needsSplit == Trinary::IS_TRUE) {
+	if (phase == _splitPhase) {
 		assert(!isReference());
 		splitAtPoint(_splitPt);
-		_needsSplit = Trinary::IS_FALSE;
+		_splitPhase = -1;
 	}
 }
 

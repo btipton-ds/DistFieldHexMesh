@@ -80,18 +80,17 @@ public:
 	bool intersectsModel() const;
 	bool hasSplits() const;
 	bool isReference() const;
-	Trinary needsSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	void setNeedToSplitAtCentroid(bool val);
+	int getSplitPhase() const;
+	void setNeedToSplitAtCentroid(int phase = 0);
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void setPolygonsCellId();
-	void splitIfRequred();
+	void splitIfRequred(int phase);
 	void replaceSplitFaces();
 	void imprintVertices();
 	bool splitAtCentroid();
 	bool splitAtPoint(const Vector3d& pt);
-	void markIfNeedsSplitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
 	double getShortestEdge() const;
@@ -124,12 +123,17 @@ private:
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
-	Trinary _needsSplit = Trinary::IS_UNKNOWN;
+	int _splitPhase = -1;
 
 	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
 	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
 	std::set<Index3DId> _faceIds;
 };
+
+inline int Polyhedron::getSplitPhase() const
+{
+	return _splitPhase;
+}
 
 inline Index3DId Polyhedron::getId() const
 {
@@ -144,11 +148,6 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
-}
-
-inline Trinary Polyhedron::needsSplit() const
-{
-	return _needsSplit;
 }
 
 inline bool Polyhedron::isReference() const

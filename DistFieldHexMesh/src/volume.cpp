@@ -359,7 +359,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
 			}
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 
 		finishSplits(true, multiCore);
 	}
@@ -368,19 +368,26 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
 {
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolygonsNeedingSplit();
-		}
-		return true;
-	}, multiCore);
+	int maxSplitPhase = -1;
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		if (_blocks[i]->getMaxSplitPhase() > maxSplitPhase)
+			maxSplitPhase = _blocks[i]->getMaxSplitPhase();
+	}
+	for (int phase = maxSplitPhase; phase >= 0; phase--) {
+		runLambda([this, phase](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolygonsNeedingSplit(phase);
+			}
+			return true;
+		}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraNeedingSplit();
-		}
-		return true;
-	}, multiCore);
+		runLambda([this, phase](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolyhedraNeedingSplit(phase);
+			}
+			return true;
+		}, multiCore);
+	}
 
 	if (mayHaveSplits) {
 		runLambda([this](size_t linearIdx)->bool {
