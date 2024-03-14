@@ -445,12 +445,12 @@ void Polyhedron::replaceSplitFaces()
 
 void Polyhedron::imprintVertices()
 {
-	if (!isActive())
+	if (isReference())
 		return;
 	set<Index3DId> vertIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&vertIds](const Polygon& face) {
-			assert(face.isActive());
+			assert(!face.isReference());
 			const auto& fvIds = face.getVertexIds();
 			vertIds.insert(fvIds.begin(), fvIds.end());
 		});
@@ -935,17 +935,12 @@ bool Polyhedron::isClosed() const
 	return result;
 }
 
-bool Polyhedron::isActive() const
-{
-	return !isReference();
-}
-
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
 #ifdef _DEBUG 
 
-	if (!isActive())
+	if (isReference())
 		return valid;
 
 	if (!isClosed())

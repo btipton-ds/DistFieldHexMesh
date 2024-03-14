@@ -82,7 +82,6 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVert(const Index3DId& vertId) const;
-	bool isActive() const;
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;

@@ -240,20 +240,6 @@ bool Polygon::containsVert(const Index3DId& vertId) const
 	return false;
 }
 
-bool Polygon::isActive() const
-{
-	if (isReference())
-		return false;
-
-	bool result = false;
-	for (const auto& cellId : _cellIds) {
-		cellFunc(cellId, [&result](const Polyhedron& cell) {
-			result = cell.isActive() || result;
-		});
-	}
-	return result;
-}
-
 void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
@@ -435,7 +421,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId : _cellIds) {
 			cellFunc(cellId, [this](const Polyhedron& cell) {
-				assert(cell.isActive());
+				assert(!cell.isReference());
 				assert(cell.containsFace(_thisId));
 			});
 		}
@@ -618,7 +604,7 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 
 bool Polygon::verifyTopology() const
 {
-	if (!isActive())
+	if (isReference())
 		return true;
 
 	bool valid = true;

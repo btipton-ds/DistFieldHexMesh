@@ -101,7 +101,6 @@ public:
 	void dumpFaces() const;
 
 	bool isClosed() const;
-	bool isActive() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 

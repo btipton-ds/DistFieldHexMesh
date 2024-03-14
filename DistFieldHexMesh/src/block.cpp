@@ -680,7 +680,7 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 void Block::setPolygonCellIds()
 {
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		if (cell.isActive())
+		if (!cell.isReference())
 			cell.setPolygonsCellId();
 	});
 }
@@ -716,13 +716,13 @@ void Block::imprintPolyhedraVertices()
 bool Block::includeFace(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
-	if (!face.isActive())
+	if (face.isReference())
 		return false;
 
 	auto ids = face.getCellIds();
 	for (const auto& cellId : ids) {
 		cellFunc(cellId, [&result](const Polyhedron& cell) {
-			result = cell.intersectsModel() && cell.isActive();
+			result = cell.intersectsModel() && !cell.isReference();
 		});
 		if (result)
 			break;

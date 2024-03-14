@@ -549,7 +549,7 @@ void Volume::consolidateBlocks()
 				if (!pBlk)
 					continue;
 				pBlk->_polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](Polygon& face) {
-					if (!face.isActive())
+					if (face.isReference())
 						return;
 					face.orient();
 					faceIndices.push_back(faces.size());
