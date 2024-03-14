@@ -695,8 +695,7 @@ void Block::splitPolygonsNeedingSplit()
 void Block::splitPolyhedraNeedingSplit()
 {
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		if (cell.needsSplit() == Trinary::IS_TRUE)
-			cell.splitIfRequred();
+		cell.splitIfRequred();
 	});
 }
 
@@ -712,45 +711,6 @@ void Block::imprintPolyhedraVertices()
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.imprintVertices();
 	});
-}
-
-size_t Block::splitAllCellsAtCentroid()
-{
-	size_t count = _polyhedra.size();
-	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		set<Index3DId> newCellIds;
-		cell.splitAtCentroid(newCellIds);
-	});
-	count = _polyhedra.size() - count;
-	return count;
-}
-
-size_t Block::splitAllCellsAtPoint(const Vector3d& pt)
-{
-	size_t count = _polyhedra.size();
-	_polyhedra.iterateInOrder([this, pt](Polyhedron& cell) {
-		// TODO, we do need a cell finder at some point
-		set<Index3DId> newCellIds;
-		if (cell.contains(pt))
-			cell.splitAtPoint(pt, newCellIds);
-	});
-	count = _polyhedra.size() - count;
-	return count;
-}
-
-size_t Block::splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
-{
-	size_t count = _polyhedra.size();
-	_polyhedra.iterateInOrder([this, divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
-		if (cell.isActive())
-			cell.splitByCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
-	});
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		if (cell.isActive())
-			cell.splitIfTooManyFaceSplits();
-	});
-	count = _polyhedra.size() - count;
-	return count;
 }
 
 bool Block::includeFace(FaceType meshType, const Polygon& face) const
@@ -876,13 +836,13 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 bool Block::freePolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return getOwner(id) && pOwner->_polygons.free(id);
+	return pOwner && pOwner->_polygons.free(id);
 }
 
 bool Block::freePolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return getOwner(id) && pOwner->_polyhedra.free(id);
+	return pOwner && pOwner->_polyhedra.free(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const

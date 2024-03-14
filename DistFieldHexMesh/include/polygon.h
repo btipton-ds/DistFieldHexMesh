@@ -104,6 +104,7 @@ public:
 	void setNeedToSplitAtPoint(bool val, const Vector3d& pt);
 	void splitIfRequred();
 
+	void splitAtPoint(const Vector3d& pt);
 	void orient();
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
@@ -117,10 +118,8 @@ private:
 	friend class Polyhedron;
 
 	void sortIds() const;
-	void setReference();
+	void makeOrphan();
 	Index3DId createFace(const Polygon& face);
-	bool splitAtPoint(const Vector3d& pt, bool dryRun);
-	static bool splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d& pt, bool dryRun);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);

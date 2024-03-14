@@ -446,90 +446,97 @@ void Polygon::addCellId(const Index3DId& cellId)
 
 void Polygon::setNeedToSplitAtPoint(bool val, const Vector3d& pt)
 {
+	if (isReference())
+		return;
 	_needsSplit = val ? Trinary::IS_TRUE : Trinary::IS_FALSE;
 	_splitPt = pt;
 }
 
 void Polygon::splitIfRequred()
 {
-	if (!isReference() && _needsSplit == Trinary::IS_TRUE) {
-		_referencingEntityIds.clear();
-		splitAtPoint(_splitPt, false);
+	if (_needsSplit == Trinary::IS_TRUE) {
+		assert(!isReference());
+		splitAtPoint(_splitPt);
+		_needsSplit = Trinary::IS_FALSE;
 	}
-
-	_needsSplit = Trinary::IS_FALSE;
 }
 
-bool Polygon::splitAtPoint(const Vector3d& pt, bool dryRun)
+void Polygon::splitAtPoint(const Vector3d& pt)
 {
-	Polygon* pSource = this;
-	if (hasSplits()) {
-		assert(_referenceEntityId.isValid());
-		faceFunc(_referenceEntityId, [&pSource](Polygon& src) {
-			pSource = &src;
+	// cases
+	//   natural
+	//   has inserted vertices - use reference
+
+	if (!hasSplits()) {
+		// split this face
+		assert(_referencingEntityIds.empty());
+
+		auto pBlk = getBlockPtr();
+		assert(!isReference());
+		assert(_vertexIds.size() == 4);
+		vector<Vector3d> edgePts;
+		edgePts.resize(_vertexIds.size());
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			Edge edge(_vertexIds[i], _vertexIds[j]);
+
+			// Be sure to project directly to the edge itself. 
+			// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
+			Vector3d edgePt = edge.projectPt(pBlk, pt);
+			bool inBounds;
+			double t = edge.paramOfPt(pBlk, edgePt, inBounds);
+			if (inBounds)
+				edgePts[i] = edgePt;
+			else {
+				assert(!"Edge point is not in bounds.");
+				return;
+			}
+		}
+
+		Vector3d facePt = projectPoint(pt);
+		if (!containsPt(facePt)) {
+			assert(!"Face point is not in bounds.");
+			return;
+		}
+
+		makeOrphan();
+
+		Index3DId facePtId = pBlk->addVertex(facePt);
+		vector<Index3DId> edgePtIds;
+		for (const auto& edgePt : edgePts) {
+			edgePtIds.push_back(pBlk->addVertex(edgePt));
+		}
+
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
+			auto priorEdgeId = edgePtIds[j];
+			auto vertId = _vertexIds[i];
+			auto nextEdgeId = edgePtIds[i];
+			Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
+			// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
+
+			auto newFaceId = createFace(face);
+			_referencingEntityIds.insert(newFaceId);
+		}
+	} else {
+		// remove this face from the reference entity's split list
+		// split the reference
+		// Delete this face permenently
+
+		faceFunc(_referenceEntityId, [this, &pt](Polygon& refFace) {
+			assert(refFace._referencingEntityIds.size() == 1);
+
+			refFace._referencingEntityIds.erase(_thisId);
+
+			refFace.splitAtPoint(pt);
+
+			getBlockPtr()->freePolygon(_thisId);
 		});
 	}
-	return splitAtPointInner(*pSource, *this, pt, dryRun);
 }
 
-bool Polygon::splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d& pt, bool dryRun) {
-	auto pBlk = self.getBlockPtr();
-	assert(!self.isReference());
-	assert(srcPoly._vertexIds.size() == 4);
-	vector<Vector3d> edgePts;
-	edgePts.resize(srcPoly._vertexIds.size());
-	for (size_t i = 0; i < srcPoly._vertexIds.size(); i++) {
-		size_t j = (i + 1) % srcPoly._vertexIds.size();
-		Edge edge(srcPoly._vertexIds[i], srcPoly._vertexIds[j]);
-
-		// Be sure to project directly to the edge itself. 
-		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(pBlk, pt);
-		bool inBounds;
-		double t = edge.paramOfPt(pBlk, edgePt, inBounds);
-		if (inBounds)
-			edgePts[i] = edgePt;
-		else
-			return false;
-	}
-
-	Vector3d facePt = srcPoly.projectPoint(pt);
-	if (!srcPoly.containsPt(facePt))
-		return false;
-
-	if (dryRun)
-		return true; // Report that everything is good to go and return without touching anything
-
-	srcPoly.setReference();
-
-	Index3DId facePtId = pBlk->addVertex(facePt);
-	vector<Index3DId> edgePtIds;
-	for (const auto& edgePt : edgePts) {
-		edgePtIds.push_back(pBlk->addVertex(edgePt));
-	}
-
-	for (size_t i = 0; i < srcPoly._vertexIds.size(); i++) {
-		size_t j = (i + srcPoly._vertexIds.size() - 1) % srcPoly._vertexIds.size();
-		auto priorEdgeId = edgePtIds[j];
-		auto vertId = srcPoly._vertexIds[i];
-		auto nextEdgeId = edgePtIds[i];
-		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId});
-		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
-
-		auto newFaceId = self.createFace(face);
-		srcPoly._referencingEntityIds.insert(newFaceId);
-	}
-	assert(srcPoly._referencingEntityIds.size() == 4);
-
-	return true;
-}
-
-void Polygon::setReference()
+void Polygon::makeOrphan()
 {
-	if (!isReference())
-		return;
-
-//	isReference() = true;
 	getBlockPtr()->removeFaceFromLookUp(_thisId);
 	_cellIds.clear();
 }

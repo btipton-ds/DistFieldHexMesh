@@ -192,10 +192,6 @@ private:
 	void replacePolyhedraSplitFaces();
 	void imprintPolyhedraVertices();
 
-	size_t splitAllCellsAtCentroid();
-	size_t splitAllCellsAtPoint(const Vector3d& pt);
-	size_t splitAllCellsByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-
 	Index3D _blockIdx;
 
 	Volume* _pVol;

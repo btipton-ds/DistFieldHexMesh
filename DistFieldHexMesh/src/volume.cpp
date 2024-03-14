@@ -302,29 +302,33 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	startCount = endCount;
 #endif // _WIN32
 
+	if (params.numSimpleDivs > 0) {
 #if 1
-	splitSimple(params, multiCore);
+		splitSimple(params, multiCore);
 #ifdef _WIN32
-	QueryPerformanceCounter(&endCount);
-	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
-	startCount = endCount;
+		QueryPerformanceCounter(&endCount);
+		deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+		cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
+		startCount = endCount;
 #endif // _WIN32
-	assert(verifyTopology(multiCore));
+		assert(verifyTopology(true || multiCore));
+	}
+
+	if (params.numCurvatureDivs > 0) {
+#ifdef _WIN32
+		startCount = endCount;
+#endif // _WIN32
+		splitAtCurvature(params, multiCore);
 
 #ifdef _WIN32
-	startCount = endCount;
+		QueryPerformanceCounter(&endCount);
+		deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
+		startCount = endCount;
 #endif // _WIN32
-	splitAtCurvature(params, multiCore);
-
-#ifdef _WIN32
-	QueryPerformanceCounter(&endCount);
-	deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
-	startCount = endCount;
-#endif // _WIN32
-	assert(verifyTopology(multiCore));
+		assert(verifyTopology(true || multiCore));
 #endif
+	}
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";

@@ -398,11 +398,10 @@ void Polyhedron::setPolygonsCellId()
 void Polyhedron::splitIfRequred()
 {
 	if (_needsSplit == Trinary::IS_TRUE) {
-		set<Index3DId> newCells;
-		splitAtCentroid(newCells);
+		assert(!isReference());
+		splitAtCentroid();
+		_needsSplit = Trinary::IS_FALSE;
 	}
-
-	_needsSplit = Trinary::IS_FALSE;
 }
 
 void Polyhedron::replaceSplitFaces()
@@ -484,10 +483,10 @@ void Polyhedron::imprintVertices()
 	}
 }
 
-bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
+bool Polyhedron::splitAtCentroid()
 {
 	auto ctr = calCentroid();
-	return splitAtPoint(ctr, newCellIds);
+	return splitAtPoint(ctr);
 }
 
 void Polyhedron::setReference()
@@ -503,8 +502,10 @@ void Polyhedron::setReference()
 	}
 }
 
-bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCellIds)
+bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 {
+	assert(_referencingEntityIds.empty());
+
 	// If it has a reference, use that to determine the split
 	// If not, then split this one.
 	bool canSplitAll = true;
@@ -592,7 +593,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 		Polyhedron newCell(vertFaces);
 		// Do not set sourceId, it's only used for imprints
 		auto newCellId = getBlockPtr()->addCell(newCell, false);
-		newCellIds.insert(newCellId);
+		_referencingEntityIds.insert(newCellId);
 	}
 
 	return true;
@@ -614,6 +615,8 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 
 void Polyhedron::setNeedToSplitAtCentroid(bool val)
 {
+	if (isReference())
+		return;
 	_needsSplit = val ? Trinary::IS_TRUE : Trinary::IS_FALSE;
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
@@ -816,8 +819,7 @@ void Polyhedron::splitByCurvature(int divsPerRadius, double maxCurvatureRadius, 
 	}
 
 	if (needToSplit) {
-		set<Index3DId> splitCells;
-		if (!splitAtCentroid(splitCells)) {
+		if (!splitAtCentroid()) {
 			return;
 		}
 	}
@@ -833,8 +835,7 @@ void Polyhedron::splitIfTooManyFaceSplits()
 			break;
 	}
 	if (needToSplit) {
-		set<Index3DId> newCellIds;
-		splitAtCentroid(newCellIds);
+		splitAtCentroid();
 	}
 }
 

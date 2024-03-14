@@ -89,8 +89,8 @@ public:
 	void splitIfRequred();
 	void replaceSplitFaces();
 	void imprintVertices();
-	bool splitAtCentroid(std::set<Index3DId>& newCellIds);
-	bool splitAtPoint(const Vector3d& pt, std::set<Index3DId>& newCellIds);
+	bool splitAtCentroid();
+	bool splitAtPoint(const Vector3d& pt);
 	void markIfNeedsSplitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitIfTooManyFaceSplits();
