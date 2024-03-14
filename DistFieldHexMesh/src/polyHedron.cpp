@@ -41,6 +41,29 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+namespace {
+	struct VertEdgePair {
+		inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
+			: _vertId(vertId)
+			, _edge(edge)
+		{
+		}
+
+		bool operator < (const VertEdgePair& rhs) const
+		{
+			if (_edge < rhs._edge)
+				return true;
+			else if (rhs._edge < _edge)
+				return false;
+
+			return _vertId < rhs._vertId;
+		}
+
+		Index3DId _vertId;
+		Edge _edge;
+	};
+}
+
 Polyhedron::Polyhedron(const set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
@@ -363,29 +386,6 @@ void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, st
 	faceIds.push_back(createFace({ corners[0], corners[3], corners[7], corners[4] }));
 }
 
-namespace {
-struct VertEdgePair {
-	inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
-		: _vertId(vertId)
-		, _edge(edge)
-	{
-	}
-
-	bool operator < (const VertEdgePair& rhs) const
-	{
-		if (_edge < rhs._edge)
-			return true;
-		else if (rhs._edge < _edge)
-			return false;
-
-		return _vertId < rhs._vertId;
-	}
-
-	Index3DId _vertId;
-	Edge _edge;
-};
-}
-
 void Polyhedron::setPolygonsCellId()
 {
 	for (const auto& faceId : _faceIds) {
@@ -424,12 +424,20 @@ void Polyhedron::replaceSplitFaces()
 
 	set<Index3DId> newFaceIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&newFaceIds](const Polygon& face) {
+		faceFunc(faceId, [this, &newFaceIds](Polygon& face) {
+			face.removeCellId(_sourceId);
 			if (face._splitIds.empty()) {
+				face.addCellId(_thisId);
 				newFaceIds.insert(face.getId());
 			} else {
+				assert(face._isReference);
 				const auto& subIds = face._splitIds;
 				newFaceIds.insert(subIds.begin(), subIds.end());
+				for (const auto& subFaceId : subIds) {
+					faceFunc(subFaceId, [this](Polygon& subFace) {
+						subFace.addCellId(_thisId);
+					});
+				}
 			}
 		});
 	}
@@ -438,6 +446,42 @@ void Polyhedron::replaceSplitFaces()
 
 void Polyhedron::imprintVertices()
 {
+	if (!isActive())
+		return;
+	set<Index3DId> vertIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&vertIds](const Polygon& face) {
+			assert(face.isActive());
+			const auto& fvIds = face.getVertexIds();
+			vertIds.insert(fvIds.begin(), fvIds.end());
+		});
+	}
+
+	for (const auto& vertId : vertIds) {
+		Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+		for (const auto& faceId : _faceIds) {
+			set<VertEdgePair> pairs;
+			faceFunc(faceId, [this, &vertId, &pairs, &pt](Polygon& face) {
+				const auto& fvIds = face.getVertexIds();
+				for (size_t i = 0; i < fvIds.size(); i++) {
+					size_t j = (i + 1) % fvIds.size();
+					Edge edge(fvIds[i], fvIds[j]);
+					double t;
+					if (!edge.containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+						pairs.insert(VertEdgePair(vertId, edge));
+					}
+				}
+
+				while (!pairs.empty()) {
+					auto iter = pairs.begin();
+					auto vertId = iter->_vertId;
+					auto edge = iter->_edge;
+					pairs.erase(iter);
+					face.imprintVertex(vertId, edge);
+				}
+			});
+		}
+	}
 }
 
 bool Polyhedron::splitAtCentroid(std::set<Index3DId>& newCellIds)
@@ -542,14 +586,6 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint, set<Index3DId>& newCe
 			};
 
 			auto newFaceId = addFace(verts);
-			faceFunc(newFaceId, [](const Polygon& newFace) {
-				if (!newFace._splitIds.empty()) {
-					int dbgBreak = 1;
-				}
-				if (!newFace.getCellIds().empty()) {
-					int dbgBreak = 1;
-				}
-			});
 			vertFaces.insert(newFaceId);
 		}
 

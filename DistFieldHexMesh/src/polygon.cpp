@@ -143,6 +143,9 @@ bool Polygon::operator < (const Polygon& rhs) const
 
 bool Polygon::hasSplits() const
 {
+	if (_isReference || !_splitIds.empty())
+		return true;
+
 	const double tolSinAngle = sin(Tolerance::angleTol());
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -514,9 +517,9 @@ bool Polygon::splitAtPointInner(Polygon& srcPoly, Polygon& self, const Vector3d&
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 		auto newFaceId = self.createFace(face);
-		self._splitIds.insert(newFaceId);
+		srcPoly._splitIds.insert(newFaceId);
 	}
-	assert(self._splitIds.size() == 4);
+	assert(srcPoly._splitIds.size() == 4);
 
 	return true;
 }
@@ -621,8 +624,10 @@ bool Polygon::verifyTopology() const
 	if (!verifyUniqueStat(vertIds))
 		valid = false;
 
+#if 1
 	if (_cellIds.size() > 2)
 		valid = false;
+#endif
 
 	set<Edge> edges;
 	getEdges(edges);

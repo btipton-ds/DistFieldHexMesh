@@ -362,7 +362,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 }
 
-void Volume::finishSplits(bool needImprint, bool multiCore)
+void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -378,14 +378,14 @@ void Volume::finishSplits(bool needImprint, bool multiCore)
 		return true;
 	}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->replacePolyhedraSplitFaces();
-		}
-		return true;
-	}, multiCore);
+	if (mayHaveSplits) {
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->replacePolyhedraSplitFaces();
+			}
+			return true;
+		}, multiCore);
 
-	if (needImprint) {
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->imprintPolyhedraVertices();
