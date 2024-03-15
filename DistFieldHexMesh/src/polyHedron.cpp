@@ -436,7 +436,7 @@ bool Polyhedron::needToImprintVertices() const
 		for (const auto& vertId : vertIds) {
 			set<VertEdgePair> pairs;
 			faceFunc(faceId, [this, &vertId, &pairs](const Polygon& face) {
-				face.getRequiredImprintPairs(vertId, pairs);
+				face.addRequiredImprintPairs(vertId, pairs);
 			});
 
 			if (!pairs.empty())
@@ -452,7 +452,19 @@ void Polyhedron::imprintVertices()
 		return;
 
 	if (!_referenceEntityId.isValid()) {
-		Index3DId dupCellId = getBlockPtr()->addCell(_faceIds);
+		set<Index3DId> allFaceIds;
+		for (const Index3DId& faceId : _faceIds) {
+			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
+				const auto& refIds = face._referencingEntityIds;
+				if (refIds.empty())
+					allFaceIds.insert(face.getId());
+				else {
+					allFaceIds.insert(refIds.begin(), refIds.end());
+				}
+			});
+		}
+
+		Index3DId dupCellId = getBlockPtr()->addCell(allFaceIds);
 		_referencingEntityIds.insert(dupCellId);
 		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
 			dupCell._referenceEntityId = _thisId;
@@ -485,6 +497,7 @@ void Polyhedron::imprintVertices()
 
 		faceFunc(faceId, [this, &splitFaceId](Polygon& face) {
 			if (face._referencingEntityIds.size() == 1) {
+				// The cell is NOT a reference, but this FACE may be a reference??
 				splitFaceId = *face._referencingEntityIds.begin();
 			}
 			else if (!face._referencingEntityIds.empty()) {
@@ -494,7 +507,7 @@ void Polyhedron::imprintVertices()
 
 		for (const auto& vertId : vertIds) {
 			faceFunc(splitFaceId, [this, &vertId, &pairs](Polygon& splitFace) {
-				splitFace.getRequiredImprintPairs(vertId, pairs);
+				splitFace.addRequiredImprintPairs(vertId, pairs);
 			});
 		}
 
@@ -784,60 +797,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 		return -1;
 	}
 	return 0;
-}
-
-void Polyhedron::splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
-{
-	if (!_needsCurvatureCheck)
-		return;
-	_needsCurvatureCheck = false;
-
-	CBoundingBox3Dd bbox = getBoundingBox();
-
-	bool needToSplit = false;
-#if 1
-	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	for (size_t vertIdx : sharpVerts) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
-			needToSplit = true;
-			break;
-		}
-	}
-#endif
-
-	if (!needToSplit) {
-		double refRadius = calReferenceSurfaceRadius(bbox, maxCurvatureRadius, sinEdgeAngle);
-		if (refRadius > 0 && refRadius < maxCurvatureRadius) {
-			double maxLength = refRadius / divsPerRadius;
-			auto range = bbox.range();
-			double minDim = min(range[0], min(range[1], range[2]));
-			if (minDim > maxLength) {
-				needToSplit = true;
-			}
-		}
-	}
-
-	if (needToSplit) {
-		if (!splitAtCentroid()) {
-			return;
-		}
-	}
-}
-
-void Polyhedron::splitIfTooManyFaceSplits()
-{
-	bool needToSplit = false;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&needToSplit](const Polygon& face) {
-		});
-		if (needToSplit)
-			break;
-	}
-	if (needToSplit) {
-		splitAtCentroid();
-	}
 }
 
 double Polyhedron::getShortestEdge() const

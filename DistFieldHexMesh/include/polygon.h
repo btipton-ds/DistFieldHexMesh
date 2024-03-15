@@ -107,7 +107,7 @@ public:
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
-	bool getRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
+	bool addRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
 	bool operator < (const Polygon& rhs) const;
 

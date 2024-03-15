@@ -617,7 +617,7 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 	return valid;
 }
 
-bool Polygon::getRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>& pairs) const
+bool Polygon::addRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>& pairs) const
 {
 	Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
 	for (size_t i = 0; i < _vertexIds.size(); i++) {

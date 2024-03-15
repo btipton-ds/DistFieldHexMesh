@@ -81,8 +81,6 @@ public:
 	void imprintVertices();
 	bool splitAtCentroid();
 	bool splitAtPoint(const Vector3d& pt);
-	void splitByCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void splitIfTooManyFaceSplits();
 	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);

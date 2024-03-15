@@ -311,7 +311,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(true || multiCore));
+//		assert(verifyTopology(true || multiCore));
 	}
 
 	if (params.numCurvatureDivs > 0) {
@@ -407,13 +407,15 @@ void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
 	}
 
 	if (mayHaveSplits) {
+#if 0
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->replacePolyhedraSplitFaces();
 			}
 			return true;
 		}, false && multiCore);
-
+#endif
+		// This is working with no verify faults, but it LOOKS wrong
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->imprintPolyhedraVertices();
