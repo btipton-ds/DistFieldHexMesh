@@ -39,16 +39,6 @@ namespace DFHM {
 class Block;
 class Edge;
 
-/*
-	Mark all faces and cells to split on one pass
-	Split all the faces with a map from old faces to new faces
-	Split all the cells usnig the map of old to new to populate the new cells
-
-*/
-// Polyhedra are owned by a single block, but their faces may belong to different blocks.
-// Once a polyhedron is split, it is kept for reference but is otherwise dead.
-// If a face or edge is split, the polyhedron must also be split.
-// If a polyhdron has been split, it can be split again but DOES NOT become reference.
 
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
@@ -111,10 +101,11 @@ private:
 	friend class Block;
 
 	void setSourceId(const Index3DId& id);
-	void setReference();
+	void removeOurIdFromFaces();
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
+	bool needToImprintVertices() const;
 	void copyToOut() const;
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);

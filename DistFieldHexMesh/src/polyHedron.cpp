@@ -41,29 +41,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-namespace {
-	struct VertEdgePair {
-		inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
-			: _vertId(vertId)
-			, _edge(edge)
-		{
-		}
-
-		bool operator < (const VertEdgePair& rhs) const
-		{
-			if (_edge < rhs._edge)
-				return true;
-			else if (rhs._edge < _edge)
-				return false;
-
-			return _vertId < rhs._vertId;
-		}
-
-		Index3DId _vertId;
-		Edge _edge;
-	};
-}
-
 Polyhedron::Polyhedron(const set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
@@ -91,7 +68,6 @@ void Polyhedron::dumpFaces() const
 		});
 	}
 }
-
 
 bool Polyhedron::unload(ostream& out)
 {
@@ -410,11 +386,11 @@ void Polyhedron::replaceSplitFaces()
 		return;
 
 	if (!_referenceEntityId.isValid()) {
-		setReference();
 		Polyhedron dup(_faceIds);
 		dup._referenceEntityId = _thisId;
-		auto newCellId = getBlockPtr()->addCell(dup);
-		cellFunc(newCellId, [](Polyhedron& dupCell) {
+		auto dupCellId = getBlockPtr()->addCell(dup);
+		_referencingEntityIds.insert(dupCellId);
+		cellFunc(dupCellId, [](Polyhedron& dupCell) {
 			dupCell.replaceSplitFaces();
 		});
 
@@ -443,10 +419,10 @@ void Polyhedron::replaceSplitFaces()
 	_faceIds = newFaceIds;
 }
 
-void Polyhedron::imprintVertices()
+bool Polyhedron::needToImprintVertices() const
 {
-	if (isReference())
-		return;
+	assert(!isReference());
+
 	set<Index3DId> vertIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&vertIds](const Polygon& face) {
@@ -456,30 +432,98 @@ void Polyhedron::imprintVertices()
 		});
 	}
 
-	for (const auto& vertId : vertIds) {
-		Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
-		for (const auto& faceId : _faceIds) {
+	for (const auto& faceId : _faceIds) {
+		for (const auto& vertId : vertIds) {
 			set<VertEdgePair> pairs;
-			faceFunc(faceId, [this, &vertId, &pairs, &pt](Polygon& face) {
-				const auto& fvIds = face.getVertexIds();
-				for (size_t i = 0; i < fvIds.size(); i++) {
-					size_t j = (i + 1) % fvIds.size();
-					Edge edge(fvIds[i], fvIds[j]);
-					double t;
-					if (!edge.containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-						pairs.insert(VertEdgePair(vertId, edge));
-					}
-				}
+			faceFunc(faceId, [this, &vertId, &pairs](const Polygon& face) {
+				face.getRequiredImprintPairs(vertId, pairs);
+			});
 
-				while (!pairs.empty()) {
-					auto iter = pairs.begin();
-					auto vertId = iter->_vertId;
-					auto edge = iter->_edge;
-					pairs.erase(iter);
-					face.imprintVertex(vertId, edge);
-				}
+			if (!pairs.empty())
+				return true;
+		}
+	};
+	return false;
+}
+
+void Polyhedron::imprintVertices()
+{
+	if (isReference() || !needToImprintVertices())
+		return;
+
+	if (!_referenceEntityId.isValid()) {
+		Index3DId dupCellId = getBlockPtr()->addCell(_faceIds);
+		_referencingEntityIds.insert(dupCellId);
+		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
+			dupCell._referenceEntityId = _thisId;
+			dupCell.imprintVertices();
+		});
+		return; // Done, called recursively
+	}
+
+	set<Index3DId> vertIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&vertIds](const Polygon& face) {
+			assert(!face.isReference());
+			const auto& fvIds = face.getVertexIds();
+			vertIds.insert(fvIds.begin(), fvIds.end());
+		});
+	}
+
+	// We CANNOT modify the primary face.
+	// If it's primary, make a duplicate and use that.
+	// If this face has a duplicate, use the duplicate.
+	// If this face has more than one referencing face, it's been split AND THAT'S an error
+
+	for (const auto& faceId : _faceIds) {
+		Index3DId dbgId(Index3D(0, 6, 4), 4);
+		if (faceId == dbgId) {
+			int dbgBreak = 1;
+		}
+		set<VertEdgePair> pairs;
+		Index3DId splitFaceId = faceId;
+
+		faceFunc(faceId, [this, &splitFaceId](Polygon& face) {
+			if (face._referencingEntityIds.size() == 1) {
+				splitFaceId = *face._referencingEntityIds.begin();
+			}
+			else if (!face._referencingEntityIds.empty()) {
+				assert(!"should be only 1 or 0.");
+			}
+		});
+
+		for (const auto& vertId : vertIds) {
+			faceFunc(splitFaceId, [this, &vertId, &pairs](Polygon& splitFace) {
+				splitFace.getRequiredImprintPairs(vertId, pairs);
 			});
 		}
+
+		if (pairs.empty())
+			continue;
+
+		if (splitFaceId == faceId) {
+			getBlockPtr()->removeFaceFromLookUp(faceId);
+			// There is no reference face for the split, so create a duplicate and reference it
+			faceFunc(faceId, [this, &splitFaceId](Polygon& face) {
+				splitFaceId = addFace(face.getVertexIds());
+				face._referencingEntityIds.insert(splitFaceId);
+				faceFunc(splitFaceId, [this, &face](Polygon& splitFace) {
+					splitFace._referenceEntityId = face.getId();
+					splitFace.setCellIds(face.getCellIds());
+				});
+				face.clearCellIds();
+			});
+		}
+
+		faceFunc(splitFaceId, [this, &pairs](Polygon& face) {
+			while (!pairs.empty()) {
+				auto iter = pairs.begin();
+				auto vertId = iter->_vertId;
+				auto edge = iter->_edge;
+				pairs.erase(iter);
+				face.imprintVertex(vertId, edge);
+			}
+		});
 	}
 }
 
@@ -489,12 +533,8 @@ bool Polyhedron::splitAtCentroid()
 	return splitAtPoint(ctr);
 }
 
-void Polyhedron::setReference()
+void Polyhedron::removeOurIdFromFaces()
 {
-	if (isReference())
-		return;
-
-//	isReference() = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this](Polygon& face) {
 			face.removeCellId(_thisId);
@@ -519,7 +559,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	if (!canSplitAll)
 		return false;
 
-	setReference();
+	removeOurIdFromFaces();
 
 	Index3DId cellMidId = getBlockPtr()->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
@@ -816,7 +856,6 @@ double Polyhedron::getShortestEdge() const
 
 set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 {
-
 	// This function takes vertices and looks for faces which contain exactly 2 of the available verts.
 	// The edge may already exist.
 	set<Edge> edgeSet;
@@ -824,7 +863,7 @@ set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 		faceFunc(faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
 			set<Index3DId> vertsInFace;
 			for (const auto& vertId : vertIds) {
-				if (face.containsVert(vertId))
+				if (face.containsVertex(vertId))
 					vertsInFace.insert(vertId);
 			}
 			if (vertsInFace.size() == 2) {

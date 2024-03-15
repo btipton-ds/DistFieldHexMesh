@@ -334,8 +334,24 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
+/*
+	Polyhedra are owned by a single block, but their faces and vertices may belong to different blocks.
+
+	Once a polyhedron or polygon is split, it is kept (and marked) for reference but is otherwise "dead."
+
+	Mark all faces and polyhedra to be split on one pass
+		If a split would result in a double split of a polyhedron, mark that sell to be split at a higher "phase". Cell will be split by decending phase
+	Split polyhedra which must be split due to a neighbor split in descending phase. There should only be one, but this supports more
+
+	Reference polyhedra must be TOTALLY intact - for simplicity.
+		This happens automatically when a polyhedron is split
+		It must happen implicitly when a polygon has a vertex imprinted.
+
+*/
+
 void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 {
+	bool doesNotHaveSplits = false; // Name is reversed for clarity on the call
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
@@ -344,12 +360,13 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, multiCore);
 
-		finishSplits(false, multiCore);
+		finishSplits(doesNotHaveSplits, multiCore);
 	}
 }
 
 void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
+	bool mayHaveSplits = true;
 	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
@@ -361,7 +378,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, false && multiCore);
 
-		finishSplits(true, multiCore);
+		finishSplits(mayHaveSplits, multiCore);
 	}
 
 }
@@ -395,14 +412,14 @@ void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
 				_blocks[linearIdx]->replacePolyhedraSplitFaces();
 			}
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->imprintPolyhedraVertices();
 			}
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 	}
 
 	runLambda([this](size_t linearIdx)->bool {

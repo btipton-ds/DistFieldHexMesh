@@ -180,7 +180,7 @@ void Polygon::getEdges(set<Edge>& edgeSet) const
 	createEdgesStat(_vertexIds, edgeSet, _thisId);
 }
 
-bool Polygon::containsPt(const Vector3d& pt) const
+bool Polygon::containsPoint(const Vector3d& pt) const
 {
 	if (!isPointOnPlane(pt))
 		return false;
@@ -231,7 +231,7 @@ bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 	return false;
 }
 
-bool Polygon::containsVert(const Index3DId& vertId) const
+bool Polygon::containsVertex(const Index3DId& vertId) const
 {
 	for (const auto& id : _vertexIds) {
 		if (id == vertId)
@@ -495,7 +495,7 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 		}
 
 		Vector3d facePt = projectPoint(pt);
-		if (!containsPt(facePt)) {
+		if (!containsPoint(facePt)) {
 			assert(!"Face point is not in bounds.");
 			return;
 		}
@@ -570,7 +570,7 @@ bool Polygon::imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& ed
 		// This is the duplicate, work on this
 		double t;
 		size_t i, j;
-		if (!containsVert(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+		if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
 			// the vertex is not in this polygon and lies between i and j
 			if (_thisId.isValid())
 				pBlk->removeFaceFromLookUp(_thisId);
@@ -615,6 +615,21 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 		}
 	}
 	return valid;
+}
+
+bool Polygon::getRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>& pairs) const
+{
+	Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+		double t;
+		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+			pairs.insert(VertEdgePair(vertId, edge));
+		}
+	}
+
+	return !pairs.empty();
 }
 
 bool Polygon::verifyTopology() const

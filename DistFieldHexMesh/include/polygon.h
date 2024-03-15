@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectPool.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
+#include <edge.h>
 
 struct Plane;
 
@@ -41,6 +42,27 @@ namespace DFHM {
 
 class Edge;
 class Block;
+
+struct VertEdgePair {
+	inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
+		: _vertId(vertId)
+		, _edge(edge)
+	{
+	}
+
+	bool operator < (const VertEdgePair& rhs) const
+	{
+		if (_edge < rhs._edge)
+			return true;
+		else if (rhs._edge < _edge)
+			return false;
+
+		return _vertId < rhs._vertId;
+	}
+
+	Index3DId _vertId;
+	Edge _edge;
+};
 
 // A polygon is owned by a single block, but it's vertices may belong to more than one block.
 // Once a polygon is split, it is kept for reference but is otherwise dead.
@@ -77,14 +99,15 @@ public:
 	bool hasSplits() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
-	bool containsPt(const Vector3d& pt) const;
+	bool containsPoint(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
-	bool containsVert(const Index3DId& vertId) const;
+	bool containsVertex(const Index3DId& vertId) const;
 	bool verifyUnique() const;
 	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
+	bool getRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
 	bool operator < (const Polygon& rhs) const;
 
