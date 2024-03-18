@@ -112,7 +112,7 @@ private:
 
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
-	void finishSplits(bool mayHaveSplits, bool multiCore);
+	void finishSplits(bool mayHaveSplitEdges, bool multiCore);
 
 	void findFeatures();
 	void findSharpVertices();

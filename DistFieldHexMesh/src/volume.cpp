@@ -351,7 +351,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 {
-	bool doesNotHaveSplits = false; // Name is reversed for clarity on the call
+	bool mayHaveSplitEdges = false; // Name is reversed for clarity on the call
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
@@ -360,13 +360,13 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, multiCore);
 
-		finishSplits(doesNotHaveSplits, multiCore);
+		finishSplits(mayHaveSplitEdges, multiCore);
 	}
 }
 
 void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
-	bool mayHaveSplits = true;
+	bool mayHaveSplitEdges = true;
 	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
@@ -378,12 +378,12 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, false && multiCore);
 
-		finishSplits(mayHaveSplits, multiCore);
+		finishSplits(mayHaveSplitEdges, multiCore);
 	}
 
 }
 
-void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
+void Volume::finishSplits(bool mayHaveSplitEdges, bool multiCore)
 {
 	int maxSplitPhase = -1;
 	for (size_t i = 0; i < _blocks.size(); i++) {
@@ -396,17 +396,17 @@ void Volume::finishSplits(bool mayHaveSplits, bool multiCore)
 				_blocks[linearIdx]->splitPolygonsNeedingSplit(phase);
 			}
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 
 		runLambda([this, phase](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->splitPolyhedraNeedingSplit(phase);
 			}
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 	}
 
-	if (mayHaveSplits) {
+	if (mayHaveSplitEdges) {
 #if 0
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
