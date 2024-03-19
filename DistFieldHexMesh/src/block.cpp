@@ -665,15 +665,13 @@ bool Block::load()
 
 void Block::setNeedsSimpleSplit()
 {
-	_maxSplitPhase = -1;
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.setNeedToSplitAtCentroid(0);
+		cell.setNeedToSplitAtCentroid();
 	});
 }
 
 void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
-	_maxSplitPhase = -1;
 	_polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
 		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
 	});
@@ -687,28 +685,28 @@ void Block::setPolygonCellIds()
 	});
 }
 
-void Block::splitPolygonsNeedingSplit(int phase)
+void Block::splitPolygonsIfRequired(int phase)
 {
 	_polygons.iterateInOrder([phase](Polygon& face) {
 		face.splitIfRequred(phase);
 	});
 }
 
-void Block::splitPolyhedraNeedingSplit(int phase)
+void Block::promoteReferencePolygons()
+{
+	_polyhedra.iterateInOrder([](Polyhedron& cell) {
+		cell.promoteReferencePolygons();
+	});
+}
+
+void Block::splitPolyhedraIfRequired(int phase)
 {
 	_polyhedra.iterateInOrder([phase](Polyhedron& cell) {
 		cell.splitIfRequred(phase);
 	});
 }
 
-void Block::replacePolyhedraSplitFaces()
-{
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.replaceSplitFaces();
-	});
-}
-
-void Block::imprintPolyhedraVertices()
+void Block::imprintTJointVertices()
 {
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.imprintVertices();

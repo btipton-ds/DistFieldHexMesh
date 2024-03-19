@@ -88,8 +88,6 @@ public:
 	Block(const Block& src);
 
 	size_t blockDim() const;
-	void increaseSplitPhase(int phase);
-	int getMaxSplitPhase() const;
 
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
@@ -188,11 +186,11 @@ private:
 
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void splitPolygonsIfRequired(int phase);
+	void splitPolyhedraIfRequired(int phase);
+	void promoteReferencePolygons();
+	void imprintTJointVertices();
 	void setPolygonCellIds();
-	void splitPolygonsNeedingSplit(int phase);
-	void splitPolyhedraNeedingSplit(int phase);
-	void replacePolyhedraSplitFaces();
-	void imprintPolyhedraVertices();
 
 	Index3D _blockIdx;
 
@@ -204,7 +202,6 @@ private:
 						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	
-	int _maxSplitPhase = 0;
 	size_t _blockDim; // This the dimension of the block = the number of celss across the block
 
 	std::vector<Vector3d> _corners;
@@ -236,17 +233,6 @@ inline void Block::GlPoints::changed()
 inline size_t Block::blockDim() const
 {
 	return _blockDim;
-}
-
-inline void Block::increaseSplitPhase(int phase)
-{
-	if (phase > _maxSplitPhase)
-		_maxSplitPhase = phase;
-}
-
-inline int Block::getMaxSplitPhase() const
-{
-	return _maxSplitPhase;
 }
 
 inline Volume* Block::getVolume()

@@ -94,9 +94,9 @@ public:
 	size_t numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
 
-	bool ownedByCell(const Index3DId& cellId) const;
+	bool usedByCell(const Index3DId& cellId) const;
 	bool isReference() const;
-	bool hasSplits() const;
+	bool hasSplitEdges() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
 	bool containsPoint(const Vector3d& pt) const;
@@ -123,7 +123,7 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
-	void setNeedToSplitAtPoint(const Vector3d& pt, int phase);
+	void setNeedToSplitAtPoint(const Vector3d& pt);
 	void splitIfRequred(int phase);
 
 	int getSplitPhase() const;
@@ -148,7 +148,7 @@ private:
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
 	bool imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge);
 
-	int _splitPhase = -1;
+	bool _splitRequired = false;
 	Vector3d _splitPt;
 
 	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
@@ -206,14 +206,14 @@ inline const std::set<Index3DId>& Polygon::getCellIds() const
 	return _cellIds;
 }
 
-inline bool Polygon::ownedByCell(const Index3DId& cellId) const
+inline bool Polygon::usedByCell(const Index3DId& cellId) const
 {
 	return _cellIds.count(cellId) != 0;
 }
 
 inline bool Polygon::isReference() const
 {
-	return _referenceEntityId.isValid();
+	return !_referencingEntityIds.empty();
 }
 
 inline bool Polygon::isOuter() const

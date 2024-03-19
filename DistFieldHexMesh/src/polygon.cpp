@@ -141,9 +141,10 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
-bool Polygon::hasSplits() const
+bool Polygon::hasSplitEdges() const
 {
-	if (isReference() || !_referencingEntityIds.empty())
+	assert(!isReference());
+	if (isReference())
 		return true;
 
 	const double tolSinAngle = sin(Tolerance::angleTol());
@@ -430,45 +431,53 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-void Polygon::setNeedToSplitAtPoint(const Vector3d& pt, int phase)
+void Polygon::setNeedToSplitAtPoint(const Vector3d& pt)
 {
+	assert(!isReference());
 	if (isReference())
 		return;
-	if (phase <= _splitPhase)
-		return;
 
-	_splitPhase = phase;
-	getBlockPtr()->increaseSplitPhase(_splitPhase);
-
+	_splitRequired = true;
 	_splitPt = pt;
 
-	if (_referenceEntityId.isValid()) {
-		for (const auto& cellId : _cellIds) {
-			cellFunc(cellId, [phase](Polyhedron& cell) {
-				if (cell.getSplitPhase() < phase) {
-					cell.setNeedToSplitAtCentroid(phase + 1);
-				}
-			});
-		}
+	for (const auto& cellId : _cellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			if (!cell.isSplitRequired() && cell.hasSplits())
+				cell.setNeedToSplitAtCentroid();
+		});
 	}
 }
 
 void Polygon::splitIfRequred(int phase)
 {
-	if (phase == _splitPhase) {
-		assert(!isReference());
-		splitAtPoint(_splitPt);
-		_splitPhase = -1;
+	if (_splitRequired) {
+		if (phase == 0) {
+			// This is the case from figure 4 of the reference document.
+			// The marker will have marked this face as needing to be split already - that's the splitter's responsibility, not ours.
+			// If this face belongs to a cell which is partially split, but this face is not reference
+			bool hasPartiallySplitOwner = false;
+			for (const auto& cellId : _cellIds) {
+				cellFunc(cellId, [&hasPartiallySplitOwner](const Polyhedron& ownerCell) {
+					hasPartiallySplitOwner = hasPartiallySplitOwner || ownerCell.hasSplits();
+				});
+			}
+			if (hasPartiallySplitOwner)
+				splitAtPoint(_splitPt);
+		} else {
+			splitAtPoint(_splitPt);
+		}
 	}
 }
 
 void Polygon::splitAtPoint(const Vector3d& pt)
 {
+	_splitRequired = false;
+
 	// cases
 	//   natural
 	//   has inserted vertices - use reference
 
-	if (!hasSplits()) {
+	if (!hasSplitEdges()) {
 		// split this face
 		assert(_referencingEntityIds.empty());
 

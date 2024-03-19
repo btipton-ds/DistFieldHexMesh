@@ -70,14 +70,15 @@ public:
 	bool intersectsModel() const;
 	bool hasSplits() const;
 	bool isReference() const;
+	bool isSplitRequired() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	int getSplitPhase() const;
-	void setNeedToSplitAtCentroid(int phase = 0);
+	void setNeedToSplitAtCentroid();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void setPolygonsCellId();
+	void fixPartialSplits();
 	void splitIfRequred(int phase);
-	void replaceSplitFaces();
+	void promoteReferencePolygons();
 	void imprintVertices();
 	bool splitAtCentroid();
 	bool splitAtPoint(const Vector3d& pt);
@@ -105,6 +106,7 @@ private:
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	bool needToImprintVertices() const;
 	void copyToOut() const;
+	Index3DId duplicateAndPromoteFaces();
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
@@ -112,17 +114,12 @@ private:
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
-	int _splitPhase = -1;
+	bool _splitRequired = false;
 
 	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
 	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
 	std::set<Index3DId> _faceIds;
 };
-
-inline int Polyhedron::getSplitPhase() const
-{
-	return _splitPhase;
-}
 
 inline Index3DId Polyhedron::getId() const
 {
@@ -144,6 +141,10 @@ inline bool Polyhedron::isReference() const
 	return !_referencingEntityIds.empty();
 }
 
+inline bool Polyhedron::isSplitRequired() const
+{
+	return _splitRequired;
+}
 
 }
 

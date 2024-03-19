@@ -314,13 +314,13 @@ bool Polyhedron::hasSplits() const
 		Vector3d norm0, norm1;
 
 		faceFunc(faceId0, [&norm0, &faceHasSplits](const Polygon& face0) {
-			if (face0.hasSplits())
+			if (face0.hasSplitEdges())
 				faceHasSplits = true;
 			norm0 = face0.calUnitNormal();
 		});
 
 		faceFunc(faceId1, [&norm1, &faceHasSplits](const Polygon& face1) {
-			if (face1.hasSplits())
+			if (face1.hasSplitEdges())
 				faceHasSplits = true;
 			norm1 = face1.calUnitNormal();
 		});
@@ -371,52 +371,150 @@ void Polyhedron::setPolygonsCellId()
 	}
 }
 
-void Polyhedron::splitIfRequred(int phase)
+void Polyhedron::fixPartialSplits()
 {
-	if (phase == _splitPhase) {
-		assert(!isReference());
-		splitAtCentroid();
-		_splitPhase = -1;
-	}
-}
-
-void Polyhedron::replaceSplitFaces()
-{
-	if (isReference() || !hasSplits())
+/*
+	Cases:
+	Is already a reference cell, do nothing and return
+	If scheduled to split, do nothing and return
+	No faces are reference, do nothing and return
+	Has reference faces
+			Does not have a reference cell, create one now
+		else
+		    Promote reference faces to this cell
+*/
+	// Case 1 - already a reference which cannot be changed
+	if (isReference())
 		return;
 
-	if (!_referenceEntityId.isValid()) {
-		Polyhedron dup(_faceIds);
-		dup._referenceEntityId = _thisId;
-		auto dupCellId = getBlockPtr()->addCell(dup);
-		_referencingEntityIds.insert(dupCellId);
-		cellFunc(dupCellId, [](Polyhedron& dupCell) {
-			dupCell.replaceSplitFaces();
-		});
-
-		return;
-	}
-
-	set<Index3DId> newFaceIds;
+	bool hasRefFace = false;
+	set<Index3DId> realFaceIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &newFaceIds](Polygon& face) {
-			face.removeCellId(_referenceEntityId);
-			if (face._referencingEntityIds.empty()) {
-				face.addCellId(_thisId);
-				newFaceIds.insert(face.getId());
+		faceFunc(faceId, [&hasRefFace, &realFaceIds](const Polygon& face) {
+			if (face.isReference()) {
+				hasRefFace = true;
+				const auto& subFaceIds = face._referencingEntityIds;
+				realFaceIds.insert(subFaceIds.begin(), subFaceIds.end());
 			} else {
-				assert(!face.isReference());
-				const auto& subIds = face._referencingEntityIds;
-				newFaceIds.insert(subIds.begin(), subIds.end());
-				for (const auto& subFaceId : subIds) {
-					faceFunc(subFaceId, [this](Polygon& subFace) {
-						subFace.addCellId(_thisId);
-					});
-				}
+				realFaceIds.insert(face.getId());
 			}
 		});
 	}
-	_faceIds = newFaceIds;
+
+	// Case 2 - Has no reference faces, return
+	if (!hasRefFace)
+		return;
+
+	if (!_referenceEntityId.isValid()) {
+		for (const auto& faceId : realFaceIds) {
+			faceFunc(faceId, [this](Polygon& face) {
+				face.removeCellId(_thisId);
+			});
+		}
+
+		Index3DId dupCellId = getBlockPtr()->addCell(realFaceIds);
+		_referencingEntityIds.insert(dupCellId);
+		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
+			dupCell._referenceEntityId = _thisId;
+			for (const auto& faceId : dupCell._faceIds) {
+				faceFunc(faceId, [this, &dupCell](Polygon& face) {
+					assert(face.usedByCell(dupCell.getId()));
+					assert(!face.usedByCell(_thisId));
+				});
+			}
+
+		});
+	} else {
+		_faceIds = realFaceIds;
+	}
+}
+
+Index3DId Polyhedron::duplicateAndPromoteFaces()
+{
+	Index3DId dupCellId;
+	if (_referencingEntityIds.empty()) {
+		set<Index3DId> allFaceIds;
+		for (const Index3DId& faceId : _faceIds) {
+			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
+				const auto& refIds = face._referencingEntityIds;
+				if (refIds.empty())
+					allFaceIds.insert(face.getId());
+				else {
+					allFaceIds.insert(refIds.begin(), refIds.end());
+				}
+			});
+		}
+
+		dupCellId = getBlockPtr()->addCell(allFaceIds);
+		_referencingEntityIds.insert(dupCellId);
+		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
+			dupCell._referenceEntityId = _thisId;
+		});
+	} else {
+		assert(!"Not implemented yet");
+	}
+
+	return dupCellId;
+}
+
+void Polyhedron::splitIfRequred(int phase)
+{
+	if (_splitRequired) {
+		if (phase == 0) {
+			if (hasSplits())
+				splitAtCentroid();
+		}
+		else {
+			splitAtCentroid();
+		}
+	}
+}
+
+void Polyhedron::promoteReferencePolygons()
+{
+	if (isReference())
+		return;
+
+	bool hasReferenceFaces = false;
+	set<Index3DId> allFaceIds;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&hasReferenceFaces, &allFaceIds](const Polygon& face) {
+			if (face.isReference()) {
+				hasReferenceFaces = true;
+				const auto& subFaces = face._referencingEntityIds;
+				allFaceIds.insert(subFaces.begin(), subFaces.end());
+			} else {
+				allFaceIds.insert(face.getId());
+			}
+		});
+		if (hasReferenceFaces)
+			break;
+	}
+
+	if (!hasReferenceFaces)
+		return; // Nothing to do
+
+	if (_referenceEntityId.isValid()) {
+		// this cell has already been duplicated
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [this](Polygon& face) {
+				face.removeCellId(_thisId);
+			});
+		}
+		for (const auto& faceId : allFaceIds) {
+			faceFunc(faceId, [this](Polygon& face) {
+				face.removeCellId(_thisId);
+			});
+		}
+		_faceIds = allFaceIds;
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [this](Polygon& face) {
+				face.addCellId(_thisId);
+			});
+		}
+	} else {
+		_referenceEntityId = duplicateAndPromoteFaces();
+	}
 }
 
 bool Polyhedron::needToImprintVertices() const
@@ -452,22 +550,8 @@ void Polyhedron::imprintVertices()
 		return;
 
 	if (!_referenceEntityId.isValid()) {
-		set<Index3DId> allFaceIds;
-		for (const Index3DId& faceId : _faceIds) {
-			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
-				const auto& refIds = face._referencingEntityIds;
-				if (refIds.empty())
-					allFaceIds.insert(face.getId());
-				else {
-					allFaceIds.insert(refIds.begin(), refIds.end());
-				}
-			});
-		}
-
-		Index3DId dupCellId = getBlockPtr()->addCell(allFaceIds);
-		_referencingEntityIds.insert(dupCellId);
+		Index3DId dupCellId = duplicateAndPromoteFaces();
 		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
-			dupCell._referenceEntityId = _thisId;
 			dupCell.imprintVertices();
 		});
 		return; // Done, called recursively
@@ -543,6 +627,7 @@ void Polyhedron::imprintVertices()
 bool Polyhedron::splitAtCentroid()
 {
 	auto ctr = calCentroid();
+
 	return splitAtPoint(ctr);
 }
 
@@ -557,6 +642,7 @@ void Polyhedron::removeOurIdFromFaces()
 
 bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 {
+	_splitRequired = false;
 	assert(_referencingEntityIds.empty());
 
 	// If it has a reference, use that to determine the split
@@ -644,8 +730,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 		}
 
 		Polyhedron newCell(vertFaces);
-		// Do not set sourceId, it's only used for imprints
-		auto newCellId = getBlockPtr()->addCell(newCell, false);
+
+		auto newCellId = getBlockPtr()->addCell(newCell, true);
+		cellFunc(newCellId, [this](Polyhedron& newCell) {
+			newCell._referenceEntityId = _thisId;
+		});
 		_referencingEntityIds.insert(newCellId);
 	}
 
@@ -666,20 +755,16 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 	return getBlockPtr()->addFace(face);
 }
 
-void Polyhedron::setNeedToSplitAtCentroid(int phase)
+void Polyhedron::setNeedToSplitAtCentroid()
 {
 	if (isReference())
 		return;
 
-	if (phase <= _splitPhase)
-		return;
-
-	_splitPhase = phase;
-	getBlockPtr()->increaseSplitPhase(_splitPhase);
+	_splitRequired = true;
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&ctr, phase](Polygon& face) {
-			face.setNeedToSplitAtPoint(ctr, phase);
+		faceFunc(faceId, [&ctr](Polygon& face) {
+			face.setNeedToSplitAtPoint(ctr);
 		});
 	}
 }
@@ -689,7 +774,7 @@ void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureR
 	CBoundingBox3Dd bbox = getBoundingBox();
 
 	bool needToSplit = false;
-#if 1
+#if 1 // Split at sharp vertices
 	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 	for (size_t vertIdx : sharpVerts) {
 		auto pTriMesh = getBlockPtr()->getModelMesh();
@@ -714,7 +799,7 @@ void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureR
 	}
 
 	if (needToSplit) {
-		setNeedToSplitAtCentroid(0);
+		setNeedToSplitAtCentroid();
 	}
 }
 
@@ -907,7 +992,7 @@ bool Polyhedron::verifyTopology() const
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
-				bool pass = face.ownedByCell(_thisId);
+				bool pass = face.usedByCell(_thisId);
 				if (!pass)
 					valid = false;
 				pass = face.verifyTopology();

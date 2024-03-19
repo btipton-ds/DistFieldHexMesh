@@ -351,22 +351,20 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 {
-	bool mayHaveSplitEdges = false; // Name is reversed for clarity on the call
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 		runLambda([this](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->setNeedsSimpleSplit();
 			}
 			return true;
-		}, multiCore);
+		},  multiCore);
 
-		finishSplits(mayHaveSplitEdges, multiCore);
+		finishSplits(multiCore);
 	}
 }
 
 void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
-	bool mayHaveSplitEdges = true;
 	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
@@ -376,60 +374,67 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
 			}
 			return true;
-		}, false && multiCore);
+		},  multiCore);
 
-		finishSplits(mayHaveSplitEdges, multiCore);
+		finishSplits(multiCore);
 	}
-
 }
 
-void Volume::finishSplits(bool mayHaveSplitEdges, bool multiCore)
+void Volume::finishSplits(bool multiCore)
 {
-	int maxSplitPhase = -1;
-	for (size_t i = 0; i < _blocks.size(); i++) {
-		if (_blocks[i]->getMaxSplitPhase() > maxSplitPhase)
-			maxSplitPhase = _blocks[i]->getMaxSplitPhase();
-	}
-	for (int phase = maxSplitPhase; phase >= 0; phase--) {
-		runLambda([this, phase](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolygonsNeedingSplit(phase);
-			}
-			return true;
-		}, false && multiCore);
+	splitTopology(0, multiCore);
+	promoteReferencePolygons(multiCore);
 
-		runLambda([this, phase](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolyhedraNeedingSplit(phase);
-			}
-			return true;
-		}, false && multiCore);
-	}
+	splitTopology(1, multiCore);
+	promoteReferencePolygons(multiCore);
 
-	if (mayHaveSplitEdges) {
+	imprintTJointVertices(multiCore);
 #if 0
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->replacePolyhedraSplitFaces();
-			}
-			return true;
-		}, false && multiCore);
-#endif
-		// This is working with no verify faults, but it LOOKS wrong
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->imprintPolyhedraVertices();
-			}
-			return true;
-		}, false && multiCore);
-	}
-
+	// This may not be needed
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->setPolygonCellIds();
 		}
 		return true;
 	}, multiCore);
+#endif
+}
+
+void Volume::splitTopology(int phase, bool multiCore)
+{
+	runLambda([this, phase](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolygonsIfRequired(phase);
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this, phase](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfRequired(phase);
+		}
+		return true;
+	}, multiCore);
+}
+
+void Volume::promoteReferencePolygons(bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->promoteReferencePolygons();
+		}
+		return true;
+	},  multiCore);
+}
+
+void Volume::imprintTJointVertices(bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->imprintTJointVertices();
+		}
+		return true;
+	},  multiCore);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
