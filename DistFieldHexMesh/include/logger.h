@@ -34,7 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <iostream>
 #include <fstream>
 
-#define THREAD_SAFE_LOG(EXPR) { lock_guard g(Logger::get().mutex()); EXPR; }
+#define THREAD_SAFE_LOG(EXPR) { lock_guard g(getBlockPtr()->getLogger()->mutex()); EXPR; }
 namespace DFHM {
 
 class Logger;
@@ -43,17 +43,19 @@ class Padding {
 public:
 	class ScopedPad {
 	public:
-		inline ScopedPad()
+		inline ScopedPad(Padding& padding)
+			: _padding(padding)
 		{
-			Padding::get().padIn();
+			_padding.padIn();
 		}
 
 		inline ~ScopedPad() {
-			Padding::get().padOut();
+			_padding.padOut();
 		}
-	};
 
-	static Padding& get();
+	private:
+		Padding& _padding;
+	};
 
 	void padIn();
 	void padOut();
@@ -65,15 +67,16 @@ private:
 
 class Logger {
 public:
-	static Logger& get();
+	static std::shared_ptr<Logger> get(const std::string& streamName);
 
 	Logger(const std::string& logPath);
-	std::ostream& stream(const std::string& streamName);
+	std::ostream& getStream();
+	Padding& getPadding();
 	std::mutex& mutex();
 
 private:
-	std::string _logPath;
-	std::map<std::string, std::shared_ptr<std::ofstream>> _streams;
+	std::ofstream _stream;
+	Padding _padding;
 	std::mutex _mutex;
 };
 

@@ -688,9 +688,11 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	if (!canSplitAll)
 		return false;
 
-	ostream& out = Logger::get().stream("splitter.log");
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+	auto& pad = pLogger->getPadding();
 
-	THREAD_SAFE_LOG(out << "Splitting " << *this);
+	out << "Splitting " << *this;
 
 	removeOurIdFromFaces();
 
@@ -766,16 +768,16 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 		Polyhedron newCell(vertFaces);
 
 		auto newCellId = getBlockPtr()->addCell(newCell, true);
-		cellFunc(newCellId, [this, &out](Polyhedron& newCell) {
+		cellFunc(newCellId, [this, &out, &pad](Polyhedron& newCell) {
 			newCell._referenceEntityId = _thisId;
-			Padding::ScopedPad sp;
-			THREAD_SAFE_LOG(out << Padding::get() << "to: " << newCell);
+			Padding::ScopedPad sp(pad);
+			out << pad << "to: " << newCell;
 		});
 		_referencingEntityIds.insert(newCellId);
 
 	}
 
-	THREAD_SAFE_LOG(out << "Post split " << *this << "\n=================================================================================================\n");
+	out << "Post split " << *this << "\n=================================================================================================\n";
 
 	return true;
 }
@@ -1048,18 +1050,19 @@ bool Polyhedron::verifyTopology() const
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 {
+	auto& pad = cell.getBlockPtr()->getLogger()->getPadding();
 	out << "Cell: c" << cell.getId() << "\n";
 	{
-		Padding::ScopedPad sp;
+		Padding::ScopedPad sp(pad);
 
-		out << Padding::get() << "faceIds: {";
-		for (const auto& faceId : cell.getFaceIds()) {
+		out << pad << "faceIds(" << cell._faceIds.size() << "): {";
+		for (const auto& faceId : cell._faceIds) {
 			out << "f" << faceId << " ";
 		}
 		out << "}\n";
 
-		out << Padding::get() << "referenceEntityId: c" << cell._referenceEntityId << "\n";
-		out << Padding::get() << "referencingEntityIds: {";
+		out << pad << "referenceEntityId: c" << cell._referenceEntityId << "\n";
+		out << pad << "referencingEntityIds(" << cell._referencingEntityIds.size() << "): {";
 		for (const auto& refId : cell._referencingEntityIds) {
 			out << "c" << refId << " ";
 		}

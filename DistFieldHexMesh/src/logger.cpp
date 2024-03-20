@@ -31,35 +31,30 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-namespace {
-	static Logger s_logger("D:/DarkSky/Projects/output/logs/");
-}
-
-Logger& Logger::get()
+std::shared_ptr<Logger> Logger::get(const std::string& streamName)
 {
-	return s_logger;
+	static map<std::string, shared_ptr<Logger>> s_map;
+	auto iter = s_map.find(streamName);
+	if (iter == s_map.end()) {
+		shared_ptr<Logger> p = make_shared<Logger>("D:/DarkSky/Projects/output/logs/" + streamName);
+		iter = s_map.insert(make_pair(streamName, p)).first;
+	}
+	return iter->second;
 }
 
 Logger::Logger(const string& logPath)
-	: _logPath(logPath)
+	: _stream(logPath, ios::out)
 {
 }
 
-ostream& Logger::stream(const string& streamName)
+ostream& Logger::getStream()
 {
-	auto iter = _streams.find(streamName);
-	if (iter == _streams.end()) {
-		shared_ptr<ofstream> p = make_shared<ofstream>(_logPath + streamName, ios_base::out);
-		iter = _streams.insert(make_pair(streamName, p)).first;
-	}
-
-	return *iter->second.get();
+	return _stream;
 }
 
-Padding& Padding::get()
+Padding& Logger::getPadding()
 {
-	static Padding s_padding;
-	return s_padding;
+	return _padding;
 }
 
 void Padding::padIn()
@@ -70,7 +65,6 @@ void Padding::padIn()
 void Padding::padOut()
 {
 	_padDepth--;
-
 }
 
 int Padding::getPadDepth() const
@@ -80,7 +74,7 @@ int Padding::getPadDepth() const
 
 ostream& DFHM::operator << (ostream& out, const Padding& sp)
 {
-	for (int i = 0; i < Padding::get().getPadDepth(); i++)
+	for (int i = 0; i < sp.getPadDepth(); i++)
 		out << "  ";
 	return out;
 }

@@ -28,8 +28,10 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <memory>
+#include <string>
 #include <vector>
 #include <map>
+#include <iostream>
 #include <mutexType.h>
 #include <stdexcept>
 #include <tm_vector3.h>
@@ -40,6 +42,7 @@ namespace DFHM {
 
 class Block;
 class Volume;
+class Logger;
 
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
@@ -51,6 +54,11 @@ public:
 
 	virtual const Block* getOwner(const Index3D& blockIdx) const = 0;
 	virtual Block* getOwner(const Index3D& blockIdx) = 0;
+
+	std::shared_ptr<Logger> getLogger() const;
+
+private:
+	mutable std::string _filename;
 };
 
 class ObjectPoolOwnerUser {
@@ -63,6 +71,7 @@ public:
 
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
+
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 	const Index3DId& getId() const;
 
@@ -73,6 +82,7 @@ private:
 	template<class T>
 	friend class ObjectPool;
 	ObjectPoolOwner* _pPoolOwner = nullptr;
+
 };
 
 template<class T>

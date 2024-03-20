@@ -139,7 +139,7 @@ inline bool Polyhedron::isSplitRequired() const
 	return _splitRequired;
 }
 
-std::ostream& operator << (std::ostream& out, const Polyhedron& face);
+std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
 
 }
 

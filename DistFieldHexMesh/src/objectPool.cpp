@@ -25,13 +25,17 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <string>
+#include <sstream>
 #include <objectPool.h>
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
 #include <volume.h>
+#include <logger.h>
 
+using namespace std;
 using namespace DFHM;
 
 #define DECL_THREAD_LOCAL(CLASS_NAME)  template<>\
@@ -86,3 +90,14 @@ const Index3DId& ObjectPoolOwnerUser::getId() const
 	return _thisId;
 }
 
+std::shared_ptr<Logger> ObjectPoolOwner::getLogger() const
+{
+	if (_filename.empty()) {
+		Index3D idx = getBlockIdx();
+		stringstream ss;
+		ss << "block_" << idx[0] << "_" << idx[1] << "_" << idx[2] << ".log";
+		_filename = ss.str();
+	}
+
+	return Logger::get(_filename);
+}

@@ -477,9 +477,12 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 	// cases
 	//   natural
 	//   has inserted vertices - use reference
-	ostream& out = Logger::get().stream("splitter.log");
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
 
-	THREAD_SAFE_LOG(out << "Splitting " << *this);
+	out << "Splitting " << *this; 
+
 	if (!hasSplitEdges()) {
 		// split this face
 		assert(_referencingEntityIds.empty());
@@ -530,31 +533,34 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 
 			auto newFaceId = createFace(face);
 
-			faceFunc(newFaceId, [this, &out](Polygon& newFace) {
+			faceFunc(newFaceId, [this, &out, &padding](Polygon& newFace) {
 				newFace._referenceEntityId = _thisId;
 				newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
-				Padding::ScopedPad sp;
-				THREAD_SAFE_LOG(out << Padding::get() << "to: " << newFace);
+				Padding::ScopedPad sp(padding);
+				out << padding << "to: " << newFace;
 			});
 			_referencingEntityIds.insert(newFaceId);
 		}
 
-		THREAD_SAFE_LOG(out << "Post split " << *this << "\n=================================================================================================\n");
+		out << "Post split " << *this << "\n=================================================================================================\n";
 
 	} else {
 		// remove this face from the reference entity's split list
 		// split the reference
 		// Delete this face permenently
 
-		faceFunc(_referenceEntityId, [this, &pt](Polygon& refFace) {
+		out << "Splitting face with split edges using reference" << *this << "\n=================================================================================================\n";
+		faceFunc(_referenceEntityId, [this, &pt, &padding](Polygon& refFace) {
 			assert(refFace._referencingEntityIds.size() == 1);
 
 			refFace._referencingEntityIds.erase(_thisId);
 
+			Padding::ScopedPad sp(padding);
 			refFace.splitAtPoint(pt);
 
 			getBlockPtr()->freePolygon(_thisId);
 		});
+		out << "Post split " << *this << "\n=================================================================================================\n";
 	}
 }
 
@@ -686,24 +692,25 @@ bool Polygon::verifyTopology() const
 
 ostream& DFHM::operator << (ostream& out, const Polygon& face)
 {
+	auto& pad = face.getBlockPtr()->getLogger()->getPadding();
 	out << "Face: f" << face.getId() << "\n";
 	{
-		Padding::ScopedPad sp;
+		Padding::ScopedPad sp(pad);
 		
-		out << Padding::get() << "vertexIds: {";
-		for (const auto& vertId : face.getVertexIds()) {
+		out << pad << "vertexIds(" << face._vertexIds.size() << "): {";
+		for (const auto& vertId : face._vertexIds) {
 			out << "v" << vertId << " ";
 		}
 		out << "}\n";
 
-		out << Padding::get() << "cellIds: {";
-		for (const auto& cellId : face.getCellIds()) {
+		out << pad << "cellIds(" << face._cellIds.size() << "): {";
+		for (const auto& cellId : face._cellIds) {
 			out << "c" <<cellId << " ";
 		}
 		out << "}\n";
 
-		out << Padding::get() << "referenceEntityId: f" << face.getReferenceEntityId() << "\n";
-		out << Padding::get() << "referencingEntityIds: {";
+		out << pad << "referenceEntityId: f" << face._referenceEntityId << "\n";
+		out << pad << "referencingEntityIds(" << face._referencingEntityIds.size() << "): {";
 		for (const auto& refId : face._referencingEntityIds) {
 			out << "f" << refId << " ";
 		}
