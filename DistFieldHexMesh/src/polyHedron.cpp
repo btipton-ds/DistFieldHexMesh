@@ -775,7 +775,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 
 	}
 
-	THREAD_SAFE_LOG(out << "Post split " << *this << "\n**************************************************************************************\n");
+	THREAD_SAFE_LOG(out << "Post split " << *this << "\n=================================================================================================\n");
 
 	return true;
 }

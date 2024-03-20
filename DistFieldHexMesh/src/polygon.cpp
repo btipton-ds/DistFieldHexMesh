@@ -539,7 +539,7 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 			_referencingEntityIds.insert(newFaceId);
 		}
 
-		THREAD_SAFE_LOG(out << "Post split " << *this << "\n**************************************************************************************\n");
+		THREAD_SAFE_LOG(out << "Post split " << *this << "\n=================================================================================================\n");
 
 	} else {
 		// remove this face from the reference entity's split list
