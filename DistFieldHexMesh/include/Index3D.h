@@ -172,6 +172,7 @@ public:
 	static size_t getBlockDim();
 
 	Index3DId() = default;
+	Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id);
 	Index3DId(const Index3DId& src) = default;
 	Index3DId(const Index3DBase& src, size_t elementId);
 
@@ -227,5 +228,8 @@ inline Index3D Index3DId::blockIdx() const
 {
 	return Index3D(*this);
 }
+
+std::ostream& operator << (std::ostream& out, const Index3DId& id);
+std::ostream& operator << (std::ostream& out, const Index3D& idx);
 
 }

@@ -80,3 +80,9 @@ void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
 	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
 }
+
+const Index3DId& ObjectPoolOwnerUser::getId() const
+{
+	return _thisId;
+}
+

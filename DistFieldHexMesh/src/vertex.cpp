@@ -70,3 +70,9 @@ const bool Vertex::operator < (const Vertex& rhs) const
 	return _searchPt < rhs._searchPt;
 #endif
 }
+
+ostream& DFHM::operator << (ostream& out, const Vertex& vert)
+{
+	out << "Vertex " << vert.getId();
+	return out;
+}

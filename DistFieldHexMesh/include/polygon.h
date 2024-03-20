@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <vector>
 #include <set>
+#include <iostream>
 #include <patient_lock_guard.h>
 #include <index3D.h>
 #include <objectPool.h>
@@ -81,8 +82,6 @@ public:
 	Polygon() = default;
 	Polygon(const std::vector<Index3DId>& verts);
 	Polygon(const Polygon& src) = default;
-
-	const Index3DId& getId() const;
 
 	void addVertex(const Index3DId& vertId);
 	const Index3DId& getReferenceEntityId() const;
@@ -139,9 +138,9 @@ public:
 
 private:
 	friend class Polyhedron;
+	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	void makeOrphan();
 	Index3DId createFace(const Polygon& face);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
@@ -160,11 +159,6 @@ private:
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
 };
-
-inline const Index3DId& Polygon::getId() const
-{
-	return _thisId;
-}
 
 inline bool Polygon::verifyUnique() const
 {
@@ -226,5 +220,6 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
+std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 }

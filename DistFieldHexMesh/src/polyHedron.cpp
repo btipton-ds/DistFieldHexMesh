@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedron.h>
 #include <block.h>
 #include <volume.h>
+#include <logger.h>
 
 using namespace std;
 using namespace DFHM;
@@ -431,6 +432,10 @@ void Polyhedron::fixPartialSplits()
 
 Index3DId Polyhedron::duplicateAndPromoteFaces()
 {
+	Index3DId dbgId(0, 6, 5, 1);
+	if (dbgId == _thisId) {
+		int dbgBreak = 1;
+	}
 	Index3DId dupCellId;
 	if (_referencingEntityIds.empty()) {
 		set<Index3DId> allFaceIds;
@@ -446,12 +451,34 @@ Index3DId Polyhedron::duplicateAndPromoteFaces()
 		}
 
 		dupCellId = getBlockPtr()->addCell(allFaceIds);
+		if (dbgId == dupCellId) {
+			int dbgBreak = 1;
+		}
 		_referencingEntityIds.insert(dupCellId);
 		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
 			dupCell._referenceEntityId = _thisId;
 		});
+
+		for (const auto& faceId : allFaceIds) {
+			faceFunc(faceId, [this, &dupCellId](Polygon& face) {
+				face.removeCellId(_thisId);
+				face.addCellId(dupCellId);
+			});
+		}
 	} else {
-		assert(!"Not implemented yet");
+		set<Index3DId> allFaceIds;
+		for (const Index3DId& faceId : _faceIds) {
+			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
+				const auto& refIds = face._referencingEntityIds;
+				if (refIds.empty())
+					allFaceIds.insert(face.getId());
+				else {
+					allFaceIds.insert(refIds.begin(), refIds.end());
+				}
+			});
+		}
+
+		_faceIds = allFaceIds;
 	}
 
 	return dupCellId;
@@ -472,6 +499,11 @@ void Polyhedron::splitIfRequred(int phase)
 
 void Polyhedron::promoteReferencePolygons()
 {
+	Index3DId dbgId(0, 6, 5, 1);
+	if (dbgId == _thisId) {
+		int dbgBreak = 1;
+	}
+
 	if (isReference())
 		return;
 
@@ -487,8 +519,6 @@ void Polyhedron::promoteReferencePolygons()
 				allFaceIds.insert(face.getId());
 			}
 		});
-		if (hasReferenceFaces)
-			break;
 	}
 
 	if (!hasReferenceFaces)
@@ -513,7 +543,7 @@ void Polyhedron::promoteReferencePolygons()
 			});
 		}
 	} else {
-		_referenceEntityId = duplicateAndPromoteFaces();
+		duplicateAndPromoteFaces();
 	}
 }
 
@@ -658,6 +688,10 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	if (!canSplitAll)
 		return false;
 
+	ostream& out = Logger::get().stream("splitter.log");
+
+	THREAD_SAFE_LOG(out << "Splitting " << *this);
+
 	removeOurIdFromFaces();
 
 	Index3DId cellMidId = getBlockPtr()->addVertex(centerPoint);
@@ -732,11 +766,16 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 		Polyhedron newCell(vertFaces);
 
 		auto newCellId = getBlockPtr()->addCell(newCell, true);
-		cellFunc(newCellId, [this](Polyhedron& newCell) {
+		cellFunc(newCellId, [this, &out](Polyhedron& newCell) {
 			newCell._referenceEntityId = _thisId;
+			Padding::ScopedPad sp;
+			THREAD_SAFE_LOG(out << Padding::get() << "to: " << newCell);
 		});
 		_referencingEntityIds.insert(newCellId);
+
 	}
+
+	THREAD_SAFE_LOG(out << "Post split " << *this << "\n**************************************************************************************\n");
 
 	return true;
 }
@@ -1007,3 +1046,25 @@ bool Polyhedron::verifyTopology() const
 	return valid;
 }
 
+ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
+{
+	out << "Cell: c" << cell.getId() << "\n";
+	{
+		Padding::ScopedPad sp;
+
+		out << Padding::get() << "faceIds: {";
+		for (const auto& faceId : cell.getFaceIds()) {
+			out << "f" << faceId << " ";
+		}
+		out << "}\n";
+
+		out << Padding::get() << "referenceEntityId: c" << cell._referenceEntityId << "\n";
+		out << Padding::get() << "referencingEntityIds: {";
+		for (const auto& refId : cell._referencingEntityIds) {
+			out << "c" << refId << " ";
+		}
+		out << "}\n";
+	}
+
+	return out;
+}

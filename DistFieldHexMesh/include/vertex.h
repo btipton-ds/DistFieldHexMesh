@@ -215,5 +215,7 @@ inline Vertex::operator Vector3d () const
 	return getPoint();
 }
 
+std::ostream& operator << (std::ostream& out, const Vertex& vert);
+
 }
 

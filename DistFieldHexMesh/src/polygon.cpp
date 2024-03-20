@@ -27,12 +27,13 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <iostream>
+#include <fstream>
 #include <tm_math.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
 #include <block.h>
+#include <logger.h>
 
 using namespace std;
 using namespace DFHM;
@@ -476,7 +477,9 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 	// cases
 	//   natural
 	//   has inserted vertices - use reference
+	ostream& out = Logger::get().stream("splitter.log");
 
+	THREAD_SAFE_LOG(out << "Splitting " << *this);
 	if (!hasSplitEdges()) {
 		// split this face
 		assert(_referencingEntityIds.empty());
@@ -509,7 +512,7 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 			return;
 		}
 
-		makeOrphan();
+		getBlockPtr()->removeFaceFromLookUp(_thisId);
 
 		Index3DId facePtId = pBlk->addVertex(facePt);
 		vector<Index3DId> edgePtIds;
@@ -526,8 +529,18 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 			// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 			auto newFaceId = createFace(face);
+
+			faceFunc(newFaceId, [this, &out](Polygon& newFace) {
+				newFace._referenceEntityId = _thisId;
+				newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
+				Padding::ScopedPad sp;
+				THREAD_SAFE_LOG(out << Padding::get() << "to: " << newFace);
+			});
 			_referencingEntityIds.insert(newFaceId);
 		}
+
+		THREAD_SAFE_LOG(out << "Post split " << *this << "\n**************************************************************************************\n");
+
 	} else {
 		// remove this face from the reference entity's split list
 		// split the reference
@@ -543,12 +556,6 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 			getBlockPtr()->freePolygon(_thisId);
 		});
 	}
-}
-
-void Polygon::makeOrphan()
-{
-	getBlockPtr()->removeFaceFromLookUp(_thisId);
-	_cellIds.clear();
 }
 
 bool Polygon::imprintFaceVertices(const Polygon& otherFace)
@@ -675,4 +682,33 @@ bool Polygon::verifyTopology() const
 	}
 #endif
 	return valid;
+}
+
+ostream& DFHM::operator << (ostream& out, const Polygon& face)
+{
+	out << "Face: f" << face.getId() << "\n";
+	{
+		Padding::ScopedPad sp;
+		
+		out << Padding::get() << "vertexIds: {";
+		for (const auto& vertId : face.getVertexIds()) {
+			out << "v" << vertId << " ";
+		}
+		out << "}\n";
+
+		out << Padding::get() << "cellIds: {";
+		for (const auto& cellId : face.getCellIds()) {
+			out << "c" <<cellId << " ";
+		}
+		out << "}\n";
+
+		out << Padding::get() << "referenceEntityId: f" << face.getReferenceEntityId() << "\n";
+		out << Padding::get() << "referencingEntityIds: {";
+		for (const auto& refId : face._referencingEntityIds) {
+			out << "f" << refId << " ";
+		}
+		out << "}\n";
+	}
+
+	return out;
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 /*
 This file is part of the DistFieldHexMesh application/library.
 
@@ -25,54 +27,61 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <index3D.h>
+#include <memory>
+#include <string>
+#include <map>
+#include <mutex>
+#include <iostream>
+#include <fstream>
 
-using namespace std;
-using namespace DFHM;
+#define THREAD_SAFE_LOG(EXPR) { lock_guard g(Logger::get().mutex()); EXPR; }
+namespace DFHM {
 
-Index3DBaseType Index3DBase::s_blockDim = 8;
+class Logger;
 
-bool Index3DBase::operator < (const Index3DBase& rhs) const
+class Padding {
+public:
+	class ScopedPad {
+	public:
+		inline ScopedPad()
+		{
+			Padding::get().padIn();
+		}
+
+		inline ~ScopedPad() {
+			Padding::get().padOut();
+		}
+	};
+
+	static Padding& get();
+
+	void padIn();
+	void padOut();
+	int getPadDepth() const;
+
+private:
+	int _padDepth = 0;
+};
+
+class Logger {
+public:
+	static Logger& get();
+
+	Logger(const std::string& logPath);
+	std::ostream& stream(const std::string& streamName);
+	std::mutex& mutex();
+
+private:
+	std::string _logPath;
+	std::map<std::string, std::shared_ptr<std::ofstream>> _streams;
+	std::mutex _mutex;
+};
+
+inline std::mutex& Logger::mutex()
 {
-	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] < rhs[i])
-			return true;
-		else if ((*this)[i] > rhs[i])
-			return false;
-	}
-	assert((*this) == rhs);
-	return false;
+	return _mutex;
 }
 
-void Index3DBase::clampInBounds(size_t bound)
-{
-	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] >= bound)
-			(*this)[i] = (Index3DBaseType) (bound - 1);
-	}
-}
+std::ostream& operator << (std::ostream& out, const Padding& sp);
 
-Index3DId::Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id)
-	: Index3DBase(i, j, k)
-	, _elementId(id)
-{
-}
-
-ostream& DFHM::operator << (ostream& out, const Index3DId& id)
-{
-	if (id.isValid())
-		out << "[(" << id[0] << " " << id[1] << " " << id[2] << "): " << id.elementId() << "]";
-	else
-		out << "[(***): *]";
-	return out;
-}
-
-ostream& DFHM::operator << (ostream& out, const Index3D& idx)
-{
-	if (idx.isValid())
-		out << "(" << idx[0] << " " << idx[1] << " " << idx[2] << ")";
-	else
-		out << "(***)";
-
-	return out;
 }

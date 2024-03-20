@@ -47,9 +47,6 @@ public:
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src) = default;
 
-	// Required for use with object pool
-	Index3DId getId() const;
-
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
 	bool containsFace(const Index3DId& faceId) const;
@@ -98,6 +95,7 @@ public:
 
 private:
 	friend class Block;
+	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
 	void setSourceId(const Index3DId& id);
 	void removeOurIdFromFaces();
@@ -121,11 +119,6 @@ private:
 	std::set<Index3DId> _faceIds;
 };
 
-inline Index3DId Polyhedron::getId() const
-{
-	return _thisId;
-}
-
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
@@ -145,6 +138,8 @@ inline bool Polyhedron::isSplitRequired() const
 {
 	return _splitRequired;
 }
+
+std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
 }
 

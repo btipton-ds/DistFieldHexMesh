@@ -64,6 +64,7 @@ public:
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
+	const Index3DId& getId() const;
 
 protected:
 	Index3DId _thisId;

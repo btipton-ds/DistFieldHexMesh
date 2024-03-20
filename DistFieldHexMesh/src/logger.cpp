@@ -25,54 +25,62 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <index3D.h>
+#include <logger.h>
+#include <ios>
 
 using namespace std;
 using namespace DFHM;
 
-Index3DBaseType Index3DBase::s_blockDim = 8;
+namespace {
+	static Logger s_logger("D:/DarkSky/Projects/output/logs/");
+}
 
-bool Index3DBase::operator < (const Index3DBase& rhs) const
+Logger& Logger::get()
 {
-	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] < rhs[i])
-			return true;
-		else if ((*this)[i] > rhs[i])
-			return false;
+	return s_logger;
+}
+
+Logger::Logger(const string& logPath)
+	: _logPath(logPath)
+{
+}
+
+ostream& Logger::stream(const string& streamName)
+{
+	auto iter = _streams.find(streamName);
+	if (iter == _streams.end()) {
+		shared_ptr<ofstream> p = make_shared<ofstream>(_logPath + streamName, ios_base::out);
+		iter = _streams.insert(make_pair(streamName, p)).first;
 	}
-	assert((*this) == rhs);
-	return false;
+
+	return *iter->second.get();
 }
 
-void Index3DBase::clampInBounds(size_t bound)
+Padding& Padding::get()
 {
-	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] >= bound)
-			(*this)[i] = (Index3DBaseType) (bound - 1);
-	}
+	static Padding s_padding;
+	return s_padding;
 }
 
-Index3DId::Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id)
-	: Index3DBase(i, j, k)
-	, _elementId(id)
+void Padding::padIn()
 {
+	_padDepth++;
 }
 
-ostream& DFHM::operator << (ostream& out, const Index3DId& id)
+void Padding::padOut()
 {
-	if (id.isValid())
-		out << "[(" << id[0] << " " << id[1] << " " << id[2] << "): " << id.elementId() << "]";
-	else
-		out << "[(***): *]";
-	return out;
+	_padDepth--;
+
 }
 
-ostream& DFHM::operator << (ostream& out, const Index3D& idx)
+int Padding::getPadDepth() const
 {
-	if (idx.isValid())
-		out << "(" << idx[0] << " " << idx[1] << " " << idx[2] << ")";
-	else
-		out << "(***)";
+	return _padDepth;
+}
 
+ostream& DFHM::operator << (ostream& out, const Padding& sp)
+{
+	for (int i = 0; i < Padding::get().getPadDepth(); i++)
+		out << "  ";
 	return out;
 }
