@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <index3D.h>
 #include <objectPool.h>
+#include <iostream>
 
 struct Plane;
 struct LineSegment;
@@ -47,6 +48,9 @@ public:
 	Edge(const Edge& src) = default;
 	Edge(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds = std::set<Index3DId>());
 	Edge(const Edge& src, const std::set<Index3DId>& faceIds);
+
+	void setBlockPtr(const Block* pBlock) const;
+	const Block* getBlockPtr() const;
 
 	bool isValid() const;
 	bool operator < (const Edge& rhs) const;
@@ -78,7 +82,18 @@ public:
 private:
 	Index3DId _vertexIds[2];
 	std::set<Index3DId> _faceIds;
+	mutable const Block* _pBlock;
 };
+
+inline void Edge::setBlockPtr(const Block* pBlock) const
+{
+	_pBlock = pBlock;
+}
+
+inline const Block* Edge::getBlockPtr() const
+{
+	return _pBlock;
+}
 
 inline const std::set<Index3DId>& Edge::getFaceIds() const
 {
@@ -89,5 +104,7 @@ inline const Index3DId* Edge::getVertexIds() const
 {
 	return _vertexIds;
 }
+
+std::ostream& operator << (std::ostream& out, const Edge& edge);
 
 }

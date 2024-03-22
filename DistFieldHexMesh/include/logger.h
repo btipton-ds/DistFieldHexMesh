@@ -44,49 +44,39 @@ namespace DFHM {
 
 class Logger;
 
-class Padding {
-public:
-	class ScopedPad {
-	public:
-		inline ScopedPad(Padding& padding)
-			: _padding(padding)
-		{
-			_padding.padIn();
-		}
-
-		inline ~ScopedPad() {
-			_padding.padOut();
-		}
-
-	private:
-		Padding& _padding;
-	};
-
-	void padIn();
-	void padOut();
-	int getPadDepth() const;
-
-private:
-	int _padDepth = 0;
-};
-
 class Logger {
 public:
+	class Indent
+	{
+	public:
+		Indent();
+		~Indent();
+	};
+
+	class Pad {
+	};
+
 	static std::shared_ptr<Logger> get(const std::string& streamName);
 
 
 	Logger(const std::string& logPath);
 	std::ostream& getStream();
-	Padding& getPadding();
 	std::mutex& mutex();
 	void setEnabled(bool val);
 	bool enabled() const;
 
 private:
+	friend std::ostream& operator << (std::ostream& out, const Pad& pad);
+
+	static int getPadDepth();
+	static void padIn();
+	static void padOut();
+
 	bool _enabled = true;
 	std::ofstream _stream;
-	Padding _padding;
 	std::mutex _mutex;
+
+	thread_local static int _depth;
 };
 
 inline std::mutex& Logger::mutex()
@@ -104,6 +94,6 @@ inline bool Logger::enabled() const
 	return _enabled;
 }
 
-std::ostream& operator << (std::ostream& out, const Padding& sp);
+std::ostream& operator << (std::ostream& out, const Logger::Pad& pad);
 
 }

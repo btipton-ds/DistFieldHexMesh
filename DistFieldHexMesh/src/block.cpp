@@ -668,9 +668,8 @@ void Block::setNeedsSimpleSplit()
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
 	out << "Block::setNeedsSimpleSplit()\n";
-	Padding::ScopedPad sp(padding);
+	Logger::Indent indent;
 
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.setNeedToSplitAtCentroid();
@@ -681,9 +680,8 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
 	out << "Block::setNeedsCurvatureSplit()\n";
-	Padding::ScopedPad sp(padding);
+	Logger::Indent indent;
 
 	_polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
 		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
@@ -702,9 +700,8 @@ void Block::splitPolygonsIfRequired(int phase)
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
-	out << "Block::splitPolygonsIfRequired()\n";
-	Padding::ScopedPad sp(padding);
+	out << "Block::splitPolygonsIfRequired(" << phase << ")\n";
+	Logger::Indent indent;
 
 	_polygons.iterateInOrder([phase](Polygon& face) {
 		face.splitIfRequred(phase);
@@ -715,9 +712,8 @@ void Block::promoteReferencePolygons()
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
 	out << "Block::promoteReferencePolygons()\n";
-	Padding::ScopedPad sp(padding);
+	Logger::Indent indent;
 
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.promoteReferencePolygons();
@@ -728,9 +724,8 @@ void Block::splitPolyhedraIfRequired(int phase)
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
-	out << "Block::splitPolyhedraIfRequired()\n";
-	Padding::ScopedPad sp(padding);
+	out << "Block::splitPolyhedraIfRequired(" << phase << ")\n";
+	Logger::Indent indent;
 
 	_polyhedra.iterateInOrder([phase](Polyhedron& cell) {
 		cell.splitIfRequred(phase);
@@ -741,9 +736,8 @@ void Block::imprintTJointVertices()
 {
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
 	out << "Block::imprintTJointVertices()\n";
-	Padding::ScopedPad sp(padding);
+	Logger::Indent indent;
 
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.imprintVertices();

@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <logger.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
 #include <polygon.h>

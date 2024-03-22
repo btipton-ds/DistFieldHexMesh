@@ -479,9 +479,8 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 	//   has inserted vertices - use reference
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
-	auto& pad = pLogger->getPadding();
 
-	LOG(out << pad << "Splitting " << *this);
+	LOG(out << Logger::Pad() << "Splitting " << *this);
 
 	if (!hasSplitEdges()) {
 		// split this face
@@ -533,34 +532,34 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 
 			auto newFaceId = createFace(face);
 
-			faceFunc(newFaceId, [this, &out, &pad](Polygon& newFace) {
+			faceFunc(newFaceId, [this, &out](Polygon& newFace) {
 				newFace._referenceEntityId = _thisId;
 				newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
-				Padding::ScopedPad sp(pad);
-				LOG(out << pad << "to: " << newFace);
+				Logger::Indent indent;
+				LOG(out << Logger::Pad() << "to: " << newFace);
 			});
 			_referencingEntityIds.insert(newFaceId);
 		}
 
-		LOG(out << pad << "Post split " << *this << "\n" << pad << "=================================================================================================\n");
+		LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
 
 	} else {
 		// remove this face from the reference entity's split list
 		// split the reference
 		// Delete this face permenently
 
-		LOG(out << pad << "Splitting face with split edges using reference" << *this << "\n" << pad << "================================================================================================ = \n");
-		faceFunc(_referenceEntityId, [this, &pt, &pad](Polygon& refFace) {
+		LOG(out << Logger::Pad() << "Splitting face with split edges using reference" << *this << "\n" << Logger::Pad() << "================================================================================================ = \n");
+		faceFunc(_referenceEntityId, [this, &pt](Polygon& refFace) {
 			assert(refFace._referencingEntityIds.size() == 1);
 
 			refFace._referencingEntityIds.erase(_thisId);
 
-			Padding::ScopedPad sp(pad);
+			Logger::Indent indent;
 			refFace.splitAtPoint(pt);
 
 			getBlockPtr()->freePolygon(_thisId);
 		});
-		LOG(out << pad << "Post split " << *this << "\n=================================================================================================\n");
+		LOG(out << Logger::Pad() << "Post split " << *this << "\n=================================================================================================\n");
 	}
 }
 
@@ -583,29 +582,44 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 
 bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 {
-	return imprintVertex(getBlockPtr(), vertId, edge);
-}
+	Block* pBlk = getBlockPtr();
 
-bool Polygon::imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge)
-{
+	bool needsImprint = false;
+
 	if (_referenceEntityId.isValid()) {
 		// This is the duplicate, work on this
 		double t;
 		size_t i, j;
 		if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-			// the vertex is not in this polygon and lies between i and j
-			if (_thisId.isValid())
-				pBlk->removeFaceFromLookUp(_thisId);
-
-			_vertexIds.insert(_vertexIds.begin() + j, vertId);
-			_needSort = true;
-
-			if (_thisId.isValid())
-				pBlk->addFaceToLookup(_thisId);
-			return true;
+			needsImprint = true;
 		}
-		return false;
 	}
+
+	if (!needsImprint)
+		return false;
+
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+	const auto edgeVerts = edge.getVertexIds();
+	LOG(out << Logger::Pad() << "imprintVertex f" << _thisId << " (vertId = " << vertId << ", edge : (" << edgeVerts[0] << " " << edgeVerts[1] << ")\n");
+	LOG(out << Logger::Pad() << "pre: " << *this << "\n");
+
+	// This is the duplicate, work on this
+	double t;
+	size_t i, j;
+	if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+		// the vertex is not in this polygon and lies between i and j
+		if (_thisId.isValid())
+			pBlk->removeFaceFromLookUp(_thisId);
+
+		_vertexIds.insert(_vertexIds.begin() + j, vertId);
+		_needSort = true;
+
+		if (_thisId.isValid())
+			pBlk->addFaceToLookup(_thisId);
+	}
+
+	LOG(out << Logger::Pad() << "pst: " << *this << "\n");
 
 	return true;
 }
@@ -692,25 +706,24 @@ bool Polygon::verifyTopology() const
 
 ostream& DFHM::operator << (ostream& out, const Polygon& face)
 {
-	auto& pad = face.getBlockPtr()->getLogger()->getPadding();
 	out << "Face: f" << face.getId() << "\n";
 	{
-		Padding::ScopedPad sp(pad);
+		Logger::Indent sp;
 		
-		out << pad << "vertexIds(" << face._vertexIds.size() << "): {";
+		out << Logger::Pad() << "vertexIds(" << face._vertexIds.size() << "): {";
 		for (const auto& vertId : face._vertexIds) {
 			out << "v" << vertId << " ";
 		}
 		out << "}\n";
 
-		out << pad << "cellIds(" << face._cellIds.size() << "): {";
+		out << Logger::Pad() << "cellIds(" << face._cellIds.size() << "): {";
 		for (const auto& cellId : face._cellIds) {
 			out << "c" <<cellId << " ";
 		}
 		out << "}\n";
 
-		out << pad << "referenceEntityId: f" << face._referenceEntityId << "\n";
-		out << pad << "referencingEntityIds(" << face._referencingEntityIds.size() << "): {";
+		out << Logger::Pad() << "referenceEntityId: f" << face._referenceEntityId << "\n";
+		out << Logger::Pad() << "referencingEntityIds(" << face._referencingEntityIds.size() << "): {";
 		for (const auto& refId : face._referencingEntityIds) {
 			out << "f" << refId << " ";
 		}

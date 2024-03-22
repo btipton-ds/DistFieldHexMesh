@@ -29,11 +29,12 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <block.h>
 #include <volume.h>
+#include <logger.h>
 
 using namespace std;
 using namespace DFHM;
 
-Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds)
+Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
 	if (vert0 < vert1) {
@@ -45,7 +46,7 @@ Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3
 	}
 }
 
-Edge::Edge(const Edge& src, const std::set<Index3DId>& faceIds)
+Edge::Edge(const Edge& src, const set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
 	_vertexIds[0] = src._vertexIds[0];
@@ -215,7 +216,7 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-void Edge::getFaceIds(std::set<Index3DId>& faceIds) const
+void Edge::getFaceIds(set<Index3DId>& faceIds) const
 {
 	faceIds.insert(_faceIds.begin(), _faceIds.end());
 }
@@ -247,7 +248,7 @@ double Edge::intesectPlaneParam(const Block* pBlock, const Plane& splittingPlane
 	return -1;
 }
 
-Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, std::set<Index3DId>& faceIds) const
+Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, set<Index3DId>& faceIds) const
 {
 	const double tol = Tolerance::paramTol();
 	double t = intesectPlaneParam(pBlock, splittingPlane);
@@ -255,4 +256,20 @@ Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, std::
 		return splitAtParam(pBlock, t, faceIds);
 	}
 	return Index3DId();
+}
+
+ostream& DFHM::operator << (ostream& out, const Edge& edge)
+{
+	out << "Edge: e(" << edge.getVertexIds()[0] << " " << edge.getVertexIds()[1] << ")\n";
+	{
+		Logger::Indent indent;
+
+		out << Logger::Pad() << "faceIds(" << edge.getFaceIds().size() << "): {";
+		for (const auto& faceId : edge.getFaceIds()) {
+			out << "f" << faceId << " ";
+		}
+		out << "}\n";
+	}
+
+	return out;
 }

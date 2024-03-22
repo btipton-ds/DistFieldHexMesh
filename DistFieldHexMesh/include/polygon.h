@@ -145,7 +145,6 @@ private:
 	bool imprintFaceVertices(const Polygon& otherFace);
 
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
-	bool imprintVertex(Block* pBlk, const Index3DId& vertId, const Edge& edge);
 
 	bool _splitRequired = false;
 	Vector3d _splitPt;

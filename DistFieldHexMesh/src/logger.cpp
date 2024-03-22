@@ -31,9 +31,11 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-std::shared_ptr<Logger> Logger::get(const std::string& streamName)
+thread_local int Logger::_depth;
+
+shared_ptr<Logger> Logger::get(const string& streamName)
 {
-	static map<std::string, shared_ptr<Logger>> s_map;
+	static map<string, shared_ptr<Logger>> s_map;
 	auto iter = s_map.find(streamName);
 	if (iter == s_map.end()) {
 		shared_ptr<Logger> p = make_shared<Logger>("D:/DarkSky/Projects/output/logs/" + streamName);
@@ -52,29 +54,34 @@ ostream& Logger::getStream()
 	return _stream;
 }
 
-Padding& Logger::getPadding()
+void Logger::padIn()
 {
-	return _padding;
+	_depth++;
 }
 
-void Padding::padIn()
+void Logger::padOut()
 {
-	_padDepth++;
+	_depth--;
 }
 
-void Padding::padOut()
+int Logger::getPadDepth()
 {
-	_padDepth--;
+	return _depth;
 }
 
-int Padding::getPadDepth() const
+Logger::Indent::Indent()
 {
-	return _padDepth;
+	Logger::padIn();
 }
 
-ostream& DFHM::operator << (ostream& out, const Padding& sp)
+Logger::Indent::~Indent()
 {
-	for (int i = 0; i < sp.getPadDepth(); i++)
+	Logger::padOut();
+}
+
+ostream& DFHM::operator << (ostream& out, const Logger::Pad& sp)
+{
+	for (int i = 0; i < Logger::getPadDepth(); i++)
 		out << "  ";
 	return out;
 }
