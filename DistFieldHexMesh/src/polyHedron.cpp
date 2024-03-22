@@ -692,7 +692,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	auto& out = pLogger->getStream();
 	auto& pad = pLogger->getPadding();
 
-	out << "Splitting " << *this;
+	LOG(out << pad << "Splitting " << *this);
 
 	removeOurIdFromFaces();
 
@@ -771,13 +771,13 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 		cellFunc(newCellId, [this, &out, &pad](Polyhedron& newCell) {
 			newCell._referenceEntityId = _thisId;
 			Padding::ScopedPad sp(pad);
-			out << pad << "to: " << newCell;
+			LOG(out << pad << "to: " << newCell);
 		});
 		_referencingEntityIds.insert(newCellId);
 
 	}
 
-	out << "Post split " << *this << "\n=================================================================================================\n";
+	LOG(out << pad << "Post split " << *this << "\n" << pad << "=================================================================================================\n");
 
 	return true;
 }

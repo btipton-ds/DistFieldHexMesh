@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedron.h>
 #include <block.h>
 #include <volume.h>
+#include <logger.h>
 
 using namespace std;
 using namespace TriMesh;
@@ -665,6 +666,12 @@ bool Block::load()
 
 void Block::setNeedsSimpleSplit()
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::setNeedsSimpleSplit()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.setNeedToSplitAtCentroid();
 	});
@@ -672,6 +679,12 @@ void Block::setNeedsSimpleSplit()
 
 void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::setNeedsCurvatureSplit()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
 		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
 	});
@@ -687,6 +700,12 @@ void Block::setPolygonCellIds()
 
 void Block::splitPolygonsIfRequired(int phase)
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::splitPolygonsIfRequired()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polygons.iterateInOrder([phase](Polygon& face) {
 		face.splitIfRequred(phase);
 	});
@@ -694,6 +713,12 @@ void Block::splitPolygonsIfRequired(int phase)
 
 void Block::promoteReferencePolygons()
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::promoteReferencePolygons()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.promoteReferencePolygons();
 	});
@@ -701,6 +726,12 @@ void Block::promoteReferencePolygons()
 
 void Block::splitPolyhedraIfRequired(int phase)
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::splitPolyhedraIfRequired()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polyhedra.iterateInOrder([phase](Polyhedron& cell) {
 		cell.splitIfRequred(phase);
 	});
@@ -708,6 +739,12 @@ void Block::splitPolyhedraIfRequired(int phase)
 
 void Block::imprintTJointVertices()
 {
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	auto& padding = pLogger->getPadding();
+	out << "Block::imprintTJointVertices()\n";
+	Padding::ScopedPad sp(padding);
+
 	_polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.imprintVertices();
 	});

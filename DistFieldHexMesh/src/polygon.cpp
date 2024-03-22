@@ -479,9 +479,9 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 	//   has inserted vertices - use reference
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
-	auto& padding = pLogger->getPadding();
+	auto& pad = pLogger->getPadding();
 
-	out << "Splitting " << *this; 
+	LOG(out << pad << "Splitting " << *this);
 
 	if (!hasSplitEdges()) {
 		// split this face
@@ -533,34 +533,34 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 
 			auto newFaceId = createFace(face);
 
-			faceFunc(newFaceId, [this, &out, &padding](Polygon& newFace) {
+			faceFunc(newFaceId, [this, &out, &pad](Polygon& newFace) {
 				newFace._referenceEntityId = _thisId;
 				newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
-				Padding::ScopedPad sp(padding);
-				out << padding << "to: " << newFace;
+				Padding::ScopedPad sp(pad);
+				LOG(out << pad << "to: " << newFace);
 			});
 			_referencingEntityIds.insert(newFaceId);
 		}
 
-		out << "Post split " << *this << "\n=================================================================================================\n";
+		LOG(out << pad << "Post split " << *this << "\n" << pad << "=================================================================================================\n");
 
 	} else {
 		// remove this face from the reference entity's split list
 		// split the reference
 		// Delete this face permenently
 
-		out << "Splitting face with split edges using reference" << *this << "\n=================================================================================================\n";
-		faceFunc(_referenceEntityId, [this, &pt, &padding](Polygon& refFace) {
+		LOG(out << pad << "Splitting face with split edges using reference" << *this << "\n" << pad << "================================================================================================ = \n");
+		faceFunc(_referenceEntityId, [this, &pt, &pad](Polygon& refFace) {
 			assert(refFace._referencingEntityIds.size() == 1);
 
 			refFace._referencingEntityIds.erase(_thisId);
 
-			Padding::ScopedPad sp(padding);
+			Padding::ScopedPad sp(pad);
 			refFace.splitAtPoint(pt);
 
 			getBlockPtr()->freePolygon(_thisId);
 		});
-		out << "Post split " << *this << "\n=================================================================================================\n";
+		LOG(out << pad << "Post split " << *this << "\n=================================================================================================\n");
 	}
 }
 

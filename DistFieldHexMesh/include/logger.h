@@ -34,7 +34,12 @@ This file is part of the DistFieldHexMesh application/library.
 #include <iostream>
 #include <fstream>
 
-#define THREAD_SAFE_LOG(EXPR) { lock_guard g(getBlockPtr()->getLogger()->mutex()); EXPR; }
+#if LOGGING_ENABLED
+#define LOG(EXPR) { EXPR; }
+#else
+#define LOG(EXPR)
+#endif
+
 namespace DFHM {
 
 class Logger;
@@ -69,12 +74,16 @@ class Logger {
 public:
 	static std::shared_ptr<Logger> get(const std::string& streamName);
 
+
 	Logger(const std::string& logPath);
 	std::ostream& getStream();
 	Padding& getPadding();
 	std::mutex& mutex();
+	void setEnabled(bool val);
+	bool enabled() const;
 
 private:
+	bool _enabled = true;
 	std::ofstream _stream;
 	Padding _padding;
 	std::mutex _mutex;
@@ -83,6 +92,16 @@ private:
 inline std::mutex& Logger::mutex()
 {
 	return _mutex;
+}
+
+inline void Logger::setEnabled(bool val)
+{
+	_enabled = val;
+}
+
+inline bool Logger::enabled() const
+{
+	return _enabled;
 }
 
 std::ostream& operator << (std::ostream& out, const Padding& sp);
