@@ -590,8 +590,12 @@ bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 		// This is the duplicate, work on this
 		double t;
 		size_t i, j;
-		if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-			needsImprint = true;
+		if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t)) {
+			if (t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+				needsImprint = true;
+			} else {
+				assert(!"should not happen");
+			}
 		}
 	}
 
@@ -607,16 +611,20 @@ bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
 	// This is the duplicate, work on this
 	double t;
 	size_t i, j;
-	if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-		// the vertex is not in this polygon and lies between i and j
-		if (_thisId.isValid())
-			pBlk->removeFaceFromLookUp(_thisId);
+	if (!containsVertex(vertId) && containsEdge(edge, i, j) && edge.isColinearWith(pBlk, vertId, t)) {
+		if (t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+			// the vertex is not in this polygon and lies between i and j
+			if (_thisId.isValid())
+				pBlk->removeFaceFromLookUp(_thisId);
 
-		_vertexIds.insert(_vertexIds.begin() + j, vertId);
-		_needSort = true;
+			_vertexIds.insert(_vertexIds.begin() + j, vertId);
+			_needSort = true;
 
-		if (_thisId.isValid())
-			pBlk->addFaceToLookup(_thisId);
+			if (_thisId.isValid())
+				pBlk->addFaceToLookup(_thisId);
+		} else {
+			assert(!"should not happen");
+		}
 	}
 
 	LOG(out << Logger::Pad() << "pst: " << *this << "\n");
@@ -660,8 +668,10 @@ bool Polygon::addRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		double t;
-		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-			pairs.insert(VertEdgePair(vertId, edge));
+		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t)) {
+			if (t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+				pairs.insert(VertEdgePair(vertId, edge));
+			}
 		}
 	}
 

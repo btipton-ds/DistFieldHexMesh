@@ -440,38 +440,27 @@ Index3DId Polyhedron::duplicateAndPromoteFaces()
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "duplicateAndPromoteFaces " << *this);
+	LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pre:" << *this);
 
-	Index3DId dupCellId;
-	if (_referencingEntityIds.empty()) {
-		set<Index3DId> allFaceIds;
-		for (const Index3DId& faceId : _faceIds) {
-			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
-				const auto& refIds = face._referencingEntityIds;
-				if (refIds.empty())
-					allFaceIds.insert(face.getId());
-				else {
-					allFaceIds.insert(refIds.begin(), refIds.end());
-				}
-			});
-		}
-
-		dupCellId = getBlockPtr()->addCell(allFaceIds);
-		if (dbgId == dupCellId) {
-			int dbgBreak = 1;
-		}
-		_referencingEntityIds.insert(dupCellId);
-		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
-			dupCell._referenceEntityId = _thisId;
+	bool faceNeedsToBePromoted = false;
+	Index3DId dupCellId = _thisId;
+	set<Index3DId> allFaceIds;
+	for (const Index3DId& faceId : _faceIds) {
+		faceFunc(faceId, [&allFaceIds, &faceNeedsToBePromoted](const Polygon& face) {
+			const auto& refIds = face._referencingEntityIds;
+			if (refIds.empty())
+				allFaceIds.insert(face.getId());
+			else {
+				faceNeedsToBePromoted = true;
+				allFaceIds.insert(refIds.begin(), refIds.end());
+			}
 		});
+	}
 
-		for (const auto& faceId : allFaceIds) {
-			faceFunc(faceId, [this, &dupCellId](Polygon& face) {
-				face.removeCellId(_thisId);
-				face.addCellId(dupCellId);
-			});
-		}
-	} else {
+	if (!faceNeedsToBePromoted)
+		return dupCellId;
+
+	if (_referenceEntityId.isValid()) {
 		set<Index3DId> allFaceIds;
 		for (const Index3DId& faceId : _faceIds) {
 			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
@@ -485,7 +474,28 @@ Index3DId Polyhedron::duplicateAndPromoteFaces()
 		}
 
 		_faceIds = allFaceIds;
+	} else {
+		dupCellId = getBlockPtr()->addCell(allFaceIds);
+		if (dbgId == dupCellId) {
+			int dbgBreak = 1;
+		}
+		_referencingEntityIds.insert(dupCellId);
+
+		for (const auto& faceId : allFaceIds) {
+			faceFunc(faceId, [this, &dupCellId](Polygon& face) {
+				face.removeCellId(_thisId);
+				face.addCellId(dupCellId);
+			});
+		}
+
+		cellFunc(dupCellId, [this, &out](Polyhedron& dupCell) {
+			dupCell._referenceEntityId = _thisId;
+			Logger::Indent indent;
+			LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pst:" << dupCell);
+		});
 	}
+
+	LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pst:" << *this);
 
 	return dupCellId;
 }
@@ -533,7 +543,7 @@ void Polyhedron::promoteReferencePolygons()
 	if (!hasReferenceFaces)
 		return; // Nothing to do
 
-	LOG(out << Logger::Pad() << "promoteReferencePolygons " << *this);
+	LOG(out << Logger::Pad() << "promoteReferencePolygons pre:" << *this);
 
 	if (_referenceEntityId.isValid()) {
 		// this cell has already been duplicated
@@ -553,10 +563,12 @@ void Polyhedron::promoteReferencePolygons()
 				face.addCellId(_thisId);
 			});
 		}
+		LOG(out << Logger::Pad() << "promoteReferencePolygons pst:" << *this);
 	} else {
 		Logger::Indent indent;
 		duplicateAndPromoteFaces();
 	}
+	LOG(out << Logger::Pad() << "promoteReferencePolygons pst:" << *this);
 }
 
 bool Polyhedron::needToImprintVertices() const
@@ -590,13 +602,20 @@ void Polyhedron::imprintVertices()
 	if (isReference() || !needToImprintVertices())
 		return;
 
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+
 	if (!_referenceEntityId.isValid()) {
+		LOG(out << Logger::Pad() << "imprintVertices creating duplicate\n");
 		Index3DId dupCellId = duplicateAndPromoteFaces();
 		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
+			Logger::Indent indent;
 			dupCell.imprintVertices();
 		});
 		return; // Done, called recursively
 	}
+
+	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
 
 	set<Index3DId> vertIds;
 	for (const auto& faceId : _faceIds) {
@@ -662,6 +681,7 @@ void Polyhedron::imprintVertices()
 			}
 		});
 	}
+	LOG(out << Logger::Pad() << "imprintVertices pst:" << *this);
 }
 
 bool Polyhedron::splitAtCentroid()
@@ -1077,8 +1097,13 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 
 	set<Edge> edges;
 	cell.getEdges(edges, false);
+	bool closed = true;
+	for (const auto& edge : edges) {
+		if (edge.getFaceIds().size() != 2)
+			closed = false;
+	}
 
-	out << "Cell: c" << cell.getId() << "\n";
+	out << "Cell: c" << cell.getId() << (closed ? "CLOSED" : "ERROR NOT CLOSED") << "\n";
 	{
 		Logger::Indent indent;
 
@@ -1091,20 +1116,22 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 		}
 		out << Logger::Pad() << "}\n";
 
-		out << Logger::Pad() << "edges(" << edges.size() << "): {\n";
-		for (const auto& edge : edges) {
-			edge.setBlockPtr(pBlk);
-			Logger::Indent indent;
-			out << Logger::Pad() << edge << "\n";
-		}
-		out << Logger::Pad() << "}\n";
-
 		out << Logger::Pad() << "referenceEntityId: c" << cell._referenceEntityId << "\n";
 		out << Logger::Pad() << "referencingEntityIds(" << cell._referencingEntityIds.size() << "): {";
 		for (const auto& refId : cell._referencingEntityIds) {
 			out << "c" << refId << " ";
 		}
 		out << "}\n";
+
+		if (!closed) {
+			out << Logger::Pad() << "edges(" << edges.size() << "): {\n";
+			for (const auto& edge : edges) {
+				edge.setBlockPtr(pBlk);
+				Logger::Indent indent;
+				out << Logger::Pad() << edge << "\n";
+			}
+			out << Logger::Pad() << "}\n";
+		}
 	}
 
 	return out;

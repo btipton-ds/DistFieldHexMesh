@@ -175,12 +175,14 @@ bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, double& pa
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
 
 	Vector3d v = pt1 - pt0;
+	double len = v.norm();
 	v.normalize();
 
 	Vector3d v1 = pt - pt0;
 	param = v.dot(v1);
 	v1 = v1 - param * v;
 	double dist = v1.norm();
+	param /= len;
 
 	return fabs(dist) < Tolerance::sameDistTol();
 }
@@ -260,7 +262,7 @@ Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, set<I
 
 ostream& DFHM::operator << (ostream& out, const Edge& edge)
 {
-	out << "Edge: e(" << edge.getVertexIds()[0] << " " << edge.getVertexIds()[1] << ")\n";
+	out << "Edge: e(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ")\n";
 	{
 		Logger::Indent indent;
 
