@@ -56,6 +56,7 @@ public:
 	virtual Block* getOwner(const Index3D& blockIdx) = 0;
 
 	std::shared_ptr<Logger> getLogger() const;
+	std::string getLoggerNumericCode() const;
 
 private:
 	mutable std::string _filename;

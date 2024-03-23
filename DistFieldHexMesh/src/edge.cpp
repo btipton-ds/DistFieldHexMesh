@@ -223,43 +223,6 @@ void Edge::getFaceIds(set<Index3DId>& faceIds) const
 	faceIds.insert(_faceIds.begin(), _faceIds.end());
 }
 
-Index3DId Edge::splitAtParam(Block* pBlock, double t, set<Index3DId>& faceIds) const
-{
-	const double tol = Tolerance::paramTol();
-	if (t > tol && t < 1.0 - tol) {
-		Vector3d pt = calPointAt(pBlock, t);
-		auto midVertId = pBlock->addVertex(pt);
-
-		getFaceIds(faceIds);
-		return midVertId;
-	}
-
-	return Index3DId();
-}
-
-double Edge::intesectPlaneParam(const Block* pBlock, const Plane& splittingPlane) const
-{
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
-	LineSegment seg(pt0, pt1);
-	RayHit hit;
-	if (intersectLineSegPlane(seg, splittingPlane, hit)) {
-		double t = hit.dist / seg.calLength();
-		return t;
-	}
-	return -1;
-}
-
-Index3DId Edge::splitWithPlane(Block* pBlock, const Plane& splittingPlane, set<Index3DId>& faceIds) const
-{
-	const double tol = Tolerance::paramTol();
-	double t = intesectPlaneParam(pBlock, splittingPlane);
-	if (t > tol && t < 1.0 - tol) {
-		return splitAtParam(pBlock, t, faceIds);
-	}
-	return Index3DId();
-}
-
 ostream& DFHM::operator << (ostream& out, const Edge& edge)
 {
 	out << "Edge: e(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ")\n";

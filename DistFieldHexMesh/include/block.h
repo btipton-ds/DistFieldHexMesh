@@ -132,6 +132,7 @@ public:
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+	void addSplitEdge(const EdgeSplit& splitEdge);
 
 	bool freePolygon(const Index3DId& id);
 	bool freePolyhedron(const Index3DId& id);
@@ -185,6 +186,7 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, const Polygon& face) const;
 
+	void clearSplitEdges();
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitPolygonsIfRequired(int phase);
@@ -210,6 +212,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
+	std::set<EdgeSplit> _splitEdges;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;

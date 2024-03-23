@@ -90,14 +90,22 @@ const Index3DId& ObjectPoolOwnerUser::getId() const
 	return _thisId;
 }
 
-std::shared_ptr<Logger> ObjectPoolOwner::getLogger() const
+shared_ptr<Logger> ObjectPoolOwner::getLogger() const
 {
 	if (_filename.empty()) {
 		Index3D idx = getBlockIdx();
 		stringstream ss;
-		ss << "block_" << idx[0] << "_" << idx[1] << "_" << idx[2] << ".log";
+		ss << "block_" << getLoggerNumericCode() << ".log";
 		_filename = ss.str();
 	}
 
 	return Logger::get(_filename);
+}
+
+string ObjectPoolOwner::getLoggerNumericCode() const
+{
+	Index3D idx = getBlockIdx();
+	stringstream ss;
+	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
+	return ss.str();
 }

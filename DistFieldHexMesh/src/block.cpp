@@ -664,6 +664,11 @@ bool Block::load()
 	return true;
 }
 
+void Block::clearSplitEdges()
+{
+	_splitEdges.clear();
+}
+
 void Block::setNeedsSimpleSplit()
 {
 	auto pLogger = getLogger();
@@ -862,6 +867,11 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 		}
 	}
 	return result;
+}
+
+void Block::addSplitEdge(const EdgeSplit& splitEdge)
+{
+	_splitEdges.insert(splitEdge);
 }
 
 bool Block::freePolygon(const Index3DId& id)

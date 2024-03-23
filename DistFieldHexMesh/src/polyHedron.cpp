@@ -682,6 +682,15 @@ void Polyhedron::imprintVertices()
 		});
 	}
 	LOG(out << Logger::Pad() << "imprintVertices pst:" << *this);
+
+	if (!isClosed()) {
+		stringstream ss;
+		ss << "log_" << getBlockPtr()->getLoggerNumericCode() << "_" << _thisId.elementId() << ".obj";
+		string filename = "D:/DarkSky/Projects/output/objs/" + ss.str();
+		ofstream objOut(filename, ios::out);
+		auto pVol = getBlockPtr()->getVolume();
+		pVol->writeObj(objOut, { _thisId });
+	}
 }
 
 bool Polyhedron::splitAtCentroid()

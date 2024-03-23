@@ -489,8 +489,8 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 		auto pBlk = getBlockPtr();
 		assert(!isReference());
 		assert(_vertexIds.size() == 4);
-		vector<Vector3d> edgePts;
-		edgePts.resize(_vertexIds.size());
+		vector<Index3DId> edgePtIds;
+		edgePtIds.resize(_vertexIds.size());
 		for (size_t i = 0; i < _vertexIds.size(); i++) {
 			size_t j = (i + 1) % _vertexIds.size();
 			Edge edge(_vertexIds[i], _vertexIds[j]);
@@ -500,9 +500,12 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 			Vector3d edgePt = edge.projectPt(pBlk, pt);
 			bool inBounds;
 			double t = edge.paramOfPt(pBlk, edgePt, inBounds);
-			if (inBounds)
-				edgePts[i] = edgePt;
-			else {
+			if (inBounds) {
+				Index3DId vertId = pBlk->addVertex(edgePt);
+				edgePtIds[i] = vertId;
+				EdgeSplit es(edge, vertId);
+				pBlk->addSplitEdge(es);
+			} else {
 				assert(!"Edge point is not in bounds.");
 				return;
 			}
@@ -517,10 +520,6 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 		getBlockPtr()->removeFaceFromLookUp(_thisId);
 
 		Index3DId facePtId = pBlk->addVertex(facePt);
-		vector<Index3DId> edgePtIds;
-		for (const auto& edgePt : edgePts) {
-			edgePtIds.push_back(pBlk->addVertex(edgePt));
-		}
 
 		for (size_t i = 0; i < _vertexIds.size(); i++) {
 			size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
@@ -578,6 +577,29 @@ bool Polygon::imprintFaceVertices(const Polygon& otherFace)
 		getEdges(edgeSet);
 	}
 	return result;
+}
+
+void Polygon::imprintVertices(const std::set<EdgeSplit>& splitEdgeSet)
+{
+	Block* pBlk = getBlockPtr();
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		auto iter = splitEdgeSet.find(EdgeSplit(_vertexIds[i], _vertexIds[j]));
+		if (iter != splitEdgeSet.end()) {
+			const auto& splitEdge = *iter;
+
+			// the vertex is not in this polygon and lies between i and j
+			if (_thisId.isValid())
+				pBlk->removeFaceFromLookUp(_thisId);
+
+			_vertexIds.insert(_vertexIds.begin() + j, splitEdge.getSplitVertId());
+			_needSort = true;
+
+			if (_thisId.isValid())
+				pBlk->addFaceToLookup(_thisId);
+		}
+	}
 }
 
 bool Polygon::imprintVertex(const Index3DId& vertId, const Edge& edge)
@@ -668,10 +690,8 @@ bool Polygon::addRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		double t;
-		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t)) {
-			if (t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-				pairs.insert(VertEdgePair(vertId, edge));
-			}
+		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
+			pairs.insert(VertEdgePair(vertId, edge));
 		}
 	}
 

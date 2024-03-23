@@ -144,6 +144,7 @@ private:
 	Index3DId createFace(const Polygon& face);
 	bool imprintFaceVertices(const Polygon& otherFace);
 
+	void imprintVertices(const std::set<EdgeSplit>& splitEdgeSet);
 	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
 
 	bool _splitRequired = false;

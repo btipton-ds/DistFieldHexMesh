@@ -382,6 +382,13 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool multiCore)
 {
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->clearSplitEdges();
+		}
+		return true;
+	}, multiCore);
+
 	splitTopology(0, multiCore);
 	promoteReferencePolygons(multiCore);
 
