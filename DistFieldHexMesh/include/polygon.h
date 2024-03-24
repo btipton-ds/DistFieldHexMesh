@@ -84,7 +84,6 @@ public:
 	Polygon(const Polygon& src) = default;
 
 	void addVertex(const Index3DId& vertId);
-	const Index3DId& getReferenceEntityId() const;
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
@@ -124,6 +123,7 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplitAtPoint(const Vector3d& pt);
 	void splitIfRequred(int phase);
+	void imprintVertices();
 
 	int getSplitPhase() const;
 	void splitAtPoint(const Vector3d& pt);
@@ -142,15 +142,13 @@ private:
 
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face);
-	bool imprintFaceVertices(const Polygon& otherFace);
-
-	void imprintVertices(const std::set<EdgeSplit>& splitEdgeSet);
-	bool imprintVertex(const Index3DId& vertId, const Edge& edge);
+	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
 
 	bool _splitRequired = false;
 	Vector3d _splitPt;
 
-	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
+	Index3DId _unsplitPolygonId;		// This points to the original polygon which was split to create this one.
+	Index3DId _unimprintedPolygonId;	// This point to the unsplit polygon prior to the first split.
 	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
 
 	std::vector<Index3DId> _vertexIds;
@@ -168,11 +166,6 @@ inline bool Polygon::verifyUnique() const
 inline bool Polygon::verifyVertsConvex() const
 {
 	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
-}
-
-inline const Index3DId& Polygon::getReferenceEntityId() const
-{
-	return _referenceEntityId;
 }
 
 inline void Polygon::removeCellId(const Index3DId& cellId)

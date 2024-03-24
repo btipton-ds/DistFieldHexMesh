@@ -132,7 +132,8 @@ public:
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
-	void addSplitEdge(const EdgeSplit& splitEdge);
+	void addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId);
+	const std::map<Edge, Index3DId>& getSplitEdgeVertices() const;
 
 	bool freePolygon(const Index3DId& id);
 	bool freePolyhedron(const Index3DId& id);
@@ -191,7 +192,6 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void splitPolygonsIfRequired(int phase);
 	void splitPolyhedraIfRequired(int phase);
-	void promoteReferencePolygons();
 	void imprintTJointVertices();
 	void setPolygonCellIds();
 
@@ -212,7 +212,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<EdgeSplit> _splitEdges;
+	std::map<Edge, Index3DId> _splitEdgeVertices;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
@@ -254,6 +254,11 @@ inline size_t Block::calLinearSubBlockIndex(const Index3D& subBlockIdx) const
 	if (subBlockIdx.isInBounds(_blockDim))
 		return subBlockIdx[0] + _blockDim * (subBlockIdx[1] + _blockDim * subBlockIdx[2]);
 	return -1;
+}
+
+inline const std::map<Edge, Index3DId>& Block::getSplitEdgeVertices() const
+{
+	return _splitEdgeVertices;
 }
 
 inline bool Block::isUnloaded() const

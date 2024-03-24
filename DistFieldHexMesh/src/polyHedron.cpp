@@ -461,6 +461,8 @@ Index3DId Polyhedron::duplicateAndPromoteFaces()
 		return dupCellId;
 
 	if (_referenceEntityId.isValid()) {
+		Logger::Indent indent;
+		LOG(out << Logger::Pad() << "Invalid referenceId");
 		set<Index3DId> allFaceIds;
 		for (const Index3DId& faceId : _faceIds) {
 			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
@@ -475,6 +477,8 @@ Index3DId Polyhedron::duplicateAndPromoteFaces()
 
 		_faceIds = allFaceIds;
 	} else {
+		Logger::Indent indent;
+		LOG(out << Logger::Pad() << "Valid referenceId");
 		dupCellId = getBlockPtr()->addCell(allFaceIds);
 		if (dbgId == dupCellId) {
 			int dbgBreak = 1;
@@ -513,64 +517,6 @@ void Polyhedron::splitIfRequred(int phase)
 	}
 }
 
-void Polyhedron::promoteReferencePolygons()
-{
-	Index3DId dbgId(0, 6, 5, 1);
-	if (dbgId == _thisId) {
-		int dbgBreak = 1;
-	}
-
-	if (isReference())
-		return;
-
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-	bool hasReferenceFaces = false;
-	set<Index3DId> allFaceIds;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&hasReferenceFaces, &allFaceIds](const Polygon& face) {
-			if (face.isReference()) {
-				hasReferenceFaces = true;
-				const auto& subFaces = face._referencingEntityIds;
-				allFaceIds.insert(subFaces.begin(), subFaces.end());
-			} else {
-				allFaceIds.insert(face.getId());
-			}
-		});
-	}
-
-	if (!hasReferenceFaces)
-		return; // Nothing to do
-
-	LOG(out << Logger::Pad() << "promoteReferencePolygons pre:" << *this);
-
-	if (_referenceEntityId.isValid()) {
-		// this cell has already been duplicated
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.removeCellId(_thisId);
-			});
-		}
-		for (const auto& faceId : allFaceIds) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.removeCellId(_thisId);
-			});
-		}
-		_faceIds = allFaceIds;
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.addCellId(_thisId);
-			});
-		}
-		LOG(out << Logger::Pad() << "promoteReferencePolygons pst:" << *this);
-	} else {
-		Logger::Indent indent;
-		duplicateAndPromoteFaces();
-	}
-	LOG(out << Logger::Pad() << "promoteReferencePolygons pst:" << *this);
-}
-
 bool Polyhedron::needToImprintVertices() const
 {
 	assert(!isReference());
@@ -595,102 +541,6 @@ bool Polyhedron::needToImprintVertices() const
 		}
 	};
 	return false;
-}
-
-void Polyhedron::imprintVertices()
-{
-	if (isReference() || !needToImprintVertices())
-		return;
-
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-	if (!_referenceEntityId.isValid()) {
-		LOG(out << Logger::Pad() << "imprintVertices creating duplicate\n");
-		Index3DId dupCellId = duplicateAndPromoteFaces();
-		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
-			Logger::Indent indent;
-			dupCell.imprintVertices();
-		});
-		return; // Done, called recursively
-	}
-
-	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
-
-	set<Index3DId> vertIds;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&vertIds](const Polygon& face) {
-			const auto& fvIds = face.getVertexIds();
-			vertIds.insert(fvIds.begin(), fvIds.end());
-		});
-	}
-
-	// We CANNOT modify the primary face.
-	// If it's primary, make a duplicate and use that.
-	// If this face has a duplicate, use the duplicate.
-	// If this face has more than one referencing face, it's been split AND THAT'S an error
-
-	for (const auto& faceId : _faceIds) {
-		Index3DId dbgId(Index3D(0, 6, 4), 4);
-		if (faceId == dbgId) {
-			int dbgBreak = 1;
-		}
-		set<VertEdgePair> pairs;
-		Index3DId splitFaceId = faceId;
-
-		faceFunc(faceId, [this, &splitFaceId](Polygon& face) {
-			if (face._referencingEntityIds.size() == 1) {
-				// The cell is NOT a reference, but this FACE may be a reference??
-				splitFaceId = *face._referencingEntityIds.begin();
-			}
-			else if (!face._referencingEntityIds.empty()) {
-				assert(!"should be only 1 or 0.");
-			}
-		});
-
-		for (const auto& vertId : vertIds) {
-			faceFunc(splitFaceId, [this, &vertId, &pairs](Polygon& splitFace) {
-				splitFace.addRequiredImprintPairs(vertId, pairs);
-			});
-		}
-
-		if (pairs.empty())
-			continue;
-
-		if (splitFaceId == faceId) {
-			getBlockPtr()->removeFaceFromLookUp(faceId);
-			// There is no reference face for the split, so create a duplicate and reference it
-			faceFunc(faceId, [this, &splitFaceId](Polygon& face) {
-				splitFaceId = addFace(face.getVertexIds());
-				face._referencingEntityIds.insert(splitFaceId);
-				faceFunc(splitFaceId, [this, &face](Polygon& splitFace) {
-					splitFace._referenceEntityId = face.getId();
-					splitFace.setCellIds(face.getCellIds());
-				});
-				face.clearCellIds();
-			});
-		}
-
-		faceFunc(splitFaceId, [this, &pairs](Polygon& face) {
-			while (!pairs.empty()) {
-				auto iter = pairs.begin();
-				auto vertId = iter->_vertId;
-				auto edge = iter->_edge;
-				pairs.erase(iter);
-				face.imprintVertex(vertId, edge);
-			}
-		});
-	}
-	LOG(out << Logger::Pad() << "imprintVertices pst:" << *this);
-
-	if (!isClosed()) {
-		stringstream ss;
-		ss << "log_" << getBlockPtr()->getLoggerNumericCode() << "_" << _thisId.elementId() << ".obj";
-		string filename = "D:/DarkSky/Projects/output/objs/" + ss.str();
-		ofstream objOut(filename, ios::out);
-		auto pVol = getBlockPtr()->getVolume();
-		pVol->writeObj(objOut, { _thisId });
-	}
 }
 
 bool Polyhedron::splitAtCentroid()
@@ -1080,21 +930,22 @@ bool Polyhedron::verifyTopology() const
 	if (isReference())
 		return valid;
 
-	if (!isClosed())
-		valid = false;
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
-				bool pass = face.usedByCell(_thisId);
-				if (!pass)
+				if (face.isReference())
 					valid = false;
-				pass = face.verifyTopology();
-				if (!pass)
+				if (!face.usedByCell(_thisId))
+					valid = false;
+				if (!face.verifyTopology())
 					valid = false;
 				});
 		} else
 			valid = false;
 	}
+
+	if (!isClosed())
+		valid = false;
 #endif // _DEBUG 
 
 	return valid;

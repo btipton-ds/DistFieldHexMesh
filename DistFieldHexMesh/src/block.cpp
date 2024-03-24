@@ -271,12 +271,7 @@ bool Block::verifyTopology() const
 	bool result = true;
 #ifdef _DEBUG 
 	_polyhedra.iterateInOrder([&result](const Polyhedron& cell) {
-		if (cell.getId() == Index3DId(Index3D(2, 0, 0), 0)) {
-			int dbgBreak = 1;
-		}
-		// make sure we get block 3,1,1
-		bool pass = cell.verifyTopology();
-		if (!pass)
+		if (!cell.verifyTopology())
 			result = false;
 	});
 #endif
@@ -666,7 +661,7 @@ bool Block::load()
 
 void Block::clearSplitEdges()
 {
-	_splitEdges.clear();
+	_splitEdgeVertices.clear();
 }
 
 void Block::setNeedsSimpleSplit()
@@ -713,18 +708,6 @@ void Block::splitPolygonsIfRequired(int phase)
 	});
 }
 
-void Block::promoteReferencePolygons()
-{
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block::promoteReferencePolygons()\n";
-	Logger::Indent indent;
-
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.promoteReferencePolygons();
-	});
-}
-
 void Block::splitPolyhedraIfRequired(int phase)
 {
 	auto pLogger = getLogger();
@@ -744,8 +727,17 @@ void Block::imprintTJointVertices()
 	out << "Block::imprintTJointVertices()\n";
 	Logger::Indent indent;
 
-	_polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.imprintVertices();
+	_polygons.iterateInOrder([this](Polygon& face) {
+		face.imprintVertices();
+	});
+	_polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		if (cell.isReference())
+			return;
+		if (!cell.isClosed()) {
+			stringstream ss;
+			ss << "D:/DarkSky/Projects/output/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
+			_pVol->writeObj(ss.str(), {cell.getId()});
+		}
 	});
 }
 
@@ -869,9 +861,11 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 	return result;
 }
 
-void Block::addSplitEdge(const EdgeSplit& splitEdge)
+void Block::addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId)
 {
-	_splitEdges.insert(splitEdge);
+	if (_splitEdgeVertices.find(edge) == _splitEdgeVertices.end()) {
+		_splitEdgeVertices.insert(make_pair(edge, vertId));
+	}
 }
 
 bool Block::freePolygon(const Index3DId& id)

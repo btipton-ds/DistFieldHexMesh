@@ -75,8 +75,6 @@ public:
 	void setPolygonsCellId();
 	void fixPartialSplits();
 	void splitIfRequred(int phase);
-	void promoteReferencePolygons();
-	void imprintVertices();
 	bool splitAtCentroid();
 	bool splitAtPoint(const Vector3d& pt);
 	double getShortestEdge() const;

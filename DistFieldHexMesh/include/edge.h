@@ -103,45 +103,4 @@ inline const Index3DId* Edge::getVertexIds() const
 
 std::ostream& operator << (std::ostream& out, const Edge& edge);
 
-class EdgeSplit : public Edge {
-public:
-	// Same constructors as Edge
-	EdgeSplit() = default;
-	EdgeSplit(const EdgeSplit& src) = default;
-	EdgeSplit(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds = std::set<Index3DId>());
-	EdgeSplit(const Edge& src, const std::set<Index3DId>& faceIds);
-	EdgeSplit(const Edge& src, const Index3DId& splitVertId);
-
-	void setSplitVertId(const Index3DId& val);
-	const Index3DId& getSplitVertId() const;
-private:
-	Index3DId _splitVertId;
-};
-
-inline EdgeSplit::EdgeSplit(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds)
-	: Edge(vert0, vert1, faceIds)
-{
-}
-
-inline EdgeSplit::EdgeSplit(const Edge& src, const std::set<Index3DId>& faceIds)
-	: Edge(src, faceIds)
-{
-}
-
-inline EdgeSplit::EdgeSplit(const Edge& src, const Index3DId& splitVertId)
-	: Edge(src)
-	, _splitVertId(splitVertId)
-{
-}
-
-inline void EdgeSplit::setSplitVertId(const Index3DId& val)
-{
-	_splitVertId = val;
-}
-
-inline const Index3DId& EdgeSplit::getSplitVertId() const
-{
-	return _splitVertId;
-}
-
 }

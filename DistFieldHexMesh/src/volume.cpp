@@ -326,7 +326,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-//		assert(verifyTopology(true || multiCore));
+		verifyTopology(false && multiCore);
+//		assert(verifyTopology(false && multiCore));
 #endif
 	}
 
@@ -390,13 +391,8 @@ void Volume::finishSplits(bool multiCore)
 	}, multiCore);
 
 	splitTopology(0, multiCore);
-	promoteReferencePolygons(multiCore);
-
 	splitTopology(1, multiCore);
-	promoteReferencePolygons(multiCore);
-
-	imprintTJointVertices(multiCore);
-	promoteReferencePolygons(multiCore);
+	imprintTJointVertices(false && multiCore);
 #if 0
 	// This may not be needed
 	runLambda([this](size_t linearIdx)->bool {
@@ -423,16 +419,6 @@ void Volume::splitTopology(int phase, bool multiCore)
 		}
 		return true;
 	}, multiCore);
-}
-
-void Volume::promoteReferencePolygons(bool multiCore)
-{
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->promoteReferencePolygons();
-		}
-		return true;
-	},  multiCore);
 }
 
 void Volume::imprintTJointVertices(bool multiCore)

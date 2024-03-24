@@ -114,7 +114,6 @@ private:
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
 	void splitTopology(int phase, bool multiCore);
-	void promoteReferencePolygons(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 
 	void findFeatures();
