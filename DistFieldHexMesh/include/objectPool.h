@@ -367,10 +367,24 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 	if (currentId.isValid()) {
 		// This has never been used or tested. Probably obsolete and needs to be replaced.
 		result = currentId.elementId();
-		if (result >= _idToIndexMap.size()) {
+		if (result < _idToIndexMap.size()) {
+			index = _idToIndexMap[result];
+		} else {
+			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
+				// Reserve the segment size so the array won't resize during use
+				_objectSegs.push_back(std::make_shared<std::vector<T>>());
+				_objectSegs.back()->reserve(_objectSegmentSize);
+			}
+			segNum = _objectSegs.size() - 1;
 
+			auto& segData = *_objectSegs.back();
+
+			segIdx = segData.size();
+			index = segNum * _objectSegmentSize + segIdx;
+
+			_idToIndexMap.resize(result + 1, -1);
+			_idToIndexMap[result] = index;
 		}
-		index = _idToIndexMap[result];
 
 		calIndices(index, segNum, segIdx);
 		if (segNum >= _objectSegs.size()) {
@@ -380,30 +394,10 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 		}
 		auto& segData = *_objectSegs[segNum];
 
-		if (segIdx < segData.size()) {
-			segData[segIdx] = obj;
+		if (segIdx >= segData.size()) {
+			segData.resize(segIdx + 1);
 		}
-		else {
-			if (_availableIndices.empty())
-				index = _objectSegs.size();
-			else {
-				index = _availableIndices.back();
-				_availableIndices.pop_back();
-			}
-			_idToIndexMap[result] = index;
-
-			calIndices(index, segNum, segIdx);
-			if (segNum >= _objectSegs.size()) {
-				// Reserve the segment size so the array won't resize during use
-				_objectSegs.push_back(std::make_shared<std::vector<T>>());
-				_objectSegs.back()->reserve(_objectSegmentSize);
-			}
-			auto& segData = *_objectSegs[segNum];
-
-			if (index >= segData.size())
-				segData.resize(index + 1);
-			segData[segIdx] = obj;
-		}
+		segData[segIdx] = obj;
 	} else {
 		result = _idToIndexMap.size();
 		if (_availableIndices.empty()) {
@@ -433,11 +427,15 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 			auto& segData = *_objectSegs[segNum];
 
 			if (segIdx >= segData.size())
-				segData.resize(index + 1);
+				segData.resize(segIdx + 1);
+
+			size_t segNum1, segIdx1;
+			assert(calIndices(index, segNum1, segIdx1) && segNum1 == segNum && segIdx1 == segIdx);
 			segData[segIdx] = obj;
 		}
 	}
 
+	assert(getEntry(result));
 	getEntry(result)->setId(_pPoolOwner, result);
 
 	return Index3DId(_pPoolOwner->getBlockIdx(), result);
