@@ -151,6 +151,7 @@ private:
 		const ObjectPool& _owner;
 	};
 
+	Index3DId add(const T& obj, const Index3DId& id = Index3DId());
 	bool calIndices(size_t index, size_t& segNum, size_t& segIdx) const;
 	T* getEntry(size_t index);
 	const T* getEntry(size_t index) const;
@@ -306,7 +307,8 @@ void ObjectPool<T>::resize(size_t size)
 			if (size > _objectSegmentSize) {
 				_objectSegs[i]->resize(_objectSegmentSize);
 				size -= _objectSegmentSize;
-			} else {
+			}
+			else {
 				_objectSegs[i]->resize(size);
 				size = 0;
 			}
@@ -351,10 +353,23 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 		if (id.isValid())
 			return id;
 	}
+	Index3DId result = add(obj, currentId);
 
+	addToLookup(result);
+
+	return result;
+}
+
+template<class T>
+Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
+{
 	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
-	if ((currentId.blockIdx() == _pPoolOwner->getBlockIdx()) && currentId.elementId() < _idToIndexMap.size()) {
+	if (currentId.isValid()) {
+		// This has never been used or tested. Probably obsolete and needs to be replaced.
 		result = currentId.elementId();
+		if (result >= _idToIndexMap.size()) {
+
+		}
 		index = _idToIndexMap[result];
 
 		calIndices(index, segNum, segIdx);
@@ -389,8 +404,7 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 				segData.resize(index + 1);
 			segData[segIdx] = obj;
 		}
-	}
-	else {
+	} else {
 		result = _idToIndexMap.size();
 		if (_availableIndices.empty()) {
 			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
@@ -406,8 +420,7 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 			segData.push_back(obj);
 			index = segNum * _objectSegmentSize + segIdx;
 			_idToIndexMap.push_back(index);
-		}
-		else {
+		} else {
 			index = _availableIndices.back();
 			_availableIndices.pop_back();
 
@@ -426,8 +439,6 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 	}
 
 	getEntry(result)->setId(_pPoolOwner, result);
-
-	addToLookup(Index3DId(_pPoolOwner->getBlockIdx(), result));
 
 	return Index3DId(_pPoolOwner->getBlockIdx(), result);
 }

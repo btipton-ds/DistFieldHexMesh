@@ -39,7 +39,6 @@ namespace DFHM {
 class Block;
 class Edge;
 
-
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
@@ -52,7 +51,7 @@ public:
 	bool containsFace(const Index3DId& faceId) const;
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
-	void getEdges(std::set<Edge>& edgeSet, bool includeNeighborFaces) const;
+	void getEdges(std::set<Edge>& edgeSet, bool includeAdjacentFaces) const;
 
 	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
 
@@ -66,18 +65,22 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 	bool hasSplits() const;
-	bool isReference() const;
+	bool isMarkedForDeletion() const;
 	bool isSplitRequired() const;
+	bool requiresSplitDueToPendingAdjacentSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void setPolygonsCellId();
-	void fixPartialSplits();
-	void splitIfRequred(int phase);
+
+	void splitIfAdjacentRequiresIt();
+
+	void splitIfRequred();
 	bool splitAtCentroid();
 	bool splitAtPoint(const Vector3d& pt);
 	double getShortestEdge() const;
+	void makeRefIfNeeded();
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -87,33 +90,33 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(vertex);
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
+	LAMBDA_CLIENT_FUNC_SET_DECL(vertex);
+	LAMBDA_CLIENT_FUNC_SET_REF_DECL(face);
+	LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell);
 
 private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
-	void setSourceId(const Index3DId& id);
 	void removeOurIdFromFaces();
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	bool needToImprintVertices() const;
 	void copyToOut() const;
-	Index3DId duplicateAndPromoteFaces();
 	Index3DId createFace(const std::vector<Index3DId>& vertIds);
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
+	Index3DId addRefFace(const std::vector<Index3DId>& vertIds);
+	bool splitAtPointInner(const Vector3d& pt);
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
 	bool _splitRequired = false;
 
-	Index3DId _referenceEntityId;				// This points to the original refence entity used to create this one.
-	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
+	bool _markedForDeletion = false;
+
 	std::set<Index3DId> _faceIds;
 };
 
@@ -127,9 +130,9 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 	return _faceIds.count(faceId) != 0;
 }
 
-inline bool Polyhedron::isReference() const
+inline bool Polyhedron::isMarkedForDeletion() const
 {
-	return !_referencingEntityIds.empty();
+	return _markedForDeletion;
 }
 
 inline bool Polyhedron::isSplitRequired() const

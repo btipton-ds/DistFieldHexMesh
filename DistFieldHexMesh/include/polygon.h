@@ -93,10 +93,10 @@ public:
 	const std::set<Index3DId>& getCellIds() const;
 
 	bool usedByCell(const Index3DId& cellId) const;
-	bool isReference() const;
 	bool hasSplitEdges() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
+	bool isMarkedForDeletion() const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsEdge(const Edge& edge) const;
@@ -111,7 +111,7 @@ public:
 
 	const std::vector<Index3DId>& getVertexIds() const;
 	void getEdges(std::set<Edge>& edgeSet) const;
-	Index3DId getNeighborCellId(const Index3DId& thisCellId) const;
+	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
 	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
@@ -122,19 +122,23 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplitAtPoint(const Vector3d& pt);
-	void splitIfRequred(int phase);
+
+	void splitIfAdjacentRequiresIt();
+
+	void splitIfRequred();
 	void imprintVertices();
 
 	int getSplitPhase() const;
 	void splitAtPoint(const Vector3d& pt);
+
 	void orient();
 	void pack();
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(vertex);
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(face);
-	LAMBDA_CLIENT_FUNC_PAIR_DECL(cell);
+	LAMBDA_CLIENT_FUNC_SET_DECL(vertex);
+	LAMBDA_CLIENT_FUNC_SET_REF_DECL(face);
+	LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell);
 
 private:
 	friend class Polyhedron;
@@ -143,13 +147,14 @@ private:
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face);
 	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
+	void makeRefIfNeeded();
+	void splitAtPointInner(const Vector3d& pt);
 
 	bool _splitRequired = false;
+	bool _markedForDeletion = false;
 	Vector3d _splitPt;
 
-	Index3DId _unsplitPolygonId;		// This points to the original polygon which was split to create this one.
-	Index3DId _unimprintedPolygonId;	// This point to the unsplit polygon prior to the first split.
-	std::set<Index3DId> _referencingEntityIds;	// Entities referencing this one
+	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
 	std::vector<Index3DId> _vertexIds;
 	std::set<Index3DId> _cellIds;
@@ -196,11 +201,6 @@ inline const std::set<Index3DId>& Polygon::getCellIds() const
 inline bool Polygon::usedByCell(const Index3DId& cellId) const
 {
 	return _cellIds.count(cellId) != 0;
-}
-
-inline bool Polygon::isReference() const
-{
-	return !_referencingEntityIds.empty();
 }
 
 inline bool Polygon::isOuter() const

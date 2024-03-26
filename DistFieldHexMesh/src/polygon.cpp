@@ -45,12 +45,11 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 
 void Polygon::addVertex(const Index3DId& vertId)
 {
-	assert(!isReference());
 	_vertexIds.push_back(vertId);
 	_needSort = true;
 }
 
-Index3DId Polygon::getNeighborCellId(const Index3DId& thisCellId) const
+Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
 	if (_cellIds.size() == 2) {
@@ -144,10 +143,6 @@ bool Polygon::operator < (const Polygon& rhs) const
 
 bool Polygon::hasSplitEdges() const
 {
-	assert(!isReference());
-	if (isReference())
-		return true;
-
 	const double tolSinAngle = sin(Tolerance::angleTol());
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -175,6 +170,11 @@ bool Polygon::isBlockBoundary() const
 		return (iter0->blockIdx() != iter1->blockIdx());
 	}
 	return false;
+}
+
+bool Polygon::isMarkedForDeletion() const
+{
+	return _markedForDeletion;
 }
 
 void Polygon::getEdges(set<Edge>& edgeSet) const
@@ -434,39 +434,48 @@ void Polygon::addCellId(const Index3DId& cellId)
 
 void Polygon::setNeedToSplitAtPoint(const Vector3d& pt)
 {
-	assert(!isReference());
-	if (isReference())
-		return;
-
 	_splitRequired = true;
 	_splitPt = pt;
+}
 
+void Polygon::splitIfAdjacentRequiresIt()
+{
+	// This test must be performed at the owner cell level
+	bool requiresSplit = false;
 	for (const auto& cellId : _cellIds) {
-		cellFunc(cellId, [](Polyhedron& cell) {
-			if (!cell.isSplitRequired() && cell.hasSplits())
-				cell.setNeedToSplitAtCentroid();
+		cellFunc(cellId, [&requiresSplit](const Polyhedron& cell) {
+			requiresSplit = cell.requiresSplitDueToPendingAdjacentSplit();
 		});
+		if (requiresSplit)
+			break;
+	}
+	if (requiresSplit)
+		splitAtPoint(_splitPt);
+}
+
+void Polygon::splitIfRequred()
+{
+	if (_splitRequired) {
+		splitAtPoint(_splitPt);
 	}
 }
 
-void Polygon::splitIfRequred(int phase)
+void Polygon::makeRefIfNeeded()
 {
-	if (_splitRequired) {
-		if (phase == 0) {
-			// This is the case from figure 4 of the reference document.
-			// The marker will have marked this face as needing to be split already - that's the splitter's responsibility, not ours.
-			// If this face belongs to a cell which is partially split, but this face is not reference
-			bool hasPartiallySplitOwner = false;
-			for (const auto& cellId : _cellIds) {
-				cellFunc(cellId, [&hasPartiallySplitOwner](const Polyhedron& ownerCell) {
-					hasPartiallySplitOwner = hasPartiallySplitOwner || ownerCell.hasSplits();
-				});
-			}
-			if (hasPartiallySplitOwner)
-				splitAtPoint(_splitPt);
-		} else {
-			splitAtPoint(_splitPt);
+	if (!getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
+		auto pLogger = getBlockPtr()->getLogger();
+		auto& out = pLogger->getStream();
+
+		LOG(out << Logger::Pad() << "creating reference polygon of " << *this);
+
+		// We create this face by creating reference cells for the faces which reference this one.
+		// This face will be created when the cells are created.
+		for (const auto& cellId : _cellIds) {
+			cellFunc(cellId, [this](Polyhedron& cell) {
+				cell.makeRefIfNeeded();
+			});
 		}
+		assert(getBlockPtr()->polygonExists(TS_REFERENCE, _thisId));
 	}
 }
 
@@ -474,90 +483,81 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 {
 	_splitRequired = false;
 
-	// cases
-	//   natural
-	//   has inserted vertices - use reference
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Splitting " << *this);
+	LOG(out << Logger::Pad() << "Polygon::splitAtPoint.");
 
-	if (!hasSplitEdges()) {
-		// split this face
-		assert(_referencingEntityIds.empty());
+	// The REAL face must be marked for deletion.
+	getBlockPtr()->removeFaceFromLookUp(_thisId);
+	_markedForDeletion = true;
 
-		auto pBlk = getBlockPtr();
-		assert(!isReference());
-		assert(_vertexIds.size() == 4);
-		vector<Index3DId> edgePtIds;
-		edgePtIds.resize(_vertexIds.size());
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			Edge edge(_vertexIds[i], _vertexIds[j]);
+	makeRefIfNeeded();
+	faceRefFunc(_thisId, [this, &pt](Polygon& refFace) {
+		Logger::Indent id;
+		refFace.splitAtPointInner(pt);
+	});
+	return;
+}
 
-			// Be sure to project directly to the edge itself. 
-			// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-			Vector3d edgePt = edge.projectPt(pBlk, pt);
-			bool inBounds;
-			double t = edge.paramOfPt(pBlk, edgePt, inBounds);
-			if (inBounds) {
-				Index3DId vertId = pBlk->addVertex(edgePt);
-				edgePtIds[i] = vertId;
-				pBlk->addSplitEdgeVertex(edge, vertId);
-			} else {
-				assert(!"Edge point is not in bounds.");
-				return;
-			}
+void Polygon::splitAtPointInner(const Vector3d& pt)
+{
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+
+	LOG(out << Logger::Pad() << "Polygon::splitAtPointInner.");
+
+	// The code must be operating on the reference face
+	assert(_vertexIds.size() == 4);
+	auto pBlk = getBlockPtr();
+	vector<Index3DId> edgePtIds;
+	edgePtIds.resize(_vertexIds.size());
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+
+		// Be sure to project directly to the edge itself. 
+		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
+		Vector3d edgePt = edge.projectPt(pBlk, pt);
+		bool inBounds;
+		double t = edge.paramOfPt(pBlk, edgePt, inBounds);
+		if (inBounds) {
+			Index3DId vertId = pBlk->addVertex(edgePt);
+			edgePtIds[i] = vertId;
+			pBlk->addSplitEdgeVertex(edge, vertId);
 		}
-
-		Vector3d facePt = projectPoint(pt);
-		if (!containsPoint(facePt)) {
-			assert(!"Face point is not in bounds.");
+		else {
+			assert(!"Edge point is not in bounds.");
 			return;
 		}
+	}
 
-		getBlockPtr()->removeFaceFromLookUp(_thisId);
+	Vector3d facePt = projectPoint(pt);
+	if (!containsPoint(facePt)) {
+		assert(!"Face point is not in bounds.");
+		return;
+	}
 
-		Index3DId facePtId = pBlk->addVertex(facePt);
+	Index3DId facePtId = pBlk->addVertex(facePt);
 
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
-			auto priorEdgeId = edgePtIds[j];
-			auto vertId = _vertexIds[i];
-			auto nextEdgeId = edgePtIds[i];
-			Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
-			// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
+		auto priorEdgeId = edgePtIds[j];
+		auto vertId = _vertexIds[i];
+		auto nextEdgeId = edgePtIds[i];
+		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
+		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
-			auto newFaceId = createFace(face);
-
-			faceFunc(newFaceId, [this, &out](Polygon& newFace) {
-				newFace._unsplitPolygonId = _thisId;
-				newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
-				Logger::Indent indent;
-				LOG(out << Logger::Pad() << "to: " << newFace);
-			});
-			_referencingEntityIds.insert(newFaceId);
-		}
-
-		LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
-
-	} else {
-		// remove this face from the reference entity's split list
-		// split the reference
-		// Delete this face permenently
-
-		LOG(out << Logger::Pad() << "Splitting face with split edges using reference" << *this << "\n" << Logger::Pad() << "================================================================================================ = \n");
-		faceFunc(_unsplitPolygonId, [this, &pt](Polygon& refFace) {
-			assert(refFace._referencingEntityIds.size() == 1);
-
-			refFace._referencingEntityIds.erase(_thisId);
-
-			Logger::Indent indent;
-			refFace.splitAtPoint(pt);
-
-			getBlockPtr()->freePolygon(_thisId);
+		auto newFaceId = createFace(face);
+		faceRefFunc(_thisId, [&newFaceId](Polygon& refFace) {
+			refFace._splitProductIds.insert(newFaceId);
 		});
-		LOG(out << Logger::Pad() << "Post split " << *this << "\n=================================================================================================\n");
+
+		faceFunc(newFaceId, [this, &out](Polygon& newFace) {
+			newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
+			Logger::Indent indent;
+			LOG(out << Logger::Pad() << "to: " << newFace);
+		});
 	}
 }
 
@@ -602,49 +602,38 @@ void Polygon::imprintVertices()
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	if (!_unimprintedPolygonId.isValid()) {
-		LOG(out << Logger::Pad() << "imprintVertices making duplicate and reference\n");
-		pBlk->removeFaceFromLookUp(_thisId);
-		Index3DId dupId = pBlk->addFace(_vertexIds);
-		_referencingEntityIds.insert(dupId);
-		faceFunc(dupId, [this](Polygon& dupFace) {
-			dupFace._unimprintedPolygonId = _thisId;
-			dupFace.setCellIds(_cellIds);
-			dupFace.imprintVertices();
-		});
-	} else {
-		LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
+	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
 
-		{
-			Logger::Indent indent;
-			// Increment down so insertions do not corrupt order
-			// the vertex is not in this polygon and lies between i and j
-			if (_thisId.isValid())
-				pBlk->removeFaceFromLookUp(_thisId);
-			bool imprinted = true;
-			while (imprinted) {
-				imprinted = false;
-				for (size_t i = 0; i < _vertexIds.size(); i++) {
-					size_t j = (i + 1) % _vertexIds.size();
-					Edge edge(_vertexIds[i], _vertexIds[j]);
-					const Index3DId& vertId = getSplitEdgeVertexId(edge);
-					if (vertId.isValid()) {
-						imprinted = true;
-						LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
-						_vertexIds.insert(_vertexIds.begin() + j, vertId);
-						out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {";
-						for (const auto& vertId0 : _vertexIds) {
-							out << "v" << vertId0 << " ";
-						}
-						out << "}\n";
-					}
+	makeRefIfNeeded();
+
+	// Increment down so insertions do not corrupt order
+	// the vertex is not in this polygon and lies between i and j
+	if (_thisId.isValid())
+		pBlk->removeFaceFromLookUp(_thisId);
+
+	bool imprinted = true;
+	while (imprinted) {
+		imprinted = false;
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			Edge edge(_vertexIds[i], _vertexIds[j]);
+			const Index3DId& vertId = getSplitEdgeVertexId(edge);
+			if (vertId.isValid()) {
+				imprinted = true;
+				LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
+				_vertexIds.insert(_vertexIds.begin() + j, vertId);
+				out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {";
+				for (const auto& vertId0 : _vertexIds) {
+					out << "v" << vertId0 << " ";
 				}
+				out << "}\n";
 			}
-			_needSort = true;
-			if (_thisId.isValid())
-				pBlk->addFaceToLookup(_thisId);
 		}
 	}
+
+	_needSort = true;
+	if (_thisId.isValid())
+		pBlk->addFaceToLookup(_thisId);
 }
 
 Index3DId Polygon::createFace(const Polygon& face)
@@ -693,9 +682,6 @@ bool Polygon::addRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>
 
 bool Polygon::verifyTopology() const
 {
-	if (isReference())
-		return true;
-
 	bool valid = true;
 #ifdef _DEBUG 
 	vector<Index3DId> vertIds;
@@ -720,7 +706,7 @@ bool Polygon::verifyTopology() const
 	}
 
 	for (const auto& cellId : _cellIds) {
-		if (!getBlockPtr()->polyhedronExists(cellId))
+		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			valid = false;
 	}
 #endif
@@ -745,13 +731,13 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		}
 		out << "}\n";
 
-		out << Logger::Pad() << "unsplitPolygonId    : f" << face._unsplitPolygonId << "\n";
-		out << Logger::Pad() << "unimprintedPolygonId: f" << face._unimprintedPolygonId << "\n";
-		out << Logger::Pad() << "referencingEntityIds: (" << face._referencingEntityIds.size() << "): {";
-		for (const auto& refId : face._referencingEntityIds) {
-			out << "f" << refId << " ";
+		if (!face._splitProductIds.empty()) {
+			out << Logger::Pad() << "splitFaceIds(" << face._splitProductIds.size() << "): {";
+			for (const auto& faceId : face._splitProductIds) {
+				out << "f" << faceId << " ";
+			}
+			out << "}\n";
 		}
-		out << "}\n";
 	}
 
 	return out;

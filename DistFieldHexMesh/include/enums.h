@@ -43,18 +43,11 @@ enum Trinary
 	IS_FALSE
 };
 
-/*
-
 enum TopolgyState
 {
-	TS_UNKNOWN         = 0,
-	TS_ALL_CLEAN       = 1, // Has no split edges or faces
-	TS_HAS_SPLIT_EDGES = 2, // TODO Probably never needed and can be deleted
-	TS_HAS_SPLIT_FACES = 4,
-	TS_PARTIALLY_SPLIT = 8, // Has split edges or faces
-	TS_REFERENCE       = 16, // Has been split and no longer in use. It's kept as reference for working on it's sub topology
+	TS_REAL,			// As originally created without any splits
+	TS_REFERENCE,		// Was intact, now there is a split version and this is for reference
 };
-*/
 
 enum FaceType {
 	FT_OUTER,

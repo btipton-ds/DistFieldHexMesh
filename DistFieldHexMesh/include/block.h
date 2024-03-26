@@ -106,7 +106,7 @@ public:
 	size_t numPolyhedra() const;
 
 	bool verifyTopology() const;
-	std::vector<Index3DId> createSubBlocks();
+	std::vector<Index3DId> createSubBlocks(TopolgyState refState);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -121,31 +121,29 @@ public:
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	Vector3d getVertexPoint(const Index3DId& vertIdx) const;
 
-	const std::vector<Index3DId>& getFaceVertexIds(const Index3DId& faceId) const;
-	Index3DId findFace(const std::vector<Index3DId>& vertIndices) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
+	Index3DId addRefFace(const Polygon& face);
+
 	Index3DId addCell(const Polyhedron& cell, bool addLinkage = true);
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+
+	Index3DId addRefCell(const Polyhedron& cell);
+
 	void addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId);
 	const std::map<Edge, Index3DId>& getSplitEdgeVertices() const;
 
-	bool freePolygon(const Index3DId& id);
-	bool freePolyhedron(const Index3DId& id);
+	bool freePolygon(const Index3DId& id);		// Should never need to remove a ref polygon
+	bool freePolyhedron(const Index3DId& id);	// Should never need to remove a ref polyhedron
 
 	bool vertexExists(const Index3DId& id) const;
-	bool polygonExists(const Index3DId& id) const;
-	bool polyhedronExists(const Index3DId& id) const;
-
-	// Exists to support mutex locking and does it's own mutex locking
-	const Vertex& getVertex_UNSFAFE(const Index3DId& id) const;
-	// Exists to support mutex locking and does it's own mutex locking
-	const Polygon& getFace_UNSFAFE(const Index3DId& id) const; 
+	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
+	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -157,9 +155,9 @@ public:
 	// its own thread safety. They are passed by reference because if the object is not in storage
 	// that's fatal error for all agorithms and there is no recovery from that.
 
-	LAMBDA_FUNC_PAIR_DECL(vertex);
-	LAMBDA_FUNC_PAIR_DECL(face);
-	LAMBDA_FUNC_PAIR_DECL(cell);
+	LAMBDA_FUNC_SET_DECL(vertex);
+	LAMBDA_FUNC_SET_REF_DECL(face);
+	LAMBDA_FUNC_SET_REF_DECL(cell);
 
 private:
 	friend class Volume;
@@ -168,6 +166,14 @@ private:
 
 	enum class AxisIndex {
 		X, Y, Z
+	};
+
+	struct ModelData {
+		ModelData(Block* pBlk);
+		ModelData(Block* pBlk, const ModelData& src);
+
+		ObjectPool<Polygon> _polygons;
+		ObjectPool<Polyhedron> _polyhedra;
 	};
 
 	void setIsOutput(bool val);
@@ -190,10 +196,17 @@ private:
 	void clearSplitEdges();
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void splitPolygonsIfRequired(int phase);
-	void splitPolyhedraIfRequired(int phase);
+	void splitPolygonsIfAdjacentRequiresIt();
+	void splitPolyhedraIfAdjacentRequiresIt();
+
+	void splitPolygonsIfRequired();
+	void splitPolyhedraIfRequired();
 	void imprintTJointVertices();
+	void doGarbageCollection();
 	void setPolygonCellIds();
+
+	const ModelData& data(TopolgyState refState) const;
+	ModelData& data(TopolgyState refState);
 
 	Index3D _blockIdx;
 
@@ -201,7 +214,7 @@ private:
 	CBoundingBox3Dd 
 		_boundBox, // The precise bounding box for this box
 		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
-						// must be tested to see if it belongs to this box or a neighbor box.
+						// must be tested to see if it belongs to this box or a Adjacent box.
 						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	
@@ -215,8 +228,8 @@ private:
 	std::map<Edge, Index3DId> _splitEdgeVertices;
 
 	ObjectPool<Vertex> _vertices;
-	ObjectPool<Polygon> _polygons;
-	ObjectPool<Polyhedron> _polyhedra;
+	ModelData _modelData, _refData;
+
 };
 
 inline size_t Block::GlPoints::getId() const
@@ -266,44 +279,26 @@ inline bool Block::isUnloaded() const
 	return !_filename.empty();
 }
 
-inline const Vertex& Block::getVertex_UNSFAFE(const Index3DId& id) const
+inline const Block::ModelData& Block::data(TopolgyState refState) const
 {
-	return _vertices[id];
+	return refState == TS_REAL ? _modelData : _refData;
 }
 
-inline const Polygon& Block::getFace_UNSFAFE(const Index3DId& id) const
+inline Block::ModelData& Block::data(TopolgyState refState)
 {
-	return _polygons[id];
+	return refState == TS_REAL ? _modelData : _refData;
 }
 
-/*
-LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
-LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
-LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
-*/
+LAMBDA_FUNC_SET_IMPL(vertex, _vertices)
+LAMBDA_FUNC_SET_REF_IMPL(face, _polygons)
+LAMBDA_FUNC_SET_REF_IMPL(cell, _polyhedra)
 
-LAMBDA_FUNC_PAIR_IMPL(vertex, _vertices)
-LAMBDA_FUNC_PAIR_IMPL(face, _polygons)
-LAMBDA_FUNC_PAIR_IMPL(cell, _polyhedra)
+LAMBDA_CLIENT_FUNC_SET_IMPL(Polygon, vertex)
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polygon, face)
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polygon, cell)
 
-/*
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
-*/
-
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, vertex)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, face)
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polygon, cell)
-
-/*
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
-*/
-
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, vertex);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, face);
-CLIENT_LAMBDA_FUNC_PAIR_IMPL(Polyhedron, cell);
+LAMBDA_CLIENT_FUNC_SET_IMPL(Polyhedron, vertex);
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polyhedron, face);
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polyhedron, cell);
 
 }

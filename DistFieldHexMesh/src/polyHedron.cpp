@@ -103,11 +103,6 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 	return false;
 }
 
-void Polyhedron::setSourceId(const Index3DId& id)
-{
-	_referenceEntityId = id;
-}
-
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 {
 	for (const auto& faceId : _faceIds) {
@@ -118,13 +113,13 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 	}
 }
 
-void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
+void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentFaces) const
 {
 	map<Edge, set<Index3DId>> edgeToFaceMap;
 	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeNeighborFaces](const Polygon& face) {
-			if (includeNeighborFaces) {
+		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentFaces](const Polygon& face) {
+			if (includeAdjacentFaces) {
 				auto temp = face.getCellIds();
 				adjCellIds.insert(temp.begin(), temp.end());
 			}
@@ -141,7 +136,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeNeighborFaces) const
 		});
 	}
 
-	if (includeNeighborFaces) {
+	if (includeAdjacentFaces) {
 		adjCellIds.erase(_thisId);
 		for (const auto& adjCellId : adjCellIds) {
 			set<Index3DId> faceIds;
@@ -344,11 +339,8 @@ Index3DId Polyhedron::createFace(const std::vector<Index3DId>& vertIds)
 		assert(edge.onPrincipalAxis(getBlockPtr()));
 	}
 #endif
-	Index3DId result = getBlockPtr()->findFace(vertIds);
-	if (!result.isValid())
-		result = getBlockPtr()->addFace(vertIds);
 
-	return result;
+	return getBlockPtr()->addFace(vertIds);
 }
 
 void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, std::vector<Index3DId>& faceIds)
@@ -372,155 +364,22 @@ void Polyhedron::setPolygonsCellId()
 	}
 }
 
-void Polyhedron::fixPartialSplits()
+void Polyhedron::splitIfAdjacentRequiresIt()
 {
-/*
-	Cases:
-	Is already a reference cell, do nothing and return
-	If scheduled to split, do nothing and return
-	No faces are reference, do nothing and return
-	Has reference faces
-			Does not have a reference cell, create one now
-		else
-		    Promote reference faces to this cell
-*/
-	// Case 1 - already a reference which cannot be changed
-	if (isReference())
-		return;
-
-	bool hasRefFace = false;
-	set<Index3DId> realFaceIds;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&hasRefFace, &realFaceIds](const Polygon& face) {
-			if (face.isReference()) {
-				hasRefFace = true;
-				const auto& subFaceIds = face._referencingEntityIds;
-				realFaceIds.insert(subFaceIds.begin(), subFaceIds.end());
-			} else {
-				realFaceIds.insert(face.getId());
-			}
-		});
-	}
-
-	// Case 2 - Has no reference faces, return
-	if (!hasRefFace)
-		return;
-
-	if (!_referenceEntityId.isValid()) {
-		for (const auto& faceId : realFaceIds) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.removeCellId(_thisId);
-			});
-		}
-
-		Index3DId dupCellId = getBlockPtr()->addCell(realFaceIds);
-		_referencingEntityIds.insert(dupCellId);
-		cellFunc(dupCellId, [this](Polyhedron& dupCell) {
-			dupCell._referenceEntityId = _thisId;
-			for (const auto& faceId : dupCell._faceIds) {
-				faceFunc(faceId, [this, &dupCell](Polygon& face) {
-					assert(face.usedByCell(dupCell.getId()));
-					assert(!face.usedByCell(_thisId));
-				});
-			}
-
-		});
-	} else {
-		_faceIds = realFaceIds;
-	}
+	if (hasSplits())
+		splitAtCentroid();
 }
 
-Index3DId Polyhedron::duplicateAndPromoteFaces()
-{
-	Index3DId dbgId(0, 6, 5, 1);
-	if (dbgId == _thisId) {
-		int dbgBreak = 1;
-	}
 
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pre:" << *this);
-
-	bool faceNeedsToBePromoted = false;
-	Index3DId dupCellId = _thisId;
-	set<Index3DId> allFaceIds;
-	for (const Index3DId& faceId : _faceIds) {
-		faceFunc(faceId, [&allFaceIds, &faceNeedsToBePromoted](const Polygon& face) {
-			const auto& refIds = face._referencingEntityIds;
-			if (refIds.empty())
-				allFaceIds.insert(face.getId());
-			else {
-				faceNeedsToBePromoted = true;
-				allFaceIds.insert(refIds.begin(), refIds.end());
-			}
-		});
-	}
-
-	if (!faceNeedsToBePromoted)
-		return dupCellId;
-
-	if (_referenceEntityId.isValid()) {
-		Logger::Indent indent;
-		LOG(out << Logger::Pad() << "Invalid referenceId");
-		set<Index3DId> allFaceIds;
-		for (const Index3DId& faceId : _faceIds) {
-			faceFunc(faceId, [&allFaceIds](const Polygon& face) {
-				const auto& refIds = face._referencingEntityIds;
-				if (refIds.empty())
-					allFaceIds.insert(face.getId());
-				else {
-					allFaceIds.insert(refIds.begin(), refIds.end());
-				}
-			});
-		}
-
-		_faceIds = allFaceIds;
-	} else {
-		Logger::Indent indent;
-		LOG(out << Logger::Pad() << "Valid referenceId");
-		dupCellId = getBlockPtr()->addCell(allFaceIds);
-		if (dbgId == dupCellId) {
-			int dbgBreak = 1;
-		}
-		_referencingEntityIds.insert(dupCellId);
-
-		for (const auto& faceId : allFaceIds) {
-			faceFunc(faceId, [this, &dupCellId](Polygon& face) {
-				face.removeCellId(_thisId);
-				face.addCellId(dupCellId);
-			});
-		}
-
-		cellFunc(dupCellId, [this, &out](Polyhedron& dupCell) {
-			dupCell._referenceEntityId = _thisId;
-			Logger::Indent indent;
-			LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pst:" << dupCell);
-		});
-	}
-
-	LOG(out << Logger::Pad() << "duplicateAndPromoteFaces pst:" << *this);
-
-	return dupCellId;
-}
-
-void Polyhedron::splitIfRequred(int phase)
+void Polyhedron::splitIfRequred()
 {
 	if (_splitRequired) {
-		if (phase == 0) {
-			if (hasSplits())
-				splitAtCentroid();
-		}
-		else {
-			splitAtCentroid();
-		}
+		splitAtCentroid();
 	}
 }
 
 bool Polyhedron::needToImprintVertices() const
 {
-	assert(!isReference());
-
 	set<Index3DId> vertIds;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&vertIds](const Polygon& face) {
@@ -559,28 +418,43 @@ void Polyhedron::removeOurIdFromFaces()
 	}
 }
 
+void Polyhedron::makeRefIfNeeded()
+{
+	if (!getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
+		for (const auto& faceId : _faceIds) {
+			if (!getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
+				faceFunc(faceId, [this](Polygon& face) {
+					getBlockPtr()->addRefFace(face);
+				});
+			}
+		}
+		getBlockPtr()->addRefCell(*this);
+		assert(getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId));
+	}
+}
+
 bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 {
-	_splitRequired = false;
-	assert(_referencingEntityIds.empty());
-
-	// If it has a reference, use that to determine the split
-	// If not, then split this one.
-	bool canSplitAll = true;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &centerPoint, &canSplitAll](Polygon& face) {
-			set<Index3DId> childFaceIds = face._referencingEntityIds;
-			canSplitAll = canSplitAll && !childFaceIds.empty();
-		});
-	}
-	
-	if (!canSplitAll)
-		return false;
-
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Splitting " << *this);
+	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint " << *this);
+
+	_splitRequired = false;
+	_markedForDeletion = true;
+
+	makeRefIfNeeded();
+	cellRefFunc(_thisId, [this, &centerPoint](Polyhedron& refCell) {
+		refCell.splitAtPointInner(centerPoint);
+		});
+	return true;
+}
+bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
+{
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+
+	LOG(out << Logger::Pad() << "Polyhedron::splitAtPointInner " << *this);
 
 	removeOurIdFromFaces();
 
@@ -588,7 +462,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &centerPoint, &vertToFaceMap](Polygon& face) {
-			set<Index3DId> childFaceIds = face._referencingEntityIds;
+			set<Index3DId> childFaceIds = face._splitProductIds;
 			for (const auto& childFaceId : childFaceIds) {
 				faceFunc(childFaceId, [this, &vertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
@@ -657,12 +531,9 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 
 		auto newCellId = getBlockPtr()->addCell(newCell, true);
 		cellFunc(newCellId, [this, &out](Polyhedron& newCell) {
-			newCell._referenceEntityId = _thisId;
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newCell);
 		});
-		_referencingEntityIds.insert(newCellId);
-
 	}
 
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
@@ -684,11 +555,44 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 	return getBlockPtr()->addFace(face);
 }
 
+Index3DId Polyhedron::addRefFace(const std::vector<Index3DId>& vertIds)
+{
+	Polygon face(vertIds);
+#if _DEBUG
+	set<Edge> edges;
+	face.getEdges(edges);
+	for (const auto& edge : edges) {
+		assert(edge.onPrincipalAxis(getBlockPtr()));
+	}
+#endif
+
+	return getBlockPtr()->addRefFace(face);
+}
+
+bool Polyhedron::requiresSplitDueToPendingAdjacentSplit() const
+{
+	if (isSplitRequired())
+		return false;
+
+	if (!hasSplits())
+		return false;
+
+	set<Index3DId> cellIds = getAdjacentCells(false);
+	for (const auto& cellId : cellIds) {
+		bool needsSplit;
+		cellFunc(cellId, [&needsSplit](const Polyhedron& cell) {
+			needsSplit = cell.isSplitRequired();
+		});
+
+		if (needsSplit)
+			return true;
+	}
+
+	return false;
+}
+
 void Polyhedron::setNeedToSplitAtCentroid()
 {
-	if (isReference())
-		return;
-
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
@@ -706,9 +610,6 @@ void Polyhedron::setNeedToSplitAtCentroid()
 
 void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
-	if (isReference())
-		return;
-
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
@@ -927,14 +828,9 @@ bool Polyhedron::verifyTopology() const
 	bool valid = true;
 #ifdef _DEBUG 
 
-	if (isReference())
-		return valid;
-
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(faceId)) {
+		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
-				if (face.isReference())
-					valid = false;
 				if (!face.usedByCell(_thisId))
 					valid = false;
 				if (!face.verifyTopology())
@@ -967,7 +863,7 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 	{
 		Logger::Indent indent;
 
-		out << Logger::Pad() << "faceIds(" << cell._faceIds.size() << "): {\n";
+		out << Logger::Pad() << "faces(" << cell._faceIds.size() << "): {\n";
 		for (const auto& faceId : cell._faceIds) {
 			pBlk->faceFunc(faceId, [&out](const Polygon& face) {
 				Logger::Indent indent;
@@ -975,13 +871,6 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 			});
 		}
 		out << Logger::Pad() << "}\n";
-
-		out << Logger::Pad() << "referenceEntityId: c" << cell._referenceEntityId << "\n";
-		out << Logger::Pad() << "referencingEntityIds(" << cell._referencingEntityIds.size() << "): {";
-		for (const auto& refId : cell._referencingEntityIds) {
-			out << "c" << refId << " ";
-		}
-		out << "}\n";
 
 		if (!closed) {
 			out << Logger::Pad() << "edges(" << edges.size() << "): {\n";

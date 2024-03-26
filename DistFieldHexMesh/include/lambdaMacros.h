@@ -31,41 +31,90 @@ This file is part of the DistFieldHexMesh application/library.
 template<class LAMBDA> \
 void NAME##Func(const Index3DId& id, LAMBDA func) CONST;
 
-#define LAMBDA_FUNC_IMPL(NAME, MEMBER_NAME, CONST) \
+#define LAMBDA_FUNC_REF_DECL(NAME, CONST) \
+template<class LAMBDA> \
+void NAME##RefFunc(const Index3DId& id, LAMBDA func) CONST;
+
+#define LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, CONST) \
 template<class LAMBDA> \
 void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
 	func(getOwner(id)->MEMBER_NAME[id]); \
 }
 
-#define LAMBDA_FUNC_PAIR_DECL(NAME) \
+#define LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME, CONST) \
+template<class LAMBDA> \
+void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
+{ \
+	func(getOwner(id)->_modelData.MEMBER_NAME[id]); \
+}
+
+#define LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, CONST) \
+template<class LAMBDA> \
+void Block::NAME##RefFunc(const Index3DId& id, LAMBDA func) CONST \
+{ \
+	func(getOwner(id)->_refData.MEMBER_NAME[id]); \
+}
+
+#define LAMBDA_FUNC_SET_DECL(NAME) \
+LAMBDA_FUNC_DECL(NAME, const) \
+LAMBDA_FUNC_DECL(NAME,)
+
+#define LAMBDA_FUNC_SET_REF_DECL(NAME) \
 LAMBDA_FUNC_DECL(NAME, const) \
 LAMBDA_FUNC_DECL(NAME,) \
-LAMBDA_FUNC_DECL(NAME##Const, const)
+LAMBDA_FUNC_REF_DECL(NAME, const) \
+LAMBDA_FUNC_REF_DECL(NAME,)
 
-#define LAMBDA_FUNC_PAIR_IMPL(NAME, MEMBER_NAME) \
-LAMBDA_FUNC_IMPL(NAME, MEMBER_NAME, const) \
-LAMBDA_FUNC_IMPL(NAME, MEMBER_NAME, ) \
-LAMBDA_FUNC_IMPL(NAME##Const, MEMBER_NAME, const) \
+#define LAMBDA_FUNC_SET_IMPL(NAME, MEMBER_NAME) \
+LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, const) \
+LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, )
+
+#define LAMBDA_FUNC_SET_REF_IMPL(NAME, MEMBER_NAME) \
+LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME, const) \
+LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME, ) \
+LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, const) \
+LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, )
 
 /****************************************************************************************************/
 #define LAMBDA_CLIENT_FUNC_DECL(NAME, CONST) \
 template<class LAMBDA> \
 void NAME##Func(const Index3DId& id, LAMBDA func) CONST;
 
-#define LAMBDA_CLIENT_FUNC_PAIR_DECL(NAME) \
+#define LAMBDA_CLIENT_FUNC_REF_DECL(NAME, CONST) \
+template<class LAMBDA> \
+void NAME##RefFunc(const Index3DId& id, LAMBDA func) CONST;
+
+#define LAMBDA_CLIENT_FUNC_SET_DECL(NAME) \
+LAMBDA_CLIENT_FUNC_DECL(NAME, const) \
+LAMBDA_CLIENT_FUNC_DECL(NAME,)
+
+#define LAMBDA_CLIENT_FUNC_SET_REF_DECL(NAME) \
 LAMBDA_CLIENT_FUNC_DECL(NAME, const) \
 LAMBDA_CLIENT_FUNC_DECL(NAME,) \
-LAMBDA_CLIENT_FUNC_DECL(NAME##Const, const)
+LAMBDA_CLIENT_FUNC_REF_DECL(NAME, const) \
+LAMBDA_CLIENT_FUNC_REF_DECL(NAME,)
 
-#define CLIENT_LAMBDA_FUNC_IMPL(CLASS, NAME, CONST) \
+#define LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, CONST) \
 template<class LAMBDA> \
 void CLASS::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
 	getBlockPtr()->NAME##Func(id, func); \
 }
 
-#define CLIENT_LAMBDA_FUNC_PAIR_IMPL(CLASS, NAME) \
-CLIENT_LAMBDA_FUNC_IMPL(CLASS, NAME, const) \
-CLIENT_LAMBDA_FUNC_IMPL(CLASS, NAME, ) \
-CLIENT_LAMBDA_FUNC_IMPL(CLASS, NAME##Const, const)
+#define LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, CONST) \
+template<class LAMBDA> \
+void CLASS::NAME##RefFunc(const Index3DId& id, LAMBDA func) CONST \
+{ \
+	getBlockPtr()->NAME##RefFunc(id, func); \
+}
+
+#define LAMBDA_CLIENT_FUNC_SET_IMPL(CLASS, NAME) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, )
+
+#define LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, NAME) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, ) \
+LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, const) \
+LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, )

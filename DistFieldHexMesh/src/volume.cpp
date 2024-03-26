@@ -290,7 +290,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		if (_blocks[linearIdx])
-			_blocks[linearIdx]->createSubBlocks();
+			_blocks[linearIdx]->createSubBlocks(TS_REAL);
 		return true;
 	}, multiCore);
 
@@ -342,7 +342,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 	Mark all faces and polyhedra to be split on one pass
 		If a split would result in a double split of a polyhedron, mark that sell to be split at a higher "phase". Cell will be split by decending phase
-	Split polyhedra which must be split due to a neighbor split in descending phase. There should only be one, but this supports more
+	Split polyhedra which must be split due to a Adjacent split in descending phase. There should only be one, but this supports more
 
 	Reference polyhedra must be TOTALLY intact - for simplicity.
 		This happens automatically when a polyhedron is split
@@ -390,9 +390,10 @@ void Volume::finishSplits(bool multiCore)
 		return true;
 	}, multiCore);
 
-	splitTopology(0, multiCore);
-	splitTopology(1, multiCore);
+	splitIfAdjacentRequiresIt(multiCore);
+	splitTopology(false && multiCore);
 	imprintTJointVertices(false && multiCore);
+	doGarbageCollection(multiCore);
 #if 0
 	// This may not be needed
 	runLambda([this](size_t linearIdx)->bool {
@@ -404,18 +405,39 @@ void Volume::finishSplits(bool multiCore)
 #endif
 }
 
-void Volume::splitTopology(int phase, bool multiCore)
+void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 {
-	runLambda([this, phase](size_t linearIdx)->bool {
+	/*
+	There are cells which already have split faces. Their faces should not be split again.
+	Instead, split the entire cell so the cell's faces are unsplit.
+	*/
+	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolygonsIfRequired(phase);
+			_blocks[linearIdx]->splitPolygonsIfAdjacentRequiresIt();
 		}
 		return true;
 	}, multiCore);
 
-	runLambda([this, phase](size_t linearIdx)->bool {
+	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfRequired(phase);
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequiresIt();
+		}
+		return true;
+		}, multiCore);
+}
+
+void Volume::splitTopology(bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolygonsIfRequired();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfRequired();
 		}
 		return true;
 	}, multiCore);
@@ -429,6 +451,16 @@ void Volume::imprintTJointVertices(bool multiCore)
 		}
 		return true;
 	},  multiCore);
+}
+
+void Volume::doGarbageCollection(bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->doGarbageCollection();
+		}
+		return true;
+	}, multiCore);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
@@ -553,10 +585,10 @@ void Volume::consolidateBlocks()
 					pBlk->_vertices.iterateInOrder([&vertIdx](const Vertex& v) {
 						vertIdx++;
 					});
-					pBlk->_polygons.iterateInOrder([&polygonIdx](const Polygon& v) {
+					pBlk->_modelData._polygons.iterateInOrder([&polygonIdx](const Polygon& v) {
 						polygonIdx++;
 					});
-					pBlk->_polyhedra.iterateInOrder([&polyhedronIdx](const Polyhedron& v) {
+					pBlk->_modelData._polyhedra.iterateInOrder([&polyhedronIdx](const Polyhedron& v) {
 						polyhedronIdx++;
 					});
 				}
@@ -573,9 +605,7 @@ void Volume::consolidateBlocks()
 				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
 				if (!pBlk)
 					continue;
-				pBlk->_polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](Polygon& face) {
-					if (face.isReference())
-						return;
+				pBlk->_modelData._polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](Polygon& face) {
 					face.orient();
 					faceIndices.push_back(faces.size());
 					for (const auto& vertId : face.getVertexIds()) {
@@ -746,7 +776,7 @@ void Volume::writePolyMeshFaces(const string& dirName) const
 				if (!pBlk)
 					continue;
 				pBlk->_baseIdxPolygons = startIndices.size();
-				const auto& blkPolygons = pBlk->_polygons;
+				const auto& blkPolygons = pBlk->_modelData._polygons;
 				blkPolygons.iterateInOrder([&startIndices](const Polygon& face) {
 					const auto& vertIds = face.getVertexIds();
 					startIndices.push_back(vertIds.size());
