@@ -152,6 +152,7 @@ private:
 	};
 
 	Index3DId add(const T& obj, const Index3DId& id = Index3DId());
+	size_t storeAndReturnIndex(const T& obj);
 	bool calIndices(size_t index, size_t& segNum, size_t& segIdx) const;
 	T* getEntry(size_t index);
 	const T* getEntry(size_t index) const;
@@ -225,6 +226,7 @@ inline bool ObjectPool<T>::calIndices(size_t index, size_t& segNum, size_t& segI
 template<class T>
 inline T* ObjectPool<T>::getEntry(size_t index)
 {
+	// TODO pass the elementId, not the index. Compute the index here to avoid confusion.
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
 		return &((*_objectSegs[segNum])[segIdx]);
@@ -235,6 +237,7 @@ inline T* ObjectPool<T>::getEntry(size_t index)
 template<class T>
 inline const T* ObjectPool<T>::getEntry(size_t index) const
 {
+	// TODO pass the elementId, not the index. Compute the index here to avoid confusion.
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
 		return &((*_objectSegs[segNum])[segIdx]);
@@ -361,30 +364,25 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 }
 
 template<class T>
-Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
+size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 {
-	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
-	if (currentId.isValid()) {
-		// This has never been used or tested. Probably obsolete and needs to be replaced.
-		result = currentId.elementId();
-		if (result < _idToIndexMap.size()) {
-			index = _idToIndexMap[result];
-		} else {
-			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
-				// Reserve the segment size so the array won't resize during use
-				_objectSegs.push_back(std::make_shared<std::vector<T>>());
-				_objectSegs.back()->reserve(_objectSegmentSize);
-			}
-			segNum = _objectSegs.size() - 1;
-
-			auto& segData = *_objectSegs.back();
-
-			segIdx = segData.size();
-			index = segNum * _objectSegmentSize + segIdx;
-
-			_idToIndexMap.resize(result + 1, -1);
-			_idToIndexMap[result] = index;
+	size_t index = -1, segNum = -1, segIdx = -1;
+	if (_availableIndices.empty()) {
+		if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
+			// Reserve the segment size so the array won't resize during use
+			_objectSegs.push_back(std::make_shared<std::vector<T>>());
+			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
+		segNum = _objectSegs.size() - 1;
+
+		auto& segData = *_objectSegs.back();
+
+		segIdx = segData.size();
+		segData.push_back(obj);
+		index = segNum * _objectSegmentSize + segIdx;
+	} else {
+		index = _availableIndices.back();
+		_availableIndices.pop_back();
 
 		calIndices(index, segNum, segIdx);
 		if (segNum >= _objectSegs.size()) {
@@ -394,49 +392,40 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 		}
 		auto& segData = *_objectSegs[segNum];
 
-		if (segIdx >= segData.size()) {
+		if (segIdx >= segData.size())
 			segData.resize(segIdx + 1);
-		}
+
+		size_t segNum1, segIdx1;
+		assert(calIndices(index, segNum1, segIdx1) && segNum1 == segNum && segIdx1 == segIdx);
 		segData[segIdx] = obj;
+	}
+	return index;
+}
+
+template<class T>
+Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
+{
+	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
+	if (currentId.isValid()) {
+		Index3DId dbgId(0, 7, 5, 1);
+		if (currentId == dbgId) {
+			int dbgBreak = 1;
+		}
+		// This has never been used or tested. Probably obsolete and needs to be replaced.
+		result = currentId.elementId();
+		index = storeAndReturnIndex(obj);
+
+		if (result >= _idToIndexMap.size())
+			_idToIndexMap.resize(result + 1, -1);
+		_idToIndexMap[result] = index;
 	} else {
 		result = _idToIndexMap.size();
-		if (_availableIndices.empty()) {
-			if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
-				// Reserve the segment size so the array won't resize during use
-				_objectSegs.push_back(std::make_shared<std::vector<T>>());
-				_objectSegs.back()->reserve(_objectSegmentSize);
-			}
-			segNum = _objectSegs.size() - 1;
-
-			auto& segData = *_objectSegs.back();
-
-			segIdx = segData.size();
-			segData.push_back(obj);
-			index = segNum * _objectSegmentSize + segIdx;
-			_idToIndexMap.push_back(index);
-		} else {
-			index = _availableIndices.back();
-			_availableIndices.pop_back();
-
-			calIndices(index, segNum, segIdx);
-			if (segNum >= _objectSegs.size()) {
-				// Reserve the segment size so the array won't resize during use
-				_objectSegs.push_back(std::make_shared<std::vector<T>>());
-				_objectSegs.back()->reserve(_objectSegmentSize);
-			}
-			auto& segData = *_objectSegs[segNum];
-
-			if (segIdx >= segData.size())
-				segData.resize(segIdx + 1);
-
-			size_t segNum1, segIdx1;
-			assert(calIndices(index, segNum1, segIdx1) && segNum1 == segNum && segIdx1 == segIdx);
-			segData[segIdx] = obj;
-		}
+		index = storeAndReturnIndex(obj);
+		_idToIndexMap.push_back(index);
 	}
 
-	assert(getEntry(result));
-	getEntry(result)->setId(_pPoolOwner, result);
+	assert(getEntry(_idToIndexMap[result]));
+	getEntry(_idToIndexMap[result])->setId(_pPoolOwner, result);
 
 	return Index3DId(_pPoolOwner->getBlockIdx(), result);
 }

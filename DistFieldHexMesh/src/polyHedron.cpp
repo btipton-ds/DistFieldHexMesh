@@ -449,6 +449,7 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 		});
 	return true;
 }
+
 bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 {
 	auto pLogger = getBlockPtr()->getLogger();
