@@ -89,10 +89,7 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
-	LAMBDA_CLIENT_FUNC_SET_DECL(vertex);
-	LAMBDA_CLIENT_FUNC_SET_REF_DECL(face);
-	LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell);
-
+	LAMBDA_CLIENT_DECLS
 private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
@@ -130,6 +127,8 @@ inline bool Polyhedron::isSplitRequired() const
 {
 	return _splitRequired;
 }
+
+LAMBDA_CLIENT_IMPLS(Polyhedron)
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
 

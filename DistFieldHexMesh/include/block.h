@@ -155,9 +155,7 @@ public:
 	// its own thread safety. They are passed by reference because if the object is not in storage
 	// that's fatal error for all agorithms and there is no recovery from that.
 
-	LAMBDA_FUNC_SET_DECL(vertex);
-	LAMBDA_FUNC_SET_REF_DECL(face);
-	LAMBDA_FUNC_SET_REF_DECL(cell);
+	LAMBDA_BLOCK_DECLS
 
 private:
 	friend class Volume;
@@ -287,16 +285,6 @@ inline Block::ModelData& Block::data(TopolgyState refState)
 	return refState == TS_REAL ? _modelData : _refData;
 }
 
-LAMBDA_FUNC_SET_IMPL(vertex, _vertices)
-LAMBDA_FUNC_SET_REF_IMPL(face, _polygons)
-LAMBDA_FUNC_SET_REF_IMPL(cell, _polyhedra)
-
-LAMBDA_CLIENT_FUNC_SET_IMPL(Polygon, vertex)
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polygon, face)
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polygon, cell)
-
-LAMBDA_CLIENT_FUNC_SET_IMPL(Polyhedron, vertex);
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polyhedron, face);
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(Polyhedron, cell);
+LAMBDA_BLOCK_IMPLS
 
 }

@@ -44,7 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 #define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
 
 AppData::AppData(MainFrame* pMainFrame)

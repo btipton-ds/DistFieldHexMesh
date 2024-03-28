@@ -135,9 +135,7 @@ public:
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
-	LAMBDA_CLIENT_FUNC_SET_DECL(vertex);
-	LAMBDA_CLIENT_FUNC_SET_REF_DECL(face);
-	LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell);
+	LAMBDA_CLIENT_DECLS
 
 private:
 	friend class Polyhedron;
@@ -210,6 +208,8 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }
+
+LAMBDA_CLIENT_IMPLS(Polygon)
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);
 

@@ -46,7 +46,11 @@ void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 template<class LAMBDA> \
 void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
-	func(getOwner(id)->_modelData.MEMBER_NAME[id]); \
+	CONST auto p = getOwner(id); \
+	if (p->_modelData.MEMBER_NAME.exists(id)) \
+		func(p->_modelData.MEMBER_NAME[id]); \
+	else \
+		func(p->_refData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, CONST) \
@@ -118,3 +122,24 @@ LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const) \
 LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, ) \
 LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, const) \
 LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, )
+
+
+#define LAMBDA_BLOCK_DECLS \
+LAMBDA_FUNC_SET_DECL(vertex); \
+LAMBDA_FUNC_SET_REF_DECL(face); \
+LAMBDA_FUNC_SET_REF_DECL(cell);
+
+#define LAMBDA_BLOCK_IMPLS \
+LAMBDA_FUNC_SET_IMPL(vertex, _vertices) \
+LAMBDA_FUNC_SET_REF_IMPL(face, _polygons) \
+LAMBDA_FUNC_SET_REF_IMPL(cell, _polyhedra)
+
+#define LAMBDA_CLIENT_DECLS \
+LAMBDA_CLIENT_FUNC_SET_DECL(vertex); \
+LAMBDA_CLIENT_FUNC_SET_REF_DECL(face); \
+LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell);
+
+#define LAMBDA_CLIENT_IMPLS(CLASS) \
+LAMBDA_CLIENT_FUNC_SET_IMPL(CLASS, vertex) \
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, face) \
+LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, cell) \

@@ -455,8 +455,9 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
+	assert(ownerBlockIdx.isValid());
 	auto* pOwner = getOwner(ownerBlockIdx);
-
+	assert(pOwner);
 	auto faceId = pOwner->addFace(pts);
 
 	return faceId;
@@ -891,13 +892,17 @@ void Block::addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId)
 bool Block::freePolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return pOwner && pOwner->_modelData._polygons.free(id);
+	assert(pOwner);
+	auto& data = pOwner->_modelData;
+	return data._polygons.free(id);
 }
 
 bool Block::freePolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return pOwner && pOwner->_modelData._polyhedra.free(id);
+	assert(pOwner);
+	auto& data = pOwner->_modelData;
+	return data._polyhedra.free(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const
