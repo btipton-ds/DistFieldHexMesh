@@ -71,7 +71,6 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void addIdToPolygons();
 
 	void splitIfAdjacentRequiresIt();
 
@@ -128,7 +127,30 @@ inline bool Polyhedron::isSplitRequired() const
 	return _splitRequired;
 }
 
-LAMBDA_CLIENT_IMPLS(Polyhedron)
+//LAMBDA_CLIENT_IMPLS(Polyhedron)
+template<class LAMBDA> void Polyhedron::vertexFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+template<class LAMBDA> void Polyhedron::vertexFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+template<class LAMBDA> void Polyhedron::faceFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+template<class LAMBDA> void Polyhedron::faceFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+template<class LAMBDA> void Polyhedron::cellFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->cellFunc(id, func);
+} 
+
+template<class LAMBDA> void Polyhedron::cellFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->cellFunc(id, func);
+}
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
 

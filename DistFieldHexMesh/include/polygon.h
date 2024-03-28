@@ -120,7 +120,7 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
-	void setNeedToSplitAtPoint(const Vector3d& pt);
+	void setNeedToSplit();
 
 	void splitIfAdjacentRequiresIt();
 
@@ -144,11 +144,10 @@ private:
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face);
 	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
-	bool makeRefIfNeeded();
+	void makeRefIfNeeded();
 	void splitAtPointInner(const Vector3d& pt);
 
 	bool _splitRequired = false;
-	Vector3d _splitPt;
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
@@ -209,7 +208,30 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-LAMBDA_CLIENT_IMPLS(Polygon)
+//LAMBDA_CLIENT_IMPLS(Polygon)
+template<class LAMBDA> void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+template<class LAMBDA> void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+template<class LAMBDA> void Polygon::faceFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+template<class LAMBDA> void Polygon::faceFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+template<class LAMBDA> void Polygon::cellFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->cellFunc(id, func);
+} 
+
+template<class LAMBDA> void Polygon::cellFunc(const Index3DId& id, LAMBDA func) {
+	getBlockPtr()->cellFunc(id, func);
+}
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);
 

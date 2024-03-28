@@ -467,7 +467,8 @@ void Block::addRefFace(const Polygon& face)
 {
 	auto* pOwner = getOwner(face.getId());
 	// Only copy the bare minium of data - vertices and id.
-	pOwner->_refData._polygons.findOrAdd(Polygon(face.getVertexIds()), face.getId());
+	Polygon refFace(face.getVertexIds());
+	pOwner->_refData._polygons.findOrAdd(refFace, face.getId());
 }
 
 Index3DId Block::addCell(const Polyhedron& cell, bool addLinkage)
@@ -731,6 +732,11 @@ void Block::splitPolygonsIfRequired()
 	_modelData._polygons.iterateInOrder([](Polygon& face) {
 		face.splitIfRequred();
 	});
+	_modelData._polygons.iterateInOrder([this](Polygon& face) {
+		auto faceId = face.getId();
+		if (polygonExists(TS_REFERENCE, faceId) && polygonExists(TS_REAL, faceId))
+			freePolygon(faceId);
+	});
 }
 
 void Block::splitPolyhedraIfRequired()
@@ -742,6 +748,12 @@ void Block::splitPolyhedraIfRequired()
 
 	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.splitIfRequred();
+	});
+
+	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		auto cellId = cell.getId();
+		if (polyhedronExists(TS_REFERENCE, cellId) && polyhedronExists(TS_REAL, cellId))
+			freePolyhedron(cellId);
 	});
 }
 

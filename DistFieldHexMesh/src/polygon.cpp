@@ -427,10 +427,9 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-void Polygon::setNeedToSplitAtPoint(const Vector3d& pt)
+void Polygon::setNeedToSplit()
 {
 	_splitRequired = true;
-	_splitPt = pt;
 }
 
 void Polygon::splitIfAdjacentRequiresIt()
@@ -444,63 +443,81 @@ void Polygon::splitIfAdjacentRequiresIt()
 		if (requiresSplit)
 			break;
 	}
-	if (requiresSplit)
-		splitAtPoint(_splitPt);
+	if (requiresSplit) {
+		Vector3d ctr;
+		faceFunc(_thisId, [&ctr](const Polygon& face) {
+			ctr = face.calCentroid();
+		});
+		splitAtPoint(ctr);
+	}
 }
 
 void Polygon::splitIfRequred()
 {
+	if (Index3DId(0, 6, 5, 0) == _thisId) {
+		int dbgBreak = 1;
+	}
 	if (_splitRequired) {
-		splitAtPoint(_splitPt);
+		auto ctr = calCentroid();
+		splitAtPoint(ctr);
 	}
 }
 
-bool Polygon::makeRefIfNeeded()
+void Polygon::makeRefIfNeeded()
 {
-	if (!getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
-		auto pLogger = getBlockPtr()->getLogger();
+	if (Index3DId(0, 6, 5, 0) == _thisId) {
+		int dbgBreak = 1;
+	}
+
+	auto pBlk = getBlockPtr();
+	if (!pBlk->polygonExists(TS_REFERENCE, _thisId)) {
+		auto pLogger = pBlk->getLogger();
 		auto& out = pLogger->getStream();
 
 		LOG(out << Logger::Pad() << "creating reference polygon of " << *this);
 
 		// We create this face by creating reference cells for the faces which reference this one.
 		// This face will be created when the cells are created.
-		for (const auto& cellId : _cellIds) {
-			cellFunc(cellId, [this](Polyhedron& cell) {
+		auto selfId = _thisId;// Make a copy because this may become invalid
+		auto cellIds = _cellIds; // Make a copy because this may become invalid
+		for (const auto& cellId : cellIds) {
+			pBlk->cellFunc(cellId, [this](Polyhedron& cell) {
 				cell.makeRefIfNeeded();
 			});
 		}
-		assert(getBlockPtr()->polygonExists(TS_REFERENCE, _thisId));
-		return true;
+		assert(pBlk->polygonExists(TS_REFERENCE, selfId));
 	}
-	return false;
 }
 
 void Polygon::splitAtPoint(const Vector3d& pt)
 {
 	_splitRequired = false;
+	// makeRefIfNeeded() may make our data invalid, work on copies
 
-	auto pLogger = getBlockPtr()->getLogger();
+	auto pBlk = getBlockPtr();
+	auto selfId = _thisId;
+
+	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polygon::splitAtPoint.");
 
-	// The REAL face must be marked for deletion.
-	getBlockPtr()->removeFaceFromLookUp(_thisId);
-
-	bool needsDelete = makeRefIfNeeded();
-	faceRefFunc(_thisId, [this, &pt](Polygon& refFace) {
+	makeRefIfNeeded();
+	pBlk->faceRefFunc(selfId, [&pt](Polygon& refFace) {
 		Logger::Indent id;
 		refFace.splitAtPointInner(pt);
 	});
 
-	if (needsDelete)
-		getBlockPtr()->freePolygon(_thisId);
-	return;
+	if (pBlk->polygonExists(TS_REAL, selfId))
+		pBlk->freePolygon(selfId);
 }
 
 void Polygon::splitAtPointInner(const Vector3d& pt)
 {
+	if (Index3DId(0, 6, 4, 0) == _thisId) {
+		int dbgBreak = 1;
+	}
+
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
@@ -548,7 +565,7 @@ void Polygon::splitAtPointInner(const Vector3d& pt)
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 		auto newFaceId = createFace(face);
-		faceRefFunc(_thisId, [&newFaceId](Polygon& refFace) {
+		getBlockPtr()->faceRefFunc(_thisId, [&newFaceId](Polygon& refFace) {
 			refFace._splitProductIds.insert(newFaceId);
 		});
 

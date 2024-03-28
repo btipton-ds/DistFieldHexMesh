@@ -311,7 +311,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-//		assert(verifyTopology(true || multiCore));
+		assert(verifyTopology(true || multiCore));
 	}
 
 	if (params.numCurvatureDivs > 0) {

@@ -284,7 +284,72 @@ inline Block::ModelData& Block::data(TopolgyState refState)
 {
 	return refState == TS_REAL ? _modelData : _refData;
 }
+//LAMBDA_BLOCK_IMPLS
 
-LAMBDA_BLOCK_IMPLS
+template<class LAMBDA> 
+void Block::vertexFunc(const Index3DId& id, LAMBDA func) const {
+	func(getOwner(id)->_vertices[id]);
+} 
+
+template<class LAMBDA> 
+void Block::vertexFunc(const Index3DId& id, LAMBDA func) {
+	func(getOwner(id)->_vertices[id]);
+} 
+
+template<class LAMBDA> 
+void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
+	const auto p = getOwner(id); 
+	if (p->_modelData._polygons.exists(id)) 
+		func(p->_modelData._polygons[id]); 
+	else 
+		func(p->_refData._polygons[id]);
+} 
+
+template<class LAMBDA> 
+void Block::faceFunc(const Index3DId& id, LAMBDA func) {
+	auto p = getOwner(id); 
+	if (p->_modelData._polygons.exists(id)) 
+		func(p->_modelData._polygons[id]); 
+	else 
+		func(p->_refData._polygons[id]);
+} 
+
+template<class LAMBDA> 
+void Block::faceRefFunc(const Index3DId& id, LAMBDA func) const {
+	func(getOwner(id)->_refData._polygons[id]);
+} 
+
+template<class LAMBDA> 
+void Block::faceRefFunc(const Index3DId& id, LAMBDA func) {
+	func(getOwner(id)->_refData._polygons[id]);
+} 
+
+template<class LAMBDA> 
+void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
+	const auto p = getOwner(id); 
+	if (p->_modelData._polyhedra.exists(id)) 
+		func(p->_modelData._polyhedra[id]); 
+	else 
+		func(p->_refData._polyhedra[id]);
+} 
+
+template<class LAMBDA> 
+void Block::cellFunc(const Index3DId& id, LAMBDA func) {
+	auto p = getOwner(id); 
+	if (p->_modelData._polyhedra.exists(id)) 
+		func(p->_modelData._polyhedra[id]); 
+	else 
+		func(p->_refData._polyhedra[id]);
+} 
+
+template<class LAMBDA> 
+void Block::cellRefFunc(const Index3DId& id, LAMBDA func) const {
+	func(getOwner(id)->_refData._polyhedra[id]);
+} 
+
+template<class LAMBDA> 
+void Block::cellRefFunc(const Index3DId& id, LAMBDA func) {
+	func(getOwner(id)->_refData._polyhedra[id]);
+}
 
 }
