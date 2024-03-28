@@ -172,11 +172,6 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-bool Polygon::isMarkedForDeletion() const
-{
-	return _markedForDeletion;
-}
-
 void Polygon::getEdges(set<Edge>& edgeSet) const
 {
 	createEdgesStat(_vertexIds, edgeSet, _thisId);
@@ -460,7 +455,7 @@ void Polygon::splitIfRequred()
 	}
 }
 
-void Polygon::makeRefIfNeeded()
+bool Polygon::makeRefIfNeeded()
 {
 	if (!getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
 		auto pLogger = getBlockPtr()->getLogger();
@@ -476,7 +471,9 @@ void Polygon::makeRefIfNeeded()
 			});
 		}
 		assert(getBlockPtr()->polygonExists(TS_REFERENCE, _thisId));
+		return true;
 	}
+	return false;
 }
 
 void Polygon::splitAtPoint(const Vector3d& pt)
@@ -490,13 +487,15 @@ void Polygon::splitAtPoint(const Vector3d& pt)
 
 	// The REAL face must be marked for deletion.
 	getBlockPtr()->removeFaceFromLookUp(_thisId);
-	_markedForDeletion = true;
 
-	makeRefIfNeeded();
+	bool needsDelete = makeRefIfNeeded();
 	faceRefFunc(_thisId, [this, &pt](Polygon& refFace) {
 		Logger::Indent id;
 		refFace.splitAtPointInner(pt);
 	});
+
+	if (needsDelete)
+		getBlockPtr()->freePolygon(_thisId);
 	return;
 }
 
@@ -553,11 +552,12 @@ void Polygon::splitAtPointInner(const Vector3d& pt)
 			refFace._splitProductIds.insert(newFaceId);
 		});
 
+#if LOGGING_ENABLED
 		faceFunc(newFaceId, [this, &out](Polygon& newFace) {
-			newFace.setCellIds(_cellIds); // Set the cell ids now so the face is valid. May have to remove one or more later.
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newFace);
 		});
+#endif
 	}
 }
 

@@ -462,12 +462,11 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-Index3DId Block::addRefFace(const Polygon& face)
+void Block::addRefFace(const Polygon& face)
 {
 	auto* pOwner = getOwner(face.getId());
 	// Only copy the bare minium of data - vertices and id.
-	auto result = pOwner->_refData._polygons.findOrAdd(Polygon(face.getVertexIds()), face.getId());
-	return result;
+	pOwner->_refData._polygons.findOrAdd(Polygon(face.getVertexIds()), face.getId());
 }
 
 Index3DId Block::addCell(const Polyhedron& cell, bool addLinkage)
@@ -562,19 +561,18 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
-Index3DId Block::addRefCell(const Polyhedron& cell)
+void Block::addRefCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _refData._polyhedra.findOrAdd(Polyhedron(cell.getFaceIds()), cell.getId());
-	const auto& cellFaceIds = _refData._polyhedra[cellId].getFaceIds();
 
-	for (const auto& faceId : cellFaceIds) {
+	const auto& faceIds = cell.getFaceIds();
+	for (const auto& faceId : faceIds) {
 		if (!polygonExists(TS_REFERENCE, faceId)) {
 			faceFunc(faceId, [this, &cellId](Polygon& face) {
 				addRefFace(face);
 			});
 		}
 	}
-	return cellId;
 }
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
@@ -698,13 +696,6 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	});
 }
 
-void Block::setPolygonCellIds()
-{
-	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.setPolygonsCellId();
-	});
-}
-
 void Block::splitPolygonsIfAdjacentRequiresIt()
 {
 	auto pLogger = getLogger();
@@ -770,32 +761,6 @@ void Block::imprintTJointVertices()
 			_pVol->writeObj(ss.str(), {cell.getId()});
 		}
 	});
-}
-
-void Block::doGarbageCollection()
-{
-	{
-		auto& polygons = _modelData._polygons;
-		vector<Index3DId> toBeDeleted;
-		polygons.iterateInOrder([&toBeDeleted](const Polygon& face) {
-			if (face.isMarkedForDeletion())
-				toBeDeleted.push_back(face.getId());
-		}); 
-		for (const auto& id : toBeDeleted)
-			polygons.free(id);
-	}
-
-	{
-		auto& polyhedra = _modelData._polyhedra;
-		vector<Index3DId> toBeDeleted;
-		polyhedra.iterateInOrder([&toBeDeleted](const Polyhedron& cell) {
-			if (cell.isMarkedForDeletion())
-				toBeDeleted.push_back(cell.getId());
-			});
-		for (const auto& id : toBeDeleted)
-			polyhedra.free(id);
-	}
-
 }
 
 bool Block::includeFace(FaceType meshType, const Polygon& face) const

@@ -126,14 +126,14 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	Index3DId addRefFace(const Polygon& face);
+	void addRefFace(const Polygon& face);
 
 	Index3DId addCell(const Polyhedron& cell, bool addLinkage = true);
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
-	Index3DId addRefCell(const Polyhedron& cell);
+	void addRefCell(const Polyhedron& cell);
 
 	void addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId);
 	const std::map<Edge, Index3DId>& getSplitEdgeVertices() const;
@@ -202,8 +202,6 @@ private:
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
 	void imprintTJointVertices();
-	void doGarbageCollection();
-	void setPolygonCellIds();
 
 	const ModelData& data(TopolgyState refState) const;
 	ModelData& data(TopolgyState refState);

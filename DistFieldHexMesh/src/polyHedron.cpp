@@ -355,7 +355,7 @@ void Polyhedron::createHexahedralFaces(const std::vector<Index3DId>& corners, st
 	faceIds.push_back(createFace({ corners[0], corners[3], corners[7], corners[4] }));
 }
 
-void Polyhedron::setPolygonsCellId()
+void Polyhedron::addIdToPolygons()
 {
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this](Polygon& face) {
@@ -402,23 +402,14 @@ bool Polyhedron::needToImprintVertices() const
 	return false;
 }
 
-bool Polyhedron::splitAtCentroid()
+void Polyhedron::splitAtCentroid()
 {
 	auto ctr = calCentroid();
 
-	return splitAtPoint(ctr);
+	splitAtPoint(ctr);
 }
 
-void Polyhedron::removeOurIdFromFaces()
-{
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this](Polygon& face) {
-			face.removeCellId(_thisId);
-		});
-	}
-}
-
-void Polyhedron::makeRefIfNeeded()
+bool Polyhedron::makeRefIfNeeded()
 {
 	if (!getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
 		for (const auto& faceId : _faceIds) {
@@ -430,10 +421,12 @@ void Polyhedron::makeRefIfNeeded()
 		}
 		getBlockPtr()->addRefCell(*this);
 		assert(getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId));
+		return true;
 	}
+	return false;
 }
 
-bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
+void Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 {
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
@@ -441,23 +434,22 @@ bool Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint " << *this);
 
 	_splitRequired = false;
-	_markedForDeletion = true;
 
-	makeRefIfNeeded();
+	bool needsDelete = makeRefIfNeeded();
 	cellRefFunc(_thisId, [this, &centerPoint](Polyhedron& refCell) {
 		refCell.splitAtPointInner(centerPoint);
-		});
-	return true;
+	});
+
+	if (needsDelete)
+		getBlockPtr()->freePolyhedron(_thisId);
 }
 
-bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
+void Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 {
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polyhedron::splitAtPointInner " << *this);
-
-	removeOurIdFromFaces();
 
 	Index3DId cellMidId = getBlockPtr()->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
@@ -510,7 +502,7 @@ bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 
 			if (edgeFaces.size() != 2) {
 				assert(!"Should never happen, the edge must have two faces attached");
-				return false;
+				return;
 			}
 			Index3DId faceVert0, faceVert1;
 			auto iter = edgeFaces.begin();
@@ -531,6 +523,10 @@ bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 		Polyhedron newCell(vertFaces);
 
 		auto newCellId = getBlockPtr()->addCell(newCell, true);
+		cellFunc(newCellId, [](Polyhedron& newCell) {
+			newCell.addIdToPolygons();
+		});
+
 		cellFunc(newCellId, [this, &out](Polyhedron& newCell) {
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newCell);
@@ -538,8 +534,6 @@ bool Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 	}
 
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
-
-	return true;
 }
 
 Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
@@ -556,7 +550,7 @@ Index3DId Polyhedron::addFace(const std::vector<Index3DId>& vertIds)
 	return getBlockPtr()->addFace(face);
 }
 
-Index3DId Polyhedron::addRefFace(const std::vector<Index3DId>& vertIds)
+void Polyhedron::addRefFace(const std::vector<Index3DId>& vertIds)
 {
 	Polygon face(vertIds);
 #if _DEBUG
@@ -567,7 +561,7 @@ Index3DId Polyhedron::addRefFace(const std::vector<Index3DId>& vertIds)
 	}
 #endif
 
-	return getBlockPtr()->addRefFace(face);
+	getBlockPtr()->addRefFace(face);
 }
 
 bool Polyhedron::requiresSplitDueToPendingAdjacentSplit() const

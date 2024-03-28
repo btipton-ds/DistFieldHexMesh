@@ -65,22 +65,21 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 	bool hasSplits() const;
-	bool isMarkedForDeletion() const;
 	bool isSplitRequired() const;
 	bool requiresSplitDueToPendingAdjacentSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void setPolygonsCellId();
+	void addIdToPolygons();
 
 	void splitIfAdjacentRequiresIt();
 
 	void splitIfRequred();
-	bool splitAtCentroid();
-	bool splitAtPoint(const Vector3d& pt);
+	void splitAtCentroid();
+	void splitAtPoint(const Vector3d& pt);
 	double getShortestEdge() const;
-	void makeRefIfNeeded();
+	bool makeRefIfNeeded();
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -98,7 +97,6 @@ private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
-	void removeOurIdFromFaces();
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
@@ -108,14 +106,12 @@ private:
 	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
-	Index3DId addRefFace(const std::vector<Index3DId>& vertIds);
-	bool splitAtPointInner(const Vector3d& pt);
+	void addRefFace(const std::vector<Index3DId>& vertIds);
+	void splitAtPointInner(const Vector3d& pt);
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
 	bool _splitRequired = false;
-
-	bool _markedForDeletion = false;
 
 	std::set<Index3DId> _faceIds;
 };
@@ -128,11 +124,6 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
-}
-
-inline bool Polyhedron::isMarkedForDeletion() const
-{
-	return _markedForDeletion;
 }
 
 inline bool Polyhedron::isSplitRequired() const

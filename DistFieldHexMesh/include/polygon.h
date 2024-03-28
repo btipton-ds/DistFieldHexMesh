@@ -96,7 +96,6 @@ public:
 	bool hasSplitEdges() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
-	bool isMarkedForDeletion() const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsEdge(const Edge& edge) const;
@@ -147,11 +146,10 @@ private:
 	void sortIds() const;
 	Index3DId createFace(const Polygon& face);
 	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
-	void makeRefIfNeeded();
+	bool makeRefIfNeeded();
 	void splitAtPointInner(const Vector3d& pt);
 
 	bool _splitRequired = false;
-	bool _markedForDeletion = false;
 	Vector3d _splitPt;
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one

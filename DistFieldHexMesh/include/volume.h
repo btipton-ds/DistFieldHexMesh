@@ -116,7 +116,6 @@ private:
 	void splitIfAdjacentRequiresIt(bool multiCore);
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
-	void doGarbageCollection(bool multiCore);
 
 	void findFeatures();
 	void findSharpVertices();

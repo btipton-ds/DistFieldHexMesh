@@ -393,16 +393,6 @@ void Volume::finishSplits(bool multiCore)
 	splitIfAdjacentRequiresIt(multiCore);
 	splitTopology(false && multiCore);
 	imprintTJointVertices(false && multiCore);
-	doGarbageCollection(multiCore);
-#if 0
-	// This may not be needed
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->setPolygonCellIds();
-		}
-		return true;
-	}, multiCore);
-#endif
 }
 
 void Volume::splitIfAdjacentRequiresIt(bool multiCore)
@@ -451,16 +441,6 @@ void Volume::imprintTJointVertices(bool multiCore)
 		}
 		return true;
 	},  multiCore);
-}
-
-void Volume::doGarbageCollection(bool multiCore)
-{
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->doGarbageCollection();
-		}
-		return true;
-	}, multiCore);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
