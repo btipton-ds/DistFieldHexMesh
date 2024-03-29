@@ -475,11 +475,7 @@ void Polygon::makeRefIfNeeded()
 		LOG(out << Logger::Pad() << "creating reference polygon of " << *this);
 #endif
 
-		for (const auto& cellId : _cellIds) {
-			pBlk->cellFunc(cellId, [this](Polyhedron cell /*DO NOT PASS BY REFERENCE*/) {
-				cell.makeRefIfNeeded();
-			});
-		}
+		getBlockPtr()->addRefFace(*this);
 		assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
 	}
 }

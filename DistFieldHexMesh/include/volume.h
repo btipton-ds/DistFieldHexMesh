@@ -129,7 +129,7 @@ private:
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
-	void runLambda(L fLambda, bool multiCore, unsigned int stride = 3);
+	void runLambda(L fLambda, bool multiCore, unsigned int stride = 2);
 
 	static Index3D s_volDim;
 

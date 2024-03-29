@@ -396,16 +396,6 @@ void Polyhedron::splitAtCentroid()
 bool Polyhedron::makeRefIfNeeded()
 {
 	if (!getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
-		for (const auto& faceId : _faceIds) {
-			if (!getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
-				faceFunc(faceId, [this](Polygon& face) {
-					if (Index3DId(0, 6, 5, 0) == _thisId) {
-						int dbgBreak = 1;
-					}
-					getBlockPtr()->addRefFace(face);
-				});
-			}
-		}
 		getBlockPtr()->addRefCell(*this);
 		assert(getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId));
 		return true;
