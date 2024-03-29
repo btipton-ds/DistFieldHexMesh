@@ -566,14 +566,14 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 void Block::addRefCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _refData._polyhedra.findOrAdd(Polyhedron(cell.getFaceIds()), cell.getId());
+	assert(cellId == cell.getId());
 
 	const auto& faceIds = cell.getFaceIds();
 	for (const auto& faceId : faceIds) {
-		if (!polygonExists(TS_REFERENCE, faceId)) {
-			faceFunc(faceId, [this, &cellId](Polygon& face) {
-				addRefFace(face);
-			});
-		}
+		assert(polygonExists(TS_REFERENCE, faceId));
+		faceRefFunc(faceId, [&cellId](Polygon& face) {
+			face.addCellId(cellId);
+		});
 	}
 }
 
@@ -676,10 +676,12 @@ void Block::clearSplitEdges()
 
 void Block::setNeedsSimpleSplit()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::setNeedsSimpleSplit()\n";
 	Logger::Indent indent;
+#endif
 
 	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.setNeedToSplitAtCentroid();
@@ -688,10 +690,12 @@ void Block::setNeedsSimpleSplit()
 
 void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::setNeedsCurvatureSplit()\n";
 	Logger::Indent indent;
+#endif
 
 	_modelData._polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
 		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
@@ -700,10 +704,12 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 
 void Block::splitPolygonsIfAdjacentRequiresIt()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::splitPolygonsIfAdjacentRequiresIt()\n";
 	Logger::Indent indent;
+#endif
 
 	_modelData._polygons.iterateInOrder([](Polygon& face) {
 		face.splitIfAdjacentRequiresIt();
@@ -712,10 +718,12 @@ void Block::splitPolygonsIfAdjacentRequiresIt()
 
 void Block::splitPolyhedraIfAdjacentRequiresIt()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::splitPolyhedraIfAdjacentRequiresIt()\n";
 	Logger::Indent indent;
+#endif
 
 	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
 		cell.splitIfAdjacentRequiresIt();
@@ -724,45 +732,50 @@ void Block::splitPolyhedraIfAdjacentRequiresIt()
 
 void Block::splitPolygonsIfRequired()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::splitPolygonsIfRequired\n";
 	Logger::Indent indent;
+#endif
 
-	_modelData._polygons.iterateInOrder([](Polygon& face) {
-		face.splitIfRequred();
-	});
-	_modelData._polygons.iterateInOrder([this](Polygon& face) {
-		auto faceId = face.getId();
-		if (polygonExists(TS_REFERENCE, faceId) && polygonExists(TS_REAL, faceId))
-			freePolygon(faceId);
-	});
+	for (const auto& id : _splitPolygonIds) {
+		bool refExists = _refData._polygons.exists(id);
+		auto& data = refExists ? _refData : _modelData;
+		auto temp = data._polygons[id];
+		temp.splitAtCentroid();
+		_modelData._polygons.free(id);
+	}
+	_splitPolygonIds.clear();
 }
 
 void Block::splitPolyhedraIfRequired()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::splitPolyhedraIfRequired\n";
 	Logger::Indent indent;
+#endif
 
-	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.splitIfRequred();
-	});
-
-	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		auto cellId = cell.getId();
-		if (polyhedronExists(TS_REFERENCE, cellId) && polyhedronExists(TS_REAL, cellId))
-			freePolyhedron(cellId);
-	});
+	for (const auto& id : _splitPolyhedronIds) {
+		bool refExists = _refData._polyhedra.exists(id);
+		auto& data = refExists ? _refData : _modelData;
+		auto temp = data._polyhedra[id];
+		temp.splitAtCentroid();
+		_modelData._polyhedra.free(id);
+	}
+	_splitPolyhedronIds.clear();
 }
 
 void Block::imprintTJointVertices()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
 	out << "Block::imprintTJointVertices()\n";
 	Logger::Indent indent;
+#endif
 
 	_modelData._polygons.iterateInOrder([this](Polygon& face) {
 		face.imprintVertices();
@@ -901,20 +914,24 @@ void Block::addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId)
 	}
 }
 
-bool Block::freePolygon(const Index3DId& id)
+void Block::addPolygonToSplitList(const Index3DId& id)
 {
-	auto pOwner = getOwner(id);
-	assert(pOwner);
-	auto& data = pOwner->_modelData;
-	return data._polygons.free(id);
+	_splitPolygonIds.insert(id);
 }
 
-bool Block::freePolyhedron(const Index3DId& id)
+void Block::addPolyhedronToSplitList(const Index3DId& id)
 {
-	auto pOwner = getOwner(id);
-	assert(pOwner);
-	auto& data = pOwner->_modelData;
-	return data._polyhedra.free(id);
+	_splitPolyhedronIds.insert(id);
+}
+
+bool Block::isPolygonInSplitList(const Index3DId& id) const
+{
+	return _splitPolygonIds.contains(id);
+}
+
+bool Block::isPolyhedronInSplitList(const Index3DId& id) const
+{
+	return _splitPolyhedronIds.contains(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const
@@ -927,6 +944,16 @@ bool Block::polygonExists(TopolgyState refState, const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
 	return pOwner && pOwner->data(refState)._polygons.exists(id);
+}
+
+bool Block::isPolygonReference(const Polygon* face) const
+{
+	return face && (face == &_refData._polygons[face->getId()]);
+}
+
+bool Block::isPolyhedronReference(const Polyhedron* cell) const
+{
+	return cell && (cell == &_refData._polyhedra[cell->getId()]);
 }
 
 bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const

@@ -74,7 +74,6 @@ public:
 
 	void splitIfAdjacentRequiresIt();
 
-	void splitIfRequred();
 	void splitAtCentroid();
 	void splitAtPoint(const Vector3d& pt);
 	double getShortestEdge() const;
@@ -103,11 +102,10 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	void addRefFace(const std::vector<Index3DId>& vertIds);
-	void splitAtPointInner(const Vector3d& pt);
+	void splitAtPointInner(const Vector3d& pt) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
-	bool _splitRequired = false;
 
 	std::set<Index3DId> _faceIds;
 };
@@ -120,11 +118,6 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
-}
-
-inline bool Polyhedron::isSplitRequired() const
-{
-	return _splitRequired;
 }
 
 //LAMBDA_CLIENT_IMPLS(Polyhedron)

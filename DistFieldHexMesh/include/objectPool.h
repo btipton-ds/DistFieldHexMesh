@@ -248,25 +248,23 @@ inline const T* ObjectPool<T>::getEntry(size_t index) const
 template<class T>
 bool ObjectPool<T>::free(const Index3DId& globalId)
 {
+	removeFromLookup(globalId);
+
 	size_t id = globalId.elementId();
 	if (id >= _idToIndexMap.size())
 		return false;
 
 	size_t index = _idToIndexMap[id];
-	if (index >= _objectSegs.size())
-		return false;
-
-	removeFromLookup(globalId);
 
 	T* p = getEntry(index);
 	if (p) {
 		*p = T();
+		_idToIndexMap[id] = -1; // Clear this id so it won't be used again
+		_availableIndices.push_back(index);
+
+		return true;
 	}
-
-	_idToIndexMap[id] = -1; // Clear this id so it won't be used again
-	_availableIndices.push_back(index);
-
-	return true;
+	return false;
 }
 
 template<class T>

@@ -124,10 +124,9 @@ public:
 
 	void splitIfAdjacentRequiresIt();
 
-	void splitIfRequred();
 	void imprintVertices();
 
-	int getSplitPhase() const;
+	void splitAtCentroid();
 	void splitAtPoint(const Vector3d& pt);
 
 	void orient();
@@ -142,12 +141,10 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	Index3DId createFace(const Polygon& face);
 	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
 	void makeRefIfNeeded();
-	void splitAtPointInner(const Vector3d& pt);
-
-	bool _splitRequired = false;
+	void splitAtPointInner(const Vector3d& pt) const;
+	void addSplitFaceId(const Index3DId& id) const;
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 

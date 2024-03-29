@@ -362,13 +362,6 @@ void Polyhedron::splitIfAdjacentRequiresIt()
 }
 
 
-void Polyhedron::splitIfRequred()
-{
-	if (_splitRequired) {
-		splitAtCentroid();
-	}
-}
-
 bool Polyhedron::needToImprintVertices() const
 {
 	set<Index3DId> vertIds;
@@ -409,7 +402,6 @@ bool Polyhedron::makeRefIfNeeded()
 					if (Index3DId(0, 6, 5, 0) == _thisId) {
 						int dbgBreak = 1;
 					}
-					auto id = face.getId();
 					getBlockPtr()->addRefFace(face);
 				});
 			}
@@ -424,12 +416,12 @@ bool Polyhedron::makeRefIfNeeded()
 void Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 {
 	auto pBlk = getBlockPtr();
+#if LOGGING_ENABLED
 	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint " << *this);
-
-	_splitRequired = false;
+#endif
 
 	makeRefIfNeeded();
 	pBlk->cellRefFunc(_thisId, [this, &centerPoint](Polyhedron& refCell) {
@@ -437,25 +429,29 @@ void Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 	});
 }
 
-void Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
+void Polyhedron::splitAtPointInner(const Vector3d& centerPoint) const
 {
-	assert(getBlockPtr());
-	auto pBlk = getBlockPtr();
+	Block* pBlk = const_cast<Block*> (getBlockPtr());
+	assert(pBlk);
+	assert(pBlk->isPolyhedronReference(this));
+
+#if LOGGING_ENABLED
 	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polyhedron::splitAtPointInner " << *this);
+#endif
 
-	Index3DId cellMidId = getBlockPtr()->addVertex(centerPoint);
+	Index3DId cellMidId = pBlk->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
-		assert(getBlockPtr()->polygonExists(TS_REFERENCE, faceId));
+		assert(pBlk->polygonExists(TS_REFERENCE, faceId));
 		pBlk->faceRefFunc(faceId, [this, &centerPoint, &vertToFaceMap, pBlk](Polygon& refFace) {
 			set<Index3DId> childFaceIds = refFace._splitProductIds;
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
-				assert(getBlockPtr()->polygonExists(TS_REAL, childFaceId));
-				assert(!getBlockPtr()->polygonExists(TS_REFERENCE, childFaceId));
+				assert(pBlk->polygonExists(TS_REAL, childFaceId));
+				assert(!pBlk->polygonExists(TS_REFERENCE, childFaceId));
 				pBlk->faceFunc(childFaceId, [this, &vertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = vertToFaceMap.find(vertId);
@@ -514,18 +510,20 @@ void Polyhedron::splitAtPointInner(const Vector3d& centerPoint)
 				faceVert1,
 			};
 
-			auto newFaceId = addFace(verts);
+			auto newFaceId = pBlk->addFace(verts);
 			vertFaces.insert(newFaceId);
 		}
 
 		Polyhedron newCell(vertFaces);
 
-		auto newCellId = getBlockPtr()->addCell(newCell, true);
+		auto newCellId = pBlk->addCell(newCell, true);
 
+#if LOGGING_ENABLED
 		pBlk->cellFunc(newCellId, [this, &out](Polyhedron& newCell) {
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newCell);
 		});
+#endif
 	}
 
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
@@ -581,15 +579,24 @@ bool Polyhedron::requiresSplitDueToPendingAdjacentSplit() const
 	return false;
 }
 
+bool Polyhedron::isSplitRequired() const
+{
+	return getBlockPtr()->isPolyhedronInSplitList(_thisId);
+}
+
+
 void Polyhedron::setNeedToSplitAtCentroid()
 {
+#if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
+#endif
 
 	Logger::Indent indent;
 	LOG(out << Logger::Pad() << "setNeedToSplitAtCentroid c" << _thisId << "\n");
 
-	_splitRequired = true;
+	getBlockPtr()->addPolyhedronToSplitList(_thisId);
+
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [](Polygon& face) {
 			face.setNeedToSplit();
@@ -599,8 +606,10 @@ void Polyhedron::setNeedToSplitAtCentroid()
 
 void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
+#if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
+#endif
 
 	CBoundingBox3Dd bbox = getBoundingBox();
 

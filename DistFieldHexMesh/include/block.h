@@ -138,12 +138,17 @@ public:
 	void addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId);
 	const std::map<Edge, Index3DId>& getSplitEdgeVertices() const;
 
-	bool freePolygon(const Index3DId& id);		// Should never need to remove a ref polygon
-	bool freePolyhedron(const Index3DId& id);	// Should never need to remove a ref polyhedron
+	void addPolygonToSplitList(const Index3DId& id);
+	void addPolyhedronToSplitList(const Index3DId& id);
+	bool isPolygonInSplitList(const Index3DId& id) const;
+	bool isPolyhedronInSplitList(const Index3DId& id) const;
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
+	bool isPolygonReference(const Polygon* face) const;
+
 	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
+	bool isPolyhedronReference(const Polyhedron* cell) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -222,6 +227,7 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::map<Edge, Index3DId> _splitEdgeVertices;
+	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;

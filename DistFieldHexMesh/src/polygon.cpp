@@ -429,7 +429,9 @@ void Polygon::addCellId(const Index3DId& cellId)
 
 void Polygon::setNeedToSplit()
 {
-	_splitRequired = true;
+	auto pBlk = getBlockPtr();
+	assert(pBlk->getBlockIdx() == _thisId);
+	pBlk->addPolygonToSplitList(_thisId);
 }
 
 void Polygon::splitIfAdjacentRequiresIt()
@@ -452,15 +454,10 @@ void Polygon::splitIfAdjacentRequiresIt()
 	}
 }
 
-void Polygon::splitIfRequred()
+void Polygon::splitAtCentroid()
 {
-	if (Index3DId(0, 6, 5, 0) == _thisId) {
-		int dbgBreak = 1;
-	}
-	if (_splitRequired) {
-		auto ctr = calCentroid();
-		splitAtPoint(ctr);
-	}
+	auto ctr = calCentroid();
+	splitAtPoint(ctr);
 }
 
 void Polygon::makeRefIfNeeded()
@@ -471,61 +468,58 @@ void Polygon::makeRefIfNeeded()
 
 	auto pBlk = getBlockPtr();
 	if (!pBlk->polygonExists(TS_REFERENCE, _thisId)) {
+#if LOGGING_ENABLED
 		auto pLogger = pBlk->getLogger();
 		auto& out = pLogger->getStream();
 
 		LOG(out << Logger::Pad() << "creating reference polygon of " << *this);
+#endif
 
-		// We create this face by creating reference cells for the faces which reference this one.
-		// This face will be created when the cells are created.
-		auto selfId = _thisId;// Make a copy because this may become invalid
-		auto cellIds = _cellIds; // Make a copy because this may become invalid
-		for (const auto& cellId : cellIds) {
-			pBlk->cellFunc(cellId, [this](Polyhedron& cell) {
+		for (const auto& cellId : _cellIds) {
+			pBlk->cellFunc(cellId, [this](Polyhedron cell /*DO NOT PASS BY REFERENCE*/) {
 				cell.makeRefIfNeeded();
 			});
 		}
-		assert(pBlk->polygonExists(TS_REFERENCE, selfId));
+		assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
 	}
 }
 
 void Polygon::splitAtPoint(const Vector3d& pt)
 {
-	_splitRequired = false;
-	// makeRefIfNeeded() may make our data invalid, work on copies
-
 	auto pBlk = getBlockPtr();
-	auto selfId = _thisId;
 
+#if LOGGING_ENABLED
 	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polygon::splitAtPoint.");
+#endif
 
 	makeRefIfNeeded();
-	pBlk->faceRefFunc(selfId, [&pt](Polygon& refFace) {
+	assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
+	pBlk->faceRefFunc(_thisId, [&pt](Polygon& refFace) {
 		Logger::Indent id;
 		refFace.splitAtPointInner(pt);
 	});
-
-	if (pBlk->polygonExists(TS_REAL, selfId))
-		pBlk->freePolygon(selfId);
 }
 
-void Polygon::splitAtPointInner(const Vector3d& pt)
+void Polygon::splitAtPointInner(const Vector3d& pt) const
 {
+	Block* pBlk = const_cast<Block*> (getBlockPtr());
 	if (Index3DId(0, 6, 4, 0) == _thisId) {
 		int dbgBreak = 1;
 	}
 
-	auto pLogger = getBlockPtr()->getLogger();
+#if LOGGING_ENABLED
+	assert(pBlk->isPolygonReference(this));
+	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Polygon::splitAtPointInner.");
+	LOG(out << Logger::Pad() << "Polygon::splitAtPointInner. pre: " << *this);
+#endif
 
 	// The code must be operating on the reference face
 	assert(_vertexIds.size() == 4);
-	auto pBlk = getBlockPtr();
 	vector<Index3DId> edgePtIds;
 	edgePtIds.resize(_vertexIds.size());
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -564,18 +558,24 @@ void Polygon::splitAtPointInner(const Vector3d& pt)
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
-		auto newFaceId = createFace(face);
-		getBlockPtr()->faceRefFunc(_thisId, [&newFaceId](Polygon& refFace) {
-			refFace._splitProductIds.insert(newFaceId);
-		});
+		auto newFaceId = pBlk->addFace(face);
+		addSplitFaceId(newFaceId);
 
 #if LOGGING_ENABLED
-		faceFunc(newFaceId, [this, &out](Polygon& newFace) {
+		faceFunc(newFaceId, [this, &out](const Polygon& newFace) {
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newFace);
 		});
 #endif
 	}
+	LOG(out << Logger::Pad() << "Polygon::splitAtPointInner. pst: " << *this);
+}
+
+void Polygon::addSplitFaceId(const Index3DId& id) const
+{
+	assert(getBlockPtr()->isPolygonReference(this));
+	Polygon* self = const_cast<Polygon*>(this);
+	self->_splitProductIds.insert(id);
 }
 
 Index3DId Polygon::getSplitEdgeVertexId(const Edge& edge) const
@@ -616,10 +616,12 @@ void Polygon::imprintVertices()
 	if (!needsImprint)
 		return;
 
+#if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
+#endif
 
 	makeRefIfNeeded();
 
@@ -639,11 +641,11 @@ void Polygon::imprintVertices()
 				imprinted = true;
 				LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
 				_vertexIds.insert(_vertexIds.begin() + j, vertId);
-				out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {";
+				LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
 				for (const auto& vertId0 : _vertexIds) {
-					out << "v" << vertId0 << " ";
+					LOG(out << "v" << vertId0 << " ");
 				}
-				out << "}\n";
+				LOG(out << "}\n");
 			}
 		}
 	}
@@ -651,11 +653,6 @@ void Polygon::imprintVertices()
 	_needSort = true;
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
-}
-
-Index3DId Polygon::createFace(const Polygon& face)
-{
-	return getBlockPtr()->addFace(face);
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
