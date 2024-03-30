@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <logger.h>
 #include <ios>
+#include <filesystem>
 
 using namespace std;
 using namespace DFHM;
@@ -38,7 +39,13 @@ shared_ptr<Logger> Logger::get(const string& streamName)
 	static map<string, shared_ptr<Logger>> s_map;
 	auto iter = s_map.find(streamName);
 	if (iter == s_map.end()) {
-		shared_ptr<Logger> p = make_shared<Logger>("D:/DarkSky/Projects/output/logs/" + streamName);
+		string path;
+		if (filesystem::exists("D:/DarkSky/Projects")) {
+			path = "D:/DarkSky/Projects/output/logs/";
+		} else {
+			path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/logs/";
+		}
+		shared_ptr<Logger> p = make_shared<Logger>(path + streamName);
 		iter = s_map.insert(make_pair(streamName, p)).first;
 	}
 	return iter->second;

@@ -153,7 +153,6 @@ private:
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
-	mutable std::map<Edge, Index3DId> _splitEdgeVertMap;
 };
 
 inline bool Polygon::verifyUnique() const

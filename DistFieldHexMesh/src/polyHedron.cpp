@@ -166,14 +166,26 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 {
 	set<Index3DId> cellIds;
 
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &cellIds](const Polygon& face) {
-			const auto temp = face.getCellIds();
-			cellIds.insert(temp.begin(), temp.end());
-		});
+	if (includeCornerCells) {
+		set<Edge> edges;
+		getEdges(edges, true);
+		for (const auto& edge : edges) {
+			const auto& faceIds = edge.getFaceIds();
+			for (const auto& faceId : faceIds) {
+				faceFunc(faceId, [&cellIds](const Polygon& face) {
+					const auto& tmp = face.getCellIds();
+					cellIds.insert(tmp.begin(), tmp.end());
+				});
+			}
+		}
+	} else {
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [this, &cellIds](const Polygon& face) {
+				const auto temp = face.getCellIds();
+				cellIds.insert(temp.begin(), temp.end());
+				});
+		}
 	}
-
-	// TODO implement includeCornerCells case
 
 	cellIds.erase(_thisId);
 	return cellIds;

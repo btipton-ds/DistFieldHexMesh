@@ -10,6 +10,9 @@ out
 /Debug/
 /Release/
 /build/
+/output/
+/logs/
+/objs/
 *.cmake
 CMakeFiles
 Makefile

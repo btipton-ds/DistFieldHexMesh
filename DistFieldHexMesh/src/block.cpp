@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <fstream>
 #include <defines.h>
 #include <cmath>
+#include <filesystem>
 
 #include <Index3D.h>
 #include <vertex.h>
@@ -143,7 +144,7 @@ const CMeshPtr& Block::getModelMesh() const
 }
 
 
-void Block::getAdjacentBlockIndices(std::set<Index3D>& indices) const
+void Block::getAdjacentBlockIndices(set<Index3D>& indices) const
 {
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
@@ -570,6 +571,16 @@ void Block::addRefCell(const Polyhedron& cell)
 	}
 }
 
+void Block::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId)
+{
+	_splitEdgeVertMap.insert(make_pair(edge, vertId));
+}
+
+const map<Edge, Index3DId>& Block::getSplitEdgeVertMap() const
+{
+	return  _splitEdgeVertMap;
+}
+
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 	return _pVol->getBlockPtr(blockIdx);
@@ -739,6 +750,9 @@ void Block::splitPolygonsIfRequired()
 	Logger::Indent indent;
 #endif
 
+	if (Index3D(0, 3, 5) == _blockIdx) {
+		int dbgBreak = 1;
+	}
 	for (const auto& id : _splitPolygonIds) {
 		if (Index3DId(0, 8, 4, 2) == id) {
 			int dbgBreak = 1;
@@ -785,8 +799,14 @@ void Block::imprintTJointVertices()
 	});
 	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
 		if (!cell.isClosed()) {
+			string path;
+			if (filesystem::exists("D:/DarkSky/Projects")) {
+				path = "D:/DarkSky/Projects/output/";
+			} else {
+				path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/";
+			}
 			stringstream ss;
-			ss << "D:/DarkSky/Projects/output/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
+			ss << path << "/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
 			_pVol->writeObj(ss.str(), {cell.getId()});
 		}
 	});

@@ -527,6 +527,9 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 	if (Index3DId(0, 6, 4, 0) == _thisId) {
 		int dbgBreak = 1;
 	}
+	if (_cellIds.contains(Index3DId(0, 3, 5, 4))) {
+		int dbgBreak = 1;
+	}
 
 #if LOGGING_ENABLED
 	assert(pBlk->isPolygonReference(this));
@@ -553,7 +556,7 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 			Index3DId vertId = pBlk->addVertex(edgePt);
 			edgePtIds[i] = vertId;
 
-			_splitEdgeVertMap.insert(make_pair(edge, vertId));
+			pBlk->addSplitEdgeVert(edge, vertId);
 		}
 		else {
 			assert(!"Edge point is not in bounds.");
@@ -626,27 +629,26 @@ void Polygon::imprintVertices()
 {
 	Block* pBlk = getBlockPtr();
 
-	set<Edge> ourEdges;
-	getEdges(ourEdges);
+	set<Index3DId> allCells;
+	for (const auto& cellId : _cellIds) {
+		allCells.insert(cellId);
+		cellFunc(cellId, [&allCells](const Polyhedron& cell) {
+			auto tmp = cell.getAdjacentCells(true);
+			allCells.insert(tmp.begin(), tmp.end());
+		});
+	}
+
+	set<Edge> edges;
+	getEdges(edges);
 
 	map<Edge, Index3DId> splitEdgeVertMap;
-	for (const auto& cellId : _cellIds) {
-		set<Index3DId> faceIds;
-		if (pBlk->polyhedronExists(TS_REFERENCE, cellId)) {
-			pBlk->cellRefFunc(cellId, [&faceIds](const Polyhedron& refCell) {
-				faceIds = refCell.getFaceIds();
-			});
-			for (const auto& faceId : faceIds) {
-				if (pBlk->polygonExists(TS_REFERENCE, faceId)) {
-					pBlk->faceRefFunc(faceId, [&splitEdgeVertMap, &ourEdges](const Polygon& refFace) {
-						for (const auto& pair : refFace._splitEdgeVertMap) {
-							if (ourEdges.contains(pair.first)) {
-								splitEdgeVertMap.insert(pair);
-							}
-						}
-					});
-				}
-			}
+	for (const auto& cellId : allCells) {
+		auto pOwner = getBlockPtr()->getOwner(cellId);
+		const auto& tmp = pOwner->getSplitEdgeVertMap();
+		for (const auto& edge : edges) {
+			auto iter = tmp.find(edge);
+			if (iter != tmp.end())
+				splitEdgeVertMap.insert(*iter);
 		}
 	}
 
@@ -680,6 +682,7 @@ void Polygon::imprintVertices()
 					LOG(out << "v" << vertId0 << " ");
 				}
 				LOG(out << "}\n");
+				break;
 			}
 		}
 	}
@@ -732,18 +735,11 @@ bool Polygon::verifyTopology() const
 {
 	bool valid = true;
 #ifdef _DEBUG 
-	vector<Index3DId> vertIds;
-	faceFunc(_thisId, [&vertIds](const Polygon& face) {
-		vertIds = face.getVertexIds();
-	});
-
-	if (!verifyUniqueStat(vertIds))
+	if (!verifyUnique())
 		valid = false;
 
-#if 1
 	if (_cellIds.size() > 2)
 		valid = false;
-#endif
 
 	set<Edge> edges;
 	getEdges(edges);

@@ -134,6 +134,8 @@ public:
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	void addRefCell(const Polyhedron& cell);
+	void addSplitEdgeVert(const Edge& edge , const Index3DId& vertId);
+	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
 	void addPolygonToSplitList(const Index3DId& id);
 	void addPolyhedronToSplitList(const Index3DId& id);
@@ -228,6 +230,7 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds, _makeRefPolyhedronIds;
+	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
