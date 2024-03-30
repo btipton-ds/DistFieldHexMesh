@@ -27,7 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define LOGGING_ENABLED 1
+#define LOGGING_ENABLED 0
 namespace DFHM {
 
 enum Dir {

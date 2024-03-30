@@ -568,7 +568,10 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 
 		for (const auto& cellId : _cellIds) {
 			if (!pBlk->isPolyhedronInSplitList(cellId)) {
-				pBlk->cellFunc(cellId, [this, pBlk, &newFaceId, &out](Polyhedron& cell) {
+				pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
+#if LOGGING_ENABLED
+					auto& out = pBlk->getLogger()->getStream();
+#endif
 					assert(pBlk->polyhedronExists(TS_REFERENCE, cell.getId()));
 					assert(!pBlk->isPolyhedronReference(&cell));
 					if (cell.containsFace(_thisId)) {
