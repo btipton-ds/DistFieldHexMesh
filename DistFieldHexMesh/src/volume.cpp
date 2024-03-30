@@ -386,6 +386,12 @@ void Volume::finishSplits(bool multiCore)
 	splitIfAdjacentRequiresIt(multiCore);
 	splitTopology(multiCore);
 	imprintTJointVertices(multiCore);
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->dumpOpenCells();
+		}
+		return true;
+	}, multiCore);
 	fixLinkages(multiCore);
 }
 

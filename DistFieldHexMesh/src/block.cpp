@@ -741,6 +741,26 @@ void Block::splitPolyhedraIfAdjacentRequiresIt()
 	});
 }
 
+void Block::dumpOpenCells() const
+{
+#if DUMP_OPEN_CELL_OBJS
+	_modelData._polyhedra.iterateInOrder([this](const Polyhedron& cell) {
+		if (!cell.isClosed()) {
+			string path;
+			if (filesystem::exists("D:/DarkSky/Projects")) {
+				path = "D:/DarkSky/Projects/output/";
+			}
+			else {
+				path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/";
+			}
+			stringstream ss;
+			ss << path << "/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
+			_pVol->writeObj(ss.str(), { cell.getId() });
+		}
+	});
+#endif
+}
+
 void Block::splitPolygonsIfRequired()
 {
 #if LOGGING_ENABLED
@@ -796,19 +816,6 @@ void Block::imprintTJointVertices()
 
 	_modelData._polygons.iterateInOrder([this](Polygon& face) {
 		face.imprintVertices();
-	});
-	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		if (!cell.isClosed()) {
-			string path;
-			if (filesystem::exists("D:/DarkSky/Projects")) {
-				path = "D:/DarkSky/Projects/output/";
-			} else {
-				path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/";
-			}
-			stringstream ss;
-			ss << path << "/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
-			_pVol->writeObj(ss.str(), {cell.getId()});
-		}
 	});
 }
 

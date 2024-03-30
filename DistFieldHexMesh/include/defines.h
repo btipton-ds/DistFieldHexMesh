@@ -27,8 +27,9 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define LOGGING_ENABLED 1
-#define RUN_MULTI_THREAD false
+#define LOGGING_ENABLED 0
+#define DUMP_OPEN_CELL_OBJS 0
+#define RUN_MULTI_THREAD true
 #define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
 #define OVER_SAMPLING 2
 #define _USE_MATH_DEFINES

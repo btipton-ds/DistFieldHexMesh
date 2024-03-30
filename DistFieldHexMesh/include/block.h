@@ -202,6 +202,7 @@ private:
 	void makeRefPolyhedraIfRequired();
 	void splitPolygonsIfAdjacentRequiresIt();
 	void splitPolyhedraIfAdjacentRequiresIt();
+	void dumpOpenCells() const;
 
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
