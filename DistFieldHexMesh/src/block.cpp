@@ -468,6 +468,7 @@ void Block::addRefFace(const Polygon& face)
 	auto* pOwner = getOwner(face.getId());
 	// Only copy the bare minium of data - vertices and id.
 	Polygon refFace(face.getVertexIds());
+	refFace.setCellIds(face.getCellIds());
 	pOwner->_refData._polygons.findOrAdd(refFace, face.getId());
 }
 
@@ -570,10 +571,11 @@ void Block::addRefCell(const Polyhedron& cell)
 
 	const auto& faceIds = cell.getFaceIds();
 	for (const auto& faceId : faceIds) {
-		assert(polygonExists(TS_REFERENCE, faceId));
-		faceRefFunc(faceId, [&cellId](Polygon& face) {
-			face.addCellId(cellId);
-		});
+		if (polygonExists(TS_REFERENCE, faceId)) {
+			faceRefFunc(faceId, [&cellId](Polygon& face) {
+				face.addCellId(cellId);
+			});
+		}
 	}
 }
 
@@ -669,11 +671,6 @@ bool Block::load()
 	return true;
 }
 
-void Block::clearSplitEdges()
-{
-	_splitEdgeVertices.clear();
-}
-
 void Block::setNeedsSimpleSplit()
 {
 #if LOGGING_ENABLED
@@ -700,6 +697,15 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	_modelData._polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](Polyhedron& cell) {
 		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
 	});
+}
+
+void Block::makeRefPolyhedraIfRequired()
+{
+	for (const auto& cellId : _makeRefPolyhedronIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			cell.makeRefIfNeeded();
+		});
+	}
 }
 
 void Block::splitPolygonsIfAdjacentRequiresIt()
@@ -907,21 +913,22 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 	return result;
 }
 
-void Block::addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId)
-{
-	if (_splitEdgeVertices.find(edge) == _splitEdgeVertices.end()) {
-		_splitEdgeVertices.insert(make_pair(edge, vertId));
-	}
-}
-
 void Block::addPolygonToSplitList(const Index3DId& id)
 {
+	assert(_blockIdx == id.blockIdx());
 	_splitPolygonIds.insert(id);
 }
 
 void Block::addPolyhedronToSplitList(const Index3DId& id)
 {
+	assert(_blockIdx == id.blockIdx());
 	_splitPolyhedronIds.insert(id);
+}
+
+void Block::addPolyhedronToMakeRefList(const Index3DId& id)
+{
+	assert(_blockIdx == id.blockIdx());
+	_makeRefPolyhedronIds.insert(id);
 }
 
 bool Block::isPolygonInSplitList(const Index3DId& id) const
@@ -946,14 +953,24 @@ bool Block::polygonExists(TopolgyState refState, const Index3DId& id) const
 	return pOwner && pOwner->data(refState)._polygons.exists(id);
 }
 
-bool Block::isPolygonReference(const Polygon* face) const
+bool Block::isPolygonReference(const Polygon* pFace) const
 {
-	return face && (face == &_refData._polygons[face->getId()]);
+	if (!pFace)
+		return false;
+	const auto& faceId = pFace->getId();
+	auto pOwner = getOwner(faceId);
+	const auto& data = pOwner->_refData._polygons;
+	return data.exists(faceId) && (pFace == &data[faceId]);
 }
 
-bool Block::isPolyhedronReference(const Polyhedron* cell) const
+bool Block::isPolyhedronReference(const Polyhedron* pCell) const
 {
-	return cell && (cell == &_refData._polyhedra[cell->getId()]);
+	if (!pCell)
+		return false;
+	const auto& cellId = pCell->getId();
+	auto pOwner = getOwner(cellId);
+	const auto& data = pOwner->_refData._polyhedra;
+	return data.exists(cellId) && (pCell == &data[cellId]);
 }
 
 bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const

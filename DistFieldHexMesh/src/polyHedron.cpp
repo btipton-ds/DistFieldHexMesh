@@ -88,9 +88,7 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 
 void Polyhedron::addFace(const Index3DId& faceId)
 {
-	if (_faceIds.count(faceId) == 0) {
-		_faceIds.insert(faceId);
-	}
+	_faceIds.insert(faceId);
 }
 
 bool Polyhedron::removeFace(const Index3DId& faceId)
@@ -415,11 +413,11 @@ void Polyhedron::splitAtPoint(const Vector3d& centerPoint)
 
 	makeRefIfNeeded();
 	pBlk->cellRefFunc(_thisId, [this, &centerPoint](Polyhedron& refCell) {
-		refCell.splitAtPointInner(centerPoint);
+		refCell.splitRefFaceAtPoint(centerPoint);
 	});
 }
 
-void Polyhedron::splitAtPointInner(const Vector3d& centerPoint) const
+void Polyhedron::splitRefFaceAtPoint(const Vector3d& centerPoint) const
 {
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
 	assert(pBlk);
@@ -429,7 +427,7 @@ void Polyhedron::splitAtPointInner(const Vector3d& centerPoint) const
 	auto pLogger = pBlk->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Polyhedron::splitAtPointInner " << *this);
+	LOG(out << Logger::Pad() << "Polyhedron::splitRefFaceAtPoint " << *this);
 #endif
 
 	Index3DId cellMidId = pBlk->addVertex(centerPoint);
@@ -577,6 +575,8 @@ bool Polyhedron::isSplitRequired() const
 
 void Polyhedron::setNeedToSplitAtCentroid()
 {
+	if (getBlockPtr()->isPolyhedronInSplitList(_thisId))
+		return;
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();

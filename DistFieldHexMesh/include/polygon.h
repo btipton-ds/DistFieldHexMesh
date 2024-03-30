@@ -141,9 +141,8 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	Index3DId getSplitEdgeVertexId(const Edge& edge) const;
 	void makeRefIfNeeded();
-	void splitAtPointInner(const Vector3d& pt) const;
+	void splitRefFaceAtPoint(const Vector3d& pt) const;
 	void addSplitFaceId(const Index3DId& id) const;
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
@@ -153,6 +152,7 @@ private:
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
+	mutable std::map<Edge, Index3DId> _splitEdgeVertMap;
 };
 
 inline bool Polygon::verifyUnique() const

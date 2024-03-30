@@ -135,11 +135,10 @@ public:
 
 	void addRefCell(const Polyhedron& cell);
 
-	void addSplitEdgeVertex(const Edge& edge, const Index3DId& vertId);
-	const std::map<Edge, Index3DId>& getSplitEdgeVertices() const;
-
 	void addPolygonToSplitList(const Index3DId& id);
 	void addPolyhedronToSplitList(const Index3DId& id);
+	void addPolyhedronToMakeRefList(const Index3DId& id);
+
 	bool isPolygonInSplitList(const Index3DId& id) const;
 	bool isPolyhedronInSplitList(const Index3DId& id) const;
 
@@ -196,9 +195,9 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFace(FaceType meshType, const Polygon& face) const;
 
-	void clearSplitEdges();
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void makeRefPolyhedraIfRequired();
 	void splitPolygonsIfAdjacentRequiresIt();
 	void splitPolyhedraIfAdjacentRequiresIt();
 
@@ -226,8 +225,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::map<Edge, Index3DId> _splitEdgeVertices;
-	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
+	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds, _makeRefPolyhedronIds;
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
@@ -269,11 +267,6 @@ inline size_t Block::calLinearSubBlockIndex(const Index3D& subBlockIdx) const
 	if (subBlockIdx.isInBounds(_blockDim))
 		return subBlockIdx[0] + _blockDim * (subBlockIdx[1] + _blockDim * subBlockIdx[2]);
 	return -1;
-}
-
-inline const std::map<Edge, Index3DId>& Block::getSplitEdgeVertices() const
-{
-	return _splitEdgeVertices;
 }
 
 inline bool Block::isUnloaded() const

@@ -70,6 +70,7 @@ public:
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
+	void setNeedToMakeReference();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 
 	void splitIfAdjacentRequiresIt();
@@ -102,7 +103,7 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
 	Index3DId addFace(const std::vector<Index3DId>& vertIds);
 	void addRefFace(const std::vector<Index3DId>& vertIds);
-	void splitAtPointInner(const Vector3d& pt) const;
+	void splitRefFaceAtPoint(const Vector3d& pt) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;

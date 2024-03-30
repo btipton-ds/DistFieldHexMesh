@@ -113,6 +113,7 @@ private:
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
+	void makeRefPolyhedraIfRequired(bool multiCore);
 	void splitIfAdjacentRequiresIt(bool multiCore);
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
