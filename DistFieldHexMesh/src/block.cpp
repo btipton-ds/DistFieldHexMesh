@@ -28,7 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vector>
 #include <algorithm>
 #include <fstream>
-#define _USE_MATH_DEFINES
+#include <defines.h>
 #include <cmath>
 
 #include <Index3D.h>
@@ -479,18 +479,9 @@ Index3DId Block::addCell(const Polyhedron& cell, bool addLinkage)
 
 	for (const auto& faceId : cellFaceIds) {
 		faceFunc(faceId, [this, &cellId, addLinkage](Polygon& cellFace) {
-			// Removed broken face to owner cell linkages.
-			auto cellIds = cellFace.getCellIds();
-			for (const auto& cellId : cellIds) {
-				cellFunc(cellId, [&cellIds, &cellFace](Polyhedron& cell) {
-					if (!cell.containsFace(cellFace.getId())) {
-						cellFace.removeCellId(cell.getId());
-					}
-				});
-			}
-
+			cellFace.removeRefCellIds();
 			if (addLinkage) {
-				// Add linkage to the new cell
+				// Add linkage to the new cell, but not for reference cells
 				cellFace.addCellId(cellId);
 			}
 		});
@@ -609,6 +600,9 @@ Index3DId Block::addFace(const Polygon& face)
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	auto result = pOwner->_modelData._polygons.findOrAdd(face);
+	if (Index3DId(0, 8, 4, 2) == result) {
+		int dbgBreak = 1;
+	}
 	return result;
 }
 
@@ -746,6 +740,9 @@ void Block::splitPolygonsIfRequired()
 #endif
 
 	for (const auto& id : _splitPolygonIds) {
+		if (Index3DId(0, 8, 4, 2) == id) {
+			int dbgBreak = 1;
+		}
 		bool refExists = _refData._polygons.exists(id);
 		auto& data = refExists ? _refData : _modelData;
 		auto temp = data._polygons[id];
@@ -791,6 +788,31 @@ void Block::imprintTJointVertices()
 			stringstream ss;
 			ss << "D:/DarkSky/Projects/output/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
 			_pVol->writeObj(ss.str(), {cell.getId()});
+		}
+	});
+}
+
+void Block::fixLinkages()
+{
+	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		if (Index3DId(4, 6, 0, 5) == cell.getId()) {
+			int dbgBreak = 1;
+		}
+		const auto& faceIds = cell.getFaceIds();
+		for (const auto& faceId : faceIds) {
+			faceFunc(faceId, [&cell](Polygon& face) {
+				if (face.getCellIds().count(cell.getId()) == 0) {
+					if (face.getCellIds().size() > 0) {
+						int dbgBreak = 1;
+					}
+					face.addCellId(cell.getId());
+				}
+			});
+		}
+	});
+	_modelData._polygons.iterateInOrder([this](Polygon& face) {
+		if (face.getCellIds().empty()) {
+			int dbgBreak = 1;
 		}
 	});
 }

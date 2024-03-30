@@ -86,6 +86,7 @@ public:
 	void addVertex(const Index3DId& vertId);
 
 	void addCellId(const Index3DId& cellId);
+	void removeRefCellIds();
 	void removeCellId(const Index3DId& cellId);
 	void clearCellIds();
 	void setCellIds(const std::set<Index3DId>& cellIds);
@@ -167,16 +168,25 @@ inline bool Polygon::verifyVertsConvex() const
 
 inline void Polygon::removeCellId(const Index3DId& cellId)
 {
+	if (Index3DId(4, 6, 0, 5) == cellId) {
+		int dbgBreak = 1;
+	}
 	_cellIds.erase(cellId);
 }
 
 inline void Polygon::setCellIds(const std::set<Index3DId>& cellIds)
 {
+	if (cellIds.contains(Index3DId(4, 6, 0, 5)) || _cellIds.contains(Index3DId(4, 6, 0, 5))) {
+		int dbgBreak = 1;
+	}
 	_cellIds = cellIds;
 }
 
 inline void Polygon::clearCellIds()
 {
+	if (_cellIds.contains(Index3DId(4, 6, 0, 5))) {
+		int dbgBreak = 1;
+	}
 	_cellIds.clear();
 }
 

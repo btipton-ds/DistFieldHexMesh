@@ -55,6 +55,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
 #include <OGLMath.h>
+#include <defines.h>
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <volume.h>
@@ -76,7 +77,6 @@ namespace
         return v * M_PI / 180.0f;
     }
 
-#define OVER_SAMPLING 2
 
     int attribs[] = {
         WX_GL_DEPTH_SIZE, 16,

@@ -28,7 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vector>
 #include <map>
 
-#define _USE_MATH_DEFINES
+#include <defines.h>
 #include <cmath>
 
 #include <vertex.h>
@@ -430,6 +430,9 @@ void Polyhedron::splitRefFaceAtPoint(const Vector3d& centerPoint) const
 	LOG(out << Logger::Pad() << "Polyhedron::splitRefFaceAtPoint " << *this);
 #endif
 
+	if (Index3DId(4, 6, 0, 5) == _thisId) {
+		int dbgBreak = 1;
+	}
 	Index3DId cellMidId = pBlk->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
@@ -499,6 +502,10 @@ void Polyhedron::splitRefFaceAtPoint(const Vector3d& centerPoint) const
 			};
 
 			auto newFaceId = pBlk->addFace(verts);
+			pBlk->faceFunc(newFaceId, [this](Polygon& refFace) {
+				if (refFace.usedByCell(_thisId))
+					refFace.removeCellId(_thisId);
+			});
 			vertFaces.insert(newFaceId);
 		}
 

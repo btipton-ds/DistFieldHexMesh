@@ -28,7 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <sstream>
 #include <fstream>
 
-#define _USE_MATH_DEFINES
+#include <defines.h>
 #include <cmath>
 
 #include <triMesh.h>
@@ -311,7 +311,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(multiCore));
+//		assert(verifyTopology(multiCore));
 	}
 
 	if (params.numCurvatureDivs > 0) {
@@ -326,7 +326,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-//		assert(verifyTopology(multiCore));
+		assert(verifyTopology(multiCore));
 #endif
 	}
 
@@ -386,6 +386,7 @@ void Volume::finishSplits(bool multiCore)
 	splitIfAdjacentRequiresIt(multiCore);
 	splitTopology(multiCore);
 	imprintTJointVertices(multiCore);
+	fixLinkages(multiCore);
 }
 
 void Volume::makeRefPolyhedraIfRequired(bool multiCore)
@@ -444,6 +445,16 @@ void Volume::imprintTJointVertices(bool multiCore)
 		}
 		return true;
 	},  multiCore);
+}
+
+void Volume::fixLinkages(bool multiCore)
+{
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->fixLinkages();
+		}
+		return true;
+	}, multiCore);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const

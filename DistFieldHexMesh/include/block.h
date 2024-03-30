@@ -204,6 +204,8 @@ private:
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
 	void imprintTJointVertices();
+	void fixLinkages();
+	
 
 	const ModelData& data(TopolgyState refState) const;
 	ModelData& data(TopolgyState refState);

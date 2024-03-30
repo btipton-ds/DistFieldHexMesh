@@ -29,6 +29,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/string.h>
 #include <wx/wfstream.h>
 
+#include "defines.h"
+
 #include <appData.h>
 #include <tm_math.h>
 #include <triMesh.h>
@@ -43,9 +45,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace std;
 using namespace DFHM;
-
-#define RUN_MULTI_THREAD true
-#define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
 
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
@@ -308,7 +307,7 @@ void AppData::doBuildCFDHexes()
 
         Volume::BuildCFDParams params;
 
-        params.numSimpleDivs = 0;
+        params.numSimpleDivs = 1;
         params.numCurvatureDivs = 1;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm

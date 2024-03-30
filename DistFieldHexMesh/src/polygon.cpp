@@ -25,7 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define _USE_MATH_DEFINES
+#include <defines.h>
 #include <cmath>
 #include <fstream>
 #include <tm_math.h>
@@ -413,18 +413,35 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 
 void Polygon::addCellId(const Index3DId& cellId)
 {
+	if (Index3DId(4, 6, 1, 0) == cellId) {
+		int dbgBreak = 1;
+	}
 	_cellIds.insert(cellId);
-#if 0
+#if 1
 	if (_cellIds.size() > 2) {
-		for (const auto& cellId : _cellIds) {
-			cellFunc(cellId, [this](const Polyhedron& cell) {
-				assert(!cell.isReference());
+		for (const auto& cellId1 : _cellIds) {
+			assert(!getBlockPtr()->polyhedronExists(TS_REFERENCE, cellId1));
+			cellFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
 			});
 		}
 		assert(_cellIds.size() <= 2);
 	}
 #endif
+}
+
+void Polygon::removeRefCellIds()
+{
+	assert(!getBlockPtr()->isPolygonReference(this));
+	auto tmp = _cellIds;
+	_cellIds.clear();
+	for (const auto& cellId : tmp) {
+		if (!getBlockPtr()->polyhedronExists(TS_REFERENCE, cellId))
+			_cellIds.insert(cellId);
+	}
+	if (_cellIds.size() != tmp.size()) {
+		int dbgBreak = 1;
+	}
 }
 
 void Polygon::setNeedToSplit()
@@ -567,6 +584,9 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 		});
 
 		for (const auto& cellId : _cellIds) {
+			if (Index3DId(4, 6, 0, 5) == cellId) {
+				int dbgBreak = 1;
+			}
 			if (!pBlk->isPolyhedronInSplitList(cellId)) {
 				pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
 #if LOGGING_ENABLED
