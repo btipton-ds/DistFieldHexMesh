@@ -88,6 +88,8 @@ public:
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
 
+	virtual ~Block();
+
 	size_t blockDim() const;
 
 	// These method determine with block owns an entity based on it's location

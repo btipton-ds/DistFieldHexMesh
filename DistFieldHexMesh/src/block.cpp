@@ -98,6 +98,11 @@ Block::Block(const Block& src)
 {
 }
 
+Block::~Block()
+{
+	disableDestructors();
+}
+
 const Index3D& Block::getBlockIdx() const
 {
 	return _blockIdx;
@@ -1057,4 +1062,3 @@ Block::ModelData::ModelData(Block* pBlk, const ModelData& src)
 	, _polyhedra(pBlk, src._polyhedra)
 {
 }
-

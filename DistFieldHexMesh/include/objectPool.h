@@ -58,7 +58,10 @@ public:
 	std::shared_ptr<Logger> getLogger() const;
 	std::string getLoggerNumericCode() const;
 
+	void disableDestructors();
 private:
+	friend class ObjectPoolOwnerUser;
+	bool _isBeingDestroyed = false;
 	mutable std::string _filename;
 };
 
@@ -79,6 +82,8 @@ public:
 protected:
 	Index3DId _thisId;
 
+	bool isOwnerBeingDestroyed() const;
+
 private:
 	template<class T>
 	friend class ObjectPool;
@@ -91,6 +96,8 @@ class ObjectPool {
 public:
 	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 512);
 	ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src);
+
+	void clear();
 
 	const ObjectPoolOwner* getBlockPtr() const;
 	ObjectPoolOwner* getBlockPtr();
@@ -196,6 +203,13 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	iterateInOrder([this](T& obj) {
 		obj._pPoolOwner = _pPoolOwner;
 	});
+}
+template<class T>
+void ObjectPool<T>::clear()
+{
+	_idToIndexMap.clear();
+	_objToIdMap.clear();
+	_objectSegs.clear();
 }
 
 template<class T>

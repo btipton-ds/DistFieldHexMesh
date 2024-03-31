@@ -90,6 +90,11 @@ const Index3DId& ObjectPoolOwnerUser::getId() const
 	return _thisId;
 }
 
+bool ObjectPoolOwnerUser::isOwnerBeingDestroyed() const
+{
+	return !_pPoolOwner || _pPoolOwner->_isBeingDestroyed;
+}
+
 shared_ptr<Logger> ObjectPoolOwner::getLogger() const
 {
 	if (_filename.empty()) {
@@ -108,4 +113,9 @@ string ObjectPoolOwner::getLoggerNumericCode() const
 	stringstream ss;
 	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
 	return ss.str();
+}
+
+void ObjectPoolOwner::disableDestructors()
+{
+	_isBeingDestroyed = true;
 }

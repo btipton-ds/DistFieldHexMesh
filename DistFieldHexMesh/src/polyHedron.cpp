@@ -54,7 +54,9 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::~Polyhedron()
 {
-	unlinkFromFaces();
+	if (!isOwnerBeingDestroyed()) {
+		unlinkFromFaces();
+	}
 }
 
 void Polyhedron::dumpFaces() const

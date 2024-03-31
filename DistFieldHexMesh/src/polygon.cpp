@@ -45,7 +45,9 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 
 Polygon::~Polygon()
 {
-	preDestroy();
+	if (!isOwnerBeingDestroyed()) {
+		preDestroy();
+	}
 }
 
 void Polygon::addVertex(const Index3DId& vertId)
