@@ -76,6 +76,8 @@ public:
         long style = wxDEFAULT_FRAME_STYLE,
         const wxString& name = wxASCII_STR(wxFrameNameStr));
 
+    virtual ~MainFrame();
+
     void addMenus();
     void addStatusBar();
     void OnInternalIdle() wxOVERRIDE;

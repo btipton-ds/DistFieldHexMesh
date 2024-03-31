@@ -124,8 +124,6 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplit();
 
-	void splitIfAdjacentRequiresIt();
-
 	void imprintVertices();
 
 	void splitAtCentroid() const;

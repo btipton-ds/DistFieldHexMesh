@@ -78,6 +78,13 @@ MainFrame::MainFrame(wxWindow* parent,
     addStatusBar();
 }
 
+MainFrame::~MainFrame()
+{
+    // Clear the canvas first
+    _pCanvas->preDestroy();
+    _pAppData = nullptr;
+}
+
 void MainFrame::addMenus()
 {
     _menuBar = new wxMenuBar;

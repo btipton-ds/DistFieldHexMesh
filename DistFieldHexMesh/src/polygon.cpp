@@ -460,26 +460,6 @@ void Polygon::setNeedToSplit()
 	pBlk->addPolygonToSplitList(_thisId);
 }
 
-void Polygon::splitIfAdjacentRequiresIt()
-{
-	// This test must be performed at the owner cell level
-	bool requiresSplit = false;
-	for (const auto& cellId : _cellIds) {
-		cellFunc(cellId, [&requiresSplit](const Polyhedron& cell) {
-			requiresSplit = cell.requiresSplitDueToPendingAdjacentSplit();
-		});
-		if (requiresSplit)
-			break;
-	}
-	if (requiresSplit) {
-		Vector3d ctr;
-		faceFunc(_thisId, [&ctr](const Polygon& face) {
-			ctr = face.calCentroid();
-		});
-		splitAtPoint(ctr);
-	}
-}
-
 void Polygon::splitAtCentroid() const
 {
 	auto ctr = calCentroid();

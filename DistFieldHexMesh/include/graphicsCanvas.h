@@ -71,6 +71,8 @@ public:
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
 
+    void preDestroy();
+
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
 
@@ -149,7 +151,7 @@ private:
 
     std::shared_ptr<wxGLContext> _pContext;
     
-    const AppDataPtr _pAppData;
+    AppDataPtr _pAppData;
     bool _initialized = false;
 
     bool 
@@ -194,6 +196,14 @@ private:
 protected:
     DECLARE_EVENT_TABLE()
 };
+
+inline void GraphicsCanvas::preDestroy()
+{
+    _modelVBOs = nullptr;
+    _meshVBOs = nullptr;
+    _activeVBOs = nullptr;
+    _pAppData = nullptr;
+}
 
 inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
 {

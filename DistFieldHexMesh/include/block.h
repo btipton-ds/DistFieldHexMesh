@@ -195,13 +195,16 @@ private:
 
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void splitPolygonsIfAdjacentRequiresIt();
-	void splitPolyhedraIfAdjacentRequiresIt();
 	void dumpOpenCells() const;
+
+	bool makeRequiredReferencesIfAdjacentRequires() const;
+	void splitPolygonsIfAdjacentRequires();
+	void splitPolyhedraIfAdjacentRequires();
 
 	void makeRequiredReferences();
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
+
 	void imprintTJointVertices();
 	void fixLinkages();
 	

@@ -144,13 +144,13 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 	}
 }
 
-void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentFaces) const
+void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
 {
 	map<Edge, set<Index3DId>> edgeToFaceMap;
 	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentFaces](const Polygon& face) {
-			if (includeAdjacentFaces) {
+		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
+			if (includeAdjacentCellFaces) {
 				auto temp = face.getCellIds();
 				adjCellIds.insert(temp.begin(), temp.end());
 			}
@@ -167,7 +167,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentFaces) const
 		});
 	}
 
-	if (includeAdjacentFaces) {
+	if (includeAdjacentCellFaces) {
 		adjCellIds.erase(_thisId);
 		for (const auto& adjCellId : adjCellIds) {
 			set<Index3DId> faceIds;
@@ -336,46 +336,36 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::hasSplits() const
+bool Polyhedron::canSplitFaceWithoutSplitting(const Index3DId& faceId) const
 {
-	const double tolSinAngle = sin(Tolerance::angleTol());
-
 	set<Edge> edges;
 	getEdges(edges, false);
-	for (const auto& edge : edges) {
-		assert(edge.getFaceIds().size() == 2);
-		bool faceHasSplits = false;
-
-		auto iter = edge.getFaceIds().begin();
-		Index3DId faceId0 = *iter++;
-		Index3DId faceId1 = *iter;
-
-		Vector3d norm0, norm1;
-
-		faceFunc(faceId0, [&norm0, &faceHasSplits](const Polygon& face0) {
-			if (face0.hasSplitEdges())
-				faceHasSplits = true;
-			norm0 = face0.calUnitNormal();
-		});
-
-		faceFunc(faceId1, [&norm1, &faceHasSplits](const Polygon& face1) {
-			if (face1.hasSplitEdges())
-				faceHasSplits = true;
-			norm1 = face1.calUnitNormal();
-		});
-
-		double cp = norm1.cross(norm0).norm();
-		if (faceHasSplits || cp < tolSinAngle)
-			return true;
-	}
-
-	return false;
-}
-
-void Polyhedron::splitIfAdjacentRequiresIt()
-{
-	if (hasSplits())
-		splitAtCentroid();
+	bool result = true;
+	faceFunc(faceId, [this, &edges, &result](const Polygon& face) {
+		const double sinTol = sin(Tolerance::angleTol());
+		const auto& vertIds = face.getVertexIds();
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			size_t j = (i + 1) % vertIds.size();
+			auto iter = edges.find(Edge(vertIds[i], vertIds[j]));
+			if (iter != edges.end()) {
+				const auto& edge = *iter;
+				const auto& faceIds = iter->getFaceIds();
+				assert(faceIds.size() == 2);
+				auto fIter = faceIds.begin();
+				const auto& faceId0 = *fIter++;
+				const auto& faceId1 = *fIter++;
+				Vector3d norm0, norm1;
+				faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
+				faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
+				double cp = norm1.cross(norm0).norm();
+				if (cp < sinTol) {
+					result = false;
+					break;
+				}
+			}
+		}
+	});
+	return result;
 }
 
 void Polyhedron::splitAtCentroid() const
@@ -489,33 +479,10 @@ void Polyhedron::splitAtPoint(const Vector3d& centerPoint) const
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
 }
 
-bool Polyhedron::requiresSplitDueToPendingAdjacentSplit() const
-{
-	if (isSplitRequired())
-		return false;
-
-	if (!hasSplits())
-		return false;
-
-	set<Index3DId> cellIds = getAdjacentCells(false);
-	for (const auto& cellId : cellIds) {
-		bool needsSplit;
-		cellFunc(cellId, [&needsSplit](const Polyhedron& cell) {
-			needsSplit = cell.isSplitRequired();
-		});
-
-		if (needsSplit)
-			return true;
-	}
-
-	return false;
-}
-
 bool Polyhedron::isSplitRequired() const
 {
 	return getBlockPtr()->isPolyhedronInSplitList(_thisId);
 }
-
 
 void Polyhedron::setNeedToSplitAtCentroid()
 {

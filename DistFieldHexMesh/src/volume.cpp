@@ -382,7 +382,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool multiCore)
 {
-	splitIfAdjacentRequiresIt(multiCore);
+	splitIfAdjacentRequiresIt(false && multiCore);
 	splitTopology(multiCore);
 	imprintTJointVertices(multiCore);
 	dumpOpenCells(multiCore);
@@ -391,23 +391,30 @@ void Volume::finishSplits(bool multiCore)
 
 void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 {
-	/*
-	There are cells which already have split faces. Their faces should not be split again.
-	Instead, split the entire cell so the cell's faces are unsplit.
-	*/
-	runLambda([this](size_t linearIdx)->bool {
+	std::atomic<bool> needsPreSplit = false;
+	runLambda([this, &needsPreSplit](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolygonsIfAdjacentRequiresIt();
+			if (_blocks[linearIdx]->makeRequiredReferencesIfAdjacentRequires())
+				needsPreSplit = true;
 		}
 		return true;
 	}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequiresIt();
-		}
-		return true;
-		}, multiCore);
+	if (!needsPreSplit) {
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolygonsIfAdjacentRequires();
+			}
+			return true;
+			}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]) {
+				_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires();
+			}
+			return true;
+			}, multiCore);
+	}
 }
 
 void Volume::splitTopology(bool multiCore)

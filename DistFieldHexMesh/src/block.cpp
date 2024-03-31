@@ -676,34 +676,6 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	});
 }
 
-void Block::splitPolygonsIfAdjacentRequiresIt()
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block::splitPolygonsIfAdjacentRequiresIt()\n";
-	Logger::Indent indent;
-#endif
-
-	_modelData._polygons.iterateInOrder([](Polygon& face) {
-		face.splitIfAdjacentRequiresIt();
-	});
-}
-
-void Block::splitPolyhedraIfAdjacentRequiresIt()
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block::splitPolyhedraIfAdjacentRequiresIt()\n";
-	Logger::Indent indent;
-#endif
-
-	_modelData._polyhedra.iterateInOrder([](Polyhedron& cell) {
-		cell.splitIfAdjacentRequiresIt();
-	});
-}
-
 void Block::dumpOpenCells() const
 {
 #if DUMP_OPEN_CELL_OBJS
@@ -722,6 +694,51 @@ void Block::dumpOpenCells() const
 		}
 	});
 #endif
+}
+
+bool Block::makeRequiredReferencesIfAdjacentRequires() const
+{
+
+	set<Index3DId> refCellIds;
+
+	for (const auto& faceId : _splitPolygonIds) {
+		faceFunc(faceId, [this, &faceId, &refCellIds](const Polygon& face) {
+			const auto& tmp = face.getCellIds();
+			for (const auto& cellId : tmp) {
+				if (!getOwner(cellId)->polyhedronExists(TS_REFERENCE, cellId)) {
+					cellFunc(cellId, [&faceId, &refCellIds](const Polyhedron& cell) {
+						if (!cell.canSplitFaceWithoutSplitting(faceId)) {
+							refCellIds.insert(cell.getId());
+						}
+					});
+				}
+			}
+		});
+	}
+	if (refCellIds.empty())
+		return false;
+
+	for (const auto& id : refCellIds) {
+	}
+
+	for (const auto& id : refCellIds) {
+		auto pBlk = const_cast<Block*>(getOwner(id));
+		if (!pBlk->_refData._polyhedra.exists(id)) {
+			const auto& refCell = pBlk->_modelData._polyhedra[id];
+			pBlk->_refData._polyhedra.findOrAdd(refCell, id);
+			assert(pBlk->_refData._polyhedra.exists(id));
+		}
+	}
+
+	return true;
+}
+
+void Block::splitPolygonsIfAdjacentRequires()
+{
+}
+
+void Block::splitPolyhedraIfAdjacentRequires()
+{
 }
 
 void Block::makeRequiredReferences()

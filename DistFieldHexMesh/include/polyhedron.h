@@ -53,7 +53,7 @@ public:
 	bool containsFace(const Index3DId& faceId) const;
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
-	void getEdges(std::set<Edge>& edgeSet, bool includeAdjacentFaces) const;
+	void getEdges(std::set<Edge>& edgeSet, bool includeAdjacentCellFaces) const;
 
 	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
 
@@ -66,16 +66,13 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	bool hasSplits() const;
+	bool canSplitFaceWithoutSplitting(const Index3DId& faceId) const;
 	bool isSplitRequired() const;
-	bool requiresSplitDueToPendingAdjacentSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-
-	void splitIfAdjacentRequiresIt();
 
 	void splitAtCentroid() const;
 	void splitAtPoint(const Vector3d& pt) const;
