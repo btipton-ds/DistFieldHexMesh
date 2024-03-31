@@ -386,12 +386,7 @@ void Volume::finishSplits(bool multiCore)
 	splitIfAdjacentRequiresIt(multiCore);
 	splitTopology(multiCore);
 	imprintTJointVertices(multiCore);
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->dumpOpenCells();
-		}
-		return true;
-	}, multiCore);
+	dumpOpenCells(multiCore);
 	fixLinkages(multiCore);
 }
 
@@ -461,6 +456,18 @@ void Volume::fixLinkages(bool multiCore)
 		}
 		return true;
 	}, multiCore);
+}
+
+void Volume::dumpOpenCells(bool multiCore) const
+{
+#if DUMP_OPEN_CELL_OBJS
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->dumpOpenCells();
+		}
+		return true;
+	}, multiCore);
+#endif
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const

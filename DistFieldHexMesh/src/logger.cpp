@@ -43,7 +43,7 @@ shared_ptr<Logger> Logger::get(const string& streamName)
 		if (filesystem::exists("D:/DarkSky/Projects")) {
 			path = "D:/DarkSky/Projects/output/logs/";
 		} else {
-			path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/logs/";
+			path = "D:/Users/BobT/Documents/Projects/Code/output/logs/";
 		}
 		shared_ptr<Logger> p = make_shared<Logger>(path + streamName);
 		iter = s_map.insert(make_pair(streamName, p)).first;

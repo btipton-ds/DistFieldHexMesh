@@ -118,6 +118,7 @@ private:
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void fixLinkages(bool multiCore);
+	void dumpOpenCells(bool multiCore) const;
 
 	void findFeatures();
 	void findSharpVertices();

@@ -748,13 +748,13 @@ void Block::dumpOpenCells() const
 		if (!cell.isClosed()) {
 			string path;
 			if (filesystem::exists("D:/DarkSky/Projects")) {
-				path = "D:/DarkSky/Projects/output/";
+				path = "D:/DarkSky/Projects/output/objs/";
 			}
 			else {
-				path = "D:/Users/BobT/Documents/Projects/Code/DistFieldHexMesh/output/";
+				path = "D:/Users/BobT/Documents/Projects/Code/output/objs/";
 			}
 			stringstream ss;
-			ss << path << "/objs/cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
+			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
 			_pVol->writeObj(ss.str(), { cell.getId() });
 		}
 	});
