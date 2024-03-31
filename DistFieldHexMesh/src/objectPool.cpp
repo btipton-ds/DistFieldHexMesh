@@ -46,15 +46,15 @@ DECL_THREAD_LOCAL(Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
 
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)
+	: _pPoolOwner(src._pPoolOwner)
+	, _thisId(src._thisId)
 {
-	_pPoolOwner = src._pPoolOwner;
-	_thisId = src._thisId;
 }
 
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id)
+	: _pPoolOwner(const_cast<ObjectPoolOwner*> (poolOwner))
+	, _thisId(poolOwner->getBlockIdx(), id)
 {
-	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
-	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
 }
 
 ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser& rhs)

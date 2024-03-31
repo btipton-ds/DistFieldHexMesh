@@ -46,6 +46,8 @@ public:
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src) = default;
 
+	~Polyhedron();
+
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
 	bool containsFace(const Index3DId& faceId) const;
@@ -75,10 +77,9 @@ public:
 
 	void splitIfAdjacentRequiresIt();
 
-	void splitAtCentroid();
-	void splitAtPoint(const Vector3d& pt);
+	void splitAtCentroid() const;
+	void splitAtPoint(const Vector3d& pt) const;
 	double getShortestEdge() const;
-	bool makeRefIfNeeded();
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -87,6 +88,7 @@ public:
 	bool isClosed() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
+	Polyhedron& operator = (const Polyhedron& rhs);
 
 	LAMBDA_CLIENT_DECLS
 private:
@@ -96,14 +98,9 @@ private:
 	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
-	bool needToImprintVertices() const;
 	void copyToOut() const;
-	Index3DId createFace(const std::vector<Index3DId>& vertIds);
-	void createHexahedralFaces(const std::vector<Index3DId>& cornerIds, std::vector<Index3DId>& faceIds);
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
-	Index3DId addFace(const std::vector<Index3DId>& vertIds);
-	void addRefFace(const std::vector<Index3DId>& vertIds);
-	void splitRefFaceAtPoint(const Vector3d& pt) const;
+	void unlinkFromFaces() const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;

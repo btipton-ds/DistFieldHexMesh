@@ -382,22 +382,11 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool multiCore)
 {
-	makeRefPolyhedraIfRequired(multiCore);
 	splitIfAdjacentRequiresIt(multiCore);
 	splitTopology(multiCore);
 	imprintTJointVertices(multiCore);
 	dumpOpenCells(multiCore);
-	fixLinkages(multiCore);
-}
-
-void Volume::makeRefPolyhedraIfRequired(bool multiCore)
-{
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->makeRefPolyhedraIfRequired();
-		}
-		return true;
-	}, multiCore);
+//	fixLinkages(multiCore);
 }
 
 void Volume::splitIfAdjacentRequiresIt(bool multiCore)
@@ -423,6 +412,13 @@ void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 
 void Volume::splitTopology(bool multiCore)
 {
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->makeRequiredReferences();
+		}
+		return true;
+	}, multiCore);
+
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->splitPolygonsIfRequired();

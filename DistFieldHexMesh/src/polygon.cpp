@@ -43,6 +43,11 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 {
 }
 
+Polygon::~Polygon()
+{
+	preDestroy();
+}
+
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
@@ -139,6 +144,19 @@ bool Polygon::operator < (const Polygon& rhs) const
 			return false;
 	}
 	return false;
+}
+
+Polygon& Polygon::operator = (const Polygon& rhs)
+{
+	preDestroy();
+	ObjectPoolOwnerUser::operator=(rhs);
+	_splitProductIds = rhs._splitProductIds;
+	_vertexIds = rhs._vertexIds;
+	_cellIds = rhs._cellIds;
+	_needSort = rhs._needSort;
+	_sortedIds = rhs._sortedIds;
+
+	return *this;
 }
 
 bool Polygon::hasSplitEdges() const
@@ -420,7 +438,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 #if 1
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
-			assert(!getBlockPtr()->polyhedronExists(TS_REFERENCE, cellId1));
+			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));
 			cellFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
 			});
@@ -430,18 +448,9 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-void Polygon::removeRefCellIds()
+void Polygon::unlinkFromCell(const Index3DId& cellId)
 {
-	assert(!getBlockPtr()->isPolygonReference(this));
-	auto tmp = _cellIds;
-	_cellIds.clear();
-	for (const auto& cellId : tmp) {
-		if (!getBlockPtr()->polyhedronExists(TS_REFERENCE, cellId))
-			_cellIds.insert(cellId);
-	}
-	if (_cellIds.size() != tmp.size()) {
-		int dbgBreak = 1;
-	}
+	_cellIds.erase(cellId);
 }
 
 void Polygon::setNeedToSplit()
@@ -449,10 +458,6 @@ void Polygon::setNeedToSplit()
 	auto pBlk = getBlockPtr();
 	assert(pBlk->getBlockIdx() == _thisId);
 	pBlk->addPolygonToSplitList(_thisId);
-	for (const auto& cellId : _cellIds) {
-		auto pOwner = pBlk->getOwner(cellId);
-		pOwner->addPolyhedronToMakeRefList(cellId);
-	}
 }
 
 void Polygon::splitIfAdjacentRequiresIt()
@@ -475,54 +480,17 @@ void Polygon::splitIfAdjacentRequiresIt()
 	}
 }
 
-void Polygon::splitAtCentroid()
+void Polygon::splitAtCentroid() const
 {
 	auto ctr = calCentroid();
 	splitAtPoint(ctr);
 }
 
-void Polygon::makeRefIfNeeded()
-{
-	if (Index3DId(0, 6, 5, 0) == _thisId) {
-		int dbgBreak = 1;
-	}
-
-	auto pBlk = getBlockPtr();
-	if (!pBlk->polygonExists(TS_REFERENCE, _thisId)) {
-#if LOGGING_ENABLED
-		auto pLogger = pBlk->getLogger();
-		auto& out = pLogger->getStream();
-
-		LOG(out << Logger::Pad() << "creating reference polygon of " << *this);
-#endif
-
-		getBlockPtr()->addRefFace(*this);
-		assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
-	}
-}
-
-void Polygon::splitAtPoint(const Vector3d& pt)
-{
-	auto pBlk = getBlockPtr();
-
-#if LOGGING_ENABLED
-	auto pLogger = pBlk->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint.");
-#endif
-
-	makeRefIfNeeded();
-	assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
-	pBlk->faceRefFunc(_thisId, [&pt](Polygon& refFace) {
-		Logger::Indent id;
-		refFace.splitRefFaceAtPoint(pt);
-	});
-}
-
-void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
+void Polygon::splitAtPoint(const Vector3d& pt) const
 {
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
+	assert(!pBlk->polygonExists(TS_REAL, _thisId));
+	assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
 
 	if (Index3DId(0, 6, 4, 0) == _thisId) {
 		int dbgBreak = 1;
@@ -581,31 +549,7 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
 		auto newFaceId = pBlk->addFace(face);
-
-		pBlk->faceFunc(newFaceId, [this](Polygon& newFace) {
-			newFace.setCellIds(_cellIds);
-		});
-
-		for (const auto& cellId : _cellIds) {
-			if (Index3DId(4, 6, 0, 5) == cellId) {
-				int dbgBreak = 1;
-			}
-			if (!pBlk->isPolyhedronInSplitList(cellId)) {
-				pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
-#if LOGGING_ENABLED
-					auto& out = pBlk->getLogger()->getStream();
-#endif
-					assert(pBlk->polyhedronExists(TS_REFERENCE, cell.getId()));
-					assert(!pBlk->isPolyhedronReference(&cell));
-					if (cell.containsFace(_thisId)) {
-						LOG(out << Logger::Pad() << "removing f" << _thisId << " from c" << cell.getId() << "\n");
-						cell.removeFace(_thisId);
-					}
-					LOG(out << Logger::Pad() << "adding f" << newFaceId << " to c" << cell.getId() << "\n");
-					cell.addFace(newFaceId);
-				});
-			}
-		}
+		replaceFaceInCells(newFaceId);
 		addSplitFaceId(newFaceId);
 
 #if LOGGING_ENABLED
@@ -618,11 +562,47 @@ void Polygon::splitRefFaceAtPoint(const Vector3d& pt) const
 	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pst: " << *this);
 }
 
+void Polygon::replaceFaceInCells(const Index3DId& newFaceId) const
+{
+	Block* pBlk = const_cast<Block*> (getBlockPtr());
+
+	for (const auto& cellId : _cellIds) {
+		pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
+#if LOGGING_ENABLED
+			auto& out = pBlk->getLogger()->getStream();
+#endif
+			assert(pBlk->polyhedronExists(TS_REFERENCE, cell.getId()));
+			assert(!pBlk->isPolyhedronReference(&cell));
+			if (cell.containsFace(_thisId)) {
+				LOG(out << Logger::Pad() << "removing f" << _thisId << " from c" << cell.getId() << "\n");
+				cell.removeFace(_thisId);
+			}
+			LOG(out << Logger::Pad() << "adding f" << newFaceId << " to c" << cell.getId() << "\n");
+			cell.addFace(newFaceId);
+		});
+	}
+}
+
 void Polygon::addSplitFaceId(const Index3DId& id) const
 {
 	assert(getBlockPtr()->isPolygonReference(this));
 	Polygon* self = const_cast<Polygon*>(this);
 	self->_splitProductIds.insert(id);
+}
+
+void Polygon::preDestroy()
+{
+	if (_thisId.isValid()) {
+		auto cellIds = _cellIds;
+		_cellIds.clear();
+		for (const auto& cellId : cellIds) {
+			if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
+				cellFunc(cellId, [this](Polyhedron& cell) {
+					cell.removeFace(_thisId);
+				});
+			}
+		}
+	}
 }
 
 void Polygon::imprintVertices()
@@ -661,8 +641,6 @@ void Polygon::imprintVertices()
 
 	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
 #endif
-
-	makeRefIfNeeded();
 
 	// Increment down so insertions do not corrupt order
 	// the vertex is not in this polygon and lies between i and j

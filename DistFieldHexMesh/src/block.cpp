@@ -464,27 +464,14 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 	return faceId;
 }
 
-void Block::addRefFace(const Polygon& face)
-{
-	auto* pOwner = getOwner(face.getId());
-	// Only copy the bare minium of data - vertices and id.
-	Polygon refFace(face.getVertexIds());
-	refFace.setCellIds(face.getCellIds());
-	pOwner->_refData._polygons.findOrAdd(refFace, face.getId());
-}
-
-Index3DId Block::addCell(const Polyhedron& cell, bool addLinkage)
+Index3DId Block::addCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _modelData._polyhedra.findOrAdd(cell);
 	const auto& cellFaceIds = _modelData._polyhedra[cellId].getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
-		faceFunc(faceId, [this, &cellId, addLinkage](Polygon& cellFace) {
-			cellFace.removeRefCellIds();
-			if (addLinkage) {
-				// Add linkage to the new cell, but not for reference cells
-				cellFace.addCellId(cellId);
-			}
+		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
+			cellFace.addCellId(cellId);
 		});
 	}
 	return cellId;
@@ -554,21 +541,6 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	}
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
-}
-
-void Block::addRefCell(const Polyhedron& cell)
-{
-	Index3DId cellId = _refData._polyhedra.findOrAdd(Polyhedron(cell.getFaceIds()), cell.getId());
-	assert(cellId == cell.getId());
-
-	const auto& faceIds = cell.getFaceIds();
-	for (const auto& faceId : faceIds) {
-		if (polygonExists(TS_REFERENCE, faceId)) {
-			faceRefFunc(faceId, [&cellId](Polygon& face) {
-				face.addCellId(cellId);
-			});
-		}
-	}
 }
 
 void Block::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId)
@@ -704,15 +676,6 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	});
 }
 
-void Block::makeRefPolyhedraIfRequired()
-{
-	for (const auto& cellId : _makeRefPolyhedronIds) {
-		cellFunc(cellId, [](Polyhedron& cell) {
-			cell.makeRefIfNeeded();
-		});
-	}
-}
-
 void Block::splitPolygonsIfAdjacentRequiresIt()
 {
 #if LOGGING_ENABLED
@@ -761,6 +724,38 @@ void Block::dumpOpenCells() const
 #endif
 }
 
+void Block::makeRequiredReferences()
+{
+	set<Index3DId> refCellIds (_splitPolyhedronIds);
+
+	for (const auto& id : _splitPolygonIds) {
+		faceFunc(id, [this, &refCellIds] (const Polygon& face) {
+			const auto& tmp = face.getCellIds();
+			refCellIds.insert(tmp.begin(), tmp.end());
+		});
+
+		if (!_refData._polygons.exists(id)) {
+			assert(id.blockIdx() == _blockIdx);
+			const auto& refFace = _modelData._polygons[id];
+			_refData._polygons.findOrAdd(refFace, id);
+			assert(_refData._polygons.exists(id));
+		}
+	}
+
+	for (const auto& id : refCellIds) {
+		if (id.blockIdx() != _blockIdx) {
+			int dbgBreak = 1;
+		}
+
+		auto pBlk = getOwner(id);
+		if (!pBlk->_refData._polyhedra.exists(id)) {
+			const auto& refCell = pBlk->_modelData._polyhedra[id];
+			pBlk->_refData._polyhedra.findOrAdd(refCell, id);
+			assert(pBlk->_refData._polyhedra.exists(id));
+		}
+	}
+}
+
 void Block::splitPolygonsIfRequired()
 {
 #if LOGGING_ENABLED
@@ -773,15 +768,16 @@ void Block::splitPolygonsIfRequired()
 	if (Index3D(0, 3, 5) == _blockIdx) {
 		int dbgBreak = 1;
 	}
+
 	for (const auto& id : _splitPolygonIds) {
 		if (Index3DId(0, 8, 4, 2) == id) {
 			int dbgBreak = 1;
 		}
-		bool refExists = _refData._polygons.exists(id);
-		auto& data = refExists ? _refData : _modelData;
-		auto temp = data._polygons[id];
-		temp.splitAtCentroid();
+		assert(_refData._polygons.exists(id));
+		assert(_modelData._polygons.exists(id));
 		_modelData._polygons.free(id);
+		assert(!_modelData._polygons.exists(id));
+		_refData._polygons[id].splitAtCentroid();
 	}
 	_splitPolygonIds.clear();
 }
@@ -796,11 +792,13 @@ void Block::splitPolyhedraIfRequired()
 #endif
 
 	for (const auto& id : _splitPolyhedronIds) {
-		bool refExists = _refData._polyhedra.exists(id);
-		auto& data = refExists ? _refData : _modelData;
-		auto temp = data._polyhedra[id];
-		temp.splitAtCentroid();
+		assert(_refData._polyhedra.exists(id));
+		assert(_modelData._polyhedra.exists(id));
+
 		_modelData._polyhedra.free(id);
+		assert(!_modelData._polyhedra.exists(id));
+
+		_refData._polyhedra[id].splitAtCentroid();
 	}
 	_splitPolyhedronIds.clear();
 }
@@ -829,9 +827,6 @@ void Block::fixLinkages()
 		for (const auto& faceId : faceIds) {
 			faceFunc(faceId, [&cell](Polygon& face) {
 				if (face.getCellIds().count(cell.getId()) == 0) {
-					if (face.getCellIds().size() > 0) {
-						int dbgBreak = 1;
-					}
 					face.addCellId(cell.getId());
 				}
 			});
@@ -972,12 +967,6 @@ void Block::addPolyhedronToSplitList(const Index3DId& id)
 {
 	assert(_blockIdx == id.blockIdx());
 	_splitPolyhedronIds.insert(id);
-}
-
-void Block::addPolyhedronToMakeRefList(const Index3DId& id)
-{
-	assert(_blockIdx == id.blockIdx());
-	_makeRefPolyhedronIds.insert(id);
 }
 
 bool Block::isPolygonInSplitList(const Index3DId& id) const

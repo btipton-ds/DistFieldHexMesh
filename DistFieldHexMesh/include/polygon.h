@@ -83,13 +83,13 @@ public:
 	Polygon(const std::vector<Index3DId>& verts);
 	Polygon(const Polygon& src) = default;
 
+	~Polygon();
+
 	void addVertex(const Index3DId& vertId);
 
 	void addCellId(const Index3DId& cellId);
-	void removeRefCellIds();
-	void removeCellId(const Index3DId& cellId);
+	void unlinkFromCell(const Index3DId& cellId);
 	void clearCellIds();
-	void setCellIds(const std::set<Index3DId>& cellIds);
 	size_t numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
 
@@ -108,6 +108,7 @@ public:
 	bool addRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
 	bool operator < (const Polygon& rhs) const;
+	Polygon& operator = (const Polygon& rhs);
 
 	const std::vector<Index3DId>& getVertexIds() const;
 	void getEdges(std::set<Edge>& edgeSet) const;
@@ -127,8 +128,8 @@ public:
 
 	void imprintVertices();
 
-	void splitAtCentroid();
-	void splitAtPoint(const Vector3d& pt);
+	void splitAtCentroid() const;
+	void splitAtPoint(const Vector3d& pt) const;
 
 	void orient();
 	void pack();
@@ -142,9 +143,9 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	void makeRefIfNeeded();
-	void splitRefFaceAtPoint(const Vector3d& pt) const;
+	void replaceFaceInCells(const Index3DId& newFaceId) const;
 	void addSplitFaceId(const Index3DId& id) const;
+	void preDestroy();
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
@@ -163,22 +164,6 @@ inline bool Polygon::verifyUnique() const
 inline bool Polygon::verifyVertsConvex() const
 {
 	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
-}
-
-inline void Polygon::removeCellId(const Index3DId& cellId)
-{
-	if (Index3DId(4, 6, 0, 5) == cellId) {
-		int dbgBreak = 1;
-	}
-	_cellIds.erase(cellId);
-}
-
-inline void Polygon::setCellIds(const std::set<Index3DId>& cellIds)
-{
-	if (cellIds.contains(Index3DId(4, 6, 0, 5)) || _cellIds.contains(Index3DId(4, 6, 0, 5))) {
-		int dbgBreak = 1;
-	}
-	_cellIds = cellIds;
 }
 
 inline void Polygon::clearCellIds()

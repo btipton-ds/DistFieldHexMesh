@@ -126,20 +126,16 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	void addRefFace(const Polygon& face);
-
-	Index3DId addCell(const Polyhedron& cell, bool addLinkage = true);
+	Index3DId addCell(const Polyhedron& cell);
 	Index3DId addCell(const std::set<Index3DId>& faceIds);
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
-	void addRefCell(const Polyhedron& cell);
 	void addSplitEdgeVert(const Edge& edge , const Index3DId& vertId);
 	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
 	void addPolygonToSplitList(const Index3DId& id);
 	void addPolyhedronToSplitList(const Index3DId& id);
-	void addPolyhedronToMakeRefList(const Index3DId& id);
 
 	bool isPolygonInSplitList(const Index3DId& id) const;
 	bool isPolyhedronInSplitList(const Index3DId& id) const;
@@ -199,11 +195,11 @@ private:
 
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
-	void makeRefPolyhedraIfRequired();
 	void splitPolygonsIfAdjacentRequiresIt();
 	void splitPolyhedraIfAdjacentRequiresIt();
 	void dumpOpenCells() const;
 
+	void makeRequiredReferences();
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
 	void imprintTJointVertices();
@@ -230,7 +226,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds, _makeRefPolyhedronIds;
+	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;
