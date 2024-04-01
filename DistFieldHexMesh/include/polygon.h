@@ -122,6 +122,8 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplit();
 
+	const std::set<Index3DId>& getSplitProductIds() const;
+
 	bool imprintVertices(bool testOnly);
 
 	void splitAtCentroid(Block* pDstBlock) const;
@@ -192,6 +194,11 @@ inline bool Polygon::isOuter() const
 inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
+}
+
+inline const std::set<Index3DId>& Polygon::getSplitProductIds() const
+{
+	return _splitProductIds;
 }
 
 template<class LAMBDA> 

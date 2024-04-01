@@ -727,25 +727,75 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-void Block::splitPolyhedraIfAdjacentRequires()
+void Block::splitPolyhedraIfAdjacentRequires_clearIds()
 {
-	set<Index3DId> splitCellIds;
-	_modelData._polyhedra.iterateInOrder([this, &splitCellIds](Polyhedron& cell) {
-		if (cell.adjacentCellRequiresSplit()) {
-			makeRefPolyhedronIfRequired(cell.getId());
-			splitCellIds.insert(cell.getId());
+	_preSplitPolygonIds.clear();
+	_preSplitPolyhedraIds.clear();
+}
+
+void Block::splitPolyhedraIfAdjacentRequires_chooseFaceIds()
+{
+	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
+		if (cell.requiresMultipleFaceSplit()) {
+			_preSplitPolyhedraIds.insert(cell.getId());
 		}
 	});
 
-	if (splitCellIds.empty())
+	if (_preSplitPolyhedraIds.empty())
 		return;
 
-	for (const auto& cellId : splitCellIds) {
+	for (const auto& cellId : _preSplitPolyhedraIds) {
 		assert(_refData._polyhedra.exists(cellId));
 		const auto& refCell = _refData._polyhedra[cellId];
 		assert(refCell.getFaceIds().size() == 6);
-		refCell.splitAtCentroid(this);
+		for (const auto& faceId : refCell.getFaceIds()) {
+			if (Index3DId(1, 6, 4, 0) == faceId) {
+				int dbgBreak = 1;
+			}
+			auto pOwner = getOwner(faceId);
+			assert(pOwner);
+			assert(faceId.blockIdx() == pOwner->_blockIdx);
+			pOwner->makeRefPolygonIfRequired(faceId);
+			auto& refFace = pOwner->_refData._polygons[faceId];
+			pOwner->_preSplitPolygonIds.insert(faceId);
+		}
 	}
+}
+
+void Block::splitPolyhedraIfAdjacentRequires_splitFaces()
+{
+	if (Index3D(1, 6, 4) == _blockIdx) {
+		int dbgBreak = 1;
+	}
+	if (_preSplitPolygonIds.empty())
+		return;
+
+	for (const auto& faceId : _preSplitPolygonIds) {
+		assert(faceId.blockIdx() == _blockIdx);
+		assert(_refData._polygons.exists(faceId));
+		auto& refFace = _refData._polygons[faceId];
+		if (refFace.getSplitProductIds().empty()) {
+			refFace.splitAtCentroid(this);
+		}
+
+		if (_modelData._polygons.exists(faceId))
+			_modelData._polygons.free(faceId);
+	}
+}
+
+void Block::splitPolyhedraIfAdjacentRequires_splitCells()
+{
+	if (_preSplitPolyhedraIds.empty())
+		return;
+
+	for (const auto& cellId : _preSplitPolyhedraIds) {
+		_refData._polyhedra[cellId].splitAtCentroid(this);
+		if (_modelData._polyhedra.exists(cellId))
+			_modelData._polyhedra.free(cellId);
+	}
+
+	_preSplitPolygonIds.clear();
+	_preSplitPolyhedraIds.clear();
 }
 
 void Block::splitPolygonsIfRequired()
@@ -812,11 +862,6 @@ void Block::imprintTJointVertices()
 
 	for (const auto& faceId : imprintFaceIds) {
 		makeRefPolygonIfRequired(faceId);
-		faceRefFunc(faceId, [this](const Polygon& refFace) {
-			for (const auto& cellId : refFace.getCellIds()) {
-				makeRefPolyhedronIfRequired(cellId);
-			}
-		});
 		_modelData._polygons[faceId].imprintVertices(false);
 	}
 }

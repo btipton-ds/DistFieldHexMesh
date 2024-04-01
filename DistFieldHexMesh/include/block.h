@@ -201,7 +201,10 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	void splitPolyhedraIfAdjacentRequires();
+	void splitPolyhedraIfAdjacentRequires_clearIds();
+	void splitPolyhedraIfAdjacentRequires_chooseFaceIds();
+	void splitPolyhedraIfAdjacentRequires_splitFaces();
+	void splitPolyhedraIfAdjacentRequires_splitCells();
 
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
@@ -231,6 +234,7 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
+	std::set<Index3DId> _preSplitPolygonIds, _preSplitPolyhedraIds;
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;

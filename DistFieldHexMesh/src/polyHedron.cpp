@@ -107,8 +107,8 @@ bool Polyhedron::removeFace(const Index3DId& faceId)
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 {
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&vertIds](const Polygon& face) {
-			const auto vertexIds = face.getVertexIds();
+		faceRefFunc(faceId, [&vertIds](const Polygon& refFace) {
+			const auto vertexIds = refFace.getVertexIds();
 			vertIds.insert(vertexIds.begin(), vertexIds.end());
 		});
 	}
@@ -314,40 +314,42 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::adjacentCellRequiresSplit() const
+bool Polyhedron::requiresMultipleFaceSplit() const
 {
 	if (_faceIds.size() > 6) {
 		int dbgBreak = 1;
 	}
 	set<Edge> edges;
 	getEdges(edges, false);
-	bool result = true;
+	bool result = false;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edges, &result](const Polygon& face) {
-			const double sinTol = sin(Tolerance::angleTol());
-			const auto& vertIds = face.getVertexIds();
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t j = (i + 1) % vertIds.size();
-				auto iter = edges.find(Edge(vertIds[i], vertIds[j]));
-				if (iter != edges.end()) {
-					const auto& edge = *iter;
-					const auto& faceIds = iter->getFaceIds();
-					assert(faceIds.size() == 2);
-					auto fIter = faceIds.begin();
-					const auto& faceId0 = *fIter++;
-					const auto& faceId1 = *fIter++;
-					Vector3d norm0, norm1;
-					faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
-					faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
-					double cp = norm1.cross(norm0).norm();
-					if (cp < sinTol) {
-						result = false;
-						break;
+		if (!getBlockPtr()->isPolygonInSplitList(faceId)) {
+			faceFunc(faceId, [this, &edges, &result](const Polygon& face) {
+				const double sinTol = sin(Tolerance::angleTol());
+				const auto& vertIds = face.getVertexIds();
+				for (size_t i = 0; i < vertIds.size(); i++) {
+					size_t j = (i + 1) % vertIds.size();
+					auto iter = edges.find(Edge(vertIds[i], vertIds[j]));
+					if (iter != edges.end()) {
+						const auto& edge = *iter;
+						const auto& faceIds = iter->getFaceIds();
+						assert(faceIds.size() == 2);
+						auto fIter = faceIds.begin();
+						const auto& faceId0 = *fIter++;
+						const auto& faceId1 = *fIter++;
+						Vector3d norm0, norm1;
+						faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
+						faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
+						double cp = norm1.cross(norm0).norm();
+						if (cp < sinTol) {
+							result = true;
+							break;
+						}
 					}
 				}
-			}
-		});
-		if (!result)
+			});
+		}
+		if (result)
 			break;
 	}
 

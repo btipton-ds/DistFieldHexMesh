@@ -64,7 +64,7 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	bool adjacentCellRequiresSplit() const;
+	bool requiresMultipleFaceSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();

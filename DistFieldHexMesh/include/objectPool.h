@@ -261,6 +261,9 @@ inline const T* ObjectPool<T>::getEntry(size_t index) const
 template<class T>
 bool ObjectPool<T>::free(const Index3DId& globalId)
 {
+	if (!exists(globalId))
+		return false;
+
 	removeFromLookup(globalId);
 
 	size_t id = globalId.elementId();

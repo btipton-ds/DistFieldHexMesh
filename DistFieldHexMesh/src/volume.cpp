@@ -331,7 +331,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-//		assert(verifyTopology(multiCore));
+		assert(verifyTopology(multiCore));
 #endif
 	}
 
@@ -393,13 +393,16 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
-	if (options._processPartialSplits)
-		splitIfAdjacentRequiresIt(false && multiCore);
+	if (options._processPartialSplits) {
+		splitIfAdjacentRequiresIt(multiCore);
+		// We need to imprint TJoints because these splits, may split edges in adjacent cells
+		imprintTJointVertices(multiCore);
+	}
 
 	splitTopology(multiCore);
 
 	if (options._processEdgesWithTVertices)
-		imprintTJointVertices(false && multiCore);
+		imprintTJointVertices(multiCore);
 
 	dumpOpenCells(multiCore);
 //	fixLinkages(multiCore);
@@ -407,10 +410,30 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 
 void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 {
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_clearIds();
+		}
+		return true;
+	}, multiCore);
 
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires();
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_chooseFaceIds();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_splitFaces();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_splitCells();
 		}
 		return true;
 	}, multiCore);
