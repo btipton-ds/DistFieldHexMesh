@@ -39,7 +39,8 @@ void NAME##RefFunc(const Index3DId& id, LAMBDA func) const;
 template<class LAMBDA> \
 inline void Block::NAME##Func(const Index3DId& id, LAMBDA func) CONST \
 { \
-	func(getOwner(id)->MEMBER_NAME[id]); \
+	auto p = getOwner(id); \
+	func(p->MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME) \
@@ -63,7 +64,11 @@ inline void Block::NAME##Func(const Index3DId& id, LAMBDA func) const \
 template<class LAMBDA> \
 inline void Block::NAME##RefFunc(const Index3DId& id, LAMBDA func) const \
 { \
-	func(getOwner(id)->_refData.MEMBER_NAME[id]); \
+	const auto p = getOwner(id); \
+	if (p->_refData.MEMBER_NAME.exists(id)) \
+		func(p->_refData.MEMBER_NAME[id]); \
+	else \
+		func(p->_modelData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_FUNC_SET_DECL(NAME) \

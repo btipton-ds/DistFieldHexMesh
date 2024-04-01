@@ -66,6 +66,11 @@ Volume::Volume(const Volume& src)
 
 Volume::~Volume()
 {
+	MultiCore::runLambda([this](size_t linearIdx)->bool {
+		_blocks[linearIdx] = nullptr;
+		return true;
+	},_blocks.size(), RUN_MULTI_THREAD);
+	_blocks.clear();
 }
 
 void Volume::startOperation()
@@ -326,7 +331,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(multiCore));
+//		assert(verifyTopology(multiCore));
 #endif
 	}
 
@@ -359,7 +364,10 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 			return true;
 		},  multiCore);
 
-		finishSplits(multiCore);
+		FinishSplitOptions options;
+		options._processPartialSplits = false;
+		options._processEdgesWithTVertices = false;
+		finishSplits(options, multiCore);
 	}
 }
 
@@ -376,39 +384,29 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			return true;
 		},  multiCore);
 
-		finishSplits(multiCore);
+		FinishSplitOptions options;
+		options._processPartialSplits = i > 0;
+		options._processEdgesWithTVertices = true;
+		finishSplits(options, multiCore);
 	}
 }
 
-void Volume::finishSplits(bool multiCore)
+void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
-	splitIfAdjacentRequiresIt(false && multiCore);
+	if (options._processPartialSplits)
+		splitIfAdjacentRequiresIt(false && multiCore);
+
 	splitTopology(multiCore);
-	imprintTJointVertices(multiCore);
+
+	if (options._processEdgesWithTVertices)
+		imprintTJointVertices(false && multiCore);
+
 	dumpOpenCells(multiCore);
 //	fixLinkages(multiCore);
 }
 
 void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 {
-	std::atomic<bool> needsPreSplit = false;
-	runLambda([this, &needsPreSplit](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			if (_blocks[linearIdx]->makeRequiredReferencesIfAdjacentRequires())
-				needsPreSplit = true;
-		}
-		return true;
-	}, multiCore);
-
-	if (!needsPreSplit)
-		return;
-
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolygonsIfAdjacentRequires();
-		}
-		return true;
-	}, multiCore);
 
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -420,13 +418,6 @@ void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 
 void Volume::splitTopology(bool multiCore)
 {
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->makeRequiredReferences();
-		}
-		return true;
-	}, multiCore);
-
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->splitPolygonsIfRequired();

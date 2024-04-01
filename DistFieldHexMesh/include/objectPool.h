@@ -58,7 +58,6 @@ public:
 	std::shared_ptr<Logger> getLogger() const;
 	std::string getLoggerNumericCode() const;
 
-	void disableDestructors();
 private:
 	friend class ObjectPoolOwnerUser;
 	bool _isBeingDestroyed = false;

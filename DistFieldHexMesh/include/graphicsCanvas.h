@@ -199,9 +199,6 @@ protected:
 
 inline void GraphicsCanvas::preDestroy()
 {
-    _modelVBOs = nullptr;
-    _meshVBOs = nullptr;
-    _activeVBOs = nullptr;
     _pAppData = nullptr;
 }
 

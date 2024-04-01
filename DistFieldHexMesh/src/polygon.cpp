@@ -43,13 +43,6 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 {
 }
 
-Polygon::~Polygon()
-{
-	if (!isOwnerBeingDestroyed()) {
-		preDestroy();
-	}
-}
-
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
@@ -146,19 +139,6 @@ bool Polygon::operator < (const Polygon& rhs) const
 			return false;
 	}
 	return false;
-}
-
-Polygon& Polygon::operator = (const Polygon& rhs)
-{
-	preDestroy();
-	ObjectPoolOwnerUser::operator=(rhs);
-	_splitProductIds = rhs._splitProductIds;
-	_vertexIds = rhs._vertexIds;
-	_cellIds = rhs._cellIds;
-	_needSort = rhs._needSort;
-	_sortedIds = rhs._sortedIds;
-
-	return *this;
 }
 
 bool Polygon::hasSplitEdges() const
@@ -368,38 +348,12 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
-#if 0
-	set<Edge> edges;
-	getEdges(edges);
-
-	vector<Index3DId> orderedVertIds;
-	const auto& edge = *edges.begin();
-	orderedVertIds.push_back(edge.getVertexIds()[0]);
-	orderedVertIds.push_back(edge.getVertexIds()[1]);
-	edges.erase(edge);
-	while (!edges.empty()) {
-		bool found = false;
-		for (const auto& edge : edges) {
-			if (edge.getVertexIds()[0] == orderedVertIds.back()) {
-				orderedVertIds.push_back(edge.getVertexIds()[1]);
-				edges.erase(edge);
-				found = true;
-				break;
-			}
-			else if (edge.getVertexIds()[1] == orderedVertIds.back()) {
-				orderedVertIds.push_back(edge.getVertexIds()[0]);
-				edges.erase(edge);
-				found = true;
-				break;
-			}
-		}
-		assert(found);
+	if (!getBlockPtr()->isPolygonReference(this) && getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
+		faceRefFunc(_thisId, [&area, &centroid](const Polygon& self) {
+			self.calAreaAndCentroid(area, centroid);
+		});
+		return;
 	}
-	if (orderedVertIds.front() == orderedVertIds.back())
-		orderedVertIds.pop_back();
-	else
-		assert(!"Should never reach this point.");
-#endif
 
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
@@ -429,6 +383,11 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 	auto result = pl.projectPoint(pt);
 
 	return result;
+}
+
+void Polygon::removeCellId(const Index3DId& cellId)
+{
+	_cellIds.erase(cellId);
 }
 
 void Polygon::addCellId(const Index3DId& cellId)
@@ -462,20 +421,19 @@ void Polygon::setNeedToSplit()
 	pBlk->addPolygonToSplitList(_thisId);
 }
 
-void Polygon::splitAtCentroid() const
+void Polygon::splitAtCentroid(Block* pDstBlock) const
 {
 	auto ctr = calCentroid();
-	splitAtPoint(ctr);
+	splitAtPoint(pDstBlock, ctr);
 }
 
-void Polygon::splitAtPoint(const Vector3d& pt) const
+void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 {
-	Block* pBlk = const_cast<Block*> (getBlockPtr());
-	assert(pBlk->isPolygonReference(this));
+	assert(getBlockPtr()->isPolygonReference(this));
 
 #if LOGGING_ENABLED
-	assert(pBlk->isPolygonReference(this));
-	auto pLogger = pBlk->getLogger();
+	assert(getBlockPtr()->isPolygonReference(this));
+	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
 	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pre: " << *this);
@@ -491,14 +449,14 @@ void Polygon::splitAtPoint(const Vector3d& pt) const
 
 		// Be sure to project directly to the edge itself. 
 		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(pBlk, pt);
+		Vector3d edgePt = edge.projectPt(getBlockPtr(), pt);
 		bool inBounds;
-		double t = edge.paramOfPt(pBlk, edgePt, inBounds);
+		double t = edge.paramOfPt(getBlockPtr(), edgePt, inBounds);
 		if (inBounds) {
-			Index3DId vertId = pBlk->addVertex(edgePt);
+			Index3DId vertId = pDstBlock->addVertex(edgePt);
 			edgePtIds[i] = vertId;
 
-			pBlk->addSplitEdgeVert(edge, vertId);
+			pDstBlock->addSplitEdgeVert(edge, vertId);
 		}
 		else {
 			assert(!"Edge point is not in bounds.");
@@ -512,7 +470,7 @@ void Polygon::splitAtPoint(const Vector3d& pt) const
 		return;
 	}
 
-	Index3DId facePtId = pBlk->addVertex(facePt);
+	Index3DId facePtId = pDstBlock->addVertex(facePt);
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
@@ -522,7 +480,7 @@ void Polygon::splitAtPoint(const Vector3d& pt) const
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
 
-		auto newFaceId = pBlk->addFace(face);
+		auto newFaceId = pDstBlock->addFace(face);
 		replaceFaceInCells(newFaceId);
 		addSplitFaceId(newFaceId);
 
@@ -540,13 +498,15 @@ void Polygon::replaceFaceInCells(const Index3DId& newFaceId) const
 {
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
 
-	for (const auto& cellId : _cellIds) {
+	auto cellIds = _cellIds; // Work on a copy becuase when we remove this face, cellIds will change
+	for (const auto& cellId : cellIds) {
+		if (!pBlk->polyhedronExists(TS_REAL, cellId))
+			continue;
+		assert(pBlk->polyhedronExists(TS_REFERENCE, cellId));
 		pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
 #if LOGGING_ENABLED
 			auto& out = pBlk->getLogger()->getStream();
 #endif
-			assert(pBlk->polyhedronExists(TS_REFERENCE, cell.getId()));
-			assert(!pBlk->isPolyhedronReference(&cell));
 			if (cell.containsFace(_thisId)) {
 				LOG(out << Logger::Pad() << "removing f" << _thisId << " from c" << cell.getId() << "\n");
 				cell.removeFace(_thisId);
@@ -564,22 +524,7 @@ void Polygon::addSplitFaceId(const Index3DId& id) const
 	self->_splitProductIds.insert(id);
 }
 
-void Polygon::preDestroy()
-{
-	if (_thisId.isValid()) {
-		auto cellIds = _cellIds;
-		_cellIds.clear();
-		for (const auto& cellId : cellIds) {
-			if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
-				cellFunc(cellId, [this](Polyhedron& cell) {
-					cell.removeFace(_thisId);
-				});
-			}
-		}
-	}
-}
-
-void Polygon::imprintVertices()
+bool Polygon::imprintVertices(bool testOnly)
 {
 	Block* pBlk = getBlockPtr();
 
@@ -607,7 +552,9 @@ void Polygon::imprintVertices()
 	}
 
 	if (splitEdgeVertMap.empty())
-		return;
+		return false;
+	else if (testOnly)
+		return true;
 
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -642,6 +589,8 @@ void Polygon::imprintVertices()
 	_needSort = true;
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
+
+	return true;
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)

@@ -88,8 +88,6 @@ public:
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
 
-	virtual ~Block();
-
 	size_t blockDim() const;
 
 	// These method determine with block owns an entity based on it's location
@@ -178,6 +176,8 @@ private:
 		ObjectPool<Polyhedron> _polyhedra;
 	};
 
+	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
+
 	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
@@ -188,22 +188,21 @@ private:
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
+	void makeRefPolygonIfRequired(const Index3DId& id);
+	void makeRefPolyhedronIfRequired(const Index3DId& id);
+
 	Index3DId addFace(const std::vector<Vector3d>& pts);
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFace(FaceType meshType, const Polygon& face) const;
+	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
 
 	void setNeedsSimpleSplit();
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	bool makeRequiredReferencesIfAdjacentRequires();
-	void splitPolygonsIfAdjacentRequires();
 	void splitPolyhedraIfAdjacentRequires();
 
-	void makeRequiredReferences();
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();
 
@@ -232,7 +231,6 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
-	std::set<Index3DId> _preSplitCellIds;
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;
@@ -295,17 +293,20 @@ inline Block::ModelData& Block::data(TopolgyState refState)
 //LAMBDA_BLOCK_IMPLS
 template<class LAMBDA> 
 inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) const {
-	func(getOwner(id)->_vertices[id]);
+	auto p = getOwner(id); 
+	func(p->_vertices[id]);
 } 
 
 template<class LAMBDA> 
 inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) {
-	func(getOwner(id)->_vertices[id]);
+	auto p = getOwner(id); 
+	func(p->_vertices[id]);
 } 
 
 template<class LAMBDA> 
 inline void Block::faceFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); func(p->_modelData._polygons[id]);
+	auto p = getOwner(id); 
+	func(p->_modelData._polygons[id]);
 } 
 
 template<class LAMBDA> 
@@ -319,12 +320,17 @@ inline void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
 
 template<class LAMBDA> 
 inline void Block::faceRefFunc(const Index3DId& id, LAMBDA func) const {
-	func(getOwner(id)->_refData._polygons[id]);
+	const auto p = getOwner(id); 
+	if (p->_refData._polygons.exists(id)) 
+		func(p->_refData._polygons[id]); 
+	else 
+		func(p->_modelData._polygons[id]);
 } 
 
 template<class LAMBDA> 
 inline void Block::cellFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); func(p->_modelData._polyhedra[id]);
+	auto p = getOwner(id); 
+	func(p->_modelData._polyhedra[id]);
 } 
 
 template<class LAMBDA> 
@@ -338,7 +344,11 @@ inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
 
 template<class LAMBDA> 
 inline void Block::cellRefFunc(const Index3DId& id, LAMBDA func) const {
-	func(getOwner(id)->_refData._polyhedra[id]);
+	const auto p = getOwner(id); 
+	if (p->_refData._polyhedra.exists(id)) 
+		func(p->_refData._polyhedra[id]); 
+	else 
+		func(p->_modelData._polyhedra[id]);
 }
 
 }

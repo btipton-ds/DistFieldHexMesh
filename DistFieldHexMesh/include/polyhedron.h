@@ -46,8 +46,6 @@ public:
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src) = default;
 
-	~Polyhedron();
-
 	void addFace(const Index3DId& faceId);
 	bool removeFace(const Index3DId& faceId);
 	bool containsFace(const Index3DId& faceId) const;
@@ -66,16 +64,15 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	bool canSplitFaceWithoutSplitting(const Index3DId& faceId) const;
-	bool isSplitRequired() const;
+	bool adjacentCellRequiresSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 
-	void splitAtCentroid() const;
-	void splitAtPoint(const Vector3d& pt) const;
+	void splitAtCentroid(Block* pDstBlock) const;
+	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
 	double getShortestEdge() const;
 
 	bool unload(std::ostream& out);
@@ -85,7 +82,6 @@ public:
 	bool isClosed() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
-	Polyhedron& operator = (const Polyhedron& rhs);
 
 	LAMBDA_CLIENT_DECLS
 private:
@@ -97,7 +93,6 @@ private:
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
-	void unlinkFromFaces() const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;

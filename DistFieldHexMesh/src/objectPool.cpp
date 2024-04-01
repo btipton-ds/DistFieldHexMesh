@@ -114,8 +114,3 @@ string ObjectPoolOwner::getLoggerNumericCode() const
 	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
 	return ss.str();
 }
-
-void ObjectPoolOwner::disableDestructors()
-{
-	_isBeingDestroyed = true;
-}

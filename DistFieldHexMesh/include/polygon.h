@@ -83,11 +83,10 @@ public:
 	Polygon(const std::vector<Index3DId>& verts);
 	Polygon(const Polygon& src) = default;
 
-	~Polygon();
-
 	void addVertex(const Index3DId& vertId);
 
 	void addCellId(const Index3DId& cellId);
+	void removeCellId(const Index3DId& cellId);
 	void unlinkFromCell(const Index3DId& cellId);
 	void clearCellIds();
 	size_t numCells() const;
@@ -108,7 +107,6 @@ public:
 	bool addRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
 	bool operator < (const Polygon& rhs) const;
-	Polygon& operator = (const Polygon& rhs);
 
 	const std::vector<Index3DId>& getVertexIds() const;
 	void getEdges(std::set<Edge>& edgeSet) const;
@@ -124,10 +122,10 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplit();
 
-	void imprintVertices();
+	bool imprintVertices(bool testOnly);
 
-	void splitAtCentroid() const;
-	void splitAtPoint(const Vector3d& pt) const;
+	void splitAtCentroid(Block* pDstBlock) const;
+	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
 
 	void orient();
 	void pack();
@@ -143,7 +141,6 @@ private:
 	void sortIds() const;
 	void replaceFaceInCells(const Index3DId& newFaceId) const;
 	void addSplitFaceId(const Index3DId& id) const;
-	void preDestroy();
 
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
