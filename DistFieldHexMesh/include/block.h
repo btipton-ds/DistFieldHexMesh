@@ -199,7 +199,7 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	bool makeRequiredReferencesIfAdjacentRequires() const;
+	bool makeRequiredReferencesIfAdjacentRequires();
 	void splitPolygonsIfAdjacentRequires();
 	void splitPolyhedraIfAdjacentRequires();
 
@@ -232,6 +232,7 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
+	std::set<Index3DId> _preSplitCellIds;
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;
@@ -290,20 +291,25 @@ inline Block::ModelData& Block::data(TopolgyState refState)
 {
 	return refState == TS_REAL ? _modelData : _refData;
 }
+
 //LAMBDA_BLOCK_IMPLS
-
 template<class LAMBDA> 
-void Block::vertexFunc(const Index3DId& id, LAMBDA func) const {
+inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) const {
 	func(getOwner(id)->_vertices[id]);
 } 
 
 template<class LAMBDA> 
-void Block::vertexFunc(const Index3DId& id, LAMBDA func) {
+inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) {
 	func(getOwner(id)->_vertices[id]);
 } 
 
 template<class LAMBDA> 
-void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
+inline void Block::faceFunc(const Index3DId& id, LAMBDA func) {
+	auto p = getOwner(id); func(p->_modelData._polygons[id]);
+} 
+
+template<class LAMBDA> 
+inline void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
 	const auto p = getOwner(id); 
 	if (p->_modelData._polygons.exists(id)) 
 		func(p->_modelData._polygons[id]); 
@@ -312,26 +318,17 @@ void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
 } 
 
 template<class LAMBDA> 
-void Block::faceFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); 
-	if (p->_modelData._polygons.exists(id)) 
-		func(p->_modelData._polygons[id]); 
-	else 
-		func(p->_refData._polygons[id]);
-} 
-
-template<class LAMBDA> 
-void Block::faceRefFunc(const Index3DId& id, LAMBDA func) const {
+inline void Block::faceRefFunc(const Index3DId& id, LAMBDA func) const {
 	func(getOwner(id)->_refData._polygons[id]);
 } 
 
 template<class LAMBDA> 
-void Block::faceRefFunc(const Index3DId& id, LAMBDA func) {
-	func(getOwner(id)->_refData._polygons[id]);
+inline void Block::cellFunc(const Index3DId& id, LAMBDA func) {
+	auto p = getOwner(id); func(p->_modelData._polyhedra[id]);
 } 
 
 template<class LAMBDA> 
-void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
+inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
 	const auto p = getOwner(id); 
 	if (p->_modelData._polyhedra.exists(id)) 
 		func(p->_modelData._polyhedra[id]); 
@@ -340,21 +337,7 @@ void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
 } 
 
 template<class LAMBDA> 
-void Block::cellFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); 
-	if (p->_modelData._polyhedra.exists(id)) 
-		func(p->_modelData._polyhedra[id]); 
-	else 
-		func(p->_refData._polyhedra[id]);
-} 
-
-template<class LAMBDA> 
-void Block::cellRefFunc(const Index3DId& id, LAMBDA func) const {
-	func(getOwner(id)->_refData._polyhedra[id]);
-} 
-
-template<class LAMBDA> 
-void Block::cellRefFunc(const Index3DId& id, LAMBDA func) {
+inline void Block::cellRefFunc(const Index3DId& id, LAMBDA func) const {
 	func(getOwner(id)->_refData._polyhedra[id]);
 }
 

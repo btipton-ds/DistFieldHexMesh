@@ -471,15 +471,7 @@ void Polygon::splitAtCentroid() const
 void Polygon::splitAtPoint(const Vector3d& pt) const
 {
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
-	assert(!pBlk->polygonExists(TS_REAL, _thisId));
-	assert(pBlk->polygonExists(TS_REFERENCE, _thisId));
-
-	if (Index3DId(0, 6, 4, 0) == _thisId) {
-		int dbgBreak = 1;
-	}
-	if (_cellIds.contains(Index3DId(0, 3, 5, 4))) {
-		int dbgBreak = 1;
-	}
+	assert(pBlk->isPolygonReference(this));
 
 #if LOGGING_ENABLED
 	assert(pBlk->isPolygonReference(this));

@@ -400,21 +400,22 @@ void Volume::splitIfAdjacentRequiresIt(bool multiCore)
 		return true;
 	}, multiCore);
 
-	if (!needsPreSplit) {
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolygonsIfAdjacentRequires();
-			}
-			return true;
-			}, multiCore);
+	if (!needsPreSplit)
+		return;
 
-		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires();
-			}
-			return true;
-			}, multiCore);
-	}
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolygonsIfAdjacentRequires();
+		}
+		return true;
+	}, multiCore);
+
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires();
+		}
+		return true;
+	}, multiCore);
 }
 
 void Volume::splitTopology(bool multiCore)

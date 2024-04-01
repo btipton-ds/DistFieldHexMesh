@@ -197,29 +197,44 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-//LAMBDA_CLIENT_IMPLS(Polygon)
-template<class LAMBDA> void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) const {
+template<class LAMBDA> 
+inline void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) const {
 	getBlockPtr()->vertexFunc(id, func);
 } 
 
-template<class LAMBDA> void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) {
+template<class LAMBDA> 
+inline void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) {
 	getBlockPtr()->vertexFunc(id, func);
 } 
 
-template<class LAMBDA> void Polygon::faceFunc(const Index3DId& id, LAMBDA func) const {
+template<class LAMBDA> 
+inline void Polygon::faceFunc(const Index3DId& id, LAMBDA func) const {
 	getBlockPtr()->faceFunc(id, func);
 } 
 
-template<class LAMBDA> void Polygon::faceFunc(const Index3DId& id, LAMBDA func) {
+template<class LAMBDA> 
+inline void Polygon::faceFunc(const Index3DId& id, LAMBDA func) {
 	getBlockPtr()->faceFunc(id, func);
 } 
 
-template<class LAMBDA> void Polygon::cellFunc(const Index3DId& id, LAMBDA func) const {
+template<class LAMBDA> 
+inline void Polygon::faceRefFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->faceRefFunc(id, func);
+} 
+
+template<class LAMBDA> 
+inline void Polygon::cellFunc(const Index3DId& id, LAMBDA func) const {
 	getBlockPtr()->cellFunc(id, func);
 } 
 
-template<class LAMBDA> void Polygon::cellFunc(const Index3DId& id, LAMBDA func) {
+template<class LAMBDA> 
+inline void Polygon::cellFunc(const Index3DId& id, LAMBDA func) {
 	getBlockPtr()->cellFunc(id, func);
+} 
+
+template<class LAMBDA> 
+inline void Polygon::cellRefFunc(const Index3DId& id, LAMBDA func) const {
+	getBlockPtr()->cellRefFunc(id, func);
 }
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);

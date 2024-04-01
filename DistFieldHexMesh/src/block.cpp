@@ -701,38 +701,39 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::makeRequiredReferencesIfAdjacentRequires() const
+bool Block::makeRequiredReferencesIfAdjacentRequires()
 {
-
-	set<Index3DId> refCellIds;
+	_preSplitCellIds.clear();
 
 	for (const auto& faceId : _splitPolygonIds) {
-		faceFunc(faceId, [this, &faceId, &refCellIds](const Polygon& face) {
+		faceFunc(faceId, [this, &faceId](const Polygon& face) {
 			const auto& tmp = face.getCellIds();
 			for (const auto& cellId : tmp) {
-				if (!getOwner(cellId)->polyhedronExists(TS_REFERENCE, cellId)) {
-					cellFunc(cellId, [&faceId, &refCellIds](const Polyhedron& cell) {
-						if (!cell.canSplitFaceWithoutSplitting(faceId)) {
-							refCellIds.insert(cell.getId());
-						}
-					});
-				}
+				cellFunc(cellId, [this, &faceId](const Polyhedron& cell) {
+					if (!cell.canSplitFaceWithoutSplitting(faceId)) {
+						_preSplitCellIds.insert(cell.getId());
+					}
+				});
 			}
 		});
 	}
-	if (refCellIds.empty())
+	if (_preSplitCellIds.empty())
 		return false;
 
-	for (const auto& id : refCellIds) {
-	}
-
-	for (const auto& id : refCellIds) {
-		auto pBlk = const_cast<Block*>(getOwner(id));
-		if (!pBlk->_refData._polyhedra.exists(id)) {
-			const auto& refCell = pBlk->_modelData._polyhedra[id];
-			pBlk->_refData._polyhedra.findOrAdd(refCell, id);
-			assert(pBlk->_refData._polyhedra.exists(id));
+	for (const auto& cellId : _preSplitCellIds) {
+		set <Index3DId> faceIds;
+		cellRefFunc(cellId, [&faceIds](const Polyhedron& cell) { faceIds = cell.getFaceIds(); });
+		for (const auto& faceId : faceIds) {
+			auto pBlk = const_cast<Block*>(getOwner(faceId));
+			if (!pBlk->_refData._polygons.exists(faceId)) {
+				const auto& refCell = pBlk->_modelData._polygons[faceId];
+				pBlk->_refData._polygons.findOrAdd(refCell, faceId);
+				assert(pBlk->_refData._polygons.exists(faceId));
+			}
 		}
+
+		// A cell which requires a presplit, has already had a face(s) split - so it must have a reference already
+		assert(getOwner(cellId)->_refData._polyhedra.exists(cellId));
 	}
 
 	return true;
@@ -740,10 +741,42 @@ bool Block::makeRequiredReferencesIfAdjacentRequires() const
 
 void Block::splitPolygonsIfAdjacentRequires()
 {
+	if (_preSplitCellIds.empty())
+		return;
+
+	set<Index3DId> preSplitFaceIds;
+
+	for (const auto& cellId : _preSplitCellIds) {
+		set<Index3DId> faceIds;
+		cellRefFunc(cellId, [&faceIds](const Polyhedron& cell) {
+			faceIds = cell.getFaceIds();
+		});
+		for (const auto& faceId : faceIds) {
+			if (_blockIdx != faceId.blockIdx())
+				continue;
+			if (_splitPolygonIds.contains(faceId))
+				continue;
+			preSplitFaceIds.insert(faceId);
+		}
+	}
+
+	for (const auto& faceId : preSplitFaceIds) {
+		assert(_refData._polygons.exists(faceId));
+		_refData._polygons[faceId].splitAtCentroid();
+	}
 }
 
 void Block::splitPolyhedraIfAdjacentRequires()
 {
+	if (_preSplitCellIds.empty())
+		return;
+
+	for (const auto& cellId : _preSplitCellIds) {
+		assert(_refData._polyhedra.exists(cellId));
+		_refData._polyhedra[cellId].splitAtCentroid();
+	}
+
+	_preSplitCellIds.clear();
 }
 
 void Block::makeRequiredReferences()

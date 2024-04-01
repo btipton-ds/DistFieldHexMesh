@@ -340,6 +340,9 @@ bool Polyhedron::intersectsModel() const
 
 bool Polyhedron::canSplitFaceWithoutSplitting(const Index3DId& faceId) const
 {
+	if (_faceIds.size() > 6) {
+		int dbgBreak = 1;
+	}
 	set<Edge> edges;
 	getEdges(edges, false);
 	bool result = true;
@@ -398,7 +401,7 @@ void Polyhedron::splitAtPoint(const Vector3d& centerPoint) const
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
 		assert(pBlk->polygonExists(TS_REFERENCE, faceId));
-		pBlk->faceRefFunc(faceId, [this, &centerPoint, &vertToFaceMap, pBlk](Polygon& refFace) {
+		pBlk->faceRefFunc(faceId, [this, &centerPoint, &vertToFaceMap, pBlk](const Polygon& refFace) {
 			set<Index3DId> childFaceIds = refFace._splitProductIds;
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
