@@ -79,6 +79,22 @@ Block* ObjectPoolOwnerUser::getBlockPtr()
 	return nullptr;
 }
 
+const Block* ObjectPoolOwnerUser::getOwnerBlockPtr(const Index3D& idx) const
+{
+	auto p = getBlockPtr();
+	if (p)
+		return p->getOwner(idx);
+	return nullptr;
+}
+
+Block* ObjectPoolOwnerUser::getOwnerBlockPtr(const Index3D& idx)
+{
+	auto p = getBlockPtr();
+	if (p)
+		return p->getOwner(idx);
+	return nullptr;
+}
+
 void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
 {
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);

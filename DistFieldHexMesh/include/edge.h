@@ -73,6 +73,7 @@ public:
 	bool isColinearWith(const Block* pBlock, const Edge& other) const;
 	bool isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
+	double calSinDihedralAngle(const Block* pBlock) const;
 	LineSegment getSegment(const Block* pBlock) const;
 
 private:

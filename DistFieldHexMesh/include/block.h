@@ -136,6 +136,8 @@ public:
 
 	void addPolygonToSplitList(const Index3DId& id);
 	void addPolyhedronToSplitList(const Index3DId& id);
+	void addPolygonToPreSplitList(const Index3DId& id);
+	void addPolyhedronToPreSplitList(const Index3DId& id);
 
 	bool isPolygonInSplitList(const Index3DId& id) const;
 	bool isPolyhedronInSplitList(const Index3DId& id) const;
@@ -152,6 +154,8 @@ public:
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
+
+	void dumpObj(const std::vector<Index3DId>& cellIds) const;
 
 	LAMBDA_BLOCK_DECLS
 

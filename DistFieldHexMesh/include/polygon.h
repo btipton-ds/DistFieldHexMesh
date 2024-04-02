@@ -119,6 +119,7 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setNeedToSplit();
+	bool canBeSplitInCell(const Index3DId& cellId) const;
 
 	const std::set<Index3DId>& getSplitProductIds() const;
 
@@ -126,6 +127,8 @@ public:
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
+	size_t getCreatedDuringSplitNumber() const;
+	void setCreatedDuringSplitNumber(size_t val);
 
 	void orient();
 	void pack();
@@ -142,6 +145,7 @@ private:
 	void replaceFaceInCells(const Index3DId& newFaceId) const;
 	void addSplitFaceId(const Index3DId& id) const;
 
+	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
 	std::vector<Index3DId> _vertexIds;
@@ -184,6 +188,16 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 inline const std::set<Index3DId>& Polygon::getSplitProductIds() const
 {
 	return _splitProductIds;
+}
+
+inline size_t Polygon::getCreatedDuringSplitNumber() const
+{
+	return _createdDuringSplitNumber;
+}
+
+inline void Polygon::setCreatedDuringSplitNumber(size_t val)
+{
+	_createdDuringSplitNumber = val;
 }
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);

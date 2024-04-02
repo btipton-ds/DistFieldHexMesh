@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <block.h>
 #include <logger.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -416,9 +417,34 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 
 void Polygon::setNeedToSplit()
 {
-	auto pBlk = getBlockPtr();
-	assert(pBlk->getBlockIdx() == _thisId);
-	pBlk->addPolygonToSplitList(_thisId);
+	auto pOwner = getOwnerBlockPtr(_thisId);
+	pOwner->addPolygonToSplitList(_thisId);
+}
+
+bool Polygon::canBeSplitInCell(const Index3DId& cellId) const
+{
+	const double sinAngleTol = sin(Tolerance::angleTol());
+
+	set<Edge> faceEdges;
+	getEdges(faceEdges);
+	set<Edge> testEdges;
+	cellFunc(cellId, [this, &faceEdges, &testEdges](const Polyhedron& cell) {
+		set<Edge> cellEdges;
+		cell.getEdges(cellEdges, false);
+		for (const auto& faceEdge : faceEdges) {
+			auto iter = cellEdges.find(faceEdge);
+			if (iter != cellEdges.end())
+				testEdges.insert(*iter);
+		}
+	});
+
+	for (const auto& testEdge : testEdges) {
+		double cp = testEdge.calSinDihedralAngle(getBlockPtr());
+		if (cp < sinAngleTol) // faces are tangent, cannot be split in this cell.
+			return false;
+	}
+
+	return true;
 }
 
 void Polygon::splitAtCentroid(Block* pDstBlock) const
@@ -429,7 +455,12 @@ void Polygon::splitAtCentroid(Block* pDstBlock) const
 
 void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 {
+	if (Index3DId(0, 5, 5, 8) == _thisId) {
+		int dbgBreak = 1;
+	}
+
 	assert(getBlockPtr()->isPolygonReference(this));
+	const double sinAngleTol = sin(Tolerance::angleTol());
 
 #if LOGGING_ENABLED
 	assert(getBlockPtr()->isPolygonReference(this));
@@ -472,6 +503,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 	Index3DId facePtId = pDstBlock->addVertex(facePt);
 
+	Vector3d srcNorm = calUnitNormal();
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
 		auto priorEdgeId = edgePtIds[j];
@@ -479,6 +511,10 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		auto nextEdgeId = edgePtIds[i];
 		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
 		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
+
+		Vector3d newNorm = Polygon::calUnitNormalStat(getBlockPtr(), face.getVertexIds());
+		double cp = newNorm.cross(srcNorm).norm();
+		assert(cp < sinAngleTol);
 
 		auto newFaceId = pDstBlock->addFace(face);
 		replaceFaceInCells(newFaceId);
@@ -513,6 +549,9 @@ void Polygon::replaceFaceInCells(const Index3DId& newFaceId) const
 			}
 			LOG(out << Logger::Pad() << "adding f" << newFaceId << " to c" << cell.getId() << "\n");
 			cell.addFace(newFaceId);
+			if (cell.hasTooManySplits()) {
+				getOwnerBlockPtr(cell.getId())->dumpObj({cell.getId()});
+			}
 		});
 	}
 }
@@ -542,7 +581,7 @@ bool Polygon::imprintVertices(bool testOnly)
 
 	map<Edge, Index3DId> splitEdgeVertMap;
 	for (const auto& cellId : allCells) {
-		auto pOwner = getBlockPtr()->getOwner(cellId);
+		auto pOwner = getOwnerBlockPtr(cellId);
 		const auto& tmp = pOwner->getSplitEdgeVertMap();
 		for (const auto& edge : edges) {
 			auto iter = tmp.find(edge);

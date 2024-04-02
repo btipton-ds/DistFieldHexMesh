@@ -424,6 +424,9 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 
 void Block::makeRefPolygonIfRequired(const Index3DId& id)
 {
+	if (Index3DId(0, 8, 4, 2) == id) {
+		int dbgBreak = 1;
+	}
 	assert(id.blockIdx() == _blockIdx);
 	if (_refData._polygons.exists(id))
 		return;
@@ -498,7 +501,10 @@ Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vect
 Index3DId Block::addCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _modelData._polyhedra.findOrAdd(cell);
-	const auto& cellFaceIds = _modelData._polyhedra[cellId].getFaceIds();
+	auto& newCell = _modelData._polyhedra[cellId];
+	size_t splitNum = getVolume()->getSplitNumber();
+	newCell.setCreatedDuringSplitNumber(splitNum);
+	const auto& cellFaceIds = newCell.getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
 		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
@@ -614,9 +620,9 @@ Index3DId Block::addFace(const Polygon& face)
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	auto result = pOwner->_modelData._polygons.findOrAdd(face);
-	if (Index3DId(0, 8, 4, 2) == result) {
-		int dbgBreak = 1;
-	}
+	auto& newFace = pOwner->_modelData._polygons[result];
+	size_t splitNumber = getVolume()->getSplitNumber();
+	newFace.setCreatedDuringSplitNumber(splitNumber);
 	return result;
 }
 
@@ -707,6 +713,24 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	});
 }
 
+void Block::dumpObj(const std::vector<Index3DId>& cellIds) const
+{
+	string path;
+	if (filesystem::exists("D:/DarkSky/Projects")) {
+		path = "D:/DarkSky/Projects/output/objs/";
+	}
+	else {
+		path = "D:/Users/BobT/Documents/Projects/Code/output/objs/";
+	}
+	for (const auto& cellId : cellIds) {
+		cellFunc(cellId, [this, &path](const Polyhedron& cell) {
+			stringstream ss;
+			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
+			_pVol->writeObj(ss.str(), { cell.getId() });
+		});
+	}
+}
+
 void Block::dumpOpenCells() const
 {
 #if DUMP_OPEN_CELL_OBJS
@@ -735,29 +759,38 @@ void Block::splitPolyhedraIfAdjacentRequires_clearIds()
 
 void Block::splitPolyhedraIfAdjacentRequires_chooseFaceIds()
 {
-	_modelData._polyhedra.iterateInOrder([this](Polyhedron& cell) {
-		if (cell.requiresMultipleFaceSplit()) {
-			_preSplitPolyhedraIds.insert(cell.getId());
-		}
+	set<Index3DId> splitCellIds;
+
+	_modelData._polyhedra.iterateInOrder([this, &splitCellIds](const Polyhedron& cell) {
+		if (cell.requiresPreSplit())
+			splitCellIds.insert(cell.getId());
 	});
 
-	if (_preSplitPolyhedraIds.empty())
-		return;
+	for (const auto& cellId : splitCellIds) {
+		addPolyhedronToPreSplitList(cellId);
+		set<Index3DId> faceIds;
+		cellFunc(cellId, [this, &faceIds](const Polyhedron& cell) {
+			faceIds = cell.getFaceIds();
+		});
 
-	for (const auto& cellId : _preSplitPolyhedraIds) {
-		assert(_refData._polyhedra.exists(cellId));
-		const auto& refCell = _refData._polyhedra[cellId];
-		assert(refCell.getFaceIds().size() == 6);
-		for (const auto& faceId : refCell.getFaceIds()) {
-			if (Index3DId(1, 6, 4, 0) == faceId) {
-				int dbgBreak = 1;
-			}
-			auto pOwner = getOwner(faceId);
-			assert(pOwner);
-			assert(faceId.blockIdx() == pOwner->_blockIdx);
-			pOwner->makeRefPolygonIfRequired(faceId);
-			auto& refFace = pOwner->_refData._polygons[faceId];
-			pOwner->_preSplitPolygonIds.insert(faceId);
+		for (const auto& faceId : faceIds) {
+			faceFunc(faceId, [this](const Polygon& face) {
+				if (Index3DId(0, 5, 5, 8) == face.getId()) {
+					int dbgBreak = 1;
+				}
+
+				bool canSplitFace = true;
+				for (const auto& cellId : face.getCellIds()) {
+					cellFunc(cellId, [&canSplitFace, &face](const Polyhedron& cell) {
+						if (face.getCreatedDuringSplitNumber() > cell.getCreatedDuringSplitNumber()) {
+							canSplitFace = false;
+						}
+					});
+				}
+				if (canSplitFace) {
+					addPolygonToPreSplitList(face.getId());
+				}
+			});
 		}
 	}
 }
@@ -772,15 +805,22 @@ void Block::splitPolyhedraIfAdjacentRequires_splitFaces()
 
 	for (const auto& faceId : _preSplitPolygonIds) {
 		assert(faceId.blockIdx() == _blockIdx);
+		makeRefPolygonIfRequired(faceId);
 		assert(_refData._polygons.exists(faceId));
 		auto& refFace = _refData._polygons[faceId];
+		assert(refFace.getCreatedDuringSplitNumber() < getVolume()->getSplitNumber());
 		if (refFace.getSplitProductIds().empty()) {
+			// If the face has not been split, the real face must still exist
+			assert(_modelData._polygons.exists(faceId));
 			refFace.splitAtCentroid(this);
-		}
-
-		if (_modelData._polygons.exists(faceId))
+			if (Index3DId(2, 4, 5, 4) == faceId) {
+				int dbgBreak = 1;
+			}
 			_modelData._polygons.free(faceId);
+		}
 	}
+
+	_preSplitPolygonIds.clear();
 }
 
 void Block::splitPolyhedraIfAdjacentRequires_splitCells()
@@ -789,12 +829,17 @@ void Block::splitPolyhedraIfAdjacentRequires_splitCells()
 		return;
 
 	for (const auto& cellId : _preSplitPolyhedraIds) {
-		_refData._polyhedra[cellId].splitAtCentroid(this);
+		assert(cellId.blockIdx() == _blockIdx);
+		assert((_modelData._polyhedra.exists(cellId)));
+		makeRefPolygonIfRequired(cellId);
+		assert(_refData._polyhedra.exists(cellId));
+		auto& refCell = _refData._polyhedra[cellId];
+		assert(refCell.getCreatedDuringSplitNumber() < getVolume()->getSplitNumber());
+		refCell.splitAtCentroid(this);
 		if (_modelData._polyhedra.exists(cellId))
 			_modelData._polyhedra.free(cellId);
 	}
 
-	_preSplitPolygonIds.clear();
 	_preSplitPolyhedraIds.clear();
 }
 
@@ -810,13 +855,17 @@ void Block::splitPolygonsIfRequired()
 	Logger::Indent indent;
 #endif
 
-	for (const auto& id : _splitPolygonIds) {
-		assert(_modelData._polygons.exists(id));
-		makeRefPolygonIfRequired(id);
-		_refData._polygons[id].splitAtCentroid(this);
+	for (const auto& faceId : _splitPolygonIds) {
+		makeRefPolygonIfRequired(faceId);
+		if (_refData._polygons[faceId].getSplitProductIds().empty()) {
+			_refData._polygons[faceId].splitAtCentroid(this);
 
-		// The real polygon has been replaced with a reference and split, so it no longer exists.
-		_modelData._polygons.free(id);
+			if (Index3DId(2, 4, 5, 4) == faceId) {
+				int dbgBreak = 1;
+			}
+			// The real polygon has been replaced with a reference and split, so it no longer exists.
+			_modelData._polygons.free(faceId);
+		}
 	}
 	_splitPolygonIds.clear();
 }
@@ -834,12 +883,10 @@ void Block::splitPolyhedraIfRequired()
 #endif
 
 	for (const auto& id : _splitPolyhedronIds) {
-		assert(_modelData._polyhedra.exists(id));
 		makeRefPolyhedronIfRequired(id);
 		_refData._polyhedra[id].splitAtCentroid(this);
-
-		// The real _polyhedron has been replaced with a reference and split, so it no longer exists.
-		_modelData._polyhedra.free(id);
+		if (_modelData._polyhedra.exists(id))
+			_modelData._polyhedra.free(id);
 	}
 	_splitPolyhedronIds.clear();
 }
@@ -1008,24 +1055,38 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 
 void Block::addPolygonToSplitList(const Index3DId& id)
 {
-	assert(_blockIdx == id.blockIdx());
-	_splitPolygonIds.insert(id);
+	auto p = getOwner(id);
+	p->_splitPolygonIds.insert(id);
 }
 
 void Block::addPolyhedronToSplitList(const Index3DId& id)
 {
-	assert(_blockIdx == id.blockIdx());
-	_splitPolyhedronIds.insert(id);
+	auto p = getOwner(id);
+	p->_splitPolyhedronIds.insert(id);
+}
+
+void Block::addPolygonToPreSplitList(const Index3DId& id)
+{
+	auto p = getOwner(id);
+	p->_preSplitPolygonIds.insert(id);
+}
+
+void Block::addPolyhedronToPreSplitList(const Index3DId& id)
+{
+	auto p = getOwner(id);
+	p->_preSplitPolyhedraIds.insert(id);
 }
 
 bool Block::isPolygonInSplitList(const Index3DId& id) const
 {
-	return _splitPolygonIds.contains(id);
+	auto p = getOwner(id);
+	return p->_splitPolygonIds.contains(id);
 }
 
 bool Block::isPolyhedronInSplitList(const Index3DId& id) const
 {
-	return _splitPolyhedronIds.contains(id);
+	auto p = getOwner(id);
+	return p->_splitPolyhedronIds.contains(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const

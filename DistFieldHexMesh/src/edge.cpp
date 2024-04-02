@@ -196,6 +196,19 @@ bool Edge::isConnectedTo(const Edge& other) const
 	return false;
 }
 
+double Edge::calSinDihedralAngle(const Block* pBlock) const
+{
+	assert(_faceIds.size() == 2);
+	auto fIter = _faceIds.begin();
+	const auto& faceId0 = *fIter++;
+	const auto& faceId1 = *fIter++;
+	Vector3d norm0, norm1;
+	pBlock->faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
+	pBlock->faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
+	double cp = norm1.cross(norm0).norm();
+	return cp;
+}
+
 LineSegment Edge::getSegment(const Block* pBlock) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);

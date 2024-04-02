@@ -33,7 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-const bool FixedPt::operator < (const FixedPt& rhs) const
+bool FixedPt::operator < (const FixedPt& rhs) const
 {
 	for (size_t idx = 0; idx < 3; idx++) {
 		if ((*this)[idx] < rhs[idx])

@@ -242,6 +242,7 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
+	_splitNumber = 0;
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
 	bb.growPercent(0.0125);
@@ -394,11 +395,12 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
 	if (options._processPartialSplits) {
-		splitIfAdjacentRequiresIt(multiCore);
+		splitIfAdjacentRequiresIt(false && multiCore);
 		// We need to imprint TJoints because these splits, may split edges in adjacent cells
 		imprintTJointVertices(multiCore);
 	}
 
+	_splitNumber++;
 	splitTopology(multiCore);
 
 	if (options._processEdgesWithTVertices)

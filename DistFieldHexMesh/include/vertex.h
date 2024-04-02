@@ -88,7 +88,7 @@ public:
 	FixedPt(const FixedPt& src) = default;
 	FixedPt(const Vector3d& pt);
 
-	const bool operator < (const FixedPt& rhs) const;
+	bool operator < (const FixedPt& rhs) const;
 
 };
 

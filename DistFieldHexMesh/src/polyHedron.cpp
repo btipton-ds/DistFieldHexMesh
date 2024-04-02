@@ -314,46 +314,20 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::requiresMultipleFaceSplit() const
+bool Polyhedron::requiresPreSplit() const
 {
-	if (_faceIds.size() > 6) {
-		int dbgBreak = 1;
-	}
-	set<Edge> edges;
-	getEdges(edges, false);
-	bool result = false;
 	for (const auto& faceId : _faceIds) {
-		if (!getBlockPtr()->isPolygonInSplitList(faceId)) {
-			faceFunc(faceId, [this, &edges, &result](const Polygon& face) {
-				const double sinTol = sin(Tolerance::angleTol());
-				const auto& vertIds = face.getVertexIds();
-				for (size_t i = 0; i < vertIds.size(); i++) {
-					size_t j = (i + 1) % vertIds.size();
-					auto iter = edges.find(Edge(vertIds[i], vertIds[j]));
-					if (iter != edges.end()) {
-						const auto& edge = *iter;
-						const auto& faceIds = iter->getFaceIds();
-						assert(faceIds.size() == 2);
-						auto fIter = faceIds.begin();
-						const auto& faceId0 = *fIter++;
-						const auto& faceId1 = *fIter++;
-						Vector3d norm0, norm1;
-						faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
-						faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
-						double cp = norm1.cross(norm0).norm();
-						if (cp < sinTol) {
-							result = true;
-							break;
-						}
-					}
-				}
+		auto p = getBlockPtr();
+		if (p->isPolygonInSplitList(faceId)) {
+			bool result;
+			faceFunc(faceId, [this, &result](const Polygon& face) {
+				result = face.getCreatedDuringSplitNumber() > getCreatedDuringSplitNumber();
 			});
+			if (result)
+				return true;
 		}
-		if (result)
-			break;
 	}
-
-	return result;
+	return false;
 }
 
 void Polyhedron::splitAtCentroid(Block* pDstBlock) const
@@ -366,7 +340,6 @@ void Polyhedron::splitAtCentroid(Block* pDstBlock) const
 void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) const
 {
 	assert(pDstBlock);
-	assert(getBlockPtr()->polyhedronExists(TS_REAL, _thisId));
 	assert(getBlockPtr()->isPolyhedronReference(this));
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -469,7 +442,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 
 void Polyhedron::setNeedToSplitAtCentroid()
 {
-	if (getBlockPtr()->isPolyhedronInSplitList(_thisId))
+	if (getBlockPtr()->isPolygonInSplitList(_thisId))
 		return;
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -705,6 +678,73 @@ bool Polyhedron::isClosed() const
 	return result;
 }
 
+namespace
+{
+
+	class FixedPlane {
+	public:
+		FixedPlane(const Plane& src)
+			: _origin(src._origin)
+			, _normal(src._normal)
+		{
+		}
+
+		bool operator < (const FixedPlane& rhs) const
+		{
+			if (_origin < rhs._origin)
+				return true;
+			else if (rhs._origin < _origin)
+				return false;
+
+			const double sinAngleTol = sin(Tolerance::angleTol());
+			Vector3d n0(FixedPt::toDbl(_normal)), n1(FixedPt::toDbl(rhs._normal));
+			double cp = n1.cross(n0).norm();
+
+			if (cp < sinAngleTol)
+				return false;
+
+			if (_normal < rhs._normal)
+				return true;
+			else if (rhs._normal < _normal)
+				return false;
+			return false;
+		}
+
+	private:
+		FixedPt _origin, _normal;
+	};
+}
+
+bool Polyhedron::hasTooManySplits() const
+{
+	if (_faceIds.size() > 24) {
+		return true;
+	}
+	
+	map<FixedPlane, set<Index3DId>> faceSetMap;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &faceSetMap](const Polygon& face) {
+			Vector3d n = face.calUnitNormal();
+			Vector3d origin = face.calCentroid();
+			FixedPlane pl(Plane(origin, n));
+			auto iter = faceSetMap.find(pl);
+			if (iter == faceSetMap.end()) {
+				iter = faceSetMap.insert(make_pair(pl, set<Index3DId>())).first;
+			}
+			auto& faceIds = iter->second;
+			faceIds.insert(face.getId());
+		});
+
+	}
+
+	for (const auto& pair : faceSetMap) {
+		if (pair.second.size() > 4)
+			return true;
+	}
+	
+	return false;
+}
+
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
@@ -723,6 +763,9 @@ bool Polyhedron::verifyTopology() const
 	}
 
 	if (!isClosed())
+		valid = false;
+
+	if (!hasTooManySplits())
 		valid = false;
 #endif // _DEBUG 
 

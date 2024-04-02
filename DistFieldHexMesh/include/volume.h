@@ -123,6 +123,7 @@ private:
 	void imprintTJointVertices(bool multiCore);
 	void fixLinkages(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
+	size_t getSplitNumber() const;
 
 	void findFeatures();
 	void findSharpVertices();
@@ -139,6 +140,8 @@ private:
 	void runLambda(L fLambda, bool multiCore, unsigned int stride = 2);
 
 	static Index3D s_volDim;
+
+	size_t _splitNumber = 0;
 
 	CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
@@ -208,5 +211,11 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 	return _sharpEdgeIndices;
 
 }
+
+inline size_t Volume::getSplitNumber() const
+{
+	return _splitNumber;
+}
+
 
 } // end namespace DFHM
