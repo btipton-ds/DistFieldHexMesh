@@ -88,7 +88,6 @@ public:
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
 	void unlinkFromCell(const Index3DId& cellId);
-	void clearCellIds();
 	size_t numCells() const;
 	const std::set<Index3DId>& getCellIds() const;
 
@@ -102,7 +101,6 @@ public:
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool verifyUnique() const;
-	bool verifyVertsConvex() const;
 	bool verifyTopology() const;
 	bool addRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
@@ -158,19 +156,6 @@ inline bool Polygon::verifyUnique() const
 	return verifyUniqueStat(_vertexIds);
 }
 
-inline bool Polygon::verifyVertsConvex() const
-{
-	return verifyVertsConvexStat(getBlockPtr(), _vertexIds);
-}
-
-inline void Polygon::clearCellIds()
-{
-	if (_cellIds.contains(Index3DId(4, 6, 0, 5))) {
-		int dbgBreak = 1;
-	}
-	_cellIds.clear();
-}
-
 inline size_t Polygon::numCells() const
 {
 	return _cellIds.size();
@@ -199,46 +184,6 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 inline const std::set<Index3DId>& Polygon::getSplitProductIds() const
 {
 	return _splitProductIds;
-}
-
-template<class LAMBDA> 
-inline void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->vertexFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::vertexFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->vertexFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::faceFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::faceFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::faceRefFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->faceRefFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::cellFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::cellFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polygon::cellRefFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->cellRefFunc(id, func);
 }
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);

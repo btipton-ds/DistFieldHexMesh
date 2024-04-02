@@ -153,10 +153,6 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	// All of these MUST be thread safe in the sense that the data structure never moves. It's up to the structure to assure 
-	// its own thread safety. They are passed by reference because if the object is not in storage
-	// that's fatal error for all agorithms and there is no recovery from that.
-
 	LAMBDA_BLOCK_DECLS
 
 private:
@@ -292,67 +288,6 @@ inline const Block::ModelData& Block::data(TopolgyState refState) const
 inline Block::ModelData& Block::data(TopolgyState refState)
 {
 	return refState == TS_REAL ? _modelData : _refData;
-}
-
-//LAMBDA_BLOCK_IMPLS
-template<class LAMBDA> 
-inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) const {
-	auto p = getOwner(id); 
-	func(p->_vertices[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::vertexFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); 
-	func(p->_vertices[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::faceFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); 
-	func(p->_modelData._polygons[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::faceFunc(const Index3DId& id, LAMBDA func) const {
-	const auto p = getOwner(id); 
-	if (p->_modelData._polygons.exists(id)) 
-		func(p->_modelData._polygons[id]); 
-	else 
-		func(p->_refData._polygons[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::faceRefFunc(const Index3DId& id, LAMBDA func) const {
-	const auto p = getOwner(id); 
-	if (p->_refData._polygons.exists(id)) 
-		func(p->_refData._polygons[id]); 
-	else 
-		func(p->_modelData._polygons[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::cellFunc(const Index3DId& id, LAMBDA func) {
-	auto p = getOwner(id); 
-	func(p->_modelData._polyhedra[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::cellFunc(const Index3DId& id, LAMBDA func) const {
-	const auto p = getOwner(id); 
-	if (p->_modelData._polyhedra.exists(id)) 
-		func(p->_modelData._polyhedra[id]); 
-	else 
-		func(p->_refData._polyhedra[id]);
-} 
-
-template<class LAMBDA> 
-inline void Block::cellRefFunc(const Index3DId& id, LAMBDA func) const {
-	const auto p = getOwner(id); 
-	if (p->_refData._polyhedra.exists(id)) 
-		func(p->_refData._polyhedra[id]); 
-	else 
-		func(p->_modelData._polyhedra[id]);
 }
 
 }

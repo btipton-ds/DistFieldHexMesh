@@ -110,47 +110,6 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 	return _faceIds.count(faceId) != 0;
 }
 
-//LAMBDA_CLIENT_IMPLS(Polyhedron)
-template<class LAMBDA> 
-inline void Polyhedron::vertexFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->vertexFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::vertexFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->vertexFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::faceFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::faceFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::faceRefFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->faceRefFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::cellFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::cellFunc(const Index3DId& id, LAMBDA func) {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-template<class LAMBDA> 
-inline void Polyhedron::cellRefFunc(const Index3DId& id, LAMBDA func) const {
-	getBlockPtr()->cellRefFunc(id, func);
-}
-
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
 
 }

@@ -287,7 +287,7 @@ vector<Index3DId> Block::createSubBlocks(TopolgyState refState)
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				auto cellId = addHexCell(_corners.data(), _blockDim, idx, true);
+				auto cellId = addHexCell(_corners.data(), _blockDim, idx, false);
 				if (cellId.isValid())
 					newCells.push_back(cellId);
 			}
@@ -1089,3 +1089,57 @@ Block::ModelData::ModelData(Block* pBlk, const ModelData& src)
 	, _polyhedra(pBlk, src._polyhedra)
 {
 }
+
+//LAMBDA_BLOCK_IMPLS
+void Block::vertexFunc(const Index3DId& id, function<void(const Vertex& obj)> func) const {
+	auto p = getOwner(id); 
+	func(p->_vertices[id]);
+} 
+
+void Block::vertexFunc(const Index3DId& id, function<void(Vertex& obj)> func) {
+	auto p = getOwner(id); 
+	func(p->_vertices[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, function<void(Polygon& obj)> func) {
+	auto p = getOwner(id); 
+	func(p->_modelData._polygons[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_modelData._polygons.exists(id)) 
+		func(p->_modelData._polygons[id]); 
+	else 
+		func(p->_refData._polygons[id]);
+} 
+
+void Block::faceRefFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_refData._polygons.exists(id)) 
+		func(p->_refData._polygons[id]); 
+	else 
+		func(p->_modelData._polygons[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, function<void(Polyhedron& obj)> func) {
+	auto p = getOwner(id); 
+	func(p->_modelData._polyhedra[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_modelData._polyhedra.exists(id)) 
+		func(p->_modelData._polyhedra[id]); 
+	else 
+		func(p->_refData._polyhedra[id]);
+} 
+
+void Block::cellRefFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_refData._polyhedra.exists(id)) 
+		func(p->_refData._polyhedra[id]); 
+	else 
+		func(p->_modelData._polyhedra[id]);
+}
+

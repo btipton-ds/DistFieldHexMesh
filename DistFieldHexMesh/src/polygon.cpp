@@ -687,3 +687,36 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 
 	return out;
 }
+
+//LAMBDA_CLIENT_IMPLS(Polygon)
+void Polygon::vertexFunc(const Index3DId& id, std::function<void(const Vertex& obj)> func) const {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+void Polygon::vertexFunc(const Index3DId& id, std::function<void(Vertex& obj)> func) {
+	getBlockPtr()->vertexFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, std::function<void(Polygon& obj)> func) {
+	getBlockPtr()->faceFunc(id, func);
+} 
+
+void Polygon::faceRefFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
+	getBlockPtr()->faceRefFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
+	getBlockPtr()->cellFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, std::function<void(Polyhedron& obj)> func) {
+	getBlockPtr()->cellFunc(id, func);
+} 
+
+void Polygon::cellRefFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
+	getBlockPtr()->cellRefFunc(id, func);
+}
