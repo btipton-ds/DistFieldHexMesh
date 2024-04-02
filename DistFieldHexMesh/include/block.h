@@ -201,6 +201,9 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
+	bool wasPolygonSplit(const Index3DId& id) const;
+	bool wasPolyhedronSplit(const Index3DId& id) const;
+
 	void splitPolyhedraIfAdjacentRequires_clearIds();
 	void splitPolyhedraIfAdjacentRequires_chooseFaceIds();
 	void splitPolyhedraIfAdjacentRequires_splitFaces();

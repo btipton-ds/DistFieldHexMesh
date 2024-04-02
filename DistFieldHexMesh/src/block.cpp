@@ -751,6 +751,28 @@ void Block::dumpOpenCells() const
 #endif
 }
 
+bool Block::wasPolygonSplit(const Index3DId& id) const
+{
+	size_t curSplitNum = getVolume()->getSplitNumber();
+	if (_modelData._polygons.exists(id) && _modelData._polygons[id].getCreatedDuringSplitNumber() == curSplitNum)
+		return true;
+	if (_refData._polygons.exists(id) && _refData._polygons[id].getCreatedDuringSplitNumber() == curSplitNum)
+		return true;
+
+	return false;
+}
+
+bool Block::wasPolyhedronSplit(const Index3DId& id) const
+{
+	size_t curSplitNum = getVolume()->getSplitNumber();
+	if (_modelData._polyhedra.exists(id) && _modelData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
+		return true;
+	if (_refData._polyhedra.exists(id) && _refData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
+		return true;
+
+	return false;
+}
+
 void Block::splitPolyhedraIfAdjacentRequires_clearIds()
 {
 	_preSplitPolygonIds.clear();
@@ -805,6 +827,9 @@ void Block::splitPolyhedraIfAdjacentRequires_splitFaces()
 
 	for (const auto& faceId : _preSplitPolygonIds) {
 		assert(faceId.blockIdx() == _blockIdx);
+		if (wasPolygonSplit(faceId))
+			continue;
+
 		makeRefPolygonIfRequired(faceId);
 		assert(_refData._polygons.exists(faceId));
 		auto& refFace = _refData._polygons[faceId];
@@ -829,6 +854,9 @@ void Block::splitPolyhedraIfAdjacentRequires_splitCells()
 		return;
 
 	for (const auto& cellId : _preSplitPolyhedraIds) {
+		if (wasPolyhedronSplit(cellId))
+			continue;
+
 		assert(cellId.blockIdx() == _blockIdx);
 		assert((_modelData._polyhedra.exists(cellId)));
 		makeRefPolygonIfRequired(cellId);
@@ -856,6 +884,9 @@ void Block::splitPolygonsIfRequired()
 #endif
 
 	for (const auto& faceId : _splitPolygonIds) {
+		if (!polygonExists(TS_REAL, faceId))
+			continue;
+
 		makeRefPolygonIfRequired(faceId);
 		if (_refData._polygons[faceId].getSplitProductIds().empty()) {
 			_refData._polygons[faceId].splitAtCentroid(this);
@@ -883,6 +914,9 @@ void Block::splitPolyhedraIfRequired()
 #endif
 
 	for (const auto& id : _splitPolyhedronIds) {
+		if (!polyhedronExists(TS_REAL, id))
+			continue;
+
 		makeRefPolyhedronIfRequired(id);
 		_refData._polyhedra[id].splitAtCentroid(this);
 		if (_modelData._polyhedra.exists(id))
