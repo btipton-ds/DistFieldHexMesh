@@ -395,9 +395,11 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
 	if (options._processPartialSplits) {
-		splitIfAdjacentRequiresIt(false && multiCore);
-		// We need to imprint TJoints because these splits, may split edges in adjacent cells
-		imprintTJointVertices(multiCore);
+		bool didSplits = doPresplits(multiCore);
+		while (didSplits) {
+			didSplits = doPresplits(multiCore);
+		}
+		int dbgBreak = 1;
 	}
 
 	_splitNumber++;
@@ -410,35 +412,45 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 //	fixLinkages(multiCore);
 }
 
-void Volume::splitIfAdjacentRequiresIt(bool multiCore)
+bool Volume::doPresplits(bool multiCore)
 {
+	atomic<bool> didSplits = false;
+	runLambda([this, &didSplits](size_t linearIdx)->bool {
+		if (_blocks[linearIdx]) {
+			_blocks[linearIdx]->doPresplits_clearIds();
+		}
+		return true;
+	}, false && multiCore);
+
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_clearIds();
+			_blocks[linearIdx]->doPresplits_chooseIds();
 		}
 		return true;
 	}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
+	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_chooseFaceIds();
+			if (_blocks[linearIdx]->doPresplits_splitPolygons())
+				didSplits = true;
 		}
 		return true;
 	}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
+	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_splitFaces();
+			if (_blocks[linearIdx]->doPresplits_splitPolyhedra())
+				didSplits = true;
 		}
 		return true;
 	}, multiCore);
 
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfAdjacentRequires_splitCells();
-		}
-		return true;
-	}, multiCore);
+	// We need to imprint TJoints because these splits, may split edges in adjacent cells
+	imprintTJointVertices(multiCore);
+
+	assert(verifyTopology(multiCore));
+
+	return didSplits;
 }
 
 void Volume::splitTopology(bool multiCore)

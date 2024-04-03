@@ -204,10 +204,10 @@ private:
 	bool wasPolygonSplit(const Index3DId& id) const;
 	bool wasPolyhedronSplit(const Index3DId& id) const;
 
-	void splitPolyhedraIfAdjacentRequires_clearIds();
-	void splitPolyhedraIfAdjacentRequires_chooseFaceIds();
-	void splitPolyhedraIfAdjacentRequires_splitFaces();
-	void splitPolyhedraIfAdjacentRequires_splitCells();
+	void doPresplits_clearIds();
+	void doPresplits_chooseIds();
+	bool doPresplits_splitPolygons();
+	bool doPresplits_splitPolyhedra();
 
 	void splitPolygonsIfRequired();
 	void splitPolyhedraIfRequired();

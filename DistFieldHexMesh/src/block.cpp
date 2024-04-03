@@ -447,13 +447,13 @@ void Block::makeRefPolygonIfRequired(const Index3DId& id)
 void Block::makeRefPolyhedronIfRequired(const Index3DId& id)
 {
 	assert(id.blockIdx() == _blockIdx);
-	if (_refData._polyhedra.exists(id))
+	if (polyhedronExists(TS_REFERENCE, id))
 		return;
-	assert(_modelData._polyhedra.exists(id));
+	assert(polyhedronExists(TS_REAL, id));
 	const auto& temp = _modelData._polyhedra[id];
 	assert(temp.getFaceIds().size() == 6);
 	_refData._polyhedra.findOrAdd(temp, id);
-	assert(_refData._polyhedra.exists(id));
+	assert(polyhedronExists(TS_REFERENCE, id));
 }
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
@@ -765,25 +765,28 @@ bool Block::wasPolygonSplit(const Index3DId& id) const
 bool Block::wasPolyhedronSplit(const Index3DId& id) const
 {
 	size_t curSplitNum = getVolume()->getSplitNumber();
-	if (_modelData._polyhedra.exists(id) && _modelData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
+	if (polyhedronExists(TS_REAL, id) && _modelData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
 		return true;
-	if (_refData._polyhedra.exists(id) && _refData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
+	if (polyhedronExists(TS_REFERENCE, id) && _refData._polyhedra[id].getCreatedDuringSplitNumber() == curSplitNum)
 		return true;
 
 	return false;
 }
 
-void Block::splitPolyhedraIfAdjacentRequires_clearIds()
+void Block::doPresplits_clearIds()
 {
 	_preSplitPolygonIds.clear();
 	_preSplitPolyhedraIds.clear();
 }
 
-void Block::splitPolyhedraIfAdjacentRequires_chooseFaceIds()
+void Block::doPresplits_chooseIds()
 {
 	set<Index3DId> splitCellIds;
 
 	_modelData._polyhedra.iterateInOrder([this, &splitCellIds](const Polyhedron& cell) {
+		if (Index3DId(4, 4, 2, 5) == cell.getId()) {
+			int dbgBreak = 1;
+		}
 		if (cell.requiresPreSplit())
 			splitCellIds.insert(cell.getId());
 	});
@@ -796,6 +799,9 @@ void Block::splitPolyhedraIfAdjacentRequires_chooseFaceIds()
 		});
 
 		for (const auto& faceId : faceIds) {
+			if (Index3DId(4, 4, 2, 5) == cellId && Index3DId(4, 4, 2, 8) == faceId) {
+				int dbgBreak = 1;
+			}
 			faceFunc(faceId, [this](const Polygon& face) {
 				if (Index3DId(0, 5, 5, 8) == face.getId()) {
 					int dbgBreak = 1;
@@ -817,13 +823,13 @@ void Block::splitPolyhedraIfAdjacentRequires_chooseFaceIds()
 	}
 }
 
-void Block::splitPolyhedraIfAdjacentRequires_splitFaces()
+bool Block::doPresplits_splitPolygons()
 {
 	if (Index3D(1, 6, 4) == _blockIdx) {
 		int dbgBreak = 1;
 	}
 	if (_preSplitPolygonIds.empty())
-		return;
+		return false;
 
 	for (const auto& faceId : _preSplitPolygonIds) {
 		assert(faceId.blockIdx() == _blockIdx);
@@ -846,29 +852,32 @@ void Block::splitPolyhedraIfAdjacentRequires_splitFaces()
 	}
 
 	_preSplitPolygonIds.clear();
+
+	return true;
 }
 
-void Block::splitPolyhedraIfAdjacentRequires_splitCells()
+bool Block::doPresplits_splitPolyhedra()
 {
 	if (_preSplitPolyhedraIds.empty())
-		return;
+		return false;
 
 	for (const auto& cellId : _preSplitPolyhedraIds) {
 		if (wasPolyhedronSplit(cellId))
 			continue;
 
 		assert(cellId.blockIdx() == _blockIdx);
-		assert((_modelData._polyhedra.exists(cellId)));
-		makeRefPolygonIfRequired(cellId);
-		assert(_refData._polyhedra.exists(cellId));
+		assert(polyhedronExists(TS_REAL, cellId));
+		makeRefPolyhedronIfRequired(cellId);
+		assert(polyhedronExists(TS_REFERENCE, cellId));
 		auto& refCell = _refData._polyhedra[cellId];
 		assert(refCell.getCreatedDuringSplitNumber() < getVolume()->getSplitNumber());
 		refCell.splitAtCentroid(this);
-		if (_modelData._polyhedra.exists(cellId))
+		if (polyhedronExists(TS_REAL, cellId))
 			_modelData._polyhedra.free(cellId);
 	}
 
 	_preSplitPolyhedraIds.clear();
+	return true;
 }
 
 void Block::splitPolygonsIfRequired()
@@ -919,7 +928,7 @@ void Block::splitPolyhedraIfRequired()
 
 		makeRefPolyhedronIfRequired(id);
 		_refData._polyhedra[id].splitAtCentroid(this);
-		if (_modelData._polyhedra.exists(id))
+		if (polyhedronExists(TS_REAL, id))
 			_modelData._polyhedra.free(id);
 	}
 	_splitPolyhedronIds.clear();
@@ -1103,12 +1112,18 @@ void Block::addPolygonToPreSplitList(const Index3DId& id)
 {
 	auto p = getOwner(id);
 	p->_preSplitPolygonIds.insert(id);
+
+	// A schedule split happened early, don't split again
+	p->_splitPolygonIds.erase(id);
 }
 
 void Block::addPolyhedronToPreSplitList(const Index3DId& id)
 {
 	auto p = getOwner(id);
 	p->_preSplitPolyhedraIds.insert(id);
+
+	// A schedule split happened early, don't split again
+	p->_splitPolyhedronIds.erase(id);
 }
 
 bool Block::isPolygonInSplitList(const Index3DId& id) const
@@ -1237,4 +1252,3 @@ void Block::cellRefFunc(const Index3DId& id, function<void(const Polyhedron& obj
 	else 
 		func(p->_modelData._polyhedra[id]);
 }
-

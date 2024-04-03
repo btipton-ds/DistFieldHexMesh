@@ -316,18 +316,23 @@ bool Polyhedron::intersectsModel() const
 
 bool Polyhedron::requiresPreSplit() const
 {
+	bool result = false;
+	size_t numSplitFaces = 0;
 	for (const auto& faceId : _faceIds) {
 		auto p = getBlockPtr();
 		if (p->isPolygonInSplitList(faceId)) {
-			bool result;
 			faceFunc(faceId, [this, &result](const Polygon& face) {
-				result = face.getCreatedDuringSplitNumber() > getCreatedDuringSplitNumber();
+				if (face.getCreatedDuringSplitNumber() > getCreatedDuringSplitNumber())
+					result = true;
 			});
-			if (result)
-				return true;
 		}
+#if 0
+		if (p->polygonExists(TS_REFERENCE, faceId)) {
+			numSplitFaces++;
+		}
+#endif
 	}
-	return false;
+	return result || numSplitFaces > 1;
 }
 
 void Polyhedron::splitAtCentroid(Block* pDstBlock) const
@@ -765,7 +770,7 @@ bool Polyhedron::verifyTopology() const
 	if (!isClosed())
 		valid = false;
 
-	if (!hasTooManySplits())
+	if (hasTooManySplits())
 		valid = false;
 #endif // _DEBUG 
 

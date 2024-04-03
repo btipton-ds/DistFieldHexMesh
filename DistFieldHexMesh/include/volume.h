@@ -118,7 +118,7 @@ private:
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(const FinishSplitOptions& options, bool multiCore);
-	void splitIfAdjacentRequiresIt(bool multiCore);
+	bool doPresplits(bool multiCore);
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void fixLinkages(bool multiCore);
