@@ -415,19 +415,20 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 bool Volume::doPresplits(bool multiCore)
 {
 	atomic<bool> didSplits = false;
+#if 0
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->doPresplits_clearIds();
 		}
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->doPresplits_chooseIds();
 		}
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -436,6 +437,7 @@ bool Volume::doPresplits(bool multiCore)
 		}
 		return true;
 	}, multiCore);
+#endif
 
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -443,7 +445,7 @@ bool Volume::doPresplits(bool multiCore)
 				didSplits = true;
 		}
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	// We need to imprint TJoints because these splits, may split edges in adjacent cells
 	imprintTJointVertices(multiCore);

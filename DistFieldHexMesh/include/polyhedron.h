@@ -73,6 +73,7 @@ public:
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
+	bool preSplitIfRequired() const;
 	double getShortestEdge() const;
 
 	size_t getCreatedDuringSplitNumber() const;

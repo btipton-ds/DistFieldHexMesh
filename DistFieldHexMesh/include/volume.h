@@ -81,6 +81,7 @@ public:
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 	double getSharpAngleRad() const;
+	size_t getSplitNumber() const;
 
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
@@ -123,7 +124,6 @@ private:
 	void imprintTJointVertices(bool multiCore);
 	void fixLinkages(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
-	size_t getSplitNumber() const;
 
 	void findFeatures();
 	void findSharpVertices();

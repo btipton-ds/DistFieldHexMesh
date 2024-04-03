@@ -142,12 +142,18 @@ public:
 	bool isPolygonInSplitList(const Index3DId& id) const;
 	bool isPolyhedronInSplitList(const Index3DId& id) const;
 
+	void makeRefPolygonIfRequired(const Index3DId& id);
+	void makeRefPolyhedronIfRequired(const Index3DId& id);
+
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	bool isPolygonReference(const Polygon* face) const;
 
 	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
 	bool isPolyhedronReference(const Polyhedron* cell) const;
+
+	void freePolygon(const Index3DId& id);
+	void freePolyhedron(const Index3DId& id);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -188,9 +194,6 @@ private:
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	void makeRefPolygonIfRequired(const Index3DId& id);
-	void makeRefPolyhedronIfRequired(const Index3DId& id);
-
 	Index3DId addFace(const std::vector<Vector3d>& pts);
 	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
 
@@ -201,8 +204,8 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	bool wasPolygonSplit(const Index3DId& id) const;
-	bool wasPolyhedronSplit(const Index3DId& id) const;
+	bool wasPolygonSplitInThisPass(const Index3DId& id) const;
+	bool wasPolyhedronSplitInThisPass(const Index3DId& id) const;
 
 	void doPresplits_clearIds();
 	void doPresplits_chooseIds();
