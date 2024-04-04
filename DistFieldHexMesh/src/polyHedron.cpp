@@ -86,22 +86,12 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 	return false;
 }
 
-void Polyhedron::addFace(const Index3DId& faceId)
+void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 {
 	_faceIds.insert(faceId);
-	faceFunc(faceId, [this](Polygon& face) {
-		face.addCellId(_thisId);
+	faceFunc(faceId, [this, splitLevel](Polygon& face) {
+		face.addCellId(_thisId, splitLevel);
 	});
-}
-
-bool Polyhedron::removeFace(const Index3DId& faceId)
-{
-	if (_faceIds.count(faceId) != 0) {
-		_faceIds.erase(faceId);
-		return true;
-	}
-
-	return false;
 }
 
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
@@ -314,27 +304,6 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::requiresPreSplit() const
-{
-	bool result = false;
-	size_t numSplitFaces = 0;
-	for (const auto& faceId : _faceIds) {
-		auto p = getBlockPtr();
-		if (p->isPolygonInSplitList(faceId)) {
-			faceFunc(faceId, [this, &result](const Polygon& face) {
-				if (face.getCreatedDuringSplitNumber() > getCreatedDuringSplitNumber())
-					result = true;
-			});
-		}
-#if 0
-		if (p->polygonExists(TS_REFERENCE, faceId)) {
-			numSplitFaces++;
-		}
-#endif
-	}
-	return result || numSplitFaces > 1;
-}
-
 void Polyhedron::splitAtCentroid(Block* pDstBlock) const
 {
 	auto ctr = calCentroid();
@@ -362,18 +331,31 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	Index3DId cellMidId = pDstBlock->addVertex(centerPoint);
 	map<Index3DId, set<Index3DId>> vertToFaceMap;
 	for (const auto& faceId : _faceIds) {
-		assert(getBlockPtr()->polygonExists(TS_REFERENCE, faceId));
-		getBlockPtr()->faceRefFunc(faceId, [this, &corners, &centerPoint, &vertToFaceMap, pDstBlock](const Polygon& refFace) {
+		pDstBlock->makeRefPolygonIfRequired(faceId);
+		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
+			pDstBlock->faceFunc(faceId, [this](Polygon& face) {
+				face.removeAllCellIds(); // This face will be deleted, so remove all its cell ids 
+			});
+		} else {
+			int dbgBreak = 1;
+		}
+
+		faceRefFunc(faceId, [this, &corners, &centerPoint, &vertToFaceMap, pDstBlock](const Polygon& refFace) {
+			if (refFace._splitProductIds.empty()) {
+				auto refFaceId = refFace.getId();
+				refFace.splitAtCentroid(pDstBlock);
+				if (polygonExists(TS_REAL, refFaceId)) {
+					pDstBlock->freePolygon(refFaceId);
+				}
+			} else {
+				int dbgBreak = 1;
+			}
 			set<Index3DId> childFaceIds = refFace._splitProductIds;
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
-				assert(getBlockPtr()->polygonExists(TS_REAL, childFaceId));
-				assert(!getBlockPtr()->polygonExists(TS_REFERENCE, childFaceId));
-				pDstBlock->faceFunc(childFaceId, [this, &corners, &vertToFaceMap](Polygon& childFace) {
-					// The ownership of this face changes from the source cell to the new child cells
-					// Remove the source cellId from the child face to make room for the new owner cell's Id
-					childFace.removeCellId(_thisId);
-
+				assert(polygonExists(TS_REAL, childFaceId));
+				assert(!polygonExists(TS_REFERENCE, childFaceId));
+				pDstBlock->faceFunc(childFaceId, [this, &corners, &vertToFaceMap, &refFace](Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						if (corners.contains(vertId)) {
 							auto iter = vertToFaceMap.find(vertId);
@@ -433,6 +415,11 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		}
 
 		assert(vertFaces.size() == 6);
+		for (const auto& faceId : vertFaces) {
+			pDstBlock->faceFunc(faceId, [this](Polygon& face) {
+				face.removeCellId(_thisId);
+			});
+		}
 		Polyhedron newCell(vertFaces);
 
 		auto newCellId = pDstBlock->addCell(newCell);
@@ -448,9 +435,57 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
 }
 
-bool Polyhedron::preSplitIfRequired() const
+void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel)
 {
-#if 1
+	_faceIds.erase(curFaceId);
+
+	faceFunc(curFaceId, [this](Polygon& curFace) {
+		curFace.removeCellId(_thisId);
+	});
+
+	for (const auto& newFaceId : newFaceIds) {
+		_faceIds.insert(newFaceId);
+		faceFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
+			assert(!getBlockPtr()->isPolygonReference(&newFace));
+			newFace.removeCellId(_thisId);
+			newFace.addCellId(_thisId, splitLevel + 1);
+		});
+	}
+
+#ifdef _DEBUG
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](const Polygon& face) {
+			const auto& cellIds = face.getCellIds();
+			auto iter = cellIds.find(_thisId);
+			assert(iter != cellIds.end());
+			assert(iter->getSplitLevel() != -1);
+		});
+	}
+
+#endif // _DEBUG
+
+}
+
+bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
+{
+	blockingCellIds.clear();
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
+			if (face.getSplitLevel(_thisId) > 1) {
+				for (const auto& cellId : face.getCellIds()) {
+					if (cellId != _thisId) {
+						blockingCellIds.insert(cellId);
+					}
+				}
+			}
+		});
+	}
+
+	return blockingCellIds.empty();
+}
+
+bool Polyhedron::needsPreSplit() const
+{
 	if (Index3DId(0, 5, 4, 0) == _thisId) {
 		int dbgBreak = 1;
 	}
@@ -460,10 +495,9 @@ bool Polyhedron::preSplitIfRequired() const
 	set<Index3DId> refFaces;
 	cellRefFunc(_thisId, [&refFaces](const Polyhedron& cell) {
 		refFaces = cell.getFaceIds();
-	});
+		});
 	if (refFaces.size() == _faceIds.size())
 		return false;
-#endif
 
 	map<Index3DId, set<Index3DId>> faceToCellMap;
 	for (const auto& faceId : refFaces) {
@@ -494,7 +528,7 @@ bool Polyhedron::preSplitIfRequired() const
 						});
 				}
 			}
-		});
+			});
 	}
 
 	bool needsSplit = false;
@@ -511,34 +545,38 @@ bool Polyhedron::preSplitIfRequired() const
 		}
 	}
 
-	if (!needsSplit)
-		return false;
+	return needsSplit;
+}
 
-	auto pSrcBlock = const_cast<Block*>(getBlockPtr());
-	pSrcBlock->makeRefPolyhedronIfRequired(_thisId);
-	cellRefFunc(_thisId, [this, pSrcBlock](const Polyhedron& refCell) {
-		for (const auto& faceId : refCell.getFaceIds()) {
-			pSrcBlock->makeRefPolygonIfRequired(faceId);
-			faceRefFunc(faceId, [pSrcBlock](const Polygon& refFace) {
-				if (refFace.getSplitProductIds().empty()) {
-					auto refFaceId = refFace.getId();
-					refFace.splitAtCentroid(pSrcBlock);
-					if (pSrcBlock->polygonExists(TS_REAL, refFaceId)) {
-						pSrcBlock->freePolygon(refFaceId);
-					}
-				}
-			});
-		}
-		refCell.splitAtCentroid(pSrcBlock);
+void Polyhedron::preSplit() const
+{
+	assert(getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId));
+	auto pDstBlock = const_cast<Block*>(getBlockPtr());
+	set<Index3DId> refFaceIds;
+	cellRefFunc(_thisId, [this, &refFaceIds, pDstBlock](const Polyhedron& refCell) {
+		refFaceIds = refCell.getFaceIds();
 	});
 
-	return true;
+	for (const auto& faceId : refFaceIds) {
+		assert(polygonExists(TS_REFERENCE, faceId));
+		faceRefFunc(faceId, [this, pDstBlock](const Polygon& refFace) {
+			if (refFace.getSplitProductIds().empty()) {
+				auto refFaceId = refFace.getId();
+				refFace.splitAtCentroid(pDstBlock);
+				if (polygonExists(TS_REAL, refFaceId)) {
+					pDstBlock->freePolygon(refFaceId);
+				}
+			}
+		});
+	}
+
+	cellRefFunc(_thisId, [pDstBlock](const Polyhedron& refCell) {
+		refCell.splitAtCentroid(pDstBlock);
+	});
 }
 
 void Polyhedron::setNeedToSplitAtCentroid()
 {
-	if (getBlockPtr()->isPolygonInSplitList(_thisId))
-		return;
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
@@ -548,12 +586,6 @@ void Polyhedron::setNeedToSplitAtCentroid()
 	LOG(out << Logger::Pad() << "setNeedToSplitAtCentroid c" << _thisId << "\n");
 
 	getBlockPtr()->addPolyhedronToSplitList(_thisId);
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [](Polygon& face) {
-			face.setNeedToSplit();
-		});
-	}
 }
 
 void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
@@ -676,6 +708,11 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 		return -1;
 	}
 	return 0;
+}
+
+inline bool Polyhedron::polygonExists(TopolgyState refState, const Index3DId& id) const
+{
+	return getBlockPtr()->polygonExists(refState, id);
 }
 
 double Polyhedron::getShortestEdge() const
@@ -815,30 +852,26 @@ bool Polyhedron::hasTooManySplits() const
 	if (_faceIds.size() > 24) {
 		return true;
 	}
-	x
-	// TODO Logic is wrong
-	map<FixedPlane, set<Index3DId>> faceSetMap;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &faceSetMap](const Polygon& face) {
-			Vector3d n = face.calUnitNormal();
-			Vector3d origin = face.calCentroid();
-			FixedPlane pl(Plane(origin, n));
-			auto iter = faceSetMap.find(pl);
-			if (iter == faceSetMap.end()) {
-				iter = faceSetMap.insert(make_pair(pl, set<Index3DId>())).first;
-			}
-			auto& faceIds = iter->second;
-			faceIds.insert(face.getId());
-		});
-
-	}
-
-	for (const auto& pair : faceSetMap) {
-		if (pair.second.size() > 4)
-			return true;
-	}
 	
-	return false;
+	bool result = false;
+
+	/*
+	Logic - 
+	On creation every face in a cell has level 0
+	When a face is split, it's deleted and replaced with faces with split level 1
+	If one of those faces is split, the level becomes 2+
+	Splitting more than once in the same cell is illegal
+	*/
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &result](const Polygon& face) {
+			size_t splitLevel = face.getSplitLevel(_thisId);
+			if (splitLevel > 1)
+				result = true;
+		});
+		if (result)
+			break;
+	}
+	return result;
 }
 
 bool Polyhedron::verifyTopology() const
@@ -847,7 +880,7 @@ bool Polyhedron::verifyTopology() const
 #ifdef _DEBUG 
 
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+		if (polygonExists(TS_REAL, faceId)) {
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
 				if (!face.usedByCell(_thisId))
 					valid = false;
@@ -880,7 +913,7 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 			closed = false;
 	}
 
-	out << "Cell: c" << cell.getId() << (closed ? "CLOSED" : "ERROR NOT CLOSED") << "\n";
+	out << "Cell: c" << cell.getId() << (closed ? " CLOSED" : " ERROR NOT CLOSED") << "\n";
 	{
 		Logger::Indent indent;
 

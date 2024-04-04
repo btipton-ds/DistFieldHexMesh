@@ -134,16 +134,8 @@ public:
 	void addSplitEdgeVert(const Edge& edge , const Index3DId& vertId);
 	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
-	void addPolygonToSplitList(const Index3DId& id);
 	void addPolyhedronToSplitList(const Index3DId& id);
-	void addPolygonToPreSplitList(const Index3DId& id);
-	void addPolyhedronToPreSplitList(const Index3DId& id);
-
-	bool isPolygonInSplitList(const Index3DId& id) const;
 	bool isPolyhedronInSplitList(const Index3DId& id) const;
-
-	void makeRefPolygonIfRequired(const Index3DId& id);
-	void makeRefPolyhedronIfRequired(const Index3DId& id);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
@@ -151,6 +143,9 @@ public:
 
 	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
 	bool isPolyhedronReference(const Polyhedron* cell) const;
+
+	void makeRefPolygonIfRequired(const Index3DId& id);
+	void makeRefPolyhedronIfRequired(const Index3DId& id);
 
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
@@ -204,21 +199,13 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	bool wasPolygonSplitInThisPass(const Index3DId& id) const;
-	bool wasPolyhedronSplitInThisPass(const Index3DId& id) const;
-
-	void doPresplits_clearIds();
-	void doPresplits_chooseIds();
-	bool doPresplits_splitPolygons();
+	void doPreSplit(const Index3DId& cellId);
 	bool doPresplits_splitPolyhedra();
 
-	void splitPolygonsIfRequired();
-	void splitPolyhedraIfRequired();
+	void splitRequiredPolyhedra();
 
 	void imprintTJointVertices();
-	void fixLinkages();
 	
-
 	const ModelData& data(TopolgyState refState) const;
 	ModelData& data(TopolgyState refState);
 
@@ -239,8 +226,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _splitPolygonIds, _splitPolyhedronIds;
-	std::set<Index3DId> _preSplitPolygonIds, _preSplitPolyhedraIds;
+	std::set<Index3DId> _splitPolyhedronIds, _preSplitBlockingPolyhedraIds;
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	ObjectPool<Vertex> _vertices;

@@ -50,6 +50,15 @@ void Polygon::addVertex(const Index3DId& vertId)
 	_needSort = true;
 }
 
+size_t Polygon::getSplitLevel(const Index3DId& cellId) const
+{
+	auto iter = _cellIds.find(cellId);
+	if (iter != _cellIds.end())
+		return iter->getSplitLevel();
+
+	return -1;
+}
+
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
@@ -168,7 +177,9 @@ bool Polygon::isBlockBoundary() const
 	if (_cellIds.size() == 2) {
 		auto iter0 = _cellIds.begin();
 		auto iter1 = iter0++;
-		return (iter0->blockIdx() != iter1->blockIdx());
+		Index3DId id0 = *iter0;
+		Index3DId id1 = *iter1;
+		return (id0.blockIdx() != id1.blockIdx());
 	}
 	return false;
 }
@@ -391,12 +402,18 @@ void Polygon::removeCellId(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
-void Polygon::addCellId(const Index3DId& cellId)
+void Polygon::removeAllCellIds()
+{
+	_cellIds.clear();
+}
+
+void Polygon::addCellId(const Index3DId& cellId, size_t level)
 {
 	if (Index3DId(4, 6, 1, 0) == cellId) {
 		int dbgBreak = 1;
 	}
-	_cellIds.insert(cellId);
+	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
+	_cellIds.insert(CellId_SplitLevel(cellId, level));
 #if 1
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
@@ -413,12 +430,6 @@ void Polygon::addCellId(const Index3DId& cellId)
 void Polygon::unlinkFromCell(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
-}
-
-void Polygon::setNeedToSplit()
-{
-	auto pOwner = getOwnerBlockPtr(_thisId);
-	pOwner->addPolygonToSplitList(_thisId);
 }
 
 bool Polygon::canBeSplitInCell(const Index3DId& cellId) const
@@ -503,22 +514,28 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 	Index3DId facePtId = pDstBlock->addVertex(facePt);
 
+#ifdef _DEBUG
 	Vector3d srcNorm = calUnitNormal();
+#endif // _DEBUG
+
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
 		auto priorEdgeId = edgePtIds[j];
 		auto vertId = _vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
-		Polygon face({ facePtId, priorEdgeId, vertId, nextEdgeId });
-		// Don't need a sourceId. SourceId is only used when a face has imprinted vertices.
+		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId });
+		for (const auto& cellId : _cellIds) {
+			newFace.addCellId(cellId, cellId.getSplitLevel() + 1);
+		}
 
-		Vector3d newNorm = Polygon::calUnitNormalStat(getBlockPtr(), face.getVertexIds());
+#ifdef _DEBUG
+		Vector3d newNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFace.getVertexIds());
 		double cp = newNorm.cross(srcNorm).norm();
 		assert(cp < sinAngleTol);
+#endif // _DEBUG
 
-		auto newFaceId = pDstBlock->addFace(face);
-		replaceFaceInCells(newFaceId);
-		addSplitFaceId(newFaceId);
+		auto newFaceId = pDstBlock->addFace(newFace);
+		addToSplitProductIds(newFaceId);
 
 #if LOGGING_ENABLED
 		faceFunc(newFaceId, [this, &out](const Polygon& newFace) {
@@ -527,45 +544,46 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		});
 #endif
 	}
+
+	for (const auto& cellId : _cellIds) {
+		pDstBlock->makeRefPolyhedronIfRequired(cellId);
+		size_t splitLevel = getSplitLevel(cellId);
+		pDstBlock->cellFunc(cellId, [this, splitLevel](Polyhedron& cell) {
+			cell.replaceFaces(_thisId, _splitProductIds, splitLevel);
+		});
+	}
+
+#ifdef _DEBUG
+	for (const auto& faceId : _splitProductIds) {
+		set<Polygon::CellId_SplitLevel> cellIds;
+		faceFunc(faceId, [&cellIds](const Polygon& childFace) {
+			cellIds = childFace.getCellIds();
+		});
+
+		for (const auto& cellId : cellIds) {
+			cellFunc(cellId, [this, &faceId](const Polyhedron& cell) {
+				assert(cell.containsFace(faceId));
+				if (cell.hasTooManySplits()) {
+					getOwnerBlockPtr(cell.getId())->dumpObj({ cell.getId() });
+				}
+			});
+		}
+	}
+#endif // _DEBUG
+
 	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pst: " << *this);
 }
 
-void Polygon::replaceFaceInCells(const Index3DId& newFaceId) const
-{
-	Block* pBlk = const_cast<Block*> (getBlockPtr());
-
-	auto cellIds = _cellIds; // Work on a copy becuase when we remove this face, cellIds will change
-	for (const auto& cellId : cellIds) {
-		if (!pBlk->polyhedronExists(TS_REAL, cellId))
-			continue;
-		assert(pBlk->polyhedronExists(TS_REFERENCE, cellId));
-		pBlk->cellFunc(cellId, [this, pBlk, &newFaceId](Polyhedron& cell) {
-#if LOGGING_ENABLED
-			auto& out = pBlk->getLogger()->getStream();
-#endif
-			if (cell.containsFace(_thisId)) {
-				LOG(out << Logger::Pad() << "removing f" << _thisId << " from c" << cell.getId() << "\n");
-				cell.removeFace(_thisId);
-			}
-			LOG(out << Logger::Pad() << "adding f" << newFaceId << " to c" << cell.getId() << "\n");
-			cell.addFace(newFaceId);
-			if (cell.hasTooManySplits()) {
-				getOwnerBlockPtr(cell.getId())->dumpObj({cell.getId()});
-			}
-		});
-	}
-}
-
-void Polygon::addSplitFaceId(const Index3DId& id) const
+void Polygon::addToSplitProductIds(const Index3DId& id) const
 {
 	assert(getBlockPtr()->isPolygonReference(this));
-	Polygon* self = const_cast<Polygon*>(this);
-	self->_splitProductIds.insert(id);
+	Polygon* refSelf = const_cast<Polygon*>(this);
+	refSelf->_splitProductIds.insert(id);
 }
 
-bool Polygon::imprintVertices(bool testOnly)
+void Polygon::createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const
 {
-	Block* pBlk = getBlockPtr();
+	auto pBlk = getBlockPtr();
 
 	set<Index3DId> allCells;
 	for (const auto& cellId : _cellIds) {
@@ -573,27 +591,33 @@ bool Polygon::imprintVertices(bool testOnly)
 		cellFunc(cellId, [&allCells](const Polyhedron& cell) {
 			auto tmp = cell.getAdjacentCells(true);
 			allCells.insert(tmp.begin(), tmp.end());
-		});
+			});
 	}
 
 	set<Edge> edges;
 	getEdges(edges);
 
-	map<Edge, Index3DId> splitEdgeVertMap;
 	for (const auto& cellId : allCells) {
 		auto pOwner = getOwnerBlockPtr(cellId);
 		const auto& tmp = pOwner->getSplitEdgeVertMap();
 		for (const auto& edge : edges) {
 			auto iter = tmp.find(edge);
 			if (iter != tmp.end())
-				splitEdgeVertMap.insert(*iter);
+				result.insert(*iter);
 		}
 	}
+}
 
-	if (splitEdgeVertMap.empty())
-		return false;
-	else if (testOnly)
-		return true;
+bool Polygon::needToImprintVertices() const
+{
+	map<Edge, Index3DId> splitEdgeVertMap;
+	createSplitEdgeVertMap(splitEdgeVertMap);
+
+	return !splitEdgeVertMap.empty();
+}
+
+void Polygon::imprintVertices()
+{
 
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -601,6 +625,10 @@ bool Polygon::imprintVertices(bool testOnly)
 
 	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
 #endif
+	auto pBlk = getBlockPtr();
+
+	map<Edge, Index3DId> splitEdgeVertMap;
+	createSplitEdgeVertMap(splitEdgeVertMap);
 
 	// Increment down so insertions do not corrupt order
 	// the vertex is not in this polygon and lies between i and j
@@ -628,8 +656,6 @@ bool Polygon::imprintVertices(bool testOnly)
 	_needSort = true;
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
-
-	return true;
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
@@ -703,20 +729,21 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	{
 		Logger::Indent sp;
 		
-		out << Logger::Pad() << "vertexIds(" << face._vertexIds.size() << "): {";
+		out << Logger::Pad() << "vertexIds: (" << face._vertexIds.size() << "): {";
 		for (const auto& vertId : face._vertexIds) {
 			out << "v" << vertId << " ";
 		}
 		out << "}\n";
 
-		out << Logger::Pad() << "cellIds(" << face._cellIds.size() << "): {";
+		out << Logger::Pad() << "cellIds: (" << face._cellIds.size() << "): {";
 		for (const auto& cellId : face._cellIds) {
-			out << "c" <<cellId << " ";
+			auto sl = face.getSplitLevel(cellId);
+			out << "c" << cellId << ".split: " << sl << " ";
 		}
 		out << "}\n";
 
 		if (!face._splitProductIds.empty()) {
-			out << Logger::Pad() << "splitFaceIds(" << face._splitProductIds.size() << "): {";
+			out << Logger::Pad() << "splitFaceIds: (" << face._splitProductIds.size() << "): {";
 			for (const auto& faceId : face._splitProductIds) {
 				out << "f" << faceId << " ";
 			}
@@ -725,6 +752,27 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	}
 
 	return out;
+}
+
+Polygon::CellId_SplitLevel::CellId_SplitLevel(const Index3DId& cellId, size_t splitLevel)
+	: _cellId(cellId)
+	, _splitLevel(splitLevel)
+{
+}
+
+bool Polygon::CellId_SplitLevel::operator < (const CellId_SplitLevel& rhs) const
+{
+	return _cellId < rhs._cellId;
+}
+
+Polygon::CellId_SplitLevel::operator const Index3DId& () const
+{
+	return _cellId;
+}
+
+size_t Polygon::CellId_SplitLevel::getSplitLevel() const
+{
+	return _splitLevel;
 }
 
 //LAMBDA_CLIENT_IMPLS(Polygon)

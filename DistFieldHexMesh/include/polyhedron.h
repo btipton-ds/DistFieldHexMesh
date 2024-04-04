@@ -46,8 +46,7 @@ public:
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src) = default;
 
-	void addFace(const Index3DId& faceId);
-	bool removeFace(const Index3DId& faceId);
+	void addFace(const Index3DId& faceId, size_t splitLevel);
 	bool containsFace(const Index3DId& faceId) const;
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
@@ -64,7 +63,6 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	bool requiresPreSplit() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
@@ -73,11 +71,13 @@ public:
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
-	bool preSplitIfRequired() const;
+	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);
+	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
+	bool needsPreSplit() const;
+	void preSplit() const;
 	double getShortestEdge() const;
 
-	size_t getCreatedDuringSplitNumber() const;
-	void setCreatedDuringSplitNumber(size_t val);
+	size_t getSplitNumber() const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -98,8 +98,7 @@ private:
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
-
-	size_t _createdDuringSplitNumber = 0;
+	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	bool _needsCurvatureCheck = true;
@@ -115,16 +114,6 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
-}
-
-inline size_t Polyhedron::getCreatedDuringSplitNumber() const
-{
-	return _createdDuringSplitNumber;
-}
-
-inline void Polyhedron::setCreatedDuringSplitNumber(size_t val)
-{
-	_createdDuringSplitNumber = val;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

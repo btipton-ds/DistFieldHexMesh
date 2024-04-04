@@ -81,7 +81,6 @@ public:
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 	double getSharpAngleRad() const;
-	size_t getSplitNumber() const;
 
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
@@ -100,6 +99,7 @@ private:
 	friend class Polyhedron;
 	friend class Block;
 	friend class ObjectPoolOwnerUser;
+	friend class Index3DBase;
 
 	using AxisIndex = Block::AxisIndex;
 
@@ -122,7 +122,6 @@ private:
 	bool doPresplits(bool multiCore);
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
-	void fixLinkages(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
 
 	void findFeatures();
@@ -137,11 +136,9 @@ private:
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
-	void runLambda(L fLambda, bool multiCore, unsigned int stride = 2);
+	void runLambda(L fLambda, bool multiCore);
 
 	static Index3D s_volDim;
-
-	size_t _splitNumber = 0;
 
 	CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
@@ -171,29 +168,19 @@ inline void Volume::setSpan(const Vector3d& span)
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
 {
-	auto idx = calLinearBlockIndex(blockIdx);
-	if (idx < _blocks.size() && _blocks[idx])
-		return _blocks[idx].get();
-
-	return nullptr;
+	auto idx = blockIdx.getLinearIdx(this);
+	return _blocks[idx].get();
 }
 
 inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
-	auto idx = calLinearBlockIndex(blockIdx);
-	if (idx < _blocks.size() && _blocks[idx])
-		return _blocks[idx].get();
-
-	return nullptr;
+	auto idx = blockIdx.getLinearIdx(this);
+	return _blocks[idx].get();
 }
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	const auto& dim = volDim();
-	if (blockIdx.isInBounds(dim))
-		return blockIdx[0] + dim[0] * (blockIdx[1] + dim[1] * blockIdx[2]);
-
-	return -1;
+	return blockIdx[0] + s_volDim[0] * (blockIdx[1] + s_volDim[1] * blockIdx[2]);
 }
 
 inline double Volume::getSharpAngleRad() const
@@ -211,11 +198,5 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 	return _sharpEdgeIndices;
 
 }
-
-inline size_t Volume::getSplitNumber() const
-{
-	return _splitNumber;
-}
-
 
 } // end namespace DFHM

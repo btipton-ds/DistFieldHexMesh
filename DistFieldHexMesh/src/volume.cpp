@@ -242,7 +242,6 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
-	_splitNumber = 0;
 	_pModelTriMesh = pTriMesh;
 	CMesh::BoundingBox bb = pTriMesh->getBBox();
 	bb.growPercent(0.0125);
@@ -402,42 +401,17 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 		int dbgBreak = 1;
 	}
 
-	_splitNumber++;
 	splitTopology(multiCore);
 
 	if (options._processEdgesWithTVertices)
 		imprintTJointVertices(multiCore);
 
 	dumpOpenCells(multiCore);
-//	fixLinkages(multiCore);
 }
 
 bool Volume::doPresplits(bool multiCore)
 {
 	atomic<bool> didSplits = false;
-#if 0
-	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->doPresplits_clearIds();
-		}
-		return true;
-	}, multiCore);
-
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->doPresplits_chooseIds();
-		}
-		return true;
-	}, false && multiCore);
-
-	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			if (_blocks[linearIdx]->doPresplits_splitPolygons())
-				didSplits = true;
-		}
-		return true;
-	}, multiCore);
-#endif
 
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -459,14 +433,7 @@ void Volume::splitTopology(bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolygonsIfRequired();
-		}
-		return true;
-	}, multiCore);
-
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitPolyhedraIfRequired();
+			_blocks[linearIdx]->splitRequiredPolyhedra();
 		}
 		return true;
 	}, multiCore);
@@ -480,16 +447,6 @@ void Volume::imprintTJointVertices(bool multiCore)
 		}
 		return true;
 	},  multiCore);
-}
-
-void Volume::fixLinkages(bool multiCore)
-{
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->fixLinkages();
-		}
-		return true;
-	}, multiCore);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const
@@ -600,7 +557,7 @@ void Volume::consolidateBlocks()
 			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
 				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
 				if (pBlk) {
-					pBlk->_vertices.iterateInOrder([&pts](const Vertex& vert) {
+					pBlk->_vertices.iterateInOrder([&pts](const Index3DId& id, const Vertex& vert) {
 						auto fpt = vert.getFixedPt();
 						assert(pts.count(fpt) == 0);
 						pts.insert(fpt);
@@ -623,13 +580,13 @@ void Volume::consolidateBlocks()
 					pBlk->_baseIdxPolygons = polygonIdx;
 					pBlk->_baseIdxPolyhedra = polyhedronIdx;
 
-					pBlk->_vertices.iterateInOrder([&vertIdx](const Vertex& v) {
+					pBlk->_vertices.iterateInOrder([&vertIdx](const Index3DId& id, const Vertex& v) {
 						vertIdx++;
 					});
-					pBlk->_modelData._polygons.iterateInOrder([&polygonIdx](const Polygon& v) {
+					pBlk->_modelData._polygons.iterateInOrder([&polygonIdx](const Index3DId& id, const Polygon& v) {
 						polygonIdx++;
 					});
-					pBlk->_modelData._polyhedra.iterateInOrder([&polyhedronIdx](const Polyhedron& v) {
+					pBlk->_modelData._polyhedra.iterateInOrder([&polyhedronIdx](const Index3DId& id, const Polyhedron& v) {
 						polyhedronIdx++;
 					});
 				}
@@ -646,7 +603,7 @@ void Volume::consolidateBlocks()
 				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
 				if (!pBlk)
 					continue;
-				pBlk->_modelData._polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](Polygon& face) {
+				pBlk->_modelData._polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](const Index3DId& id, Polygon& face) {
 					face.orient();
 					faceIndices.push_back(faces.size());
 					for (const auto& vertId : face.getVertexIds()) {
@@ -765,7 +722,7 @@ void Volume::writePolyMeshPoints(const string& dirName) const
 					continue;
 				pBlk->_baseIdxVerts = numPoints;
 				const auto& blkVerts = pBlk->_vertices;
-				blkVerts.iterateInOrder([&numPoints](const Vertex& vert) {
+				blkVerts.iterateInOrder([&numPoints](const Index3DId& id, const Vertex& vert) {
 					numPoints++;
 				});
 			}
@@ -781,7 +738,7 @@ void Volume::writePolyMeshPoints(const string& dirName) const
 				if (!pBlk)
 					continue;
 				const auto& blkVerts = pBlk->_vertices;
-				blkVerts.iterateInOrder([&numPoints, &out](const Vertex& vert) {
+				blkVerts.iterateInOrder([&numPoints, &out](const Index3DId& id, const Vertex& vert) {
 					char openParen = '(';
 					char closeParen = ')';
 					auto pt = vert.getPoint();
@@ -818,7 +775,7 @@ void Volume::writePolyMeshFaces(const string& dirName) const
 					continue;
 				pBlk->_baseIdxPolygons = startIndices.size();
 				const auto& blkPolygons = pBlk->_modelData._polygons;
-				blkPolygons.iterateInOrder([&startIndices](const Polygon& face) {
+				blkPolygons.iterateInOrder([&startIndices](const Index3DId& id, const Polygon& face) {
 					const auto& vertIds = face.getVertexIds();
 					startIndices.push_back(vertIds.size());
 				});
@@ -878,8 +835,9 @@ void Volume::runLambda(L fLambda, bool multiCore) const
 }
 
 template<class L>
-void Volume::runLambda(L fLambda, bool multiCore, unsigned int stride)
+void Volume::runLambda(L fLambda, bool multiCore)
 {
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
 
 	startOperation();

@@ -72,6 +72,21 @@ struct VertEdgePair {
 
 class Polygon : public ObjectPoolOwnerUser {
 public:
+	class CellId_SplitLevel {
+	public:
+		CellId_SplitLevel(const Index3DId& _cellId = Index3DId(), size_t splitLevel = 0);
+		CellId_SplitLevel(const CellId_SplitLevel& src) = default;
+
+		bool operator < (const CellId_SplitLevel& rhs) const;
+		operator const Index3DId& () const;
+
+		size_t getSplitLevel() const;
+
+	private:
+		Index3DId _cellId;
+		size_t _splitLevel;
+	};
+
 	static bool verifyUniqueStat(const std::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
@@ -85,13 +100,15 @@ public:
 
 	void addVertex(const Index3DId& vertId);
 
-	void addCellId(const Index3DId& cellId);
+	void addCellId(const Index3DId& cellId, size_t level);
 	void removeCellId(const Index3DId& cellId);
+	void removeAllCellIds();
 	void unlinkFromCell(const Index3DId& cellId);
 	size_t numCells() const;
-	const std::set<Index3DId>& getCellIds() const;
+	const std::set<CellId_SplitLevel>& getCellIds() const;
 
 	bool usedByCell(const Index3DId& cellId) const;
+	size_t getSplitLevel(const Index3DId& cellId) const;
 	bool hasSplitEdges() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
@@ -118,12 +135,13 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
-	void setNeedToSplit();
 	bool canBeSplitInCell(const Index3DId& cellId) const;
 
 	const std::set<Index3DId>& getSplitProductIds() const;
 
-	bool imprintVertices(bool testOnly);
+	void createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const;
+	bool needToImprintVertices() const;
+	void imprintVertices();
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
@@ -142,14 +160,13 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	void replaceFaceInCells(const Index3DId& newFaceId) const;
-	void addSplitFaceId(const Index3DId& id) const;
+	void addToSplitProductIds(const Index3DId& id) const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
 
 	std::vector<Index3DId> _vertexIds;
-	std::set<Index3DId> _cellIds;
+	std::set<CellId_SplitLevel> _cellIds;
 
 	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
@@ -165,14 +182,14 @@ inline size_t Polygon::numCells() const
 	return _cellIds.size();
 }
 
-inline const std::set<Index3DId>& Polygon::getCellIds() const
+inline const std::set<Polygon::CellId_SplitLevel>& Polygon::getCellIds() const
 {
 	return _cellIds;
 }
 
 inline bool Polygon::usedByCell(const Index3DId& cellId) const
 {
-	return _cellIds.count(cellId) != 0;
+	return _cellIds.count(CellId_SplitLevel(cellId)) != 0;
 }
 
 inline bool Polygon::isOuter() const

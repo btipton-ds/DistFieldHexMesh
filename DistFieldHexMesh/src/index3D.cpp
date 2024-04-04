@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <index3D.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -42,6 +43,14 @@ bool Index3DBase::operator < (const Index3DBase& rhs) const
 	}
 	assert((*this) == rhs);
 	return false;
+}
+
+size_t Index3DBase::getLinearIdx(const Volume* vol) const
+{
+	if (_linearIdx == -1) {
+		_linearIdx = vol->calLinearBlockIndex(*this);
+	}
+	return _linearIdx;
 }
 
 void Index3DBase::clampInBounds(size_t bound)

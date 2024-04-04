@@ -202,7 +202,7 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	, _availableIndices(src._availableIndices)
 	, _objectSegs(src._objectSegs)
 {
-	iterateInOrder([this](T& obj) {
+	iterateInOrder([this](const Index3DId& id, T& obj) {
 		obj._pPoolOwner = _pPoolOwner;
 	});
 }
@@ -236,7 +236,7 @@ inline bool ObjectPool<T>::calIndices(size_t index, size_t& segNum, size_t& segI
 {
 	segNum = index / _objectSegmentSize;
 	segIdx = index % _objectSegmentSize;
-	return segNum < _objectSegs.size() && segIdx < (*_objectSegs[segNum]).size();
+	return segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size();
 }
 
 template<class T>
@@ -519,12 +519,14 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
-	auto temp = _idToIndexMap; // Don't modify this while we're in the loop
-	for (size_t id = 0; id < temp.size(); id++) {
-		size_t index = temp[id];
+	auto blkIdx = _pPoolOwner->getBlockIdx();
+	size_t num = _idToIndexMap.size(); // _idToIndexMap can't decrease in size
+	for (size_t idx = 0; idx < num; idx++) {
+		size_t index = _idToIndexMap[idx];
 		if (index != -1) {
+			Index3DId id(blkIdx, idx);
 			auto p = getEntry(index);
-			fLambda(*p);
+			fLambda(id, *p);
 		}
 	}
 }
@@ -533,12 +535,14 @@ template<class T>
 template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
-	auto temp = _idToIndexMap; // Don't modify this while we're in the loop
-	for (size_t id = 0; id < temp.size(); id++) {
-		size_t index = temp[id];
+	auto blkIdx = _pPoolOwner->getBlockIdx();
+	size_t num = _idToIndexMap.size(); // _idToIndexMap can't decrease in size
+	for (size_t idx = 0; idx < num; idx++) {
+		size_t index = _idToIndexMap[idx];
 		if (index != -1) {
+			Index3DId id(blkIdx, idx);
 			auto p = getEntry(index);
-			fLambda(*p);
+			fLambda(id , *p);
 		}
 	}
 }

@@ -77,15 +77,15 @@ add_executable (DistFieldHexMesh
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
-	
 	"src/vertex.cpp"
 	"src/volume.cpp"
+	"src/logger.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- 	   "src/logger.cpp")
+)
 
 add_executable (TestDFM         
 	
@@ -96,10 +96,11 @@ add_executable (TestDFM
 	"src/mainTest.cpp"
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
-	"src/polyHedron.cpp"
-	
+	"src/polyHedron.cpp"	
 	"src/vertex.cpp"
-	"src/volume.cpp" 	  "src/logger.cpp")
+	"src/volume.cpp"
+	"src/logger.cpp"
+)
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
