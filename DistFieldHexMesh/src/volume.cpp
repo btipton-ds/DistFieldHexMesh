@@ -419,7 +419,7 @@ bool Volume::doPresplits(bool multiCore)
 				didSplits = true;
 		}
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	// We need to imprint TJoints because these splits, may split edges in adjacent cells
 	imprintTJointVertices(multiCore);

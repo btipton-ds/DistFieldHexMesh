@@ -752,7 +752,6 @@ void Block::dumpOpenCells() const
 void Block::doPreSplit(const Index3DId& cellId)
 {
 	assert(polyhedronExists(TS_REAL, cellId));
-	makeRefPolyhedronIfRequired(cellId);
 	auto& refCell = _refData._polyhedra[cellId];
 	refCell.splitAtCentroid(this);
 	freePolyhedron(cellId);
@@ -772,6 +771,7 @@ bool Block::doPresplits_splitPolyhedra()
 			result = true;
 			set<Index3DId> blockingCellIds;
 			if (modelCell.canSplit(blockingCellIds)) {
+				makeRefPolyhedronIfRequired(cellId);
 				doPreSplit(cellId);
 			}
 		}
@@ -815,8 +815,9 @@ void Block::imprintTJointVertices()
 	Logger::Indent indent;
 #endif
 
-	_modelData._polygons.iterateInOrder([this](const Index3DId& id, Polygon& face) {
+	_modelData._polygons.iterateInOrder([this](const Index3DId& faceId, Polygon& face) {
 		if (face.needToImprintVertices()) {
+			makeRefPolygonIfRequired(faceId);
 			face.imprintVertices();
 		}
 	});
