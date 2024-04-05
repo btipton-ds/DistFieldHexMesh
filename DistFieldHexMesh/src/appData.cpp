@@ -308,7 +308,7 @@ void AppData::doBuildCFDHexes()
         Volume::BuildCFDParams params;
 
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 2;
+        params.numCurvatureDivs = 3;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
         params.sharpAngleDegrees = SHARP_EDGE_ANGLE;

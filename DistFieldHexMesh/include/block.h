@@ -201,6 +201,7 @@ private:
 
 	void doPreSplit(const Index3DId& cellId);
 	bool doPresplits_splitPolyhedra();
+	void addToPreSplitBlockingPolyhedraIds(const Index3DId& cellId);
 
 	void splitRequiredPolyhedra();
 

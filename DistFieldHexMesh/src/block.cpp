@@ -471,11 +471,14 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 	Polygon newFace(vertIndices);
 	auto ownerIdx = determineOwnerBlockIdx(newFace);
+
+#ifdef _DEBUG
 	set<Edge> edges;
 	newFace.getEdges(edges);
 	for (const auto& edge : edges) {
 		assert(edge.onPrincipalAxis(this));
 	}
+#endif // _DEBUG
 
 	auto* pOwner = getOwner(ownerIdx);
 	Index3DId faceId = pOwner->_modelData._polygons.findOrAdd(newFace);
@@ -752,6 +755,7 @@ void Block::dumpOpenCells() const
 void Block::doPreSplit(const Index3DId& cellId)
 {
 	assert(polyhedronExists(TS_REAL, cellId));
+	makeRefPolyhedronIfRequired(cellId);
 	auto& refCell = _refData._polyhedra[cellId];
 	refCell.splitAtCentroid(this);
 	freePolyhedron(cellId);
@@ -763,6 +767,24 @@ void Block::doPreSplit(const Index3DId& cellId)
 bool Block::doPresplits_splitPolyhedra()
 {
 	bool result = false;
+	set<Index3DId> nextBlockingCellIds;
+
+	for (const auto& cellId : _preSplitBlockingPolyhedraIds) {
+		auto& modelCell = _modelData._polyhedra[cellId];
+		result = true;
+		set<Index3DId> tmp;
+		if (modelCell.canSplit(tmp)) {
+			doPreSplit(cellId);
+		} else {
+			for (const auto& cellId : tmp) {
+				if (_blockIdx == cellId.blockIdx())
+					nextBlockingCellIds.insert(cellId);
+			}
+		}
+	}
+
+	_preSplitBlockingPolyhedraIds = nextBlockingCellIds;
+
 	_modelData._polyhedra.iterateInOrder([this, &result](const Index3DId& cellId, Polyhedron& modelCell) {
 		if (Index3DId(0, 5, 4, 0) == cellId) {
 			int dbgBreak = 1;
@@ -771,13 +793,21 @@ bool Block::doPresplits_splitPolyhedra()
 			result = true;
 			set<Index3DId> blockingCellIds;
 			if (modelCell.canSplit(blockingCellIds)) {
-				makeRefPolyhedronIfRequired(cellId);
 				doPreSplit(cellId);
+			} else {
+				for (const auto& cellId : blockingCellIds) {
+					addToPreSplitBlockingPolyhedraIds(cellId);
+				}
 			}
 		}
 	});
 
 	return result;
+}
+
+void Block::addToPreSplitBlockingPolyhedraIds(const Index3DId& cellId)
+{
+	getOwner(cellId)->_preSplitBlockingPolyhedraIds.insert(cellId);
 }
 
 void Block::splitRequiredPolyhedra()
@@ -1047,37 +1077,32 @@ void Block::faceFunc(const Index3DId& id, function<void(Polygon& obj)> func) {
 
 void Block::faceFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
 	const auto p = getOwner(id); 
-	if (p->_modelData._polygons.exists(id)) 
-		func(p->_modelData._polygons[id]); 
-	else 
-		func(p->_refData._polygons[id]);
-} 
-
-void Block::faceRefFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
-	const auto p = getOwner(id); 
 	if (p->_refData._polygons.exists(id)) 
 		func(p->_refData._polygons[id]); 
 	else 
 		func(p->_modelData._polygons[id]);
 } 
 
+void Block::faceRefFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_refData._polygons.exists(id)) 
+		func(p->_refData._polygons[id]);
+} 
+
 void Block::cellFunc(const Index3DId& id, function<void(Polyhedron& obj)> func) {
-	auto p = getOwner(id); 
-	func(p->_modelData._polyhedra[id]);
+	auto p = getOwner(id); func(p->_modelData._polyhedra[id]);
 } 
 
 void Block::cellFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
-	const auto p = getOwner(id); 
-	if (p->_modelData._polyhedra.exists(id)) 
-		func(p->_modelData._polyhedra[id]); 
-	else 
-		func(p->_refData._polyhedra[id]);
-} 
-
-void Block::cellRefFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
 	const auto p = getOwner(id); 
 	if (p->_refData._polyhedra.exists(id)) 
 		func(p->_refData._polyhedra[id]); 
 	else 
 		func(p->_modelData._polyhedra[id]);
+} 
+
+void Block::cellRefFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
+	const auto p = getOwner(id); 
+	if (p->_refData._polyhedra.exists(id)) 
+		func(p->_refData._polyhedra[id]);
 }

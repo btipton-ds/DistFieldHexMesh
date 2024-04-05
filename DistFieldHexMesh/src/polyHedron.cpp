@@ -354,18 +354,28 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
 				assert(polygonExists(TS_REAL, childFaceId));
-				assert(!polygonExists(TS_REFERENCE, childFaceId));
-				pDstBlock->faceFunc(childFaceId, [this, &corners, &vertToFaceMap, &refFace](Polygon& childFace) {
-					for (const auto& vertId : childFace.getVertexIds()) {
-						if (corners.contains(vertId)) {
-							auto iter = vertToFaceMap.find(vertId);
-							if (iter == vertToFaceMap.end()) {
-								iter = vertToFaceMap.insert(make_pair(vertId, set<Index3DId>())).first;
-							}
-							iter->second.insert(childFace.getId());
+				vector<Index3DId> vertIds;
+				if (polygonExists(TS_REFERENCE, childFaceId)) {
+					faceRefFunc(childFaceId, [&vertIds](const Polygon& childRefFace) {
+						vertIds = childRefFace.getVertexIds();
+						assert(vertIds.size() == 4);
+					});
+				} else {
+					faceFunc(childFaceId, [&vertIds](const Polygon& childFace) {
+						vertIds = childFace.getVertexIds();
+						assert(vertIds.size() == 4);
+					});
+				}
+
+				for (const auto& vertId : vertIds) {
+					if (corners.contains(vertId)) {
+						auto iter = vertToFaceMap.find(vertId);
+						if (iter == vertToFaceMap.end()) {
+							iter = vertToFaceMap.insert(make_pair(vertId, set<Index3DId>())).first;
 						}
+						iter->second.insert(childFaceId);
 					}
-				});
+				}
 			}
 		});
 	}
@@ -471,14 +481,24 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 	blockingCellIds.clear();
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
-			if (face.getSplitLevel(_thisId) > 1) {
-				for (const auto& cellId : face.getCellIds()) {
-					if (cellId != _thisId) {
+			for (const auto& cellId : face.getCellIds()) {
+				if (cellId != _thisId) {
+					if (face.getSplitLevel(cellId) > 0) {
 						blockingCellIds.insert(cellId);
 					}
 				}
 			}
 		});
+
+		if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
+			faceRefFunc(faceId, [this, &blockingCellIds](const Polygon& refFace) {
+				for (const auto& childFaceId : refFace.getSplitProductIds()) {
+					if (getBlockPtr()->polygonExists(TS_REFERENCE, childFaceId)) {
+						blockingCellIds.insert(_thisId);
+					}
+				}
+			});
+		}
 	}
 
 	return blockingCellIds.empty();

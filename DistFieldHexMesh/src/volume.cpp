@@ -376,7 +376,8 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
-	for (size_t i = 0; i < params.numCurvatureDivs; i++) {
+	size_t num = params.numCurvatureDivs;
+	for (size_t i = 0; i < num; i++) {
 		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
@@ -387,7 +388,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		FinishSplitOptions options;
 		options._processPartialSplits = i > 0;
 		options._processEdgesWithTVertices = true;
-		finishSplits(options, multiCore);
+		finishSplits(options, (i < (num - 1)) && multiCore);
 	}
 }
 

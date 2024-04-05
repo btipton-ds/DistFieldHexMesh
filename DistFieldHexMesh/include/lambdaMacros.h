@@ -50,10 +50,10 @@ void Block::NAME##Func(const Index3DId& id, function<void(CLASS& obj)> func) \
 void Block::NAME##Func(const Index3DId& id, function<void(const CLASS& obj)> func) const \
 { \
 	const auto p = getOwner(id); \
-	if (p->_modelData.MEMBER_NAME.exists(id)) \
-		func(p->_modelData.MEMBER_NAME[id]); \
-	else \
+	if (p->_refData.MEMBER_NAME.exists(id)) \
 		func(p->_refData.MEMBER_NAME[id]); \
+	else \
+		func(p->_modelData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, CLASS) \
@@ -62,8 +62,6 @@ void Block::NAME##RefFunc(const Index3DId& id, function<void(const CLASS& obj)> 
 	const auto p = getOwner(id); \
 	if (p->_refData.MEMBER_NAME.exists(id)) \
 		func(p->_refData.MEMBER_NAME[id]); \
-	else \
-		func(p->_modelData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_FUNC_SET_DECL(NAME, CLASS) \
