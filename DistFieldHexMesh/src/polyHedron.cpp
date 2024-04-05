@@ -57,7 +57,7 @@ void Polyhedron::dumpFaces() const
 	size_t idx = 0;
 	for (const auto& faceId : _faceIds) {
 		cout << "face[" << idx++ << "]\n";
-		faceFunc(faceId, [](const Polygon& face) {
+		faceRealFunc(faceId, [](const Polygon& face) {
 			Vector3d n = face.calUnitNormal();
 			auto pBlock = face.getBlockPtr();
 			cout << "  n: (" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
@@ -68,6 +68,14 @@ void Polyhedron::dumpFaces() const
 			}
 		});
 	}
+}
+
+TopolgyState Polyhedron::getState() const
+{
+	if (getBlockPtr()->isPolyhedronReference(this))
+		return TS_REFERENCE;
+	else
+		return TS_REAL;
 }
 
 bool Polyhedron::unload(ostream& out)
@@ -89,7 +97,7 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 {
 	_faceIds.insert(faceId);
-	faceFunc(faceId, [this, splitLevel](Polygon& face) {
+	faceRealFunc(faceId, [this, splitLevel](Polygon& face) {
 		face.addCellId(_thisId, splitLevel);
 	});
 }
@@ -97,7 +105,7 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 {
 	for (const auto& faceId : _faceIds) {
-		faceRefFunc(faceId, [&vertIds](const Polygon& refFace) {
+		faceAvailFunc(faceId, getState(), [&vertIds](const Polygon& refFace) {
 			const auto vertexIds = refFace.getVertexIds();
 			vertIds.insert(vertexIds.begin(), vertexIds.end());
 		});
@@ -109,7 +117,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
 	map<Edge, set<Index3DId>> edgeToFaceMap;
 	set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
+		faceAvailFunc(faceId, getState(), [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
 			if (includeAdjacentCellFaces) {
 				auto temp = face.getCellIds();
 				adjCellIds.insert(temp.begin(), temp.end());
@@ -131,11 +139,11 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
 		adjCellIds.erase(_thisId);
 		for (const auto& adjCellId : adjCellIds) {
 			set<Index3DId> faceIds;
-			getBlockPtr()->cellFunc(adjCellId, [&faceIds](const Polyhedron& cell) {
+			cellAvailFunc(adjCellId, getState(), [&faceIds](const Polyhedron& cell) {
 				faceIds = cell.getFaceIds();
 			});
 			for (const auto& faceId : faceIds) {
-				faceFunc(faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
+				faceAvailFunc(faceId, getState(), [this, &edgeToFaceMap, &faceId](const Polygon& face) {
 					set<Edge> edges;
 					face.getEdges(edges);
 					for (const auto& edge : edges) {
@@ -165,7 +173,7 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 		for (const auto& edge : edges) {
 			const auto& faceIds = edge.getFaceIds();
 			for (const auto& faceId : faceIds) {
-				faceFunc(faceId, [&cellIds](const Polygon& face) {
+				faceAvailFunc(faceId, getState(), [&cellIds](const Polygon& face) {
 					const auto& tmp = face.getCellIds();
 					cellIds.insert(tmp.begin(), tmp.end());
 				});
@@ -173,10 +181,10 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 		}
 	} else {
 		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this, &cellIds](const Polygon& face) {
+			faceAvailFunc(faceId, getState(), [this, &cellIds](const Polygon& face) {
 				const auto temp = face.getCellIds();
 				cellIds.insert(temp.begin(), temp.end());
-				});
+			});
 		}
 	}
 
@@ -192,7 +200,7 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool i
 	if (includeAdjacentCells) {
 		set<Index3DId> adjCells = getAdjacentCells(false);
 		for (const auto& adjCellId : adjCells) {
-			getBlockPtr()->cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
+			cellAvailFunc(adjCellId, getState(), [&cellEdgeSet](const Polyhedron& adjCell) {
 				adjCell.getEdges(cellEdgeSet, true);
 			});
 		}
@@ -236,7 +244,7 @@ bool Polyhedron::contains(const Vector3d& pt) const
 	bool result = true;
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &pt, &ctr, &result](const Polygon& face) {
+		faceRealFunc(faceId, [this, &pt, &ctr, &result](const Polygon& face) {
 			const double tol = Tolerance::sameDistTol();
 			Vector3d faceCtr = face.calCentroid();
 			Vector3d norm = face.calUnitNormal();
@@ -273,7 +281,7 @@ Vector3d Polyhedron::calCentroid() const
 	Vector3d ctr(0, 0, 0);
 
 	for (const auto& faceId : _faceIds) {
-		faceRefFunc(faceId, [&area, &ctr](const Polygon& face) {
+		faceAvailFunc(faceId, getState(), [&area, &ctr](const Polygon& face) {
 			double faceArea;
 			Vector3d faceCtr;
 			face.calAreaAndCentroid(faceArea, faceCtr);
@@ -333,7 +341,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	for (const auto& faceId : _faceIds) {
 		pDstBlock->makeRefPolygonIfRequired(faceId);
 		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
-			pDstBlock->faceFunc(faceId, [this](Polygon& face) {
+			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
 				face.removeAllCellIds(); // This face will be deleted, so remove all its cell ids 
 			});
 		} else {
@@ -361,7 +369,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 						assert(vertIds.size() == 4);
 					});
 				} else {
-					faceFunc(childFaceId, [&vertIds](const Polygon& childFace) {
+					faceRealFunc(childFaceId, [&vertIds](const Polygon& childFace) {
 						vertIds = childFace.getVertexIds();
 						assert(vertIds.size() == 4);
 					});
@@ -384,7 +392,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		auto vertFaces = vertToFaceMap.find(vert)->second;
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
 		for (const auto& faceId : vertFaces) {
-			getBlockPtr()->faceFunc(faceId, [&vert, &vertEdgeFaceMap](const Polygon& face) {
+			getBlockPtr()->faceRealFunc(faceId, [&vert, &vertEdgeFaceMap](const Polygon& face) {
 				set<Edge> faceEdges;
 				face.getEdges(faceEdges);
 				for (const auto& edge : faceEdges) {
@@ -410,8 +418,8 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 			}
 			Index3DId faceVert0, faceVert1;
 			auto iter = edgeFaces.begin();
-			getBlockPtr()->faceRefFunc(*iter++, [&faceVert0](const Polygon& face0) { faceVert0 = face0.getVertexIds()[0]; });
-			getBlockPtr()->faceRefFunc(*iter, [&faceVert1](const Polygon& face0) { faceVert1 = face0.getVertexIds()[0]; });
+			faceAvailFunc(*iter++, TS_REFERENCE, [&faceVert0](const Polygon& face0) { faceVert0 = face0.getVertexIds()[0]; });
+			faceAvailFunc(*iter, TS_REFERENCE, [&faceVert1](const Polygon& face0) { faceVert1 = face0.getVertexIds()[0]; });
 
 			vector<Index3DId> verts = {
 				edgeVert1,
@@ -426,7 +434,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 
 		assert(vertFaces.size() == 6);
 		for (const auto& faceId : vertFaces) {
-			pDstBlock->faceFunc(faceId, [this](Polygon& face) {
+			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
 				face.removeCellId(_thisId);
 			});
 		}
@@ -435,7 +443,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		auto newCellId = pDstBlock->addCell(newCell);
 
 #if LOGGING_ENABLED
-		getBlockPtr()->cellFunc(newCellId, [this, &out](const Polyhedron& newCell) {
+		getBlockPtr()->cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newCell);
 		});
@@ -449,13 +457,13 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 {
 	_faceIds.erase(curFaceId);
 
-	faceFunc(curFaceId, [this](Polygon& curFace) {
+	faceRealFunc(curFaceId, [this](Polygon& curFace) {
 		curFace.removeCellId(_thisId);
 	});
 
 	for (const auto& newFaceId : newFaceIds) {
 		_faceIds.insert(newFaceId);
-		faceFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
+		faceRealFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
 			assert(!getBlockPtr()->isPolygonReference(&newFace));
 			newFace.removeCellId(_thisId);
 			newFace.addCellId(_thisId, splitLevel + 1);
@@ -464,7 +472,7 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 
 #ifdef _DEBUG
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this](const Polygon& face) {
+		faceRealFunc(faceId, [this](const Polygon& face) {
 			const auto& cellIds = face.getCellIds();
 			auto iter = cellIds.find(_thisId);
 			assert(iter != cellIds.end());
@@ -480,7 +488,7 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 {
 	blockingCellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
+		faceRealFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
 			for (const auto& cellId : face.getCellIds()) {
 				if (cellId != _thisId) {
 					if (face.getSplitLevel(cellId) > 0) {
@@ -521,7 +529,7 @@ bool Polyhedron::needsPreSplit() const
 
 	map<Index3DId, set<Index3DId>> faceToCellMap;
 	for (const auto& faceId : refFaces) {
-		faceFunc(faceId, [this, &faceToCellMap](const Polygon& face) {
+		faceAvailFunc(faceId, TS_REFERENCE, [this, &faceToCellMap](const Polygon& face) {
 			const auto& splits = face.getSplitProductIds();
 			if (splits.empty()) {
 				for (const auto& cellId : face.getCellIds()) {
@@ -535,7 +543,7 @@ bool Polyhedron::needsPreSplit() const
 				}
 			} else {
 				for (const auto& splitFaceId : splits) {
-					faceFunc(splitFaceId, [this, &face, &faceToCellMap](const Polygon& splitFace) {
+					faceRealFunc(splitFaceId, [this, &face, &faceToCellMap](const Polygon& splitFace) {
 						for (const auto& cellId : splitFace.getCellIds()) {
 							if (cellId != _thisId) {
 								auto iter = faceToCellMap.find(face.getId());
@@ -739,7 +747,7 @@ double Polyhedron::getShortestEdge() const
 {
 	double minDist = DBL_MAX;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&minDist](const Polygon& face) {
+		faceRealFunc(faceId, [&minDist](const Polygon& face) {
 			double l = face.getShortestEdge();
 			if (l < minDist)
 				minDist = l;
@@ -755,7 +763,7 @@ set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 	// The edge may already exist.
 	set<Edge> edgeSet;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
+		faceRealFunc(faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
 			set<Index3DId> vertsInFace;
 			for (const auto& vertId : vertIds) {
 				if (face.containsVertex(vertId))
@@ -883,7 +891,7 @@ bool Polyhedron::hasTooManySplits() const
 	Splitting more than once in the same cell is illegal
 	*/
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &result](const Polygon& face) {
+		faceRealFunc(faceId, [this, &result](const Polygon& face) {
 			size_t splitLevel = face.getSplitLevel(_thisId);
 			if (splitLevel > 1)
 				result = true;
@@ -901,7 +909,7 @@ bool Polyhedron::verifyTopology() const
 
 	for (const auto& faceId : _faceIds) {
 		if (polygonExists(TS_REAL, faceId)) {
-			faceFunc(faceId, [this, &valid](const Polygon& face) {
+			faceRealFunc(faceId, [this, &valid](const Polygon& face) {
 				if (!face.usedByCell(_thisId))
 					valid = false;
 				if (!face.verifyTopology())
@@ -939,7 +947,7 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 
 		out << Logger::Pad() << "faces(" << cell._faceIds.size() << "): {\n";
 		for (const auto& faceId : cell._faceIds) {
-			pBlk->faceFunc(faceId, [&out](const Polygon& face) {
+			pBlk->faceAvailFunc(faceId, TS_REAL, [&out](const Polygon& face) {
 				Logger::Indent indent;
 				out << Logger::Pad() << face << "\n";
 			});
@@ -960,35 +968,24 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 	return out;
 }
 
-//LAMBDA_CLIENT_IMPLS(Polyhedron)
-void Polyhedron::vertexFunc(const Index3DId& id, std::function<void(const Vertex& obj)> func) const {
-	getBlockPtr()->vertexFunc(id, func);
-} 
+#if 0
+void Polyhedron::faceMatchFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const
+{
 
-void Polyhedron::vertexFunc(const Index3DId& id, std::function<void(Vertex& obj)> func) {
-	getBlockPtr()->vertexFunc(id, func);
-} 
-
-void Polyhedron::faceFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-void Polyhedron::faceFunc(const Index3DId& id, std::function<void(Polygon& obj)> func) {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-void Polyhedron::faceRefFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
-	getBlockPtr()->faceRefFunc(id, func);
-} 
-
-void Polyhedron::cellFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-void Polyhedron::cellFunc(const Index3DId& id, std::function<void(Polyhedron& obj)> func) {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-void Polyhedron::cellRefFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
-	getBlockPtr()->cellRefFunc(id, func);
+	if (getBlockPtr()->isPolyhedronReference(this))
+		faceRefFunc(id, func);
+	else
+		faceRealFunc(id, func);
 }
+
+void Polyhedron::cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const
+{
+	if (getBlockPtr()->isPolyhedronReference(this))
+		cellRefFunc(id, func);
+	else
+		cellRealFunc(id, func);
+}
+#endif
+//LAMBDA_CLIENT_IMPLS(Polyhedron)
+LAMBDA_CLIENT_IMPLS(Polyhedron)
+

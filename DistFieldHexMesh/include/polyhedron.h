@@ -78,6 +78,7 @@ public:
 	double getShortestEdge() const;
 
 	size_t getSplitNumber() const;
+	TopolgyState getState() const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
@@ -88,6 +89,10 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
+#if 0
+	void faceMatchFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const;
+	void cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const;
+#endif
 	LAMBDA_CLIENT_DECLS
 private:
 	friend class Block;

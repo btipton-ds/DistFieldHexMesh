@@ -27,114 +27,128 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define LAMBDA_FUNC_DECL(NAME, CONST, CLASS) \
-void NAME##Func(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
+#define LAMBDA_REAL_FUNC_DECL(NAME, CONST, CLASS) \
+void NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
 
+#define LAMBDA_CLIENT_REAL_FUNC_DECL(NAME, CONST, CLASS) \
+void NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
 
-#define LAMBDA_FUNC_REF_DECL(NAME, CLASS) \
-void NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS& obj)> func) const;
-
-#define LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, CONST, CLASS) \
-void Block::NAME##Func(const Index3DId& id, function<void(CONST CLASS& obj)> func) CONST \
+#define LAMBDA_REAL_FUNC_IMPL_0(NAME, MEMBER_NAME, CONST, CLASS) \
+void Block::NAME##RealFunc(const Index3DId& id, function<void(CONST CLASS& obj)> func) CONST \
 { \
 	auto p = getOwner(id); \
 	func(p->MEMBER_NAME[id]); \
 }
 
-#define LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME, CLASS) \
-void Block::NAME##Func(const Index3DId& id, function<void(CLASS& obj)> func) \
+#define LAMBDA_REAL_FUNC_IMPL_1(NAME, MEMBER_NAME, CONST, CLASS) \
+void Block::NAME##RealFunc(const Index3DId& id, function<void(CONST CLASS& obj)> func) CONST \
 { \
 	auto p = getOwner(id); \
 	func(p->_modelData.MEMBER_NAME[id]); \
-} \
-void Block::NAME##Func(const Index3DId& id, function<void(const CLASS& obj)> func) const \
-{ \
-	const auto p = getOwner(id); \
-	if (p->_refData.MEMBER_NAME.exists(id)) \
-		func(p->_refData.MEMBER_NAME[id]); \
-	else \
-		func(p->_modelData.MEMBER_NAME[id]); \
 }
 
-#define LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, CLASS) \
-void Block::NAME##RefFunc(const Index3DId& id, function<void(const CLASS& obj)> func) const \
+#define LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
+void CLASS::NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS2& obj)> func) CONST \
 { \
-	const auto p = getOwner(id); \
-	if (p->_refData.MEMBER_NAME.exists(id)) \
-		func(p->_refData.MEMBER_NAME[id]); \
+	getBlockPtr()->NAME##RealFunc(id, func); \
 }
 
-#define LAMBDA_FUNC_SET_DECL(NAME, CLASS) \
-LAMBDA_FUNC_DECL(NAME, const, CLASS) \
-LAMBDA_FUNC_DECL(NAME,, CLASS)
-
-#define LAMBDA_FUNC_SET_REF_DECL(NAME, CLASS) \
-LAMBDA_FUNC_DECL(NAME, const, CLASS) \
-LAMBDA_FUNC_DECL(NAME,, CLASS) \
-LAMBDA_FUNC_REF_DECL(NAME, CLASS)
-
-#define LAMBDA_FUNC_SET_IMPL(NAME, MEMBER_NAME, CLASS) \
-LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, const, CLASS) \
-LAMBDA_FUNC_IMPL_0(NAME, MEMBER_NAME, , CLASS)
-
-#define LAMBDA_FUNC_SET_REF_IMPL(NAME, MEMBER_NAME, CLASS) \
-LAMBDA_FUNC_IMPL_1(NAME, MEMBER_NAME, CLASS) \
-LAMBDA_FUNC_REF_IMPL(NAME, MEMBER_NAME, CLASS)
-
-/****************************************************************************************************/
-#define LAMBDA_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
-void NAME##Func(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
-
-#define LAMBDA_CLIENT_FUNC_REF_DECL(NAME, CLASS) \
+#define LAMBDA_REF_FUNC_DECL(NAME, CLASS) \
 void NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS& obj)> func) const;
 
-#define LAMBDA_CLIENT_FUNC_SET_DECL(NAME, CLASS) \
-LAMBDA_CLIENT_FUNC_DECL(NAME, const, CLASS) \
-LAMBDA_CLIENT_FUNC_DECL(NAME,, CLASS)
+#define LAMBDA_CLIENT_REF_FUNC_DECL(NAME, CLASS) \
+void NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS& obj)> func) const;
 
-#define LAMBDA_CLIENT_FUNC_SET_REF_DECL(NAME, CLASS) \
-LAMBDA_CLIENT_FUNC_DECL(NAME, const, CLASS) \
-LAMBDA_CLIENT_FUNC_DECL(NAME,, CLASS) \
-LAMBDA_CLIENT_FUNC_REF_DECL(NAME, CLASS)
-
-#define LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, CONST, CLASS2) \
-void CLASS::NAME##Func(const Index3DId& id, std::function<void(CONST CLASS2& obj)> func) CONST \
+#define LAMBDA_REF_FUNC_IMPL(NAME, MEMBER_NAME, CLASS) \
+void Block::NAME##RefFunc(const Index3DId& id, function<void(const CLASS& obj)> func) const \
 { \
-	getBlockPtr()->NAME##Func(id, func); \
+	auto p = getOwner(id); \
+	func(p->_refData.MEMBER_NAME[id]); \
 }
 
-#define LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, CLASS2) \
+#define LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CLASS2) \
 void CLASS::NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS2& obj)> func) const \
 { \
 	getBlockPtr()->NAME##RefFunc(id, func); \
 }
 
-#define LAMBDA_CLIENT_FUNC_SET_IMPL(CLASS, NAME, CLASS2) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const, CLASS2) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, , CLASS2)
+#define LAMBDA_AVAIL_FUNC_DECL(NAME, CLASS) \
+void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS& obj)> func) const;
 
-#define LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, NAME, CLASS2) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const, CLASS2) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, , CLASS2) \
-LAMBDA_CLIENT_FUNC_REF_IMPL(CLASS, NAME, CLASS2)
+#define LAMBDA_CLIENT_AVAIL_FUNC_DECL(NAME, CLASS) \
+void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS& obj)> func) const;
 
+#define LAMBDA_AVAIL_FUNC_IMPL(NAME, MEMBER_NAME, CLASS) \
+void Block::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, function<void(const CLASS& obj)> func) const \
+{ \
+	const auto p = getOwner(id); \
+	if (prefState == TS_REAL) {\
+		if (p->_modelData.MEMBER_NAME.exists(id)) {\
+			func(p->_modelData.MEMBER_NAME[id]); \
+		} else { \
+			func(p->_refData.MEMBER_NAME[id]); \
+		} \
+	} else { \
+		if (p->_refData.MEMBER_NAME.exists(id)) {\
+			func(p->_refData.MEMBER_NAME[id]); \
+		} else {\
+			func(p->_modelData.MEMBER_NAME[id]); \
+		} \
+	} \
+}
+
+#define LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CLASS2) \
+void CLASS::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS2& obj)> func) const \
+{ \
+	getBlockPtr()->NAME##AvailFunc(id, prefState, func); \
+}
+
+/****************************************************************************************************/
 
 #define LAMBDA_BLOCK_DECLS \
-LAMBDA_FUNC_SET_DECL(vertex, Vertex) \
-LAMBDA_FUNC_SET_REF_DECL(face, Polygon) \
-LAMBDA_FUNC_SET_REF_DECL(cell, Polyhedron)
-
-#define LAMBDA_BLOCK_IMPLS \
-LAMBDA_FUNC_SET_IMPL(vertex, _vertices, Vertex) \
-LAMBDA_FUNC_SET_REF_IMPL(face, _polygons, Polygon) \
-LAMBDA_FUNC_SET_REF_IMPL(cell, _polyhedra, Polyhedron)
+LAMBDA_REAL_FUNC_DECL(vertex, const, Vertex) \
+LAMBDA_REAL_FUNC_DECL(vertex, , Vertex) \
+LAMBDA_REAL_FUNC_DECL(face, const, Polygon) \
+LAMBDA_REAL_FUNC_DECL(face, , Polygon) \
+LAMBDA_REAL_FUNC_DECL(cell, const, Polyhedron) \
+LAMBDA_REAL_FUNC_DECL(cell, , Polyhedron) \
+LAMBDA_REF_FUNC_DECL(face, Polygon) \
+LAMBDA_REF_FUNC_DECL(cell, Polyhedron) \
+LAMBDA_AVAIL_FUNC_DECL(face, Polygon) \
+LAMBDA_AVAIL_FUNC_DECL(cell, Polyhedron) \
 
 #define LAMBDA_CLIENT_DECLS \
-LAMBDA_CLIENT_FUNC_SET_DECL(vertex, Vertex) \
-LAMBDA_CLIENT_FUNC_SET_REF_DECL(face, Polygon) \
-LAMBDA_CLIENT_FUNC_SET_REF_DECL(cell, Polyhedron)
+LAMBDA_CLIENT_REAL_FUNC_DECL(vertex, const, Vertex) \
+LAMBDA_CLIENT_REAL_FUNC_DECL(vertex, , Vertex) \
+LAMBDA_CLIENT_REAL_FUNC_DECL(face, const, Polygon) \
+LAMBDA_CLIENT_REAL_FUNC_DECL(face, , Polygon) \
+LAMBDA_CLIENT_REAL_FUNC_DECL(cell, const, Polyhedron) \
+LAMBDA_CLIENT_REAL_FUNC_DECL(cell, , Polyhedron) \
+LAMBDA_CLIENT_REF_FUNC_DECL(face, Polygon) \
+LAMBDA_CLIENT_REF_FUNC_DECL(cell, Polyhedron) \
+LAMBDA_CLIENT_AVAIL_FUNC_DECL(face, Polygon) \
+LAMBDA_CLIENT_AVAIL_FUNC_DECL(cell, Polyhedron) \
+
+#define LAMBDA_BLOCK_IMPLS \
+LAMBDA_REAL_FUNC_IMPL_0(vertex, _vertices, const, Vertex) \
+LAMBDA_REAL_FUNC_IMPL_0(vertex, _vertices, , Vertex) \
+LAMBDA_REAL_FUNC_IMPL_1(face, _polygons, const, Polygon) \
+LAMBDA_REAL_FUNC_IMPL_1(face, _polygons, , Polygon) \
+LAMBDA_REAL_FUNC_IMPL_1(cell, _polyhedra, const, Polyhedron) \
+LAMBDA_REAL_FUNC_IMPL_1(cell, _polyhedra, , Polyhedron) \
+LAMBDA_REF_FUNC_IMPL(face, _polygons, Polygon) \
+LAMBDA_REF_FUNC_IMPL(cell, _polyhedra, Polyhedron) \
+LAMBDA_AVAIL_FUNC_IMPL(face, _polygons, Polygon) \
+LAMBDA_AVAIL_FUNC_IMPL(cell, _polyhedra, Polyhedron) \
 
 #define LAMBDA_CLIENT_IMPLS(CLASS) \
-LAMBDA_CLIENT_FUNC_SET_IMPL(CLASS, vertex, Vertex) \
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, face, Polygon) \
-LAMBDA_CLIENT_FUNC_SET_REF_IMPL(CLASS, cell, Polyhedron) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, vertex, _vertices, const, Vertex) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, vertex, _vertices, , Vertex) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, face, _polygons, const, Polygon) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, face, _polygons, , Polygon) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, cell, _polyhedra, const, Polyhedron) \
+LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, cell, _polyhedra, , Polyhedron) \
+LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, face, _polygons, Polygon) \
+LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, cell, _polyhedra, Polyhedron) \
+LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, face, _polygons, Polygon) \
+LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, cell, _polyhedra, Polyhedron) \

@@ -203,8 +203,8 @@ double Edge::calSinDihedralAngle(const Block* pBlock) const
 	const auto& faceId0 = *fIter++;
 	const auto& faceId1 = *fIter++;
 	Vector3d norm0, norm1;
-	pBlock->faceFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
-	pBlock->faceFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
+	pBlock->faceRealFunc(faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
+	pBlock->faceRealFunc(faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
 	double cp = norm1.cross(norm0).norm();
 	return cp;
 }

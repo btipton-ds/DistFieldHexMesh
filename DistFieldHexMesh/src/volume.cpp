@@ -331,7 +331,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(multiCore));
+		assert(verifyTopology(false && multiCore));
 #endif
 	}
 
@@ -636,7 +636,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	set<Index3DId> faceIds;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(cellId, [&faceIds](const Polyhedron& cell) {
+		pBlk->cellRealFunc(cellId, [&faceIds](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
 			faceIds.insert(ids.begin(), ids.end());
 		});
@@ -647,7 +647,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
+		pBlk->faceRealFunc(faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
 				auto iter = vertIdToPtMap.find(vertId);
@@ -668,7 +668,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	out << "#Faces\n";
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(faceId, [&out, &vertIdToPtMap](const Polygon& face) {
+		pBlk->faceRealFunc(faceId, [&out, &vertIdToPtMap](const Polygon& face) {
 			out << "f ";
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {

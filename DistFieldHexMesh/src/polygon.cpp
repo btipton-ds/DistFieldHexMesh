@@ -118,7 +118,7 @@ void Polygon::orient()
 	Vector3d norm = calUnitNormal();
 	Vector3d faceCtr = calCentroid();
 	Vector3d cellCtr;
-	cellFunc(ownerCellId, [&cellCtr](const Polyhedron& cell) {
+	cellRealFunc(ownerCellId, [&cellCtr](const Polyhedron& cell) {
 		cellCtr = cell.calCentroid();
 		});
 	Vector3d v = cellCtr - faceCtr;
@@ -418,7 +418,7 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
 			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));
-			cellFunc(cellId1, [this](const Polyhedron& cell) {
+			cellRealFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
 			});
 		}
@@ -439,7 +439,7 @@ bool Polygon::canBeSplitInCell(const Index3DId& cellId) const
 	set<Edge> faceEdges;
 	getEdges(faceEdges);
 	set<Edge> testEdges;
-	cellFunc(cellId, [this, &faceEdges, &testEdges](const Polyhedron& cell) {
+	cellRealFunc(cellId, [this, &faceEdges, &testEdges](const Polyhedron& cell) {
 		set<Edge> cellEdges;
 		cell.getEdges(cellEdges, false);
 		for (const auto& faceEdge : faceEdges) {
@@ -538,7 +538,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		addToSplitProductIds(newFaceId);
 
 #if LOGGING_ENABLED
-		faceFunc(newFaceId, [this, &out](const Polygon& newFace) {
+		faceRealFunc(newFaceId, [this, &out](const Polygon& newFace) {
 			Logger::Indent indent;
 			LOG(out << Logger::Pad() << "to: " << newFace);
 		});
@@ -548,7 +548,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	for (const auto& cellId : _cellIds) {
 		pDstBlock->makeRefPolyhedronIfRequired(cellId);
 		size_t splitLevel = getSplitLevel(cellId);
-		pDstBlock->cellFunc(cellId, [this, splitLevel](Polyhedron& cell) {
+		pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
 			cell.replaceFaces(_thisId, _splitProductIds, splitLevel);
 		});
 	}
@@ -556,12 +556,12 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 #ifdef _DEBUG
 	for (const auto& faceId : _splitProductIds) {
 		set<Polygon::CellId_SplitLevel> cellIds;
-		faceFunc(faceId, [&cellIds](const Polygon& childFace) {
+		faceRealFunc(faceId, [&cellIds](const Polygon& childFace) {
 			cellIds = childFace.getCellIds();
 		});
 
 		for (const auto& cellId : cellIds) {
-			cellFunc(cellId, [this, &faceId](const Polyhedron& cell) {
+			cellRealFunc(cellId, [this, &faceId](const Polyhedron& cell) {
 				assert(cell.containsFace(faceId));
 				if (cell.hasTooManySplits()) {
 					getOwnerBlockPtr(cell.getId())->dumpObj({ cell.getId() });
@@ -588,7 +588,7 @@ void Polygon::createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const
 	set<Index3DId> allCells;
 	for (const auto& cellId : _cellIds) {
 		allCells.insert(cellId);
-		cellFunc(cellId, [&allCells](const Polyhedron& cell) {
+		cellRealFunc(cellId, [&allCells](const Polyhedron& cell) {
 			auto tmp = cell.getAdjacentCells(true);
 			allCells.insert(tmp.begin(), tmp.end());
 			});
@@ -775,35 +775,8 @@ size_t Polygon::CellId_SplitLevel::getSplitLevel() const
 	return _splitLevel;
 }
 
+
 //LAMBDA_CLIENT_IMPLS(Polygon)
-void Polygon::vertexFunc(const Index3DId& id, std::function<void(const Vertex& obj)> func) const {
-	getBlockPtr()->vertexFunc(id, func);
-} 
 
-void Polygon::vertexFunc(const Index3DId& id, std::function<void(Vertex& obj)> func) {
-	getBlockPtr()->vertexFunc(id, func);
-} 
+LAMBDA_CLIENT_IMPLS(Polygon)
 
-void Polygon::faceFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-void Polygon::faceFunc(const Index3DId& id, std::function<void(Polygon& obj)> func) {
-	getBlockPtr()->faceFunc(id, func);
-} 
-
-void Polygon::faceRefFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const {
-	getBlockPtr()->faceRefFunc(id, func);
-} 
-
-void Polygon::cellFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-void Polygon::cellFunc(const Index3DId& id, std::function<void(Polyhedron& obj)> func) {
-	getBlockPtr()->cellFunc(id, func);
-} 
-
-void Polygon::cellRefFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const {
-	getBlockPtr()->cellRefFunc(id, func);
-}
