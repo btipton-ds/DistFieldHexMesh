@@ -546,11 +546,13 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	}
 
 	for (const auto& cellId : _cellIds) {
-		pDstBlock->makeRefPolyhedronIfRequired(cellId);
-		size_t splitLevel = getSplitLevel(cellId);
-		pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
-			cell.replaceFaces(_thisId, _splitProductIds, splitLevel);
-		});
+		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
+			pDstBlock->makeRefPolyhedronIfRequired(cellId);
+			size_t splitLevel = getSplitLevel(cellId);
+			pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
+				cell.replaceFaces(_thisId, _splitProductIds, splitLevel);
+			});
+		}
 	}
 
 #ifdef _DEBUG
@@ -561,12 +563,14 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		});
 
 		for (const auto& cellId : cellIds) {
-			cellRealFunc(cellId, [this, &faceId](const Polyhedron& cell) {
-				assert(cell.containsFace(faceId));
-				if (cell.hasTooManySplits()) {
-					getOwnerBlockPtr(cell.getId())->dumpObj({ cell.getId() });
-				}
-			});
+			if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
+				cellRealFunc(cellId, [this, &faceId](const Polyhedron& cell) {
+					assert(cell.containsFace(faceId));
+					if (cell.hasTooManySplits()) {
+						getOwnerBlockPtr(cell.getId())->dumpObj({ cell.getId() });
+					}
+				});
+			}
 		}
 	}
 #endif // _DEBUG
@@ -587,11 +591,13 @@ void Polygon::createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const
 
 	set<Index3DId> allCells;
 	for (const auto& cellId : _cellIds) {
-		allCells.insert(cellId);
-		cellRealFunc(cellId, [&allCells](const Polyhedron& cell) {
-			auto tmp = cell.getAdjacentCells(true);
-			allCells.insert(tmp.begin(), tmp.end());
+		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
+			allCells.insert(cellId);
+			cellRealFunc(cellId, [&allCells](const Polyhedron& cell) {
+				auto tmp = cell.getAdjacentCells(true);
+				allCells.insert(tmp.begin(), tmp.end());
 			});
+		}
 	}
 
 	set<Edge> edges;

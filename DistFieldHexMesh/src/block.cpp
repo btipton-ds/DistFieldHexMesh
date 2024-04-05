@@ -859,9 +859,11 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 
 	auto ids = face.getCellIds();
 	for (const auto& cellId : ids) {
-		cellRealFunc(cellId, [&result](const Polyhedron& cell) {
-			result = cell.intersectsModel();
-		});
+		if (polyhedronExists(TS_REAL, cellId)) {
+			cellRealFunc(cellId, [&result](const Polyhedron& cell) {
+				result = cell.intersectsModel();
+			});
+		}
 		if (result)
 			break;
 	}

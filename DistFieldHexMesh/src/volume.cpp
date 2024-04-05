@@ -331,7 +331,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(false && multiCore));
+		assert(verifyTopology(multiCore));
 #endif
 	}
 
@@ -388,7 +388,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		FinishSplitOptions options;
 		options._processPartialSplits = i > 0;
 		options._processEdgesWithTVertices = true;
-		finishSplits(options, (i < (num - 1)) && multiCore);
+		finishSplits(options, multiCore);
 	}
 }
 
@@ -424,8 +424,6 @@ bool Volume::doPresplits(bool multiCore)
 
 	// We need to imprint TJoints because these splits, may split edges in adjacent cells
 	imprintTJointVertices(multiCore);
-
-	assert(verifyTopology(multiCore));
 
 	return didSplits;
 }

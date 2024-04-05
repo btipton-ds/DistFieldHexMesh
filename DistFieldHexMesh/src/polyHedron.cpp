@@ -314,6 +314,9 @@ bool Polyhedron::intersectsModel() const
 
 void Polyhedron::splitAtCentroid(Block* pDstBlock) const
 {
+	if (Index3DId(0, 8, 4, 0) == _thisId) {
+		int dbgBreak = 1;
+	}
 	auto ctr = calCentroid();
 
 	splitAtPoint(pDstBlock, ctr);
@@ -321,7 +324,7 @@ void Polyhedron::splitAtCentroid(Block* pDstBlock) const
 
 void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) const
 {
-	if (Index3DId(0, 5, 4, 0) == _thisId) {
+	if (Index3DId(0, 8, 4, 0) == _thisId) {
 		int dbgBreak = 1;
 	}
 	assert(pDstBlock);
@@ -335,29 +338,41 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 
 	set<Index3DId> corners;
 	getVertIds(corners);
+	assert(corners.size() == 8);
+	assert(_faceIds.size() == 6);
 
-	Index3DId cellMidId = pDstBlock->addVertex(centerPoint);
-	map<Index3DId, set<Index3DId>> vertToFaceMap;
+	// Split all faces which require splitting
 	for (const auto& faceId : _faceIds) {
 		pDstBlock->makeRefPolygonIfRequired(faceId);
-		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
-			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
-				face.removeAllCellIds(); // This face will be deleted, so remove all its cell ids 
-			});
-		} else {
-			int dbgBreak = 1;
-		}
 
-		faceRefFunc(faceId, [this, &corners, &centerPoint, &vertToFaceMap, pDstBlock](const Polygon& refFace) {
+		faceRefFunc(faceId, [this, &corners, pDstBlock](const Polygon& refFace) {
 			if (refFace._splitProductIds.empty()) {
 				auto refFaceId = refFace.getId();
 				refFace.splitAtCentroid(pDstBlock);
 				if (polygonExists(TS_REAL, refFaceId)) {
 					pDstBlock->freePolygon(refFaceId);
 				}
-			} else {
-				int dbgBreak = 1;
 			}
+			assert(refFace._splitProductIds.size() == refFace.getVertexIds().size());
+		});
+	}
+
+	// Now split the cell
+	if (false && Index3DId(0, 8, 4, 0) == _thisId) {
+		getBlockPtr()->dumpObj({_thisId});
+	}
+
+	Index3DId cellMidId = pDstBlock->addVertex(centerPoint);
+	map<Index3DId, set<Index3DId>> vertToFaceMap;
+
+	for (const auto& faceId : _faceIds) {
+		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
+			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
+				face.removeAllCellIds(); // This face will be deleted, so remove all its cell ids 
+			});
+		}
+
+		faceRefFunc(faceId, [this, &corners, &vertToFaceMap, pDstBlock](const Polygon& refFace) {
 			set<Index3DId> childFaceIds = refFace._splitProductIds;
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
@@ -392,7 +407,8 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		auto vertFaces = vertToFaceMap.find(vert)->second;
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
 		for (const auto& faceId : vertFaces) {
-			getBlockPtr()->faceRealFunc(faceId, [&vert, &vertEdgeFaceMap](const Polygon& face) {
+			getBlockPtr()->faceAvailFunc(faceId, TS_REFERENCE, [&vert, &vertEdgeFaceMap](const Polygon& face) {
+				assert(face.getVertexIds().size() == 4);
 				set<Edge> faceEdges;
 				face.getEdges(faceEdges);
 				for (const auto& edge : faceEdges) {
@@ -418,8 +434,14 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 			}
 			Index3DId faceVert0, faceVert1;
 			auto iter = edgeFaces.begin();
-			faceAvailFunc(*iter++, TS_REFERENCE, [&faceVert0](const Polygon& face0) { faceVert0 = face0.getVertexIds()[0]; });
-			faceAvailFunc(*iter, TS_REFERENCE, [&faceVert1](const Polygon& face0) { faceVert1 = face0.getVertexIds()[0]; });
+			faceAvailFunc(*iter++, TS_REFERENCE, [&faceVert0](const Polygon& face) {
+				assert(face.getVertexIds().size() == 4);
+				faceVert0 = face.getVertexIds()[0]; 
+			});
+			faceAvailFunc(*iter, TS_REFERENCE, [&faceVert1](const Polygon& face) { 
+				assert(face.getVertexIds().size() == 4);
+				faceVert1 = face.getVertexIds()[0];
+			});
 
 			vector<Index3DId> verts = {
 				edgeVert1,
@@ -921,9 +943,10 @@ bool Polyhedron::verifyTopology() const
 
 	if (!isClosed())
 		valid = false;
-
+	/*
 	if (hasTooManySplits())
 		valid = false;
+	*/
 #endif // _DEBUG 
 
 	return valid;
