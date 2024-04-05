@@ -394,6 +394,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
+#if 1
 	if (options._processPartialSplits) {
 		bool didSplits = doPresplits(multiCore);
 		while (didSplits) {
@@ -401,6 +402,7 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 		}
 		int dbgBreak = 1;
 	}
+#endif
 
 	splitTopology(multiCore);
 

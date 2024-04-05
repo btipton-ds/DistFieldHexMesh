@@ -754,6 +754,7 @@ void Block::dumpOpenCells() const
 
 void Block::doPreSplit(const Index3DId& cellId)
 {
+	_splitPolyhedronIds.erase(cellId);
 	assert(polyhedronExists(TS_REAL, cellId));
 	makeRefPolyhedronIfRequired(cellId);
 	auto& refCell = _refData._polyhedra[cellId];
@@ -828,7 +829,7 @@ void Block::splitRequiredPolyhedra()
 				refCell.splitAtCentroid(this);
 				freePolyhedron(cellId);
 			} else {
-				assert(!"Cell cannot be split due to blocking cells");
+//				assert(!"Cell cannot be split due to blocking cells");
 			}
 		}
 	}
