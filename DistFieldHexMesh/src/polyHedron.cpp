@@ -426,6 +426,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		});
 	}
 
+	set<Index3DId> partitionFaces;
 	for (const auto& vert : corners) {
 		auto vertFaces = vertToFaceMap.find(vert)->second;
 		map<Edge, set<Index3DId>> vertEdgeFaceMap;
@@ -473,8 +474,12 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 			};
 
 			auto newFaceId = pDstBlock->addFace(verts);
+#ifdef _DEBUG
+			partitionFaces.insert(newFaceId);
+#endif // _DEBUG
 			vertFaces.insert(newFaceId);
 		}
+
 
 		assert(vertFaces.size() == 6);
 		for (const auto& faceId : vertFaces) {
@@ -493,6 +498,18 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		});
 #endif
 	}
+
+#ifdef _DEBUG
+	// There should be 3 * 4 = 12 partition faces, plus the original 24 faces. the partition faces are used twice so there should be 2*12 + 24 = 48. 
+	// 8 cells by 6 faces = 48 faces.
+	// We're getting 13 partitionFaces instead of 12.
+	// We make 8 corners by 3 entries = 24. There should be a 2:1 match - one match is failing.
+	for (const auto& faceId : partitionFaces) {
+		faceRealFunc(faceId, [](const Polygon& face) {
+			assert(face.getCellIds().size() == 2);
+		});
+	}
+#endif // _DEBUG
 
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
 }

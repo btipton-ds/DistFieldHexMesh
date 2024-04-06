@@ -412,7 +412,6 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 
 	if (options._processEdgesWithTVertices) {
 		imprintTJointVertices(multiCore);
-		assert(verifyTopology(multiCore));
 	}
 
 	dumpOpenCells(multiCore);

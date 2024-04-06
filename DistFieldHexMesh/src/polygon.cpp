@@ -522,13 +522,6 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 		auto newFaceId = pDstBlock->addFace(newFace);
 		addToSplitFaceProductIds(newFaceId);
-
-#if LOGGING_ENABLED
-		faceRealFunc(newFaceId, [this, &out](const Polygon& newFace) {
-			Logger::Indent indent;
-			LOG(out << Logger::Pad() << "to: " << newFace);
-		});
-#endif
 	}
 
 	for (const auto& cellId : _cellIds) {
