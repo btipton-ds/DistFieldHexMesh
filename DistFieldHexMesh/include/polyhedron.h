@@ -44,12 +44,15 @@ public:
 	Polyhedron() = default;
 	Polyhedron(const std::set<Index3DId>& faceIds);
 	Polyhedron(const std::vector<Index3DId>& faceIds);
-	Polyhedron(const Polyhedron& src) = default;
+	Polyhedron(const Polyhedron& src);
+
+	Polyhedron& operator = (const Polyhedron& rhs);
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	bool containsFace(const Index3DId& faceId) const;
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
+	const std::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 	void getEdges(std::set<Edge>& edgeSet, bool includeAdjacentCellFaces) const;
 
 	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
@@ -104,11 +107,13 @@ private:
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
-
-	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
-	bool _needsCurvatureCheck = true;
+	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
+
+	mutable bool _needsCurvatureCheck = true;
+	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
+	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 };
 
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const

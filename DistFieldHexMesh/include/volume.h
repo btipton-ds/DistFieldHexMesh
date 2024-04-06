@@ -68,6 +68,7 @@ public:
 
 	struct BuildCFDParams {
 		size_t minBlocksPerSide = 6;
+		size_t numBlockDivs = 0;
 		size_t numSimpleDivs = 2;
 		size_t numCurvatureDivs = 4;
 		double sharpAngleDegrees = 30.0;

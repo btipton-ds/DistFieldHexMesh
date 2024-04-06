@@ -307,6 +307,7 @@ void AppData::doBuildCFDHexes()
 
         Volume::BuildCFDParams params;
 
+        params.numBlockDivs = 1;
         params.numSimpleDivs = 0;
         params.numCurvatureDivs = 1;
         params.divsPerRadius = 4;

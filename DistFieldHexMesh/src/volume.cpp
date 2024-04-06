@@ -264,6 +264,10 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
 	);
 
+	for (size_t i = 0; i < params.numBlockDivs; i++) {
+		for (int i = 0; i < 3; i++)
+			blockSize[i] *= 2;
+	}
 	setVolDim(blockSize);
 
 	const auto& dim = volDim();
