@@ -44,10 +44,36 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 {
 }
 
+Polygon::Polygon(const Polygon& src)
+	: _createdDuringSplitNumber(src._createdDuringSplitNumber)
+	, _splitProductIds(src._splitProductIds)
+	, _vertexIds(src._vertexIds)
+	, _cellIds(src._cellIds)
+	// Don't copy the caches
+{
+}
+
+Polygon& Polygon::operator = (const Polygon& rhs)
+{
+	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
+	_splitProductIds = rhs._splitProductIds;
+	_vertexIds = rhs._vertexIds;
+	_cellIds = rhs._cellIds;
+	// Don't copy the caches
+
+	return *this;
+}
+
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
-	_needSort = true;
+	clearCache();
+}
+
+void Polygon::clearCache() const
+{
+	_cachedEdges.clear();
+	_sortedIds.clear();
 }
 
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
@@ -88,10 +114,9 @@ bool Polygon::load(istream& in, size_t idSelf)
 
 void Polygon::sortIds() const
 {
-	if (_needSort) {
+	if (_sortedIds.empty() && !_vertexIds.empty()) {
 		_sortedIds = _vertexIds;
 		sort(_sortedIds.begin(), _sortedIds.end());
-		_needSort = false;
 	}
 }
 
@@ -184,9 +209,11 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-void Polygon::getEdges(set<Edge>& edgeSet) const
+const set<Edge>& Polygon::getEdges() const
 {
-	createEdgesStat(_vertexIds, edgeSet, _thisId);
+	if (_cachedEdges.empty())
+		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
+	return _cachedEdges;
 }
 
 bool Polygon::containsPoint(const Vector3d& pt) const
@@ -431,8 +458,7 @@ bool Polygon::canBeSplitInCell(const Index3DId& cellId) const
 {
 	const double sinAngleTol = sin(Tolerance::angleTol());
 
-	set<Edge> faceEdges;
-	getEdges(faceEdges);
+	const auto& faceEdges = getEdges();
 	set<Edge> testEdges;
 	cellRealFunc(cellId, [this, &faceEdges, &testEdges](const Polyhedron& cell) {
 		set<Edge> cellEdges;
@@ -596,8 +622,7 @@ void Polygon::createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const
 		}
 	}
 
-	set<Edge> edges;
-	getEdges(edges);
+	const auto& edges = getEdges();
 
 	for (const auto& cellId : allCells) {
 		auto pOwner = getOwnerBlockPtr(cellId);
@@ -655,7 +680,7 @@ void Polygon::imprintVertices()
 		}
 	}
 
-	_needSort = true;
+	clearCache();
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
 }
@@ -709,8 +734,7 @@ bool Polygon::verifyTopology() const
 	if (_cellIds.size() > 2)
 		valid = false;
 
-	set<Edge> edges;
-	getEdges(edges);
+	const auto& edges = getEdges();
 	for (const auto& edge : edges) {
 		auto faceIds = edge.getFaceIds();
 		if (faceIds.count(_thisId) == 0) // edge does not link back to this face

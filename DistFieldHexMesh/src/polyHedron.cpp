@@ -122,8 +122,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
 				auto temp = face.getCellIds();
 				adjCellIds.insert(temp.begin(), temp.end());
 			}
-			set<Edge> edges;
-			face.getEdges(edges);
+			const auto& edges = face.getEdges();
 			for (const auto& edge : edges) {
 				auto iter = edgeToFaceMap.find(edge);
 				if (iter == edgeToFaceMap.end()) {
@@ -144,8 +143,7 @@ void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
 			});
 			for (const auto& faceId : faceIds) {
 				faceAvailFunc(faceId, getState(), [this, &edgeToFaceMap, &faceId](const Polygon& face) {
-					set<Edge> edges;
-					face.getEdges(edges);
+					const auto& edges = face.getEdges();
 					for (const auto& edge : edges) {
 						auto iter = edgeToFaceMap.find(edge);
 						if (iter != edgeToFaceMap.end()) {
@@ -409,8 +407,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		for (const auto& faceId : vertFaces) {
 			getBlockPtr()->faceAvailFunc(faceId, TS_REFERENCE, [&vert, &vertEdgeFaceMap](const Polygon& face) {
 				assert(face.getVertexIds().size() == 4);
-				set<Edge> faceEdges;
-				face.getEdges(faceEdges);
+				const auto& faceEdges = face.getEdges();
 				for (const auto& edge : faceEdges) {
 					if (edge.containsVertex(vert)) {
 						auto iter = vertEdgeFaceMap.find(edge);

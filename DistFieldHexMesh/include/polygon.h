@@ -96,7 +96,9 @@ public:
 
 	Polygon() = default;
 	Polygon(const std::vector<Index3DId>& verts);
-	Polygon(const Polygon& src) = default;
+	Polygon(const Polygon& src);
+
+	Polygon& operator = (const Polygon& rhs);
 
 	void addVertex(const Index3DId& vertId);
 
@@ -123,7 +125,7 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
-	void getEdges(std::set<Edge>& edgeSet) const;
+	const std::set<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
 	double getShortestEdge() const;
@@ -160,6 +162,7 @@ private:
 
 	void sortIds() const;
 	void addToSplitProductIds(const Index3DId& id) const;
+	void clearCache() const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
@@ -167,8 +170,8 @@ private:
 	std::vector<Index3DId> _vertexIds;
 	std::set<CellId_SplitLevel> _cellIds;
 
-	mutable bool _needSort = true;
 	mutable std::vector<Index3DId> _sortedIds;
+	mutable std::set<Edge> _cachedEdges;
 };
 
 inline bool Polygon::verifyUnique() const

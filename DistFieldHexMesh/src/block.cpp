@@ -473,8 +473,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	auto ownerIdx = determineOwnerBlockIdx(newFace);
 
 #ifdef _DEBUG
-	set<Edge> edges;
-	newFace.getEdges(edges);
+	const auto& edges = newFace.getEdges();
 	for (const auto& edge : edges) {
 		assert(edge.onPrincipalAxis(this));
 	}
@@ -946,7 +945,7 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 
 	_modelData._polygons.iterateInOrder([this, meshType, &edges](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInRender(meshType, face)) {
-			face.getEdges(edges);
+			edges = face.getEdges();
 		}
 	});
 
