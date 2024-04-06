@@ -110,7 +110,6 @@ public:
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
-	bool hasSplitEdges() const;
 	bool isOuter() const;
 	bool isBlockBoundary() const;
 	bool containsPoint(const Vector3d& pt) const;
@@ -120,7 +119,6 @@ public:
 	bool containsVertex(const Index3DId& vertId) const;
 	bool verifyUnique() const;
 	bool verifyTopology() const;
-	bool addRequiredImprintPairs(const Index3DId& vertId, std::set<VertEdgePair>& pairs) const;
 
 	bool operator < (const Polygon& rhs) const;
 
@@ -136,13 +134,12 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
-	bool canBeSplitInCell(const Index3DId& cellId) const;
 
-	const std::set<Index3DId>& getSplitProductIds() const;
+	const std::set<Index3DId>& getSplitFaceProductIds() const;
+	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
-	void createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const;
-	bool needToImprintVertices() const;
-	void imprintVertices();
+	bool needToImprintVertices(const std::map<Edge, Index3DId>& edgeVertMap) const;
+	void imprintVertices(const std::map<Edge, Index3DId>& edgeVertMap);
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
@@ -161,18 +158,21 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
-	void addToSplitProductIds(const Index3DId& id) const;
+	void addToSplitFaceProductIds(const Index3DId& id) const;
+	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
+	TopolgyState getState() const;
 	void clearCache() const;
 
+
 	size_t _createdDuringSplitNumber = 0;
-	std::set<Index3DId> _splitProductIds;	// Entities referencing this one
+	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
+	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	std::vector<Index3DId> _vertexIds;
 	std::set<CellId_SplitLevel> _cellIds;
 
 	mutable std::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
-	mutable std::map<Edge, Index3DId> _splitEdgeVertMap;
 };
 
 inline bool Polygon::verifyUnique() const
@@ -205,9 +205,14 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-inline const std::set<Index3DId>& Polygon::getSplitProductIds() const
+inline const std::set<Index3DId>& Polygon::getSplitFaceProductIds() const
 {
-	return _splitProductIds;
+	return _splitFaceProductIds;
+}
+
+inline const std::map<Edge, Index3DId>& Polygon::getSplitEdgeVertMap() const
+{
+	return _splitEdgeVertMap;
 }
 
 inline size_t Polygon::getCreatedDuringSplitNumber() const

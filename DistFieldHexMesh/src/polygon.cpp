@@ -46,7 +46,7 @@ Polygon::Polygon(const vector<Index3DId>& verts)
 
 Polygon::Polygon(const Polygon& src)
 	: _createdDuringSplitNumber(src._createdDuringSplitNumber)
-	, _splitProductIds(src._splitProductIds)
+	, _splitFaceProductIds(src._splitFaceProductIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	// Don't copy the caches
@@ -56,7 +56,7 @@ Polygon::Polygon(const Polygon& src)
 Polygon& Polygon::operator = (const Polygon& rhs)
 {
 	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
-	_splitProductIds = rhs._splitProductIds;
+	_splitFaceProductIds = rhs._splitFaceProductIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	// Don't copy the caches
@@ -73,13 +73,13 @@ void Polygon::addVertex(const Index3DId& vertId)
 void Polygon::clearCache() const
 {
 	_cachedEdges.clear();
-	_splitEdgeVertMap.clear();
 	_sortedIds.clear();
 }
 
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
 	auto iter = _cellIds.find(cellId);
+	assert(iter != _cellIds.end());
 	if (iter != _cellIds.end())
 		return iter->getSplitLevel();
 
@@ -177,27 +177,6 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
-bool Polygon::hasSplitEdges() const
-{
-	const double tolSinAngle = sin(Tolerance::angleTol());
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		size_t k = (j + 1) % _vertexIds.size();
-
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
-		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[k]);
-
-		Vector3d v0 = (pt1 - pt0).normalized();
-		Vector3d v1 = (pt2 - pt1).normalized();
-		double dp = v1.cross(v0).norm();
-		if (dp < tolSinAngle)
-			return true;
-	}
-
-	return false;
-}
-
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {
@@ -212,6 +191,9 @@ bool Polygon::isBlockBoundary() const
 
 const set<Edge>& Polygon::getEdges() const
 {
+#if !CACHING_ENABLED
+	_cachedEdges.clear();
+#endif
 	if (_cachedEdges.empty())
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
 	return _cachedEdges;
@@ -455,35 +437,18 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
-bool Polygon::canBeSplitInCell(const Index3DId& cellId) const
-{
-	const double sinAngleTol = sin(Tolerance::angleTol());
-
-	const auto& faceEdges = getEdges();
-	set<Edge> testEdges;
-	cellRealFunc(cellId, [this, &faceEdges, &testEdges](const Polyhedron& cell) {
-		set<Edge> cellEdges;
-		cell.getEdges(cellEdges, false);
-		for (const auto& faceEdge : faceEdges) {
-			auto iter = cellEdges.find(faceEdge);
-			if (iter != cellEdges.end())
-				testEdges.insert(*iter);
-		}
-	});
-
-	for (const auto& testEdge : testEdges) {
-		double cp = testEdge.calSinDihedralAngle(getBlockPtr());
-		if (cp < sinAngleTol) // faces are tangent, cannot be split in this cell.
-			return false;
-	}
-
-	return true;
-}
-
 void Polygon::splitAtCentroid(Block* pDstBlock) const
 {
 	auto ctr = calCentroid();
 	splitAtPoint(pDstBlock, ctr);
+}
+
+TopolgyState Polygon::getState() const
+{
+	if (getBlockPtr()->isPolygonReference(this))
+		return TS_REFERENCE;
+	else
+		return TS_REAL;
 }
 
 void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
@@ -520,7 +485,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 			Index3DId vertId = pDstBlock->addVertex(edgePt);
 			edgePtIds[i] = vertId;
 
-			pDstBlock->addSplitEdgeVert(edge, vertId);
+			addSplitEdgeVert(edge, vertId);
 		}
 		else {
 			assert(!"Edge point is not in bounds.");
@@ -529,10 +494,12 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	}
 
 	Vector3d facePt = projectPoint(pt);
+#if _DEBUG
 	if (!containsPoint(facePt)) {
 		assert(!"Face point is not in bounds.");
 		return;
 	}
+#endif
 
 	Index3DId facePtId = pDstBlock->addVertex(facePt);
 
@@ -557,7 +524,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 #endif // _DEBUG
 
 		auto newFaceId = pDstBlock->addFace(newFace);
-		addToSplitProductIds(newFaceId);
+		addToSplitFaceProductIds(newFaceId);
 
 #if LOGGING_ENABLED
 		faceRealFunc(newFaceId, [this, &out](const Polygon& newFace) {
@@ -573,13 +540,13 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 			pDstBlock->makeRefPolyhedronIfRequired(cellId);
 			size_t splitLevel = getSplitLevel(cellId);
 			pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
-				cell.replaceFaces(_thisId, _splitProductIds, splitLevel);
+				cell.replaceFaces(_thisId, _splitFaceProductIds, splitLevel);
 			});
 		}
 	}
 
 #ifdef _DEBUG
-	for (const auto& faceId : _splitProductIds) {
+	for (const auto& faceId : _splitFaceProductIds) {
 		set<Polygon::CellId_SplitLevel> cellIds;
 		faceRealFunc(faceId, [&cellIds](const Polygon& childFace) {
 			cellIds = childFace.getCellIds();
@@ -601,52 +568,34 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pst: " << *this);
 }
 
-void Polygon::addToSplitProductIds(const Index3DId& id) const
+void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
 {
 	assert(getBlockPtr()->isPolygonReference(this));
 	Polygon* refSelf = const_cast<Polygon*>(this);
-	refSelf->_splitProductIds.insert(id);
+	refSelf->_splitFaceProductIds.insert(id);
 }
 
-void Polygon::createSplitEdgeVertMap(std::map<Edge, Index3DId>& result) const
+void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
 {
-	auto pBlk = getBlockPtr();
+	assert(getBlockPtr()->isPolygonReference(this));
+	Polygon* refSelf = const_cast<Polygon*>(this);
+	refSelf->_splitEdgeVertMap.insert(make_pair(edge, vertId));
+}
 
-	set<Index3DId> allCells;
-	for (const auto& cellId : _cellIds) {
-		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
-			allCells.insert(cellId);
-			cellRealFunc(cellId, [&allCells](const Polyhedron& cell) {
-				auto tmp = cell.getAdjacentCells(true);
-				allCells.insert(tmp.begin(), tmp.end());
-			});
-		}
-	}
-
+bool Polygon::needToImprintVertices(const map<Edge, Index3DId>& edgeVertMap) const
+{
 	const auto& edges = getEdges();
-
-	for (const auto& cellId : allCells) {
-		auto pOwner = getOwnerBlockPtr(cellId);
-		const auto& tmp = pOwner->getSplitEdgeVertMap();
-		for (const auto& edge : edges) {
-			auto iter = tmp.find(edge);
-			if (iter != tmp.end())
-				result.insert(*iter);
+	for (const auto& edge : edges) {
+		if (edgeVertMap.find(edge) != edgeVertMap.end()) {
+			return true;
 		}
 	}
+
+	return false;
 }
 
-bool Polygon::needToImprintVertices() const
+void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 {
-	map<Edge, Index3DId> splitEdgeVertMap;
-	createSplitEdgeVertMap(splitEdgeVertMap);
-
-	return !splitEdgeVertMap.empty();
-}
-
-void Polygon::imprintVertices()
-{
-
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
@@ -655,43 +604,30 @@ void Polygon::imprintVertices()
 #endif
 	auto pBlk = getBlockPtr();
 
-	if (_splitEdgeVertMap.empty())
-		createSplitEdgeVertMap(_splitEdgeVertMap);
-
-	const auto& edges = getEdges();
-	bool needToImprint = false;
-	for (const auto& edge : edges) {
-		if (_splitEdgeVertMap.find(edge) != _splitEdgeVertMap.end()) {
-			needToImprint = true;
-			break;
-		}
-	}
-
-	if (!needToImprint)
-		return;
-
 	// Increment down so insertions do not corrupt order
 	// the vertex is not in this polygon and lies between i and j
 	if (_thisId.isValid())
 		pBlk->removeFaceFromLookUp(_thisId);
 
+	vector<Index3DId> newVerts;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		newVerts.push_back(_vertexIds[i]);
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto iter = _splitEdgeVertMap.find(edge);
-		if (iter != _splitEdgeVertMap.end()) {
+		auto iter = edgeVertMap.find(edge);
+		if (iter != edgeVertMap.end()) {
 			const auto& vertId = iter->second;
 			LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
-			_vertexIds.insert(_vertexIds.begin() + j, vertId);
+			newVerts.push_back(vertId);
 			LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
 			for (const auto& vertId0 : _vertexIds) {
 				LOG(out << "v" << vertId0 << " ");
 			}
 			LOG(out << "}\n");
-			break;
 		}
 	}
 
+	_vertexIds = newVerts;
 	clearCache();
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
@@ -719,21 +655,6 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 		}
 	}
 	return valid;
-}
-
-bool Polygon::addRequiredImprintPairs(const Index3DId& vertId, set<VertEdgePair>& pairs) const
-{
-	Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-		double t;
-		if (!containsVertex(vertId) && edge.isColinearWith(getBlockPtr(), vertId, t) && t > Tolerance::paramTol() && t < 1 - Tolerance::paramTol()) {
-			pairs.insert(VertEdgePair(vertId, edge));
-		}
-	}
-
-	return !pairs.empty();
 }
 
 bool Polygon::verifyTopology() const
@@ -780,9 +701,9 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		}
 		out << "}\n";
 
-		if (!face._splitProductIds.empty()) {
-			out << Logger::Pad() << "splitFaceIds: (" << face._splitProductIds.size() << "): {";
-			for (const auto& faceId : face._splitProductIds) {
+		if (!face._splitFaceProductIds.empty()) {
+			out << Logger::Pad() << "splitFaceIds: (" << face._splitFaceProductIds.size() << "): {";
+			for (const auto& faceId : face._splitFaceProductIds) {
 				out << "f" << faceId << " ";
 			}
 			out << "}\n";

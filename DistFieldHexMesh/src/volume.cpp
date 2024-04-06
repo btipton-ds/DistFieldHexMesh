@@ -335,7 +335,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(multiCore));
+		assert(verifyTopology(false && multiCore));
 #endif
 	}
 
@@ -410,8 +410,10 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 
 	splitTopology(multiCore);
 
-	if (options._processEdgesWithTVertices)
+	if (options._processEdgesWithTVertices) {
 		imprintTJointVertices(multiCore);
+		assert(verifyTopology(multiCore));
+	}
 
 	dumpOpenCells(multiCore);
 }
@@ -673,6 +675,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
 		pBlk->faceRealFunc(faceId, [&out, &vertIdToPtMap](const Polygon& face) {
+			out << "#id: " << face.getId() << "\n";
 			out << "f ";
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {

@@ -53,7 +53,6 @@ public:
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
 	const std::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
-	void getEdges(std::set<Edge>& edgeSet, bool includeAdjacentCellFaces) const;
 
 	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
 
@@ -74,6 +73,8 @@ public:
 
 	void splitAtCentroid(Block* pDstBlock) const;
 	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
+	bool needToImprintTVertices() const;
+	void imprintTVertices(Block* pDstBlock) const;
 	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
 	bool needsPreSplit() const;

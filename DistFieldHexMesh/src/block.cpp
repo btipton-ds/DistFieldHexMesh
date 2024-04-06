@@ -581,16 +581,6 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
-void Block::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId)
-{
-	_splitEdgeVertMap.insert(make_pair(edge, vertId));
-}
-
-const map<Edge, Index3DId>& Block::getSplitEdgeVertMap() const
-{
-	return  _splitEdgeVertMap;
-}
-
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 	return _pVol->getBlockPtr(blockIdx);
@@ -845,10 +835,10 @@ void Block::imprintTJointVertices()
 	Logger::Indent indent;
 #endif
 
-	_modelData._polygons.iterateInOrder([this](const Index3DId& faceId, Polygon& face) {
-		if (face.needToImprintVertices()) {
-			makeRefPolygonIfRequired(faceId);
-			face.imprintVertices();
+	_modelData._polyhedra.iterateInOrder([this](const Index3DId& cellId, Polyhedron& cell) {
+		if (cell.needToImprintTVertices()) {
+			makeRefPolyhedronIfRequired(cellId);
+			cell.imprintTVertices(this);
 		}
 	});
 }

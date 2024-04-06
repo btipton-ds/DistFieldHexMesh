@@ -129,6 +129,11 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 
 const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
+#if !CACHING_ENABLED
+	_cachedEdges0.clear();
+	_cachedEdges1.clear();
+#endif
+
 	bool needsUpdate = includeAdjacentCellFaces && _cachedEdges1.empty() || _cachedEdges0.empty();
 	if (needsUpdate) {
 		map<Edge, set<Index3DId>> edgeToFaceMap;
@@ -187,18 +192,12 @@ const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 		return _cachedEdges0;
 }
 
-void Polyhedron::getEdges(set<Edge>& edges, bool includeAdjacentCellFaces) const
-{
-	edges = getEdges(includeAdjacentCellFaces);
-}
-
 set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 {
 	set<Index3DId> cellIds;
 
 	if (includeCornerCells) {
-		set<Edge> edges;
-		getEdges(edges, true);
+		const auto& edges = getEdges(true);
 		for (const auto& edge : edges) {
 			const auto& faceIds = edge.getFaceIds();
 			for (const auto& faceId : faceIds) {
@@ -224,13 +223,13 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 // Gets the edges for a vertex which belong to this polyhedron
 void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool includeAdjacentCells) const
 {
-	set<Edge> cellEdgeSet;
-	getEdges(cellEdgeSet, includeAdjacentCells);
+	auto cellEdgeSet = getEdges(includeAdjacentCells);
 	if (includeAdjacentCells) {
 		set<Index3DId> adjCells = getAdjacentCells(false);
 		for (const auto& adjCellId : adjCells) {
 			cellAvailFunc(adjCellId, getState(), [&cellEdgeSet](const Polyhedron& adjCell) {
-				adjCell.getEdges(cellEdgeSet, true);
+				const auto& tmp = adjCell.getEdges(true);
+				cellEdgeSet.insert(tmp.begin(), tmp.end());
 			});
 		}
 	}
@@ -375,14 +374,14 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		pDstBlock->makeRefPolygonIfRequired(faceId);
 
 		faceRefFunc(faceId, [this, &corners, pDstBlock](const Polygon& refFace) {
-			if (refFace._splitProductIds.empty()) {
+			if (refFace._splitFaceProductIds.empty()) {
 				auto refFaceId = refFace.getId();
 				refFace.splitAtCentroid(pDstBlock);
 				if (polygonExists(TS_REAL, refFaceId)) {
 					pDstBlock->freePolygon(refFaceId);
 				}
 			}
-			assert(refFace._splitProductIds.size() == refFace.getVertexIds().size());
+			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
 		});
 	}
 
@@ -402,7 +401,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		}
 
 		faceRefFunc(faceId, [this, &corners, &vertToFaceMap, pDstBlock](const Polygon& refFace) {
-			set<Index3DId> childFaceIds = refFace._splitProductIds;
+			set<Index3DId> childFaceIds = refFace._splitFaceProductIds;
 			assert(childFaceIds.size() == refFace.getVertexIds().size());
 			for (const auto& childFaceId : childFaceIds) {
 				assert(polygonExists(TS_REAL, childFaceId));
@@ -503,6 +502,45 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
 }
 
+bool Polyhedron::needToImprintTVertices() const
+{
+	return !isClosed();
+}
+
+void Polyhedron::imprintTVertices(Block* pDstBlock) const
+{
+	if (Index3DId(0, 10, 0, 0) == _thisId) {
+		int dbgBreak = 1;
+	}
+	set<Index3DId> refFaceIds;
+	cellRefFunc(_thisId, [&refFaceIds](const Polyhedron& refCell) {
+		refFaceIds = refCell.getFaceIds();
+	});
+
+	map<Edge, Index3DId> splitEdgeVertMap;
+	for (const auto& refFaceId : refFaceIds) {
+		faceAvailFunc(refFaceId, TS_REFERENCE, [&splitEdgeVertMap](const Polygon& refFace) {
+			const auto& tmp = refFace.getSplitEdgeVertMap();
+			splitEdgeVertMap.insert(tmp.begin(), tmp.end());
+		});
+	}
+
+	set<Index3DId> imprintIds;
+	for (const auto& faceId : _faceIds) {
+		faceRealFunc(faceId, [&splitEdgeVertMap, &imprintIds](const Polygon& face) {
+			if (face.needToImprintVertices(splitEdgeVertMap))
+				imprintIds.insert(face.getId());
+		});
+	}
+
+	for (const auto& faceId : imprintIds) {
+		pDstBlock->makeRefPolygonIfRequired(faceId);
+		pDstBlock->faceRealFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
+			face.imprintVertices(splitEdgeVertMap);
+		});
+	}
+}
+
 void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel)
 {
 	clearCache();
@@ -551,7 +589,7 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 
 		if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
 			faceRefFunc(faceId, [this, &blockingCellIds](const Polygon& refFace) {
-				for (const auto& childFaceId : refFace.getSplitProductIds()) {
+				for (const auto& childFaceId : refFace.getSplitFaceProductIds()) {
 					if (getBlockPtr()->polygonExists(TS_REFERENCE, childFaceId)) {
 						blockingCellIds.insert(_thisId);
 					}
@@ -581,7 +619,7 @@ bool Polyhedron::needsPreSplit() const
 	map<Index3DId, set<Index3DId>> faceToCellMap;
 	for (const auto& faceId : refFaces) {
 		faceAvailFunc(faceId, TS_REFERENCE, [this, &faceToCellMap](const Polygon& face) {
-			const auto& splits = face.getSplitProductIds();
+			const auto& splits = face.getSplitFaceProductIds();
 			if (splits.empty()) {
 				for (const auto& cellId : face.getCellIds()) {
 					if (cellId != _thisId) {
@@ -639,7 +677,7 @@ void Polyhedron::preSplit() const
 	for (const auto& faceId : refFaceIds) {
 		assert(polygonExists(TS_REFERENCE, faceId));
 		faceRefFunc(faceId, [this, pDstBlock](const Polygon& refFace) {
-			if (refFace.getSplitProductIds().empty()) {
+			if (refFace.getSplitFaceProductIds().empty()) {
 				auto refFaceId = refFace.getId();
 				refFace.splitAtCentroid(pDstBlock);
 				if (polygonExists(TS_REAL, refFaceId)) {
@@ -877,8 +915,7 @@ bool Polyhedron::orderVertIds(vector<Index3DId>& vertIds) const
 bool Polyhedron::isClosed() const
 {
 	bool result = true;
-	set<Edge> edges;
-	getEdges(edges, false);
+	const auto& edges = getEdges(false);
 	for (const auto& edge : edges) {
 		if (edge.getFaceIds().size() != 2) {
 			result = false;
@@ -970,8 +1007,10 @@ bool Polyhedron::verifyTopology() const
 			valid = false;
 	}
 
-	if (!isClosed())
+	if (!isClosed()) {
+		getBlockPtr()->dumpObj({_thisId});
 		valid = false;
+	}
 	/*
 	if (hasTooManySplits())
 		valid = false;
