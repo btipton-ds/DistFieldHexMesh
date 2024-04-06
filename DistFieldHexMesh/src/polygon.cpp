@@ -191,9 +191,6 @@ bool Polygon::isBlockBoundary() const
 
 const set<Edge>& Polygon::getEdges() const
 {
-#if !CACHING_ENABLED
-	_cachedEdges.clear();
-#endif
 	if (_cachedEdges.empty())
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
 	return _cachedEdges;
@@ -629,6 +626,7 @@ void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 
 	_vertexIds = newVerts;
 	clearCache();
+
 	if (_thisId.isValid())
 		pBlk->addFaceToLookup(_thisId);
 }

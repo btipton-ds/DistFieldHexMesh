@@ -129,11 +129,6 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 
 const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
-#if !CACHING_ENABLED
-	_cachedEdges0.clear();
-	_cachedEdges1.clear();
-#endif
-
 	bool needsUpdate = includeAdjacentCellFaces && _cachedEdges1.empty() || _cachedEdges0.empty();
 	if (needsUpdate) {
 		map<Edge, set<Index3DId>> edgeToFaceMap;
@@ -539,6 +534,8 @@ void Polyhedron::imprintTVertices(Block* pDstBlock) const
 			face.imprintVertices(splitEdgeVertMap);
 		});
 	}
+
+	clearCache();
 }
 
 void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel)
