@@ -73,6 +73,7 @@ void Polygon::addVertex(const Index3DId& vertId)
 void Polygon::clearCache() const
 {
 	_cachedEdges.clear();
+	_splitEdgeVertMap.clear();
 	_sortedIds.clear();
 }
 
@@ -654,29 +655,40 @@ void Polygon::imprintVertices()
 #endif
 	auto pBlk = getBlockPtr();
 
-	map<Edge, Index3DId> splitEdgeVertMap;
-	createSplitEdgeVertMap(splitEdgeVertMap);
+	if (_splitEdgeVertMap.empty())
+		createSplitEdgeVertMap(_splitEdgeVertMap);
+
+	const auto& edges = getEdges();
+	bool needToImprint = false;
+	for (const auto& edge : edges) {
+		if (_splitEdgeVertMap.find(edge) != _splitEdgeVertMap.end()) {
+			needToImprint = true;
+			break;
+		}
+	}
+
+	if (!needToImprint)
+		return;
 
 	// Increment down so insertions do not corrupt order
 	// the vertex is not in this polygon and lies between i and j
 	if (_thisId.isValid())
 		pBlk->removeFaceFromLookUp(_thisId);
 
-	for (const auto& pair : splitEdgeVertMap) {
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			Edge edge(_vertexIds[i], _vertexIds[j]);
-			if (edge == pair.first) {
-				const auto& vertId = pair.second;
-				LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
-				_vertexIds.insert(_vertexIds.begin() + j, vertId);
-				LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
-				for (const auto& vertId0 : _vertexIds) {
-					LOG(out << "v" << vertId0 << " ");
-				}
-				LOG(out << "}\n");
-				break;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+		auto iter = _splitEdgeVertMap.find(edge);
+		if (iter != _splitEdgeVertMap.end()) {
+			const auto& vertId = iter->second;
+			LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
+			_vertexIds.insert(_vertexIds.begin() + j, vertId);
+			LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
+			for (const auto& vertId0 : _vertexIds) {
+				LOG(out << "v" << vertId0 << " ");
 			}
+			LOG(out << "}\n");
+			break;
 		}
 	}
 

@@ -172,6 +172,7 @@ private:
 
 	mutable std::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
+	mutable std::map<Edge, Index3DId> _splitEdgeVertMap;
 };
 
 inline bool Polygon::verifyUnique() const
