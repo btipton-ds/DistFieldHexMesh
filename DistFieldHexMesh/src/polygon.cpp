@@ -402,11 +402,6 @@ void Polygon::removeCellId(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
-void Polygon::removeAllCellIds()
-{
-	_cellIds.clear();
-}
-
 void Polygon::addCellId(const Index3DId& cellId, size_t level)
 {
 	if (Index3DId(4, 6, 1, 0) == cellId) {
@@ -547,6 +542,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 	for (const auto& cellId : _cellIds) {
 		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
+			// TODO ERROR, this can cross out of the 3x3x3 superblock
 			pDstBlock->makeRefPolyhedronIfRequired(cellId);
 			size_t splitLevel = getSplitLevel(cellId);
 			pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {

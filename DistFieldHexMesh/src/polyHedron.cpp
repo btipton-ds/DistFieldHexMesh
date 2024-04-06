@@ -368,7 +368,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	for (const auto& faceId : _faceIds) {
 		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
 			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
-				face.removeAllCellIds(); // This face will be deleted, so remove all its cell ids 
+				face.removeCellId(_thisId);
 			});
 		}
 

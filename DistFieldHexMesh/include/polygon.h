@@ -102,7 +102,6 @@ public:
 
 	void addCellId(const Index3DId& cellId, size_t level);
 	void removeCellId(const Index3DId& cellId);
-	void removeAllCellIds();
 	void unlinkFromCell(const Index3DId& cellId);
 	size_t numCells() const;
 	const std::set<CellId_SplitLevel>& getCellIds() const;
