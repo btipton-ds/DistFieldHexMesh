@@ -121,7 +121,7 @@ private:
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(const FinishSplitOptions& options, bool multiCore);
 	bool doPresplits(bool multiCore);
-	void splitTopology(bool multiCore);
+	void splitTopology(const FinishSplitOptions& options, bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
 

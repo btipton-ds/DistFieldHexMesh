@@ -36,6 +36,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <logger.h>
 #include <volume.h>
 
+#define CACHE_BIT_SORTED 1
+#define CACHE_BIT_EDGES 2
+
 using namespace std;
 using namespace DFHM;
 
@@ -49,21 +52,17 @@ Polygon::Polygon(const Polygon& src)
 	, _splitFaceProductIds(src._splitFaceProductIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
-	, _idsSorted(src._idsSorted)
-	, _sortedIds(src._sortedIds)
 	// Don't copy the caches
 {
 }
 
 Polygon& Polygon::operator = (const Polygon& rhs)
 {
+	clearCache();
 	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
 	_splitFaceProductIds = rhs._splitFaceProductIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
-	_idsSorted = rhs._idsSorted;
-	_sortedIds = rhs._sortedIds;
-	// Don't copy the caches
 
 	return *this;
 }
@@ -76,7 +75,8 @@ void Polygon::addVertex(const Index3DId& vertId)
 
 void Polygon::clearCache() const
 {
-	_idsSorted = false;
+	_sortCacheVaild = false;
+	_edgeCacheVaild = false;
 	_cachedEdges.clear();
 	_sortedIds.clear();
 }
@@ -120,8 +120,8 @@ bool Polygon::load(istream& in, size_t idSelf)
 
 void Polygon::sortIds() const
 {
-	if (!_idsSorted) {
-		_idsSorted = true;
+	if (!_sortCacheVaild) {
+		_sortCacheVaild = true;
 		_sortedIds = _vertexIds;
 		sort(_sortedIds.begin(), _sortedIds.end());
 	}
@@ -197,8 +197,24 @@ bool Polygon::isBlockBoundary() const
 
 const set<Edge>& Polygon::getEdges() const
 {
-	if (_cachedEdges.empty())
+	if (!_edgeCacheVaild) {
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
+		_edgeCacheVaild = true;
+	}
+#ifdef _DEBUG
+	{
+		set<Edge> test;
+		createEdgesStat(_vertexIds, test, _thisId);
+		assert(_cachedEdges.size() == test.size());
+		for (const auto& e : test) {
+			assert(_cachedEdges.contains(e));
+		}
+		for (const auto& e : _cachedEdges) {
+			assert(test.contains(e));
+		}
+	}
+#endif // _DEBUG
+
 	return _cachedEdges;
 }
 
@@ -734,5 +750,53 @@ size_t Polygon::CellId_SplitLevel::getSplitLevel() const
 
 //LAMBDA_CLIENT_IMPLS(Polygon)
 
-LAMBDA_CLIENT_IMPLS(Polygon)
+void Polygon::vertexRealFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->vertexRealFunc(id, func);
+} 
+
+void Polygon::vertexRealFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexRealFunc(id, func);
+} 
+
+void Polygon::faceRealFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceRealFunc(id, func);
+} 
+
+void Polygon::faceRealFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceRealFunc(id, func);
+} 
+
+void Polygon::cellRealFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellRealFunc(id, func);
+} 
+
+void Polygon::cellRealFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellRealFunc(id, func);
+} 
+
+void Polygon::faceRefFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceRefFunc(id, func);
+} 
+
+void Polygon::cellRefFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellRefFunc(id, func);
+} 
+
+void Polygon::faceAvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceAvailFunc(id, prefState, func);
+} 
+
+void Polygon::cellAvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellAvailFunc(id, prefState, func);
+}
 

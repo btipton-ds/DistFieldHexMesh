@@ -1059,77 +1059,72 @@ Block::ModelData::ModelData(Block* pBlk, const ModelData& src)
 
 //LAMBDA_BLOCK_IMPLS
 
-void Block::vertexRealFunc(const Index3DId& id, function<void(const Vertex& obj)> func) const {
+void Block::vertexRealFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	auto p = getOwner(id); 
 	func(p->_vertices[id]);
 } 
 
-void Block::vertexRealFunc(const Index3DId& id, function<void(Vertex& obj)> func) {
+void Block::vertexRealFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getOwner(id); 
 	func(p->_vertices[id]);
 } 
 
-void Block::faceRealFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
+void Block::faceRealFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getOwner(id); 
 	func(p->_modelData._polygons[id]);
 } 
 
-void Block::faceRealFunc(const Index3DId& id, function<void(Polygon& obj)> func) {
+void Block::faceRealFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getOwner(id); 
 	func(p->_modelData._polygons[id]);
 } 
 
-void Block::cellRealFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
+void Block::cellRealFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getOwner(id); 
 	func(p->_modelData._polyhedra[id]);
 } 
 
-void Block::cellRealFunc(const Index3DId& id, function<void(Polyhedron& obj)> func) {
+void Block::cellRealFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getOwner(id); 
 	func(p->_modelData._polyhedra[id]);
 } 
 
-void Block::faceRefFunc(const Index3DId& id, function<void(const Polygon& obj)> func) const {
+void Block::faceRefFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getOwner(id); 
 	func(p->_refData._polygons[id]);
 } 
 
-void Block::cellRefFunc(const Index3DId& id, function<void(const Polyhedron& obj)> func) const {
+void Block::cellRefFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getOwner(id); 
 	func(p->_refData._polyhedra[id]);
 } 
 
-void Block::faceAvailFunc(const Index3DId& id, TopolgyState prefState, function<void(const Polygon& obj)> func) const {
+void Block::faceAvailFunc(const Index3DId& id, TopolgyState prefState, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getOwner(id); 
 	if (prefState == TS_REAL) {
 		if (p->_modelData._polygons.exists(id)) {
 			func(p->_modelData._polygons[id]);
-		}
-		else {
+		} else {
 			func(p->_refData._polygons[id]);
 		}
-	}
-	else {
+	} else {
 		if (p->_refData._polygons.exists(id)) {
 			func(p->_refData._polygons[id]);
-		}
-		else {
+		} else {
 			func(p->_modelData._polygons[id]);
 		}
 	}
 } 
 
-void Block::cellAvailFunc(const Index3DId& id, TopolgyState prefState, function<void(const Polyhedron& obj)> func) const {
+void Block::cellAvailFunc(const Index3DId& id, TopolgyState prefState, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getOwner(id); 
 	if (prefState == TS_REAL) {
 		if (p->_modelData._polyhedra.exists(id)) {
 			func(p->_modelData._polyhedra[id]);
-		}
-		else {
+		} else {
 			func(p->_refData._polyhedra[id]);
 		}
-	}
-	else {
+	} else {
 		if (p->_refData._polyhedra.exists(id)) {
 			func(p->_refData._polyhedra[id]);
 		}

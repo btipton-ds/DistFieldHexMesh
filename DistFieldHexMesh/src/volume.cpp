@@ -408,13 +408,10 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 	}
 #endif
 
-	splitTopology(multiCore);
+	splitTopology(options, multiCore);
+//	assert(verifyTopology(multiCore));
 
-	if (options._processEdgesWithTVertices) {
-		imprintTJointVertices(multiCore);
-	}
-
-	dumpOpenCells(multiCore);
+//	dumpOpenCells(multiCore);
 }
 
 bool Volume::doPresplits(bool multiCore)
@@ -435,7 +432,7 @@ bool Volume::doPresplits(bool multiCore)
 	return didSplits;
 }
 
-void Volume::splitTopology(bool multiCore)
+void Volume::splitTopology(const FinishSplitOptions& options, bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
@@ -443,6 +440,11 @@ void Volume::splitTopology(bool multiCore)
 		}
 		return true;
 	}, multiCore);
+
+	if (options._processEdgesWithTVertices) {
+		imprintTJointVertices(multiCore);
+	}
+
 }
 
 void Volume::imprintTJointVertices(bool multiCore)

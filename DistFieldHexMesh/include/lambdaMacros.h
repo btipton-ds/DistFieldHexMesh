@@ -28,58 +28,60 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #define LAMBDA_REAL_FUNC_DECL(NAME, CONST, CLASS) \
-void NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
+void NAME##RealFunc(const Index3DId& id, const std::function<void(CONST CLASS& obj)>& func) CONST;
 
 #define LAMBDA_CLIENT_REAL_FUNC_DECL(NAME, CONST, CLASS) \
-void NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS& obj)> func) CONST;
+void NAME##RealFunc(const Index3DId& id, const std::function<void(CONST CLASS& obj)>& func) CONST;
 
 #define LAMBDA_REAL_FUNC_IMPL_0(NAME, MEMBER_NAME, CONST, CLASS) \
-void Block::NAME##RealFunc(const Index3DId& id, function<void(CONST CLASS& obj)> func) CONST \
+void Block::NAME##RealFunc(const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
 	auto p = getOwner(id); \
 	func(p->MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_REAL_FUNC_IMPL_1(NAME, MEMBER_NAME, CONST, CLASS) \
-void Block::NAME##RealFunc(const Index3DId& id, function<void(CONST CLASS& obj)> func) CONST \
+void Block::NAME##RealFunc(const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
 	auto p = getOwner(id); \
 	func(p->_modelData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_CLIENT_REAL_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
-void CLASS::NAME##RealFunc(const Index3DId& id, std::function<void(CONST CLASS2& obj)> func) CONST \
+void CLASS::NAME##RealFunc(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
-	getBlockPtr()->NAME##RealFunc(id, func); \
+	auto p = getBlockPtr(); \
+	p->NAME##RealFunc(id, func); \
 }
 
 #define LAMBDA_REF_FUNC_DECL(NAME, CLASS) \
-void NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS& obj)> func) const;
+void NAME##RefFunc(const Index3DId& id, const std::function<void(const CLASS& obj)>& func) const;
 
 #define LAMBDA_CLIENT_REF_FUNC_DECL(NAME, CLASS) \
-void NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS& obj)> func) const;
+void NAME##RefFunc(const Index3DId& id, const std::function<void(const CLASS& obj)>& func) const;
 
 #define LAMBDA_REF_FUNC_IMPL(NAME, MEMBER_NAME, CLASS) \
-void Block::NAME##RefFunc(const Index3DId& id, function<void(const CLASS& obj)> func) const \
+void Block::NAME##RefFunc(const Index3DId& id, const function<void(const CLASS& obj)>& func) const \
 { \
 	auto p = getOwner(id); \
 	func(p->_refData.MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CLASS2) \
-void CLASS::NAME##RefFunc(const Index3DId& id, std::function<void(const CLASS2& obj)> func) const \
+void CLASS::NAME##RefFunc(const Index3DId& id, const std::function<void(const CLASS2& obj)>& func) const \
 { \
-	getBlockPtr()->NAME##RefFunc(id, func); \
+	auto p = getBlockPtr(); \
+	p->NAME##RefFunc(id, func); \
 }
 
 #define LAMBDA_AVAIL_FUNC_DECL(NAME, CLASS) \
-void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS& obj)> func) const;
+void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const CLASS& obj)>& func) const;
 
 #define LAMBDA_CLIENT_AVAIL_FUNC_DECL(NAME, CLASS) \
-void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS& obj)> func) const;
+void NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const CLASS& obj)>& func) const;
 
 #define LAMBDA_AVAIL_FUNC_IMPL(NAME, MEMBER_NAME, CLASS) \
-void Block::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, function<void(const CLASS& obj)> func) const \
+void Block::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, const function<void(const CLASS& obj)>& func) const \
 { \
 	const auto p = getOwner(id); \
 	if (prefState == TS_REAL) {\
@@ -98,9 +100,10 @@ void Block::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, functio
 }
 
 #define LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CLASS2) \
-void CLASS::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, std::function<void(const CLASS2& obj)> func) const \
+void CLASS::NAME##AvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const CLASS2& obj)>& func) const \
 { \
-	getBlockPtr()->NAME##AvailFunc(id, prefState, func); \
+	auto p = getBlockPtr(); \
+	p->NAME##AvailFunc(id, prefState, func); \
 }
 
 /****************************************************************************************************/
