@@ -426,6 +426,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		});
 	}
 
+	size_t faceIdx = 0;
 	map<Index3DId, vector<Index3DId>> partitionFaces;
 	for (const auto& vert : corners) {
 		auto vertFaces = vertToFaceMap.find(vert)->second;
@@ -473,7 +474,22 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 				faceVert1,
 			};
 
+			auto dbgVerts = verts;
+			sort(dbgVerts.begin(), dbgVerts.end());
+			if (faceIdx == 3) {
+				int dbgBreak = 1;
+			}
 			auto newFaceId = pDstBlock->addFace(verts);
+
+			cout << "Add split face: " << newFaceId << "\n";
+			size_t vIdx = 0;
+			for (const auto& id : dbgVerts) {
+				FixedPt pt = getBlockPtr()->getFixedPoint(id);
+				cout << "  " << vIdx << ": " << id << "(" << pt[0] << " " << pt[1] << " " << pt[2] << ")\n";
+				vIdx++;
+			}
+			faceIdx++;
+
 #ifdef _DEBUG
 			partitionFaces[newFaceId] = verts;
 #endif // _DEBUG

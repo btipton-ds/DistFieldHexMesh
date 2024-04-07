@@ -634,6 +634,12 @@ Vector3d Block::getVertexPoint(const Index3DId& vertId) const
 	return pOwner->_vertices[vertId].getPoint();
 }
 
+FixedPt Block::getFixedPoint(const Index3DId& vertId) const
+{
+	auto pOwner = getOwner(vertId);
+	return pOwner->_vertices[vertId].getFixedPt();
+}
+
 bool Block::unload(string& filename)
 {
 	{

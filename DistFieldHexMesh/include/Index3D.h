@@ -201,12 +201,12 @@ inline Index3DId::Index3DId(const Index3DBase& src, size_t elementId)
 
 inline bool Index3DId::operator < (const Index3DId& rhs) const
 {
-	if (_elementId < rhs._elementId)
+	if (Index3DBase::operator <(rhs))
 		return true;
-	else if (_elementId > rhs._elementId)
+	else if (rhs.Index3DBase::operator <(*this))
 		return false;
-	
-	return Index3DBase::operator <(rhs);
+
+	return _elementId < rhs._elementId;
 }
 
 inline bool Index3DId::operator == (const Index3DId& rhs) const

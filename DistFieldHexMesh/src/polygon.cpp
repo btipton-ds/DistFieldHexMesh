@@ -49,6 +49,8 @@ Polygon::Polygon(const Polygon& src)
 	, _splitFaceProductIds(src._splitFaceProductIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
+	, _idsSorted(src._idsSorted)
+	, _sortedIds(src._sortedIds)
 	// Don't copy the caches
 {
 }
@@ -59,6 +61,8 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	_splitFaceProductIds = rhs._splitFaceProductIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
+	_idsSorted = rhs._idsSorted;
+	_sortedIds = rhs._sortedIds;
 	// Don't copy the caches
 
 	return *this;
@@ -72,6 +76,7 @@ void Polygon::addVertex(const Index3DId& vertId)
 
 void Polygon::clearCache() const
 {
+	_idsSorted = false;
 	_cachedEdges.clear();
 	_sortedIds.clear();
 }
@@ -115,7 +120,8 @@ bool Polygon::load(istream& in, size_t idSelf)
 
 void Polygon::sortIds() const
 {
-	if (_sortedIds.empty() && !_vertexIds.empty()) {
+	if (!_idsSorted) {
+		_idsSorted = true;
 		_sortedIds = _vertexIds;
 		sort(_sortedIds.begin(), _sortedIds.end());
 	}

@@ -171,6 +171,7 @@ private:
 	std::vector<Index3DId> _vertexIds;
 	std::set<CellId_SplitLevel> _cellIds;
 
+	mutable bool _idsSorted = false;
 	mutable std::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
 };
