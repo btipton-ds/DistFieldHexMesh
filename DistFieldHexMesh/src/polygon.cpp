@@ -201,7 +201,7 @@ const set<Edge>& Polygon::getEdges() const
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
 		_edgeCacheVaild = true;
 	}
-#ifdef _DEBUG
+#if 0 && defined(_DEBUG)
 	{
 		set<Edge> test;
 		createEdgesStat(_vertexIds, test, _thisId);
@@ -548,7 +548,6 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 	for (const auto& cellId : _cellIds) {
 		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
-			// TODO ERROR, this can cross out of the 3x3x3 superblock
 			pDstBlock->makeRefPolyhedronIfRequired(cellId);
 			size_t splitLevel = getSplitLevel(cellId);
 			pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
@@ -690,6 +689,14 @@ bool Polygon::verifyTopology() const
 	for (const auto& cellId : _cellIds) {
 		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			valid = false;
+		bool result = true;
+		cellRealFunc(cellId, [this, &result](const Polyhedron& cell) {
+			if (!cell.containsFace(_thisId)) {
+				result = false;
+			}
+		});
+		if (!result)
+			return result;
 	}
 #endif
 	return valid;

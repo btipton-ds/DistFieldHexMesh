@@ -1022,15 +1022,23 @@ bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
 void Block::freePolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	if (pOwner && pOwner->_modelData._polygons.exists(id))
-		pOwner->_modelData._polygons.free(id);
+	if (pOwner) {
+		auto& polygons = pOwner->_modelData._polygons;
+		auto& refPolygons = pOwner->_refData._polygons;
+		assert(refPolygons.exists(id));
+		polygons.free(id);
+	}
 }
 
 void Block::freePolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	if (pOwner && pOwner->_modelData._polyhedra.exists(id))
-		pOwner->_modelData._polyhedra.free(id);
+	if (pOwner) {
+		auto& polyhedra = pOwner->_modelData._polyhedra;
+		auto& refPolyhedra = pOwner->_refData._polyhedra;
+		assert(refPolyhedra.exists(id));
+		polyhedra.free(id);
+	}
 }
 
 void Block::pack()

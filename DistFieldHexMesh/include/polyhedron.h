@@ -112,8 +112,10 @@ private:
 
 	std::set<Index3DId> _faceIds;
 
-	mutable bool _needsCurvatureCheck = true;
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
+	mutable bool _needsCurvatureCheck = true;
+	mutable bool _cachedEdges0Vaild = false;
+	mutable bool _cachedEdges1Vaild = false;
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 };
 

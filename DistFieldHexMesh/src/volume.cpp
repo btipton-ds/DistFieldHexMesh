@@ -335,7 +335,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
 		startCount = endCount;
 #endif // _WIN32
-		assert(verifyTopology(false && multiCore));
 #endif
 	}
 
@@ -393,6 +392,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		options._processPartialSplits = i > 0;
 		options._processEdgesWithTVertices = true;
 		finishSplits(options, multiCore);
+		assert(verifyTopology(multiCore));
 	}
 }
 

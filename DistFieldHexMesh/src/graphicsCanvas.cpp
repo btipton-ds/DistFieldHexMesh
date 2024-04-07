@@ -80,8 +80,8 @@ namespace
 
     int attribs[] = {
         WX_GL_DEPTH_SIZE, 16,
-#if OVER_SAMPLING > 1
-        WX_GL_SAMPLES, OVER_SAMPLING * OVER_SAMPLING,
+#if GRAPHICS_OVER_SAMPLING > 1
+        WX_GL_SAMPLES, GRAPHICS_OVER_SAMPLING * GRAPHICS_OVER_SAMPLING,
 #endif
         0
     };

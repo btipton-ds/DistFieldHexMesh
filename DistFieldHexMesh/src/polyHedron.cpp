@@ -129,8 +129,8 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 
 const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
-	bool needsUpdate = includeAdjacentCellFaces && _cachedEdges1.empty() || _cachedEdges0.empty();
-	if (needsUpdate) {
+	bool cacheValid = includeAdjacentCellFaces ? _cachedEdges1Vaild : _cachedEdges0Vaild;
+	if (!cacheValid) {
 		map<Edge, set<Index3DId>> edgeToFaceMap;
 		set<Index3DId> adjCellIds;
 		for (const auto& faceId : _faceIds) {
@@ -174,17 +174,21 @@ const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 		}
 
 		for (const auto& pair : edgeToFaceMap) {
-			if (includeAdjacentCellFaces)
+			if (includeAdjacentCellFaces) {
 				_cachedEdges1.insert(Edge(pair.first, pair.second));
-			else
+			} else {
 				_cachedEdges0.insert(Edge(pair.first, pair.second));
+			}
 		}
 	}
 
-	if (includeAdjacentCellFaces)
+	if (includeAdjacentCellFaces) {
+		_cachedEdges1Vaild = true;
 		return _cachedEdges1;
-	else
+	} else {
+		_cachedEdges0Vaild = true;
 		return _cachedEdges0;
+	}
 }
 
 set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
@@ -418,7 +422,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		map<Edge, set<Index3DId>> fullEdgeToFaceMap;
 		for (const auto& splitFaceId : splitVertFaces) {
 			assert(getBlockPtr()->polygonExists(TS_REAL, splitFaceId));
-			faceAvailFunc(splitFaceId, TS_REAL, [&fullEdgeToFaceMap](const Polygon& splitFace) {
+			faceAvailFunc(splitFaceId, TS_REFERENCE, [&fullEdgeToFaceMap](const Polygon& splitFace) {
 				assert(splitFace.getVertexIds().size() == 4);
 				const auto& verts = splitFace.getVertexIds();
 				for (size_t i = 0; i < verts.size(); i++) {
@@ -500,7 +504,7 @@ bool Polyhedron::needToImprintTVertices() const
 
 void Polyhedron::imprintTVertices(Block* pDstBlock) const
 {
-	if (Index3DId(0, 10, 0, 0) == _thisId) {
+	if (Index3DId(3, 0, 5, 7) == _thisId) {
 		int dbgBreak = 1;
 	}
 	set<Index3DId> refFaceIds;
@@ -518,17 +522,21 @@ void Polyhedron::imprintTVertices(Block* pDstBlock) const
 
 	set<Index3DId> imprintIds;
 	for (const auto& faceId : _faceIds) {
-		faceRealFunc(faceId, [&splitEdgeVertMap, &imprintIds](const Polygon& face) {
-			if (face.needToImprintVertices(splitEdgeVertMap))
-				imprintIds.insert(face.getId());
-		});
+		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+			faceRealFunc(faceId, [&splitEdgeVertMap, &imprintIds](const Polygon& face) {
+				if (face.needToImprintVertices(splitEdgeVertMap))
+					imprintIds.insert(face.getId());
+			});
+		}
 	}
 
 	for (const auto& faceId : imprintIds) {
 		pDstBlock->makeRefPolygonIfRequired(faceId);
-		pDstBlock->faceRealFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
-			face.imprintVertices(splitEdgeVertMap);
-		});
+		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+			pDstBlock->faceRealFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
+				face.imprintVertices(splitEdgeVertMap);
+			});
+		}
 	}
 
 	clearCache();
@@ -1017,6 +1025,9 @@ void Polyhedron::clearCache() const
 {
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_needsCurvatureCheck = true;
+
+	_cachedEdges0Vaild = false;
+	_cachedEdges1Vaild = false;
 
 	_cachedEdges0.clear();
 	_cachedEdges1.clear();
