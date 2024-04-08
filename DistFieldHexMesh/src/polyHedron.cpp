@@ -966,28 +966,17 @@ namespace
 
 bool Polyhedron::hasTooManySplits() const
 {
-	if (_faceIds.size() > 24) {
-		return true;
-	}
-	
 	bool result = false;
 
-	/*
-	Logic - 
-	On creation every face in a cell has level 0
-	When a face is split, it's deleted and replaced with faces with split level 1
-	If one of those faces is split, the level becomes 2+
-	Splitting more than once in the same cell is illegal
-	*/
 	for (const auto& faceId : _faceIds) {
 		faceRealFunc(faceId, [this, &result](const Polygon& face) {
-			size_t splitLevel = face.getSplitLevel(_thisId);
-			if (splitLevel > 1)
+			if (face.getSplitLevel(_thisId) > 1)
 				result = true;
 		});
 		if (result)
 			break;
 	}
+
 	return result;
 }
 
@@ -997,25 +986,27 @@ bool Polyhedron::verifyTopology() const
 #ifdef _DEBUG 
 
 	for (const auto& faceId : _faceIds) {
-		if (polygonExists(TS_REAL, faceId)) {
+		if (valid && polygonExists(TS_REAL, faceId)) {
 			faceRealFunc(faceId, [this, &valid](const Polygon& face) {
-				if (!face.usedByCell(_thisId))
+				if (valid && !face.usedByCell(_thisId)) {
 					valid = false;
-				if (!face.verifyTopology())
+				}
+				if (valid && !face.verifyTopology())
 					valid = false;
 				});
 		} else
 			valid = false;
 	}
 
-	if (!isClosed()) {
-		getBlockPtr()->dumpObj({_thisId});
+	if (valid && !isClosed()) {
 		valid = false;
 	}
-	/*
-	if (hasTooManySplits())
+	
+	if (valid && hasTooManySplits())
 		valid = false;
-	*/
+	if (false && !valid) {
+		getBlockPtr()->dumpObj({ _thisId });
+	}
 #endif // _DEBUG 
 
 	return valid;

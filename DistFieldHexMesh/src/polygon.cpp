@@ -556,26 +556,6 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		}
 	}
 
-#ifdef _DEBUG
-	for (const auto& faceId : _splitFaceProductIds) {
-		set<Polygon::CellId_SplitLevel> cellIds;
-		faceRealFunc(faceId, [&cellIds](const Polygon& childFace) {
-			cellIds = childFace.getCellIds();
-		});
-
-		for (const auto& cellId : cellIds) {
-			if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
-				cellRealFunc(cellId, [this, &faceId](const Polyhedron& cell) {
-					assert(cell.containsFace(faceId));
-					if (cell.hasTooManySplits()) {
-						getOwnerBlockPtr(cell.getId())->dumpObj({ cell.getId() });
-					}
-				});
-			}
-		}
-	}
-#endif // _DEBUG
-
 	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pst: " << *this);
 }
 
@@ -676,27 +656,31 @@ bool Polygon::verifyTopology() const
 	if (!verifyUnique())
 		valid = false;
 
-	if (_cellIds.size() > 2)
+	if (valid && _cellIds.size() > 2)
 		valid = false;
 
-	const auto& edges = getEdges();
-	for (const auto& edge : edges) {
-		auto faceIds = edge.getFaceIds();
-		if (faceIds.count(_thisId) == 0) // edge does not link back to this face
-			valid = false;
+	if (valid) {
+		const auto& edges = getEdges();
+		for (const auto& edge : edges) {
+			auto faceIds = edge.getFaceIds();
+			if (valid && faceIds.count(_thisId) == 0) // edge does not link back to this face
+				valid = false;
+		}
 	}
 
-	for (const auto& cellId : _cellIds) {
-		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
-			valid = false;
-		bool result = true;
-		cellRealFunc(cellId, [this, &result](const Polyhedron& cell) {
-			if (!cell.containsFace(_thisId)) {
-				result = false;
-			}
-		});
-		if (!result)
-			return result;
+	if (valid) {
+		for (const auto& cellId : _cellIds) {
+			if (valid && !getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+				valid = false;
+
+			cellRealFunc(cellId, [this, &valid](const Polyhedron& cell) {
+				if (valid && !cell.containsFace(_thisId)) {
+					valid = false;
+				}
+				});
+			if (!valid)
+				return valid;
+		}
 	}
 #endif
 	return valid;
