@@ -111,21 +111,57 @@ bool ObjectPoolOwnerUser::isOwnerBeingDestroyed() const
 	return !_pPoolOwner || _pPoolOwner->_isBeingDestroyed;
 }
 
+namespace
+{
+	static thread_local Index3D s_blockIdx;
+}
+
+void ObjectPoolOwner::setThreadBlockIdx(const Index3D& blockIdx)
+{
+#if RUN_MULTI_THREAD
+	s_blockIdx = blockIdx;
+#endif
+}
+
+const Index3D& ObjectPoolOwner::getThreadBlockIdx()
+{
+#if RUN_MULTI_THREAD
+	return s_blockIdx;
+#else
+	return Index3D();
+#endif
+}
+
 shared_ptr<Logger> ObjectPoolOwner::getLogger() const
 {
+#if RUN_MULTI_THREAD
+	stringstream ss;
+	ss << "block_" << getLoggerNumericCode() << ".log";
+	string filename = ss.str();
+
+	return Logger::get(filename);
+#else
 	if (_filename.empty()) {
-		Index3D idx = getBlockIdx();
 		stringstream ss;
 		ss << "block_" << getLoggerNumericCode() << ".log";
 		_filename = ss.str();
 	}
 
 	return Logger::get(_filename);
+#endif
 }
 
 string ObjectPoolOwner::getLoggerNumericCode() const
 {
-	Index3D idx = getBlockIdx();
+	Index3D idx;
+#if RUN_MULTI_THREAD
+	if (s_blockIdx != getBlockIdx()) {
+		int dbgBreak = 1;
+	}
+	idx = s_blockIdx;
+#else
+	idx = getBlockIdx();
+#endif
 	stringstream ss;
 	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
 	return ss.str();

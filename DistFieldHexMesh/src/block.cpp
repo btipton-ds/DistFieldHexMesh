@@ -272,8 +272,10 @@ bool Block::verifyTopology() const
 	bool result = true;
 #ifdef _DEBUG 
 	_modelData._polyhedra.iterateInOrder([&result](const Index3DId& id, const Polyhedron& cell) {
-		if (!cell.verifyTopology())
+		if (!cell.verifyTopology()) {
 			result = false;
+			exit(0);
+		}
 	});
 #endif
 
@@ -686,7 +688,7 @@ void Block::setNeedsSimpleSplit()
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	out << "Block::setNeedsSimpleSplit()\n";
+	out << "Block[" << _blockIdx << "]::setNeedsSimpleSplit()\n";
 	Logger::Indent indent;
 #endif
 
@@ -700,7 +702,7 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	out << "Block::setNeedsCurvatureSplit()\n";
+	out << "Block[" << _blockIdx << "]::setNeedsCurvatureSplit()\n";
 	Logger::Indent indent;
 #endif
 
@@ -749,10 +751,21 @@ void Block::dumpOpenCells() const
 
 void Block::doPreSplit(const Index3DId& cellId)
 {
+#if LOGGING_ENABLED
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	out << "Block[" << _blockIdx << "]::doPreSplit\n";
+	Logger::Indent indent;
+#endif
 	_splitPolyhedronIds.erase(cellId);
 	assert(polyhedronExists(TS_REAL, cellId));
 	makeRefPolyhedronIfRequired(cellId);
 	auto& refCell = _refData._polyhedra[cellId];
+#if LOGGING_VERBOSE_ENABLED
+	LOG(out << Logger::Pad() << "Splitting: " << refCell);
+#else
+	LOG(out << Logger::Pad() << "Splitting: c" << cellId << "\n");
+#endif
 	refCell.splitAtCentroid(this);
 	freePolyhedron(cellId);
 
@@ -762,9 +775,17 @@ void Block::doPreSplit(const Index3DId& cellId)
 
 bool Block::doPresplits_splitPolyhedra()
 {
+#if LOGGING_ENABLED
+	auto pLogger = getLogger();
+	auto& out = pLogger->getStream();
+	out << "Block[" << _blockIdx << "]::doPresplits_splitPolyhedra\n";
+	Logger::Indent indent;
+#endif
+
 	bool result = false;
 	set<Index3DId> nextBlockingCellIds;
 
+	LOG(out << Logger::Pad() << "Doing presplits\n");
 	for (const auto& cellId : _preSplitBlockingPolyhedraIds) {
 		auto& modelCell = _modelData._polyhedra[cellId];
 		result = true;
@@ -811,7 +832,7 @@ void Block::splitRequiredPolyhedra()
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	out << "Block::splitPolyhedraIfRequired\n";
+	out << "Block[" << _blockIdx << "]::splitRequiredPolyhedra\n";
 	Logger::Indent indent;
 #endif
 
@@ -837,7 +858,10 @@ void Block::imprintTJointVertices()
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	out << "Block::imprintTJointVertices()\n";
+	LOG(out << "\n");
+	LOG(out << "*******************************************************************************************\n");
+	LOG(out << "Block[" << _blockIdx << "]::imprintTJointVertices *****************************************\n");
+	LOG(out << "*******************************************************************************************\n");
 	Logger::Indent indent;
 #endif
 
@@ -1023,6 +1047,10 @@ void Block::freePolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	if (pOwner) {
+#if LOGGING_ENABLED
+		auto& out = getLogger()->getStream();
+#endif
+		LOG(out << Logger::Pad() << "Deleting f" << id << "\n");
 		auto& polygons = pOwner->_modelData._polygons;
 		auto& refPolygons = pOwner->_refData._polygons;
 		assert(refPolygons.exists(id));
@@ -1034,6 +1062,10 @@ void Block::freePolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	if (pOwner) {
+#if LOGGING_ENABLED
+		auto& out = getLogger()->getStream();
+#endif
+		LOG(out << Logger::Pad() << "Deleting c" << id << "\n");
 		auto& polyhedra = pOwner->_modelData._polyhedra;
 		auto& refPolyhedra = pOwner->_refData._polyhedra;
 		assert(refPolyhedra.exists(id));

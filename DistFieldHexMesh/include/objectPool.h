@@ -47,6 +47,9 @@ class Logger;
 // Have to store the pointer so we can call block functions. Just the block index is not enough
 class ObjectPoolOwner {
 public:
+	static void setThreadBlockIdx(const Index3D& blockIdx);
+	const Index3D& getThreadBlockIdx();
+
 	virtual const Index3D& getBlockIdx() const = 0;
 
 	virtual Volume* getVolume() = 0;

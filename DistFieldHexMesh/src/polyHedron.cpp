@@ -360,7 +360,7 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Polyhedron::splitRefFaceAtPoint " << *this);
+	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint " << *this);
 #endif
 
 	set<Index3DId> cornerVerts;
@@ -487,14 +487,16 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		auto newCellId = pDstBlock->addCell(newCell);
 
 #if LOGGING_ENABLED
-		cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
+		{
 			Logger::Indent indent;
-			LOG(out << Logger::Pad() << "to: " << newCell);
-		});
+			cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
+				LOG(out << Logger::Pad() << "to: " << newCell);
+			});
+		}
 #endif
 	}
 
-	LOG(out << Logger::Pad() << "Post split " << *this << "\n" << Logger::Pad() << "=================================================================================================\n");
+	LOG(out << Logger::Pad() << "=================================================================================================\n");
 }
 
 bool Polyhedron::needToImprintTVertices() const
@@ -1035,6 +1037,8 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 			closed = false;
 	}
 
+#if LOGGING_VERBOSE_ENABLED
+
 	out << "Cell: c" << cell.getId() << (closed ? " CLOSED" : " ERROR NOT CLOSED") << "\n";
 	{
 		Logger::Indent indent;
@@ -1058,28 +1062,22 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 			out << Logger::Pad() << "}\n";
 		}
 	}
+#else
+	out << "Cell: c" << cell.getId() << (closed ? " CLOSED" : " ERROR NOT CLOSED") << "\n";
+	{
+		Logger::Indent indent;
 
-	return out;
-}
-
-#if 0
-void Polyhedron::faceMatchFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const
-{
-
-	if (getBlockPtr()->isPolyhedronReference(this))
-		faceRefFunc(id, func);
-	else
-		faceRealFunc(id, func);
-}
-
-void Polyhedron::cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const
-{
-	if (getBlockPtr()->isPolyhedronReference(this))
-		cellRefFunc(id, func);
-	else
-		cellRealFunc(id, func);
-}
+		out << Logger::Pad() << "faceIds(" << cell._faceIds.size() << "): { ";
+		for (const auto& faceId : cell._faceIds) {
+			out << "f" << faceId << " ";
+		}
+		out << "}\n";
+	}
 #endif
+
+return out;
+}
+
 //LAMBDA_CLIENT_IMPLS(Polyhedron)
 
 void Polyhedron::vertexRealFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {

@@ -484,7 +484,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pre: " << *this);
+	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << *this);
 #endif
 
 	// The code must be operating on the reference face
@@ -556,7 +556,9 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		}
 	}
 
-	LOG(out << Logger::Pad() << "Polygon::splitRefFaceAtPoint. pst: " << *this);
+#if LOGGING_VERBOSE_ENABLED
+	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pst: " << *this);
+#endif
 }
 
 void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
@@ -591,7 +593,11 @@ void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "imprintVertices pre:" << *this);
+#if LOGGING_VERBOSE_ENABLED
+	LOG(out << Logger::Pad() << "imprintVertices:" << *this);
+#else
+	LOG(out << Logger::Pad() << "imprintVertices: f" << _thisId << "\n");
+#endif
 #endif
 	auto pBlk = getBlockPtr();
 
@@ -599,6 +605,12 @@ void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 	// the vertex is not in this polygon and lies between i and j
 	if (_thisId.isValid())
 		pBlk->removeFaceFromLookUp(_thisId);
+
+	LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
+	for (const auto& vertId0 : _vertexIds) {
+		LOG(out << "v" << vertId0 << " ");
+	}
+	LOG(out << "}\n");
 
 	vector<Index3DId> newVerts;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -608,17 +620,18 @@ void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 		auto iter = edgeVertMap.find(edge);
 		if (iter != edgeVertMap.end()) {
 			const auto& vertId = iter->second;
-			LOG(out << Logger::Pad() << "inserting vertex v" << vertId << ", in edge(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ") before vertex v" << _vertexIds[j] << "\n");
 			newVerts.push_back(vertId);
-			LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
-			for (const auto& vertId0 : _vertexIds) {
-				LOG(out << "v" << vertId0 << " ");
-			}
-			LOG(out << "}\n");
 		}
 	}
 
 	_vertexIds = newVerts;
+
+	LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
+	for (const auto& vertId0 : _vertexIds) {
+		LOG(out << "v" << vertId0 << " ");
+	}
+	LOG(out << "}\n");
+
 	clearCache();
 
 	if (_thisId.isValid())
@@ -688,6 +701,7 @@ bool Polygon::verifyTopology() const
 
 ostream& DFHM::operator << (ostream& out, const Polygon& face)
 {
+#if LOGGING_VERBOSE_ENABLED
 	out << "Face: f" << face.getId() << "\n";
 	{
 		Logger::Indent sp;
@@ -713,6 +727,9 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 			out << "}\n";
 		}
 	}
+#else
+	out << "Face: f" << face.getId() << "\n";
+#endif
 
 	return out;
 }
