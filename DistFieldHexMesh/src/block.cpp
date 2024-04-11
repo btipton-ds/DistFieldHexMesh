@@ -271,12 +271,16 @@ bool Block::verifyTopology() const
 {
 	bool result = true;
 #ifdef _DEBUG 
-	_modelData._polyhedra.iterateInOrder([&result](const Index3DId& id, const Polyhedron& cell) {
+	vector<Index3DId> badCellIds;
+	_modelData._polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
 		if (!cell.verifyTopology()) {
+			badCellIds.push_back(id);
 			result = false;
-			exit(0);
 		}
 	});
+	if (!result) {
+		dumpObj(badCellIds);
+	}
 #endif
 
 	return result;
@@ -839,10 +843,15 @@ void Block::splitRequiredPolyhedra()
 	for (const auto& cellId : _splitPolyhedronIds) {
 		if (polyhedronExists(TS_REAL, cellId)) {
 			set<Index3DId> blockingCellIds;
+			assert(polyhedronExists(TS_REAL, cellId));
 			if (_modelData._polyhedra[cellId].canSplit(blockingCellIds)) {
+				assert(polyhedronExists(TS_REAL, cellId));
 				makeRefPolyhedronIfRequired(cellId);
+				assert(polyhedronExists(TS_REAL, cellId));
 				auto& refCell = _refData._polyhedra[cellId];
+				assert(polyhedronExists(TS_REAL, cellId));
 				refCell.splitAtCentroid(this);
+				assert(polyhedronExists(TS_REAL, cellId));
 				freePolyhedron(cellId);
 			} else {
 //				assert(!"Cell cannot be split due to blocking cells");
@@ -1045,6 +1054,11 @@ bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
 
 void Block::freePolygon(const Index3DId& id)
 {
+#if 1 && defined(_DEBUG)
+	auto pVol = getVolume();
+	assert(!pVol->isPolygonInUse(id));
+#endif // _DEBUG
+
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED
@@ -1060,6 +1074,10 @@ void Block::freePolygon(const Index3DId& id)
 
 void Block::freePolyhedron(const Index3DId& id)
 {
+#if 1 && defined(_DEBUG)
+	auto pVol = getVolume();
+	assert(!pVol->isPolyhedronInUse(id));
+#endif // _DEBUG
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED

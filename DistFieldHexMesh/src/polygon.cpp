@@ -81,6 +81,25 @@ void Polygon::clearCache() const
 	_sortedIds.clear();
 }
 
+bool Polygon::cellsOwnThis() const
+{
+
+	for (const auto& cellId : _cellIds) {
+		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+			return false;
+		bool result = true;
+		cellRealFunc(cellId, [this, &result](const Polyhedron& cell) {
+			if (!cell.containsFace(_thisId))
+				result = false;
+		});
+
+		if (!result)
+			return false;
+	}
+
+	return true;
+}
+
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
 	auto iter = _cellIds.find(cellId);
@@ -431,6 +450,20 @@ void Polygon::removeCellId(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
+void Polygon::removeDeadCellIds()
+{
+	set<CellId_SplitLevel> tmp;
+	for (const auto& cellId : _cellIds) {
+		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+			tmp.insert(cellId);
+	}
+
+	if (_cellIds.size() != tmp.size()) {
+		int dbgBreak = 1;
+	}
+	_cellIds = tmp;
+}
+
 void Polygon::addCellId(const Index3DId& cellId, size_t level)
 {
 	if (Index3DId(4, 6, 1, 0) == cellId) {
@@ -472,7 +505,7 @@ TopolgyState Polygon::getState() const
 
 void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 {
-	if (Index3DId(0, 5, 5, 8) == _thisId) {
+	if (Index3DId(0, 8, 4, 4) == _thisId) {
 		int dbgBreak = 1;
 	}
 
@@ -486,6 +519,8 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 
 	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << *this);
 #endif
+
+	assert(cellsOwnThis());
 
 	// The code must be operating on the reference face
 	assert(_vertexIds.size() == 4);

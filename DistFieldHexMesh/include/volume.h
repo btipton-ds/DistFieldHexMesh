@@ -64,6 +64,11 @@ public:
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
 
+#ifdef _DEBUG
+	bool isPolygonInUse(const Index3DId& faceId) const;
+	bool isPolyhedronInUse(const Index3DId& cellId) const;
+#endif
+
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	struct BuildCFDParams {
@@ -144,6 +149,10 @@ private:
 	CMeshPtr _pModelTriMesh;
 	Vector3d _originMeters, _spanMeters;
 	double _sharpAngleRad;
+
+#ifdef _DEBUG
+	mutable std::mutex _mutex;
+#endif // _DEBUG
 
 	std::vector<Vector3d> _cornerPts;
 	std::vector<std::shared_ptr<Block>> _blocks;

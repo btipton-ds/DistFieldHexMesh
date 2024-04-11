@@ -208,6 +208,52 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	return make_shared<Block>(this, blockIdx, pts);
 }
 
+#ifdef _DEBUG
+bool Volume::isPolygonInUse(const Index3DId& faceId) const
+{
+	bool result = false;
+
+	lock_guard g(_mutex);
+	for (const auto& pBlk : _blocks) {
+		if (pBlk) {
+			const auto& cells = pBlk->_modelData._polyhedra;
+			cells.iterateInOrder([&result, &faceId](const Index3DId& cellId, const Polyhedron& cell) {
+				if (cell.containsFace(faceId)) {
+					result = true;
+				}
+			});
+		}
+
+		if (result)
+			break;
+	}
+
+	return result;
+}
+
+bool Volume::isPolyhedronInUse(const Index3DId& cellId) const
+{
+	bool result = false;
+
+	lock_guard g(_mutex);
+	for (const auto& pBlk : _blocks) {
+		if (pBlk) {
+			const auto& faces = pBlk->_modelData._polygons;
+			faces.iterateInOrder([&result, &cellId](const Index3DId& faceId, const Polygon& face) {
+				if (face.usedByCell(cellId)) {
+					result = true;
+				}
+			});
+		}
+
+		if (result)
+			break;
+	}
+
+	return result;
+}
+#endif // _DEBUG
+
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();
@@ -882,7 +928,10 @@ bool Volume::verifyTopology(bool multiCore) const
 
 	runLambda([this, &result](size_t linearIdx)->bool {
 		if (_blocks[linearIdx])
-			result = result && _blocks[linearIdx]->verifyTopology();
+			if (!_blocks[linearIdx]->verifyTopology()) {
+				result = false;
+				exit(0);
+			}
 		return true;
 	}, multiCore);
 	return result;
@@ -925,6 +974,7 @@ void Volume::runLambda(L fLambda, bool multiCore)
 					}
 				}
 
+				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
 				MultiCore::runLambda([fLambda](size_t linearIdx)->bool {
 					return fLambda(linearIdx);

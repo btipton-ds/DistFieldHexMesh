@@ -104,6 +104,7 @@ public:
 
 	void addCellId(const Index3DId& cellId, size_t level);
 	void removeCellId(const Index3DId& cellId);
+	void removeDeadCellIds();
 	void unlinkFromCell(const Index3DId& cellId);
 	size_t numCells() const;
 	const std::set<CellId_SplitLevel>& getCellIds() const;
@@ -162,7 +163,7 @@ private:
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	TopolgyState getState() const;
 	void clearCache() const;
-
+	bool cellsOwnThis() const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one

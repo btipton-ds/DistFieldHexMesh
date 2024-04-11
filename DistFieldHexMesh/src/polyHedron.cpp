@@ -341,7 +341,7 @@ bool Polyhedron::intersectsModel() const
 
 void Polyhedron::splitAtCentroid(Block* pDstBlock) const
 {
-	if (Index3DId(0, 8, 4, 0) == _thisId) {
+	if (Index3DId(5, 5, 0, 45) == _thisId) {
 		int dbgBreak = 1;
 	}
 	auto ctr = calCentroid();
@@ -379,6 +379,9 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 		faceRefFunc(faceId, [this, &cornerVertToFaceMap, pDstBlock](const Polygon& refFace) {
 			if (refFace._splitFaceProductIds.empty()) {
 				auto refFaceId = refFace.getId();
+				if (Index3DId(0, 8, 4, 4) == refFace.getId()) {
+					int dbgBreak = 1;
+				}
 				refFace.splitAtCentroid(pDstBlock);
 				if (polygonExists(TS_REAL, refFaceId)) {
 					pDstBlock->freePolygon(refFaceId);
@@ -478,13 +481,20 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 
 		assert(splitVertFaces.size() == 6);
 		for (const auto& faceId : splitVertFaces) {
+			if (Index3DId(5, 5, 1, 45) == faceId) {
+				int dbgBreak = 1;
+			}
 			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
 				face.removeCellId(_thisId);
+				face.removeDeadCellIds();
 			});
 		}
 		Polyhedron newCell(splitVertFaces);
 
 		auto newCellId = pDstBlock->addCell(newCell);
+		if (Index3DId(5, 5, 0, 45) == newCellId) {
+			int dbgBreak = 1;
+		}
 
 #if LOGGING_ENABLED
 		{
