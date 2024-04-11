@@ -587,8 +587,33 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
+namespace
+{
+	bool inBounds(const Index3D& lhs, const Index3D& rhs, int bounds)
+	{
+		for (int i = 0; i < 3; i++) {
+			int a = lhs[i];
+			int b = rhs[i];
+			int diff = a - b;
+			if (fabs(diff) > bounds)
+				return false;
+		}
+
+		return true;
+	}
+}
+
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
+#ifdef _DEBUG
+	// Test that block indices are within 1 index of the tread index
+	Index3D threadIdx = getThreadBlockIdx();
+
+	assert(inBounds(threadIdx, blockIdx, 1));
+	assert(inBounds(threadIdx, _blockIdx, 1));
+
+#endif // _DEBUG
+
 	return _pVol->getBlockPtr(blockIdx);
 }
 

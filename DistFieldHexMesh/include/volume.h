@@ -143,6 +143,10 @@ private:
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
 	void runLambda(L fLambda, bool multiCore);
+	template<class L>
+	void runLambda(L fLambda, size_t numBlocks, bool multiCore);
+	template<class L>
+	void runLambda(L fLambda, size_t numBlocks, bool multiCore) const;
 
 	static Index3D s_volDim;
 

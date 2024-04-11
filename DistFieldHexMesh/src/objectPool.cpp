@@ -123,7 +123,7 @@ void ObjectPoolOwner::setThreadBlockIdx(const Index3D& blockIdx)
 #endif
 }
 
-const Index3D& ObjectPoolOwner::getThreadBlockIdx()
+const Index3D& ObjectPoolOwner::getThreadBlockIdx() const
 {
 #if RUN_MULTI_THREAD
 	return s_blockIdx;

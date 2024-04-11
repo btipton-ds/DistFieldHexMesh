@@ -48,7 +48,7 @@ class Logger;
 class ObjectPoolOwner {
 public:
 	static void setThreadBlockIdx(const Index3D& blockIdx);
-	const Index3D& getThreadBlockIdx();
+	const Index3D& getThreadBlockIdx() const;
 
 	virtual const Index3D& getBlockIdx() const = 0;
 

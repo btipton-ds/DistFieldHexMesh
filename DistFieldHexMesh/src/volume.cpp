@@ -67,10 +67,10 @@ Volume::Volume(const Volume& src)
 
 Volume::~Volume()
 {
-	MultiCore::runLambda([this](size_t linearIdx)->bool {
+	runLambda([this](size_t linearIdx)->bool {
 		_blocks[linearIdx] = nullptr;
 		return true;
-	},_blocks.size(), RUN_MULTI_THREAD);
+	}, _blocks.size(), RUN_MULTI_THREAD);
 	_blocks.clear();
 }
 
@@ -337,16 +337,14 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	QueryPerformanceCounter(&startCount);
 #endif // _WIN32
 
-	MultiCore::runLambda([this, &blockSpan](size_t linearIdx)->bool {
+	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
 	}, _blocks.size(), multiCore);
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		if (_blocks[linearIdx])
 			_blocks[linearIdx]->createSubBlocks(TS_REAL);
 		return true;
@@ -411,7 +409,6 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 #ifdef LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
-			Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 			if (_blocks[linearIdx]) {
 				auto logger = _blocks[linearIdx]->getLogger();
 				auto& out = logger->getStream();
@@ -425,7 +422,6 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 #endif // LOGGING_ENABLED
 
 		runLambda([this](size_t linearIdx)->bool {
-			Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->setNeedsSimpleSplit();
 			}
@@ -448,7 +444,6 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 	for (size_t i = 0; i < num; i++) {
 #ifdef LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
-			Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 			if (_blocks[linearIdx]) {
 				auto logger = _blocks[linearIdx]->getLogger();
 				auto& out = logger->getStream();
@@ -462,7 +457,6 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 #endif // LOGGING_ENABLED
 
 		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
-			Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 			if (_blocks[linearIdx]) {
 				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
 			}
@@ -502,7 +496,6 @@ bool Volume::doPresplits(bool multiCore)
 
 #ifdef LOGGING_ENABLED
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		if (_blocks[linearIdx]) {
 			auto pBlk = _blocks[linearIdx];
 			auto logger = pBlk->getLogger();
@@ -517,7 +510,6 @@ bool Volume::doPresplits(bool multiCore)
 
 
 	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		if (_blocks[linearIdx]) {
 			if (_blocks[linearIdx]->doPresplits_splitPolyhedra())
 				didSplits = true;
@@ -534,7 +526,6 @@ bool Volume::doPresplits(bool multiCore)
 void Volume::splitTopology(const FinishSplitOptions& options, bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->splitRequiredPolyhedra();
 		}
@@ -550,7 +541,6 @@ void Volume::splitTopology(const FinishSplitOptions& options, bool multiCore)
 void Volume::imprintTJointVertices(bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
-		Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->imprintTJointVertices();
 		}
@@ -561,7 +551,6 @@ void Volume::imprintTJointVertices(bool multiCore)
 void Volume::dumpOpenCells(bool multiCore) const
 {
 #if DUMP_OPEN_CELL_OBJS
-	Block::setThreadBlockIdx(calBlockIndexFromLinearIndex(linearIdx));
 	runLambda([this](size_t linearIdx)->bool {
 		if (_blocks[linearIdx]) {
 			_blocks[linearIdx]->dumpOpenCells();
@@ -584,7 +573,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 	triMeshes[FT_INNER].resize(_blocks.size());
 	triMeshes[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	triMeshes[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	MultiCore::runLambda([this, &triMeshes](size_t index)->bool {
+	runLambda([this, &triMeshes](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 
@@ -604,7 +593,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 	faceEdges[FT_INNER].resize(_blocks.size());
 	faceEdges[FT_LAYER_BOUNDARY].resize(_blocks.size());
 	faceEdges[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	MultiCore::runLambda([this, &faceEdges](size_t index)->bool {
+	runLambda([this, &faceEdges](size_t index)->bool {
 		const auto& blockPtr = _blocks[index];
 		if (blockPtr) {
 			faceEdges[FT_OUTER][index] = blockPtr->makeEdgeSets(FT_OUTER);
@@ -943,9 +932,31 @@ void Volume::runLambda(L fLambda, bool multiCore) const
 	MultiCore::runLambda([this, fLambda](size_t threadNum, size_t numThreads) {
 		Index3D idx;
 		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
+			auto blkIdx = calBlockIndexFromLinearIndex(i);
+			_blocks[i]->setThreadBlockIdx(blkIdx);
 			fLambda(i);
 		}
 	}, multiCore);
+}
+
+template<class L>
+void Volume::runLambda(L fLambda, size_t numBlocks, bool multiCore) const
+{
+	MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
+		auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
+		_blocks[linearIdx]->setThreadBlockIdx(blkIdx);
+		return fLambda(linearIdx);
+	}, numBlocks, multiCore);
+}
+
+template<class L>
+void Volume::runLambda(L fLambda, size_t numBlocks, bool multiCore)
+{
+	MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
+		auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
+		_blocks[linearIdx]->setThreadBlockIdx(blkIdx);
+		return fLambda(linearIdx);
+		}, numBlocks, multiCore);
 }
 
 template<class L>
@@ -976,7 +987,9 @@ void Volume::runLambda(L fLambda, bool multiCore)
 
 				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
-				MultiCore::runLambda([fLambda](size_t linearIdx)->bool {
+				MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
+					auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
+					_blocks[linearIdx]->setThreadBlockIdx(blkIdx);
 					return fLambda(linearIdx);
 				}, blocksToProcess, multiCore);
 
