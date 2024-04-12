@@ -962,7 +962,7 @@ void Volume::runLambda(L fLambda, size_t numBlocks, bool multiCore)
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore)
 {
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const unsigned int stride = 2; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
 
 	startOperation();

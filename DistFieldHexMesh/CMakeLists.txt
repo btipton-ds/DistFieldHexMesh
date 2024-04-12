@@ -85,7 +85,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
-)
+ "src/splitters.cpp")
 
 add_executable (TestDFM         
 	
@@ -100,7 +100,7 @@ add_executable (TestDFM
 	"src/vertex.cpp"
 	"src/volume.cpp"
 	"src/logger.cpp"
-)
+ "src/splitters.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

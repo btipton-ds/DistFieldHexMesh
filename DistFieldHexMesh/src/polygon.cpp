@@ -83,7 +83,8 @@ void Polygon::clearCache() const
 
 bool Polygon::cellsOwnThis() const
 {
-
+	if (getBlockPtr()->isPolygonReference(this))
+		return true;
 	for (const auto& cellId : _cellIds) {
 		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			return false;
@@ -489,10 +490,10 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
-void Polygon::splitAtCentroid(Block* pDstBlock) const
+void Polygon::splitAtCentroidx(Block* pDstBlock) const
 {
 	auto ctr = calCentroid();
-	splitAtPoint(pDstBlock, ctr);
+	splitAtPointx(pDstBlock, ctr);
 }
 
 TopolgyState Polygon::getState() const
@@ -503,13 +504,14 @@ TopolgyState Polygon::getState() const
 		return TS_REAL;
 }
 
-void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
+void Polygon::splitAtPointx(Block* pDstBlock, const Vector3d& pt) const
 {
 	if (Index3DId(0, 8, 4, 4) == _thisId) {
 		int dbgBreak = 1;
 	}
 
 	assert(getBlockPtr()->isPolygonReference(this));
+	assert(getBlockPtr()->polygonExists(TS_REAL, _thisId));
 	const double sinAngleTol = sin(Tolerance::angleTol());
 
 #if LOGGING_ENABLED
@@ -520,7 +522,9 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << *this);
 #endif
 
-	assert(cellsOwnThis());
+	faceRealFunc(_thisId, [](const Polygon& realSelf) {
+		assert(realSelf.cellsOwnThis());
+	});
 
 	// The code must be operating on the reference face
 	assert(_vertexIds.size() == 4);
@@ -567,6 +571,7 @@ void Polygon::splitAtPoint(Block* pDstBlock, const Vector3d& pt) const
 		auto vertId = _vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
 		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId });
+
 		for (const auto& cellId : _cellIds) {
 			newFace.addCellId(cellId, cellId.getSplitLevel() + 1);
 		}

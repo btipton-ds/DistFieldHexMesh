@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
+#include <splitters.h>
 
 using namespace std;
 using namespace DFHM;
@@ -374,31 +375,23 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 
 	// Split all faces which require splitting
 	for (const auto& faceId : _faceIds) {
-		pDstBlock->makeRefPolygonIfRequired(faceId);
 
-		faceRefFunc(faceId, [this, &cornerVertToFaceMap, pDstBlock](const Polygon& refFace) {
-			if (refFace._splitFaceProductIds.empty()) {
-				auto refFaceId = refFace.getId();
-				if (Index3DId(0, 8, 4, 4) == refFace.getId()) {
-					int dbgBreak = 1;
-				}
-				refFace.splitAtCentroid(pDstBlock);
-				if (polygonExists(TS_REAL, refFaceId)) {
-					pDstBlock->freePolygon(refFaceId);
-				}
-			}
+		PolygonSplitter splitter(pDstBlock, faceId);
+		splitter.doConditionalSplitAtCentroid();
+
+		getBlockPtr()->faceRefFunc(faceId, [this, &cornerVertToFaceMap](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
 
 			for (const auto& childFaceId : refFace._splitFaceProductIds) {
-				faceRealFunc(childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
+				getBlockPtr()->faceRealFunc(childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = cornerVertToFaceMap.find(vertId);
-						if (iter != cornerVertToFaceMap.end())
+						if (iter != cornerVertToFaceMap.end()) {
 							iter->second.insert(childFace.getId());
+						}
 					}
 				});
 			}
-
 		});
 	}
 
@@ -408,15 +401,6 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 	}
 
 	Index3DId cellMidId = pDstBlock->addVertex(centerPoint);
-
-	for (const auto& faceId : _faceIds) {
-		if (pDstBlock->polygonExists(TS_REAL, faceId)) {
-			pDstBlock->faceRealFunc(faceId, [this](Polygon& face) {
-				assert(!"Should never get here");
-				face.removeCellId(_thisId);
-			});
-		}
-	}
 
 	for (const auto& pair : cornerVertToFaceMap) {
 		auto cornerVertId = pair.first;
@@ -496,6 +480,14 @@ void Polyhedron::splitAtPoint(Block* pDstBlock, const Vector3d& centerPoint) con
 			int dbgBreak = 1;
 		}
 
+		cellRealFunc(newCellId, [this](const Polyhedron& newCell) {
+			for (const auto& faceId : newCell.getFaceIds()) {
+				faceRealFunc(faceId, [this](const Polygon& face) {
+					assert(face.cellsOwnThis());
+				});
+			}
+		});
+
 #if LOGGING_ENABLED
 		{
 			Logger::Indent indent;
@@ -567,23 +559,9 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 		_faceIds.insert(newFaceId);
 		faceRealFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
 			assert(!getBlockPtr()->isPolygonReference(&newFace));
-			newFace.removeCellId(_thisId);
-			newFace.addCellId(_thisId, splitLevel + 1);
+			newFace.addCellId(_thisId, splitLevel);
 		});
 	}
-
-#ifdef _DEBUG
-	for (const auto& faceId : _faceIds) {
-		faceRealFunc(faceId, [this](const Polygon& face) {
-			const auto& cellIds = face.getCellIds();
-			auto iter = cellIds.find(_thisId);
-			assert(iter != cellIds.end());
-			assert(iter->getSplitLevel() != -1);
-		});
-	}
-
-#endif // _DEBUG
-
 }
 
 bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
@@ -676,33 +654,6 @@ bool Polyhedron::needsPreSplit() const
 	}
 
 	return needsSplit;
-}
-
-void Polyhedron::preSplit() const
-{
-	assert(getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId));
-	auto pDstBlock = const_cast<Block*>(getBlockPtr());
-	set<Index3DId> refFaceIds;
-	cellRefFunc(_thisId, [this, &refFaceIds, pDstBlock](const Polyhedron& refCell) {
-		refFaceIds = refCell.getFaceIds();
-	});
-
-	for (const auto& faceId : refFaceIds) {
-		assert(polygonExists(TS_REFERENCE, faceId));
-		faceRefFunc(faceId, [this, pDstBlock](const Polygon& refFace) {
-			if (refFace.getSplitFaceProductIds().empty()) {
-				auto refFaceId = refFace.getId();
-				refFace.splitAtCentroid(pDstBlock);
-				if (polygonExists(TS_REAL, refFaceId)) {
-					pDstBlock->freePolygon(refFaceId);
-				}
-			}
-		});
-	}
-
-	cellRefFunc(_thisId, [pDstBlock](const Polyhedron& refCell) {
-		refCell.splitAtCentroid(pDstBlock);
-	});
 }
 
 void Polyhedron::setNeedToSplitAtCentroid()

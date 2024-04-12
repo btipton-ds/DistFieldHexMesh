@@ -128,7 +128,7 @@ const Index3D& ObjectPoolOwner::getThreadBlockIdx() const
 #if RUN_MULTI_THREAD
 	return s_blockIdx;
 #else
-	return Index3D();
+	return getBlockIdx();
 #endif
 }
 

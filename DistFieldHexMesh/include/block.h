@@ -145,6 +145,9 @@ public:
 	void makeRefPolygonIfRequired(const Index3DId& id);
 	void makeRefPolyhedronIfRequired(const Index3DId& id);
 
+	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
+	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
+
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 

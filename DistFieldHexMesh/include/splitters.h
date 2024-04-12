@@ -27,11 +27,28 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define RUN_MULTI_THREAD true
-#define LOGGING_ENABLED 0
-#define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
-#define DUMP_OPEN_CELL_OBJS 0
-#define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
-#define GRAPHICS_OVER_SAMPLING 2
-#define _USE_MATH_DEFINES
+#include <set>
+#include <map>
+#include <tm_vector3.h>
+#include <index3D.h>
 
+namespace DFHM {
+
+class Block;
+class Polygon;
+
+class PolygonSplitter {
+public:
+	PolygonSplitter(Block* pBlock, const Index3DId& polygonId);
+
+	bool doConditionalSplitAtCentroid();
+	bool doConditionalSplitAtPoint(const Vector3d& pt);
+
+private:
+	bool doSplitAtPoint(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
+
+	Block* _pBlock;
+	Index3DId _polygonId;
+};
+
+}

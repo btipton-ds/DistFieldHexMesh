@@ -448,6 +448,8 @@ void Block::makeRefPolygonIfRequired(const Index3DId& id)
 	assert(temp.getVertexIds().size() == 4);
 	_refData._polygons.findOrAdd(temp, id);
 	assert(_refData._polygons.exists(id));
+	auto& refFace = _refData._polygons[id];
+	refFace._cellIds.clear();
 }
 
 void Block::makeRefPolyhedronIfRequired(const Index3DId& id)
@@ -476,7 +478,6 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 #endif // _DEBUG
 
 	Polygon newFace(vertIndices);
-	auto ownerIdx = determineOwnerBlockIdx(newFace);
 
 #ifdef _DEBUG
 	const auto& edges = newFace.getEdges();
@@ -485,8 +486,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 	}
 #endif // _DEBUG
 
-	auto* pOwner = getOwner(ownerIdx);
-	Index3DId faceId = pOwner->_modelData._polygons.findOrAdd(newFace);
+	Index3DId faceId = addFace(newFace);
 
 	return faceId;
 }
@@ -595,8 +595,10 @@ namespace
 			int a = lhs[i];
 			int b = rhs[i];
 			int diff = a - b;
-			if (fabs(diff) > bounds)
-				return false;
+			if (diff != 0) {
+				if (abs(diff) > bounds)
+					return false;
+			}
 		}
 
 		return true;
@@ -605,12 +607,13 @@ namespace
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-#ifdef _DEBUG
+#if RUN_MULTI_THREAD && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
-	assert(inBounds(threadIdx, blockIdx, 1));
-	assert(inBounds(threadIdx, _blockIdx, 1));
+	int bounds = 1;
+	assert(inBounds(threadIdx, blockIdx, bounds));
+	assert(inBounds(threadIdx, _blockIdx, bounds));
 
 #endif // _DEBUG
 
@@ -619,6 +622,15 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
+#if RUN_MULTI_THREAD && defined(_DEBUG)
+	// Test that block indices are within 1 index of the tread index
+	Index3D threadIdx = getThreadBlockIdx();
+
+	assert(inBounds(threadIdx, blockIdx, 1));
+	assert(inBounds(threadIdx, _blockIdx, 1));
+
+#endif // _DEBUG
+
 	return _pVol->getBlockPtr(blockIdx);
 }
 
@@ -641,8 +653,12 @@ Index3DId Block::addFace(const Polygon& face)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	auto result = pOwner->_modelData._polygons.findOrAdd(face);
+	Index3DId result = pOwner->_modelData._polygons.findOrAdd(face);
 	auto& newFace = pOwner->_modelData._polygons[result];
+
+	if (Index3DId(5, 1, 3, 10) == result) {
+		int dbgBreak = 1;
+	}
 
 	return result;
 }
@@ -1075,6 +1091,18 @@ bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
 	return pOwner && pOwner->data(refState)._polyhedra.exists(id);
+}
+
+Polygon& Block::getPolygon(TopolgyState refState, const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	return pOwner->data(refState)._polygons[id];
+}
+
+Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	return pOwner->data(refState)._polyhedra[id];
 }
 
 void Block::freePolygon(const Index3DId& id)

@@ -139,11 +139,13 @@ public:
 	const std::set<Index3DId>& getSplitFaceProductIds() const;
 	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
+	bool cellsOwnThis() const;
+	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	bool needToImprintVertices(const std::map<Edge, Index3DId>& edgeVertMap) const;
 	void imprintVertices(const std::map<Edge, Index3DId>& edgeVertMap);
 
-	void splitAtCentroid(Block* pDstBlock) const;
-	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
+	void splitAtCentroidx(Block* pDstBlock) const;
+	void splitAtPointx(Block* pDstBlock, const Vector3d& pt) const;
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
 
@@ -155,15 +157,15 @@ public:
 	LAMBDA_CLIENT_DECLS
 
 private:
+	friend class Block;
+	friend class PolygonSplitter;
 	friend class Polyhedron;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
-	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	TopolgyState getState() const;
 	void clearCache() const;
-	bool cellsOwnThis() const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
