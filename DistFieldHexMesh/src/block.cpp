@@ -1030,14 +1030,14 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 
 void Block::addPolyhedronToSplitList(const Index3DId& id)
 {
-	auto p = getOwner(id);
-	p->_splitPolyhedronIds.insert(id);
+	assert(id.blockIdx() == _blockIdx);
+	_splitPolyhedronIds.insert(id);
 }
 
 bool Block::isPolyhedronInSplitList(const Index3DId& id) const
 {
-	auto p = getOwner(id);
-	return p->_splitPolyhedronIds.contains(id);
+	assert(id.blockIdx() == _blockIdx);
+	return _splitPolyhedronIds.contains(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const

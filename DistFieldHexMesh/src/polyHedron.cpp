@@ -431,6 +431,11 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 	return blockingCellIds.empty();
 }
 
+bool Polyhedron::needsSplit() const
+{
+	return getBlockPtr()->isPolyhedronInSplitList(_thisId);
+}
+
 bool Polyhedron::needsPreSplit() const
 {
 	if (Index3DId(0, 5, 4, 0) == _thisId) {
@@ -484,8 +489,11 @@ bool Polyhedron::needsPreSplit() const
 		const auto& adjCellIds = pair.second;
 		if (adjCellIds.size() > 1) {
 			for (const auto& adjCellId : adjCellIds) {
-				if (getBlockPtr()->isPolyhedronInSplitList(adjCellId)) {
-					needsSplit = true;
+				cellRealFunc(adjCellId, [&needsSplit](const Polyhedron& adjCell) {
+					needsSplit = adjCell.needsSplit();
+				});
+
+				if (needsSplit) {
 					break;
 				}
 			}
