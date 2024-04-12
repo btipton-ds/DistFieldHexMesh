@@ -602,7 +602,6 @@ bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;
-#ifdef _DEBUG 
 	if (!verifyUnique())
 		valid = false;
 
@@ -632,7 +631,7 @@ bool Polygon::verifyTopology() const
 				return valid;
 		}
 	}
-#endif
+
 	return valid;
 }
 

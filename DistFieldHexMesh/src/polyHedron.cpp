@@ -785,7 +785,6 @@ bool Polyhedron::hasTooManySplits() const
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
-#ifdef _DEBUG 
 
 	for (const auto& faceId : _faceIds) {
 		if (valid && polygonExists(TS_REAL, faceId)) {
@@ -809,7 +808,6 @@ bool Polyhedron::verifyTopology() const
 	if (false && !valid) {
 		getBlockPtr()->dumpObj({ _thisId });
 	}
-#endif // _DEBUG 
 
 	return valid;
 }
