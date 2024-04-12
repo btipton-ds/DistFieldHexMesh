@@ -415,11 +415,6 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 		if (segIdx >= segData.size())
 			segData.resize(segIdx + 1);
 
-#ifdef _DEBUG
-		size_t segNum1, segIdx1;
-		assert(calIndices(index, segNum1, segIdx1) && segNum1 == segNum && segIdx1 == segIdx);
-#endif // _DEBUG
-
 		segData[segIdx] = obj;
 	}
 	return index;

@@ -200,7 +200,6 @@ private:
 	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
-	void doPreSplit(const Index3DId& cellId);
 	bool doPresplits_splitPolyhedra();
 	void addToPreSplitBlockingPolyhedraIds(const Index3DId& cellId);
 
@@ -210,6 +209,11 @@ private:
 	
 	const ModelData& data(TopolgyState refState) const;
 	ModelData& data(TopolgyState refState);
+
+#ifdef _DEBUG
+	bool isPolygonInUse(const Index3DId& faceId) const;
+	bool isPolyhedronInUse(const Index3DId& cellId) const;
+#endif // _DEBUG
 
 	Index3D _blockIdx;
 

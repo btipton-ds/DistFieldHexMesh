@@ -71,8 +71,6 @@ public:
 	void setNeedToMakeReference();
 	void setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 
-	void splitAtCentroid(Block* pDstBlock) const;
-	void splitAtPoint(Block* pDstBlock, const Vector3d& pt) const;
 	bool needToImprintTVertices() const;
 	void imprintTVertices(Block* pDstBlock) const;
 	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);

@@ -490,115 +490,12 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 	_cellIds.erase(cellId);
 }
 
-void Polygon::splitAtCentroidx(Block* pDstBlock) const
-{
-	auto ctr = calCentroid();
-	splitAtPointx(pDstBlock, ctr);
-}
-
 TopolgyState Polygon::getState() const
 {
 	if (getBlockPtr()->isPolygonReference(this))
 		return TS_REFERENCE;
 	else
 		return TS_REAL;
-}
-
-void Polygon::splitAtPointx(Block* pDstBlock, const Vector3d& pt) const
-{
-	if (Index3DId(0, 8, 4, 4) == _thisId) {
-		int dbgBreak = 1;
-	}
-
-	assert(getBlockPtr()->isPolygonReference(this));
-	assert(getBlockPtr()->polygonExists(TS_REAL, _thisId));
-	const double sinAngleTol = sin(Tolerance::angleTol());
-
-#if LOGGING_ENABLED
-	assert(getBlockPtr()->isPolygonReference(this));
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << *this);
-#endif
-
-	faceRealFunc(_thisId, [](const Polygon& realSelf) {
-		assert(realSelf.cellsOwnThis());
-	});
-
-	// The code must be operating on the reference face
-	assert(_vertexIds.size() == 4);
-	vector<Index3DId> edgePtIds;
-	edgePtIds.resize(_vertexIds.size());
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-
-		// Be sure to project directly to the edge itself. 
-		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(getBlockPtr(), pt);
-		bool inBounds;
-		double t = edge.paramOfPt(getBlockPtr(), edgePt, inBounds);
-		if (inBounds) {
-			Index3DId vertId = pDstBlock->addVertex(edgePt);
-			edgePtIds[i] = vertId;
-
-			addSplitEdgeVert(edge, vertId);
-		}
-		else {
-			assert(!"Edge point is not in bounds.");
-			return;
-		}
-	}
-
-	Vector3d facePt = projectPoint(pt);
-#if _DEBUG
-	if (!containsPoint(facePt)) {
-		assert(!"Face point is not in bounds.");
-		return;
-	}
-#endif
-
-	Index3DId facePtId = pDstBlock->addVertex(facePt);
-
-#ifdef _DEBUG
-	Vector3d srcNorm = calUnitNormal();
-#endif // _DEBUG
-
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + _vertexIds.size() - 1) % _vertexIds.size();
-		auto priorEdgeId = edgePtIds[j];
-		auto vertId = _vertexIds[i];
-		auto nextEdgeId = edgePtIds[i];
-		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId });
-
-		for (const auto& cellId : _cellIds) {
-			newFace.addCellId(cellId, cellId.getSplitLevel() + 1);
-		}
-
-#ifdef _DEBUG
-		Vector3d newNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFace.getVertexIds());
-		double cp = newNorm.cross(srcNorm).norm();
-		assert(cp < sinAngleTol);
-#endif // _DEBUG
-
-		auto newFaceId = pDstBlock->addFace(newFace);
-		addToSplitFaceProductIds(newFaceId);
-	}
-
-	for (const auto& cellId : _cellIds) {
-		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
-			pDstBlock->makeRefPolyhedronIfRequired(cellId);
-			size_t splitLevel = getSplitLevel(cellId);
-			pDstBlock->cellRealFunc(cellId, [this, splitLevel](Polyhedron& cell) {
-				cell.replaceFaces(_thisId, _splitFaceProductIds, splitLevel);
-			});
-		}
-	}
-
-#if LOGGING_VERBOSE_ENABLED
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pst: " << *this);
-#endif
 }
 
 void Polygon::addToSplitFaceProductIds(const Index3DId& id) const

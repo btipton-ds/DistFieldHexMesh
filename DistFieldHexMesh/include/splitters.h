@@ -36,6 +36,7 @@ namespace DFHM {
 
 class Block;
 class Polygon;
+class Polyhedron;
 
 class PolygonSplitter {
 public:
@@ -49,6 +50,20 @@ private:
 
 	Block* _pBlock;
 	Index3DId _polygonId;
+};
+
+class PolyhedronSplitter {
+public:
+	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
+
+	bool doConditionalSplitAtCentroid();
+	bool doConditionalSplitAtPoint(const Vector3d& pt);
+
+private:
+	bool doSplitAtPoint(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
+
+	Block* _pBlock;
+	Index3DId _polyhedronId;
 };
 
 }

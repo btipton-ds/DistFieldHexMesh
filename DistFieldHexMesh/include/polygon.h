@@ -144,8 +144,6 @@ public:
 	bool needToImprintVertices(const std::map<Edge, Index3DId>& edgeVertMap) const;
 	void imprintVertices(const std::map<Edge, Index3DId>& edgeVertMap);
 
-	void splitAtCentroidx(Block* pDstBlock) const;
-	void splitAtPointx(Block* pDstBlock, const Vector3d& pt) const;
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
 
@@ -158,8 +156,9 @@ public:
 
 private:
 	friend class Block;
-	friend class PolygonSplitter;
 	friend class Polyhedron;
+	friend class PolygonSplitter;
+	friend class PolyhedronSplitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void sortIds() const;

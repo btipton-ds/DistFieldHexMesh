@@ -208,52 +208,6 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	return make_shared<Block>(this, blockIdx, pts);
 }
 
-#ifdef _DEBUG
-bool Volume::isPolygonInUse(const Index3DId& faceId) const
-{
-	bool result = false;
-
-	lock_guard g(_mutex);
-	for (const auto& pBlk : _blocks) {
-		if (pBlk) {
-			const auto& cells = pBlk->_modelData._polyhedra;
-			cells.iterateInOrder([&result, &faceId](const Index3DId& cellId, const Polyhedron& cell) {
-				if (cell.containsFace(faceId)) {
-					result = true;
-				}
-			});
-		}
-
-		if (result)
-			break;
-	}
-
-	return result;
-}
-
-bool Volume::isPolyhedronInUse(const Index3DId& cellId) const
-{
-	bool result = false;
-
-	lock_guard g(_mutex);
-	for (const auto& pBlk : _blocks) {
-		if (pBlk) {
-			const auto& faces = pBlk->_modelData._polygons;
-			faces.iterateInOrder([&result, &cellId](const Index3DId& faceId, const Polygon& face) {
-				if (face.usedByCell(cellId)) {
-					result = true;
-				}
-			});
-		}
-
-		if (result)
-			break;
-	}
-
-	return result;
-}
-#endif // _DEBUG
-
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();
@@ -466,7 +420,12 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		FinishSplitOptions options;
 		options._processPartialSplits = i > 0;
 		options._processEdgesWithTVertices = true;
+#ifdef _DEBUG
 		bool mc = (i < params.numCurvatureDivs - 1) && multiCore;
+#else
+		bool mc = multiCore;
+#endif // _DEBUG
+
 		finishSplits(options, mc);
 		assert(verifyTopology(mc));
 	}
@@ -962,7 +921,7 @@ void Volume::runLambda(L fLambda, size_t numBlocks, bool multiCore)
 template<class L>
 void Volume::runLambda(L fLambda, bool multiCore)
 {
-	const unsigned int stride = 2; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
 
 	startOperation();

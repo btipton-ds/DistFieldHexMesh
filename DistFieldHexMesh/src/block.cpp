@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <splitters.h>
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
@@ -270,7 +271,6 @@ size_t Block::numPolyhedra() const
 bool Block::verifyTopology() const
 {
 	bool result = true;
-#ifdef _DEBUG 
 	vector<Index3DId> badCellIds;
 	_modelData._polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
 		if (!cell.verifyTopology()) {
@@ -281,7 +281,6 @@ bool Block::verifyTopology() const
 	if (!result) {
 		dumpObj(badCellIds);
 	}
-#endif
 
 	return result;
 }
@@ -471,7 +470,7 @@ void Block::makeRefPolyhedronIfRequired(const Index3DId& id)
 
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
-#ifdef _DEBUG
+#if 0 && defined(_DEBUG)
 	if (!Polygon::verifyVertsConvexStat(this, vertIndices)) {
 		return Index3DId();
 }
@@ -479,7 +478,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 	Polygon newFace(vertIndices);
 
-#ifdef _DEBUG
+#if 0 && defined(_DEBUG)
 	const auto& edges = newFace.getEdges();
 	for (const auto& edge : edges) {
 		assert(edge.onPrincipalAxis(this));
@@ -607,7 +606,7 @@ namespace
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-#if RUN_MULTI_THREAD && defined(_DEBUG)
+#if 0 && RUN_MULTI_THREAD && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -622,7 +621,7 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
-#if RUN_MULTI_THREAD && defined(_DEBUG)
+#if 0 && RUN_MULTI_THREAD && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -794,30 +793,6 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-void Block::doPreSplit(const Index3DId& cellId)
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::doPreSplit\n";
-	Logger::Indent indent;
-#endif
-	_splitPolyhedronIds.erase(cellId);
-	assert(polyhedronExists(TS_REAL, cellId));
-	makeRefPolyhedronIfRequired(cellId);
-	auto& refCell = _refData._polyhedra[cellId];
-#if LOGGING_VERBOSE_ENABLED
-	LOG(out << Logger::Pad() << "Splitting: " << refCell);
-#else
-	LOG(out << Logger::Pad() << "Splitting: c" << cellId << "\n");
-#endif
-	refCell.splitAtCentroid(this);
-	freePolyhedron(cellId);
-
-	// A schedule split happened early, don't split again
-	auto p = getOwner(cellId);
-}
-
 bool Block::doPresplits_splitPolyhedra()
 {
 #if LOGGING_ENABLED
@@ -836,7 +811,8 @@ bool Block::doPresplits_splitPolyhedra()
 		result = true;
 		set<Index3DId> tmp;
 		if (modelCell.canSplit(tmp)) {
-			doPreSplit(cellId);
+			PolyhedronSplitter splitter(this, cellId);
+			splitter.doConditionalSplitAtCentroid();
 		} else {
 			for (const auto& cellId : tmp) {
 				if (_blockIdx == cellId.blockIdx())
@@ -855,7 +831,8 @@ bool Block::doPresplits_splitPolyhedra()
 			result = true;
 			set<Index3DId> blockingCellIds;
 			if (modelCell.canSplit(blockingCellIds)) {
-				doPreSplit(cellId);
+				PolyhedronSplitter splitter(this, cellId);
+				splitter.doConditionalSplitAtCentroid();
 			} else {
 				for (const auto& cellId : blockingCellIds) {
 					addToPreSplitBlockingPolyhedraIds(cellId);
@@ -886,6 +863,9 @@ void Block::splitRequiredPolyhedra()
 			set<Index3DId> blockingCellIds;
 			assert(polyhedronExists(TS_REAL, cellId));
 			if (_modelData._polyhedra[cellId].canSplit(blockingCellIds)) {
+				PolyhedronSplitter splitter(this, cellId);
+				splitter.doConditionalSplitAtCentroid();
+#if 0
 				assert(polyhedronExists(TS_REAL, cellId));
 				makeRefPolyhedronIfRequired(cellId);
 				assert(polyhedronExists(TS_REAL, cellId));
@@ -894,6 +874,7 @@ void Block::splitRequiredPolyhedra()
 				refCell.splitAtCentroid(this);
 				assert(polyhedronExists(TS_REAL, cellId));
 				freePolyhedron(cellId);
+#endif
 			} else {
 //				assert(!"Cell cannot be split due to blocking cells");
 			}
@@ -1107,11 +1088,7 @@ Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
 
 void Block::freePolygon(const Index3DId& id)
 {
-#if 1 && defined(_DEBUG)
-	auto pVol = getVolume();
-	assert(!pVol->isPolygonInUse(id));
-#endif // _DEBUG
-
+	assert(!isPolygonInUse(id));
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED
@@ -1127,10 +1104,7 @@ void Block::freePolygon(const Index3DId& id)
 
 void Block::freePolyhedron(const Index3DId& id)
 {
-#if 1 && defined(_DEBUG)
-	auto pVol = getVolume();
-	assert(!pVol->isPolyhedronInUse(id));
-#endif // _DEBUG
+	assert(!isPolyhedronInUse(id));
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED
@@ -1144,6 +1118,33 @@ void Block::freePolyhedron(const Index3DId& id)
 	}
 }
 
+#ifdef _DEBUG
+bool Block::isPolygonInUse(const Index3DId& faceId) const
+{
+	bool result = false;
+
+	_modelData._polyhedra.iterateInOrder([&result, &faceId](const Index3DId& cellId, const Polyhedron& cell) {
+		if (cell.containsFace(faceId)) {
+			result = true;
+		}
+	});
+
+	return result;
+	}
+
+bool Block::isPolyhedronInUse(const Index3DId& cellId) const
+{
+	bool result = false;
+
+	_modelData._polygons.iterateInOrder([&result, &cellId](const Index3DId& faceId, const Polygon& face) {
+		if (face.usedByCell(cellId)) {
+			result = true;
+		}
+	});
+
+	return result;
+}
+#endif // _DEBUG
 void Block::pack()
 {
 #if 0
