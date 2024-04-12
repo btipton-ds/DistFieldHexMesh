@@ -132,9 +132,6 @@ public:
 	Index3DId addCell(const std::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
-	void addPolyhedronToSplitList(const Index3DId& id);
-	bool isPolyhedronInSplitList(const Index3DId& id) const;
-
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	bool isPolygonReference(const Polygon* face) const;
@@ -232,7 +229,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _splitPolyhedronIds, _preSplitBlockingPolyhedraIds;
+	std::set<Index3DId> _preSplitBlockingPolyhedraIds;
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;

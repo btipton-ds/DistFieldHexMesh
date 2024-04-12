@@ -110,6 +110,8 @@ private:
 
 	std::set<Index3DId> _faceIds;
 
+	bool _needsSplit = false;
+
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;
 	mutable bool _cachedEdges0Vaild = false;

@@ -433,7 +433,7 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 
 bool Polyhedron::needsSplit() const
 {
-	return getBlockPtr()->isPolyhedronInSplitList(_thisId);
+	return _needsSplit;
 }
 
 bool Polyhedron::needsPreSplit() const
@@ -513,7 +513,7 @@ void Polyhedron::setNeedToSplitAtCentroid()
 	Logger::Indent indent;
 	LOG(out << Logger::Pad() << "setNeedToSplitAtCentroid c" << _thisId << "\n");
 
-	getBlockPtr()->addPolyhedronToSplitList(_thisId);
+	_needsSplit = true;
 }
 
 bool Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)

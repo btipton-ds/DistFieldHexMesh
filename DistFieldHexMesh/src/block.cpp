@@ -862,30 +862,28 @@ void Block::splitRequiredPolyhedra()
 	Logger::Indent indent;
 #endif
 
-	for (const auto& cellId : _splitPolyhedronIds) {
-		if (polyhedronExists(TS_REAL, cellId)) {
-			set<Index3DId> blockingCellIds;
-			assert(polyhedronExists(TS_REAL, cellId));
-			if (_modelData._polyhedra[cellId].canSplit(blockingCellIds)) {
-				PolyhedronSplitter splitter(this, cellId);
-				splitter.doConditionalSplitAtCentroid();
+	//	for (const auto& cellId : _splitPolyhedronIds) {
+	_modelData._polyhedra.iterateInOrder([this](const Index3DId& cellId, Polyhedron& cell)->bool {
+		set<Index3DId> blockingCellIds;
+		if (cell.needsSplit() && cell.canSplit(blockingCellIds)) {
+			PolyhedronSplitter splitter(this, cellId);
+			splitter.doConditionalSplitAtCentroid();
 #if 0
-				assert(polyhedronExists(TS_REAL, cellId));
-				makeRefPolyhedronIfRequired(cellId);
-				assert(polyhedronExists(TS_REAL, cellId));
-				auto& refCell = _refData._polyhedra[cellId];
-				assert(polyhedronExists(TS_REAL, cellId));
-				refCell.splitAtCentroid(this);
-				assert(polyhedronExists(TS_REAL, cellId));
-				freePolyhedron(cellId);
+			assert(polyhedronExists(TS_REAL, cellId));
+			makeRefPolyhedronIfRequired(cellId);
+			assert(polyhedronExists(TS_REAL, cellId));
+			auto& refCell = _refData._polyhedra[cellId];
+			assert(polyhedronExists(TS_REAL, cellId));
+			refCell.splitAtCentroid(this);
+			assert(polyhedronExists(TS_REAL, cellId));
+			freePolyhedron(cellId);
 #endif
-			} else {
-//				assert(!"Cell cannot be split due to blocking cells");
-			}
+		} else {
+			//				assert(!"Cell cannot be split due to blocking cells");
 		}
-	}
-
-	_splitPolyhedronIds.clear();
+		
+		return true;
+	});
 }
 
 void Block::imprintTJointVertices()
@@ -1026,18 +1024,6 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 		}
 	}
 	return result;
-}
-
-void Block::addPolyhedronToSplitList(const Index3DId& id)
-{
-	assert(id.blockIdx() == _blockIdx);
-	_splitPolyhedronIds.insert(id);
-}
-
-bool Block::isPolyhedronInSplitList(const Index3DId& id) const
-{
-	assert(id.blockIdx() == _blockIdx);
-	return _splitPolyhedronIds.contains(id);
 }
 
 bool Block::vertexExists(const Index3DId& id) const
