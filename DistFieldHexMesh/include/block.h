@@ -197,7 +197,7 @@ private:
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
 
 	void setNeedsSimpleSplit();
-	void setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	bool setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	void dumpOpenCells() const;
 
 	bool doPresplits_splitPolyhedra();

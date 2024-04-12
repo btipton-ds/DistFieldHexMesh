@@ -508,7 +508,7 @@ void Polyhedron::setNeedToSplitAtCentroid()
 	getBlockPtr()->addPolyhedronToSplitList(_thisId);
 }
 
-void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -547,6 +547,8 @@ void Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureR
 		LOG(out << Logger::Pad() << "setNeedToSplitCurvature c" << _thisId << "\n");
 		setNeedToSplitAtCentroid();
 	}
+
+	return needToSplit;
 }
 
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const

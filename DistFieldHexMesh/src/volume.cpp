@@ -410,9 +410,11 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		}, multiCore);
 #endif // LOGGING_ENABLED
 
-		runLambda([this, &params, sinEdgeAngle](size_t linearIdx)->bool {
+		atomic<bool> changed = false;
+		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle);
+				if (_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle))
+					changed = true;
 			}
 			return true;
 		},  multiCore);
@@ -428,6 +430,9 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 		finishSplits(options, mc);
 		assert(verifyTopology(mc));
+
+		if (!changed)
+			break;
 	}
 }
 
@@ -435,9 +440,14 @@ void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
 {
 #if 1
 	if (options._processPartialSplits) {
+		int numPreSplits = 0;
 		bool didSplits = doPresplits(multiCore);
+		cout << "numPreSplits: " << numPreSplits++ << "\n";
 		while (didSplits) {
+			assert(numPreSplits < 3);
+			// Infinite loop here
 			didSplits = doPresplits(multiCore);
+			cout << "numPreSplits: " << numPreSplits++ << "\n";
 		}
 		int dbgBreak = 1;
 	}

@@ -741,7 +741,7 @@ void Block::setNeedsSimpleSplit()
 	});
 }
 
-void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
@@ -750,9 +750,13 @@ void Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 	Logger::Indent indent;
 #endif
 
-	_modelData._polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle](const Index3DId& id, Polyhedron& cell) {
-		cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle);
+	bool result = false;
+	_modelData._polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle, &result](const Index3DId& id, Polyhedron& cell) {
+		if (cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle))
+			result = true;
 	});
+
+	return result;
 }
 
 void Block::dumpObj(const std::vector<Index3DId>& cellIds) const
