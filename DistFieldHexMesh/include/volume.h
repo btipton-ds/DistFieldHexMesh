@@ -104,11 +104,6 @@ private:
 
 	using AxisIndex = Block::AxisIndex;
 
-	struct FinishSplitOptions {
-		bool _processPartialSplits = false;
-		bool _processEdgesWithTVertices = false;
-	};
-
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
 	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
@@ -119,9 +114,8 @@ private:
 
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
-	void finishSplits(const FinishSplitOptions& options, bool multiCore);
-	bool doPresplits(bool multiCore);
-	void splitTopology(const FinishSplitOptions& options, bool multiCore);
+	void finishSplits(bool multiCore);
+	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
 

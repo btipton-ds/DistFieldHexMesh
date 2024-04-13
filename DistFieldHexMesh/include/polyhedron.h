@@ -75,8 +75,6 @@ public:
 	void imprintTVertices(Block* pDstBlock) const;
 	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
-	bool needsSplit() const;
-	bool needsPreSplit() const;
 	double getShortestEdge() const;
 
 	size_t getSplitNumber() const;
@@ -109,8 +107,6 @@ private:
 	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
-
-	bool _needsSplit = false;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;

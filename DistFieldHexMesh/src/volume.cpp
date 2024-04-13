@@ -299,8 +299,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
-		if (_blocks[linearIdx])
-			_blocks[linearIdx]->createSubBlocks(TS_REAL);
+		_blocks[linearIdx]->createSubBlocks(TS_REAL);
 		return true;
 	}, multiCore);
 
@@ -363,29 +362,27 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
 #ifdef LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				auto logger = _blocks[linearIdx]->getLogger();
-				auto& out = logger->getStream();
-				LOG(out << "\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				LOG(out << "splitSimple(" << i << ")  ********************************************************************************************\n");
-				LOG(out << "*****************************************************************************************************************\n");
-			}
+			auto logger = _blocks[linearIdx]->getLogger();
+			auto& out = logger->getStream();
+			LOG(out << "\n");
+			LOG(out << "*****************************************************************************************************************\n");
+			LOG(out << "splitSimple(" << i << ")  ********************************************************************************************\n");
+			LOG(out << "*****************************************************************************************************************\n");
 			return true;
 		}, multiCore);
 #endif // LOGGING_ENABLED
 
 		runLambda([this](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				_blocks[linearIdx]->setNeedsSimpleSplit();
-			}
+			_blocks[linearIdx]->incrementSplitStack(true);
+			return true;
+		}, multiCore);
+
+		runLambda([this](size_t linearIdx)->bool {
+			_blocks[linearIdx]->setNeedsSimpleSplit();
 			return true;
 		},  multiCore);
 
-		FinishSplitOptions options;
-		options._processPartialSplits = false;
-		options._processEdgesWithTVertices = false;
-		finishSplits(options, multiCore);
+		finishSplits(multiCore);
 	}
 }
 
@@ -398,121 +395,80 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 	for (size_t i = 0; i < num; i++) {
 #ifdef LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				auto logger = _blocks[linearIdx]->getLogger();
-				auto& out = logger->getStream();
-				LOG(out << "\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
-				LOG(out << "*****************************************************************************************************************\n");
-			}
+			auto logger = _blocks[linearIdx]->getLogger();
+			auto& out = logger->getStream();
+			LOG(out << "\n");
+			LOG(out << "*****************************************************************************************************************\n");
+			LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
+			LOG(out << "*****************************************************************************************************************\n");
 			return true;
 		}, multiCore);
 #endif // LOGGING_ENABLED
 
+		runLambda([this](size_t linearIdx)->bool {
+			_blocks[linearIdx]->incrementSplitStack(true);
+			return true;
+		}, multiCore);
+
 		atomic<bool> changed = false;
 		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]) {
-				if (_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle))
-					changed = true;
-			}
+			if (_blocks[linearIdx]->setNeedsCurvatureSplit(params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle))
+				changed = true;
 			return true;
 		},  multiCore);
 
-		FinishSplitOptions options;
-		options._processPartialSplits = i > 0;
-		options._processEdgesWithTVertices = true;
-#ifdef _DEBUG
-		bool mc = (i < params.numCurvatureDivs - 1) && multiCore;
-#else
-		bool mc = multiCore;
-#endif // _DEBUG
-
-		finishSplits(options, mc);
-		assert(verifyTopology(mc));
+		finishSplits(multiCore);
+		assert(verifyTopology(multiCore));
 
 		if (!changed)
 			break;
 	}
 }
 
-void Volume::finishSplits(const FinishSplitOptions& options, bool multiCore)
+void Volume::finishSplits(bool multiCore)
 {
-#if 1
-	if (options._processPartialSplits) {
-		int numPreSplits = 0;
-		bool didSplits = doPresplits(multiCore);
-		cout << "numPreSplits: " << numPreSplits++ << "\n";
-		while (didSplits) {
-			assert(numPreSplits < 3);
-			// Infinite loop here
-			didSplits = doPresplits(multiCore);
-			cout << "numPreSplits: " << numPreSplits++ << "\n";
-		}
-		int dbgBreak = 1;
-	}
-#endif
+	bool addedSplits = true;
+	while (addedSplits) {
+		addedSplits = false;
+		// Create a new layer on the split stack
+		runLambda([this](size_t linearIdx)->bool {
+			_blocks[linearIdx]->incrementSplitStack(false);
+			return true;
+		}, multiCore);
 
-	splitTopology(options, multiCore);
-//	assert(verifyTopology(multiCore));
+		runLambda([this, &addedSplits](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->propogateNeedsSplit()) {
+				addedSplits = true;
+			}
+			return true;
+		}, multiCore);
+	}
+
+	splitTopology(multiCore);
+
+	//	assert(verifyTopology(multiCore));
 
 //	dumpOpenCells(multiCore);
 }
 
-bool Volume::doPresplits(bool multiCore)
+void Volume::splitTopology(bool multiCore)
 {
-	atomic<bool> didSplits = false;
-
-#ifdef LOGGING_ENABLED
-	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			auto pBlk = _blocks[linearIdx];
-			auto logger = pBlk->getLogger();
-			auto& out = logger->getStream();
-			LOG(out << "*******************************************************************************************\n");
-			LOG(out << "doPresplits_splitPolyhedra****************************************************************************\n");
-			LOG(out << "*******************************************************************************************\n");
-		}
-		return true;
-	}, multiCore);
-#endif // LOGGING_ENABLED
-
-
-	runLambda([this, &didSplits](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			if (_blocks[linearIdx]->doPresplits_splitPolyhedra())
-				didSplits = true;
-		}
-		return true;
-	}, multiCore);
-
-	// We need to imprint TJoints because these splits, may split edges in adjacent cells
-	imprintTJointVertices(multiCore);
-
-	return didSplits;
-}
-
-void Volume::splitTopology(const FinishSplitOptions& options, bool multiCore)
-{
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->splitRequiredPolyhedra();
-		}
-		return true;
-	}, multiCore);
-
-	if (options._processEdgesWithTVertices) {
-		imprintTJointVertices(multiCore);
+	bool done = false;
+	while (!done) {
+		done = true;
+		runLambda([this, &done](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->splitRequiredPolyhedra())
+				done = false;
+			return true;
+		}, multiCore);
 	}
-
+	imprintTJointVertices(multiCore);
 }
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
 	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->imprintTJointVertices();
-		}
+		_blocks[linearIdx]->imprintTJointVertices();
 		return true;
 	},  multiCore);
 }
@@ -521,9 +477,7 @@ void Volume::dumpOpenCells(bool multiCore) const
 {
 #if DUMP_OPEN_CELL_OBJS
 	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx]) {
-			_blocks[linearIdx]->dumpOpenCells();
-		}
+		_blocks[linearIdx]->dumpOpenCells();
 		return true;
 	}, multiCore);
 #endif
@@ -888,7 +842,7 @@ bool Volume::verifyTopology(bool multiCore) const
 		if (_blocks[linearIdx])
 			if (!_blocks[linearIdx]->verifyTopology()) {
 				result = false;
-				exit(0);
+//				exit(0);
 			}
 		return true;
 	}, multiCore);
@@ -957,9 +911,12 @@ void Volume::runLambda(L fLambda, bool multiCore)
 				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
 				MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
-					auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
-					_blocks[linearIdx]->setThreadBlockIdx(blkIdx);
-					return fLambda(linearIdx);
+					if (_blocks[linearIdx]) {
+						auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
+						_blocks[linearIdx]->setThreadBlockIdx(blkIdx);
+						return fLambda(linearIdx);
+					}
+					return true;
 				}, blocksToProcess, multiCore);
 
 			}

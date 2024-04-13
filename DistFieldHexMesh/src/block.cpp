@@ -727,6 +727,16 @@ bool Block::load()
 	return true;
 }
 
+void Block::incrementSplitStack(bool clear)
+{
+	if (clear) {
+		_splitStack.clear();
+		_allSplits.clear();
+	}
+
+	_splitStack.push_back(vector<Index3DId>());
+}
+
 void Block::setNeedsSimpleSplit()
 {
 #if LOGGING_ENABLED
@@ -777,6 +787,24 @@ void Block::dumpObj(const std::vector<Index3DId>& cellIds) const
 	}
 }
 
+bool Block::propogateNeedsSplit()
+{
+	bool result = false;
+	size_t num = _splitStack.size();
+	assert(num > 1);
+	const auto& lastSplits = _splitStack[num - 2];
+
+	for (const auto& cellId : lastSplits) {
+		set<Index3DId> blockingIds;
+		if (!_modelData._polyhedra[cellId].canSplit(blockingIds)) {
+			addToSplitStack(blockingIds);
+			result = true;
+		}
+	}
+
+	return result;
+}
+
 void Block::dumpOpenCells() const
 {
 #if DUMP_OPEN_CELL_OBJS
@@ -797,63 +825,7 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::doPresplits_splitPolyhedra()
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::doPresplits_splitPolyhedra\n";
-	Logger::Indent indent;
-#endif
-
-	bool result = false;
-	set<Index3DId> nextBlockingCellIds;
-
-	LOG(out << Logger::Pad() << "Doing presplits\n");
-	for (const auto& cellId : _preSplitBlockingPolyhedraIds) {
-		auto& modelCell = _modelData._polyhedra[cellId];
-		result = true;
-		set<Index3DId> tmp;
-		if (modelCell.canSplit(tmp)) {
-			PolyhedronSplitter splitter(this, cellId);
-			splitter.doConditionalSplitAtCentroid();
-		} else {
-			for (const auto& cellId : tmp) {
-				if (_blockIdx == cellId.blockIdx())
-					nextBlockingCellIds.insert(cellId);
-			}
-		}
-	}
-
-	_preSplitBlockingPolyhedraIds = nextBlockingCellIds;
-
-	_modelData._polyhedra.iterateInOrder([this, &result](const Index3DId& cellId, Polyhedron& modelCell) {
-		if (Index3DId(0, 5, 4, 0) == cellId) {
-			int dbgBreak = 1;
-		}
-		if (modelCell.needsPreSplit()) {
-			result = true;
-			set<Index3DId> blockingCellIds;
-			if (modelCell.canSplit(blockingCellIds)) {
-				PolyhedronSplitter splitter(this, cellId);
-				splitter.doConditionalSplitAtCentroid();
-			} else {
-				for (const auto& cellId : blockingCellIds) {
-					addToPreSplitBlockingPolyhedraIds(cellId);
-				}
-			}
-		}
-	});
-
-	return result;
-}
-
-void Block::addToPreSplitBlockingPolyhedraIds(const Index3DId& cellId)
-{
-	getOwner(cellId)->_preSplitBlockingPolyhedraIds.insert(cellId);
-}
-
-void Block::splitRequiredPolyhedra()
+bool Block::splitRequiredPolyhedra()
 {
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
@@ -862,28 +834,27 @@ void Block::splitRequiredPolyhedra()
 	Logger::Indent indent;
 #endif
 
-	//	for (const auto& cellId : _splitPolyhedronIds) {
-	_modelData._polyhedra.iterateInOrder([this](const Index3DId& cellId, Polyhedron& cell)->bool {
-		set<Index3DId> blockingCellIds;
-		if (cell.needsSplit() && cell.canSplit(blockingCellIds)) {
+	if (_splitStack.empty())
+		return false;
+
+	auto& splits = _splitStack.back();
+
+	if (!splits.empty()) {
+		{
+			static mutex m;
+			lock_guard g(m);
+			cout << "Splitting " << _blockIdx << ": " << (_splitStack.size() - 1) << " - n: " << splits.size() << "\n";
+		}
+
+		for (const auto& cellId : splits) {
 			PolyhedronSplitter splitter(this, cellId);
 			splitter.doConditionalSplitAtCentroid();
-#if 0
-			assert(polyhedronExists(TS_REAL, cellId));
-			makeRefPolyhedronIfRequired(cellId);
-			assert(polyhedronExists(TS_REAL, cellId));
-			auto& refCell = _refData._polyhedra[cellId];
-			assert(polyhedronExists(TS_REAL, cellId));
-			refCell.splitAtCentroid(this);
-			assert(polyhedronExists(TS_REAL, cellId));
-			freePolyhedron(cellId);
-#endif
-		} else {
-			//				assert(!"Cell cannot be split due to blocking cells");
 		}
-		
-		return true;
-	});
+	}
+
+	_splitStack.pop_back();
+
+	return true;
 }
 
 void Block::imprintTJointVertices()
@@ -1074,6 +1045,27 @@ Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	return pOwner->data(refState)._polyhedra[id];
+}
+
+bool Block::isInSplitStack(const Index3DId& cellId) const
+{
+	auto pOwner = getOwner(cellId);
+	return pOwner->_allSplits.contains(cellId);
+}
+
+void Block::addToSplitStack(const std::set<Index3DId>& cellIds)
+{
+	for (const auto& cellId : cellIds) {
+		auto pOwner = getOwner(cellId);
+		auto& allSplits = pOwner->_allSplits;
+
+		if (!allSplits.contains(cellId)) {
+			auto& list = pOwner->_splitStack.back();
+
+			allSplits.insert(cellId);
+			list.push_back(cellId);
+		}
+	}
 }
 
 void Block::freePolygon(const Index3DId& id)
