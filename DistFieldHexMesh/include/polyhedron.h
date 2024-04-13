@@ -69,7 +69,7 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
-	bool setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	bool setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 
 	bool needToImprintTVertices() const;
 	void imprintTVertices(Block* pDstBlock) const;

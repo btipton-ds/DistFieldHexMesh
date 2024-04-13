@@ -285,21 +285,16 @@ bool Block::verifyTopology() const
 	return result;
 }
 
-vector<Index3DId> Block::createSubBlocks(TopolgyState refState)
+void Block::createSubBlocks(TopolgyState refState)
 {
-	vector<Index3DId> newCells;
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				auto cellId = addHexCell(_corners.data(), _blockDim, idx, false);
-				if (cellId.isValid())
-					newCells.push_back(cellId);
+				addHexCell(_corners.data(), _blockDim, idx, false);
 			}
 		}
 	}
-
-	return newCells;
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -751,7 +746,7 @@ void Block::setNeedsSimpleSplit()
 	});
 }
 
-bool Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Block::setNeedsCurvatureSplit(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
@@ -761,8 +756,8 @@ bool Block::setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius,
 #endif
 
 	bool result = false;
-	_modelData._polyhedra.iterateInOrder([divsPerRadius, maxCurvatureRadius, sinEdgeAngle, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.setNeedToSplitCurvature(divsPerRadius, maxCurvatureRadius, sinEdgeAngle))
+	_modelData._polyhedra.iterateInOrder([minSplitEdgeLength, divsPerRadius, maxCurvatureRadius, sinEdgeAngle, &result](const Index3DId& id, Polyhedron& cell) {
+		if (cell.setNeedToSplitCurvature(minSplitEdgeLength, divsPerRadius, maxCurvatureRadius, sinEdgeAngle))
 			result = true;
 	});
 

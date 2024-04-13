@@ -449,7 +449,7 @@ void Polyhedron::setNeedToSplitAtCentroid()
 	getBlockPtr()->addToSplitStack({ _thisId });
 }
 
-bool Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -459,6 +459,17 @@ bool Polyhedron::setNeedToSplitCurvature(int divsPerRadius, double maxCurvatureR
 	CBoundingBox3Dd bbox = getBoundingBox();
 
 	bool needToSplit = false;
+	set<Edge> edges;
+	cellAvailFunc(_thisId, TS_REFERENCE, [&edges](const Polyhedron& cell) {
+		edges = cell.getEdges(false);
+	});
+
+	for (const auto& edge : edges) {
+		auto seg = edge.getSegment(getBlockPtr());
+		if (seg.calLength() < minSplitEdgeLength)
+			return false;
+	}
+
 #if 1 // Split at sharp vertices
 	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 	for (size_t vertIdx : sharpVerts) {

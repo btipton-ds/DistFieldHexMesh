@@ -73,6 +73,7 @@ public:
 		size_t numCurvatureDivs = 4;
 		double sharpAngleDegrees = 30.0;
 		double maxCurvatureRadius = 0.1; // 10 cm
+		double minSplitEdgeLength = 0.001; // 10 mm
 		int divsPerRadius = 2;
 	};
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);

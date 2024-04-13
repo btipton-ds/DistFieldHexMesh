@@ -106,7 +106,7 @@ public:
 	size_t numPolyhedra() const;
 
 	bool verifyTopology() const;
-	std::vector<Index3DId> createSubBlocks(TopolgyState refState);
+	void createSubBlocks(TopolgyState refState);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -198,7 +198,7 @@ private:
 
 	void incrementSplitStack(bool clear);
 	void setNeedsSimpleSplit();
-	bool setNeedsCurvatureSplit(int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	bool setNeedsCurvatureSplit(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
 	bool propogateNeedsSplit();
 	void dumpOpenCells() const;
 
