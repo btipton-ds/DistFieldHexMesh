@@ -840,12 +840,6 @@ bool Block::splitRequiredPolyhedra()
 	auto& splits = _splitStack.back();
 
 	if (!splits.empty()) {
-		{
-			static mutex m;
-			lock_guard g(m);
-			cout << "Splitting " << _blockIdx << ": " << (_splitStack.size() - 1) << " - n: " << splits.size() << "\n";
-		}
-
 		for (const auto& cellId : splits) {
 			PolyhedronSplitter splitter(this, cellId);
 			splitter.doConditionalSplitAtCentroid();

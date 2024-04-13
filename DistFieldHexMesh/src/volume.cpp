@@ -420,8 +420,10 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		finishSplits(multiCore);
 		assert(verifyTopology(multiCore));
 
-		if (!changed)
+		if (!changed) {
+			cout << "No more splits required.\n";
 			break;
+		}
 	}
 }
 

@@ -307,14 +307,16 @@ void AppData::doBuildCFDHexes()
 
         Volume::BuildCFDParams params;
 
-        params.numBlockDivs = 0;
+        params.numBlockDivs = 2;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 4;
+        params.numCurvatureDivs = 5;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
         params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
+
+        cout << "Tessellating graphics.\n";
 
         auto pCanvas = _pMainFrame->getCanvas();
 
