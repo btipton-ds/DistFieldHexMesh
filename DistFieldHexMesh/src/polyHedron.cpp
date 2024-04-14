@@ -824,9 +824,12 @@ bool Polyhedron::verifyTopology() const
 	
 	if (valid && hasTooManySplits())
 		valid = false;
-	if (false && !valid) {
+
+#if DUMP_BAD_CELL_OBJS
+	if (!valid) {
 		getBlockPtr()->dumpObj({ _thisId });
 	}
+#endif
 
 	return valid;
 }
