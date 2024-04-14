@@ -309,7 +309,7 @@ void AppData::doBuildCFDHexes()
 
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 5;
+        params.numCurvatureDivs = 3;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
         params.minSplitEdgeLength = 0.01;

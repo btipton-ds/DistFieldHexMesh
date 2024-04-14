@@ -545,11 +545,10 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	vector<CMesh::SearchEntry> edgeEntries;
+	vector<size_t> edgeEntries;
 	if (pTriMesh->findEdges(bbox, edgeEntries) > 0) {
 		vector<double> edgeRadii;
-		for (const auto& edgeEntry : edgeEntries) {
-			size_t edgeIdx = edgeEntry.getIndex();
+		for (const auto edgeIdx : edgeEntries) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
 			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
 			if (edgeRad > 0 && edgeRad < maxCurvatureRadius)
