@@ -161,6 +161,7 @@ private:
 	friend class PolyhedronSplitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
+	void initVertices(const Volume* pVol) const;
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	TopolgyState getState() const;

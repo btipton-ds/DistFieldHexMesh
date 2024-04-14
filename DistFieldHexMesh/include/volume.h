@@ -168,13 +168,13 @@ inline void Volume::setSpan(const Vector3d& span)
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
 {
-	auto idx = blockIdx.getLinearIdx(this);
+	auto idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
 }
 
 inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
-	auto idx = blockIdx.getLinearIdx(this);
+	auto idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
 }
 

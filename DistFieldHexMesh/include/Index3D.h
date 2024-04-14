@@ -62,8 +62,6 @@ public:
 	bool isInBounds(size_t bound) const;
 	void clampInBounds(size_t bound);
 
-	size_t getLinearIdx(const Volume* vol) const;
-
 	template<class BOUND_TYPE>
 	bool isInBounds(const Vector3<BOUND_TYPE>& bounds) const;
 	template<class BOUND_TYPE>
@@ -71,7 +69,6 @@ public:
 
 private:
 	static Index3DBaseType s_blockDim;
-	mutable size_t _linearIdx = -1;
 };
 
 inline void Index3DBase::setBlockDim(size_t val)

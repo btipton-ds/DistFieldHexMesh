@@ -138,6 +138,10 @@ bool Polygon::load(istream& in, size_t idSelf)
 	return true;
 }
 
+void Polygon::initVertices(const Volume* pVol) const
+{
+}
+
 void Polygon::sortIds() const
 {
 	if (!_sortCacheVaild) {

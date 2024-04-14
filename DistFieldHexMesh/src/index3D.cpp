@@ -45,14 +45,6 @@ bool Index3DBase::operator < (const Index3DBase& rhs) const
 	return false;
 }
 
-size_t Index3DBase::getLinearIdx(const Volume* vol) const
-{
-	if (_linearIdx == -1) {
-		_linearIdx = vol->calLinearBlockIndex(*this);
-	}
-	return _linearIdx;
-}
-
 void Index3DBase::clampInBounds(size_t bound)
 {
 	for (size_t i = 0; i < 3; i++) {

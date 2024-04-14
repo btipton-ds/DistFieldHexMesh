@@ -651,6 +651,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 Index3DId Block::addFace(const Polygon& face)
 {
+	face.initVertices(getVolume());
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_modelData._polygons.findOrAdd(face);
