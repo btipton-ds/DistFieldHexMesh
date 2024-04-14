@@ -459,17 +459,23 @@ void Polygon::removeDeadCellIds()
 			tmp.insert(cellId);
 	}
 
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (_cellIds.size() != tmp.size()) {
 		int dbgBreak = 1;
 	}
+#endif
+
 	_cellIds = tmp;
 }
 
 void Polygon::addCellId(const Index3DId& cellId, size_t level)
 {
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(4, 6, 1, 0) == cellId) {
 		int dbgBreak = 1;
 	}
+#endif
+
 	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
 	_cellIds.insert(CellId_SplitLevel(cellId, level));
 #if 1

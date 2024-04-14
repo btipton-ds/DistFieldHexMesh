@@ -235,10 +235,12 @@ void AppData::doFindMinGap() const
                 Vector3d ctr(x, y, 0);
                 Ray ray(ctr, zAxis);
 
+#if DEBUG_BREAKS && defined(_DEBUG)
                 vector<RayHit> hits;
                 if (_pMesh->rayCast(ray, hits)) {
                     int dbgBreak = 1;
                 }
+#endif
             }
         }
         return true;

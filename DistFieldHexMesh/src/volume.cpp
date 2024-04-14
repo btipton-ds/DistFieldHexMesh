@@ -645,7 +645,9 @@ void Volume::consolidateBlocks()
 		}
 	}
 
+#if DEBUG_BREAKS && defined(_DEBUG)
 	int dbgBreak = 1;
+#endif
 }
 
 void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds) const

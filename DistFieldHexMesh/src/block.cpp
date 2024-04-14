@@ -424,9 +424,11 @@ Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) con
 
 void Block::makeRefPolygonIfRequired(const Index3DId& id)
 {
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(0, 8, 4, 2) == id) {
 		int dbgBreak = 1;
 	}
+#endif
 
 	auto pOwner = getOwner(id);
 	if (pOwner != this) {
@@ -654,9 +656,11 @@ Index3DId Block::addFace(const Polygon& face)
 	Index3DId result = pOwner->_modelData._polygons.findOrAdd(face);
 	auto& newFace = pOwner->_modelData._polygons[result];
 
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(5, 1, 3, 10) == result) {
 		int dbgBreak = 1;
 	}
+#endif
 
 	return result;
 }

@@ -361,9 +361,13 @@ template<class T>
 inline bool ObjectPool<T>::exists(const Index3DId& id) const
 {
 	bool result(id.elementId() < _idToIndexMap.size() && _idToIndexMap[id.elementId()] != -1);
+
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (!result) {
 		int dbgBreak = 1;
 	}
+#endif // DEBUG_BREAKS
+
 
 	return result;
 }
@@ -425,10 +429,12 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 {
 	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
 	if (currentId.isValid()) {
+#if DEBUG_BREAKS && defined(_DEBUG)
 		Index3DId dbgId(0, 7, 5, 1);
 		if (currentId == dbgId) {
 			int dbgBreak = 1;
 		}
+#endif
 		// This has never been used or tested. Probably obsolete and needs to be replaced.
 		result = currentId.elementId();
 		index = storeAndReturnIndex(obj);

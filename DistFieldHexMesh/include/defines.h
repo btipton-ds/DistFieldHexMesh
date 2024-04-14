@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD true
 #define LOGGING_ENABLED 0
+#define DEBUG_BREAKS 1
 #define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
 #define DUMP_OPEN_CELL_OBJS 0
 #define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)

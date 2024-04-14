@@ -349,9 +349,12 @@ bool Polyhedron::needToImprintTVertices() const
 
 void Polyhedron::imprintTVertices(Block* pDstBlock) const
 {
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(3, 0, 5, 7) == _thisId) {
 		int dbgBreak = 1;
 	}
+#endif
+
 	set<Index3DId> refFaceIds;
 	cellRefFunc(_thisId, [&refFaceIds](const Polyhedron& refCell) {
 		refFaceIds = refCell.getFaceIds();

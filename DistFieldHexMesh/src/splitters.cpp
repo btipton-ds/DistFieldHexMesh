@@ -74,9 +74,11 @@ bool PolygonSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
 
 bool PolygonSplitter::doSplitAtPoint(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const
 {
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(0, 8, 4, 4) == _polygonId) {
 		int dbgBreak = 1;
 	}
+#endif
 
 	assert(_pBlock->isPolygonReference(&referanceFace));
 	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
@@ -208,9 +210,12 @@ bool PolyhedronSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
 
 bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const
 {
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(0, 8, 4, 0) == _polyhedronId) {
 		int dbgBreak = 1;
 	}
+#endif
+
 	assert(_pBlock);
 #if LOGGING_ENABLED
 	auto pLogger = _pBlock->getLogger();
@@ -280,7 +285,9 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 				}
 			});
 
+#if DEBUG_BREAKS && defined(_DEBUG)
 			int dbgBreak = 1;
+#endif
 		}
 
 		assert(fullEdgeToFaceMap.size() == 9);
@@ -323,9 +330,12 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 
 		assert(splitVertFaces.size() == 6);
 		for (const auto& faceId : splitVertFaces) {
+#if DEBUG_BREAKS && defined(_DEBUG)
 			if (Index3DId(5, 5, 1, 45) == faceId) {
 				int dbgBreak = 1;
 			}
+#endif
+
 			_pBlock->faceRealFunc(faceId, [this](Polygon& face) {
 				face.removeCellId(_polyhedronId);
 				face.removeDeadCellIds();
@@ -334,9 +344,11 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 		Polyhedron newCell(splitVertFaces);
 
 		auto newCellId = _pBlock->addCell(newCell);
+#if DEBUG_BREAKS && defined(_DEBUG)
 		if (Index3DId(5, 5, 0, 45) == newCellId) {
 			int dbgBreak = 1;
 		}
+#endif
 
 		_pBlock->cellRealFunc(newCellId, [this, &edgeIndices](Polyhedron& newCell) {
 			newCell.setEdgeIndices(edgeIndices);
