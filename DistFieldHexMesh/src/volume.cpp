@@ -857,7 +857,6 @@ template<class L>
 void Volume::runLambda(L fLambda, bool multiCore) const
 {
 	MultiCore::runLambda([this, fLambda](size_t threadNum, size_t numThreads) {
-		Index3D idx;
 		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
 			auto blkIdx = calBlockIndexFromLinearIndex(i);
 			_blocks[i]->setThreadBlockIdx(blkIdx);

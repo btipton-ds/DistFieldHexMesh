@@ -37,7 +37,7 @@ class Volume;
 using Index3DBaseType = unsigned short; // This is large enough for 65536 x 65536 x 65536 block
 
 // Base class with protected constructors prevents accidental swapping of Index3D and Index3DId
-class Index3DBase : public Vector3<Index3DBaseType>
+class Index3DBase
 {
 protected:
 	Index3DBase() = default;
@@ -50,7 +50,6 @@ public:
 	static void setBlockDim(size_t val);
 	static size_t getBlockDim();
 
-	Index3DBase operator + (const Index3DBase& rhs) const;
 	bool operator < (const Index3DBase& rhs) const;
 
 	template<class T>
@@ -58,16 +57,28 @@ public:
 	template<class T>
 	bool operator != (const T& rhs) const;
 
+	Index3DBase operator + (const Index3DBase& rhs) const;
+	Index3DBase& operator += (const Index3DBase& rhs);
+
+	const Index3DBaseType& operator[](int idx) const;
+	Index3DBaseType& operator[](int idx);
+
 	bool isValid() const;
 	bool isInBounds(size_t bound) const;
 	void clampInBounds(size_t bound);
+
+	size_t getLinearIdx(const Volume* vol) const;
 
 	template<class BOUND_TYPE>
 	bool isInBounds(const Vector3<BOUND_TYPE>& bounds) const;
 	template<class BOUND_TYPE>
 	void clampInBounds(const Vector3<BOUND_TYPE>& bounds);
 
+	bool isInBounds(const Index3DBase& bounds) const;
+	void clampInBounds(const Index3DBase& bounds);
+
 private:
+	Index3DBaseType _vals[3];
 	static Index3DBaseType s_blockDim;
 };
 
@@ -81,53 +92,93 @@ inline size_t Index3DBase::getBlockDim()
 	return s_blockDim;
 }
 
-inline Index3DBase::Index3DBase(const Vector3<Index3DBaseType>& src)
-	: Vector3<Index3DBaseType>(src)
-{
-}
-
 inline Index3DBase::Index3DBase(size_t i, size_t j, size_t k)
-	: Vector3<Index3DBaseType>((Index3DBaseType)i, (Index3DBaseType)j, (Index3DBaseType)k)
 {
+	_vals[0] = (Index3DBaseType)i;
+	_vals[1] = (Index3DBaseType)j;
+	_vals[2] = (Index3DBaseType)k;
 }
 
 inline Index3DBase::Index3DBase(const Vector3i& src)
-	: Vector3<Index3DBaseType>((Index3DBaseType)src[0], (Index3DBaseType)src[1], (Index3DBaseType)src[2])
 {
-}
-
-inline Index3DBase Index3DBase::operator + (const Index3DBase& rhs) const
-{
-	Vector3<Index3DBaseType> temp(*this);
-	temp += rhs;
-	return temp;
+	_vals[0] = (Index3DBaseType)src[0];
+	_vals[1] = (Index3DBaseType)src[1];
+	_vals[2] = (Index3DBaseType)src[2];
 }
 
 inline bool Index3DBase::isValid() const
 {
 	const Index3DBaseType t = 0xffff;
-	return (*this)[0] != t && (*this)[1] != t && (*this)[1] != t;
+	return _vals[0] != t && _vals[1] != t && _vals[1] != t;
 }
 
 inline bool Index3DBase::isInBounds(size_t bound) const
 {
 	auto tBound = (Index3DBaseType)(bound);
-	return (*this)[0] < tBound && (*this)[1] < tBound && (*this)[2] < tBound;
+	return _vals[0] < tBound && _vals[1] < tBound && _vals[2] < tBound;
 }
 
 template<class BOUND_TYPE>
 inline bool Index3DBase::isInBounds(const Vector3<BOUND_TYPE>& bounds) const
 {
-	return (*this)[0] < (Index3DBaseType)bounds[0] && (*this)[1] < (Index3DBaseType)bounds[1] && (*this)[2] < (Index3DBaseType)bounds[2];
+	return 
+		_vals[0] < (Index3DBaseType)bounds[0] && 
+		_vals[1] < (Index3DBaseType)bounds[1] && 
+		_vals[2] < (Index3DBaseType)bounds[2];
+}
+
+inline bool Index3DBase::isInBounds(const Index3DBase& bounds) const
+{
+	return 
+		_vals[0] < bounds._vals[0] && 
+		_vals[1] < bounds._vals[1] && 
+		_vals[2] < bounds._vals[2];
 }
 
 template<class BOUND_TYPE>
 void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
 {
 	for (int i = 0; i < 3; i++) {
-		if ((*this)[i] >= bounds[i])
-			(*this)[i] = bounds[i] - 1;
+		if (_vals[i] >= bounds[i])
+			_vals[i] = bounds[i] - 1;
 	}
+}
+
+inline bool Index3DBase::operator < (const Index3DBase& rhs) const
+{
+	int i = 0;
+
+	if (_vals[i] < rhs._vals[i])
+		return true;
+	else if (_vals[i] > rhs._vals[i])
+		return false;
+
+	i++;
+
+	if (_vals[i] < rhs._vals[i])
+		return true;
+	else if (_vals[i] > rhs._vals[i])
+		return false;
+
+	i++;
+
+	if (_vals[i] < rhs._vals[i])
+		return true;
+	else if (_vals[i] > rhs._vals[i])
+		return false;
+
+	assert((*this) == rhs);
+	return false;
+}
+
+inline const Index3DBaseType& Index3DBase::operator[](int idx) const
+{
+	return _vals[idx];
+}
+
+inline Index3DBaseType& Index3DBase::operator[](int idx)
+{
+	return _vals[idx];
 }
 
 class Index3D : public Index3DBase
@@ -135,12 +186,12 @@ class Index3D : public Index3DBase
 public:
 	Index3D() = default;
 	Index3D(const Index3D& src) = default;
-	Index3D(const Vector3<Index3DBaseType>& src);
+	Index3D(const Index3DBase& src);
 	Index3D(size_t i, size_t j, size_t k);
 	Index3D(const Vector3i& src);
 };
 
-inline Index3D::Index3D(const Vector3<Index3DBaseType>& src)
+inline Index3D::Index3D(const Index3DBase& src)
 	: Index3DBase(src)
 {
 }
@@ -158,13 +209,16 @@ inline Index3D::Index3D(const Vector3i& src)
 template<class T>
 inline bool Index3DBase::operator == (const T& rhs) const
 {
-	return Vector3<Index3DBaseType>::operator ==(rhs);
+	return 
+		_vals[0] == rhs._vals[0] && 
+		_vals[1] == rhs._vals[1] && 
+		_vals[2] == rhs._vals[2];
 }
 
 template<class T>
 inline bool Index3DBase::operator != (const T& rhs) const
 {
-	return !operator==(rhs);
+	return !operator == (rhs);
 }
 
 class Index3DId : public Index3DBase
@@ -196,14 +250,20 @@ inline Index3DId::Index3DId(const Index3DBase& src, size_t elementId)
 {
 }
 
+inline Index3DId::Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id)
+	: Index3DBase(i, j, k)
+	, _elementId(id)
+{
+}
+
 inline bool Index3DId::operator < (const Index3DId& rhs) const
 {
-	if (Index3DBase::operator <(rhs))
+	if (_elementId < rhs._elementId)
 		return true;
-	else if (rhs.Index3DBase::operator <(*this))
+	else if (_elementId > rhs._elementId)
 		return false;
 
-	return _elementId < rhs._elementId;
+	return Index3DBase::operator < (rhs);
 }
 
 inline bool Index3DId::operator == (const Index3DId& rhs) const

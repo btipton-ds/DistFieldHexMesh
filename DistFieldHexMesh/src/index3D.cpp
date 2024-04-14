@@ -33,30 +33,37 @@ using namespace DFHM;
 
 Index3DBaseType Index3DBase::s_blockDim = 8;
 
-bool Index3DBase::operator < (const Index3DBase& rhs) const
+Index3DBase& Index3DBase::operator += (const Index3DBase& rhs)
 {
-	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] < rhs[i])
-			return true;
-		else if ((*this)[i] > rhs[i])
-			return false;
-	}
-	assert((*this) == rhs);
-	return false;
+	_vals[0] += rhs._vals[0];
+	_vals[1] += rhs._vals[1];
+	_vals[2] += rhs._vals[2];
+
+	return *this;
+}
+
+
+Index3DBase Index3DBase::operator + (const Index3DBase& rhs) const
+{
+	Index3DBase temp(*this);
+	temp += rhs;
+	return temp;
 }
 
 void Index3DBase::clampInBounds(size_t bound)
 {
 	for (size_t i = 0; i < 3; i++) {
-		if ((*this)[i] >= bound)
-			(*this)[i] = (Index3DBaseType) (bound - 1);
+		if (_vals[i] >= bound)
+			_vals[i] = (Index3DBaseType) (bound - 1);
 	}
 }
 
-Index3DId::Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id)
-	: Index3DBase(i, j, k)
-	, _elementId(id)
+void Index3DBase::clampInBounds(const Index3DBase& bounds)
 {
+	for (size_t i = 0; i < 3; i++) {
+		if (_vals[i] >= bounds._vals[i])
+			_vals[i] = bounds._vals[i];
+	}
 }
 
 ostream& DFHM::operator << (ostream& out, const Index3DId& id)
