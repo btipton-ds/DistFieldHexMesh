@@ -110,7 +110,6 @@ private:
 	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
-	CBoundingBox3Dd _edgeBounds;
 	std::vector<size_t> _edgeIndices;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;

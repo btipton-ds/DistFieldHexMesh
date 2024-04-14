@@ -55,7 +55,6 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
-	, _edgeBounds(src._edgeBounds)
 	, _edgeIndices(src._edgeIndices)
 {
 }
@@ -64,7 +63,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	clearCache();
 	_faceIds = rhs._faceIds;
-	_edgeBounds = rhs._edgeBounds;
 	_edgeIndices = rhs._edgeIndices;
 
 	return *this;
@@ -486,12 +484,6 @@ bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerR
 #endif
 	CBoundingBox3Dd bbox = getBoundingBox();
 
-#ifdef _DEBUG
-	cellAvailFunc(_thisId, TS_REFERENCE, [&bbox](const Polyhedron& cell) {
-		assert(boxesEqualTol(bbox, cell._edgeBounds));
-	});
-#endif // _DEBUG
-
 	bool needToSplit = false;
 	set<Edge> edges;
 	cellAvailFunc(_thisId, TS_REFERENCE, [&edges](const Polyhedron& cell) {
@@ -540,22 +532,21 @@ bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerR
 void Polyhedron::initEdgeIndices()
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	_edgeBounds = getBoundingBox();
+	auto bbox = getBoundingBox();
 	vector<size_t> edgeIndices;
-	if (pTriMesh->findEdges(_edgeBounds, edgeIndices))
+	if (pTriMesh->findEdges(bbox, edgeIndices))
 		setEdgeIndices(edgeIndices);
 }
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	if (_edgeBounds.empty())
-		_edgeBounds = getBoundingBox();
+	auto bbox = getBoundingBox();
 
 	for (auto idx : indices) {
 		const auto& edge = pTriMesh->getEdge(idx);
 		auto seg = edge.getSeg(pTriMesh);
-		if (_edgeBounds.intersects(seg))
+		if (bbox.intersects(seg))
 			_edgeIndices.push_back(idx);
 	}
 }
