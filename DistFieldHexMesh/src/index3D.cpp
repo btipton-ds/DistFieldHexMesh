@@ -33,6 +33,14 @@ using namespace DFHM;
 
 Index3DBaseType Index3DBase::s_blockDim = 8;
 
+Index3DBase::Index3DBase()
+{
+	_vals[0] = -1;
+	_vals[1] = -1;
+	_vals[2] = -1;
+	_vals[3] = -1;
+}
+
 Index3DBase& Index3DBase::operator += (const Index3DBase& rhs)
 {
 	_vals[0] += rhs._vals[0];

@@ -40,7 +40,7 @@ using Index3DBaseType = unsigned short; // This is large enough for 65536 x 6553
 class Index3DBase
 {
 protected:
-	Index3DBase() = default;
+	Index3DBase();
 	Index3DBase(const Index3DBase& src) = default;
 	Index3DBase(const Vector3<Index3DBaseType>& src);
 	Index3DBase(size_t i, size_t j, size_t k);
@@ -78,8 +78,11 @@ public:
 	void clampInBounds(const Index3DBase& bounds);
 
 private:
-	Index3DBaseType _vals[3];
 	static Index3DBaseType s_blockDim;
+	union {
+		Index3DBaseType _vals[4];
+		size_t _iVal;
+	};
 };
 
 inline void Index3DBase::setBlockDim(size_t val)
@@ -146,29 +149,7 @@ void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
 
 inline bool Index3DBase::operator < (const Index3DBase& rhs) const
 {
-	int i = 0;
-
-	if (_vals[i] < rhs._vals[i])
-		return true;
-	else if (_vals[i] > rhs._vals[i])
-		return false;
-
-	i++;
-
-	if (_vals[i] < rhs._vals[i])
-		return true;
-	else if (_vals[i] > rhs._vals[i])
-		return false;
-
-	i++;
-
-	if (_vals[i] < rhs._vals[i])
-		return true;
-	else if (_vals[i] > rhs._vals[i])
-		return false;
-
-	assert((*this) == rhs);
-	return false;
+	return _iVal < rhs._iVal;
 }
 
 inline const Index3DBaseType& Index3DBase::operator[](int idx) const
