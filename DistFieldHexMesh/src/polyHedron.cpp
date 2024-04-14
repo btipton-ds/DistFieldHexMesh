@@ -55,6 +55,8 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
+	, _edgeBounds(src._edgeBounds)
+	, _edgeIndices(src._edgeIndices)
 {
 }
 
@@ -62,6 +64,8 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	clearCache();
 	_faceIds = rhs._faceIds;
+	_edgeBounds = rhs._edgeBounds;
+	_edgeIndices = rhs._edgeIndices;
 
 	return *this;
 }
@@ -449,14 +453,44 @@ void Polyhedron::setNeedToSplitAtCentroid()
 	getBlockPtr()->addToSplitStack({ _thisId });
 }
 
+#ifdef _DEBUG
+namespace
+{
+
+bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
+{
+	const double tol = 1.0e-6;
+
+	const auto& minA = a.getMin();
+	const auto& minB = b.getMin();
+	const auto& maxA = a.getMax();
+	const auto& maxB = b.getMax();
+	for (int i = 0; i < 3; i++) {
+		if (fabs(minA[i] - minB[i]) > tol)
+			return false;
+		if (fabs(maxA[i] - maxB[i]) > tol)
+			return false;
+	}
+	return true;
+}
+
+}
+
+#endif // _DEBUG
+
 bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 #endif
-
 	CBoundingBox3Dd bbox = getBoundingBox();
+
+#ifdef _DEBUG
+	cellAvailFunc(_thisId, TS_REFERENCE, [&bbox](const Polyhedron& cell) {
+		assert(boxesEqualTol(bbox, cell._edgeBounds));
+	});
+#endif // _DEBUG
 
 	bool needToSplit = false;
 	set<Edge> edges;
@@ -503,6 +537,29 @@ bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerR
 	return needToSplit;
 }
 
+void Polyhedron::initEdgeIndices()
+{
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	_edgeBounds = getBoundingBox();
+	vector<size_t> edgeIndices;
+	if (pTriMesh->findEdges(_edgeBounds, edgeIndices))
+		setEdgeIndices(edgeIndices);
+}
+
+void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
+{
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	if (_edgeBounds.empty())
+		_edgeBounds = getBoundingBox();
+
+	for (auto idx : indices) {
+		const auto& edge = pTriMesh->getEdge(idx);
+		auto seg = edge.getSeg(pTriMesh);
+		if (_edgeBounds.intersects(seg))
+			_edgeIndices.push_back(idx);
+	}
+}
+
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
 {
 	orderedEdges.clear();
@@ -545,10 +602,25 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	vector<size_t> edgeEntries;
-	if (pTriMesh->findEdges(bbox, edgeEntries) > 0) {
+
+#if 0 && defined(_DEBUG)
+	vector<size_t> edgeIndices;
+	bool found = pTriMesh->findEdges(bbox, edgeIndices) > 0;
+	assert(found == (_edgeIndices.size() > 0));
+	assert(edgeIndices.size() == _edgeIndices.size());
+	vector<size_t> tmp0(edgeIndices);
+	sort(tmp0.begin(), tmp0.end());
+
+	vector<size_t> tmp1(_edgeIndices);
+	sort(tmp1.begin(), tmp1.end());
+	for (size_t i = 0; i < tmp0.size(); i++) {
+		assert(tmp0[i] == tmp1[i]);
+	}
+#endif // _DEBUG
+
+	if (!_edgeIndices.empty()) {
 		vector<double> edgeRadii;
-		for (const auto edgeIdx : edgeEntries) {
+		for (const auto edgeIdx : _edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
 			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
 			if (edgeRad > 0 && edgeRad < maxCurvatureRadius)

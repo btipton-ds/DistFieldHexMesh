@@ -70,6 +70,9 @@ public:
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
 	bool setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	void initEdgeIndices();
+	void setEdgeIndices(const std::vector<size_t>& indices);
+	const std::vector<size_t>& getEdgeIndices() const;
 
 	bool needToImprintTVertices() const;
 	void imprintTVertices(Block* pDstBlock) const;
@@ -107,6 +110,8 @@ private:
 	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
+	CBoundingBox3Dd _edgeBounds;
+	std::vector<size_t> _edgeIndices;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;
@@ -123,6 +128,11 @@ inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.count(faceId) != 0;
+}
+
+inline const std::vector<size_t>& Polyhedron::getEdgeIndices() const
+{
+	return _edgeIndices;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
