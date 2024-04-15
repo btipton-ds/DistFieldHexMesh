@@ -337,6 +337,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif // _WIN32
 #endif
 	}
+	assert(verifyTopology(multiCore));
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
@@ -418,7 +419,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		},  multiCore);
 
 		finishSplits(multiCore);
-		assert(verifyTopology(multiCore));
+//		assert(verifyTopology(multiCore));
 
 		if (!changed) {
 			cout << "No more splits required.\n";
@@ -460,6 +461,12 @@ void Volume::splitTopology(bool multiCore)
 		done = true;
 		runLambda([this, &done](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]->splitRequiredPolyhedra())
+				done = false;
+			return true;
+		}, multiCore);
+
+		runLambda([this, &done](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->updateSplitStack())
 				done = false;
 			return true;
 		}, multiCore);

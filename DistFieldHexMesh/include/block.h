@@ -146,8 +146,8 @@ public:
 	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
 
-	bool isInSplitStack(const Index3DId& cellId) const;
 	void addToSplitStack(const std::set<Index3DId>& cellIds);
+	bool updateSplitStack();
 
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
@@ -232,8 +232,8 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _allSplits;
-	std::vector<std::vector<Index3DId>> _splitStack; // stack of arrays of polyhedra needing splits
+	std::set<Index3DId> _allSplits, _canSplit, _cantSplitYet;
+//	std::vector<std::vector<Index3DId>> _splitStack; // stack of arrays of polyhedra needing splits
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;

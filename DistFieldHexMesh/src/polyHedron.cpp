@@ -410,8 +410,6 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 
 bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 {
-	blockingCellIds.clear();
-
 	for (const auto& faceId : _faceIds) {
 		set<Polygon::CellId_SplitLevel> cellIds;
 		faceAvailFunc(faceId, TS_REFERENCE, [this, &cellIds](const Polygon& face) {
