@@ -49,6 +49,7 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+struct BuildCFDParams;
 class Volume;
 class Edge;
 class Polygon;
@@ -199,7 +200,7 @@ private:
 
 	void incrementSplitStack(bool clear);
 	void setNeedsSimpleSplit();
-	bool setNeedsCurvatureSplit(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	bool setNeedsCurvatureSplit(const BuildCFDParams& params);
 	bool propogateNeedsSplit();
 	void dumpOpenCells() const;
 

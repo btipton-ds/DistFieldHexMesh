@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <filesystem>
 
 #include <Index3D.h>
+#include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -749,7 +750,7 @@ void Block::setNeedsSimpleSplit()
 	});
 }
 
-bool Block::setNeedsCurvatureSplit(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Block::setNeedsCurvatureSplit(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
@@ -759,8 +760,8 @@ bool Block::setNeedsCurvatureSplit(double minSplitEdgeLength, int divsPerRadius,
 #endif
 
 	bool result = false;
-	_modelData._polyhedra.iterateInOrder([minSplitEdgeLength, divsPerRadius, maxCurvatureRadius, sinEdgeAngle, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.setNeedToSplitCurvature(minSplitEdgeLength, divsPerRadius, maxCurvatureRadius, sinEdgeAngle))
+	_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
+		if (cell.setNeedToSplitCurvature(params))
 			result = true;
 	});
 

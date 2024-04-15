@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <cmath>
 
+#include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -492,7 +493,7 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 #endif // _DEBUG
 
-bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle)
+bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -508,7 +509,7 @@ bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerR
 
 	for (const auto& edge : edges) {
 		auto seg = edge.getSegment(getBlockPtr());
-		if (seg.calLength() < minSplitEdgeLength)
+		if (seg.calLength() < params.minSplitEdgeLength)
 			return false;
 	}
 
@@ -525,9 +526,9 @@ bool Polyhedron::setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerR
 #endif
 
 	if (!needToSplit) {
-		double refRadius = calReferenceSurfaceRadius(bbox, maxCurvatureRadius, sinEdgeAngle);
-		if (refRadius > 0 && refRadius < maxCurvatureRadius) {
-			double maxLength = refRadius / divsPerRadius;
+		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius, sin(params.sharpAngleDegrees * M_PI / 180.0));
+		if (refRadius > 0 && refRadius < params.maxCurvatureRadius) {
+			double maxLength = refRadius / params.divsPerRadius;
 			auto range = bbox.range();
 			double minDim = min(range[0], min(range[1], range[2]));
 			if (minDim > maxLength) {

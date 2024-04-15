@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
+struct BuildCFDParams;
 class Block;
 class Edge;
 
@@ -69,7 +70,7 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
-	bool setNeedToSplitCurvature(double minSplitEdgeLength, int divsPerRadius, double maxCurvatureRadius, double sinEdgeAngle);
+	bool setNeedToSplitCurvature(const BuildCFDParams& params);
 	void initEdgeIndices();
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	const std::vector<size_t>& getEdgeIndices() const;

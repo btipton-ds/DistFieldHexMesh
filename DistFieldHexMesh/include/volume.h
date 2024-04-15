@@ -44,6 +44,8 @@ namespace TriMesh {
 
 namespace DFHM {
 
+struct BuildCFDParams;
+
 class Volume {
 public:
 	Volume();
@@ -66,16 +68,6 @@ public:
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	struct BuildCFDParams {
-		size_t minBlocksPerSide = 6;
-		size_t numBlockDivs = 0;
-		size_t numSimpleDivs = 2;
-		size_t numCurvatureDivs = 4;
-		double sharpAngleDegrees = 30.0;
-		double maxCurvatureRadius = 0.1; // 10 cm
-		double minSplitEdgeLength = 0.001; // 10 mm
-		int divsPerRadius = 2;
-	};
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const;
 	void makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const;

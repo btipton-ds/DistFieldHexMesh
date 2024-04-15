@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <MultiCoreUtil.h>
+#include <splitParams.h>
 #include <vertex.h>
 #include <filesystem>
 #include <stdexcept>
@@ -413,7 +414,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 		atomic<bool> changed = false;
 		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->setNeedsCurvatureSplit(params.minSplitEdgeLength, params.divsPerRadius, params.maxCurvatureRadius, sinEdgeAngle))
+			if (_blocks[linearIdx]->setNeedsCurvatureSplit(params))
 				changed = true;
 			return true;
 		},  multiCore);

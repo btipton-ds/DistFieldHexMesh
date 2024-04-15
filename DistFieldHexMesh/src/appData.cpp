@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include "defines.h"
 
+#include <splitParams.h>
 #include <appData.h>
 #include <tm_math.h>
 #include <triMesh.h>
@@ -307,11 +308,11 @@ void AppData::doBuildCFDHexes()
         if (!_volume)
             _volume = make_shared<Volume>();
 
-        Volume::BuildCFDParams params;
+        BuildCFDParams params;
 
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 7;
+        params.numCurvatureDivs = 2;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
         params.minSplitEdgeLength = 0.00125;
