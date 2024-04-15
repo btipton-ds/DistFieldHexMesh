@@ -469,10 +469,25 @@ void Volume::splitTopology(bool multiCore)
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
-	runLambda([this](size_t linearIdx)->bool {
-		_blocks[linearIdx]->imprintTJointVertices();
-		return true;
-	},  multiCore);
+	for (size_t i = 0; i < 3; i++ ) {
+		runLambda([this](size_t linearIdx)->bool {
+			_blocks[linearIdx]->imprintTJointVertices();
+			return true;
+		}, multiCore);
+
+		bool allCellsClosed = true;
+		runLambda([this, &allCellsClosed](size_t linearIdx)->bool {
+			if (!_blocks[linearIdx]->allCellsClosed()) {
+				allCellsClosed = false;
+				return false;
+			}
+			return true;
+		}, multiCore);
+
+		if (allCellsClosed)
+			break;
+		cout << "Needs extra imprint " << i << "\n";
+	}
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

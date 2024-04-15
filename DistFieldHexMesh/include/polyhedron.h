@@ -80,7 +80,8 @@ public:
 	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
 
-	size_t getSplitNumber() const;
+	size_t getSplitLevel() const;
+	void setSplitLevel(size_t val);
 	TopolgyState getState() const;
 
 	bool unload(std::ostream& out);
@@ -111,6 +112,7 @@ private:
 
 	std::set<Index3DId> _faceIds;
 	std::vector<size_t> _edgeIndices;
+	size_t _splitLevel = 0;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;
@@ -132,6 +134,16 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline const std::vector<size_t>& Polyhedron::getEdgeIndices() const
 {
 	return _edgeIndices;
+}
+
+inline size_t Polyhedron::getSplitLevel() const
+{
+	return _splitLevel;
+}
+
+inline void Polyhedron::setSplitLevel(size_t val)
+{
+	_splitLevel = val;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

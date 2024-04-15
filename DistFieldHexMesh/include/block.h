@@ -138,6 +138,7 @@ public:
 
 	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
 	bool isPolyhedronReference(const Polyhedron* cell) const;
+	bool allCellsClosed() const;
 
 	void makeRefPolygonIfRequired(const Index3DId& id);
 	void makeRefPolyhedronIfRequired(const Index3DId& id);

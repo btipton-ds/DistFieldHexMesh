@@ -413,6 +413,21 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 	blockingCellIds.clear();
 
 	for (const auto& faceId : _faceIds) {
+		set<Polygon::CellId_SplitLevel> cellIds;
+		faceAvailFunc(faceId, TS_REFERENCE, [this, &cellIds](const Polygon& face) {
+			cellIds = face.getCellIds();
+		});
+
+		for (const auto& cellId : cellIds) {
+			if (cellId != _thisId && !blockingCellIds.contains(cellId)) {
+				cellAvailFunc(cellId, TS_REAL, [this, &blockingCellIds](const Polyhedron& adjCell) {
+					if (adjCell.getSplitLevel() < _splitLevel) {
+						blockingCellIds.insert(adjCell.getId());
+					}
+				});
+			}
+		}
+
 		faceRealFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
 			for (const auto& cellId : face.getCellIds()) {
 				if (cellId != _thisId && !blockingCellIds.contains(cellId) && face.getSplitLevel(cellId) > 0) {

@@ -201,7 +201,7 @@ bool PolyhedronSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
 
 	bool result = doSplitAtPoint(realCell, referenceCell, pt);
 
-	if (_pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
+	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
 		_pBlock->freePolyhedron(_polyhedronId);
 	}
 
@@ -237,15 +237,20 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 	const auto& edgeIndices = realCell.getEdgeIndices();
 
 	// Split all faces which require splitting
+	bool pass = true;
 	for (const auto& faceId : faceIds) {
 
 		PolygonSplitter splitter(_pBlock, faceId);
 		splitter.doConditionalSplitAtCentroid();
 
-		_pBlock->faceRefFunc(faceId, [this, &cornerVertToFaceMap](const Polygon& refFace) {
+		_pBlock->faceRefFunc(faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
 
 			for (const auto& childFaceId : refFace._splitFaceProductIds) {
+				if (!_pBlock->polygonExists(TS_REAL, childFaceId)) {
+					pass = false;
+					break;
+				}
 				_pBlock->faceRealFunc(childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = cornerVertToFaceMap.find(vertId);
@@ -253,15 +258,26 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 							iter->second.insert(childFace.getId());
 						}
 					}
-					});
+				});
 			}
 		});
+
+		if (!pass) {
+			break;
+		}
 	}
 
+	if (!pass) {
+		_pBlock->dumpObj({ realCell.getId() });
+		return false;
+	}
+
+#if DEBUG_BREAKS && defined(_DEBUG)
 	// Now split the cell
 	if (false && Index3DId(0, 8, 4, 0) == _polyhedronId) {
 		_pBlock->dumpObj({ _polyhedronId });
 	}
+#endif
 
 	Index3DId cellMidId = _pBlock->addVertex(pt);
 
@@ -350,7 +366,8 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 		}
 #endif
 
-		_pBlock->cellRealFunc(newCellId, [this, &edgeIndices](Polyhedron& newCell) {
+		_pBlock->cellRealFunc(newCellId, [this, &edgeIndices, &realCell](Polyhedron& newCell) {
+			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
 			newCell.setEdgeIndices(edgeIndices);
 
 			for (const auto& faceId : newCell.getFaceIds()) {

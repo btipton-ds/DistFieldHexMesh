@@ -1027,6 +1027,17 @@ bool Block::isPolyhedronReference(const Polyhedron* pCell) const
 	return data.exists(cellId) && (pCell == &data[cellId]);
 }
 
+bool Block::allCellsClosed() const
+{
+	bool result = true;
+	_modelData._polyhedra.iterateInOrder([this, &result](const Index3DId& id, const Polyhedron& cell) {
+		if (!cell.isClosed())
+			result = false;
+	});
+
+	return result;
+}
+
 bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
@@ -1068,7 +1079,10 @@ void Block::addToSplitStack(const std::set<Index3DId>& cellIds)
 
 void Block::freePolygon(const Index3DId& id)
 {
+#if CAN_FREE_TESTS_ENABLED
 	assert(!isPolygonInUse(id));
+#endif
+
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED
@@ -1084,7 +1098,10 @@ void Block::freePolygon(const Index3DId& id)
 
 void Block::freePolyhedron(const Index3DId& id)
 {
+#if CAN_FREE_TESTS_ENABLED
 	assert(!isPolyhedronInUse(id));
+#endif
+
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 #if LOGGING_ENABLED
