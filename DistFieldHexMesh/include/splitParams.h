@@ -38,7 +38,6 @@ struct BuildCFDParams {
 	double maxCurvatureRadius_meters = 0.1; // 10 cm
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthSharpVertex_meters = 0.01; // 10 mm
-	int divsPerRadius = 2;
 };
 
 }

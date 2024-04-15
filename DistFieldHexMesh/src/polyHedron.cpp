@@ -535,7 +535,7 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius_meters, sin(params.sharpAngle_degrees * M_PI / 180.0));
 		if (refRadius > 0 && refRadius < params.maxCurvatureRadius_meters) {
-			double maxLength = refRadius / params.divsPerRadius;
+			double maxLength = refRadius;
 			auto range = bbox.range();
 			double minDim = min(range[0], min(range[1], range[2]));
 			if (minDim > maxLength) {
