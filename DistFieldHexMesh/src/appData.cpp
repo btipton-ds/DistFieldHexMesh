@@ -310,12 +310,12 @@ void AppData::doBuildCFDHexes()
 
         BuildCFDParams params;
 
-        params.numBlockDivs = 0;
+        params.numBlockDivs = 1;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 2;
+        params.numCurvatureDivs = 7;
         params.divsPerRadius = 4;
         params.maxCurvatureRadius = 0.1; // 50 cm
-        params.minSplitEdgeLength = 0.00125;
+        params.minSplitEdgeLengthCurvature = 0.00125;
         params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);

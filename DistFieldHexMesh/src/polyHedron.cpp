@@ -507,23 +507,30 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 		edges = cell.getEdges(false);
 	});
 
+	double maxLength = 0;
 	for (const auto& edge : edges) {
 		auto seg = edge.getSegment(getBlockPtr());
-		if (seg.calLength() < params.minSplitEdgeLength)
-			return false;
+		double l = seg.calLength();
+		if (l > maxLength)
+			maxLength = l;
 	}
 
 #if 1 // Split at sharp vertices
-	auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	for (size_t vertIdx : sharpVerts) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
-			needToSplit = true;
-			break;
+	if (maxLength > params.minSplitEdgeLengthSharpVertex) {
+		auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
+		for (size_t vertIdx : sharpVerts) {
+			auto pTriMesh = getBlockPtr()->getModelMesh();
+			Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
+			if (bbox.contains(pt)) {
+				needToSplit = true;
+				break;
+			}
 		}
 	}
 #endif
+
+	if (maxLength <= params.minSplitEdgeLengthCurvature)
+		return false;
 
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius, sin(params.sharpAngleDegrees * M_PI / 180.0));
