@@ -107,7 +107,7 @@ private:
 	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
-	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const;
+	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius_meters, double sinEdgeAngle) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	void clearCache() const;
 

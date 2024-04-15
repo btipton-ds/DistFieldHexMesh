@@ -516,7 +516,7 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 	}
 
 #if 1 // Split at sharp vertices
-	if (maxLength > params.minSplitEdgeLengthSharpVertex) {
+	if (maxLength > params.minSplitEdgeLengthSharpVertex_meters) {
 		auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 		for (size_t vertIdx : sharpVerts) {
 			auto pTriMesh = getBlockPtr()->getModelMesh();
@@ -529,12 +529,12 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 	}
 #endif
 
-	if (maxLength <= params.minSplitEdgeLengthCurvature)
+	if (maxLength <= params.minSplitEdgeLengthCurvature_meters)
 		return false;
 
 	if (!needToSplit) {
-		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius, sin(params.sharpAngleDegrees * M_PI / 180.0));
-		if (refRadius > 0 && refRadius < params.maxCurvatureRadius) {
+		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius_meters, sin(params.sharpAngle_degrees * M_PI / 180.0));
+		if (refRadius > 0 && refRadius < params.maxCurvatureRadius_meters) {
 			double maxLength = refRadius / params.divsPerRadius;
 			auto range = bbox.range();
 			double minDim = min(range[0], min(range[1], range[2]));
@@ -614,7 +614,7 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius, double sinEdgeAngle) const
+double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius_meters, double sinEdgeAngle) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
@@ -638,7 +638,7 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 		for (const auto edgeIdx : _edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
 			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
-			if (edgeRad > 0 && edgeRad < maxCurvatureRadius)
+			if (edgeRad > 0 && edgeRad < maxCurvatureRadius_meters)
 				edgeRadii.push_back(edgeRad);
 		}
 		if (edgeRadii.empty())

@@ -278,7 +278,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
 
-	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
+	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 	_pModelTriMesh->buildCentroids(true);
 	_pModelTriMesh->buildNormals(true);
@@ -390,7 +390,7 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 
 void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
-	double sharpAngleRadians = params.sharpAngleDegrees / 180.0 * M_PI;
+	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
 	size_t num = params.numCurvatureDivs;

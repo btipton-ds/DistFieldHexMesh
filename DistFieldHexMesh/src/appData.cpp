@@ -314,9 +314,9 @@ void AppData::doBuildCFDHexes()
         params.numSimpleDivs = 0;
         params.numCurvatureDivs = 7;
         params.divsPerRadius = 4;
-        params.maxCurvatureRadius = 0.1; // 50 cm
-        params.minSplitEdgeLengthCurvature = 0.00125;
-        params.sharpAngleDegrees = SHARP_EDGE_ANGLE;
+        params.maxCurvatureRadius_meters = 0.5; // 50 cm TODO This is more of a chord length than a radius
+        params.minSplitEdgeLengthCurvature_meters = 0.00125;
+        params.sharpAngle_degrees = SHARP_EDGE_ANGLE;
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
 
