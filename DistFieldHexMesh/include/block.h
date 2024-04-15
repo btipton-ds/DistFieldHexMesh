@@ -115,8 +115,8 @@ public:
 	void createBlockFaces();
 
 	const CMeshPtr& getModelMesh() const;
-	CMeshPtr getBlockTriMesh(FaceType meshType);
-	glPointsPtr makeEdgeSets(FaceType meshType);
+	void getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh);
+	void makeEdgeSets(FaceType meshType, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());

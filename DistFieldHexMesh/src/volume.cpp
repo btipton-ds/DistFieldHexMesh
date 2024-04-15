@@ -245,10 +245,10 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
 	_pModelTriMesh = pTriMesh;
-	CMesh::BoundingBox bb = pTriMesh->getBBox();
-	bb.growPercent(0.0125);
-	_originMeters = bb.getMin();
-	_spanMeters = bb.range();
+	_boundingBox = pTriMesh->getBBox();
+	_boundingBox.growPercent(0.0125);
+	_originMeters = _boundingBox.getMin();
+	_spanMeters = _boundingBox.range();
 
 	double minSpan = DBL_MAX;
 	for (int i = 0; i < 3; i++) {
@@ -508,49 +508,80 @@ void Volume::dumpOpenCells(bool multiCore) const
 #endif
 }
 
+void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
+{
+	CBoundingBox3Dd bbox = _boundingBox;
+	bbox.merge(pBlock->_boundBox);
+	
+	if (pBlock) {
+		CMeshPtr pMesh = triMeshes[faceType][threadNum];
+		if (!pMesh) {
+			pMesh = make_shared<CMesh>(bbox);
+			triMeshes[faceType][threadNum] = pMesh;
+		}
+		pBlock->getBlockTriMesh(faceType, pMesh);
+	}
+}
+
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 {
-	CBoundingBox3Dd bbox;
-	bbox.merge(_originMeters);
-	bbox.merge(_originMeters + _spanMeters);
-	auto diagDist = bbox.range().norm();
-	bbox.grow(diagDist * 0.05);
 
+	size_t numThreads = MultiCore::getNumCores();
 	triMeshes.resize(4);
-	triMeshes[FT_OUTER].resize(_blocks.size());
-	triMeshes[FT_INNER].resize(_blocks.size());
-	triMeshes[FT_LAYER_BOUNDARY].resize(_blocks.size());
-	triMeshes[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	runLambda([this, &triMeshes](size_t index)->bool {
-		const auto& blockPtr = _blocks[index];
-		if (blockPtr) {
-
-			triMeshes[FT_OUTER][index] = blockPtr->getBlockTriMesh(FT_OUTER);
-			triMeshes[FT_INNER][index] = blockPtr->getBlockTriMesh(FT_INNER);
-			triMeshes[FT_LAYER_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_LAYER_BOUNDARY);
-			triMeshes[FT_BLOCK_BOUNDARY][index] = blockPtr->getBlockTriMesh(FT_BLOCK_BOUNDARY);
+	triMeshes[FT_OUTER].resize(numThreads);
+	triMeshes[FT_INNER].resize(numThreads);
+	triMeshes[FT_LAYER_BOUNDARY].resize(numThreads);
+	triMeshes[FT_BLOCK_BOUNDARY].resize(numThreads);
+	MultiCore::runLambda([this, &triMeshes](size_t threadNum, size_t numThreads)->bool {
+		for (size_t index = threadNum; index < _blocks.size(); index += numThreads) {
+			const auto& blockPtr = _blocks[index];
+			if (blockPtr && blockPtr->numFaces(true) > 0) {
+				makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_LAYER_BOUNDARY, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
+			}
 		}
 		return true;
-	}, _blocks.size(), multiCore);
+	}, multiCore);
+}
+
+void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
+{
+	CBoundingBox3Dd bbox = _boundingBox;
+	bbox.merge(pBlock->_boundBox);
+
+	if (pBlock) {
+		Block::glPointsPtr pPoints = faceEdges[faceType][threadNum];
+		if (!pPoints) {
+			pPoints = make_shared<Block::GlPoints>();
+			faceEdges[faceType][threadNum] = pPoints;
+		}
+		pBlock->makeEdgeSets(faceType, pPoints);
+	}
 }
 
 void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 {
+	size_t numThreads = MultiCore::getNumCores();
+
 	faceEdges.resize(4);
-	faceEdges[FT_OUTER].resize(_blocks.size());
-	faceEdges[FT_INNER].resize(_blocks.size());
-	faceEdges[FT_LAYER_BOUNDARY].resize(_blocks.size());
-	faceEdges[FT_BLOCK_BOUNDARY].resize(_blocks.size());
-	runLambda([this, &faceEdges](size_t index)->bool {
-		const auto& blockPtr = _blocks[index];
-		if (blockPtr) {
-			faceEdges[FT_OUTER][index] = blockPtr->makeEdgeSets(FT_OUTER);
-			faceEdges[FT_INNER][index] = blockPtr->makeEdgeSets(FT_INNER);
-			faceEdges[FT_LAYER_BOUNDARY][index] = blockPtr->makeEdgeSets(FT_BLOCK_BOUNDARY);
-			faceEdges[FT_BLOCK_BOUNDARY][index] = blockPtr->makeEdgeSets(FT_BLOCK_BOUNDARY);
+	faceEdges[FT_OUTER].resize(numThreads);
+	faceEdges[FT_INNER].resize(numThreads);
+	faceEdges[FT_LAYER_BOUNDARY].resize(numThreads);
+	faceEdges[FT_BLOCK_BOUNDARY].resize(numThreads);
+	MultiCore::runLambda([this, &faceEdges](size_t threadNum, size_t numThreads)->bool {
+		for (size_t index = threadNum; index < _blocks.size(); index += numThreads) {
+			const auto& blockPtr = _blocks[index];
+			if (blockPtr && blockPtr->numFaces(true) > 0) {
+				makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_LAYER_BOUNDARY, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
+			}
 		}
 		return true;
-	}, _blocks.size(), multiCore);
+	}, multiCore);
 }
 
 size_t Volume::numFaces(bool includeInner) const

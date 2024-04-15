@@ -899,21 +899,13 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 	return result;
 }
 
-CMeshPtr Block::getBlockTriMesh(FaceType meshType)
+void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 {
 	if (numFaces(true) == 0)
-		return nullptr;
+		return;
 
-	CMesh::BoundingBox bbox = _boundBox;
-	double span = bbox.range().norm();
-	bbox.grow(0.05 * span);
-
-	CMeshPtr result;
-	_modelData._polygons.iterateInOrder([this, &result, &bbox, meshType](const Index3DId& id, const Polygon& face) {
+	_modelData._polygons.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInRender(meshType, face)) {
-			if (!result) {
-				result = make_shared<CMesh>(bbox);
-			}
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
 			pts.reserve(vertIds.size());
@@ -925,25 +917,22 @@ CMeshPtr Block::getBlockTriMesh(FaceType meshType)
 				Vector3d ctr = face.calCentroid();
 				for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
 					size_t idx1 = (idx0 + 1) % pts.size();
-					result->addTriangle(ctr, pts[idx0], pts[idx1]);
+					pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
 				}
 			} else {
 				for (size_t i = 1; i < pts.size() - 1; i++) {
 					size_t idx0 = 0;
 					size_t idx1 = i;
 					size_t idx2 = i + 1;
-					result->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+					pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
 				}
 			}
-			result->changed();
+			pMesh->changed();
 		}
 	});
-
-//	cout << "Skipped " << skipped << "inner faces\n";
-	return result;
 }
 
-Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
+void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 {
 	set<Edge> edges;
 
@@ -953,11 +942,10 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 		}
 	});
 
-	glPointsPtr result;
 	if (!edges.empty()) {
-		if (!result)
-			result = make_shared< GlPoints>();
-		auto& vals = *result;
+		if (!points)
+			points = make_shared< GlPoints>();
+		auto& vals = *points;
 		vals.clear();
 		vals.changed();
 		for (const auto& edge : edges) {
@@ -974,7 +962,6 @@ Block::glPointsPtr Block::makeEdgeSets(FaceType meshType)
 			vals.push_back((float)pt[2]);
 		}
 	}
-	return result;
 }
 
 bool Block::vertexExists(const Index3DId& id) const

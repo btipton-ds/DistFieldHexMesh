@@ -310,7 +310,7 @@ void AppData::doBuildCFDHexes()
 
         BuildCFDParams params;
 
-        params.numBlockDivs = 1;
+        params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
         params.numCurvatureDivs = 7;
         params.divsPerRadius = 4;
