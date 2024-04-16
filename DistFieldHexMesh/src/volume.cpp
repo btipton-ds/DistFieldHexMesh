@@ -250,21 +250,30 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	_originMeters = _boundingBox.getMin();
 	_spanMeters = _boundingBox.range();
 
-	double minSpan = DBL_MAX;
-	for (int i = 0; i < 3; i++) {
-		if (_spanMeters[i] < minSpan) {
-			minSpan = _spanMeters[i];
+	Index3D blockSize;
+	if (params.uniformRatio) {
+		blockSize = Index3D(
+			params.minBlocksPerSide,
+			params.minBlocksPerSide,
+			params.minBlocksPerSide
+		);
+	} else {
+		double minSpan = DBL_MAX;
+		for (int i = 0; i < 3; i++) {
+			if (_spanMeters[i] < minSpan) {
+				minSpan = _spanMeters[i];
+			}
 		}
-	}
-	double targetBlockSize = minSpan / params.minBlocksPerSide;
-	size_t blockDim = 1;
-	Index3D::setBlockDim(blockDim);
+		double targetBlockSize = minSpan / params.minBlocksPerSide;
+		size_t blockDim = 1;
+		Index3D::setBlockDim(blockDim);
 
-	Index3D blockSize(
-		(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
-		(size_t)(_spanMeters[1] / targetBlockSize + 0.5),
-		(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
-	);
+		blockSize = Index3D (
+			(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
+			(size_t)(_spanMeters[1] / targetBlockSize + 0.5),
+			(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
+		);
+	}
 
 	for (size_t i = 0; i < params.numBlockDivs; i++) {
 		for (int i = 0; i < 3; i++)
@@ -362,7 +371,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 {
 	for (size_t i = 0; i < params.numSimpleDivs; i++) {
-#ifdef LOGGING_ENABLED
+#if LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
 			auto logger = _blocks[linearIdx]->getLogger();
 			auto& out = logger->getStream();
@@ -395,7 +404,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 	size_t num = params.numCurvatureDivs;
 	for (size_t i = 0; i < num; i++) {
-#ifdef LOGGING_ENABLED
+#if LOGGING_ENABLED
 		runLambda([this, i](size_t linearIdx)->bool {
 			auto logger = _blocks[linearIdx]->getLogger();
 			auto& out = logger->getStream();
@@ -412,7 +421,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			return true;
 		}, multiCore);
 
-		atomic<bool> changed = false;
+		bool changed = false;
 		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]->setNeedToSplitConditional(params))
 				changed = true;
@@ -423,7 +432,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 //		assert(verifyTopology(multiCore));
 
 		if (!changed) {
-			cout << "No more splits required.\n";
+			cout << "No more splits required: " << i << "\n";
 			break;
 		}
 	}

@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 struct BuildCFDParams {
+	bool uniformRatio = false;
 	size_t minBlocksPerSide = 6;
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 2;
@@ -40,6 +41,7 @@ struct BuildCFDParams {
 	double maxCurvatureRadius_meters = 1.0; // 1m
 	double sharpAngle_degrees = 30.0;
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
+	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthSharpVertex_meters = 0.01; // 10 mm
 };
 

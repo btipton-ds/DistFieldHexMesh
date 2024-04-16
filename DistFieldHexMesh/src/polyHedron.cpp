@@ -515,9 +515,7 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 	}
 #endif
 
-	if (maxEdgeLength <= params.minSplitEdgeLengthCurvature_meters)
-		return false;
-
+#if 0 // TODO, we need something like this, but this is incremental and slow
 	if (!needToSplit) {
 		auto cellIds = getAdjacentCells(false);
 		for (const auto& cellId : cellIds) {
@@ -527,17 +525,22 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 			});
 		}
 	}
+#endif
 
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
 		if (refRadius > 0) {
 			double gap = minGap();
-			double maxAllowedEdgeLen;
-			if (gap < params.maxGapSize)
-				maxAllowedEdgeLen = refRadius / params.divsPerGapCurvatureRadius;
-			else
-				maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
-
+			double maxAllowedEdgeLen = DBL_MAX;
+			if (gap < params.maxGapSize) {
+				if (maxEdgeLength > params.minSplitEdgeLengthGapCurvature_meters) {
+					maxAllowedEdgeLen = refRadius / params.divsPerGapCurvatureRadius;
+				}
+			} else {
+				if (maxEdgeLength > params.minSplitEdgeLengthCurvature_meters) {
+					maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
+				}
+			}
 			if (maxEdgeLength > maxAllowedEdgeLen)
 				needToSplit = true;
 		}
