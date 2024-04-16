@@ -71,9 +71,11 @@ public:
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
 	bool setNeedToSplitConditional(const BuildCFDParams& params);
-	void initEdgeIndices();
+	void initAllIndices();
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	const std::vector<size_t>& getEdgeIndices() const;
+	void setTriIndices(const std::vector<size_t>& indices);
+	const std::vector<size_t>& getTriIndices() const;
 
 	bool needToImprintTVertices() const;
 	void imprintTVertices(Block* pDstBlock) const;
@@ -108,11 +110,12 @@ private:
 	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
+	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
-	std::vector<size_t> _edgeIndices;
+	std::vector<size_t> _edgeIndices, _triIndices;
 	size_t _splitLevel = 0;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
@@ -135,6 +138,11 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline const std::vector<size_t>& Polyhedron::getEdgeIndices() const
 {
 	return _edgeIndices;
+}
+
+inline const std::vector<size_t>& Polyhedron::getTriIndices() const
+{
+	return _triIndices;
 }
 
 inline size_t Polyhedron::getSplitLevel() const

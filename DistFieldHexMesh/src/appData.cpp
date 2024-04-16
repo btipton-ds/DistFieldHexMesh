@@ -109,6 +109,7 @@ void AppData::doOpen()
                 _pMesh->squeezeSkinnyTriangles(0.1);
                 _pMesh->buildCentroids();
                 _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
+                _pMesh->calGaps();
                 vector<double> radii;
                 radii.reserve(_pMesh->numEdges());
                 for (size_t i = 0; i < _pMesh->numEdges(); i++) {
@@ -313,9 +314,12 @@ void AppData::doBuildCFDHexes()
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
         params.numCurvatureDivs = 7;
-        params.divsPerCurvatureRadius = 3;
+        params.divsPerCurvatureRadius = 2;
+        params.maxGapSize = 0.02;
+        params.divsPerGapCurvatureRadius = 5;
         params.minSplitEdgeLengthCurvature_meters = 0.00125;
         params.sharpAngle_degrees = SHARP_EDGE_ANGLE;
+
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
 

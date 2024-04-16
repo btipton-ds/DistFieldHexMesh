@@ -57,6 +57,7 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
 	, _edgeIndices(src._edgeIndices)
+	, _triIndices(src._triIndices)
 {
 }
 
@@ -65,6 +66,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	clearCache();
 	_faceIds = rhs._faceIds;
 	_edgeIndices = rhs._edgeIndices;
+	_triIndices = rhs._triIndices;
 
 	return *this;
 }
@@ -529,7 +531,13 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
 		if (refRadius > 0) {
-			double maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
+			double gap = minGap();
+			double maxAllowedEdgeLen;
+			if (gap < params.maxGapSize)
+				maxAllowedEdgeLen = refRadius / params.divsPerGapCurvatureRadius;
+			else
+				maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
+
 			if (maxEdgeLength > maxAllowedEdgeLen)
 				needToSplit = true;
 		}
@@ -544,13 +552,18 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 	return needToSplit;
 }
 
-void Polyhedron::initEdgeIndices()
+void Polyhedron::initAllIndices()
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
-	vector<size_t> edgeIndices;
-	if (pTriMesh->findEdges(bbox, edgeIndices))
-		setEdgeIndices(edgeIndices);
+
+	vector<size_t> indices;
+	if (pTriMesh->findEdges(bbox, indices))
+		setEdgeIndices(indices);
+
+	indices.clear();
+	if (pTriMesh->findTris(bbox, indices))
+		setTriIndices(indices);
 }
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
@@ -563,6 +576,18 @@ void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 		auto seg = edge.getSeg(pTriMesh);
 		if (bbox.intersects(seg))
 			_edgeIndices.push_back(idx);
+	}
+}
+
+void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
+{
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	auto bbox = getBoundingBox();
+
+	for (auto idx : indices) {
+		auto triBox = pTriMesh->getTriBBox(idx);
+		if (bbox.intersects(triBox))
+			_triIndices.push_back(idx);
 	}
 }
 
@@ -609,21 +634,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
-#if 0 && defined(_DEBUG)
-	vector<size_t> edgeIndices;
-	bool found = pTriMesh->findEdges(bbox, edgeIndices) > 0;
-	assert(found == (_edgeIndices.size() > 0));
-	assert(edgeIndices.size() == _edgeIndices.size());
-	vector<size_t> tmp0(edgeIndices);
-	sort(tmp0.begin(), tmp0.end());
-
-	vector<size_t> tmp1(_edgeIndices);
-	sort(tmp1.begin(), tmp1.end());
-	for (size_t i = 0; i < tmp0.size(); i++) {
-		assert(tmp0[i] == tmp1[i]);
-	}
-#endif // _DEBUG
-
 	if (!_edgeIndices.empty()) {
 		vector<double> edgeRadii;
 		for (const auto edgeIdx : _edgeIndices) {
@@ -636,17 +646,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 			return 1e6;
 
 		sort(edgeRadii.begin(), edgeRadii.end());
-#if 0
-		{
-			static mutex m;
-			lock_guard g(m);
-			size_t idx = getBlockPtr()->getVolume()->calLinearBlockIndex(getId());
-			cout << "Cell idx: " << idx << "\n";
-			for (double r : edgeRadii)
-				cout << "r: " << r << "\n";
-			cout << "\n";
-		}
-#endif
 		size_t num = std::min((size_t)20, edgeRadii.size() / 2);
 		if (num == 0)
 			return -1;
@@ -668,7 +667,21 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 	return 0;
 }
 
-inline bool Polyhedron::polygonExists(TopolgyState refState, const Index3DId& id) const
+double Polyhedron::minGap() const
+{
+	double result = DBL_MAX;
+
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	for (size_t idx : _triIndices) {
+		double gap = pTriMesh->triGap(idx);
+		if (gap < result)
+			result = gap;
+	}
+
+	return result;
+}
+
+bool Polyhedron::polygonExists(TopolgyState refState, const Index3DId& id) const
 {
 	return getBlockPtr()->polygonExists(refState, id);
 }

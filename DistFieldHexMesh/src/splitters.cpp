@@ -234,8 +234,6 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 		cornerVertToFaceMap.insert(make_pair(vertId, set<Index3DId>()));
 	}
 
-	const auto& edgeIndices = realCell.getEdgeIndices();
-
 	// Split all faces which require splitting
 	bool pass = true;
 	for (const auto& faceId : faceIds) {
@@ -366,9 +364,10 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 		}
 #endif
 
-		_pBlock->cellRealFunc(newCellId, [this, &edgeIndices, &realCell](Polyhedron& newCell) {
+		_pBlock->cellRealFunc(newCellId, [this, &realCell](Polyhedron& newCell) {
 			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
-			newCell.setEdgeIndices(edgeIndices);
+			newCell.setEdgeIndices(realCell.getEdgeIndices());
+			newCell.setTriIndices(realCell.getTriIndices());
 
 			for (const auto& faceId : newCell.getFaceIds()) {
 				_pBlock->faceRealFunc(faceId, [this](const Polygon& face) {
