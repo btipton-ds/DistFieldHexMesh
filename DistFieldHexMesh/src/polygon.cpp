@@ -407,26 +407,19 @@ Vector3d Polygon::calCentroid() const
 
 bool Polygon::intersectsModel() const
 {
-	CBoundingBox3Dd bbox;
+	set<size_t> triEntries;
 	for (const auto& cellId : _cellIds) {
-		cellAvailFunc(cellId, TS_REAL, [&bbox](const Polyhedron& cell) {
-			if (!cell.getTriIndices().empty()) {
-				auto cbb = cell.getBoundingBox();
-				bbox.merge(cbb);
+		cellAvailFunc(cellId, TS_REAL, [&triEntries](const Polyhedron& cell) {
+			const auto& cellTris = cell.getTriIndices();
+			if (!cellTris.empty()) {
+				triEntries.insert(cellTris.begin(), cellTris.end());
 			}
 		});
 	}
 
-	if (bbox.empty())
-		return false;
 
-	auto range = bbox.range();
-	bbox.grow(range.norm() * 0.01);
-
-	auto pTriMesh = getBlockPtr()->getModelMesh();
-	vector<CMesh::SearchEntry> triEntries;
-
-	if (pTriMesh->findTris(bbox, triEntries) > 0) {
+	if (!triEntries.empty()) {
+		auto pTriMesh = getBlockPtr()->getModelMesh();
 		vector<Edge> edges;
 		for (size_t i = 0; i < _vertexIds.size(); i++) {
 			size_t j = (i + 1) % _vertexIds.size();
@@ -435,8 +428,8 @@ bool Polygon::intersectsModel() const
 			edges.push_back(edge);
 		}
 
-		for (const auto& triEntry : triEntries) {
-			const auto& tri = pTriMesh->getTri(triEntry.getIndex());
+		for (const auto& triIdx : triEntries) {
+			const auto& tri = pTriMesh->getTri(triIdx);
 			const Vector3d* pts[3];
 
 			pts[0] = &(pTriMesh->getVert(tri[0])._pt);
@@ -444,8 +437,9 @@ bool Polygon::intersectsModel() const
 			pts[2] = &(pTriMesh->getVert(tri[2])._pt);
 			for (const auto& edge : edges) {
 				auto seg = edge.getSegment(getBlockPtr());
+				auto ray = seg.getRay();
 				RayHit hit;
-				if (intersectLineSegTri(seg, pts, hit))
+				if (intersectRayTri(ray, pts, hit))
 					return true;
 			}
 		}
