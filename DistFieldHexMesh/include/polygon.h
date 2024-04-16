@@ -131,6 +131,7 @@ public:
 	double calVertexAngle(size_t index) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
+	bool intersectsModel() const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;

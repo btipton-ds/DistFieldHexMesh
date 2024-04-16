@@ -405,6 +405,55 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
+bool Polygon::intersectsModel() const
+{
+	CBoundingBox3Dd bbox;
+	for (const auto& cellId : _cellIds) {
+		cellAvailFunc(cellId, TS_REAL, [&bbox](const Polyhedron& cell) {
+			if (!cell.getTriIndices().empty()) {
+				auto cbb = cell.getBoundingBox();
+				bbox.merge(cbb);
+			}
+		});
+	}
+
+	if (bbox.empty())
+		return false;
+
+	auto range = bbox.range();
+	bbox.grow(range.norm() * 0.01);
+
+	auto pTriMesh = getBlockPtr()->getModelMesh();
+	vector<CMesh::SearchEntry> triEntries;
+
+	if (pTriMesh->findTris(bbox, triEntries) > 0) {
+		vector<Edge> edges;
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			const auto& vertId0 = _vertexIds[i];
+			Edge edge(_vertexIds[i], _vertexIds[j]);
+			edges.push_back(edge);
+		}
+
+		for (const auto& triEntry : triEntries) {
+			const auto& tri = pTriMesh->getTri(triEntry.getIndex());
+			const Vector3d* pts[3];
+
+			pts[0] = &(pTriMesh->getVert(tri[0])._pt);
+			pts[1] = &(pTriMesh->getVert(tri[1])._pt);
+			pts[2] = &(pTriMesh->getVert(tri[2])._pt);
+			for (const auto& edge : edges) {
+				auto seg = edge.getSegment(getBlockPtr());
+				RayHit hit;
+				if (intersectLineSegTri(seg, pts, hit))
+					return true;
+			}
+		}
+	}
+
+	return false; // Don't test split cells
+}
+
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
 	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal());

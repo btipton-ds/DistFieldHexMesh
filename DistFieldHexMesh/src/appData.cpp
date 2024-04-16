@@ -311,11 +311,11 @@ void AppData::doBuildCFDHexes()
 
         BuildCFDParams params;
 
-        params.uniformRatio = true;
+        params.uniformRatio = false;
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 3;
+        params.numCurvatureDivs = 4;
         params.divsPerCurvatureRadius = 3;
         params.maxGapSize = 0.02;
         params.divsPerGapCurvatureRadius = 3;

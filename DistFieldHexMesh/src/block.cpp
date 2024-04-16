@@ -861,22 +861,27 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
 
+#if 1
+	result = face.intersectsModel();
+#else
 	auto ids = face.getCellIds();
 	for (const auto& cellId : ids) {
 		if (polyhedronExists(TS_REAL, cellId)) {
 			cellRealFunc(cellId, [&result](const Polyhedron& cell) {
 				result = cell.intersectsModel();
-			});
+				});
 		}
 		if (result)
 			break;
 	}
+#endif
 	if (!result)
 		return false;
 
 	bool isOuter = face.isOuter();
 	bool isBlockBoundary = face.isBlockBoundary();
 
+	result = false;
 	switch (meshType) {
 		default:
 		case FT_ALL:
@@ -927,7 +932,6 @@ void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 					pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
 				}
 			}
-			pMesh->changed();
 		}
 	});
 }
@@ -936,9 +940,14 @@ void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 {
 	set<Edge> edges;
 
-	_modelData._polygons.iterateInOrder([this, meshType, &edges](const Index3DId& id, const Polygon& face) {
+	_modelData._polygons.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInRender(meshType, face)) {
-			edges = face.getEdges();
+			const auto& vertIds = face.getVertexIds();
+			for (size_t i = 0; i < vertIds.size(); i++) {
+				size_t j = (i + 1) % vertIds.size();
+				Edge edge(vertIds[i], vertIds[j]);
+				edges.insert(edge);
+			}
 		}
 	});
 
@@ -946,8 +955,6 @@ void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 		if (!points)
 			points = make_shared< GlPoints>();
 		auto& vals = *points;
-		vals.clear();
-		vals.changed();
 		for (const auto& edge : edges) {
 			const auto* vertIds = edge.getVertexIds();
 

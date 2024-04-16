@@ -160,7 +160,7 @@ private:
         _showTriNormals = false, 
         _showEdges = true, 
         _showFaces = true, 
-        _showOuter = true,
+        _showOuter = false,
         _showCurvature = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     void initialize();

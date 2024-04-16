@@ -522,14 +522,12 @@ void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, 
 	CBoundingBox3Dd bbox = _boundingBox;
 	bbox.merge(pBlock->_boundBox);
 	
-	if (pBlock) {
-		CMeshPtr pMesh = triMeshes[faceType][threadNum];
-		if (!pMesh) {
-			pMesh = make_shared<CMesh>(bbox);
-			triMeshes[faceType][threadNum] = pMesh;
-		}
-		pBlock->getBlockTriMesh(faceType, pMesh);
+	CMeshPtr pMesh = triMeshes[faceType][threadNum];
+	if (!pMesh) {
+		pMesh = make_shared<CMesh>(bbox);
+		triMeshes[faceType][threadNum] = pMesh;
 	}
+	pBlock->getBlockTriMesh(faceType, pMesh);
 }
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
@@ -553,6 +551,20 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 		}
 		return true;
 	}, multiCore);
+
+	for (size_t i = 0; i < numThreads; i++) {
+		if (triMeshes[FT_OUTER][i])
+			triMeshes[FT_OUTER][i]->changed();
+
+		if (triMeshes[FT_INNER][i])
+			triMeshes[FT_INNER][i]->changed();
+
+		if (triMeshes[FT_LAYER_BOUNDARY][i])
+			triMeshes[FT_LAYER_BOUNDARY][i]->changed();
+
+		if (triMeshes[FT_BLOCK_BOUNDARY][i])
+			triMeshes[FT_BLOCK_BOUNDARY][i]->changed();
+	}
 }
 
 void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
@@ -560,14 +572,12 @@ void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, c
 	CBoundingBox3Dd bbox = _boundingBox;
 	bbox.merge(pBlock->_boundBox);
 
-	if (pBlock) {
-		Block::glPointsPtr pPoints = faceEdges[faceType][threadNum];
-		if (!pPoints) {
-			pPoints = make_shared<Block::GlPoints>();
-			faceEdges[faceType][threadNum] = pPoints;
-		}
-		pBlock->makeEdgeSets(faceType, pPoints);
+	Block::glPointsPtr pPoints = faceEdges[faceType][threadNum];
+	if (!pPoints) {
+		pPoints = make_shared<Block::GlPoints>();
+		faceEdges[faceType][threadNum] = pPoints;
 	}
+	pBlock->makeEdgeSets(faceType, pPoints);
 }
 
 void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
@@ -579,6 +589,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 	faceEdges[FT_INNER].resize(numThreads);
 	faceEdges[FT_LAYER_BOUNDARY].resize(numThreads);
 	faceEdges[FT_BLOCK_BOUNDARY].resize(numThreads);
+
 	MultiCore::runLambda([this, &faceEdges](size_t threadNum, size_t numThreads)->bool {
 		for (size_t index = threadNum; index < _blocks.size(); index += numThreads) {
 			const auto& blockPtr = _blocks[index];
@@ -591,6 +602,20 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 		}
 		return true;
 	}, multiCore);
+
+	for (size_t i = 0; i < numThreads; i++) {
+		if (faceEdges[FT_OUTER][i])
+			faceEdges[FT_OUTER][i]->changed();
+
+		if (faceEdges[FT_INNER][i])
+			faceEdges[FT_INNER][i]->changed();
+
+		if (faceEdges[FT_LAYER_BOUNDARY][i])
+			faceEdges[FT_LAYER_BOUNDARY][i]->changed();
+
+		if (faceEdges[FT_BLOCK_BOUNDARY][i])
+			faceEdges[FT_BLOCK_BOUNDARY][i]->changed();
+	}
 }
 
 size_t Volume::numFaces(bool includeInner) const
