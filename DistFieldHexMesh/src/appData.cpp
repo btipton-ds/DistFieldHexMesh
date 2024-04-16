@@ -313,7 +313,7 @@ void AppData::doBuildCFDHexes()
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
         params.numCurvatureDivs = 7;
-        params.maxCurvatureRadius_meters = 0.1; // 50 cm TODO This is more of a chord length than a radius
+        params.divsPerCurvatureRadius = 3;
         params.minSplitEdgeLengthCurvature_meters = 0.00125;
         params.sharpAngle_degrees = SHARP_EDGE_ANGLE;
 

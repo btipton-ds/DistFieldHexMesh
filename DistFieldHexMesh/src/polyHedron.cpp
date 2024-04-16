@@ -507,16 +507,16 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 		edges = cell.getEdges(false);
 	});
 
-	double maxLength = 0;
+	double maxEdgeLength = 0;
 	for (const auto& edge : edges) {
 		auto seg = edge.getSegment(getBlockPtr());
 		double l = seg.calLength();
-		if (l > maxLength)
-			maxLength = l;
+		if (l > maxEdgeLength)
+			maxEdgeLength = l;
 	}
 
 #if 1 // Split at sharp vertices
-	if (maxLength > params.minSplitEdgeLengthSharpVertex_meters) {
+	if (maxEdgeLength > params.minSplitEdgeLengthSharpVertex_meters) {
 		auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 		for (size_t vertIdx : sharpVerts) {
 			auto pTriMesh = getBlockPtr()->getModelMesh();
@@ -529,18 +529,15 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 	}
 #endif
 
-	if (maxLength <= params.minSplitEdgeLengthCurvature_meters)
+	if (maxEdgeLength <= params.minSplitEdgeLengthCurvature_meters)
 		return false;
 
 	if (!needToSplit) {
-		double refRadius = calReferenceSurfaceRadius(bbox, params.maxCurvatureRadius_meters, sin(params.sharpAngle_degrees * M_PI / 180.0));
-		if (refRadius > 0 && refRadius < params.maxCurvatureRadius_meters) {
-			double maxLength = refRadius;
-			auto range = bbox.range();
-			double minDim = min(range[0], min(range[1], range[2]));
-			if (minDim > maxLength) {
+		double refRadius = calReferenceSurfaceRadius(bbox, params);
+		if (refRadius > 0) {
+			double maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
+			if (maxEdgeLength > maxAllowedEdgeLen)
 				needToSplit = true;
-			}
 		}
 	}
 
@@ -614,7 +611,7 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 	return true;
 }
 
-double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double maxCurvatureRadius_meters, double sinEdgeAngle) const
+double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
@@ -637,8 +634,8 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 		vector<double> edgeRadii;
 		for (const auto edgeIdx : _edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
-			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 10000;
-			if (edgeRad > 0 && edgeRad < maxCurvatureRadius_meters)
+			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 1000000;
+			if (edgeRad > 0 && edgeRad < params.maxCurvatureRadius_meters)
 				edgeRadii.push_back(edgeRad);
 		}
 		if (edgeRadii.empty())
@@ -656,14 +653,21 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, double
 			cout << "\n";
 		}
 #endif
-		size_t num = std::min((size_t)10, edgeRadii.size());
+		size_t num = std::min((size_t)20, edgeRadii.size() / 2);
 		if (num == 0)
 			return -1;
 		double avgRad = 0;
-		for (size_t i = 0; i < num; i++)
-			avgRad += edgeRadii[i];
-		avgRad /= num;
-		if (avgRad > 0)
+		size_t count = 0;
+		for (size_t i = 0; i < num; i++) {
+			if (edgeRadii[i] < 0.5) {
+				count++;
+				avgRad += edgeRadii[i];
+			}
+		}
+		if (count == 0)
+			return -1;
+		avgRad /= count;
+		if (avgRad >= 0)
 			return avgRad;
 		return -1;
 	}

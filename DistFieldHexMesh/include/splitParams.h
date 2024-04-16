@@ -34,8 +34,9 @@ struct BuildCFDParams {
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 2;
 	size_t numCurvatureDivs = 4;
+	size_t divsPerCurvatureRadius = 3;
+	double maxCurvatureRadius_meters = 1.0; // 1m
 	double sharpAngle_degrees = 30.0;
-	double maxCurvatureRadius_meters = 0.1; // 10 cm
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthSharpVertex_meters = 0.01; // 10 mm
 };
