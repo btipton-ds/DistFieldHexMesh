@@ -750,18 +750,18 @@ void Block::setNeedsSimpleSplit()
 	});
 }
 
-bool Block::setNeedsCurvatureSplit(const BuildCFDParams& params)
+bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getLogger();
 	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::setNeedsCurvatureSplit()\n";
+	out << "Block[" << _blockIdx << "]::setNeedToSplitConditional()\n";
 	Logger::Indent indent;
 #endif
 
 	bool result = false;
 	_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.setNeedToSplitCurvature(params))
+		if (cell.setNeedToSplitConditional(params))
 			result = true;
 	});
 

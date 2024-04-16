@@ -414,7 +414,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 		atomic<bool> changed = false;
 		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->setNeedsCurvatureSplit(params))
+			if (_blocks[linearIdx]->setNeedToSplitConditional(params))
 				changed = true;
 			return true;
 		},  multiCore);

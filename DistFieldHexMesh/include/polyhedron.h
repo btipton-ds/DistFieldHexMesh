@@ -70,7 +70,7 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
-	bool setNeedToSplitCurvature(const BuildCFDParams& params);
+	bool setNeedToSplitConditional(const BuildCFDParams& params);
 	void initEdgeIndices();
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	const std::vector<size_t>& getEdgeIndices() const;

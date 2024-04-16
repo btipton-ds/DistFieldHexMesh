@@ -409,52 +409,6 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 	}
 }
 
-bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
-{
-	for (const auto& faceId : _faceIds) {
-		set<Polygon::CellId_SplitLevel> cellIds;
-		faceAvailFunc(faceId, TS_REFERENCE, [this, &cellIds](const Polygon& face) {
-			cellIds = face.getCellIds();
-		});
-
-		for (const auto& cellId : cellIds) {
-			if (cellId != _thisId && !blockingCellIds.contains(cellId)) {
-				cellAvailFunc(cellId, TS_REAL, [this, &blockingCellIds](const Polyhedron& adjCell) {
-					if (adjCell.getSplitLevel() < _splitLevel) {
-						blockingCellIds.insert(adjCell.getId());
-					}
-				});
-			}
-		}
-
-		faceRealFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
-			for (const auto& cellId : face.getCellIds()) {
-				if (cellId != _thisId && !blockingCellIds.contains(cellId) && face.getSplitLevel(cellId) > 0) {
-					blockingCellIds.insert(cellId);
-				}
-			}
-		});
-
-#if 0
-		if (!blockingCellIds.contains(_thisId)) {
-			if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
-				faceRefFunc(faceId, [this, &blockingCellIds](const Polygon& refFace) {
-					for (const auto& childFaceId : refFace.getSplitFaceProductIds()) {
-						if (getBlockPtr()->polygonExists(TS_REFERENCE, childFaceId)) {
-							blockingCellIds.insert(_thisId);
-							break;
-						}
-					}
-				});
-			}
-
-		}
-#endif
-	}
-
-	return blockingCellIds.empty();
-}
-
 void Polyhedron::setNeedToSplitAtCentroid()
 {
 #if LOGGING_ENABLED
@@ -491,9 +445,39 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 }
 
-#endif // _DEBUG
+#endif
 
-bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
+bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
+{
+	for (const auto& faceId : _faceIds) {
+		set<Polygon::CellId_SplitLevel> cellIds;
+		faceAvailFunc(faceId, TS_REFERENCE, [this, &cellIds](const Polygon& face) {
+			cellIds = face.getCellIds();
+		});
+
+		for (const auto& cellId : cellIds) {
+			if (cellId != _thisId && !blockingCellIds.contains(cellId)) {
+				cellAvailFunc(cellId, TS_REAL, [this, &blockingCellIds](const Polyhedron& adjCell) {
+					if (adjCell.getSplitLevel() < _splitLevel) {
+						blockingCellIds.insert(adjCell.getId());
+					}
+				});
+			}
+		}
+
+		faceRealFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
+			for (const auto& cellId : face.getCellIds()) {
+				if (cellId != _thisId && !blockingCellIds.contains(cellId) && face.getSplitLevel(cellId) > 0) {
+					blockingCellIds.insert(cellId);
+				}
+			}
+		});
+	}
+
+	return blockingCellIds.empty();
+}
+
+bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -531,6 +515,16 @@ bool Polyhedron::setNeedToSplitCurvature(const BuildCFDParams& params)
 
 	if (maxEdgeLength <= params.minSplitEdgeLengthCurvature_meters)
 		return false;
+
+	if (!needToSplit) {
+		auto cellIds = getAdjacentCells(false);
+		for (const auto& cellId : cellIds) {
+			cellAvailFunc(cellId, TS_REAL, [this, &needToSplit](const Polyhedron& adjCell) {
+				if (!adjCell._edgeIndices.empty() && adjCell._splitLevel > _splitLevel)
+					needToSplit = true;
+			});
+		}
+	}
 
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
