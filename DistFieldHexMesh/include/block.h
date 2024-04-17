@@ -200,7 +200,9 @@ private:
 
 	void incrementSplitStack(bool clear);
 	void setNeedsSimpleSplit();
-	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool setNeedToSplitConditional
+	
+	(const BuildCFDParams& params);
 	bool propogateNeedsSplit();
 	void dumpOpenCells() const;
 

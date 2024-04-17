@@ -167,6 +167,8 @@ private:
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	TopolgyState getState() const;
 	void clearCache() const;
+	bool intersectsModel0() const;
+	bool intersectsModel1() const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
