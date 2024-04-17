@@ -446,9 +446,8 @@ bool Polygon::intersectsModel0() const
 			pts[2] = &(pTriMesh->getVert(tri[2])._pt);
 			for (const auto& edge : edges) {
 				auto seg = edge.getSegment(getBlockPtr());
-				auto ray = seg.getRay();
 				RayHit hit;
-				if (intersectRayTri(ray, pts, hit))
+				if (intersectLineSegTri(seg, pts, hit))
 					return true;
 			}
 		}
