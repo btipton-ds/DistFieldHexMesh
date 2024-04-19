@@ -366,8 +366,6 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 
 		_pBlock->cellRealFunc(newCellId, [this, &realCell](Polyhedron& newCell) {
 			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
-			newCell.setEdgeIndices(realCell.getEdgeIndices());
-			newCell.setTriIndices(realCell.getTriIndices());
 
 			for (const auto& faceId : newCell.getFaceIds()) {
 				_pBlock->faceRealFunc(faceId, [this](const Polygon& face) {

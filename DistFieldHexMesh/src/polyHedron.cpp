@@ -56,8 +56,6 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
-	, _edgeIndices(src._edgeIndices)
-	, _triIndices(src._triIndices)
 {
 }
 
@@ -65,8 +63,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	clearCache();
 	_faceIds = rhs._faceIds;
-	_edgeIndices = rhs._edgeIndices;
-	_triIndices = rhs._triIndices;
 
 	return *this;
 }
@@ -557,6 +553,7 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 
 void Polyhedron::initAllIndices()
 {
+#if 0
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 
@@ -567,10 +564,13 @@ void Polyhedron::initAllIndices()
 	indices.clear();
 	if (pTriMesh->findTris(bbox, indices))
 		setTriIndices(indices);
+
+#endif
 }
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
+#if 0
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 
@@ -580,10 +580,12 @@ void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 		if (bbox.intersects(seg))
 			_edgeIndices.push_back(idx);
 	}
+#endif
 }
 
 void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
+#if 0
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 
@@ -592,6 +594,7 @@ void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 		if (bbox.intersects(triBox))
 			_triIndices.push_back(idx);
 	}
+#endif
 }
 
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
@@ -637,9 +640,10 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
-	if (!_edgeIndices.empty()) {
+	vector<size_t> edgeIndices;
+	if (pTriMesh->findEdges(bbox, edgeIndices)) {
 		vector<double> edgeRadii;
-		for (const auto edgeIdx : _edgeIndices) {
+		for (const auto edgeIdx : edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
 			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 1000000;
 			if (edgeRad > 0 && edgeRad < params.maxCurvatureRadius_meters)
@@ -675,10 +679,14 @@ double Polyhedron::minGap() const
 	double result = DBL_MAX;
 
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-	for (size_t idx : _triIndices) {
-		double gap = pTriMesh->triGap(idx);
-		if (gap < result)
-			result = gap;
+	auto bbox = getBoundingBox();
+	vector<size_t> triIndices;
+	if (pTriMesh->findTris(bbox, triIndices)) {
+		for (size_t idx : triIndices) {
+			double gap = pTriMesh->triGap(idx);
+			if (gap < result)
+				result = gap;
+		}
 	}
 
 	return result;

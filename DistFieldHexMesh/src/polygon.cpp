@@ -415,6 +415,7 @@ bool Polygon::intersectsModel() const
 
 bool Polygon::intersectsModel0() const
 {
+#if 0
 	// This one isn't working. Need to fix it.
 	set<size_t> triEntries;
 	for (const auto& cellId : _cellIds) {
@@ -452,6 +453,7 @@ bool Polygon::intersectsModel0() const
 			}
 		}
 	}
+#endif
 
 	return false; // Don't test split cells
 }

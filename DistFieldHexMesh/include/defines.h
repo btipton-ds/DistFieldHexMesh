@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD true
 #define LOGGING_ENABLED 0
-#define DEBUG_BREAKS 1
+#define DEBUG_BREAKS 0
 #define CAN_FREE_TESTS_ENABLED 0
 #define DUMP_BAD_CELL_OBJS 1
 #define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
