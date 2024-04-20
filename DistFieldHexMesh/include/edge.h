@@ -33,7 +33,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectPool.h>
 #include <iostream>
 
-struct Plane;
+template<class T>
+class Plane;
+template<class T>
 struct LineSegment;
 
 namespace DFHM {
@@ -74,7 +76,7 @@ public:
 	bool isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
 	double calSinDihedralAngle(const Block* pBlock) const;
-	LineSegment getSegment(const Block* pBlock) const;
+	LineSegment<double> getSegment(const Block* pBlock) const;
 
 private:
 	Index3DId _vertexIds[2];

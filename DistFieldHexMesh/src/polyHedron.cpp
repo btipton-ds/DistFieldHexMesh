@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <cmath>
 
+#include <tm_lineSegment.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
@@ -796,9 +797,9 @@ namespace
 
 	class FixedPlane {
 	public:
-		FixedPlane(const Plane& src)
-			: _origin(src._origin)
-			, _normal(src._normal)
+		FixedPlane(const Plane<double>& src)
+			: _origin(src.getOrgin())
+			, _normal(src.getNormal())
 		{
 		}
 

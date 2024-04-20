@@ -29,6 +29,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 #include <fstream>
 #include <tm_math.h>
+#include <tm_lineSegment.h>
+#include <tm_ray.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -487,7 +489,7 @@ bool Polygon::intersectsModel1() const
 			for (const auto& edge : edges) {
 				auto seg = edge.getSegment(getBlockPtr());
 				auto ray = seg.getRay();
-				RayHit hit;
+				RayHit<double> hit;
 				if (intersectRayTri(ray, pts, hit))
 					return true;
 			}
@@ -499,7 +501,7 @@ bool Polygon::intersectsModel1() const
 
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
-	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal());
+	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal(), false);
 	return pl.distanceToPoint(pt);
 }
 
@@ -536,7 +538,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
 	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds[0]); // And point will do
 	Vector3d normal = calUnitNormal();
-	Plane pl(origin, normal);
+	Plane pl(origin, normal, false);
 	auto result = pl.projectPoint(pt);
 
 	return result;

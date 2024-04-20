@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <tm_math.h>
+#include <tm_lineSegment.h>
 #include <edge.h>
 #include <block.h>
 #include <volume.h>
@@ -82,7 +83,7 @@ double Edge::sameParamTol(const Block* pBlock) const
 
 double Edge::getLength(const Block* pBlock) const
 {
-	LineSegment seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
+	LineSegment<double> seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
@@ -209,11 +210,11 @@ double Edge::calSinDihedralAngle(const Block* pBlock) const
 	return cp;
 }
 
-LineSegment Edge::getSegment(const Block* pBlock) const
+LineSegment<double> Edge::getSegment(const Block* pBlock) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
-	LineSegment result(pt0, pt1);
+	LineSegment<double> result(pt0, pt1);
 	return result;
 }
 

@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <memory>
+
 #include <graphicsCanvas.h>
 
 #ifdef WIN32
@@ -57,6 +58,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMath.h>
 #include <defines.h>
 #include <tm_vector3.h>
+#include <tm_ray.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <appData.h>
@@ -264,8 +266,8 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     if (pMesh) {
         Vector3d temp = screenPointToModel(_mouseStartLoc2D);
         dir.normalize();
-        Ray ray(temp, dir);
-        vector<RayHit> hits;
+        Ray<double> ray(temp, dir);
+        vector<RayHit<double>> hits;
         if (pMesh->rayCast(ray, hits)) {
             // Rotate about hit point
             _mouseStartLoc3D = hits.front().hitPt;

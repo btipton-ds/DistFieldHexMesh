@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include "defines.h"
 
+#include <tm_ray.h>
 #include <splitParams.h>
 #include <appData.h>
 #include <tm_math.h>
@@ -235,7 +236,7 @@ void AppData::doFindMinGap() const
                 double u = iy / (dim[1] - 1.0);
                 double y = bbMin[1] + u * range[1];
                 Vector3d ctr(x, y, 0);
-                Ray ray(ctr, zAxis);
+                Ray<double> ray(ctr, zAxis);
 
 #if DEBUG_BREAKS && defined(_DEBUG)
                 vector<RayHit> hits;
@@ -315,7 +316,7 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 8;
+        params.numCurvatureDivs = 4;
         params.divsPerCurvatureRadius = 3;
         params.maxGapSize = 0.02;
         params.divsPerGapCurvatureRadius = 4;

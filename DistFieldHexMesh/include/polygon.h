@@ -37,8 +37,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <edge.h>
 
-struct Plane;
-
 namespace DFHM {
 
 class Edge;
