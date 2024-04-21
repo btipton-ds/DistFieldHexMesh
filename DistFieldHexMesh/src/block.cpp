@@ -751,7 +751,7 @@ bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
 	return result;
 }
 
-void Block::dumpObj(const std::vector<Index3DId>& cellIds) const
+void Block::dumpObj(const vector<Index3DId>& cellIds) const
 {
 	string path;
 	if (filesystem::exists("D:/DarkSky/Projects")) {
@@ -1015,7 +1015,7 @@ Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
 	return pOwner->data(refState)._polyhedra[id];
 }
 
-void Block::addToSplitStack(const std::set<Index3DId>& cellIds)
+void Block::addToSplitStack(const set<Index3DId>& cellIds)
 {
 	set<Index3DId> blockingIds;
 	for (const auto& cellId : cellIds) {
@@ -1139,11 +1139,15 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 }
 #endif // _DEBUG
 
-size_t Block::findModelTris(const CBoundingBox3Dd& bbox, std::vector<size_t>& indices) const
+size_t Block::findModelTris(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
 {
 	assert(_boundBox.contains(bbox));
-
+#if 1
+	vector<size_t> stack;
+	return getModelMesh()->findTris(bbox, indices, stack);
+#else
 	return _subMesh.findTris(bbox, indices);
+#endif
 }
 
 void Block::pack()

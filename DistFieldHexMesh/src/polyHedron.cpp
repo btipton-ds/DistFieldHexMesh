@@ -624,8 +624,8 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
-	vector<size_t> edgeIndices;
-	if (pTriMesh->findEdges(bbox, edgeIndices)) {
+	vector<size_t> edgeIndices, branchStack;
+	if (pTriMesh->findEdges(bbox, edgeIndices, branchStack)) {
 		vector<double> edgeRadii;
 		for (const auto edgeIdx : edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
@@ -664,8 +664,8 @@ double Polyhedron::minGap() const
 
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
-	vector<size_t> triIndices;
-	if (pTriMesh->findTris(bbox, triIndices)) {
+	vector<size_t> triIndices, branchStack;
+	if (pTriMesh->findTris(bbox, triIndices, branchStack)) {
 		for (size_t idx : triIndices) {
 			double gap = pTriMesh->triGap(idx);
 			if (gap < result)
