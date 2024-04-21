@@ -153,6 +153,8 @@ public:
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 
+	size_t findModelTris(const CBoundingBox3Dd& bbox, std::vector<size_t>& indices) const;
+
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool isUnloaded() const;
@@ -240,7 +242,7 @@ private:
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
-
+	TriMesh::CMesh::SubMesh _subMesh;
 };
 
 inline size_t Block::GlPoints::getId() const

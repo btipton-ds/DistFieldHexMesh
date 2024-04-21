@@ -84,6 +84,10 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 		);
 	Vector3d pt = _boundBox.getMin() + v;
 	_innerBoundBox.merge(pt);
+
+	// This is close to working, but the full search is finding solutions the partial search is not
+	TriMesh::CMeshConstPtr pMesh = getModelMesh();
+	_subMesh.set(pMesh, _boundBox, 0.1);
 }
 
 Block::Block(const Block& src)
@@ -94,6 +98,7 @@ Block::Block(const Block& src)
 	, _blockDim(src._blockDim)
 	, _corners(src._corners)
 	, _filename(src._filename)
+	, _subMesh(src._subMesh)
 	, _vertices(this, src._vertices)
 	, _modelData(this, src._modelData)
 	, _refData(this, src._refData)
@@ -549,7 +554,7 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 
 	if (intersectingOnly) {
 		vector<size_t> triIndices;
-		bool found = getModelMesh()->findTris(bbox, triIndices) > 0;
+		bool found = findModelTris(bbox, triIndices) > 0;
 
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
@@ -580,10 +585,6 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	faceIds.push_back(addFace(2, subBlockIdx, { pts[4], pts[5], pts[6], pts[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
-
-	cellRealFunc(polyhedronId, [this](Polyhedron& cell) {
-		cell.initAllIndices();
-	});
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -1137,6 +1138,14 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 	return result;
 }
 #endif // _DEBUG
+
+size_t Block::findModelTris(const CBoundingBox3Dd& bbox, std::vector<size_t>& indices) const
+{
+	assert(_boundBox.contains(bbox));
+
+	return _subMesh.findTris(bbox, indices);
+}
+
 void Block::pack()
 {
 #if 0

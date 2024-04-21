@@ -469,7 +469,7 @@ bool Polygon::intersectsModel1() const
 	}
 
 	vector<size_t> triEntries;
-	if (pMesh->findTris(bbox, triEntries)) {
+	if (getBlockPtr()->findModelTris(bbox, triEntries)) {
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		vector<Edge> edges;
 		for (size_t i = 0; i < _vertexIds.size(); i++) {

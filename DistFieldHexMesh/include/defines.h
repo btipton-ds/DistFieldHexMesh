@@ -27,7 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define RUN_MULTI_THREAD true
+#define RUN_MULTI_THREAD false
 #define LOGGING_ENABLED 0
 #define DEBUG_BREAKS 0
 #define CAN_FREE_TESTS_ENABLED 0

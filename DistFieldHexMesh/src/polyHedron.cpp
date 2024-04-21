@@ -335,8 +335,8 @@ bool Polyhedron::intersectsModel() const
 			if (bbox.contains(pTriMesh->getVert(idx)._pt))
 				return true;
 		}
-		vector<CMesh::SearchEntry> triEntries;
-		_intersectsModel = pTriMesh->findTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
+		vector<size_t> triEntries;
+		_intersectsModel = getBlockPtr()->findModelTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
@@ -550,23 +550,6 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 	}
 
 	return needToSplit;
-}
-
-void Polyhedron::initAllIndices()
-{
-#if 0
-	auto pTriMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
-
-	vector<size_t> indices;
-	if (pTriMesh->findEdges(bbox, indices))
-		setEdgeIndices(indices);
-
-	indices.clear();
-	if (pTriMesh->findTris(bbox, indices))
-		setTriIndices(indices);
-
-#endif
 }
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)

@@ -71,7 +71,6 @@ public:
 	void setNeedToSplitAtCentroid();
 	void setNeedToMakeReference();
 	bool setNeedToSplitConditional(const BuildCFDParams& params);
-	void initAllIndices();
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 
