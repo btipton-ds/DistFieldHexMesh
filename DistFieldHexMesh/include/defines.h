@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <tm_defines.h>
+
 #define RUN_MULTI_THREAD true
 #define LOGGING_ENABLED 0
 #define DEBUG_BREAKS 0

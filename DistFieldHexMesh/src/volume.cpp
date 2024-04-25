@@ -525,6 +525,7 @@ void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, 
 	CMeshPtr pMesh = triMeshes[faceType][threadNum];
 	if (!pMesh) {
 		pMesh = make_shared<CMesh>(bbox);
+		pMesh->setEnforceManifold(false); // Block meshes are none manifold
 		triMeshes[faceType][threadNum] = pMesh;
 	}
 	pBlock->getBlockTriMesh(faceType, pMesh);
