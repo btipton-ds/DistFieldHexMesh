@@ -1142,10 +1142,13 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 size_t Block::findModelTris(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
 {
 	assert(_boundBox.contains(bbox));
-#if 1
+#if 0
 	vector<size_t> stack;
 	return getModelMesh()->findTris(bbox, indices, stack);
 #else
+	// The speedup is negligible, 0.4 seconds out of 21.55.
+	// But, it is working and not slowing anything down. 
+	// Leave it for now.
 	return _subMesh.findTris(bbox, indices);
 #endif
 }

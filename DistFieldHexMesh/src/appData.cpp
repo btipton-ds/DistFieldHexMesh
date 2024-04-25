@@ -107,7 +107,7 @@ void AppData::doOpen()
         try {
             if (reader.read(path, filename)) {
                 _pMesh = pMesh;
-                _pMesh->squeezeSkinnyTriangles(0.1);
+                _pMesh->squeezeSkinnyTriangles(0.025);
                 _pMesh->buildCentroids();
                 _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
                 _pMesh->calGaps();
@@ -316,10 +316,10 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 2;
-        params.divsPerCurvatureRadius = 3;
+        params.numCurvatureDivs = 5;
+        params.divsPerCurvatureRadius = 6;
         params.maxGapSize = 0.02;
-        params.divsPerGapCurvatureRadius = 6;
+        params.divsPerGapCurvatureRadius = 7;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;
         params.minSplitEdgeLengthSharpVertex_meters = 0.02;

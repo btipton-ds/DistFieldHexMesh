@@ -829,7 +829,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
         return true;
     };
 
-    pMesh->getGlEdges(colorFunc, points, colors, indices, false);
+    pMesh->getGlEdges(colorFunc, false, points, colors, indices);
 
     return _activeVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }
