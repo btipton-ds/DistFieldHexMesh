@@ -409,59 +409,6 @@ Vector3d Polygon::calCentroid() const
 
 bool Polygon::intersectsModel() const
 {
-	bool result = intersectsModel1();
-//	assert(result == intersectsModel1());
-
-	return result;
-}
-
-bool Polygon::intersectsModel0() const
-{
-#if 0
-	// This one isn't working. Need to fix it.
-	set<size_t> triEntries;
-	for (const auto& cellId : _cellIds) {
-		cellAvailFunc(cellId, TS_REAL, [&triEntries](const Polyhedron& cell) {
-			const auto& cellTris = cell.getTriIndices();
-			if (!cellTris.empty()) {
-				triEntries.insert(cellTris.begin(), cellTris.end());
-			}
-		});
-	}
-
-
-	if (!triEntries.empty()) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		vector<Edge> edges;
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			const auto& vertId0 = _vertexIds[i];
-			Edge edge(_vertexIds[i], _vertexIds[j]);
-			edges.push_back(edge);
-		}
-
-		for (const auto& triIdx : triEntries) {
-			const auto& tri = pTriMesh->getTri(triIdx);
-			const Vector3d* pts[3];
-
-			pts[0] = &(pTriMesh->getVert(tri[0])._pt);
-			pts[1] = &(pTriMesh->getVert(tri[1])._pt);
-			pts[2] = &(pTriMesh->getVert(tri[2])._pt);
-			for (const auto& edge : edges) {
-				auto seg = edge.getSegment(getBlockPtr());
-				RayHit hit;
-				if (intersectLineSegTri(seg, pts, hit))
-					return true;
-			}
-		}
-	}
-#endif
-
-	return false; // Don't test split cells
-}
-
-bool Polygon::intersectsModel1() const
-{
 	auto pMesh = getBlockPtr()->getModelMesh();
 	CBoundingBox3Dd bbox;
 	for (const auto& vertId : _vertexIds) {
@@ -481,16 +428,16 @@ bool Polygon::intersectsModel1() const
 
 		for (const auto& triIdx : triEntries) {
 			const auto& tri = pTriMesh->getTri(triIdx);
-			const Vector3d* pts[3];
+			const Vector3d* pts[3] = {
+				pts[0] = &(pTriMesh->getVert(tri[0])._pt),
+				pts[1] = &(pTriMesh->getVert(tri[1])._pt),
+				pts[2] = &(pTriMesh->getVert(tri[2])._pt),
+			};
 
-			pts[0] = &(pTriMesh->getVert(tri[0])._pt);
-			pts[1] = &(pTriMesh->getVert(tri[1])._pt);
-			pts[2] = &(pTriMesh->getVert(tri[2])._pt);
 			for (const auto& edge : edges) {
 				auto seg = edge.getSegment(getBlockPtr());
-				auto ray = seg.getRay();
 				RayHit<double> hit;
-				if (intersectRayTri(ray, pts, hit))
+				if (seg.intersectTri(pts, hit))
 					return true;
 			}
 		}
