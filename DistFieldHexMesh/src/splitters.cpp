@@ -221,7 +221,8 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 	auto pLogger = _pBlock->getLogger();
 	auto& out = pLogger->getStream();
 
-	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint " << *this);
+	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint realCell: " << realCell);
+	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint refCell : " << referanceCell);
 #endif
 
 	set<Index3DId> cornerVerts;
@@ -377,9 +378,9 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 #if LOGGING_ENABLED
 		{
 			Logger::Indent indent;
-			cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
+			_pBlock->cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
 				LOG(out << Logger::Pad() << "to: " << newCell);
-				});
+			});
 		}
 #endif
 	}

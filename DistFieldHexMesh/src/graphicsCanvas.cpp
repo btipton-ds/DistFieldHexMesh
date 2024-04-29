@@ -87,20 +87,7 @@ namespace
 #endif
         0
     };
-#if 0
-    template<class T, int n, int m>
-    Eigen::Matrix<T, n, n> changeMatrixSize(const Eigen::Matrix<T, m, m>& src)
-    {
-        Eigen::Matrix<T, n, n> result;
-        int l = min(n, m);
-        for (int i = 0; i < l; i++) {
-            for (int j = 0; j < l; j++) {
-                result(i, j) = src(i, j);
-            }
-        }
-        return result;
-    }
-#else
+
     template<class A, class B>
     A changeSize(const B& src)
     {
@@ -121,7 +108,6 @@ namespace
         }
         return result;
     }
-#endif
 
     template<class T, int n, int m>
     Eigen::Matrix<T, n, 1> changeVectorSize(const Eigen::Matrix<T, m, 1>& src)

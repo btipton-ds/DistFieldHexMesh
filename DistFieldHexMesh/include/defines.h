@@ -30,13 +30,14 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 
 #define RUN_MULTI_THREAD true
-#define LOGGING_ENABLED 0
-#define DEBUG_BREAKS 0
-#define CAN_FREE_TESTS_ENABLED 0
-#define DUMP_BAD_CELL_OBJS 1
-#define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
-#define DUMP_OPEN_CELL_OBJS 0
 #define SHARP_EDGE_ANGLE (15 * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 2
 #define _USE_MATH_DEFINES
+
+#define LOGGING_ENABLED 0
+#define DEBUG_BREAKS 0
+#define CAN_FREE_TESTS_ENABLED 0
+#define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
+#define DUMP_BAD_CELL_OBJS 1
+#define DUMP_OPEN_CELL_OBJS 1
 
