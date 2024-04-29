@@ -625,7 +625,7 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
 	vector<size_t> edgeIndices;
-	if (pTriMesh->findEdges(bbox, edgeIndices)) {
+	if (getBlockPtr()->findModelEdges(bbox, edgeIndices)) {
 		vector<double> edgeRadii;
 		double maxRad = 0;
 		for (const auto edgeIdx : edgeIndices) {

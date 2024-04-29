@@ -87,7 +87,10 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 
 	// This is close to working, but the full search is finding solutions the partial search is not
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
+
+#if USE_SUB_MESH_FINDER
 	_subMesh.set(pMesh, _boundBox, 0.1);
+#endif
 }
 
 Block::Block(const Block& src)
@@ -98,7 +101,9 @@ Block::Block(const Block& src)
 	, _blockDim(src._blockDim)
 	, _corners(src._corners)
 	, _filename(src._filename)
+#if USE_SUB_MESH_FINDER
 	, _subMesh(src._subMesh)
+#endif
 	, _vertices(this, src._vertices)
 	, _modelData(this, src._modelData)
 	, _refData(this, src._refData)
@@ -1141,15 +1146,19 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 
 size_t Block::findModelTris(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
 {
-	assert(_boundBox.contains(bbox));
-#if 0
-	vector<size_t> stack;
-	return getModelMesh()->findTris(bbox, indices, stack);
-#else
-	// The speedup is negligible, 0.4 seconds out of 21.55.
-	// But, it is working and not slowing anything down. 
-	// Leave it for now.
+#if USE_SUB_MESH_FINDER
 	return _subMesh.findTris(bbox, indices);
+#else
+	return getModelMesh()->findTris(bbox, indices);
+#endif
+}
+
+size_t Block::findModelEdges(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
+{
+#if USE_SUB_MESH_FINDER
+	return _subMesh.findEdges(bbox, indices);
+#else
+	return getModelMesh()->findEdges(bbox, indices);
 #endif
 }
 
