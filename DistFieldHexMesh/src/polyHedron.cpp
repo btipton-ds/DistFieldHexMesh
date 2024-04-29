@@ -627,30 +627,30 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 	vector<size_t> edgeIndices;
 	if (pTriMesh->findEdges(bbox, edgeIndices)) {
 		vector<double> edgeRadii;
+		double maxRad = 0;
 		for (const auto edgeIdx : edgeIndices) {
 			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
-			double edgeRad = edgeCurv > 0 ? 1 / edgeCurv : 1000000;
-			if (edgeRad > 0 && edgeRad < params.maxCurvatureRadius_meters)
-				edgeRadii.push_back(edgeRad);
+			if (edgeCurv > 2) { // Radius < 1/2
+				double edgeRad = 1 / edgeCurv;
+				if (maxRad == 0 || edgeRad <= 1.5 * maxRad) {
+					if (edgeRad > maxRad)
+						maxRad = edgeRad;
+					edgeRadii.push_back(edgeRad);
+				} else
+					break;
+			}
 		}
 		if (edgeRadii.empty())
 			return 1e6;
 
 		sort(edgeRadii.begin(), edgeRadii.end());
-		size_t num = std::min((size_t)20, edgeRadii.size() / 2);
-		if (num == 0)
-			return -1;
+		size_t num = edgeRadii.size();
 		double avgRad = 0;
-		size_t count = 0;
 		for (size_t i = 0; i < num; i++) {
-			if (edgeRadii[i] < 0.5) {
-				count++;
-				avgRad += edgeRadii[i];
-			}
+			avgRad += edgeRadii[i];
 		}
-		if (count == 0)
-			return -1;
-		avgRad /= count;
+
+		avgRad /= num;
 		if (avgRad >= 0)
 			return avgRad;
 		return -1;

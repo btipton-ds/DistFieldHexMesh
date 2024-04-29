@@ -313,13 +313,13 @@ void AppData::doBuildCFDHexes()
         BuildCFDParams params;
 
         params.uniformRatio = false;
-        params.minBlocksPerSide = 6; // def = 6
+        params.minBlocksPerSide = 7; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 5;
-        params.divsPerCurvatureRadius = 6;
+        params.numCurvatureDivs = 6;
+        params.divsPerCurvatureRadius = 4;
+        params.divsPerGapCurvatureRadius = params.divsPerCurvatureRadius + 4;
         params.maxGapSize = 0.02;
-        params.divsPerGapCurvatureRadius = 7;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;
         params.minSplitEdgeLengthSharpVertex_meters = 0.02;
