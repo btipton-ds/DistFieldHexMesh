@@ -142,6 +142,7 @@ public:
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	bool needToImprintVertices(const std::map<Edge, Index3DId>& edgeVertMap) const;
 	void imprintVertices(const std::map<Edge, Index3DId>& edgeVertMap);
+	bool isSplit() const;
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);

@@ -626,6 +626,11 @@ void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
 		pBlk->addFaceToLookup(_thisId);
 }
 
+bool Polygon::isSplit() const
+{
+	return _splitFaceProductIds.size() == _vertexIds.size();
+}
+
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {

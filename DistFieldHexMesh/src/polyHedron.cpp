@@ -94,6 +94,20 @@ TopolgyState Polyhedron::getState() const
 		return TS_REAL;
 }
 
+size_t Polyhedron::getNumSplitFaces() const
+{
+	size_t n = 0;
+	for (const auto& faceId : _faceIds) {
+		if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
+			faceRealFunc(faceId, [&n](const Polygon& face) {
+				if (face.isSplit())
+					n++;
+			});
+		}
+	}
+	return n;
+}
+
 bool Polyhedron::unload(ostream& out)
 {
 	return true;
@@ -413,10 +427,10 @@ void Polyhedron::setNeedToSplitAtCentroid()
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
-#endif
 
 	Logger::Indent indent;
 	LOG(out << Logger::Pad() << "setNeedToSplitAtCentroid c" << _thisId << "\n");
+#endif
 
 	getBlockPtr()->addToSplitStack({ _thisId });
 }
@@ -508,18 +522,6 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 				needToSplit = true;
 				break;
 			}
-		}
-	}
-#endif
-
-#if 0 // TODO, we need something like this, but this is incremental and slow
-	if (!needToSplit) {
-		auto cellIds = getAdjacentCells(false);
-		for (const auto& cellId : cellIds) {
-			cellAvailFunc(cellId, TS_REAL, [this, &needToSplit](const Polyhedron& adjCell) {
-				if (!adjCell._edgeIndices.empty() && adjCell._splitLevel > _splitLevel)
-					needToSplit = true;
-			});
 		}
 	}
 #endif

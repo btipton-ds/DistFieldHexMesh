@@ -83,6 +83,7 @@ public:
 	size_t getSplitLevel() const;
 	void setSplitLevel(size_t val);
 	TopolgyState getState() const;
+	size_t getNumSplitFaces() const;
 
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
