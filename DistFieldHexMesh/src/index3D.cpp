@@ -74,6 +74,16 @@ void Index3DBase::clampInBounds(const Index3DBase& bounds)
 	}
 }
 
+void Index3DBase::write(std::ostream& out) const
+{
+	out.write((char*)&_iVal, sizeof(_iVal));
+}
+
+void Index3DBase::read(std::istream& in)
+{
+	in.read((char*)&_iVal, sizeof(_iVal));
+}
+
 ostream& DFHM::operator << (ostream& out, const Index3DId& id)
 {
 	if (id.isValid())
@@ -92,3 +102,16 @@ ostream& DFHM::operator << (ostream& out, const Index3D& idx)
 
 	return out;
 }
+
+void Index3DId::write(std::ostream& out) const
+{
+	Index3DBase::write(out);
+	out.write((char*)&_elementId, sizeof(_elementId));
+}
+
+void Index3DId::read(std::istream& in)
+{
+	Index3DBase::read(in);
+	in.read((char*)&_elementId, sizeof(_elementId));
+}
+

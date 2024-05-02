@@ -77,6 +77,9 @@ public:
 	bool isInBounds(const Index3DBase& bounds) const;
 	void clampInBounds(const Index3DBase& bounds);
 
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
+
 private:
 	static Index3DBaseType s_blockDim;
 	union {
@@ -220,6 +223,9 @@ public:
 	bool isValid() const;
 	size_t elementId() const;
 	Index3D blockIdx() const;
+
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
 
 private:
 	size_t _elementId = -1;

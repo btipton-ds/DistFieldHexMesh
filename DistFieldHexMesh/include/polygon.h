@@ -79,6 +79,8 @@ public:
 		operator const Index3DId& () const;
 
 		size_t getSplitLevel() const;
+		void write(std::ostream& out) const;
+		void read(std::istream& in);
 
 	private:
 		Index3DId _cellId;
@@ -149,6 +151,10 @@ public:
 
 	void orient();
 	void pack();
+
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
+
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 

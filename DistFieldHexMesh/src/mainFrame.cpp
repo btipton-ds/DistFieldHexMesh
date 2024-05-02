@@ -107,6 +107,12 @@ void MainFrame::createFileMenu()
     _fileMenu->Append(wxID_NEW, "New...");
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
 
+    _fileMenu->Append(wxID_SAVE);
+    Bind(wxEVT_MENU, &MainFrame::OnSave, this, wxID_SAVE);
+
+    _fileMenu->Append(wxID_SAVEAS);
+    Bind(wxEVT_MENU, &MainFrame::OnSaveAs, this, wxID_SAVEAS);
+
     _fileMenu->Append(ID_WRITE_POLYMESH, "Write Polymesh...");
     Bind(wxEVT_MENU, &MainFrame::OnWritePolymesh, this, ID_WRITE_POLYMESH);
 
@@ -253,6 +259,17 @@ void MainFrame::OnNew(wxCommandEvent& event)
     if (dlg.ShowModal() == wxID_OK) {
     	_pAppData->doNew(dlg);
     }
+}
+
+void MainFrame::OnSave(wxCommandEvent& event)
+{
+    _pAppData->doSave();
+}
+
+void MainFrame::OnSaveAs(wxCommandEvent& event)
+{
+    _pAppData->doSaveAs();
+
 }
 
 void MainFrame::OnWritePolymesh(wxCommandEvent& event)

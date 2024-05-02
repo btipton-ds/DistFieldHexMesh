@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <cmath>
 
+#include <tm_ioUtil.h>
 #include <triMesh.h>
 
 #include <block.h>
@@ -232,6 +233,10 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 	}
 
 	makeFaceTris(triMeshes, true);
+}
+
+void Volume::clear()
+{
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const
@@ -680,7 +685,11 @@ void Volume::consolidateBlocks()
 		}
 	}
 #endif
-	assert(verifyTopology(true));
+
+	// process each block into a single model
+	// save each block
+	// unload the block from memory
+
 	// Set block baseIndices. This orders them, does not ignore "dead" ones and does not pack them
 	size_t vertIdx = 0, polygonIdx = 0, polyhedronIdx = 0;
 	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
@@ -798,10 +807,69 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	}
 }
 
+bool Volume::write(ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	out.write((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
+	s_volDim.write(out);
+	writeVector3(out, _originMeters);
+	writeVector3(out, _spanMeters);
+
+	_boundingBox.write(out);
+
+	IoUtil::writeVector3(out, _cornerPts);
+
+	size_t num = _blocks.size();
+	out.write((char*)&num, sizeof(num));
+	for (const auto& pBlock : _blocks) {
+		bool isNull = pBlock == nullptr;
+		out.write((char*)&isNull, sizeof(isNull));
+		if (pBlock)
+			pBlock->write(out);
+	}
+
+	return true;
+}
+
+bool Volume::read(istream& in)
+{
+	clear();
+
+	uint8_t version = -1;
+	in.read((char*)&version, sizeof(version));
+
+	in.read((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
+	s_volDim.read(in);
+	readVector3(in, _originMeters);
+	readVector3(in, _spanMeters);
+
+	_boundingBox.read(in);
+
+	IoUtil::readVector3(in, _cornerPts);
+	size_t num;
+	in.read((char*)&num, sizeof(num));
+	if (num > 0) {
+		_blocks.resize(num);
+		for (size_t i = 0; i < _blocks.size(); i++) {
+			bool isNull;
+			in.read((char*)&isNull, sizeof(isNull));
+			if (isNull)
+				continue;
+
+			Index3D blockIdx = calBlockIndexFromLinearIndex(i);
+			auto pBlock = createBlock(blockIdx);
+			_blocks[i] = pBlock;
+			pBlock->_pVol = this;
+			pBlock->read(in);
+		}
+	}
+	return true;
+}
+
 void Volume::writePolyMesh(const string& dirNameIn)
 {
-	consolidateBlocks();
-
 	string dirName(dirNameIn);
 
 	unifyDirectorySeparator(dirName);
@@ -818,6 +886,7 @@ void Volume::writePolyMesh(const string& dirNameIn)
 	filesystem::path dirPath(dirName);
 	filesystem::remove_all(dirPath);
 	filesystem::create_directories(dirPath);
+
 	consolidateBlocks();
 	writePolyMeshPoints(dirName);
 }

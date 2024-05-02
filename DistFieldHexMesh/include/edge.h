@@ -78,6 +78,9 @@ public:
 	double calSinDihedralAngle(const Block* pBlock) const;
 	LineSegment<double> getSegment(const Block* pBlock) const;
 
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
+
 private:
 	Index3DId _vertexIds[2];
 	std::set<Index3DId> _faceIds;

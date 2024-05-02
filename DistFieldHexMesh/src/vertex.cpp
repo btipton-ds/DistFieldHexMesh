@@ -62,6 +62,37 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	return *this;
 }
 
+void Vertex::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	out.write((char*)&_lockType, sizeof(_lockType));
+	out.write((char*)&_lockIdx, sizeof(_lockIdx));
+#if USE_FIXED_PT
+	FixedPt _pt; // Fixed point representation of a double precisions point
+#else
+	writeVector3(out, _pt);
+	writeVector3(out, _searchPt);
+#endif
+
+}
+
+void Vertex::read(std::istream& in)
+{
+	uint8_t version;
+	in.read((char*)&version, sizeof(version));
+
+	in.read((char*)&_lockType, sizeof(_lockType));
+	in.read((char*)&_lockIdx, sizeof(_lockIdx));
+#if USE_FIXED_PT
+	FixedPt _pt; // Fixed point representation of a double precisions point
+#else
+	readVector3(in, _pt);
+	readVector3(in, _searchPt);
+#endif
+}
+
 const bool Vertex::operator < (const Vertex& rhs) const
 {
 #if USE_FIXED_PT

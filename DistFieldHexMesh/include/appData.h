@@ -50,6 +50,8 @@ public:
 
     AppData(MainFrame* pMainFrame = nullptr);
     void doOpen();
+    void doSave();
+    void doSaveAs();
     void doVerifyClosed();
     void doVerifyNormals();
     void doAnalyzeGaps();
@@ -75,6 +77,10 @@ private:
     void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
+    void readStl(const std::wstring& path, const std::wstring& filename);
+    void readDHFM(const std::wstring& path, const std::wstring& filename);
+    void writeDHFM() const;
+    void postReadMesh();
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
@@ -87,6 +93,8 @@ private:
 
     std::vector<double> _binSizes;
     std::vector<std::vector<int>> _bins;
+
+    std::wstring _dhfmFilename;
 };
 
 using AppDataPtr = std::shared_ptr<AppData>;

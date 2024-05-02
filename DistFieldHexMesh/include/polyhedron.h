@@ -85,6 +85,9 @@ public:
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
 
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
+
 	bool unload(std::ostream& out);
 	bool load(std::istream& out);
 	void dumpFaces() const;

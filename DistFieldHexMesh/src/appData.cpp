@@ -87,7 +87,7 @@ void AppData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>
 void AppData::doOpen()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
-        "TriMesh files (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+        "All (*.stl;*.dfhm)|*.stl;*.dfhm|TriMesh files (*.stl)|*.stl|DFHM files (*.dfhm)|*.dfhm", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return;     // the user changed idea...
 
@@ -96,55 +96,141 @@ void AppData::doOpen()
     // this can be done with e.g. wxWidgets input streams:
     _workDirName = openFileDialog.GetDirectory();
     wxString pathStr = openFileDialog.GetPath();
-    if (pathStr.find(".stl") != 0) {
-        CMeshPtr pMesh = make_shared<CMesh>();
-        CReadSTL reader(pMesh);
+    wstring path(pathStr.ToStdWstring());
+    wstring filename(openFileDialog.GetFilename().ToStdWstring());
+    auto pos = path.find(filename);
+    path = path.replace(pos, filename.length(), L"");
+    pos = path.find(L"\\");
+    while (pos != wstring::npos) {
+        path = path.replace(pos, 1, L"/");
+        pos = path.find(L"\\");
+    }
+    if (filename.find(L".stl") != -1) {
+        readStl(path, filename);
+    } else if (filename.find(L".dfhm") != -1) {
+        readDHFM(path, filename);
+    }
+}
 
-        wstring filename(openFileDialog.GetFilename().ToStdWstring());
-        wstring path(pathStr.ToStdWstring());
-        auto pos = path.find(filename);
-        path = path.substr(0, pos);
-        try {
-            if (reader.read(path, filename)) {
-                _pMesh = pMesh;
-                _pMesh->squeezeSkinnyTriangles(0.025);
-                _pMesh->buildCentroids();
-                _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
-                _pMesh->calGaps();
-                vector<double> radii;
-                radii.reserve(_pMesh->numEdges());
-                for (size_t i = 0; i < _pMesh->numEdges(); i++) {
-                    auto curv = _pMesh->edgeCurvature(i);
-                    if (curv > 0)
-                        radii.push_back(1 / curv);
-                }
-                sort(radii.begin(), radii.end());
-                auto pCanvas = _pMainFrame->getCanvas();
+void AppData::readStl(const wstring& pathIn, const wstring& filename)
+{
+    CMeshPtr pMesh = make_shared<CMesh>();
+    CReadSTL reader(pMesh);
 
-                pCanvas->beginFaceTesselation(true);
-                auto pSharpVertMesh = getSharpVertMesh();
-                _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
-                if (pSharpVertMesh)
-                    _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
-                pCanvas->endFaceTesselation(_modelFaceTess, false);
-
-                vector<float> normPts;
-                vector<unsigned int> normIndices;
-                getEdgeData(normPts, normIndices);
-
-                pCanvas->beginEdgeTesselation(true);
-
-                _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh);
-
-                if (!normPts.empty())
-                    _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
-
-                pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
-            }
-        } catch (const char* errStr) {
-            cout << errStr << "\n";
+    wstring path(pathIn);
+    auto pos = path.find(filename);
+    path = path.substr(0, pos);
+    try {
+        if (reader.read(path, filename)) {
+            _pMesh = pMesh;
+            postReadMesh();
         }
     }
+    catch (const char* errStr) {
+        cout << errStr << "\n";
+    }
+
+}
+
+void AppData::postReadMesh()
+{
+    _pMesh->squeezeSkinnyTriangles(0.025);
+    _pMesh->buildCentroids();
+    _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
+    _pMesh->calGaps();
+
+    auto pCanvas = _pMainFrame->getCanvas();
+
+    pCanvas->beginFaceTesselation(true);
+    auto pSharpVertMesh = getSharpVertMesh();
+    _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
+    if (pSharpVertMesh)
+        _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
+    pCanvas->endFaceTesselation(_modelFaceTess, false);
+
+    vector<float> normPts;
+    vector<unsigned int> normIndices;
+    getEdgeData(normPts, normIndices);
+
+    pCanvas->beginEdgeTesselation(true);
+
+    _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh);
+
+    if (!normPts.empty())
+        _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
+
+    pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
+}
+
+void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
+{
+    _dhfmFilename = path + filename;
+
+    ifstream in(_dhfmFilename, iostream::in | ios::binary);
+
+    uint8_t version;
+    in.read((char*)&version, sizeof(version));
+
+    bool hasMesh;
+    in.read((char*)&hasMesh, sizeof(hasMesh));
+    if (hasMesh) {
+        _pMesh = make_shared<TriMesh::CMesh>();
+        _pMesh->read(in);
+        postReadMesh();
+    }
+
+    bool hasVolume;
+    in.read((char*)&hasVolume, sizeof(hasVolume));
+    if (hasVolume) {
+        _volume = make_shared<Volume>();
+        _volume->setModelMesh(_pMesh);
+
+        _volume->read(in);
+
+        cout << "Tessellating graphics.\n";
+
+        auto pCanvas = _pMainFrame->getCanvas();
+
+        addFacesToScene(pCanvas, RUN_MULTI_THREAD);
+        addEdgesToScene(pCanvas, RUN_MULTI_THREAD);
+    }
+}
+
+void AppData::doSave()
+{
+    if (_dhfmFilename.empty()) {
+        doSaveAs();
+    } else
+        writeDHFM();
+}
+
+void AppData::doSaveAs()
+{
+    wxFileDialog saveFileDialog(_pMainFrame, _("Save DFHM file"), "", "",
+        "DFHM files (*.dfhm)|*.dfhm", wxFD_SAVE);
+    if (saveFileDialog.ShowModal() == wxID_CANCEL)
+        return;     // the user changed idea...
+
+    _dhfmFilename = saveFileDialog.GetPath().ToStdWstring();
+    writeDHFM();
+}
+
+void AppData::writeDHFM() const
+{
+    ofstream out(_dhfmFilename, ios::out | ios::trunc | ios::binary);
+
+    uint8_t version = 0;
+    out.write((char*)&version, sizeof(version));
+
+    bool hasMesh = _pMesh != nullptr;
+    out.write((char*)&hasMesh, sizeof(hasMesh));
+    if (_pMesh)
+        _pMesh->write(out);
+
+    bool hasVolume = _volume != nullptr;
+    out.write((char*)&hasVolume, sizeof(hasVolume));
+    if (hasVolume)
+        _volume->write(out);    
 }
 
 void AppData::doVerifyClosed()
@@ -313,11 +399,11 @@ void AppData::doBuildCFDHexes()
         BuildCFDParams params;
 
         params.uniformRatio = false;
-        params.minBlocksPerSide = 7; // def = 6
+        params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 12;
-        params.divsPerCurvatureRadius = 4;
+        params.numCurvatureDivs = 10;
+        params.divsPerCurvatureRadius = 3;
         params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;

@@ -158,6 +158,9 @@ public:
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
+	bool write(std::ostream& outStream) const;
+	bool read(std::istream& inStream);
+
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
@@ -225,13 +228,13 @@ private:
 
 	Volume* _pVol;
 	CBoundingBox3Dd 
-		_boundBox, // The precise bounding box for this box
+		_boundBox,      // The precise bounding box for this box
 		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
 						// must be tested to see if it belongs to this box or a Adjacent box.
 						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	
-	size_t _blockDim; // This the dimension of the block = the number of celss across the block
+	size_t _blockDim;   // This is the dimension of the block = the number of cells across the block
 
 	std::vector<Vector3d> _corners;
 
@@ -239,11 +242,9 @@ private:
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _allSplits, _canSplit, _cantSplitYet;
-//	std::vector<std::vector<Index3DId>> _splitStack; // stack of arrays of polyhedra needing splits
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
-//	TriMesh::CMesh::SubMesh _subMesh;  // SubMesh actually slows things slightly. Failed experiment
 };
 
 inline size_t Block::GlPoints::getId() const

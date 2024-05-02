@@ -61,6 +61,7 @@ public:
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);
 
+	void setModelMesh(const CMeshPtr& pMesh);
 	const CMeshPtr& getModelMesh() const;
 
 	void setOrigin(const Vector3d& origin);
@@ -84,6 +85,9 @@ public:
 
 	void writePolyMesh(const std::string& dirName);
 
+	bool write(std::ostream& out) const;
+	bool read(std::istream& inStream);
+
 	bool verifyTopology(bool multiCore) const;
 
 private:
@@ -96,6 +100,8 @@ private:
 	friend class Index3DBase;
 
 	using AxisIndex = Block::AxisIndex;
+
+	void clear();
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
@@ -146,6 +152,11 @@ private:
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
+
+inline void Volume::setModelMesh(const CMeshPtr& pMesh)
+{
+	_pModelTriMesh = pMesh;
+}
 
 inline const CMeshPtr& Volume::getModelMesh() const
 {

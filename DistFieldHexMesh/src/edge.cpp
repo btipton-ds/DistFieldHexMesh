@@ -237,6 +237,37 @@ void Edge::getFaceIds(set<Index3DId>& faceIds) const
 	faceIds.insert(_faceIds.begin(), _faceIds.end());
 }
 
+void Edge::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(uint8_t));
+
+	_vertexIds[0].write(out);
+	_vertexIds[1].write(out);
+
+	size_t num = _faceIds.size();
+	out.write((char*)&num, sizeof(size_t));
+	for (const auto& id : _faceIds)
+		id.write(out);
+}
+
+void Edge::read(std::istream& in)
+{
+	uint8_t version;
+	in.read((char*)&version, sizeof(uint8_t));
+
+	_vertexIds[0].read(in);
+	_vertexIds[1].read(in);
+
+	size_t num = _faceIds.size();
+	in.read((char*)&num, sizeof(size_t));
+	for (size_t i = 0; i < num; i++) {
+		Index3DId id;
+		id.read(in);
+		_faceIds.insert(id);
+	}
+}
+
 ostream& DFHM::operator << (ostream& out, const Edge& edge)
 {
 	out << "Edge: e(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ")\n";

@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mutexType.h>
 #include <stdexcept>
 #include <tm_vector3.h>
+#include <tm_ioUtil.h>
 #include <Index3D.h>
 #include <patient_lock_guard.h>
 
@@ -142,6 +143,9 @@ public:
 	size_t getNumAllocated() const;
 	size_t getNumAvailable() const;
 	size_t getNumUnloaded() const;
+
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
 
 private:
 	struct CompareFunctor
@@ -584,6 +588,55 @@ template<class T>
 size_t ObjectPool<T>::getNumUnloaded() const
 {
 	return -1;
+}
+
+template<class T>
+void ObjectPool<T>::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	out.write((char*)&_supportsReverseLookup, sizeof(_supportsReverseLookup));
+	out.write((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
+
+	size_t numObjs = 0;
+	iterateInOrder([&numObjs](const Index3DId& id, const T& obj) {
+		numObjs++;
+	});
+	out.write((char*)&numObjs, sizeof(numObjs));
+
+	iterateInOrder([&out](const Index3DId& id, const T& obj) {
+		id.write(out);
+		obj.write(out);
+	});
+}
+
+template<class T>
+void ObjectPool<T>::read(std::istream& in)
+{
+	uint8_t version = -1;
+	in.read((char*)&version, sizeof(version));
+
+	in.read((char*)&_supportsReverseLookup, sizeof(_supportsReverseLookup));
+	in.read((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
+
+	size_t numObjs = -1;
+	in.read((char*)&numObjs, sizeof(numObjs));
+
+	for (size_t i = 0; i < numObjs; i++) {
+		Index3DId currentId;
+		currentId.read(in);
+		Index3DId result = add(T(), currentId);
+		assert(result == currentId);
+		auto& obj = operator[](currentId);
+		obj.read(in);
+	}
+
+	if (_supportsReverseLookup) {
+		iterateInOrder([this](const Index3DId& id, const T& obj) {
+			addToLookup(id);
+		});
+	}
 }
 
 }

@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 #include <filesystem>
 
+#include <tm_ioUtil.h>
 #include <Index3D.h>
 #include <splitParams.h>
 #include <vertex.h>
@@ -87,10 +88,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 
 	// This is close to working, but the full search is finding solutions the partial search is not
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
-
-#if USE_SUB_MESH_FINDER
-	_subMesh.set(pMesh, _boundBox, 0.1);
-#endif
 }
 
 Block::Block(const Block& src)
@@ -101,9 +98,6 @@ Block::Block(const Block& src)
 	, _blockDim(src._blockDim)
 	, _corners(src._corners)
 	, _filename(src._filename)
-#if USE_SUB_MESH_FINDER
-	, _subMesh(src._subMesh)
-#endif
 	, _vertices(this, src._vertices)
 	, _modelData(this, src._modelData)
 	, _refData(this, src._refData)
@@ -679,6 +673,56 @@ FixedPt Block::getFixedPoint(const Index3DId& vertId) const
 	return pOwner->_vertices[vertId].getFixedPt();
 }
 
+bool Block::write(ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	_blockIdx.write(out);
+	_boundBox.write(out);
+	_innerBoundBox.write(out);
+
+	out.write((char*)&_blockDim, sizeof(_blockDim));
+	IoUtil::writeVector3(out, _corners);
+	out.write((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
+	out.write((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
+	out.write((char*)&_baseIdxPolyhedra, sizeof(_baseIdxPolyhedra));
+
+	_vertices.write(out);
+	_modelData._polygons.write(out);
+	_modelData._polyhedra.write(out);
+	_refData._polygons.write(out);
+	_refData._polyhedra.write(out);
+
+	return true;
+}
+
+bool Block::read(istream& in)
+{
+	uint8_t version = 0;
+	in.read((char*)&version, sizeof(version));
+
+	_blockIdx.read(in);
+	_boundBox.read(in);
+	_innerBoundBox.read(in);
+
+	in.read((char*)&_blockDim, sizeof(_blockDim));
+
+	IoUtil::readVector3(in, _corners);
+
+	in.read((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
+	in.read((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
+	in.read((char*)&_baseIdxPolyhedra, sizeof(_baseIdxPolyhedra));
+
+	_vertices.read(in);
+	_modelData._polygons.read(in);
+	_modelData._polyhedra.read(in);
+	_refData._polygons.read(in);
+	_refData._polyhedra.read(in);
+
+	return true;
+}
+
 bool Block::unload(string& filename)
 {
 	{
@@ -1146,20 +1190,12 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 
 size_t Block::findModelTris(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
 {
-#if USE_SUB_MESH_FINDER
-	return _subMesh.findTris(bbox, indices);
-#else
 	return getModelMesh()->findTris(bbox, indices);
-#endif
 }
 
 size_t Block::findModelEdges(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
 {
-#if USE_SUB_MESH_FINDER
-	return _subMesh.findEdges(bbox, indices);
-#else
 	return getModelMesh()->findEdges(bbox, indices);
-#endif
 }
 
 void Block::pack()

@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_math.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
+#include <tm_ioUtil.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -126,6 +127,32 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	}
 
 	return result;
+}
+
+void Polygon::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
+
+	IoUtil::write(out, _splitFaceProductIds);
+	IoUtil::write(out, _splitEdgeVertMap);
+	IoUtil::write(out, _vertexIds);
+	IoUtil::write(out, _cellIds);
+}
+
+void Polygon::read(std::istream& in)
+{
+	uint8_t version;
+	in.read((char*)&version, sizeof(version));
+
+	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
+
+	IoUtil::read(in, _splitFaceProductIds);
+	IoUtil::read(in, _splitEdgeVertMap);
+	IoUtil::read(in, _vertexIds);
+	IoUtil::read(in, _cellIds);
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -747,6 +774,21 @@ size_t Polygon::CellId_SplitLevel::getSplitLevel() const
 	return _splitLevel;
 }
 
+void Polygon::CellId_SplitLevel::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(uint8_t));
+	_cellId.write(out);
+	out.write((char*)&_splitLevel, sizeof(size_t));
+}
+
+void Polygon::CellId_SplitLevel::read(std::istream& in)
+{
+	uint8_t version;
+	in.read((char*)&version, sizeof(uint8_t));
+	_cellId.read(in);
+	in.read((char*)&_splitLevel, sizeof(size_t));
+}
 
 //LAMBDA_CLIENT_IMPLS(Polygon)
 

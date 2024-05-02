@@ -99,6 +99,8 @@ private:
 
     void OnOpen(wxCommandEvent& event);
     void OnNew(wxCommandEvent& event);
+    void OnSave(wxCommandEvent& event);
+    void OnSaveAs(wxCommandEvent& event);
     void OnWritePolymesh(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);

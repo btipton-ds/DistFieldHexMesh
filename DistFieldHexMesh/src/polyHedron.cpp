@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 
 #include <tm_lineSegment.h>
+#include <tm_ioUtil.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
@@ -106,6 +107,24 @@ size_t Polyhedron::getNumSplitFaces() const
 		}
 	}
 	return n;
+}
+
+void Polyhedron::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	IoUtil::write(out, _faceIds);
+	out.write((char*)&_splitLevel, sizeof(size_t));
+}
+
+void Polyhedron::read(std::istream& in)
+{
+	uint8_t version;
+	in.read((char*)&version, sizeof(version));
+
+	IoUtil::read(in, _faceIds);
+	in.read((char*)&_splitLevel, sizeof(size_t));
 }
 
 bool Polyhedron::unload(ostream& out)

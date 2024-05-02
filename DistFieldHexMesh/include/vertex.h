@@ -119,6 +119,9 @@ public:
 
 	const bool operator < (const Vertex& rhs) const;
 
+	void write(std::ostream& out) const;
+	void read(std::istream& in);
+
 private:
 
 	LockType _lockType = LockType::None;
