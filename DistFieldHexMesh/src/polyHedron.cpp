@@ -369,7 +369,7 @@ bool Polyhedron::intersectsModel() const
 				return true;
 		}
 		vector<size_t> triEntries;
-		_intersectsModel = getBlockPtr()->findModelTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
+		_intersectsModel = getBlockPtr()->processTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
@@ -646,7 +646,7 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 
 	vector<size_t> edgeIndices;
-	if (getBlockPtr()->findModelEdges(bbox, edgeIndices)) {
+	if (getBlockPtr()->processEdges(bbox, edgeIndices)) {
 		vector<double> edgeRadii;
 		double maxRad = 0;
 		for (const auto edgeIdx : edgeIndices) {

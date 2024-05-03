@@ -153,8 +153,8 @@ public:
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 
-	size_t findModelTris(const CBoundingBox3Dd& bbox, std::vector<size_t>& indices) const;
-	size_t findModelEdges(const CBoundingBox3Dd& bbox, std::vector<size_t>& indices) const;
+	size_t processEdges(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& edgeIndices) const;
+	size_t processTris(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& triIndices) const;
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
@@ -243,6 +243,7 @@ private:
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::set<Index3DId> _allSplits, _canSplit, _cantSplitYet;
 
+	std::vector<size_t> _edgeIndices, _triIndices;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
 };

@@ -88,6 +88,8 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 
 	// This is close to working, but the full search is finding solutions the partial search is not
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
+	pMesh->findEdges(_boundBox, _edgeIndices);
+	pMesh->findTris(_boundBox, _triIndices);
 }
 
 Block::Block(const Block& src)
@@ -553,7 +555,7 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 
 	if (intersectingOnly) {
 		vector<size_t> triIndices;
-		bool found = findModelTris(bbox, triIndices) > 0;
+		bool found = processTris(bbox, triIndices) > 0;
 
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
@@ -1188,14 +1190,18 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 }
 #endif // _DEBUG
 
-size_t Block::findModelTris(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
+size_t Block::processEdges(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& edgeIndices) const
 {
-	return getModelMesh()->findTris(bbox, indices);
+	auto pMesh = getModelMesh();
+	pMesh->processFoundEdges(_edgeIndices, bbox, edgeIndices);
+	return edgeIndices.size();
 }
 
-size_t Block::findModelEdges(const CBoundingBox3Dd& bbox, vector<size_t>& indices) const
+size_t Block::processTris(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& triIndices) const
 {
-	return getModelMesh()->findEdges(bbox, indices);
+	auto pMesh = getModelMesh();
+	pMesh->processFoundTris(_triIndices, bbox, triIndices);
+	return triIndices.size();
 }
 
 void Block::pack()
