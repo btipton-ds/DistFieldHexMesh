@@ -696,6 +696,8 @@ bool Block::write(ostream& out) const
 	_refData._polygons.write(out);
 	_refData._polyhedra.write(out);
 
+	IoUtil::write(out, _edgeIndices);
+	IoUtil::write(out, _triIndices);
 	return true;
 }
 
@@ -721,6 +723,9 @@ bool Block::read(istream& in)
 	_modelData._polyhedra.read(in);
 	_refData._polygons.read(in);
 	_refData._polyhedra.read(in);
+
+	IoUtil::read(in, _edgeIndices);
+	IoUtil::read(in, _triIndices);
 
 	return true;
 }
