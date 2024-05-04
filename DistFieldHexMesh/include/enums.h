@@ -62,13 +62,9 @@ enum DrawStates {
 	DS_MODEL_SHARP_EDGES,
     DS_MODEL_SHARP_VERTS,
     DS_MODEL_NORMALS,
-    DS_BLOCK_MESH,
-};
-
-enum DrawSubStates {
-    DSS_OUTER,
-    DSS_INNER,
-	DSS_BLOCK_BOUNDARY,
+    DS_BLOCK_OUTER,
+    DS_BLOCK_INNER,
+	DS_BLOCK_BOUNDARY,
 };
 
 }
