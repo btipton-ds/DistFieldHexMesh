@@ -43,6 +43,7 @@ namespace DFHM {
 class GraphicsCanvas;
 class MainFrame;
 class MakeBlockDlg;
+class SelectBlocksDlg;
 
 class AppData {
 public:
@@ -58,6 +59,7 @@ public:
     void doFindMinGap() const;
     void doBuildCFDHexes();
     void doNew(const MakeBlockDlg& dlg);
+    void doSelectBlocks(const SelectBlocksDlg& dlg);
 
 	inline CMeshPtr getMesh() const
     {
@@ -72,8 +74,9 @@ public:
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
-    void addFacesToScene(GraphicsCanvas* pCanvas, bool multiCore);
-    void addEdgesToScene(GraphicsCanvas* pCanvas, bool multiCore);
+    void updateTessellation(const Index3D& min, const Index3D& max);
+    void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;

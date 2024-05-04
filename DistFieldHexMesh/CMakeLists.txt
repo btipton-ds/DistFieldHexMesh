@@ -77,6 +77,8 @@ add_executable (DistFieldHexMesh
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
+	"src/selectBlocksDlg.cpp"
+	"src/splitters.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
 	"src/logger.cpp"
@@ -84,8 +86,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
-	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- "src/splitters.cpp")
+	"${OpenGlDir}/src/OGLMultiVboHandler.cpp")
 
 add_executable (TestDFM         
 	

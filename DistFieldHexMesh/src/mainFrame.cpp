@@ -42,6 +42,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <mainFrame.h>
 #include <makeBlockDlg.h>
+#include <selectBlocksDlg.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
@@ -185,6 +186,9 @@ void MainFrame::createViewMenu()
 
     menu->Append(ID_SHOW_OUTER, "Show Outer", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_OUTER);
+
+    menu->Append(ID_SHOW_SELECTED_BLOCKS, "Show Selected Blocks", "Shows only selected blocks", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSelectedBlocks, this, ID_SHOW_SELECTED_BLOCKS);
 
     _menuBar->Append(menu, "&View");
 
@@ -399,4 +403,12 @@ void MainFrame::OnShowOuter(wxCommandEvent& event)
     auto normItem = _menuBar->FindItem(ID_SHOW_OUTER);
     if (normItem)
         normItem->Check(getCanvas()->showOuter());
+}
+
+void MainFrame::OnShowSelectedBlocks(wxCommandEvent& event)
+{
+    SelectBlocksDlg dlg(this, 1, wxString("Make Block"), wxPoint(40, 40));
+    if (dlg.ShowModal() == wxID_OK) {
+        _pAppData->doSelectBlocks(dlg);
+    }
 }

@@ -186,13 +186,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         _volume->setModelMesh(_pMesh);
 
         _volume->read(in);
-
-        cout << "Tessellating graphics.\n";
-
-        auto pCanvas = _pMainFrame->getCanvas();
-
-        addFacesToScene(pCanvas, RUN_MULTI_THREAD);
-        addEdgesToScene(pCanvas, RUN_MULTI_THREAD);
+        updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     }
 }
 
@@ -358,6 +352,11 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 	}
 }
 
+void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
+{
+
+}
+
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
     Volume::setVolDim(Index3D(2, 2, 2));
@@ -402,7 +401,7 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 10;
+        params.numCurvatureDivs = 2;
         params.divsPerCurvatureRadius = 3;
         params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;
@@ -413,22 +412,26 @@ void AppData::doBuildCFDHexes()
 
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
-
-        cout << "Tessellating graphics.\n";
-
-        auto pCanvas = _pMainFrame->getCanvas();
-
-        addFacesToScene(pCanvas, RUN_MULTI_THREAD);
-        addEdgesToScene(pCanvas, RUN_MULTI_THREAD);
+        updateTessellation(Index3D(0,0,0), Volume::volDim());
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
 }
 
-void AppData::addFacesToScene(GraphicsCanvas* pCanvas, bool multiCore)
+void AppData::updateTessellation(const Index3D& min, const Index3D& max)
+{
+    cout << "Tessellating graphics.\n";
+
+    auto pCanvas = _pMainFrame->getCanvas();
+
+    addFacesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+    addEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+}
+
+void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::TriMeshGroup blockMeshes;
-    _volume->makeFaceTris(blockMeshes, multiCore);
+    _volume->makeFaceTris(blockMeshes, min, max, multiCore);
 
     pCanvas->beginFaceTesselation(false);
 
@@ -449,10 +452,10 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas, bool multiCore)
     pCanvas->endFaceTesselation(faceTesselations);
 }
 
-void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, bool multiCore)
+void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::glPointsGroup edgeSets;
-    _volume->makeEdgeSets(edgeSets, multiCore);
+    _volume->makeEdgeSets(edgeSets, min, max, multiCore);
 
     pCanvas->beginEdgeTesselation(false);
 

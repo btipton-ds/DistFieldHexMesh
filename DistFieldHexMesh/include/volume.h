@@ -70,8 +70,8 @@ public:
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
-	void makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const;
-	void makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const;
+	void makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
+	void makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -79,6 +79,9 @@ public:
 
 	const std::set<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
+
+	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
+	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds) const;
@@ -126,9 +129,6 @@ private:
 	void writePolyMeshPoints(const std::string& dirName) const;
 	void writePolyMeshFaces(const std::string& dirName) const;
 	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
-
-	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
-	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;

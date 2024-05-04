@@ -232,7 +232,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 		}
 	}
 
-	makeFaceTris(triMeshes, true);
+	makeFaceTris(triMeshes, Index3D(0, 0, 0), volDim(), true);
 }
 
 void Volume::clear()
@@ -536,7 +536,7 @@ void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, 
 	pBlock->getBlockTriMesh(faceType, pMesh);
 }
 
-void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
+void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 
 	size_t numThreads = MultiCore::getNumCores();
@@ -545,14 +545,18 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, bool multiCore) const
 	triMeshes[FT_INNER].resize(numThreads);
 	triMeshes[FT_LAYER_BOUNDARY].resize(numThreads);
 	triMeshes[FT_BLOCK_BOUNDARY].resize(numThreads);
-	MultiCore::runLambda([this, &triMeshes](size_t threadNum, size_t numThreads)->bool {
+	MultiCore::runLambda([this, &triMeshes, &min, &max](size_t threadNum, size_t numThreads)->bool {
 		for (size_t index = threadNum; index < _blocks.size(); index += numThreads) {
-			const auto& blockPtr = _blocks[index];
-			if (blockPtr && blockPtr->numFaces(true) > 0) {
-				makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
-				makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
-				makeFaceTriMesh(FT_LAYER_BOUNDARY, triMeshes, blockPtr, threadNum);
-				makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
+			Index3D blkIdx = calBlockIndexFromLinearIndex(index);
+			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
+				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
+				const auto& blockPtr = _blocks[index];
+				if (blockPtr && blockPtr->numFaces(true) > 0) {
+					makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
+					makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
+					makeFaceTriMesh(FT_LAYER_BOUNDARY, triMeshes, blockPtr, threadNum);
+					makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
+				}
 			}
 		}
 		return true;
@@ -586,7 +590,7 @@ void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, c
 	pBlock->makeEdgeSets(faceType, pPoints);
 }
 
-void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
+void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t numThreads = MultiCore::getNumCores();
 
@@ -596,14 +600,18 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, bool multiCore) const
 	faceEdges[FT_LAYER_BOUNDARY].resize(numThreads);
 	faceEdges[FT_BLOCK_BOUNDARY].resize(numThreads);
 
-	MultiCore::runLambda([this, &faceEdges](size_t threadNum, size_t numThreads)->bool {
+	MultiCore::runLambda([this, &faceEdges, &min, &max](size_t threadNum, size_t numThreads)->bool {
 		for (size_t index = threadNum; index < _blocks.size(); index += numThreads) {
-			const auto& blockPtr = _blocks[index];
-			if (blockPtr && blockPtr->numFaces(true) > 0) {
-				makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
-				makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
-				makeFaceEdges(FT_LAYER_BOUNDARY, faceEdges, blockPtr, threadNum);
-				makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
+			Index3D blkIdx = calBlockIndexFromLinearIndex(index);
+			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
+				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
+				const auto& blockPtr = _blocks[index];
+				if (blockPtr && blockPtr->numFaces(true) > 0) {
+					makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
+					makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
+					makeFaceEdges(FT_LAYER_BOUNDARY, faceEdges, blockPtr, threadNum);
+					makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
+				}
 			}
 		}
 		return true;
