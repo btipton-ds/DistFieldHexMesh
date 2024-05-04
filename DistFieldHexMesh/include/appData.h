@@ -71,6 +71,9 @@ public:
         return _volume;
     }
 
+    void getDisplayMinMax(Index3D& min, Index3D& max) const;
+    void setDisplayMinMax(const Index3D& min, const Index3D& max);
+
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
@@ -94,6 +97,7 @@ private:
     const COglMultiVboHandler::OGLIndices* _modelNormalTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
 
+    Index3D _minDisplayBlock, _maxDisplayBlock;
     std::vector<double> _binSizes;
     std::vector<std::vector<int>> _bins;
 

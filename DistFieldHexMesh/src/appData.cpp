@@ -364,6 +364,18 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     updateTessellation(min, max);
 }
 
+void AppData::getDisplayMinMax(Index3D& min, Index3D& max) const
+{
+    min = _minDisplayBlock;
+    max = _maxDisplayBlock;
+}
+
+void AppData::setDisplayMinMax(const Index3D& min, const Index3D& max)
+{
+    _minDisplayBlock = min;
+    _maxDisplayBlock = max;
+}
+
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
     Volume::setVolDim(Index3D(2, 2, 2));
@@ -408,7 +420,7 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 2;
+        params.numCurvatureDivs = 4;
         params.divsPerCurvatureRadius = 3;
         params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;
@@ -419,7 +431,7 @@ void AppData::doBuildCFDHexes()
 
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
-        updateTessellation(Index3D(0,0,0), Volume::volDim());
+        updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
@@ -433,6 +445,8 @@ void AppData::updateTessellation(const Index3D& min, const Index3D& max)
 
     addFacesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
     addEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+
+    setDisplayMinMax(min, max);
 }
 
 void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)

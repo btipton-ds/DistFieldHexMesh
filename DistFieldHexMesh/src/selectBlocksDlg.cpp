@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <Vertex.h>
 #include <volume.h>
+#include <mainFrame.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -53,7 +54,7 @@ namespace
 	};
 }
 
-SelectBlocksDlg::SelectBlocksDlg(wxWindow* parent, wxWindowID id, const wxString& title,
+SelectBlocksDlg::SelectBlocksDlg(MainFrame* parent, wxWindowID id, const wxString& title,
 	const wxPoint& pos)
 	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
 {
@@ -61,7 +62,7 @@ SelectBlocksDlg::SelectBlocksDlg(wxWindow* parent, wxWindowID id, const wxString
 	int gap = 3;
 	int descent = 3;
 	int promptWidth = 50;
-	int boxWidth = 12;
+	int boxWidth = 20;
 	int boxHeight = 21;
 	int rowHeight = boxHeight + descent;
 	int col0 = 8;
@@ -76,25 +77,27 @@ SelectBlocksDlg::SelectBlocksDlg(wxWindow* parent, wxWindowID id, const wxString
 	int comboOffset = 6;
 #endif
 
-	auto dim = Volume::volDim();
+	
+	Index3D min, max;
+	parent->getAppData()->getDisplayMinMax(min, max);
 
 	int rowNum = 0;
 	_xMinPrompt = new wxStaticText(this, 0, _T("Min x:"), wxPoint(col0, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xMinBox = new wxTextCtrl(this, X_MAX_ID, "0", wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_xMinBox = new wxTextCtrl(this, X_MAX_ID, std::to_string(min[0]), wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 	_xMaxPrompt = new wxStaticText(this, 0, _T("Max x:"), wxPoint(col2, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xMaxBox = new wxTextCtrl(this, X_MAX_ID, std::to_string(dim[0] - 1), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_xMaxBox = new wxTextCtrl(this, X_MAX_ID, std::to_string(max[0]), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 
 	rowNum++;
 	_yMinPrompt = new wxStaticText(this, 0, _T("Min y:"), wxPoint(col0, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_yMinBox = new wxTextCtrl(this, Y_MAX_ID, "0", wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_yMinBox = new wxTextCtrl(this, Y_MAX_ID, std::to_string(min[1]), wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 	_yMaxPrompt = new wxStaticText(this, 0, _T("Max y:"), wxPoint(col2, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_yMaxBox = new wxTextCtrl(this, Y_MAX_ID, std::to_string(dim[1] - 1), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_yMaxBox = new wxTextCtrl(this, Y_MAX_ID, std::to_string(max[1]), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 
 	rowNum++;
 	_zMinPrompt = new wxStaticText(this, 0, _T("Min z:"), wxPoint(col0, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_zMinBox = new wxTextCtrl(this, Z_MAX_ID, "0", wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_zMinBox = new wxTextCtrl(this, Z_MAX_ID, std::to_string(min[2]), wxPoint(col1, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 	_zMaxPrompt = new wxStaticText(this, 0, _T("Max z:"), wxPoint(col2, baseRow + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_zMaxBox = new wxTextCtrl(this, Z_MAX_ID, std::to_string(dim[2] - 1), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
+	_zMaxBox = new wxTextCtrl(this, Z_MAX_ID, std::to_string(max[2]), wxPoint(col3, baseRow + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight));
 
 	rowNum++;
 	_okButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(col1 + 100, baseRow + rowNum * rowHeight));

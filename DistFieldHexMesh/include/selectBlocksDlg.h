@@ -37,36 +37,37 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 namespace DFHM {
+class MainFrame;
 
-	class SelectBlocksDlg : public wxDialog {
-	public:
-		SelectBlocksDlg(wxWindow* parent, wxWindowID id, const wxString& title,
-			const wxPoint& pos = wxDefaultPosition);
+class SelectBlocksDlg : public wxDialog {
+public:
+	SelectBlocksDlg(MainFrame* parent, wxWindowID id, const wxString& title,
+		const wxPoint& pos = wxDefaultPosition);
 
-		Index3D getMin() const;
-		Index3D getMax() const;
+	Index3D getMin() const;
+	Index3D getMax() const;
 
-	private:
-		wxStaticText
-			* _xMinPrompt = nullptr,
-			* _xMaxPrompt = nullptr,
-			* _yMinPrompt = nullptr,
-			* _yMaxPrompt = nullptr,
-			* _zMinPrompt = nullptr,
-			* _zMaxPrompt = nullptr;
+private:
+	wxStaticText
+		* _xMinPrompt = nullptr,
+		* _xMaxPrompt = nullptr,
+		* _yMinPrompt = nullptr,
+		* _yMaxPrompt = nullptr,
+		* _zMinPrompt = nullptr,
+		* _zMaxPrompt = nullptr;
 
-		wxTextCtrl
-			* _xMinBox = nullptr,
-			* _xMaxBox = nullptr,
-			* _yMinBox = nullptr,
-			* _yMaxBox = nullptr,
-			* _zMinBox = nullptr,
-			* _zMaxBox = nullptr;
+	wxTextCtrl
+		* _xMinBox = nullptr,
+		* _xMaxBox = nullptr,
+		* _yMinBox = nullptr,
+		* _yMaxBox = nullptr,
+		* _zMinBox = nullptr,
+		* _zMaxBox = nullptr;
 
-		wxButton
-			* _okButton,
-			* _cancelButton;
+	wxButton
+		* _okButton,
+		* _cancelButton;
 
-	};
+};
 
 }

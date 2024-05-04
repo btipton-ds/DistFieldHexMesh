@@ -86,6 +86,8 @@ public:
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();
 
+    AppDataPtr getAppData();
+
 private:
     wxMenuBar* _menuBar = nullptr;
     wxMenu *_editMenu = nullptr,
@@ -134,6 +136,11 @@ inline const GraphicsCanvas* MainFrame::getCanvas() const
 inline GraphicsCanvas* MainFrame::getCanvas()
 {
     return _pCanvas;
+}
+
+inline AppDataPtr MainFrame::getAppData()
+{
+    return _pAppData;
 }
 
 }

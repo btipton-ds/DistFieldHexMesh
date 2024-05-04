@@ -408,6 +408,7 @@ void MainFrame::OnShowOuter(wxCommandEvent& event)
 void MainFrame::OnShowSelectedBlocks(wxCommandEvent& event)
 {
     SelectBlocksDlg dlg(this, 1, wxString("Make Block"), wxPoint(40, 40));
+
     if (dlg.ShowModal() == wxID_OK) {
         _pAppData->doSelectBlocks(dlg);
     }

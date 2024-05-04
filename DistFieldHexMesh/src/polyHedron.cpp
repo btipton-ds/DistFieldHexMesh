@@ -644,7 +644,47 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const
 {
 	auto pTriMesh = getBlockPtr()->getModelMesh();
+#if 1
+	vector<size_t> triIndices;
+	size_t numTris = getBlockPtr()->processTris(bbox, triIndices);
+	if (numTris > 0) {
+		static thread_local vector<double> radii;
+		if (radii.size() < pTriMesh->numTris()) {
+			radii.reserve(pTriMesh->numTris());
+		}
+		radii.clear();
+		for (const auto triIdx : triIndices) {
+			double triCurv = pTriMesh->triCurvature(triIdx);
+			if (triCurv > 2) { // Radius < 1/2
+				radii.push_back(1 / triCurv);
+			}
+		}
 
+		if (radii.empty())
+			return 1e6;
+
+		sort(radii.begin(), radii.end());
+		double maxRad = 0;
+		double avgRad = 0;
+		size_t count = 0;
+		for (size_t i = 0; i < radii.size(); i++) {
+			if (maxRad == 0 || radii[i] <= 1.5 * maxRad) {
+				if (radii[i] > maxRad)
+					maxRad = radii[i];
+
+				avgRad += radii[i];
+				count++;
+			} else
+				break;
+		}
+
+		if (count > 0 && avgRad >= 0) {
+			avgRad /= count;
+			return avgRad;
+		}
+		return -1;
+	}
+#else
 	vector<size_t> edgeIndices;
 	if (getBlockPtr()->processEdges(bbox, edgeIndices)) {
 		vector<double> edgeRadii;
@@ -676,6 +716,8 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 			return avgRad;
 		return -1;
 	}
+#endif
+
 	return 0;
 }
 
