@@ -373,7 +373,7 @@ void MainFrame::OnShowCurvature(wxCommandEvent& event)
 {
     getCanvas()->toggleShowCurvature();
 
-    auto item = _menuBar->FindItem(DS_MODEL_CURVATURE);
+    auto item = _menuBar->FindItem(ID_SHOW_CURVATURE);
     if (item)
         item->Check(getCanvas()->showCurvature());
 }
