@@ -356,7 +356,7 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 {
     Index3D min = dlg.getMin();
-    Index3D max = dlg.getMin();
+    Index3D max = dlg.getMax();
 
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
