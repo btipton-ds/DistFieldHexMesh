@@ -545,9 +545,6 @@ void GraphicsCanvas::drawFaces()
             case DS_BLOCK_MESH + DSS_BLOCK_BOUNDARY:
                 _graphicsUBO.defColor = p3f(1.0f, 0.5f, 0.5f);
                 break;
-            case DS_BLOCK_MESH + DSS_LAYER_BOUNDARY:
-                _graphicsUBO.defColor = p3f(0.0f, 0.6f, 0);
-                break;
         }
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
         glEnable(GL_DEPTH_TEST);
@@ -596,7 +593,6 @@ void GraphicsCanvas::drawEdges()
                 break;
             case DS_BLOCK_MESH + DSS_OUTER:
             case DS_BLOCK_MESH + DSS_INNER:
-            case DS_BLOCK_MESH + DSS_LAYER_BOUNDARY:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
                 break;
@@ -862,13 +858,6 @@ void GraphicsCanvas::changeFaceViewElements(bool isModel)
                         vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_OUTER, *pBlockTess);
                 }
             }
-
-            if (DSS_LAYER_BOUNDARY < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[DSS_LAYER_BOUNDARY]) {
-                    if (pBlockTess)
-                        vbo._faceVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
-                }
-            }
         }
         else {
             if (DSS_INNER < vbo._faceTessellations.size()) {
@@ -908,13 +897,6 @@ void GraphicsCanvas::changeEdgeViewElements(bool isModel)
             }
         } 
         
-        if (_showOuter && DSS_LAYER_BOUNDARY < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[DSS_LAYER_BOUNDARY]) {
-                if (pBlockTess)
-                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_MESH + DSS_LAYER_BOUNDARY, *pBlockTess);
-            }
-        }
-
         if (!_showOuter && DSS_INNER < vbo._edgeTessellations.size()) {
             for (auto pBlockTess : vbo._edgeTessellations[DSS_INNER]) {
                 if (pBlockTess)

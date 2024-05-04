@@ -932,9 +932,6 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 		case FT_OUTER:
 			result = isOuter;
 			break;
-		case FT_LAYER_BOUNDARY:
-//			result = !isOuter && isLevelBoundary;
-			break;
 		case FT_BLOCK_BOUNDARY:
 			result = !isOuter && isBlockBoundary;
 			break;
