@@ -357,6 +357,14 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
     _viewScale *= scale;
 }
 
+void GraphicsCanvas::clearMesh3D()
+{
+    _meshVBOs->_edgeVBO.clear();
+    _meshVBOs->_faceVBO.clear();
+    _meshVBOs->_edgeTessellations.clear();
+    _meshVBOs->_faceTessellations.clear();
+}
+
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }

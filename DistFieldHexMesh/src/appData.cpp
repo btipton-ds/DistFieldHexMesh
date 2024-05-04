@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <readStl.h>
 #include <MultiCoreUtil.h>
+#include <selectBlocksDlg.h>
 
 #include <makeBlockDlg.h>
 #include <mainFrame.h>
@@ -354,7 +355,13 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 
 void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 {
+    Index3D min = dlg.getMin();
+    Index3D max = dlg.getMin();
 
+    auto pCanvas = _pMainFrame->getCanvas();
+    pCanvas->clearMesh3D();
+
+    updateTessellation(min, max);
 }
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)

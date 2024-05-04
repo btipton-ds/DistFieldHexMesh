@@ -72,6 +72,7 @@ public:
     ~GraphicsCanvas();
 
     void preDestroy();
+    void clearMesh3D();
 
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
