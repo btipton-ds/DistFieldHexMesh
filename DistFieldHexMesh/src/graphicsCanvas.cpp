@@ -93,6 +93,7 @@ namespace
     {
         A result;
         result.setZero();
+
         if (src.cols() == src.rows()) {
             int l = min(src.rows(), result.rows());
             for (int i = 0; i < l; i++) {
@@ -167,7 +168,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     double angle = -90.0 * M_PI / 180.0;
     Vector3d axis(1, 0, 0);
-    Eigen::AngleAxisd aad(angle, axis);
+    Eigen::AngleAxisd aad(angle, (Eigen::Matrix<double, 3, 1>)axis);
     Eigen::Matrix3d rot3 = aad.toRotationMatrix();
 
     _rotToGl = changeSize<Eigen::Matrix4d>(rot3);
@@ -536,6 +537,7 @@ void GraphicsCanvas::drawFaces()
             case DS_MODEL_SHARP_VERTS:
                 _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
                 break;
+            case DS_BLOCK_ALL:
             case DS_BLOCK_OUTER:
                 _graphicsUBO.defColor = p3f(0.0f, 0.8f, 0);
                 break;
@@ -591,6 +593,7 @@ void GraphicsCanvas::drawEdges()
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
                 break;
+            case DS_BLOCK_ALL:
             case DS_BLOCK_OUTER:
             case DS_BLOCK_INNER:
                 glLineWidth(1.0f);
@@ -626,8 +629,10 @@ Vector3d GraphicsCanvas::screenPointToModel(const Eigen::Vector2d& pt2d) const
 {
     Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
     Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
-    return changeSize<Vector3d, Eigen::Vector4d>(r);
+    Eigen::Matrix<double, 3, 1> t = changeSize<Eigen::Matrix<double, 3, 1>, Eigen::Vector4d>(r);
+    return Vector3d(t[0], t[1], t[2]);
 }
+
 Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z) const
 {
     return screenVectorToModel(Vector3d(v[0], v[1], z));
@@ -636,7 +641,8 @@ Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector3d& v) const
 {
     Eigen::Vector4d pt3d(v[0], -v[1], v[2], 0);
     Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
-    return changeSize<Vector3d, Eigen::Vector4d>(r);
+    Eigen::Matrix<double, 3, 1> t = changeSize<Eigen::Matrix<double, 3, 1>, Eigen::Vector4d>(r);
+    return Vector3d(t[0], t[1], t[2]);
 }
 
 Eigen::Matrix4d GraphicsCanvas::createTranslation(const Vector3d& delta)
@@ -658,8 +664,8 @@ void GraphicsCanvas::moveOrigin(const Vector3d& delta)
 
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
 {
-    Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, rotationAxis).toRotationMatrix();
-    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3)), translate(createTranslation(rotationCenter)), unTranslate(createTranslation(-rotationCenter));
+    Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, (Eigen::Matrix<double, 3, 1>)rotationAxis).toRotationMatrix();
+    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3)), translate(createTranslation((Eigen::Matrix<double, 3, 1>)rotationCenter)), unTranslate(createTranslation((Eigen::Matrix<double, 3, 1>) -rotationCenter));
     rot(3, 3) = 1;
 
     _trans = _intitialTrans;
@@ -851,15 +857,21 @@ void GraphicsCanvas::changeFaceViewElements(bool isModel)
         vbo._faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *vbo._pSharpVertTess);
 
     if (_showFaces) {
-        if (_showOuter) {
+        if (_showSelectedBlocks) {
+            if (FT_ALL < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[FT_ALL]) {
+                    if (pBlockTess)
+                        vbo._faceVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+                }
+            }
+        } else if (_showOuter) {
             if (FT_OUTER < vbo._faceTessellations.size()) {
                 for (auto pBlockTess : vbo._faceTessellations[FT_OUTER]) {
                     if (pBlockTess)
                         vbo._faceVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
                 }
             }
-        }
-        else {
+        } else {
             if (FT_INNER < vbo._faceTessellations.size()) {
                 for (auto pBlockTess : vbo._faceTessellations[FT_INNER]) {
                     if (pBlockTess)
@@ -908,6 +920,13 @@ void GraphicsCanvas::changeEdgeViewElements(bool isModel)
             for (auto pBlockTess : vbo._edgeTessellations[FT_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
                     vbo._edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+            }
+        }
+
+        if (!_showSelectedBlocks && FT_ALL < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[FT_ALL]) {
+                if (pBlockTess)
+                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
             }
         }
     }

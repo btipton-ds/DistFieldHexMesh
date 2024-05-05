@@ -360,6 +360,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
+    pCanvas->setShowSelectedBlocks(true);
 
     updateTessellation(min, max);
 }
@@ -420,9 +421,9 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 4;
-        params.divsPerCurvatureRadius = 3;
-        params.divsPerGapCurvatureRadius = 6;
+        params.numCurvatureDivs = 8;
+        params.divsPerCurvatureRadius = 6;
+        params.divsPerGapCurvatureRadius = 9;
         params.maxGapSize = 0.02;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;
@@ -439,6 +440,12 @@ void AppData::doBuildCFDHexes()
 
 void AppData::updateTessellation(const Index3D& min, const Index3D& max)
 {
+#ifdef _WIN32
+    LARGE_INTEGER startCount, freq;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&startCount);
+#endif // _WIN32
+
     cout << "Tessellating graphics.\n";
 
     auto pCanvas = _pMainFrame->getCanvas();
@@ -447,6 +454,14 @@ void AppData::updateTessellation(const Index3D& min, const Index3D& max)
     addEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
 
     setDisplayMinMax(min, max);
+
+#ifdef _WIN32
+    LARGE_INTEGER endCount;
+    QueryPerformanceCounter(&endCount);
+    double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+    cout << "Time for updateTessellation: " << deltaT << " secs\n";
+#endif // _WIN32
+
 }
 
 void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)

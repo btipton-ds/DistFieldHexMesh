@@ -117,6 +117,8 @@ public:
     bool showOuter() const;
     bool toggleShowOuter();
 
+    void setShowSelectedBlocks(bool val);
+
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
@@ -162,7 +164,8 @@ private:
         _showEdges = true, 
         _showFaces = true, 
         _showOuter = false,
-        _showCurvature = false;
+        _showCurvature = false,
+        _showSelectedBlocks = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     void initialize();
     void loadShaders();
@@ -290,6 +293,11 @@ inline bool GraphicsCanvas::showEdges() const
 inline bool GraphicsCanvas::showOuter() const
 {
     return _showOuter;
+}
+
+inline void GraphicsCanvas::setShowSelectedBlocks(bool val)
+{
+    _showSelectedBlocks = val;
 }
 
 }

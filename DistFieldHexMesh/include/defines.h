@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define GRAPHICS_OVER_SAMPLING 2
 #define _USE_MATH_DEFINES
 
+#define VERIFY_REDUCED_FINDER 0
 #define LOGGING_ENABLED 0
 #define DEBUG_BREAKS 0
 #define CAN_FREE_TESTS_ENABLED 0

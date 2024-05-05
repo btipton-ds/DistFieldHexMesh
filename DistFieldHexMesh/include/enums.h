@@ -65,6 +65,7 @@ enum DrawStates {
     DS_BLOCK_OUTER,
     DS_BLOCK_INNER,
 	DS_BLOCK_BOUNDARY,
+	DS_BLOCK_ALL,
 };
 
 }

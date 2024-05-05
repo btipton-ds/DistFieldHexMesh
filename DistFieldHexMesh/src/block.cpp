@@ -899,7 +899,8 @@ void Block::imprintTJointVertices()
 bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 {
 	bool result = false;
-
+	if (meshType == FT_ALL)
+		return true;
 #if 1
 	result = face.intersectsModel();
 #else
@@ -994,15 +995,15 @@ void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 		for (const auto& edge : edges) {
 			const auto* vertIds = edge.getVertexIds();
 
-			Vector3d pt = getVertexPoint(vertIds[0]);
-			vals.push_back((float)pt[0]);
-			vals.push_back((float)pt[1]);
-			vals.push_back((float)pt[2]);
+			Vector3d pt0 = getVertexPoint(vertIds[0]);
+			vals.push_back((float)pt0[0]);
+			vals.push_back((float)pt0[1]);
+			vals.push_back((float)pt0[2]);
 
-			pt = getVertexPoint(vertIds[1]);
-			vals.push_back((float)pt[0]);
-			vals.push_back((float)pt[1]);
-			vals.push_back((float)pt[2]);
+			Vector3d pt1 = getVertexPoint(vertIds[1]);
+			vals.push_back((float)pt1[0]);
+			vals.push_back((float)pt1[1]);
+			vals.push_back((float)pt1[2]);
 		}
 	}
 }
@@ -1192,17 +1193,29 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 }
 #endif // _DEBUG
 
-size_t Block::processEdges(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& edgeIndices) const
+size_t Block::processEdges(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& edgeIndices) const
 {
 	auto pMesh = getModelMesh();
 	pMesh->processFoundEdges(_edgeIndices, bbox, edgeIndices);
+#if VERIFY_REDUCED_FINDER
+	vector<size_t> edgeIndices1;
+	pMesh->findEdges(bbox, edgeIndices1);
+	assert(edgeIndices.size() == edgeIndices1.size());
+#endif
+
 	return edgeIndices.size();
 }
 
-size_t Block::processTris(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& triIndices) const
+size_t Block::processTris(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& triIndices) const
 {
 	auto pMesh = getModelMesh();
 	pMesh->processFoundTris(_triIndices, bbox, triIndices);
+#if VERIFY_REDUCED_FINDER
+	vector<size_t> triIndices1;
+	pMesh->findTris(bbox, triIndices1);
+	assert(triIndices.size() == triIndices1.size());
+#endif
+
 	return triIndices.size();
 }
 
