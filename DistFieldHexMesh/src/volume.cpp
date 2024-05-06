@@ -41,6 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <filesystem>
 #include <stdexcept>
+#include <tm_plane.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -672,90 +673,6 @@ namespace {
 	}
 }
 
-void Volume::consolidateBlocks()
-{
-	Index3D blkIdx;
-#if 0 && defined(_DEBUG)
-	set<FixedPt> pts;
-
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
-				if (pBlk) {
-					pBlk->_vertices.iterateInOrder([&pts](const Index3DId& id, const Vertex& vert) {
-						auto fpt = vert.getFixedPt();
-						assert(pts.count(fpt) == 0);
-						pts.insert(fpt);
-					});
-				}
-			}
-		}
-	}
-#endif
-
-	// process each block into a single model
-	// save each block
-	// unload the block from memory
-
-	// Set block baseIndices. This orders them, does not ignore "dead" ones and does not pack them
-	size_t vertIdx = 0, polygonIdx = 0, polyhedronIdx = 0;
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				size_t linIdx = calLinearBlockIndex(blkIdx);
-				auto pBlk = _blocks[linIdx];
-				if (pBlk) {
-					pBlk->_baseIdxVerts = vertIdx;
-					pBlk->_baseIdxPolygons = polygonIdx;
-					pBlk->_baseIdxPolyhedra = polyhedronIdx;
-
-					pBlk->_vertices.iterateInOrder([&vertIdx](const Index3DId& id, const Vertex& v) {
-						vertIdx++;
-					});
-					pBlk->_modelData._polygons.iterateInOrder([&polygonIdx](const Index3DId& id, const Polygon& v) {
-						polygonIdx++;
-					});
-					pBlk->_modelData._polyhedra.iterateInOrder([&polyhedronIdx](const Index3DId& id, const Polyhedron& v) {
-						polyhedronIdx++;
-					});
-				}
-			}
-		}
-	}
-
-	vector<Index3DId> pts;
-	map<Index3DId, size_t> idToPointIdxMap;
-	vector<size_t> faceIndices, faces;
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				auto pBlk = _blocks[calLinearBlockIndex(blkIdx)];
-				if (!pBlk)
-					continue;
-				pBlk->_modelData._polygons.iterateInOrder([&pts, &idToPointIdxMap, &faceIndices, &faces](const Index3DId& id, Polygon& face) {
-					face.orient();
-					faceIndices.push_back(faces.size());
-					for (const auto& vertId : face.getVertexIds()) {
-						auto iter = idToPointIdxMap.find(vertId);
-						if (iter == idToPointIdxMap.end()) {
-							size_t idx = pts.size();
-							iter = idToPointIdxMap.insert(make_pair(vertId, idx)).first;
-							pts.push_back(vertId);
-						}
-						size_t vertIdx = iter->second;
-						faces.push_back(vertIdx);
-					}
-				});
-			}
-		}
-	}
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-	int dbgBreak = 1;
-#endif
-}
-
 void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds) const
 {
 	ofstream out(path, ios_base::trunc);
@@ -876,6 +793,27 @@ bool Volume::read(istream& in)
 	return true;
 }
 
+const Vertex& Volume::getVertex(const Index3DId& id) const
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_vertices[id];
+}
+
+const DFHM::Polygon& Volume::getPolygon(const Index3DId& id) const
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_modelData._polygons[id];
+}
+
+const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_modelData._polyhedra[id];
+}
+
 void Volume::writePolyMesh(const string& dirNameIn)
 {
 	string dirName(dirNameIn);
@@ -895,110 +833,320 @@ void Volume::writePolyMesh(const string& dirNameIn)
 	filesystem::remove_all(dirPath);
 	filesystem::create_directories(dirPath);
 
-	consolidateBlocks();
-	writePolyMeshPoints(dirName);
+	PolymeshTables tables;
+	createPolymeshTables(tables);
+
+	writePolyMeshPoints(dirName, tables);
+	writePolyMeshFaces(dirName, tables);
+	writePolyMeshOwnerCells(dirName, tables);
+	writePolyMeshNeighborCells(dirName, tables);
+	writePolyMeshBoundaries(dirName, tables);
 }
 
-void Volume::writePolyMeshPoints(const string& dirName) const
+void Volume::createPolymeshTables(PolymeshTables& tables)
 {
+
+	for (auto pBlk : _blocks) {
+		if (pBlk) {
+			pBlk->_vertices.iterateInOrder([&tables](const Index3DId& id, const Vertex& vert) {
+				int vIdx = (int)tables.vertIdxIdMap.size();
+				tables.vertIdxIdMap.push_back(id);
+				tables.vertIdIdxMap.insert(make_pair(id, vIdx));
+			});
+		}
+	}
+
+	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
+
+	Plane<double> planes[] = {
+		Plane<double>(_boundingBox.getMin(), xAxis, false), // frontPlane
+		Plane<double>(_boundingBox.getMin(), yAxis, false), // leftPlane
+		Plane<double>(_boundingBox.getMin(), zAxis, false), // bottomPlane
+		Plane<double>(_boundingBox.getMax(), xAxis, false), // backPlane
+		Plane<double>(_boundingBox.getMax(), yAxis, false), // rightPlane
+		Plane<double>(_boundingBox.getMax(), zAxis, false), // topPlane
+	};
+
+	vector<Index3DId> outerBounds[6], inner, bounds;
+	for (auto pBlk : _blocks) {
+		if (pBlk) {
+			pBlk->_modelData._polygons.iterateInOrder([&](const Index3DId& id, const Polygon& face) {
+				if (face.numCells() == 2) {
+					inner.push_back(id);
+				} else {
+					bool onOuterBoundary = false;
+					for (int i = 0; i < 6; i++) {
+						if (face.coplanar(planes[i])) {
+							onOuterBoundary = true;
+							outerBounds[i].push_back(id);
+							break;
+						}
+					}
+					if (!onOuterBoundary) {
+						bounds.push_back(id);
+					}
+				}
+			});
+		}
+	}
+
+	tables.innerIdx = tables.faceIdxIdMap.size();
+	for (const auto& id : inner) {
+		int fIdx = (int)tables.faceIdxIdMap.size();
+		tables.faceIdxIdMap.push_back(id);
+		tables.faceIdIdxMap.insert(make_pair(id, fIdx));
+	}
+	tables.numInner = tables.faceIdxIdMap.size();
+
+	for (int i = 0; i < 6; i++) {
+		tables.boundaryIndices[i] = tables.faceIdxIdMap.size();
+		for (const auto& id : outerBounds[i]) {
+			int fIdx = (int)tables.faceIdxIdMap.size();
+			tables.faceIdxIdMap.push_back(id);
+			tables.faceIdIdxMap.insert(make_pair(id, fIdx));
+		}
+	}
+
+	tables.boundaryIdx = tables.faceIdxIdMap.size();
+	for (const auto& id : bounds) {
+		int fIdx = (int)tables.faceIdxIdMap.size();
+		tables.faceIdxIdMap.push_back(id);
+		tables.faceIdIdxMap.insert(make_pair(id, fIdx));
+	}
+
+	for (auto pBlk : _blocks) {
+		if (pBlk) {
+			pBlk->_modelData._polyhedra.iterateInOrder([&tables](const Index3DId& id, const Polyhedron& cell) {
+				int cIdx = (int)tables.cellIdxIdMap.size();
+				tables.cellIdxIdMap.push_back(id);
+				tables.cellIdIdxMap.insert(make_pair(id, cIdx));
+			});
+		}
+	}
+}
+
+void Volume::writePolyMeshPoints(const string& dirName, const PolymeshTables& tables) const
+{
+	const char openParen = '(';
+	const char closeParen = ')';
 	ofstream out(dirName + "/points", ios_base::binary);
-	writeFOAMHeader(out, "vectorField", "points");
-	size_t numPoints = 0;
+	writeFOAMHeader(out, "binary", "vectorField", "points");
 
-	Vector3i blkIdx;
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				size_t linIdx = calLinearBlockIndex(blkIdx);
-				auto& pBlk = _blocks[linIdx];
-				if (!pBlk)
-					continue;
-				pBlk->_baseIdxVerts = numPoints;
-				const auto& blkVerts = pBlk->_vertices;
-				blkVerts.iterateInOrder([&numPoints](const Index3DId& id, const Vertex& vert) {
-					numPoints++;
-				});
-			}
-		}
+	out << tables.vertIdxIdMap.size() << "\n";
+	out.write(&openParen, 1);
+	for (const auto& vertId : tables.vertIdxIdMap) {
+		const auto& vert = getVertex(vertId);
+		auto pt = vert.getPoint();
+
+		const double* pd = pt.data();
+
+		out.write((char*)pd, 3 * sizeof(double));
 	}
+	out.write(&closeParen, 1);
 
-	out << numPoints << "\n";
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				size_t linIdx = calLinearBlockIndex(blkIdx);
-				const auto& pBlk = _blocks[linIdx];
-				if (!pBlk)
-					continue;
-				const auto& blkVerts = pBlk->_vertices;
-				blkVerts.iterateInOrder([&numPoints, &out](const Index3DId& id, const Vertex& vert) {
-					char openParen = '(';
-					char closeParen = ')';
-					auto pt = vert.getPoint();
-
-					const double& x = pt[0];
-					const double& y = pt[1];
-					const double& z = pt[2];
-
-					out.write(&openParen, 1);
-					out.write((char*)&x, sizeof(x));
-					out.write((char*)&y, sizeof(y));
-					out.write((char*)&z, sizeof(z));
-					out.write(&closeParen, 1);
-				});
-			}
-		}
-	}
-
+	out << "\n//**********************************************************************************//\n";
 }
 
-void Volume::writePolyMeshFaces(const string& dirName) const
+bool Volume::needToReverseNormal(const Polygon& face, const PolymeshTables& tables) const
 {
-	ofstream out(dirName + "/faces", ios_base::binary);
-	writeFOAMHeader(out, "faceCompactList", "faces");
-	vector<size_t> startIndices, vertIndices;
+	bool result = false;
+	Vector3d n = face.calUnitNormal();
 
-	Vector3i blkIdx;
-	for (blkIdx[0] = 0; blkIdx[0] < s_volDim[0]; blkIdx[0]++) {
-		for (blkIdx[1] = 0; blkIdx[1] < s_volDim[1]; blkIdx[1]++) {
-			for (blkIdx[2] = 0; blkIdx[2] < s_volDim[2]; blkIdx[2]++) {
-				size_t linIdx = calLinearBlockIndex(blkIdx);
-				auto& pBlk = _blocks[linIdx];
-				if (!pBlk)
-					continue;
-				pBlk->_baseIdxPolygons = startIndices.size();
-				const auto& blkPolygons = pBlk->_modelData._polygons;
-				blkPolygons.iterateInOrder([&startIndices](const Index3DId& id, const Polygon& face) {
-					const auto& vertIds = face.getVertexIds();
-					startIndices.push_back(vertIds.size());
-				});
+	Vector3d faceCtr = face.calCentroid();
+	Vector3d cellCtr;
+	const auto& cellIds = face.getCellIds();
+	if (cellIds.size() == 1) {
+		const Index3DId cellId = *cellIds.begin();
+		const auto& cell = getPolyhedron(cellId);
+		cellCtr = cell.calCentroid();
+		Vector3d v = cellCtr - faceCtr;
+		if (v.dot(n) > 0)
+			result = true;
+	}
+	else {
+		assert(cellIds.size() == 2);
+		int maxCellIdx = -1;
+		for (const auto& cellId : cellIds) {
+			int cellIdx = tables.cellIdIdxMap.find(cellId)->second;
+			if (maxCellIdx < cellIdx) {
+				maxCellIdx = cellIdx;
 			}
+		}
+		const auto& cell = getPolyhedron(tables.cellIdxIdMap[maxCellIdx]);
+		cellCtr = cell.calCentroid();
+
+		Vector3d v = cellCtr - faceCtr;
+		if (v.dot(n) > 0)
+			result = true;
+	}
+
+	return result;
+}
+
+void Volume::writePolyMeshFaces(const string& dirName, const PolymeshTables& tables) const
+{
+	const char openParen = '(';
+	const char closeParen = ')';
+	ofstream out(dirName + "/faces", ios_base::binary);
+	writeFOAMHeader(out, "binary", "faceCompactList", "faces");
+
+	out << tables.faceIdxIdMap.size() << "\n";
+	out.write(&openParen, 1);
+
+	// Write poly index table
+	int idx = 0;
+	vector<int> faceIndices;
+	faceIndices.resize(tables.faceIdxIdMap.size());
+	for (size_t i = 0; i < tables.faceIdxIdMap.size(); i++) {
+		const auto& face = getPolygon(tables.faceIdxIdMap[i]);
+		idx += (int)face.getVertexIds().size();
+		faceIndices[i] = idx;
+	}
+	out.write((char*)faceIndices.data(), faceIndices.size() * sizeof(idx));
+	out.write(&closeParen, 1);
+	char buf[] = "\n";
+	out.write(buf, 1);
+
+	// Write the face vertex index list
+	vector<int> vertIndices;
+	vertIndices.reserve(tables.faceIdxIdMap.size() * 4);
+	for (const auto& faceId : tables.faceIdxIdMap) {
+		const auto& face = getPolygon(faceId);
+	
+		auto verts = face.getVertexIds();
+		if (needToReverseNormal(face, tables)) {
+			reverse(verts.begin(), verts.end());
+		}
+		for (const auto& vId : verts) {
+			vertIndices.push_back(tables.vertIdIdxMap.find(vId)->second);
 		}
 	}
 
-	out << startIndices.size() << "\n";
-
+	out << vertIndices.size() << "\n";
+	out.write(&openParen, 1);
+	out.write((char*)vertIndices.data(), vertIndices.size() * sizeof(idx));
+	out.write(&closeParen, 1);
+	out << "\n//**********************************************************************************//\n";
 }
 
-void Volume::writeFOAMHeader(ofstream& out, const string& foamClass, const string& object) const
+void Volume::writePolyMeshOwnerCells(const std::string& dirName, const PolymeshTables& tables) const
+{
+	const char openParen = '(';
+	const char closeParen = ')';
+	ofstream out(dirName + "/owner", ios_base::binary);
+	writeFOAMHeader(out, "binary", "labelList", "owner");
+	
+	out << tables.faceIdxIdMap.size() << "\n";
+	out.write(&openParen, 1);
+
+	for (const auto& faceId : tables.faceIdxIdMap) {
+		const auto& face = getPolygon(faceId);
+		const auto& cellIds = face.getCellIds();
+		int minIdx = INT_MAX;
+		for (const auto& cellId : cellIds) {
+			int cellIdx = tables.cellIdIdxMap.find(cellId)->second;
+			if (cellIdx < minIdx)
+				minIdx = cellIdx;
+		}
+		out.write((char*)&minIdx, sizeof(minIdx));
+	}
+
+	out.write(&closeParen, 1);
+	out << "\n//**********************************************************************************//\n";
+}
+
+void Volume::writePolyMeshNeighborCells(const std::string& dirName, const PolymeshTables& tables) const
+{
+	const char openParen = '(';
+	const char closeParen = ')';
+	ofstream out(dirName + "/neighbour ", ios_base::binary);
+	writeFOAMHeader(out, "binary", "labelList", "neighbour");
+
+	out << tables.numInner << "\n";
+	out.write(&openParen, 1);
+
+	for (const auto& faceId : tables.faceIdxIdMap) {
+		const auto& face = getPolygon(faceId);
+		const auto& cellIds = face.getCellIds();
+		if (cellIds.size() == 2) {
+			int maxIdx = 0;
+			for (const auto& id : cellIds) {
+				int cellIdx = tables.cellIdIdxMap.find(id)->second;
+				if (cellIdx > maxIdx)
+					maxIdx = (int)cellIdx;
+			}
+			out.write((char*)&maxIdx, sizeof(maxIdx));
+		}
+	}
+
+	out.write(&closeParen, 1);
+	out << "\n//**********************************************************************************//\n";
+}
+
+void Volume::writePolyMeshBoundaries(const std::string& dirName, const PolymeshTables& tables) const
+{
+	const string names[6] = {
+		"front",
+		"left",
+		"bottom",
+		"back",
+		"right",
+		"top",
+	};
+
+	ofstream out(dirName + "/boundary", ios::binary);
+	writeFOAMHeader(out, "binary", "polyBoundaryMesh", "boundary");
+	size_t nWallFaces = tables.faceIdxIdMap.size() - tables.boundaryIdx;
+	int numBoundaries = 6;
+	if (nWallFaces > 0)
+		numBoundaries++;
+
+	out << numBoundaries << "\n";
+	out << "(\n";
+	for (int i = 0; i < 6; i++) {
+		out << "  " << names[i] << "\n";
+		out << "  {\n";
+		out << "    type patch;\n";
+		size_t nFaces;
+		if (i + 1 < 6) 
+			nFaces = tables.boundaryIndices[i + 1] - tables.boundaryIndices[i];
+		else
+			nFaces = tables.boundaryIdx - tables.boundaryIndices[i];
+		out << "    nFaces " << nFaces << ";\n";
+		out << "    startFace " << tables.boundaryIndices[i] << ";\n";
+		out << "  }\n";
+	}
+
+	if (nWallFaces > 0) {
+		out << "  walls \n";
+		out << "  {\n";
+		out << "    type wall;\n";
+		out << "    nFaces " << nWallFaces << ";\n";
+		out << "    startFace " << tables.boundaryIdx << ";\n";
+		out << "  }\n";
+	}
+
+	out << ")\n";
+	out << "\n//**********************************************************************************//\n";
+}
+
+void Volume::writeFOAMHeader(ofstream& out, const string& fileType, const string& foamClass, const string& object) const
 {
 	out << "/*--------------------------------*- C++ -*----------------------------------*/\n";
 	out << "| =========                 |                                                 |\n";
-	out << "| \\ / F ield | OpenFOAM: The Open Source CFD Toolbox           |\n";
-	out << "| \\ / O peration | Version:  v1812                                 |\n";
-	out << "|   \\ / A nd | Web:      www.OpenFOAM.com                      |\n";
-	out << "|    \\ / M anipulation  |                                                 |\n";
-	out << "/* -------------------------------------------------------------------------- - */\n";
+	out << "| \\       / F ield         | OpenFOAM: The Open Source CFD Toolbox           |\n";
+	out << "|  \\     /  O peration     | Version:  v1812                                 |\n";
+	out << "|   \\   /   A nd           | Web:      www.OpenFOAM.com                      |\n";
+	out << "|    \\ /    M anipulation  |                                                 |\n";
+	out << "\\* ---------------------------------------------------------------------------*/\n";
 	out << "FoamFile\n";
 	out << "	{\n";
-	out << "		version     2.0;\n";
-	out << "		format      binary;\n";
+	out << "		format      " << fileType << "; \n";
 	out << "		class       " << foamClass << ";\n";
-	out << "		arch        \"LSB; label = 32; scalar = 64\";\n";
 	out << "		location    \"constant / polyMesh\";\n";
 	out << "		object      " << object << ";\n";
 	out << "	}\n";
-	out << "		// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n";
+	out << "// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n";
 	out << "\n";
 	out << "\n";
 

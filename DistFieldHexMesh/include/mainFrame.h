@@ -75,13 +75,13 @@ public:
         const wxPoint& pos = wxDefaultPosition,
         const wxSize& size = wxDefaultSize,
         long style = wxDEFAULT_FRAME_STYLE,
-        const wxString& name = wxASCII_STR(wxFrameNameStr));
+        const wxString& name = wxString::FromAscii(wxFrameNameStr));
 
     virtual ~MainFrame();
 
     void addMenus();
     void addStatusBar();
-    void OnInternalIdle() wxOVERRIDE;
+    void OnInternalIdle();
 
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();

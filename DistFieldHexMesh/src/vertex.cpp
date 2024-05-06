@@ -46,16 +46,23 @@ bool FixedPt::operator < (const FixedPt& rhs) const
 }
 
 Vertex::Vertex(const Vertex& src)
+#if 0
 	: _lockType(src._lockType)
 	, _lockIdx(src._lockIdx)
 	, _pt(src._pt)
 	, _searchPt(src._searchPt)
+#else
+	: _pt(src._pt)
+	, _searchPt(src._searchPt)
+#endif
 {
 }
 
 Vertex& Vertex::operator = (const Vertex& rhs)
 {
+#if 0
 	_lockType = rhs._lockType;
+#endif
 	_pt = rhs._pt;
 	_searchPt = rhs._searchPt;
 
@@ -67,8 +74,11 @@ void Vertex::write(std::ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
+#if 0
 	out.write((char*)&_lockType, sizeof(_lockType));
 	out.write((char*)&_lockIdx, sizeof(_lockIdx));
+#endif
+
 #if USE_FIXED_PT
 	FixedPt _pt; // Fixed point representation of a double precisions point
 #else
@@ -83,8 +93,10 @@ void Vertex::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
 
+#if 0
 	in.read((char*)&_lockType, sizeof(_lockType));
 	in.read((char*)&_lockIdx, sizeof(_lockIdx));
+#endif
 #if USE_FIXED_PT
 	FixedPt _pt; // Fixed point representation of a double precisions point
 #else

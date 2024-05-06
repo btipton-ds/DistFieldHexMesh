@@ -37,6 +37,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <edge.h>
 
+template<class T>
+class Plane;
+
 namespace DFHM {
 
 class Edge;
@@ -77,6 +80,7 @@ public:
 
 		bool operator < (const CellId_SplitLevel& rhs) const;
 		operator const Index3DId& () const;
+		const Index3DId& getId() const;
 
 		size_t getSplitLevel() const;
 		void write(std::ostream& out) const;
@@ -118,6 +122,7 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVertex(const Index3DId& vertId) const;
+	bool coplanar(const Plane<double>& pl) const;
 	bool verifyUnique() const;
 	bool verifyTopology() const;
 

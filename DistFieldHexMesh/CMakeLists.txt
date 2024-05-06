@@ -162,7 +162,7 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${OpenGlDir}/src/phong.vert"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.vert"
-
+				
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${OpenGlDir}/src/phong.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
@@ -172,7 +172,7 @@ if(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-enum-enum-conversion -lX11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11 ")
 target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20)
 endif(WIN32)
 

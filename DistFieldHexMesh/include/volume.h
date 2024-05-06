@@ -114,6 +114,10 @@ private:
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
+	const Vertex& getVertex(const Index3DId& id) const;
+	const Polygon& getPolygon(const Index3DId& id) const;
+	const Polyhedron& getPolyhedron(const Index3DId& id) const;
+
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
@@ -125,10 +129,21 @@ private:
 	void findSharpVertices();
 	void findSharpEdgeGroups();
 
-	void consolidateBlocks();
-	void writePolyMeshPoints(const std::string& dirName) const;
-	void writePolyMeshFaces(const std::string& dirName) const;
-	void writeFOAMHeader(std::ofstream& out, const std::string& foamClass, const std::string& object) const;
+	struct PolymeshTables {
+		size_t innerIdx, numInner;
+		size_t boundaryIdx;
+		size_t boundaryIndices[6];
+		std::vector<Index3DId> vertIdxIdMap, faceIdxIdMap, cellIdxIdMap;
+		std::map<Index3DId, int> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
+	};
+	void createPolymeshTables(PolymeshTables& tables);
+	bool needToReverseNormal(const Polygon& face, const PolymeshTables& tables) const;
+	void writePolyMeshPoints(const std::string& dirName, const PolymeshTables& tables) const;
+	void writePolyMeshFaces(const std::string& dirName, const PolymeshTables& tables) const;
+	void writePolyMeshOwnerCells(const std::string& dirName, const PolymeshTables& tables) const;
+	void writePolyMeshNeighborCells(const std::string& dirName, const PolymeshTables& tables) const;
+	void writePolyMeshBoundaries(const std::string& dirName, const PolymeshTables& tables) const;
+	void writeFOAMHeader(std::ofstream& out, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
 
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;

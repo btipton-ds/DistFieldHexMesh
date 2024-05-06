@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <filesystem>
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
@@ -167,7 +168,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
 {
     _dhfmFilename = path + filename;
 
-    ifstream in(_dhfmFilename, iostream::in | ios::binary);
+    ifstream in(filesystem::path(_dhfmFilename), ifstream::binary);
 
     uint8_t version;
     in.read((char*)&version, sizeof(version));
@@ -212,7 +213,7 @@ void AppData::doSaveAs()
 
 void AppData::writeDHFM() const
 {
-    ofstream out(_dhfmFilename, ios::out | ios::trunc | ios::binary);
+    ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
     uint8_t version = 0;
     out.write((char*)&version, sizeof(version));
@@ -421,9 +422,9 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 8;
-        params.divsPerCurvatureRadius = 6;
-        params.divsPerGapCurvatureRadius = 9;
+        params.numCurvatureDivs = 16;
+        params.divsPerCurvatureRadius = 3;
+        params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;

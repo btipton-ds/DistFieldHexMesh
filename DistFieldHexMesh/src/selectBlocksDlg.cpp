@@ -71,10 +71,17 @@ SelectBlocksDlg::SelectBlocksDlg(MainFrame* parent, wxWindowID id, const wxStrin
 	int col3 = col2 + promptWidth + gap;
 	int baseRow = 5;
 #else
+	int gap = 3;
+	int descent = 3;
+	int promptWidth = 50;
+	int boxWidth = 20;
+	int boxHeight = 21;
+	int rowHeight = boxHeight + descent;
 	int col0 = 8;
-	int col1 = 150;
-	int rowHeight = 34;
-	int comboOffset = 6;
+	int col1 = col0 + promptWidth + gap;
+	int col2 = col1 + promptWidth + gap;
+	int col3 = col2 + promptWidth + gap;
+	int baseRow = 5;
 #endif
 
 	

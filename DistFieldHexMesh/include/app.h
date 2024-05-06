@@ -39,7 +39,7 @@ namespace DFHM {
 class App : public wxApp
 {
 public:
-	bool OnInit() wxOVERRIDE;
+	bool OnInit();
 };
 
 }

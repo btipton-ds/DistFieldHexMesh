@@ -331,6 +331,17 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 	return false;
 }
 
+bool Polygon::coplanar(const Plane<double>& pl) const
+{
+	for (const auto& vertId : _vertexIds) {
+		auto pt = getBlockPtr()->getVertexPoint(vertId);
+		if (fabs(pl.distanceToPoint(pt)) > Tolerance::sameDistTol())
+			return false;
+	}
+
+	return true;
+}
+
 void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
@@ -765,6 +776,11 @@ bool Polygon::CellId_SplitLevel::operator < (const CellId_SplitLevel& rhs) const
 }
 
 Polygon::CellId_SplitLevel::operator const Index3DId& () const
+{
+	return _cellId;
+}
+
+const Index3DId& Polygon::CellId_SplitLevel::getId() const
 {
 	return _cellId;
 }

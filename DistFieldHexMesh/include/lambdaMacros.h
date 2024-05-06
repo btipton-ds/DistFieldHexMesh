@@ -155,3 +155,4 @@ LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, face, _polygons, Polygon) \
 LAMBDA_CLIENT_REF_FUNC_IMPL(CLASS, cell, _polyhedra, Polyhedron) \
 LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, face, _polygons, Polygon) \
 LAMBDA_CLIENT_AVAIL_FUNC_IMPL(CLASS, cell, _polyhedra, Polyhedron) \
+

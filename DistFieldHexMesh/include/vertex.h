@@ -94,13 +94,14 @@ public:
 
 class Vertex : public ObjectPoolOwnerUser {
 public:
+#if 0
 	enum class LockType {
 		None,
 		Triangle,
 		Edge,
 		Vertex
 	};
-
+#endif
 	// Required for use with object pool
 
 
@@ -109,8 +110,10 @@ public:
 	Vertex(const Vector3d& pt);
 	Vertex& operator = (const Vertex& rhs);
 
+#if 0
 	void setLockType(LockType val, size_t idx);
 	LockType getLockType(size_t& idx) const;
+#endif
 
 	void setPoint(const Vector3d& pt);
 	Vector3d getPoint() const;
@@ -124,9 +127,10 @@ public:
 
 private:
 
+#if 0
 	LockType _lockType = LockType::None;
 	size_t _lockIdx = -1;
-
+#endif
 	/*
 	NOTE - In a single threaded architecture, it saves time to keep edges and faceIds stored with the vertex.
 	In this multi-threaded architecture, it leads to deadlocks, more mutexes and slows things down.
@@ -177,6 +181,7 @@ inline Vertex::Vertex(const Vector3d& pt)
 	setPoint(pt);
 }
 
+#if 0
 inline void Vertex::setLockType(LockType val, size_t idx)
 {
 	_lockType = val;
@@ -188,6 +193,7 @@ inline Vertex::LockType Vertex::getLockType(size_t& idx) const
 	idx = _lockIdx;
 	return _lockType;
 }
+#endif
 
 inline void Vertex::setPoint(const Vector3d& pt)
 {
