@@ -983,7 +983,7 @@ bool Volume::needToReverseNormal(const Polygon& face, const PolymeshTables& tabl
 		cellCtr = cell.calCentroid();
 
 		Vector3d v = cellCtr - faceCtr;
-		if (v.dot(n) > 0)
+		if (v.dot(n) < 0)
 			result = true;
 	}
 
@@ -1095,8 +1095,8 @@ void Volume::writePolyMeshNeighborCells(const std::string& dirName, const Polyme
 					if (cellIdx > maxIdx)
 						maxIdx = cellIdx;
 				}
+				indices.push_back(maxIdx);
 			}
-			indices.push_back(maxIdx);
 		}
 
 		fprintf(fOut, "%llu\n", indices.size());
