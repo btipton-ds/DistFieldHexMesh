@@ -890,16 +890,16 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 		}
 	}
 
-	tables.innerIdx = tables.faceIdxIdMap.size();
+	tables.innerIdx = (int)tables.faceIdxIdMap.size();
 	for (const auto& id : inner) {
 		int fIdx = (int)tables.faceIdxIdMap.size();
 		tables.faceIdxIdMap.push_back(id);
 		tables.faceIdIdxMap.insert(make_pair(id, fIdx));
 	}
-	tables.numInner = tables.faceIdxIdMap.size();
+	tables.numInner = (int)tables.faceIdxIdMap.size();
 
 	for (int i = 0; i < 6; i++) {
-		tables.boundaryIndices[i] = tables.faceIdxIdMap.size();
+		tables.boundaryIndices[i] = (int)tables.faceIdxIdMap.size();
 		for (const auto& id : outerBounds[i]) {
 			int fIdx = (int)tables.faceIdxIdMap.size();
 			tables.faceIdxIdMap.push_back(id);
@@ -907,7 +907,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 		}
 	}
 
-	tables.boundaryIdx = tables.faceIdxIdMap.size();
+	tables.boundaryIdx = (int)tables.faceIdxIdMap.size();
 	for (const auto& id : bounds) {
 		int fIdx = (int)tables.faceIdxIdMap.size();
 		tables.faceIdxIdMap.push_back(id);
@@ -927,24 +927,31 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 
 void Volume::writePolyMeshPoints(const string& dirName, const PolymeshTables& tables) const
 {
-	const char openParen = '(';
-	const char closeParen = ')';
-	ofstream out(dirName + "/points", ios_base::binary);
-	writeFOAMHeader(out, "binary", "vectorField", "points");
+	string filename = dirName + "/points";
+	FILE* fOut = fopen(filename.c_str(), "wb");
+	try {
+		writeFOAMHeader(fOut, "binary", "vectorField", "points");
 
-	out << tables.vertIdxIdMap.size() << "\n";
-	out.write(&openParen, 1);
-	for (const auto& vertId : tables.vertIdxIdMap) {
-		const auto& vert = getVertex(vertId);
-		auto pt = vert.getPoint();
+		fprintf(fOut, "%llu\n", tables.vertIdxIdMap.size());
+		fprintf(fOut, "(");
 
-		const double* pd = pt.data();
+		vector<double> vals;
+		vals.resize(3 * tables.vertIdxIdMap.size());
+		size_t idx = 0;
+		for (const auto& vertId : tables.vertIdxIdMap) {
+			const auto& vert = getVertex(vertId);
+			auto pt = vert.getPoint();
 
-		out.write((char*)pd, 3 * sizeof(double));
+			vals[idx++] = pt[0];
+			vals[idx++] = pt[1];
+			vals[idx++] = pt[2];
+		}
+		fwrite(vals.data(), sizeof(double), vals.size(), fOut);
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "//**********************************************************************************//\n");
+	} catch (...) {
 	}
-	out.write(&closeParen, 1);
-
-	out << "\n//**********************************************************************************//\n";
+	fclose(fOut);
 }
 
 bool Volume::needToReverseNormal(const Polygon& face, const PolymeshTables& tables) const
@@ -985,102 +992,123 @@ bool Volume::needToReverseNormal(const Polygon& face, const PolymeshTables& tabl
 
 void Volume::writePolyMeshFaces(const string& dirName, const PolymeshTables& tables) const
 {
-	const char openParen = '(';
-	const char closeParen = ')';
-	ofstream out(dirName + "/faces", ios_base::binary);
-	writeFOAMHeader(out, "binary", "faceCompactList", "faces");
+	string filename = dirName + "/faces";
+	FILE* fOut = fopen(filename.c_str(), "wb");
+	try {
+		writeFOAMHeader(fOut, "binary", "faceCompactList", "faces");
 
-	out << tables.faceIdxIdMap.size() << "\n";
-	out.write(&openParen, 1);
-
-	// Write poly index table
-	int idx = 0;
-	vector<int> faceIndices;
-	faceIndices.resize(tables.faceIdxIdMap.size());
-	for (size_t i = 0; i < tables.faceIdxIdMap.size(); i++) {
-		const auto& face = getPolygon(tables.faceIdxIdMap[i]);
-		idx += (int)face.getVertexIds().size();
-		faceIndices[i] = idx;
-	}
-	out.write((char*)faceIndices.data(), faceIndices.size() * sizeof(idx));
-	out.write(&closeParen, 1);
-	char buf[] = "\n";
-	out.write(buf, 1);
-
-	// Write the face vertex index list
-	vector<int> vertIndices;
-	vertIndices.reserve(tables.faceIdxIdMap.size() * 4);
-	for (const auto& faceId : tables.faceIdxIdMap) {
-		const auto& face = getPolygon(faceId);
-	
-		auto verts = face.getVertexIds();
-		if (needToReverseNormal(face, tables)) {
-			reverse(verts.begin(), verts.end());
+		// Write poly index table
+		// An extra entry is required to compute the number of vertices in the last face
+		// So, this is actually #faces + 1, not #faces.
+		int idx = 0;
+		vector<int> faceIndices;
+		faceIndices.resize(tables.faceIdxIdMap.size() + 1);
+		for (size_t i = 0; i < tables.faceIdxIdMap.size(); i++) {
+			const auto& face = getPolygon(tables.faceIdxIdMap[i]);
+			faceIndices[i] = idx;
+			idx += (int)face.getVertexIds().size();
 		}
-		for (const auto& vId : verts) {
-			vertIndices.push_back(tables.vertIdIdxMap.find(vId)->second);
+		faceIndices[faceIndices.size() - 1] = idx; // Append the index of the start of the next face, even though that face doesn't exist.
+
+		fprintf(fOut, "%llu\n", faceIndices.size());
+		fprintf(fOut, "(");
+
+		fwrite(faceIndices.data(), sizeof(int), faceIndices.size(), fOut);
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "\n");
+
+		// Write the face vertex index list
+		vector<int> vertIndices;
+		vertIndices.reserve(tables.faceIdxIdMap.size() * 4);
+		for (const auto& faceId : tables.faceIdxIdMap) {
+			const auto& face = getPolygon(faceId);
+
+			auto verts = face.getVertexIds();
+			if (needToReverseNormal(face, tables)) {
+				reverse(verts.begin(), verts.end());
+			}
+			for (const auto& vId : verts) {
+				vertIndices.push_back(tables.vertIdIdxMap.find(vId)->second);
+			}
 		}
+
+		fprintf(fOut, "%llu\n", vertIndices.size());
+		fprintf(fOut, "(");
+		fwrite(vertIndices.data(), sizeof(int), vertIndices.size(), fOut);
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "//**********************************************************************************//\n");
+	} catch (...) {
 	}
 
-	out << vertIndices.size() << "\n";
-	out.write(&openParen, 1);
-	out.write((char*)vertIndices.data(), vertIndices.size() * sizeof(idx));
-	out.write(&closeParen, 1);
-	out << "\n//**********************************************************************************//\n";
+	fclose(fOut);
 }
 
 void Volume::writePolyMeshOwnerCells(const std::string& dirName, const PolymeshTables& tables) const
 {
-	const char openParen = '(';
-	const char closeParen = ')';
-	ofstream out(dirName + "/owner", ios_base::binary);
-	writeFOAMHeader(out, "binary", "labelList", "owner");
-	
-	out << tables.faceIdxIdMap.size() << "\n";
-	out.write(&openParen, 1);
 
-	for (const auto& faceId : tables.faceIdxIdMap) {
-		const auto& face = getPolygon(faceId);
-		const auto& cellIds = face.getCellIds();
-		int minIdx = INT_MAX;
-		for (const auto& cellId : cellIds) {
-			int cellIdx = tables.cellIdIdxMap.find(cellId)->second;
-			if (cellIdx < minIdx)
-				minIdx = cellIdx;
+	string filename = dirName + "/owner";
+	FILE* fOut = fopen(filename.c_str(), "wb");
+	try {
+		writeFOAMHeader(fOut, "binary", "labelList", "owner");
+
+		vector<int> indices;
+		indices.reserve(tables.faceIdxIdMap.size());
+		for (const auto& faceId : tables.faceIdxIdMap) {
+			const auto& face = getPolygon(faceId);
+			const auto& cellIds = face.getCellIds();
+			int minIdx = INT_MAX;
+			for (const auto& cellId : cellIds) {
+				int cellIdx = tables.cellIdIdxMap.find(cellId)->second;
+				if (cellIdx < minIdx)
+					minIdx = cellIdx;
+			}
+			indices.push_back(minIdx);
 		}
-		out.write((char*)&minIdx, sizeof(minIdx));
+
+		fprintf(fOut, "%llu\n", indices.size());
+		fprintf(fOut, "(");
+		fwrite(indices.data(), sizeof(int), indices.size(), fOut);
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "//**********************************************************************************//\n");
+	} catch (...) {
 	}
 
-	out.write(&closeParen, 1);
-	out << "\n//**********************************************************************************//\n";
+	fclose(fOut);
 }
 
 void Volume::writePolyMeshNeighborCells(const std::string& dirName, const PolymeshTables& tables) const
 {
-	const char openParen = '(';
-	const char closeParen = ')';
-	ofstream out(dirName + "/neighbour ", ios_base::binary);
-	writeFOAMHeader(out, "binary", "labelList", "neighbour");
+	string filename = dirName + "/neighbour";
+	FILE* fOut = fopen(filename.c_str(), "wb");
+	try {
+		writeFOAMHeader(fOut, "binary", "labelList", "neighbour");
 
-	out << tables.numInner << "\n";
-	out.write(&openParen, 1);
-
-	for (const auto& faceId : tables.faceIdxIdMap) {
-		const auto& face = getPolygon(faceId);
-		const auto& cellIds = face.getCellIds();
-		if (cellIds.size() == 2) {
-			int maxIdx = 0;
-			for (const auto& id : cellIds) {
-				int cellIdx = tables.cellIdIdxMap.find(id)->second;
-				if (cellIdx > maxIdx)
-					maxIdx = (int)cellIdx;
+		vector<int> indices;
+		indices.reserve(tables.faceIdxIdMap.size());
+		for (const auto& faceId : tables.faceIdxIdMap) {
+			const auto& face = getPolygon(faceId);
+			const auto& cellIds = face.getCellIds();
+			int maxIdx = -1;
+			if (cellIds.size() == 2) {
+				for (const auto& cellId : cellIds) {
+					int cellIdx = tables.cellIdIdxMap.find(cellId)->second;
+					if (cellIdx > maxIdx)
+						maxIdx = cellIdx;
+				}
 			}
-			out.write((char*)&maxIdx, sizeof(maxIdx));
+			indices.push_back(maxIdx);
 		}
+
+		fprintf(fOut, "%llu\n", indices.size());
+		fprintf(fOut, "(");
+		fwrite(indices.data(), sizeof(int), indices.size(), fOut);
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "//**********************************************************************************//\n");
+	} catch (...) {
 	}
 
-	out.write(&closeParen, 1);
-	out << "\n//**********************************************************************************//\n";
+	fclose(fOut);
+
 }
 
 void Volume::writePolyMeshBoundaries(const std::string& dirName, const PolymeshTables& tables) const
@@ -1094,61 +1122,68 @@ void Volume::writePolyMeshBoundaries(const std::string& dirName, const PolymeshT
 		"top",
 	};
 
-	ofstream out(dirName + "/boundary", ios::binary);
-	writeFOAMHeader(out, "binary", "polyBoundaryMesh", "boundary");
-	size_t nWallFaces = tables.faceIdxIdMap.size() - tables.boundaryIdx;
-	int numBoundaries = 6;
-	if (nWallFaces > 0)
-		numBoundaries++;
+	string filename = dirName + "/boundary";
+	FILE* fOut = fopen(filename.c_str(), "wb");
+	try {
+		writeFOAMHeader(fOut, "binary", "polyBoundaryMesh", "boundary");
+		int nWallFaces = (int)tables.faceIdxIdMap.size() - tables.boundaryIdx;
+		int numBoundaries = 6;
+		if (nWallFaces > 0)
+			numBoundaries++;
 
-	out << numBoundaries << "\n";
-	out << "(\n";
-	for (int i = 0; i < 6; i++) {
-		out << "  " << names[i] << "\n";
-		out << "  {\n";
-		out << "    type patch;\n";
-		size_t nFaces;
-		if (i + 1 < 6) 
-			nFaces = tables.boundaryIndices[i + 1] - tables.boundaryIndices[i];
-		else
-			nFaces = tables.boundaryIdx - tables.boundaryIndices[i];
-		out << "    nFaces " << nFaces << ";\n";
-		out << "    startFace " << tables.boundaryIndices[i] << ";\n";
-		out << "  }\n";
+		fprintf(fOut, "%d\n", numBoundaries);
+		fprintf(fOut, "(\n");
+
+		for (int i = 0; i < 6; i++) {
+			fprintf(fOut, "  %s\n", names[i].c_str());
+			fprintf(fOut, "  {\n");
+			fprintf(fOut, "    type patch;\n");
+			int nFaces;
+			if (i + 1 < 6)
+				nFaces = tables.boundaryIndices[i + 1] - tables.boundaryIndices[i];
+			else
+				nFaces = tables.boundaryIdx - tables.boundaryIndices[i];
+			fprintf(fOut, "    nFaces %d;\n", nFaces);
+			fprintf(fOut, "    startFace %d;\n", tables.boundaryIndices[i]);
+			fprintf(fOut, "  }\n");
+		}
+
+		if (nWallFaces > 0) {
+			fprintf(fOut, "  walls\n");
+			fprintf(fOut, "  {\n");
+			fprintf(fOut, "    type wall;\n");
+			fprintf(fOut, "    nFaces %d;\n", nWallFaces);
+			fprintf(fOut, "    startFace %d;\n", tables.boundaryIdx);
+			fprintf(fOut, "  }\n");
+		}
+
+		fprintf(fOut, ")\n");
+		fprintf(fOut, "//**********************************************************************************//\n");
+	} catch (...) {
 	}
 
-	if (nWallFaces > 0) {
-		out << "  walls \n";
-		out << "  {\n";
-		out << "    type wall;\n";
-		out << "    nFaces " << nWallFaces << ";\n";
-		out << "    startFace " << tables.boundaryIdx << ";\n";
-		out << "  }\n";
-	}
-
-	out << ")\n";
-	out << "\n//**********************************************************************************//\n";
+	fclose(fOut);
 }
 
-void Volume::writeFOAMHeader(ofstream& out, const string& fileType, const string& foamClass, const string& object) const
+void Volume::writeFOAMHeader(FILE* fOut, const string& fileType, const string& foamClass, const string& object) const
 {
-	out << "/*--------------------------------*- C++ -*----------------------------------*/\n";
-	out << "| =========                 |                                                 |\n";
-	out << "| \\       / F ield         | OpenFOAM: The Open Source CFD Toolbox           |\n";
-	out << "|  \\     /  O peration     | Version:  v1812                                 |\n";
-	out << "|   \\   /   A nd           | Web:      www.OpenFOAM.com                      |\n";
-	out << "|    \\ /    M anipulation  |                                                 |\n";
-	out << "\\* ---------------------------------------------------------------------------*/\n";
-	out << "FoamFile\n";
-	out << "	{\n";
-	out << "		format      " << fileType << "; \n";
-	out << "		class       " << foamClass << ";\n";
-	out << "		location    \"constant / polyMesh\";\n";
-	out << "		object      " << object << ";\n";
-	out << "	}\n";
-	out << "// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n";
-	out << "\n";
-	out << "\n";
+	fprintf(fOut, "/*--------------------------------*- C++ -*----------------------------------*\\\n");
+	fprintf(fOut, "  =========                 |\n");
+	fprintf(fOut, "  \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox\n");
+	fprintf(fOut, "   \\\\    /   O peration     | Version:  v1812\n");
+	fprintf(fOut, "    \\\\  /    A nd           | Web:      www.OpenFOAM.com\n");
+	fprintf(fOut, "     \\\\/     M anipulation  |\n");
+	fprintf(fOut, "\\* --------------------------------------------------------------------------*/\n");
+	fprintf(fOut, "FoamFile\n");
+	fprintf(fOut, "	{\n");
+	fprintf(fOut, "		format      %s;\n", fileType.c_str());
+	fprintf(fOut, "		class       %s;\n", foamClass.c_str());
+	fprintf(fOut, "		location    \"constant/polyMesh\";\n");
+	fprintf(fOut, "		object      %s;\n", object.c_str());
+	fprintf(fOut, "	}\n");
+	fprintf(fOut, "//* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *//\n");
+	fprintf(fOut, "\n");
+	fprintf(fOut, "\n");
 
 }
 

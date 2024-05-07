@@ -130,9 +130,9 @@ private:
 	void findSharpEdgeGroups();
 
 	struct PolymeshTables {
-		size_t innerIdx, numInner;
-		size_t boundaryIdx;
-		size_t boundaryIndices[6];
+		int innerIdx, numInner;
+		int boundaryIdx;
+		int boundaryIndices[6];
 		std::vector<Index3DId> vertIdxIdMap, faceIdxIdMap, cellIdxIdMap;
 		std::map<Index3DId, int> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
 	};
@@ -143,7 +143,7 @@ private:
 	void writePolyMeshOwnerCells(const std::string& dirName, const PolymeshTables& tables) const;
 	void writePolyMeshNeighborCells(const std::string& dirName, const PolymeshTables& tables) const;
 	void writePolyMeshBoundaries(const std::string& dirName, const PolymeshTables& tables) const;
-	void writeFOAMHeader(std::ofstream& out, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
+	void writeFOAMHeader(FILE* fOut, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
 
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;
