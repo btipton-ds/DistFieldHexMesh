@@ -118,8 +118,11 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
+	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
+	void splitAtSharpVertices(const BuildCFDParams& params, bool multiCore);
+	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
 	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);

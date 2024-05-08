@@ -301,6 +301,20 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
 
+	createBlocks(params, blockSpan, multiCore);
+	splitSimple(params, multiCore);
+	splitAtCurvature(params, multiCore);
+	splitAtSharpVertices(params, multiCore);
+	splitAtSharpEdges(params, multiCore);
+
+	assert(verifyTopology(multiCore));
+
+	cout << "Num polyhedra: " << numPolyhedra() << "\n";
+	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
+}
+
+void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
+{
 #ifdef _WIN32
 	LARGE_INTEGER startCount, freq;
 	QueryPerformanceFrequency(&freq);
@@ -311,52 +325,20 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
-	}, _blocks.size(), multiCore);
+		}, _blocks.size(), multiCore);
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runLambda([this, &blockSpan](size_t linearIdx)->bool {
 		_blocks[linearIdx]->createSubBlocks(TS_REAL);
 		return true;
-	}, multiCore);
+		}, multiCore);
 
 #ifdef _WIN32
 	LARGE_INTEGER endCount;
 	QueryPerformanceCounter(&endCount);
 	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
 	cout << "Time for createSubBlocks: " << deltaT << " secs\n";
-	startCount = endCount;
 #endif // _WIN32
-
-	if (params.numSimpleDivs > 0) {
-#if 1
-		splitSimple(params, multiCore);
-#ifdef _WIN32
-		QueryPerformanceCounter(&endCount);
-		deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-		cout << "Time for splitAllCellsAtCentroid: " << deltaT << " secs\n";
-		startCount = endCount;
-#endif // _WIN32
-//		assert(verifyTopology(multiCore));
-	}
-
-	if (params.numCurvatureDivs > 0) {
-#ifdef _WIN32
-		startCount = endCount;
-#endif // _WIN32
-		splitAtCurvature(params, multiCore);
-
-#ifdef _WIN32
-		QueryPerformanceCounter(&endCount);
-		deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-		cout << "Time for splitAllCellsByCurvature: " << deltaT << " secs\n";
-		startCount = endCount;
-#endif // _WIN32
-#endif
-	}
-	assert(verifyTopology(multiCore));
-
-	cout << "Num polyhedra: " << numPolyhedra() << "\n";
-	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 }
 
 /*
@@ -376,72 +358,112 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 {
-	for (size_t i = 0; i < params.numSimpleDivs; i++) {
+	if (params.numSimpleDivs > 0) {
+#ifdef _WIN32
+		LARGE_INTEGER startCount, endCount, freq;
+		QueryPerformanceFrequency(&freq);
+		QueryPerformanceCounter(&startCount);
+#endif // _WIN32
+
+		for (size_t i = 0; i < params.numSimpleDivs; i++) {
 #if LOGGING_ENABLED
-		runLambda([this, i](size_t linearIdx)->bool {
-			auto logger = _blocks[linearIdx]->getLogger();
-			auto& out = logger->getStream();
-			LOG(out << "\n");
-			LOG(out << "*****************************************************************************************************************\n");
-			LOG(out << "splitSimple(" << i << ")  ********************************************************************************************\n");
-			LOG(out << "*****************************************************************************************************************\n");
-			return true;
-		}, multiCore);
+			runLambda([this, i](size_t linearIdx)->bool {
+				auto logger = _blocks[linearIdx]->getLogger();
+				auto& out = logger->getStream();
+				LOG(out << "\n");
+				LOG(out << "*****************************************************************************************************************\n");
+				LOG(out << "splitSimple(" << i << ")  ********************************************************************************************\n");
+				LOG(out << "*****************************************************************************************************************\n");
+				return true;
+				}, multiCore);
 #endif // LOGGING_ENABLED
 
-		runLambda([this](size_t linearIdx)->bool {
-			_blocks[linearIdx]->incrementSplitStack(true);
-			return true;
-		}, multiCore);
+			runLambda([this](size_t linearIdx)->bool {
+				_blocks[linearIdx]->incrementSplitStack(true);
+				return true;
+				}, multiCore);
 
-		runLambda([this](size_t linearIdx)->bool {
-			_blocks[linearIdx]->setNeedsSimpleSplit();
-			return true;
-		},  multiCore);
+			runLambda([this](size_t linearIdx)->bool {
+				_blocks[linearIdx]->setNeedsSimpleSplit();
+				return true;
+				}, multiCore);
 
-		finishSplits(multiCore);
+			finishSplits(multiCore);
+		}
+
+#ifdef _WIN32
+		QueryPerformanceCounter(&endCount);
+		double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+		cout << "Time for splitSimple: " << deltaT << " secs\n";
+		startCount = endCount;
+#endif // _WIN32
+		//		assert(verifyTopology(multiCore));
 	}
 }
 
 void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
-	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
-	double sinEdgeAngle = sin(sharpAngleRadians);
+	if (params.numCurvatureDivs > 0) {
+#ifdef _WIN32
+		LARGE_INTEGER startCount, endCount, freq;
+		QueryPerformanceFrequency(&freq);
+		QueryPerformanceCounter(&startCount);
+#endif // _WIN32
 
-	size_t num = params.numCurvatureDivs;
-	for (size_t i = 0; i < num; i++) {
+		double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
+		double sinEdgeAngle = sin(sharpAngleRadians);
+
+		size_t num = params.numCurvatureDivs;
+		for (size_t i = 0; i < num; i++) {
 #if LOGGING_ENABLED
-		runLambda([this, i](size_t linearIdx)->bool {
-			auto logger = _blocks[linearIdx]->getLogger();
-			auto& out = logger->getStream();
-			LOG(out << "\n");
-			LOG(out << "*****************************************************************************************************************\n");
-			LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
-			LOG(out << "*****************************************************************************************************************\n");
-			return true;
-		}, multiCore);
+			runLambda([this, i](size_t linearIdx)->bool {
+				auto logger = _blocks[linearIdx]->getLogger();
+				auto& out = logger->getStream();
+				LOG(out << "\n");
+				LOG(out << "*****************************************************************************************************************\n");
+				LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
+				LOG(out << "*****************************************************************************************************************\n");
+				return true;
+				}, multiCore);
 #endif // LOGGING_ENABLED
 
-		runLambda([this](size_t linearIdx)->bool {
-			_blocks[linearIdx]->incrementSplitStack(true);
-			return true;
-		}, multiCore);
+			runLambda([this](size_t linearIdx)->bool {
+				_blocks[linearIdx]->incrementSplitStack(true);
+				return true;
+				}, multiCore);
 
-		bool changed = false;
-		runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->setNeedToSplitConditional(params))
-				changed = true;
-			return true;
-		},  multiCore);
+			bool changed = false;
+			runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
+				if (_blocks[linearIdx]->setNeedToSplitConditional(params))
+					changed = true;
+				return true;
+				}, multiCore);
 
-		finishSplits(multiCore);
-//		assert(verifyTopology(multiCore));
+			finishSplits(multiCore);
+			//		assert(verifyTopology(multiCore));
 
-		if (!changed) {
-			cout << "No more splits required: " << i << "\n";
-			break;
+			if (!changed) {
+				cout << "No more splits required: " << i << "\n";
+				break;
+			}
 		}
+#ifdef _WIN32
+		QueryPerformanceCounter(&endCount);
+		double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+		cout << "Time for splitAtCurvature: " << deltaT << " secs\n";
+		startCount = endCount;
+#endif // _WIN32
 	}
+}
+
+void Volume::splitAtSharpVertices(const BuildCFDParams& params, bool multiCore)
+{
+
+}
+
+void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
+{
+
 }
 
 void Volume::finishSplits(bool multiCore)
