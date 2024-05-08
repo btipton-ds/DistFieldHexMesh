@@ -206,6 +206,7 @@ private:
 
 	void setNeedsSimpleSplit();
 	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool setNeedsSplitDueToSplitFaces(const BuildCFDParams& params);
 	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);
 	bool setNeedToSplitSharpEdges(const BuildCFDParams& params);
 	void dumpOpenCells() const;

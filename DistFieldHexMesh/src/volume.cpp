@@ -310,7 +310,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitAtSharpVertices(params, multiCore);
+	splitDueToSplitFaces(params, multiCore);
+//	splitAtSharpVertices(params, multiCore);
 	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
@@ -450,6 +451,33 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		startCount = endCount;
 #endif // _WIN32
 	}
+}
+
+void Volume::splitDueToSplitFaces(const BuildCFDParams& params, bool multiCore)
+{
+#ifdef _WIN32
+	LARGE_INTEGER startCount, endCount, freq;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&startCount);
+#endif // _WIN32
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		runLambda([this, &params, &changed](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->setNeedsSplitDueToSplitFaces(params))
+				changed = true;
+			return true;
+			}, multiCore);
+
+		if (changed)
+			finishSplits(multiCore);
+	}
+#ifdef _WIN32
+	QueryPerformanceCounter(&endCount);
+	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	cout << "Time for splitDueToSplitFaces: " << deltaT << " secs\n";
+	startCount = endCount;
+#endif // _WIN32
 }
 
 void Volume::splitAtSharpVertices(const BuildCFDParams& params, bool multiCore)

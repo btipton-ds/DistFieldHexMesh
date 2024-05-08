@@ -422,12 +422,12 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 5;
-        params.divsPerCurvatureRadius = 5;
-        params.divsPerGapCurvatureRadius = 8;
+        params.numCurvatureDivs = 10;
+        params.divsPerCurvatureRadius = 3;
+        params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
-        params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 8;
+        params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;
         params.minSplitEdgeLengthSharpVertex_meters = 0.001;
         params.sharpAngle_degrees = SHARP_EDGE_ANGLE_RADIANS;
 

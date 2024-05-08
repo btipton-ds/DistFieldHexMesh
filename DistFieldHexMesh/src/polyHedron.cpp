@@ -597,6 +597,33 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 	return needToSplit;
 }
 
+bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
+{
+	set<Index3DId> faceIds;
+	if (getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
+		cellRefFunc(_thisId, [&faceIds](const Polyhedron& refCell) {
+			faceIds = refCell.getFaceIds();
+		});
+	}
+
+	int numSplitFaces = 0;
+	for (const auto& faceId : faceIds) {
+		if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
+			faceRefFunc(faceId,[&numSplitFaces](const Polygon& face) {
+				if (!face.getSplitFaceProductIds().empty()) {
+					numSplitFaces++;
+				}
+			});
+		}
+	}
+	if (numSplitFaces > 2) {
+		setNeedToSplitAtPoint();
+		return true;
+	}
+
+	return false;
+}
+
 bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params)
 {
 	auto bbox = getBoundingBox();

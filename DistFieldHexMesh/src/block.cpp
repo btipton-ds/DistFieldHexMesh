@@ -806,6 +806,19 @@ bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
 	return result;
 }
 
+bool Block::setNeedsSplitDueToSplitFaces(const BuildCFDParams& params)
+{
+	bool result = false;
+	_modelData._polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
+		if (polyhedronExists(TS_REFERENCE, id)) {
+			if (cell.needToSplitDueToSplitFaces(params))
+				result = true;
+		}
+	});
+
+	return result;
+}
+
 bool Block::setNeedToSplitSharpVertices(const BuildCFDParams& params)
 {
 	bool result = false;
