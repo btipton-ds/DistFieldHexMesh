@@ -130,13 +130,16 @@ private:
 	void findSharpEdgeGroups();
 
 	struct PolymeshTables {
-		int innerIdx, numInner;
-		int boundaryIdx;
-		int boundaryIndices[6];
+		int32_t numInner;
+		int32_t boundaryIdx;
+		int32_t boundaryIndices[6];
 		std::vector<Index3DId> vertIdxIdMap, faceIdxIdMap, cellIdxIdMap;
-		std::map<Index3DId, int> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
+		std::map<Index3DId, int32_t> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
 	};
+
 	void createPolymeshTables(PolymeshTables& tables);
+	int getFaceOwnerIdx(const Index3DId& faceId, const PolymeshTables& tables) const;
+	int getFaceNeighbourIdx(const Index3DId& faceId, const PolymeshTables& tables) const;
 	bool needToReverseNormal(const Polygon& face, const PolymeshTables& tables) const;
 	void writePolyMeshPoints(const std::string& dirName, const PolymeshTables& tables) const;
 	void writePolyMeshFaces(const std::string& dirName, const PolymeshTables& tables) const;

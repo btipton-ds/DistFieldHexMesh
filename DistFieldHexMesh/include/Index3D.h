@@ -35,6 +35,7 @@ namespace DFHM {
 class Volume;
 
 using Index3DBaseType = unsigned short; // This is large enough for 65536 x 65536 x 65536 block
+#define Index3DBaseType_MAX USHRT_MAX
 
 // Base class with protected constructors prevents accidental swapping of Index3D and Index3DId
 class Index3DBase
