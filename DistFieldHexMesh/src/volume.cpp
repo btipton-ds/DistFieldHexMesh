@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 
 #include <tm_ioUtil.h>
+#include <tm_ray.h>
 #include <triMesh.h>
 
 #include <block.h>
@@ -124,7 +125,7 @@ void Volume::findFeatures()
 	_pModelTriMesh->buildCentroids(false);
 	_pModelTriMesh->buildNormals(false);
 
-	findSharpVertices();
+	findSharpVertices(_pModelTriMesh, SHARP_EDGE_ANGLE_RADIANS, _sharpVertIndices);
 	findSharpEdgeGroups();
 }
 
@@ -139,39 +140,44 @@ void Volume::findSharpEdgeGroups()
 	}
 }
 
-void Volume::findSharpVertices()
+void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices)
 {
-	const double cosSharpAngle = cos(M_PI - getSharpAngleRad());
+	const double sinSharpAngle = sin(sharpAngleRadians);
 
-	size_t numVerts = _pModelTriMesh->numVertices();
+	size_t numVerts = pMesh->numVertices();
 	for (size_t vIdx = 0; vIdx < numVerts; vIdx++) {
-		const auto& vert = _pModelTriMesh->getVert(vIdx);
+		const auto& vert = pMesh->getVert(vIdx);
 		double maxDp = 1;
 		const auto& edgeIndices = vert._edgeIndices;
-		for (size_t i = 0; i < edgeIndices.size(); i++) {
-			auto edge0 = _pModelTriMesh->getEdge(edgeIndices[i]);
-			size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
-			const auto& vert0 = _pModelTriMesh->getVert(opIdx0);
-			Vector3d v0 = (vert0._pt - vert._pt).normalized();
+		vector<Vector3d> radiantVectors;
+		for (size_t edgeIdx : edgeIndices) {
+			if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+				auto edge0 = pMesh->getEdge(edgeIdx);
+				size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
+				const auto& vert0 = pMesh->getVert(opIdx0);
+				Vector3d v0 = (vert0._pt - vert._pt).normalized();
+				radiantVectors.push_back(v0);
+			}
+		}
 
-			for (size_t j = i + 1; j < edgeIndices.size(); j++) {
-				auto edge1 = _pModelTriMesh->getEdge(edgeIndices[j]);
-				size_t opIdx1 = edge1._vertIndex[0] == vIdx ? edge1._vertIndex[1] : edge1._vertIndex[0];
-				const auto& vert1 = _pModelTriMesh->getVert(opIdx1);
-				Vector3d v1 = (vert1._pt - vert._pt).normalized();
+		if (radiantVectors.size() < 2)
+			continue;
 
-				double dp = v0.dot(v1);
-				if (dp < maxDp) {
-					maxDp = dp;
-					if (maxDp < cosSharpAngle)
-						break;
+		bool hasSmoothEdgePair = false;
+		for (size_t i = 0; i < radiantVectors.size(); i++) {
+			const auto& v0 = radiantVectors[i];
+			for (size_t j = i + 1; j < radiantVectors.size(); j++) {
+				const auto& v1 = -radiantVectors[j];
+				double cp = v1.cross(v0).norm();
+				if (cp < sinSharpAngle) {
+					hasSmoothEdgePair = true;
+					break;
 				}
 			}
-			if (maxDp < cosSharpAngle)
-				break;
 		}
-		if (maxDp > cosSharpAngle) {
-			_sharpVertIndices.insert(vIdx);
+
+		if (!hasSmoothEdgePair) {
+			vertIndices.push_back(vIdx);
 		}
 	}
 }
@@ -379,14 +385,9 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 #endif // LOGGING_ENABLED
 
 			runLambda([this](size_t linearIdx)->bool {
-				_blocks[linearIdx]->incrementSplitStack(true);
-				return true;
-				}, multiCore);
-
-			runLambda([this](size_t linearIdx)->bool {
 				_blocks[linearIdx]->setNeedsSimpleSplit();
 				return true;
-				}, multiCore);
+			}, multiCore);
 
 			finishSplits(multiCore);
 		}
@@ -424,20 +425,15 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 				LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
 				LOG(out << "*****************************************************************************************************************\n");
 				return true;
-				}, multiCore);
+			}, multiCore);
 #endif // LOGGING_ENABLED
-
-			runLambda([this](size_t linearIdx)->bool {
-				_blocks[linearIdx]->incrementSplitStack(true);
-				return true;
-				}, multiCore);
 
 			bool changed = false;
 			runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
 				if (_blocks[linearIdx]->setNeedToSplitConditional(params))
 					changed = true;
 				return true;
-				}, multiCore);
+			}, multiCore);
 
 			finishSplits(multiCore);
 			//		assert(verifyTopology(multiCore));
@@ -458,7 +454,30 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::splitAtSharpVertices(const BuildCFDParams& params, bool multiCore)
 {
+#ifdef _WIN32
+	LARGE_INTEGER startCount, endCount, freq;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&startCount);
+#endif // _WIN32
 
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		runLambda([this, &params, &changed](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->setNeedToSplitSharpVertices(params))
+				changed = true;
+			return true;
+		}, multiCore);
+
+		if (changed)
+			finishSplits(multiCore);
+	}
+#ifdef _WIN32
+	QueryPerformanceCounter(&endCount);
+	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	cout << "Time for splitAtSharpVertices: " << deltaT << " secs\n";
+	startCount = endCount;
+#endif // _WIN32
 }
 
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
@@ -468,23 +487,6 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool multiCore)
 {
-	bool addedSplits = true;
-	while (addedSplits) {
-		addedSplits = false;
-		// Create a new layer on the split stack
-		runLambda([this](size_t linearIdx)->bool {
-			_blocks[linearIdx]->incrementSplitStack(false);
-			return true;
-		}, multiCore);
-
-		runLambda([this, &addedSplits](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->propogateNeedsSplit()) {
-				addedSplits = true;
-			}
-			return true;
-		}, multiCore);
-	}
-
 	splitTopology(multiCore);
 
 	//	assert(verifyTopology(multiCore));

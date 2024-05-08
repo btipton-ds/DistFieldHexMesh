@@ -134,6 +134,7 @@ public:
 
 	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
+	double distanceToPoint(const Vector3d& pt) const;
 	Vector3d calUnitNormal() const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;

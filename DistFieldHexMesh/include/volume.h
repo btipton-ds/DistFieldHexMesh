@@ -54,6 +54,7 @@ public:
 
 	static void setVolDim(const Index3D& size);
 	static const Index3D& volDim();
+	static void findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices);
 
 	void startOperation();
 	void endOperation();
@@ -77,7 +78,7 @@ public:
 	size_t numPolyhedra() const;
 	double getSharpAngleRad() const;
 
-	const std::set<size_t>& getSharpVertIndices() const;
+	const std::vector<size_t>& getSharpVertIndices() const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
@@ -129,7 +130,6 @@ private:
 	void dumpOpenCells(bool multiCore) const;
 
 	void findFeatures();
-	void findSharpVertices();
 	void findSharpEdgeGroups();
 
 	struct PolymeshTables {
@@ -169,7 +169,8 @@ private:
 
 	std::vector<Vector3d> _cornerPts;
 	std::vector<std::shared_ptr<Block>> _blocks;
-	std::set<size_t> _sharpVertIndices, _sharpEdgeIndices;
+	std::set<size_t> _sharpEdgeIndices;
+	std::vector<size_t> _sharpVertIndices;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
@@ -216,7 +217,7 @@ inline double Volume::getSharpAngleRad() const
 	return _sharpAngleRad;
 }
 
-inline const std::set<size_t>& Volume::getSharpVertIndices() const
+inline const std::vector<size_t>& Volume::getSharpVertIndices() const
 {
 	return _sharpVertIndices;
 }

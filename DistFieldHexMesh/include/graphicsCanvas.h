@@ -80,7 +80,7 @@ public:
     void beginFaceTesselation(bool useModel);
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
-    void endFaceTesselation(const OGLIndices* pTriTess, bool smoothNormals);
+    void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
     void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
 
     void beginEdgeTesselation(bool useModel);
@@ -217,10 +217,11 @@ inline void GraphicsCanvas::beginFaceTesselation(bool useModel)
     _activeVBOs->_faceVBO.beginFaceTesselation();
 }
 
-inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, bool smoothNormals)
+inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
 {
     _activeVBOs->_faceVBO.endFaceTesselation(smoothNormals);
     _activeVBOs->_pTriTess = pTriTess;
+    _activeVBOs->_pSharpVertTess = pSharpVertTess;
     _activeVBOs->_faceTessellations.clear();
 
     changeFaceViewElements();

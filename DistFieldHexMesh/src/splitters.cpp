@@ -180,7 +180,8 @@ bool PolyhedronSplitter::doConditionalSplitAtCentroid()
 {
 	Vector3d ctr;
 	_pBlock->cellAvailFunc(_polyhedronId, TS_REFERENCE, [&ctr](const Polyhedron& cell) {
-		ctr = cell.calCentroid();
+		if (!cell.hasDefinedSplitPoint(ctr))
+			ctr = cell.calCentroid();
 	});
 
 	return doConditionalSplitAtPoint(ctr);
@@ -240,7 +241,7 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 	for (const auto& faceId : faceIds) {
 
 		PolygonSplitter splitter(_pBlock, faceId);
-		splitter.doConditionalSplitAtCentroid();
+		splitter.doConditionalSplitAtPoint(pt);
 
 		_pBlock->faceRefFunc(faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());

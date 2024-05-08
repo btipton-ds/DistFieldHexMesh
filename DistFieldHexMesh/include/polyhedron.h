@@ -66,11 +66,14 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
+	void setDefinedSplitPoint(const Vector3d& splitPt);
+	bool hasDefinedSplitPoint(Vector3d& splitPt) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	void setNeedToSplitAtCentroid();
+	void setNeedToSplitAtPoint();
 	void setNeedToMakeReference();
-	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool needToSplitConditional(const BuildCFDParams& params);
+	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 
@@ -117,6 +120,10 @@ private:
 
 	std::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
+
+	bool _needsConditionalSplitTest = true;
+	bool _hasSplitPt = false;
+	Vector3d _splitPt;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;

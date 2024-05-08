@@ -204,12 +204,10 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
 
-	void incrementSplitStack(bool clear);
 	void setNeedsSimpleSplit();
-	bool setNeedToSplitConditional
-	
-	(const BuildCFDParams& params);
-	bool propogateNeedsSplit();
+	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);
+	bool setNeedToSplitSharpEdges(const BuildCFDParams& params);
 	void dumpOpenCells() const;
 
 	bool splitRequiredPolyhedra();
@@ -224,6 +222,7 @@ private:
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
 
+	bool _hadConditionalSplits = true;
 	Index3D _blockIdx;
 
 	Volume* _pVol;

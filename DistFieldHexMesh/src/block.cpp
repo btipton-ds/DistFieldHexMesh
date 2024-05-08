@@ -771,10 +771,6 @@ bool Block::load()
 	return true;
 }
 
-void Block::incrementSplitStack(bool clear)
-{
-}
-
 void Block::setNeedsSimpleSplit()
 {
 #if LOGGING_ENABLED
@@ -785,7 +781,7 @@ void Block::setNeedsSimpleSplit()
 #endif
 
 	_modelData._polyhedra.iterateInOrder([](const Index3DId& id, Polyhedron& cell) {
-		cell.setNeedToSplitAtCentroid();
+		cell.setNeedToSplitAtPoint();
 	});
 }
 
@@ -797,14 +793,45 @@ bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
 	out << "Block[" << _blockIdx << "]::setNeedToSplitConditional()\n";
 	Logger::Indent indent;
 #endif
-
+	if (!_hadConditionalSplits)
+		return false;
 	bool result = false;
 	_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.setNeedToSplitConditional(params))
+		if (cell.needToSplitConditional(params))
 			result = true;
 	});
 
+	_hadConditionalSplits = result;
+
 	return result;
+}
+
+bool Block::setNeedToSplitSharpVertices(const BuildCFDParams& params)
+{
+	bool result = false;
+	auto pModelMesh = getModelMesh();
+	const auto& sharpVertices = _pVol->getSharpVertIndices();
+	bool found = false;
+	for (size_t vIdx : sharpVertices) {
+		const Vector3d& pt = pModelMesh->getVert(vIdx)._pt;
+		if (_boundBox.contains(pt)) {
+			found = true;
+			break;
+		}
+	}
+	if (found) {
+		_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
+			if (cell.setNeedToSplitSharpVertices(params))
+				result = true;
+		});
+	}
+
+	return result;
+}
+
+bool Block::setNeedToSplitSharpEdges(const BuildCFDParams& params)
+{
+	return false;
 }
 
 void Block::dumpObj(const vector<Index3DId>& cellIds) const
@@ -823,15 +850,6 @@ void Block::dumpObj(const vector<Index3DId>& cellIds) const
 			_pVol->writeObj(ss.str(), { cell.getId() });
 		});
 	}
-}
-
-bool Block::propogateNeedsSplit()
-{
-	bool result = false;
-
-
-
-	return result;
 }
 
 void Block::dumpOpenCells() const

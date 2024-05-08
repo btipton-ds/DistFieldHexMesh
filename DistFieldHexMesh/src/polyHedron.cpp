@@ -58,6 +58,8 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
+	, _hasSplitPt(src._hasSplitPt)
+	, _splitPt(src._splitPt)
 {
 }
 
@@ -65,6 +67,8 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	clearCache();
 	_faceIds = rhs._faceIds;
+	_hasSplitPt = rhs._hasSplitPt;
+	_splitPt = rhs._splitPt;
 
 	return *this;
 }
@@ -375,6 +379,21 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
+void Polyhedron::setDefinedSplitPoint(const Vector3d& splitPt)
+{
+	_hasSplitPt = true;
+	_splitPt = splitPt;
+}
+
+bool Polyhedron::hasDefinedSplitPoint(Vector3d& splitPt) const
+{
+	if (_hasSplitPt) {
+		splitPt = _splitPt;
+		return true;
+	}
+	return false;
+}
+
 bool Polyhedron::needToImprintTVertices() const
 {
 	return !isClosed();
@@ -441,7 +460,7 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 	}
 }
 
-void Polyhedron::setNeedToSplitAtCentroid()
+void Polyhedron::setNeedToSplitAtPoint()
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -509,12 +528,15 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 	return blockingCellIds.empty();
 }
 
-bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
+bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
 	auto& out = pLogger->getStream();
 #endif
+	if (!_needsConditionalSplitTest)
+		return false;
+	_needsConditionalSplitTest = false;
 	CBoundingBox3Dd bbox = getBoundingBox();
 
 	bool needToSplit = false;
@@ -531,17 +553,19 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 			maxEdgeLength = l;
 	}
 
-#if 1 // Split at sharp vertices
+#if 0 // Split at sharp vertices
 	if (maxEdgeLength > params.minSplitEdgeLengthSharpVertex_meters) {
+		int numSharps = 0;
 		auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 		for (size_t vertIdx : sharpVerts) {
 			auto pTriMesh = getBlockPtr()->getModelMesh();
 			Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt)) {
-				needToSplit = true;
-				break;
+				numSharps++;
 			}
 		}
+		if (numSharps > 1)
+			needToSplit = true;
 	}
 #endif
 
@@ -567,10 +591,38 @@ bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 	if (needToSplit) {
 		Logger::Indent indent;
 		LOG(out << Logger::Pad() << "setNeedToSplitCurvature c" << _thisId << "\n");
-		setNeedToSplitAtCentroid();
+		setNeedToSplitAtPoint();
 	}
 
 	return needToSplit;
+}
+
+bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params)
+{
+	auto bbox = getBoundingBox();
+	auto pMesh = getBlockPtr()->getModelMesh();
+	auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
+	for (size_t idx : sharps) {
+		Vector3d pt = pMesh->getVert(idx)._pt;
+		if (bbox.contains(pt)) {
+			double minDist = DBL_MAX;
+			for (const auto& faceId : _faceIds) {
+				faceAvailFunc(faceId, TS_REAL, [&minDist, &pt](const Polygon& face) {
+					double d = fabs(face.distanceToPoint(pt));
+					if (d < minDist)
+						minDist = d;
+				});
+			}
+
+			// Don't split if the point is already close enough to a face
+			if (minDist > Tolerance::sameDistTol()) {
+				setDefinedSplitPoint(pt);
+				setNeedToSplitAtPoint();
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)

@@ -419,6 +419,23 @@ double Polygon::getShortestEdge() const
 	return minDist;
 }
 
+double Polygon::distanceToPoint(const Vector3d& pt) const
+{
+	Vector3d ctr = calCentroid();
+	for (size_t i = 0; i < _vertexIds.size() - 1; i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d v0 = pt0 - ctr;
+		Vector3d v1 = pt1 - ctr;
+		Vector3d n = v1.cross(v0).normalized();
+		Plane<double> pl(ctr, n, false);
+		double d = pl.distanceToPoint(pt);
+		return d;
+	}
+	return DBL_MAX;
+}
+
 double Polygon::calVertexAngle(size_t idx1) const
 {
 	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);

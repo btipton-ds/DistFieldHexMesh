@@ -138,7 +138,7 @@ void AppData::postReadMesh()
 {
     _pMesh->squeezeSkinnyTriangles(0.025);
     _pMesh->buildCentroids();
-    _pMesh->calCurvatures(SHARP_EDGE_ANGLE, false);
+    _pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
     _pMesh->calGaps();
 
     auto pCanvas = _pMainFrame->getCanvas();
@@ -148,7 +148,7 @@ void AppData::postReadMesh()
     _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
     if (pSharpVertMesh)
         _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
-    pCanvas->endFaceTesselation(_modelFaceTess, false);
+    pCanvas->endFaceTesselation(_modelFaceTess, _sharpPointTess, false);
 
     vector<float> normPts;
     vector<unsigned int> normIndices;
@@ -422,14 +422,14 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 10;
+        params.numCurvatureDivs = 5;
         params.divsPerCurvatureRadius = 5;
         params.divsPerGapCurvatureRadius = 8;
         params.maxGapSize = 0.02;
         params.minSplitEdgeLengthCurvature_meters = 0.0025;
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 8;
-        params.minSplitEdgeLengthSharpVertex_meters = 0.02;
-        params.sharpAngle_degrees = SHARP_EDGE_ANGLE;
+        params.minSplitEdgeLengthSharpVertex_meters = 0.001;
+        params.sharpAngle_degrees = SHARP_EDGE_ANGLE_RADIANS;
 
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
@@ -523,12 +523,13 @@ CMeshPtr AppData::getSharpVertMesh() const
 {
     auto bBox = _pMesh->getBBox();
     double span = bBox.range().norm();
-    double radius = span / 100;
+    double radius = span / 500;
     bBox.grow(2 * radius);
-    CMeshPtr pMesh = make_shared<CMesh>(bBox);
 
-    if (_volume) {
-        auto sVerts = _volume->getSharpVertIndices();
+    vector<size_t> sVerts;
+    Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
+    if (!sVerts.empty()) {
+        CMeshPtr pMesh = make_shared<CMesh>(bBox);
         for (size_t vertIdx : sVerts) {
             auto pt = _pMesh->getVert(vertIdx)._pt;
             addPointMarker(pMesh, pt, radius);
@@ -536,13 +537,14 @@ CMeshPtr AppData::getSharpVertMesh() const
 
         return pMesh;
     }
+
     return nullptr;
 }
 
 void AppData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
 {
     Vector3d xAxis(radius, 0, 0), yAxis(0, radius, 0), zAxis(0, 0, radius);
-    size_t stepsI = 36;
+    size_t stepsI = 72;
     size_t stepsJ = stepsI / 2;
     for (size_t i = 0; i < stepsI; i++) {
         double alpha0 = 2 * M_PI * i / (double)stepsI;

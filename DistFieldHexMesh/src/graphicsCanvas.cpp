@@ -199,7 +199,7 @@ bool GraphicsCanvas::toggleShowSharpEdges()
 bool GraphicsCanvas::toggleShowSharpVerts()
 {
     _showSharpVerts = !_showSharpVerts;
-    changeEdgeViewElements();
+    changeFaceViewElements();
 
     return _showSharpVerts;
 }
