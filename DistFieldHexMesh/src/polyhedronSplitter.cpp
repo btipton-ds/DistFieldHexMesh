@@ -254,6 +254,8 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 					assert(face.cellsOwnThis());
 				});
 			}
+
+			newCell.setTriIndices(realCell.getTriIndices());
 		});
 
 #if LOGGING_ENABLED

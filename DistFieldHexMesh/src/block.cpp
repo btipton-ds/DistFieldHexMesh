@@ -586,6 +586,9 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 	faceIds.push_back(addFace(2, subBlockIdx, { pts[4], pts[5], pts[6], pts[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
+	cellRealFunc(polyhedronId, [this](Polyhedron& cell) {
+		cell.setTriIndices(_triIndices);
+	});
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }

@@ -95,6 +95,7 @@ public:
 	void setSplitLevel(size_t val);
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
+	const std::vector<size_t> getTriIndices() const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -133,6 +134,7 @@ private:
 	bool _needsSplitAtPt = false, _needsSplitAtPlane = false, _needsSplitAtCentroid = false;
 	Vector3d _splitPt;
 	Plane<double> _splitPlane;
+	std::vector<size_t> _triIndices;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;
@@ -159,6 +161,11 @@ inline size_t Polyhedron::getSplitLevel() const
 inline void Polyhedron::setSplitLevel(size_t val)
 {
 	_splitLevel = val;
+}
+
+inline const std::vector<size_t> Polyhedron::getTriIndices() const
+{
+	return _triIndices;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

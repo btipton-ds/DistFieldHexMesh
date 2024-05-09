@@ -712,16 +712,10 @@ void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 
 void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
-#if 0
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 
-	for (auto idx : indices) {
-		auto triBox = pTriMesh->getTriBBox(idx);
-		if (bbox.intersects(triBox))
-			_triIndices.push_back(idx);
-	}
-#endif
+	pTriMesh->processFoundTris(indices, bbox, _triIndices);
 }
 
 bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
@@ -769,6 +763,9 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		return 0;
 	_needsCurvatureCheck = false;
 
+	if (_triIndices.empty())
+		return 0;
+
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 #if 1
 	const auto& blkIdx = _thisId.blockIdx();
@@ -777,7 +774,8 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 	}
 
 	vector<size_t> triIndices;
-	size_t numTris = getBlockPtr()->processTris(bbox, triIndices);
+//	size_t numTris = getBlockPtr()->processTris(bbox, triIndices);
+	size_t numTris = pTriMesh->processFoundTris(_triIndices, bbox, triIndices);
 	if (numTris > 0) {
 		static thread_local vector<double> radii;
 		if (radii.size() < pTriMesh->numTris()) {
