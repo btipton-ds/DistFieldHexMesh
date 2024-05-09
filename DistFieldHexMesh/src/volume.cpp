@@ -529,7 +529,6 @@ void Volume::finishSplits(bool multiCore)
 	bool done = false;
 	int i = 0;
 	while (!done) {
-		cout << "FinishSplits " << i++ << "\n";
 		done = true;
 		runLambda([this, &done](size_t linearIdx)->bool {
 			_blocks[linearIdx]->splitRequiredPolyhedra();
@@ -548,8 +547,10 @@ void Volume::finishSplits(bool multiCore)
 			}
 			return true;
 		}, multiCore);
+		i++;
 	}
 	imprintTJointVertices(multiCore);
+	cout << "FinishSplits " << i << "\n";
 }
 
 void Volume::imprintTJointVertices(bool multiCore)

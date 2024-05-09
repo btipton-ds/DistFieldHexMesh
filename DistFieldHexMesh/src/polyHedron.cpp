@@ -536,28 +536,28 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 {
 	blockingCellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		set<Polygon::CellId_SplitLevel> cellIds;
-		faceAvailFunc(faceId, TS_REFERENCE, [this, &cellIds](const Polygon& face) {
-			cellIds = face.getCellIds();
+		Polygon::CellId_SplitLevel adjCellId;
+		size_t faceSplitLevel;
+		faceAvailFunc(faceId, TS_REFERENCE, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
+			for (const auto& id : face.getCellIds()) {
+				if (id != _thisId) {
+					adjCellId = id;
+					faceSplitLevel = face.getSplitLevel(adjCellId);
+				}
+			}
 		});
 
-		for (const auto& cellId : cellIds) {
-			if (cellId.getId() != _thisId && !blockingCellIds.contains(cellId)) {
-				cellAvailFunc(cellId, TS_REAL, [this, &blockingCellIds](const Polyhedron& adjCell) {
+		if (adjCellId.getId().isValid()) {
+			if (faceSplitLevel > 0) {
+				blockingCellIds.insert(adjCellId);
+			} else {
+				cellAvailFunc(adjCellId, TS_REAL, [this, &blockingCellIds](const Polyhedron& adjCell) {
 					if (adjCell.getSplitLevel() < _splitLevel) {
 						blockingCellIds.insert(adjCell.getId());
 					}
 				});
 			}
 		}
-
-		faceRealFunc(faceId, [this, &blockingCellIds](const Polygon& face) {
-			for (const auto& cellId : face.getCellIds()) {
-				if (cellId.getId() != _thisId && !blockingCellIds.contains(cellId) && face.getSplitLevel(cellId) > 0) {
-					blockingCellIds.insert(cellId);
-				}
-			}
-		});
 	}
 
 	return blockingCellIds.empty();
