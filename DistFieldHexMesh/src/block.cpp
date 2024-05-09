@@ -893,17 +893,22 @@ bool Block::splitRequiredPolyhedra()
 	Logger::Indent indent;
 #endif
 
-	if (_canSplit.empty())
-		return false;
+	bool didSplit = false;
+	if (_needToSplit.empty())
+		return didSplit;
 
-	auto tmp = _canSplit;
-	_canSplit.clear();
+	auto tmp = _needToSplit;
+	_needToSplit.clear();
 	for (const auto& cellId : tmp) {
 		PolyhedronSplitter splitter(this, cellId);
-		splitter.splitIfNeeded();
+		if (splitter.splitIfNeeded())
+			didSplit = true;
+		else
+			assert(!"splitFailed");
+		assert(!polyhedronExists(TS_REAL, cellId));
 	}
 
-	return true;
+	return didSplit;
 }
 
 void Block::imprintTJointVertices()
@@ -1103,58 +1108,91 @@ void Block::addToSplitStack(const set<Index3DId>& cellIds)
 {
 	set<Index3DId> blockingIds;
 	for (const auto& cellId : cellIds) {
+		if (!polyhedronExists(TS_REAL, cellId))
+			continue;
+
 		auto pOwner = getOwner(cellId);
-		if (pOwner->_modelData._polyhedra[cellId].canSplit(blockingIds)) {
+		set<Index3DId> temp;
+		auto& cell = pOwner->_modelData._polyhedra[cellId];
+		if (cell.canSplit(temp)) {
+			pOwner->_needToSplit.insert(cellId);
 			pOwner->_cantSplitYet.erase(cellId);
-			pOwner->_canSplit.insert(cellId);
-		} else
+		} else {
 			pOwner->_cantSplitYet.insert(cellId);
+			blockingIds.insert(temp.begin(), temp.end());
+		}
 	}
 
-	for (const auto& cellId : blockingIds) {
-		auto pOwner = getOwner(cellId);
-		if (pOwner->_modelData._polyhedra[cellId].canSplit(blockingIds)) {
-			pOwner->_cantSplitYet.erase(cellId);
-			pOwner->_canSplit.insert(cellId);
-		} else
-			pOwner->_cantSplitYet.insert(cellId);
+	while (!blockingIds.empty()) {
+		set<Index3DId> blockingIds2;
+		for (const auto& cellId : blockingIds) {
+			if (!polyhedronExists(TS_REAL, cellId))
+				continue;
+			auto pOwner = getOwner(cellId);
+			set<Index3DId> temp;
+			auto& cell = pOwner->_modelData._polyhedra[cellId];
+			if (cell.canSplit(temp)) {
+				pOwner->_needToSplit.insert(cellId);
+				pOwner->_cantSplitYet.erase(cellId);
+			}
+			else {
+				pOwner->_cantSplitYet.insert(cellId);
+				blockingIds2.insert(temp.begin(), temp.end());
+			}
+		}
+		blockingIds = blockingIds2;
 	}
 }
 
-bool Block::updateSplitStack()
+void Block::updateSplitStack()
 {
 	if (_cantSplitYet.empty())
-		return false;
+		return;
 
-	set<Index3DId> blockingIds, newCanSplits, alreadySplit;
+	set<Index3DId> blockingIds;
 
-	for (const auto& cellId : _cantSplitYet) {
+	auto tmpCantSplit = _cantSplitYet;
+
+	_cantSplitYet.clear();
+	for (const auto& cellId : tmpCantSplit) {
 		assert(cellId.blockIdx() == _blockIdx);
-		if (!_modelData._polyhedra.exists(cellId))
-			alreadySplit.insert(cellId);
-		else if (_modelData._polyhedra[cellId].canSplit(blockingIds))
-			newCanSplits.insert(cellId);
-	}
-
-	for (const auto& cellId : alreadySplit) {
-		_cantSplitYet.erase(cellId);
-	}
-
-	for (const auto& cellId : newCanSplits) {
-		_cantSplitYet.erase(cellId);
-		_canSplit.insert(cellId);
-	}
-
-	for (const auto& cellId : blockingIds) {
+		set<Index3DId> temp;
 		auto pOwner = getOwner(cellId);
-		if (pOwner->_modelData._polyhedra[cellId].canSplit(blockingIds)) {
-			pOwner->_cantSplitYet.erase(cellId);
-			pOwner->_canSplit.insert(cellId);
-		} else
-			pOwner->_cantSplitYet.insert(cellId);
+		if (pOwner->_modelData._polyhedra.exists(cellId)) {
+			auto& cell = _modelData._polyhedra[cellId];
+			if (cell.canSplit(temp)) {
+				pOwner->_needToSplit.insert(cellId);
+			} else {
+				pOwner->_cantSplitYet.insert(cellId);
+				blockingIds.insert(temp.begin(), temp.end());
+			}
+		}
 	}
 
-	return !_cantSplitYet.empty();
+	while (!blockingIds.empty()) {
+		set<Index3DId> blockingIds2;
+		for (const auto& cellId : blockingIds) {
+			auto pOwner = getOwner(cellId);
+			if (pOwner->_modelData._polyhedra.exists(cellId)) {
+				set<Index3DId> temp;
+				auto& cell = pOwner->_modelData._polyhedra[cellId];
+				if (cell.canSplit(temp)) {
+					pOwner->_needToSplit.insert(cellId);
+					pOwner->_cantSplitYet.erase(cellId);
+				} else {
+					pOwner->_cantSplitYet.insert(cellId);
+					blockingIds2.insert(temp.begin(), temp.end());
+				}
+			}
+		}
+		blockingIds = blockingIds2;
+	}
+
+}
+
+bool Block::hasPendingSplits() const
+{
+	return !_cantSplitYet.empty() || !_needToSplit.empty();
 }
 
 void Block::freePolygon(const Index3DId& id)

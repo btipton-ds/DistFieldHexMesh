@@ -527,17 +527,25 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 void Volume::finishSplits(bool multiCore)
 {
 	bool done = false;
+	int i = 0;
 	while (!done) {
+		cout << "FinishSplits " << i++ << "\n";
 		done = true;
 		runLambda([this, &done](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->splitRequiredPolyhedra())
-				done = false;
+			_blocks[linearIdx]->splitRequiredPolyhedra();
 			return true;
 		}, multiCore);
 
 		runLambda([this, &done](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->updateSplitStack())
+			_blocks[linearIdx]->updateSplitStack();
+			return true;
+		}, multiCore);
+
+		runLambda([this, &done](size_t linearIdx)->bool {
+			if (_blocks[linearIdx]->hasPendingSplits()) {
 				done = false;
+				return false; // We need to split 1, so we need to split all. Exit early
+			}
 			return true;
 		}, multiCore);
 	}

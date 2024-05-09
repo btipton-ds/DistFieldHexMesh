@@ -148,7 +148,8 @@ public:
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
 
 	void addToSplitStack(const std::set<Index3DId>& cellIds);
-	bool updateSplitStack();
+	void updateSplitStack();
+	bool hasPendingSplits() const;
 
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
@@ -241,7 +242,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _allSplits, _canSplit, _cantSplitYet;
+	std::set<Index3DId> _needToSplit, _cantSplitYet;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
 	ObjectPool<Vertex> _vertices;

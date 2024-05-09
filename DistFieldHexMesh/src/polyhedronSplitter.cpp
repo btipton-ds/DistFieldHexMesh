@@ -49,13 +49,19 @@ bool PolyhedronSplitter::splitIfNeeded()
 	_pBlock->cellAvailFunc(_polyhedronId, TS_REFERENCE, [this, &result](const Polyhedron& cell) {
 		Vector3d ctr;
 		Plane<double> plane;
-		if (cell.needsSplitAtPoint(ctr)) {
-			result = splitAtPoint(ctr);
-		} else if (cell.needsSplitAtCentroid()) {
+		if (cell.needsSplitAtCentroid()) {
 			ctr = cell.calCentroid();
+			result = splitAtPoint(ctr);
+		} else if (cell.needsSplitAtPoint(ctr)) {
 			result = splitAtPoint(ctr);
 		} else if (cell.needsSplitAtPlane(plane))
 			result = splitAtPlane(plane);
+		else {
+			// TODO This needs to be an adaptive split to match the neighbor
+			// We get here when we have to split a neighbor cell prior to splitting a cell.
+			ctr = cell.calCentroid();
+			result = splitAtPoint(ctr);
+		}
 	});
 
 	return result;
