@@ -321,7 +321,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-//	splitDueToSplitFaces(params, multiCore);
+	splitDueToSplitFaces(params, multiCore);
 //	splitAtSharpVertices(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 

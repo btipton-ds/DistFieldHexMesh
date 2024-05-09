@@ -652,7 +652,7 @@ bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 		}
 	}
 	if (numSplitFaces > 2) {
-		needsSplitAtCentroid();
+		setNeedsSplitAtCentroid();
 		return true;
 	}
 
