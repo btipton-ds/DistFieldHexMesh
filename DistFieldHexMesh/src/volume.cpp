@@ -548,6 +548,8 @@ void Volume::finishSplits(bool multiCore)
 			return true;
 		}, multiCore);
 		i++;
+		if (i > 10)
+			break;
 	}
 	imprintTJointVertices(multiCore);
 	cout << "FinishSplits " << i << "\n";
@@ -555,7 +557,10 @@ void Volume::finishSplits(bool multiCore)
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
-	for (size_t i = 0; i < 3; i++ ) {
+	// TODO getting false report of open cells. checkMesh shows all cells closed.
+	// Need to fix closed test and exit criteria
+	size_t i;
+	for (i = 0; i < 5; i++ ) {
 		runLambda([this](size_t linearIdx)->bool {
 			_blocks[linearIdx]->imprintTJointVertices();
 			return true;
@@ -572,8 +577,8 @@ void Volume::imprintTJointVertices(bool multiCore)
 
 		if (allCellsClosed)
 			break;
-		cout << "Needs extra imprint " << i << "\n";
 	}
+	cout << "T Joint imprints " << i << "\n";
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

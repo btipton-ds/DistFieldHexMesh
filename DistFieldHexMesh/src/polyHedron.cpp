@@ -464,16 +464,19 @@ void Polyhedron::imprintTVertices(Block* pDstBlock) const
 		}
 	}
 
-	for (const auto& faceId : imprintIds) {
-		pDstBlock->makeRefPolygonIfRequired(faceId);
-		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
-			pDstBlock->faceRealFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
-				face.imprintVertices(splitEdgeVertMap);
-			});
-		}
-	}
+	if (!imprintIds.empty()) {
 
-	clearCache();
+		for (const auto& faceId : imprintIds) {
+			pDstBlock->makeRefPolygonIfRequired(faceId);
+			if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+				pDstBlock->faceRealFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
+					face.imprintVertices(splitEdgeVertMap);
+				});
+			}
+		}
+
+		clearCache();
+	}
 }
 
 void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel)
@@ -762,6 +765,10 @@ bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) 
 
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const
 {
+	if (!_needsCurvatureCheck)
+		return 0;
+	_needsCurvatureCheck = false;
+
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 #if 1
 	const auto& blkIdx = _thisId.blockIdx();
