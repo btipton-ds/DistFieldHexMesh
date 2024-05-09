@@ -30,40 +30,29 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <map>
 #include <tm_vector3.h>
+#include <tm_plane.h>
 #include <index3D.h>
 
 namespace DFHM {
 
-class Block;
-class Polygon;
-class Polyhedron;
+	class Block;
+	class Polygon;
+	class Polyhedron;
 
-class PolygonSplitter {
-public:
-	PolygonSplitter(Block* pBlock, const Index3DId& polygonId);
+	class PolygonSplitter {
+	public:
+		PolygonSplitter(Block* pBlock, const Index3DId& polygonId);
 
-	bool doConditionalSplitAtCentroid();
-	bool doConditionalSplitAtPoint(const Vector3d& pt);
+		bool splitAtCentroid();
+		bool splitAtPoint(const Vector3d& pt);
+		bool splitAtPlane(const Plane<double>& plane);
 
-private:
-	bool doSplitAtPoint(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
+	private:
+		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
+		bool splitAtPlaneInner(Polygon& realFace, Polygon& referanceFace, Plane<double>& plane) const;
 
-	Block* _pBlock;
-	Index3DId _polygonId;
-};
-
-class PolyhedronSplitter {
-public:
-	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
-
-	bool doConditionalSplitAtCentroid();
-	bool doConditionalSplitAtPoint(const Vector3d& pt);
-
-private:
-	bool doSplitAtPoint(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-
-	Block* _pBlock;
-	Index3DId _polyhedronId;
-};
+		Block* _pBlock;
+		Index3DId _polygonId;
+	};
 
 }

@@ -26,148 +26,15 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
-#include <splitters.h>
-#include <block.h>
 #include <polygon.h>
+#include <polyhedron.h>
+#include <polygonSplitter.h>
+#include <polyhedronSplitter.h>
+#include <block.h>
 
 using namespace std;
 using namespace DFHM;
 
-PolygonSplitter::PolygonSplitter(Block* pBlock, const Index3DId& polygonId)
-	: _pBlock(pBlock)
-	, _polygonId(polygonId)
-{
-}
-
-bool PolygonSplitter::doConditionalSplitAtCentroid()
-{
-	Vector3d ctr;
-	_pBlock->faceAvailFunc(_polygonId, TS_REFERENCE, [&ctr](const Polygon& face) {
-		ctr = face.calCentroid();
-	});
-
-	return doConditionalSplitAtPoint(ctr);
-}
-
-bool PolygonSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
-{
-	_pBlock->makeRefPolygonIfRequired(_polygonId);
-
-	assert(_pBlock->polygonExists(TS_REFERENCE, _polygonId));
-	Polygon& referenceFace = _pBlock->getPolygon(TS_REFERENCE, _polygonId);
-
-	if (!referenceFace._splitFaceProductIds.empty()) {
-		return false;
-	}
-
-	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
-	Polygon& realFace = _pBlock->getPolygon(TS_REAL, _polygonId);
-
-	bool result = doSplitAtPoint(realFace, referenceFace, pt);
-
-	if (_pBlock->polygonExists(TS_REAL, _polygonId)) {
-		_pBlock->freePolygon(_polygonId);
-	}
-
-	return result;
-}
-
-bool PolygonSplitter::doSplitAtPoint(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const
-{
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (Index3DId(0, 8, 4, 4) == _polygonId) {
-		int dbgBreak = 1;
-	}
-#endif
-
-	assert(_pBlock->isPolygonReference(&referanceFace));
-	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
-	const double sinAngleTol = sin(Tolerance::angleTol());
-
-#if LOGGING_ENABLED
-	auto pLogger = _pBlock->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << realFace);
-#endif
-
-	assert(referanceFace.cellsOwnThis());
-
-	// The code must be operating on the reference face
-	const auto& vertexIds = referanceFace.getVertexIds();
-	assert(vertexIds.size() == 4);
-	vector<Index3DId> edgePtIds;
-	edgePtIds.resize(vertexIds.size());
-	for (size_t i = 0; i < vertexIds.size(); i++) {
-		size_t j = (i + 1) % vertexIds.size();
-		Edge edge(vertexIds[i], vertexIds[j]);
-
-		// Be sure to project directly to the edge itself. 
-		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(_pBlock, pt);
-		bool inBounds;
-		double t = edge.paramOfPt(_pBlock, edgePt, inBounds);
-		if (inBounds) {
-			Index3DId vertId = _pBlock->addVertex(edgePt);
-			edgePtIds[i] = vertId;
-
-			referanceFace.addSplitEdgeVert(edge, vertId);
-		} else {
-			assert(!"Edge point is not in bounds.");
-			return false;
-		}
-	}
-
-	Vector3d facePt = referanceFace.projectPoint(pt);
-#if _DEBUG
-	if (!referanceFace.containsPoint(facePt)) {
-		assert(!"Face point is not in bounds.");
-		return false;
-	}
-#endif
-
-	Index3DId facePtId = _pBlock->addVertex(facePt);
-
-#ifdef _DEBUG
-	Vector3d srcNorm = referanceFace.calUnitNormal();
-#endif // _DEBUG
-
-	auto cellIds = realFace.getCellIds();
-	for (size_t i = 0; i < vertexIds.size(); i++) {
-		size_t j = (i + vertexIds.size() - 1) % vertexIds.size();
-		auto priorEdgeId = edgePtIds[j];
-		auto vertId = vertexIds[i];
-		auto nextEdgeId = edgePtIds[i];
-		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId });
-
-#ifdef _DEBUG
-		Vector3d newNorm = Polygon::calUnitNormalStat(_pBlock, newFace.getVertexIds());
-		double cp = newNorm.cross(srcNorm).norm();
-		assert(cp < sinAngleTol);
-#endif // _DEBUG
-
-		auto newFaceId = _pBlock->addFace(newFace);
-		referanceFace.addToSplitFaceProductIds(newFaceId);
-	}
-
-	for (const auto& cellId : cellIds) {
-		if (_pBlock->polyhedronExists(TS_REAL, cellId)) {
-			size_t splitLevel = realFace.getSplitLevel(cellId);
-			const auto& splits = referanceFace._splitFaceProductIds;
-
-			_pBlock->makeRefPolyhedronIfRequired(cellId);
-			_pBlock->cellRealFunc(cellId, [this, &splits, splitLevel](Polyhedron& cell) {
-				cell.replaceFaces(_polygonId, splits, splitLevel + 1);
-			});
-		}
-	}
-
-#if LOGGING_VERBOSE_ENABLED
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pst: " << *this);
-#endif
-
-	return true;
-}
 
 PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId)
 	: _pBlock(pBlock)
@@ -176,18 +43,25 @@ PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedro
 
 }
 
-bool PolyhedronSplitter::doConditionalSplitAtCentroid()
+bool PolyhedronSplitter::splitIfNeeded()
 {
-	Vector3d ctr;
-	_pBlock->cellAvailFunc(_polyhedronId, TS_REFERENCE, [&ctr](const Polyhedron& cell) {
-		if (!cell.hasDefinedSplitPoint(ctr))
+	bool result = false;
+	_pBlock->cellAvailFunc(_polyhedronId, TS_REFERENCE, [this, &result](const Polyhedron& cell) {
+		Vector3d ctr;
+		Plane<double> plane;
+		if (cell.needsSplitAtPoint(ctr)) {
+			result = splitAtPoint(ctr);
+		} else if (cell.needsSplitAtCentroid()) {
 			ctr = cell.calCentroid();
+			result = splitAtPoint(ctr);
+		} else if (cell.needsSplitAtPlane(plane))
+			result = splitAtPlane(plane);
 	});
 
-	return doConditionalSplitAtPoint(ctr);
+	return result;
 }
 
-bool PolyhedronSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
+bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 {
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
@@ -200,7 +74,7 @@ bool PolyhedronSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
 	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
 	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
 
-	bool result = doSplitAtPoint(realCell, referenceCell, pt);
+	bool result = splitAtPointInner(realCell, referenceCell, pt);
 
 	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
 		_pBlock->freePolyhedron(_polyhedronId);
@@ -209,7 +83,7 @@ bool PolyhedronSplitter::doConditionalSplitAtPoint(const Vector3d& pt)
 	return result;
 }
 
-bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const
+bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const
 {
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(0, 8, 4, 0) == _polyhedronId) {
@@ -241,7 +115,7 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 	for (const auto& faceId : faceIds) {
 
 		PolygonSplitter splitter(_pBlock, faceId);
-		splitter.doConditionalSplitAtPoint(pt);
+		splitter.splitAtPoint(pt);
 
 		_pBlock->faceRefFunc(faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
@@ -389,4 +263,32 @@ bool PolyhedronSplitter::doSplitAtPoint(Polyhedron& realCell, Polyhedron& refera
 	LOG(out << Logger::Pad() << "=================================================================================================\n");
 
 	return true;
+}
+
+bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane)
+{
+	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
+		return false;
+
+	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
+
+	assert(_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId));
+	Polyhedron& referenceCell = _pBlock->getPolyhedron(TS_REFERENCE, _polyhedronId);
+
+	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
+	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
+
+	bool result = splitAtPlaneInner(realCell, referenceCell, plane);
+
+	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
+		_pBlock->freePolyhedron(_polyhedronId);
+	}
+
+	return result;
+}
+
+bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane) const
+{
+
+	return false;
 }

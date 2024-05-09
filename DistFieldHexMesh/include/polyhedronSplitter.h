@@ -27,18 +27,32 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <tm_defines.h>
+#include <set>
+#include <map>
+#include <tm_vector3.h>
+#include <tm_plane.h>
+#include <index3D.h>
 
-#define RUN_MULTI_THREAD false
-#define SHARP_EDGE_ANGLE_RADIANS (15 * M_PI / 180.0)
-#define GRAPHICS_OVER_SAMPLING 2
-#define _USE_MATH_DEFINES
+namespace DFHM {
 
-#define VERIFY_REDUCED_FINDER 0
-#define LOGGING_ENABLED 0
-#define DEBUG_BREAKS 0
-#define CAN_FREE_TESTS_ENABLED 0
-#define LOGGING_VERBOSE_ENABLED (0 && LOGGING_ENABLED)
-#define DUMP_BAD_CELL_OBJS 1
-#define DUMP_OPEN_CELL_OBJS 1
+class Block;
+class Polygon;
+class Polyhedron;
 
+class PolyhedronSplitter {
+public:
+	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
+
+	bool splitIfNeeded();
+	bool splitAtPoint(const Vector3d& pt);
+	bool splitAtPlane(const Plane<double>& plane);
+
+private:
+	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
+	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane) const;
+
+	Block* _pBlock;
+	Index3DId _polyhedronId;
+};
+
+}

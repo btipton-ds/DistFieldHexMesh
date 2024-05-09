@@ -79,6 +79,7 @@ public:
 	double getSharpAngleRad() const;
 
 	const std::vector<size_t>& getSharpVertIndices() const;
+	bool getSharpVertPlane(Plane<double>& plane) const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
@@ -126,7 +127,6 @@ private:
 	void splitAtSharpVertices(const BuildCFDParams& params, bool multiCore);
 	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
-	void splitTopology(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
 
@@ -172,6 +172,8 @@ private:
 	std::vector<std::shared_ptr<Block>> _blocks;
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;
+	bool _hasSharpVertPlane = false;
+	Plane<double> _sharpVertPlane;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
@@ -221,6 +223,15 @@ inline double Volume::getSharpAngleRad() const
 inline const std::vector<size_t>& Volume::getSharpVertIndices() const
 {
 	return _sharpVertIndices;
+}
+
+inline bool Volume::getSharpVertPlane(Plane<double>& plane) const
+{
+	if (_hasSharpVertPlane) {
+		plane = _sharpVertPlane;
+		return true;
+	}
+	return false;
 }
 
 inline const std::set<size_t>& Volume::getSharpEdgeIndices() const

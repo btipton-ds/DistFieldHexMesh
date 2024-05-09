@@ -66,15 +66,22 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
-	void setDefinedSplitPoint(const Vector3d& splitPt);
-	bool hasDefinedSplitPoint(Vector3d& splitPt) const;
+
+	void setNeedsSplitAtCentroid();
+	bool needsSplitAtCentroid() const;
+
+	void setNeedsSplitAtPoint(const Vector3d& splitPt);
+	bool needsSplitAtPoint(Vector3d& splitPt) const;
+
+	void setNeedsSplitAtPlane(const Plane<double>& splitPlane);
+	bool needsSplitAtPlane(Plane<double>& splitPlane) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
-	void setNeedToSplitAtPoint();
+	void addToSplitStack();
 	void setNeedToMakeReference();
 	bool needToSplitConditional(const BuildCFDParams& params);
 	bool needToSplitDueToSplitFaces(const BuildCFDParams& params);
-	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);
+	bool setNeedToSplitSharpVertices(const BuildCFDParams& params, const std::vector<size_t>& sharpVerts);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 
@@ -123,8 +130,9 @@ private:
 	size_t _splitLevel = 0;
 
 	bool _needsConditionalSplitTest = true;
-	bool _hasSplitPt = false;
+	bool _needsSplitAtPt = false, _needsSplitAtPlane = false, _needsSplitAtCentroid = false;
 	Vector3d _splitPt;
+	Plane<double> _splitPlane;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable bool _needsCurvatureCheck = true;

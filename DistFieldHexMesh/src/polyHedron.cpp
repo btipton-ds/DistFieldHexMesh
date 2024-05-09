@@ -41,7 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
-#include <splitters.h>
+#include <polyhedronSplitter.h>
 
 using namespace std;
 using namespace DFHM;
@@ -58,8 +58,11 @@ Polyhedron::Polyhedron(const vector<Index3DId>& faceIds)
 
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
-	, _hasSplitPt(src._hasSplitPt)
+	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
+	, _needsSplitAtPt(src._needsSplitAtPt)
+	, _needsSplitAtPlane(src._needsSplitAtPlane)
 	, _splitPt(src._splitPt)
+	, _splitPlane(src._splitPlane)
 {
 }
 
@@ -67,8 +70,11 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	clearCache();
 	_faceIds = rhs._faceIds;
-	_hasSplitPt = rhs._hasSplitPt;
+	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
+	_needsSplitAtPt = rhs._needsSplitAtPt;
+	_needsSplitAtPlane = rhs._needsSplitAtPlane;
 	_splitPt = rhs._splitPt;
+	_splitPlane = rhs._splitPlane;
 
 	return *this;
 }
@@ -379,16 +385,44 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-void Polyhedron::setDefinedSplitPoint(const Vector3d& splitPt)
+void Polyhedron::setNeedsSplitAtCentroid()
 {
-	_hasSplitPt = true;
-	_splitPt = splitPt;
+	_needsSplitAtCentroid = true;
+	addToSplitStack();
 }
 
-bool Polyhedron::hasDefinedSplitPoint(Vector3d& splitPt) const
+bool Polyhedron::needsSplitAtCentroid() const
 {
-	if (_hasSplitPt) {
+	return _needsSplitAtCentroid;
+}
+
+void Polyhedron::setNeedsSplitAtPoint(const Vector3d& splitPt)
+{
+	_needsSplitAtPt = true;
+	_splitPt = splitPt;
+	addToSplitStack();
+}
+
+bool Polyhedron::needsSplitAtPoint(Vector3d& splitPt) const
+{
+	if (_needsSplitAtPt) {
 		splitPt = _splitPt;
+		return true;
+	}
+	return false;
+}
+
+void Polyhedron::setNeedsSplitAtPlane(const Plane<double>& splitPlane)
+{
+	_needsSplitAtPlane = true;
+	_splitPlane = splitPlane;
+	addToSplitStack();
+}
+
+bool Polyhedron::needsSplitAtPlane(Plane<double>& splitPlane) const
+{
+	if (_needsSplitAtPlane) {
+		splitPlane = _splitPlane;
 		return true;
 	}
 	return false;
@@ -460,7 +494,7 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 	}
 }
 
-void Polyhedron::setNeedToSplitAtPoint()
+void Polyhedron::addToSplitStack()
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -591,7 +625,7 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 	if (needToSplit) {
 		Logger::Indent indent;
 		LOG(out << Logger::Pad() << "setNeedToSplitCurvature c" << _thisId << "\n");
-		setNeedToSplitAtPoint();
+		setNeedsSplitAtCentroid();
 	}
 
 	return needToSplit;
@@ -617,19 +651,18 @@ bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 		}
 	}
 	if (numSplitFaces > 2) {
-		setNeedToSplitAtPoint();
+		needsSplitAtCentroid();
 		return true;
 	}
 
 	return false;
 }
 
-bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params)
+bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params, const vector<size_t>& sharpVerts)
 {
 	auto bbox = getBoundingBox();
 	auto pMesh = getBlockPtr()->getModelMesh();
-	auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
-	for (size_t idx : sharps) {
+	for (size_t idx : sharpVerts) {
 		Vector3d pt = pMesh->getVert(idx)._pt;
 		if (bbox.contains(pt)) {
 			double minDist = DBL_MAX;
@@ -643,8 +676,14 @@ bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params)
 
 			// Don't split if the point is already close enough to a face
 			if (minDist > Tolerance::sameDistTol()) {
-				setDefinedSplitPoint(pt);
-				setNeedToSplitAtPoint();
+				Plane<double> plane;
+				auto pVol = getBlockPtr()->getVolume();
+				bool hasPlane = pVol->getSharpVertPlane(plane);
+				if (hasPlane) {
+					setNeedsSplitAtPlane(plane);
+				} else {
+					setNeedsSplitAtPoint(pt);
+				}
 				return true;
 			}
 		}

@@ -39,7 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <splitters.h>
+#include <polyhedronSplitter.h>
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
@@ -781,7 +781,7 @@ void Block::setNeedsSimpleSplit()
 #endif
 
 	_modelData._polyhedra.iterateInOrder([](const Index3DId& id, Polyhedron& cell) {
-		cell.setNeedToSplitAtPoint();
+		cell.needsSplitAtCentroid();
 	});
 }
 
@@ -824,17 +824,16 @@ bool Block::setNeedToSplitSharpVertices(const BuildCFDParams& params)
 	bool result = false;
 	auto pModelMesh = getModelMesh();
 	const auto& sharpVertices = _pVol->getSharpVertIndices();
-	bool found = false;
+	vector<size_t> blockVerts;
 	for (size_t vIdx : sharpVertices) {
 		const Vector3d& pt = pModelMesh->getVert(vIdx)._pt;
 		if (_boundBox.contains(pt)) {
-			found = true;
-			break;
+			blockVerts.push_back(vIdx);
 		}
 	}
-	if (found) {
-		_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
-			if (cell.setNeedToSplitSharpVertices(params))
+	if (!blockVerts.empty()) {
+		_modelData._polyhedra.iterateInOrder([&params, &result, &blockVerts](const Index3DId& id, Polyhedron& cell) {
+			if (cell.setNeedToSplitSharpVertices(params, blockVerts))
 				result = true;
 		});
 	}
@@ -901,7 +900,7 @@ bool Block::splitRequiredPolyhedra()
 	_canSplit.clear();
 	for (const auto& cellId : tmp) {
 		PolyhedronSplitter splitter(this, cellId);
-		splitter.doConditionalSplitAtCentroid();
+		splitter.splitIfNeeded();
 	}
 
 	return true;

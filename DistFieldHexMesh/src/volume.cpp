@@ -32,7 +32,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 
 #include <tm_ioUtil.h>
+#include <tm_math.h>
+#include <tm_plane.h>
 #include <tm_ray.h>
+#include <tm_bestFit.h>
 #include <triMesh.h>
 
 #include <block.h>
@@ -126,6 +129,14 @@ void Volume::findFeatures()
 	_pModelTriMesh->buildNormals(false);
 
 	findSharpVertices(_pModelTriMesh, SHARP_EDGE_ANGLE_RADIANS, _sharpVertIndices);
+	vector<Vector3d> sharpPoints;
+	for (size_t vIdx : _sharpVertIndices) {
+		const auto& pt = _pModelTriMesh->getVert(vIdx)._pt;
+		sharpPoints.push_back(pt);
+	}
+
+	double err;
+	_hasSharpVertPlane = bestFitPlane(sharpPoints, _sharpVertPlane, err) && err < Tolerance::sameDistTol();
 	findSharpEdgeGroups();
 }
 
@@ -310,9 +321,9 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitDueToSplitFaces(params, multiCore);
+//	splitDueToSplitFaces(params, multiCore);
 //	splitAtSharpVertices(params, multiCore);
-	splitAtSharpEdges(params, multiCore);
+//	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
 
@@ -514,15 +525,6 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 }
 
 void Volume::finishSplits(bool multiCore)
-{
-	splitTopology(multiCore);
-
-	//	assert(verifyTopology(multiCore));
-
-//	dumpOpenCells(multiCore);
-}
-
-void Volume::splitTopology(bool multiCore)
 {
 	bool done = false;
 	while (!done) {
