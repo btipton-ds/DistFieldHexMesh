@@ -42,7 +42,7 @@ PolygonSplitter::PolygonSplitter(Block* pBlock, const Index3DId& polygonId)
 bool PolygonSplitter::splitAtCentroid()
 {
 	Vector3d ctr;
-	_pBlock->faceAvailFunc(_polygonId, TS_REFERENCE, [&ctr](const Polygon& face) {
+	_pBlock->faceAvailFunc(TS_REFERENCE, _polygonId, [&ctr](const Polygon& face) {
 		ctr = face.calCentroid();
 		});
 
@@ -157,9 +157,9 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 			const auto& splits = referanceFace._splitFaceProductIds;
 
 			_pBlock->makeRefPolyhedronIfRequired(cellId);
-			_pBlock->cellRealFunc(cellId, [this, &splits, splitLevel](Polyhedron& cell) {
+			_pBlock->cellFunc(TS_REAL, cellId, [this, &splits, splitLevel](Polyhedron& cell) {
 				cell.replaceFaces(_polygonId, splits, splitLevel + 1);
-				});
+			});
 		}
 	}
 

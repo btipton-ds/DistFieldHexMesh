@@ -92,7 +92,7 @@ bool Polygon::cellsOwnThis() const
 		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			return false;
 		bool result = true;
-		cellRealFunc(cellId, [this, &result](const Polyhedron& cell) {
+		cellFunc(TS_REAL,cellId, [this, &result](const Polyhedron& cell) {
 			if (!cell.containsFace(_thisId))
 				result = false;
 		});
@@ -203,7 +203,7 @@ void Polygon::orient()
 	Vector3d norm = calUnitNormal();
 	Vector3d faceCtr = calCentroid();
 	Vector3d cellCtr;
-	cellRealFunc(ownerCellId, [&cellCtr](const Polyhedron& cell) {
+	cellFunc(TS_REAL,ownerCellId, [&cellCtr](const Polyhedron& cell) {
 		cellCtr = cell.calCentroid();
 		});
 	Vector3d v = cellCtr - faceCtr;
@@ -510,7 +510,7 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
 	if (!getBlockPtr()->isPolygonReference(this) && getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
-		faceRefFunc(_thisId, [&area, &centroid](const Polygon& self) {
+		faceFunc(TS_REFERENCE, _thisId, [&area, &centroid](const Polygon& self) {
 			self.calAreaAndCentroid(area, centroid);
 		});
 		return;
@@ -582,7 +582,7 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
 			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));
-			cellRealFunc(cellId1, [this](const Polyhedron& cell) {
+			cellFunc(TS_REAL,cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
 			});
 		}
@@ -733,7 +733,7 @@ bool Polygon::verifyTopology() const
 			if (valid && !getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 				valid = false;
 
-			cellRealFunc(cellId, [this, &valid](const Polyhedron& cell) {
+			cellFunc(TS_REAL,cellId, [this, &valid](const Polyhedron& cell) {
 				if (valid && !cell.containsFace(_thisId)) {
 					valid = false;
 				}
@@ -824,54 +824,4 @@ void Polygon::CellId_SplitLevel::read(std::istream& in)
 }
 
 //LAMBDA_CLIENT_IMPLS(Polygon)
-
-void Polygon::vertexRealFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->vertexRealFunc(id, func);
-} 
-
-void Polygon::vertexRealFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->vertexRealFunc(id, func);
-} 
-
-void Polygon::faceRealFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceRealFunc(id, func);
-} 
-
-void Polygon::faceRealFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->faceRealFunc(id, func);
-} 
-
-void Polygon::cellRealFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellRealFunc(id, func);
-} 
-
-void Polygon::cellRealFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->cellRealFunc(id, func);
-} 
-
-void Polygon::faceRefFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceRefFunc(id, func);
-} 
-
-void Polygon::cellRefFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellRefFunc(id, func);
-} 
-
-void Polygon::faceAvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceAvailFunc(id, prefState, func);
-} 
-
-void Polygon::cellAvailFunc(const Index3DId& id, TopolgyState prefState, const std::function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellAvailFunc(id, prefState, func);
-}
-
+LAMBDA_CLIENT_IMPLS(Polygon)

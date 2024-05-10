@@ -752,7 +752,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	set<Index3DId> faceIds;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellRealFunc(cellId, [&faceIds](const Polyhedron& cell) {
+		pBlk->cellFunc(TS_REAL,cellId, [&faceIds](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
 			faceIds.insert(ids.begin(), ids.end());
 		});
@@ -763,7 +763,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceRealFunc(faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
+		pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
 				auto iter = vertIdToPtMap.find(vertId);
@@ -784,7 +784,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	out << "#Faces\n";
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceRealFunc(faceId, [&out, &vertIdToPtMap](const Polygon& face) {
+		pBlk->faceFunc(TS_REAL, faceId, [&out, &vertIdToPtMap](const Polygon& face) {
 			out << "#id: " << face.getId() << "\n";
 			out << "f ";
 			const auto& vIds = face.getVertexIds();

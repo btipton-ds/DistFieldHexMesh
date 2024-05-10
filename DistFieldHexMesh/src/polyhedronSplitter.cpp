@@ -46,7 +46,7 @@ PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedro
 bool PolyhedronSplitter::splitIfNeeded()
 {
 	bool result = false;
-	_pBlock->cellAvailFunc(_polyhedronId, TS_REFERENCE, [this, &result](const Polyhedron& cell) {
+	_pBlock->cellAvailFunc(TS_REFERENCE, _polyhedronId, [this, &result](const Polyhedron& cell) {
 		Vector3d ctr;
 		Plane<double> plane;
 		if (cell.needsSplitAtCentroid()) {
@@ -123,7 +123,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		PolygonSplitter splitter(_pBlock, faceId);
 		splitter.splitAtPoint(pt);
 
-		_pBlock->faceRefFunc(faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
+		_pBlock->faceFunc(TS_REFERENCE, faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
 
 			for (const auto& childFaceId : refFace._splitFaceProductIds) {
@@ -131,7 +131,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 					pass = false;
 					break;
 				}
-				_pBlock->faceRealFunc(childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
+				_pBlock->faceFunc(TS_REAL, childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = cornerVertToFaceMap.find(vertId);
 						if (iter != cornerVertToFaceMap.end()) {
@@ -168,7 +168,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		map<Edge, set<Index3DId>> fullEdgeToFaceMap;
 		for (const auto& splitFaceId : splitVertFaces) {
 			assert(_pBlock->polygonExists(TS_REAL, splitFaceId));
-			_pBlock->faceAvailFunc(splitFaceId, TS_REFERENCE, [&fullEdgeToFaceMap](const Polygon& splitFace) {
+			_pBlock->faceAvailFunc(TS_REFERENCE, splitFaceId, [&fullEdgeToFaceMap](const Polygon& splitFace) {
 				assert(splitFace.getVertexIds().size() == 4);
 				const auto& verts = splitFace.getVertexIds();
 				for (size_t i = 0; i < verts.size(); i++) {
@@ -203,11 +203,11 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 
 			Index3DId faceVert0, faceVert1;
 			auto iter = edgeFaces.begin();
-			_pBlock->faceAvailFunc(*iter++, TS_REFERENCE, [&faceVert0](const Polygon& face) {
+			_pBlock->faceAvailFunc(TS_REFERENCE, *iter++, [&faceVert0](const Polygon& face) {
 				assert(face.getVertexIds().size() == 4);
 				faceVert0 = face.getVertexIds()[0];
 			});
-			_pBlock->faceAvailFunc(*iter, TS_REFERENCE, [&faceVert1](const Polygon& face) {
+			_pBlock->faceAvailFunc(TS_REFERENCE, *iter, [&faceVert1](const Polygon& face) {
 				assert(face.getVertexIds().size() == 4);
 				faceVert1 = face.getVertexIds()[0];
 			});
@@ -232,7 +232,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 			}
 #endif
 
-			_pBlock->faceRealFunc(faceId, [this](Polygon& face) {
+			_pBlock->faceFunc(TS_REAL, faceId, [this](Polygon& face) {
 				face.removeCellId(_polyhedronId);
 				face.removeDeadCellIds();
 			});
@@ -246,11 +246,11 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		}
 #endif
 
-		_pBlock->cellRealFunc(newCellId, [this, &realCell](Polyhedron& newCell) {
+		_pBlock->cellFunc(TS_REAL, newCellId, [this, &realCell](Polyhedron& newCell) {
 			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
 
 			for (const auto& faceId : newCell.getFaceIds()) {
-				_pBlock->faceRealFunc(faceId, [this](const Polygon& face) {
+				_pBlock->faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
 					assert(face.cellsOwnThis());
 				});
 			}
@@ -261,7 +261,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #if LOGGING_ENABLED
 		{
 			Logger::Indent indent;
-			_pBlock->cellRealFunc(newCellId, [this, &out](const Polyhedron& newCell) {
+			_pBlock->cellFunc(TS_REAL, newCellId, [this, &out](const Polyhedron& newCell) {
 				LOG(out << Logger::Pad() << "to: " << newCell);
 			});
 		}
