@@ -145,6 +145,7 @@ private:
 	int getFaceOwnerIdx(const Index3DId& faceId, const PolymeshTables& tables) const;
 	int getFaceNeighbourIdx(const Index3DId& faceId, const PolymeshTables& tables) const;
 	bool needToReverseNormal(const Polygon& face, const PolymeshTables& tables) const;
+
 	void writePolyMeshPoints(const std::string& dirName, const PolymeshTables& tables) const;
 	void writePolyMeshFaces(const std::string& dirName, const PolymeshTables& tables) const;
 	void writePolyMeshOwnerCells(const std::string& dirName, const PolymeshTables& tables) const;

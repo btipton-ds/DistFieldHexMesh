@@ -1120,17 +1120,16 @@ void Block::addToSplitStack(const set<Index3DId>& cellIds)
 {
 	set<Index3DId> blockingIds;
 	for (const auto& cellId : cellIds) {
-		if (!polyhedronExists(TS_REAL, cellId))
-			continue;
+		assert(polyhedronExists(TS_REAL, cellId));
+		assert(cellId.blockIdx() == _blockIdx);
 
-		auto pOwner = getOwner(cellId);
 		set<Index3DId> temp;
-		auto& cell = pOwner->_modelData._polyhedra[cellId];
+		auto& cell = _modelData._polyhedra[cellId];
 		if (cell.canSplit(temp)) {
-			pOwner->_needToSplit.insert(cellId);
-			pOwner->_cantSplitYet.erase(cellId);
+			_needToSplit.insert(cellId);
+			_cantSplitYet.erase(cellId);
 		} else {
-			pOwner->_cantSplitYet.insert(cellId);
+			_cantSplitYet.insert(cellId);
 			blockingIds.insert(temp.begin(), temp.end());
 		}
 	}
