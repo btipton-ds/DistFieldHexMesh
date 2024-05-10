@@ -321,7 +321,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitDueToSplitFaces(params, multiCore);
 //	splitAtSharpVertices(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 
@@ -448,6 +447,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			}, multiCore);
 
 			finishSplits(multiCore);
+			splitDueToSplitFaces(params, multiCore);
 			//		assert(verifyTopology(multiCore));
 
 			if (!changed) {
@@ -471,22 +471,27 @@ void Volume::splitDueToSplitFaces(const BuildCFDParams& params, bool multiCore)
 	QueryPerformanceFrequency(&freq);
 	QueryPerformanceCounter(&startCount);
 #endif // _WIN32
+	int i = 0;
 	bool changed = true;
 	while (changed) {
 		changed = false;
+
 		runLambda([this, &params, &changed](size_t linearIdx)->bool {
 			if (_blocks[linearIdx]->setNeedsSplitDueToSplitFaces(params))
 				changed = true;
 			return true;
-			}, multiCore);
+		}, multiCore);
 
 		if (changed)
 			finishSplits(multiCore);
+		i++;
+		if (i > 5)
+			break;
 	}
 #ifdef _WIN32
 	QueryPerformanceCounter(&endCount);
 	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for splitDueToSplitFaces: " << deltaT << " secs\n";
+	cout << "Time for splitDueToSplitFaces: " << i << ": " << deltaT << " secs\n";
 	startCount = endCount;
 #endif // _WIN32
 }
@@ -559,26 +564,22 @@ void Volume::imprintTJointVertices(bool multiCore)
 {
 	// TODO getting false report of open cells. checkMesh shows all cells closed.
 	// Need to fix closed test and exit criteria
-	size_t i;
-	for (i = 0; i < 3; i++ ) {
-		runLambda([this](size_t linearIdx)->bool {
-			_blocks[linearIdx]->imprintTJointVertices();
-			return true;
-		}, multiCore);
-
-		bool allCellsClosed = true;
-		runLambda([this, &allCellsClosed](size_t linearIdx)->bool {
-			if (!_blocks[linearIdx]->allCellsClosed()) {
-				allCellsClosed = false;
-				return false;
-			}
-			return true;
-		}, multiCore);
-
-		if (allCellsClosed)
-			break;
-	}
-	cout << "T Joint imprints " << i << "\n";
+	runLambda([this](size_t linearIdx)->bool {
+		_blocks[linearIdx]->imprintTJointVertices();
+		return true;
+	}, multiCore);
+#ifdef _DEBUG
+	bool allCellsClosed = true;
+	runLambda([this, &allCellsClosed](size_t linearIdx)->bool {
+		if (!_blocks[linearIdx]->allCellsClosed()) {
+			allCellsClosed = false;
+			return false;
+		}
+		return true;
+	}, multiCore);
+	assert(allCellsClosed);
+#endif
+	cout << "T Joint imprints\n";
 }
 
 void Volume::dumpOpenCells(bool multiCore) const
@@ -776,16 +777,17 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 		});
 	}
 
-	out << "#Vertices\n";
+	out << "#Vertices " << pts.size() << "\n";
 	for (const auto& pt : pts) {
 		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
 	}
 
-	out << "#Faces\n";
+	out << "#Faces " << faceIds.size() << "\n";
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
 		pBlk->faceFunc(TS_REAL, faceId, [&out, &vertIdToPtMap](const Polygon& face) {
 			out << "#id: " << face.getId() << "\n";
+			out << "#NumVerts: " << face.getVertexIds().size() << "\n";
 			out << "f ";
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {

@@ -129,7 +129,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	return result;
 }
 
-void Polygon::write(std::ostream& out) const
+void Polygon::write(ostream& out) const
 {
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
@@ -142,7 +142,7 @@ void Polygon::write(std::ostream& out) const
 	IoUtil::write(out, _cellIds);
 }
 
-void Polygon::read(std::istream& in)
+void Polygon::read(istream& in)
 {
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
@@ -618,7 +618,63 @@ void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
 	refSelf->_splitEdgeVertMap.insert(make_pair(edge, vertId));
 }
 
-bool Polygon::needToImprintVertices(const map<Edge, Index3DId>& edgeVertMap) const
+void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>& imprintVerts) const
+{
+
+	vector<Index3DId> onFaceVerts;
+	set<Index3DId> vertSet;
+	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
+	for (const auto& vertId : verts) {
+		if (!vertSet.contains(vertId)) { // ignore vertices already in the face
+			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+			if (distanceToPoint(pt) < SAME_DIST_TOL) {
+				onFaceVerts.push_back(vertId);
+			}
+		}
+	}
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+		auto seg = edge.getSegment(getBlockPtr());
+		for (const auto& vertId : onFaceVerts) {
+			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+			double t;
+			if (seg.contains(pt, t) && t > 0 && t < 1) {
+				imprintVerts.insert(vertId);
+				break;
+			}
+		}
+	}
+}
+
+void Polygon::imprintVertex(const Index3DId& imprintVert)
+{
+	auto tmp = _vertexIds;
+	_vertexIds.clear();
+	_vertexIds.reserve(tmp.size() + 1);
+	bool imprinted = false;
+	for (size_t i = 0; i < tmp.size(); i++) {
+		_vertexIds.push_back(tmp[i]);
+
+		if (!imprinted) {
+			size_t j = (i + 1) % tmp.size();
+			Edge edge(tmp[i], tmp[j]);
+			auto seg = edge.getSegment(getBlockPtr());
+			Vector3d pt = getBlockPtr()->getVertexPoint(imprintVert);
+			double t;
+			if (seg.contains(pt, t) && t > 0 && t < 1) {
+				_vertexIds.push_back(imprintVert);
+				imprinted = true;
+			}
+		}
+	}
+
+	if (imprinted)
+		clearCache();
+}
+
+bool Polygon::needToImprintVertices_deprecated(const map<Edge, Index3DId>& edgeVertMap) const
 {
 	const auto& edges = getEdges();
 	for (const auto& edge : edges) {
@@ -630,7 +686,7 @@ bool Polygon::needToImprintVertices(const map<Edge, Index3DId>& edgeVertMap) con
 	return false;
 }
 
-void Polygon::imprintVertices(const map<Edge, Index3DId>& edgeVertMap)
+void Polygon::imprintVertices_deprecated(const map<Edge, Index3DId>& edgeVertMap)
 {
 #if LOGGING_ENABLED
 	auto pLogger = getBlockPtr()->getLogger();
@@ -807,7 +863,7 @@ size_t Polygon::CellId_SplitLevel::getSplitLevel() const
 	return _splitLevel;
 }
 
-void Polygon::CellId_SplitLevel::write(std::ostream& out) const
+void Polygon::CellId_SplitLevel::write(ostream& out) const
 {
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(uint8_t));
@@ -815,7 +871,7 @@ void Polygon::CellId_SplitLevel::write(std::ostream& out) const
 	out.write((char*)&_splitLevel, sizeof(size_t));
 }
 
-void Polygon::CellId_SplitLevel::read(std::istream& in)
+void Polygon::CellId_SplitLevel::read(istream& in)
 {
 	uint8_t version;
 	in.read((char*)&version, sizeof(uint8_t));
@@ -824,4 +880,42 @@ void Polygon::CellId_SplitLevel::read(std::istream& in)
 }
 
 //LAMBDA_CLIENT_IMPLS(Polygon)
-LAMBDA_CLIENT_IMPLS(Polygon)
+void Polygon::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polygon::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polygon::faceFunc(TopolgyState state, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceFunc(state, id, func);
+} 
+
+void Polygon::faceFunc(TopolgyState state, const Index3DId& id, const function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(state, id, func);
+} 
+
+void Polygon::cellFunc(TopolgyState state, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellFunc(state, id, func);
+} 
+
+void Polygon::cellFunc(TopolgyState state, const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(state, id, func);
+} 
+
+void Polygon::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceAvailFunc(prefState, id, func);
+} 
+
+void Polygon::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellAvailFunc(prefState, id, func);
+}

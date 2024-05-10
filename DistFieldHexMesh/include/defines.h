@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_defines.h>
 
-#define RUN_MULTI_THREAD false
+#define RUN_MULTI_THREAD true
 #define SHARP_EDGE_ANGLE_RADIANS (15 * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 2
 #define _USE_MATH_DEFINES

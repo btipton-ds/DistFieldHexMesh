@@ -148,8 +148,10 @@ public:
 
 	bool cellsOwnThis() const;
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
-	bool needToImprintVertices(const std::map<Edge, Index3DId>& edgeVertMap) const;
-	void imprintVertices(const std::map<Edge, Index3DId>& edgeVertMap);
+	void needToImprintVertices(const std::set<Index3DId>& verts, std::set<Index3DId>& imprintVerts) const;
+	void imprintVertex(const Index3DId& imprintVerts);
+	bool needToImprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap) const;
+	void imprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap);
 	bool isSplit() const;
 
 	size_t getCreatedDuringSplitNumber() const;
