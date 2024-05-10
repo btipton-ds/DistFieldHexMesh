@@ -430,6 +430,7 @@ void AppData::doBuildCFDHexes()
         params.minSplitEdgeLengthGapCurvature_meters = params.minSplitEdgeLengthGapCurvature_meters / 4;
         params.minSplitEdgeLengthSharpVertex_meters = 0.001;
         params.sharpAngle_degrees = SHARP_EDGE_ANGLE_RADIANS;
+        params.maxCellFaces = 12;
 
 
         _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);

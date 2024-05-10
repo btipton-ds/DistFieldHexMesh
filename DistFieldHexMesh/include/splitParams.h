@@ -37,6 +37,7 @@ struct BuildCFDParams {
 	size_t numCurvatureDivs = 4;
 	size_t divsPerCurvatureRadius = 2;
 	size_t divsPerGapCurvatureRadius = 4;
+	size_t maxCellFaces = 12;
 	double maxGapSize = 0.01; // 10 mm
 	double maxCurvatureRadius_meters = 1.0; // 1m
 	double sharpAngle_degrees = 30.0;

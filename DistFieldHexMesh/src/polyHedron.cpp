@@ -668,7 +668,7 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 
 bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 {
-	if (_faceIds.size() > 12) {
+	if (_faceIds.size() > params.maxCellFaces) {
 		setNeedsSplitAtCentroid();
 		return true;
 	}
