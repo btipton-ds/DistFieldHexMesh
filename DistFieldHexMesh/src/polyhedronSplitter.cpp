@@ -248,12 +248,13 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 
 		_pBlock->cellFunc(TS_REAL, newCellId, [this, &realCell](Polyhedron& newCell) {
 			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
-
+#ifdef _DEBUG
 			for (const auto& faceId : newCell.getFaceIds()) {
 				_pBlock->faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
 					assert(face.cellsOwnThis());
 				});
 			}
+#endif // _DEBUG
 
 			newCell.setTriIndices(realCell.getTriIndices());
 		});
