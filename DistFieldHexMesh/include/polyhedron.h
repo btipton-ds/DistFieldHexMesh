@@ -137,7 +137,6 @@ private:
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
-	mutable Trinary _cachedCanSplit = Trinary::IS_UNKNOWN;
 	mutable bool _needsCurvatureCheck = true;
 	mutable bool _cachedEdges0Vaild = false;
 	mutable bool _cachedEdges1Vaild = false;

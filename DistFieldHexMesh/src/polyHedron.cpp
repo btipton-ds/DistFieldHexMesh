@@ -64,7 +64,6 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _splitPt(src._splitPt)
 	, _splitPlane(src._splitPlane)
 	, _cachedIsClosed(src._cachedIsClosed)
-	, _cachedCanSplit(src._cachedCanSplit)
 {
 }
 
@@ -78,7 +77,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_splitPt = rhs._splitPt;
 	_splitPlane = rhs._splitPlane;
 	_cachedIsClosed = rhs._cachedIsClosed;
-	_cachedCanSplit = rhs._cachedCanSplit;
 
 	return *this;
 }
@@ -572,39 +570,35 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 {
-	if (_cachedCanSplit == IS_UNKNOWN) {
-		_cachedCanSplit = IS_FALSE;
-		blockingCellIds.clear();
-		for (const auto& faceId : _faceIds) {
-			Polygon::CellId_SplitLevel adjCellId;
-			size_t faceSplitLevel;
-			faceAvailFunc(TS_REFERENCE, faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
-				for (const auto& id : face.getCellIds()) {
-					if (id != _thisId) {
-						adjCellId = id;
-						faceSplitLevel = face.getSplitLevel(adjCellId);
-					}
-				}
-			});
-
-			if (adjCellId.getId().isValid()) {
-				if (faceSplitLevel > 0) {
-					blockingCellIds.insert(adjCellId);
-				}
-				else {
-					cellAvailFunc(TS_REAL, adjCellId, [this, &blockingCellIds](const Polyhedron& adjCell) {
-						if (adjCell.getSplitLevel() < _splitLevel) {
-							blockingCellIds.insert(adjCell.getId());
-						}
-					});
+	// You can't cache this because it depends on the state of the neighbors
+	// If this cell cannot be split due to a neighbor, then the neighbor is split - now, this cell can be split; even though this cell didn't change.
+	blockingCellIds.clear();
+	for (const auto& faceId : _faceIds) {
+		Polygon::CellId_SplitLevel adjCellId;
+		size_t faceSplitLevel;
+		faceFunc(TS_REAL, faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
+			for (const auto& id : face.getCellIds()) {
+				if (id != _thisId) {
+					adjCellId = id;
+					faceSplitLevel = face.getSplitLevel(adjCellId);
 				}
 			}
+		});
+
+		if (adjCellId.getId().isValid()) {
+			if (faceSplitLevel > 0) {
+				blockingCellIds.insert(adjCellId);
+			} else {
+				cellFunc(TS_REAL, adjCellId, [this, &blockingCellIds](const Polyhedron& adjCell) {
+					if (adjCell.getSplitLevel() < _splitLevel) {
+						blockingCellIds.insert(adjCell.getId());
+					}
+				});
+			}
 		}
-		if (blockingCellIds.empty())
-			_cachedCanSplit = IS_TRUE;
 	}
 
-	return _cachedCanSplit;
+	return blockingCellIds.empty();
 }
 
 bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
@@ -1086,7 +1080,6 @@ void Polyhedron::clearCache() const
 
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_cachedIsClosed = IS_UNKNOWN;
-	_cachedCanSplit = IS_UNKNOWN;
 
 	_cachedEdges0.clear();
 	_cachedEdges1.clear();
