@@ -141,6 +141,7 @@ private:
 	mutable bool _cachedEdges0Vaild = false;
 	mutable bool _cachedEdges1Vaild = false;
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
+	mutable double _cachedMinGap = -1;
 };
 
 inline const std::set<Index3DId>& Polyhedron::getFaceIds() const

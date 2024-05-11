@@ -206,6 +206,7 @@ private:
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
 
 	void setNeedsSimpleSplit();
+	bool doPresplits(const BuildCFDParams& params);
 	bool setNeedToSplitConditional(const BuildCFDParams& params);
 	bool setNeedsSplitDueToSplitFaces(const BuildCFDParams& params);
 	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);

@@ -789,6 +789,25 @@ void Block::setNeedsSimpleSplit()
 	});
 }
 
+bool Block::doPresplits(const BuildCFDParams& params)
+{
+	bool result = false;
+	_modelData._polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
+		if (cell.needToSplitDueToSplitFaces(params)) {
+			result = true;
+			set<Index3DId> blockers;
+			if (cell.canSplit(blockers)) {
+				Vector3d pt = cell.calCentroid();
+				PolyhedronSplitter splitter(this, id);
+				splitter.splitAtPoint(pt);
+			} else {
+				cell.setNeedsSplitAtCentroid();
+			}
+		}
+	});
+	return result;
+}
+
 bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
 {
 #if LOGGING_ENABLED
@@ -904,12 +923,14 @@ bool Block::splitRequiredPolyhedra()
 	auto tmp = _needToSplit;
 	_needToSplit.clear();
 	for (const auto& cellId : tmp) {
-		PolyhedronSplitter splitter(this, cellId);
-		if (splitter.splitIfNeeded())
-			didSplit = true;
-		else
-			assert(!"splitFailed");
-		assert(!polyhedronExists(TS_REAL, cellId));
+		if (polyhedronExists(TS_REAL, cellId)) {
+			PolyhedronSplitter splitter(this, cellId);
+			if (splitter.splitIfNeeded())
+				didSplit = true;
+			else
+				assert(!"splitFailed");
+			assert(!polyhedronExists(TS_REAL, cellId));
+		}
 	}
 
 	return didSplit;

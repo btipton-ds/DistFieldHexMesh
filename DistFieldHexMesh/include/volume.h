@@ -123,8 +123,6 @@ private:
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
-	void splitDueToSplitFaces(const BuildCFDParams& params, bool multiCore);
-	void splitAtSharpVertices(const BuildCFDParams& params, bool multiCore);
 	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
 	void imprintTJointVertices(bool multiCore);

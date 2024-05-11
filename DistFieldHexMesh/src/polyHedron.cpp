@@ -626,25 +626,12 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 			maxEdgeLength = l;
 	}
 
-#if 0 // Split at sharp vertices
-	if (maxEdgeLength > params.minSplitEdgeLengthSharpVertex_meters) {
-		int numSharps = 0;
-		auto sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-		for (size_t vertIdx : sharpVerts) {
-			auto pTriMesh = getBlockPtr()->getModelMesh();
-			Vector3d pt = pTriMesh->getVert(vertIdx)._pt;
-			if (bbox.contains(pt)) {
-				numSharps++;
-			}
-		}
-		if (numSharps > 1)
-			needToSplit = true;
-	}
-#endif
-
 	if (!needToSplit) {
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
 		if (refRadius > 0) {
+			if (refRadius < 0.01) {
+				int dbgBreak = 1;
+			}
 			double gap = minGap();
 			double maxAllowedEdgeLen = DBL_MAX;
 			if (gap < params.maxGapSize) {
@@ -656,7 +643,7 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 					maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
 				}
 			}
-			if (maxEdgeLength > maxAllowedEdgeLen)
+			if (2 * maxEdgeLength > maxAllowedEdgeLen)
 				needToSplit = true;
 		}
 	}
@@ -673,6 +660,8 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 {
 	if (_faceIds.size() > params.maxCellFaces) {
+		set<Index3DId> blockers;
+		assert(canSplit(blockers));
 		setNeedsSplitAtCentroid();
 		return true;
 	}
@@ -870,20 +859,22 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 
 double Polyhedron::minGap() const
 {
-	double result = DBL_MAX;
+	if (_cachedMinGap < 0) {
+		_cachedMinGap = DBL_MAX;
 
-	auto pTriMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
-	vector<size_t> triIndices;
-	if (getBlockPtr()->processTris(bbox, triIndices)) {
-		for (size_t idx : triIndices) {
-			double gap = pTriMesh->triGap(idx);
-			if (gap < result)
-				result = gap;
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		auto bbox = getBoundingBox();
+		vector<size_t> triIndices;
+		if (pTriMesh->processFoundTris(_triIndices, bbox, triIndices)) {
+			for (size_t idx : triIndices) {
+				double gap = pTriMesh->triGap(idx);
+				if (gap < _cachedMinGap)
+					_cachedMinGap = gap;
+			}
 		}
 	}
 
-	return result;
+	return _cachedMinGap;
 }
 
 bool Polyhedron::polygonExists(TopolgyState refState, const Index3DId& id) const
@@ -1080,6 +1071,8 @@ void Polyhedron::clearCache() const
 
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_cachedIsClosed = IS_UNKNOWN;
+
+	_cachedMinGap = -1;
 
 	_cachedEdges0.clear();
 	_cachedEdges1.clear();

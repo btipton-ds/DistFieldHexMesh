@@ -43,7 +43,6 @@ struct BuildCFDParams {
 	double sharpAngle_degrees = 30.0;
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
-	double minSplitEdgeLengthSharpVertex_meters = 0.01; // 10 mm
 };
 
 }

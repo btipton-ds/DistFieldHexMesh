@@ -321,7 +321,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-//	splitAtSharpVertices(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
@@ -426,7 +425,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		double sinEdgeAngle = sin(sharpAngleRadians);
 
 		size_t num = params.numCurvatureDivs;
-		for (size_t i = 0; i < num; i++) {
+		for (size_t i = 0; i < num + 1; i++) {
 #if LOGGING_ENABLED
 			runLambda([this, i](size_t linearIdx)->bool {
 				auto logger = _blocks[linearIdx]->getLogger();
@@ -439,6 +438,20 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			}, multiCore);
 #endif // LOGGING_ENABLED
 
+			if (i > 0) {
+				bool didSplit = true;
+				int count = 0;
+				while (didSplit && count < 3) {
+					didSplit = false;
+					runLambda([this, &params, &didSplit, sinEdgeAngle](size_t linearIdx)->bool {
+						if (_blocks[linearIdx]->doPresplits(params))
+							didSplit = true;
+						return true;
+					}, multiCore);
+					count++;
+				}
+			}
+
 			bool changed = false;
 			runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
 				if (_blocks[linearIdx]->setNeedToSplitConditional(params))
@@ -447,7 +460,6 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			}, multiCore);
 
 			finishSplits(multiCore);
-			splitDueToSplitFaces(params, multiCore);
 			//		assert(verifyTopology(multiCore));
 
 			if (!changed) {
@@ -462,66 +474,6 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		startCount = endCount;
 #endif // _WIN32
 	}
-}
-
-void Volume::splitDueToSplitFaces(const BuildCFDParams& params, bool multiCore)
-{
-#ifdef _WIN32
-	LARGE_INTEGER startCount, endCount, freq;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-	int i = 0;
-	bool changed = true;
-	while (changed) {
-		changed = false;
-
-		runLambda([this, &params, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->setNeedsSplitDueToSplitFaces(params))
-				changed = true;
-			return true;
-		}, multiCore);
-
-		if (changed)
-			finishSplits(multiCore);
-		i++;
-		if (i > 5)
-			break;
-	}
-#ifdef _WIN32
-	QueryPerformanceCounter(&endCount);
-	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for splitDueToSplitFaces: " << i << ": " << deltaT << " secs\n";
-	startCount = endCount;
-#endif // _WIN32
-}
-
-void Volume::splitAtSharpVertices(const BuildCFDParams& params, bool multiCore)
-{
-#ifdef _WIN32
-	LARGE_INTEGER startCount, endCount, freq;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-
-	bool changed = true;
-	while (changed) {
-		changed = false;
-		runLambda([this, &params, &changed](size_t linearIdx)->bool {
-			if (_blocks[linearIdx]->setNeedToSplitSharpVertices(params))
-				changed = true;
-			return true;
-		}, multiCore);
-
-		if (changed)
-			finishSplits(multiCore);
-	}
-#ifdef _WIN32
-	QueryPerformanceCounter(&endCount);
-	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for splitAtSharpVertices: " << deltaT << " secs\n";
-	startCount = endCount;
-#endif // _WIN32
 }
 
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
@@ -552,8 +504,9 @@ void Volume::finishSplits(bool multiCore)
 			}
 			return true;
 		}, multiCore);
+
 		i++;
-		if (i > 5)
+		if (i > 20)
 			break;
 	}
 	imprintTJointVertices(multiCore);
@@ -562,8 +515,6 @@ void Volume::finishSplits(bool multiCore)
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
-	// TODO getting false report of open cells. checkMesh shows all cells closed.
-	// Need to fix closed test and exit criteria
 	runLambda([this](size_t linearIdx)->bool {
 		_blocks[linearIdx]->imprintTJointVertices();
 		return true;
@@ -579,7 +530,6 @@ void Volume::imprintTJointVertices(bool multiCore)
 	}, multiCore);
 	assert(allCellsClosed);
 #endif
-	cout << "T Joint imprints\n";
 }
 
 void Volume::dumpOpenCells(bool multiCore) const
