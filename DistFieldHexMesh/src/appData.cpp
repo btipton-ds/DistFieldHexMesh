@@ -40,7 +40,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <readStl.h>
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
+#include <buildCFDHexesDlg.h>
 
+#include <splitParams.h>
 #include <makeBlockDlg.h>
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
@@ -410,13 +412,14 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 {
 }
 
-void AppData::doBuildCFDHexes()
+void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 {
     try {
         if (!_volume)
             _volume = make_shared<Volume>();
 
         BuildCFDParams params;
+        dlg.getParams(params);
 
         params.uniformRatio = false;
         params.minBlocksPerSide = 6; // def = 6

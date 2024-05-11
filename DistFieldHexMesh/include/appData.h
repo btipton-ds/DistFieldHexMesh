@@ -44,6 +44,7 @@ class GraphicsCanvas;
 class MainFrame;
 class MakeBlockDlg;
 class SelectBlocksDlg;
+class BuildCFDHexesDlg;
 
 class AppData {
 public:
@@ -57,7 +58,7 @@ public:
     void doVerifyNormals();
     void doAnalyzeGaps();
     void doFindMinGap() const;
-    void doBuildCFDHexes();
+    void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
 

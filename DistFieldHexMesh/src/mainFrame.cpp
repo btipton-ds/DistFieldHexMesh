@@ -43,6 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mainFrame.h>
 #include <makeBlockDlg.h>
 #include <selectBlocksDlg.h>
+#include <buildCFDHexesDlg.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
@@ -339,7 +340,10 @@ void MainFrame::OnFindMinGap(wxCommandEvent& event)
 
 void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
 {
-    _pAppData->doBuildCFDHexes();
+    BuildCFDHexesDlg dlg(this, 1, wxString("Make Block"), wxPoint(40, 40));
+    if (dlg.ShowModal() == wxID_OK) {
+        _pAppData->doBuildCFDHexes(dlg);
+    }
 }
 
 void MainFrame::OnShowSharpEdges(wxCommandEvent& event)
