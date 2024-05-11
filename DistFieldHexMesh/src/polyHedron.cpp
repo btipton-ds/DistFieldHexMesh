@@ -969,16 +969,17 @@ bool Polyhedron::orderVertIds(vector<Index3DId>& vertIds) const
 
 bool Polyhedron::isClosed() const
 {
-	bool result = true;
-	const auto& edges = getEdges(false);
-	for (const auto& edge : edges) {
-		if (edge.getFaceIds().size() != 2) {
-			result = false;
-			break;
+	if (_cachedIsClosed == Trinary::IS_UNKNOWN) {
+		_cachedIsClosed = Trinary::IS_TRUE;
+		const auto& edges = getEdges(false);
+		for (const auto& edge : edges) {
+			if (edge.getFaceIds().size() != 2) {
+				_cachedIsClosed = Trinary::IS_FALSE;
+				break;
+			}
 		}
 	}
-
-	return result;
+	return _cachedIsClosed == Trinary::IS_TRUE;
 }
 
 namespace
@@ -1071,6 +1072,7 @@ void Polyhedron::clearCache() const
 {
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_needsCurvatureCheck = true;
+	_cachedIsClosed = Trinary::IS_UNKNOWN;
 
 	_cachedEdges0Vaild = false;
 	_cachedEdges1Vaild = false;

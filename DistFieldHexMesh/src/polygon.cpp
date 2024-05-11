@@ -55,6 +55,9 @@ Polygon::Polygon(const Polygon& src)
 	, _splitFaceProductIds(src._splitFaceProductIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
+	, _cachedIntersectsModel(src._cachedIntersectsModel)
+	, _cachedEdgesVaild(src._cachedEdgesVaild)
+	, _cachedEdges(src._cachedEdges)
 	// Don't copy the caches
 {
 }
@@ -66,6 +69,9 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	_splitFaceProductIds = rhs._splitFaceProductIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
+	_cachedIntersectsModel = rhs._cachedIntersectsModel;
+	_cachedEdgesVaild = rhs._cachedEdgesVaild;
+	_cachedEdges = rhs._cachedEdges;
 
 	return *this;
 }
@@ -79,9 +85,17 @@ void Polygon::addVertex(const Index3DId& vertId)
 void Polygon::clearCache() const
 {
 	_sortCacheVaild = false;
-	_edgeCacheVaild = false;
+	_cachedEdgesVaild = false;
+	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedEdges.clear();
 	_sortedIds.clear();
+
+	// Clear our owner cells' caches
+	for (const auto& cellId : _cellIds) {
+		cellFunc(getState(), cellId, [](const Polyhedron& cell) {
+			cell.clearCache();
+		});
+	}
 }
 
 bool Polygon::cellsOwnThis() const
@@ -250,9 +264,9 @@ bool Polygon::isBlockBoundary() const
 
 const set<Edge>& Polygon::getEdges() const
 {
-	if (!_edgeCacheVaild) {
+	if (!_cachedEdgesVaild) {
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
-		_edgeCacheVaild = true;
+		_cachedEdgesVaild = true;
 	}
 #if 0 && defined(_DEBUG)
 	{
@@ -462,43 +476,66 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
+size_t Polygon::getCellTris(std::vector<size_t>& indices) const
+{
+	set<size_t> triSet;
+	for (const auto& cellId : _cellIds) {
+		cellFunc(TS_REAL, cellId, [&indices, &triSet](const Polyhedron& cell) {
+			const auto& ct = cell.getTriIndices();
+			for (size_t triIdx : ct) {
+				if (!triSet.contains(triIdx)) {
+					triSet.insert(triIdx);
+					indices.push_back(triIdx);
+				}
+			}
+		});
+	}
+	return indices.size();
+}
+
 bool Polygon::intersectsModel() const
 {
-	auto pMesh = getBlockPtr()->getModelMesh();
-	CBoundingBox3Dd bbox;
-	for (const auto& vertId : _vertexIds) {
-		bbox.merge(getBlockPtr()->getVertexPoint(vertId));
-	}
+	if (_cachedIntersectsModel == IS_UNKNOWN) {
+		_cachedIntersectsModel = IS_FALSE;
 
-	vector<size_t> triEntries;
-	if (getBlockPtr()->processTris(bbox, triEntries)) {
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		vector<Edge> edges;
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			const auto& vertId0 = _vertexIds[i];
-			Edge edge(_vertexIds[i], _vertexIds[j]);
-			edges.push_back(edge);
-		}
+		vector<size_t> cellTris;
 
-		for (const auto& triIdx : triEntries) {
-			const auto& tri = pTriMesh->getTri(triIdx);
-			const Vector3d* pts[3] = {
-				pts[0] = &(pTriMesh->getVert(tri[0])._pt),
-				pts[1] = &(pTriMesh->getVert(tri[1])._pt),
-				pts[2] = &(pTriMesh->getVert(tri[2])._pt),
-			};
+		if (getCellTris(cellTris) > 0) {
+			auto pMesh = getBlockPtr()->getModelMesh();
+			CBoundingBox3Dd bbox;
+			for (const auto& vertId : _vertexIds) {
+				bbox.merge(getBlockPtr()->getVertexPoint(vertId));
+			}
 
-			for (const auto& edge : edges) {
-				auto seg = edge.getSegment(getBlockPtr());
-				RayHit<double> hit;
-				if (seg.intersectTri(pts, hit))
-					return true;
+			vector<size_t> triIndices;
+			if (pMesh->processFoundTris(cellTris, bbox, triIndices)) {
+				auto pTriMesh = getBlockPtr()->getModelMesh();
+				const auto& edges = getEdges();
+
+				for (const auto& triIdx : triIndices) {
+					const auto& tri = pTriMesh->getTri(triIdx);
+					const Vector3d* pts[3] = {
+						pts[0] = &(pTriMesh->getVert(tri[0])._pt),
+						pts[1] = &(pTriMesh->getVert(tri[1])._pt),
+						pts[2] = &(pTriMesh->getVert(tri[2])._pt),
+					};
+
+					for (const auto& edge : edges) {
+						auto seg = edge.getSegment(getBlockPtr());
+						RayHit<double> hit;
+						if (seg.intersectTri(pts, hit)) {
+							_cachedIntersectsModel = IS_TRUE;
+							break;
+						}
+					}
+					if (_cachedIntersectsModel == IS_TRUE)
+						break;
+				}
 			}
 		}
 	}
 
-	return false; // Don't test split cells
+	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
 double Polygon::distFromPlane(const Vector3d& pt) const

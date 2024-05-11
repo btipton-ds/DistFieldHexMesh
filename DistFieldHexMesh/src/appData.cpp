@@ -422,7 +422,7 @@ void AppData::doBuildCFDHexes()
         params.minBlocksPerSide = 6; // def = 6
         params.numBlockDivs = 0;
         params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 8;
+        params.numCurvatureDivs = 5;
         params.divsPerCurvatureRadius = 3;
         params.divsPerGapCurvatureRadius = 6;
         params.maxGapSize = 0.02;

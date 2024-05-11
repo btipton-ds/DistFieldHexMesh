@@ -63,6 +63,7 @@ public:
 	std::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBoundingBox() const;
+	void clearCache() const;
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
@@ -124,7 +125,6 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
 	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
-	void clearCache() const;
 
 	std::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
@@ -136,6 +136,7 @@ private:
 	std::vector<size_t> _triIndices;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
+	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
 	mutable bool _needsCurvatureCheck = true;
 	mutable bool _cachedEdges0Vaild = false;
 	mutable bool _cachedEdges1Vaild = false;

@@ -180,6 +180,7 @@ private:
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	TopolgyState getState() const;
 	void clearCache() const;
+	size_t getCellTris(std::vector<size_t>& indices) const;
 
 	size_t _createdDuringSplitNumber = 0;
 	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
@@ -189,7 +190,8 @@ private:
 	std::set<CellId_SplitLevel> _cellIds;
 
 	mutable bool _sortCacheVaild = false;
-	mutable bool _edgeCacheVaild = false;
+	mutable bool _cachedEdgesVaild = false;
+	mutable Trinary _cachedIntersectsModel = Trinary::IS_UNKNOWN;
 	mutable std::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
 };
