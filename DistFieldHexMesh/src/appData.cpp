@@ -418,24 +418,24 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
         if (!_volume)
             _volume = make_shared<Volume>();
 
-        BuildCFDParams params;
-        dlg.getParams(params);
+        dlg.getParams(_params);
 
-        params.uniformRatio = false;
-        params.minBlocksPerSide = 6; // def = 6
-        params.numBlockDivs = 0;
-        params.numSimpleDivs = 0;
-        params.numCurvatureDivs = 12;
-        params.divsPerCurvatureRadius = 2;
-        params.divsPerGapCurvatureRadius = 6;
-        params.maxGapSize = 0.02;
-        params.minSplitEdgeLengthCurvature_meters = 0.0025;
-        params.minSplitEdgeLengthGapCurvature_meters = 0.001;
-        params.sharpAngle_degrees = SHARP_EDGE_ANGLE_RADIANS;
-        params.maxCellFaces = 12;
+#if 0
+        _params.uniformRatio = false;
+        _params.minBlocksPerSide = 6; // def = 6
+        _params.numBlockDivs = 0;
+        _params.numSimpleDivs = 0;
+        _params.numCurvatureDivs = 12;
+        _params.divsPerCurvatureRadius = 2;
+        _params.divsPerGapCurvatureRadius = 6;
+        _params.maxGapSize = 0.02;
+        _params.minSplitEdgeLengthCurvature_meters = 0.0025;
+        _params.minSplitEdgeLengthGapCurvature_meters = 0.001;
+        _params.sharpAngle_degrees = SHARP_EDGE_ANGLE_RADIANS;
+        _params.maxCellFaces = 12;
+#endif
 
-
-        _volume->buildCFDHexes(_pMesh, params, RUN_MULTI_THREAD);
+        _volume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     } catch (const char* errStr) {
         cout << errStr << "\n";

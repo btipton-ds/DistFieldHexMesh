@@ -41,7 +41,7 @@ namespace DFHM {
 	class BuildCFDHexesDlg : public wxDialog {
 	public:
 
-		BuildCFDHexesDlg(wxWindow* parent, wxWindowID id, const wxString& title,
+		BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
 			const wxPoint& pos = wxDefaultPosition);
 
 		void getParams(BuildCFDParams& params) const;
@@ -62,11 +62,14 @@ namespace DFHM {
 
 		*/
 	private:
+		void getValue(wxTextCtrl* item, size_t& curValue) const;
+		void getValue(wxTextCtrl* item, double& curValue) const;
+
 		wxStaticText
-			* _uniformRatioPrompt = nullptr,
 			* _minBlocksPerSidePrompt = nullptr,
 			* _numBlockDivsPrompt = nullptr,
 			* _numSimpleDivsPrompt = nullptr,
+			* _numCurvatureDivsPrompt = nullptr,
 			* _divsPerCurvaturePrompt = nullptr,
 			* _divsPerGapCurvaturePrompt = nullptr,
 			* _maxCellFacesPrompt = nullptr,
@@ -76,11 +79,14 @@ namespace DFHM {
 			* _minSplitEdgeLengthCurvaturePrompt = nullptr,
 			* _minSplitEdgeLengthGapCurvaturePrompt = nullptr;
 
+		wxCheckBox
+			* _uniformRatioCheckBox = nullptr;
+
 		wxTextCtrl
-			* _uniformRatioBox = nullptr,
 			* _minBlocksPerSideBox = nullptr,
 			* _numBlockDivsBox = nullptr,
 			* _numSimpleDivsBox = nullptr,
+			* _numCurvatureDivsBox = nullptr,
 			* _divsPerCurvatureBox = nullptr,
 			* _divsPerGapCurvatureBox = nullptr,
 			* _maxCellFacesBox = nullptr,

@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <readStl.h>
 #include <MultiCoreUtil.h>
 
+#include <splitParams.h>
 #include <mainFrame.h>
 #include <makeBlockDlg.h>
 #include <selectBlocksDlg.h>
@@ -340,7 +341,8 @@ void MainFrame::OnFindMinGap(wxCommandEvent& event)
 
 void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
 {
-    BuildCFDHexesDlg dlg(this, 1, wxString("Make Block"), wxPoint(40, 40));
+    BuildCFDParams& params = _pAppData->getParams();
+    BuildCFDHexesDlg dlg(params, this, 1, wxString("Make Block"), wxPoint(40, 40));
     if (dlg.ShowModal() == wxID_OK) {
         _pAppData->doBuildCFDHexes(dlg);
     }

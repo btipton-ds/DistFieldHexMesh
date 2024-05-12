@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <triMesh.h>
 #include <OGLMultiVboHandler.h>
+#include <splitParams.h>
 #include <volume.h>
 
 namespace DFHM {
@@ -74,6 +75,8 @@ public:
 
     void getDisplayMinMax(Index3D& min, Index3D& max) const;
     void setDisplayMinMax(const Index3D& min, const Index3D& max);
+    BuildCFDParams& getParams();
+    const BuildCFDParams& getParams() const;
 
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
@@ -102,9 +105,20 @@ private:
     std::vector<double> _binSizes;
     std::vector<std::vector<int>> _bins;
 
+    BuildCFDParams _params;
     std::wstring _dhfmFilename;
 };
 
 using AppDataPtr = std::shared_ptr<AppData>;
+
+inline BuildCFDParams& AppData::getParams()
+{
+    return _params;
+}
+
+inline const BuildCFDParams& AppData::getParams() const
+{
+    return _params;
+}
 
 }
