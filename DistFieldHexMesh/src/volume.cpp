@@ -321,7 +321,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-//	splitAtSharpEdges(params, multiCore);
+	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
 
@@ -395,7 +395,10 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 #endif // LOGGING_ENABLED
 
 			runLambda([this](size_t linearIdx)->bool {
-				_blocks[linearIdx]->setNeedsSimpleSplit();
+				auto pBlk = _blocks[linearIdx];
+				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
+					cell.setNeedsSplitAtCentroid();
+				});
 				return true;
 			}, multiCore);
 
@@ -454,8 +457,11 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 			bool changed = false;
 			runLambda([this, &params, sinEdgeAngle, &changed](size_t linearIdx)->bool {
-				if (_blocks[linearIdx]->setNeedToSplitConditional(params))
-					changed = true;
+				auto pBlk = _blocks[linearIdx];
+				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+					if (cell.needToSplitConditional(params))
+						changed = true;
+					});
 				return true;
 			}, multiCore);
 
@@ -478,7 +484,31 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 {
+	bool changed = false;
+	runLambda([this, &changed, &params](size_t linearIdx)->bool {
+		auto pBlk = _blocks[linearIdx];
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			if (cell.setSplitAtSharpEdgeCusps(params))
+				changed = true;
+		});
+		return true;
+	}, multiCore);
 
+	if (changed)
+		finishSplits(multiCore);
+
+	changed = false;
+	runLambda([this, &changed, &params](size_t linearIdx)->bool {
+		auto pBlk = _blocks[linearIdx];
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			if (cell.setSplitAtSharpEdges(params))
+				changed = true;
+			});
+		return true;
+	}, multiCore);
+
+	if (changed)
+		finishSplits(multiCore);
 }
 
 void Volume::finishSplits(bool multiCore)

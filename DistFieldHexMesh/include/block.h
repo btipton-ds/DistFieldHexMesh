@@ -168,6 +168,18 @@ public:
 
 	void dumpObj(const std::vector<Index3DId>& cellIds) const;
 
+	template<class F>
+	void iteratePolygonsInOrder(TopolgyState state, F fLambda) const;
+
+	template<class F>
+	void iteratePolygonsInOrder(TopolgyState state, F fLambda);
+
+	template<class F>
+	void iteratePolyhedraInOrder(TopolgyState state, F fLambda) const;
+
+	template<class F>
+	void iteratePolyhedraInOrder(TopolgyState state, F fLambda);
+
 	LAMBDA_BLOCK_DECLS
 
 private:
@@ -205,12 +217,7 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
 
-	void setNeedsSimpleSplit();
 	bool doPresplits(const BuildCFDParams& params);
-	bool setNeedToSplitConditional(const BuildCFDParams& params);
-	bool setNeedsSplitDueToSplitFaces(const BuildCFDParams& params);
-	bool setNeedToSplitSharpVertices(const BuildCFDParams& params);
-	bool setNeedToSplitSharpEdges(const BuildCFDParams& params);
 	void dumpOpenCells() const;
 
 	bool splitRequiredPolyhedra();
@@ -301,5 +308,30 @@ inline Block::ModelData& Block::data(TopolgyState refState)
 {
 	return refState == TS_REAL ? _modelData : _refData;
 }
+
+template<class F>
+inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda) const
+{
+	data(state)._polygons.iterateInOrder(fLambda);
+}
+
+template<class F>
+inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda)
+{
+	data(state)._polygons.iterateInOrder(fLambda);
+}
+
+template<class F>
+inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda) const
+{
+	data(state)._polyhedra.iterateInOrder(fLambda);
+}
+
+template<class F>
+inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda)
+{
+	data(state)._polyhedra.iterateInOrder(fLambda);
+}
+
 
 }

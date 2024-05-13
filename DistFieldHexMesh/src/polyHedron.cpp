@@ -660,8 +660,6 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 {
 	if (_faceIds.size() > params.maxCellFaces) {
-		set<Index3DId> blockers;
-		assert(canSplit(blockers));
 		setNeedsSplitAtCentroid();
 		return true;
 	}
@@ -669,36 +667,34 @@ bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 	return false;
 }
 
-bool Polyhedron::setNeedToSplitSharpVertices(const BuildCFDParams& params, const vector<size_t>& sharpVerts)
+bool Polyhedron::setSplitAtSharpEdgeCusps(const BuildCFDParams& params)
 {
-	auto bbox = getBoundingBox();
+	double sinEdgeAngle = sin(params.sharpAngle_degrees / 180.0 * M_PI);
 	auto pMesh = getBlockPtr()->getModelMesh();
-	for (size_t idx : sharpVerts) {
-		Vector3d pt = pMesh->getVert(idx)._pt;
-		if (bbox.contains(pt)) {
-			double minDist = DBL_MAX;
-			for (const auto& faceId : _faceIds) {
-				faceAvailFunc(TS_REAL, faceId, [&minDist, &pt](const Polygon& face) {
-					double d = fabs(face.distanceToPoint(pt));
-					if (d < minDist)
-						minDist = d;
-				});
-			}
-
-			// Don't split if the point is already close enough to a face
-			if (minDist > Tolerance::sameDistTol()) {
-				Plane<double> plane;
-				auto pVol = getBlockPtr()->getVolume();
-				bool hasPlane = pVol->getSharpVertPlane(plane);
-				if (hasPlane) {
-					setNeedsSplitAtPlane(plane);
-				} else {
-					setNeedsSplitAtPoint(pt);
+	auto bbox = getBoundingBox();
+	const auto& sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
+	vector<size_t> edges;
+	for (size_t vertIdx : sharpVerts) {
+		const auto& vert = pMesh->getVert(vertIdx);
+		if (bbox.contains(vert._pt)) {
+			for (size_t edgeIdx : vert._edgeIndices) {
+				if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
+					edges.push_back(edgeIdx);
 				}
-				return true;
 			}
 		}
 	}
+
+	if (edges.empty())
+		return false;
+
+	int dbgBreak = 1;
+
+	return false;
+}
+
+bool Polyhedron::setSplitAtSharpEdges(const BuildCFDParams& params)
+{
 	return false;
 }
 

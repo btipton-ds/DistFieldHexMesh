@@ -775,20 +775,6 @@ bool Block::load()
 	return true;
 }
 
-void Block::setNeedsSimpleSplit()
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::setNeedsSimpleSplit()\n";
-	Logger::Indent indent;
-#endif
-
-	_modelData._polyhedra.iterateInOrder([](const Index3DId& id, Polyhedron& cell) {
-		cell.needsSplitAtCentroid();
-	});
-}
-
 bool Block::doPresplits(const BuildCFDParams& params)
 {
 	bool result = false;
@@ -806,67 +792,6 @@ bool Block::doPresplits(const BuildCFDParams& params)
 		}
 	});
 	return result;
-}
-
-bool Block::setNeedToSplitConditional(const BuildCFDParams& params)
-{
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::setNeedToSplitConditional()\n";
-	Logger::Indent indent;
-#endif
-	if (!_hadConditionalSplits)
-		return false;
-	bool result = false;
-	_modelData._polyhedra.iterateInOrder([&params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.needToSplitConditional(params))
-			result = true;
-	});
-
-	_hadConditionalSplits = result;
-
-	return result;
-}
-
-bool Block::setNeedsSplitDueToSplitFaces(const BuildCFDParams& params)
-{
-	bool result = false;
-	_modelData._polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (polyhedronExists(TS_REFERENCE, id)) {
-			if (cell.needToSplitDueToSplitFaces(params))
-				result = true;
-		}
-	});
-
-	return result;
-}
-
-bool Block::setNeedToSplitSharpVertices(const BuildCFDParams& params)
-{
-	bool result = false;
-	auto pModelMesh = getModelMesh();
-	const auto& sharpVertices = _pVol->getSharpVertIndices();
-	vector<size_t> blockVerts;
-	for (size_t vIdx : sharpVertices) {
-		const Vector3d& pt = pModelMesh->getVert(vIdx)._pt;
-		if (_boundBox.contains(pt)) {
-			blockVerts.push_back(vIdx);
-		}
-	}
-	if (!blockVerts.empty()) {
-		_modelData._polyhedra.iterateInOrder([&params, &result, &blockVerts](const Index3DId& id, Polyhedron& cell) {
-			if (cell.setNeedToSplitSharpVertices(params, blockVerts))
-				result = true;
-		});
-	}
-
-	return result;
-}
-
-bool Block::setNeedToSplitSharpEdges(const BuildCFDParams& params)
-{
-	return false;
 }
 
 void Block::dumpObj(const vector<Index3DId>& cellIds) const
