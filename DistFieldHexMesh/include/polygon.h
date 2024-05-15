@@ -39,6 +39,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 template<class T>
 class Plane;
+template<class T>
+struct RayHit;
 
 namespace DFHM {
 
@@ -153,6 +155,9 @@ public:
 	bool needToImprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap) const;
 	void imprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap);
 	bool isSplit() const;
+	bool isPlanar() const;
+	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
+	bool intersect(const Plane<double>& pl, LineSegment<double>& edge) const;
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);

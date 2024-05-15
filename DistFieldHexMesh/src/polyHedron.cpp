@@ -1052,7 +1052,7 @@ bool Polyhedron::verifyTopology() const
 
 #if DUMP_BAD_CELL_OBJS
 	if (!valid) {
-		getBlockPtr()->dumpObj({ _thisId });
+		getBlockPtr()->dumpObj({ _thisId }, false, false, false);
 	}
 #endif
 

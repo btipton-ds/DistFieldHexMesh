@@ -85,8 +85,8 @@ public:
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 
-	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds) const;
-	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds) const;
+	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const;
+	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const;
 
 	void writePolyMesh(const std::string& dirName);
 
@@ -129,7 +129,7 @@ private:
 	void dumpOpenCells(bool multiCore) const;
 
 	void findFeatures();
-	void findSharpEdgeGroups();
+	void findSharpEdgeEdges();
 
 	struct PolymeshTables {
 		int32_t numInner;

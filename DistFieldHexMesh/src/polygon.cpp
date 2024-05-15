@@ -779,6 +779,69 @@ bool Polygon::isSplit() const
 	return _splitFaceProductIds.size() == _vertexIds.size();
 }
 
+bool Polygon::isPlanar() const
+{
+	if (_vertexIds.size() == 3)
+		return true;
+
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[2]);
+	Vector3d v0 = pt1 - pt0;
+	Vector3d v1 = pt2 - pt0;
+	Vector3d norm = v1.cross(v0).normalized();
+	Plane<double> pl(pt0, norm, false);
+	for (size_t i = 3; i < _vertexIds.size(); i++) {
+		Vector3d pt = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
+			return false;
+	}
+
+	return true;
+}
+
+bool Polygon::intersect(LineSegment<double>& seg, RayHit<double>& hit) const
+{
+	if (isPlanar()) {
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+		for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
+			size_t j = (i + 1);
+			Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+			Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+			if (seg.intersectTri(pt0, pt1, pt2, hit))
+				return true;
+		}
+	} else {
+		assert(!"Face is not planar");
+	}
+	return false;
+}
+
+bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& edge) const
+{
+	set<FixedPt> pts;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		LineSegment<double> edgeSeg(pt0, pt1);
+		RayHit<double> hit;
+		if (pl.intersectLineSegment(edgeSeg, hit)) {
+			pts.insert(FixedPt(hit.hitPt));
+		}
+	}
+
+	if (pts.size() == 2) {
+		auto iter = pts.begin();
+		Vector3d pt0 = FixedPt::toDbl(*iter++);
+		Vector3d pt1 = FixedPt::toDbl(*iter++);
+		edge = LineSegment<double>(pt0, pt1);
+		return true;
+	}
+
+	return false;
+}
+
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {

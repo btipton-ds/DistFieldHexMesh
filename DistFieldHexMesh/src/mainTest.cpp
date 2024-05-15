@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <iostream>
 
+#include <defines.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <blockTest.h>

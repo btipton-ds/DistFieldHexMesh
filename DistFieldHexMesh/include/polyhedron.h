@@ -126,6 +126,8 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
 	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
+	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
+	bool intersect(const Plane<double>& pl, std::vector<Vector3d>& polyPoints) const;
 
 	std::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;

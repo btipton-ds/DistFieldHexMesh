@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <sstream>
 #include <fstream>
+#include <filesystem>
+#include <stdexcept>
 
 #include <defines.h>
 #include <cmath>
@@ -36,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_plane.h>
 #include <tm_ray.h>
 #include <tm_bestFit.h>
+#include <tm_plane.h>
 #include <triMesh.h>
 
 #include <block.h>
@@ -43,9 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <MultiCoreUtil.h>
 #include <splitParams.h>
 #include <vertex.h>
-#include <filesystem>
-#include <stdexcept>
-#include <tm_plane.h>
+#include <polyhedronSplitter.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -137,10 +138,10 @@ void Volume::findFeatures()
 
 	double err;
 	_hasSharpVertPlane = bestFitPlane(sharpPoints, _sharpVertPlane, err) && err < Tolerance::sameDistTol();
-	findSharpEdgeGroups();
+	findSharpEdgeEdges();
 }
 
-void Volume::findSharpEdgeGroups()
+void Volume::findSharpEdgeEdges()
 {
 	const double sinSharpAngle = sin(getSharpAngleRad());
 	for (size_t edgeIdx = 0; edgeIdx < _pModelTriMesh->numEdges(); edgeIdx++) {
@@ -321,7 +322,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitAtSharpEdges(params, multiCore);
+//	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
 
@@ -487,12 +488,12 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 	bool changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
 		auto pBlk = _blocks[linearIdx];
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.setSplitAtSharpEdgeCusps(params))
 				changed = true;
 		});
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -505,7 +506,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 				changed = true;
 			});
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -722,36 +723,85 @@ namespace {
 	}
 }
 
-void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds) const
+void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const
 {
 	ofstream out(path, ios_base::trunc);
-	writeObj(out, cellIds);
+	writeObj(out, cellIds, includeModel, useEdges, sharpOnly);
 }
 
-void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
+void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const
 {
 	set<Index3DId> faceIds;
+	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(TS_REAL,cellId, [&faceIds](const Polyhedron& cell) {
+		pBlk->cellFunc(TS_REAL,cellId, [&faceIds, &modelTriIndices, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
 			faceIds.insert(ids.begin(), ids.end());
+			if (includeModel) {
+				modelTriIndices = cell.getTriIndices();
+			}
 		});
 	}
 
 	vector<Vector3d> pts;
-	map<Index3DId, size_t> vertIdToPtMap;
+	set<TriMesh::CEdge> modelEdgeSet;
+	map<FixedPt, size_t> pointToIdxMap;
+
+	if (!modelTriIndices.empty()) {
+		const double sinSharp = sin(SHARP_EDGE_ANGLE_RADIANS);
+		for (auto triIdx : modelTriIndices) {
+			const auto& tri = _pModelTriMesh->getTri(triIdx);
+			if (useEdges) {
+				for (int i = 0; i < 3; i++) {
+					int j = (i + 1) % 3;
+					TriMesh::CEdge edge(tri[i], tri[j]);
+					if (!modelEdgeSet.contains(edge)) {
+						size_t edgeIdx = _pModelTriMesh->findEdge(edge);
+						if (!sharpOnly || _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharp)) {
+							modelEdgeSet.insert(edge);
+							for (int k = 0; k < 2; k++) {
+								size_t modVertIdx = edge._vertIndex[k];
+								const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
+								FixedPt fpt(pt);
+								auto iter = pointToIdxMap.find(fpt);
+								if (iter == pointToIdxMap.end()) {
+									size_t vertIdx = pts.size();
+									pointToIdxMap.insert(make_pair(fpt, vertIdx));
+									pts.push_back(pt);
+								}
+							}
+						}
+					}
+				}
+			} else {
+				for (int i = 0; i < 3; i++) {
+					size_t modVertIdx = tri[i];
+					const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
+					FixedPt fpt(pt);
+					auto iter = pointToIdxMap.find(fpt);
+					if (iter == pointToIdxMap.end()) {
+						size_t vertIdx = pts.size();
+						pointToIdxMap.insert(make_pair(fpt, vertIdx));
+						pts.push_back(pt);
+					}
+				}
+			}
+		}
+	}
 
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &vertIdToPtMap, &pts](const Polygon& face) {
+		pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
-				auto iter = vertIdToPtMap.find(vertId);
-				if (iter == vertIdToPtMap.end()) {
+				Vector3d pt = pBlk->getVertexPoint(vertId);
+				FixedPt fpt(pt);
+				auto iter = pointToIdxMap.find(fpt);
+				if (iter == pointToIdxMap.end()) {
 					size_t vertIdx = pts.size();
-					vertIdToPtMap.insert(make_pair(vertId, vertIdx));
-					pts.push_back(pBlk->getVertexPoint(vertId));
+					pointToIdxMap.insert(make_pair(fpt, vertIdx));
+					pts.push_back(pt);
 				}
 			}
 		});
@@ -765,20 +815,53 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds) const
 	out << "#Faces " << faceIds.size() << "\n";
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(TS_REAL, faceId, [&out, &vertIdToPtMap](const Polygon& face) {
+		pBlk->faceFunc(TS_REAL, faceId, [&out, &pBlk, &pointToIdxMap](const Polygon& face) {
 			out << "#id: " << face.getId() << "\n";
 			out << "#NumVerts: " << face.getVertexIds().size() << "\n";
 			out << "f ";
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
-				auto iter = vertIdToPtMap.find(vertId);
-				if (iter != vertIdToPtMap.end()) {
+				Vector3d pt = pBlk->getVertexPoint(vertId);
+				FixedPt fpt(pt);
+				auto iter = pointToIdxMap.find(fpt);
+				if (iter != pointToIdxMap.end()) {
 					size_t idx = iter->second + 1;
 					out << idx << " ";
 				}
 			}
 			out << "\n";
 		});
+	}
+
+	if (includeModel) {
+		if (useEdges) {
+			out << "#Model Edges " << modelEdgeSet.size() << "\n";
+			for (const auto& ed : modelEdgeSet) {
+				out << "l ";
+				for (int i = 0; i < 2; i++) {
+					size_t modVertIdx = ed._vertIndex[i];
+					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
+					FixedPt fpt(pt);
+					size_t idx = pointToIdxMap.find(fpt)->second + 1;
+					out << idx << " ";
+				}
+				out << "\n";
+			}
+		} else {
+			out << "#Model Faces " << faceIds.size() << "\n";
+			for (auto triIdx : modelTriIndices) {
+				const auto& tri = _pModelTriMesh->getTri(triIdx);
+				out << "f ";
+				for (int i = 0; i < 3; i++) {
+					size_t modVertIdx = tri[i];
+					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
+					FixedPt fpt(pt);
+					size_t idx = pointToIdxMap.find(fpt)->second + 1;
+					out << idx << " ";
+				}
+				out << "\n";
+			}
+		}
 	}
 }
 

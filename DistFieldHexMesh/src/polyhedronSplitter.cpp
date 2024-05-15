@@ -148,7 +148,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	}
 
 	if (!pass) {
-		_pBlock->dumpObj({ realCell.getId() });
+		_pBlock->dumpObj({ realCell.getId() }, false, false, false);
 		return false;
 	}
 
