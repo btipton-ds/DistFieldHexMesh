@@ -46,6 +46,8 @@ public:
 	bool splitIfNeeded();
 	bool splitAtPoint(const Vector3d& pt);
 	bool splitAtPlane(const Plane<double>& plane);
+	bool splitAtSharpEdgeCusps(const BuildCFDParams& params);
+	bool splitAtSharpEdges(const BuildCFDParams& params);
 
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;

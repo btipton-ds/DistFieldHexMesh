@@ -785,6 +785,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 			if (cell.canSplit(blockers)) {
 				Vector3d pt = cell.calCentroid();
 				PolyhedronSplitter splitter(this, id);
+				vector<Index3DId> newCellIds;
 				splitter.splitAtPoint(pt);
 			} else {
 				cell.setNeedsSplitAtCentroid();

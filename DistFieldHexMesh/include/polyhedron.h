@@ -82,8 +82,6 @@ public:
 	void setNeedToMakeReference();
 	bool needToSplitConditional(const BuildCFDParams& params);
 	bool needToSplitDueToSplitFaces(const BuildCFDParams& params);
-	bool setSplitAtSharpEdgeCusps(const BuildCFDParams& params);
-	bool setSplitAtSharpEdges(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 

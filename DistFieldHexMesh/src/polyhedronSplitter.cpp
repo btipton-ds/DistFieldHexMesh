@@ -26,11 +26,13 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <polygonSplitter.h>
 #include <polyhedronSplitter.h>
 #include <block.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -272,6 +274,53 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	LOG(out << Logger::Pad() << "=================================================================================================\n");
 
 	return true;
+}
+
+bool PolyhedronSplitter::splitAtSharpEdgeCusps(const BuildCFDParams& params)
+{
+	double sinEdgeAngle = sin(params.getSharpAngleRadians());
+	auto pMesh = _pBlock->getModelMesh();
+	vector<size_t> verts;
+
+	{
+		auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
+		auto bbox = cell.getBoundingBox();
+		const auto& sharpVerts = _pBlock->getVolume()->getSharpVertIndices();
+		for (size_t vertIdx : sharpVerts) {
+			const auto& vert = pMesh->getVert(vertIdx);
+			if (bbox.contains(vert._pt)) {
+				verts.push_back(vertIdx);
+			}
+		}
+
+		if (verts.empty())
+			return false;
+	}
+
+	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
+	if (verts.size() == 1) {
+		size_t vertIdx = verts.front();
+		if (_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId)) {
+			Vector3d ctr;
+			_pBlock->cellFunc(TS_REFERENCE, _polyhedronId, [&ctr](const Polyhedron& cell) {
+				ctr = cell.calCentroid();
+			});
+			splitAtPoint(ctr);
+		} else {
+			Vector3d pt = pMesh->getVert(vertIdx)._pt;
+			return splitAtPoint(pt);
+		}
+	}
+
+	int dbgBreak = 1;
+
+
+	return true;
+}
+
+bool PolyhedronSplitter::splitAtSharpEdges(const BuildCFDParams& params)
+{
+	return false;
 }
 
 bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane)

@@ -667,37 +667,6 @@ bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 	return false;
 }
 
-bool Polyhedron::setSplitAtSharpEdgeCusps(const BuildCFDParams& params)
-{
-	double sinEdgeAngle = sin(params.sharpAngle_degrees / 180.0 * M_PI);
-	auto pMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
-	const auto& sharpVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
-	vector<size_t> edges;
-	for (size_t vertIdx : sharpVerts) {
-		const auto& vert = pMesh->getVert(vertIdx);
-		if (bbox.contains(vert._pt)) {
-			for (size_t edgeIdx : vert._edgeIndices) {
-				if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
-					edges.push_back(edgeIdx);
-				}
-			}
-		}
-	}
-
-	if (edges.empty())
-		return false;
-
-	int dbgBreak = 1;
-
-	return false;
-}
-
-bool Polyhedron::setSplitAtSharpEdges(const BuildCFDParams& params)
-{
-	return false;
-}
-
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
 #if 0

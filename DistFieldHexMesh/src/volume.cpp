@@ -322,7 +322,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-//	splitAtSharpEdges(params, multiCore);
+	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
 
@@ -485,31 +485,59 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 {
+
+	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges are complete, not partial splits
 	bool changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
 		auto pBlk = _blocks[linearIdx];
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			if (cell.setSplitAtSharpEdgeCusps(params))
+			bool needsSplit = false;
+			auto pMesh = pBlk->getVolume()->getModelMesh();
+			auto sharps = pBlk->getVolume()->getSharpVertIndices();
+			auto bbox = cell.getBoundingBox();
+			for (size_t vertIdx : sharps) {
+				const auto& pt = pMesh->getVert(vertIdx)._pt;
+				if (bbox.contains(pt)) {
+					cout << "sharp pre split cellId: " << cellId << "\n";
+					needsSplit = true;
+					break;
+				}
+			}
+			if (needsSplit && pBlk->polyhedronExists(TS_REFERENCE, cellId)) {
+				cell.setNeedsSplitAtCentroid();
 				changed = true;
+			}
 		});
 		return true;
 	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
-
+#if 0
+	// Step 2, split cells which contain sharp edges with cusps (sharp verts)
+	if (changed) {
+		changed = false;
+		runLambda([this, &changed, &params](size_t linearIdx)->bool {
+			auto pBlk = _blocks[linearIdx];
+			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+				PolyhedronSplitter sp(pBlk.get(), cellId);
+				if (sp.splitAtSharpEdgeCusps(params))
+					changed = true;
+				});
+			return true;
+		}, false && multiCore);
+	}
 	changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
 		auto pBlk = _blocks[linearIdx];
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			if (cell.setSplitAtSharpEdges(params))
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			PolyhedronSplitter sp(pBlk.get(), cellId);
+			if (sp.splitAtSharpEdges(params))
 				changed = true;
 			});
 		return true;
 	}, false && multiCore);
-
-	if (changed)
-		finishSplits(multiCore);
+#endif
 }
 
 void Volume::finishSplits(bool multiCore)
