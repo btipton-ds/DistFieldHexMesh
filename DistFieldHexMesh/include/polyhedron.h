@@ -34,6 +34,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectPool.h>
 #include <lambdaMacros.h>
 
+template<class T>
+class Plane;
+
 namespace DFHM {
 
 struct BuildCFDParams;
@@ -68,14 +71,18 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 
+	Index3DId createIntersectionFace(const Plane<double>& plane) const;
+
 	void setNeedsSplitAtCentroid();
 	bool needsSplitAtCentroid() const;
+
+	// If this cell has any partial splits/split faces, it will mark it for centroid splitting.
+	bool setNeedsCleanFaces();
 
 	void setNeedsSplitAtPoint(const Vector3d& splitPt);
 	bool needsSplitAtPoint(Vector3d& splitPt) const;
 
-	void setNeedsSplitAtPlane(const Plane<double>& splitPlane);
-	bool needsSplitAtPlane(Plane<double>& splitPlane) const;
+	bool containsVertices(std::vector<size_t>& vertIndices) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
@@ -125,13 +132,12 @@ private:
 	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
-	bool intersect(const Plane<double>& pl, std::vector<Vector3d>& polyPoints) const;
 
 	std::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 
 	bool _needsConditionalSplitTest = true;
-	bool _needsSplitAtPt = false, _needsSplitAtPlane = false, _needsSplitAtCentroid = false;
+	bool _needsSplitAtPt = false, _needsSplitAtCentroid = false;
 	Vector3d _splitPt;
 	Plane<double> _splitPlane;
 	std::vector<size_t> _triIndices;

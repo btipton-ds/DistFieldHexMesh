@@ -41,17 +41,21 @@ class Polyhedron;
 
 class PolyhedronSplitter {
 public:
+	static bool splitMultipleAtPlane(Block* pBlock, const Plane<double>& plane, std::set<Index3DId> targetCellIds, std::set<Index3DId>& newCellIds);
+
 	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
 
 	bool splitIfNeeded();
 	bool splitAtPoint(const Vector3d& pt);
-	bool splitAtPlane(const Plane<double>& plane);
+	bool splitAtPlane(const Plane<double>& plane, std::set<Index3DId>& newCellIds);
+	bool splitAtSharpVerts(const BuildCFDParams& params);
 	bool splitAtSharpEdgeCusps(const BuildCFDParams& params);
 	bool splitAtSharpEdges(const BuildCFDParams& params);
 
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane) const;
+	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane, std::set<Index3DId>& newCellIds);
+	bool imprintFace(Polyhedron& realCell, const Index3DId& faceId, std::set<Index3DId>& newCellIds);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

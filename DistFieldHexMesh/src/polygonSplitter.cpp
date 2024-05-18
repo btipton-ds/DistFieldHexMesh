@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <tm_lineSegment.h>
 #include <polygonSplitter.h>
 #include <block.h>
 #include <polygon.h>
@@ -170,12 +171,90 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 	return true;
 }
 
-bool PolygonSplitter::splitAtPlane(const Plane<double>& plane)
+bool PolygonSplitter::splitWithFace(const Index3DId& imprintFaceId, Index3DId& lowerFaceId, Index3DId upperFaceId) const
 {
-	return false;
+	_pBlock->makeRefPolygonIfRequired(_polygonId);
+	assert(_pBlock->polygonExists(TS_REAL, imprintFaceId));
+	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
+	assert(_pBlock->polygonExists(TS_REFERENCE, _polygonId));
+
+	Polygon& referenceFace = _pBlock->getPolygon(TS_REFERENCE, _polygonId);
+
+	if (!referenceFace._splitFaceProductIds.empty()) {
+		return false;
+	}
+
+	Polygon& realFace = _pBlock->getPolygon(TS_REAL, _polygonId);
+	Polygon& imprintFace = _pBlock->getPolygon(TS_REAL, imprintFaceId);
+
+
+	bool result = splitWithFaceInner(imprintFace, realFace, referenceFace);
+
+	if (_pBlock->polygonExists(TS_REAL, _polygonId)) {
+		_pBlock->freePolygon(_polygonId);
+	}
+
+	return result;
 }
 
-bool PolygonSplitter::splitAtPlaneInner(Polygon& realFace, Polygon& referanceFace, Plane<double>& plane) const
+bool PolygonSplitter::splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const
 {
+	cout << "real face ids\n";
+	for (const auto& vertId : realFace.getVertexIds()) {
+		Vector3d pt = _pBlock->getVertexPoint(vertId);
+		cout << "  " << vertId << ": " << pt << "\n";
+	}
+
+	vector<size_t> vertIndices;
+	vector<Index3DId> imprintVertIds;
+	const auto& srcIds = imprintFace.getVertexIds();
+	for (const auto& vertId : srcIds) {
+		size_t vertIdx = realFace.getImprintIndex(vertId);
+		if (vertIdx != -1) {
+			vertIndices.push_back(vertIdx);
+			imprintVertIds.push_back(vertId);
+		}
+	}
+	if (imprintVertIds.empty())
+		return false;
+
+	assert(imprintVertIds.size() == 2);
+
+	vector<Index3DId> verts0, verts1;
+
+	size_t firstIdx = vertIndices[0];
+	size_t lastIdx = vertIndices[1];
+	for (size_t i = 0; i < srcIds.size(); i++) {
+		size_t ii = (i + firstIdx) % srcIds.size();
+		if (i == 0) {
+			verts0.push_back(imprintVertIds[firstIdx]);
+			verts0.push_back(srcIds[ii]);
+		} else if (ii == lastIdx) {
+			verts0.push_back(srcIds[ii]);
+			verts0.push_back(imprintVertIds[lastIdx]);
+			break;
+		}
+	}
+
+	swap(firstIdx, lastIdx);
+	for (size_t i = 0; i < srcIds.size(); i++) {
+		size_t ii = (i + firstIdx) % srcIds.size();
+		if (i == 0) {
+			verts1.push_back(imprintVertIds[firstIdx]);
+			verts1.push_back(srcIds[ii]);
+		}
+		else if (ii == lastIdx) {
+			verts1.push_back(srcIds[ii]);
+			verts1.push_back(imprintVertIds[lastIdx]);
+			break;
+		}
+	}
+
+	cout << "Verts0\n";
+	Polygon::dumpPolygonPoints(_pBlock, cout, verts0);
+
+	cout << "Verts1\n";
+	Polygon::dumpPolygonPoints(_pBlock, cout, verts1);
+
 	return false;
 }

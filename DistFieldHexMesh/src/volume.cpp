@@ -486,26 +486,15 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 {
 
-	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges are complete, not partial splits
+	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
 	bool changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
 		auto pBlk = _blocks[linearIdx];
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			bool needsSplit = false;
-			auto pMesh = pBlk->getVolume()->getModelMesh();
 			auto sharps = pBlk->getVolume()->getSharpVertIndices();
-			auto bbox = cell.getBoundingBox();
-			for (size_t vertIdx : sharps) {
-				const auto& pt = pMesh->getVert(vertIdx)._pt;
-				if (bbox.contains(pt)) {
-					cout << "sharp pre split cellId: " << cellId << "\n";
-					needsSplit = true;
-					break;
-				}
-			}
-			if (needsSplit && pBlk->polyhedronExists(TS_REFERENCE, cellId)) {
-				cell.setNeedsSplitAtCentroid();
-				changed = true;
+
+			if (cell.containsVertices(sharps)) {
+				changed = cell.setNeedsCleanFaces();
 			}
 		});
 		return true;
@@ -513,6 +502,21 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 
 	if (changed)
 		finishSplits(multiCore);
+
+	changed = false;
+	runLambda([this, &changed, &params](size_t linearIdx)->bool {
+		auto pBlk = _blocks[linearIdx];
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			PolyhedronSplitter sp(pBlk.get(), cellId);
+			if (sp.splitAtSharpVerts(params))
+				changed = true;
+			});
+		return true;
+	}, false && multiCore);
+
+	if (changed)
+		finishSplits(multiCore);
+
 #if 0
 	// Step 2, split cells which contain sharp edges with cusps (sharp verts)
 	if (changed) {

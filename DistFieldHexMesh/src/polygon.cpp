@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <cmath>
+#include <iostream>
 #include <fstream>
 #include <tm_math.h>
 #include <tm_lineSegment.h>
@@ -390,6 +391,30 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const vector<Index3DId>
 	return norm;
 }
 
+void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const vector<Index3DId>& vertIds)
+{
+	vector<Vector3d> pts;
+	for (const auto& id : vertIds) {
+		Vector3d pt = pBlock->getVertexPoint(id);
+		pts.push_back(pt);
+	}
+
+	dumpPolygonPoints(out, pts);
+}
+
+void Polygon::dumpPolygonPoints(ostream& out, const vector<Vector3d>& pts)
+{
+	out << "poly pts\n";
+	for (const auto& pt : pts) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	out << "f";
+	for (size_t i = 0; i < pts.size(); i++)
+		out << " " << (i + 1);
+	out << "\n";
+}
+
 Vector3d Polygon::calUnitNormal() const
 {
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
@@ -476,7 +501,7 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
-size_t Polygon::getCellTris(std::vector<size_t>& indices) const
+size_t Polygon::getCellTris(vector<size_t>& indices) const
 {
 	set<size_t> triSet;
 	for (const auto& cellId : _cellIds) {
@@ -685,7 +710,28 @@ void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>&
 	}
 }
 
-void Polygon::imprintVertex(const Index3DId& imprintVert)
+size_t Polygon::getImprintIndex(const Vector3d& imprintPoint) const
+{
+	cout << "Searching for imprint point " << imprintPoint << "\n";
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+		auto seg = edge.getSegment(getBlockPtr());
+		double t;
+		if (seg.contains(imprintPoint, t) && t > 0 && t < 1) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+size_t Polygon::getImprintIndex(const Index3DId& imprintVert) const
+{
+	Vector3d pt = getBlockPtr()->getVertexPoint(imprintVert);
+	return getImprintIndex(pt);
+}
+
+bool Polygon::imprintVertex(const Index3DId& imprintVert)
 {
 	auto tmp = _vertexIds;
 	_vertexIds.clear();
@@ -709,69 +755,8 @@ void Polygon::imprintVertex(const Index3DId& imprintVert)
 
 	if (imprinted)
 		clearCache();
-}
 
-bool Polygon::needToImprintVertices_deprecated(const map<Edge, Index3DId>& edgeVertMap) const
-{
-	const auto& edges = getEdges();
-	for (const auto& edge : edges) {
-		if (edgeVertMap.find(edge) != edgeVertMap.end()) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void Polygon::imprintVertices_deprecated(const map<Edge, Index3DId>& edgeVertMap)
-{
-#if LOGGING_ENABLED
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-#if LOGGING_VERBOSE_ENABLED
-	LOG(out << Logger::Pad() << "imprintVertices:" << *this);
-#else
-	LOG(out << Logger::Pad() << "imprintVertices: f" << _thisId << "\n");
-#endif
-#endif
-	auto pBlk = getBlockPtr();
-
-	// Increment down so insertions do not corrupt order
-	// the vertex is not in this polygon and lies between i and j
-	if (_thisId.isValid())
-		pBlk->removeFaceFromLookUp(_thisId);
-
-	LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
-	for (const auto& vertId0 : _vertexIds) {
-		LOG(out << "v" << vertId0 << " ");
-	}
-	LOG(out << "}\n");
-
-	vector<Index3DId> newVerts;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		newVerts.push_back(_vertexIds[i]);
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto iter = edgeVertMap.find(edge);
-		if (iter != edgeVertMap.end()) {
-			const auto& vertId = iter->second;
-			newVerts.push_back(vertId);
-		}
-	}
-
-	_vertexIds = newVerts;
-
-	LOG(out << Logger::Pad() << "vertexIds(" << _vertexIds.size() << "): {");
-	for (const auto& vertId0 : _vertexIds) {
-		LOG(out << "v" << vertId0 << " ");
-	}
-	LOG(out << "}\n");
-
-	clearCache();
-
-	if (_thisId.isValid())
-		pBlk->addFaceToLookup(_thisId);
+	return imprinted;
 }
 
 bool Polygon::isSplit() const
@@ -817,25 +802,24 @@ bool Polygon::intersect(LineSegment<double>& seg, RayHit<double>& hit) const
 	return false;
 }
 
-bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& edge) const
+bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& intersectionSeg) const
 {
-	set<FixedPt> pts;
+	vector<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
-		LineSegment<double> edgeSeg(pt0, pt1);
+		Edge edge(_vertexIds[i], _vertexIds[j]);
+		auto edgeSeg = edge.getSegment(getBlockPtr());
 		RayHit<double> hit;
 		if (pl.intersectLineSegment(edgeSeg, hit)) {
-			pts.insert(FixedPt(hit.hitPt));
+			double t;
+			assert(edgeSeg.contains(hit.hitPt, t));
+			assert(0 < t && t < 1);
+			intersectionPoints.push_back(hit.hitPt);
 		}
 	}
 
-	if (pts.size() == 2) {
-		auto iter = pts.begin();
-		Vector3d pt0 = FixedPt::toDbl(*iter++);
-		Vector3d pt1 = FixedPt::toDbl(*iter++);
-		edge = LineSegment<double>(pt0, pt1);
+	if (intersectionPoints.size() == 2) {
+		intersectionSeg = LineSegment<double>(intersectionPoints[0], intersectionPoints[1]);
 		return true;
 	}
 

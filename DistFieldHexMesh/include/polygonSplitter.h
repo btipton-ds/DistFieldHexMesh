@@ -32,11 +32,11 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_vector3.h>
 #include <tm_plane.h>
 #include <index3D.h>
+#include <polygon.h>
 
 namespace DFHM {
 
 	class Block;
-	class Polygon;
 	class Polyhedron;
 
 	class PolygonSplitter {
@@ -45,11 +45,11 @@ namespace DFHM {
 
 		bool splitAtCentroid();
 		bool splitAtPoint(const Vector3d& pt);
-		bool splitAtPlane(const Plane<double>& plane);
+		bool splitWithFace(const Index3DId& imprintFaceId, Index3DId& lowerFaceId, Index3DId upperFaceId) const;
 
 	private:
 		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
-		bool splitAtPlaneInner(Polygon& realFace, Polygon& referanceFace, Plane<double>& plane) const;
+		bool splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const;
 
 		Block* _pBlock;
 		Index3DId _polygonId;

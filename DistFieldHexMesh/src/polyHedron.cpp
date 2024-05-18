@@ -60,7 +60,6 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _needsSplitAtPt(src._needsSplitAtPt)
-	, _needsSplitAtPlane(src._needsSplitAtPlane)
 	, _splitPt(src._splitPt)
 	, _splitPlane(src._splitPlane)
 	, _cachedIsClosed(src._cachedIsClosed)
@@ -73,7 +72,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_faceIds = rhs._faceIds;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_needsSplitAtPt = rhs._needsSplitAtPt;
-	_needsSplitAtPlane = rhs._needsSplitAtPlane;
 	_splitPt = rhs._splitPt;
 	_splitPlane = rhs._splitPlane;
 	_cachedIsClosed = rhs._cachedIsClosed;
@@ -388,6 +386,62 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
+Index3DId Polyhedron::createIntersectionFace(const Plane<double>& plane) const
+{
+	vector<LineSegment<double>> intersectionSegs;
+	Index3DId result;
+	for (const auto& faceId : _faceIds) {
+		faceAvailFunc(TS_REAL, faceId, [&plane, &intersectionSegs](const Polygon& face) {
+			LineSegment<double> seg;
+			if (face.intersect(plane, seg)) {
+				intersectionSegs.push_back(seg);
+			}
+		});
+	}
+
+	vector<FixedPt> fixPoints;
+	auto intersection = intersectionSegs.back();
+	intersectionSegs.pop_back();
+	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[0]));
+	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[1]));
+	while (!intersectionSegs.empty()) {
+		auto lastPt = fixPoints.back();
+		for (size_t i = 0; i < intersectionSegs.size(); i++) {
+			auto intersection2 = intersectionSegs[i];
+			auto fPt0 = FixedPt::fromDbl(intersection2._pts[0]);
+			auto fPt1 = FixedPt::fromDbl(intersection2._pts[1]);
+			if (fPt1 == lastPt) {
+				fixPoints.push_back(fPt0);
+				intersectionSegs.erase(intersectionSegs.begin() + i);
+				break;
+			} else if (fPt0 == lastPt) {
+				fixPoints.push_back(fPt1);
+				intersectionSegs.erase(intersectionSegs.begin() + i);
+				break;
+			}
+		}
+	}
+	if (fixPoints.empty())
+		return result;
+
+	assert(fixPoints.front() == fixPoints.back());
+
+	vector<Vector3d> facePoints;
+	Block* pBlk = const_cast<Block*> (getBlockPtr());
+	for (size_t i = 0; i < fixPoints.size() - 1; i++) {
+		Vector3d pt = FixedPt::toDbl(fixPoints[i]);
+		facePoints.push_back(pt);
+	}
+
+	if (facePoints.size() > 2) {
+		Polygon::dumpPolygonPoints(cout, facePoints);
+		Index3DId newFaceId = pBlk->addFace(facePoints);
+		return newFaceId;
+	}
+
+	return result;
+}
+
 void Polyhedron::setNeedsSplitAtCentroid()
 {
 	_needsSplitAtCentroid = true;
@@ -397,6 +451,16 @@ void Polyhedron::setNeedsSplitAtCentroid()
 bool Polyhedron::needsSplitAtCentroid() const
 {
 	return _needsSplitAtCentroid;
+}
+
+bool Polyhedron::setNeedsCleanFaces()
+{
+	if (getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
+		setNeedsSplitAtCentroid();
+		return true;
+	}
+
+	return false;
 }
 
 void Polyhedron::setNeedsSplitAtPoint(const Vector3d& splitPt)
@@ -415,19 +479,16 @@ bool Polyhedron::needsSplitAtPoint(Vector3d& splitPt) const
 	return false;
 }
 
-void Polyhedron::setNeedsSplitAtPlane(const Plane<double>& splitPlane)
+bool Polyhedron::containsVertices(std::vector<size_t>& vertIndices) const
 {
-	_needsSplitAtPlane = true;
-	_splitPlane = splitPlane;
-	addToSplitStack();
-}
-
-bool Polyhedron::needsSplitAtPlane(Plane<double>& splitPlane) const
-{
-	if (_needsSplitAtPlane) {
-		splitPlane = _splitPlane;
-		return true;
+	auto bbox = getBoundingBox();
+	auto pMesh = getBlockPtr()->getModelMesh();
+	for (size_t vertIdx : vertIndices) {
+		const auto& pt = pMesh->getVert(vertIdx)._pt;
+		if (bbox.contains(pt))
+			return true;
 	}
+
 	return false;
 }
 

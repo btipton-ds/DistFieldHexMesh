@@ -100,6 +100,9 @@ public:
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 
+	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const std::vector<Index3DId>& vertIds);
+	static void dumpPolygonPoints(std::ostream& out, const std::vector<Vector3d>& pts);
+
 	Polygon() = default;
 	Polygon(const std::vector<Index3DId>& verts);
 	Polygon(const Polygon& src);
@@ -151,13 +154,13 @@ public:
 	bool cellsOwnThis() const;
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	void needToImprintVertices(const std::set<Index3DId>& verts, std::set<Index3DId>& imprintVerts) const;
-	void imprintVertex(const Index3DId& imprintVerts);
-	bool needToImprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap) const;
-	void imprintVertices_deprecated(const std::map<Edge, Index3DId>& edgeVertMap);
+	bool imprintVertex(const Index3DId& imprintVert);
+	size_t getImprintIndex(const Vector3d& imprintPoint) const;
+	size_t getImprintIndex(const Index3DId& imprintVert) const;
 	bool isSplit() const;
 	bool isPlanar() const;
 	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
-	bool intersect(const Plane<double>& pl, LineSegment<double>& edge) const;
+	bool intersect(const Plane<double>& pl, LineSegment<double>& intersectionSeg) const;
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);

@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <tm_bestFit.h>
 #include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -49,6 +50,7 @@ bool PolyhedronSplitter::splitIfNeeded()
 {
 	bool result = false;
 	_pBlock->cellAvailFunc(TS_REFERENCE, _polyhedronId, [this, &result](const Polyhedron& cell) {
+		set<Index3DId> newCellIds;
 		Vector3d ctr;
 		Plane<double> plane;
 		if (cell.needsSplitAtCentroid()) {
@@ -56,9 +58,7 @@ bool PolyhedronSplitter::splitIfNeeded()
 			result = splitAtPoint(ctr);
 		} else if (cell.needsSplitAtPoint(ctr)) {
 			result = splitAtPoint(ctr);
-		} else if (cell.needsSplitAtPlane(plane))
-			result = splitAtPlane(plane);
-		else {
+		} else {
 			// TODO This needs to be an adaptive split to match the neighbor
 			// We get here when we have to split a neighbor cell prior to splitting a cell.
 			ctr = cell.calCentroid();
@@ -276,6 +276,87 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	return true;
 }
 
+bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Plane<double>& plane, set<Index3DId> targetCellIds, set<Index3DId>& newCellIds)
+{
+	bool result = false;
+
+	for (const auto& cellId : targetCellIds) {
+		PolyhedronSplitter sp(pBlock, cellId);
+		if (sp.splitAtPlane(plane, newCellIds)) {
+			result = true;
+		}
+	}
+	return result;
+}
+
+bool PolyhedronSplitter::splitAtSharpVerts(const BuildCFDParams& params)
+{
+	bool result = false;
+
+	auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
+	auto bbox = cell.getBoundingBox();
+	auto pMesh = _pBlock->getModelMesh();
+	const auto& allVerts = _pBlock->getVolume()->getSharpVertIndices();
+	vector<size_t> verts;
+	for (size_t vertIdx : allVerts) {
+		const auto& pt = pMesh->getVert(vertIdx)._pt;
+		if (bbox.contains(pt)) {
+			verts.push_back(vertIdx);
+		}
+	}
+
+	vector<Vector3d> pts;
+	Vector3d v0, pt0, pt1;
+	if (verts.empty())
+		return false;
+	else if (verts.size() == 1) {
+		size_t vertIdx = verts.front();
+		const auto& pt = pMesh->getVert(vertIdx)._pt;
+		cell.setNeedsSplitAtPoint(pt);
+		return true;
+	} else {
+		for (size_t vertIdx : verts) {
+			const auto& pt = pMesh->getVert(vertIdx)._pt;
+			pts.push_back(pt);
+		}
+		double err;
+		Ray<double> ray = bestFitLine(pts, err);
+		if (err > Tolerance::sameDistTol()) {
+			assert(!"Not implemented yet. Need to divide the cell into parts.");
+			return false;
+		}
+		v0 = ray._dir;
+	}
+
+	Vector3d orth(1, 0, 0);
+	double minDp = fabs(v0.dot(orth));
+
+	double dp = fabs(v0.dot(Vector3d(0, 1, 0)));
+	if (dp < minDp)
+		orth = Vector3d(0, 1, 0);
+
+	dp = fabs(v0.dot(Vector3d(0, 0, 1)));
+	if (dp < minDp)
+		orth = Vector3d(0, 0, 1);
+	orth = orth - v0.dot(orth) * v0;
+	orth.normalize();
+
+	Vector3d orth2 = v0.cross(orth);
+
+	set<Index3DId> nextCellIds;
+	for (const auto& pt : pts) {
+		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, v0, false), { _polyhedronId }, nextCellIds))
+			result = true;
+		break;
+		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, orth, false), nextCellIds, nextCellIds))
+			result = true;
+		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, orth2, false), nextCellIds, nextCellIds))
+			result = true;
+	}
+
+	return result;
+}
+
 bool PolyhedronSplitter::splitAtSharpEdgeCusps(const BuildCFDParams& params)
 {
 	double sinEdgeAngle = sin(params.getSharpAngleRadians());
@@ -323,7 +404,7 @@ bool PolyhedronSplitter::splitAtSharpEdges(const BuildCFDParams& params)
 	return false;
 }
 
-bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane)
+bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane, set<Index3DId>& newCellIds)
 {
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
@@ -336,17 +417,72 @@ bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane)
 	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
 	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
 
-	bool result = splitAtPlaneInner(realCell, referenceCell, plane);
+	bool result = splitAtPlaneInner(realCell, referenceCell, plane, newCellIds);
 
 	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
+		newCellIds.erase(_polyhedronId);
 		_pBlock->freePolyhedron(_polyhedronId);
 	}
 
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane) const
+bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane, set<Index3DId>& newCellIds)
 {
+	Index3DId imprintFaceId = realCell.createIntersectionFace(plane);
+
+	if (imprintFaceId.isValid()) {
+		imprintFace(realCell, imprintFaceId, newCellIds);
+		return true;
+	}
+
+	return false;
+}
+
+bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& imprintFaceId, set<Index3DId>& newCellIds)
+{
+	// Imprint face is a splitting operation. It creates two cells from one
+
+	set<Index3DId> realFaceIds = realCell.getFaceIds();
+
+	vector<Index3DId> imprintVertIds;
+	_pBlock->faceFunc(TS_REAL, imprintFaceId, [&imprintVertIds](const Polygon& imprintFace) {
+		imprintVertIds = imprintFace.getVertexIds();
+	});
+
+	vector<Index3DId> facesToSplit;
+	for (const auto& realFaceId : realFaceIds) {
+		_pBlock->faceFunc(TS_REAL, realFaceId, [&imprintVertIds, &facesToSplit](const Polygon& realFace) {
+			for (const auto& imprintVertId : imprintVertIds) {
+				size_t idx = realFace.getImprintIndex(imprintVertId);
+				if (idx != -1) {
+					facesToSplit.push_back(realFace.getId());
+				}
+			}
+		});
+	}
+
+	if (facesToSplit.empty())
+		return false;
+
+	_pBlock->dumpObj({ _polyhedronId }, true, false, false);
+
+	vector<Index3DId> lowerFaceIds({ imprintFaceId }), upperFaceIds({ imprintFaceId });
+
+	for (const auto& faceId : facesToSplit) {
+		PolygonSplitter sp(_pBlock, faceId);
+		Index3DId lowerFaceId, upperFaceId;
+		if (sp.splitWithFace(imprintFaceId, lowerFaceId, upperFaceId)) {
+			lowerFaceIds.push_back(lowerFaceId);
+			upperFaceIds.push_back(upperFaceId);
+		}
+	}
+
+	auto lowerCellId = _pBlock->addCell(lowerFaceIds);
+	newCellIds.insert(lowerCellId);
+
+	auto upperCellId = _pBlock->addCell(upperFaceIds);
+	newCellIds.insert(upperCellId);
 
 	return false;
 }
