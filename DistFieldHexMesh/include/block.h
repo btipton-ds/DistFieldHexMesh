@@ -167,7 +167,7 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
-	void dumpObj(const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const;
+	void dumpObj(const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 
 	template<class F>
 	void iteratePolygonsInOrder(TopolgyState state, F fLambda) const;

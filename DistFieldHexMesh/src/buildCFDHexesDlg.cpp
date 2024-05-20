@@ -46,6 +46,7 @@ namespace
 {
 	enum Ids {
 		UNIFORM_RATIO_ID = 1,
+		SPLIT_SHARP_VERTS_ID = 1,
 		MAX_BLOCKS_PER_SIDE_ID,
 		MAX_CELL_FACES_ID,
 		MAX_GAP_SIZE_ID,
@@ -91,25 +92,13 @@ BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	int baseRowPixels = 5;
 #endif
 
-#if 0
-	_params.uniformRatio = false;
-	_params.minBlocksPerSide = 6; // def = 6
-	_params.maxCellFaces = 12;
-	_params.maxGapSize = 0.02;
-	_params.minSplitEdgeLengthCurvature_meters = 0.0025;
-	_params.minSplitEdgeLengthGapCurvature_meters = 0.001;
-	_params.sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
-
-	_params.numBlockDivs = 0;
-	_params.numSimpleDivs = 0;
-	_params.numCurvatureDivs = 12;
-	_params.divsPerCurvatureRadius = 2;
-	_params.divsPerGapCurvatureRadius = 6;
-#endif
-
 	int rowNum = 0;
 	_uniformRatioCheckBox = new wxCheckBox(this, UNIFORM_RATIO_ID, _T("Uniform cells per side"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_uniformRatioCheckBox->SetValue(params.uniformRatio);
+
+	rowNum++;
+	_splitSharpVertsCheckBox = new wxCheckBox(this, SPLIT_SHARP_VERTS_ID, _T("Split sharp verts"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_splitSharpVertsCheckBox->SetValue(params.splitAtSharpVerts);
 
 	rowNum++;
 	_maxGapSizePrompt = new wxStaticText(this, 0, _T("Max gap size"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -183,6 +172,7 @@ void BuildCFDHexesDlg::getValue(wxTextCtrl* item, double& value) const
 void BuildCFDHexesDlg::getParams(BuildCFDParams& params) const
 {
 	params.uniformRatio = _uniformRatioCheckBox->GetValue();
+	params.splitAtSharpVerts = _splitSharpVertsCheckBox->GetValue();
 	getValue(_minBlocksPerSideBox, params.minBlocksPerSide);
 	getValue(_numBlockDivsBox, params.numBlockDivs);
 	getValue(_numSimpleDivsBox, params.numSimpleDivs);

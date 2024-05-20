@@ -82,6 +82,8 @@ public:
 	void setNeedsSplitAtPoint(const Vector3d& splitPt);
 	bool needsSplitAtPoint(Vector3d& splitPt) const;
 
+	bool setNeedsSplitAtSharpVert(const BuildCFDParams& params);
+
 	bool containsVertices(std::vector<size_t>& vertIndices) const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
@@ -101,7 +103,8 @@ public:
 	void setSplitLevel(size_t val);
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
-	const std::vector<size_t> getTriIndices() const;
+	const std::vector<size_t>& getTriIndices() const;
+	std::vector<size_t> getSharpVertIndices() const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -171,7 +174,7 @@ inline void Polyhedron::setSplitLevel(size_t val)
 	_splitLevel = val;
 }
 
-inline const std::vector<size_t> Polyhedron::getTriIndices() const
+inline const std::vector<size_t>& Polyhedron::getTriIndices() const
 {
 	return _triIndices;
 }

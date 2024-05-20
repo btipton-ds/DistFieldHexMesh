@@ -811,9 +811,11 @@ bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& intersecti
 		auto edgeSeg = edge.getSegment(getBlockPtr());
 		RayHit<double> hit;
 		if (pl.intersectLineSegment(edgeSeg, hit)) {
+#ifdef _DEBUG
 			double t;
 			assert(edgeSeg.contains(hit.hitPt, t));
 			assert(0 < t && t < 1);
+#endif // _DEBUG
 			intersectionPoints.push_back(hit.hitPt);
 		}
 	}

@@ -85,8 +85,8 @@ public:
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 
-	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const;
-	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const;
+	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
+	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 
 	void writePolyMesh(const std::string& dirName);
 
@@ -123,6 +123,7 @@ private:
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void splitSimple(const BuildCFDParams& params, bool multiCore);
 	void splitAtCurvature(const BuildCFDParams& params, bool multiCore);
+	void splitAtSharpVerts(const BuildCFDParams& params, bool multiCore);
 	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
 	void finishSplits(bool multiCore);
 	void imprintTJointVertices(bool multiCore);

@@ -119,6 +119,23 @@ size_t Polyhedron::getNumSplitFaces() const
 	return n;
 }
 
+vector<size_t> Polyhedron::getSharpVertIndices() const
+{
+	vector<size_t> result;
+
+	auto bbox = getBoundingBox();
+	auto pMesh = getBlockPtr()->getModelMesh();
+	const auto& allVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
+	for (size_t vertIdx : allVerts) {
+		const auto& pt = pMesh->getVert(vertIdx)._pt;
+		if (bbox.contains(pt)) {
+			result.push_back(vertIdx);
+		}
+	}
+
+	return result;
+}
+
 void Polyhedron::write(std::ostream& out) const
 {
 	uint8_t version = 0;
@@ -479,6 +496,36 @@ bool Polyhedron::needsSplitAtPoint(Vector3d& splitPt) const
 	return false;
 }
 
+bool Polyhedron::setNeedsSplitAtSharpVert(const BuildCFDParams& params)
+{
+	auto vertIndices = getSharpVertIndices();
+	if (vertIndices.empty())
+		return false;
+
+	set<Index3DId> vertIds;
+	getVertIds(vertIds);
+	vector<Vector3d> points;
+
+	auto pMesh = getBlockPtr()->getModelMesh();
+	for (size_t vIdx : vertIndices) {
+		const auto& pt = pMesh->getVert(vIdx)._pt;
+		auto vIdx = getBlockPtr()->idOfPoint(pt);
+		if (!vertIds.contains(vIdx)) {
+			points.push_back(pt);
+		}
+	}
+
+	if (!points.empty()) {
+		cout << "Splitting at sharp vert\n";
+		Vector3d pt = points.front();
+		setNeedsSplitAtPoint(pt);
+		return true;
+	}
+
+	return false;
+}
+
+
 bool Polyhedron::containsVertices(std::vector<size_t>& vertIndices) const
 {
 	auto bbox = getBoundingBox();
@@ -670,24 +717,34 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 #endif
 	if (!_needsConditionalSplitTest)
 		return false;
+
 	_needsConditionalSplitTest = false;
-	CBoundingBox3Dd bbox = getBoundingBox();
 
 	bool needToSplit = false;
-	set<Edge> edges;
-	cellAvailFunc(TS_REFERENCE, _thisId, [&edges](const Polyhedron& cell) {
-		edges = cell.getEdges(false);
-	});
 
-	double maxEdgeLength = 0;
-	for (const auto& edge : edges) {
-		auto seg = edge.getSegment(getBlockPtr());
-		double l = seg.calLength();
-		if (l > maxEdgeLength)
-			maxEdgeLength = l;
+	if (params.splitAtSharpVerts) {
+		auto sharpVerts = getSharpVertIndices();
+		if (sharpVerts.size() > 1) {
+			cout << "Splitting due to sharp verts c" << _thisId << ": " << sharpVerts.size() << "\n";
+			needToSplit = true;
+		}
 	}
 
+	double maxEdgeLength = 0;
 	if (!needToSplit) {
+		CBoundingBox3Dd bbox = getBoundingBox();
+		set<Edge> edges;
+		cellAvailFunc(TS_REFERENCE, _thisId, [&edges](const Polyhedron& cell) {
+			edges = cell.getEdges(false);
+		});
+
+		for (const auto& edge : edges) {
+			auto seg = edge.getSegment(getBlockPtr());
+			double l = seg.calLength();
+			if (l > maxEdgeLength)
+				maxEdgeLength = l;
+		}
+
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
 		if (refRadius > 0) {
 			if (refRadius < 0.01) {
@@ -711,7 +768,7 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 
 	if (needToSplit) {
 		Logger::Indent indent;
-		LOG(out << Logger::Pad() << "setNeedToSplitCurvature c" << _thisId << "\n");
+		LOG(out << Logger::Pad() << "needToSplitConditional c" << _thisId << "\n");
 		setNeedsSplitAtCentroid();
 	}
 

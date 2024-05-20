@@ -37,6 +37,7 @@ struct BuildCFDParams {
 	double getSharpAngleDegrees() const;
 
 	bool uniformRatio = false;
+	bool splitAtSharpVerts = true;
 	size_t minBlocksPerSide = 6;
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 0;

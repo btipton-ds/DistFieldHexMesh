@@ -795,7 +795,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 	return result;
 }
 
-void Block::dumpObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const
+void Block::dumpObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
 {
 	string path;
 	if (filesystem::exists("D:/DarkSky/Projects")) {
@@ -805,10 +805,10 @@ void Block::dumpObj(const vector<Index3DId>& cellIds, bool includeModel, bool us
 		path = "D:/Users/BobT/Documents/Projects/Code/output/objs/";
 	}
 	for (const auto& cellId : cellIds) {
-		cellFunc(TS_REAL,cellId, [this, &path, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
+		cellFunc(TS_REAL,cellId, [this, &path, includeModel, useEdges, sharpOnly, &pts](const Polyhedron& cell) {
 			stringstream ss;
 			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
-			_pVol->writeObj(ss.str(), { cell.getId() }, includeModel, useEdges, sharpOnly);
+			_pVol->writeObj(ss.str(), { cell.getId() }, includeModel, useEdges, sharpOnly, pts);
 		});
 	}
 }

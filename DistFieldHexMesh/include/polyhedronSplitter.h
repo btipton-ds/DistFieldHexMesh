@@ -56,6 +56,8 @@ private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
 	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane, std::set<Index3DId>& newCellIds);
 	bool imprintFace(Polyhedron& realCell, const Index3DId& faceId, std::set<Index3DId>& newCellIds);
+	bool splitAtSharpVertConical(size_t vertIdx, const BuildCFDParams& params);
+	bool splitAtSharpVertsLinear(std::vector<size_t>& verts, const BuildCFDParams& params);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

@@ -322,7 +322,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitAtSharpEdges(params, multiCore);
+	splitAtSharpVerts(params, multiCore);
+//	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));
 
@@ -429,7 +430,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 		double sinEdgeAngle = sin(sharpAngleRadians);
 
 		size_t num = params.numCurvatureDivs;
-		for (size_t i = 0; i < num + 1; i++) {
+		for (size_t i = 0; i < num; i++) {
 #if LOGGING_ENABLED
 			runLambda([this, i](size_t linearIdx)->bool {
 				auto logger = _blocks[linearIdx]->getLogger();
@@ -462,11 +463,12 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 					if (cell.needToSplitConditional(params))
 						changed = true;
-					});
+				});
 				return true;
 			}, multiCore);
 
-			finishSplits(multiCore);
+			if (changed)
+				finishSplits(multiCore);
 			//		assert(verifyTopology(multiCore));
 
 			if (!changed) {
@@ -482,10 +484,28 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 #endif // _WIN32
 	}
 }
+void Volume::splitAtSharpVerts(const BuildCFDParams& params, bool multiCore)
+{
+	if (params.splitAtSharpVerts) {
+		// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
+		bool changed = false;
+		runLambda([this, &changed, &params](size_t linearIdx)->bool {
+			auto pBlk = _blocks[linearIdx];
+			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+				if (cell.setNeedsSplitAtSharpVert(params)) {
+					changed = true;
+				}
+				});
+			return true;
+			}, false && multiCore);
+
+		if (changed)
+			finishSplits(multiCore);
+	}
+}
 
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 {
-
 	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
 	bool changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
@@ -498,7 +518,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -512,7 +532,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 				changed = true;
 			});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -529,7 +549,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 					changed = true;
 				});
 			return true;
-		}, false && multiCore);
+		}, multiCore);
 	}
 	changed = false;
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
@@ -540,7 +560,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 				changed = true;
 			});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 #endif
 }
 
@@ -755,13 +775,13 @@ namespace {
 	}
 }
 
-void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const
+void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts) const
 {
 	ofstream out(path, ios_base::trunc);
-	writeObj(out, cellIds, includeModel, useEdges, sharpOnly);
+	writeObj(out, cellIds, includeModel, useEdges, sharpOnly, pts);
 }
 
-void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly) const
+void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
 {
 	set<Index3DId> faceIds;
 	vector<size_t> modelTriIndices;
@@ -841,6 +861,10 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 	out << "#Vertices " << pts.size() << "\n";
 	for (const auto& pt : pts) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	for (const auto& pt : extraPoints) {
 		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
 	}
 

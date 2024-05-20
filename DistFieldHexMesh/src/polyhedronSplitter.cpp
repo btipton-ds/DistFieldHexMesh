@@ -57,6 +57,9 @@ bool PolyhedronSplitter::splitIfNeeded()
 			ctr = cell.calCentroid();
 			result = splitAtPoint(ctr);
 		} else if (cell.needsSplitAtPoint(ctr)) {
+			static mutex m;
+			lock_guard lg(m);
+			cout << "Splitting at point c" << _polyhedronId << " at pt " << ctr << "\n";
 			result = splitAtPoint(ctr);
 		} else {
 			// TODO This needs to be an adaptive split to match the neighbor
@@ -108,6 +111,26 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint refCell : " << referanceCell);
 #endif
 
+#if _DEBUG
+	double minDist = DBL_MAX;
+	for (const auto& faceId : realCell.getFaceIds()) {
+		_pBlock->faceFunc(TS_REAL, faceId, [this, &minDist, &pt](const Polygon& face) {
+			double d = face.distanceToPoint(pt);
+			if (d < minDist)
+				minDist = d;
+		});
+	}
+
+	assert(minDist > Tolerance::sameDistTol());
+#endif
+
+#if defined(_DEBUG)
+	// Now split the cell
+	if (Index3DId(0, 12, 0, 19) == _polyhedronId) {
+		_pBlock->dumpObj({ _polyhedronId }, false, false, false, { pt });
+	}
+#endif
+
 	set<Index3DId> cornerVerts;
 	referanceCell.getVertIds(cornerVerts);
 	assert(cornerVerts.size() == 8);
@@ -153,13 +176,6 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		_pBlock->dumpObj({ realCell.getId() }, false, false, false);
 		return false;
 	}
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-	// Now split the cell
-	if (false && Index3DId(0, 8, 4, 0) == _polyhedronId) {
-		_pBlock->dumpObj({ _polyhedronId });
-	}
-#endif
 
 	Index3DId cellMidId = _pBlock->addVertex(pt);
 
@@ -294,39 +310,49 @@ bool PolyhedronSplitter::splitAtSharpVerts(const BuildCFDParams& params)
 	bool result = false;
 
 	auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
-	auto bbox = cell.getBoundingBox();
-	auto pMesh = _pBlock->getModelMesh();
-	const auto& allVerts = _pBlock->getVolume()->getSharpVertIndices();
-	vector<size_t> verts;
-	for (size_t vertIdx : allVerts) {
-		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
-			verts.push_back(vertIdx);
-		}
-	}
+	vector<size_t> verts = cell.getSharpVertIndices();
 
-	vector<Vector3d> pts;
-	Vector3d v0, pt0, pt1;
 	if (verts.empty())
 		return false;
-	else if (verts.size() == 1) {
-		size_t vertIdx = verts.front();
-		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		cell.setNeedsSplitAtPoint(pt);
+	
+	if (verts.size() == 1) {
+		return splitAtSharpVertConical(verts[0], params);
+	} else if (splitAtSharpVertsLinear(verts, params)) {
+		assert(!"subdivide and try again");
 		return true;
-	} else {
-		for (size_t vertIdx : verts) {
-			const auto& pt = pMesh->getVert(vertIdx)._pt;
-			pts.push_back(pt);
-		}
-		double err;
-		Ray<double> ray = bestFitLine(pts, err);
-		if (err > Tolerance::sameDistTol()) {
-			assert(!"Not implemented yet. Need to divide the cell into parts.");
-			return false;
-		}
-		v0 = ray._dir;
 	}
+
+	return result;
+}
+
+bool PolyhedronSplitter::splitAtSharpVertConical(size_t vertIdx, const BuildCFDParams& params)
+{
+	bool result = false;
+	auto pMesh = _pBlock->getModelMesh();
+
+	const auto& vert = pMesh->getVert(vertIdx);
+
+	return result;
+}
+
+bool PolyhedronSplitter::splitAtSharpVertsLinear(std::vector<size_t>& verts, const BuildCFDParams& params)
+{
+	bool result = false;
+	auto pMesh = _pBlock->getModelMesh();
+	vector<Vector3d> pts;
+	Vector3d v0, pt0, pt1;
+
+	for (size_t vertIdx : verts) {
+		const auto& pt = pMesh->getVert(vertIdx)._pt;
+		pts.push_back(pt);
+	}
+	double err;
+	Ray<double> ray = bestFitLine(pts, err);
+	if (err > Tolerance::sameDistTol()) {
+		assert(!"Not implemented yet. Need to divide the cell into parts.");
+		return false;
+	}
+	v0 = ray._dir;
 
 	Vector3d orth(1, 0, 0);
 	double minDp = fabs(v0.dot(orth));
@@ -344,17 +370,18 @@ bool PolyhedronSplitter::splitAtSharpVerts(const BuildCFDParams& params)
 	Vector3d orth2 = v0.cross(orth);
 
 	set<Index3DId> nextCellIds;
+	if (splitMultipleAtPlane(_pBlock, Plane<double>(pts.front(), orth, false), { _polyhedronId }, nextCellIds))
+		result = true;
+
+	if (splitMultipleAtPlane(_pBlock, Plane<double>(pts.front(), orth2, false), nextCellIds, nextCellIds))
+		result = true;
+
 	for (const auto& pt : pts) {
 		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, v0, false), { _polyhedronId }, nextCellIds))
 			result = true;
-		break;
-		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, orth, false), nextCellIds, nextCellIds))
-			result = true;
-		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, orth2, false), nextCellIds, nextCellIds))
-			result = true;
 	}
 
-	return result;
+	return false;
 }
 
 bool PolyhedronSplitter::splitAtSharpEdgeCusps(const BuildCFDParams& params)
