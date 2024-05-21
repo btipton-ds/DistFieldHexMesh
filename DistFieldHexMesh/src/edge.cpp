@@ -83,7 +83,7 @@ double Edge::sameParamTol(const Block* pBlock) const
 
 double Edge::getLength(const Block* pBlock) const
 {
-	LineSegment<double> seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
+	LineSegmentd seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
@@ -210,11 +210,11 @@ double Edge::calSinDihedralAngle(const Block* pBlock) const
 	return cp;
 }
 
-LineSegment<double> Edge::getSegment(const Block* pBlock) const
+LineSegmentd Edge::getSegment(const Block* pBlock) const
 {
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
-	LineSegment<double> result(pt0, pt1);
+	LineSegmentd result(pt0, pt1);
 	return result;
 }
 

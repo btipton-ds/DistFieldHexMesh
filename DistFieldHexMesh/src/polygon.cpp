@@ -346,7 +346,7 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 	return false;
 }
 
-bool Polygon::coplanar(const Plane<double>& pl) const
+bool Polygon::coplanar(const Planed& pl) const
 {
 	for (const auto& vertId : _vertexIds) {
 		auto pt = getBlockPtr()->getVertexPoint(vertId);
@@ -468,7 +468,7 @@ double Polygon::distanceToPoint(const Vector3d& pt) const
 		Vector3d v0 = pt0 - ctr;
 		Vector3d v1 = pt1 - ctr;
 		Vector3d n = v1.cross(v0).normalized();
-		Plane<double> pl(ctr, n, false);
+		Planed pl(ctr, n, false);
 		double d = pl.distanceToPoint(pt);
 		return d;
 	}
@@ -547,7 +547,7 @@ bool Polygon::intersectsModel() const
 
 					for (const auto& edge : edges) {
 						auto seg = edge.getSegment(getBlockPtr());
-						RayHit<double> hit;
+						RayHitd hit;
 						if (seg.intersectTri(pts, hit)) {
 							_cachedIntersectsModel = IS_TRUE;
 							break;
@@ -775,7 +775,7 @@ bool Polygon::isPlanar() const
 	Vector3d v0 = pt1 - pt0;
 	Vector3d v1 = pt2 - pt0;
 	Vector3d norm = v1.cross(v0).normalized();
-	Plane<double> pl(pt0, norm, false);
+	Planed pl(pt0, norm, false);
 	for (size_t i = 3; i < _vertexIds.size(); i++) {
 		Vector3d pt = getBlockPtr()->getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
@@ -785,31 +785,30 @@ bool Polygon::isPlanar() const
 	return true;
 }
 
-bool Polygon::intersect(LineSegment<double>& seg, RayHit<double>& hit) const
+bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
 {
-	if (isPlanar()) {
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-		for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
-			size_t j = (i + 1);
-			Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-			Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
-			if (seg.intersectTri(pt0, pt1, pt2, hit))
-				return true;
-		}
-	} else {
-		assert(!"Face is not planar");
+	assert(isPlanar()); // Not sure if there's a good way to intersect with a non planar polygon
+
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
+		size_t j = (i + 1);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		if (seg.intersectTri(pt0, pt1, pt2, hit))
+			return true;
 	}
+
 	return false;
 }
 
-bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& intersectionSeg) const
+bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 {
 	vector<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		auto edgeSeg = edge.getSegment(getBlockPtr());
-		RayHit<double> hit;
+		RayHitd hit;
 		if (pl.intersectLineSegment(edgeSeg, hit)) {
 #ifdef _DEBUG
 			double t;
@@ -821,7 +820,7 @@ bool Polygon::intersect(const Plane<double>& pl, LineSegment<double>& intersecti
 	}
 
 	if (intersectionPoints.size() == 2) {
-		intersectionSeg = LineSegment<double>(intersectionPoints[0], intersectionPoints[1]);
+		intersectionSeg = LineSegmentd(intersectionPoints[0], intersectionPoints[1]);
 		return true;
 	}
 

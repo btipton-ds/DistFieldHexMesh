@@ -492,12 +492,13 @@ void Volume::splitAtSharpVerts(const BuildCFDParams& params, bool multiCore)
 		runLambda([this, &changed, &params](size_t linearIdx)->bool {
 			auto pBlk = _blocks[linearIdx];
 			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				if (cell.setNeedsSplitAtSharpVert(params)) {
+				PolyhedronSplitter sp(pBlk.get(), cellId);
+				if (sp.cutAtSharpVerts(params)) {
 					changed = true;
 				}
-				});
+			});
 			return true;
-			}, false && multiCore);
+		}, false && multiCore);
 
 		if (changed)
 			finishSplits(multiCore);
@@ -511,9 +512,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 	runLambda([this, &changed, &params](size_t linearIdx)->bool {
 		auto pBlk = _blocks[linearIdx];
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			auto sharps = pBlk->getVolume()->getSharpVertIndices();
-
-			if (cell.containsVertices(sharps)) {
+			if (cell.containsSharps()) {
 				changed = cell.setNeedsCleanFaces();
 			}
 		});
@@ -528,7 +527,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 		auto pBlk = _blocks[linearIdx];
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			PolyhedronSplitter sp(pBlk.get(), cellId);
-			if (sp.splitAtSharpVerts(params))
+			if (sp.cutAtSharpEdges(params))
 				changed = true;
 			});
 		return true;
@@ -1058,13 +1057,13 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	Plane<double> planes[] = {
-		Plane<double>(_boundingBox.getMin(), xAxis, false), // frontPlane
-		Plane<double>(_boundingBox.getMin(), yAxis, false), // leftPlane
-		Plane<double>(_boundingBox.getMin(), zAxis, false), // bottomPlane
-		Plane<double>(_boundingBox.getMax(), xAxis, false), // backPlane
-		Plane<double>(_boundingBox.getMax(), yAxis, false), // rightPlane
-		Plane<double>(_boundingBox.getMax(), zAxis, false), // topPlane
+	Planed planes[] = {
+		Planed(_boundingBox.getMin(), xAxis, false), // frontPlane
+		Planed(_boundingBox.getMin(), yAxis, false), // leftPlane
+		Planed(_boundingBox.getMin(), zAxis, false), // bottomPlane
+		Planed(_boundingBox.getMax(), xAxis, false), // backPlane
+		Planed(_boundingBox.getMax(), yAxis, false), // rightPlane
+		Planed(_boundingBox.getMax(), zAxis, false), // topPlane
 	};
 
 	vector<Index3DId> outerBounds[6], wall;

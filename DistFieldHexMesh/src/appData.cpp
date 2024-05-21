@@ -320,7 +320,7 @@ void AppData::doFindMinGap() const
                 double u = iy / (dim[1] - 1.0);
                 double y = bbMin[1] + u * range[1];
                 Vector3d ctr(x, y, 0);
-                Ray<double> ray(ctr, zAxis);
+                Rayd ray(ctr, zAxis);
 
 #if DEBUG_BREAKS && defined(_DEBUG)
                 vector<RayHit> hits;

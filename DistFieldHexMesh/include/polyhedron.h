@@ -71,7 +71,7 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 
-	Index3DId createIntersectionFace(const Plane<double>& plane) const;
+	Index3DId createIntersectionFace(const Planed& plane) const;
 
 	void setNeedsSplitAtCentroid();
 	bool needsSplitAtCentroid() const;
@@ -82,9 +82,7 @@ public:
 	void setNeedsSplitAtPoint(const Vector3d& splitPt);
 	bool needsSplitAtPoint(Vector3d& splitPt) const;
 
-	bool setNeedsSplitAtSharpVert(const BuildCFDParams& params);
-
-	bool containsVertices(std::vector<size_t>& vertIndices) const;
+	bool containsSharps() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
@@ -93,6 +91,7 @@ public:
 	bool needToSplitDueToSplitFaces(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
+	void getOutwardOrientedFaces(std::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
 	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);
@@ -104,6 +103,7 @@ public:
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
 	const std::vector<size_t>& getTriIndices() const;
+	const std::vector<size_t>& getEdgeIndices() const;
 	std::vector<size_t> getSharpVertIndices() const;
 
 	void write(std::ostream& out) const;
@@ -134,7 +134,7 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
 	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
-	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
+	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 
 	std::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
@@ -142,8 +142,8 @@ private:
 	bool _needsConditionalSplitTest = true;
 	bool _needsSplitAtPt = false, _needsSplitAtCentroid = false;
 	Vector3d _splitPt;
-	Plane<double> _splitPlane;
-	std::vector<size_t> _triIndices;
+	Planed _splitPlane;
+	std::vector<size_t> _triIndices, _edgeIndices;
 
 	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
@@ -177,6 +177,11 @@ inline void Polyhedron::setSplitLevel(size_t val)
 inline const std::vector<size_t>& Polyhedron::getTriIndices() const
 {
 	return _triIndices;
+}
+
+inline const std::vector<size_t>& Polyhedron::getEdgeIndices() const
+{
+	return _edgeIndices;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

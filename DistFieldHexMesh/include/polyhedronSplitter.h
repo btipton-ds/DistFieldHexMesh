@@ -41,23 +41,27 @@ class Polyhedron;
 
 class PolyhedronSplitter {
 public:
-	static bool splitMultipleAtPlane(Block* pBlock, const Plane<double>& plane, std::set<Index3DId> targetCellIds, std::set<Index3DId>& newCellIds);
+	static bool splitMultipleAtPlane(Block* pBlock, const Planed& plane, std::set<Index3DId> targetCellIds, std::set<Index3DId>& newCellIds);
 
 	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
 
 	bool splitIfNeeded();
 	bool splitAtPoint(const Vector3d& pt);
-	bool splitAtPlane(const Plane<double>& plane, std::set<Index3DId>& newCellIds);
-	bool splitAtSharpVerts(const BuildCFDParams& params);
-	bool splitAtSharpEdgeCusps(const BuildCFDParams& params);
-	bool splitAtSharpEdges(const BuildCFDParams& params);
+	bool splitAtPlane(const Planed& plane, std::set<Index3DId>& newCellIds);
+
+	// Cutting creates final faces "on" the model.
+	bool cutAtSharpVerts(const BuildCFDParams& params);
+	bool cutAtSharpEdges(const BuildCFDParams& params);
 
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane, std::set<Index3DId>& newCellIds);
+	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, std::set<Index3DId>& newCellIds);
 	bool imprintFace(Polyhedron& realCell, const Index3DId& faceId, std::set<Index3DId>& newCellIds);
-	bool splitAtSharpVertConical(size_t vertIdx, const BuildCFDParams& params);
-	bool splitAtSharpVertsLinear(std::vector<size_t>& verts, const BuildCFDParams& params);
+
+	bool cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params);
+	bool cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params);
+
+	void findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

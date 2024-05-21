@@ -42,6 +42,9 @@ class Plane;
 template<class T>
 struct RayHit;
 
+using RayHitd = RayHit<double>;
+using Planed = Plane<double>;
+
 namespace DFHM {
 
 class Edge;
@@ -127,7 +130,7 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVertex(const Index3DId& vertId) const;
-	bool coplanar(const Plane<double>& pl) const;
+	bool coplanar(const Planed& pl) const;
 	bool verifyUnique() const;
 	bool verifyTopology() const;
 
@@ -159,8 +162,8 @@ public:
 	size_t getImprintIndex(const Index3DId& imprintVert) const;
 	bool isSplit() const;
 	bool isPlanar() const;
-	bool intersect(LineSegment<double>& seg, RayHit<double>& hit) const;
-	bool intersect(const Plane<double>& pl, LineSegment<double>& intersectionSeg) const;
+	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
+	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);

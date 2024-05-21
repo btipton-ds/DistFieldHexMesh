@@ -37,6 +37,7 @@ template<class T>
 class Plane;
 template<class T>
 struct LineSegment;
+using LineSegmentd = LineSegment<double>;
 
 namespace DFHM {
 
@@ -76,7 +77,7 @@ public:
 	bool isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
 	double calSinDihedralAngle(const Block* pBlock) const;
-	LineSegment<double> getSegment(const Block* pBlock) const;
+	LineSegmentd getSegment(const Block* pBlock) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <tm_bestFit.h>
+#include <tm_lineSegment.h>
+#include <tm_ray.h>
 #include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -52,7 +54,7 @@ bool PolyhedronSplitter::splitIfNeeded()
 	_pBlock->cellAvailFunc(TS_REFERENCE, _polyhedronId, [this, &result](const Polyhedron& cell) {
 		set<Index3DId> newCellIds;
 		Vector3d ctr;
-		Plane<double> plane;
+		Planed plane;
 		if (cell.needsSplitAtCentroid()) {
 			ctr = cell.calCentroid();
 			result = splitAtPoint(ctr);
@@ -275,6 +277,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #endif // _DEBUG
 
 			newCell.setTriIndices(realCell.getTriIndices());
+			newCell.setEdgeIndices(realCell.getEdgeIndices());
 		});
 
 #if LOGGING_ENABLED
@@ -292,7 +295,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	return true;
 }
 
-bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Plane<double>& plane, set<Index3DId> targetCellIds, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Planed& plane, set<Index3DId> targetCellIds, set<Index3DId>& newCellIds)
 {
 	bool result = false;
 
@@ -305,133 +308,73 @@ bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Plane<double>
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtSharpVerts(const BuildCFDParams& params)
+bool PolyhedronSplitter::cutAtSharpVerts(const BuildCFDParams& params)
 {
 	bool result = false;
 
 	auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
 	vector<size_t> verts = cell.getSharpVertIndices();
 
-	if (verts.empty())
-		return false;
-	
-	if (verts.size() == 1) {
-		return splitAtSharpVertConical(verts[0], params);
-	} else if (splitAtSharpVertsLinear(verts, params)) {
-		assert(!"subdivide and try again");
-		return true;
-	}
-
-	return result;
-}
-
-bool PolyhedronSplitter::splitAtSharpVertConical(size_t vertIdx, const BuildCFDParams& params)
-{
-	bool result = false;
-	auto pMesh = _pBlock->getModelMesh();
-
-	const auto& vert = pMesh->getVert(vertIdx);
-
-	return result;
-}
-
-bool PolyhedronSplitter::splitAtSharpVertsLinear(std::vector<size_t>& verts, const BuildCFDParams& params)
-{
-	bool result = false;
-	auto pMesh = _pBlock->getModelMesh();
-	vector<Vector3d> pts;
-	Vector3d v0, pt0, pt1;
-
-	for (size_t vertIdx : verts) {
-		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		pts.push_back(pt);
-	}
-	double err;
-	Ray<double> ray = bestFitLine(pts, err);
-	if (err > Tolerance::sameDistTol()) {
-		assert(!"Not implemented yet. Need to divide the cell into parts.");
-		return false;
-	}
-	v0 = ray._dir;
-
-	Vector3d orth(1, 0, 0);
-	double minDp = fabs(v0.dot(orth));
-
-	double dp = fabs(v0.dot(Vector3d(0, 1, 0)));
-	if (dp < minDp)
-		orth = Vector3d(0, 1, 0);
-
-	dp = fabs(v0.dot(Vector3d(0, 0, 1)));
-	if (dp < minDp)
-		orth = Vector3d(0, 0, 1);
-	orth = orth - v0.dot(orth) * v0;
-	orth.normalize();
-
-	Vector3d orth2 = v0.cross(orth);
-
-	set<Index3DId> nextCellIds;
-	if (splitMultipleAtPlane(_pBlock, Plane<double>(pts.front(), orth, false), { _polyhedronId }, nextCellIds))
-		result = true;
-
-	if (splitMultipleAtPlane(_pBlock, Plane<double>(pts.front(), orth2, false), nextCellIds, nextCellIds))
-		result = true;
-
-	for (const auto& pt : pts) {
-		if (splitMultipleAtPlane(_pBlock, Plane<double>(pt, v0, false), { _polyhedronId }, nextCellIds))
-			result = true;
-	}
-
-	return false;
-}
-
-bool PolyhedronSplitter::splitAtSharpEdgeCusps(const BuildCFDParams& params)
-{
-	double sinEdgeAngle = sin(params.getSharpAngleRadians());
-	auto pMesh = _pBlock->getModelMesh();
-	vector<size_t> verts;
-
-	{
-		auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
-		auto bbox = cell.getBoundingBox();
-		const auto& sharpVerts = _pBlock->getVolume()->getSharpVertIndices();
-		for (size_t vertIdx : sharpVerts) {
-			const auto& vert = pMesh->getVert(vertIdx);
-			if (bbox.contains(vert._pt)) {
-				verts.push_back(vertIdx);
-			}
+	for (size_t vIdx : verts) {
+		if (!cutAtSharpVert(vIdx, params)) {
+			result = false;
 		}
-
-		if (verts.empty())
-			return false;
 	}
+
+	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
+		_pBlock->freePolyhedron(_polyhedronId);
+	}
+
+	return result;
+}
+
+bool PolyhedronSplitter::cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params)
+{
+	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
+		return false;
 
 	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
-	if (verts.size() == 1) {
-		size_t vertIdx = verts.front();
-		if (_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId)) {
-			Vector3d ctr;
-			_pBlock->cellFunc(TS_REFERENCE, _polyhedronId, [&ctr](const Polyhedron& cell) {
-				ctr = cell.calCentroid();
-			});
-			splitAtPoint(ctr);
-		} else {
-			Vector3d pt = pMesh->getVert(vertIdx)._pt;
-			return splitAtPoint(pt);
-		}
-	}
 
-	int dbgBreak = 1;
+	assert(_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId));
+	Polyhedron& referenceCell = _pBlock->getPolyhedron(TS_REFERENCE, _polyhedronId);
 
+	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
+	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
 
-	return true;
+	bool result = cutAtSharpVertInner(realCell, referenceCell, vertIdx, params);
+
+	return result;
 }
 
-bool PolyhedronSplitter::splitAtSharpEdges(const BuildCFDParams& params)
+bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params)
+{
+	// Construct pyramid faces through the sharp vert and pierce points
+
+	auto pMesh = _pBlock->getModelMesh();
+	bool isConvex = false;
+	LineSegmentd axisSeg;
+	if (!pMesh->isVertConvex(vertIdx, isConvex, axisSeg)) {
+		assert(!"A sharp vertex should always return true.");
+	}
+	vector<Vector3d> piercePoints;
+	findSharpVertPierecPoints(vertIdx, piercePoints, params);
+
+
+	if (piercePoints.empty()) {
+		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
+	} else {
+		// General case, create a parting face
+	}
+
+	return false;
+}
+
+bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 {
 	return false;
 }
 
-bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitAtPlane(const Planed& plane, set<Index3DId>& newCellIds)
 {
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
@@ -454,7 +397,7 @@ bool PolyhedronSplitter::splitAtPlane(const Plane<double>& plane, set<Index3DId>
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Plane<double>& plane, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, set<Index3DId>& newCellIds)
 {
 	Index3DId imprintFaceId = realCell.createIntersectionFace(plane);
 
@@ -512,4 +455,44 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 	newCellIds.insert(upperCellId);
 
 	return false;
+}
+
+void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const
+{
+	const double sinSharpAngle = sin(params.getSharpAngleRadians());
+	auto pMesh = _pBlock->getModelMesh();
+
+	piercePoints.clear();
+
+	set<size_t> availEdges;
+	set<Index3DId> faceIds;
+	_pBlock->cellFunc(TS_REAL, _polyhedronId, [&availEdges, &faceIds](const Polyhedron& cell) {
+		const auto& edgeIndices = cell.getEdgeIndices();
+		availEdges.insert(edgeIndices.begin(), edgeIndices.end());
+		faceIds = cell.getFaceIds();
+	});
+
+	const auto& vert = pMesh->getVert(vertIdx);
+	vector<vector<size_t>> vertIndexLines;
+
+	pMesh->createSharpEdgeVertexLines(vertIdx, availEdges, sinSharpAngle, vertIndexLines);
+
+	// Use real faces instead of the bounding box in case they aren't the same.
+	for (const auto& faceId : faceIds) {
+		_pBlock->faceFunc(TS_REAL, faceId, [&piercePoints, &vertIndexLines, &pMesh](const Polygon& face) {
+			for (const auto& vertIndices : vertIndexLines) {
+				// Iterate backwards because the furthest edge should be crossing.
+				for (size_t i = vertIndices.size() - 1; i > 0; i--) {
+					const auto& pt0 = pMesh->getVert(vertIndices[i])._pt;
+					const auto& pt1 = pMesh->getVert(vertIndices[i - 1])._pt;
+					LineSegmentd seg(pt0, pt1);
+					RayHitd hit;
+					if (face.intersect(seg, hit)) {
+						piercePoints.push_back(hit.hitPt);
+						break;
+					}
+				}
+			}
+		});
+	}
 }

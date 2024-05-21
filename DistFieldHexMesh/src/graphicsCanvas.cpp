@@ -253,8 +253,8 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     if (pMesh) {
         Vector3d temp = screenPointToModel(_mouseStartLoc2D);
         dir.normalize();
-        Ray<double> ray(temp, dir);
-        vector<RayHit<double>> hits;
+        Rayd ray(temp, dir);
+        vector<RayHitd> hits;
         if (pMesh->rayCast(ray, hits)) {
             // Rotate about hit point
             _mouseStartLoc3D = hits.front().hitPt;

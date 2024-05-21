@@ -403,13 +403,13 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-Index3DId Polyhedron::createIntersectionFace(const Plane<double>& plane) const
+Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 {
-	vector<LineSegment<double>> intersectionSegs;
+	vector<LineSegmentd> intersectionSegs;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &intersectionSegs](const Polygon& face) {
-			LineSegment<double> seg;
+			LineSegmentd seg;
 			if (face.intersect(plane, seg)) {
 				intersectionSegs.push_back(seg);
 			}
@@ -496,38 +496,10 @@ bool Polyhedron::needsSplitAtPoint(Vector3d& splitPt) const
 	return false;
 }
 
-bool Polyhedron::setNeedsSplitAtSharpVert(const BuildCFDParams& params)
+bool Polyhedron::containsSharps() const
 {
-	auto vertIndices = getSharpVertIndices();
-	if (vertIndices.empty())
-		return false;
+	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
 
-	set<Index3DId> vertIds;
-	getVertIds(vertIds);
-	vector<Vector3d> points;
-
-	auto pMesh = getBlockPtr()->getModelMesh();
-	for (size_t vIdx : vertIndices) {
-		const auto& pt = pMesh->getVert(vIdx)._pt;
-		auto vIdx = getBlockPtr()->idOfPoint(pt);
-		if (!vertIds.contains(vIdx)) {
-			points.push_back(pt);
-		}
-	}
-
-	if (!points.empty()) {
-		cout << "Splitting at sharp vert\n";
-		Vector3d pt = points.front();
-		setNeedsSplitAtPoint(pt);
-		return true;
-	}
-
-	return false;
-}
-
-
-bool Polyhedron::containsVertices(std::vector<size_t>& vertIndices) const
-{
 	auto bbox = getBoundingBox();
 	auto pMesh = getBlockPtr()->getModelMesh();
 	for (size_t vertIdx : vertIndices) {
@@ -536,7 +508,29 @@ bool Polyhedron::containsVertices(std::vector<size_t>& vertIndices) const
 			return true;
 	}
 
+	vector<size_t> triIndices;
+	if (pMesh->processFoundTris(_triIndices, bbox, triIndices) > 0) {
+	}
+
 	return false;
+}
+
+void Polyhedron::getOutwardOrientedFaces(std::vector<Polygon>& faces) const
+{
+	Vector3d cellCtr = calCentroid();
+	for (const auto& faceId : _faceIds) {
+		faceFunc(TS_REAL, faceId, [&cellCtr, &faces](const Polygon& face) {
+			Vector3d faceCtr = face.calCentroid();
+			Vector3d faceNorm = face.calUnitNormal();
+			Vector3d outwardNorm = faceCtr - cellCtr;
+			outwardNorm.normalize();
+			auto verts = face.getVertexIds();
+			if (faceNorm.dot(outwardNorm) < 0)
+				reverse(verts.begin(), verts.end());
+			Polygon dupFace(verts);
+			faces.push_back(dupFace);
+		});
+	}
 }
 
 void Polyhedron::imprintTVertices(Block* pDstBlock)
@@ -724,14 +718,15 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 
 	if (params.splitAtSharpVerts) {
 		auto sharpVerts = getSharpVertIndices();
-		if (sharpVerts.size() > 1) {
+		if (sharpVerts.size() > 2) {
 			cout << "Splitting due to sharp verts c" << _thisId << ": " << sharpVerts.size() << "\n";
 			needToSplit = true;
 		}
 	}
 
-	double maxEdgeLength = 0;
 	if (!needToSplit) {
+		double maxEdgeLength = 0;
+
 		CBoundingBox3Dd bbox = getBoundingBox();
 		set<Edge> edges;
 		cellAvailFunc(TS_REFERENCE, _thisId, [&edges](const Polyhedron& cell) {
@@ -787,17 +782,10 @@ bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
-#if 0
 	auto pTriMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 
-	for (auto idx : indices) {
-		const auto& edge = pTriMesh->getEdge(idx);
-		auto seg = edge.getSeg(pTriMesh);
-		if (bbox.intersects(seg))
-			_edgeIndices.push_back(idx);
-	}
-#endif
+	pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
 }
 
 void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
@@ -857,7 +845,7 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		return 0;
 
 	auto pTriMesh = getBlockPtr()->getModelMesh();
-#if 1
+
 	const auto& blkIdx = _thisId.blockIdx();
 	if (blkIdx[0] == 0 && blkIdx[1] == 0) {
 		int dbgBreak = 1;
@@ -903,39 +891,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		}
 		return -1;
 	}
-#else
-	vector<size_t> edgeIndices;
-	if (getBlockPtr()->processEdges(bbox, edgeIndices)) {
-		vector<double> edgeRadii;
-		double maxRad = 0;
-		for (const auto edgeIdx : edgeIndices) {
-			double edgeCurv = pTriMesh->edgeCurvature(edgeIdx);
-			if (edgeCurv > 2) { // Radius < 1/2
-				double edgeRad = 1 / edgeCurv;
-				if (maxRad == 0 || edgeRad <= 1.5 * maxRad) {
-					if (edgeRad > maxRad)
-						maxRad = edgeRad;
-					edgeRadii.push_back(edgeRad);
-				} else
-					break;
-			}
-		}
-		if (edgeRadii.empty())
-			return 1e6;
-
-		sort(edgeRadii.begin(), edgeRadii.end());
-		size_t num = edgeRadii.size();
-		double avgRad = 0;
-		for (size_t i = 0; i < num; i++) {
-			avgRad += edgeRadii[i];
-		}
-
-		avgRad /= num;
-		if (avgRad >= 0)
-			return avgRad;
-		return -1;
-	}
-#endif
 
 	return 0;
 }
@@ -1065,7 +1020,7 @@ namespace
 
 	class FixedPlane {
 	public:
-		FixedPlane(const Plane<double>& src)
+		FixedPlane(const Planed& src)
 			: _origin(src.getOrgin())
 			, _normal(src.getNormal())
 		{
