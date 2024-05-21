@@ -813,7 +813,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 #ifdef _DEBUG
 			double t;
 			assert(edgeSeg.contains(hit.hitPt, t));
-			assert(0 < t && t < 1);
+			assert(0 <= t && t <= 1);
 #endif // _DEBUG
 			intersectionPoints.push_back(hit.hitPt);
 		}

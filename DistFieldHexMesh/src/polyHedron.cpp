@@ -403,8 +403,10 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
+size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
 {
+	facePoints.clear();
+
 	vector<LineSegmentd> intersectionSegs;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
@@ -413,7 +415,7 @@ Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 			if (face.intersect(plane, seg)) {
 				intersectionSegs.push_back(seg);
 			}
-		});
+			});
 	}
 
 	vector<FixedPt> fixPoints;
@@ -421,8 +423,10 @@ Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 	intersectionSegs.pop_back();
 	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[0]));
 	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[1]));
-	while (!intersectionSegs.empty()) {
+	bool found = true;
+	while (found && !intersectionSegs.empty()) {
 		auto lastPt = fixPoints.back();
+		found = false;
 		for (size_t i = 0; i < intersectionSegs.size(); i++) {
 			auto intersection2 = intersectionSegs[i];
 			auto fPt0 = FixedPt::fromDbl(intersection2._pts[0]);
@@ -430,30 +434,40 @@ Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 			if (fPt1 == lastPt) {
 				fixPoints.push_back(fPt0);
 				intersectionSegs.erase(intersectionSegs.begin() + i);
+				found = true;
 				break;
-			} else if (fPt0 == lastPt) {
+			}
+			else if (fPt0 == lastPt) {
 				fixPoints.push_back(fPt1);
 				intersectionSegs.erase(intersectionSegs.begin() + i);
+				found = true;
 				break;
 			}
 		}
 	}
-	if (fixPoints.empty())
-		return result;
+	if (!intersectionSegs.empty() || fixPoints.empty())
+		return facePoints.size();
 
 	assert(fixPoints.front() == fixPoints.back());
 
-	vector<Vector3d> facePoints;
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
 	for (size_t i = 0; i < fixPoints.size() - 1; i++) {
 		Vector3d pt = FixedPt::toDbl(fixPoints[i]);
 		facePoints.push_back(pt);
 	}
 
-	if (facePoints.size() > 2) {
+	return facePoints.size();
+}
+
+Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
+{
+	Index3DId result;
+
+	Block* pBlk = const_cast<Block*> (getBlockPtr());
+	vector<Vector3d> facePoints;
+	if (createIntersectionFacePoints(plane, facePoints) > 2) {
 		Polygon::dumpPolygonPoints(cout, facePoints);
-		Index3DId newFaceId = pBlk->addFace(facePoints);
-		return newFaceId;
+		result = pBlk->addFace(facePoints);
 	}
 
 	return result;

@@ -71,6 +71,7 @@ public:
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 
+	size_t createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& points) const;
 	Index3DId createIntersectionFace(const Planed& plane) const;
 
 	void setNeedsSplitAtCentroid();

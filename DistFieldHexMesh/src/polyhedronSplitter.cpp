@@ -364,7 +364,23 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
 	} else {
 		// General case, create a parting face
+		for (size_t i = 0; i < piercePoints.size(); i++) {
+			const auto& piercePt = piercePoints[i];
+			Vector3d v0 = axisSeg.calcDir();
+			Vector3d v1 = piercePt - axisSeg._pts[0];
+			Vector3d norm = v1.cross(v0);
+			norm.normalize();
+			Planed pl(axisSeg._pts[0], norm, false);
+
+			vector<Vector3d> facePoints;
+			if (realCell.createIntersectionFacePoints(pl, facePoints) > 2) {
+				cout << "Cutting face " << i << "\n";
+				Polygon::dumpPolygonPoints(cout, facePoints);
+			}
+		}
 	}
+
+	_pBlock->dumpObj({ _polyhedronId }, false, false, false, piercePoints);
 
 	return false;
 }
