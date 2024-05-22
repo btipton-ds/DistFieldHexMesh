@@ -1,5 +1,4 @@
 #pragma once
-
 /*
 This file is part of the DistFieldHexMesh application/library.
 
@@ -28,44 +27,20 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <set>
-#include <map>
-#include <tm_vector3.h>
-#include <tm_plane.h>
-#include <index3D.h>
+#include <tm_lineSegment.h>
+#include <tm_lineSegment.hpp>
 
 namespace DFHM {
 
-class Block;
-class Polygon;
-class Polyhedron;
-
-class PolyhedronSplitter {
-public:
-	static bool splitMultipleAtPlane(Block* pBlock, const Planed& plane, std::set<Index3DId> targetCellIds, std::set<Index3DId>& newCellIds);
-
-	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
-
-	bool splitIfNeeded();
-	bool splitAtPoint(const Vector3d& pt);
-	bool splitAtPlane(const Planed& plane, std::set<Index3DId>& newCellIds);
-
-	// Cutting creates final faces "on" the model.
-	bool cutAtSharpVerts(const BuildCFDParams& params);
-	bool cutAtSharpEdges(const BuildCFDParams& params);
-
-private:
-	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, std::set<Index3DId>& newCellIds);
-	bool imprintFace(Polyhedron& realCell, const Index3DId& faceId, std::set<Index3DId>& newCellIds);
-
-	bool cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params);
-	bool cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params);
-
-	void findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
-	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, std::vector<Vector3d>& points) const;
-
-	Block* _pBlock;
-	Index3DId _polyhedronId;
-};
+using LineSegmentf = LineSegment<FixedPt>;
+using LeneSegmentfSet = std::set<LineSegmentf, decltype([](const LineSegmentf& lhs, const LineSegmentf& rhs)->bool {
+	for (int i = 0; i < 2; i++) {
+		if (lhs._pts[i] < rhs._pts[i])
+			return true;
+		else if (rhs._pts[i] < lhs._pts[i])
+			return false;
+	}
+	return false;
+})>;
 
 }

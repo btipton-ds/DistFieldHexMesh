@@ -89,6 +89,7 @@ public:
 	FixedPt(const Vector3d& pt);
 
 	bool operator < (const FixedPt& rhs) const;
+	bool operator == (const FixedPt& rhs) const;
 
 };
 

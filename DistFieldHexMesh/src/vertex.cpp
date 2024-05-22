@@ -45,6 +45,11 @@ bool FixedPt::operator < (const FixedPt& rhs) const
 	return false;
 }
 
+bool FixedPt::operator == (const FixedPt& rhs) const
+{
+	return (*this)[0] == rhs[0] && (*this)[1] == rhs[1] && (*this)[2] == rhs[2];
+}
+
 Vertex::Vertex(const Vertex& src)
 #if 0
 	: _lockType(src._lockType)

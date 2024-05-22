@@ -803,7 +803,8 @@ bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
 
 bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 {
-	vector<Vector3d> intersectionPoints;
+	// This collapses duplicate corner hits to a single hit
+	set<FixedPt> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
@@ -815,13 +816,18 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 			assert(edgeSeg.contains(hit.hitPt, t));
 			assert(0 <= t && t <= 1);
 #endif // _DEBUG
-			intersectionPoints.push_back(hit.hitPt);
+			intersectionPoints.insert(FixedPt::fromDbl(hit.hitPt));
 		}
 	}
 
 	if (intersectionPoints.size() == 2) {
-		intersectionSeg = LineSegmentd(intersectionPoints[0], intersectionPoints[1]);
+		auto iter = intersectionPoints.begin();
+		const auto& fPt0 = *iter++;
+		const auto& fPt1 = *iter++;
+		intersectionSeg = LineSegmentd(FixedPt::toDbl(fPt0), FixedPt::toDbl(fPt1));
 		return true;
+	} else if (!intersectionPoints.empty()) {
+		int dbgBreak = 1;
 	}
 
 	return false;

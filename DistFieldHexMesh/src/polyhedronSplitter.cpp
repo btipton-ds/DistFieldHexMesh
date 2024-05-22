@@ -359,30 +359,86 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 	vector<Vector3d> piercePoints;
 	findSharpVertPierecPoints(vertIdx, piercePoints, params);
 
-
+	vector<vector<Vector3d>> modelFaces, cutFaces;
 	if (piercePoints.empty()) {
 		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
 	} else {
 		// General case, create a parting face
+		Vector3d tipPt = pMesh->getVert(vertIdx)._pt;
 		for (size_t i = 0; i < piercePoints.size(); i++) {
+			size_t j = (i + 1) % piercePoints.size();
+
+			Vector3d xAxis = (piercePoints[i] - tipPt).normalized();
+			Vector3d v1 = (piercePoints[j] - tipPt).normalized();
+			Vector3d yAxis = v1 - xAxis.dot(v1) * xAxis;
+			yAxis.normalize();
+			Vector3d n = v1.cross(xAxis).normalized();
+			Planed modelPlane(tipPt, n, false);
+			vector<Vector3d> cutFacePoints, modelFacePoints, tempPoints, newPoints;
+			if (realCell.createIntersectionFacePoints(modelPlane, tempPoints) > 2) {
+				double cosT = v1.dot(xAxis);
+				double sinT = v1.dot(yAxis);
+				double thetaMax = atan2(sinT, cosT);
+
+				for (const auto& pt : tempPoints) {
+					Vector3d v = (pt - tipPt).normalized();
+
+					cosT = v.dot(xAxis);
+					sinT = v.dot(yAxis);
+					double theta = atan2(sinT, cosT);
+					if (theta > 0 && theta < thetaMax)
+						newPoints.push_back(pt);
+				}
+
+				sortNewFacePoints(tipPt, xAxis, yAxis, newPoints);
+				modelFacePoints.push_back(tipPt);
+				modelFacePoints.insert(modelFacePoints.end(), piercePoints[i]);
+				modelFacePoints.insert(modelFacePoints.end(), newPoints.begin(), newPoints.end());
+				modelFacePoints.insert(modelFacePoints.end(), piercePoints[j]);
+				modelFaces.push_back(modelFacePoints);
+				cout << "Model face " << i << "\n";
+				Polygon::dumpPolygonPoints(cout, modelFacePoints);
+			}
+
 			const auto& piercePt = piercePoints[i];
 			Vector3d v0 = axisSeg.calcDir();
-			Vector3d v1 = piercePt - axisSeg._pts[0];
+			v1 = piercePt - axisSeg._pts[0];
 			Vector3d norm = v1.cross(v0);
 			norm.normalize();
-			Planed pl(axisSeg._pts[0], norm, false);
+			Planed cutPlane(axisSeg._pts[0], norm, false);
 
-			vector<Vector3d> facePoints;
-			if (realCell.createIntersectionFacePoints(pl, facePoints) > 2) {
-				cout << "Cutting face " << i << "\n";
-				Polygon::dumpPolygonPoints(cout, facePoints);
+			// Having a problem if a face edge lies in the plane
+			if (realCell.createIntersectionFacePoints(cutPlane, cutFacePoints) > 2) {
+				cutFaces.push_back(cutFacePoints);
+				cout << "Cut face " << i << "\n";
+				Polygon::dumpPolygonPoints(cout, cutFacePoints);
 			}
 		}
 	}
 
-	_pBlock->dumpObj({ _polyhedronId }, false, false, false, piercePoints);
+	_pBlock->dumpObj({ _polyhedronId }, true, false, false, piercePoints);
 
 	return false;
+}
+
+void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, vector<Vector3d>& points) const
+{
+	if (points.size() > 1) {
+		sort(points.begin(), points.end(), [&tipPt, &xAxis, &yAxis](const Vector3d& lhs, const Vector3d& rhs)->bool {
+			Vector3d v0 = (lhs - tipPt).normalized();
+			Vector3d v1 = (rhs - tipPt).normalized();
+
+			double cosT0 = v0.dot(xAxis);
+			double sinT0 = v0.dot(yAxis);
+			double theta0 = atan2(sinT0, cosT0);
+
+			double cosT1 = v1.dot(xAxis);
+			double sinT1 = v1.dot(yAxis);
+			double theta1 = atan2(sinT1, cosT1);
+
+			return theta0 < theta1;
+		});
+	}
 }
 
 bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
@@ -473,7 +529,7 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 	return false;
 }
 
-void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const
+void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, vector<Vector3d>& piercePoints, const BuildCFDParams& params) const
 {
 	const double sinSharpAngle = sin(params.getSharpAngleRadians());
 	auto pMesh = _pBlock->getModelMesh();

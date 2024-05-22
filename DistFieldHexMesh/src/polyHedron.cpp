@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 
 #include <tm_lineSegment.h>
+#include <tm_lineSegment.hpp>
 #include <tm_ioUtil.h>
 #include <splitParams.h>
 #include <vertex.h>
@@ -42,6 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <logger.h>
 #include <polyhedronSplitter.h>
+#include <utils.h>
 
 using namespace std;
 using namespace DFHM;
@@ -403,43 +405,49 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
+
 size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
 {
 	facePoints.clear();
 
-	vector<LineSegmentd> intersectionSegs;
+	LeneSegmentfSet intersectionSegs;
+
 	Index3DId result;
+	size_t i = 0;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &intersectionSegs](const Polygon& face) {
 			LineSegmentd seg;
 			if (face.intersect(plane, seg)) {
-				intersectionSegs.push_back(seg);
+				LineSegmentf fSeg(FixedPt::fromDbl(seg._pts[0]), FixedPt::fromDbl(seg._pts[1]));
+				intersectionSegs.insert(fSeg);
 			}
-			});
+		});
+		i++;
 	}
 
 	vector<FixedPt> fixPoints;
-	auto intersection = intersectionSegs.back();
-	intersectionSegs.pop_back();
-	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[0]));
-	fixPoints.push_back(FixedPt::fromDbl(intersection._pts[1]));
+	auto intersection = *intersectionSegs.begin();
+	intersectionSegs.erase(intersectionSegs.begin());
+	fixPoints.push_back(intersection._pts[0]);
+	fixPoints.push_back(intersection._pts[1]);
 	bool found = true;
 	while (found && !intersectionSegs.empty()) {
-		auto lastPt = fixPoints.back();
+		const auto& lastPt = fixPoints.back();
 		found = false;
-		for (size_t i = 0; i < intersectionSegs.size(); i++) {
-			auto intersection2 = intersectionSegs[i];
-			auto fPt0 = FixedPt::fromDbl(intersection2._pts[0]);
-			auto fPt1 = FixedPt::fromDbl(intersection2._pts[1]);
+		auto iter = intersectionSegs.begin();
+		for (; iter != intersectionSegs.end(); iter++) {
+			const auto& intersection2 = *iter;
+			const auto& fPt0 = intersection2._pts[0];
+			const auto& fPt1 = intersection2._pts[1];
 			if (fPt1 == lastPt) {
 				fixPoints.push_back(fPt0);
-				intersectionSegs.erase(intersectionSegs.begin() + i);
+				intersectionSegs.erase(iter);
 				found = true;
 				break;
 			}
 			else if (fPt0 == lastPt) {
 				fixPoints.push_back(fPt1);
-				intersectionSegs.erase(intersectionSegs.begin() + i);
+				intersectionSegs.erase(iter);
 				found = true;
 				break;
 			}
@@ -733,7 +741,6 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 	if (params.splitAtSharpVerts) {
 		auto sharpVerts = getSharpVertIndices();
 		if (sharpVerts.size() > 2) {
-			cout << "Splitting due to sharp verts c" << _thisId << ": " << sharpVerts.size() << "\n";
 			needToSplit = true;
 		}
 	}
