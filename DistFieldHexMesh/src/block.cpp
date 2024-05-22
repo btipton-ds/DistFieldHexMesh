@@ -472,6 +472,16 @@ void Block::makeRefPolyhedronIfRequired(const Index3DId& id)
 	assert(polyhedronExists(TS_REFERENCE, id));
 }
 
+void Block::setVertexLockType(const Index3DId& vertId, VertexLockType val)
+{
+	getOwner(vertId)->_vertices[vertId].setLockType(val);
+}
+
+VertexLockType Block::getVertexLockType(const Index3DId& vertId) const
+{
+	return getOwner(vertId)->_vertices[vertId].getLockType();
+}
+
 Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)

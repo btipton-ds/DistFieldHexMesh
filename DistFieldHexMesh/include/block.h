@@ -122,6 +122,8 @@ public:
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 	FixedPt getFixedPoint(const Index3DId& vertId) const;
+	void setVertexLockType(const Index3DId& vertId, VertexLockType val);
+	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
 	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);

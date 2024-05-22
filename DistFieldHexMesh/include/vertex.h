@@ -120,6 +120,8 @@ public:
 	Vector3d getPoint() const;
 	operator Vector3d () const;
 	const FixedPt& getFixedPt() const;
+	void setLockType(VertexLockType val);
+	VertexLockType getLockType() const;
 
 	const bool operator < (const Vertex& rhs) const;
 
@@ -128,10 +130,8 @@ public:
 
 private:
 
-#if 0
-	LockType _lockType = LockType::None;
-	size_t _lockIdx = -1;
-#endif
+	VertexLockType _lockType = VertexLockType::VLT_NONE;
+
 	/*
 	NOTE - In a single threaded architecture, it saves time to keep edges and faceIds stored with the vertex.
 	In this multi-threaded architecture, it leads to deadlocks, more mutexes and slows things down.
@@ -223,6 +223,16 @@ inline const FixedPt& Vertex::getFixedPt() const
 inline Vertex::operator Vector3d () const
 {
 	return getPoint();
+}
+
+inline void Vertex::setLockType(VertexLockType val)
+{
+	_lockType = val;
+}
+
+inline VertexLockType Vertex::getLockType() const
+{
+	return _lockType;
 }
 
 std::ostream& operator << (std::ostream& out, const Vertex& vert);

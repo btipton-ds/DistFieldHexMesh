@@ -76,13 +76,8 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 
 void Vertex::write(std::ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
-
-#if 0
-	out.write((char*)&_lockType, sizeof(_lockType));
-	out.write((char*)&_lockIdx, sizeof(_lockIdx));
-#endif
 
 #if USE_FIXED_PT
 	FixedPt _pt; // Fixed point representation of a double precisions point
@@ -91,6 +86,7 @@ void Vertex::write(std::ostream& out) const
 	writeVector3(out, _searchPt);
 #endif
 
+	out.write((char*)&_lockType, sizeof(_lockType));
 }
 
 void Vertex::read(std::istream& in)
@@ -98,16 +94,16 @@ void Vertex::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
 
-#if 0
-	in.read((char*)&_lockType, sizeof(_lockType));
-	in.read((char*)&_lockIdx, sizeof(_lockIdx));
-#endif
 #if USE_FIXED_PT
 	FixedPt _pt; // Fixed point representation of a double precisions point
 #else
 	readVector3(in, _pt);
 	readVector3(in, _searchPt);
 #endif
+
+	if (version >= 1) {
+		in.read((char*)&_lockType, sizeof(_lockType));
+	}
 }
 
 const bool Vertex::operator < (const Vertex& rhs) const

@@ -418,6 +418,10 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 
 	_pBlock->dumpObj({ _polyhedronId }, true, false, false, piercePoints);
 
+
+// Lock the sharp vertex when it's created
+//	_pBlock->setVertexLockType(vertIdx, VLT_ALL_AXES);
+
 	return false;
 }
 

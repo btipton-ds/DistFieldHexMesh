@@ -68,4 +68,9 @@ enum DrawStates {
 	DS_BLOCK_ALL,
 };
 
+enum VertexLockType {
+	VLT_NONE,
+	VLT_ALL_AXES
+};
+
 }
