@@ -833,6 +833,19 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
+void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceIds) const
+{
+	// First, imprint vertices
+	Polygon temp(*this);
+	for (const auto& edge : edges) {
+		auto verts = edge.getVertexIds();
+		temp.imprintVertex(verts[0]);
+		temp.imprintVertex(verts[1]);
+	}
+
+	Polygon a, b;
+}
+
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {

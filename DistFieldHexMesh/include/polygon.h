@@ -164,6 +164,7 @@ public:
 	bool isPlanar() const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
+	void splitWithEdges(const std::set<Edge>& edges, std::vector<Index3DId>& newFaceIds) const;
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);

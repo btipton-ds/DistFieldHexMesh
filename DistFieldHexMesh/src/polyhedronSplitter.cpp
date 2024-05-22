@@ -116,7 +116,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #if _DEBUG
 	double minDist = DBL_MAX;
 	for (const auto& faceId : realCell.getFaceIds()) {
-		_pBlock->faceFunc(TS_REAL, faceId, [this, &minDist, &pt](const Polygon& face) {
+		faceFunc(TS_REAL, faceId, [this, &minDist, &pt](const Polygon& face) {
 			double d = face.distanceToPoint(pt);
 			if (d < minDist)
 				minDist = d;
@@ -129,7 +129,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #if defined(_DEBUG)
 	// Now split the cell
 	if (Index3DId(0, 12, 0, 19) == _polyhedronId) {
-		_pBlock->dumpObj({ _polyhedronId }, false, false, false, { pt });
+		_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false, { pt });
 	}
 #endif
 
@@ -150,7 +150,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		PolygonSplitter splitter(_pBlock, faceId);
 		splitter.splitAtPoint(pt);
 
-		_pBlock->faceFunc(TS_REFERENCE, faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
+		faceFunc(TS_REFERENCE, faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
 			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
 
 			for (const auto& childFaceId : refFace._splitFaceProductIds) {
@@ -158,7 +158,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 					pass = false;
 					break;
 				}
-				_pBlock->faceFunc(TS_REAL, childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
+				faceFunc(TS_REAL, childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
 					for (const auto& vertId : childFace.getVertexIds()) {
 						auto iter = cornerVertToFaceMap.find(vertId);
 						if (iter != cornerVertToFaceMap.end()) {
@@ -175,7 +175,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	}
 
 	if (!pass) {
-		_pBlock->dumpObj({ realCell.getId() }, false, false, false);
+		_pBlock->dumpPolyhedraObj({ realCell.getId() }, false, false, false);
 		return false;
 	}
 
@@ -270,7 +270,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
 #ifdef _DEBUG
 			for (const auto& faceId : newCell.getFaceIds()) {
-				_pBlock->faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
+				faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
 					assert(face.cellsOwnThis());
 				});
 			}
@@ -283,7 +283,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #if LOGGING_ENABLED
 		{
 			Logger::Indent indent;
-			_pBlock->cellFunc(TS_REAL, newCellId, [this, &out](const Polyhedron& newCell) {
+			cellFunc(TS_REAL, newCellId, [this, &out](const Polyhedron& newCell) {
 				LOG(out << Logger::Pad() << "to: " << newCell);
 			});
 		}
@@ -359,12 +359,18 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 	vector<Vector3d> piercePoints;
 	findSharpVertPierecPoints(vertIdx, piercePoints, params);
 
-	vector<vector<Vector3d>> modelFaces, cutFaces;
+	vector<vector<Vector3d>> cutFaces;
+	vector<Index3DId> modelFaces;
 	if (piercePoints.empty()) {
 		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
 	} else {
 		// General case, create a parting face
 		Vector3d tipPt = pMesh->getVert(vertIdx)._pt;
+		Index3DId tipVertId = _pBlock->addVertex(tipPt);
+
+		// Lock the sharp vertex when it's created
+		_pBlock->setVertexLockType(tipVertId, VLT_ALL_AXES);
+
 		for (size_t i = 0; i < piercePoints.size(); i++) {
 			size_t j = (i + 1) % piercePoints.size();
 
@@ -374,7 +380,7 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 			yAxis.normalize();
 			Vector3d n = v1.cross(xAxis).normalized();
 			Planed modelPlane(tipPt, n, false);
-			vector<Vector3d> cutFacePoints, modelFacePoints, tempPoints, newPoints;
+			vector<Vector3d> modelFacePoints, tempPoints, newPoints;
 			if (realCell.createIntersectionFacePoints(modelPlane, tempPoints) > 2) {
 				double cosT = v1.dot(xAxis);
 				double sinT = v1.dot(yAxis);
@@ -395,14 +401,20 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 				modelFacePoints.insert(modelFacePoints.end(), piercePoints[i]);
 				modelFacePoints.insert(modelFacePoints.end(), newPoints.begin(), newPoints.end());
 				modelFacePoints.insert(modelFacePoints.end(), piercePoints[j]);
-				modelFaces.push_back(modelFacePoints);
-				cout << "Model face " << i << "\n";
-				Polygon::dumpPolygonPoints(cout, modelFacePoints);
+				auto newFaceId = _pBlock->addFace(modelFacePoints);
+				modelFaces.push_back(newFaceId);
 			}
+		}
 
+		vector<Index3DId> newCellIds;
+		splitWithFaces(realCell, modelFaces, newCellIds);
+
+#if 0
+		for (size_t i = 0; i < piercePoints.size(); i++) {
+			vector<Vector3d> cutFacePoints;
 			const auto& piercePt = piercePoints[i];
 			Vector3d v0 = axisSeg.calcDir();
-			v1 = piercePt - axisSeg._pts[0];
+			Vector3d v1 = piercePt - axisSeg._pts[0];
 			Vector3d norm = v1.cross(v0);
 			norm.normalize();
 			Planed cutPlane(axisSeg._pts[0], norm, false);
@@ -414,13 +426,10 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 				Polygon::dumpPolygonPoints(cout, cutFacePoints);
 			}
 		}
+#endif
 	}
 
-	_pBlock->dumpObj({ _polyhedronId }, true, false, false, piercePoints);
-
-
-// Lock the sharp vertex when it's created
-//	_pBlock->setVertexLockType(vertIdx, VLT_ALL_AXES);
+	_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false, piercePoints);
 
 	return false;
 }
@@ -443,6 +452,51 @@ void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d
 			return theta0 < theta1;
 		});
 	}
+}
+
+void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const std::vector<Index3DId>& imprintFaces, std::vector<Index3DId>& newCellIds) const
+{
+	map<Index3DId, set<Edge>> faceToEdgeMap;
+	for (const auto& realFaceId : realCell.getFaceIds()) {
+		faceFunc(TS_REAL, realFaceId, [this, &faceToEdgeMap, &imprintFaces](const Polygon& realFace) {
+			for (const auto& imprintFaceId : imprintFaces) {
+				faceFunc(TS_REAL, imprintFaceId, [this, &realFace, &faceToEdgeMap](const Polygon& imprintFace) {
+					const auto& imprintEdges = imprintFace.getEdges();
+					for (const auto& imprintEdge : imprintEdges) {
+						bool inPlane = true;
+						auto vertIds = imprintEdge.getVertexIds();
+						const auto& pt0 = _pBlock->getVertexPoint(vertIds[0]);
+						const auto& pt1 = _pBlock->getVertexPoint(vertIds[1]);
+
+						if (realFace.isPointOnPlane(pt0) && realFace.isPointOnPlane(pt1)) {
+							auto iter = faceToEdgeMap.find(realFace.getId());
+							if (iter == faceToEdgeMap.end()) {
+								iter = faceToEdgeMap.insert(make_pair(realFace.getId(), set<Edge>())).first;
+							}
+							iter->second.insert(imprintEdge);
+						}
+					}
+				});
+			}
+		});
+	}
+
+	for (const auto& pair : faceToEdgeMap) {
+		const auto& faceId = pair.first;
+		const auto& edges = pair.second;
+		faceFunc(TS_REAL, faceId, [&edges](const Polygon& sourceFace) {
+			vector<Index3DId> newFaces;
+			sourceFace.splitWithEdges(edges, newFaces);
+		});
+	}
+
+	set<Index3DId> faceIds0, faceIds1;
+
+	// Add common faces for both cells
+	faceIds0.insert(imprintFaces.begin(), imprintFaces.end());
+	faceIds1.insert(imprintFaces.begin(), imprintFaces.end());
+
+
 }
 
 bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
@@ -492,13 +546,13 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 	set<Index3DId> realFaceIds = realCell.getFaceIds();
 
 	vector<Index3DId> imprintVertIds;
-	_pBlock->faceFunc(TS_REAL, imprintFaceId, [&imprintVertIds](const Polygon& imprintFace) {
+	faceFunc(TS_REAL, imprintFaceId, [&imprintVertIds](const Polygon& imprintFace) {
 		imprintVertIds = imprintFace.getVertexIds();
 	});
 
 	vector<Index3DId> facesToSplit;
 	for (const auto& realFaceId : realFaceIds) {
-		_pBlock->faceFunc(TS_REAL, realFaceId, [&imprintVertIds, &facesToSplit](const Polygon& realFace) {
+		faceFunc(TS_REAL, realFaceId, [&imprintVertIds, &facesToSplit](const Polygon& realFace) {
 			for (const auto& imprintVertId : imprintVertIds) {
 				size_t idx = realFace.getImprintIndex(imprintVertId);
 				if (idx != -1) {
@@ -511,7 +565,7 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 	if (facesToSplit.empty())
 		return false;
 
-	_pBlock->dumpObj({ _polyhedronId }, true, false, false);
+	_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 
 	vector<Index3DId> lowerFaceIds({ imprintFaceId }), upperFaceIds({ imprintFaceId });
 
@@ -542,7 +596,7 @@ void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, vector<Vector
 
 	set<size_t> availEdges;
 	set<Index3DId> faceIds;
-	_pBlock->cellFunc(TS_REAL, _polyhedronId, [&availEdges, &faceIds](const Polyhedron& cell) {
+	cellFunc(TS_REAL, _polyhedronId, [&availEdges, &faceIds](const Polyhedron& cell) {
 		const auto& edgeIndices = cell.getEdgeIndices();
 		availEdges.insert(edgeIndices.begin(), edgeIndices.end());
 		faceIds = cell.getFaceIds();
@@ -555,7 +609,7 @@ void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, vector<Vector
 
 	// Use real faces instead of the bounding box in case they aren't the same.
 	for (const auto& faceId : faceIds) {
-		_pBlock->faceFunc(TS_REAL, faceId, [&piercePoints, &vertIndexLines, &pMesh](const Polygon& face) {
+		faceFunc(TS_REAL, faceId, [&piercePoints, &vertIndexLines, &pMesh](const Polygon& face) {
 			for (const auto& vertIndices : vertIndexLines) {
 				// Iterate backwards because the furthest edge should be crossing.
 				for (size_t i = vertIndices.size() - 1; i > 0; i--) {
@@ -571,4 +625,46 @@ void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, vector<Vector
 			}
 		});
 	}
+}
+
+void PolyhedronSplitter::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+//LAMBDA_CLIENT_IMPLS(PolyhedronSplitter)
+
+void PolyhedronSplitter::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceFunc(state, id, func);
+} 
+
+void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(state, id, func);
+} 
+
+void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellFunc(state, id, func);
+} 
+
+void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(state, id, func);
+} 
+
+void PolyhedronSplitter::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->faceAvailFunc(prefState, id, func);
+} 
+
+void PolyhedronSplitter::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	auto p = getBlockPtr(); 
+	p->cellAvailFunc(prefState, id, func);
 }

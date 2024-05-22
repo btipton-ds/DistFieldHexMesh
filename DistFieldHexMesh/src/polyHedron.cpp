@@ -43,7 +43,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <logger.h>
 #include <polyhedronSplitter.h>
-#include <utils.h>
 
 using namespace std;
 using namespace DFHM;
@@ -410,19 +409,17 @@ size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector
 {
 	facePoints.clear();
 
-	LeneSegmentfSet intersectionSegs;
+	LineSegmentFixedSet intersectionSegs;
 
 	Index3DId result;
-	size_t i = 0;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &intersectionSegs](const Polygon& face) {
 			LineSegmentd seg;
 			if (face.intersect(plane, seg)) {
-				LineSegmentf fSeg(FixedPt::fromDbl(seg._pts[0]), FixedPt::fromDbl(seg._pts[1]));
+				LineSegmentFixed fSeg(FixedPt::fromDbl(seg._pts[0]), FixedPt::fromDbl(seg._pts[1]));
 				intersectionSegs.insert(fSeg);
 			}
 		});
-		i++;
 	}
 
 	vector<FixedPt> fixPoints;
@@ -1115,7 +1112,7 @@ bool Polyhedron::verifyTopology() const
 
 #if DUMP_BAD_CELL_OBJS
 	if (!valid) {
-		getBlockPtr()->dumpObj({ _thisId }, false, false, false);
+		getBlockPtr()->dumpPolyhedraObj({ _thisId }, false, false, false);
 	}
 #endif
 

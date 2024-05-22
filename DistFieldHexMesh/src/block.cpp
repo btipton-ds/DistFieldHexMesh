@@ -286,7 +286,7 @@ bool Block::verifyTopology() const
 		}
 	});
 	if (!result) {
-		dumpObj(badCellIds, false, false, false);
+		dumpPolyhedraObj(badCellIds, false, false, false);
 	}
 
 	return result;
@@ -806,7 +806,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 	return result;
 }
 
-void Block::dumpObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
+void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
 {
 	string path;
 	if (filesystem::exists("D:/DarkSky/Projects")) {
@@ -894,7 +894,7 @@ void Block::imprintTJointVertices()
 			makeRefPolyhedronIfRequired(cellId);
 			cell.imprintTVertices(this);
 			if (!cell.isClosed()) {
-				dumpObj({ cellId }, false, false, false);
+				dumpPolyhedraObj({ cellId }, false, false, false);
 				assert(cell.isClosed());
 			}
 		}

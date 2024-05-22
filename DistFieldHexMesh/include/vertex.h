@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <patient_lock_guard.h>
 #include <objectPool.h>
+#include <fixedPoint.h>
 
 #define USE_FIXED_PT 0
 
@@ -75,23 +76,6 @@ namespace Tolerance
 
 }
 
-class FixedPt : public Vector3<int>
-{
-public:
-	static int fromDbl(double val);
-	static FixedPt fromDbl(const Vector3d& src);
-	static double toDbl(int iVal);
-	static Vector3d toDbl(const FixedPt& src);
-	static double getFixedScale();
-
-	FixedPt() = default;
-	FixedPt(const FixedPt& src) = default;
-	FixedPt(const Vector3d& pt);
-
-	bool operator < (const FixedPt& rhs) const;
-	bool operator == (const FixedPt& rhs) const;
-
-};
 
 class Vertex : public ObjectPoolOwnerUser {
 public:
@@ -144,38 +128,6 @@ private:
 	FixedPt _searchPt;
 #endif
 };
-
-inline FixedPt::FixedPt(const Vector3d& pt)
-	: Vector3<int>(fromDbl(pt[0]), fromDbl(pt[1]), fromDbl(pt[2]))
-{
-}
-
-inline double FixedPt::getFixedScale()
-{
-	return 1000.0; // +/- 25 m volume
-}
-
-inline int FixedPt::fromDbl(double val)
-{
-	double r = val / getFixedScale();
-	assert(fabs(r) < 1.0);
-	return (int)(r * INT_MAX);
-}
-
-inline FixedPt FixedPt::fromDbl(const Vector3d& src)
-{
-	return FixedPt(src);
-}
-
-inline double FixedPt::toDbl(int iVal)
-{
-	return (iVal / (double)INT_MAX) * getFixedScale();
-}
-
-inline Vector3d FixedPt::toDbl(const FixedPt& src)
-{
-	return Vector3d(toDbl(src[0]), toDbl(src[1]), toDbl(src[2]));
-}
 
 inline Vertex::Vertex(const Vector3d& pt)
 {

@@ -53,6 +53,11 @@ public:
 	bool cutAtSharpVerts(const BuildCFDParams& params);
 	bool cutAtSharpEdges(const BuildCFDParams& params);
 
+	const Block* getBlockPtr() const;
+	Block* getBlockPtr();
+
+	LAMBDA_CLIENT_DECLS
+
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
 	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, std::set<Index3DId>& newCellIds);
@@ -63,9 +68,20 @@ private:
 
 	void findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
 	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, std::vector<Vector3d>& points) const;
+	void splitWithFaces(Polyhedron& realCell, const std::vector<Index3DId>& imprintFaces, std::vector<Index3DId>& newCellIds) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;
 };
+
+inline const Block* PolyhedronSplitter::getBlockPtr() const
+{
+	return _pBlock;
+}
+
+inline Block* PolyhedronSplitter::getBlockPtr()
+{
+	return _pBlock;
+}
 
 }
