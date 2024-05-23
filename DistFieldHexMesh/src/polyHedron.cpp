@@ -407,7 +407,7 @@ bool Polyhedron::intersectsModel() const
 size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
 {
 	facePoints.clear();
-	LineSegmentFixedSet edgeSet;
+	set<LineSegmentFixed> edgeSet;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &edgeSet](const Polygon& face) {

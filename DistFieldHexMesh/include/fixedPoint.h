@@ -59,15 +59,6 @@ public:
 };
 
 using LineSegmentFixed = LineSegment<FixedPt>;
-using LineSegmentFixedSet = std::set < LineSegmentFixed, decltype([](const LineSegmentFixed& lhs, const LineSegmentFixed& rhs)->bool {
-	for (FIXED_PT_SCALAR_TYPE i = 0; i < 2; i++) {
-		if (lhs._pts[i] < rhs._pts[i])
-			return true;
-		else if (rhs._pts[i] < lhs._pts[i])
-			return false;
-	}
-	return false;
-	}) > ;
 
 inline FixedPt::FixedPt(const Vector3d& pt)
 	: Vector3<FIXED_PT_SCALAR_TYPE>(fromDbl(pt[0]), fromDbl(pt[1]), fromDbl(pt[2]))
