@@ -404,53 +404,50 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-
 size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
 {
 	facePoints.clear();
-
-	LineSegmentFixedSet intersectionSegs;
-
+	LineSegmentFixedSet edgeSet;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(TS_REAL, faceId, [&plane, &intersectionSegs](const Polygon& face) {
+		faceAvailFunc(TS_REAL, faceId, [&plane, &edgeSet](const Polygon& face) {
 			LineSegmentd seg;
 			if (face.intersect(plane, seg)) {
 				LineSegmentFixed fSeg(FixedPt::fromDbl(seg._pts[0]), FixedPt::fromDbl(seg._pts[1]));
-				intersectionSegs.insert(fSeg);
+				edgeSet.insert(fSeg);
 			}
 		});
 	}
 
 	vector<FixedPt> fixPoints;
-	auto intersection = *intersectionSegs.begin();
-	intersectionSegs.erase(intersectionSegs.begin());
-	fixPoints.push_back(intersection._pts[0]);
-	fixPoints.push_back(intersection._pts[1]);
+	auto intersectionSeg = *edgeSet.begin();
+	edgeSet.erase(edgeSet.begin());
+	fixPoints.push_back(intersectionSeg._pts[0]);
+	fixPoints.push_back(intersectionSeg._pts[1]);
 	bool found = true;
-	while (found && !intersectionSegs.empty()) {
+	while (found && !edgeSet.empty()) {
 		const auto& lastPt = fixPoints.back();
 		found = false;
-		auto iter = intersectionSegs.begin();
-		for (; iter != intersectionSegs.end(); iter++) {
-			const auto& intersection2 = *iter;
-			const auto& fPt0 = intersection2._pts[0];
-			const auto& fPt1 = intersection2._pts[1];
+		auto iter = edgeSet.begin();
+		for (; iter != edgeSet.end(); iter++) {
+			const auto& intersectionSeg2 = *iter;
+			const auto& fPt0 = intersectionSeg2._pts[0];
+			const auto& fPt1 = intersectionSeg2._pts[1];
 			if (fPt1 == lastPt) {
 				fixPoints.push_back(fPt0);
-				intersectionSegs.erase(iter);
+				edgeSet.erase(iter);
 				found = true;
 				break;
 			}
 			else if (fPt0 == lastPt) {
 				fixPoints.push_back(fPt1);
-				intersectionSegs.erase(iter);
+				edgeSet.erase(iter);
 				found = true;
 				break;
 			}
 		}
 	}
-	if (!intersectionSegs.empty() || fixPoints.empty())
+	if (!edgeSet.empty() || fixPoints.empty())
 		return facePoints.size();
 
 	assert(fixPoints.front() == fixPoints.back());
@@ -653,14 +650,6 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3D
 
 void Polyhedron::addToSplitStack()
 {
-#if LOGGING_ENABLED
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-
-	Logger::Indent indent;
-	LOG(out << Logger::Pad() << "setNeedToSplitAtCentroid c" << _thisId << "\n");
-#endif
-
 	getBlockPtr()->addToSplitStack({ _thisId });
 }
 
@@ -724,10 +713,6 @@ bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
 
 bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 {
-#if LOGGING_ENABLED
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-#endif
 	if (!_needsConditionalSplitTest)
 		return false;
 
@@ -780,8 +765,6 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 	}
 
 	if (needToSplit) {
-		Logger::Indent indent;
-		LOG(out << Logger::Pad() << "needToSplitConditional c" << _thisId << "\n");
 		setNeedsSplitAtCentroid();
 	}
 

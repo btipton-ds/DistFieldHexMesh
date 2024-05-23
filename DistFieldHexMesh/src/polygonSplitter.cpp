@@ -75,22 +75,9 @@ bool PolygonSplitter::splitAtPoint(const Vector3d& pt)
 
 bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const
 {
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (Index3DId(0, 8, 4, 4) == _polygonId) {
-		int dbgBreak = 1;
-	}
-#endif
-
 	assert(_pBlock->isPolygonReference(&referanceFace));
 	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
 	const double sinAngleTol = sin(Tolerance::angleTol());
-
-#if LOGGING_ENABLED
-	auto pLogger = _pBlock->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pre: " << realFace);
-#endif
 
 	assert(referanceFace.cellsOwnThis());
 
@@ -163,10 +150,6 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 			});
 		}
 	}
-
-#if LOGGING_VERBOSE_ENABLED
-	LOG(out << Logger::Pad() << "Polygon::splitAtPoint. pst: " << *this);
-#endif
 
 	return true;
 }

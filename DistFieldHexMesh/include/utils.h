@@ -27,19 +27,16 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <tm_defines.h>
+#include <set>
+#include <vector>
+#include <edge.h>
 
-#define RUN_MULTI_THREAD true
-#define SHARP_EDGE_ANGLE_DEGREES 15
-#define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
-#define GRAPHICS_OVER_SAMPLING 2
-#define _USE_MATH_DEFINES
+namespace DFHM {
 
-#define VERIFY_REDUCED_FINDER 0
-#define LOGGING_ENABLED 1
-#define DEBUG_BREAKS 0
-#define CAN_FREE_TESTS_ENABLED 0
-#define LOGGING_VERBOSE_ENABLED (1 && LOGGING_ENABLED)
-#define DUMP_BAD_CELL_OBJS 1
-#define DUMP_OPEN_CELL_OBJS 1
+namespace Utils {
 
+void formEdgeLoops(const Block* pBlock, const std::set<Edge> sharedSegments, std::set<Edge> availEdges, std::vector<std::vector<Edge>>& loops);
+
+}
+
+}

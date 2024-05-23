@@ -48,7 +48,11 @@ namespace Tolerance
 #if USE_FIXED_PT
 		return 1.0e-5;
 #else
+#if 0
 		return 1.0e-8;
+#else
+		return 2 * FixedPt::getFixedScale() / FIXED_PT_INT_MAX;
+#endif
 #endif
 	}
 	inline double paramTol() {

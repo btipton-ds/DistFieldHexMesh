@@ -384,18 +384,6 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 #endif // _WIN32
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
-#if LOGGING_ENABLED
-			runLambda([this, i](size_t linearIdx)->bool {
-				auto logger = _blocks[linearIdx]->getLogger();
-				auto& out = logger->getStream();
-				LOG(out << "\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				LOG(out << "splitSimple(" << i << ")  ********************************************************************************************\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				return true;
-				}, multiCore);
-#endif // LOGGING_ENABLED
-
 			runLambda([this](size_t linearIdx)->bool {
 				auto pBlk = _blocks[linearIdx];
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
@@ -431,18 +419,6 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 
 		size_t num = params.numCurvatureDivs;
 		for (size_t i = 0; i < num; i++) {
-#if LOGGING_ENABLED
-			runLambda([this, i](size_t linearIdx)->bool {
-				auto logger = _blocks[linearIdx]->getLogger();
-				auto& out = logger->getStream();
-				LOG(out << "\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				LOG(out << "splitAtCurvature(" << i << ")  ********************************************************************************************\n");
-				LOG(out << "*****************************************************************************************************************\n");
-				return true;
-			}, multiCore);
-#endif // LOGGING_ENABLED
-
 			if (i > 0) {
 				bool didSplit = true;
 				int count = 0;
@@ -1073,7 +1049,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 				if (face.numCells() == 1) {
 					bool onOuterBoundary = false;
 					for (int i = 0; i < 6; i++) {
-						if (face.coplanar(planes[i])) {
+						if (face.isCoplanar(planes[i])) {
 							onOuterBoundary = true;
 							outerBounds[i].push_back(id);
 							break;

@@ -105,14 +105,6 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 #endif
 
 	assert(_pBlock);
-#if LOGGING_ENABLED
-	auto pLogger = _pBlock->getLogger();
-	auto& out = pLogger->getStream();
-
-	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint realCell: " << realCell);
-	LOG(out << Logger::Pad() << "Polyhedron::splitAtPoint refCell : " << referanceCell);
-#endif
-
 #if _DEBUG
 	double minDist = DBL_MAX;
 	for (const auto& faceId : realCell.getFaceIds()) {
@@ -279,18 +271,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 			newCell.setTriIndices(realCell.getTriIndices());
 			newCell.setEdgeIndices(realCell.getEdgeIndices());
 		});
-
-#if LOGGING_ENABLED
-		{
-			Logger::Indent indent;
-			cellFunc(TS_REAL, newCellId, [this, &out](const Polyhedron& newCell) {
-				LOG(out << Logger::Pad() << "to: " << newCell);
-			});
-		}
-#endif
 	}
-
-	LOG(out << Logger::Pad() << "=================================================================================================\n");
 
 	return true;
 }
@@ -330,6 +311,11 @@ bool PolyhedronSplitter::cutAtSharpVerts(const BuildCFDParams& params)
 
 bool PolyhedronSplitter::cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params)
 {
+#if LOGGING_ENABLED
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+	LOG(out << "cutAtSharpVert c" << _polyhedronId << "\n");
+#endif
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
 
@@ -343,11 +329,18 @@ bool PolyhedronSplitter::cutAtSharpVert(size_t vertIdx, const BuildCFDParams& pa
 
 	bool result = cutAtSharpVertInner(realCell, referenceCell, vertIdx, params);
 
+#if LOGGING_ENABLED
+	out.flush();
+#endif
 	return result;
 }
 
 bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params)
 {
+#if LOGGING_ENABLED
+	auto pLogger = getBlockPtr()->getLogger();
+	auto& out = pLogger->getStream();
+#endif
 	// Construct pyramid faces through the sharp vert and pierce points
 
 	auto pMesh = _pBlock->getModelMesh();
@@ -359,6 +352,17 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 	vector<Vector3d> piercePoints;
 	findSharpVertPierecPoints(vertIdx, piercePoints, params);
 
+#if LOGGING_ENABLED
+	LOG(out << "cutAtSharpVertInner, #piercePoints:" << piercePoints.size() << "\n");
+	LOG(out << "Hexadral faces \n");
+	for (const auto& faceId : realCell.getFaceIds()) {
+		LOG(out << "face f" << faceId << "\n");
+		_pBlock->faceFunc(TS_REAL, faceId, [&out](const Polygon& face) {
+			LOG(out << face);
+		});
+	}
+	LOG(out << "Splitting faces \n");
+#endif
 	vector<vector<Vector3d>> cutFaces;
 	vector<Index3DId> modelFaces;
 	if (piercePoints.empty()) {
@@ -403,33 +407,25 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 				modelFacePoints.insert(modelFacePoints.end(), piercePoints[j]);
 				auto newFaceId = _pBlock->addFace(modelFacePoints);
 				modelFaces.push_back(newFaceId);
+
 			}
 		}
-
-		vector<Index3DId> newCellIds;
-		splitWithFaces(realCell, modelFaces, newCellIds);
-
-#if 0
-		for (size_t i = 0; i < piercePoints.size(); i++) {
-			vector<Vector3d> cutFacePoints;
-			const auto& piercePt = piercePoints[i];
-			Vector3d v0 = axisSeg.calcDir();
-			Vector3d v1 = piercePt - axisSeg._pts[0];
-			Vector3d norm = v1.cross(v0);
-			norm.normalize();
-			Planed cutPlane(axisSeg._pts[0], norm, false);
-
-			// Having a problem if a face edge lies in the plane
-			if (realCell.createIntersectionFacePoints(cutPlane, cutFacePoints) > 2) {
-				cutFaces.push_back(cutFacePoints);
-				cout << "Cut face " << i << "\n";
-				Polygon::dumpPolygonPoints(cout, cutFacePoints);
-			}
-		}
-#endif
 	}
 
-	_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false, piercePoints);
+#if LOGGING_ENABLED
+	for (const auto& id : modelFaces) {
+		_pBlock->faceFunc(TS_REAL, id, [&out](const Polygon& face) {
+			LOG(out << face);
+		});
+	}
+#endif
+	string fileName = "modelFacePoints_" + to_string(_polyhedronId[0]) + "_" + to_string(_polyhedronId[1]) + "_" + to_string(_polyhedronId[2]) + "_" + to_string(_polyhedronId.elementId());
+	_pBlock->dumpPolygonObj(fileName, modelFaces);
+
+	_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false, piercePoints);
+
+	vector<Index3DId> newCellIds;
+	splitWithFaces(realCell, modelFaces, newCellIds);
 
 	return false;
 }
@@ -454,31 +450,42 @@ void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d
 	}
 }
 
-void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const std::vector<Index3DId>& imprintFaces, std::vector<Index3DId>& newCellIds) const
+void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const vector<Index3DId>& imprintFaces, vector<Index3DId>& newCellIds) const
 {
 	map<Index3DId, set<Edge>> faceToEdgeMap;
-	for (const auto& realFaceId : realCell.getFaceIds()) {
-		faceFunc(TS_REAL, realFaceId, [this, &faceToEdgeMap, &imprintFaces](const Polygon& realFace) {
-			for (const auto& imprintFaceId : imprintFaces) {
-				faceFunc(TS_REAL, imprintFaceId, [this, &realFace, &faceToEdgeMap](const Polygon& imprintFace) {
-					const auto& imprintEdges = imprintFace.getEdges();
-					for (const auto& imprintEdge : imprintEdges) {
-						bool inPlane = true;
-						auto vertIds = imprintEdge.getVertexIds();
-						const auto& pt0 = _pBlock->getVertexPoint(vertIds[0]);
-						const auto& pt1 = _pBlock->getVertexPoint(vertIds[1]);
-
-						if (realFace.isPointOnPlane(pt0) && realFace.isPointOnPlane(pt1)) {
-							auto iter = faceToEdgeMap.find(realFace.getId());
-							if (iter == faceToEdgeMap.end()) {
-								iter = faceToEdgeMap.insert(make_pair(realFace.getId(), set<Edge>())).first;
-							}
-							iter->second.insert(imprintEdge);
-						}
-					}
-				});
+	auto realFaceIds = realCell.getFaceIds();
+	set<FixedPt> realFacePoints;
+	for (const auto& realFaceId : realFaceIds) {
+		Planed realFacePlane;
+		faceFunc(TS_REAL, realFaceId, [this, &realFacePlane, &realFacePoints](const Polygon& realFace) {
+			realFacePlane = realFace.calPlane();
+			for (const auto& id : realFace.getVertexIds()) {
+				Vector3d pt = _pBlock->getVertexPoint(id);
+				realFacePoints.insert(pt);
 			}
 		});
+
+		for (const auto& imprintFaceId : imprintFaces) {
+			set<Edge> imprintEdges;
+			faceFunc(TS_REAL, imprintFaceId, [this, &imprintEdges](const Polygon& imprintFace) {
+				imprintEdges = imprintFace.getEdges();
+			});
+
+			for (const auto& imprintEdge : imprintEdges) {
+				auto vertIds = imprintEdge.getVertexIds();
+				Vector3d pt0 = _pBlock->getVertexPoint(vertIds[0]);
+				Vector3d pt1 = _pBlock->getVertexPoint(vertIds[1]);
+				double dist0 = realFacePlane.distanceToPoint(pt0);
+				double dist1 = realFacePlane.distanceToPoint(pt1);
+				if (dist0 < Tolerance::sameDistTol() && dist1 < Tolerance::sameDistTol()) {
+					auto iter = faceToEdgeMap.find(realFaceId);
+					if (iter == faceToEdgeMap.end()) {
+						iter = faceToEdgeMap.insert(make_pair(realFaceId, set<Edge>())).first;
+					}
+					iter->second.insert(imprintEdge);
+				}
+			}
+		}
 	}
 
 	for (const auto& pair : faceToEdgeMap) {
@@ -627,44 +634,44 @@ void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, vector<Vector
 	}
 }
 
-void PolyhedronSplitter::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+void PolyhedronSplitter::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
 //LAMBDA_CLIENT_IMPLS(PolyhedronSplitter)
 
-void PolyhedronSplitter::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+void PolyhedronSplitter::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getBlockPtr(); 
 	p->faceFunc(state, id, func);
 } 
 
-void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+void PolyhedronSplitter::faceFunc(TopolgyState state, const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(state, id, func);
 } 
 
-void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getBlockPtr(); 
 	p->cellFunc(state, id, func);
 } 
 
-void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+void PolyhedronSplitter::cellFunc(TopolgyState state, const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(state, id, func);
 } 
 
-void PolyhedronSplitter::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void PolyhedronSplitter::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getBlockPtr(); 
 	p->faceAvailFunc(prefState, id, func);
 } 
 
-void PolyhedronSplitter::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void PolyhedronSplitter::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getBlockPtr(); 
 	p->cellAvailFunc(prefState, id, func);
 }

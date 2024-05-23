@@ -646,7 +646,20 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Vertex vert(pt);
-	return pOwner->_vertices.findOrAdd(vert, currentId);
+	Index3DId result = pOwner->_vertices.findOrAdd(vert, currentId);
+
+#ifdef _DEBUG
+	FixedPt fPt(pt);
+	Vector3d checkPt = FixedPt::toDbl(fPt);
+	double delta = (checkPt - pt).norm();
+	assert(delta < Tolerance::sameDistTol());
+
+	checkPt = _pVol->getVertex(result).getPoint();
+	delta = (checkPt - pt).norm();
+	assert(delta < Tolerance::sameDistTol());
+#endif // _DEBUG
+
+	return result;
 }
 
 Index3DId Block::addFace(const Polygon& face)
@@ -806,7 +819,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 	return result;
 }
 
-void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
+std::string Block::getObjFilePath() const
 {
 	string path;
 	if (filesystem::exists("D:/DarkSky/Projects")) {
@@ -815,12 +828,88 @@ void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel
 	else {
 		path = "D:/Users/BobT/Documents/Projects/Code/output/objs/";
 	}
+
+	return path;
+}
+
+void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
+{
+	string path = getObjFilePath();
 	for (const auto& cellId : cellIds) {
 		cellFunc(TS_REAL,cellId, [this, &path, includeModel, useEdges, sharpOnly, &pts](const Polyhedron& cell) {
 			stringstream ss;
 			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
 			_pVol->writeObj(ss.str(), { cell.getId() }, includeModel, useEdges, sharpOnly, pts);
 		});
+	}
+}
+
+void Block::dumpPolygonObj(std::string& fileName, const std::vector<Index3DId>& faceIds) const
+{
+	string path = getObjFilePath();
+	string filename = path + fileName + ".obj";
+
+	vector<Vector3d> points;
+	map<Index3DId, size_t> vertIdToPtMap;
+	for (const auto& faceId : faceIds) {
+		faceAvailFunc(TS_REAL, faceId, [this, &points, &vertIdToPtMap](const Polygon& face) {
+			for (const auto& vertId : face.getVertexIds()) {
+				auto iter = vertIdToPtMap.find(vertId);
+				if (iter == vertIdToPtMap.end()) {
+					size_t idx = points.size();
+					Vector3d pt = getVertexPoint(vertId);
+					points.push_back(pt);
+					vertIdToPtMap.insert(make_pair(vertId, idx));
+				}
+			}
+		});
+	}
+
+	ofstream out(filename);
+	for (const auto& pt : points) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	for (const auto& faceId : faceIds) {
+		faceAvailFunc(TS_REAL, faceId, [this, &out, &vertIdToPtMap](const Polygon& face) {
+			out << "f";
+			for (const auto& vertId : face.getVertexIds()) {
+				size_t idx = vertIdToPtMap[vertId];
+				out << " " << (idx + 1);
+			}
+			out << "\n";
+		});
+	}
+}
+
+void Block::dumpEdgeObj(std::string& fileName, const std::vector<Edge>& edges) const
+{
+	string path = getObjFilePath();
+	string filename = path + fileName + ".obj";
+
+	vector<Vector3d> points;
+	map<Index3DId, size_t> vertIdToPtMap;
+	for (const auto& edge : edges) {
+		for (int i = 0; i < 2; i++) {
+			const auto& vId = edge.getVertexIds()[i];
+			auto iter = vertIdToPtMap.find(vId);
+			if (iter == vertIdToPtMap.end()) {
+				size_t idx = points.size();
+				Vector3d pt = getVertexPoint(vId);
+				points.push_back(pt);
+				vertIdToPtMap.insert(make_pair(vId, idx));
+			}			
+		}
+	}
+	ofstream out(filename);
+	for (const auto& pt : points) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+	for (const auto& edge : edges) {
+		auto vertIds = edge.getVertexIds();
+		size_t idx0 = vertIdToPtMap[vertIds[0]] + 1;
+		size_t idx1 = vertIdToPtMap[vertIds[1]] + 1;
+		out << "l " << idx0 << " " << idx1 << "\n";
 	}
 }
 
@@ -846,13 +935,6 @@ void Block::dumpOpenCells() const
 
 bool Block::splitRequiredPolyhedra()
 {
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	out << "Block[" << _blockIdx << "]::splitRequiredPolyhedra\n";
-	Logger::Indent indent;
-#endif
-
 	bool didSplit = false;
 	if (_needToSplit.empty())
 		return didSplit;
@@ -875,16 +957,6 @@ bool Block::splitRequiredPolyhedra()
 
 void Block::imprintTJointVertices()
 {
-#if LOGGING_ENABLED
-	auto pLogger = getLogger();
-	auto& out = pLogger->getStream();
-	LOG(out << "\n");
-	LOG(out << "*******************************************************************************************\n");
-	LOG(out << "Block[" << _blockIdx << "]::imprintTJointVertices *****************************************\n");
-	LOG(out << "*******************************************************************************************\n");
-	Logger::Indent indent;
-#endif
-
 	_modelData._polyhedra.iterateInOrder([this](const Index3DId& cellId, Polyhedron& cell) {
 		if (!cell.isClosed()) {
 
@@ -1172,10 +1244,6 @@ void Block::freePolygon(const Index3DId& id)
 
 	auto pOwner = getOwner(id);
 	if (pOwner) {
-#if LOGGING_ENABLED
-		auto& out = getLogger()->getStream();
-#endif
-		LOG(out << Logger::Pad() << "Deleting f" << id << "\n");
 		auto& polygons = pOwner->_modelData._polygons;
 		auto& refPolygons = pOwner->_refData._polygons;
 		assert(refPolygons.exists(id));
@@ -1191,10 +1259,6 @@ void Block::freePolyhedron(const Index3DId& id)
 
 	auto pOwner = getOwner(id);
 	if (pOwner) {
-#if LOGGING_ENABLED
-		auto& out = getLogger()->getStream();
-#endif
-		LOG(out << Logger::Pad() << "Deleting c" << id << "\n");
 		auto& polyhedra = pOwner->_modelData._polyhedra;
 		auto& refPolyhedra = pOwner->_refData._polyhedra;
 		assert(refPolyhedra.exists(id));

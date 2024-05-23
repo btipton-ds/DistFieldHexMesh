@@ -39,6 +39,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <logger.h>
 #include <volume.h>
+#include <edge.h>
+#include <utils.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
@@ -346,13 +348,26 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 	return false;
 }
 
-bool Polygon::coplanar(const Planed& pl) const
+bool Polygon::isCoplanar(const Planed& pl) const
 {
 	for (const auto& vertId : _vertexIds) {
 		auto pt = getBlockPtr()->getVertexPoint(vertId);
 		if (fabs(pl.distanceToPoint(pt)) > Tolerance::sameDistTol())
 			return false;
 	}
+
+	return true;
+}
+
+bool Polygon::isCoplanar(const Edge& edge) const
+{
+	const auto pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	if (!isPointOnPlane(pt0))
+		return false;
+
+	const auto pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	if (!isPointOnPlane(pt1))
+		return false;
 
 	return true;
 }
@@ -373,11 +388,11 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const vector<Index3DId>
 {
 	Vector3d norm(0, 0, 0);
 
-	for (size_t i = 0; i < vertIds.size() - 2; i++) {
-		size_t j = (i + 1) % vertIds.size();
+	size_t i = 0;
+	Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
+	for (size_t j = 1; j < vertIds.size() - 1; j++) {
 		size_t k = (j + 1) % vertIds.size();
 
-		Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
 		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
 		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
 
@@ -418,6 +433,21 @@ void Polygon::dumpPolygonPoints(ostream& out, const vector<Vector3d>& pts)
 Vector3d Polygon::calUnitNormal() const
 {
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
+}
+
+Planed Polygon::calPlane() const
+{
+	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds.front());
+	Vector3d normal = calUnitNormal();
+	Planed result(origin, normal, false);
+#ifdef _DEBUG
+	for (const auto& vId : _vertexIds) {
+		Vector3d pt = getBlockPtr()->getVertexPoint(vId);
+		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
+	}
+#endif // _DEBUG
+
+	return result;
 }
 
 double Polygon::calVertexAngleStat(const Block* pBlock, const vector<Index3DId>& vertIds, size_t idx1)
@@ -835,15 +865,25 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 
 void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceIds) const
 {
+	auto faceEdges = getEdges();
+	vector<Edge> allEdges;
+	allEdges.insert(allEdges.end(), edges.begin(), edges.end());
+	allEdges.insert(allEdges.end(), faceEdges.begin(), faceEdges.end());
+	string fileName = "splitFaceEdges_" + to_string(_thisId[0]) + "_" + to_string(_thisId[1]) + "_" + to_string(_thisId[2]) + "_" + to_string(_thisId.elementId());
+	getBlockPtr()->dumpEdgeObj(fileName, allEdges);
+#if 0
 	// First, imprint vertices
 	Polygon temp(*this);
+	temp.setId(getBlockPtr(), _thisId.elementId());
 	for (const auto& edge : edges) {
 		auto verts = edge.getVertexIds();
 		temp.imprintVertex(verts[0]);
 		temp.imprintVertex(verts[1]);
 	}
 
-	Polygon a, b;
+	vector<vector<Edge>> loops;
+	Utils::formEdgeLoops(getBlockPtr(), edges, faceEdges, loops);
+#endif
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
@@ -913,9 +953,13 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	{
 		Logger::Indent sp;
 		
-		out << Logger::Pad() << "vertexIds: (" << face._vertexIds.size() << "): {";
+		Vector3d norm = face.calUnitNormal();
+		out << Logger::Pad() << "Normal: (" << norm << ")\n";
+		out << Logger::Pad() << "vertexIds: (" << face._vertexIds.size() << "): {\n";
 		for (const auto& vertId : face._vertexIds) {
-			out << "v" << vertId << " ";
+			Logger::Indent sp;
+			auto pt = face.getBlockPtr()->getVertexPoint(vertId);
+			out << Logger::Pad() << "v" << vertId << ": (" << pt << ")\n";
 		}
 		out << "}\n";
 

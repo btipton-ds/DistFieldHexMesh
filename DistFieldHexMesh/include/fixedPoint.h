@@ -28,15 +28,24 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <tm_lineSegment.hpp>
+#include <Index3D.h>
 
 namespace DFHM {
 
-class FixedPt : public Vector3<int>
+#if 1
+#define FIXED_PT_SCALAR_TYPE int
+#define FIXED_PT_INT_MAX INT_MAX
+#else
+#define FIXED_PT_SCALAR_TYPE int64_t
+#define FIXED_PT_INT_MAX LLONG_MAX
+#endif
+
+	class FixedPt : public Vector3<FIXED_PT_SCALAR_TYPE>
 {
 public:
-	static int fromDbl(double val);
+	static FIXED_PT_SCALAR_TYPE fromDbl(double val);
 	static FixedPt fromDbl(const Vector3d& src);
-	static double toDbl(int iVal);
+	static double toDbl(FIXED_PT_SCALAR_TYPE iVal);
 	static Vector3d toDbl(const FixedPt& src);
 	static double getFixedScale();
 
@@ -51,7 +60,7 @@ public:
 
 using LineSegmentFixed = LineSegment<FixedPt>;
 using LineSegmentFixedSet = std::set < LineSegmentFixed, decltype([](const LineSegmentFixed& lhs, const LineSegmentFixed& rhs)->bool {
-	for (int i = 0; i < 2; i++) {
+	for (FIXED_PT_SCALAR_TYPE i = 0; i < 2; i++) {
 		if (lhs._pts[i] < rhs._pts[i])
 			return true;
 		else if (rhs._pts[i] < lhs._pts[i])
@@ -61,7 +70,7 @@ using LineSegmentFixedSet = std::set < LineSegmentFixed, decltype([](const LineS
 	}) > ;
 
 inline FixedPt::FixedPt(const Vector3d& pt)
-	: Vector3<int>(fromDbl(pt[0]), fromDbl(pt[1]), fromDbl(pt[2]))
+	: Vector3<FIXED_PT_SCALAR_TYPE>(fromDbl(pt[0]), fromDbl(pt[1]), fromDbl(pt[2]))
 {
 }
 
@@ -70,11 +79,11 @@ inline double FixedPt::getFixedScale()
 	return 1000.0; // +/- 25 m volume
 }
 
-inline int FixedPt::fromDbl(double val)
+inline FIXED_PT_SCALAR_TYPE FixedPt::fromDbl(double val)
 {
 	double r = val / getFixedScale();
 	assert(fabs(r) < 1.0);
-	return (int)(r * INT_MAX);
+	return (FIXED_PT_SCALAR_TYPE)(r * FIXED_PT_INT_MAX); // LLONG_MAX
 }
 
 inline FixedPt FixedPt::fromDbl(const Vector3d& src)
@@ -82,9 +91,9 @@ inline FixedPt FixedPt::fromDbl(const Vector3d& src)
 	return FixedPt(src);
 }
 
-inline double FixedPt::toDbl(int iVal)
+inline double FixedPt::toDbl(FIXED_PT_SCALAR_TYPE iVal)
 {
-	return (iVal / (double)INT_MAX) * getFixedScale();
+	return (iVal / (double)FIXED_PT_INT_MAX) * getFixedScale();
 }
 
 inline Vector3d FixedPt::toDbl(const FixedPt& src)
