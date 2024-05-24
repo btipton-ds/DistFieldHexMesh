@@ -32,33 +32,36 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-template <int S>
-VertSearchTree<S>::VertSearchTree(const CBoundingBox3Dd& bbox)
+template <class INDEX_TYPE, int S>
+VertSearchTree<INDEX_TYPE, S>::VertSearchTree(const CBoundingBox3Dd& bbox)
 	: BaseTree(bbox)
 {
 }
 
-template <int S>
-size_t VertSearchTree<S>::find(const Vector3d& pt) const
+template <class INDEX_TYPE, int S>
+bool VertSearchTree<INDEX_TYPE, S>::find(const Vector3d& pt, INDEX_TYPE& result) const
 {
 	CBoundingBox3Dd bbox = Vertex::calBBox(pt);
 	vector<BaseTree::Entry> entries;
 	if (BaseTree::find(bbox, entries) > 0) {
 		for (const auto& entry : entries) {
-			if (entry.getBBox().contains(pt))
-				return entry.getIndex();
+			if (entry.getBBox().contains(pt)) {
+				result = entry.getIndex();
+				return true;
+			}
 		}
 	}
 
-	return -1;
+	return false;
 }
 
-template <int S>
-void VertSearchTree<S>::add(const Vector3d& pt, size_t idx)
+template <class INDEX_TYPE, int S>
+void VertSearchTree<INDEX_TYPE, S>::add(const Vector3d& pt, const INDEX_TYPE& idx)
 {
 	CBoundingBox3Dd bbox = Vertex::calBBox(pt);
 	BaseTree::add(bbox, idx);
 }
 
-template class VertSearchTree<4>;
-template class VertSearchTree<8>;
+template class VertSearchTree<size_t, 4>;
+template class VertSearchTree<size_t, 8>;
+template class VertSearchTree<Index3DId, 4>;

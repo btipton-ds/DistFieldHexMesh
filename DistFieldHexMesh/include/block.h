@@ -44,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <polygon.h>
 #include <polyhedron.h>
+#include <vertexSpatialTree.h>
 
 namespace DFHM {
 
@@ -201,7 +202,7 @@ private:
 		ObjectPool<Polyhedron> _polyhedra;
 	};
 
-	using SearchTree = CSpatialSearchBase<double, Index3DId, 4>;
+	using SearchTree = VertSearchTreeIndex3DId_4;
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
 

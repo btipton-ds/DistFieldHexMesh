@@ -32,7 +32,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 #include <filesystem>
 
-#include <tm_spatialSearch.hpp>
 #include <tm_ioUtil.h>
 
 #include <tolerances.h>
@@ -584,16 +583,10 @@ Index3DId Block::idOfPoint(const Vector3d& pt) const
 	// NOTE: Be careful to keep the difference between the _vertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	vector<SearchTree::Entry> indices;
-	if (pOwner->_vertTree->find(Vertex::calBBox(pt), indices) > 0) {
-		for (const auto& vEntry : indices) {
-			const auto& vBB = vEntry.getBBox();
-			if (vBB.contains(pt))
-				return vEntry.getIndex();
-		}
-	}
+	Index3DId result;
+	pOwner->_vertTree->find(pt, result);
 
-	return Index3DId();
+	return result;
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
@@ -609,7 +602,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	Vertex vert(pt);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
 
-	pOwner->_vertTree->add(vert.getBBox(), result);
+	pOwner->_vertTree->add(pt, result);
 
 #ifdef _DEBUG
 	assert(idOfPoint(pt) == result);

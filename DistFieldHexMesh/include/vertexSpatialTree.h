@@ -28,21 +28,23 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <tm_spatialSearch.h>
+#include <Index3D.h>
 
 namespace DFHM {
 
-template <int S>
-class VertSearchTree : public CSpatialSearchBase<double, size_t, S>
+template <class INDEX_TYPE, int S>
+class VertSearchTree : public CSpatialSearchBase<double, INDEX_TYPE, S>
 {
 public:
-	using BaseTree = CSpatialSearchBase<double, size_t, S>;
+	using BaseTree = CSpatialSearchBase<double, INDEX_TYPE, S>;
 
 	VertSearchTree(const CBoundingBox3Dd& bbox);
-	size_t find(const Vector3d& pt) const;
-	void add(const Vector3d& pt, size_t idx);
+	bool find(const Vector3d& pt, INDEX_TYPE& result) const;
+	void add(const Vector3d& pt, const INDEX_TYPE& idx);
 };
 
-using VertSearchTree4 = VertSearchTree<4>;
-using VertSearchTree8 = VertSearchTree<8>;
+using VertSearchTree_size_t_4 = VertSearchTree<size_t, 4>;
+using VertSearchTree_size_t_8 = VertSearchTree<size_t, 8>;
+using VertSearchTreeIndex3DId_4 = VertSearchTree<Index3DId, 4>;
 
 }
