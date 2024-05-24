@@ -408,56 +408,50 @@ bool Polyhedron::intersectsModel() const
 size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
 {
 	facePoints.clear();
-	set<LineSegmentFixed> edgeSet;
+	set<LineSegmentd> edgeSet;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &edgeSet](const Polygon& face) {
 			LineSegmentd seg;
 			if (face.intersect(plane, seg)) {
-				LineSegmentFixed fSeg(FixedPt::fromDbl(seg._pts[0]), FixedPt::fromDbl(seg._pts[1]));
-				edgeSet.insert(fSeg);
+				edgeSet.insert(seg);
 			}
 		});
 	}
 
-	vector<FixedPt> fixPoints;
 	auto intersectionSeg = *edgeSet.begin();
 	edgeSet.erase(edgeSet.begin());
-	fixPoints.push_back(intersectionSeg._pts[0]);
-	fixPoints.push_back(intersectionSeg._pts[1]);
+	facePoints.push_back(intersectionSeg._pts[0]);
+	facePoints.push_back(intersectionSeg._pts[1]);
 	bool found = true;
 	while (found && !edgeSet.empty()) {
-		const auto& lastPt = fixPoints.back();
+		const auto& lastPt = facePoints.back();
 		found = false;
 		auto iter = edgeSet.begin();
 		for (; iter != edgeSet.end(); iter++) {
 			const auto& intersectionSeg2 = *iter;
-			const auto& fPt0 = intersectionSeg2._pts[0];
-			const auto& fPt1 = intersectionSeg2._pts[1];
-			if (fPt1 == lastPt) {
-				fixPoints.push_back(fPt0);
+			const auto& pt0 = intersectionSeg2._pts[0];
+			const auto& pt1 = intersectionSeg2._pts[1];
+			if (tolerantEquals(pt1, lastPt)) {
+				facePoints.push_back(pt0);
 				edgeSet.erase(iter);
 				found = true;
 				break;
 			}
-			else if (fPt0 == lastPt) {
-				fixPoints.push_back(fPt1);
+			else if (tolerantEquals(pt0, lastPt)) {
+				facePoints.push_back(pt1);
 				edgeSet.erase(iter);
 				found = true;
 				break;
 			}
 		}
 	}
-	if (!edgeSet.empty() || fixPoints.empty())
+	if (!edgeSet.empty() || facePoints.empty())
 		return facePoints.size();
 
-	assert(fixPoints.front() == fixPoints.back());
+	assert(tolerantEquals(facePoints.front(), facePoints.back()));
 
-	Block* pBlk = const_cast<Block*> (getBlockPtr());
-	for (size_t i = 0; i < fixPoints.size() - 1; i++) {
-		Vector3d pt = FixedPt::toDbl(fixPoints[i]);
-		facePoints.push_back(pt);
-	}
+	facePoints.pop_back();
 
 	return facePoints.size();
 }
@@ -1015,43 +1009,6 @@ bool Polyhedron::isClosed() const
 		}
 	}
 	return _cachedIsClosed == Trinary::IS_TRUE;
-}
-
-namespace
-{
-
-	class FixedPlane {
-	public:
-		FixedPlane(const Planed& src)
-			: _origin(src.getOrgin())
-			, _normal(src.getNormal())
-		{
-		}
-
-		bool operator < (const FixedPlane& rhs) const
-		{
-			if (_origin < rhs._origin)
-				return true;
-			else if (rhs._origin < _origin)
-				return false;
-
-			const double sinAngleTol = sin(Tolerance::angleTol());
-			Vector3d n0(FixedPt::toDbl(_normal)), n1(FixedPt::toDbl(rhs._normal));
-			double cp = n1.cross(n0).norm();
-
-			if (cp < sinAngleTol)
-				return false;
-
-			if (_normal < rhs._normal)
-				return true;
-			else if (rhs._normal < _normal)
-				return false;
-			return false;
-		}
-
-	private:
-		FixedPt _origin, _normal;
-	};
 }
 
 bool Polyhedron::hasTooManySplits() const

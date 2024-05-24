@@ -351,12 +351,13 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 
 bool Polygon::isCoplanar(const Planed& pl) const
 {
-	for (const auto& vertId : _vertexIds) {
-		auto pt = getBlockPtr()->getVertexPoint(vertId);
-		if (fabs(pl.distanceToPoint(pt)) > Tolerance::sameDistTol())
-			return false;
-	}
+	Planed ourPlane = calPlane();
+	if (fabs(pl.distanceToPoint(ourPlane.getOrgin())) > Tolerance::sameDistTol())
+		return false;
 
+	double mcp = pl.getNormal().cross(ourPlane.getNormal()).norm();
+	if (mcp > sin(Tolerance::angleTol()))
+		return false;
 	return true;
 }
 
@@ -438,9 +439,11 @@ Vector3d Polygon::calUnitNormal() const
 
 Planed Polygon::calPlane() const
 {
-	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds.front());
+	calCentroid();
+	Vector3d origin = calCentroid(); // Use every point to get more preceision
 	Vector3d normal = calUnitNormal();
 	Planed result(origin, normal, false);
+
 #ifdef _DEBUG
 	for (const auto& vId : _vertexIds) {
 		Vector3d pt = getBlockPtr()->getVertexPoint(vId);
@@ -835,7 +838,7 @@ bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
 bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 {
 	// This collapses duplicate corner hits to a single hit
-	set<FixedPt> intersectionPoints;
+	set<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
@@ -847,15 +850,15 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 			assert(edgeSeg.contains(hit.hitPt, t));
 			assert(0 <= t && t <= 1);
 #endif // _DEBUG
-			intersectionPoints.insert(FixedPt::fromDbl(hit.hitPt));
+			intersectionPoints.insert(hit.hitPt);
 		}
 	}
 
 	if (intersectionPoints.size() == 2) {
 		auto iter = intersectionPoints.begin();
-		const auto& fPt0 = *iter++;
-		const auto& fPt1 = *iter++;
-		intersectionSeg = LineSegmentd(FixedPt::toDbl(fPt0), FixedPt::toDbl(fPt1));
+		const auto& pt0 = *iter++;
+		const auto& pt1 = *iter++;
+		intersectionSeg = LineSegmentd(pt0, pt1);
 		return true;
 	} else if (!intersectionPoints.empty()) {
 		int dbgBreak = 1;

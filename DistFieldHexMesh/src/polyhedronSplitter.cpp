@@ -455,9 +455,9 @@ void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const vector<Index
 {
 	map<Index3DId, set<Edge>> faceToEdgeMap;
 	auto realFaceIds = realCell.getFaceIds();
-	set<FixedPt> realFacePoints;
 	for (const auto& realFaceId : realFaceIds) {
 		Planed realFacePlane;
+		set<Vector3d> realFacePoints;
 		faceFunc(TS_REAL, realFaceId, [this, &realFacePlane, &realFacePoints](const Polygon& realFace) {
 			realFacePlane = realFace.calPlane();
 			for (const auto& id : realFace.getVertexIds()) {

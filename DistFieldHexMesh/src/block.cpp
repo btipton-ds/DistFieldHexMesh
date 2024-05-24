@@ -613,15 +613,6 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 #ifdef _DEBUG
 	assert(idOfPoint(pt) == result);
-
-	FixedPt fPt(pt);
-	Vector3d checkPt = FixedPt::toDbl(fPt);
-	double delta = (checkPt - pt).norm();
-	assert(delta < Tolerance::sameDistTol());
-
-	checkPt = _pVol->getVertex(result).getPoint();
-	delta = (checkPt - pt).norm();
-	assert(delta < Tolerance::sameDistTol());
 #endif // _DEBUG
 
 	return result;
@@ -660,12 +651,6 @@ Vector3d Block::getVertexPoint(const Index3DId& vertId) const
 {
 	auto pOwner = getOwner(vertId);
 	return pOwner->_vertices[vertId].getPoint();
-}
-
-FixedPt Block::getFixedPoint(const Index3DId& vertId) const
-{
-	auto pOwner = getOwner(vertId);
-	return pOwner->_vertices[vertId].getFixedPt();
 }
 
 bool Block::write(ostream& out) const

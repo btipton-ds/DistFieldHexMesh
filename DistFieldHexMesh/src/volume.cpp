@@ -47,6 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <vertex.h>
 #include <polyhedronSplitter.h>
+#include <vertexSpatialTree.h>
 #include <tolerances.h>
 
 #ifdef _WIN32
@@ -774,7 +775,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 	vector<Vector3d> pts;
 	set<TriMesh::CEdge> modelEdgeSet;
-	map<FixedPt, size_t> pointToIdxMap;
+	VertSearchTree8 pointToIdxMap(_boundingBox);
 
 	if (!modelTriIndices.empty()) {
 		const double sinSharp = sin(SHARP_EDGE_ANGLE_RADIANS);
@@ -791,12 +792,11 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 							for (int k = 0; k < 2; k++) {
 								size_t modVertIdx = edge._vertIndex[k];
 								const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-								FixedPt fpt(pt);
-								auto iter = pointToIdxMap.find(fpt);
-								if (iter == pointToIdxMap.end()) {
-									size_t vertIdx = pts.size();
-									pointToIdxMap.insert(make_pair(fpt, vertIdx));
+								size_t vertIdx = pointToIdxMap.find(pt);
+								if (vertIdx == -1) {
+									vertIdx = pts.size();
 									pts.push_back(pt);
+									pointToIdxMap.add(pt, vertIdx);
 								}
 							}
 						}
@@ -806,12 +806,11 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 				for (int i = 0; i < 3; i++) {
 					size_t modVertIdx = tri[i];
 					const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-					FixedPt fpt(pt);
-					auto iter = pointToIdxMap.find(fpt);
-					if (iter == pointToIdxMap.end()) {
-						size_t vertIdx = pts.size();
-						pointToIdxMap.insert(make_pair(fpt, vertIdx));
+					size_t vertIdx = pointToIdxMap.find(pt);
+					if (vertIdx == -1) {
+						vertIdx = pts.size();
 						pts.push_back(pt);
+						pointToIdxMap.add(pt, vertIdx);
 					}
 				}
 			}
@@ -824,12 +823,11 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
 				Vector3d pt = pBlk->getVertexPoint(vertId);
-				FixedPt fpt(pt);
-				auto iter = pointToIdxMap.find(fpt);
-				if (iter == pointToIdxMap.end()) {
-					size_t vertIdx = pts.size();
-					pointToIdxMap.insert(make_pair(fpt, vertIdx));
+				size_t vertIdx = pointToIdxMap.find(pt);
+				if (vertIdx == -1) {
+					vertIdx = pts.size();
 					pts.push_back(pt);
+					pointToIdxMap.add(pt, vertIdx);
 				}
 			}
 		});
@@ -854,12 +852,8 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			const auto& vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
 				Vector3d pt = pBlk->getVertexPoint(vertId);
-				FixedPt fpt(pt);
-				auto iter = pointToIdxMap.find(fpt);
-				if (iter != pointToIdxMap.end()) {
-					size_t idx = iter->second + 1;
-					out << idx << " ";
-				}
+				size_t idx = pointToIdxMap.find(pt);
+				out << (idx + 1) << " ";
 			}
 			out << "\n";
 		});
@@ -873,8 +867,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 				for (int i = 0; i < 2; i++) {
 					size_t modVertIdx = ed._vertIndex[i];
 					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-					FixedPt fpt(pt);
-					size_t idx = pointToIdxMap.find(fpt)->second + 1;
+					size_t idx = pointToIdxMap.find(pt) + 1;
 					out << idx << " ";
 				}
 				out << "\n";
@@ -887,8 +880,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 				for (int i = 0; i < 3; i++) {
 					size_t modVertIdx = tri[i];
 					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-					FixedPt fpt(pt);
-					size_t idx = pointToIdxMap.find(fpt)->second + 1;
+					size_t idx = pointToIdxMap.find(pt) + 1;
 					out << idx << " ";
 				}
 				out << "\n";
