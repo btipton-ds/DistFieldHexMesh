@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <set>
 #include <tm_vector3.h>
+#include <tm_boundingBox.h>
 #include <index3D.h>
 #include <patient_lock_guard.h>
 #include <objectPool.h>
@@ -41,58 +42,9 @@ namespace DFHM {
 class Block;
 class Edge;
 
-namespace Tolerance
-{
-	inline double sameDistTol()
-	{
-#if USE_FIXED_PT
-		return 1.0e-5;
-#else
-#if 0
-		return 1.0e-8;
-#else
-		return 2 * FixedPt::getFixedScale() / FIXED_PT_INT_MAX;
-#endif
-#endif
-	}
-	inline double paramTol() {
-#if USE_FIXED_PT
-		return 1.0e-6;
-#else
-		return 1.0e-12;
-#endif
-	}
-	inline double looseParamTol() {
-#if USE_FIXED_PT
-		return 1.0e-4;
-#else
-		return 1.0e-6;
-#endif
-	}
-
-	inline double angleTol() {
-#if USE_FIXED_PT
-		return 1.0e-6;
-#else
-		return 1.0e-10;
-#endif
-	}
-
-}
-
-
 class Vertex : public ObjectPoolOwnerUser {
 public:
-#if 0
-	enum class LockType {
-		None,
-		Triangle,
-		Edge,
-		Vertex
-	};
-#endif
-	// Required for use with object pool
-
+	static CBoundingBox3Dd calBBox(const Vector3d& pt);
 
 	Vertex() = default;
 	Vertex(const Vertex& src);
@@ -107,6 +59,7 @@ public:
 	void setPoint(const Vector3d& pt);
 	Vector3d getPoint() const;
 	operator Vector3d () const;
+	CBoundingBox3Dd getBBox() const;
 	const FixedPt& getFixedPt() const;
 	void setLockType(VertexLockType val);
 	VertexLockType getLockType() const;
@@ -133,24 +86,15 @@ private:
 #endif
 };
 
+inline CBoundingBox3Dd Vertex::getBBox() const
+{
+	return calBBox(_pt);
+}
+
 inline Vertex::Vertex(const Vector3d& pt)
 {
 	setPoint(pt);
 }
-
-#if 0
-inline void Vertex::setLockType(LockType val, size_t idx)
-{
-	_lockType = val;
-	_lockIdx = idx;
-}
-
-inline Vertex::LockType Vertex::getLockType(size_t& idx) const
-{
-	idx = _lockIdx;
-	return _lockType;
-}
-#endif
 
 inline void Vertex::setPoint(const Vector3d& pt)
 {

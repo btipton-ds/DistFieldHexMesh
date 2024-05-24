@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <block.h>
 #include <volume.h>
+#include <tolerances.h>
 #include <logger.h>
 
 using namespace std;

@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <tolerances.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -104,6 +105,14 @@ void Vertex::read(std::istream& in)
 	if (version >= 1) {
 		in.read((char*)&_lockType, sizeof(_lockType));
 	}
+}
+
+CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
+{
+	CBoundingBox3Dd result(pt, pt);
+	result.grow(Tolerance::sameDistTol() / 2.0);
+
+	return result;
 }
 
 const bool Vertex::operator < (const Vertex& rhs) const

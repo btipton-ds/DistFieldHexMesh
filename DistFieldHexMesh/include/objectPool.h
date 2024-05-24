@@ -121,7 +121,7 @@ public:
 
 	Index3DId findOrAdd(const T& obj, const Index3DId& id = Index3DId());
 
-	const T* getSize_t(size_t id) const;
+	const T* getByElementIndex(size_t id) const;
 
 	const T* get(const Index3DId& id) const;
 	T* get(const Index3DId& id);
@@ -157,8 +157,8 @@ private:
 
 		inline bool operator () (size_t lhs, size_t rhs) const
 		{
-			const T* pLHS = _owner.getSize_t(lhs);
-			const T* pRHS = _owner.getSize_t(rhs);
+			const T* pLHS = _owner.getByElementIndex(lhs);
+			const T* pRHS = _owner.getByElementIndex(rhs);
 			if (pLHS && pRHS)
 				return *pLHS < *pRHS;
 			throw std::runtime_error("comparing deleted object(s)");
@@ -459,7 +459,7 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 }
 
 template<class T>
-const T* ObjectPool<T>::getSize_t(size_t id) const
+const T* ObjectPool<T>::getByElementIndex(size_t id) const
 {
 	if (id == -1)
 		return _tl_pCompareObj;

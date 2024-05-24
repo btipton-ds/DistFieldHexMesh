@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedronSplitter.h>
 #include <block.h>
 #include <volume.h>
+#include <tolerances.h>
 
 using namespace std;
 using namespace DFHM;

@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_vector3.h>
 #include <triMesh.h>
+#include <tm_spatialSearch.h>
 #include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
@@ -82,9 +83,6 @@ public:
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
 	Block* getOwner(const Index3D& blockIdx) override;
-
-	Vector3d invTriLinIterp(const Vector3d& pt) const;
-	Vector3d invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
@@ -204,6 +202,10 @@ private:
 		ObjectPool<Polyhedron> _polyhedra;
 	};
 
+	using SearchTree = CSpatialSearchBase<double, Index3DId, 4>;
+	using SearchTreePtr = std::shared_ptr<SearchTree>;
+	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
+
 	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
 
 	void setIsOutput(bool val);
@@ -259,6 +261,7 @@ private:
 	std::set<Index3DId> _needToSplit, _cantSplitYet;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
+	SearchTreePtr _vertTree;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
 };

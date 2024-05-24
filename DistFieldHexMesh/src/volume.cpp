@@ -47,6 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <vertex.h>
 #include <polyhedronSplitter.h>
+#include <tolerances.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -322,7 +323,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	createBlocks(params, blockSpan, multiCore);
 	splitSimple(params, multiCore);
 	splitAtCurvature(params, multiCore);
-	splitAtSharpVerts(params, multiCore);
+//	splitAtSharpVerts(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 
 	assert(verifyTopology(multiCore));

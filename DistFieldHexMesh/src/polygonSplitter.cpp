@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygonSplitter.h>
 #include <block.h>
 #include <polygon.h>
+#include <tolerances.h>
 
 using namespace std;
 using namespace DFHM;

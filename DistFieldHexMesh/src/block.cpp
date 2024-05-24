@@ -32,7 +32,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 #include <filesystem>
 
+#include <tm_spatialSearch.hpp>
 #include <tm_ioUtil.h>
+
+#include <tolerances.h>
 #include <Index3D.h>
 #include <splitParams.h>
 #include <vertex.h>
@@ -64,7 +67,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
 	, _modelData(this)
-	, _vertices(this, true)
+	, _vertices(this, false)
 	, _refData(this)
 {
 	_blockDim = Index3D::getBlockDim();
@@ -86,7 +89,11 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	Vector3d pt = _boundBox.getMin() + v;
 	_innerBoundBox.merge(pt);
 
-	// This is close to working, but the full search is finding solutions the partial search is not
+	CBoundingBox3Dd treeBBox(_boundBox);
+	treeBBox.grow(Tolerance::sameDistTol());
+	_vertTree = make_shared<SearchTree>(treeBBox);
+		
+		// This is close to working, but the full search is finding solutions the partial search is not
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
 	pMesh->findEdges(_boundBox, _edgeIndices);
 	pMesh->findTris(_boundBox, _triIndices);
@@ -103,6 +110,7 @@ Block::Block(const Block& src)
 	, _vertices(this, src._vertices)
 	, _modelData(this, src._modelData)
 	, _refData(this, src._refData)
+	, _vertTree(make_shared<SearchTree>(*src._vertTree))
 {
 }
 
@@ -188,11 +196,24 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 
 Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
-	if (_innerBoundBox.contains(point))
-		return _blockIdx;
+	const Index3D& volDim = Volume::volDim();
+	const auto& bbox = _pVol->_boundingBox;
+	const auto& bbMin = bbox.getMin();
+	const auto& bbRange = bbox.range();
 
-	auto ratios = invTriLinIterp(point);
-	return determineOwnerBlockIdxFromRatios(ratios);
+	Vector3 v = point - bbMin;
+	Index3D result;
+	for (int i = 0; i < 3; i++) {
+		double t = v[i] / bbRange[i];
+		assert(0 <= t && t <= 1.0);
+
+		Index3DBaseType idx = (Index3DBaseType) (t * volDim[i]);
+		if (idx >= volDim[i])
+			idx -= 1;
+
+		result[i] = idx;
+	}
+	return result;
 }
 
 Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
@@ -350,82 +371,6 @@ Vector3d Block::triLinInterp(const Vector3d* pts, size_t divs, const Index3D& in
 	Vector3d result;
 	result = TRI_LERP(pts, t[0], t[1], t[2]);
 
-	return result;
-}
-
-Vector3d Block::invTriLinIterp(const Vector3d& pt) const
-{
-	return invTriLinIterp(_corners.data(), pt);
-}
-
-Vector3d Block::invTriLinIterp(const Vector3d* blockPts, const Vector3d& pt) const
-{
-	const double tol = Tolerance::looseParamTol();
-	const double tolSqr = tol * tol;
-
-	// Linearly interpolate based on the bounding box. This is precise for a paralelapiped set of blockPts
-	Vector3d vRange = _boundBox.range();
-	Vector3d delta = pt - _boundBox.getMin();
-	Vector3d result;
-	for (size_t i = 0; i < 3; i++) {
-		result[i] = delta[i] / vRange[i];
-		assert(-tol <= result[i] && result[i] <= 1 + tol);
-		if (result[i] < 0)
-			result[i] = 0;
-		else if (result[i] > 1)
-			result[i] = 1;
-	}
-
-	Vector3d checkPt = TRI_LERP(blockPts, result[0], result[1], result[2]);
-
-	const double step = 1.0e-12;
-	Vector3d vErr = checkPt - pt;
-	double errSqr = vErr.squaredNorm();
-	while (errSqr > tolSqr) {
-		// Compute gradient
-		Vector3d grad;
-		for (size_t axis = 0; axis < 3; axis++) {
-			switch (axis) {
-			default:
-			case 0:
-				checkPt = TRI_LERP(blockPts, result[0] + step, result[1], result[2]);
-				break;
-			case 1:
-				checkPt = TRI_LERP(blockPts, result[0], result[1] + step, result[2]);
-				break;
-			case 2:
-				checkPt = TRI_LERP(blockPts, result[0], result[1], result[2] + step);
-				break;
-			}
-			grad[axis] = ((checkPt[axis]) - pt[axis]) / step;
-		}
-		grad.normalize();
-
-		Vector3d ratio0 = - step * grad;
-		Vector3d testPt0 = TRI_LERP(blockPts, ratio0[0], ratio0[1], ratio0[2] + step);
-
-		Vector3d ratio1 = step * grad;
-		Vector3d testPt1 = TRI_LERP(blockPts, ratio1[0], ratio1[1], ratio1[2] + step);
-
-		double y0 = (testPt0 - pt).norm();
-		double y1 = (result - pt).norm();
-		double y2 = (testPt1 - pt).norm();
-		y0 = y0 - y1;
-		y1 = y2 - y1;
-		double a = (y0 + y1) / (2 * step * step);
-		double b = (y1 - y0) / (2 * step);
-		if (fabs(a) < tol)
-			break;
-		double dx = -b / (2 * a);
-		result = result + dx * grad;
-		checkPt = TRI_LERP(blockPts, result[0], result[1], result[2]);
-		vErr = checkPt - pt;
-		errSqr = vErr.squaredNorm();
-	}
-		
-	for (int i = 0; i < 3; i++) {
-		assert(0 <= result[i] && result[i] <= 1);
-	}
 	return result;
 }
 
@@ -636,19 +581,39 @@ Block* Block::getOwner(const Index3D& blockIdx)
 
 Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
+	// NOTE: Be careful to keep the difference between the _vertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	return pOwner->_vertices.findId(pt);
+	vector<SearchTree::Entry> indices;
+	if (pOwner->_vertTree->find(Vertex::calBBox(pt), indices) > 0) {
+		for (const auto& vEntry : indices) {
+			const auto& vBB = vEntry.getBBox();
+			if (vBB.contains(pt))
+				return vEntry.getIndex();
+		}
+	}
+
+	return Index3DId();
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
+
+	Index3DId result = idOfPoint(pt);
+	if (result.isValid())
+		return result;
+
+	// NOTE: Be careful to keep the difference between the _vertTree indices and the _vertices indices clear. Failure causes NPEs
 	Vertex vert(pt);
-	Index3DId result = pOwner->_vertices.findOrAdd(vert, currentId);
+	result = pOwner->_vertices.findOrAdd(vert, currentId);
+
+	pOwner->_vertTree->add(vert.getBBox(), result);
 
 #ifdef _DEBUG
+	assert(idOfPoint(pt) == result);
+
 	FixedPt fPt(pt);
 	Vector3d checkPt = FixedPt::toDbl(fPt);
 	double delta = (checkPt - pt).norm();

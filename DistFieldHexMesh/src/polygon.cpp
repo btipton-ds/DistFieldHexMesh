@@ -41,6 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <edge.h>
 #include <utils.h>
+#include <tolerances.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
