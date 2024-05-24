@@ -68,28 +68,32 @@ add_executable (DistFieldHexMesh
     "src/appData.cpp"
 	
 	"src/block.cpp"	
+	"src/buildCFDHexesDlg.cpp"
     "src/edge.cpp"
     "src/index3D.cpp"
+	"src/fixedPoint.cpp"
 	"src/graphicsCanvas.cpp"
+	"src/logger.cpp"
 	"src/main.cpp" 
 	"src/mainFrame.cpp"
 	"src/makeBlockDlg.cpp"
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
+	"src/polygonSplitter.cpp" 
 	"src/polyHedron.cpp"
-	"src/selectBlocksDlg.cpp"
 	"src/polyhedronSplitter.cpp"
+	"src/selectBlocksDlg.cpp"
+	"src/splitParams.cpp"
+	"src/utils.cpp"
+	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"src/logger.cpp"
-	"src/polygonSplitter.cpp" 
-	"src/buildCFDHexesDlg.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp" 
- "src/splitParams.cpp"  "src/utils.cpp" "src/vertexSpatialTree.cpp")
+)
 
 add_executable (TestDFM         
 	
@@ -97,16 +101,19 @@ add_executable (TestDFM
  	"src/blockTest.cpp" 
  	"src/edge.cpp" 
     "src/index3D.cpp"
+	"src/logger.cpp"
 	"src/mainTest.cpp"
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
+	"src/polygonSplitter.cpp"
 	"src/polyHedron.cpp"	
+	"src/polyhedronSplitter.cpp" 
+	"src/splitParams.cpp"
+	"src/utils.cpp"
+	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"src/logger.cpp"
-	"src/polyhedronSplitter.cpp" 
-	"src/polygonSplitter.cpp"
- "src/splitParams.cpp"  "src/utils.cpp" "src/vertexSpatialTree.cpp")
+)
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

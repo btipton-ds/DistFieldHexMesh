@@ -60,7 +60,6 @@ public:
 	Vector3d getPoint() const;
 	operator Vector3d () const;
 	CBoundingBox3Dd getBBox() const;
-	const FixedPt& getFixedPt() const;
 	void setLockType(VertexLockType val);
 	VertexLockType getLockType() const;
 
@@ -78,12 +77,7 @@ private:
 	In this multi-threaded architecture, it leads to deadlocks, more mutexes and slows things down.
 	Do NOT add any reference links on the vertex unless the architecture changes.
 	*/
-#if USE_FIXED_PT
-	FixedPt _pt; // Fixed point representation of a double precisions point
-#else
 	Vector3d _pt;
-	FixedPt _searchPt;
-#endif
 };
 
 inline CBoundingBox3Dd Vertex::getBBox() const
@@ -98,26 +92,12 @@ inline Vertex::Vertex(const Vector3d& pt)
 
 inline void Vertex::setPoint(const Vector3d& pt)
 {
-#if USE_FIXED_PT
-	_pt = FixedPt::fromDbl(pt);
-#else
 	_pt = pt;
-	_searchPt = FixedPt::fromDbl(_pt);
-#endif
 }
 
 inline Vector3d Vertex::getPoint() const
 {
-#if USE_FIXED_PT
-	return FixedPt::toDbl(_pt);
-#else
 	return _pt;
-#endif
-}
-
-inline const FixedPt& Vertex::getFixedPt() const
-{
-	return _searchPt;
 }
 
 inline Vertex::operator Vector3d () const

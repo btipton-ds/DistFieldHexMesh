@@ -25,70 +25,23 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <tolerances.h>
-#include <vertex.h>
-#include <edge.h>
-#include <polygon.h>
-#include <block.h>
+#include <fixedPoint.h>
 
-using namespace std;
 using namespace DFHM;
 
-Vertex::Vertex(const Vertex& src)
-	: _pt(src._pt)
-	, _lockType(src._lockType)
+bool FixedPt::operator < (const FixedPt& rhs) const
 {
-}
-
-Vertex& Vertex::operator = (const Vertex& rhs)
-{
-	_pt = rhs._pt;
-	_lockType = rhs._lockType;
-
-	return *this;
-}
-
-void Vertex::write(std::ostream& out) const
-{
-	uint8_t version = 2;
-	out.write((char*)&version, sizeof(version));
-
-	writeVector3(out, _pt);
-
-	out.write((char*)&_lockType, sizeof(_lockType));
-}
-
-void Vertex::read(std::istream& in)
-{
-	uint8_t version;
-	in.read((char*)&version, sizeof(version));
-
-	readVector3(in, _pt);
-	if (version < 2) {
-		FixedPt deprecatedPt;
-		readVector3(in, deprecatedPt);
+	for (size_t idx = 0; idx < 3; idx++) {
+		if ((*this)[idx] < rhs[idx])
+			return true;
+		else if (rhs[idx] < (*this)[idx])
+			return false;
 	}
 
-	if (version >= 1) {
-		in.read((char*)&_lockType, sizeof(_lockType));
-	}
+	return false;
 }
 
-CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
+bool FixedPt::operator == (const FixedPt& rhs) const
 {
-	CBoundingBox3Dd result(pt, pt);
-	result.grow(Tolerance::sameDistTol() / 2.0);
-
-	return result;
-}
-
-const bool Vertex::operator < (const Vertex& rhs) const
-{
-	return _pt < rhs._pt;
-}
-
-ostream& DFHM::operator << (ostream& out, const Vertex& vert)
-{
-	out << "Vertex " << vert.getId();
-	return out;
+	return (*this)[0] == rhs[0] && (*this)[1] == rhs[1] && (*this)[2] == rhs[2];
 }
