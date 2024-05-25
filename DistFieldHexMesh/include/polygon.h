@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <patient_lock_guard.h>
+#include <pool_vector.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
@@ -96,18 +97,22 @@ public:
 		size_t _splitLevel;
 	};
 
-	static bool verifyUniqueStat(const std::vector<Index3DId>& vertIds);
-	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
-	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
-	static void createEdgesStat(const std::vector<Index3DId>& verts, std::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
-	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
-	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
+	template<class T>
+	using poolVector = PoolUtils::vector<T>;
 
-	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const std::vector<Index3DId>& vertIds);
-	static void dumpPolygonPoints(std::ostream& out, const std::vector<Vector3d>& pts);
+	static bool verifyUniqueStat(const poolVector<Index3DId>& vertIds);
+	static bool verifyVertsConvexStat(const Block* pBlock, const poolVector<Index3DId>& vertIds);
+	static double calVertexAngleStat(const Block* pBlock, const poolVector<Index3DId>& vertIds, size_t index);
+	static void createEdgesStat(const poolVector<Index3DId>& verts, std::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
+	static Vector3d calUnitNormalStat(const Block* pBlock, const poolVector<Index3DId>& vertIds);
+	static Vector3d calCentroidStat(const Block* pBlock, const poolVector<Index3DId>& vertIds);
+
+	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const poolVector<Index3DId>& vertIds);
+	static void dumpPolygonPoints(std::ostream& out, const poolVector<Vector3d>& pts);
 
 	Polygon() = default;
-	Polygon(const std::vector<Index3DId>& verts);
+	Polygon(const poolVector<Index3DId>& verts);
+	Polygon(const std::initializer_list<Index3DId>& verts);
 	Polygon(const Polygon& src);
 
 	Polygon& operator = (const Polygon& rhs);
@@ -137,7 +142,7 @@ public:
 
 	bool operator < (const Polygon& rhs) const;
 
-	const std::vector<Index3DId>& getVertexIds() const;
+	const poolVector<Index3DId>& getVertexIds() const;
 	const std::set<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
@@ -200,13 +205,13 @@ private:
 	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
-	std::vector<Index3DId> _vertexIds;
+	PoolUtils::vector<Index3DId> _vertexIds;
 	std::set<CellId_SplitLevel> _cellIds;
 
 	mutable bool _sortCacheVaild = false;
 	mutable bool _cachedEdgesVaild = false;
 	mutable Trinary _cachedIntersectsModel = Trinary::IS_UNKNOWN;
-	mutable std::vector<Index3DId> _sortedIds;
+	mutable PoolUtils::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
 };
 
@@ -235,7 +240,7 @@ inline bool Polygon::isOuter() const
 	return _cellIds.size() == 1;
 }
 
-inline const std::vector<Index3DId>& Polygon::getVertexIds() const
+inline const typename Polygon::poolVector<Index3DId>& Polygon::getVertexIds() const
 {
 	return _vertexIds;
 }

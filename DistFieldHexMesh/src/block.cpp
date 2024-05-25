@@ -66,7 +66,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
 	, _modelData(this)
-	, _vertices(this, false)
+	, _vertices(this, false, 1024)
 	, _refData(this)
 {
 	_blockDim = Index3D::getBlockDim();
@@ -1276,8 +1276,8 @@ void Block::pack()
 }
 
 Block::ModelData::ModelData(Block* pBlk)
-	: _polygons(pBlk, true)
-	, _polyhedra(pBlk, false)
+	: _polygons(pBlk, true, 1024)
+	, _polyhedra(pBlk, false, 1024)
 {
 }
 

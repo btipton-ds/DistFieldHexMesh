@@ -49,7 +49,12 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Polygon::Polygon(const vector<Index3DId>& verts)
+Polygon::Polygon(const poolVector<Index3DId>& verts)
+	: _vertexIds(verts)
+{
+}
+
+Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)
 {
 }
@@ -156,7 +161,7 @@ void Polygon::write(ostream& out) const
 
 	IoUtil::write(out, _splitFaceProductIds);
 	IoUtil::write(out, _splitEdgeVertMap);
-	IoUtil::write(out, _vertexIds);
+//	IoUtil::write(out, _vertexIds);
 	IoUtil::write(out, _cellIds);
 }
 
@@ -169,7 +174,7 @@ void Polygon::read(istream& in)
 
 	IoUtil::read(in, _splitFaceProductIds);
 	IoUtil::read(in, _splitEdgeVertMap);
-	IoUtil::read(in, _vertexIds);
+//	IoUtil::read(in, _vertexIds);
 	IoUtil::read(in, _cellIds);
 }
 
@@ -374,7 +379,7 @@ bool Polygon::isCoplanar(const Edge& edge) const
 	return true;
 }
 
-void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
+void Polygon::createEdgesStat(const poolVector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
 		size_t j = (i + 1) % verts.size();
@@ -386,7 +391,7 @@ void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet
 	}
 }
 
-Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const vector<Index3DId>& vertIds)
+Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const poolVector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
 
@@ -408,7 +413,7 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const vector<Index3DId>
 	return norm;
 }
 
-void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const vector<Index3DId>& vertIds)
+void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const poolVector<Index3DId>& vertIds)
 {
 	vector<Vector3d> pts;
 	for (const auto& id : vertIds) {
@@ -419,7 +424,7 @@ void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const vector<
 	dumpPolygonPoints(out, pts);
 }
 
-void Polygon::dumpPolygonPoints(ostream& out, const vector<Vector3d>& pts)
+void Polygon::dumpPolygonPoints(ostream& out, const poolVector<Vector3d>& pts)
 {
 	out << "poly pts\n";
 	for (const auto& pt : pts) {
@@ -454,7 +459,7 @@ Planed Polygon::calPlane() const
 	return result;
 }
 
-double Polygon::calVertexAngleStat(const Block* pBlock, const vector<Index3DId>& vertIds, size_t idx1)
+double Polygon::calVertexAngleStat(const Block* pBlock, const poolVector<Index3DId>& vertIds, size_t idx1)
 {
 	const size_t sz = vertIds.size();
 	if (idx1 < sz) {
@@ -557,7 +562,7 @@ bool Polygon::intersectsModel() const
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
 
-		vector<size_t> cellTris;
+		std::vector<size_t> cellTris;
 
 		if (getCellTris(cellTris) > 0) {
 			auto pMesh = getBlockPtr()->getModelMesh();
@@ -890,7 +895,7 @@ void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceI
 #endif
 }
 
-bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>& vertIds)
+bool Polygon::verifyVertsConvexStat(const Block* pBlock, const poolVector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		double angle = calVertexAngleStat(pBlock, vertIds, i);
@@ -901,7 +906,7 @@ bool Polygon::verifyVertsConvexStat(const Block* pBlock, const vector<Index3DId>
 	return true;
 }
 
-bool Polygon::verifyUniqueStat(const vector<Index3DId>& vertIds)
+bool Polygon::verifyUniqueStat(const poolVector<Index3DId>& vertIds)
 {
 	bool valid = true;
 
