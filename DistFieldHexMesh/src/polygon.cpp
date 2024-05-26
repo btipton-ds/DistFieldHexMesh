@@ -49,14 +49,22 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Polygon::Polygon(const poolVector<Index3DId>& verts)
-	: _vertexIds(verts)
+Polygon::Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
+	: _vertexIds(pAlloc)
 {
+	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
 }
 
-Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
-	: _vertexIds(verts)
+Polygon::Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
+	: _vertexIds(pAlloc)
 {
+	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
+}
+
+Polygon::Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
+	: _vertexIds(pAlloc)
+{
+	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
 }
 
 Polygon::Polygon(const Polygon& src)
@@ -413,7 +421,7 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const poolVector<Index3
 	return norm;
 }
 
-void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const poolVector<Index3DId>& vertIds)
+void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const vector<Index3DId>& vertIds)
 {
 	vector<Vector3d> pts;
 	for (const auto& id : vertIds) {
@@ -424,7 +432,7 @@ void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const poolVec
 	dumpPolygonPoints(out, pts);
 }
 
-void Polygon::dumpPolygonPoints(ostream& out, const poolVector<Vector3d>& pts)
+void Polygon::dumpPolygonPoints(ostream& out, const vector<Vector3d>& pts)
 {
 	out << "poly pts\n";
 	for (const auto& pt : pts) {
@@ -639,7 +647,7 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
-	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds[0]); // And point will do
+	Vector3d origin = calCentroid(); // Any point will do, but the average of all points is more accurate, especially if the face isn't planar
 	Vector3d normal = calUnitNormal();
 	Plane pl(origin, normal, false);
 	auto result = pl.projectPoint(pt);

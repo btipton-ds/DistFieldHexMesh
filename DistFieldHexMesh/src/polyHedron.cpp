@@ -530,7 +530,7 @@ void Polyhedron::getOutwardOrientedFaces(std::vector<Polygon>& faces) const
 {
 	Vector3d cellCtr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [&cellCtr, &faces](const Polygon& face) {
+		faceFunc(TS_REAL, faceId, [this, &cellCtr, &faces](const Polygon& face) {
 			Vector3d faceCtr = face.calCentroid();
 			Vector3d faceNorm = face.calUnitNormal();
 			Vector3d outwardNorm = faceCtr - cellCtr;
@@ -538,7 +538,7 @@ void Polyhedron::getOutwardOrientedFaces(std::vector<Polygon>& faces) const
 			auto verts = face.getVertexIds();
 			if (faceNorm.dot(outwardNorm) < 0)
 				reverse(verts.begin(), verts.end());
-			Polygon dupFace(verts);
+			Polygon dupFace(verts, getBlockPtr()->getHeapPtr());
 			faces.push_back(dupFace);
 		});
 	}

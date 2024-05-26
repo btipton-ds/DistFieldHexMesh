@@ -26,19 +26,28 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <pool_allocator.h>
 #include <pool_vector.h>
 
 #define TEMPL_DECL template<class T> 
 #define VECTOR_DECL PoolUtils::vector<T> 
 
 TEMPL_DECL
-VECTOR_DECL::vector(const std::vector<T>& src)
+VECTOR_DECL::vector(::PoolUtils::localHeap* pAlloc)
+	: _pAlloc(pAlloc)
+{
+}
+
+TEMPL_DECL
+VECTOR_DECL::vector(const std::vector<T>& src, ::PoolUtils::localHeap* pAlloc)
+	: _pAlloc(pAlloc)
 {
 	insert(end(), src.begin(), src.end());
 }
 
 TEMPL_DECL
-VECTOR_DECL::vector(const std::initializer_list<T>& src)
+VECTOR_DECL::vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap* pAlloc)
+	: _pAlloc(pAlloc)
 {
 	insert(end(), src.begin(), src.end());
 }
@@ -56,6 +65,13 @@ void VECTOR_DECL::clear()
 {
 	_data.clear();
 }
+
+TEMPL_DECL
+bool VECTOR_DECL::empty()
+{
+	return _data.empty();
+}
+
 
 TEMPL_DECL
 size_t VECTOR_DECL::size() const
@@ -81,6 +97,14 @@ void VECTOR_DECL::insert(const iterator& at, const ITER_TYPE& begin, const ITER_
 {
 	_data.insert(_data.begin() + at._index, begin, end);
 }
+
+TEMPL_DECL
+PoolUtils::vector<T>& VECTOR_DECL::operator = (const vector& rhs)
+{
+	insert(end(), rhs.begin(), rhs.end());
+	return *this;
+}
+
 
 TEMPL_DECL
 _NODISCARD _CONSTEXPR20 typename VECTOR_DECL::const_iterator VECTOR_DECL::begin() const noexcept

@@ -29,11 +29,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <iostream>
 
 #include <defines.h>
+#include <tests.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <blockTest.h>
 #include <MultiCoreUtil.h>
 #include <vertex.h>
+#include <pool_vector.h>
 
 using namespace std;
 
@@ -58,9 +60,111 @@ void testBlock(size_t bd = 8)
 	cout << "testBlock pass\n";
 }
 
+class TestPoolMemory {
+public:
+	bool testAll();
+private:
+	bool testAllocator();
+	bool testAllocator0();
+
+	bool testVector();
+	bool testVector0();
+};
+
+bool TestPoolMemory::testAll()
+{
+	if (!testAllocator())
+		return false;
+
+	if (!testVector())
+		return false;
+
+	cout << "TestPoolMemory pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testAllocator()
+{
+	if (!testAllocator0()) return false;
+
+	cout << "TestAllocator pass";
+
+	return true;
+}
+
+bool TestPoolMemory::testAllocator0()
+{
+	PoolUtils::localHeap alloc(128);
+	double *pD = (double *) alloc.alloc(sizeof(double));
+	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
+	*pD = 1.0;
+	alloc.free(pD);
+
+	double* pD2 = (double*)alloc.alloc(sizeof(double));
+	
+	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+
+	*pD2 = 1.0;
+	alloc.free(pD2);
+
+	pD = (double*)alloc.alloc(3 * sizeof(double));
+	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
+	pD[0] = 1.0;
+	pD[1] = 2.0;
+	pD[2] = 3.0;
+	alloc.free(pD);
+
+	pD2 = (double*)alloc.alloc(3 * sizeof(double));
+
+	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+
+	pD2[0] = 1.0;
+	pD2[1] = 2.0;
+	pD2[2] = 3.0;
+	alloc.free(pD2);
+
+	return true;
+}
+
+bool TestPoolMemory::testVector()
+{
+	if (!testVector0()) return false;
+
+	cout << "TestAllocator pass";
+	return true;
+}
+
+bool TestPoolMemory::testVector0()
+{
+	PoolUtils::localHeap(1024);
+	PoolUtils::vector<size_t> vec;
+
+	TEST_TRUE(vec.empty(), "vec empty failed");
+
+	for (size_t i = 0; i < 128; i++)
+		vec.push_back(i);
+
+	TEST_FALSE(vec.empty(), "vec not empty failed");
+	TEST_EQUAL(vec.size(), 128, "vec size failed");
+
+	for (size_t i = 0; i < 128; i++)
+		vec.pop_back();
+
+	TEST_TRUE(vec.empty(), "vec empty failed");
+	TEST_EQUAL(vec.size(), 0, "vec size failed");
+
+	cout << "TestAllocator0 pass";
+	return true;
+}
+
 int main(int numParams, const char** params)
 {
-	testBlock();
+//	testBlock();
+	TestPoolMemory tm;
+	if (!tm.testAll()) 
+		return 0;
 
 	return 0;
 }

@@ -68,6 +68,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	, _modelData(this)
 	, _vertices(this, false, 1024)
 	, _refData(this)
+	, _localHeap(1024)
 {
 	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);
@@ -110,7 +111,9 @@ Block::Block(const Block& src)
 	, _modelData(this, src._modelData)
 	, _refData(this, src._refData)
 	, _vertTree(make_shared<SearchTree>(*src._vertTree))
+	, _localHeap(src._localHeap)
 {
+	assert(!"Should never get here. Delete this method.");
 }
 
 const Index3D& Block::getBlockIdx() const
@@ -434,7 +437,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 }
 #endif // _DEBUG
 
-	Polygon newFace(vertIndices);
+	Polygon newFace(vertIndices, getHeapPtr());
 
 #if 0 && defined(_DEBUG)
 	const auto& edges = newFace.getEdges();
@@ -449,7 +452,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 }
 Index3DId Block::addFace(const vector<Vector3d>& pts)
 {
-	vector<Index3DId> vertIds;
+	PoolUtils::vector<Index3DId> vertIds(getHeapPtr());
 	for (const auto& pt : pts) {
 		auto vertId = addVertex(pt);
 		vertIds.push_back(vertId);

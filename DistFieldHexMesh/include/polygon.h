@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_vector.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <pool_vector.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
 #include <edge.h>
@@ -107,12 +108,13 @@ public:
 	static Vector3d calUnitNormalStat(const Block* pBlock, const poolVector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const poolVector<Index3DId>& vertIds);
 
-	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const poolVector<Index3DId>& vertIds);
-	static void dumpPolygonPoints(std::ostream& out, const poolVector<Vector3d>& pts);
+	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const std::vector<Index3DId>& vertIds);
+	static void dumpPolygonPoints(std::ostream& out, const std::vector<Vector3d>& pts);
 
 	Polygon() = default;
-	Polygon(const poolVector<Index3DId>& verts);
-	Polygon(const std::initializer_list<Index3DId>& verts);
+	Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
+	Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
+	Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
 	Polygon(const Polygon& src);
 
 	Polygon& operator = (const Polygon& rhs);

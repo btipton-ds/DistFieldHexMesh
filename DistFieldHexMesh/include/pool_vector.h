@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <vector>
+#include <pool_allocator.h>
+
 
 namespace PoolUtils
 {
@@ -84,18 +86,22 @@ public:
 
 	vector() = default;
 	vector(const vector& src) = default;
-	vector(const std::vector<T>& src);
-	vector(const std::initializer_list<T>& src);
+	vector(::PoolUtils::localHeap* pAlloc);
+	vector(const std::vector<T>& src, ::PoolUtils::localHeap* pAlloc);
+	vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap* pAlloc);
 
 	operator std::vector<T>() const;
 
 	void clear();
+	bool empty();
 	size_t size() const;
 	void resize(size_t val);
 	void reserve(size_t val);
 
 	template<class ITER_TYPE>
 	void insert(const iterator& at, const ITER_TYPE& begin, const ITER_TYPE& end);
+
+	vector& operator = (const vector& rhs);
 
 	_NODISCARD _CONSTEXPR20 const_iterator begin() const noexcept;
 	_NODISCARD _CONSTEXPR20 iterator begin() noexcept;
@@ -115,8 +121,10 @@ public:
 
 private:
 	std::vector<T> _data;
+	::PoolUtils::localHeap* _pAlloc;
 };
+
+}
 
 #include <pool_vector.hpp>
 
-}

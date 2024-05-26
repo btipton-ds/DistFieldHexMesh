@@ -26,6 +26,7 @@ include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
+	"../../triMesh/tests/include/"
 	"../../utilities/threads/include/"
 	"${OpenGlDir}/include/"
 	"${OpenGlDir}/include/${OpenGlPlatform}/"
@@ -82,6 +83,7 @@ add_executable (DistFieldHexMesh
 	"src/polygonSplitter.cpp" 
 	"src/polyHedron.cpp"
 	"src/polyhedronSplitter.cpp"
+	"src/pool_allocator.cpp"
 	"src/selectBlocksDlg.cpp"
 	"src/splitParams.cpp"
 	"src/utils.cpp"
@@ -93,7 +95,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp" 
-)
+ )
 
 add_executable (TestDFM         
 	
@@ -108,6 +110,7 @@ add_executable (TestDFM
 	"src/polygonSplitter.cpp"
 	"src/polyHedron.cpp"	
 	"src/polyhedronSplitter.cpp" 
+	"src/pool_allocator.cpp"
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 	"src/vertexSpatialTree.cpp"

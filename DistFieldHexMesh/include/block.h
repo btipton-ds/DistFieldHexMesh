@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <pool_allocator.h>
 #include <logger.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
@@ -87,6 +88,8 @@ public:
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
+
+	PoolUtils::localHeap* getHeapPtr() const;
 
 	size_t blockDim() const;
 
@@ -264,6 +267,8 @@ private:
 	SearchTreePtr _vertTree;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
+
+	mutable PoolUtils::localHeap _localHeap;
 };
 
 inline size_t Block::GlPoints::getId() const
@@ -284,6 +289,11 @@ inline void Block::GlPoints::changed()
 inline size_t Block::blockDim() const
 {
 	return _blockDim;
+}
+
+inline PoolUtils::localHeap* Block::getHeapPtr() const
+{
+	return &_localHeap;
 }
 
 inline Volume* Block::getVolume()
