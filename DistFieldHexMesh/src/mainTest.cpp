@@ -29,11 +29,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <iostream>
 
 #include <defines.h>
+#include <tests.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <blockTest.h>
 #include <MultiCoreUtil.h>
 #include <vertex.h>
+#include <pool_vector.h>
 
 using namespace std;
 
@@ -58,9 +60,271 @@ void testBlock(size_t bd = 8)
 	cout << "testBlock pass\n";
 }
 
+class TestPoolMemory {
+public:
+	bool testAll();
+private:
+	bool testAllocator();
+	bool testAllocator0();
+
+	bool testVector();
+	bool testVector0();
+	bool testVectorSort();
+	bool testVectorInsertErase(bool useInitializer);
+	bool testVectorForLoops();
+	bool testVectorMisc();
+};
+
+bool TestPoolMemory::testAll()
+{
+	if (!testAllocator())
+		return false;
+
+	if (!testVector())
+		return false;
+
+	cout << "TestPoolMemory pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testAllocator()
+{
+	if (!testAllocator0()) return false;
+
+	cout << "TestAllocator pass\n";
+
+	return true;
+}
+
+bool TestPoolMemory::testAllocator0()
+{
+	PoolUtils::localHeap alloc(128);
+	double* pD = (double*)alloc.alloc(sizeof(double));
+	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
+	*pD = 1.0;
+	alloc.free(pD);
+
+	double* pD2 = (double*)alloc.alloc(sizeof(double));
+
+	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+
+	*pD2 = 1.0;
+	alloc.free(pD2);
+
+	pD = (double*)alloc.alloc(3 * sizeof(double));
+	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
+	pD[0] = 1.0;
+	pD[1] = 2.0;
+	pD[2] = 3.0;
+	alloc.free(pD);
+
+	pD2 = (double*)alloc.alloc(3 * sizeof(double));
+
+	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+
+	pD2[0] = 1.0;
+	pD2[1] = 2.0;
+	pD2[2] = 3.0;
+	alloc.free(pD2);
+
+	return true;
+}
+
+bool TestPoolMemory::testVector()
+{
+	if (!testVector0()) return false;
+	if (!testVectorSort()) return false;
+	if (!testVectorInsertErase(true)) return false;
+	if (!testVectorInsertErase(false)) return false;
+	if (!testVectorForLoops()) return false;
+	if (!testVectorMisc()) return false;
+
+	cout << "testVector pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVector0()
+{
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+
+	TEST_TRUE(vec.empty(), "vec empty failed");
+
+	for (size_t i = 0; i < 128; i++)
+		vec.push_back(i);
+
+	TEST_FALSE(vec.empty(), "vec not empty failed");
+	TEST_EQUAL(vec.size(), 128, "vec size failed");
+
+	for (size_t i = 0; i < 128; i++)
+		vec.pop_back();
+
+	TEST_TRUE(vec.empty(), "vec empty failed");
+	TEST_EQUAL(vec.size(), 0, "vec size failed");
+
+	cout << "testVector0 pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorSort()
+{
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 }, lh);
+	std::vector<size_t> stdVec({ 7, 4, 5, 3, 1, 6, 0, 2 });
+
+	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
+	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	std::sort(stdVec.begin(), stdVec.end());
+	std::sort(vec.begin(), vec.end());
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	std::sort(stdVec.begin(), stdVec.end(), std::greater<>());
+	std::sort(vec.begin(), vec.end(), std::greater<>());
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	cout << "testVectorSort pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
+{
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+	if (useInitializer)
+		vec = PoolUtils::vector<size_t>({ 0,1,2,3,4,5,6 }, lh);
+	else {
+		for (size_t i = 0; i < 7; i++)
+			vec.push_back(i);
+	}
+
+	std::vector<size_t> stdVec;
+	if (useInitializer)
+		stdVec = std::vector<size_t>({ 0,1,2,3,4,5,6 });
+	else {
+		for (size_t i = 0; i < 7; i++)
+			stdVec.push_back(i);
+	}
+
+	TEST_EQUAL(vec.size(), 7, "Vec size");
+	TEST_EQUAL(stdVec.size(), 7, "stdVec size");
+	TEST_EQUAL(vec[3], 3, "Vec pos 3");
+	TEST_EQUAL(stdVec[3], 3, "stdVec pos 3");
+
+	auto iter = find(vec.begin(), vec.end(), 3);
+	TEST_TRUE(vec.begin() + 3 == iter, "Vec find");
+
+	auto stdIter = find(stdVec.begin(), stdVec.end(), 3);
+	TEST_TRUE(stdVec.begin() + 3 == stdIter, "Vec std find");
+
+	vec.insert(iter, 10);
+	TEST_TRUE(vec.begin() + 3 == find(vec.begin(), vec.end(), 10), "Find after insert");
+	stdVec.insert(stdIter, 10);
+	TEST_TRUE(stdVec.begin() + 3 == find(stdVec.begin(), stdVec.end(), 10), "Find after std insert");
+
+	iter = find(vec.begin(), vec.end(), 10);
+	vec.insert(iter, { 11, 12 });
+	TEST_TRUE(vec.begin() + 3 == find(vec.begin(), vec.end(), 11), "Find after insert");
+	TEST_TRUE(vec.begin() + 4 == find(vec.begin(), vec.end(), 12), "Find after insert");
+	TEST_TRUE(vec.begin() + 5 == find(vec.begin(), vec.end(), 10), "Find after insert");
+
+	stdIter = find(stdVec.begin(), stdVec.end(), 10);
+	stdVec.insert(stdIter, { 11, 12 });
+	TEST_TRUE(stdVec.begin() + 3 == find(stdVec.begin(), stdVec.end(), 11), "Find after insert");
+	TEST_TRUE(stdVec.begin() + 4 == find(stdVec.begin(), stdVec.end(), 12), "Find after insert");
+	TEST_TRUE(stdVec.begin() + 5 == find(stdVec.begin(), stdVec.end(), 10), "Find after insert");
+
+	size_t s = vec.size();
+	iter = find(vec.begin(), vec.end(), 10);
+	vec.erase(iter);
+	TEST_TRUE(s - 1 == vec.size(), "Vec erase");
+
+	s = stdVec.size();
+	stdIter = find(stdVec.begin(), stdVec.end(), 10);
+	stdVec.erase(stdIter);
+	TEST_TRUE(s - 1 == stdVec.size(), "stdVec erase");
+
+	cout << "testVectorSort pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorForLoops() {
+
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+	for (size_t i = 0; i < 20; i++)
+		vec.push_back(i);
+
+	size_t i = 0;
+	for (size_t val : vec) {
+		TEST_EQUAL(val, i++, "Vec for loop");
+	}
+
+	for (i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(vec[i], i, "Vec for loop");
+	}
+
+	i = 0;
+	for (auto iter = vec.begin(); iter != vec.end(); iter++) {
+		TEST_EQUAL(*iter, i++, "Vec for loop");
+	}
+
+	i = vec.size() - 1;
+	for (auto iter = vec.rbegin(); iter != vec.rend(); iter++) {
+		TEST_EQUAL(*iter, i--, "Vec for loop");
+	}
+
+	cout << "testVectorForLoops pass\n";
+
+	return true;
+}
+
+bool TestPoolMemory::testVectorMisc() {
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+
+	TEST_EQUAL(vec.size(), 0, "Test size() == 0");
+
+	vec.push_back(1);
+	TEST_EQUAL(vec.size(), 1, "Test size() == 1");
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.back(), 1, "Test front()");
+
+	vec.push_back(2);
+	TEST_EQUAL(vec.size(), 2, "Test size() == 2");
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.back(), 2, "Test front()");
+
+	vec.pop_back();
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.size(), 1, "Test size() == 1");
+
+	vec.pop_back();
+	TEST_EQUAL(vec.size(), 0, "Test size() == 1");
+	TEST_TRUE(vec.empty(), "Test empty()");
+
+	cout << "testVectorMisc pass\n";
+
+	return true;
+}
+
 int main(int numParams, const char** params)
 {
-	testBlock();
+	//	testBlock();
+	TestPoolMemory tm;
+	if (!tm.testAll())
+		return 0;
 
 	return 0;
 }

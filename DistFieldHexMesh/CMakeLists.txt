@@ -24,8 +24,9 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_T
 include_directories(
 	"include"
 	"../../ThirdParty/eigen/"
-	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
+	"../../triMesh/triMesh/include/"
+	"../../triMesh/tests/include/"
 	"../../utilities/threads/include/"
 	"${OpenGlDir}/include/"
 	"${OpenGlDir}/include/${OpenGlPlatform}/"
@@ -88,6 +89,7 @@ add_executable (DistFieldHexMesh
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
+	"../../utilities/threads/src/pool_allocator.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
@@ -113,6 +115,7 @@ add_executable (TestDFM
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
+	"../../utilities/threads/src/pool_allocator.cpp"
 )
 
 if (WIN32)
