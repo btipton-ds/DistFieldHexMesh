@@ -437,7 +437,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 }
 #endif // _DEBUG
 
-	Polygon newFace(vertIndices, getHeapPtr());
+	Polygon newFace(vertIndices, getHeap());
 
 #if 0 && defined(_DEBUG)
 	const auto& edges = newFace.getEdges();
@@ -452,7 +452,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 }
 Index3DId Block::addFace(const vector<Vector3d>& pts)
 {
-	PoolUtils::vector<Index3DId> vertIds(getHeapPtr());
+	PoolUtils::vector<Index3DId> vertIds(getHeap());
 	for (const auto& pt : pts) {
 		auto vertId = addVertex(pt);
 		vertIds.push_back(vertId);

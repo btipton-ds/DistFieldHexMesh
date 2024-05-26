@@ -128,7 +128,7 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 		auto priorEdgeId = edgePtIds[j];
 		auto vertId = vertexIds[i];
 		auto nextEdgeId = edgePtIds[i];
-		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId }, _pBlock->getHeapPtr());
+		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId }, _pBlock->getHeap());
 
 #ifdef _DEBUG
 		Vector3d newNorm = Polygon::calUnitNormalStat(_pBlock, newFace.getVertexIds());

@@ -69,6 +69,8 @@ private:
 
 	bool testVector();
 	bool testVector0();
+	bool testVectorSort();
+	bool testVectorInsertErase();
 };
 
 bool TestPoolMemory::testAll()
@@ -87,7 +89,7 @@ bool TestPoolMemory::testAllocator()
 {
 	if (!testAllocator0()) return false;
 
-	cout << "TestAllocator pass";
+	cout << "TestAllocator pass\n";
 
 	return true;
 }
@@ -131,15 +133,17 @@ bool TestPoolMemory::testAllocator0()
 bool TestPoolMemory::testVector()
 {
 	if (!testVector0()) return false;
+	if (!testVectorSort()) return false;
+	if (!testVectorInsertErase()) return false;
 
-	cout << "TestAllocator pass";
+	cout << "testVector pass\n";
 	return true;
 }
 
 bool TestPoolMemory::testVector0()
 {
-	PoolUtils::localHeap(1024);
-	PoolUtils::vector<size_t> vec;
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
 
 	TEST_TRUE(vec.empty(), "vec empty failed");
 
@@ -155,7 +159,85 @@ bool TestPoolMemory::testVector0()
 	TEST_TRUE(vec.empty(), "vec empty failed");
 	TEST_EQUAL(vec.size(), 0, "vec size failed");
 
-	cout << "TestAllocator0 pass";
+	cout << "testVector0 pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorSort()
+{
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 }, lh);
+	std::vector<size_t> stdVec({ 7, 4, 5, 3, 1, 6, 0, 2 });
+
+	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
+	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	std::sort(stdVec.begin(), stdVec.end());
+	std::sort(vec.begin(), vec.end());
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	std::sort(stdVec.begin(), stdVec.end(), std::greater<>());
+	std::sort(vec.begin(), vec.end(), std::greater<>());
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+	}
+
+	cout << "testVectorSort pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorInsertErase()
+{
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec({ 0,1,2,3,4,5,6 }, lh);
+	std::vector<size_t> stdVec({ 0,1,2,3,4,5,6 });
+
+	TEST_EQUAL(vec.size(), 7, "Vec size");
+	TEST_EQUAL(stdVec.size(), 7, "stdVec size");
+	TEST_EQUAL(vec[3], 3, "Vec pos 3");
+	TEST_EQUAL(stdVec[3], 3, "stdVec pos 3");
+
+	auto iter = find(vec.begin(), vec.end(), 3);
+	TEST_TRUE(vec.begin() + 3 == iter, "Vec find");
+
+	auto stdIter = find(stdVec.begin(), stdVec.end(), 3);
+	TEST_TRUE(stdVec.begin() + 3 == stdIter, "Vec std find");
+
+	vec.insert(iter, 10);
+	TEST_TRUE(vec.begin() + 3 == find(vec.begin(), vec.end(), 10), "Find after insert");
+	stdVec.insert(stdIter, 10);
+	TEST_TRUE(stdVec.begin() + 3 == find(stdVec.begin(), stdVec.end(), 10), "Find after std insert");
+
+	iter = find(vec.begin(), vec.end(), 10);
+	vec.insert(iter, { 11, 12 });
+	TEST_TRUE(vec.begin() + 3 == find(vec.begin(), vec.end(), 11), "Find after insert");
+	TEST_TRUE(vec.begin() + 4 == find(vec.begin(), vec.end(), 12), "Find after insert");
+	TEST_TRUE(vec.begin() + 5 == find(vec.begin(), vec.end(), 10), "Find after insert");
+
+	stdIter = find(stdVec.begin(), stdVec.end(), 10);
+	stdVec.insert(stdIter, {11, 12});
+	TEST_TRUE(stdVec.begin() + 3 == find(stdVec.begin(), stdVec.end(), 11), "Find after insert");
+	TEST_TRUE(stdVec.begin() + 4 == find(stdVec.begin(), stdVec.end(), 12), "Find after insert");
+	TEST_TRUE(stdVec.begin() + 5 == find(stdVec.begin(), stdVec.end(), 10), "Find after insert");
+
+	size_t s = vec.size();
+	iter = find(vec.begin(), vec.end(), 10);
+	vec.erase(iter);
+	TEST_TRUE(s - 1 == vec.size(), "Vec erase");
+
+	s = stdVec.size();
+	stdIter = find(stdVec.begin(), stdVec.end(), 10);
+	stdVec.erase(stdIter);
+	TEST_TRUE(s - 1 == stdVec.size(), "stdVec erase");
+
+	cout << "testVectorSort pass\n";
 	return true;
 }
 

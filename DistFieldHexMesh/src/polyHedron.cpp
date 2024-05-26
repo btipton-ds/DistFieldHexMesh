@@ -538,7 +538,7 @@ void Polyhedron::getOutwardOrientedFaces(std::vector<Polygon>& faces) const
 			auto verts = face.getVertexIds();
 			if (faceNorm.dot(outwardNorm) < 0)
 				reverse(verts.begin(), verts.end());
-			Polygon dupFace(verts, getBlockPtr()->getHeapPtr());
+			Polygon dupFace(verts, getBlockPtr()->getHeap());
 			faces.push_back(dupFace);
 		});
 	}

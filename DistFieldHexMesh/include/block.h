@@ -89,7 +89,7 @@ public:
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
 	Block(const Block& src);
 
-	PoolUtils::localHeap* getHeapPtr() const;
+	PoolUtils::localHeap& getHeap() const;
 
 	size_t blockDim() const;
 
@@ -291,9 +291,9 @@ inline size_t Block::blockDim() const
 	return _blockDim;
 }
 
-inline PoolUtils::localHeap* Block::getHeapPtr() const
+inline PoolUtils::localHeap& Block::getHeap() const
 {
-	return &_localHeap;
+	return _localHeap;
 }
 
 inline Volume* Block::getVolume()

@@ -112,9 +112,9 @@ public:
 	static void dumpPolygonPoints(std::ostream& out, const std::vector<Vector3d>& pts);
 
 	Polygon() = default;
-	Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
-	Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
-	Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc);
+	Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap& heap);
+	Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap& heap);
+	Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap& heap);
 	Polygon(const Polygon& src);
 
 	Polygon& operator = (const Polygon& rhs);

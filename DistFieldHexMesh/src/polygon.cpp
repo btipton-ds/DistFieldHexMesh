@@ -49,20 +49,20 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Polygon::Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
-	: _vertexIds(pAlloc)
+Polygon::Polygon(const poolVector<Index3DId>& verts, ::PoolUtils::localHeap& heap)
+	: _vertexIds(heap)
 {
 	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
 }
 
-Polygon::Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
-	: _vertexIds(pAlloc)
+Polygon::Polygon(const std::vector<Index3DId>& verts, ::PoolUtils::localHeap& heap)
+	: _vertexIds(heap)
 {
 	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
 }
 
-Polygon::Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap* pAlloc)
-	: _vertexIds(pAlloc)
+Polygon::Polygon(const std::initializer_list<Index3DId>& verts, ::PoolUtils::localHeap& heap)
+	: _vertexIds(heap)
 {
 	_vertexIds.insert(_vertexIds.end(), verts.begin(), verts.end());
 }

@@ -33,21 +33,21 @@ This file is part of the DistFieldHexMesh application/library.
 #define VECTOR_DECL PoolUtils::vector<T> 
 
 TEMPL_DECL
-VECTOR_DECL::vector(::PoolUtils::localHeap* pAlloc)
-	: _pAlloc(pAlloc)
+VECTOR_DECL::vector(::PoolUtils::localHeap& heap)
+	: _pHeap(&heap)
 {
 }
 
 TEMPL_DECL
-VECTOR_DECL::vector(const std::vector<T>& src, ::PoolUtils::localHeap* pAlloc)
-	: _pAlloc(pAlloc)
+VECTOR_DECL::vector(const std::vector<T>& src, ::PoolUtils::localHeap& heap)
+	: _pHeap(&heap)
 {
 	insert(end(), src.begin(), src.end());
 }
 
 TEMPL_DECL
-VECTOR_DECL::vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap* pAlloc)
-	: _pAlloc(pAlloc)
+VECTOR_DECL::vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap& heap)
+	: _pHeap(&heap)
 {
 	insert(end(), src.begin(), src.end());
 }
@@ -96,6 +96,34 @@ template<class ITER_TYPE>
 void VECTOR_DECL::insert(const iterator& at, const ITER_TYPE& begin, const ITER_TYPE& end)
 {
 	_data.insert(_data.begin() + at._index, begin, end);
+}
+
+TEMPL_DECL
+void VECTOR_DECL::insert(const iterator& at, const T& val)
+{
+	_data.insert(_data.begin() + at._index, val);
+}
+
+TEMPL_DECL
+void VECTOR_DECL::insert(const iterator& at, const std::initializer_list<T>& vals)
+{
+	_data.insert(_data.begin() + at._index, vals.begin(), vals.end());
+}
+
+TEMPL_DECL
+VECTOR_DECL::iterator VECTOR_DECL::erase(const iterator& at)
+{
+	size_t idx = at._index;
+	_data.erase(_data.begin() + idx);
+	return iterator(this, std::max(size(), idx));
+}
+
+TEMPL_DECL
+VECTOR_DECL::iterator VECTOR_DECL::erase(const iterator& begin, const iterator& end)
+{
+	size_t idx = begin._index;
+	_data.erase(begin, end);
+	return iterator(this, std::max(size(), idx));
 }
 
 TEMPL_DECL

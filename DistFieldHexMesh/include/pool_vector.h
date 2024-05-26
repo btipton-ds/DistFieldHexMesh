@@ -86,9 +86,9 @@ public:
 
 	vector() = default;
 	vector(const vector& src) = default;
-	vector(::PoolUtils::localHeap* pAlloc);
-	vector(const std::vector<T>& src, ::PoolUtils::localHeap* pAlloc);
-	vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap* pAlloc);
+	vector(::PoolUtils::localHeap& heap);
+	vector(const std::vector<T>& src, ::PoolUtils::localHeap& heap);
+	vector(const std::initializer_list<T>& src, ::PoolUtils::localHeap& heap);
 
 	operator std::vector<T>() const;
 
@@ -100,6 +100,11 @@ public:
 
 	template<class ITER_TYPE>
 	void insert(const iterator& at, const ITER_TYPE& begin, const ITER_TYPE& end);
+	void insert(const iterator& at, const T& val);
+	void insert(const iterator& at, const std::initializer_list<T>& vals);
+
+	iterator erase(const iterator& at);
+	iterator erase(const iterator& begin, const iterator& end);
 
 	vector& operator = (const vector& rhs);
 
@@ -121,7 +126,7 @@ public:
 
 private:
 	std::vector<T> _data;
-	::PoolUtils::localHeap* _pAlloc;
+	::PoolUtils::localHeap* _pHeap;
 };
 
 }
