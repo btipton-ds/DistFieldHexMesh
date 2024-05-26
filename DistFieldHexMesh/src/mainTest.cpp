@@ -98,7 +98,7 @@ bool TestPoolMemory::testAllocator()
 
 bool TestPoolMemory::testAllocator0()
 {
-	PoolUtils::localHeap alloc(128);
+	MultiCore::local_heap alloc(128);
 	double* pD = (double*)alloc.alloc(sizeof(double));
 	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
 	*pD = 1.0;
@@ -147,8 +147,8 @@ bool TestPoolMemory::testVector()
 
 bool TestPoolMemory::testVector0()
 {
-	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec(lh);
+	MultiCore::local_heap lh(1024);
+	MultiCore::vector<size_t> vec(lh);
 
 	TEST_TRUE(vec.empty(), "vec empty failed");
 
@@ -170,8 +170,8 @@ bool TestPoolMemory::testVector0()
 
 bool TestPoolMemory::testVectorSort()
 {
-	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 }, lh);
+	MultiCore::local_heap lh(1024);
+	MultiCore::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 }, lh);
 	std::vector<size_t> stdVec({ 7, 4, 5, 3, 1, 6, 0, 2 });
 
 	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
@@ -200,10 +200,10 @@ bool TestPoolMemory::testVectorSort()
 
 bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 {
-	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec(lh);
+	MultiCore::local_heap lh(1024);
+	MultiCore::vector<size_t> vec(lh);
 	if (useInitializer)
-		vec = PoolUtils::vector<size_t>({ 0,1,2,3,4,5,6 }, lh);
+		vec = MultiCore::vector<size_t>({ 0,1,2,3,4,5,6 }, lh);
 	else {
 		for (size_t i = 0; i < 7; i++)
 			vec.push_back(i);
@@ -261,8 +261,8 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 
 bool TestPoolMemory::testVectorForLoops() {
 
-	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec(lh);
+	MultiCore::local_heap lh(1024);
+	MultiCore::vector<size_t> vec(lh);
 	for (size_t i = 0; i < 20; i++)
 		vec.push_back(i);
 
@@ -291,8 +291,8 @@ bool TestPoolMemory::testVectorForLoops() {
 }
 
 bool TestPoolMemory::testVectorMisc() {
-	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec(lh);
+	MultiCore::local_heap lh(1024);
+	MultiCore::vector<size_t> vec(lh);
 
 	TEST_EQUAL(vec.size(), 0, "Test size() == 0");
 
