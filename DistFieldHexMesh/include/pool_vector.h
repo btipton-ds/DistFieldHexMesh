@@ -30,13 +30,18 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_allocator.h>
 
 
+#define FORW_CONST 0
+#define REV_CONST 1
+#define FORW 2
+#define REV 3
+
 namespace PoolUtils
 {
 
 template<class T>
 class vector {
 private:
-	template <bool Const>
+	template <int IterType>
 	class _iterator
 	{
 	public:
@@ -47,8 +52,8 @@ private:
 
 #if 1
 		using value_type = std::remove_cv_t<T>;
-		using pointer = std::conditional_t<Const, T const*, T*>;
-		using reference = std::conditional_t<Const, T const&, T&>;
+		using pointer = std::conditional_t<IterType < FORW, T const*, T*>;
+		using reference = std::conditional_t<IterType < FORW, T const&, T&>;
 #else
 		using value_type = T;
 		using pointer = T*;
@@ -83,8 +88,10 @@ private:
 	};
 
 public:
-	using iterator = _iterator<false>;
-	using const_iterator = _iterator<true>;
+	using iterator = _iterator<FORW>;
+	using const_iterator = _iterator<FORW_CONST>;
+	using reverse_iterator = _iterator<REV>;
+	using const_reverse_iterator = _iterator<REV_CONST>;
 
 	vector() = default;
 	vector(const vector& src) = default;
@@ -114,6 +121,11 @@ public:
 	_NODISCARD _CONSTEXPR20 iterator begin() noexcept;
 	_NODISCARD _CONSTEXPR20 const_iterator end() const noexcept;
 	_NODISCARD _CONSTEXPR20 iterator end() noexcept;
+
+	_NODISCARD _CONSTEXPR20 const_reverse_iterator rbegin() const noexcept;
+	_NODISCARD _CONSTEXPR20 reverse_iterator rbegin() noexcept;
+	_NODISCARD _CONSTEXPR20 const_reverse_iterator rend() const noexcept;
+	_NODISCARD _CONSTEXPR20 reverse_iterator rend() noexcept;
 
 	const T& front() const;
 	T& front();

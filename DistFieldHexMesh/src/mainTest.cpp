@@ -72,6 +72,7 @@ private:
 	bool testVectorSort();
 	bool testVectorInsertErase(bool useInitializer);
 	bool testVectorForLoops();
+	bool testVectorMisc();
 };
 
 bool TestPoolMemory::testAll()
@@ -138,6 +139,7 @@ bool TestPoolMemory::testVector()
 	if (!testVectorInsertErase(true)) return false;
 	if (!testVectorInsertErase(false)) return false;
 	if (!testVectorForLoops()) return false;
+	if (!testVectorMisc()) return false;
 
 	cout << "testVector pass\n";
 	return true;
@@ -277,7 +279,43 @@ bool TestPoolMemory::testVectorForLoops() {
 	for (auto iter = vec.begin(); iter != vec.end(); iter++) {
 		TEST_EQUAL(*iter, i++, "Vec for loop");
 	}
+
+	i = vec.size() - 1;
+	for (auto iter = vec.rbegin(); iter != vec.rend(); iter++) {
+		TEST_EQUAL(*iter, i--, "Vec for loop");
+	}
+
 	cout << "testVectorForLoops pass\n";
+
+	return true;
+}
+
+bool TestPoolMemory::testVectorMisc() {
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+
+	TEST_EQUAL(vec.size(), 0, "Test size() == 0");
+
+	vec.push_back(1);
+	TEST_EQUAL(vec.size(), 1, "Test size() == 1");
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.back(), 1, "Test front()");
+
+	vec.push_back(2);
+	TEST_EQUAL(vec.size(), 2, "Test size() == 2");
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.back(), 2, "Test front()");
+
+	vec.pop_back();
+	TEST_EQUAL(vec.front(), 1, "Test front()");
+	TEST_EQUAL(vec.size(), 1, "Test size() == 1");
+
+	vec.pop_back();
+	TEST_EQUAL(vec.size(), 0, "Test size() == 1");
+	TEST_TRUE(vec.empty(), "Test empty()");
+
+	cout << "testVectorMisc pass\n";
+
 	return true;
 }
 

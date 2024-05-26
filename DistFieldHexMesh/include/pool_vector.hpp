@@ -30,7 +30,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_vector.h>
 
 #define TEMPL_DECL template<class T> 
+#define ITER_TEMPL_DECL template <int IterType>
 #define VECTOR_DECL PoolUtils::vector<T> 
+#define ITER_DECL PoolUtils::vector<T>::_iterator<IterType>
 
 TEMPL_DECL
 VECTOR_DECL::vector(::PoolUtils::localHeap& heap)
@@ -133,7 +135,6 @@ PoolUtils::vector<T>& VECTOR_DECL::operator = (const vector& rhs)
 	return *this;
 }
 
-
 TEMPL_DECL
 _NODISCARD _CONSTEXPR20 typename VECTOR_DECL::const_iterator VECTOR_DECL::begin() const noexcept
 {
@@ -156,6 +157,30 @@ TEMPL_DECL
 _NODISCARD _CONSTEXPR20 typename VECTOR_DECL::iterator VECTOR_DECL::end() noexcept
 {
 	return iterator(this, size());
+}
+
+TEMPL_DECL
+_NODISCARD _CONSTEXPR20 typename VECTOR_DECL::const_reverse_iterator VECTOR_DECL::rbegin() const noexcept
+{
+	return const_reverse_iterator(this, size() - 1);
+}
+
+TEMPL_DECL
+_NODISCARD _CONSTEXPR20 typename VECTOR_DECL::reverse_iterator VECTOR_DECL::rbegin() noexcept
+{
+	return reverse_iterator(this, size() - 1);
+}
+
+TEMPL_DECL
+_NODISCARD _CONSTEXPR20 typename VECTOR_DECL::const_reverse_iterator VECTOR_DECL::rend() const noexcept
+{
+	return const_reverse_iterator(this, -1);
+}
+
+TEMPL_DECL
+_NODISCARD _CONSTEXPR20 typename VECTOR_DECL::reverse_iterator VECTOR_DECL::rend() noexcept
+{
+	return reverse_iterator(this, -1);
 }
 
 TEMPL_DECL
@@ -209,8 +234,8 @@ void VECTOR_DECL::pop_back()
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const>::_iterator(const PoolUtils::vector<T>* pSource, size_t index)
+ITER_TEMPL_DECL
+ITER_DECL::_iterator(const PoolUtils::vector<T>* pSource, size_t index)
 	: _pSource(const_cast<PoolUtils::vector<T>*>(pSource))
 	, _index(index)
 {
@@ -218,113 +243,138 @@ VECTOR_DECL::_iterator<Const>::_iterator(const PoolUtils::vector<T>* pSource, si
 }
 
 TEMPL_DECL
-template <bool Const>
-bool VECTOR_DECL::_iterator<Const>::operator == (const _iterator& rhs) const
+ITER_TEMPL_DECL
+bool ITER_DECL::operator == (const _iterator& rhs) const
 {
 	assert(_pSource == _pSource);
 	return _index == rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-bool VECTOR_DECL::_iterator<Const>::operator != (const _iterator& rhs) const
+ITER_TEMPL_DECL
+bool ITER_DECL::operator != (const _iterator& rhs) const
 {
 	assert(_pSource == _pSource);
 	return _index != rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-bool VECTOR_DECL::_iterator<Const>::operator < (const _iterator& rhs) const
+ITER_TEMPL_DECL
+bool ITER_DECL::operator < (const _iterator& rhs) const
 {
 	assert(_pSource == _pSource);
 	return _index < rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-bool VECTOR_DECL::_iterator<Const>::operator > (const _iterator& rhs) const
+ITER_TEMPL_DECL
+bool ITER_DECL::operator > (const _iterator& rhs) const
 {
 	assert(_pSource == _pSource);
 	return _index > rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator ++ ()
+ITER_TEMPL_DECL
+ITER_DECL& ITER_DECL::operator ++ ()
 {
-	_index++;
+	if (IterType == FORW_CONST || IterType == FORW)
+		_index++;
+	else
+		_index--;
 	return *this;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator ++ (int)
+ITER_TEMPL_DECL
+ITER_DECL& ITER_DECL::operator ++ (int)
 {
-	_index++;
+	if (IterType == FORW_CONST || IterType == FORW)
+		_index++;
+	else
+		_index--;
 	return *this;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator --()
+ITER_TEMPL_DECL
+ITER_DECL& ITER_DECL::operator --()
 {
-	_index--;
+	if (IterType == FORW_CONST || IterType == FORW)
+		_index--;
+	else
+		_index++;
 	return *this;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator --(int)
+ITER_TEMPL_DECL
+ITER_DECL& ITER_DECL::operator --(int)
 {
-	_index--;
+	if (IterType == FORW_CONST || IterType == FORW)
+		_index--;
+	else
+		_index++;
 	return *this;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const> VECTOR_DECL::_iterator<Const>::operator + (size_t val) const
+ITER_TEMPL_DECL
+ITER_DECL ITER_DECL::operator + (size_t rhs) const
 {
 	_iterator result(*this);
-	result._index += val;
+	if (IterType == FORW_CONST || IterType == FORW)
+		result._index += rhs;
+	else
+		result._index -= rhs;
 	return result;
 }
 
 TEMPL_DECL
-template <bool Const>
-size_t VECTOR_DECL::_iterator<Const>::operator + (const _iterator& rhs) const
+ITER_TEMPL_DECL
+size_t ITER_DECL::operator + (const _iterator& rhs) const
 {
 	assert(_pSource == rhs._pSource);
-	return _index + rhs._index;
+
+	if (IterType == FORW_CONST || IterType == FORW)
+		return _index + rhs._index;
+	else
+		return _index - rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-VECTOR_DECL::_iterator<Const> VECTOR_DECL::_iterator<Const>::operator - (size_t val) const
+ITER_TEMPL_DECL
+ITER_DECL ITER_DECL::operator - (size_t rhs) const
 {
 	_iterator result(*this);
-	result._index -= val;
+	if (IterType == FORW_CONST || IterType == FORW)
+		result._index -= rhs;
+	else
+		result._index += rhs;
 	return result;
 }
 
 TEMPL_DECL
-template <bool Const>
-size_t VECTOR_DECL::_iterator<Const>::operator - (const _iterator& rhs) const
+ITER_TEMPL_DECL
+size_t ITER_DECL::operator - (const _iterator& rhs) const
 {
 	assert(_pSource == rhs._pSource);
-	return _index - rhs._index;
+	if (IterType == FORW_CONST || IterType == FORW)
+		return _index - rhs._index;
+	else
+		return _index + rhs._index;
 }
 
 TEMPL_DECL
-template <bool Const>
-T& VECTOR_DECL::_iterator<Const>::operator *() const
+ITER_TEMPL_DECL
+T& ITER_DECL::operator *() const
 {
 	return _pSource->operator[](_index);
 }
 
 TEMPL_DECL
-template <bool Const>
-T* VECTOR_DECL::_iterator<Const>::operator->() const
+ITER_TEMPL_DECL
+T* ITER_DECL::operator->() const
 {
 	return &(_pSource->operator[](_index));
 }
