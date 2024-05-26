@@ -70,7 +70,8 @@ private:
 	bool testVector();
 	bool testVector0();
 	bool testVectorSort();
-	bool testVectorInsertErase();
+	bool testVectorInsertErase(bool useInitializer);
+	bool testVectorForLoops();
 };
 
 bool TestPoolMemory::testAll()
@@ -134,7 +135,9 @@ bool TestPoolMemory::testVector()
 {
 	if (!testVector0()) return false;
 	if (!testVectorSort()) return false;
-	if (!testVectorInsertErase()) return false;
+	if (!testVectorInsertErase(true)) return false;
+	if (!testVectorInsertErase(false)) return false;
+	if (!testVectorForLoops()) return false;
 
 	cout << "testVector pass\n";
 	return true;
@@ -193,11 +196,24 @@ bool TestPoolMemory::testVectorSort()
 	return true;
 }
 
-bool TestPoolMemory::testVectorInsertErase()
+bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 {
 	PoolUtils::localHeap lh(1024);
-	PoolUtils::vector<size_t> vec({ 0,1,2,3,4,5,6 }, lh);
-	std::vector<size_t> stdVec({ 0,1,2,3,4,5,6 });
+	PoolUtils::vector<size_t> vec(lh);
+	if (useInitializer)
+		vec = PoolUtils::vector<size_t>({ 0,1,2,3,4,5,6 }, lh);
+	else {
+		for (size_t i = 0; i < 7; i++)
+			vec.push_back(i);
+	}
+
+	std::vector<size_t> stdVec;
+	if (useInitializer)
+		stdVec = std::vector<size_t>({ 0,1,2,3,4,5,6 });
+	else {
+		for (size_t i = 0; i < 7; i++)
+			stdVec.push_back(i);
+	}
 
 	TEST_EQUAL(vec.size(), 7, "Vec size");
 	TEST_EQUAL(stdVec.size(), 7, "stdVec size");
@@ -238,6 +254,30 @@ bool TestPoolMemory::testVectorInsertErase()
 	TEST_TRUE(s - 1 == stdVec.size(), "stdVec erase");
 
 	cout << "testVectorSort pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorForLoops() {
+
+	PoolUtils::localHeap lh(1024);
+	PoolUtils::vector<size_t> vec(lh);
+	for (size_t i = 0; i < 20; i++)
+		vec.push_back(i);
+
+	size_t i = 0;
+	for (size_t val : vec) {
+		TEST_EQUAL(val, i++, "Vec for loop");
+	}
+
+	for (i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(vec[i], i, "Vec for loop");
+	}
+
+	i = 0;
+	for (auto iter = vec.begin(); iter != vec.end(); iter++) {
+		TEST_EQUAL(*iter, i++, "Vec for loop");
+	}
+	cout << "testVectorForLoops pass\n";
 	return true;
 }
 

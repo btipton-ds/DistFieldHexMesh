@@ -259,7 +259,23 @@ VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator ++ ()
 
 TEMPL_DECL
 template <bool Const>
+VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator ++ (int)
+{
+	_index++;
+	return *this;
+}
+
+TEMPL_DECL
+template <bool Const>
 VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator --()
+{
+	_index--;
+	return *this;
+}
+
+TEMPL_DECL
+template <bool Const>
+VECTOR_DECL::_iterator<Const>& VECTOR_DECL::_iterator<Const>::operator --(int)
 {
 	_index--;
 	return *this;

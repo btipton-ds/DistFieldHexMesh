@@ -65,6 +65,8 @@ private:
 
 		_iterator& operator ++ ();
 		_iterator& operator --();
+		_iterator& operator ++ (int);
+		_iterator& operator --(int);
 
 		_iterator operator + (size_t val) const;
 		size_t operator + (const _iterator& rhs) const;
