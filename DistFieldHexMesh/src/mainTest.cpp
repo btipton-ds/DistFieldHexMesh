@@ -69,6 +69,7 @@ private:
 
 	bool testVector();
 	bool testVector0();
+	bool testVectorInsert();
 	bool testVectorSort();
 	bool testVectorInsertErase(bool useInitializer);
 	bool testVectorForLoops();
@@ -107,7 +108,7 @@ bool TestPoolMemory::testAllocator0()
 	double* pD2 = (double*)alloc.alloc(sizeof(double));
 
 	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
-	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
 
 	*pD2 = 1.0;
 	alloc.free(pD2);
@@ -122,7 +123,7 @@ bool TestPoolMemory::testAllocator0()
 	pD2 = (double*)alloc.alloc(3 * sizeof(double));
 
 	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
-	TEST_EQUAL(pD, pD2, "Delete and allocate pointer did not result in the same address");
+	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
 
 	pD2[0] = 1.0;
 	pD2[1] = 2.0;
@@ -135,6 +136,7 @@ bool TestPoolMemory::testAllocator0()
 bool TestPoolMemory::testVector()
 {
 	if (!testVector0()) return false;
+	if (!testVectorInsert()) return false;
 	if (!testVectorSort()) return false;
 	if (!testVectorInsertErase(true)) return false;
 	if (!testVectorInsertErase(false)) return false;
@@ -147,22 +149,59 @@ bool TestPoolMemory::testVector()
 
 bool TestPoolMemory::testVector0()
 {
-	MultiCore::local_heap lh(1024);
-	MultiCore::vector<size_t> vec(lh);
+	MultiCore::vector<size_t> vec;
 
-	TEST_TRUE(vec.empty(), "vec empty failed");
+	TEST_TRUE(vec.empty(), "vec empty");
 
 	for (size_t i = 0; i < 128; i++)
 		vec.push_back(i);
 
 	TEST_FALSE(vec.empty(), "vec not empty failed");
-	TEST_EQUAL(vec.size(), 128, "vec size failed");
+	TEST_EQUAL(vec.size(), 128, "vec size");
 
 	for (size_t i = 0; i < 128; i++)
 		vec.pop_back();
 
-	TEST_TRUE(vec.empty(), "vec empty failed");
-	TEST_EQUAL(vec.size(), 0, "vec size failed");
+	TEST_TRUE(vec.empty(), "vec empty");
+	TEST_EQUAL(vec.size(), 0, "vec size");
+
+	cout << "testVector0 pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorInsert()
+{
+	MultiCore::vector<size_t> vec({ 0, 1, 2, 3 });
+	std::vector<size_t> stdVec({ 0, 1, 2, 3 });
+
+	TEST_EQUAL(vec.size(), 4, "vec size");
+	TEST_EQUAL(vec.size(), stdVec.size(), "vec size");
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(vec[i], i, "vec value");
+		TEST_EQUAL(vec[i], stdVec[i], "vec value");
+	}
+
+	vec.insert(vec.end(), {4, 5, 6, 7});
+	stdVec.insert(stdVec.end(), { 4, 5, 6, 7 });
+
+	TEST_EQUAL(vec.size(), 8, "vec size");
+	TEST_EQUAL(vec.size(), stdVec.size(), "vec size");
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(vec[i], i, "vec value");
+		TEST_EQUAL(vec[i], stdVec[i], "vec value");
+	}
+
+	vec.insert(vec.begin() + 3, { 8, 9, 10, 11 });
+	stdVec.insert(stdVec.begin() + 3, { 8, 9, 10, 11 });
+
+	TEST_EQUAL(vec.size(), 12, "vec size");
+	TEST_EQUAL(vec.size(), stdVec.size(), "vec size");
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		TEST_EQUAL(vec[i], stdVec[i], "vec value");
+	}
 
 	cout << "testVector0 pass\n";
 	return true;
@@ -170,28 +209,27 @@ bool TestPoolMemory::testVector0()
 
 bool TestPoolMemory::testVectorSort()
 {
-	MultiCore::local_heap lh(1024);
-	MultiCore::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 }, lh);
+	MultiCore::vector<size_t> vec({ 7, 4, 5, 3, 1, 6, 0, 2 });
 	std::vector<size_t> stdVec({ 7, 4, 5, 3, 1, 6, 0, 2 });
 
-	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
-	TEST_EQUAL(stdVec.size(), stdVec.size(), "vec size failed");
+	TEST_EQUAL(vec.size(), 8, "vec size");
+	TEST_EQUAL(vec.size(), stdVec.size(), "vec size");
 	for (size_t i = 0; i < vec.size(); i++) {
-		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
 	std::sort(stdVec.begin(), stdVec.end());
 	std::sort(vec.begin(), vec.end());
 
 	for (size_t i = 0; i < vec.size(); i++) {
-		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size");
 	}
 
 	std::sort(stdVec.begin(), stdVec.end(), std::greater<>());
 	std::sort(vec.begin(), vec.end(), std::greater<>());
 
 	for (size_t i = 0; i < vec.size(); i++) {
-		TEST_EQUAL(stdVec[i], stdVec[i], "vec size failed");
+		TEST_EQUAL(stdVec[i], stdVec[i], "vec size");
 	}
 
 	cout << "testVectorSort pass\n";
@@ -200,10 +238,9 @@ bool TestPoolMemory::testVectorSort()
 
 bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 {
-	MultiCore::local_heap lh(1024);
-	MultiCore::vector<size_t> vec(lh);
+	MultiCore::vector<size_t> vec;
 	if (useInitializer)
-		vec = MultiCore::vector<size_t>({ 0,1,2,3,4,5,6 }, lh);
+		vec = MultiCore::vector<size_t>({ 0,1,2,3,4,5,6 });
 	else {
 		for (size_t i = 0; i < 7; i++)
 			vec.push_back(i);
@@ -260,9 +297,7 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 }
 
 bool TestPoolMemory::testVectorForLoops() {
-
-	MultiCore::local_heap lh(1024);
-	MultiCore::vector<size_t> vec(lh);
+	MultiCore::vector<size_t> vec;
 	for (size_t i = 0; i < 20; i++)
 		vec.push_back(i);
 
@@ -291,8 +326,7 @@ bool TestPoolMemory::testVectorForLoops() {
 }
 
 bool TestPoolMemory::testVectorMisc() {
-	MultiCore::local_heap lh(1024);
-	MultiCore::vector<size_t> vec(lh);
+	MultiCore::vector<size_t> vec;
 
 	TEST_EQUAL(vec.size(), 0, "Test size() == 0");
 
