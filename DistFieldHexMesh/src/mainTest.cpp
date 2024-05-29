@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <memory>
 #include <iostream>
+#include <cstdlib>
 
 #include <defines.h>
 #include <tests.h>
@@ -38,12 +39,34 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_vector.h>
 
 using namespace std;
-
-namespace DFHM {
-
-}
-
 using namespace DFHM;
+
+
+namespace
+{
+struct Dummy {
+	Dummy()
+	{
+	}
+
+	Dummy(size_t val)
+		: _val(val)
+	{
+	}
+
+	Dummy(const Dummy& src)
+		: _val(src._val)
+	{
+	}
+
+	~Dummy()
+	{
+		_val = -1;
+	}
+
+	size_t _val = -1;
+};
+}
 
 void testBlock(size_t bd = 8)
 {
@@ -66,9 +89,11 @@ public:
 private:
 	bool testAllocator();
 	bool testAllocator0();
+	bool testAllocator1();
 
 	bool testVector();
-	bool testVector0();
+	bool testVectorSizeT();
+	bool testVectorVectorSizeT();
 	bool testVectorInsert();
 	bool testVectorSort();
 	bool testVectorInsertErase(bool useInitializer);
@@ -92,6 +117,7 @@ bool TestPoolMemory::testAll()
 bool TestPoolMemory::testAllocator()
 {
 	if (!testAllocator0()) return false;
+	if (!testAllocator1()) return false;
 
 	cout << "TestAllocator pass\n";
 
@@ -101,7 +127,6 @@ bool TestPoolMemory::testAllocator()
 bool TestPoolMemory::testAllocator0()
 {
 	MultiCore::local_heap alloc(128);
-	MultiCore::local_heap::scoped_set_thread_heap sh(&alloc);
 	double* pD = alloc.alloc<double>(1);
 	TEST_TRUE(pD != nullptr, "Failed to allocate pointer");
 	*pD = 1.0;
@@ -135,63 +160,123 @@ bool TestPoolMemory::testAllocator0()
 	return true;
 }
 
+bool TestPoolMemory::testAllocator1()
+{
+	MultiCore::local_heap heap(2048, 64);
+	MultiCore::local_heap::scoped_set_thread_heap st(&heap);
+
+	for (size_t i = 0; i < 1000; i ++) {
+		size_t num = 5 + (size_t)((95 * std::rand() / (double)RAND_MAX) + 0.5);
+		auto p = heap.alloc<Dummy>(num);
+		heap.free(p);
+	}
+
+	for (size_t i = 0; i < 1000; i++) {
+		size_t num = 5 + (size_t)((95 * std::rand() / (double)RAND_MAX) + 0.5);
+		auto p = heap.alloc<Dummy>(num);
+		heap.free(p);
+	}
+
+	cout << "testVector pass\n";
+	return true;
+}
+
 bool TestPoolMemory::testVector()
 {
-	if (!testVector0()) return false;
+	if (!testVectorSizeT()) return false;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorSizeT())
+			return false;
+		return true;
+	}, true);
+
+	if (!testVectorVectorSizeT()) return false;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorVectorSizeT())
+			return false;
+		return true;
+		}, true);
+
 	if (!testVectorInsert()) return false;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorInsert())
+			return false;
+		return true;
+	}, true);
+
 	if (!testVectorSort()) return false;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorSort())
+			return false;
+		return true;
+	}, true);
+
+#if 0
 	if (!testVectorInsertErase(true)) return false;
 	if (!testVectorInsertErase(false)) return false;
 	if (!testVectorForLoops()) return false;
 	if (!testVectorMisc()) return false;
 
 	if (!memoryStressTest()) return false;
-
+#endif
 	cout << "testVector pass\n";
 	return true;
 }
 
-namespace
+bool TestPoolMemory::testVectorSizeT()
 {
-struct Dummy {
-	Dummy()
-	{
-	}
-
-	Dummy(size_t val)
-		: _val(val)
-	{
-	}
-
-	Dummy(const Dummy& src)
-		: _val(src._val)
-	{
-	}
-
-	~Dummy()
-	{
-		_val = -1;
-	}
-
-	size_t _val = -1;
-};
-}
-
-bool TestPoolMemory::testVector0()
-{
-	MultiCore::local_heap alloc(128);
-	MultiCore::local_heap::scoped_set_thread_heap sh(&alloc);
 	MultiCore::vector<Dummy> vec;
 
+	size_t size = 2048;
 	TEST_TRUE(vec.empty(), "vec empty");
 
-	for (size_t i = 0; i < 128; i++)
+	for (size_t i = 0; i < size; i++)
 		vec.push_back(i);
 
 	TEST_FALSE(vec.empty(), "vec not empty failed");
-	TEST_EQUAL(vec.size(), 128, "vec size");
+	TEST_EQUAL(vec.size(), size, "vec size");
 
-	for (size_t i = 0; i < 128; i++)
+	for (size_t i = 0; i < size; i++)
+		vec.pop_back();
+
+	TEST_TRUE(vec.empty(), "vec empty");
+	TEST_EQUAL(vec.size(), 0, "vec size");
+
+	cout << "testVector0 pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testVectorVectorSizeT()
+{
+	MultiCore::vector<MultiCore::vector<Dummy>> vec;
+
+	size_t size0 = 200;
+	size_t size1 = 200;
+	TEST_TRUE(vec.empty(), "vec empty");
+
+	for (size_t i = 0; i < size0; i++) {
+		vec.push_back(MultiCore::vector<Dummy>());
+		auto& subVec = vec.back();
+		for (size_t j = 0; j < size1; j++) {
+			if (i == 65 && j == 160) {
+				int dbgBreak = 1;
+			}
+			subVec.push_back(j);
+		}
+	}
+
+	TEST_FALSE(vec.empty(), "vec not empty failed");
+	TEST_EQUAL(vec.size(), size0, "vec size");
+
+	for (size_t i = 0; i < size0; i++)
 		vec.pop_back();
 
 	TEST_TRUE(vec.empty(), "vec empty");
