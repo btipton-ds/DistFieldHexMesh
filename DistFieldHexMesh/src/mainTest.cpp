@@ -92,7 +92,7 @@ private:
 	bool testAllocator1();
 
 	bool testVector();
-	bool testVectorSizeT();
+	bool testVectorSizeT(size_t threadNum = 0);
 	bool testVectorVectorSizeT();
 	bool testVectorInsert();
 	bool testVectorSort();
@@ -177,17 +177,17 @@ bool TestPoolMemory::testAllocator1()
 		heap.free(p);
 	}
 
-	cout << "testVector pass\n";
+	cout << "testAllocator1 pass\n";
 	return true;
 }
 
 bool TestPoolMemory::testVector()
 {
-	if (!testVectorSizeT()) return false;
+	if (!testVectorSizeT(-1)) return false;
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
-		if (!testVectorSizeT())
+		if (!testVectorSizeT(threadNum))
 			return false;
 		return true;
 	}, true);
@@ -231,15 +231,16 @@ bool TestPoolMemory::testVector()
 	return true;
 }
 
-bool TestPoolMemory::testVectorSizeT()
+bool TestPoolMemory::testVectorSizeT(size_t threadNum)
 {
 	MultiCore::vector<Dummy> vec;
 
 	size_t size = 2048;
 	TEST_TRUE(vec.empty(), "vec empty");
 
-	for (size_t i = 0; i < size; i++)
+	for (size_t i = 0; i < size; i++) {
 		vec.push_back(i);
+	}
 
 	TEST_FALSE(vec.empty(), "vec not empty failed");
 	TEST_EQUAL(vec.size(), size, "vec size");
@@ -250,23 +251,25 @@ bool TestPoolMemory::testVectorSizeT()
 	TEST_TRUE(vec.empty(), "vec empty");
 	TEST_EQUAL(vec.size(), 0, "vec size");
 
-	cout << "testVector0 pass\n";
+	cout << "testVectorSizeT pass\n";
 	return true;
 }
 
 bool TestPoolMemory::testVectorVectorSizeT()
 {
+	MultiCore::local_heap alloc(1024);
+	MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
 	MultiCore::vector<MultiCore::vector<Dummy>> vec;
 
-	size_t size0 = 200;
-	size_t size1 = 200;
+	size_t size0 = 1000;
+	size_t size1 = 500;
 	TEST_TRUE(vec.empty(), "vec empty");
 
 	for (size_t i = 0; i < size0; i++) {
 		vec.push_back(MultiCore::vector<Dummy>());
 		auto& subVec = vec.back();
 		for (size_t j = 0; j < size1; j++) {
-			if (i == 65 && j == 160) {
+			if (i == 0 && j == 0) {
 				int dbgBreak = 1;
 			}
 			subVec.push_back(j);
@@ -282,7 +285,7 @@ bool TestPoolMemory::testVectorVectorSizeT()
 	TEST_TRUE(vec.empty(), "vec empty");
 	TEST_EQUAL(vec.size(), 0, "vec size");
 
-	cout << "testVector0 pass\n";
+	cout << "testVectorVectorSizeT pass\n";
 	return true;
 }
 
@@ -320,7 +323,7 @@ bool TestPoolMemory::testVectorInsert()
 		TEST_EQUAL(vec[i], stdVec[i], "vec value");
 	}
 
-	cout << "testVector0 pass\n";
+	cout << "testVectorInsert pass\n";
 	return true;
 }
 
@@ -413,7 +416,7 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
-	cout << "testVectorSort pass\n";
+	cout << "testVectorInsertErase pass\n";
 	return true;
 }
 
@@ -489,9 +492,7 @@ bool TestPoolMemory::memoryStressTest()
 			}
 		}
 
-//		std::sort(vec.begin(), vec.end(), std::greater<>());
-
-		cout << "Thread " << threadNum << " complete\n";
+		std::sort(vec.back().begin(), vec.back().end(), std::greater<>());
 	}, false);
 
 	cout << "memoryStressTest pass\n";
