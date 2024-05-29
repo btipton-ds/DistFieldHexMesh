@@ -184,6 +184,15 @@ bool TestPoolMemory::testAllocator1()
 bool TestPoolMemory::testVector()
 {
 	if (!testVectorSizeT(-1)) return false;
+	if (!testVectorVectorSizeT()) return false;
+	if (!testVectorInsert()) return false;
+	if (!testVectorSort()) return false;
+	if (!testVectorInsertErase(true)) return false;
+	if (!testVectorInsertErase(false)) return false;
+	if (!testVectorForLoops()) return false;
+	if (!testVectorMisc()) return false;
+
+#if 1
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -192,7 +201,6 @@ bool TestPoolMemory::testVector()
 		return true;
 	}, true);
 
-	if (!testVectorVectorSizeT()) return false;
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -201,7 +209,6 @@ bool TestPoolMemory::testVector()
 		return true;
 		}, true);
 
-	if (!testVectorInsert()) return false;
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -210,7 +217,6 @@ bool TestPoolMemory::testVector()
 		return true;
 	}, true);
 
-	if (!testVectorSort()) return false;
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -219,14 +225,42 @@ bool TestPoolMemory::testVector()
 		return true;
 	}, true);
 
-#if 0
-	if (!testVectorInsertErase(true)) return false;
-	if (!testVectorInsertErase(false)) return false;
-	if (!testVectorForLoops()) return false;
-	if (!testVectorMisc()) return false;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorInsertErase(true))
+			return false;
+		return true;
+	}, true);
+
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorInsertErase(false))
+			return false;
+		return true;
+	}, true);
+
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorForLoops())
+			return false;
+		return true;
+	}, true);
+
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testVectorMisc())
+			return false;
+		return true;
+	}, true);
+
+#endif
 
 	if (!memoryStressTest()) return false;
-#endif
+
 	cout << "testVector pass\n";
 	return true;
 }
@@ -493,6 +527,7 @@ bool TestPoolMemory::memoryStressTest()
 		}
 
 		std::sort(vec.back().begin(), vec.back().end(), std::greater<>());
+		std::sort(vec.back().begin(), vec.back().end());
 	}, false);
 
 	cout << "memoryStressTest pass\n";
