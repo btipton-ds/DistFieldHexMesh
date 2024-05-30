@@ -93,7 +93,7 @@ private:
 	bool testAllocator1();
 
 	bool testVector();
-	bool testVectorSizeT(size_t threadNum = 0);
+	bool testVectorSizeT();
 	bool testVectorVectorSizeT();
 	bool testVectorInsert();
 	bool testVectorSort();
@@ -103,7 +103,7 @@ private:
 	bool memoryStressTest();
 
 	bool testSet();
-	bool testSet0();
+	bool testSetInsertErase();
 };
 
 bool TestPoolMemory::testAll()
@@ -188,7 +188,7 @@ bool TestPoolMemory::testAllocator1()
 
 bool TestPoolMemory::testVector()
 {
-	if (!testVectorSizeT(-1)) return false;
+	if (!testVectorSizeT()) return false;
 	if (!testVectorInsert()) return false;
 	if (!testVectorSort()) return false;
 	if (!testVectorInsertErase(true)) return false;
@@ -201,7 +201,7 @@ bool TestPoolMemory::testVector()
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
-		if (!testVectorSizeT(threadNum))
+		if (!testVectorSizeT())
 			return false;
 		return true;
 	}, true);
@@ -270,7 +270,7 @@ bool TestPoolMemory::testVector()
 	return true;
 }
 
-bool TestPoolMemory::testVectorSizeT(size_t threadNum)
+bool TestPoolMemory::testVectorSizeT()
 {
 	MultiCore::vector<Dummy> vec;
 
@@ -470,6 +470,30 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
+	size_t preSize = vec.size();
+	iter = find(vec.begin(), vec.end(), 4);
+	TEST_TRUE(iter != vec.end(), "Find succeed");
+	vec.erase(iter);
+	TEST_TRUE(vec.size() == preSize - 1, "Erase in list succeed");
+
+	preSize = vec.size();
+	iter = find(vec.begin(), vec.end(), 100);
+	TEST_TRUE(iter == vec.end(), "Find fail");
+	vec.erase(iter);
+	TEST_TRUE(vec.size() == preSize, "Erase not in list succeed");
+
+	{
+		MultiCore::vector<size_t> vec ({ 0, 1, 2, 2, 2, 3, 4, 5, 6 });
+
+		preSize = vec.size();
+		vec.erase(vec.begin() + 2, vec.begin() + 4);
+		TEST_TRUE(vec.size() == preSize - 2, "Erase multiple");
+
+		for (size_t i = 0; i < vec.size(); i++) {
+			TEST_EQUAL(vec[i], i, "vec size");
+		}
+	}
+
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
@@ -525,6 +549,20 @@ bool TestPoolMemory::testVectorMisc() {
 	TEST_EQUAL(vec.size(), 0, "Test size() == 1");
 	TEST_TRUE(vec.empty(), "Test empty()");
 
+	{
+		MultiCore::vector<size_t> vec({ 0, 1, 2, 3 });
+		MultiCore::vector<size_t> vec2({ 4, 5, 6, 7 });
+		for (size_t i = 0; i < vec.size(); i++) {
+			TEST_EQUAL(vec[i], i, "vec copy entry");
+			TEST_EQUAL(vec2[i], i + 4, "vec copy entry");
+		}
+
+		vec = vec2;
+		for (size_t i = 0; i < vec.size(); i++) {
+			TEST_EQUAL(vec[i], i + 4, "vec copy entry");
+			TEST_EQUAL(vec2[i], i + 4, "vec copy entry");
+		}
+	}
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
@@ -554,18 +592,55 @@ bool TestPoolMemory::memoryStressTest()
 
 bool TestPoolMemory::testSet()
 {
-	if (!testSet0()) return false;
+	if (!testSetInsertErase()) return false;
+
+#if 1
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testSetInsertErase())
+			return false;
+		return true;
+	}, true);
+#endif
 
 	cout << "Test set pass\n";
 	return true;
 }
 
-bool TestPoolMemory::testSet0()
+bool TestPoolMemory::testSetInsertErase()
 {
-	std::vector<size_t> ref({ 7,5,9,3,1 });
+	std::vector<size_t> ref({ 7, 5, 44, 9, 23, 2, 17, 3, 1, 0, 100 });
 	MultiCore::set<size_t> s;
 	for (size_t v : ref)
 		s.insert(v);
+
+	sort(ref.begin(), ref.end());
+	TEST_EQUAL(ref.size(), s.size(), "Verify set size");
+
+	size_t i = 0;
+	for (auto iter = s.begin(); iter != s.end(); iter++)
+		TEST_EQUAL(*iter, ref[i++], "Verify set entry");
+
+	auto iter = s.find(17);
+	TEST_TRUE(iter != s.end(), "Find in set");
+
+	iter = s.find(4);
+	TEST_TRUE(iter == s.end(), "Find not in set");
+
+	iter = s.find(23);
+	TEST_TRUE(iter != s.end(), "Find in set");
+	s.erase(iter);
+	iter = s.find(23);
+	TEST_TRUE(iter == s.end(), "Find not in set");
+
+	TEST_TRUE(s.size() == ref.size() - 1, "Found item removed from set");
+
+	iter = s.find(77);
+	TEST_TRUE(iter == s.end(), "Find not in set");
+	s.erase(iter);
+
+	TEST_TRUE(s.size() == ref.size() - 1, "Erase item not in set");
 
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
