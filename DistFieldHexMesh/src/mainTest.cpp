@@ -708,12 +708,23 @@ bool TestPoolMemory::testMap()
 
 bool TestPoolMemory::testMapBasic()
 {
+	std::map<size_t, Dummy> stdM;
 	MultiCore::map<size_t, Dummy> m;
 	TEST_TRUE(m.empty(), "New map empty");
-	TEST_EQUAL(m.size(), 0, "New map empty");
-	auto iter = m.insert(std::make_pair(0, Dummy(0))).first;
-	TEST_TRUE(iter != m.end(), "insert iter test");
-	TEST_EQUAL(m.size(), 1, "New empty");
+	TEST_EQUAL(m.size(), 0, "New size 0");
+	for (size_t i = 0; i < 20; i++) {
+		auto iter = m.insert(std::make_pair(i, Dummy(i + 1))).first;
+		TEST_TRUE(iter != m.end(), "insert iter test");
+		TEST_EQUAL(m.size(), i + 1, "Size");
+		TEST_EQUAL(iter->second._val, i + 1, "Size");
+	}
+
+	for (auto iter = m.begin(); iter != m.end(); iter++) {
+		auto f = iter->first;
+		auto& s = iter->second;
+	}
+
+
 	return true;
 }
 
