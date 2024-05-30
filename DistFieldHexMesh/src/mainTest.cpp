@@ -104,6 +104,7 @@ private:
 
 	bool testSet();
 	bool testSetInsertErase();
+	bool testHeavySetInsertErase();
 };
 
 bool TestPoolMemory::testAll()
@@ -594,6 +595,8 @@ bool TestPoolMemory::testSet()
 {
 	if (!testSetInsertErase()) return false;
 
+	if (!testHeavySetInsertErase()) return false;
+
 #if 1
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -641,6 +644,49 @@ bool TestPoolMemory::testSetInsertErase()
 	s.erase(iter);
 
 	TEST_TRUE(s.size() == ref.size() - 1, "Erase item not in set");
+
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
+	return true;
+}
+
+namespace
+{
+class DummyVec
+{
+public:
+	DummyVec() = default;
+	DummyVec(size_t size)
+		: _id(size)
+	{
+		for (int i = 0; i < size; i++)
+			_data.push_back(i);
+	}
+
+	void clear() const
+	{
+		_data.clear();
+	}
+
+	bool operator < (const DummyVec& rhs) const
+	{
+		return _id < rhs._id;
+	}
+private:
+	size_t _id = 0;
+	mutable MultiCore::vector<Dummy> _data;
+};
+}
+
+bool TestPoolMemory::testHeavySetInsertErase()
+{
+	MultiCore::set<DummyVec> s;
+	for (size_t i = 10; i != 0; i--) {
+		s.insert(DummyVec(i));
+	}
+
+	for (auto& v : s) {
+		v.clear();
+	}
 
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
