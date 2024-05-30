@@ -84,6 +84,8 @@ public:
 		CellId_SplitLevel(const CellId_SplitLevel& src) = default;
 
 		bool operator < (const CellId_SplitLevel& rhs) const;
+		bool operator == (const CellId_SplitLevel& rhs) const;
+		bool operator != (const CellId_SplitLevel& rhs) const;
 		operator const Index3DId& () const;
 		const Index3DId& getId() const;
 
@@ -209,6 +211,36 @@ private:
 	mutable std::vector<Index3DId> _sortedIds;
 	mutable std::set<Edge> _cachedEdges;
 };
+
+inline bool Polygon::CellId_SplitLevel::operator < (const CellId_SplitLevel& rhs) const
+{
+	return _cellId < rhs._cellId;
+}
+
+inline bool Polygon::CellId_SplitLevel::operator == (const CellId_SplitLevel& rhs) const
+{
+	return _cellId == rhs._cellId;
+}
+
+inline bool Polygon::CellId_SplitLevel::operator != (const CellId_SplitLevel& rhs) const
+{
+	return _cellId != rhs._cellId;
+}
+
+inline Polygon::CellId_SplitLevel::operator const Index3DId& () const
+{
+	return _cellId;
+}
+
+inline const Index3DId& Polygon::CellId_SplitLevel::getId() const
+{
+	return _cellId;
+}
+
+inline size_t Polygon::CellId_SplitLevel::getSplitLevel() const
+{
+	return _splitLevel;
+}
 
 inline bool Polygon::verifyUnique() const
 {

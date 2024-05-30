@@ -995,26 +995,6 @@ Polygon::CellId_SplitLevel::CellId_SplitLevel(const Index3DId& cellId, size_t sp
 {
 }
 
-bool Polygon::CellId_SplitLevel::operator < (const CellId_SplitLevel& rhs) const
-{
-	return _cellId < rhs._cellId;
-}
-
-Polygon::CellId_SplitLevel::operator const Index3DId& () const
-{
-	return _cellId;
-}
-
-const Index3DId& Polygon::CellId_SplitLevel::getId() const
-{
-	return _cellId;
-}
-
-size_t Polygon::CellId_SplitLevel::getSplitLevel() const
-{
-	return _splitLevel;
-}
-
 void Polygon::CellId_SplitLevel::write(ostream& out) const
 {
 	uint8_t version = 0;
