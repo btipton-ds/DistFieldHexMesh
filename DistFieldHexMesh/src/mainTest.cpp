@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <pool_vector.h>
 #include <pool_set.h>
+#include <pool_map.h>
 
 using namespace std;
 using namespace DFHM;
@@ -105,6 +106,9 @@ private:
 	bool testSet();
 	bool testSetInsertErase();
 	bool testHeavySetInsertErase();
+
+	bool testMap();
+	bool testMapBasic();
 };
 
 bool TestPoolMemory::testAll()
@@ -114,6 +118,8 @@ bool TestPoolMemory::testAll()
 	if (!testVector()) return false;
 
 	if (!testSet()) return false;
+
+	if (!testMap()) return false;
 
 	cout << "testAll pass\n";
 	return true;
@@ -689,6 +695,25 @@ bool TestPoolMemory::testHeavySetInsertErase()
 	}
 
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
+	return true;
+}
+
+bool TestPoolMemory::testMap()
+{
+	if (!testMapBasic()) return false;
+
+	cout << "Test map pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testMapBasic()
+{
+	MultiCore::map<size_t, Dummy> m;
+	TEST_TRUE(m.empty(), "New map empty");
+	TEST_EQUAL(m.size(), 0, "New map empty");
+	auto iter = m.insert(std::make_pair(0, Dummy(0))).first;
+	TEST_TRUE(iter != m.end(), "insert iter test");
+	TEST_EQUAL(m.size(), 1, "New empty");
 	return true;
 }
 
