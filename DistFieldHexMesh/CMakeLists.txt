@@ -89,7 +89,7 @@ add_executable (DistFieldHexMesh
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"../../utilities/threads/src/pool_allocator.cpp"
+	"../../utilities/threads/src/local_heap.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
@@ -115,7 +115,7 @@ add_executable (TestDFM
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"../../utilities/threads/src/pool_allocator.cpp"
+	"../../utilities/threads/src/local_heap.cpp"
 )
 
 if (WIN32)

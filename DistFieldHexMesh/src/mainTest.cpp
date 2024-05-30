@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <MultiCoreUtil.h>
 #include <vertex.h>
 #include <pool_vector.h>
+#include <pool_set.h>
 
 using namespace std;
 using namespace DFHM;
@@ -100,17 +101,20 @@ private:
 	bool testVectorForLoops();
 	bool testVectorMisc();
 	bool memoryStressTest();
+
+	bool testSet();
+	bool testSet0();
 };
 
 bool TestPoolMemory::testAll()
 {
-	if (!testAllocator())
-		return false;
+	if (!testAllocator()) return false;
 
-	if (!testVector())
-		return false;
+	if (!testVector()) return false;
 
-	cout << "TestPoolMemory pass\n";
+	if (!testSet()) return false;
+
+	cout << "testAll pass\n";
 	return true;
 }
 
@@ -157,6 +161,7 @@ bool TestPoolMemory::testAllocator0()
 	pD2[2] = 3.0;
 	alloc.free(pD2);
 
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -177,20 +182,20 @@ bool TestPoolMemory::testAllocator1()
 		heap.free(p);
 	}
 
-	cout << "testAllocator1 pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
 bool TestPoolMemory::testVector()
 {
 	if (!testVectorSizeT(-1)) return false;
-	if (!testVectorVectorSizeT()) return false;
 	if (!testVectorInsert()) return false;
 	if (!testVectorSort()) return false;
 	if (!testVectorInsertErase(true)) return false;
 	if (!testVectorInsertErase(false)) return false;
 	if (!testVectorForLoops()) return false;
 	if (!testVectorMisc()) return false;
+	if (!testVectorVectorSizeT()) return false;
 
 #if 1
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
@@ -261,7 +266,7 @@ bool TestPoolMemory::testVector()
 
 	if (!memoryStressTest()) return false;
 
-	cout << "testVector pass\n";
+	cout << "Test vector pass\n";
 	return true;
 }
 
@@ -285,7 +290,7 @@ bool TestPoolMemory::testVectorSizeT(size_t threadNum)
 	TEST_TRUE(vec.empty(), "vec empty");
 	TEST_EQUAL(vec.size(), 0, "vec size");
 
-	cout << "testVectorSizeT pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -319,7 +324,7 @@ bool TestPoolMemory::testVectorVectorSizeT()
 	TEST_TRUE(vec.empty(), "vec empty");
 	TEST_EQUAL(vec.size(), 0, "vec size");
 
-	cout << "testVectorVectorSizeT pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -357,7 +362,7 @@ bool TestPoolMemory::testVectorInsert()
 		TEST_EQUAL(vec[i], stdVec[i], "vec value");
 	}
 
-	cout << "testVectorInsert pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -386,12 +391,27 @@ bool TestPoolMemory::testVectorSort()
 		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
-	cout << "testVectorSort pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
 bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 {
+	{
+		MultiCore::vector<size_t> vec0;
+		std::vector<size_t> stdVec0;
+
+		for (size_t i = 0; i < 10; i++) {
+			vec0.insert(vec0.begin(), i);
+			stdVec0.insert(stdVec0.begin(), i);
+		}
+
+		TEST_EQUAL(vec0.size(), 10, "Vec0 size");
+		for (size_t i = 0; i < vec0.size(); i++) {
+			TEST_EQUAL(vec0[i], stdVec0[i], "vec0 size");
+		}
+	}
+
 	MultiCore::vector<size_t> vec;
 	if (useInitializer)
 		vec = MultiCore::vector<size_t>({ 0,1,2,3,4,5,6 });
@@ -450,7 +470,7 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
-	cout << "testVectorInsertErase pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -478,8 +498,7 @@ bool TestPoolMemory::testVectorForLoops() {
 		TEST_EQUAL(*iter, i--, "Vec for loop");
 	}
 
-	cout << "testVectorForLoops pass\n";
-
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -506,8 +525,7 @@ bool TestPoolMemory::testVectorMisc() {
 	TEST_EQUAL(vec.size(), 0, "Test size() == 1");
 	TEST_TRUE(vec.empty(), "Test empty()");
 
-	cout << "testVectorMisc pass\n";
-
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
@@ -530,8 +548,26 @@ bool TestPoolMemory::memoryStressTest()
 		std::sort(vec.back().begin(), vec.back().end());
 	}, false);
 
-	cout << "memoryStressTest pass\n";
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
+	return true;
+}
 
+bool TestPoolMemory::testSet()
+{
+	if (!testSet0()) return false;
+
+	cout << "Test set pass\n";
+	return true;
+}
+
+bool TestPoolMemory::testSet0()
+{
+	std::vector<size_t> ref({ 7,5,9,3,1 });
+	MultiCore::set<size_t> s;
+	for (size_t v : ref)
+		s.insert(v);
+
+	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
 
