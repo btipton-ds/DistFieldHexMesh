@@ -68,6 +68,37 @@ struct Dummy {
 
 	size_t _val = -1;
 };
+
+class DummyVec
+{
+public:
+	DummyVec() = default;
+	DummyVec(size_t size)
+		: _id(size)
+	{
+		for (int i = 0; i < size; i++)
+			_data.push_back(i);
+	}
+
+	void clear() const
+	{
+		_data.clear();
+	}
+
+	bool operator < (const DummyVec& rhs) const
+	{
+		return _id < rhs._id;
+	}
+
+	size_t size() const
+	{
+		return _id;
+	}
+private:
+	size_t _id = 0;
+	mutable MultiCore::vector<Dummy> _data;
+};
+
 }
 
 void testBlock(size_t bd = 8)
@@ -109,6 +140,7 @@ private:
 
 	bool testMap();
 	bool testMapBasic();
+	bool testMapHeavy();
 };
 
 bool TestPoolMemory::testAll()
@@ -611,6 +643,14 @@ bool TestPoolMemory::testSet()
 			return false;
 		return true;
 	}, true);
+
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testHeavySetInsertErase())
+			return false;
+		return true;
+	}, true);
 #endif
 
 	cout << "Test set pass\n";
@@ -655,34 +695,6 @@ bool TestPoolMemory::testSetInsertErase()
 	return true;
 }
 
-namespace
-{
-class DummyVec
-{
-public:
-	DummyVec() = default;
-	DummyVec(size_t size)
-		: _id(size)
-	{
-		for (int i = 0; i < size; i++)
-			_data.push_back(i);
-	}
-
-	void clear() const
-	{
-		_data.clear();
-	}
-
-	bool operator < (const DummyVec& rhs) const
-	{
-		return _id < rhs._id;
-	}
-private:
-	size_t _id = 0;
-	mutable MultiCore::vector<Dummy> _data;
-};
-}
-
 bool TestPoolMemory::testHeavySetInsertErase()
 {
 	MultiCore::set<DummyVec> s;
@@ -701,29 +713,104 @@ bool TestPoolMemory::testHeavySetInsertErase()
 bool TestPoolMemory::testMap()
 {
 	if (!testMapBasic()) return false;
+//	if (!testMapHeavy()) return false;
 
+#if 1
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testMapBasic())
+			return false;
+		return true;
+	}, true);
+
+#endif
 	cout << "Test map pass\n";
 	return true;
 }
 
 bool TestPoolMemory::testMapBasic()
 {
-	std::map<size_t, Dummy> stdM;
 	MultiCore::map<size_t, Dummy> m;
 	TEST_TRUE(m.empty(), "New map empty");
 	TEST_EQUAL(m.size(), 0, "New size 0");
 	for (size_t i = 0; i < 20; i++) {
-		auto iter = m.insert(std::make_pair(i, Dummy(i + 1))).first;
+		auto iter = m.insert(MultiCore::make_pair(i, Dummy(i + 1))).first;
 		TEST_TRUE(iter != m.end(), "insert iter test");
 		TEST_EQUAL(m.size(), i + 1, "Size");
 		TEST_EQUAL(iter->second._val, i + 1, "Size");
 	}
 
-	for (auto iter = m.begin(); iter != m.end(); iter++) {
-		auto f = iter->first;
-		auto& s = iter->second;
+	for (size_t i = m.size() - 1; i != -1; i--) {
+		auto iter = m.find(i);
+		TEST_EQUAL(iter->first, i, "first match");
+		TEST_EQUAL(iter->second._val, i + 1, "second match");
 	}
 
+	size_t i = 0;
+	for (auto iter = m.begin(); iter != m.end(); iter++) {
+		auto& pair = *iter;
+		TEST_EQUAL(iter->first, i, "first match");
+		TEST_EQUAL(iter->second._val, i + 1, "second match");
+		i++;
+	}
+
+	i = 0;
+	for (auto pair : m) {
+		TEST_EQUAL(pair.first, i, "first match");
+		TEST_EQUAL(pair.second._val, i + 1, "second match");
+		i++;
+	}
+
+	while (!m.empty()) {
+		size_t s = m.size();
+		m.erase(m.begin());
+		TEST_EQUAL(m.size(), s - 1, "Size");
+	}
+	TEST_EQUAL(m.size(), 0, "Size");
+
+	return true;
+}
+
+bool TestPoolMemory::testMapHeavy()
+{
+	MultiCore::map<size_t, DummyVec> m;
+	TEST_TRUE(m.empty(), "New map empty");
+	TEST_EQUAL(m.size(), 0, "New size 0");
+	for (size_t i = 0; i < 20; i++) {
+		auto iter = m.insert(MultiCore::make_pair(i, DummyVec(i + 1))).first;
+		TEST_TRUE(iter != m.end(), "insert iter test");
+		TEST_EQUAL(m.size(), i + 1, "Size");
+		TEST_EQUAL(iter->second.size(), i + 1, "Size");
+	}
+
+	for (size_t i = m.size() - 1; i != -1; i--) {
+		auto iter = m.find(i);
+		TEST_EQUAL(iter->first, i, "first match");
+		TEST_EQUAL(iter->second.size(), i + 1, "second match");
+	}
+
+	size_t i = 0;
+	for (auto iter = m.begin(); iter != m.end(); iter++) {
+		auto& pair = *iter;
+		TEST_EQUAL(iter->first, i, "first match");
+		TEST_EQUAL(iter->second.size(), i + 1, "second match");
+		i++;
+	}
+
+	i = 0;
+	for (auto pair : m) {
+		TEST_EQUAL(pair.first, i, "first match");
+		TEST_EQUAL(pair.second.size(), i + 1, "second match");
+		i++;
+	}
+
+	while (!m.empty()) {
+		size_t s = m.size();
+		m.erase(m.begin());
+		TEST_EQUAL(m.size(), s - 1, "Size");
+	}
+	TEST_EQUAL(m.size(), 0, "Size");
 
 	return true;
 }
