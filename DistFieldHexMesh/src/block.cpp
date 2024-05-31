@@ -68,6 +68,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	, _modelData(this)
 	, _vertices(this, false)
 	, _refData(this)
+	, _heap(128, 64)
 {
 	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);
@@ -96,21 +97,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
 	pMesh->findEdges(_boundBox, _edgeIndices);
 	pMesh->findTris(_boundBox, _triIndices);
-}
-
-Block::Block(const Block& src)
-	: _blockIdx(src._blockIdx)
-	, _pVol(src._pVol)
-	, _boundBox(src._boundBox)
-	, _innerBoundBox(src._innerBoundBox)
-	, _blockDim(src._blockDim)
-	, _corners(src._corners)
-	, _filename(src._filename)
-	, _vertices(this, src._vertices)
-	, _modelData(this, src._modelData)
-	, _refData(this, src._refData)
-	, _vertTree(make_shared<SearchTree>(*src._vertTree))
-{
 }
 
 const Index3D& Block::getBlockIdx() const
