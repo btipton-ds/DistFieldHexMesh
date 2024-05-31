@@ -43,6 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+#define MULTI_CORE_TESTS_ENABLED 1
 
 namespace
 {
@@ -236,7 +237,7 @@ bool TestPoolMemory::testVector()
 	if (!testVectorMisc()) return false;
 	if (!testVectorVectorSizeT()) return false;
 
-#if 1
+#if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -635,7 +636,7 @@ bool TestPoolMemory::testSet()
 
 	if (!testHeavySetInsertErase()) return false;
 
-#if 1
+#if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -713,9 +714,9 @@ bool TestPoolMemory::testHeavySetInsertErase()
 bool TestPoolMemory::testMap()
 {
 	if (!testMapBasic()) return false;
-//	if (!testMapHeavy()) return false;
+	if (!testMapHeavy()) return false;
 
-#if 1
+#if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
 		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
@@ -724,6 +725,13 @@ bool TestPoolMemory::testMap()
 		return true;
 	}, true);
 
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		MultiCore::local_heap alloc(1024);
+		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		if (!testMapHeavy())
+			return false;
+		return true;
+	}, true);
 #endif
 	cout << "Test map pass\n";
 	return true;
@@ -740,7 +748,6 @@ bool TestPoolMemory::testMapBasic()
 		TEST_EQUAL(m.size(), i + 1, "Size");
 		TEST_EQUAL(iter->second._val, i + 1, "Size");
 	}
-
 	for (size_t i = m.size() - 1; i != -1; i--) {
 		auto iter = m.find(i);
 		TEST_EQUAL(iter->first, i, "first match");
@@ -777,31 +784,35 @@ bool TestPoolMemory::testMapHeavy()
 	MultiCore::map<size_t, DummyVec> m;
 	TEST_TRUE(m.empty(), "New map empty");
 	TEST_EQUAL(m.size(), 0, "New size 0");
-	for (size_t i = 0; i < 20; i++) {
-		auto iter = m.insert(MultiCore::make_pair(i, DummyVec(i + 1))).first;
+	for (size_t i = 0; i < 200; i++) {
+		size_t vecSize = 100 + 2 * i;
+		auto iter = m.insert(MultiCore::make_pair(i, DummyVec(vecSize))).first;
 		TEST_TRUE(iter != m.end(), "insert iter test");
 		TEST_EQUAL(m.size(), i + 1, "Size");
-		TEST_EQUAL(iter->second.size(), i + 1, "Size");
+		TEST_EQUAL(iter->second.size(), vecSize, "Size");
 	}
 
 	for (size_t i = m.size() - 1; i != -1; i--) {
+		size_t vecSize = 100 + 2 * i;
 		auto iter = m.find(i);
 		TEST_EQUAL(iter->first, i, "first match");
-		TEST_EQUAL(iter->second.size(), i + 1, "second match");
+		TEST_EQUAL(iter->second.size(), vecSize, "second match");
 	}
 
 	size_t i = 0;
 	for (auto iter = m.begin(); iter != m.end(); iter++) {
+		size_t vecSize = 100 + 2 * i;
 		auto& pair = *iter;
 		TEST_EQUAL(iter->first, i, "first match");
-		TEST_EQUAL(iter->second.size(), i + 1, "second match");
+		TEST_EQUAL(iter->second.size(), vecSize, "second match");
 		i++;
 	}
 
 	i = 0;
 	for (auto pair : m) {
+		size_t vecSize = 100 + 2 * i;
 		TEST_EQUAL(pair.first, i, "first match");
-		TEST_EQUAL(pair.second.size(), i + 1, "second match");
+		TEST_EQUAL(pair.second.size(), vecSize, "second match");
 		i++;
 	}
 
