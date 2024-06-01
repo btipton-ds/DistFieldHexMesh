@@ -92,7 +92,7 @@ public:
 	bool needToSplitDueToSplitFaces(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
-	void getOutwardOrientedFaces(std::vector<Polygon>& faces) const;
+	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
 	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);

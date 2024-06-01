@@ -540,7 +540,7 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
-size_t Polygon::getCellTris(vector<size_t>& indices) const
+size_t Polygon::getCellTris(std::vector<size_t>& indices) const
 {
 	set<size_t> triSet;
 	for (const auto& cellId : _cellIds) {
@@ -562,7 +562,7 @@ bool Polygon::intersectsModel() const
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
 
-		vector<size_t> cellTris;
+		std::vector<size_t> cellTris;
 
 		if (getCellTris(cellTris) > 0) {
 			auto pMesh = getBlockPtr()->getModelMesh();
@@ -719,7 +719,7 @@ void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
 	refSelf->_splitEdgeVertMap.insert(make_pair(edge, vertId));
 }
 
-void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>& imprintVerts) const
+void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
 {
 
 	MTC::vector<Index3DId> onFaceVerts;

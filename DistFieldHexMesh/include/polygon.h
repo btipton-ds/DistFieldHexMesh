@@ -45,6 +45,15 @@ struct RayHit;
 using RayHitd = RayHit<double>;
 using Planed = Plane<double>;
 
+namespace MultiCore
+{
+	template<class T>
+	class vector;
+
+	template<class T>
+	class set;
+}
+
 namespace DFHM {
 
 class Edge;
@@ -165,7 +174,7 @@ public:
 
 	bool cellsOwnThis() const;
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
-	void needToImprintVertices(const std::set<Index3DId>& verts, std::set<Index3DId>& imprintVerts) const;
+	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
 	bool imprintVertex(const Index3DId& imprintVert);
 	size_t getImprintIndex(const Vector3d& imprintPoint) const;
 	size_t getImprintIndex(const Index3DId& imprintVert) const;

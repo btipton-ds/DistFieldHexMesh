@@ -34,6 +34,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <tm_lineSegment.hpp>
 #include <tm_ioUtil.h>
+#include <pool_vector.h>
+#include <pool_set.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
@@ -526,7 +528,7 @@ bool Polyhedron::containsSharps() const
 	return false;
 }
 
-void Polyhedron::getOutwardOrientedFaces(std::vector<Polygon>& faces) const
+void Polyhedron::getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const
 {
 	Vector3d cellCtr = calCentroid();
 	for (const auto& faceId : _faceIds) {
@@ -553,7 +555,7 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 #endif
 
 #if 1
-	set<Index3DId> verts;
+	MTC::set<Index3DId> verts;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(TS_REAL, faceId, [&verts](const Polygon& face) {
 			const auto& tmp = face.getVertexIds();
@@ -566,7 +568,7 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 		if (Index3DId(3, 1, 0, 2) == faceId) {
 			int dbgBreak = 1;
 		}
-		set<Index3DId> imprintVertices;
+		MTC::set<Index3DId> imprintVertices;
 		faceFunc(TS_REAL, faceId, [&verts, &imprintVertices](Polygon& face) {
 			face.needToImprintVertices(verts, imprintVertices);
 		});
