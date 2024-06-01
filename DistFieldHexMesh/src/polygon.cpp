@@ -150,6 +150,31 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	return result;
 }
 
+namespace IoUtil
+{
+	template<class T>
+	void write(std::ostream& out, const MultiCore::vector<T>& vals)
+	{
+		size_t num = vals.size();
+		out.write((char*)&num, sizeof(num));
+		if (num > 0) {
+			out.write((char*)vals.data(), num * sizeof(T));
+		}
+	}
+
+	template<class T>
+	void read(std::istream& in, MultiCore::vector<T>& vals)
+	{
+		size_t num;
+		in.read((char*)&num, sizeof(num));
+		if (num > 0) {
+			vals.resize(num);
+			in.read((char*)vals.data(), num * sizeof(T));
+		}
+	}
+
+}
+
 void Polygon::write(ostream& out) const
 {
 	uint8_t version = 0;
@@ -161,6 +186,7 @@ void Polygon::write(ostream& out) const
 	IoUtil::write(out, _splitEdgeVertMap);
 	IoUtil::write(out, _vertexIds);
 	IoUtil::write(out, _cellIds);
+
 }
 
 void Polygon::read(istream& in)
@@ -569,7 +595,7 @@ bool Polygon::intersectsModel() const
 				bbox.merge(getBlockPtr()->getVertexPoint(vertId));
 			}
 
-			vector<size_t> triIndices;
+			std::vector<size_t> triIndices;
 			if (pMesh->processFoundTris(cellTris, bbox, triIndices)) {
 				auto pTriMesh = getBlockPtr()->getModelMesh();
 				const auto& edges = getEdges();

@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <set>
 #include <map>
+#include <pool_vector.h>
 #include <tm_vector3.h>
 #include <tm_plane.h>
 #include <index3D.h>
@@ -66,9 +67,9 @@ private:
 	bool cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params);
 	bool cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params);
 
-	void findSharpVertPierecPoints(size_t vertIdx, std::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
-	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, std::vector<Vector3d>& points) const;
-	void splitWithFaces(Polyhedron& realCell, const std::vector<Index3DId>& imprintFaces, std::vector<Index3DId>& newCellIds) const;
+	void findSharpVertPierecPoints(size_t vertIdx, MultiCore::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
+	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MultiCore::vector<Vector3d>& points) const;
+	void splitWithFaces(Polyhedron& realCell, const MultiCore::vector<Index3DId>& imprintFaces, MultiCore::vector<Index3DId>& newCellIds) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

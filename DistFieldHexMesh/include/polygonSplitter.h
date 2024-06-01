@@ -27,8 +27,6 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <set>
-#include <map>
 #include <tm_vector3.h>
 #include <tm_plane.h>
 #include <index3D.h>
