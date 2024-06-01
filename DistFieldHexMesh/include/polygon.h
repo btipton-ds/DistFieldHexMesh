@@ -86,6 +86,11 @@ public:
 		bool operator < (const CellId_SplitLevel& rhs) const;
 		bool operator == (const CellId_SplitLevel& rhs) const;
 		bool operator != (const CellId_SplitLevel& rhs) const;
+
+		bool operator < (const Index3DId& rhs) const;
+		bool operator == (const Index3DId& rhs) const;
+		bool operator != (const Index3DId& rhs) const;
+
 		operator const Index3DId& () const;
 		const Index3DId& getId() const;
 
@@ -225,6 +230,21 @@ inline bool Polygon::CellId_SplitLevel::operator == (const CellId_SplitLevel& rh
 inline bool Polygon::CellId_SplitLevel::operator != (const CellId_SplitLevel& rhs) const
 {
 	return _cellId != rhs._cellId;
+}
+
+inline bool Polygon::CellId_SplitLevel::operator < (const Index3DId& rhs) const
+{
+	return _cellId < rhs;
+}
+
+inline bool Polygon::CellId_SplitLevel::operator == (const Index3DId& rhs) const
+{
+	return _cellId == rhs;
+}
+
+inline bool Polygon::CellId_SplitLevel::operator != (const Index3DId& rhs) const
+{
+	return _cellId != rhs;
 }
 
 inline Polygon::CellId_SplitLevel::operator const Index3DId& () const

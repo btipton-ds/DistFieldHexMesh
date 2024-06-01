@@ -67,6 +67,16 @@ struct Dummy {
 		_val = -1;
 	}
 
+	inline bool operator < (const Dummy& rhs) const
+	{
+		return _val < rhs._val;
+	}
+
+	inline bool operator == (const Dummy& rhs) const
+	{
+		return _val == rhs._val;
+	}
+
 	size_t _val = -1;
 };
 
@@ -402,6 +412,24 @@ bool TestPoolMemory::testVectorInsert()
 		TEST_EQUAL(vec[i], stdVec[i], "vec value");
 	}
 
+	{
+		MultiCore::vector<size_t> vec;
+		std::set<size_t> set;
+		for (size_t i = 0; i < 20; i++)
+			set.insert(i);
+		vec.insert(vec.end(), set.begin(), set.end());
+
+		TEST_EQUAL(vec.size(), set.size(), "vec set same size");
+
+		auto sIter = set.begin();
+		auto vIter = vec.begin();
+		while (sIter != set.end() && vIter != vec.end()) {
+			const auto sVal = *sIter++;
+			const auto vVal = *vIter++;
+			TEST_EQUAL(sVal, vVal, "vec set same value");
+		}
+	}
+
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
 }
@@ -417,6 +445,10 @@ bool TestPoolMemory::testVectorSort()
 		TEST_EQUAL(vec[i], stdVec[i], "vec size");
 	}
 
+	auto sb = stdVec.begin();
+	auto sbP = sb + stdVec.size() - 1;
+	auto sbP2 = sb + stdVec.size();
+	auto se = stdVec.end();
 	std::sort(stdVec.begin(), stdVec.end());
 	std::sort(vec.begin(), vec.end());
 

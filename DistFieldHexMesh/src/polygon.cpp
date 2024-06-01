@@ -29,6 +29,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <assert.h>
+#include <pool_vector.h>
+#include <pool_set.h>
 #include <tm_math.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
@@ -717,8 +720,8 @@ void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
 void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>& imprintVerts) const
 {
 
-	vector<Index3DId> onFaceVerts;
-	set<Index3DId> vertSet;
+	MultiCore::vector<Index3DId> onFaceVerts;
+	MultiCore::set<Index3DId> vertSet;
 	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
 	for (const auto& vertId : verts) {
 		if (!vertSet.contains(vertId)) { // ignore vertices already in the face
@@ -838,7 +841,7 @@ bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
 bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 {
 	// This collapses duplicate corner hits to a single hit
-	set<Vector3d> intersectionPoints;
+	MultiCore::set<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
@@ -870,7 +873,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceIds) const
 {
 	auto faceEdges = getEdges();
-	vector<Edge> allEdges;
+	MultiCore::vector<Edge> allEdges;
 	allEdges.insert(allEdges.end(), edges.begin(), edges.end());
 	allEdges.insert(allEdges.end(), faceEdges.begin(), faceEdges.end());
 	string fileName = "splitFaceEdges_" + to_string(_thisId[0]) + "_" + to_string(_thisId[1]) + "_" + to_string(_thisId[2]) + "_" + to_string(_thisId.elementId());
