@@ -152,6 +152,7 @@ private:
 	bool testMap();
 	bool testMapBasic();
 	bool testMapHeavy();
+	bool testPoolIndex3D();
 };
 
 bool TestPoolMemory::testAll()
@@ -163,6 +164,7 @@ bool TestPoolMemory::testAll()
 	if (!testSet()) return false;
 
 	if (!testMap()) return false;
+	if (!testPoolIndex3D()) return false;
 
 	cout << "testAll pass\n";
 	return true;
@@ -765,6 +767,7 @@ bool TestPoolMemory::testMap()
 		return true;
 	}, true);
 #endif
+
 	cout << "Test map pass\n";
 	return true;
 }
@@ -854,6 +857,44 @@ bool TestPoolMemory::testMapHeavy()
 		TEST_EQUAL(m.size(), s - 1, "Size");
 	}
 	TEST_EQUAL(m.size(), 0, "Size");
+
+	return true;
+}
+
+bool TestPoolMemory::testPoolIndex3D()
+{
+	{
+		MultiCore::set<Index3D> indexSet;
+
+		Index3D idx;
+		for (idx[0] = 0; idx[0] < 10; idx[0]++) {
+			for (idx[1] = 0; idx[1] < 10; idx[1]++) {
+				for (idx[2] = 0; idx[2] < 10; idx[2]++) {
+					indexSet.insert(idx);
+				}
+			}
+		}
+
+		TEST_EQUAL(indexSet.size(), 1000, "Test Index3D set");
+	}
+
+	{
+		MultiCore::map<Index3D, Dummy> indexSet;
+
+		Index3D idx;
+		size_t count = 0;
+		for (idx[0] = 0; idx[0] < 10; idx[0]++) {
+			for (idx[1] = 0; idx[1] < 10; idx[1]++) {
+				for (idx[2] = 0; idx[2] < 10; idx[2]++) {
+					indexSet.insert(std::make_pair(idx, Dummy(count++)));
+				}
+			}
+		}
+
+		TEST_EQUAL(indexSet.size(), 1000, "Test Index3D map");
+	}
+
+	cout << "Test testPoolIndex3D pass\n";
 
 	return true;
 }
