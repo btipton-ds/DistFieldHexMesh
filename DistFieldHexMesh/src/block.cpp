@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <filesystem>
 
 #include <tm_ioUtil.h>
+#include <tm_spatialSearch.hpp>
 
 #include <tolerances.h>
 #include <Index3D.h>
@@ -91,12 +92,37 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 
 	CBoundingBox3Dd treeBBox(_boundBox);
 	treeBBox.grow(Tolerance::sameDistTol());
-	_vertTree = make_shared<SearchTree>(treeBBox);
+	_pVertTree = make_shared<SearchTree>(treeBBox);
 		
 		// This is close to working, but the full search is finding solutions the partial search is not
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
 	pMesh->findEdges(_boundBox, _edgeIndices);
 	pMesh->findTris(_boundBox, _triIndices);
+}
+
+void Block::clear()
+{
+	_corners.clear();
+
+	
+	_baseIdxVerts = 0;
+	_baseIdxPolygons = 0;
+	_baseIdxPolyhedra = 0;
+	_needToSplit.clear();
+	_cantSplitYet.clear();
+
+	_edgeIndices.clear();
+	_triIndices.clear();
+	_pVertTree->clear();
+	_vertices.clear();
+	_modelData.clear();
+	_refData.clear();
+}
+
+void Block::ModelData::clear()
+{
+	_polygons.clear();
+	_polyhedra.clear();
 }
 
 const Index3D& Block::getBlockIdx() const
@@ -566,11 +592,11 @@ Block* Block::getOwner(const Index3D& blockIdx)
 
 Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
-	// NOTE: Be careful to keep the difference between the _vertTree indices and the _vertices indices clear. Failure causes NPEs
+	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result;
-	pOwner->_vertTree->find(pt, result);
+	pOwner->_pVertTree->find(pt, result);
 
 	return result;
 }
@@ -584,11 +610,11 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	if (result.isValid())
 		return result;
 
-	// NOTE: Be careful to keep the difference between the _vertTree indices and the _vertices indices clear. Failure causes NPEs
+	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
 	Vertex vert(pt);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
 
-	pOwner->_vertTree->add(pt, result);
+	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
 	assert(idOfPoint(pt) == result);

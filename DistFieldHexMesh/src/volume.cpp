@@ -77,11 +77,7 @@ Volume::Volume(const Volume& src)
 
 Volume::~Volume()
 {
-	runLambda([this](size_t linearIdx)->bool {
-		_blocks[linearIdx] = nullptr;
-		return true;
-	}, RUN_MULTI_THREAD);
-	_blocks.clear();
+	clear();
 }
 
 void Volume::startOperation()
@@ -258,6 +254,15 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 
 void Volume::clear()
 {
+	// Clear contents to remove cross block pointers
+	runLambda([this](size_t linearIdx)->bool {
+		if (_blocks[linearIdx])
+			_blocks[linearIdx]->clear();
+		return true;
+	}, RUN_MULTI_THREAD);
+
+	// Now it's safe to destroy the heaps
+	_blocks.clear();
 }
 
 bool Volume::blockExists(const Index3D& blockIdx) const

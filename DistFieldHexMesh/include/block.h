@@ -87,6 +87,7 @@ public:
 	Block* getOwner(const Index3D& blockIdx) override;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	void clear();
 
 	size_t blockDim() const;
 
@@ -197,6 +198,7 @@ private:
 	struct ModelData {
 		ModelData(Block* pBlk);
 		ModelData(Block* pBlk, const ModelData& src);
+		void clear();
 
 		ObjectPool<Polygon> _polygons;
 		ObjectPool<Polyhedron> _polyhedra;
@@ -261,7 +263,7 @@ private:
 	std::set<Index3DId> _needToSplit, _cantSplitYet;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
-	SearchTreePtr _vertTree;
+	SearchTreePtr _pVertTree;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
 	MultiCore::local_heap _heap;
