@@ -723,7 +723,7 @@ void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>&
 {
 
 	MTC::vector<Index3DId> onFaceVerts;
-	MultiCore::set<Index3DId> vertSet;
+	MTC::set<Index3DId> vertSet;
 	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
 	for (const auto& vertId : verts) {
 		if (!vertSet.contains(vertId)) { // ignore vertices already in the face
@@ -843,7 +843,7 @@ bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
 bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 {
 	// This collapses duplicate corner hits to a single hit
-	MultiCore::set<Vector3d> intersectionPoints;
+	MTC::set<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
