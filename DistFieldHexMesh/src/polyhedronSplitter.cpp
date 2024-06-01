@@ -30,6 +30,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_bestFit.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
+#include <pool_vector.h>
+#include <pool_set.h>
 #include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -351,7 +353,7 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 	if (!pMesh->isVertConvex(vertIdx, isConvex, axisSeg)) {
 		assert(!"A sharp vertex should always return true.");
 	}
-	MultiCore::vector<Vector3d> piercePoints;
+	MTC::vector<Vector3d> piercePoints;
 	findSharpVertPierecPoints(vertIdx, piercePoints, params);
 
 #if LOGGING_ENABLED
@@ -365,8 +367,8 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 	}
 	LOG(out << "Splitting faces \n");
 #endif
-	MultiCore::vector<MultiCore::vector<Vector3d>> cutFaces;
-	MultiCore::vector<Index3DId> modelFaces;
+	MTC::vector<MTC::vector<Vector3d>> cutFaces;
+	MTC::vector<Index3DId> modelFaces;
 	if (piercePoints.empty()) {
 		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
 	} else {
@@ -386,7 +388,7 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 			yAxis.normalize();
 			Vector3d n = v1.cross(xAxis).normalized();
 			Planed modelPlane(tipPt, n, false);
-			MultiCore::vector<Vector3d> modelFacePoints, newPoints;
+			MTC::vector<Vector3d> modelFacePoints, newPoints;
 			std::vector<Vector3d> tempPoints;
 			if (realCell.createIntersectionFacePoints(modelPlane, tempPoints) > 2) {
 				double cosT = v1.dot(xAxis);
@@ -427,13 +429,13 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 
 	_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false, piercePoints);
 
-	MultiCore::vector<Index3DId> newCellIds;
+	MTC::vector<Index3DId> newCellIds;
 	splitWithFaces(realCell, modelFaces, newCellIds);
 
 	return false;
 }
 
-void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MultiCore::vector<Vector3d>& points) const
+void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const
 {
 	if (points.size() > 1) {
 		sort(points.begin(), points.end(), [&tipPt, &xAxis, &yAxis](const Vector3d& lhs, const Vector3d& rhs)->bool {
@@ -453,7 +455,7 @@ void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d
 	}
 }
 
-void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MultiCore::vector<Index3DId>& imprintFaces, MultiCore::vector<Index3DId>& newCellIds) const
+void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const
 {
 	map<Index3DId, set<Edge>> faceToEdgeMap;
 	auto realFaceIds = realCell.getFaceIds();
@@ -597,7 +599,7 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 	return false;
 }
 
-void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, MultiCore::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const
+void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, MTC::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const
 {
 	const double sinSharpAngle = sin(params.getSharpAngleRadians());
 	auto pMesh = _pBlock->getModelMesh();
@@ -605,7 +607,7 @@ void PolyhedronSplitter::findSharpVertPierecPoints(size_t vertIdx, MultiCore::ve
 	piercePoints.clear();
 
 	set<size_t> availEdges;
-	set<Index3DId> faceIds;
+	MTC::set<Index3DId> faceIds;
 	cellFunc(TS_REAL, _polyhedronId, [&availEdges, &faceIds](const Polyhedron& cell) {
 		const auto& edgeIndices = cell.getEdgeIndices();
 		availEdges.insert(edgeIndices.begin(), edgeIndices.end());

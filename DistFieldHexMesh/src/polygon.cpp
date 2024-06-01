@@ -153,7 +153,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 namespace IoUtil
 {
 	template<class T>
-	void write(std::ostream& out, const MultiCore::vector<T>& vals)
+	void write(std::ostream& out, const MTC::vector<T>& vals)
 	{
 		size_t num = vals.size();
 		out.write((char*)&num, sizeof(num));
@@ -163,7 +163,7 @@ namespace IoUtil
 	}
 
 	template<class T>
-	void read(std::istream& in, MultiCore::vector<T>& vals)
+	void read(std::istream& in, MTC::vector<T>& vals)
 	{
 		size_t num;
 		in.read((char*)&num, sizeof(num));
@@ -746,7 +746,7 @@ void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
 void Polygon::needToImprintVertices(const set<Index3DId>& verts, set<Index3DId>& imprintVerts) const
 {
 
-	MultiCore::vector<Index3DId> onFaceVerts;
+	MTC::vector<Index3DId> onFaceVerts;
 	MultiCore::set<Index3DId> vertSet;
 	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
 	for (const auto& vertId : verts) {
@@ -899,7 +899,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceIds) const
 {
 	auto faceEdges = getEdges();
-	MultiCore::vector<Edge> allEdges;
+	MTC::vector<Edge> allEdges;
 	allEdges.insert(allEdges.end(), edges.begin(), edges.end());
 	allEdges.insert(allEdges.end(), faceEdges.begin(), faceEdges.end());
 	string fileName = "splitFaceEdges_" + to_string(_thisId[0]) + "_" + to_string(_thisId[1]) + "_" + to_string(_thisId[2]) + "_" + to_string(_thisId.elementId());

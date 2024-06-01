@@ -67,9 +67,9 @@ private:
 	bool cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params);
 	bool cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params);
 
-	void findSharpVertPierecPoints(size_t vertIdx, MultiCore::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
-	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MultiCore::vector<Vector3d>& points) const;
-	void splitWithFaces(Polyhedron& realCell, const MultiCore::vector<Index3DId>& imprintFaces, MultiCore::vector<Index3DId>& newCellIds) const;
+	void findSharpVertPierecPoints(size_t vertIdx, MTC::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
+	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const;
+	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

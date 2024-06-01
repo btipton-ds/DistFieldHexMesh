@@ -87,7 +87,7 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 	// The code must be operating on the reference face
 	const auto& vertexIds = referanceFace.getVertexIds();
 	assert(vertexIds.size() == 4);
-	MultiCore::vector<Index3DId> edgePtIds;
+	MTC::vector<Index3DId> edgePtIds;
 	edgePtIds.resize(vertexIds.size());
 	for (size_t i = 0; i < vertexIds.size(); i++) {
 		size_t j = (i + 1) % vertexIds.size();
@@ -191,8 +191,8 @@ bool PolygonSplitter::splitWithFaceInner(const Polygon& imprintFace, Polygon& re
 		cout << "  " << vertId << ": " << pt << "\n";
 	}
 
-	MultiCore::vector<size_t> vertIndices;
-	MultiCore::vector<Index3DId> imprintVertIds;
+	MTC::vector<size_t> vertIndices;
+	MTC::vector<Index3DId> imprintVertIds;
 	const auto& srcIds = imprintFace.getVertexIds();
 	for (const auto& vertId : srcIds) {
 		size_t vertIdx = realFace.getImprintIndex(vertId);
@@ -206,7 +206,7 @@ bool PolygonSplitter::splitWithFaceInner(const Polygon& imprintFace, Polygon& re
 
 	assert(imprintVertIds.size() == 2);
 
-	MultiCore::vector<Index3DId> verts0, verts1;
+	MTC::vector<Index3DId> verts0, verts1;
 
 	size_t firstIdx = vertIndices[0];
 	size_t lastIdx = vertIndices[1];
