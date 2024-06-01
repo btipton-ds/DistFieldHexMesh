@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 
 #define RUN_MULTI_THREAD true
+#define USE_MULTI_THREAD_CONTAINERS 0
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 2
@@ -43,3 +44,8 @@ This file is part of the DistFieldHexMesh application/library.
 #define DUMP_BAD_CELL_OBJS 1
 #define DUMP_OPEN_CELL_OBJS 1
 
+#if USE_MULTI_THREAD_CONTAINERS
+#define MTC MultiCore
+#else
+#define MTC std
+#endif
