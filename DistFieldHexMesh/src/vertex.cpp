@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <block.h>
+#include <fixedPoint.h>
 
 using namespace std;
 using namespace DFHM;

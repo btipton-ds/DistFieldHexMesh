@@ -27,13 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <set>
 #include <tm_vector3.h>
 #include <tm_boundingBox.h>
 #include <index3D.h>
-#include <patient_lock_guard.h>
 #include <objectPool.h>
-#include <fixedPoint.h>
 
 #define USE_FIXED_PT 0
 
