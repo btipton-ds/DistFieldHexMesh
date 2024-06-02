@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <vector>
 #include <set>
+#include <pool_set.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <iostream>
@@ -49,8 +50,8 @@ public:
 
 	Edge() = default;
 	Edge(const Edge& src) = default;
-	Edge(const Index3DId& vert0, const Index3DId& vert1, const std::set<Index3DId>& faceIds = std::set<Index3DId>());
-	Edge(const Edge& src, const std::set<Index3DId>& faceIds);
+	Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds = MTC::set<Index3DId>());
+	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
 
 	void setBlockPtr(const Block* pBlock) const;
 	const Block* getBlockPtr() const;
@@ -61,8 +62,8 @@ public:
 
 	const Index3DId* getVertexIds() const;
 	bool containsVertex(const Index3DId& vertexId) const;
-	const std::set<Index3DId>& getFaceIds() const;
-	void getFaceIds(std::set<Index3DId>& faceIds) const;
+	const MTC::set<Index3DId>& getFaceIds() const;
+	void getFaceIds(MTC::set<Index3DId>& faceIds) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
 	double sameParamTol(const Block* pBlock) const;
@@ -84,7 +85,7 @@ public:
 
 private:
 	Index3DId _vertexIds[2];
-	std::set<Index3DId> _faceIds;
+	MTC::set<Index3DId> _faceIds;
 	mutable const Block* _pBlock;
 };
 
@@ -98,7 +99,7 @@ inline const Block* Edge::getBlockPtr() const
 	return _pBlock;
 }
 
-inline const std::set<Index3DId>& Edge::getFaceIds() const
+inline const MTC::set<Index3DId>& Edge::getFaceIds() const
 {
 	return _faceIds;
 }

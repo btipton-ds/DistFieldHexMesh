@@ -56,14 +56,14 @@ public:
 	bool containsFace(const Index3DId& faceId) const;
 	const std::set<Index3DId>& getFaceIds() const;
 	void getVertIds(std::set<Index3DId>& vertIds) const;
-	const std::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
+	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
-	std::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
+	MTC::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
-	void getVertEdges(const Index3DId& vertId, std::set<Edge>& edges, bool includeAdjacentCells) const;
+	void getVertEdges(const Index3DId& vertId, MTC::set<Edge>& edges, bool includeAdjacentCells) const;
 	// Gets the faces for a vertex which belong to this polyhedron
-	std::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
+	MTC::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
@@ -146,7 +146,7 @@ private:
 	Planed _splitPlane;
 	std::vector<size_t> _triIndices, _edgeIndices;
 
-	mutable std::set<Edge> _cachedEdges0, _cachedEdges1;
+	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
 	mutable bool _needsCurvatureCheck = true;
 	mutable bool _cachedEdges0Vaild = false;

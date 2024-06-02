@@ -36,7 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const set<Index3DId>& faceIds)
+Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
 	if (vert0 < vert1) {
@@ -48,7 +48,7 @@ Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const set<Index3DId>&
 	}
 }
 
-Edge::Edge(const Edge& src, const set<Index3DId>& faceIds)
+Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
 	_vertexIds[0] = src._vertexIds[0];
@@ -233,9 +233,9 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-void Edge::getFaceIds(set<Index3DId>& faceIds) const
+void Edge::getFaceIds(MTC::set<Index3DId>& faceIds) const
 {
-	faceIds.insert(_faceIds.begin(), _faceIds.end());
+	faceIds = _faceIds;
 }
 
 void Edge::write(std::ostream& out) const

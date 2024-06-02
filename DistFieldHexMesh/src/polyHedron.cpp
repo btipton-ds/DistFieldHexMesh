@@ -194,13 +194,13 @@ void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
 	}
 }
 
-const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
+const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
 	bool cacheValid = includeAdjacentCellFaces ? _cachedEdges1Vaild : _cachedEdges0Vaild;
 	if (!cacheValid) {
 		auto curState = getState();
-		map<Edge, set<Index3DId>> edgeToFaceMap;
-		set<Index3DId> adjCellIds;
+		MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
+		MTC::set<Index3DId> adjCellIds;
 		for (const auto& faceId : _faceIds) {
 			faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
 				if (includeAdjacentCellFaces) {
@@ -211,8 +211,8 @@ const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 				for (const auto& edge : edges) {
 					auto iter = edgeToFaceMap.find(edge);
 					if (iter == edgeToFaceMap.end()) {
-						set<Index3DId> data;
-						iter = edgeToFaceMap.insert(make_pair(edge, data)).first;
+						MTC::set<Index3DId> data;
+						iter = edgeToFaceMap.insert(MTC::make_pair(edge, data)).first;
 					}
 					iter->second.insert(faceId);
 				}
@@ -222,7 +222,7 @@ const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 		if (includeAdjacentCellFaces) {
 			adjCellIds.erase(_thisId);
 			for (const auto& adjCellId : adjCellIds) {
-				set<Index3DId> faceIds;
+				MTC::set<Index3DId> faceIds;
 				cellAvailFunc(curState, adjCellId, [&faceIds](const Polyhedron& cell) {
 					faceIds = cell.getFaceIds();
 				});
@@ -259,9 +259,9 @@ const set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 	}
 }
 
-set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
+MTC::set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 {
-	set<Index3DId> cellIds;
+	MTC::set<Index3DId> cellIds;
 
 	if (includeCornerCells) {
 		const auto& edges = getEdges(true);
@@ -288,7 +288,7 @@ set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
-void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool includeAdjacentCells) const
+void Polyhedron::getVertEdges(const Index3DId& vertId, MTC::set<Edge>& result, bool includeAdjacentCells) const
 {
 	auto cellEdgeSet = getEdges(includeAdjacentCells);
 	if (includeAdjacentCells) {
@@ -308,11 +308,11 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, set<Edge>& result, bool i
 }
 
 // Gets the faces for a vertex which belong to this polyhedron
-set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
+MTC::set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 {
-	set<Index3DId> result;
+	MTC::set<Index3DId> result;
 
-	set<Edge> vertEdges;
+	MTC::set<Edge> vertEdges;
 	getVertEdges(vertId, vertEdges, false);
 
 	for (const Edge& edge : vertEdges) {
