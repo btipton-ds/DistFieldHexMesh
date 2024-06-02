@@ -98,18 +98,24 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	TriMesh::CMeshConstPtr pMesh = getModelMesh();
 	pMesh->findEdges(_boundBox, _edgeIndices);
 	pMesh->findTris(_boundBox, _triIndices);
+
+	MultiCore::local_heap::scoped_set_thread_heap st(&_heap);
+	_pHeapLocal = new HeapLocalData();
+
 }
 
 void Block::clear()
 {
+	MultiCore::local_heap::scoped_set_thread_heap st(&_heap);
+
 	_corners.clear();
 
-	
+	delete (_pHeapLocal);
+	_pHeapLocal = nullptr;
+
 	_baseIdxVerts = 0;
 	_baseIdxPolygons = 0;
 	_baseIdxPolyhedra = 0;
-	_needToSplit.clear();
-	_cantSplitYet.clear();
 
 	_edgeIndices.clear();
 	_triIndices.clear();
@@ -886,11 +892,11 @@ void Block::dumpOpenCells() const
 bool Block::splitRequiredPolyhedra()
 {
 	bool didSplit = false;
-	if (_needToSplit.empty())
+	if (_pHeapLocal->_needToSplit.empty())
 		return didSplit;
 
-	auto tmp = _needToSplit;
-	_needToSplit.clear();
+	auto tmp = _pHeapLocal->_needToSplit;
+	_pHeapLocal->_needToSplit.clear();
 	for (const auto& cellId : tmp) {
 		if (polyhedronExists(TS_REAL, cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
@@ -1106,11 +1112,11 @@ void Block::addToSplitStack(const Index3DId& cellId)
 	MTC::set<Index3DId> temp;
 	auto& cell = _modelData._polyhedra[cellId];
 	if (cell.canSplit(temp)) {
-		_needToSplit.insert(cellId);
-		_cantSplitYet.erase(cellId);
+		_pHeapLocal->_needToSplit.insert(cellId);
+		_pHeapLocal->_cantSplitYet.erase(cellId);
 	}
 	else {
-		_cantSplitYet.insert(cellId);
+		_pHeapLocal->_cantSplitYet.insert(cellId);
 		blockingIds.insert(temp.begin(), temp.end());
 	}
 	
@@ -1124,11 +1130,11 @@ void Block::addToSplitStack(const Index3DId& cellId)
 			MTC::set<Index3DId> temp;
 			auto& cell = pOwner->_modelData._polyhedra[cellId];
 			if (cell.canSplit(temp)) {
-				pOwner->_needToSplit.insert(cellId);
-				pOwner->_cantSplitYet.erase(cellId);
+				pOwner->_pHeapLocal->_needToSplit.insert(cellId);
+				pOwner->_pHeapLocal->_cantSplitYet.erase(cellId);
 			}
 			else {
-				pOwner->_cantSplitYet.insert(cellId);
+				pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
 				blockingIds2.insert(temp.begin(), temp.end());
 			}
 		}
@@ -1146,14 +1152,14 @@ void Block::addToSplitStack(const MTC::set<Index3DId>& cellIds)
 
 void Block::updateSplitStack()
 {
-	if (_cantSplitYet.empty())
+	if (_pHeapLocal->_cantSplitYet.empty())
 		return;
 
 	MTC::set<Index3DId> blockingIds;
 
-	auto tmpCantSplit = _cantSplitYet;
+	auto tmpCantSplit = _pHeapLocal->_cantSplitYet;
 
-	_cantSplitYet.clear();
+	_pHeapLocal->_cantSplitYet.clear();
 	for (const auto& cellId : tmpCantSplit) {
 		assert(cellId.blockIdx() == _blockIdx);
 		MTC::set<Index3DId> temp;
@@ -1161,9 +1167,9 @@ void Block::updateSplitStack()
 		if (pOwner->_modelData._polyhedra.exists(cellId)) {
 			auto& cell = _modelData._polyhedra[cellId];
 			if (cell.canSplit(temp)) {
-				pOwner->_needToSplit.insert(cellId);
+				pOwner->_pHeapLocal->_needToSplit.insert(cellId);
 			} else {
-				pOwner->_cantSplitYet.insert(cellId);
+				pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
 				blockingIds.insert(temp.begin(), temp.end());
 			}
 		}
@@ -1177,10 +1183,10 @@ void Block::updateSplitStack()
 				MTC::set<Index3DId> temp;
 				auto& cell = pOwner->_modelData._polyhedra[cellId];
 				if (cell.canSplit(temp)) {
-					pOwner->_needToSplit.insert(cellId);
-					pOwner->_cantSplitYet.erase(cellId);
+					pOwner->_pHeapLocal->_needToSplit.insert(cellId);
+					pOwner->_pHeapLocal->_cantSplitYet.erase(cellId);
 				} else {
-					pOwner->_cantSplitYet.insert(cellId);
+					pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
 					blockingIds2.insert(temp.begin(), temp.end());
 				}
 			}
@@ -1192,7 +1198,7 @@ void Block::updateSplitStack()
 
 bool Block::hasPendingSplits() const
 {
-	return !_cantSplitYet.empty() || !_needToSplit.empty();
+	return !_pHeapLocal->_cantSplitYet.empty() || !_pHeapLocal->_needToSplit.empty();
 }
 
 void Block::freePolygon(const Index3DId& id)

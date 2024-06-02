@@ -1451,7 +1451,8 @@ void Volume::runLambda3D(L fLambda, bool multiCore)
 		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
 			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
 				// Collect the indices for all blocks in this phase
-				vector<size_t> blocksToProcess;
+				static vector<size_t> blocksToProcess;
+				blocksToProcess.clear();
 
 				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
 					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {

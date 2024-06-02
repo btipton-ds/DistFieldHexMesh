@@ -198,6 +198,12 @@ private:
 		X, Y, Z
 	};
 
+	struct HeapLocalData
+	{
+		// This data can only be constructed after a heap is initialized
+		MTC::set<Index3DId> _needToSplit, _cantSplitYet;
+	};
+
 	struct ModelData {
 		ModelData(Block* pBlk);
 		ModelData(Block* pBlk, const ModelData& src);
@@ -261,7 +267,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	MTC::set<Index3DId> _needToSplit, _cantSplitYet;
+	HeapLocalData* _pHeapLocal = nullptr;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
 	SearchTreePtr _pVertTree;
