@@ -31,6 +31,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <tm_boundingBox.h>
 #include <index3D.h>
+#include <pool_vector.h>
+#include <pool_set.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
 
@@ -56,8 +58,8 @@ public:
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	bool containsFace(const Index3DId& faceId) const;
-	const std::set<Index3DId>& getFaceIds() const;
-	void getVertIds(std::set<Index3DId>& vertIds) const;
+	const MTC::set<Index3DId>& getFaceIds() const;
+	void getVertIds(MTC::set<Index3DId>& vertIds) const;
 	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
 	MTC::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
@@ -97,7 +99,7 @@ public:
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
-	void replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel);
+	void replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
 
@@ -139,7 +141,7 @@ private:
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 
-	std::set<Index3DId> _faceIds;
+	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 
 	bool _needsConditionalSplitTest = true;
@@ -157,7 +159,7 @@ private:
 	mutable double _cachedMinGap = -1;
 };
 
-inline const std::set<Index3DId>& Polyhedron::getFaceIds() const
+inline const MTC::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
 }

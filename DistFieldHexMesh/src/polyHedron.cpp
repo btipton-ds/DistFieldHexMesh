@@ -35,7 +35,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.hpp>
 #include <tm_ioUtil.h>
 #include <pool_vector.h>
+#include <pool_map.h>
 #include <pool_set.h>
+#include <io_utils.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
@@ -195,7 +197,7 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 	clearCache();
 }
 
-void Polyhedron::getVertIds(set<Index3DId>& vertIds) const
+void Polyhedron::getVertIds(MTC::set<Index3DId>& vertIds) const
 {
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(getState(), faceId, [&vertIds](const Polygon& refFace) {
@@ -336,7 +338,7 @@ MTC::set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 CBoundingBox3Dd Polyhedron::getBoundingBox() const
 {
 	CBoundingBox3Dd bbox;
-	set<Index3DId> vertIds;
+	MTC::set<Index3DId> vertIds;
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
 		bbox.merge(getBlockPtr()->getVertexPoint(vertId));
@@ -638,7 +640,7 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 #endif
 }
 
-void Polyhedron::replaceFaces(const Index3DId& curFaceId, const std::set<Index3DId>& newFaceIds, size_t splitLevel)
+void Polyhedron::replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel)
 {
 	clearCache();
 	_faceIds.erase(curFaceId);

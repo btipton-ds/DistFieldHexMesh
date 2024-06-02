@@ -111,7 +111,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	}
 #endif
 
-	set<Index3DId> cornerVerts;
+	MTC::set<Index3DId> cornerVerts;
 	referanceCell.getVertIds(cornerVerts);
 	assert(cornerVerts.size() == 8);
 	const auto& faceIds = referanceCell.getFaceIds();
