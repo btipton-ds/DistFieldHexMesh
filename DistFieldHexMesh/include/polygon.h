@@ -31,6 +31,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <patient_lock_guard.h>
+#include <pool_set.h>
+#include <pool_vector.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
@@ -44,15 +46,6 @@ struct RayHit;
 
 using RayHitd = RayHit<double>;
 using Planed = Plane<double>;
-
-namespace MultiCore
-{
-	template<class T>
-	class vector;
-
-	template<class T>
-	class set;
-}
 
 namespace DFHM {
 
@@ -115,7 +108,7 @@ public:
 	static bool verifyUniqueStat(const std::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const std::vector<Index3DId>& vertIds, size_t index);
-	static void createEdgesStat(const std::vector<Index3DId>& verts, std::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
+	static void createEdgesStat(const std::vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
 	static Vector3d calUnitNormalStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const std::vector<Index3DId>& vertIds);
 
@@ -154,7 +147,7 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const std::vector<Index3DId>& getVertexIds() const;
-	const std::set<Edge>& getEdges() const;
+	const MTC::set<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
 	double getShortestEdge() const;
@@ -223,7 +216,7 @@ private:
 	mutable bool _cachedEdgesVaild = false;
 	mutable Trinary _cachedIntersectsModel = Trinary::IS_UNKNOWN;
 	mutable std::vector<Index3DId> _sortedIds;
-	mutable std::set<Edge> _cachedEdges;
+	mutable MTC::set<Edge> _cachedEdges;
 };
 
 inline bool Polygon::CellId_SplitLevel::operator < (const CellId_SplitLevel& rhs) const

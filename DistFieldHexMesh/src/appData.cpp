@@ -417,9 +417,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
     try {
         auto pCanvas = _pMainFrame->getCanvas();
         pCanvas->clearMesh3D();
-        _volume = nullptr;
-        if (!_volume)
-            _volume = make_shared<Volume>();
+        _volume = make_shared<Volume>();
 
         dlg.getParams(_params);
 

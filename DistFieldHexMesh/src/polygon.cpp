@@ -271,7 +271,7 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-const set<Edge>& Polygon::getEdges() const
+const MTC::set<Edge>& Polygon::getEdges() const
 {
 	if (!_cachedEdgesVaild) {
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
@@ -379,7 +379,7 @@ bool Polygon::isCoplanar(const Edge& edge) const
 	return true;
 }
 
-void Polygon::createEdgesStat(const vector<Index3DId>& verts, set<Edge>& edgeSet, const Index3DId& polygonId)
+void Polygon::createEdgesStat(const vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
 		size_t j = (i + 1) % verts.size();

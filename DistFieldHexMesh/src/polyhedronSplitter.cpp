@@ -471,7 +471,7 @@ void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MTC::vector<
 		});
 
 		for (const auto& imprintFaceId : imprintFaces) {
-			set<Edge> imprintEdges;
+			MTC::set<Edge> imprintEdges;
 			faceFunc(TS_REAL, imprintFaceId, [this, &imprintEdges](const Polygon& imprintFace) {
 				imprintEdges = imprintFace.getEdges();
 			});
