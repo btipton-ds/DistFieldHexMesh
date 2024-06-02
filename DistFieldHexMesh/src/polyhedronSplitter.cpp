@@ -388,8 +388,7 @@ bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& r
 			yAxis.normalize();
 			Vector3d n = v1.cross(xAxis).normalized();
 			Planed modelPlane(tipPt, n, false);
-			MTC::vector<Vector3d> modelFacePoints, newPoints;
-			std::vector<Vector3d> tempPoints;
+			MTC::vector<Vector3d> modelFacePoints, newPoints, tempPoints;
 			if (realCell.createIntersectionFacePoints(modelPlane, tempPoints) > 2) {
 				double cosT = v1.dot(xAxis);
 				double sinT = v1.dot(yAxis);

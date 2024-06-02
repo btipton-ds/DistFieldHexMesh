@@ -461,7 +461,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 }
 Index3DId Block::addFace(const vector<Vector3d>& pts)
 {
-	vector<Index3DId> vertIds;
+	MTC::vector<Index3DId> vertIds;
 	for (const auto& pt : pts) {
 		auto vertId = addVertex(pt);
 		vertIds.push_back(vertId);

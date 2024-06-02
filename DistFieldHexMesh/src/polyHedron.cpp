@@ -407,10 +407,10 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, std::vector<Vector3d>& facePoints) const
+size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& facePoints) const
 {
 	facePoints.clear();
-	set<LineSegmentd> edgeSet;
+	MTC::set<LineSegmentd> edgeSet;
 	Index3DId result;
 	for (const auto& faceId : _faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [&plane, &edgeSet](const Polygon& face) {
@@ -463,7 +463,7 @@ Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 	Index3DId result;
 
 	Block* pBlk = const_cast<Block*> (getBlockPtr());
-	vector<Vector3d> facePoints;
+	MTC::vector<Vector3d> facePoints;
 	if (createIntersectionFacePoints(plane, facePoints) > 2) {
 		Polygon::dumpPolygonPoints(cout, facePoints);
 		result = pBlk->addFace(facePoints);
