@@ -53,5 +53,26 @@ namespace IoUtil
 		}
 	}
 
+	template<class T>
+	void write(std::ostream& out, const MultiCore::set<T>& vals)
+	{
+		size_t num = vals.size();
+		out.write((char*)&num, sizeof(num));
+		for (auto& val : vals)
+			out.write((char*)&val, sizeof(val));
+	}
+
+	template<class T>
+	void read(std::istream& in, MultiCore::set<T>& vals)
+	{
+		vals.clear();
+		size_t num;
+		in.read((char*)&num, sizeof(num));
+		for (size_t i = 0; i < num; i++) {
+			T val;
+			in.read((char*)&val, sizeof(val));
+			vals.insert(val);
+		}
+	}
 }
 

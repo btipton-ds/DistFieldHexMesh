@@ -128,7 +128,7 @@ public:
 	void removeDeadCellIds();
 	void unlinkFromCell(const Index3DId& cellId);
 	size_t numCells() const;
-	const std::set<CellId_SplitLevel>& getCellIds() const;
+	const MTC::set<CellId_SplitLevel>& getCellIds() const;
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
@@ -210,7 +210,7 @@ private:
 	std::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	std::vector<Index3DId> _vertexIds;
-	std::set<CellId_SplitLevel> _cellIds;
+	MTC::set<CellId_SplitLevel> _cellIds;
 
 	mutable bool _sortCacheVaild = false;
 	mutable bool _cachedEdgesVaild = false;
@@ -274,7 +274,7 @@ inline size_t Polygon::numCells() const
 	return _cellIds.size();
 }
 
-inline const std::set<Polygon::CellId_SplitLevel>& Polygon::getCellIds() const
+inline const MTC::set<Polygon::CellId_SplitLevel>& Polygon::getCellIds() const
 {
 	return _cellIds;
 }
