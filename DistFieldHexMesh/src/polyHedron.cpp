@@ -794,10 +794,10 @@ void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 	pTriMesh->processFoundTris(indices, bbox, _triIndices);
 }
 
-bool Polyhedron::orderVertEdges(set<Edge>& edgesIn, vector<Edge>& orderedEdges) const
+bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const
 {
 	orderedEdges.clear();
-	set<Edge> edges(edgesIn);
+	MTC::set<Edge> edges(edgesIn);
 	while (!edges.empty()) {
 		Edge lastEdge;
 		if (orderedEdges.empty()) {
@@ -932,14 +932,14 @@ double Polyhedron::getShortestEdge() const
 	return minDist;
 }
 
-set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
+MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {
 	// This function takes vertices and looks for faces which contain exactly 2 of the available verts.
 	// The edge may already exist.
-	set<Edge> edgeSet;
+	MTC::set<Edge> edgeSet;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(TS_REAL,faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
-			set<Index3DId> vertsInFace;
+			MTC::set<Index3DId> vertsInFace;
 			for (const auto& vertId : vertIds) {
 				if (face.containsVertex(vertId))
 					vertsInFace.insert(vertId);
@@ -958,10 +958,10 @@ set<Edge> Polyhedron::createEdgesFromVerts(vector<Index3DId>& vertIds) const
 	return edgeSet;
 }
 
-bool Polyhedron::orderVertIds(vector<Index3DId>& vertIds) const
+bool Polyhedron::orderVertIds(MTC::vector<Index3DId>& vertIds) const
 {
 
-	vector<Index3DId> result;
+	MTC::vector<Index3DId> result;
 	auto newEdgeSet = createEdgesFromVerts(vertIds);
 
 	const Edge& e = *newEdgeSet.begin();

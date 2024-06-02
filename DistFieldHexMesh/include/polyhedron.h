@@ -128,9 +128,9 @@ private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
-	std::set<Edge> createEdgesFromVerts(std::vector<Index3DId>& vertIds) const;
-	bool orderVertIds(std::vector<Index3DId>& vertIds) const;
-	bool orderVertEdges(std::set<Edge>& edges, std::vector<Edge>& orderedEdges) const;
+	MTC::set<Edge> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
+	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
+	bool orderVertEdges(MTC::set<Edge>& edges, MTC::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
 	double minGap() const;
