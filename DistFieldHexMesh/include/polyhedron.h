@@ -46,7 +46,8 @@ class Edge;
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
-	Polyhedron(const std::set<Index3DId>& faceIds);
+	Polyhedron(const MTC::set<Index3DId>& faceIds);
+	explicit Polyhedron(const std::set<Index3DId>& faceIds);
 	Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src);
 

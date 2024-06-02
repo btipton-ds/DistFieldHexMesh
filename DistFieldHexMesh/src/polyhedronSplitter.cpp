@@ -102,25 +102,7 @@ bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 
 bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const
 {
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (Index3DId(0, 8, 4, 0) == _polyhedronId) {
-		int dbgBreak = 1;
-	}
-#endif
-
 	assert(_pBlock);
-#if _DEBUG
-	double minDist = DBL_MAX;
-	for (const auto& faceId : realCell.getFaceIds()) {
-		faceFunc(TS_REAL, faceId, [this, &minDist, &pt](const Polygon& face) {
-			double d = face.distanceToPoint(pt);
-			if (d < minDist)
-				minDist = d;
-		});
-	}
-
-	assert(minDist > Tolerance::sameDistTol());
-#endif
 
 #if defined(_DEBUG)
 	// Now split the cell
@@ -134,7 +116,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	assert(cornerVerts.size() == 8);
 	const auto& faceIds = referanceCell.getFaceIds();
 	assert(faceIds.size() == 6);
-	map<Index3DId, set<Index3DId>> cornerVertToFaceMap;
+	MTC::map<Index3DId, MTC::set<Index3DId>> cornerVertToFaceMap;
 	for (const auto& vertId : cornerVerts) {
 		cornerVertToFaceMap.insert(make_pair(vertId, set<Index3DId>()));
 	}
@@ -181,7 +163,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		auto cornerVertId = pair.first;
 		auto splitVertFaces = pair.second;
 		assert(splitVertFaces.size() == 3);
-		map<Edge, set<Index3DId>> fullEdgeToFaceMap;
+		MTC::map<Edge, MTC::set<Index3DId>> fullEdgeToFaceMap;
 		for (const auto& splitFaceId : splitVertFaces) {
 			assert(_pBlock->polygonExists(TS_REAL, splitFaceId));
 			_pBlock->faceAvailFunc(TS_REFERENCE, splitFaceId, [&fullEdgeToFaceMap](const Polygon& splitFace) {
@@ -203,7 +185,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		}
 
 		assert(fullEdgeToFaceMap.size() == 9);
-		map<Edge, set<Index3DId>> edgeToFaceMap;
+		MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
 		for (const auto& pair : fullEdgeToFaceMap) {
 			if (pair.second.size() == 2)
 				edgeToFaceMap.insert(pair);

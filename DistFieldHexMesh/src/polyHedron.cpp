@@ -50,6 +50,11 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+Polyhedron::Polyhedron(const MTC::set<Index3DId>& faceIds)
+	: _faceIds(faceIds)
+{
+}
+
 Polyhedron::Polyhedron(const set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
 {
