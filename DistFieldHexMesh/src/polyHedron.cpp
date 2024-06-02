@@ -688,7 +688,7 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 #endif
 
-bool Polyhedron::canSplit(set<Index3DId>& blockingCellIds) const
+bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 {
 	// You can't cache this because it depends on the state of the neighbors
 	// If this cell cannot be split due to a neighbor, then the neighbor is split - now, this cell can be split; even though this cell didn't change.

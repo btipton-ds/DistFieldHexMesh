@@ -33,12 +33,14 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mutex>
 #include <atomic>
 
+#include <defines.h>
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <tm_spatialSearch.h>
 #include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <pool_set.h>
 #include <local_heap.h>
 #include <logger.h>
 #include <lambdaMacros.h>
@@ -149,7 +151,8 @@ public:
 	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
 
-	void addToSplitStack(const std::set<Index3DId>& cellIds);
+	void addToSplitStack(const Index3DId& cellIds);
+	void addToSplitStack(const MTC::set<Index3DId>& cellIds);
 	void updateSplitStack();
 	bool hasPendingSplits() const;
 
@@ -208,10 +211,8 @@ private:
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
 
-	static void addIndexToMap(const Index3D& subBlockIdx, std::set<Index3D>& subBlockIndices);
-
 	void setIsOutput(bool val);
-	void getAdjacentBlockIndices(std::set<Index3D>& indices) const;
+	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
@@ -260,7 +261,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::set<Index3DId> _needToSplit, _cantSplitYet;
+	MTC::set<Index3DId> _needToSplit, _cantSplitYet;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
 	SearchTreePtr _pVertTree;

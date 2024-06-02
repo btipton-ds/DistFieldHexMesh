@@ -100,7 +100,7 @@ public:
 
 	void imprintTVertices(Block* pDstBlock);
 	void replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel);
-	bool canSplit(std::set<Index3DId>& blockingCellIds) const;
+	bool canSplit(MTC::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
 
 	size_t getSplitLevel() const;

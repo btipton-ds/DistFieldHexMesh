@@ -171,7 +171,7 @@ const CMeshPtr& Block::getModelMesh() const
 }
 
 
-void Block::getAdjacentBlockIndices(set<Index3D>& indices) const
+void Block::getAdjacentBlockIndices(MTC::set<Index3D>& indices) const
 {
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
@@ -341,11 +341,6 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 
 	auto blockCornerPts = getCornerPts();	
 	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx, false);
-}
-
-void Block::addIndexToMap(const Index3D& subBlockIdx, set<Index3D>& subBlockIndices)
-{
-	subBlockIndices.insert(subBlockIdx);
 }
 
 const vector<Vector3d>& Block::getCornerPts() const
@@ -760,7 +755,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 	_modelData._polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
 		if (cell.needToSplitDueToSplitFaces(params)) {
 			result = true;
-			set<Index3DId> blockers;
+			MTC::set<Index3DId> blockers;
 			if (cell.canSplit(blockers)) {
 				Vector3d pt = cell.calCentroid();
 				PolyhedronSplitter splitter(this, id);
@@ -1101,23 +1096,24 @@ Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
 	return pOwner->data(refState)._polyhedra[id];
 }
 
-void Block::addToSplitStack(const set<Index3DId>& cellIds)
+void Block::addToSplitStack(const Index3DId& cellId)
 {
 	set<Index3DId> blockingIds;
-	for (const auto& cellId : cellIds) {
-		assert(polyhedronExists(TS_REAL, cellId));
-		assert(cellId.blockIdx() == _blockIdx);
 
-		set<Index3DId> temp;
-		auto& cell = _modelData._polyhedra[cellId];
-		if (cell.canSplit(temp)) {
-			_needToSplit.insert(cellId);
-			_cantSplitYet.erase(cellId);
-		} else {
-			_cantSplitYet.insert(cellId);
-			blockingIds.insert(temp.begin(), temp.end());
-		}
+	assert(polyhedronExists(TS_REAL, cellId));
+	assert(cellId.blockIdx() == _blockIdx);
+
+	MTC::set<Index3DId> temp;
+	auto& cell = _modelData._polyhedra[cellId];
+	if (cell.canSplit(temp)) {
+		_needToSplit.insert(cellId);
+		_cantSplitYet.erase(cellId);
 	}
+	else {
+		_cantSplitYet.insert(cellId);
+		blockingIds.insert(temp.begin(), temp.end());
+	}
+	
 
 	while (!blockingIds.empty()) {
 		set<Index3DId> blockingIds2;
@@ -1125,7 +1121,7 @@ void Block::addToSplitStack(const set<Index3DId>& cellIds)
 			if (!polyhedronExists(TS_REAL, cellId))
 				continue;
 			auto pOwner = getOwner(cellId);
-			set<Index3DId> temp;
+			MTC::set<Index3DId> temp;
 			auto& cell = pOwner->_modelData._polyhedra[cellId];
 			if (cell.canSplit(temp)) {
 				pOwner->_needToSplit.insert(cellId);
@@ -1140,19 +1136,27 @@ void Block::addToSplitStack(const set<Index3DId>& cellIds)
 	}
 }
 
+void Block::addToSplitStack(const MTC::set<Index3DId>& cellIds)
+{
+	set<Index3DId> blockingIds;
+	for (const auto& cellId : cellIds) {
+		addToSplitStack(cellId);
+	}
+}
+
 void Block::updateSplitStack()
 {
 	if (_cantSplitYet.empty())
 		return;
 
-	set<Index3DId> blockingIds;
+	MTC::set<Index3DId> blockingIds;
 
 	auto tmpCantSplit = _cantSplitYet;
 
 	_cantSplitYet.clear();
 	for (const auto& cellId : tmpCantSplit) {
 		assert(cellId.blockIdx() == _blockIdx);
-		set<Index3DId> temp;
+		MTC::set<Index3DId> temp;
 		auto pOwner = getOwner(cellId);
 		if (pOwner->_modelData._polyhedra.exists(cellId)) {
 			auto& cell = _modelData._polyhedra[cellId];
@@ -1166,11 +1170,11 @@ void Block::updateSplitStack()
 	}
 
 	while (!blockingIds.empty()) {
-		set<Index3DId> blockingIds2;
+		MTC::set<Index3DId> blockingIds2;
 		for (const auto& cellId : blockingIds) {
 			auto pOwner = getOwner(cellId);
 			if (pOwner->_modelData._polyhedra.exists(cellId)) {
-				set<Index3DId> temp;
+				MTC::set<Index3DId> temp;
 				auto& cell = pOwner->_modelData._polyhedra[cellId];
 				if (cell.canSplit(temp)) {
 					pOwner->_needToSplit.insert(cellId);
