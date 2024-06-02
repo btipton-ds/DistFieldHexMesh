@@ -28,16 +28,15 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <block.h>
 
-using namespace std;
 using namespace DFHM;
 
-void removeVertFromAvail(map<Index3DId, set<Edge>>& vertToEdgeMap, const Index3DId& vertId)
+void removeVertFromAvail(MTC::map<Index3DId, MTC::set<Edge>>& vertToEdgeMap, const Index3DId& vertId)
 {
 	auto iter = vertToEdgeMap.find(vertId);
 	vertToEdgeMap.erase(iter);
 }
 
-void removeEdgeFromAvail(map<Index3DId, set<Edge>>& vertToEdgeMap, const Edge& edge)
+void removeEdgeFromAvail(MTC::map<Index3DId, MTC::set<Edge>>& vertToEdgeMap, const Edge& edge)
 {
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[0]);
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[1]);
@@ -71,10 +70,10 @@ struct VertLoop {
 
 	const Block* _pBlock;
 	double _length = 0;
-	vector<Index3DId> _verts;
+	MTC::vector<Index3DId> _verts;
 };
 
-using VertLoopPtr = shared_ptr<VertLoop>;
+using VertLoopPtr = std::shared_ptr<VertLoop>;
 
 bool VertLoopCompare(const VertLoopPtr& pLhs, const VertLoopPtr& pRhs) {
 	return pLhs->_length < pRhs->_length;
@@ -82,31 +81,31 @@ bool VertLoopCompare(const VertLoopPtr& pLhs, const VertLoopPtr& pRhs) {
 
 }
 
-void Utils::formEdgeLoops(const Block* pBlock, const set<Edge> sharedSegments, set<Edge> availEdges, vector<vector<Edge>>& loops)
+void Utils::formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegments, MTC::set<Edge> availEdges, MTC::vector<MTC::vector<Edge>>& loops)
 {
 	for (const auto& edge : sharedSegments) {
 		availEdges.insert(edge);
 	}
 
-	map<Index3DId, set<Edge>> vertToEdgeMap;
+	MTC::map<Index3DId, MTC::set<Edge>> vertToEdgeMap;
 	for (const auto& edge : availEdges) {
 		const auto vertIds = edge.getVertexIds();
 
 		auto iter = vertToEdgeMap.find(vertIds[0]);
 		if (iter == vertToEdgeMap.end()) {
-			iter = vertToEdgeMap.insert(make_pair(vertIds[0], set<Edge>())).first;
+			iter = vertToEdgeMap.insert(make_pair(vertIds[0], MTC::set<Edge>())).first;
 		}
 		iter->second.insert(edge);
 
 		iter = vertToEdgeMap.find(vertIds[1]);
 		if (iter == vertToEdgeMap.end()) {
-			iter = vertToEdgeMap.insert(make_pair(vertIds[1], set<Edge>())).first;
+			iter = vertToEdgeMap.insert(make_pair(vertIds[1], MTC::set<Edge>())).first;
 		}
 		iter->second.insert(edge);
 	}
 
-	vector<VertLoopPtr> vertLoops;
-	VertLoopPtr pVertLoop = make_shared<VertLoop>(pBlock);
+	MTC::vector<VertLoopPtr> vertLoops;
+	VertLoopPtr pVertLoop = std::make_shared<VertLoop>(pBlock);
 
 	auto iter = sharedSegments.begin();
 	const auto& startEdge = *iter;
@@ -128,7 +127,7 @@ void Utils::formEdgeLoops(const Block* pBlock, const set<Edge> sharedSegments, s
 				for (const auto& edge : edgeSet) {
 					const auto otherVertId = edge.getOtherVert(lastVertId);
 					if (otherVertId != prevVertId) {
-						VertLoopPtr pNewLoop = make_shared<VertLoop>(*pVertLoop);
+						VertLoopPtr pNewLoop = std::make_shared<VertLoop>(*pVertLoop);
 						pNewLoop->add(otherVertId);
 					}
 				}

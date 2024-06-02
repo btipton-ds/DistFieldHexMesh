@@ -29,13 +29,14 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <set>
 #include <vector>
+#include <defines.h>
 #include <edge.h>
 
 namespace DFHM {
 
 namespace Utils {
 
-void formEdgeLoops(const Block* pBlock, const std::set<Edge> sharedSegments, std::set<Edge> availEdges, std::vector<std::vector<Edge>>& loops);
+void formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegments, MTC::set<Edge> availEdges, MTC::vector<MTC::vector<Edge>>& loops);
 
 }
 
