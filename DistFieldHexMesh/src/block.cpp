@@ -496,14 +496,14 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	return cellId;
 }
 
-Index3DId Block::addCell(const set<Index3DId>& faceIds)
+Index3DId Block::addCell(const MTC::set<Index3DId>& faceIds)
 {
 	return addCell(Polyhedron(faceIds));
 }
 
-Index3DId Block::addCell(const vector<Index3DId>& faceIds)
+Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 {
-	set<Index3DId> faceSet;
+	MTC::set<Index3DId> faceSet;
 	faceSet.insert(faceIds.begin(), faceIds.end());
 	Index3DId cellId = _modelData._polyhedra.findOrAdd(Polyhedron(faceSet));
 
