@@ -280,7 +280,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	return true;
 }
 
-bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Planed& plane, set<Index3DId> targetCellIds, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Planed& plane, MTC::set<Index3DId> targetCellIds, MTC::set<Index3DId>& newCellIds)
 {
 	bool result = false;
 
@@ -496,12 +496,12 @@ void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MTC::vector<
 		const auto& faceId = pair.first;
 		const auto& edges = pair.second;
 		faceFunc(TS_REAL, faceId, [&edges](const Polygon& sourceFace) {
-			vector<Index3DId> newFaces;
+			MTC::vector<Index3DId> newFaces;
 			sourceFace.splitWithEdges(edges, newFaces);
 		});
 	}
 
-	set<Index3DId> faceIds0, faceIds1;
+	MTC::set<Index3DId> faceIds0, faceIds1;
 
 	// Add common faces for both cells
 	faceIds0.insert(imprintFaces.begin(), imprintFaces.end());
@@ -515,7 +515,7 @@ bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 	return false;
 }
 
-bool PolyhedronSplitter::splitAtPlane(const Planed& plane, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitAtPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)
 {
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
@@ -538,7 +538,7 @@ bool PolyhedronSplitter::splitAtPlane(const Planed& plane, set<Index3DId>& newCe
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, MTC::set<Index3DId>& newCellIds)
 {
 	Index3DId imprintFaceId = realCell.createIntersectionFace(plane);
 
@@ -550,18 +550,18 @@ bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& ref
 	return false;
 }
 
-bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& imprintFaceId, set<Index3DId>& newCellIds)
+bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& imprintFaceId, MTC::set<Index3DId>& newCellIds)
 {
 	// Imprint face is a splitting operation. It creates two cells from one
 
 	set<Index3DId> realFaceIds = realCell.getFaceIds();
 
-	vector<Index3DId> imprintVertIds;
+	MTC::vector<Index3DId> imprintVertIds;
 	faceFunc(TS_REAL, imprintFaceId, [&imprintVertIds](const Polygon& imprintFace) {
 		imprintVertIds = imprintFace.getVertexIds();
 	});
 
-	vector<Index3DId> facesToSplit;
+	MTC::vector<Index3DId> facesToSplit;
 	for (const auto& realFaceId : realFaceIds) {
 		faceFunc(TS_REAL, realFaceId, [&imprintVertIds, &facesToSplit](const Polygon& realFace) {
 			for (const auto& imprintVertId : imprintVertIds) {
@@ -578,7 +578,7 @@ bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& impr
 
 	_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 
-	vector<Index3DId> lowerFaceIds({ imprintFaceId }), upperFaceIds({ imprintFaceId });
+	MTC::vector<Index3DId> lowerFaceIds({ imprintFaceId }), upperFaceIds({ imprintFaceId });
 
 	for (const auto& faceId : facesToSplit) {
 		PolygonSplitter sp(_pBlock, faceId);

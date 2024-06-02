@@ -882,7 +882,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
-void Polygon::splitWithEdges(const set<Edge>& edges, vector<Index3DId>& newFaceIds) const
+void Polygon::splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const
 {
 	auto faceEdges = getEdges();
 	MTC::vector<Edge> allEdges;
