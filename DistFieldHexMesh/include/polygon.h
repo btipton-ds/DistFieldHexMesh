@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <patient_lock_guard.h>
+#include <pool_map.h>
 #include <pool_set.h>
 #include <pool_vector.h>
 #include <index3D.h>
@@ -162,8 +163,8 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	const std::set<Index3DId>& getSplitFaceProductIds() const;
-	const std::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
+	const MTC::set<Index3DId>& getSplitFaceProductIds() const;
+	const MTC::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
 	bool cellsOwnThis() const;
 	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
@@ -206,8 +207,8 @@ private:
 	size_t getCellTris(std::vector<size_t>& indices) const;
 
 	size_t _createdDuringSplitNumber = 0;
-	std::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
-	std::map<Edge, Index3DId> _splitEdgeVertMap;
+	MTC::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
+	MTC::map<Edge, Index3DId> _splitEdgeVertMap;
 
 	std::vector<Index3DId> _vertexIds;
 	MTC::set<CellId_SplitLevel> _cellIds;
@@ -294,12 +295,12 @@ inline const std::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-inline const std::set<Index3DId>& Polygon::getSplitFaceProductIds() const
+inline const MTC::set<Index3DId>& Polygon::getSplitFaceProductIds() const
 {
 	return _splitFaceProductIds;
 }
 
-inline const std::map<Edge, Index3DId>& Polygon::getSplitEdgeVertMap() const
+inline const MTC::map<Edge, Index3DId>& Polygon::getSplitEdgeVertMap() const
 {
 	return _splitEdgeVertMap;
 }

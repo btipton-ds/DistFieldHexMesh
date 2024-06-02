@@ -74,5 +74,32 @@ namespace IoUtil
 			vals.insert(val);
 		}
 	}
+
+	template<class T, class U>
+	void write(std::ostream& out, const MTC::map<T, U>& val)
+	{
+		size_t num = val.size();
+		out.write((char*)&num, sizeof(num));
+		for (const auto& pair : val) {
+			pair.first.write(out);
+			pair.second.write(out);
+
+		}
+	}
+
+	template<class T, class U>
+	void read(std::istream& in, MTC::map<T, U>& val)
+	{
+		size_t num = val.size();
+		in.read((char*)&num, sizeof(num));
+		for (size_t i = 0; i < num; i++) {
+			T t;
+			U u;
+			t.read(in);
+			u.read(in);
+			val.insert(std::make_pair(t, u));
+		}
+	}
+
 }
 
