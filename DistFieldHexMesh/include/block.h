@@ -124,9 +124,9 @@ public:
 	void setVertexLockType(const Index3DId& vertId, VertexLockType val);
 	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
-	Index3DId addFace(const std::vector<Index3DId>& vertIndices);
+	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
-	Index3DId addFace(const std::vector<Vector3d>& pts);
+	Index3DId addFace(const MTC::vector<Vector3d>& pts);
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
@@ -220,7 +220,7 @@ private:
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	Index3DId addFace(int axis, const Index3D& subBlockIdx, const std::vector<Vector3d>& pts);
+	Index3DId addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Vector3d>& pts);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;

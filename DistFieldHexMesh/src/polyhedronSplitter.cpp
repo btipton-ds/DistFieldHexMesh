@@ -228,7 +228,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 				faceVert1 = face.getVertexIds()[0];
 			});
 
-			std::vector<Index3DId> verts = {
+			MTC::vector<Index3DId> verts = {
 				edgeVert1,
 				faceVert0,
 				cellMidId,

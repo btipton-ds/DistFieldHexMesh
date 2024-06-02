@@ -438,7 +438,7 @@ VertexLockType Block::getVertexLockType(const Index3DId& vertId) const
 	return getOwner(vertId)->_vertices[vertId].getLockType();
 }
 
-Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
+Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)
 	if (!Polygon::verifyVertsConvexStat(this, vertIndices)) {
@@ -459,7 +459,7 @@ Index3DId Block::addFace(const vector<Index3DId>& vertIndices)
 
 	return faceId;
 }
-Index3DId Block::addFace(const vector<Vector3d>& pts)
+Index3DId Block::addFace(const MTC::vector<Vector3d>& pts)
 {
 	MTC::vector<Index3DId> vertIds;
 	for (const auto& pt : pts) {
@@ -471,7 +471,7 @@ Index3DId Block::addFace(const vector<Vector3d>& pts)
 	return addFace(vertIds);
 }
 
-Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const vector<Vector3d>& pts)
+Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Vector3d>& pts)
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
 	assert(ownerBlockIdx.isValid());
