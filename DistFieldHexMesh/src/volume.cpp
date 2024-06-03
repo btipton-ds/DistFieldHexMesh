@@ -43,7 +43,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <block.h>
 #include <volume.h>
-#include <MultiCoreUtil.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <polyhedronSplitter.h>
@@ -326,9 +325,36 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
 	findFeatures();
 
-	createBlocks(params, blockSpan, multiCore);
-	splitSimple(params, multiCore);
-	splitAtCurvature(params, multiCore);
+
+	MultiCore::ThreadPool tp;
+	tp.start();
+
+	ThreadPool::FuncType sf0([this](size_t linearIdx) {
+		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+		auto pt = _blocks[linearIdx];
+		if (pt) {
+			_blocks[linearIdx] = createBlock(blockIdx);
+			MultiCore::local_heap::scoped_set_thread_heap st(pt->getHeapPtr());
+		} else
+			_blocks[linearIdx] = createBlock(blockIdx);
+	});
+	tp.runFunc(&sf0, _blocks.size());
+
+	ThreadPool::FuncType sf1([this](size_t linearIdx) {
+		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+		auto pt = _blocks[linearIdx];
+		if (pt) {
+			_blocks[linearIdx] = createBlock(blockIdx);
+			MultiCore::local_heap::scoped_set_thread_heap st(pt->getHeapPtr());
+			pt->createSubBlocks(TS_REAL);
+		}
+	});
+	runThreadPool3D(tp, &sf1);
+	tp.stop();
+
+//	createBlocks(params, blockSpan, multiCore);
+//	splitSimple(params, multiCore);
+//	splitAtCurvature(params, multiCore);
 //	splitAtSharpVerts(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 
@@ -1483,4 +1509,40 @@ void Volume::runLambda3D(L fLambda, bool multiCore)
 	}
 
 	endOperation();
+}
+
+void Volume::runThreadPool3D(ThreadPool& tp, ThreadPool::FuncType* pFLambda)
+{
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	Index3D phaseIdx, idx;
+
+	// Pass one, process all cells. That can leave faces in an interim state.
+	// If the interim cell is also modified, it should be taken care of on pass 1
+	// Adjacents cells with face splits or vertex insertions may be left behind
+	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
+			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+				// Collect the indices for all blocks in this phase
+				vector<size_t> blocksToProcess;
+				blocksToProcess.clear();
+
+				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
+						for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
+							size_t linearIdx = calLinearBlockIndex(idx);
+							blocksToProcess.push_back(linearIdx);
+						}
+					}
+				}
+
+//				sort(blocksToProcess.begin(), blocksToProcess.end());
+				// Process those blocks in undetermined order
+				ThreadPool::FuncType ft([this, pFLambda, &blocksToProcess](size_t idx) {
+					size_t linearIdx = blocksToProcess[idx];
+					(*pFLambda)(linearIdx);
+				});
+				tp.runFunc(&ft, blocksToProcess.size());
+			}
+		}
+	}
 }

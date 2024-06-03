@@ -151,6 +151,9 @@ public:
 	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
 
+	MultiCore::local_heap* getHeapPtr();
+	const MultiCore::local_heap* getHeapPtr() const;
+
 	void addToSplitStack(const Index3DId& cellIds);
 	void addToSplitStack(const MTC::set<Index3DId>& cellIds);
 	void updateSplitStack();
@@ -186,6 +189,7 @@ public:
 
 	template<class F>
 	void iteratePolyhedraInOrder(TopolgyState state, F fLambda);
+
 
 	LAMBDA_BLOCK_DECLS
 
@@ -294,6 +298,16 @@ inline void Block::GlPoints::changed()
 inline size_t Block::blockDim() const
 {
 	return _blockDim;
+}
+
+inline MultiCore::local_heap* Block::getHeapPtr()
+{
+	return &_heap;
+}
+
+inline const MultiCore::local_heap* Block::getHeapPtr() const
+{
+	return &_heap;
 }
 
 inline Volume* Block::getVolume()

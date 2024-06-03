@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vector>
 #include <map>
 #include <mutex>
+#include <MultiCoreUtil.h>
 #include <index3D.h>
 #include <triMesh.h>
 #include <polygon.h>
@@ -105,6 +106,7 @@ private:
 	friend class Index3DBase;
 
 	using AxisIndex = Block::AxisIndex;
+	using ThreadPool = MultiCore::ThreadPool;
 
 	void clear();
 
@@ -156,6 +158,8 @@ private:
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
 	void runLambda3D(L fLambda, bool multiCore);
+
+	void runThreadPool3D(ThreadPool& tp, ThreadPool::FuncType* pFLambda);
 
 	static Index3D s_volDim;
 
