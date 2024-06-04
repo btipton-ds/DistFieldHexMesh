@@ -343,7 +343,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
-			_blocks[linearIdx] = createBlock(blockIdx);
 			MultiCore::local_heap::scoped_set_thread_heap st(pt->getHeapPtr());
 			pt->createSubBlocks(TS_REAL);
 		}
@@ -1535,10 +1534,12 @@ void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
 
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
-				tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
-					size_t linearIdx = blocksToProcess[idx];
-					fLambda(threadNum, linearIdx);
-				});
+				if (!blocksToProcess.empty()) {
+					tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+						size_t linearIdx = blocksToProcess[idx];
+						fLambda(threadNum, linearIdx);
+					});
+				}
 			}
 		}
 	}
