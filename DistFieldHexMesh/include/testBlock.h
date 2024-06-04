@@ -31,6 +31,7 @@ namespace DFHM {
 
 class TestBlock {
 public:
+	bool testAll(size_t bd = 8);
 	bool testBlock00();
 	bool testBlock01();
 	bool testBlock02();

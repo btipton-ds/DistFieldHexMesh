@@ -43,26 +43,10 @@ using namespace DFHM;
 
 #define MULTI_CORE_TESTS_ENABLED 1
 
-
-void testBlock(size_t bd = 8)
-{
-	Index3D::setBlockDim(bd);
-	TestBlock tb;
-
-	if (!tb.testBlock00()) return;
-	if (!tb.testBlock01()) return;
-	if (!tb.testBlock02()) return;
-	if (!tb.testBlock03()) return;
-	if (!tb.testBlock04()) return;
-
-
-	cout << "testBlock pass\n";
-}
-
-
 int main(int numParams, const char** params)
 {
-	testBlock();
+	TestBlock tb;
+	tb.testAll();
 
 	TestPoolMemory tm;
 	tm.testAll();

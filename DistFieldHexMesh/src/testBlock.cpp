@@ -38,6 +38,21 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
+bool TestBlock::testAll(size_t bd)
+{
+	Index3D::setBlockDim(bd);
+
+	if (!testBlock00()) return false;
+	if (!testBlock01()) return false;
+	if (!testBlock02()) return false;
+	if (!testBlock03()) return false;
+	if (!testBlock04()) return false;
+
+	cout << "testBlock pass\n";
+
+	return true;
+}
+
 bool TestBlock::testBlock00()
 {
 	return true;
