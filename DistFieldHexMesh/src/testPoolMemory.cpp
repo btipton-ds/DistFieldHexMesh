@@ -124,7 +124,7 @@ bool TestPoolMemory::testAll()
 	if (!testMap()) return false;
 	if (!testPoolIndex3D()) return false;
 
-	cout << "testAll pass\n";
+	cout << "TestPoolMemory pass\n";
 	return true;
 }
 
@@ -132,8 +132,6 @@ bool TestPoolMemory::testAllocator()
 {
 	if (!testAllocator0()) return false;
 	if (!testAllocator1()) return false;
-
-	cout << "TestAllocator pass\n";
 
 	return true;
 }
@@ -276,7 +274,6 @@ bool TestPoolMemory::testVector()
 
 	if (!memoryStressTest()) return false;
 
-	cout << "Test vector pass\n";
 	return true;
 }
 
@@ -646,7 +643,6 @@ bool TestPoolMemory::testSet()
 		}, true);
 #endif
 
-	cout << "Test set pass\n";
 	return true;
 }
 
@@ -726,7 +722,6 @@ bool TestPoolMemory::testMap()
 		}, true);
 #endif
 
-	cout << "Test map pass\n";
 	return true;
 }
 
@@ -851,8 +846,6 @@ bool TestPoolMemory::testPoolIndex3D()
 
 		TEST_EQUAL(indexSet.size(), 1000, "Test Index3D map");
 	}
-
-	cout << "Test testPoolIndex3D pass\n";
 
 	return true;
 }

@@ -26,19 +26,31 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <iostream>
 #include <testBlock.h>
 #include <testPoolMemory.h>
+#include <testMultiCore.h>
 
 using namespace DFHM;
 
 int main(int numParams, const char** params)
 {
-	TestBlock tb;
-	tb.testAll();
+	{
+		TestBlock tb;
+		if (!tb.testAll()) return false;
+	}
 
-	TestPoolMemory tm;
-	tm.testAll();
+	{
+		TestPoolMemory tpm;
+		if (!tpm.testAll()) return false;
+	}
 
+	{
+		TestMultiCore tmc;
+		if (!tmc.testAll()) return false;
+	}
+
+	std::cout << "All tests passed\n";
 	return 0;
 }
 

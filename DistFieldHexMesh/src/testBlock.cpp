@@ -48,7 +48,7 @@ bool TestBlock::testAll(size_t bd)
 	if (!testBlock03()) return false;
 	if (!testBlock04()) return false;
 
-	cout << "testBlock pass\n";
+	cout << "TestBlock pass\n";
 
 	return true;
 }
