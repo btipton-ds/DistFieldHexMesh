@@ -35,12 +35,16 @@ using namespace DFHM;
 
 bool TestMultiCore::testAll()
 {
-	MultiCore::getNumCores(2);
-	MultiCore::ThreadPool tp;
+	MultiCore::ThreadPool tp(4);
 
-	for (size_t i = 0; i < 10; i++) {
-		tp.run(100, [](size_t idx) {
-			int dbgIdx = 1;
+	std::vector<std::vector<size_t>> vv;
+	vv.resize(tp.getNumThreads());
+	for (size_t i = 0; i < tp.getNumThreads(); i++) {
+		tp.run(100, [i, &vv](size_t threadNum, size_t idx) {
+			auto& v = vv[threadNum];
+			for (size_t i = 0; i < idx; i++) {
+				v.push_back(i);
+			}
 		});
 	}
 

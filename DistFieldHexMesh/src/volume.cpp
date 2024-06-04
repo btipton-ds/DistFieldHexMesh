@@ -328,7 +328,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 	MultiCore::ThreadPool tp;
 
-	tp.run(_blocks.size(), [this](size_t linearIdx) {
+	tp.run(_blocks.size(), [this](size_t threadNum, size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
@@ -339,7 +339,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			_blocks[linearIdx] = createBlock(blockIdx);
 	});
 
-	runThreadPool3D(tp, [this](size_t linearIdx) {
+	runThreadPool3D(tp, [this](size_t threadNum, size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
@@ -1535,9 +1535,9 @@ void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
 
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
-				tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t idx) {
+				tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
-					fLambda(linearIdx);
+					fLambda(threadNum, linearIdx);
 				});
 			}
 		}
