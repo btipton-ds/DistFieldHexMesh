@@ -29,11 +29,11 @@ This file is part of the DistFieldHexMesh application/library.
 #include <iostream>
 #include <cstdlib>
 
+#include <testPoolMemory.h>
 #include <defines.h>
 #include <tests.h>
 #include <triMesh.h>
 #include <volume.h>
-#include <blockTest.h>
 #include <MultiCoreUtil.h>
 #include <vertex.h>
 #include <pool_vector.h>
@@ -47,113 +47,71 @@ using namespace DFHM;
 
 namespace
 {
-struct Dummy {
-	Dummy()
-	{
-	}
+	struct Dummy {
+		Dummy()
+		{
+		}
 
-	Dummy(size_t val)
-		: _val(val)
-	{
-	}
+		Dummy(size_t val)
+			: _val(val)
+		{
+		}
 
-	Dummy(const Dummy& src)
-		: _val(src._val)
-	{
-	}
+		Dummy(const Dummy& src)
+			: _val(src._val)
+		{
+		}
 
-	~Dummy()
-	{
-		_val = -1;
-	}
+		~Dummy()
+		{
+			_val = -1;
+		}
 
-	inline bool operator < (const Dummy& rhs) const
-	{
-		return _val < rhs._val;
-	}
+		inline bool operator < (const Dummy& rhs) const
+		{
+			return _val < rhs._val;
+		}
 
-	inline bool operator == (const Dummy& rhs) const
-	{
-		return _val == rhs._val;
-	}
+		inline bool operator == (const Dummy& rhs) const
+		{
+			return _val == rhs._val;
+		}
 
-	size_t _val = -1;
-};
+		size_t _val = -1;
+	};
 
-class DummyVec
-{
-public:
-	DummyVec() = default;
-	DummyVec(size_t size)
-		: _id(size)
+	class DummyVec
 	{
-		for (int i = 0; i < size; i++)
-			_data.push_back(i);
-	}
+	public:
+		DummyVec() = default;
+		DummyVec(size_t size)
+			: _id(size)
+		{
+			for (int i = 0; i < size; i++)
+				_data.push_back(i);
+		}
 
-	void clear() const
-	{
-		_data.clear();
-	}
+		void clear() const
+		{
+			_data.clear();
+		}
 
-	bool operator < (const DummyVec& rhs) const
-	{
-		return _id < rhs._id;
-	}
+		bool operator < (const DummyVec& rhs) const
+		{
+			return _id < rhs._id;
+		}
 
-	size_t size() const
-	{
-		return _id;
-	}
-private:
-	size_t _id = 0;
-	mutable MultiCore::vector<Dummy> _data;
-};
+		size_t size() const
+		{
+			return _id;
+		}
+	private:
+		size_t _id = 0;
+		mutable MultiCore::vector<Dummy> _data;
+	};
 
 }
 
-void testBlock(size_t bd = 8)
-{
-	Index3D::setBlockDim(bd);
-	TestBlock tb;
-
-	if (!tb.testBlock00()) return;
-	if (!tb.testBlock01()) return;
-	if (!tb.testBlock02()) return;
-	if (!tb.testBlock03()) return;
-	if (!tb.testBlock04()) return;
-
-
-	cout << "testBlock pass\n";
-}
-
-class TestPoolMemory {
-public:
-	bool testAll();
-private:
-	bool testAllocator();
-	bool testAllocator0();
-	bool testAllocator1();
-
-	bool testVector();
-	bool testVectorSizeT();
-	bool testVectorVectorSizeT();
-	bool testVectorInsert();
-	bool testVectorSort();
-	bool testVectorInsertErase(bool useInitializer);
-	bool testVectorForLoops();
-	bool testVectorMisc();
-	bool memoryStressTest();
-
-	bool testSet();
-	bool testSetInsertErase();
-	bool testHeavySetInsertErase();
-
-	bool testMap();
-	bool testMapBasic();
-	bool testMapHeavy();
-	bool testPoolIndex3D();
-};
 
 bool TestPoolMemory::testAll()
 {
@@ -191,7 +149,7 @@ bool TestPoolMemory::testAllocator0()
 	double* pD2 = alloc.alloc<double>(1);
 
 	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
-//	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
+	//	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
 
 	*pD2 = 1.0;
 	alloc.free(pD2);
@@ -206,7 +164,7 @@ bool TestPoolMemory::testAllocator0()
 	pD2 = alloc.alloc<double>(3);
 
 	TEST_TRUE(pD2 != nullptr, "Failed to allocate pointer");
-//	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
+	//	TEST_EQUAL(pD, pD2, "Delete and allocate pointer at same address");
 
 	pD2[0] = 1.0;
 	pD2[1] = 2.0;
@@ -222,7 +180,7 @@ bool TestPoolMemory::testAllocator1()
 	MultiCore::local_heap heap(2048, 64);
 	MultiCore::local_heap::scoped_set_thread_heap st(&heap);
 
-	for (size_t i = 0; i < 1000; i ++) {
+	for (size_t i = 0; i < 1000; i++) {
 		size_t num = 5 + (size_t)((95 * std::rand() / (double)RAND_MAX) + 0.5);
 		auto p = heap.alloc<Dummy>(num);
 		heap.free(p);
@@ -256,7 +214,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorSizeT())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -272,7 +230,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorInsert())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -280,7 +238,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorSort())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -288,7 +246,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorInsertErase(true))
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -296,7 +254,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorInsertErase(false))
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -304,7 +262,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorForLoops())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -312,7 +270,7 @@ bool TestPoolMemory::testVector()
 		if (!testVectorMisc())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 #endif
 
@@ -393,7 +351,7 @@ bool TestPoolMemory::testVectorInsert()
 		TEST_EQUAL(vec[i], stdVec[i], "vec value");
 	}
 
-	vec.insert(vec.end(), {4, 5, 6, 7});
+	vec.insert(vec.end(), { 4, 5, 6, 7 });
 	stdVec.insert(stdVec.end(), { 4, 5, 6, 7 });
 
 	TEST_EQUAL(vec.size(), 8, "vec size");
@@ -557,7 +515,7 @@ bool TestPoolMemory::testVectorInsertErase(bool useInitializer)
 	TEST_TRUE(vec.size() == preSize, "Erase not in list succeed");
 
 	{
-		MultiCore::vector<size_t> vec ({ 0, 1, 2, 2, 2, 3, 4, 5, 6 });
+		MultiCore::vector<size_t> vec({ 0, 1, 2, 2, 2, 3, 4, 5, 6 });
 
 		preSize = vec.size();
 		vec.erase(vec.begin() + 2, vec.begin() + 4);
@@ -658,7 +616,7 @@ bool TestPoolMemory::memoryStressTest()
 
 		std::sort(vec.back().begin(), vec.back().end(), std::greater<>());
 		std::sort(vec.back().begin(), vec.back().end());
-	}, false);
+		}, false);
 
 	TEST_TRUE(MultiCore::local_heap::getThreadHeapPtr()->verify(), "Verify heap");
 	return true;
@@ -677,7 +635,7 @@ bool TestPoolMemory::testSet()
 		if (!testSetInsertErase())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -685,7 +643,7 @@ bool TestPoolMemory::testSet()
 		if (!testHeavySetInsertErase())
 			return false;
 		return true;
-	}, true);
+		}, true);
 #endif
 
 	cout << "Test set pass\n";
@@ -757,7 +715,7 @@ bool TestPoolMemory::testMap()
 		if (!testMapBasic())
 			return false;
 		return true;
-	}, true);
+		}, true);
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
@@ -765,7 +723,7 @@ bool TestPoolMemory::testMap()
 		if (!testMapHeavy())
 			return false;
 		return true;
-	}, true);
+		}, true);
 #endif
 
 	cout << "Test map pass\n";
@@ -898,14 +856,3 @@ bool TestPoolMemory::testPoolIndex3D()
 
 	return true;
 }
-
-int main(int numParams, const char** params)
-{
-	//	testBlock();
-	TestPoolMemory tm;
-	if (!tm.testAll())
-		return 0;
-
-	return 0;
-}
-

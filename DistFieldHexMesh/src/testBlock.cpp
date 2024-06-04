@@ -31,7 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 
 #include <block.h>
-#include <blockTest.h>
+#include <testBlock.h>
 #include <vertex.h>
 
 using namespace std;
