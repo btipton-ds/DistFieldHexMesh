@@ -32,6 +32,7 @@ namespace DFHM {
 class TestMultiCore {
 public:
 	bool testAll();
+	bool test0(size_t numCores);
 };
 
 }

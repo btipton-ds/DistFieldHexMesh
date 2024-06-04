@@ -35,7 +35,18 @@ using namespace DFHM;
 
 bool TestMultiCore::testAll()
 {
-	MultiCore::ThreadPool tp(4);
+	if (!test0(4)) return false;
+	if (!test0(8)) return false;
+	if (!test0(16)) return false;
+	if (!test0(-1)) return false;
+
+	cout << "TestMultiCore pass\n";
+	return true;
+}
+
+bool TestMultiCore::test0(size_t numCores)
+{
+	MultiCore::ThreadPool tp(numCores);
 
 	std::vector<std::vector<size_t>> vv;
 	vv.resize(tp.getNumThreads());
@@ -48,6 +59,5 @@ bool TestMultiCore::testAll()
 		});
 	}
 
-	cout << "TestMultiCore pass\n";
 	return true;
 }

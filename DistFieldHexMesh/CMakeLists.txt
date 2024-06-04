@@ -89,12 +89,13 @@ add_executable (DistFieldHexMesh
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
+	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
-	"${OpenGlDir}/src/OGLMultiVboHandler.cpp" 
+	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 )
 
 add_executable (TestDFM         
@@ -113,11 +114,12 @@ add_executable (TestDFM
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"../../utilities/threads/src/local_heap.cpp"
  	"src/testBlock.cpp" 
 	"src/testMain.cpp"
 	"src/testPoolMemory.cpp" 
 	"src/testMultiCore.cpp"
+	"../../utilities/threads/src/MultiCoreUtil.cpp"
+	"../../utilities/threads/src/local_heap.cpp"
 )
 
 if (WIN32)
