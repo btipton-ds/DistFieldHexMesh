@@ -25,23 +25,11 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <memory>
-#include <iostream>
-#include <cstdlib>
-
 #include <defines.h>
-#include <tests.h>
-#include <triMesh.h>
-#include <volume.h>
 #include <testBlock.h>
-#include <MultiCoreUtil.h>
-#include <vertex.h>
 #include <testPoolMemory.h>
 
-using namespace std;
 using namespace DFHM;
-
-#define MULTI_CORE_TESTS_ENABLED 1
 
 int main(int numParams, const char** params)
 {

@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+namespace DFHM {
+
 class TestPoolMemory {
 public:
 	bool testAll();
@@ -54,3 +56,4 @@ private:
 	bool testMapHeavy();
 	bool testPoolIndex3D();
 };
+}
