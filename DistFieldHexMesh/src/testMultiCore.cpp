@@ -25,33 +25,25 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <defines.h>
 #include <iostream>
-#include <testBlock.h>
-#include <testPoolMemory.h>
+#include <defines.h>
 #include <testMultiCore.h>
+#include <MultiCoreUtil.h>
 
+using namespace std;
 using namespace DFHM;
 
-int main(int numParams, const char** params)
+bool TestMultiCore::testAll()
 {
-#if 0
-	{
-		TestBlock tb;
-		if (!tb.testAll()) return false;
+	MultiCore::getNumCores(2);
+	MultiCore::ThreadPool tp;
+
+	for (size_t i = 0; i < 10; i++) {
+		tp.run(100, [](size_t idx) {
+			int dbgIdx = 1;
+		});
 	}
 
-	{
-		TestPoolMemory tpm;
-		if (!tpm.testAll()) return false;
-	}
-#endif
-	{
-		TestMultiCore tmc;
-		if (!tmc.testAll()) return false;
-	}
-
-	std::cout << "All tests passed\n";
-	return 0;
+	cout << "TestMultiCore pass\n";
+	return true;
 }
-

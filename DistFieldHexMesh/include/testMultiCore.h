@@ -1,3 +1,5 @@
+#pragma once
+
 /*
 This file is part of the DistFieldHexMesh application/library.
 
@@ -25,33 +27,12 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <defines.h>
-#include <iostream>
-#include <testBlock.h>
-#include <testPoolMemory.h>
-#include <testMultiCore.h>
+namespace DFHM {
 
-using namespace DFHM;
+class TestMultiCore {
+public:
+	bool testAll();
+};
 
-int main(int numParams, const char** params)
-{
-#if 0
-	{
-		TestBlock tb;
-		if (!tb.testAll()) return false;
-	}
-
-	{
-		TestPoolMemory tpm;
-		if (!tpm.testAll()) return false;
-	}
-#endif
-	{
-		TestMultiCore tmc;
-		if (!tmc.testAll()) return false;
-	}
-
-	std::cout << "All tests passed\n";
-	return 0;
 }
 

@@ -327,20 +327,19 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 
 	MultiCore::ThreadPool tp;
-	tp.start();
 
-	ThreadPool::FuncType sf0([this](size_t linearIdx) {
+	tp.run(_blocks.size(), [this](size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
 			_blocks[linearIdx] = createBlock(blockIdx);
 			MultiCore::local_heap::scoped_set_thread_heap st(pt->getHeapPtr());
-		} else
+		}
+		else
 			_blocks[linearIdx] = createBlock(blockIdx);
 	});
-	tp.runFunc(&sf0, _blocks.size());
 
-	ThreadPool::FuncType sf1([this](size_t linearIdx) {
+	runThreadPool3D(tp, [this](size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
@@ -349,8 +348,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 			pt->createSubBlocks(TS_REAL);
 		}
 	});
-	runThreadPool3D(tp, &sf1);
-	tp.stop();
 
 //	createBlocks(params, blockSpan, multiCore);
 //	splitSimple(params, multiCore);
@@ -1511,7 +1508,8 @@ void Volume::runLambda3D(L fLambda, bool multiCore)
 	endOperation();
 }
 
-void Volume::runThreadPool3D(ThreadPool& tp, ThreadPool::FuncType* pFLambda)
+template<class L>
+void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -1537,11 +1535,10 @@ void Volume::runThreadPool3D(ThreadPool& tp, ThreadPool::FuncType* pFLambda)
 
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
-				ThreadPool::FuncType ft([this, pFLambda, &blocksToProcess](size_t idx) {
+				tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
-					(*pFLambda)(linearIdx);
+					fLambda(linearIdx);
 				});
-				tp.runFunc(&ft, blocksToProcess.size());
 			}
 		}
 	}

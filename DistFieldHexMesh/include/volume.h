@@ -159,7 +159,8 @@ private:
 	template<class L>
 	void runLambda3D(L fLambda, bool multiCore);
 
-	void runThreadPool3D(ThreadPool& tp, ThreadPool::FuncType* pFLambda);
+	template<class L>
+	void runThreadPool3D(ThreadPool& tp, const L& fLambda);
 
 	static Index3D s_volDim;
 
