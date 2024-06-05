@@ -57,7 +57,7 @@ bool TestMultiCore::test0(size_t numCores)
 				for (size_t i = 0; i < idx + 5; i++) {
 					v.push_back(i);
 				}
-			});
+			}, true);
 		}
 	}
 	return true;

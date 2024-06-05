@@ -326,9 +326,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	findFeatures();
 
 
-	MultiCore::ThreadPool tp;
-
-	tp.run(_blocks.size(), [this](size_t threadNum, size_t linearIdx) {
+	runThreadPool([this](size_t threadNum, size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
@@ -337,16 +335,16 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		}
 		else
 			_blocks[linearIdx] = createBlock(blockIdx);
-	});
+	}, RUN_MULTI_THREAD);
 
-	runThreadPool3D(tp, [this](size_t threadNum, size_t linearIdx) {
+	runThreadPool([this](size_t threadNum, size_t linearIdx) {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto pt = _blocks[linearIdx];
 		if (pt) {
 			MultiCore::local_heap::scoped_set_thread_heap st(pt->getHeapPtr());
 			pt->createSubBlocks(TS_REAL);
 		}
-	});
+	}, RUN_MULTI_THREAD);
 
 //	createBlocks(params, blockSpan, multiCore);
 //	splitSimple(params, multiCore);
@@ -658,11 +656,14 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 				const auto& blockPtr = _blocks[index];
-				if (blockPtr && blockPtr->numFaces(true) > 0) {
-					makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
-					makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
-					makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
-					makeFaceTriMesh(FT_ALL, triMeshes, blockPtr, threadNum);
+				if (blockPtr) {
+					MultiCore::local_heap::scoped_set_thread_heap st(blockPtr->getHeapPtr());
+					if (blockPtr->numFaces(true) > 0) {
+						makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
+						makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
+						makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
+						makeFaceTriMesh(FT_ALL, triMeshes, blockPtr, threadNum);
+					}
 				}
 			}
 		}
@@ -713,11 +714,14 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 				const auto& blockPtr = _blocks[index];
-				if (blockPtr && blockPtr->numFaces(true) > 0) {
-					makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_ALL, faceEdges, blockPtr, threadNum);
+				if (blockPtr) {
+					MultiCore::local_heap::scoped_set_thread_heap st(blockPtr->getHeapPtr());
+					if (blockPtr->numFaces(true) > 0) {
+						makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
+						makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
+						makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
+						makeFaceEdges(FT_ALL, faceEdges, blockPtr, threadNum);
+					}
 				}
 			}
 		}
@@ -1508,7 +1512,13 @@ void Volume::runLambda3D(L fLambda, bool multiCore)
 }
 
 template<class L>
-void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
+inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
+{
+	_threadPool.run(_blocks.size(), fLambda, multiCore);
+}
+
+template<class L>
+void Volume::runThreadPool(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -1516,11 +1526,11 @@ void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
+	vector<size_t> blocksToProcess;
 	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
 		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
 			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
 				// Collect the indices for all blocks in this phase
-				vector<size_t> blocksToProcess;
 				blocksToProcess.clear();
 
 				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
@@ -1535,10 +1545,10 @@ void Volume::runThreadPool3D(ThreadPool& tp, const L& fLambda)
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
 				if (!blocksToProcess.empty()) {
-					tp.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+					_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 						size_t linearIdx = blocksToProcess[idx];
 						fLambda(threadNum, linearIdx);
-					});
+					}, multiCore);
 				}
 			}
 		}

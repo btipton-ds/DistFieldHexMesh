@@ -160,7 +160,10 @@ private:
 	void runLambda3D(L fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool3D(ThreadPool& tp, const L& fLambda);
+	void runThreadPool(const L& fLambda, bool multiCore) const;
+
+	template<class L>
+	void runThreadPool(const L& fLambda, bool multiCore);
 
 	static Index3D s_volDim;
 
@@ -175,6 +178,8 @@ private:
 	std::vector<size_t> _sharpVertIndices;
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
+
+	MultiCore::ThreadPool _threadPool;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
