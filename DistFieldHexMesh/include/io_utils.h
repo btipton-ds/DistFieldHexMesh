@@ -76,7 +76,7 @@ namespace IoUtil
 	}
 
 	template<class T, class U>
-	void write(std::ostream& out, const MTC::map<T, U>& val)
+	void write(std::ostream& out, const MultiCore::map<T, U>& val)
 	{
 		size_t num = val.size();
 		out.write((char*)&num, sizeof(num));
@@ -88,7 +88,7 @@ namespace IoUtil
 	}
 
 	template<class T, class U>
-	void read(std::istream& in, MTC::map<T, U>& val)
+	void read(std::istream& in, MultiCore::map<T, U>& val)
 	{
 		size_t num = val.size();
 		in.read((char*)&num, sizeof(num));

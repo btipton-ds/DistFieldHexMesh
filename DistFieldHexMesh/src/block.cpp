@@ -69,7 +69,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	, _modelData(this)
 	, _vertices(this, false)
 	, _refData(this)
-	, _heap(128, 64)
+	, _heap(8 * 1024, 32)
 {
 	_blockDim = Index3D::getBlockDim();
 	assert(pts.size() == 8);

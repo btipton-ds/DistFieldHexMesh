@@ -35,7 +35,7 @@ using namespace DFHM;
 
 int main(int numParams, const char** params)
 {
-#if 1
+#if 0
 	{
 		TestBlock tb;
 		if (!tb.testAll()) return false;

@@ -27,6 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <utils.h>
 #include <block.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <profileapi.h>
+#endif // _WIN32
 
 using namespace DFHM;
 
@@ -136,5 +140,64 @@ void Utils::formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegmen
 			}
 		}
 		sort(vertLoops.begin(), vertLoops.end(), VertLoopCompare);
+	}
+}
+
+namespace
+{
+
+static std::mutex s_timerMutex;
+
+struct TimerRec
+{
+	size_t _count = 0;
+	double _time = 0;
+};
+
+static std::vector<TimerRec> s_times;
+
+}
+
+namespace
+{
+	static LARGE_INTEGER initFreq()
+	{
+		LARGE_INTEGER r;
+		QueryPerformanceFrequency(&r);
+		return r;
+	}
+	LARGE_INTEGER s_freq = initFreq();
+}
+
+void Utils::Timer::dumpAll()
+{
+	for (size_t i = TT_splitAtPointInner; i < TT_lastTag; i++) {
+		if (s_times[i]._count > 0)
+			std::cout << i << ": " << s_times[i]._time << "s, f: " << (s_times[i]._time / s_times[i]._count) << " call/s\n";
+		else
+			std::cout << i << ": " << s_times[i]._time << "s\n";
+	}
+}
+
+Utils::Timer::Timer(size_t key)
+	:_key(key)
+{
+	LARGE_INTEGER sc;
+	QueryPerformanceCounter(&sc);
+	_startCount = sc.QuadPart;
+}
+
+Utils::Timer::~Timer()
+{
+	LARGE_INTEGER endCount;
+	QueryPerformanceCounter(&endCount);
+	double deltaT = (endCount.QuadPart - _startCount) / (double)(s_freq.QuadPart);
+
+	{
+		std::scoped_lock sl(s_timerMutex);
+		if (_key >= s_times.size())
+			s_times.resize(_key + 1);
+		s_times[_key]._count++;
+		s_times[_key]._time += deltaT;
 	}
 }

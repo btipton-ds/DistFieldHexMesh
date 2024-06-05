@@ -27,14 +27,22 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <iostream>
 #include <defines.h>
+#include <tests.h>
 #include <testMultiCore.h>
 #include <MultiCoreUtil.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <profileapi.h>
+#endif // _WIN32
 
 using namespace std;
 using namespace DFHM;
 
 bool TestMultiCore::testAll()
 {
+	if (!testSpeed(-1)) return false;
+
 	if (!test0(4)) return false;
 	if (!test0(8)) return false;
 	if (!test0(16)) return false;
@@ -60,5 +68,44 @@ bool TestMultiCore::test0(size_t numCores)
 			}, true);
 		}
 	}
+	return true;
+}
+
+bool TestMultiCore::testSpeed(size_t numCores)
+{
+	MultiCore::ThreadPool tp(numCores);
+
+#ifdef _WIN32
+	LARGE_INTEGER startCount, endCount, freq;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&startCount);
+
+	size_t size = 1025 * 1024 * 1024;
+	vector<size_t> v;
+	v.resize(tp.getNumThreads());
+	tp.run(size, [&v](size_t threadNum, size_t idx) {
+		v[threadNum]++;
+	}, true);
+
+	QueryPerformanceCounter(&endCount);
+	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
+	double rateUS = (1.0e6 * deltaT / size);
+//	cout << "Time for testSpeed: " << rateUS << " us/run\n";
+
+#if _DEBUG
+	TEST_TRUE(rateUS < 0.008, "debug speed too slow");
+#else
+	TEST_TRUE(rateUS < 0.003, "release speed too slow");
+#endif
+
+	startCount = endCount;
+#endif // _WIN32
+
+	size_t check = 0;
+	for (size_t i = 0; i < v.size(); i++)
+		check += v[i];
+
+	TEST_EQUAL(check, size, "testSpeed size match");
+
 	return true;
 }

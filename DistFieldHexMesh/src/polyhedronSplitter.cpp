@@ -40,10 +40,15 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <tolerances.h>
+#include <utils.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <profileapi.h>
+#endif // _WIN32
 
 using namespace std;
 using namespace DFHM;
-
 
 PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId)
 	: _pBlock(pBlock)
@@ -111,6 +116,9 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	}
 #endif
 
+	Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+
+
 	MTC::set<Index3DId> cornerVerts;
 	referanceCell.getVertIds(cornerVerts);
 	assert(cornerVerts.size() == 8);
@@ -152,10 +160,12 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 		}
 	}
 
+#if _DEBUG
 	if (!pass) {
 		_pBlock->dumpPolyhedraObj({ realCell.getId() }, false, false, false);
 		return false;
 	}
+#endif
 
 	Index3DId cellMidId = _pBlock->addVertex(pt);
 

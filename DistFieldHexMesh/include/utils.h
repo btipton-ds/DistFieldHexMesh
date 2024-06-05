@@ -38,6 +38,24 @@ namespace Utils {
 
 void formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegments, MTC::set<Edge> availEdges, MTC::vector<MTC::vector<Edge>>& loops);
 
+class Timer
+{
+public:
+	enum TimerTag{
+		TT_splitAtPointInner,
+		TT_lastTag,
+	};
+
+	static void dumpAll();
+
+	Timer(size_t key);
+	~Timer();
+
+private:
+	size_t _key;
+	long long _startCount;
+};
+
 }
 
 }

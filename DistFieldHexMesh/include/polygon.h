@@ -118,7 +118,9 @@ public:
 
 	Polygon() = default;
 	Polygon(const std::vector<Index3DId>& verts);
+#if USE_MULTI_THREAD_CONTAINERS
 	explicit Polygon(const MTC::vector<Index3DId>& verts);
+#endif
 	Polygon(const std::initializer_list<Index3DId>& verts);
 	Polygon(const Polygon& src);
 

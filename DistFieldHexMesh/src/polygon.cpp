@@ -58,10 +58,12 @@ Polygon::Polygon(const std::vector<Index3DId>& verts)
 {
 }
 
+#if USE_MULTI_THREAD_CONTAINERS
 Polygon::Polygon(const MTC::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
 }
+#endif
 
 Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)

@@ -157,7 +157,7 @@ private:
 	template<class L>
 	void runLambda(L fLambda, bool multiCore) const;
 	template<class L>
-	void runLambda3D(L fLambda, bool multiCore);
+	void runLambda3Dx(L fLambda, bool multiCore);
 
 	template<class L>
 	void runThreadPool(const L& fLambda, bool multiCore) const;
