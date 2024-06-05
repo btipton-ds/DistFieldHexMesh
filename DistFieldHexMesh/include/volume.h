@@ -155,11 +155,6 @@ private:
 	void writeFOAMHeader(FILE* fOut, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
 
 	template<class L>
-	void runLambda(L fLambda, bool multiCore) const;
-	template<class L>
-	void runLambda3Dx(L fLambda, bool multiCore);
-
-	template<class L>
 	void runThreadPool(const L& fLambda, bool multiCore) const;
 
 	template<class L>

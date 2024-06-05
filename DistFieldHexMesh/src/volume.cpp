@@ -255,9 +255,9 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 void Volume::clear()
 {
 	// Clear contents to remove cross block pointers
-	runLambda([this](size_t linearIdx)->bool {
-		if (_blocks[linearIdx])
-			_blocks[linearIdx]->clear();
+	runThreadPool([this](size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		if (pBlk)
+			pBlk->clear();
 		return true;
 	}, RUN_MULTI_THREAD);
 
@@ -1423,80 +1423,14 @@ bool Volume::verifyTopology(bool multiCore) const
 {
 	bool result = true;
 
-	runLambda([this, &result](size_t linearIdx)->bool {
-		if (_blocks[linearIdx])
-			if (!_blocks[linearIdx]->verifyTopology()) {
+	runThreadPool([this, &result](size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		if (pBlk)
+			if (!pBlk->verifyTopology()) {
 				result = false;
-//				exit(0);
 			}
 		return true;
 	}, multiCore);
 	return result;
-}
-
-template<class L>
-void Volume::runLambda(L fLambda, bool multiCore) const
-{
-	MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
-		auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
-		Block::setThreadBlockIdx(blkIdx);
-		auto pBlk = _blocks[linearIdx];
-		if (pBlk) {
-			MultiCore::local_heap::scoped_set_thread_heap st(&pBlk->_heap);
-			fLambda(linearIdx);
-		} else
-			fLambda(linearIdx);
-		return true;
-	}, _blocks.size(), multiCore);
-}
-
-template<class L>
-void Volume::runLambda3Dx(L fLambda, bool multiCore)
-{
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
-	Index3D phaseIdx, idx;
-
-	startOperation();
-
-	// Pass one, process all cells. That can leave faces in an interim state.
-	// If the interim cell is also modified, it should be taken care of on pass 1
-	// Adjacents cells with face splits or vertex insertions may be left behind
-	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
-		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
-			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
-				// Collect the indices for all blocks in this phase
-				static vector<size_t> blocksToProcess;
-				blocksToProcess.clear();
-
-				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
-					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
-						for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
-							size_t linearIdx = calLinearBlockIndex(idx);
-							blocksToProcess.push_back(linearIdx);
-						}
-					}
-				}
-
-				sort(blocksToProcess.begin(), blocksToProcess.end());
-				// Process those blocks in undetermined order
-				MultiCore::runLambda([this, fLambda](size_t linearIdx)->bool {
-					auto pBlk = _blocks[linearIdx];
-					auto blkIdx = calBlockIndexFromLinearIndex(linearIdx);
-					Block::setThreadBlockIdx(blkIdx);
-					if (pBlk) {
-						MultiCore::local_heap::scoped_set_thread_heap st(&pBlk->_heap);
-						return fLambda(linearIdx);
-					} else {
-						return fLambda(linearIdx);
-					}
-					return true;
-				}, blocksToProcess, multiCore);
-
-			}
-		}
-	}
-
-	endOperation();
 }
 
 template<class L>
