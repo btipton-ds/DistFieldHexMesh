@@ -661,7 +661,7 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3D
 
 void Polyhedron::addToSplitStack()
 {
-	getBlockPtr()->addToSplitStack({ _thisId });
+	getOurBlockPtr()->addToSplitStack0(_thisId);
 }
 
 #ifdef _DEBUG

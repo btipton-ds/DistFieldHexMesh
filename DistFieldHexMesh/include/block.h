@@ -89,6 +89,7 @@ public:
 	Block* getOwner(const Index3D& blockIdx) override;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	~Block();
 	void clear();
 
 	size_t blockDim() const;
@@ -109,7 +110,7 @@ public:
 	size_t numPolyhedra() const;
 
 	bool verifyTopology() const;
-	void createSubBlocks(TopolgyState refState);
+	void createBlockCells(TopolgyState refState);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -154,8 +155,7 @@ public:
 	MultiCore::local_heap* getHeapPtr();
 	const MultiCore::local_heap* getHeapPtr() const;
 
-	void addToSplitStack(const Index3DId& cellIds);
-	void addToSplitStack(const MTC::set<Index3DId>& cellIds);
+	void addToSplitStack0(const Index3DId& cellIds);
 	void updateSplitStack();
 	bool hasPendingSplits() const;
 
@@ -202,7 +202,7 @@ private:
 		X, Y, Z
 	};
 
-	struct HeapLocalData
+	struct LocalData
 	{
 		// This data can only be constructed after a heap is initialized
 		MTC::set<Index3DId> _needToSplit, _cantSplitYet;
@@ -242,7 +242,12 @@ private:
 	bool splitRequiredPolyhedra();
 
 	void imprintTJointVertices();
-	
+
+	MTC::set<Index3DId>& getNeedToSplit();
+	const MTC::set<Index3DId>& getNeedToSplit() const;
+	MTC::set<Index3DId>& getCantSplitYet();
+	const MTC::set<Index3DId>& getCantSplitYet() const;
+
 	const ModelData& data(TopolgyState refState) const;
 	ModelData& data(TopolgyState refState);
 
@@ -271,7 +276,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	HeapLocalData* _pHeapLocal = nullptr;
+	LocalData* _pLocalData = nullptr;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
 	SearchTreePtr _pVertTree;
@@ -364,6 +369,26 @@ template<class F>
 inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda)
 {
 	data(state)._polyhedra.iterateInOrder(fLambda);
+}
+
+inline MTC::set<Index3DId>& Block::getNeedToSplit()
+{
+	return _pLocalData->_needToSplit;
+}
+
+inline const MTC::set<Index3DId>& Block::getNeedToSplit() const
+{
+	return _pLocalData->_needToSplit;
+}
+
+inline MTC::set<Index3DId>& Block::getCantSplitYet()
+{
+	return _pLocalData->_cantSplitYet;
+}
+
+inline const MTC::set<Index3DId>& Block::getCantSplitYet() const
+{
+	return _pLocalData->_cantSplitYet;
 }
 
 

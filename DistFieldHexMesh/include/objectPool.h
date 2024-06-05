@@ -76,6 +76,9 @@ public:
 
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
+	const Block* getOurBlockPtr() const;
+	Block* getOurBlockPtr();
+
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
 

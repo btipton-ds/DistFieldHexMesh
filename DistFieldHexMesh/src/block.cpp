@@ -100,8 +100,13 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	pMesh->findTris(_boundBox, _triIndices);
 
 	MultiCore::local_heap::scoped_set_thread_heap st(&_heap);
-	_pHeapLocal = new HeapLocalData();
+	_pLocalData = new LocalData();
 
+}
+
+Block::~Block()
+{
+	delete _pLocalData;
 }
 
 void Block::clear()
@@ -110,8 +115,8 @@ void Block::clear()
 
 	_corners.clear();
 
-	delete (_pHeapLocal);
-	_pHeapLocal = nullptr;
+	delete (_pLocalData);
+	_pLocalData = nullptr;
 
 	_baseIdxVerts = 0;
 	_baseIdxPolygons = 0;
@@ -330,7 +335,7 @@ bool Block::verifyTopology() const
 	return result;
 }
 
-void Block::createSubBlocks(TopolgyState refState)
+void Block::createBlockCells(TopolgyState refState)
 {
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
@@ -892,11 +897,11 @@ void Block::dumpOpenCells() const
 bool Block::splitRequiredPolyhedra()
 {
 	bool didSplit = false;
-	if (_pHeapLocal->_needToSplit.empty())
+	if (getNeedToSplit().empty())
 		return didSplit;
 
-	auto tmp = _pHeapLocal->_needToSplit;
-	_pHeapLocal->_needToSplit.clear();
+	auto tmp = getNeedToSplit();
+	getNeedToSplit().clear();
 	for (const auto& cellId : tmp) {
 		if (polyhedronExists(TS_REAL, cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
@@ -1102,7 +1107,7 @@ Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
 	return pOwner->data(refState)._polyhedra[id];
 }
 
-void Block::addToSplitStack(const Index3DId& cellId)
+void Block::addToSplitStack0(const Index3DId& cellId)
 {
 	set<Index3DId> blockingIds;
 
@@ -1112,11 +1117,11 @@ void Block::addToSplitStack(const Index3DId& cellId)
 	MTC::set<Index3DId> temp;
 	auto& cell = _modelData._polyhedra[cellId];
 	if (cell.canSplit(temp)) {
-		_pHeapLocal->_needToSplit.insert(cellId);
-		_pHeapLocal->_cantSplitYet.erase(cellId);
+		getNeedToSplit().insert(cellId);
+		getCantSplitYet().erase(cellId);
 	}
 	else {
-		_pHeapLocal->_cantSplitYet.insert(cellId);
+		getCantSplitYet().insert(cellId);
 		blockingIds.insert(temp.begin(), temp.end());
 	}
 	
@@ -1130,11 +1135,11 @@ void Block::addToSplitStack(const Index3DId& cellId)
 			MTC::set<Index3DId> temp;
 			auto& cell = pOwner->_modelData._polyhedra[cellId];
 			if (cell.canSplit(temp)) {
-				pOwner->_pHeapLocal->_needToSplit.insert(cellId);
-				pOwner->_pHeapLocal->_cantSplitYet.erase(cellId);
+				pOwner->getNeedToSplit().insert(cellId);
+				pOwner->getCantSplitYet().erase(cellId);
 			}
 			else {
-				pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
+				pOwner->getCantSplitYet().insert(cellId);
 				blockingIds2.insert(temp.begin(), temp.end());
 			}
 		}
@@ -1142,24 +1147,16 @@ void Block::addToSplitStack(const Index3DId& cellId)
 	}
 }
 
-void Block::addToSplitStack(const MTC::set<Index3DId>& cellIds)
-{
-	set<Index3DId> blockingIds;
-	for (const auto& cellId : cellIds) {
-		addToSplitStack(cellId);
-	}
-}
-
 void Block::updateSplitStack()
 {
-	if (_pHeapLocal->_cantSplitYet.empty())
+	if (getCantSplitYet().empty())
 		return;
 
 	MTC::set<Index3DId> blockingIds;
 
-	auto tmpCantSplit = _pHeapLocal->_cantSplitYet;
+	auto tmpCantSplit = getCantSplitYet();
 
-	_pHeapLocal->_cantSplitYet.clear();
+	getCantSplitYet().clear();
 	for (const auto& cellId : tmpCantSplit) {
 		assert(cellId.blockIdx() == _blockIdx);
 		MTC::set<Index3DId> temp;
@@ -1167,9 +1164,9 @@ void Block::updateSplitStack()
 		if (pOwner->_modelData._polyhedra.exists(cellId)) {
 			auto& cell = _modelData._polyhedra[cellId];
 			if (cell.canSplit(temp)) {
-				pOwner->_pHeapLocal->_needToSplit.insert(cellId);
+				pOwner->getNeedToSplit().insert(cellId);
 			} else {
-				pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
+				pOwner->getCantSplitYet().insert(cellId);
 				blockingIds.insert(temp.begin(), temp.end());
 			}
 		}
@@ -1183,10 +1180,10 @@ void Block::updateSplitStack()
 				MTC::set<Index3DId> temp;
 				auto& cell = pOwner->_modelData._polyhedra[cellId];
 				if (cell.canSplit(temp)) {
-					pOwner->_pHeapLocal->_needToSplit.insert(cellId);
-					pOwner->_pHeapLocal->_cantSplitYet.erase(cellId);
+					pOwner->getNeedToSplit().insert(cellId);
+					pOwner->getCantSplitYet().erase(cellId);
 				} else {
-					pOwner->_pHeapLocal->_cantSplitYet.insert(cellId);
+					pOwner->getCantSplitYet().insert(cellId);
 					blockingIds2.insert(temp.begin(), temp.end());
 				}
 			}
@@ -1198,7 +1195,7 @@ void Block::updateSplitStack()
 
 bool Block::hasPendingSplits() const
 {
-	return !_pHeapLocal->_cantSplitYet.empty() || !_pHeapLocal->_needToSplit.empty();
+	return !getCantSplitYet().empty() || !getNeedToSplit().empty();
 }
 
 void Block::freePolygon(const Index3DId& id)

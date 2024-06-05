@@ -359,7 +359,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 	QueryPerformanceCounter(&startCount);
 #endif // _WIN32
 
-	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
@@ -367,7 +367,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-		pBlk->createSubBlocks(TS_REAL);
+		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
 
@@ -1437,6 +1437,22 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 			MultiCore::local_heap::scoped_set_thread_heap sth(pBlk->getHeapPtr());
 			fLambda(threadNum, linearIdx, pBlk);
 		} else {
+			fLambda(threadNum, linearIdx, nullptr);
+		}
+	}, multiCore);
+}
+
+template<class L>
+inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
+{
+	_threadPool.run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx) {
+		Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
+		auto& pBlk = _blocks[linearIdx];
+		if (pBlk) {
+			MultiCore::local_heap::scoped_set_thread_heap sth(pBlk->getHeapPtr());
+			fLambda(threadNum, linearIdx, pBlk);
+		}
+		else {
 			fLambda(threadNum, linearIdx, nullptr);
 		}
 	}, multiCore);
