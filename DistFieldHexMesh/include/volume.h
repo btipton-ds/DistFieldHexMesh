@@ -158,7 +158,7 @@ private:
 	void runThreadPool(const L& fLambda, bool multiCore) const;
 
 	template<class L>
-	void runThreadPool(const L& fLambda, bool multiCore);
+	void runThreadPool333(const L& fLambda, bool multiCore);
 
 	static Index3D s_volDim;
 

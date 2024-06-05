@@ -172,10 +172,17 @@ namespace
 void Utils::Timer::dumpAll()
 {
 	for (size_t i = TT_splitAtPointInner; i < TT_lastTag; i++) {
+		std::string str;
+		switch (i) {
+		case TT_splitAtPointInner:
+			str = "splitAtPointInner"; break;
+		case TT_needToSplitConditional:
+			str = "needToSplitConditional"; break;
+		}
 		if (s_times[i]._count > 0)
-			std::cout << i << ": " << s_times[i]._time << "s, f: " << (s_times[i]._time / s_times[i]._count) << " call/s\n";
+			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._time / s_times[i]._count) << " call/s\n";
 		else
-			std::cout << i << ": " << s_times[i]._time << "s\n";
+			std::cout << str << ": " << s_times[i]._time << "s\n";
 	}
 }
 

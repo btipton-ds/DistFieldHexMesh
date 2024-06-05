@@ -48,6 +48,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <logger.h>
 #include <polyhedronSplitter.h>
 #include <tolerances.h>
+#include <utils.h>
 
 using namespace std;
 using namespace DFHM;
@@ -723,6 +724,8 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 
 bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 {
+	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
+
 	if (!_needsConditionalSplitTest)
 		return false;
 

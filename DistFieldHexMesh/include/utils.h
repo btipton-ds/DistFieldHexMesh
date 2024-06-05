@@ -43,6 +43,7 @@ class Timer
 public:
 	enum TimerTag{
 		TT_splitAtPointInner,
+		TT_needToSplitConditional,
 		TT_lastTag,
 	};
 
