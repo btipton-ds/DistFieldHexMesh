@@ -46,18 +46,19 @@ bool TestMultiCore::testAll()
 
 bool TestMultiCore::test0(size_t numCores)
 {
-	MultiCore::ThreadPool tp(numCores);
+	for (size_t i = 0; i < 10; i++) {
+		MultiCore::ThreadPool tp(numCores);
 
-	std::vector<std::vector<size_t>> vv;
-	vv.resize(tp.getNumThreads());
-	for (size_t i = 0; i < tp.getNumThreads(); i++) {
-		tp.run(100, [i, &vv](size_t threadNum, size_t idx) {
-			auto& v = vv[threadNum];
-			for (size_t i = 0; i < idx; i++) {
-				v.push_back(i);
-			}
-		});
+		std::vector<std::vector<size_t>> vv;
+		vv.resize(tp.getNumThreads());
+		for (size_t i = 0; i < tp.getNumThreads(); i++) {
+			tp.run(512, [i, &vv](size_t threadNum, size_t idx) {
+				auto& v = vv[threadNum];
+				for (size_t i = 0; i < idx + 5; i++) {
+					v.push_back(i);
+				}
+			});
+		}
 	}
-
 	return true;
 }
