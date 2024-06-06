@@ -480,13 +480,13 @@ Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
 	return result;
 }
 
-void Polyhedron::setNeedsSplitAtCentroid()
+void Polyhedron::setNeedsDivideAtCentroid()
 {
 	_needsSplitAtCentroid = true;
 	addToSplitStack();
 }
 
-bool Polyhedron::needsSplitAtCentroid() const
+bool Polyhedron::needsDivideAtCentroid() const
 {
 	return _needsSplitAtCentroid;
 }
@@ -494,7 +494,7 @@ bool Polyhedron::needsSplitAtCentroid() const
 bool Polyhedron::setNeedsCleanFaces()
 {
 	if (getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
-		setNeedsSplitAtCentroid();
+		setNeedsDivideAtCentroid();
 		return true;
 	}
 
@@ -700,7 +700,7 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 	return blockingCellIds.empty();
 }
 
-bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
+bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
 {
 	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
 
@@ -756,16 +756,16 @@ bool Polyhedron::needToSplitConditional(const BuildCFDParams& params)
 	}
 
 	if (needToSplit) {
-		setNeedsSplitAtCentroid();
+		setNeedsDivideAtCentroid();
 	}
 
 	return needToSplit;
 }
 
-bool Polyhedron::needToSplitDueToSplitFaces(const BuildCFDParams& params)
+bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 {
 	if (_faceIds.size() > params.maxCellFaces) {
-		setNeedsSplitAtCentroid();
+		setNeedsDivideAtCentroid();
 		return true;
 	}
 

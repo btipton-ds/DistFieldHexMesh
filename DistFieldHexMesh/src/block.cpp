@@ -741,7 +741,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 {
 	bool result = false;
 	_modelData._polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.needToSplitDueToSplitFaces(params)) {
+		if (cell.needToDivideDueToSplitFaces(params)) {
 			result = true;
 			MTC::set<Index3DId> blockers;
 			if (cell.canSplit(blockers)) {
@@ -750,7 +750,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 				vector<Index3DId> newCellIds;
 				splitter.splitAtPoint(pt);
 			} else {
-				cell.setNeedsSplitAtCentroid();
+				cell.setNeedsDivideAtCentroid();
 			}
 		}
 	});

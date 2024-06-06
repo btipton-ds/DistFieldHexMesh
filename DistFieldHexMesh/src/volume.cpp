@@ -339,8 +339,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif // _WIN32
 
 	createBlocks(params, blockSpan, multiCore);
-	splitSimple(params, multiCore);
-	splitAtCurvature(params, multiCore);
+	divideSimple(params, multiCore);
+	divideAtCurvature(params, multiCore);
 //	splitAtSharpVerts(params, multiCore);
 //	splitAtSharpEdges(params, multiCore);
 
@@ -394,7 +394,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 
 */
 
-void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
+void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 {
 	if (params.numSimpleDivs > 0) {
 #ifdef _WIN32
@@ -406,7 +406,7 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
 			runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
-					cell.setNeedsSplitAtCentroid();
+					cell.setNeedsDivideAtCentroid();
 				});
 				return true;
 			}, multiCore);
@@ -424,7 +424,7 @@ void Volume::splitSimple(const BuildCFDParams& params, bool multiCore)
 	}
 }
 
-void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
+void Volume::divideAtCurvature(const BuildCFDParams& params, bool multiCore)
 {
 	if (params.numCurvatureDivs > 0) {
 #ifdef _WIN32
@@ -455,7 +455,7 @@ void Volume::splitAtCurvature(const BuildCFDParams& params, bool multiCore)
 			bool changed = false;
 			runThreadPool333([this, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.needToSplitConditional(params))
+					if (cell.setNeedToSplitConditional(params))
 						changed = true;
 				});
 				return true;

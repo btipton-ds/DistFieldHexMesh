@@ -78,8 +78,8 @@ public:
 	size_t createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& points) const;
 	Index3DId createIntersectionFace(const Planed& plane) const;
 
-	void setNeedsSplitAtCentroid();
-	bool needsSplitAtCentroid() const;
+	void setNeedsDivideAtCentroid();
+	bool needsDivideAtCentroid() const;
 
 	// If this cell has any partial splits/split faces, it will mark it for centroid splitting.
 	bool setNeedsCleanFaces();
@@ -89,8 +89,8 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
 	void setNeedToMakeReference();
-	bool needToSplitConditional(const BuildCFDParams& params);
-	bool needToSplitDueToSplitFaces(const BuildCFDParams& params);
+	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool needToDivideDueToSplitFaces(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;

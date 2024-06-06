@@ -30,7 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 
 #define RUN_MULTI_THREAD true
-#define USE_MULTI_THREAD_CONTAINERS 1
+#define USE_MULTI_THREAD_CONTAINERS 1 // Combined, local_heap and ThreadPool drop a base case from 2.7 sec to 2.0 sec. In heavier cases, it drops from minutes to seconds.
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 2

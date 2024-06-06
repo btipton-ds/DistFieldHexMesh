@@ -64,7 +64,7 @@ bool PolyhedronSplitter::splitIfNeeded()
 		set<Index3DId> newCellIds;
 		Vector3d ctr;
 		Planed plane;
-		if (cell.needsSplitAtCentroid()) {
+		if (cell.needsDivideAtCentroid()) {
 			ctr = cell.calCentroid();
 			result = splitAtPoint(ctr);
 		} else {
