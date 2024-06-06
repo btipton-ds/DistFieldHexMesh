@@ -56,6 +56,7 @@ namespace
 		SHARP_ANGLE_DEGREES_ID,
 		NUM_BLOCK_DIVS_ID,
 		NUM_SIMPLE_DIVS_ID,
+		NUM_INTERSECTION_DIVS_ID,
 		NUM_CURVATURE_DIVS_ID,
 		NUM_DIVS_PER_RADIUS_ID,
 		NUM_DIVS_GAP_PER_RADIUS_ID,
@@ -137,6 +138,10 @@ BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	_numSimpleDivsBox = new wxTextCtrl(this, NUM_SIMPLE_DIVS_ID, std::to_string(params.numSimpleDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
+	_numIntersectionDivsPrompt = new wxStaticText(this, 0, _T("# intersection divs"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_numIntersectionDivsBox = new wxTextCtrl(this, NUM_INTERSECTION_DIVS_ID, std::to_string(params.numIntersectionDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
 	_numCurvatureDivsPrompt = new wxStaticText(this, 0, _T("# curavture divs"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_numCurvatureDivsBox = new wxTextCtrl(this, NUM_CURVATURE_DIVS_ID, std::to_string(params.numCurvatureDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
@@ -176,6 +181,7 @@ void BuildCFDHexesDlg::getParams(BuildCFDParams& params) const
 	getValue(_minBlocksPerSideBox, params.minBlocksPerSide);
 	getValue(_numBlockDivsBox, params.numBlockDivs);
 	getValue(_numSimpleDivsBox, params.numSimpleDivs);
+	getValue(_numIntersectionDivsBox, params.numIntersectionDivs);
 	getValue(_numCurvatureDivsBox, params.numCurvatureDivs);
 	getValue(_divsPerCurvatureBox, params.divsPerCurvatureRadius);
 	getValue(_divsPerGapCurvatureBox, params.divsPerGapCurvatureRadius);

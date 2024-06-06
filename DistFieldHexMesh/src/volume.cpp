@@ -321,28 +321,25 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
-#ifdef _WIN32
-	LARGE_INTEGER startCount, endCount, freq;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-	_pModelTriMesh->buildCentroids(true);
-	_pModelTriMesh->buildNormals(true);
-	_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
-	const auto& sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
-	findFeatures();
-#ifdef _WIN32
-	QueryPerformanceCounter(&endCount);
-	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for _pModelTriMesh: " << deltaT << " secs\n";
-	startCount = endCount;
-#endif // _WIN32
+	std::vector<size_t> sharpEdges;
+	{
+		Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
+		_pModelTriMesh->buildCentroids(true);
+		_pModelTriMesh->buildNormals(true);
+		_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
+		sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
+		findFeatures();
+	}
 
-	createBlocks(params, blockSpan, multiCore);
-	divideSimple(params, multiCore);
-	divideAtCurvature(params, multiCore);
-//	splitAtSharpVerts(params, multiCore);
-//	splitAtSharpEdges(params, multiCore);
+	{
+		Utils::Timer tmr0(Utils::Timer::TT_buildCFDHexMesh);
+
+		createBlocks(params, blockSpan, multiCore);
+		divideSimple(params, multiCore);
+		divideConitional(params, multiCore);
+//		splitAtSharpVerts(params, multiCore);
+//		splitAtSharpEdges(params, multiCore);
+	}
 
 	Utils::Timer::dumpAll();
 	assert(verifyTopology(multiCore));
@@ -424,21 +421,15 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 	}
 }
 
-void Volume::divideAtCurvature(const BuildCFDParams& params, bool multiCore)
+void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 {
-	if (params.numCurvatureDivs > 0) {
-#ifdef _WIN32
-		LARGE_INTEGER startCount, endCount, freq;
-		QueryPerformanceFrequency(&freq);
-		QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-
+	size_t numPasses = params.numConditionalPasses();
+	if (numPasses > 0) {
 		double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 		double sinEdgeAngle = sin(sharpAngleRadians);
 
-		size_t num = params.numCurvatureDivs;
-		for (size_t i = 0; i < num; i++) {
-			if (i > 0) {
+		for (size_t passNum = 0; passNum < numPasses; passNum++) {
+			if (passNum > 0) {
 				bool didSplit = true;
 				int count = 0;
 				while (didSplit && count < 3) {
@@ -453,9 +444,9 @@ void Volume::divideAtCurvature(const BuildCFDParams& params, bool multiCore)
 			}
 
 			bool changed = false;
-			runThreadPool333([this, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.setNeedToSplitConditional(params))
+			runThreadPool333([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
+					if (cell.setNeedToSplitConditional(passNum, params))
 						changed = true;
 				});
 				return true;
@@ -466,18 +457,13 @@ void Volume::divideAtCurvature(const BuildCFDParams& params, bool multiCore)
 			//		assert(verifyTopology(multiCore));
 
 			if (!changed) {
-				cout << "No more splits required: " << i << "\n";
+				cout << "No more splits required: " << passNum << "\n";
 				break;
 			}
 		}
-#ifdef _WIN32
-		QueryPerformanceCounter(&endCount);
-		double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-		cout << "Time for splitAtCurvature: " << deltaT << " secs\n";
-		startCount = endCount;
-#endif // _WIN32
 	}
 }
+
 void Volume::splitAtSharpVerts(const BuildCFDParams& params, bool multiCore)
 {
 	if (params.splitAtSharpVerts) {

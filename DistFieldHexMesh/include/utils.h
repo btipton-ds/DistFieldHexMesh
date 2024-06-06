@@ -42,8 +42,11 @@ class Timer
 {
 public:
 	enum TimerTag{
+		TT_analyzeModelMesh,
 		TT_splitAtPointInner,
+		TT_needToSplitIntersection,
 		TT_needToSplitConditional,
+		TT_buildCFDHexMesh,
 		TT_lastTag,
 	};
 

@@ -700,25 +700,32 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 	return blockingCellIds.empty();
 }
 
-bool Polyhedron::setNeedToSplitConditional(const BuildCFDParams& params)
+bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params)
 {
-	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
 
 	if (!_needsConditionalSplitTest)
 		return false;
 
+	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
+
 	_needsConditionalSplitTest = false;
 
 	bool needToSplit = false;
-
-	if (params.splitAtSharpVerts) {
-		auto sharpVerts = getSharpVertIndices();
-		if (sharpVerts.size() > 2) {
+	if (!needToSplit && passNum < params.numIntersectionDivs) {
+		if (intersectsModel())
 			needToSplit = true;
+	}
+
+	if (!needToSplit && passNum < params.numSharpVertDivs) {
+		if (params.splitAtSharpVerts) {
+			auto sharpVerts = getSharpVertIndices();
+			if (sharpVerts.size() > 2) {
+				needToSplit = true;
+			}
 		}
 	}
 
-	if (!needToSplit) {
+	if (!needToSplit && passNum < params.numCurvatureDivs) {
 		double maxEdgeLength = 0;
 
 		CBoundingBox3Dd bbox = getBoundingBox();

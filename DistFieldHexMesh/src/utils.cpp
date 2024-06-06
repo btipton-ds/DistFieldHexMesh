@@ -174,11 +174,18 @@ void Utils::Timer::dumpAll()
 	for (size_t i = TT_splitAtPointInner; i < TT_lastTag; i++) {
 		std::string str;
 		switch (i) {
-		case TT_splitAtPointInner:
-			str = "splitAtPointInner"; break;
-		case TT_needToSplitConditional:
-			str = "needToSplitConditional"; break;
+			case TT_analyzeModelMesh:
+				str = "analyzeModelMesh"; break;
+			case TT_splitAtPointInner:
+				str = "splitAtPointInner"; break;
+			case TT_needToSplitConditional:
+				str = "needToSplitConditional"; break;
+			case TT_needToSplitIntersection:
+				str = "needToSplitIntersection"; break;
+			case TT_buildCFDHexMesh:
+				str = "buildCFDHexMesh"; break;
 		}
+
 		if (s_times[i]._count > 0)
 			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._time / s_times[i]._count) << " call/s\n";
 		else
@@ -202,8 +209,8 @@ Utils::Timer::~Timer()
 
 	{
 		std::scoped_lock sl(s_timerMutex);
-		if (_key >= s_times.size())
-			s_times.resize(_key + 1);
+		if (s_times.empty())
+			s_times.resize(TT_lastTag);
 		s_times[_key]._count++;
 		s_times[_key]._time += deltaT;
 	}

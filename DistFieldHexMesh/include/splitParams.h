@@ -33,6 +33,21 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 struct BuildCFDParams {
+	inline size_t numConditionalPasses() const
+	{
+		size_t result = 0;
+
+		if (numIntersectionDivs > result)
+			result = numIntersectionDivs;
+
+		if (numSharpVertDivs > result)
+			result = numSharpVertDivs;
+
+		if (numCurvatureDivs > result)
+			result = numCurvatureDivs;
+
+		return result;
+	}
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
 
@@ -41,6 +56,8 @@ struct BuildCFDParams {
 	size_t minBlocksPerSide = 6;
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 0;
+	size_t numIntersectionDivs = 0;
+	size_t numSharpVertDivs = 0;
 	size_t numCurvatureDivs = 4;
 	size_t divsPerCurvatureRadius = 2;
 	size_t divsPerGapCurvatureRadius = 4;

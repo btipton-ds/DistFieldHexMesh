@@ -89,7 +89,7 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
 	void setNeedToMakeReference();
-	bool setNeedToSplitConditional(const BuildCFDParams& params);
+	bool setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params);
 	bool needToDivideDueToSplitFaces(const BuildCFDParams& params);
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
