@@ -176,7 +176,7 @@ bool TestPoolMemory::testAllocator0()
 bool TestPoolMemory::testAllocator1()
 {
 	MultiCore::local_heap heap(2048, 64);
-	MultiCore::local_heap::scoped_set_thread_heap st(&heap);
+	MultiCore::scoped_set_local_heap st(&heap);
 
 	for (size_t i = 0; i < 1000; i++) {
 		size_t num = 5 + (size_t)((95 * std::rand() / (double)RAND_MAX) + 0.5);
@@ -208,7 +208,7 @@ bool TestPoolMemory::testVector()
 #if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorSizeT())
 			return false;
 		return true;
@@ -216,7 +216,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorVectorSizeT())
 			return false;
 		return true;
@@ -224,7 +224,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorInsert())
 			return false;
 		return true;
@@ -232,7 +232,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorSort())
 			return false;
 		return true;
@@ -240,7 +240,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorInsertErase(true))
 			return false;
 		return true;
@@ -248,7 +248,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorInsertErase(false))
 			return false;
 		return true;
@@ -256,7 +256,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorForLoops())
 			return false;
 		return true;
@@ -264,7 +264,7 @@ bool TestPoolMemory::testVector()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testVectorMisc())
 			return false;
 		return true;
@@ -304,7 +304,7 @@ bool TestPoolMemory::testVectorSizeT()
 bool TestPoolMemory::testVectorVectorSizeT()
 {
 	MultiCore::local_heap alloc(1024);
-	MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+	MultiCore::scoped_set_local_heap st(&alloc);
 	MultiCore::vector<MultiCore::vector<Dummy>> vec;
 
 	size_t size0 = 1000;
@@ -628,7 +628,7 @@ bool TestPoolMemory::testSet()
 #if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testSetInsertErase())
 			return false;
 		return true;
@@ -636,7 +636,7 @@ bool TestPoolMemory::testSet()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testHeavySetInsertErase())
 			return false;
 		return true;
@@ -707,7 +707,7 @@ bool TestPoolMemory::testMap()
 #if MULTI_CORE_TESTS_ENABLED
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testMapBasic())
 			return false;
 		return true;
@@ -715,7 +715,7 @@ bool TestPoolMemory::testMap()
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		MultiCore::local_heap alloc(1024);
-		MultiCore::local_heap::scoped_set_thread_heap st(&alloc);
+		MultiCore::scoped_set_local_heap st(&alloc);
 		if (!testMapHeavy())
 			return false;
 		return true;

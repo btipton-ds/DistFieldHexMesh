@@ -43,6 +43,7 @@ void NAME##Func(TopolgyState state, const Index3DId& id, const std::function<voi
 void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
 	auto p = getOwner(id); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	func(p->MEMBER_NAME[id]); \
 }
 
@@ -50,6 +51,7 @@ void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj
 void Block::NAME##Func(TopolgyState state, const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
 	auto p = getOwner(id); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	if (state == TS_REAL) \
 		func(p->_modelData.MEMBER_NAME[id]); \
 	else \
@@ -60,6 +62,7 @@ void Block::NAME##Func(TopolgyState state, const Index3DId& id, const function<v
 void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
 	auto p = getBlockPtr(); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	p->NAME##Func(id, func); \
 }
 
@@ -67,6 +70,7 @@ void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS
 void CLASS::NAME##Func(TopolgyState state, const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
 	auto p = getBlockPtr(); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	p->NAME##Func(state, id, func); \
 }
 
@@ -80,6 +84,7 @@ void NAME##AvailFunc(TopolgyState prefState, const Index3DId& id, const std::fun
 void Block::NAME##AvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const CLASS& obj)>& func) const \
 { \
 	const auto p = getOwner(id); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	if (prefState == TS_REAL) {\
 		if (p->_modelData.MEMBER_NAME.exists(id)) {\
 			func(p->_modelData.MEMBER_NAME[id]); \
@@ -99,6 +104,7 @@ void Block::NAME##AvailFunc(TopolgyState prefState, const Index3DId& id, const f
 void CLASS::NAME##AvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const CLASS2& obj)>& func) const \
 { \
 	auto p = getBlockPtr(); \
+	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); \
 	p->NAME##AvailFunc(prefState, id, func); \
 }
 
