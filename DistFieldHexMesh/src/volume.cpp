@@ -594,7 +594,7 @@ void Volume::imprintTJointVertices(bool multiCore)
 	}, multiCore);
 #ifdef _DEBUG
 	bool allCellsClosed = true;
-	runThreadPool([this, &allCellsClosed](size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this, &allCellsClosed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		if (!pBlk->allCellsClosed()) {
 			allCellsClosed = false;
 			return false;
