@@ -215,37 +215,6 @@ void Polygon::sortIds() const
 	}
 }
 
-void Polygon::orient()
-{
-	Index3DId ownerCellId;
-	switch (_cellIds.size()) {
-		default:
-			return;
-		case 1: { // Outer polygon
-			ownerCellId = *_cellIds.begin();
-			break;
-		}
-		case 2: { // Inner polygon
-			auto iter = _cellIds.begin();
-			auto id0 = *iter++;
-			auto id1 = *iter;
-
-			ownerCellId = getBlockPtr()->maxCellId(id0, id1);
-			break;
-		}
-	}
-
-	Vector3d norm = calUnitNormal();
-	Vector3d faceCtr = calCentroid();
-	Vector3d cellCtr;
-	cellFunc(TS_REAL,ownerCellId, [&cellCtr](const Polyhedron& cell) {
-		cellCtr = cell.calCentroid();
-		});
-	Vector3d v = cellCtr - faceCtr;
-	if (v.dot(norm) < Tolerance::paramTol()) {
-		reverse(_vertexIds.begin(), _vertexIds.end());
-	}
-}
 
 void Polygon::pack()
 {

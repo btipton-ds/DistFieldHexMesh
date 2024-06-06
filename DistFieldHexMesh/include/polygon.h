@@ -185,7 +185,6 @@ public:
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
 
-	void orient();
 	void pack();
 
 	void write(std::ostream& out) const;
