@@ -1287,19 +1287,16 @@ Block::ModelData::ModelData(Block* pBlk, const ModelData& src)
 
 void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	func(p->_vertices[id]);
 } 
 
 void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	func(p->_vertices[id]);
 } 
 
 void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (state == TS_REAL) 
 		func(p->_modelData._polygons[id]); 
 	else 
@@ -1308,7 +1305,6 @@ void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<voi
 
 void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (state == TS_REAL) 
 		func(p->_modelData._polygons[id]); 
 	else 
@@ -1317,7 +1313,6 @@ void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<voi
 
 void Block::cellFunc(TopolgyState state, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (state == TS_REAL) 
 		func(p->_modelData._polyhedra[id]); 
 	else 
@@ -1326,7 +1321,6 @@ void Block::cellFunc(TopolgyState state, const Index3DId& id, const function<voi
 
 void Block::cellFunc(TopolgyState state, const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (state == TS_REAL) 
 		func(p->_modelData._polyhedra[id]); 
 	else 
@@ -1335,7 +1329,6 @@ void Block::cellFunc(TopolgyState state, const Index3DId& id, const function<voi
 
 void Block::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (prefState == TS_REAL) {
 		if (p->_modelData._polygons.exists(id)) {
 			func(p->_modelData._polygons[id]);
@@ -1353,7 +1346,6 @@ void Block::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const fun
 
 void Block::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getOwner(id); 
-	MultiCore::scoped_set_local_heap st(p->getHeapPtr()); 
 	if (prefState == TS_REAL) {
 		if (p->_modelData._polyhedra.exists(id)) {
 			func(p->_modelData._polyhedra[id]);
