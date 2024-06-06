@@ -84,9 +84,6 @@ public:
 	// If this cell has any partial splits/split faces, it will mark it for centroid splitting.
 	bool setNeedsCleanFaces();
 
-	void setNeedsSplitAtPoint(const Vector3d& splitPt);
-	bool needsSplitAtPoint(Vector3d& splitPt) const;
-
 	bool containsSharps() const;
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
@@ -144,12 +141,10 @@ private:
 	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 
-	bool _needsConditionalSplitTest = true;
-	bool _needsSplitAtPt = false, _needsSplitAtCentroid = false;
-	Vector3d _splitPt;
-	Planed _splitPlane;
+	bool _needsSplitAtCentroid = false;
 	std::vector<size_t> _triIndices, _edgeIndices;
 
+	mutable bool _needsConditionalSplitTest = true;
 	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
 	mutable bool _needsCurvatureCheck = true;

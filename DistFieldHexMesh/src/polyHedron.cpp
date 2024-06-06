@@ -77,9 +77,6 @@ Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds)
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: _faceIds(src._faceIds)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
-	, _needsSplitAtPt(src._needsSplitAtPt)
-	, _splitPt(src._splitPt)
-	, _splitPlane(src._splitPlane)
 	, _cachedIsClosed(src._cachedIsClosed)
 {
 }
@@ -89,9 +86,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	clearCache();
 	_faceIds = rhs._faceIds;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
-	_needsSplitAtPt = rhs._needsSplitAtPt;
-	_splitPt = rhs._splitPt;
-	_splitPlane = rhs._splitPlane;
 	_cachedIsClosed = rhs._cachedIsClosed;
 
 	return *this;
@@ -504,22 +498,6 @@ bool Polyhedron::setNeedsCleanFaces()
 		return true;
 	}
 
-	return false;
-}
-
-void Polyhedron::setNeedsSplitAtPoint(const Vector3d& splitPt)
-{
-	_needsSplitAtPt = true;
-	_splitPt = splitPt;
-	addToSplitStack();
-}
-
-bool Polyhedron::needsSplitAtPoint(Vector3d& splitPt) const
-{
-	if (_needsSplitAtPt) {
-		splitPt = _splitPt;
-		return true;
-	}
 	return false;
 }
 

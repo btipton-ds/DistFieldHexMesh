@@ -67,11 +67,6 @@ bool PolyhedronSplitter::splitIfNeeded()
 		if (cell.needsSplitAtCentroid()) {
 			ctr = cell.calCentroid();
 			result = splitAtPoint(ctr);
-		} else if (cell.needsSplitAtPoint(ctr)) {
-			static mutex m;
-			lock_guard lg(m);
-			cout << "Splitting at point c" << _polyhedronId << " at pt " << ctr << "\n";
-			result = splitAtPoint(ctr);
 		} else {
 			// TODO This needs to be an adaptive split to match the neighbor
 			// We get here when we have to split a neighbor cell prior to splitting a cell.
