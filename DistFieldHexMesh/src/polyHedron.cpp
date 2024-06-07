@@ -408,12 +408,41 @@ bool Polyhedron::intersectsModel() const
 			if (bbox.contains(pTriMesh->getVert(idx)._pt))
 				return true;
 		}
+
+		_intersectsModel = IS_FALSE;
 		vector<size_t> triEntries;
-		_intersectsModel = getBlockPtr()->processTris(bbox, triEntries) > 0 ? IS_TRUE : IS_FALSE;
+		if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
+			for (const auto& faceId : _faceIds) {
+				faceFunc(TS_REAL, faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
+					const auto& vertIds = face.getVertexIds();
+					for (size_t i = 0; i < vertIds.size(); i++) {
+						size_t j = (i + 1) % vertIds.size();
+						LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
+						for (size_t triIdx : triEntries) {
+							if (pTriMesh->intersectsTri(seg, triIdx)) {
+								_intersectsModel = IS_TRUE;
+								break;
+							}
+						}
+						if (_intersectsModel = IS_TRUE)
+							break;
+					}
+				});
+
+				if (_intersectsModel = IS_TRUE)
+					break;
+			}
+		}
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
+
+Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
+{
+	return getOurBlockPtr()->getVertexPoint(vertId);
+}
+
 
 size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& facePoints) const
 {

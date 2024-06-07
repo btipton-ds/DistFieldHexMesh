@@ -56,6 +56,7 @@ public:
 	// Cutting creates final faces "on" the model.
 	bool cutAtSharpVerts(const BuildCFDParams& params);
 	bool cutAtSharpEdges(const BuildCFDParams& params);
+	bool cutWithModelMesh(const BuildCFDParams& params);
 
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
@@ -73,6 +74,8 @@ private:
 	void findSharpVertPierecPoints(size_t vertIdx, MTC::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
 	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const;
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
+
+	void cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

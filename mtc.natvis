@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (c) Microsoft Corporation.
+SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-->
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+ <Type Name="MultiCore::vector&lt;*&gt;">
+    <DisplayString>{{ size={_size} }}</DisplayString>
+    <Expand>
+        <Item Name="[size]" ExcludeView="simple">_size</Item>
+        <Item Name="[capacity]" ExcludeView="simple">_capacity</Item>
+        <ArrayItems>
+            <Size>_size</Size>
+            <ValuePointer>_pData</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+ <Type Name="MultiCore::set&lt;*&gt;">
+    <DisplayString>{{ size={_size} }}</DisplayString>
+    <Expand>
+        <Item Name="[size]" ExcludeView="simple">_size</Item>
+        <Item Name="[capacity]" ExcludeView="simple">_capacity</Item>
+        <ArrayItems>
+            <Size>_size</Size>
+            <ValuePointer>_pData</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+ <Type Name="DFHM::Index3D">
+    <DisplayString>[{_vals[0]},{_vals[1]},{_vals[2]}]</DisplayString>
+</Type>
+
+ <Type Name="DFHM::Index3DId">
+    <DisplayString>[{_vals[0]},{_vals[1]},{_vals[2]}]: {_elementId}</DisplayString>
+</Type>
+
+</AutoVisualizer>

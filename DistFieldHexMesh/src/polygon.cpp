@@ -335,10 +335,16 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 	return false;
 }
 
+bool Polygon::isCoplanar(const Vector3d& pt) const
+{
+	Planed pl = calPlane();
+	return (fabs(pl.distanceToPoint(pt)) < Tolerance::sameDistTol());
+}
+
 bool Polygon::isCoplanar(const Planed& pl) const
 {
 	Planed ourPlane = calPlane();
-	if (fabs(pl.distanceToPoint(ourPlane.getOrgin())) > Tolerance::sameDistTol())
+	if (fabs(pl.distanceToPoint(ourPlane.getOrgin())) >= Tolerance::sameDistTol())
 		return false;
 
 	double mcp = pl.getNormal().cross(ourPlane.getNormal()).norm();
@@ -851,6 +857,58 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	}
 
 	return false;
+}
+
+bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, std::set<Edge>& newEdges)
+{
+	auto pMesh = getBlockPtr()->getModelMesh();
+	RayHitd hit;
+	set<Index3DId> vertSet;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		auto facePlane = calPlane();
+		RayHitd hit;
+		LineSegmentd seg(getBlockPtr()->getVertexPoint(_vertexIds[i]), getBlockPtr()->getVertexPoint(_vertexIds[j]));
+		for (auto triIdx : patchTris) {
+			bool skip = false;
+			const auto& tri = pMesh->getTri(triIdx);
+			Vector3d vertPt;
+			for (int i = 0; i < 3; i++) {
+				auto vertPt = pMesh->getVert(tri[i])._pt;
+				if (facePlane.distanceToPoint(vertPt) <= Tolerance::sameDistTol()) {
+					skip = true;
+					break;
+				}
+			}
+			if (skip)
+				continue;
+
+			auto normal = pMesh->triUnitNormal(triIdx);
+			Planed triPlane(vertPt, normal, false);
+
+			skip = isCoplanar(triPlane);
+			if (skip)
+				continue;
+
+			if (pMesh->intersectsTri(seg, triIdx, hit)) {
+				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
+				vertSet.insert(vertId);
+			}
+		}
+	}
+
+	if (!vertSet.empty()) {
+		if (vertSet.size() <= 2) {
+			auto iter = vertSet.begin();
+			Edge edge(*iter++, *iter++);
+			newEdges.insert(edge);
+		}
+		else {
+			int dbgBreak = 1;
+		}
+	}
+
+	return !newEdges.empty();
 }
 
 void Polygon::splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const

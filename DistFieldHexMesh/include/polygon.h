@@ -144,6 +144,7 @@ public:
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVertex(const Index3DId& vertId) const;
+	bool isCoplanar(const Vector3d& pt) const;
 	bool isCoplanar(const Planed& pl) const;
 	bool isCoplanar(const Edge& edge) const;
 	bool verifyUnique() const;
@@ -180,6 +181,7 @@ public:
 	bool isPlanar() const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
+	bool intersectModelTris(const std::vector<size_t>& patchTris, std::set<Edge>& newEdges);
 	void splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const;
 
 	size_t getCreatedDuringSplitNumber() const;

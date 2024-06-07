@@ -137,6 +137,7 @@ private:
 	double minGap() const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
+	Vector3d getVertexPoint(const Index3DId& vertId) const;
 
 	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;

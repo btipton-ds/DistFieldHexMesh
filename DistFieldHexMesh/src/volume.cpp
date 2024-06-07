@@ -339,6 +339,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		divideConitional(params, multiCore);
 //		splitAtSharpVerts(params, multiCore);
 //		splitAtSharpEdges(params, multiCore);
+		splitWithTriMesh(params, multiCore);
 	}
 
 	Utils::Timer::dumpAll();
@@ -538,6 +539,32 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 		return true;
 	}, multiCore);
 #endif
+}
+
+void Volume::splitWithTriMesh(const BuildCFDParams& params, bool multiCore)
+{
+	bool changed = false;
+	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			if (cell.containsSharps()) {
+				changed = cell.setNeedsCleanFaces();
+			}
+		});
+		return true;
+	}, multiCore);
+
+	changed = false;
+	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			PolyhedronSplitter ps(pBlk.get(), cellId);
+			if (ps.cutWithModelMesh(params))
+				changed = true;
+		});
+		return true;
+	}, false && multiCore);
+
+	if (changed)
+		finishSplits(multiCore);
 }
 
 void Volume::finishSplits(bool multiCore)

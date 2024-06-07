@@ -54,7 +54,6 @@ PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedro
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 {
-
 }
 
 bool PolyhedronSplitter::splitIfNeeded()
@@ -500,6 +499,39 @@ void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MTC::vector<
 bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 {
 	return false;
+}
+
+bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
+{
+	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this](const Polyhedron& cell) {
+		auto pMesh = _pBlock->getModelMesh();
+		const auto& tris = cell.getTriIndices();
+		if (!tris.empty()) {
+			std::vector<std::vector<size_t>> patches;
+			if (pMesh->makePatches(tris, patches)) {
+				for (const auto& patch : patches) {
+					cutWithPatch(cell, patch);
+				}
+			}
+		}
+	});
+	return false;
+}
+
+void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch)
+{
+	// Prior operations require that the patch have correctly oriented normals.
+	std::set<Edge> edges;
+	const auto& faceIds = realCell.getFaceIds();
+	for (const auto& faceId : faceIds) {
+		_pBlock->faceFunc(TS_REAL, faceId, [this, &patch, &edges](Polygon& face) {
+			face.intersectModelTris(patch, edges);
+		});
+	}
+
+	if (!edges.empty()) {
+		int dbgBreak = 1;
+	}
 }
 
 bool PolyhedronSplitter::splitAtPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)

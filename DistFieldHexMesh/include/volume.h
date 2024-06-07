@@ -127,6 +127,9 @@ private:
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
 	void splitAtSharpVerts(const BuildCFDParams& params, bool multiCore);
 	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
+	void splitWithTriMesh(const BuildCFDParams& params, bool multiCore);
+	void doPreSplits(const BuildCFDParams& params, bool multiCore);
+	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
 	void dumpOpenCells(bool multiCore) const;
