@@ -859,11 +859,11 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
-bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, std::set<Edge>& newEdges)
+bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<IntersectEdge>& newEdges)
 {
 	auto pMesh = getBlockPtr()->getModelMesh();
 	RayHitd hit;
-	set<Index3DId> vertSet;
+	set<IntersectVertId> vertSet;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		auto facePlane = calPlane();
@@ -892,7 +892,7 @@ bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, std::set<
 
 			if (pMesh->intersectsTri(seg, triIdx, hit)) {
 				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
-				vertSet.insert(vertId);
+				vertSet.insert(IntersectVertId(vertId, hit.triIdx));
 			}
 		}
 	}
@@ -900,7 +900,7 @@ bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, std::set<
 	if (!vertSet.empty()) {
 		if (vertSet.size() <= 2) {
 			auto iter = vertSet.begin();
-			Edge edge(*iter++, *iter++);
+			IntersectEdge edge(*iter++, *iter++);
 			newEdges.insert(edge);
 		}
 		else {

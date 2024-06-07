@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <lambdaMacros.h>
 #include <vertex.h>
 #include <edge.h>
+#include <intersectEdge.h>
 
 template<class T>
 class Plane;
@@ -181,7 +182,7 @@ public:
 	bool isPlanar() const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
-	bool intersectModelTris(const std::vector<size_t>& patchTris, std::set<Edge>& newEdges);
+	bool intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<IntersectEdge>& newEdges);
 	void splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const;
 
 	size_t getCreatedDuringSplitNumber() const;

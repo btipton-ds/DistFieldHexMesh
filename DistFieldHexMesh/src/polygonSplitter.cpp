@@ -183,6 +183,69 @@ bool PolygonSplitter::splitWithFace(const Index3DId& imprintFaceId, Index3DId& l
 	return result;
 }
 
+
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<Index3DId>& vertices)
+{
+	MTC::set<IntersectEdge> edges(edgesIn);
+	vertices.clear();
+	MTC::vector<IntersectVertId> verts;
+	verts.push_back(edges.begin()->_vert0);
+	edges.erase(edges.begin());
+	bool found = true;
+	while (found && !edges.empty()) {
+		found = false;
+		const auto& v = verts.back();
+		auto iter = edges.begin();
+		while (iter != edges.end()) {
+			const auto& e = *iter;
+			if (e._vert0 == v) {
+				verts.push_back(e._vert1);
+				edges.erase(iter);
+				found = true;
+				break;
+			} else if (e._vert1 == v) {
+				verts.push_back(e._vert0);
+				edges.erase(iter);
+				found = true;
+				break;
+			}
+		}
+	}
+
+	if (!edges.empty())
+		return false;
+	Vector3d triNorm(0, 0, 0), faceNorm(0, 0, 0);
+	auto pMesh = pBlock->getModelMesh();
+	for (const auto& iv : verts) {
+		auto n = pMesh->triUnitNormal(iv._triIndex);
+		triNorm += n;
+	}
+	triNorm.normalize();
+
+	size_t i = 0;
+	auto pt0 = pBlock->getVertexPoint(verts[i]);
+	for (size_t j = 1; j < verts.size() - 1; j++) {
+		size_t k = (j + 1) % verts.size();
+		auto pt1 = pBlock->getVertexPoint(verts[j]);
+		auto pt2 = pBlock->getVertexPoint(verts[k]);
+		Vector3d v0 = pt2 - pt1;
+		Vector3d v1 = pt0 - pt1;
+		Vector3d n = v1.cross(v0).normalized();
+		faceNorm += n;
+	}
+
+	faceNorm.normalize();
+	if (triNorm.dot(faceNorm) < 0) {
+		std::reverse(verts.begin(), verts.end());
+	}
+
+	for (const auto& v : verts)
+		vertices.insert(vertices.end(), v);
+
+	return !vertices.empty();
+}
+
+
 bool PolygonSplitter::splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const
 {
 	cout << "real face ids\n";

@@ -27,35 +27,62 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <tm_vector3.h>
-#include <tm_plane.h>
-#include <index3D.h>
-#include <polygon.h>
-#include <intersectEdge.h>
+#include <algorithm>
+#include <Index3D.h>
 
-namespace DFHM {
+namespace DFHM
+{
 
-	class Block;
-	class Polyhedron;
+struct IntersectVertId : public Index3DId {
+	IntersectVertId() = default;
+	IntersectVertId(const IntersectVertId& src) = default;
+	IntersectVertId(const Index3DId& id, size_t triIdx);
 
-	class PolygonSplitter {
-	public:
-		PolygonSplitter(Block* pBlock, const Index3DId& polygonId);
+	bool operator < (const IntersectVertId& rhs) const;
 
-		bool splitAtCentroid();
-		bool splitAtPoint(const Vector3d& pt);
-		bool splitWithFace(const Index3DId& imprintFaceId, Index3DId& lowerFaceId, Index3DId upperFaceId) const;
+	size_t _triIndex = -1;
+};
 
-		// Create ordered vertices to form a new polygon who's face normal is in the same direction as triangle normals defined in edges.
-		// Edges should be created by intersectModelTris which will record the triangle normals from the model as they are intersected.
-		static bool connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<Index3DId>& vertices);
+struct IntersectEdge {
+	IntersectEdge() = default;
+	IntersectEdge(const IntersectEdge& src) = default;
+	IntersectEdge(const IntersectVertId& vert0, const IntersectVertId& vert1);
 
-	private:
-		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
-		bool splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const;
+	IntersectEdge& operator = (const IntersectEdge& rhs) = default;
 
-		Block* _pBlock;
-		Index3DId _polygonId;
-	};
+	bool operator < (const IntersectEdge& rhs) const;
+
+	IntersectVertId _vert0, _vert1;
+};
+
+inline IntersectVertId::IntersectVertId(const Index3DId& id, size_t triIdx)
+	: Index3DId(id)
+	, _triIndex(triIdx)
+{
+}
+
+inline bool IntersectVertId::operator < (const IntersectVertId& rhs) const
+{
+	return Index3DId::operator<(rhs);
+}
+
+inline IntersectEdge::IntersectEdge(const IntersectVertId& vert0, const IntersectVertId& vert1)
+	: _vert0(vert0)
+	, _vert1(vert1)
+{
+	if (vert1 < vert0) {
+		std::swap(_vert0, _vert1);
+	}
+}
+
+inline bool IntersectEdge::operator < (const IntersectEdge& rhs) const
+{
+	if (_vert0 < rhs._vert0)
+		return true;
+	else if (rhs._vert0 < _vert0)
+		return false;
+
+	return _vert1 < rhs._vert1;
+}
 
 }

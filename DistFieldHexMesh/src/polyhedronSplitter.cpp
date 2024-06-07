@@ -521,7 +521,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch)
 {
 	// Prior operations require that the patch have correctly oriented normals.
-	std::set<Edge> edges;
+	MTC::set<IntersectEdge> edges;
 	const auto& faceIds = realCell.getFaceIds();
 	for (const auto& faceId : faceIds) {
 		_pBlock->faceFunc(TS_REAL, faceId, [this, &patch, &edges](Polygon& face) {
@@ -529,8 +529,12 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 		});
 	}
 
-	if (!edges.empty()) {
-		int dbgBreak = 1;
+	if (edges.size() >= 3) {
+		MTC::vector<Index3DId> verts;
+		if (PolygonSplitter::connectIntersectEdges(_pBlock, edges, verts)) {
+			Index3DId faceId = _pBlock->addFace(verts);
+			int dbgBreak = 1;
+		}
 	}
 }
 
