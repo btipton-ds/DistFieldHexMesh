@@ -419,7 +419,8 @@ bool Polyhedron::intersectsModel() const
 						size_t j = (i + 1) % vertIds.size();
 						LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
 						for (size_t triIdx : triEntries) {
-							if (pTriMesh->intersectsTri(seg, triIdx)) {
+							RayHitd hit;
+							if (pTriMesh->intersectsTri(seg, triIdx, hit)) {
 								_intersectsModel = IS_TRUE;
 								break;
 							}

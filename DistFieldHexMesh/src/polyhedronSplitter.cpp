@@ -515,7 +515,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 			}
 
 			std::vector<std::vector<size_t>> patches;
-			if (pMesh->makePatches(tris, patches)) {
+			if (pMesh->createPatches(tris, patches)) {
 				for (const auto& patch : patches) {
 					cutWithPatch(cell, patch);
 				}
