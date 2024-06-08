@@ -76,6 +76,7 @@ private:
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
 
 	void cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch);
+	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

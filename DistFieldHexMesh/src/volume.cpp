@@ -559,9 +559,11 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 	changed = false;
 	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			PolyhedronSplitter ps(pBlk.get(), cellId);
-			if (ps.cutWithModelMesh(params))
-				changed = true;
+			if (cell.intersectsModel()) {
+				PolyhedronSplitter ps(pBlk.get(), cellId);
+				if (ps.cutWithModelMesh(params))
+					changed = true;
+			}
 		});
 		return true;
 	}, false && multiCore);

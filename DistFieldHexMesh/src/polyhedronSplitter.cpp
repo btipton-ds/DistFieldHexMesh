@@ -510,6 +510,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 			for (const auto& faceId : cell.getFaceIds()) {
 				_pBlock->faceFunc(TS_REAL, faceId, [&cell](Polygon& face) {
 					face.removeCellId(cell.getId());
+					assert(face.numCells() < 2);
 				});
 			}
 
@@ -598,13 +599,42 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 			int dbgBreak = 1;
 		}
 
-		Index3DId cellId = _pBlock->addCell(newFaceIds);
+		if (facesFormClosedCell(newFaceIds)) {
+			Index3DId cellId = _pBlock->addCell(newFaceIds);
 #ifdef _DEBUG
-		_pBlock->cellFunc(TS_REAL, cellId, [](const Polyhedron& cell) {
-			assert(cell.isClosed());
-		});
+			_pBlock->cellFunc(TS_REAL, cellId, [](const Polyhedron& cell) {
+				assert(cell.isClosed());
+			});
 #endif // _DEBUG
+		}
 	}
+}
+
+bool PolyhedronSplitter::facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const
+{
+	MTC::map<Edge, size_t> edgeMap;
+
+	for (const auto& faceId : faceIds) {
+		_pBlock->faceFunc(TS_REAL, faceId, [&edgeMap](const Polygon& face) {
+			const auto& verts = face.getVertexIds();
+			for (size_t i = 0; i < verts.size(); i++) {
+				size_t j = (i + 1) % verts.size();
+				Edge e(verts[i], verts[j]);
+				auto iter = edgeMap.find(e);
+				if (iter == edgeMap.end()) {
+					iter = edgeMap.insert(std::make_pair(e, 0)).first;
+				}
+				iter->second++;
+			}
+		});
+	}
+
+	for (const auto& iter : edgeMap) {
+		if (iter.second != 2)
+			return false;
+	}
+
+	return true;
 }
 
 bool PolyhedronSplitter::splitAtPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)
