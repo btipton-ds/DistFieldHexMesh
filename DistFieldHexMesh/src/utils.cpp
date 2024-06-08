@@ -184,6 +184,8 @@ void Utils::Timer::dumpAll()
 				str = "needToSplitIntersection"; break;
 			case TT_buildCFDHexMesh:
 				str = "buildCFDHexMesh"; break;
+			case TT_UpdateTessellation:
+				str = "updateTessellation"; break;
 		}
 
 		if (s_times[i]._count > 0)

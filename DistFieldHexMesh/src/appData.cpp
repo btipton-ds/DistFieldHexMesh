@@ -48,6 +48,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
+#include <utils.h>
 
 using namespace std;
 using namespace DFHM;
@@ -422,6 +423,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
         dlg.getParams(_params);
 
         _volume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
+
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     } catch (const char* errStr) {
         cout << errStr << "\n";
@@ -430,12 +432,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
 void AppData::updateTessellation(const Index3D& min, const Index3D& max)
 {
-#ifdef _WIN32
-    LARGE_INTEGER startCount, freq;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-
+    Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
     cout << "Tessellating graphics.\n";
 
     auto pCanvas = _pMainFrame->getCanvas();
@@ -444,14 +441,6 @@ void AppData::updateTessellation(const Index3D& min, const Index3D& max)
     addEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
 
     setDisplayMinMax(min, max);
-
-#ifdef _WIN32
-    LARGE_INTEGER endCount;
-    QueryPerformanceCounter(&endCount);
-    double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-    cout << "Time for updateTessellation: " << deltaT << " secs\n";
-#endif // _WIN32
-
 }
 
 void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)

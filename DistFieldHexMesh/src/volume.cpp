@@ -50,12 +50,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <profileapi.h>
-#endif // _WIN32
-
-
 using namespace std;
 using namespace DFHM;
 using namespace TriMesh;
@@ -354,12 +348,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
 {
-#ifdef _WIN32
-	LARGE_INTEGER startCount, freq;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&startCount);
-#endif // _WIN32
-
 	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
@@ -371,13 +359,6 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
-
-#ifdef _WIN32
-	LARGE_INTEGER endCount;
-	QueryPerformanceCounter(&endCount);
-	double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-	cout << "Time for createSubBlocks: " << deltaT << " secs\n";
-#endif // _WIN32
 }
 
 /*
@@ -398,11 +379,6 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 {
 	if (params.numSimpleDivs > 0) {
-#ifdef _WIN32
-		LARGE_INTEGER startCount, endCount, freq;
-		QueryPerformanceFrequency(&freq);
-		QueryPerformanceCounter(&startCount);
-#endif // _WIN32
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
 			runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
@@ -415,13 +391,7 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 			finishSplits(multiCore);
 		}
 
-#ifdef _WIN32
-		QueryPerformanceCounter(&endCount);
-		double deltaT = (endCount.QuadPart - startCount.QuadPart) / (double)(freq.QuadPart);
-		cout << "Time for splitSimple: " << deltaT << " secs\n";
-		startCount = endCount;
-#endif // _WIN32
-		//		assert(verifyTopology(multiCore));
+//		assert(verifyTopology(multiCore));
 	}
 }
 
