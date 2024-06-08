@@ -337,9 +337,12 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 		createBlocks(params, blockSpan, multiCore);
 		divideSimple(params, multiCore);
 		divideConitional(params, multiCore);
+
+// TODO we should be able to clear the reference topology now
+
 //		splitAtSharpVerts(params, multiCore);
 //		splitAtSharpEdges(params, multiCore);
-		splitWithTriMesh(params, multiCore);
+		cutWithTriMesh(params, multiCore);
 	}
 
 	Utils::Timer::dumpAll();
@@ -541,7 +544,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 #endif
 }
 
-void Volume::splitWithTriMesh(const BuildCFDParams& params, bool multiCore)
+void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 {
 	bool changed = false;
 	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {

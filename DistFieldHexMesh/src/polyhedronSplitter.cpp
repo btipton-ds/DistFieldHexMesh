@@ -93,7 +93,7 @@ bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 	bool result = splitAtPointInner(realCell, referenceCell, pt);
 
 	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
-		_pBlock->freePolyhedron(_polyhedronId);
+		_pBlock->freePolyhedron(_polyhedronId, true);
 	}
 
 	return result;
@@ -293,7 +293,7 @@ bool PolyhedronSplitter::cutAtSharpVerts(const BuildCFDParams& params)
 	}
 
 	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
-		_pBlock->freePolyhedron(_polyhedronId);
+		_pBlock->freePolyhedron(_polyhedronId, true);
 	}
 
 	return result;
@@ -507,12 +507,30 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 		auto pMesh = _pBlock->getModelMesh();
 		const auto& tris = cell.getTriIndices();
 		if (!tris.empty()) {
+			for (const auto& faceId : cell.getFaceIds()) {
+				_pBlock->faceFunc(TS_REAL, faceId, [&cell](Polygon& face) {
+					face.removeCellId(cell.getId());
+				});
+			}
+
 			std::vector<std::vector<size_t>> patches;
 			if (pMesh->makePatches(tris, patches)) {
 				for (const auto& patch : patches) {
 					cutWithPatch(cell, patch);
 				}
 			}
+
+			for (const auto& faceId : cell.getFaceIds()) {
+				bool deleteFace = false;
+				_pBlock->faceFunc(TS_REAL, faceId, [&cell, &deleteFace](Polygon& face) {
+					deleteFace = face.numCells() == 0;
+				});
+				if (deleteFace) {
+					_pBlock->freePolygon(faceId, false);
+				}
+			}
+
+			_pBlock->freePolyhedron(_polyhedronId, false);
 		}
 	});
 	return false;
@@ -520,6 +538,8 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 
 void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch)
 {
+	auto pMesh = _pBlock->getModelMesh();
+
 	// Prior operations require that the patch have correctly oriented normals.
 	MTC::set<IntersectEdge> edges;
 	const auto& faceIds = realCell.getFaceIds();
@@ -530,11 +550,60 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 	}
 
 	if (edges.size() >= 3) {
+		MTC::set<Index3DId> cellVerts, cellVertsToKeep, newFaceIds;
+		realCell.getVertIds(cellVerts);
+		for (const auto& vertId : cellVerts) {
+			Vector3d pt = _pBlock->getVertexPoint(vertId);
+			for (const auto& edge : edges) {
+				auto ctr0 = pMesh->triCentroid(edge._vert0._triIndex);
+				auto norm0 = pMesh->triUnitNormal(edge._vert0._triIndex);
+				auto ctr1 = pMesh->triCentroid(edge._vert1._triIndex);
+				auto norm1 = pMesh->triUnitNormal(edge._vert1._triIndex);
+
+				auto ctr = (ctr0 + ctr1) * 0.5;
+				auto norm = norm0 + norm1;
+				norm.normalize();
+
+				Vector3d v = pt - ctr;
+				if (v.dot(norm) >= 0)
+					cellVertsToKeep.insert(vertId);
+			}
+		}
+
+		for (const auto& faceId : realCell.getFaceIds()) {
+			_pBlock->faceFunc(TS_REAL, faceId, [this, &edges, &cellVertsToKeep, &newFaceIds](Polygon& face) {
+				int numVertsInSet = 0;
+				const auto& faceVerts = face.getVertexIds();
+				for (const auto& vertId : faceVerts) {
+					if (cellVertsToKeep.contains(vertId))
+						numVertsInSet++;
+				}
+
+				if (numVertsInSet == faceVerts.size())
+					newFaceIds.insert(face.getId());
+				else if (numVertsInSet != 0) {
+					PolygonSplitter sp(_pBlock, face.getId());
+					Index3DId newFaceId = sp.createTrimmedFace(edges);
+					if (newFaceId.isValid())
+						newFaceIds.insert(newFaceId);
+				}
+			});
+
+		}
+
 		MTC::vector<Index3DId> verts;
-		if (PolygonSplitter::connectIntersectEdges(_pBlock, edges, verts)) {
+		if (PolygonSplitter::connectIntersectEdges(_pBlock, edges, verts, true)) {
 			Index3DId faceId = _pBlock->addFace(verts);
+			newFaceIds.insert(faceId);
 			int dbgBreak = 1;
 		}
+
+		Index3DId cellId = _pBlock->addCell(newFaceIds);
+#ifdef _DEBUG
+		_pBlock->cellFunc(TS_REAL, cellId, [](const Polyhedron& cell) {
+			assert(cell.isClosed());
+		});
+#endif // _DEBUG
 	}
 }
 
@@ -555,7 +624,7 @@ bool PolyhedronSplitter::splitAtPlane(const Planed& plane, MTC::set<Index3DId>& 
 
 	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
 		newCellIds.erase(_polyhedronId);
-		_pBlock->freePolyhedron(_polyhedronId);
+		_pBlock->freePolyhedron(_polyhedronId, true);
 	}
 
 	return result;

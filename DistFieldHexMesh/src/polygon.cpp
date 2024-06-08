@@ -46,6 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <io_utils.h>
 #include <tolerances.h>
+#include <polygonSplitter.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2

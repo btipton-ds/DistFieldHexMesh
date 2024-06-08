@@ -70,7 +70,7 @@ bool PolygonSplitter::splitAtPoint(const Vector3d& pt)
 	bool result = splitAtPointInner(realFace, referenceFace, pt);
 
 	if (_pBlock->polygonExists(TS_REAL, _polygonId)) {
-		_pBlock->freePolygon(_polygonId);
+		_pBlock->freePolygon(_polygonId, true);
 	}
 
 	return result;
@@ -177,15 +177,106 @@ bool PolygonSplitter::splitWithFace(const Index3DId& imprintFaceId, Index3DId& l
 	bool result = splitWithFaceInner(imprintFace, realFace, referenceFace);
 
 	if (_pBlock->polygonExists(TS_REAL, _polygonId)) {
-		_pBlock->freePolygon(_polygonId);
+		_pBlock->freePolygon(_polygonId, true);
 	}
 
 	return result;
 }
 
-
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<Index3DId>& vertices)
+Index3DId PolygonSplitter::createTrimmedFace(const MTC::set<IntersectEdge>& cutFaceEdges)
 {
+	Index3DId result;
+
+	auto pMesh = _pBlock->getModelMesh();
+	MTC::set<Edge> newFaceEdges;
+	MTC::vector<Index3DId> newVertIds;
+
+	MTC::vector<Index3DId> vertIds;
+	Planed facePlane;
+	_pBlock->faceFunc(TS_REAL, _polygonId, [&vertIds, &facePlane](const Polygon& face) {
+		vertIds = face.getVertexIds();
+		facePlane = face.calPlane();
+	});
+
+	for (const auto& cuttingEdge : cutFaceEdges) {
+		Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vert0);
+		Vector3d modelNorm0 = pMesh->triUnitNormal(cuttingEdge._vert0._triIndex);
+
+		Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vert1);
+		Vector3d modelNorm1 = pMesh->triUnitNormal(cuttingEdge._vert1._triIndex);
+
+		if (facePlane.distanceToPoint(imprintPt0) > Tolerance::sameDistTol() || facePlane.distanceToPoint(imprintPt1) > Tolerance::sameDistTol())
+			continue;
+
+		newFaceEdges.insert(Edge(cuttingEdge._vert0, cuttingEdge._vert1));
+
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			size_t j = (i + 1) % vertIds.size();
+			const auto& vertId0 = vertIds[i];
+			const auto& vertId1 = vertIds[j];
+			double dp[2][2];
+
+			Vector3d pt0 = _pBlock->getVertexPoint(vertId0);
+			Vector3d pt1 = _pBlock->getVertexPoint(vertId1);
+			LineSegment seg(pt0, pt1);
+
+			dp[0][0] = modelNorm0.dot(pt0 - imprintPt0);
+			dp[0][1] = modelNorm1.dot(pt0 - imprintPt1);
+			dp[1][0] = modelNorm0.dot(pt1 - imprintPt0);
+			dp[1][1] = modelNorm1.dot(pt1 - imprintPt1);
+
+			if (
+				(dp[0][0] > Tolerance::sameDistTol() && dp[1][1] > Tolerance::sameDistTol()) ||
+				(dp[0][1] > Tolerance::sameDistTol() && dp[1][0] > Tolerance::sameDistTol()) ) {
+				newFaceEdges.insert(Edge(vertId0, vertId1));
+			} else if ( /* Crossing case */
+				(dp[0][0] * dp[1][1] <= 0) ||
+				(dp[0][1] * dp[1][0] <= 0)) {
+				double t = -1;
+				if (seg.contains(imprintPt0, t)) {
+					if (dp[0][0] > 0)
+						newFaceEdges.insert(Edge(vertId0, cuttingEdge._vert0));
+					else
+						newFaceEdges.insert(Edge(vertId1, cuttingEdge._vert0));
+				}
+				else if (seg.contains(imprintPt1, t)) {
+					if (dp[0][1] > 0)
+						newFaceEdges.insert(Edge(vertId0, cuttingEdge._vert1));
+					else
+						newFaceEdges.insert(Edge(vertId1, cuttingEdge._vert1));
+				}
+			}
+		}
+	}
+
+	MTC::vector<Index3DId> vertices;
+	if (PolygonSplitter::connectEdges(_pBlock, newFaceEdges, vertices)) {
+		result = _pBlock->addFace(vertices);
+	}
+	return result;
+}
+
+bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<Index3DId>& vertices)
+{
+	if (edges.empty())
+		return false;
+
+	MTC::set<IntersectEdge> interEdges;
+	for (const auto& edge : edges) {
+		IntersectVertId iv0(edge.getVertex(0), -1);
+		IntersectVertId iv1(edge.getVertex(1), -1);
+
+		interEdges.insert(IntersectEdge(iv0, iv1));
+	}
+
+	return connectIntersectEdges(pBlock, interEdges, vertices, false);
+}
+
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<Index3DId>& vertices, bool isIntersection)
+{
+	if (edgesIn.empty())
+		return false;
+
 	MTC::set<IntersectEdge> edges(edgesIn);
 	vertices.clear();
 	MTC::vector<IntersectVertId> verts;
@@ -197,15 +288,15 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 		const auto& v = verts.back();
 		auto iter = edges.begin();
 		while (iter != edges.end()) {
-			const auto& e = *iter;
+			auto e = *iter++;
 			if (e._vert0 == v) {
 				verts.push_back(e._vert1);
-				edges.erase(iter);
+				edges.erase(e);
 				found = true;
 				break;
 			} else if (e._vert1 == v) {
 				verts.push_back(e._vert0);
-				edges.erase(iter);
+				edges.erase(e);
 				found = true;
 				break;
 			}
@@ -214,31 +305,33 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 
 	if (!edges.empty())
 		return false;
-	Vector3d triNorm(0, 0, 0), faceNorm(0, 0, 0);
-	auto pMesh = pBlock->getModelMesh();
-	for (const auto& iv : verts) {
-		auto n = pMesh->triUnitNormal(iv._triIndex);
-		triNorm += n;
-	}
-	triNorm.normalize();
 
-	size_t i = 0;
-	auto pt0 = pBlock->getVertexPoint(verts[i]);
-	for (size_t j = 1; j < verts.size() - 1; j++) {
-		size_t k = (j + 1) % verts.size();
-		auto pt1 = pBlock->getVertexPoint(verts[j]);
-		auto pt2 = pBlock->getVertexPoint(verts[k]);
-		Vector3d v0 = pt2 - pt1;
-		Vector3d v1 = pt0 - pt1;
-		Vector3d n = v1.cross(v0).normalized();
-		faceNorm += n;
-	}
+	if (isIntersection) {
+		Vector3d triNorm(0, 0, 0), faceNorm(0, 0, 0);
+		auto pMesh = pBlock->getModelMesh();
+		for (const auto& iv : verts) {
+			auto n = pMesh->triUnitNormal(iv._triIndex);
+			triNorm += n;
+		}
+		triNorm.normalize();
 
-	faceNorm.normalize();
-	if (triNorm.dot(faceNorm) < 0) {
-		std::reverse(verts.begin(), verts.end());
-	}
+		size_t i = 0;
+		auto pt0 = pBlock->getVertexPoint(verts[i]);
+		for (size_t j = 1; j < verts.size() - 1; j++) {
+			size_t k = (j + 1) % verts.size();
+			auto pt1 = pBlock->getVertexPoint(verts[j]);
+			auto pt2 = pBlock->getVertexPoint(verts[k]);
+			Vector3d v0 = pt2 - pt1;
+			Vector3d v1 = pt0 - pt1;
+			Vector3d n = v1.cross(v0).normalized();
+			faceNorm += n;
+		}
 
+		faceNorm.normalize();
+		if (triNorm.dot(faceNorm) < 0) {
+			std::reverse(verts.begin(), verts.end());
+		}
+	}
 	for (const auto& v : verts)
 		vertices.insert(vertices.end(), v);
 

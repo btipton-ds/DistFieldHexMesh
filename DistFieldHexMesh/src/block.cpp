@@ -1175,7 +1175,7 @@ bool Block::hasPendingSplits() const
 	return !getCantSplitYet().empty() || !getNeedToSplit().empty();
 }
 
-void Block::freePolygon(const Index3DId& id)
+void Block::freePolygon(const Index3DId& id, bool requireRefExists)
 {
 #if CAN_FREE_TESTS_ENABLED
 	assert(!isPolygonInUse(id));
@@ -1185,12 +1185,13 @@ void Block::freePolygon(const Index3DId& id)
 	if (pOwner) {
 		auto& polygons = pOwner->_modelData._polygons;
 		auto& refPolygons = pOwner->_refData._polygons;
-		assert(refPolygons.exists(id));
+		if (requireRefExists)
+			assert(refPolygons.exists(id));
 		polygons.free(id);
 	}
 }
 
-void Block::freePolyhedron(const Index3DId& id)
+void Block::freePolyhedron(const Index3DId& id, bool requireRefExists)
 {
 #if CAN_FREE_TESTS_ENABLED
 	assert(!isPolyhedronInUse(id));
@@ -1200,7 +1201,8 @@ void Block::freePolyhedron(const Index3DId& id)
 	if (pOwner) {
 		auto& polyhedra = pOwner->_modelData._polyhedra;
 		auto& refPolyhedra = pOwner->_refData._polyhedra;
-		assert(refPolyhedra.exists(id));
+		if (requireRefExists)
+			assert(refPolyhedra.exists(id));
 		polyhedra.free(id);
 	}
 }

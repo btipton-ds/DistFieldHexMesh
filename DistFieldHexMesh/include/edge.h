@@ -60,6 +60,7 @@ public:
 	bool operator < (const Edge& rhs) const;
 	bool operator == (const Edge& rhs) const;
 
+	const Index3DId& getVertex(size_t idx) const;
 	const Index3DId* getVertexIds() const;
 	bool containsVertex(const Index3DId& vertexId) const;
 	const MTC::set<Index3DId>& getFaceIds() const;
@@ -102,6 +103,11 @@ inline const Block* Edge::getBlockPtr() const
 inline const MTC::set<Index3DId>& Edge::getFaceIds() const
 {
 	return _faceIds;
+}
+
+inline const Index3DId& Edge::getVertex(size_t idx) const
+{
+	return _vertexIds[idx];
 }
 
 inline const Index3DId* Edge::getVertexIds() const
