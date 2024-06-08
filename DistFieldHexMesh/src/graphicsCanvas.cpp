@@ -245,6 +245,15 @@ bool GraphicsCanvas::toggleShowOuter()
     return _showOuter;
 }
 
+bool GraphicsCanvas::toggleShowModelBoundary()
+{
+    _showModelBoundary = !_showModelBoundary;
+    changeFaceViewElements();
+    changeEdgeViewElements();
+
+    return _showOuter;
+}
+
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLoc2D = calMouseLoc(event.GetPosition());
@@ -872,8 +881,8 @@ void GraphicsCanvas::changeFaceViewElements(bool isModel)
                 }
             }
         } else {
-            if (FT_INNER < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[FT_INNER]) {
+            if (FT_MODEL_BOUNDARY < vbo._faceTessellations.size()) {
+                for (auto pBlockTess : vbo._faceTessellations[FT_MODEL_BOUNDARY]) {
                     if (pBlockTess)
                         vbo._faceVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
                 }
@@ -909,8 +918,8 @@ void GraphicsCanvas::changeEdgeViewElements(bool isModel)
             }
         } 
         
-        if (!_showOuter && FT_INNER < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[FT_INNER]) {
+        if (!_showOuter && FT_MODEL_BOUNDARY < vbo._edgeTessellations.size()) {
+            for (auto pBlockTess : vbo._edgeTessellations[FT_MODEL_BOUNDARY]) {
                 if (pBlockTess)
                     vbo._edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
             }

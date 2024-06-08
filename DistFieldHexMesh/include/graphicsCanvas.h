@@ -117,6 +117,9 @@ public:
     bool showOuter() const;
     bool toggleShowOuter();
 
+    bool showModelBoundary() const;
+    bool toggleShowModelBoundary();
+
     void setShowSelectedBlocks(bool val);
 
     void onMouseLeftDown(wxMouseEvent& event);
@@ -163,6 +166,7 @@ private:
         _showTriNormals = false, 
         _showEdges = true, 
         _showFaces = true, 
+        _showModelBoundary = false,
         _showOuter = false,
         _showCurvature = false,
         _showSelectedBlocks = false;
@@ -294,6 +298,11 @@ inline bool GraphicsCanvas::showEdges() const
 inline bool GraphicsCanvas::showOuter() const
 {
     return _showOuter;
+}
+
+inline bool GraphicsCanvas::showModelBoundary() const
+{
+    return _showModelBoundary;
 }
 
 inline void GraphicsCanvas::setShowSelectedBlocks(bool val)

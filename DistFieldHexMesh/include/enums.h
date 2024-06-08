@@ -51,7 +51,7 @@ enum TopolgyState
 
 enum FaceType {
 	FT_OUTER,
-	FT_INNER,
+	FT_MODEL_BOUNDARY,
 	FT_BLOCK_BOUNDARY,
 	FT_ALL,
 };
@@ -70,7 +70,8 @@ enum DrawStates {
 
 enum VertexLockType {
 	VLT_NONE,
-	VLT_ALL_AXES
+	VLT_ALL_AXES,
+	VLT_MODEL_MESH,
 };
 
 }

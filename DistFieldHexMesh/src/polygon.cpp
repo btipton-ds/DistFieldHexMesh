@@ -894,6 +894,9 @@ bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<
 			if (pMesh->intersectsTri(seg, triIdx, hit)) {
 				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
 				vertSet.insert(IntersectVertId(vertId, hit.triIdx));
+				vertexFunc(vertId, [](Vertex& vert) {
+					vert.setLockType(VLT_MODEL_MESH);
+				});
 			}
 		}
 	}

@@ -536,7 +536,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -623,7 +623,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 	size_t numThreads = MultiCore::getNumCores();
 	triMeshes.resize(4);
 	triMeshes[FT_OUTER].resize(numThreads);
-	triMeshes[FT_INNER].resize(numThreads);
+	triMeshes[FT_MODEL_BOUNDARY].resize(numThreads);
 	triMeshes[FT_BLOCK_BOUNDARY].resize(numThreads);
 	triMeshes[FT_ALL].resize(numThreads);
 	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& blockPtr)->bool {
@@ -634,7 +634,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 					if (blockPtr->numFaces(true) > 0) {
 						makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
-						makeFaceTriMesh(FT_INNER, triMeshes, blockPtr, threadNum);
+						makeFaceTriMesh(FT_MODEL_BOUNDARY, triMeshes, blockPtr, threadNum);
 						makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
 						makeFaceTriMesh(FT_ALL, triMeshes, blockPtr, threadNum);
 					}
@@ -647,8 +647,8 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 		if (triMeshes[FT_OUTER][i])
 			triMeshes[FT_OUTER][i]->changed();
 
-		if (triMeshes[FT_INNER][i])
-			triMeshes[FT_INNER][i]->changed();
+		if (triMeshes[FT_MODEL_BOUNDARY][i])
+			triMeshes[FT_MODEL_BOUNDARY][i]->changed();
 
 		if (triMeshes[FT_BLOCK_BOUNDARY][i])
 			triMeshes[FT_BLOCK_BOUNDARY][i]->changed();
@@ -677,7 +677,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 
 	faceEdges.resize(4);
 	faceEdges[FT_OUTER].resize(numThreads);
-	faceEdges[FT_INNER].resize(numThreads);
+	faceEdges[FT_MODEL_BOUNDARY].resize(numThreads);
 	faceEdges[FT_BLOCK_BOUNDARY].resize(numThreads);
 	faceEdges[FT_ALL].resize(numThreads);
 
@@ -689,7 +689,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 				if (blockPtr->numFaces(true) > 0) {
 					makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_INNER, faceEdges, blockPtr, threadNum);
+					makeFaceEdges(FT_MODEL_BOUNDARY, faceEdges, blockPtr, threadNum);
 					makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
 					makeFaceEdges(FT_ALL, faceEdges, blockPtr, threadNum);
 				}
@@ -702,8 +702,8 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 		if (faceEdges[FT_OUTER][i])
 			faceEdges[FT_OUTER][i]->changed();
 
-		if (faceEdges[FT_INNER][i])
-			faceEdges[FT_INNER][i]->changed();
+		if (faceEdges[FT_MODEL_BOUNDARY][i])
+			faceEdges[FT_MODEL_BOUNDARY][i]->changed();
 
 		if (faceEdges[FT_BLOCK_BOUNDARY][i])
 			faceEdges[FT_BLOCK_BOUNDARY][i]->changed();

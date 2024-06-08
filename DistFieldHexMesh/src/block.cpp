@@ -934,6 +934,17 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 		return false;
 
 	bool isOuter = face.isOuter();
+	bool isModelBoundary = true;
+	for (const auto& vertId : face.getVertexIds()) {
+		vertexFunc(vertId, [&isModelBoundary](const Vertex& vert) {
+			if (vert.getLockType() != VLT_MODEL_MESH) {
+				isModelBoundary = false;
+			}
+		});
+
+		if (!isModelBoundary)
+			break;
+	}
 	bool isBlockBoundary = face.isBlockBoundary();
 
 	result = false;
@@ -942,8 +953,8 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 		case FT_ALL:
 			result = true;
 			break;
-		case FT_INNER:
-			result = !isOuter && !isBlockBoundary;
+		case FT_MODEL_BOUNDARY:
+			result = isModelBoundary && !isBlockBoundary;
 			break;
 		case FT_OUTER:
 			result = isOuter;

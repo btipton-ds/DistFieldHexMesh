@@ -189,6 +189,9 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_OUTER, "Show Outer", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_OUTER);
 
+    menu->Append(ID_SHOW_MODEL_BOUNDARY, "Show Model Boundary", "Turns rendering of model boundary", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_MODEL_BOUNDARY);
+
     menu->Append(ID_SHOW_SELECTED_BLOCKS, "Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowSelectedBlocks, this, ID_SHOW_SELECTED_BLOCKS);
 
@@ -407,6 +410,15 @@ void MainFrame::OnShowOuter(wxCommandEvent& event)
     getCanvas()->toggleShowOuter();
 
     auto normItem = _menuBar->FindItem(ID_SHOW_OUTER);
+    if (normItem)
+        normItem->Check(getCanvas()->showOuter());
+}
+
+void MainFrame::OnShowModelBoundary(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowModelBoundary();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_MODEL_BOUNDARY);
     if (normItem)
         normItem->Check(getCanvas()->showOuter());
 }
