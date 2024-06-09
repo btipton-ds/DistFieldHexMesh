@@ -336,7 +336,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 //		splitAtSharpVerts(params, multiCore);
 //		splitAtSharpEdges(params, multiCore);
-//		cutWithTriMesh(params, multiCore);
+		cutWithTriMesh(params, multiCore);
 	}
 
 	Utils::Timer::dumpAll();
