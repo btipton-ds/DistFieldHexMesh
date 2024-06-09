@@ -218,7 +218,7 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 
 Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
-	const double iMax = 1.0 - 1.0 / (32 * 1024 * 1024);
+	const double iMax = 1.0 - 1.0 / (1ull << 18);
 	const Index3D& volDim = Volume::volDim();
 	const auto& bbox = _pVol->_boundingBox;
 	const auto& bbMin = bbox.getMin();

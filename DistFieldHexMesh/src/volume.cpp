@@ -358,7 +358,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 }
 
 /*
@@ -1416,7 +1416,7 @@ bool Volume::verifyTopology(bool multiCore) const
 				result = false;
 			}
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 	return result;
 }
 
