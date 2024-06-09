@@ -218,6 +218,7 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 
 Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
+	const double iMax = 1.0 - 1.0 / (32 * 1024 * 1024);
 	const Index3D& volDim = Volume::volDim();
 	const auto& bbox = _pVol->_boundingBox;
 	const auto& bbMin = bbox.getMin();
@@ -229,7 +230,12 @@ Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 		double t = v[i] / bbRange[i];
 		assert(0 <= t && t <= 1.0);
 
-		Index3DBaseType idx = (Index3DBaseType) (t * volDim[i]);
+		double floatIdx = t * volDim[i];
+		Index3DBaseType idx = (Index3DBaseType)floatIdx;
+		floatIdx -= idx;
+		if (floatIdx > iMax)
+			idx += 1;
+
 		if (idx >= volDim[i])
 			idx -= 1;
 
@@ -243,7 +249,7 @@ Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
 	return determineOwnerBlockIdx(vert.getPoint());
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
+Index3D Block::determineOwnerBlockIdx(const MTC::vector<Vector3d>& points) const
 {
 	auto volBounds = _pVol->volDim();
 
@@ -256,9 +262,9 @@ Index3D Block::determineOwnerBlockIdx(const vector<Vector3d>& points) const
 	return determineOwnerBlockIdx(ctr);
 }
 
-Index3D Block::determineOwnerBlockIdx(const vector<Index3DId>& verts) const
+Index3D Block::determineOwnerBlockIdx(const MTC::vector<Index3DId>& verts) const
 {
-	vector<Vector3d> pts;
+	MTC::vector<Vector3d> pts;
 	pts.resize(verts.size());
 	for (size_t i = 0; i < verts.size(); i++) {
 		pts[i] = getVertexPoint(verts[i]);
@@ -336,9 +342,9 @@ const vector<Vector3d>& Block::getCornerPts() const
 	return _corners;
 }
 
-vector<Vector3d> Block::getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& index) const
+MTC::vector<Index3DId> Block::getSubBlockCornerVertIds(const Vector3d* blockPts, size_t divs, const Index3D& index)
 {
-	vector<Vector3d> result = {
+	Vector3d pts[] = {
 		triLinInterp(blockPts, divs, index + Index3D(0, 0, 0)),
 		triLinInterp(blockPts, divs, index + Index3D(1, 0, 0)),
 		triLinInterp(blockPts, divs, index + Index3D(1, 1, 0)),
@@ -350,6 +356,12 @@ vector<Vector3d> Block::getSubBlockCornerPts(const Vector3d* blockPts, size_t di
 		triLinInterp(blockPts, divs, index + Index3D(0, 1, 1)),
 	};
 
+	MTC::vector<Index3DId> result;
+	result.reserve(8);
+	for (const auto& pt : pts) {
+		auto vertId = addVertex(pt);
+		result.push_back(vertId);
+	}
 	return result;
 }
 
@@ -454,13 +466,13 @@ Index3DId Block::addFace(const MTC::vector<Vector3d>& pts)
 	return addFace(vertIds);
 }
 
-Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Vector3d>& pts)
+Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Index3DId>& verts)
 {
-	Index3D ownerBlockIdx = determineOwnerBlockIdx(pts);
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(verts);
 	assert(ownerBlockIdx.isValid());
 	auto* pOwner = getOwner(ownerBlockIdx);
 	assert(pOwner);
-	auto faceId = pOwner->addFace(pts);
+	auto faceId = pOwner->addFace(verts);
 
 	return faceId;
 }
@@ -495,14 +507,14 @@ Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 
 Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
-	auto pts = getSubBlockCornerPts(blockPts, blockDim, subBlockIdx);
-
-	CBoundingBox3Dd bbox;
-	for (size_t i = 0; i < 8; i++) {
-		bbox.merge(pts[i]);
-	}
+	auto vertIds = getSubBlockCornerVertIds(blockPts, blockDim, subBlockIdx);
 
 	if (intersectingOnly) {
+		CBoundingBox3Dd bbox;
+		for (size_t i = 0; i < 8; i++) {
+			bbox.merge(getVertexPoint(vertIds[i]));
+		}
+
 		vector<size_t> triIndices;
 		bool found = processTris(bbox, triIndices) > 0;
 
@@ -519,20 +531,20 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 			return Index3DId();
 	}
 
-	vector<Index3DId> faceIds;
+	MTC::vector<Index3DId> faceIds;
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(0, subBlockIdx, { pts[0], pts[4], pts[7], pts[3] }));
-	faceIds.push_back(addFace(0, subBlockIdx, { pts[1], pts[2], pts[6], pts[5] }));
+	faceIds.push_back(addFace(0, subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
+	faceIds.push_back(addFace(0, subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
 
 	// add front and back
-	faceIds.push_back(addFace(1, subBlockIdx, { pts[0], pts[1], pts[5], pts[4] }));
-	faceIds.push_back(addFace(1, subBlockIdx, { pts[2], pts[3], pts[7], pts[6] }));
+	faceIds.push_back(addFace(1, subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
+	faceIds.push_back(addFace(1, subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
 
 	// add bottom and top
-	faceIds.push_back(addFace(2, subBlockIdx, { pts[0], pts[3], pts[2], pts[1] }));
-	faceIds.push_back(addFace(2, subBlockIdx, { pts[4], pts[5], pts[6], pts[7] }));
+	faceIds.push_back(addFace(2, subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
+	faceIds.push_back(addFace(2, subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 	cellFunc(TS_REAL,polyhedronId, [this](Polyhedron& cell) {
@@ -573,11 +585,10 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	return _pVol->getBlockPtr(blockIdx);
 }
 
-Index3DId Block::idOfPoint(const Vector3d& pt) const
+Index3DId Block::idOfPoint(const Index3D& blockId, const Vector3d& pt) const
 {
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
-	auto* pOwner = getOwner(ownerBlockIdx);
+	auto* pOwner = getOwner(blockId);
 	Index3DId result;
 	pOwner->_pVertTree->find(pt, result);
 
@@ -589,7 +600,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
 
-	Index3DId result = idOfPoint(pt);
+	Index3DId result = idOfPoint(ownerBlockIdx, pt);
 	if (result.isValid())
 		return result;
 
@@ -600,7 +611,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
-	assert(idOfPoint(pt) == result);
+	assert(idOfPoint(ownerBlockIdx, pt) == result);
 #endif // _DEBUG
 
 	return result;

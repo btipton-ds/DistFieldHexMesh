@@ -97,8 +97,8 @@ public:
 	// These method determine with block owns an entity based on it's location
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 	Index3D determineOwnerBlockIdx(const Vertex& vert) const;
-	Index3D determineOwnerBlockIdx(const std::vector<Vector3d>& points) const;
-	Index3D determineOwnerBlockIdx(const std::vector<Index3DId>& verts) const;
+	Index3D determineOwnerBlockIdx(const MTC::vector<Vector3d>& points) const;
+	Index3D determineOwnerBlockIdx(const MTC::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	size_t numFaces(bool includeInner) const;
@@ -116,7 +116,7 @@ public:
 	void getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh);
 	void makeEdgeSets(FaceType meshType, glPointsPtr& points);
 
-	Index3DId idOfPoint(const Vector3d& pt) const;
+	Index3DId idOfPoint(const Index3D& blockId, const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 	void setVertexLockType(const Index3DId& vertId, VertexLockType val);
@@ -221,12 +221,12 @@ private:
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	std::vector<Vector3d> getSubBlockCornerPts(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx) const;
+	MTC::vector<Index3DId> getSubBlockCornerVertIds(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx);
 
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	Index3DId addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Vector3d>& pts);
+	Index3DId addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Index3DId>& vertIds);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;

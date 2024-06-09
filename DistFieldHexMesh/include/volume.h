@@ -85,6 +85,7 @@ public:
 
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
+	void getBoundaryPlanes(std::vector<Planed>& vals) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;

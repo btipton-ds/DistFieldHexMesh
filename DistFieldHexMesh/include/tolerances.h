@@ -33,7 +33,7 @@ namespace Tolerance
 {
 	inline double sameDistTol()
 	{
-		return 1.0e-8; // meters
+		return 1.0e-9; // meters
 	}
 
 	inline double paramTol() {

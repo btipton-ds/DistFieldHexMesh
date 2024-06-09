@@ -209,7 +209,7 @@ void Polygon::initVertices(const Volume* pVol) const
 
 void Polygon::sortIds() const
 {
-	if (!_sortCacheVaild) {
+	if (true || !_sortCacheVaild) {
 		_sortCacheVaild = true;
 		_sortedIds = _vertexIds;
 		sort(_sortedIds.begin(), _sortedIds.end());
@@ -432,7 +432,6 @@ Vector3d Polygon::calUnitNormal() const
 
 Planed Polygon::calPlane() const
 {
-	calCentroid();
 	Vector3d origin = calCentroid(); // Use every point to get more preceision
 	Vector3d normal = calUnitNormal();
 	Planed result(origin, normal, false);
@@ -992,6 +991,34 @@ bool Polygon::verifyTopology() const
 				});
 			if (!valid)
 				return valid;
+		}
+	}
+
+	if (valid) {
+		std::vector<Planed> boundaryPlanes;
+		getOurBlockPtr()->getVolume()->getBoundaryPlanes(boundaryPlanes);
+		auto facePlane = calPlane();
+		bool isModelFace = true;
+		bool isBoundaryFace = false;
+
+		for (const auto& bPl : boundaryPlanes) {
+			if (facePlane.isCoincident(bPl, Tolerance::sameDistTol())) {
+				isBoundaryFace = true;
+			}
+		}
+		for (const auto& vertId : _vertexIds) {
+			vertexFunc(vertId, [&isModelFace, &isBoundaryFace, &facePlane](const Vertex& vert) {
+				if (vert.getLockType() != VLT_MODEL_MESH)
+					isModelFace = false;
+			});
+		}
+
+		if (isModelFace || isBoundaryFace) {
+			if (numCells() != 1)
+				return false;
+		} else {
+			if (numCells() != 2)
+				return false;
 		}
 	}
 

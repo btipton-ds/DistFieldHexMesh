@@ -358,7 +358,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 }
 
 /*
@@ -1004,6 +1004,19 @@ void Volume::writePolyMesh(const string& dirNameIn)
 	writePolyMeshBoundaries(dirName, tables);
 }
 
+void Volume::getBoundaryPlanes(std::vector<Planed>& vals) const
+{
+	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
+
+	vals.push_back(Planed(_boundingBox.getMin(), xAxis, false)); // frontPlane
+	vals.push_back(Planed(_boundingBox.getMin(), yAxis, false)); // leftPlane
+	vals.push_back(Planed(_boundingBox.getMin(), zAxis, false)); // bottomPlane
+	vals.push_back(Planed(_boundingBox.getMax(), xAxis, false)); // backPlane
+	vals.push_back(Planed(_boundingBox.getMax(), yAxis, false)); // rightPlane
+	vals.push_back(Planed(_boundingBox.getMax(), zAxis, false)); // topPlane
+
+}
+
 void Volume::createPolymeshTables(PolymeshTables& tables)
 {
 
@@ -1028,16 +1041,8 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 		}
 	}
 
-	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
-
-	Planed planes[] = {
-		Planed(_boundingBox.getMin(), xAxis, false), // frontPlane
-		Planed(_boundingBox.getMin(), yAxis, false), // leftPlane
-		Planed(_boundingBox.getMin(), zAxis, false), // bottomPlane
-		Planed(_boundingBox.getMax(), xAxis, false), // backPlane
-		Planed(_boundingBox.getMax(), yAxis, false), // rightPlane
-		Planed(_boundingBox.getMax(), zAxis, false), // topPlane
-	};
+	std::vector<Planed> planes;
+	getBoundaryPlanes(planes);
 
 	vector<Index3DId> outerBounds[6], wall;
 	for (auto pBlk : _blocks) {
@@ -1411,7 +1416,7 @@ bool Volume::verifyTopology(bool multiCore) const
 				result = false;
 			}
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 	return result;
 }
 
@@ -1456,15 +1461,15 @@ void Volume::runThreadPool333(const L& fLambda, bool multiCore)
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
 	vector<size_t> blocksToProcess;
-	for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+	for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
 		for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
-			for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+			for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
 				// Collect the indices for all blocks in this phase
 				blocksToProcess.clear();
 
-				for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+				for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
 					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
-						for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
+						for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
 							size_t linearIdx = calLinearBlockIndex(idx);
 							blocksToProcess.push_back(linearIdx);
 						}
