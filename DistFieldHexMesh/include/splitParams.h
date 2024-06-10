@@ -46,6 +46,9 @@ struct BuildCFDParams {
 		if (numCurvatureDivs > result)
 			result = numCurvatureDivs;
 
+		if (numSharpEdgeIntersectionDivs > result)
+			result = numSharpEdgeIntersectionDivs;
+
 		return result;
 	}
 	double getSharpAngleRadians() const;

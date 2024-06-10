@@ -472,7 +472,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 				}
 			});
 			return true;
-		}, multiCore);
+		}, false && multiCore);
 
 		if (changed)
 			finishSplits(multiCore);
