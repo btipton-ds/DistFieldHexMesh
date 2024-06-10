@@ -165,16 +165,9 @@ string ObjectPoolOwner::getLoggerNumericCode() const
 {
 	Index3D idx;
 #if RUN_MULTI_THREAD
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (s_blockIdx != getBlockIdx()) {
-		int dbgBreak = 1;
-	}
-#endif
-
-	idx = s_blockIdx;
-#else
 	idx = getBlockIdx();
+#else
+	idx = s_blockIdx;
 #endif
 	stringstream ss;
 	ss << idx[0] << "_" << idx[1] << "_" << idx[2];

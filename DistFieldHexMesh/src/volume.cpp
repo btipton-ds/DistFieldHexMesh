@@ -536,7 +536,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -854,7 +854,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			for (const auto& vertId : vIds) {
 				Vector3d pt = pBlk->getVertexPoint(vertId);
 				size_t vertIdx;
-				if (!pointToIdxMap.find(pt, vertIdx))
+				if (pointToIdxMap.find(pt, vertIdx))
 					out << (vertIdx + 1) << " ";
 			}
 			out << "\n";
@@ -870,7 +870,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 					size_t modVertIdx = ed._vertIndex[i];
 					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
 					size_t vertIdx;
-					if (!pointToIdxMap.find(pt, vertIdx))
+					if (pointToIdxMap.find(pt, vertIdx))
 						out << (vertIdx + 1) << " ";
 				}
 				out << "\n";
@@ -884,7 +884,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 					size_t modVertIdx = tri[i];
 					Vector3d pt = _pModelTriMesh->getVert(modVertIdx)._pt;
 					size_t vertIdx;
-					if (!pointToIdxMap.find(pt, vertIdx))
+					if (pointToIdxMap.find(pt, vertIdx))
 						out << (vertIdx + 1) << " ";
 				}
 				out << "\n";

@@ -55,6 +55,7 @@ namespace DFHM {
 	private:
 		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
 		bool splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const;
+		bool createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge);
 
 		Block* _pBlock;
 		Index3DId _polygonId;

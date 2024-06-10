@@ -541,16 +541,22 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 {
 	auto pMesh = _pBlock->getModelMesh();
 
+	bool intersects = false;
 	// Prior operations require that the patch have correctly oriented normals.
 	MTC::set<IntersectEdge> edges;
 	const auto& faceIds = realCell.getFaceIds();
 	for (const auto& faceId : faceIds) {
-		_pBlock->faceFunc(TS_REAL, faceId, [this, &patch, &edges](Polygon& face) {
-			face.intersectModelTris(patch, edges);
+		_pBlock->faceFunc(TS_REAL, faceId, [this, &patch, &edges, &intersects](Polygon& face) {
+			if (face.intersectModelTris(patch, edges))
+				intersects = true;
 		});
 	}
 
+	if (intersects)
+		_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
+
 	if (edges.size() >= 3) {
+
 		MTC::set<Index3DId> cellVerts, cellVertsToKeep, newFaceIds;
 		realCell.getVertIds(cellVerts);
 		for (const auto& vertId : cellVerts) {
@@ -589,7 +595,6 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 						newFaceIds.insert(newFaceId);
 				}
 			});
-
 		}
 
 		MTC::vector<Index3DId> verts;
@@ -599,6 +604,9 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 			int dbgBreak = 1;
 		}
 
+		string filename0 = "_" + to_string(_polyhedronId[0]) + "_" + to_string(_polyhedronId[1]) + "_" + to_string(_polyhedronId[2]) + "_" + to_string(_polyhedronId.elementId()) + "_cutWithPatch";
+		_pBlock->dumpPolygonObj(filename0, newFaceIds);
+
 		if (facesFormClosedCell(newFaceIds)) {
 			Index3DId cellId = _pBlock->addCell(newFaceIds);
 #ifdef _DEBUG
@@ -606,6 +614,8 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 				assert(cell.isClosed());
 			});
 #endif // _DEBUG
+		} else if (newFaceIds.size() > 2) {
+			assert(!"cell didn't close as expected.");
 		}
 	}
 }

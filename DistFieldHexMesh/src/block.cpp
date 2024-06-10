@@ -793,7 +793,14 @@ void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel
 	}
 }
 
-void Block::dumpPolygonObj(std::string& fileName, const std::vector<Index3DId>& faceIds) const
+void Block::dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds) const
+{
+	MTC::vector<Index3DId> vecIds;
+	vecIds.insert(vecIds.end(), faceIds.begin(), faceIds.end());
+	dumpPolygonObj(fileName, vecIds);
+}
+
+void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds) const
 {
 	string path = getObjFilePath();
 	string filename = path + fileName + ".obj";

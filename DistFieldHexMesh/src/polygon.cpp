@@ -909,9 +909,10 @@ bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<
 		else {
 			int dbgBreak = 1;
 		}
+		return true;
 	}
 
-	return !newEdges.empty();
+	return false;
 }
 
 void Polygon::splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const
