@@ -455,6 +455,45 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
+bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
+{
+	if (_sharpEdgesIntersectModel == IS_FALSE || _edgeIndices.empty())
+		return false;
+
+	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
+	MTC::vector<size_t> sharpEdges;
+	auto pMesh = getBlockPtr()->getModelMesh();
+	for (size_t edgeIdx : _edgeIndices) {
+		if (pMesh->isEdgeSharp(edgeIdx, sinSharpEdgeAngle))
+			sharpEdges.push_back(edgeIdx);
+	}
+
+	if (sharpEdges.empty())
+		return false;
+
+	_sharpEdgesIntersectModel = IS_FALSE;
+	for (const auto& faceId : getFaceIds()) {
+		faceFunc(TS_REAL, faceId, [this, &sharpEdges, &pMesh](const Polygon& face) {
+			size_t numHits = 0;
+			for (size_t edgeIdx : sharpEdges) {
+				const auto& edge = pMesh->getEdge(edgeIdx);
+				auto seg = edge.getSeg(pMesh);
+				RayHitd hit;
+				if (face.intersect(seg, hit)) {
+					numHits += 1;
+				}
+			}
+			if (numHits > 1)
+				_sharpEdgesIntersectModel = IS_TRUE;
+		});
+
+		if (_sharpEdgesIntersectModel == IS_TRUE)
+			return true;
+	}
+
+	return _sharpEdgesIntersectModel == IS_TRUE;
+}
+
 Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
 {
 	return getOurBlockPtr()->getVertexPoint(vertId);
@@ -761,6 +800,11 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 			needToSplit = true;
 	}
 
+	if (!needToSplit && passNum < params.numSharpEdgeIntersectionDivs) {
+		if (sharpEdgesIntersectModel(params))
+			needToSplit = true;
+	}
+
 	if (!needToSplit && passNum < params.numSharpVertDivs) {
 		if (params.splitAtSharpVerts) {
 			auto sharpVerts = getSharpVertIndices();
@@ -826,18 +870,22 @@ bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
-	auto pTriMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
+	if (!indices.empty()) {
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		auto bbox = getBoundingBox();
 
-	pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
+		pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
+	}
 }
 
 void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
-	auto pTriMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
+	if (!indices.empty()) {
+		auto pTriMesh = getBlockPtr()->getModelMesh();
+		auto bbox = getBoundingBox();
 
-	pTriMesh->processFoundTris(indices, bbox, _triIndices);
+		pTriMesh->processFoundTris(indices, bbox, _triIndices);
+	}
 }
 
 bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const

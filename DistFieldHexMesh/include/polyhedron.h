@@ -74,6 +74,7 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
+	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
 
 	size_t createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& points) const;
 	Index3DId createIntersectionFace(const Planed& plane) const;
@@ -154,6 +155,7 @@ private:
 	mutable bool _cachedEdges0Vaild = false;
 	mutable bool _cachedEdges1Vaild = false;
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
+	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 	mutable double _cachedMinGap = -1;
 };
 

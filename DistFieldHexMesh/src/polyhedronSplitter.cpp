@@ -505,27 +505,30 @@ bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, &params, &result](const Polyhedron& cell) {
 		const double sinSharpAngle = sin(params.getSharpAngleRadians());
 		auto pMesh = getBlockPtr()->getModelMesh();
-		const auto& triIndices = cell.getTriIndices();
-		if (triIndices.empty())
+		const auto& edgeIndices = cell.getEdgeIndices();
+		if (edgeIndices.empty())
 			return;
 
 		MTC::vector<size_t> sharpEdgeIndices;
-		MTC::vector<MTC::vector<RayHitd>> allHits;
-		MTC::vector<MTC::vector<Index3DId>> allFaceIds;
-		for (size_t triIdx : triIndices) {
-			const auto& tri = pMesh->getTri(triIdx);
-			for (int i = 0; i < 3; i++) {
-				int j = (i + 1) % 3;
-				TriMesh::CEdge edge(tri[i], tri[j]);
-				size_t edgeIdx = pMesh->findEdge(edge);
-				if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
-					LineSegmentd seg(pMesh->getVert(tri[i])._pt, pMesh->getVert(tri[i])._pt);
+		MTC::set<size_t> edgeSet;
+		MTC::map<Index3DId, MTC::vector<RayHitd>> faceIdMap;
+		for (size_t edgeIdx : edgeIndices) {
+			if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+				if (!edgeSet.contains(edgeIdx)) {
+					edgeSet.insert(edgeIdx);
+					const auto& edge = pMesh->getEdge(edgeIdx);
+					LineSegmentd seg = edge.getSeg(pMesh);
 					MTC::vector<RayHitd> hits;
 					MTC::vector<Index3DId> faceIds;
 					if (cell.lineSegmentIntersects(seg, hits, faceIds)) {
 						sharpEdgeIndices.push_back(edgeIdx);
-						allHits.push_back(hits);
-						allFaceIds.push_back(faceIds);
+						for (size_t i = 0; i < faceIds.size(); i++) {
+							const auto& faceId = faceIds[i];
+							auto iter = faceIdMap.find(faceId);
+							if (iter == faceIdMap.end())
+								iter = faceIdMap.insert(std::make_pair(faceId, MTC::vector<RayHitd>())).first;
+							iter->second.push_back(hits[i]);
+						}
 					}
 				}
 			}
@@ -534,6 +537,7 @@ bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 		if (sharpEdgeIndices.empty())
 			return;
 
+		_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 		result = true;
 	});
 

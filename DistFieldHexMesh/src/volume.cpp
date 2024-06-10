@@ -461,18 +461,22 @@ void Volume::splitAtSharpVerts(const BuildCFDParams& params, bool multiCore)
 void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 {
 	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
-	bool changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			if (cell.containsSharps()) {
-				changed = cell.setNeedsCleanFaces();
-			}
-		});
-		return true;
-	}, multiCore);
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+				if (cell.sharpEdgesIntersectModel(params)) {
+					if (cell.setNeedsCleanFaces())
+						changed = true;
+				}
+			});
+			return true;
+		}, multiCore);
 
-	if (changed)
-		finishSplits(multiCore);
+		if (changed)
+			finishSplits(multiCore);
+	}
 
 	changed = false;
 	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
@@ -482,7 +486,7 @@ void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
 				changed = true;
 			});
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -520,7 +524,8 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.containsSharps()) {
-				changed = cell.setNeedsCleanFaces();
+				if (cell.setNeedsCleanFaces())
+					changed = true;
 			}
 		});
 		return true;
@@ -536,7 +541,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
