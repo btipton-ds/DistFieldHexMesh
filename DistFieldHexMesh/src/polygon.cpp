@@ -378,23 +378,33 @@ void Polygon::createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge
 		edgeSet.insert(Edge(verts[i], verts[j], faceSet));
 	}
 }
+Vector3d Polygon::calCentroidStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
+{
+	Vector3d ctr(0, 0, 0);
+	if (vertIds.empty())
+		return Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	for (size_t i = 0; i < vertIds.size(); i++)
+		ctr += pBlock->getVertexPoint(vertIds[i]);
+	ctr /= vertIds.size();
+
+	return ctr;
+}
 
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
 
-	size_t i = 0;
-	Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
-	for (size_t j = 1; j < vertIds.size() - 1; j++) {
-		size_t k = (j + 1) % vertIds.size();
+	Vector3d ctr = calCentroidStat(pBlock, vertIds);
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
 
+		Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
 		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
-		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
 
-		Vector3d v0 = pt2 - pt1;
-		Vector3d v1 = pt0 - pt1;
+		Vector3d v0 = pt0 - ctr;
+		Vector3d v1 = pt1 - ctr;
 
-		Vector3d n = v0.cross(v1);
+		Vector3d n = v0.cross(v1).normalized();
 		norm += n;
 	}
 	norm.normalize();
@@ -795,14 +805,10 @@ bool Polygon::isPlanar() const
 	if (_vertexIds.size() == 3)
 		return true;
 
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
-	Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[2]);
-	Vector3d v0 = pt1 - pt0;
-	Vector3d v1 = pt2 - pt0;
-	Vector3d norm = v1.cross(v0).normalized();
-	Planed pl(pt0, norm, false);
-	for (size_t i = 3; i < _vertexIds.size(); i++) {
+	Vector3d ctr = calCentroid();
+	Vector3d norm = calUnitNormal();
+	Planed pl(ctr, norm, false);
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		Vector3d pt = getBlockPtr()->getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
 			return false;
@@ -811,7 +817,7 @@ bool Polygon::isPlanar() const
 	return true;
 }
 
-bool Polygon::intersect(LineSegmentd& seg, RayHitd& hit) const
+bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
 	assert(isPlanar()); // Not sure if there's a good way to intersect with a non planar polygon
 

@@ -106,7 +106,8 @@ public:
 	size_t getNumSplitFaces() const;
 	const std::vector<size_t>& getTriIndices() const;
 	const std::vector<size_t>& getEdgeIndices() const;
-	std::vector<size_t> getSharpVertIndices() const;
+	MTC::vector<size_t> getSharpVertIndices() const;
+	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -116,6 +117,7 @@ public:
 	void dumpFaces() const;
 
 	bool isClosed() const;
+	bool lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayHitd>& hits, MTC::vector<Index3DId>& faceIds) const;
 	bool hasTooManySplits() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;

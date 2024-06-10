@@ -131,9 +131,9 @@ size_t Polyhedron::getNumSplitFaces() const
 	return n;
 }
 
-vector<size_t> Polyhedron::getSharpVertIndices() const
+MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 {
-	vector<size_t> result;
+	MTC::vector<size_t> result;
 
 	auto bbox = getBoundingBox();
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -146,6 +146,22 @@ vector<size_t> Polyhedron::getSharpVertIndices() const
 	}
 
 	return result;
+}
+
+bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const
+{
+	const double sinEdgeAngle = sin(params.getSharpAngleRadians());
+
+	result.clear();
+
+	auto pMesh = getBlockPtr()->getModelMesh();
+	for (size_t edgeIdx : _edgeIndices) {
+		if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
+			result.push_back(edgeIdx);
+		}
+	}
+
+	return !result.empty();
 }
 
 void Polyhedron::write(std::ostream& out) const
@@ -732,7 +748,6 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params)
 {
-
 	if (!_needsConditionalSplitTest)
 		return false;
 
@@ -1042,6 +1057,20 @@ bool Polyhedron::isClosed() const
 		}
 	}
 	return _cachedIsClosed == Trinary::IS_TRUE;
+}
+
+bool Polyhedron::lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayHitd>& hits, MTC::vector<Index3DId>& faceIds) const
+{
+	for (const auto& faceId : _faceIds) {
+		faceFunc(TS_REAL, faceId, [this, &seg, &hits, &faceIds] (const Polygon& face) {
+			RayHitd hit;
+			if (face.intersect(seg, hit)) {
+				hits.push_back(hit);
+				faceIds.push_back(face.getId());
+			}
+		});
+	}
+	return !faceIds.empty() && hits.size() == faceIds.size();
 }
 
 bool Polyhedron::hasTooManySplits() const

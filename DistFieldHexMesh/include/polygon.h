@@ -180,7 +180,7 @@ public:
 	size_t getImprintIndex(const Index3DId& imprintVert) const;
 	bool isSplit() const;
 	bool isPlanar() const;
-	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
+	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<IntersectEdge>& newEdges);
 	void splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const;
