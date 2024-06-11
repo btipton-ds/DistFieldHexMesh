@@ -75,8 +75,10 @@ private:
 	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const;
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
 
-	void cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch);
+	void cutWithPatch(const Polyhedron& realCell, const TriMesh::PatchPtr& patch);
 	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
+	void createCutCell(const Polyhedron& realCell, const MTC::set<IntersectEdge>& edges);
+	void createCutCellPierceFaces(const Polyhedron& realCell, const MTC::set<IntersectEdge>& edges, const MTC::set<IntersectEdge>& pierceEdges);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

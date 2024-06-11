@@ -36,11 +36,12 @@ namespace DFHM
 struct IntersectVertId : public Index3DId {
 	IntersectVertId() = default;
 	IntersectVertId(const IntersectVertId& src) = default;
+	IntersectVertId(const Index3DId& id, const RayHitd& hit);
 	IntersectVertId(const Index3DId& id, size_t triIdx);
 
 	bool operator < (const IntersectVertId& rhs) const;
 
-	size_t _triIndex = -1;
+	size_t _triIndex = -1, _edgeIndex = -1;
 };
 
 struct IntersectEdge {
@@ -52,12 +53,20 @@ struct IntersectEdge {
 
 	bool operator < (const IntersectEdge& rhs) const;
 
-	IntersectVertId _vert0, _vert1;
+	IntersectVertId _vertIds[2];
 };
+
+inline IntersectVertId::IntersectVertId(const Index3DId& id, const RayHitd& hit)
+	: Index3DId(id)
+	, _triIndex(hit.triIdx)
+	, _edgeIndex(hit.edgeIdx)
+{
+}
 
 inline IntersectVertId::IntersectVertId(const Index3DId& id, size_t triIdx)
 	: Index3DId(id)
 	, _triIndex(triIdx)
+	, _edgeIndex(-1)
 {
 }
 
@@ -67,22 +76,22 @@ inline bool IntersectVertId::operator < (const IntersectVertId& rhs) const
 }
 
 inline IntersectEdge::IntersectEdge(const IntersectVertId& vert0, const IntersectVertId& vert1)
-	: _vert0(vert0)
-	, _vert1(vert1)
 {
-	if (vert1 < vert0) {
-		std::swap(_vert0, _vert1);
+	_vertIds[0] = vert0;
+	_vertIds[1] = vert1;
+	if (_vertIds[1] < _vertIds[0]) {
+		std::swap(_vertIds[0], _vertIds[1]);
 	}
 }
 
 inline bool IntersectEdge::operator < (const IntersectEdge& rhs) const
 {
-	if (_vert0 < rhs._vert0)
+	if (_vertIds[0] < rhs._vertIds[0])
 		return true;
-	else if (rhs._vert0 < _vert0)
+	else if (rhs._vertIds[0] < _vertIds[0])
 		return false;
 
-	return _vert1 < rhs._vert1;
+	return _vertIds[1] < rhs._vertIds[1];
 }
 
 }

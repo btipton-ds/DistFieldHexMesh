@@ -30,6 +30,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_bestFit.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
+#include <triMesh.h>
+#include <triMeshPatch.h>
 #include <pool_vector.h>
 #include <pool_set.h>
 #include <splitParams.h>
@@ -546,7 +548,7 @@ bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 
 bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 {
-	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this](const Polyhedron& cell) {
+	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, params](const Polyhedron& cell) {
 		auto pMesh = _pBlock->getModelMesh();
 		const auto& tris = cell.getTriIndices();
 		if (!tris.empty()) {
@@ -557,10 +559,11 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 				});
 			}
 
-			std::vector<std::vector<size_t>> patches;
-			if (pMesh->createPatches(tris, patches)) {
-				for (const auto& patch : patches) {
-					cutWithPatch(cell, patch);
+			std::vector<TriMesh::PatchPtr> patches;
+			double sharpAngle = sin(params.getSharpAngleRadians());
+			if (pMesh->createPatches(tris, sharpAngle, patches)) {
+				for (const auto& pPatch : patches) {
+					cutWithPatch(cell, pPatch);
 				}
 			}
 
@@ -580,86 +583,203 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 	return false;
 }
 
-void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vector<size_t>& patch)
+void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const TriMesh::PatchPtr& patch)
 {
 	auto pMesh = _pBlock->getModelMesh();
+	const auto& faceIds = realCell.getFaceIds();
 
+	MTC::set<IntersectEdge> edges, pierceEdges;
+
+	const auto& sharps = patch->getSharpEdgeChains();
+
+	for (const auto& chain : sharps) {
+		MTC::vector<IntersectVertId> intVerts;
+		for (size_t edgeIdx : chain) {
+			const auto& edge = pMesh->getEdge(edgeIdx);
+			auto seg = edge.getSeg(pMesh);
+			for (const auto& faceId : faceIds) {
+				faceFunc(TS_REAL, faceId, [this, &seg, &intVerts](const Polygon& face) {
+					RayHitd hit;
+					if (face.intersect(seg, hit)) {
+						auto vertId = _pBlock->addVertex(hit.hitPt);
+						intVerts.push_back(IntersectVertId(vertId, hit));
+					}
+				});
+			}
+		}
+
+		if (intVerts.size() == 2) {
+			IntersectEdge edge(intVerts[0], intVerts[1]);
+			pierceEdges.insert(edge);
+		}
+	}
 	bool intersects = false;
 	// Prior operations require that the patch have correctly oriented normals.
-	MTC::set<IntersectEdge> edges;
-	const auto& faceIds = realCell.getFaceIds();
 	for (const auto& faceId : faceIds) {
-		_pBlock->faceFunc(TS_REAL, faceId, [this, &patch, &edges, &intersects](Polygon& face) {
-			if (face.intersectModelTris(patch, edges))
+		_pBlock->faceFunc(TS_REAL, faceId, [this, &pMesh, &patch, &edges, &intersects](Polygon& face) {
+			MTC::set<IntersectEdge> tmp;
+			if (face.intersectModelTris(patch, tmp)) {
+				assert(tmp.size() == 1);
+				const auto& edgeChains = patch->getSharpEdgeChains();
+
+				MTC::vector<IntersectVertId> faceVerts;
+				for (const auto& chain : edgeChains) {
+					for (size_t edgeIdx : chain) {
+						const auto& edge = pMesh->getEdge(edgeIdx);
+						auto seg = edge.getSeg(pMesh);
+						RayHitd hit;
+						if (face.intersect(seg, hit)) {
+							auto vertId = _pBlock->addVertex(hit.hitPt);
+							faceVerts.push_back(IntersectVertId(vertId, hit));
+						}
+					}
+				}
+				if (faceVerts.empty()) {
+					edges.insert(tmp.begin(), tmp.end());
+				} else {
+					if (faceVerts.size() == 1) {
+						auto trimEdge = *tmp.begin();
+						auto faceVert = *faceVerts.begin();
+						IntersectEdge edge0(trimEdge._vertIds[0], faceVert);
+						IntersectEdge edge1(trimEdge._vertIds[1], faceVert);
+						edges.insert(edge0);
+						edges.insert(edge1);
+					} else {
+						assert(!"Not implemented yet");
+					}
+				}
 				intersects = true;
+			}
 		});
 	}
 
 	if (intersects)
 		_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 
-	if (edges.size() >= 3) {
+	if (!pierceEdges.empty()) {
+		createCutCellPierceFaces(realCell, edges, pierceEdges);
+	} else if (edges.size() >= 3) {
+		createCutCell(realCell, edges);
+	}
+}
 
-		MTC::set<Index3DId> cellVerts, cellVertsToKeep, newFaceIds;
-		realCell.getVertIds(cellVerts);
-		for (const auto& vertId : cellVerts) {
-			Vector3d pt = _pBlock->getVertexPoint(vertId);
-			for (const auto& edge : edges) {
-				auto ctr0 = pMesh->triCentroid(edge._vert0._triIndex);
-				auto norm0 = pMesh->triUnitNormal(edge._vert0._triIndex);
-				auto ctr1 = pMesh->triCentroid(edge._vert1._triIndex);
-				auto norm1 = pMesh->triUnitNormal(edge._vert1._triIndex);
+void PolyhedronSplitter::createCutCell(const Polyhedron& realCell, const MTC::set<IntersectEdge>& edges)
+{
+	auto pMesh = _pBlock->getModelMesh();
 
-				auto ctr = (ctr0 + ctr1) * 0.5;
-				auto norm = norm0 + norm1;
-				norm.normalize();
+	MTC::set<Index3DId> cellVerts, cellVertsToKeep, newFaceIds;
+	realCell.getVertIds(cellVerts);
+	for (const auto& vertId : cellVerts) {
+		Vector3d pt = _pBlock->getVertexPoint(vertId);
+		for (const auto& edge : edges) {
+			Vector3d ctr[2], norm[2];
+			for (int i = 0; i < 2; i++) {
+				ctr[i] = pMesh->triCentroid(edge._vertIds[i]._triIndex);
+				norm[i] = pMesh->triUnitNormal(edge._vertIds[i]._triIndex);
+			}
 
-				Vector3d v = pt - ctr;
-				if (v.dot(norm) >= 0)
-					cellVertsToKeep.insert(vertId);
+			auto center = (ctr[0] + ctr[1]) * 0.5;
+			auto normal = norm[0] + norm[1];
+			normal.normalize();
+
+			Vector3d v = pt - center;
+			if (v.dot(normal) >= 0)
+				cellVertsToKeep.insert(vertId);
+		}
+	}
+
+	for (const auto& faceId : realCell.getFaceIds()) {
+		_pBlock->faceFunc(TS_REAL, faceId, [this, &edges, &cellVertsToKeep, &newFaceIds](Polygon& face) {
+			int numVertsInSet = 0;
+			const auto& faceVerts = face.getVertexIds();
+			for (const auto& vertId : faceVerts) {
+				if (cellVertsToKeep.contains(vertId))
+					numVertsInSet++;
+			}
+
+			if (numVertsInSet == faceVerts.size())
+				newFaceIds.insert(face.getId());
+			else if (numVertsInSet != 0) {
+				PolygonSplitter sp(_pBlock, face.getId());
+				Index3DId newFaceId = sp.createTrimmedFace(edges);
+				if (newFaceId.isValid())
+					newFaceIds.insert(newFaceId);
+			}
+			});
+	}
+
+	MTC::vector<Index3DId> verts;
+	if (PolygonSplitter::connectIntersectEdges(_pBlock, edges, verts, true)) {
+		Index3DId faceId = _pBlock->addFace(verts);
+		newFaceIds.insert(faceId);
+		int dbgBreak = 1;
+	}
+
+	string filename0 = "_" + to_string(_polyhedronId[0]) + "_" + to_string(_polyhedronId[1]) + "_" + to_string(_polyhedronId[2]) + "_" + to_string(_polyhedronId.elementId()) + "_cutWithPatch";
+	_pBlock->dumpPolygonObj(filename0, newFaceIds);
+
+	if (facesFormClosedCell(newFaceIds)) {
+		Index3DId cellId = _pBlock->addCell(newFaceIds);
+#ifdef _DEBUG
+		_pBlock->cellFunc(TS_REAL, cellId, [](const Polyhedron& cell) {
+			assert(cell.isClosed());
+			});
+#endif // _DEBUG
+	}
+	else if (newFaceIds.size() > 2) {
+		assert(!"cell didn't close as expected.");
+	}
+}
+
+void PolyhedronSplitter::createCutCellPierceFaces(const Polyhedron& realCell, const MTC::set<IntersectEdge>& edges, const MTC::set<IntersectEdge>& pierceEdges)
+{
+	MTC::set<IntersectEdge> availEdgeSet, faceEdges;
+	MTC::map<IntersectEdge, size_t> pierceEdgeCount;
+	for (const auto& pe : pierceEdges) {
+		pierceEdgeCount.insert(make_pair(pe, 2)); // Each edge must be used twice
+	}
+
+	MTC::vector<MTC::set<IntersectEdge>> faces;
+
+	availEdgeSet.insert(edges.begin(), edges.end());
+	IntersectEdge edge;
+	while (!availEdgeSet.empty()) {
+		if (faceEdges.empty()) {
+			for (auto& pec : pierceEdgeCount) {
+				if (pec.second > 0) {
+					edge = pec.first;
+					pec.second--;
+				}
+			}
+			faceEdges.insert(edge); // Seed edge needs to be a pierce edge
+		}
+
+		while (!availEdgeSet.empty()) {
+			for (const auto& testEdge : availEdgeSet) {
+				for (int i = 0; i < 2; i++) {
+					IntersectVertId vertId = edge._vertIds[i];
+					IntersectVertId nextVertId;
+
+					if (vertId == testEdge._vertIds[i]) {
+						nextVertId = testEdge._vertIds[1 - i];
+					} else if (vertId == testEdge._vertIds[1 - i]) {
+						nextVertId = testEdge._vertIds[i];
+					}
+					IntersectEdge e(vertId, nextVertId);
+					if (availEdgeSet.contains(e)) {
+						availEdgeSet.erase(e);
+						faceEdges.insert(e);
+						edge = e;
+						break;
+					}
+				}
+			}
+			if (!faceEdges.empty()) {
+				faces.push_back(faceEdges);
+				faceEdges.clear();
 			}
 		}
 
-		for (const auto& faceId : realCell.getFaceIds()) {
-			_pBlock->faceFunc(TS_REAL, faceId, [this, &edges, &cellVertsToKeep, &newFaceIds](Polygon& face) {
-				int numVertsInSet = 0;
-				const auto& faceVerts = face.getVertexIds();
-				for (const auto& vertId : faceVerts) {
-					if (cellVertsToKeep.contains(vertId))
-						numVertsInSet++;
-				}
-
-				if (numVertsInSet == faceVerts.size())
-					newFaceIds.insert(face.getId());
-				else if (numVertsInSet != 0) {
-					PolygonSplitter sp(_pBlock, face.getId());
-					Index3DId newFaceId = sp.createTrimmedFace(edges);
-					if (newFaceId.isValid())
-						newFaceIds.insert(newFaceId);
-				}
-			});
-		}
-
-		MTC::vector<Index3DId> verts;
-		if (PolygonSplitter::connectIntersectEdges(_pBlock, edges, verts, true)) {
-			Index3DId faceId = _pBlock->addFace(verts);
-			newFaceIds.insert(faceId);
-			int dbgBreak = 1;
-		}
-
-		string filename0 = "_" + to_string(_polyhedronId[0]) + "_" + to_string(_polyhedronId[1]) + "_" + to_string(_polyhedronId[2]) + "_" + to_string(_polyhedronId.elementId()) + "_cutWithPatch";
-		_pBlock->dumpPolygonObj(filename0, newFaceIds);
-
-		if (facesFormClosedCell(newFaceIds)) {
-			Index3DId cellId = _pBlock->addCell(newFaceIds);
-#ifdef _DEBUG
-			_pBlock->cellFunc(TS_REAL, cellId, [](const Polyhedron& cell) {
-				assert(cell.isClosed());
-			});
-#endif // _DEBUG
-		} else if (newFaceIds.size() > 2) {
-			assert(!"cell didn't close as expected.");
-		}
 	}
 }
 

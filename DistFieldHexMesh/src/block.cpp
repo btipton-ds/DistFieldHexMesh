@@ -48,7 +48,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <logger.h>
 
 using namespace std;
-using namespace TriMesh;
 using namespace DFHM;
 
 atomic<size_t> Block::GlPoints::_statId = 0;
@@ -95,7 +94,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 	_pVertTree = make_shared<SearchTree>(treeBBox);
 		
 		// This is close to working, but the full search is finding solutions the partial search is not
-	TriMesh::CMeshConstPtr pMesh = getModelMesh();
+	auto pMesh = getModelMesh();
 	pMesh->findEdges(_boundBox, _edgeIndices);
 	pMesh->findTris(_boundBox, _triIndices);
 

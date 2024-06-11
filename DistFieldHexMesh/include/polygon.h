@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vector>
 #include <set>
 #include <iostream>
+#include <triMeshPatch.h>
 #include <patient_lock_guard.h>
 #include <pool_map.h>
 #include <pool_set.h>
@@ -142,6 +143,7 @@ public:
 	bool isBlockBoundary() const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool isPointOnPlane(const Vector3d& pt) const;
+	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	bool containsEdge(const Edge& edge) const;
 	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool containsVertex(const Index3DId& vertId) const;
@@ -182,7 +184,7 @@ public:
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
-	bool intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<IntersectEdge>& newEdges);
+	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges);
 	void splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const;
 
 	size_t getCreatedDuringSplitNumber() const;

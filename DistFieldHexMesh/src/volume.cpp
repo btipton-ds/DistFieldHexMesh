@@ -52,7 +52,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace std;
 using namespace DFHM;
-using namespace TriMesh;
 
 Index3D Volume::s_volDim;
 
@@ -335,8 +334,8 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 // TODO we should be able to clear the reference topology now
 
 //		splitAtSharpVerts(params, multiCore);
-		splitAtSharpEdges(params, multiCore);
-//		cutWithTriMesh(params, multiCore);
+//		splitAtSharpEdges(params, multiCore);
+		cutWithTriMesh(params, multiCore);
 	}
 
 	Utils::Timer::dumpAll();
@@ -541,7 +540,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, multiCore);
+	}, false && multiCore);
 
 	if (changed)
 		finishSplits(multiCore);
@@ -766,15 +765,21 @@ void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool
 
 void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
 {
+	auto pMesh = getModelMesh();
 	set<Index3DId> faceIds;
 	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(TS_REAL,cellId, [&faceIds, &modelTriIndices, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
+		pBlk->cellFunc(TS_REAL,cellId, [&faceIds, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
 			faceIds.insert(ids.begin(), ids.end());
 			if (includeModel) {
-				modelTriIndices = cell.getTriIndices();
+				auto tmp = cell.getTriIndices();
+				auto bbox = cell.getBoundingBox();
+				for (size_t triIdx : tmp) {
+					if (pMesh->bboxIntersectsTri(bbox, triIdx))
+						modelTriIndices.push_back(triIdx);
+				}
 			}
 		});
 	}

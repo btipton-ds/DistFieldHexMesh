@@ -199,16 +199,16 @@ Index3DId PolygonSplitter::createTrimmedFace(const MTC::set<IntersectEdge>& cutF
 	});
 
 	for (const auto& cuttingEdge : cutFaceEdges) {
-		Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vert0);
-		Vector3d modelNorm0 = pMesh->triUnitNormal(cuttingEdge._vert0._triIndex);
+		Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
+		Vector3d modelNorm0 = pMesh->triUnitNormal(cuttingEdge._vertIds[0]._triIndex);
 
-		Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vert1);
-		Vector3d modelNorm1 = pMesh->triUnitNormal(cuttingEdge._vert1._triIndex);
+		Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
+		Vector3d modelNorm1 = pMesh->triUnitNormal(cuttingEdge._vertIds[1]._triIndex);
 
 		if (facePlane.distanceToPoint(imprintPt0) > Tolerance::sameDistTol() || facePlane.distanceToPoint(imprintPt1) > Tolerance::sameDistTol())
 			continue;
 
-		newFaceEdges.insert(Edge(cuttingEdge._vert0, cuttingEdge._vert1));
+		newFaceEdges.insert(Edge(cuttingEdge._vertIds[0], cuttingEdge._vertIds[1]));
 
 		for (size_t i = 0; i < vertIds.size(); i++) {
 			size_t j = (i + 1) % vertIds.size();
@@ -234,14 +234,14 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 	const auto& vertId0 = srcEdge.getVertex(0);
 	const auto& vertId1 = srcEdge.getVertex(1);
 
-	const Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vert0);
-	const Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vert1);
+	const Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
+	const Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
 
 	const Vector3d vertPt0 = _pBlock->getVertexPoint(vertId0);
 	const Vector3d vertPt1 = _pBlock->getVertexPoint(vertId1);
 	const LineSegment seg(vertPt0, vertPt1);
-	const Vector3d meshNorm0 = pMesh->triUnitNormal(cuttingEdge._vert0._triIndex);
-	const Vector3d meshNorm1 = pMesh->triUnitNormal(cuttingEdge._vert1._triIndex);
+	const Vector3d meshNorm0 = pMesh->triUnitNormal(cuttingEdge._vertIds[0]._triIndex);
+	const Vector3d meshNorm1 = pMesh->triUnitNormal(cuttingEdge._vertIds[1]._triIndex);
 
 	Vector3d v;
 	double t, dp;
@@ -249,21 +249,21 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt1 - imprintPt0);
 			if (dp >= 0) {
-				newEdge = Edge(vertId1, cuttingEdge._vert0);
+				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
 				return true;
 			}
 		} else if (t > 1 - Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt0 - imprintPt0);
 			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vert0);
+				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
 				return true;
 			}
 		} else {
 			dp = meshNorm0.dot(vertPt0 - imprintPt0);
 			if (dp >= 0)
-				newEdge = Edge(vertId0, cuttingEdge._vert0);
+				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
 			else
-				newEdge = Edge(vertId1, cuttingEdge._vert0);
+				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
 
 			return true;
 		}
@@ -271,21 +271,21 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm1.dot(vertPt1 - imprintPt1);
 			if (dp >= 0) {
-				newEdge = Edge(vertId1, cuttingEdge._vert1);
+				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
 				return true;
 			}
 		} else if (t > 1 - Tolerance::paramTol()) {
 			dp = meshNorm1.dot(vertPt0 - imprintPt0);
 			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vert1);
+				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
 				return true;
 			}
 		} else {
 			dp = meshNorm1.dot(vertPt0 - imprintPt1);
 			if (dp >= 0)
-				newEdge = Edge(vertId0, cuttingEdge._vert1);
+				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
 			else
-				newEdge = Edge(vertId1, cuttingEdge._vert1);
+				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
 
 			return true;
 		}
@@ -330,7 +330,7 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 	MTC::set<IntersectEdge> edges(edgesIn);
 	vertices.clear();
 	MTC::vector<IntersectVertId> verts;
-	verts.push_back(edges.begin()->_vert0);
+	verts.push_back(edges.begin()->_vertIds[0]);
 	edges.erase(edges.begin());
 	bool found = true;
 	while (found && !edges.empty()) {
@@ -339,16 +339,13 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 		auto iter = edges.begin();
 		while (iter != edges.end()) {
 			auto e = *iter++;
-			if (e._vert0 == v) {
-				verts.push_back(e._vert1);
-				edges.erase(e);
-				found = true;
-				break;
-			} else if (e._vert1 == v) {
-				verts.push_back(e._vert0);
-				edges.erase(e);
-				found = true;
-				break;
+			for (int i = 0; i < 2; i++) {
+				if (e._vertIds[i] == v) {
+					verts.push_back(e._vertIds[1 - 0]);
+					edges.erase(e);
+					found = true;
+					break;
+				}
 			}
 		}
 	}

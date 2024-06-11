@@ -303,6 +303,24 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 	return distFromPlane(pt) < Tolerance::sameDistTol();
 }
 
+bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const
+{
+	piercePoints.clear();
+	Planed pl = calPlane();
+	auto pMesh = getBlockPtr()->getModelMesh();
+	for (size_t edgeIdx : edgeIndices) {
+		const auto& edge = pMesh->getEdge(edgeIdx);
+		auto seg = edge.getSeg(pMesh);
+		RayHitd hit;
+		if (pl.intersectLineSegment(seg, hit)) {
+			hit.edgeIdx = edgeIdx;
+			piercePoints.push_back(hit);
+		}
+	}
+
+	return !piercePoints.empty();
+}
+
 bool Polygon::containsEdge(const Edge& edge) const
 {
 	size_t idx0, idx1;
@@ -865,9 +883,10 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
-bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<IntersectEdge>& newEdges)
+bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges)
 {
 	auto pMesh = getBlockPtr()->getModelMesh();
+
 	RayHitd hit;
 	set<IntersectVertId> vertSet;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -875,33 +894,37 @@ bool Polygon::intersectModelTris(const std::vector<size_t>& patchTris, MTC::set<
 		auto facePlane = calPlane();
 		RayHitd hit;
 		LineSegmentd seg(getBlockPtr()->getVertexPoint(_vertexIds[i]), getBlockPtr()->getVertexPoint(_vertexIds[j]));
-		for (auto triIdx : patchTris) {
-			bool skip = false;
-			const auto& tri = pMesh->getTri(triIdx);
-			Vector3d vertPt;
-			for (int i = 0; i < 3; i++) {
-				auto vertPt = pMesh->getVert(tri[i])._pt;
-				if (facePlane.distanceToPoint(vertPt) <= Tolerance::sameDistTol()) {
-					skip = true;
-					break;
+		const auto& faces = pPatch->getFaces();
+		for (const auto& patchFace : faces) {
+			for (auto triIdx : patchFace) {
+				bool skip = false;
+				const auto& tri = pMesh->getTri(triIdx);
+				Vector3d vertPt;
+				for (int i = 0; i < 3; i++) {
+					auto vertPt = pMesh->getVert(tri[i])._pt;
+					if (facePlane.distanceToPoint(vertPt) <= Tolerance::sameDistTol()) {
+						skip = true;
+						break;
+					}
 				}
-			}
-			if (skip)
-				continue;
+				if (skip)
+					continue;
 
-			auto normal = pMesh->triUnitNormal(triIdx);
-			Planed triPlane(vertPt, normal, false);
+				auto normal = pMesh->triUnitNormal(triIdx);
+				Planed triPlane(vertPt, normal, false);
 
-			skip = isCoplanar(triPlane);
-			if (skip)
-				continue;
+				skip = isCoplanar(triPlane);
+				if (skip)
+					continue;
 
-			if (pMesh->intersectsTri(seg, triIdx, hit)) {
-				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
-				vertSet.insert(IntersectVertId(vertId, hit.triIdx));
-				vertexFunc(vertId, [](Vertex& vert) {
-					vert.setLockType(VLT_MODEL_MESH);
-				});
+				if (pMesh->intersectsTri(seg, triIdx, hit)) {
+					auto vertId = getBlockPtr()->addVertex(hit.hitPt);
+					vertexFunc(vertId, [](Vertex& vert) {
+						vert.setLockType(VLT_MODEL_MESH);
+					});
+
+					vertSet.insert(IntersectVertId(vertId, hit));
+				}
 			}
 		}
 	}
