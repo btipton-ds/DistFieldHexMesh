@@ -947,9 +947,9 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 void Polygon::splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const
 {
 	auto faceEdges = getEdges();
-	MTC::vector<Edge> allEdges;
-	allEdges.insert(allEdges.end(), edges.begin(), edges.end());
-	allEdges.insert(allEdges.end(), faceEdges.begin(), faceEdges.end());
+	MTC::set<Edge> allEdges;
+	allEdges.insert(edges.begin(), edges.end());
+	allEdges.insert(faceEdges.begin(), faceEdges.end());
 	string fileName = "splitFaceEdges_" + to_string(_thisId[0]) + "_" + to_string(_thisId[1]) + "_" + to_string(_thisId[2]) + "_" + to_string(_thisId.elementId());
 	getBlockPtr()->dumpEdgeObj(fileName, allEdges);
 #if 0

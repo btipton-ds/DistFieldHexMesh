@@ -61,6 +61,8 @@ public:
 
 	std::shared_ptr<Logger> getLogger() const;
 	std::string getLoggerNumericCode() const;
+	static std::string getLoggerNumericCode(const Index3D& id);
+	static std::string getLoggerNumericCode(const Index3DId& id);
 
 private:
 	friend class ObjectPoolOwnerUser;

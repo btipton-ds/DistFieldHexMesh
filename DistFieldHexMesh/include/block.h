@@ -172,7 +172,8 @@ public:
 	void dumpPolyhedraObj(const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds) const;
 	void dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds) const;
-	void dumpEdgeObj(std::string& fileName, const std::vector<Edge>& edges) const;
+	void dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const;
+	void dumpEdgeObj(std::string& fileName, const MTC::set<IntersectEdge>& interEdges) const;
 
 	template<class F>
 	void iteratePolygonsInOrder(TopolgyState state, F fLambda) const;

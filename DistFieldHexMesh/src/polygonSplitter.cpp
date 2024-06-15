@@ -183,38 +183,49 @@ bool PolygonSplitter::splitWithFace(const Index3DId& imprintFaceId, Index3DId& l
 	return result;
 }
 
-Index3DId PolygonSplitter::createTrimmedFace(const MTC::set<IntersectEdge>& cutFaceEdges)
+Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, const MTC::vector<MTC::set<IntersectEdge>>& patchFaces)
 {
+	const double SDTol = Tolerance::sameDistTol();
 	Index3DId result;
 
 	auto pMesh = _pBlock->getModelMesh();
 	MTC::set<Edge> newFaceEdges;
 	MTC::vector<Index3DId> newVertIds;
 
-	MTC::vector<Index3DId> vertIds;
+	MTC::vector<Index3DId> faceVertIds;
 	Planed facePlane;
-	_pBlock->faceFunc(TS_REAL, _polygonId, [&vertIds, &facePlane](const Polygon& face) {
-		vertIds = face.getVertexIds();
+	_pBlock->faceFunc(TS_REAL, _polygonId, [&faceVertIds, &facePlane](const Polygon& face) {
+		faceVertIds = face.getVertexIds();
 		facePlane = face.calPlane();
 	});
 
-	for (const auto& cuttingEdge : cutFaceEdges) {
-		Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
-		Vector3d modelNorm0 = pMesh->triUnitNormal(cuttingEdge._vertIds[0]._triIndex);
+	MTC::set<Index3DId> skippedVerts;
+	for (const auto& patchFaceEdges : patchFaces) {
+		for (const auto& cuttingEdge : patchFaceEdges) {
+			Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
+			Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
 
-		Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
-		Vector3d modelNorm1 = pMesh->triUnitNormal(cuttingEdge._vertIds[1]._triIndex);
+			if (!facePlane.isCoincident(imprintPt0, SDTol) || !facePlane.isCoincident(imprintPt1, SDTol))
+				continue;
 
-		if (facePlane.distanceToPoint(imprintPt0) > Tolerance::sameDistTol() || facePlane.distanceToPoint(imprintPt1) > Tolerance::sameDistTol())
-			continue;
+			newFaceEdges.insert(Edge(cuttingEdge._vertIds[0], cuttingEdge._vertIds[1]));
 
-		newFaceEdges.insert(Edge(cuttingEdge._vertIds[0], cuttingEdge._vertIds[1]));
+			for (size_t i = 0; i < faceVertIds.size(); i++) {
+				size_t j = (i + 1) % faceVertIds.size();
+				Edge faceEdge(faceVertIds[i], faceVertIds[j]), newEdge;
+				if (createTrimmedEdge(faceEdge, cuttingEdge, newEdge, skippedVerts))
+					newFaceEdges.insert(newEdge);
+			}
+		}
+	}
 
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			Edge edge(vertIds[i], vertIds[j]), newEdge;
-			if (createTrimmedEdge(edge, cuttingEdge, newEdge))
-				newFaceEdges.insert(newEdge);
+	// Add all edges which are outside the cutting surface and not included yet
+	for (size_t i = 0; i < faceVertIds.size(); i++) {
+		size_t j = (i + 1) % faceVertIds.size();
+		const auto& vertId0 = faceVertIds[i];
+		const auto& vertId1 = faceVertIds[j];
+		if (!skippedVerts.contains(vertId0) && !skippedVerts.contains(vertId1)) {
+			newFaceEdges.insert(Edge(vertId0, vertId1));
 		}
 	}
 
@@ -228,7 +239,7 @@ Index3DId PolygonSplitter::createTrimmedFace(const MTC::set<IntersectEdge>& cutF
 	return result;
 }
 
-bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge)
+bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge, MTC::set<Index3DId>& skippedVerts)
 {
 	auto pMesh = _pBlock->getModelMesh();
 	const auto& vertId0 = srcEdge.getVertex(0);
@@ -240,68 +251,67 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 	const Vector3d vertPt0 = _pBlock->getVertexPoint(vertId0);
 	const Vector3d vertPt1 = _pBlock->getVertexPoint(vertId1);
 	const LineSegment seg(vertPt0, vertPt1);
-	const Vector3d meshNorm0 = pMesh->triUnitNormal(cuttingEdge._vertIds[0]._triIndex);
-	const Vector3d meshNorm1 = pMesh->triUnitNormal(cuttingEdge._vertIds[1]._triIndex);
+	size_t triIndex0 = cuttingEdge._vertIds[0]._triIndex;
+	size_t triIndex1 = cuttingEdge._vertIds[1]._triIndex;
 
 	Vector3d v;
 	double t, dp;
 	if (seg.contains(imprintPt0, t)) {
+		const Vector3d meshNorm0 = pMesh->triUnitNormal(triIndex0);
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt1 - imprintPt0);
 			if (dp >= 0) {
 				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
+				skippedVerts.insert(vertId0);
 				return true;
 			}
 		} else if (t > 1 - Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt0 - imprintPt0);
 			if (dp >= 0) {
 				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
+				skippedVerts.insert(vertId1);
 				return true;
 			}
 		} else {
 			dp = meshNorm0.dot(vertPt0 - imprintPt0);
-			if (dp >= 0)
+			if (dp >= 0) {
 				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
-			else
+				skippedVerts.insert(vertId1);
+			} else {
 				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
-
+				skippedVerts.insert(vertId0);
+			}
 			return true;
 		}
 	} else if (seg.contains(imprintPt1, t)) {
+		const Vector3d meshNorm1 = pMesh->triUnitNormal(triIndex1);
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm1.dot(vertPt1 - imprintPt1);
 			if (dp >= 0) {
 				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
+				skippedVerts.insert(vertId0);
 				return true;
 			}
 		} else if (t > 1 - Tolerance::paramTol()) {
 			dp = meshNorm1.dot(vertPt0 - imprintPt0);
 			if (dp >= 0) {
 				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
+				skippedVerts.insert(vertId1);
 				return true;
 			}
 		} else {
 			dp = meshNorm1.dot(vertPt0 - imprintPt1);
-			if (dp >= 0)
+			if (dp >= 0) {
 				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
-			else
+				skippedVerts.insert(vertId1);
+			}
+			else {
 				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
-
-			return true;
-		}
-	} else {
-		const double tol = Tolerance::sameDistTol();
-		// non crossing case. Either both seg ends are above or below the mesh, relative to the mesh normal
-		double dp00 = meshNorm0.dot(vertPt0 - imprintPt0);
-		double dp01 = meshNorm0.dot(vertPt0 - imprintPt1);
-		double dp10 = meshNorm0.dot(vertPt1 - imprintPt0);
-		double dp11 = meshNorm0.dot(vertPt1 - imprintPt1);
-		if ((dp00 >= tol && dp11 >= tol) || (dp01 >= tol && dp10 >= tol)) {
-			newEdge = srcEdge;
+				skippedVerts.insert(vertId0);
+			}
 			return true;
 		}
 	}
-
 
 	return false;
 }
@@ -319,10 +329,16 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 		interEdges.insert(IntersectEdge(iv0, iv1));
 	}
 
-	return connectIntersectEdges(pBlock, interEdges, vertices, false);
+	MTC::vector<IntersectVertId> iVerts;
+	if (connectIntersectEdges(pBlock, interEdges, iVerts, false)) {
+		for (const auto& vert : iVerts)
+			vertices.push_back(vert);
+	}
+
+	return !vertices.empty();
 }
 
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<Index3DId>& vertices, bool isIntersection)
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<IntersectVertId>& vertices, bool isIntersection)
 {
 	if (edgesIn.empty())
 		return false;
@@ -341,12 +357,15 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 			auto e = *iter++;
 			for (int i = 0; i < 2; i++) {
 				if (e._vertIds[i] == v) {
-					verts.push_back(e._vertIds[1 - 0]);
+					verts.push_back(e._vertIds[1 - i]);
 					edges.erase(e);
 					found = true;
 					break;
 				}
 			}
+
+			if (found)
+				break;
 		}
 	}
 

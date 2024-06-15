@@ -45,17 +45,17 @@ namespace DFHM {
 		bool splitAtCentroid();
 		bool splitAtPoint(const Vector3d& pt);
 		bool splitWithFace(const Index3DId& imprintFaceId, Index3DId& lowerFaceId, Index3DId upperFaceId) const;
-		Index3DId createTrimmedFace(const MTC::set<IntersectEdge>& cutFaceEdges);
+		Index3DId createTrimmedFace(const TriMesh::PatchPtr& pPatch, const MTC::vector<MTC::set<IntersectEdge>>& patchFaceEdges);
 
 		// Create ordered vertices to form a new polygon who's face normal is in the same direction as triangle normals defined in edges.
 		// Edges should be created by intersectModelTris which will record the triangle normals from the model as they are intersected.
-		static bool connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<Index3DId>& vertices, bool isIntersection = false);
+		static bool connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<IntersectVertId>& vertices, bool isIntersection = false);
 		static bool connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<Index3DId>& vertices);
 
 	private:
 		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
 		bool splitWithFaceInner(const Polygon& imprintFace, Polygon& realFace, Polygon& referanceFace) const;
-		bool createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge);
+		bool createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge, MTC::set<Index3DId>& skippedVerts);
 
 		Block* _pBlock;
 		Index3DId _polygonId;

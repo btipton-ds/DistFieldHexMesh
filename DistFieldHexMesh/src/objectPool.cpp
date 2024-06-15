@@ -169,7 +169,19 @@ string ObjectPoolOwner::getLoggerNumericCode() const
 #else
 	idx = s_blockIdx;
 #endif
+	return getLoggerNumericCode(idx);
+}
+
+string ObjectPoolOwner::getLoggerNumericCode(const Index3D& idx)
+{
 	stringstream ss;
 	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
+	return ss.str();
+}
+
+string ObjectPoolOwner::getLoggerNumericCode(const Index3DId& id)
+{
+	stringstream ss;
+	ss << id[0] << "_" << id[1] << "_" << id[2] << "_" << id.elementId();
 	return ss.str();
 }
