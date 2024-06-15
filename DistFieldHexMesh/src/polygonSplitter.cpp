@@ -183,7 +183,7 @@ bool PolygonSplitter::splitWithFace(const Index3DId& imprintFaceId, Index3DId& l
 	return result;
 }
 
-Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, const MTC::vector<MTC::set<IntersectEdge>>& patchFaces)
+Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, const MTC::vector<MTC::set<IntersectEdge>>& patchFaces, MTC::set<Index3DId>& skippedVerts)
 {
 	const double SDTol = Tolerance::sameDistTol();
 	Index3DId result;
@@ -199,7 +199,6 @@ Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, co
 		facePlane = face.calPlane();
 	});
 
-	MTC::set<Index3DId> skippedVerts;
 	for (const auto& patchFaceEdges : patchFaces) {
 		for (const auto& cuttingEdge : patchFaceEdges) {
 			Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
@@ -256,7 +255,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 
 	Vector3d v;
 	double t, dp;
-	if (seg.contains(imprintPt0, t)) {
+	if (triIndex0 != -1 && seg.contains(imprintPt0, t)) {
 		const Vector3d meshNorm0 = pMesh->triUnitNormal(triIndex0);
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt1 - imprintPt0);
@@ -283,7 +282,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 			}
 			return true;
 		}
-	} else if (seg.contains(imprintPt1, t)) {
+	} else if (triIndex1 != -1 && seg.contains(imprintPt1, t)) {
 		const Vector3d meshNorm1 = pMesh->triUnitNormal(triIndex1);
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm1.dot(vertPt1 - imprintPt1);

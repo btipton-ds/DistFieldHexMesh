@@ -105,7 +105,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 {
 	assert(_pBlock);
 
-#if defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 	// Now split the cell
 	if (Index3DId(0, 12, 0, 19) == _polyhedronId) {
 		_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false, { pt });
@@ -546,6 +546,11 @@ bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
 	return result;
 }
 
+namespace
+{
+	Index3DId testId(0, 12, 0, 14);
+}
+
 bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 {
 	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, params](const Polyhedron& cell) {
@@ -562,7 +567,9 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 			std::vector<TriMesh::PatchPtr> patches;
 			double sharpAngle = sin(params.getSharpAngleRadians());
 			if (pMesh->createPatches(tris, sharpAngle, patches)) {
-				_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
+				if (_polyhedronId == testId)
+					_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
+
 				for (size_t i = 0; i < patches.size(); i++) {
 					cutWithPatch(cell, patches, params, i);
 				}
@@ -605,23 +612,32 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 		}
 	}
 
-	string filename = "mpf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
-	_pBlock->dumpPolygonObj(filename, patchFaces);
-
-	for (const auto& faceId : realCell.getFaceIds()) {
-		PolygonSplitter ps(_pBlock, faceId);
-		Index3DId newFaceId = ps.createTrimmedFace(pPatch, patchEdges);
-		trimFaces.insert(newFaceId);
+	string filename;
+	if (_polyhedronId == testId) {
+		filename = "mpf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
+		_pBlock->dumpPolygonObj(filename, patchFaces);
 	}
 
-	filename = "trf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
-	_pBlock->dumpPolygonObj(filename, trimFaces);
+	MTC::set<Index3DId> skippedVerts;
+	for (const auto& faceId : realCell.getFaceIds()) {
+		PolygonSplitter ps(_pBlock, faceId);
+		Index3DId newFaceId = ps.createTrimmedFace(pPatch, patchEdges, skippedVerts);
+		if (newFaceId.isValid())
+			trimFaces.insert(newFaceId);
+	}
+
+	if (_polyhedronId == testId) {
+		filename = "trf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
+		_pBlock->dumpPolygonObj(filename, trimFaces);
+	}
 
 	allFaces.insert(trimFaces.begin(), trimFaces.end());
 	allFaces.insert(patchFaces.begin(), patchFaces.end());
 
-	filename = "acf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
-	_pBlock->dumpPolygonObj(filename, allFaces);
+	if (_polyhedronId == testId) {
+		filename = "acf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
+		_pBlock->dumpPolygonObj(filename, allFaces);
+	}
 
 	Index3DId newCellId = _pBlock->addCell(allFaces);
 }
