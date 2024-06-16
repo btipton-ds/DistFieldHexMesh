@@ -333,8 +333,6 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 // TODO we should be able to clear the reference topology now
 
-//		splitAtSharpVerts(params, multiCore);
-//		splitAtSharpEdges(params, multiCore);
 		cutWithTriMesh(params, multiCore);
 	}
 
@@ -435,86 +433,6 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 			}
 		}
 	}
-}
-
-void Volume::splitAtSharpVerts(const BuildCFDParams& params, bool multiCore)
-{
-	if (params.splitAtSharpVerts) {
-		// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
-		bool changed = false;
-		runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				PolyhedronSplitter sp(pBlk.get(), cellId);
-				if (sp.cutAtSharpVerts(params)) {
-					changed = true;
-				}
-			});
-			return true;
-		}, false && multiCore);
-
-		if (changed)
-			finishSplits(multiCore);
-	}
-}
-
-void Volume::splitAtSharpEdges(const BuildCFDParams& params, bool multiCore)
-{
-	// Step one, assure that all cells which will be split due to cusp vertices on sharp edges have clean faces, no partial splits
-	bool changed = true;
-	while (changed) {
-		changed = false;
-		runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				if (cell.sharpEdgesIntersectModel(params)) {
-					if (cell.setNeedsCleanFaces())
-						changed = true;
-				}
-			});
-			return true;
-		}, false && multiCore);
-
-		if (changed)
-			finishSplits(multiCore);
-	}
-
-	changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			PolyhedronSplitter sp(pBlk.get(), cellId);
-			if (sp.cutAtSharpEdges(params))
-				changed = true;
-			});
-		return true;
-	}, false && multiCore);
-
-	if (changed)
-		finishSplits(multiCore);
-
-#if 0
-	// Step 2, split cells which contain sharp edges with cusps (sharp verts)
-	if (changed) {
-		changed = false;
-		runLambda([this, &changed, &params](size_t linearIdx)->bool {
-			auto pBlk = _blocks[linearIdx];
-			pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				PolyhedronSplitter sp(pBlk.get(), cellId);
-				if (sp.splitAtSharpEdgeCusps(params))
-					changed = true;
-				});
-			return true;
-		}, multiCore);
-	}
-	changed = false;
-	runLambda([this, &changed, &params](size_t linearIdx)->bool {
-		auto pBlk = _blocks[linearIdx];
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-			PolyhedronSplitter sp(pBlk.get(), cellId);
-			if (sp.splitAtSharpEdges(params))
-				changed = true;
-			});
-		return true;
-	}, multiCore);
-#endif
 }
 
 void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)

@@ -199,6 +199,18 @@ Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, co
 		faceVertIds = face.getVertexIds();
 		facePlane = face.calPlane();
 	});
+/*
+	if (handeleDoubleEdgeCrossings(patchFaces, newFaceEdges)) {
+		MTC::vector<Index3DId> vertices;
+		if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(_pBlock, newFaceEdges, vertices)) {
+			if (vertices.size() > 2)
+				result = _pBlock->addFace(vertices);
+			else
+				assert(!"Bad vertex set to face");
+		}
+		return result;
+	}
+*/
 
 	for (const auto& patchFaceEdges : patchFaces) {
 		for (const auto& cuttingEdge : patchFaceEdges) {
@@ -238,6 +250,72 @@ Index3DId PolygonSplitter::createTrimmedFace(const TriMesh::PatchPtr& pPatch, co
 	}
 	return result;
 }
+
+#if 0
+bool PolygonSplitter::handeleDoubleEdgeCrossings(const MTC::vector<MTC::set<IntersectEdge>>& patchFaces, MTC::set<Edge>& newEdges) const
+{
+	auto pMesh = _pBlock->getModelMesh();
+
+	MTC::vector<Index3DId> vertIds;
+	Planed facePlane;
+	_pBlock->faceFunc(TS_REAL, _polygonId, [this, &vertIds, &facePlane](const Polygon& face) {
+		vertIds = face.getVertexIds();
+		facePlane = face.calPlane();
+	});
+
+	bool didInsert = false;
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		const auto& vertId0 = vertIds[i];
+		const auto& vertId1 = vertIds[j];
+
+		Vector3d pt0 = _pBlock->getVertexPoint(vertId0);
+		Vector3d pt1 = _pBlock->getVertexPoint(vertId1);
+
+		LineSegmentd seg(pt0, pt1);
+
+		MTC::set<Edge> coinicidenEdges;
+		MTC::map<double, IntersectVertId> iVerts;
+		for (auto& patchFaceEdges : patchFaces) {
+			for (const auto& ie : patchFaceEdges) {
+				Vector3d pt0 = _pBlock->getVertexPoint(ie._vertIds[0]);
+				Vector3d pt1 = _pBlock->getVertexPoint(ie._vertIds[1]);
+				if (facePlane.isCoincident(pt0, Tolerance::sameDistTol()) && facePlane.isCoincident(pt1, Tolerance::sameDistTol())) {
+					coinicidenEdges.insert(Edge(ie._vertIds[0], ie._vertIds[1]));
+					for (int j = 0; j < 2; j++) {
+						Vector3d pt = _pBlock->getVertexPoint(ie._vertIds[j]);
+						double t;
+						if (seg.contains(pt, t, Tolerance::sameDistTol())) {
+							iVerts.insert(make_pair(t, ie._vertIds[j]));
+						}
+					}
+				}
+			}
+		}
+
+		if (iVerts.size() == 2) {
+			didInsert = true;
+			// The verts are in distance order from pt0 to pt1
+			auto iter = iVerts.begin();
+			const auto& iVertId0 = iter->second;
+			iter++;
+			const auto& iVertId1 = iter->second;
+			Vector3d iNorm0 = pMesh->triUnitNormal(iVertId0._triIndex);
+			Vector3d segDir = seg.calcDir();
+
+			newEdges.insert(coinicidenEdges.begin(), coinicidenEdges.end());
+			if (segDir.dot(iNorm0) >= 0) {
+				newEdges.insert(Edge(iVertId0, iVertId1));
+			} else {
+				newEdges.insert(Edge(vertId0, iVertId0));
+				newEdges.insert(Edge(vertId1, iVertId1));
+			}
+		}
+	}
+
+	return didInsert;
+}
+#endif
 
 bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge)
 {

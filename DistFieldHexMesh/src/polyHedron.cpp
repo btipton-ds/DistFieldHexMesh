@@ -499,72 +499,6 @@ Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
 	return getOurBlockPtr()->getVertexPoint(vertId);
 }
 
-
-size_t Polyhedron::createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& facePoints) const
-{
-	facePoints.clear();
-	MTC::set<LineSegmentd> edgeSet;
-	Index3DId result;
-	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(TS_REAL, faceId, [&plane, &edgeSet](const Polygon& face) {
-			LineSegmentd seg;
-			if (face.intersect(plane, seg)) {
-				edgeSet.insert(seg);
-			}
-		});
-	}
-
-	auto intersectionSeg = *edgeSet.begin();
-	edgeSet.erase(edgeSet.begin());
-	facePoints.push_back(intersectionSeg._pts[0]);
-	facePoints.push_back(intersectionSeg._pts[1]);
-	bool found = true;
-	while (found && !edgeSet.empty()) {
-		const auto& lastPt = facePoints.back();
-		found = false;
-		auto iter = edgeSet.begin();
-		for (; iter != edgeSet.end(); iter++) {
-			const auto& intersectionSeg2 = *iter;
-			const auto& pt0 = intersectionSeg2._pts[0];
-			const auto& pt1 = intersectionSeg2._pts[1];
-			if (tolerantEquals(pt1, lastPt)) {
-				facePoints.push_back(pt0);
-				edgeSet.erase(iter);
-				found = true;
-				break;
-			}
-			else if (tolerantEquals(pt0, lastPt)) {
-				facePoints.push_back(pt1);
-				edgeSet.erase(iter);
-				found = true;
-				break;
-			}
-		}
-	}
-	if (!edgeSet.empty() || facePoints.empty())
-		return facePoints.size();
-
-	assert(tolerantEquals(facePoints.front(), facePoints.back()));
-
-	facePoints.pop_back();
-
-	return facePoints.size();
-}
-
-Index3DId Polyhedron::createIntersectionFace(const Planed& plane) const
-{
-	Index3DId result;
-
-	Block* pBlk = const_cast<Block*> (getBlockPtr());
-	MTC::vector<Vector3d> facePoints;
-	if (createIntersectionFacePoints(plane, facePoints) > 2) {
-		Polygon::dumpPolygonPoints(cout, facePoints);
-		result = pBlk->addFace(facePoints);
-	}
-
-	return result;
-}
-
 void Polyhedron::setNeedsDivideAtCentroid()
 {
 	_needsSplitAtCentroid = true;
@@ -803,15 +737,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 	if (!needToSplit && passNum < params.numSharpEdgeIntersectionDivs) {
 		if (sharpEdgesIntersectModel(params))
 			needToSplit = true;
-	}
-
-	if (!needToSplit && passNum < params.numSharpVertDivs) {
-		if (params.splitAtSharpVerts) {
-			auto sharpVerts = getSharpVertIndices();
-			if (sharpVerts.size() > 2) {
-				needToSplit = true;
-			}
-		}
 	}
 
 	if (!needToSplit && passNum < params.numCurvatureDivs) {

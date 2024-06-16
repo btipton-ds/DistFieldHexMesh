@@ -268,160 +268,6 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	return true;
 }
 
-bool PolyhedronSplitter::splitMultipleAtPlane(Block* pBlock, const Planed& plane, MTC::set<Index3DId> targetCellIds, MTC::set<Index3DId>& newCellIds)
-{
-	bool result = false;
-
-	for (const auto& cellId : targetCellIds) {
-		PolyhedronSplitter sp(pBlock, cellId);
-		if (sp.splitAtPlane(plane, newCellIds)) {
-			result = true;
-		}
-	}
-	return result;
-}
-
-bool PolyhedronSplitter::cutAtSharpVerts(const BuildCFDParams& params)
-{
-	bool result = false;
-
-	auto& cell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
-	vector<size_t> verts = cell.getSharpVertIndices();
-
-	for (size_t vIdx : verts) {
-		if (!cutAtSharpVert(vIdx, params)) {
-			result = false;
-		}
-	}
-
-	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
-		_pBlock->freePolyhedron(_polyhedronId, true);
-	}
-
-	return result;
-}
-
-bool PolyhedronSplitter::cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params)
-{
-#if LOGGING_ENABLED
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-	LOG(out << "cutAtSharpVert c" << _polyhedronId << "\n");
-#endif
-	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
-		return false;
-
-	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
-
-	assert(_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId));
-	Polyhedron& referenceCell = _pBlock->getPolyhedron(TS_REFERENCE, _polyhedronId);
-
-	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
-	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
-
-	bool result = cutAtSharpVertInner(realCell, referenceCell, vertIdx, params);
-
-#if LOGGING_ENABLED
-	out.flush();
-#endif
-	return result;
-}
-
-bool PolyhedronSplitter::cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params)
-{
-#if LOGGING_ENABLED
-	auto pLogger = getBlockPtr()->getLogger();
-	auto& out = pLogger->getStream();
-#endif
-	// Construct pyramid faces through the sharp vert and pierce points
-
-	auto pMesh = _pBlock->getModelMesh();
-	bool isConvex = false;
-	LineSegmentd axisSeg;
-	if (!pMesh->isVertConvex(vertIdx, isConvex, axisSeg)) {
-		assert(!"A sharp vertex should always return true.");
-	}
-	MTC::vector<Vector3d> piercePoints;
-	findSharpVertPierecPoints(vertIdx, piercePoints, params);
-
-#if LOGGING_ENABLED
-	LOG(out << "cutAtSharpVertInner, #piercePoints:" << piercePoints.size() << "\n");
-	LOG(out << "Hexadral faces \n");
-	for (const auto& faceId : realCell.getFaceIds()) {
-		LOG(out << "face f" << faceId << "\n");
-		_pBlock->faceFunc(TS_REAL, faceId, [&out](const Polygon& face) {
-			LOG(out << face);
-		});
-	}
-	LOG(out << "Splitting faces \n");
-#endif
-	MTC::vector<MTC::vector<Vector3d>> cutFaces;
-	MTC::vector<Index3DId> modelFaces;
-	if (piercePoints.empty()) {
-		// Smooth case like a cone or ogive. Create a 4 sided pyramid on principal axes
-	} else {
-		// General case, create a parting face
-		Vector3d tipPt = pMesh->getVert(vertIdx)._pt;
-		Index3DId tipVertId = _pBlock->addVertex(tipPt);
-
-		// Lock the sharp vertex when it's created
-		_pBlock->setVertexLockType(tipVertId, VLT_ALL_AXES);
-
-		for (size_t i = 0; i < piercePoints.size(); i++) {
-			size_t j = (i + 1) % piercePoints.size();
-
-			Vector3d xAxis = (piercePoints[i] - tipPt).normalized();
-			Vector3d v1 = (piercePoints[j] - tipPt).normalized();
-			Vector3d yAxis = v1 - xAxis.dot(v1) * xAxis;
-			yAxis.normalize();
-			Vector3d n = v1.cross(xAxis).normalized();
-			Planed modelPlane(tipPt, n, false);
-			MTC::vector<Vector3d> modelFacePoints, newPoints, tempPoints;
-			if (realCell.createIntersectionFacePoints(modelPlane, tempPoints) > 2) {
-				double cosT = v1.dot(xAxis);
-				double sinT = v1.dot(yAxis);
-				double thetaMax = atan2(sinT, cosT);
-
-				for (const auto& pt : tempPoints) {
-					Vector3d v = (pt - tipPt).normalized();
-
-					cosT = v.dot(xAxis);
-					sinT = v.dot(yAxis);
-					double theta = atan2(sinT, cosT);
-					if (theta > 0 && theta < thetaMax)
-						newPoints.push_back(pt);
-				}
-
-				sortNewFacePoints(tipPt, xAxis, yAxis, newPoints);
-				modelFacePoints.push_back(tipPt);
-				modelFacePoints.insert(modelFacePoints.end(), piercePoints[i]);
-				modelFacePoints.insert(modelFacePoints.end(), newPoints.begin(), newPoints.end());
-				modelFacePoints.insert(modelFacePoints.end(), piercePoints[j]);
-				auto newFaceId = _pBlock->addFace(modelFacePoints);
-				modelFaces.push_back(newFaceId);
-
-			}
-		}
-	}
-
-#if LOGGING_ENABLED
-	for (const auto& id : modelFaces) {
-		_pBlock->faceFunc(TS_REAL, id, [&out](const Polygon& face) {
-			LOG(out << face);
-		});
-	}
-#endif
-	string fileName = "modelFacePoints_" + to_string(_polyhedronId[0]) + "_" + to_string(_polyhedronId[1]) + "_" + to_string(_polyhedronId[2]) + "_" + to_string(_polyhedronId.elementId());
-	_pBlock->dumpPolygonObj(fileName, modelFaces);
-
-	_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false, piercePoints);
-
-	MTC::vector<Index3DId> newCellIds;
-	splitWithFaces(realCell, modelFaces, newCellIds);
-
-	return false;
-}
-
 void PolyhedronSplitter::sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const
 {
 	if (points.size() > 1) {
@@ -498,57 +344,9 @@ void PolyhedronSplitter::splitWithFaces(Polyhedron& realCell, const MTC::vector<
 
 }
 
-bool PolyhedronSplitter::cutAtSharpEdges(const BuildCFDParams& params)
-{
-/*
-	Don't handle this via subdivision. The number of divisions can be huge and slow.
-*/
-	bool result = false;
-	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, &params, &result](const Polyhedron& cell) {
-		const double sinSharpAngle = sin(params.getSharpAngleRadians());
-		auto pMesh = getBlockPtr()->getModelMesh();
-		const auto& edgeIndices = cell.getEdgeIndices();
-		if (edgeIndices.empty())
-			return;
-
-		MTC::vector<size_t> sharpEdgeIndices;
-		MTC::set<size_t> edgeSet;
-		MTC::map<Index3DId, MTC::vector<RayHitd>> faceIdMap;
-		for (size_t edgeIdx : edgeIndices) {
-			if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
-				if (!edgeSet.contains(edgeIdx)) {
-					edgeSet.insert(edgeIdx);
-					const auto& edge = pMesh->getEdge(edgeIdx);
-					LineSegmentd seg = edge.getSeg(pMesh);
-					MTC::vector<RayHitd> hits;
-					MTC::vector<Index3DId> faceIds;
-					if (cell.lineSegmentIntersects(seg, hits, faceIds)) {
-						sharpEdgeIndices.push_back(edgeIdx);
-						for (size_t i = 0; i < faceIds.size(); i++) {
-							const auto& faceId = faceIds[i];
-							auto iter = faceIdMap.find(faceId);
-							if (iter == faceIdMap.end())
-								iter = faceIdMap.insert(std::make_pair(faceId, MTC::vector<RayHitd>())).first;
-							iter->second.push_back(hits[i]);
-						}
-					}
-				}
-			}
-		}
-
-		if (sharpEdgeIndices.empty())
-			return;
-
-		_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
-		result = true;
-	});
-
-	return result;
-}
-
 namespace
 {
-	Index3DId testId(0, 12, 0, 20);
+	Index3DId testId(0, 12, 0, 9);
 }
 
 bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
@@ -713,7 +511,8 @@ void PolyhedronSplitter::createPatchFaceEdges(const Polyhedron& realCell, const 
 			});
 		}
 
-		patchEdges.push_back(cutEdges);
+		if (!cutEdges.empty())
+			patchEdges.push_back(cutEdges);
 	}
 }
 
@@ -814,41 +613,6 @@ bool PolyhedronSplitter::facesFormClosedCell(const MTC::set<Index3DId>& faceIds)
 	}
 
 	return true;
-}
-
-bool PolyhedronSplitter::splitAtPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)
-{
-	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
-		return false;
-
-	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
-
-	assert(_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId));
-	Polyhedron& referenceCell = _pBlock->getPolyhedron(TS_REFERENCE, _polyhedronId);
-
-	assert(_pBlock->polyhedronExists(TS_REAL, _polyhedronId));
-	Polyhedron& realCell = _pBlock->getPolyhedron(TS_REAL, _polyhedronId);
-
-	bool result = splitAtPlaneInner(realCell, referenceCell, plane, newCellIds);
-
-	if (result && _pBlock->polyhedronExists(TS_REAL, _polyhedronId)) {
-		newCellIds.erase(_polyhedronId);
-		_pBlock->freePolyhedron(_polyhedronId, true);
-	}
-
-	return result;
-}
-
-bool PolyhedronSplitter::splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, MTC::set<Index3DId>& newCellIds)
-{
-	Index3DId imprintFaceId = realCell.createIntersectionFace(plane);
-
-	if (imprintFaceId.isValid()) {
-		imprintFace(realCell, imprintFaceId, newCellIds);
-		return true;
-	}
-
-	return false;
 }
 
 bool PolyhedronSplitter::imprintFace(Polyhedron& realCell, const Index3DId& imprintFaceId, MTC::set<Index3DId>& newCellIds)

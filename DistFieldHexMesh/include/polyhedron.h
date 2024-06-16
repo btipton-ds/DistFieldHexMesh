@@ -76,9 +76,6 @@ public:
 	bool intersectsModel() const;
 	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
 
-	size_t createIntersectionFacePoints(const Planed& plane, MTC::vector<Vector3d>& points) const;
-	Index3DId createIntersectionFace(const Planed& plane) const;
-
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
 

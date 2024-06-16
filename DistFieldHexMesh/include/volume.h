@@ -126,8 +126,6 @@ private:
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
-	void splitAtSharpVerts(const BuildCFDParams& params, bool multiCore);
-	void splitAtSharpEdges(const BuildCFDParams& params, bool multiCore);
 	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);
 	void doPreSplits(const BuildCFDParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);

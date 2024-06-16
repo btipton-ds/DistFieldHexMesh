@@ -45,17 +45,12 @@ class Polyhedron;
 
 class PolyhedronSplitter {
 public:
-	static bool splitMultipleAtPlane(Block* pBlock, const Planed& plane, MTC::set<Index3DId> targetCellIds, MTC::set<Index3DId>& newCellIds);
-
 	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
 
 	bool splitIfNeeded();
 	bool splitAtPoint(const Vector3d& pt);
-	bool splitAtPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds);
 
 	// Cutting creates final faces "on" the model.
-	bool cutAtSharpVerts(const BuildCFDParams& params);
-	bool cutAtSharpEdges(const BuildCFDParams& params);
 	bool cutWithModelMesh(const BuildCFDParams& params);
 
 	const Block* getBlockPtr() const;
@@ -65,11 +60,7 @@ public:
 
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-	bool splitAtPlaneInner(Polyhedron& realCell, Polyhedron& referanceCell, const Planed& plane, MTC::set<Index3DId>& newCellIds);
 	bool imprintFace(Polyhedron& realCell, const Index3DId& faceId, MTC::set<Index3DId>& newCellIds);
-
-	bool cutAtSharpVert(size_t vertIdx, const BuildCFDParams& params);
-	bool cutAtSharpVertInner(Polyhedron& realCell, Polyhedron& referanceCell, size_t vertIdx, const BuildCFDParams& params);
 
 	void findSharpVertPierecPoints(size_t vertIdx, MTC::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
 	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const;
