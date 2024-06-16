@@ -140,7 +140,7 @@ MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 	const auto& allVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
 	for (size_t vertIdx : allVerts) {
 		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt)) {
+		if (bbox.contains(pt, Tolerance::sameDistTol())) {
 			result.push_back(vertIdx);
 		}
 	}
@@ -421,7 +421,7 @@ bool Polyhedron::intersectsModel() const
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
 		for (size_t idx : sharps) {
-			if (bbox.contains(pTriMesh->getVert(idx)._pt))
+			if (bbox.contains(pTriMesh->getVert(idx)._pt, Tolerance::sameDistTol()))
 				return true;
 		}
 
@@ -594,7 +594,7 @@ bool Polyhedron::containsSharps() const
 	auto pMesh = getBlockPtr()->getModelMesh();
 	for (size_t vertIdx : vertIndices) {
 		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt))
+		if (bbox.contains(pt, Tolerance::sameDistTol()))
 			return true;
 	}
 

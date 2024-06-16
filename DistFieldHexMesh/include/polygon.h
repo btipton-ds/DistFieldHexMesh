@@ -185,6 +185,7 @@ public:
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges);
+	bool isPointOnEdge(const Vector3d& pt) const;
 	void splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const;
 
 	size_t getCreatedDuringSplitNumber() const;

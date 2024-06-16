@@ -432,6 +432,15 @@ VertexLockType Block::getVertexLockType(const Index3DId& vertId) const
 	return getOwner(vertId)->_vertices[vertId].getLockType();
 }
 
+Index3DId Block::addFace(const MTC::vector<IntersectVertId>& vertIndices)
+{
+	MTC::vector<Index3DId> verts;
+	for (const auto& id : vertIndices)
+		verts.push_back(id);
+
+	return addFace(verts);
+}
+
 Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)
@@ -453,6 +462,7 @@ Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 
 	return faceId;
 }
+
 Index3DId Block::addFace(const MTC::vector<Vector3d>& pts)
 {
 	MTC::vector<Index3DId> vertIds;
@@ -520,7 +530,7 @@ Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Ind
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
 			for (const auto& vertIdx : sharps) {
-				if (bbox.contains(getModelMesh()->getVert(vertIdx)._pt)) {
+				if (bbox.contains(getModelMesh()->getVert(vertIdx)._pt, Tolerance::sameDistTol())) {
 					found = true;
 					break;
 				}

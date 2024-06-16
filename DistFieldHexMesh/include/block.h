@@ -123,6 +123,7 @@ public:
 	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
 	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
+	Index3DId addFace(const MTC::vector<IntersectVertId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
 	Index3DId addFace(const MTC::vector<Vector3d>& pts);
 	void addFaceToLookup(const Index3DId& faceId);

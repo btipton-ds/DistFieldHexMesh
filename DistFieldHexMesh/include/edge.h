@@ -38,7 +38,7 @@ template<class T>
 class Plane;
 template<class T>
 struct LineSegment;
-using LineSegmentd = LineSegment<Vector3<double>>;
+using LineSegmentd = LineSegment<double>;
 
 namespace DFHM {
 

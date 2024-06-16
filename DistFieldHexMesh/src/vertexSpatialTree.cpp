@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <vertexSpatialTree.h>
 #include <tm_spatialSearch.hpp>
+#include <tolerances.h>
 #include <vertex.h>
 
 using namespace std;
@@ -45,7 +46,7 @@ bool VertSearchTree<INDEX_TYPE, S>::find(const Vector3d& pt, INDEX_TYPE& result)
 	vector<BaseTree::Entry> entries;
 	if (BaseTree::find(bbox, entries) > 0) {
 		for (const auto& entry : entries) {
-			if (entry.getBBox().contains(pt)) {
+			if (entry.getBBox().contains(pt, Tolerance::sameDistTol())) {
 				result = entry.getIndex();
 				return true;
 			}

@@ -76,9 +76,10 @@ private:
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
 
 	void cutWithPatch(const Polyhedron& realCell, const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, size_t idx);
-	void createPatchFaceEdges(const Polyhedron& realCell, const TriMesh::PatchPtr& pPatch, const BuildCFDParams& params, MTC::vector<MTC::set<IntersectEdge>>& patchEdges) const;
+	void createPatchFaceEdges(const Polyhedron& realCell, const TriMesh::PatchPtr& pPatch, const BuildCFDParams& params, 
+		MTC::set<Index3DId>& skippedVerts, MTC::vector<MTC::set<IntersectEdge>>& patchEdges) const;
 	void createPierceEdges(const Polyhedron& realCell, const std::vector<size_t>& sharpEdges, MTC::set<IntersectEdge>& pierceEdges) const;
-	IntersectVertId findPierceVertex(const Polygon& face, const std::vector<size_t>& modelFaceTris, const std::vector<size_t>& pierceChain) const;
+	IntersectVertId createPierceVertex(const Polygon& face, const std::vector<size_t>& modelFaceTris, const std::vector<size_t>& pierceChain) const;
 	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
 	// Outside is relative to the model/patch, not the cell or face.
 	bool edgePointOutsidePatch(const Index3DId& vert0, const Index3DId& vert1, const Vector3d& pt, const TriMesh::PatchPtr& pPatch) const; // Pt must lie on an edge/corner.

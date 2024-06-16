@@ -312,7 +312,7 @@ bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vect
 		const auto& edge = pMesh->getEdge(edgeIdx);
 		auto seg = edge.getSeg(pMesh);
 		RayHitd hit;
-		if (pl.intersectLineSegment(seg, hit)) {
+		if (pl.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
 			hit.edgeIdx = edgeIdx;
 			piercePoints.push_back(hit);
 		}
@@ -602,7 +602,7 @@ bool Polygon::intersectsModel() const
 					for (const auto& edge : edges) {
 						auto seg = edge.getSegment(getBlockPtr());
 						RayHitd hit;
-						if (seg.intersectTri(pts, hit)) {
+						if (seg.intersectTri(pts, hit, Tolerance::sameDistTol())) {
 							_cachedIntersectsModel = IS_TRUE;
 							break;
 						}
@@ -756,7 +756,7 @@ void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<I
 		for (const auto& vertId : onFaceVerts) {
 			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
 			double t;
-			if (seg.contains(pt, t) && t > 0 && t < 1) {
+			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
 				imprintVerts.insert(vertId);
 				break;
 			}
@@ -772,7 +772,7 @@ size_t Polygon::getImprintIndex(const Vector3d& imprintPoint) const
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		auto seg = edge.getSegment(getBlockPtr());
 		double t;
-		if (seg.contains(imprintPoint, t) && t > 0 && t < 1) {
+		if (seg.contains(imprintPoint, t, Tolerance::sameDistTol())) {
 			return i;
 		}
 	}
@@ -800,7 +800,7 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 			auto seg = edge.getSegment(getBlockPtr());
 			Vector3d pt = getBlockPtr()->getVertexPoint(imprintVert);
 			double t;
-			if (seg.contains(pt, t) && t > 0 && t < 1) {
+			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
 				_vertexIds.push_back(imprintVert);
 				imprinted = true;
 			}
@@ -844,7 +844,7 @@ bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 		size_t j = (i + 1);
 		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
 		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
-		if (seg.intersectTri(pt0, pt1, pt2, hit))
+		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
 			return true;
 	}
 
@@ -860,10 +860,10 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		auto edgeSeg = edge.getSegment(getBlockPtr());
 		RayHitd hit;
-		if (pl.intersectLineSegment(edgeSeg, hit)) {
+		if (pl.intersectLineSegment(edgeSeg, hit, Tolerance::sameDistTol())) {
 #ifdef _DEBUG
 			double t;
-			assert(edgeSeg.contains(hit.hitPt, t));
+			assert(edgeSeg.contains(hit.hitPt, t, Tolerance::sameDistTol()));
 			assert(0 <= t && t <= 1);
 #endif // _DEBUG
 			intersectionPoints.insert(hit.hitPt);
@@ -941,6 +941,19 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 		return true;
 	}
 
+	return false;
+}
+
+bool Polygon::isPointOnEdge(const Vector3d& pt) const
+{
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge e(_vertexIds[i], _vertexIds[j]);
+		auto seg = e.getSegment(getBlockPtr());
+		double t;
+		if (seg.contains(pt, t, Tolerance::sameDistTol()))
+			return true;
+	}
 	return false;
 }
 
