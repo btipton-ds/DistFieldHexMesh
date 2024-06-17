@@ -255,7 +255,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 
 	Vector3d v;
 	double t, dp;
-	if (seg.contains(imprintPt0, t, Tolerance::sameDistTol())) {
+	if (triIndex0 != -1 && seg.contains(imprintPt0, t, Tolerance::sameDistTol())) {
 		const Vector3d meshNorm0 = pMesh->triUnitNormal(triIndex0);
 		if (t < Tolerance::paramTol()) {
 			dp = meshNorm0.dot(vertPt1 - imprintPt0);

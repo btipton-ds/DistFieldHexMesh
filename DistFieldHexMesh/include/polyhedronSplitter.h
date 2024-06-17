@@ -52,6 +52,7 @@ public:
 
 	// Cutting creates final faces "on" the model.
 	bool cutWithModelMesh(const BuildCFDParams& params);
+	bool cutWithModelMesh(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds);
 
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
@@ -66,7 +67,7 @@ private:
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
 	bool splitWithPlane(const Planed& plane, MTC::vector<Index3DId>& newCellIds);
 
-	bool cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params);
+	bool cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds);
 	void cutWithPatch(const Polyhedron& realCell, const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, size_t idx);
 	void createPatchFaceEdges(const Polyhedron& realCell, const TriMesh::PatchPtr& pPatch, const BuildCFDParams& params, 
 		MTC::set<Index3DId>& skippedVerts, MTC::vector<MTC::set<IntersectEdge>>& patchEdges) const;

@@ -460,7 +460,7 @@ namespace
 	Index3DId testId(0, 12, 0, 9);
 }
 
-bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params)
+bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds)
 {
 	bool result = false;
 
@@ -487,7 +487,7 @@ bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const Bui
 
 		for (const auto& cellId : newCellIds) {
 			PolyhedronSplitter subSplitter(_pBlock, cellId);
-			if (subSplitter.cutWithModelMesh(params))
+			if (subSplitter.cutWithModelMesh(params, deadCellIds))
 				result = true;
 		}
 	}
@@ -497,7 +497,33 @@ bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const Bui
 
 bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 {
-	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, params](const Polyhedron& cell)->bool {
+	MTC::set<Index3DId> deadCellIds;
+	if (cutWithModelMesh(params, deadCellIds)) {
+		for (const auto& cellId : deadCellIds) {
+			cellFunc(TS_REAL, cellId, [this](const Polyhedron& cell) {
+				for (const auto& faceId : cell.getFaceIds()) {
+					bool deleteFace = false;
+					_pBlock->faceFunc(TS_REAL, faceId, [&cell, &deleteFace](Polygon& face) {
+						deleteFace = face.numCells() == 0;
+					});
+					if (deleteFace) {
+						_pBlock->freePolygon(faceId, false);
+					}
+				}
+			});
+
+			_pBlock->freePolyhedron(cellId, false);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds)
+{
+	_pBlock->cellFunc(TS_REAL, _polyhedronId, [this, &params, &deadCellIds](const Polyhedron& cell)->bool {
 		auto pMesh = _pBlock->getModelMesh();
 		const auto& tris = cell.getTriIndices();
 		if (!tris.empty()) {
@@ -521,8 +547,11 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 					Planed plane;
 					double err;
 					if (piercePoints.size() > 2 && bestFitPlane(piercePoints, plane, err) && err < Tolerance::sameDistTol()) {
+						for (auto& pPatch : patches) {
+							pPatch->clearSharpEdgeChains();
+						}
 						PolyhedronSplitter subSplitter(_pBlock, _polyhedronId);
-						if (subSplitter.cutWithPlaneAndModelMesh(plane, params))
+						if (subSplitter.cutWithPlaneAndModelMesh(plane, params, deadCellIds))
 							return true;
 					}
 				}
@@ -531,13 +560,15 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 					_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 
 				for (size_t i = 0; i < patches.size(); i++) {
+					auto pPatch = patches[i];
 					std::vector<Vector3d> piercePoints;
-					if (findPiercePoints(patches[i], piercePoints)) {
+					if (findPiercePoints(pPatch, piercePoints)) {
 						Planed plane;
 						double err;
 						if (piercePoints.size() > 2 && bestFitPlane(piercePoints, plane, err) && err < Tolerance::sameDistTol()) {
+							pPatch->clearSharpEdgeChains();
 							PolyhedronSplitter subSplitter(_pBlock, _polyhedronId);
-							if (subSplitter.cutWithPlaneAndModelMesh(plane, params))
+							if (subSplitter.cutWithPlaneAndModelMesh(plane, params, deadCellIds))
 								return true;
 						}
 					}
@@ -546,17 +577,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 				}
 			}
 
-			for (const auto& faceId : cell.getFaceIds()) {
-				bool deleteFace = false;
-				_pBlock->faceFunc(TS_REAL, faceId, [&cell, &deleteFace](Polygon& face) {
-					deleteFace = face.numCells() == 0;
-				});
-				if (deleteFace) {
-					_pBlock->freePolygon(faceId, false);
-				}
-			}
-
-			_pBlock->freePolyhedron(_polyhedronId, false);
+			deadCellIds.insert(_polyhedronId);
 		}
 		return true;
 	});
