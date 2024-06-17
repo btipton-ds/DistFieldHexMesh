@@ -795,20 +795,20 @@ bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 
 void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
+	_edgeIndices.clear();
 	if (!indices.empty()) {
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
-
 		pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
 	}
 }
 
 void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
+	_triIndices.clear();
 	if (!indices.empty()) {
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
-
 		pTriMesh->processFoundTris(indices, bbox, _triIndices);
 	}
 }
