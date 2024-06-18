@@ -52,7 +52,6 @@ public:
 
 	// Cutting creates final faces "on" the model.
 	bool cutWithModelMesh(const BuildCFDParams& params);
-	bool cutWithModelMesh(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds);
 
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
@@ -65,16 +64,17 @@ private:
 	void findSharpVertPierecPoints(size_t vertIdx, MTC::vector<Vector3d>& piercePoints, const BuildCFDParams& params) const;
 	void sortNewFacePoints(const Vector3d& tipPt, const Vector3d& xAxis, const Vector3d& yAxis, MTC::vector<Vector3d>& points) const;
 	void splitWithFaces(Polyhedron& realCell, const MTC::vector<Index3DId>& imprintFaces, MTC::vector<Index3DId>& newCellIds) const;
-	bool splitWithPlane(const Planed& plane, MTC::vector<Index3DId>& newCellIds);
+	bool splitWithPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds);
 
-	bool cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds);
+	bool cutWithModelMeshInner(const BuildCFDParams& params, const std::vector<TriMesh::PatchPtr>& patches, 
+		std::vector<std::vector<std::vector<size_t>>>& allChains, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds);
 	void cutWithPatch(const Polyhedron& realCell, const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, size_t idx);
 	void createPatchFaceEdges(const Polyhedron& realCell, const TriMesh::PatchPtr& pPatch, const BuildCFDParams& params, 
 		MTC::set<Index3DId>& skippedVerts, MTC::vector<MTC::set<IntersectEdge>>& patchEdges) const;
 	void createPierceEdges(const Polyhedron& realCell, const std::vector<size_t>& sharpEdges, MTC::set<IntersectEdge>& pierceEdges) const;
 	bool findPiercePoint(const Polygon& face, const std::vector<size_t>& pierceChain, Vector3d& pt) const;
-	bool findPiercePoints(const TriMesh::PatchPtr& patch, std::vector<Vector3d>& pts) const;
-	bool findPiercePoints(const std::vector<TriMesh::PatchPtr>& patches, std::vector<Vector3d>& pts) const;
+	bool findPiercePoints(const std::vector<std::vector<size_t>>& faceEdgeChains, std::vector<Vector3d>& pts) const;
+	bool findPiercePoints(const std::vector<std::vector<std::vector<size_t>>>& allFaceEdgeChains, std::vector<Vector3d>& pts) const;
 	IntersectVertId createPierceVertex(const Polygon& face, const std::vector<size_t>& pierceChain) const;
 	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
 	// Outside is relative to the model/patch, not the cell or face.

@@ -638,6 +638,17 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 #endif
 }
 
+void Polyhedron::detachFaces()
+{
+	for (const auto& faceId : _faceIds) {
+		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+				face.removeCellId(getId());
+			});
+		}
+	}
+}
+
 void Polyhedron::replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel)
 {
 	clearCache();

@@ -94,6 +94,7 @@ public:
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
+	void detachFaces();
 	void replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(MTC::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
