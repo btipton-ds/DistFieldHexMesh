@@ -936,12 +936,12 @@ void Volume::getBoundaryPlanes(std::vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	vals.push_back(Planed(_boundingBox.getMin(), xAxis, false)); // frontPlane
-	vals.push_back(Planed(_boundingBox.getMin(), yAxis, false)); // leftPlane
-	vals.push_back(Planed(_boundingBox.getMin(), zAxis, false)); // bottomPlane
-	vals.push_back(Planed(_boundingBox.getMax(), xAxis, false)); // backPlane
-	vals.push_back(Planed(_boundingBox.getMax(), yAxis, false)); // rightPlane
-	vals.push_back(Planed(_boundingBox.getMax(), zAxis, false)); // topPlane
+	vals.push_back(Planed(_boundingBox.getMin(), xAxis)); // frontPlane
+	vals.push_back(Planed(_boundingBox.getMin(), yAxis)); // leftPlane
+	vals.push_back(Planed(_boundingBox.getMin(), zAxis)); // bottomPlane
+	vals.push_back(Planed(_boundingBox.getMax(), xAxis)); // backPlane
+	vals.push_back(Planed(_boundingBox.getMax(), yAxis)); // rightPlane
+	vals.push_back(Planed(_boundingBox.getMax(), zAxis)); // topPlane
 
 }
 

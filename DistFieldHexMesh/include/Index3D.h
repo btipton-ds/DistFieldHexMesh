@@ -85,7 +85,7 @@ private:
 	static Index3DBaseType s_blockDim;
 	union {
 		Index3DBaseType _vals[4];
-		size_t _iVal;
+		size_t _iVal = -1;
 	};
 };
 
@@ -116,7 +116,7 @@ inline Index3DBase::Index3DBase(const Vector3i& src)
 inline bool Index3DBase::isValid() const
 {
 	const Index3DBaseType t = 0xffff;
-	return _vals[0] != t && _vals[1] != t && _vals[1] != t;
+	return _vals[0] != t && _vals[1] != t && _vals[2] != t;
 }
 
 inline bool Index3DBase::isInBounds(size_t bound) const

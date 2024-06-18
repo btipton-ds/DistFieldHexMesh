@@ -462,7 +462,7 @@ Planed Polygon::calPlane() const
 {
 	Vector3d origin = calCentroid(); // Use every point to get more preceision
 	Vector3d normal = calUnitNormal();
-	Planed result(origin, normal, false);
+	Planed result(origin, normal);
 
 #ifdef _DEBUG
 	for (const auto& vId : _vertexIds) {
@@ -522,7 +522,7 @@ double Polygon::distanceToPoint(const Vector3d& pt) const
 		Vector3d v0 = pt0 - ctr;
 		Vector3d v1 = pt1 - ctr;
 		Vector3d n = v1.cross(v0).normalized();
-		Planed pl(ctr, n, false);
+		Planed pl(ctr, n);
 		double d = pl.distanceToPoint(pt);
 		return d;
 	}
@@ -619,7 +619,7 @@ bool Polygon::intersectsModel() const
 
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
-	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal(), false);
+	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal());
 	return pl.distanceToPoint(pt);
 }
 
@@ -656,7 +656,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
 	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds[0]); // And point will do
 	Vector3d normal = calUnitNormal();
-	Plane pl(origin, normal, false);
+	Plane pl(origin, normal);
 	auto result = pl.projectPoint(pt);
 
 	return result;
@@ -825,7 +825,7 @@ bool Polygon::isPlanar() const
 
 	Vector3d ctr = calCentroid();
 	Vector3d norm = calUnitNormal();
-	Planed pl(ctr, norm, false);
+	Planed pl(ctr, norm);
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		Vector3d pt = getBlockPtr()->getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
@@ -861,11 +861,6 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 		auto edgeSeg = edge.getSegment(getBlockPtr());
 		RayHitd hit;
 		if (pl.intersectLineSegment(edgeSeg, hit, Tolerance::sameDistTol())) {
-#ifdef _DEBUG
-			double t;
-			assert(edgeSeg.contains(hit.hitPt, t, Tolerance::sameDistTol()));
-			assert(0 <= t && t <= 1);
-#endif // _DEBUG
 			intersectionPoints.insert(hit.hitPt);
 		}
 	}
@@ -911,7 +906,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 					continue;
 
 				auto normal = pMesh->triUnitNormal(triIdx);
-				Planed triPlane(vertPt, normal, false);
+				Planed triPlane(vertPt, normal);
 
 				skip = isCoplanar(triPlane);
 				if (skip)
@@ -1045,7 +1040,7 @@ bool Polygon::verifyTopology() const
 		bool isBoundaryFace = false;
 
 		for (const auto& bPl : boundaryPlanes) {
-			if (facePlane.isCoincident(bPl, Tolerance::sameDistTol())) {
+			if (facePlane.isCoincident(bPl, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol())) {
 				isBoundaryFace = true;
 			}
 		}

@@ -361,7 +361,7 @@ bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::vector<Index3D
 			facePlane = face.calPlane();
 		});
 
-		if (plane.isCoincident(facePlane, Tolerance::sameDistTol()))
+		if (plane.isCoincident(facePlane, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol()))
 			return false;
 	}
 
@@ -457,7 +457,11 @@ bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::vector<Index3D
 
 namespace
 {
-	Index3DId testId(0, 12, 0, 9);
+	std::set<Index3DId> testIds = { 
+		Index3DId(0, 12, 0, 9), 
+		Index3DId(0, 12, 0, 49),
+		Index3DId(0, 12, 0, 50),
+	};
 }
 
 bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds)
@@ -476,13 +480,13 @@ bool PolyhedronSplitter::cutWithPlaneAndModelMesh(const Planed& plane, const Bui
 		faceFunc(TS_REAL, faceId, [&facePlane](const Polygon& face) {
 			facePlane = face.calPlane();
 		});
-		if (plane.isCoincident(facePlane, Tolerance::sameDistTol()))
+		if (plane.isCoincident(facePlane, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol()))
 			return false;
 	}
 
 	MTC::vector<Index3DId> newCellIds;
 	if (splitWithPlane(plane, newCellIds)) {
-		if (_polyhedronId == testId)
+		if (testIds.contains(_polyhedronId))
 			_pBlock->dumpPolyhedraObj(newCellIds, true, false, false);
 
 		for (const auto& cellId : newCellIds) {
@@ -534,7 +538,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params, MTC::set
 				});
 			}
 
-			if (_polyhedronId == testId) {
+			if (testIds.contains(_polyhedronId)) {
 				int dbgBreak = 1;
 			}
 
@@ -556,7 +560,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params, MTC::set
 					}
 				}
 
-				if (_polyhedronId == testId)
+				if (testIds.contains(_polyhedronId))
 					_pBlock->dumpPolyhedraObj({ _polyhedronId }, true, false, false);
 
 				for (size_t i = 0; i < patches.size(); i++) {
@@ -607,7 +611,7 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 		return;
 
 	string filename;
-	if (_polyhedronId == testId && !patchFaces.empty()) {
+	if (testIds.contains(_polyhedronId) && !patchFaces.empty()) {
 		filename = "mpf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
 		_pBlock->dumpPolygonObj(filename, patchFaces);
 	}
@@ -619,7 +623,7 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 			trimFaces.insert(newFaceId);
 	}
 
-	if (_polyhedronId == testId && !trimFaces.empty()) {
+	if (testIds.contains(_polyhedronId) && !trimFaces.empty()) {
 		filename = "trf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
 		_pBlock->dumpPolygonObj(filename, trimFaces);
 	}
@@ -627,7 +631,7 @@ void PolyhedronSplitter::cutWithPatch(const Polyhedron& realCell, const std::vec
 	allFaces.insert(trimFaces.begin(), trimFaces.end());
 	allFaces.insert(patchFaces.begin(), patchFaces.end());
 
-	if (_polyhedronId == testId && !allFaces.empty()) {
+	if (testIds.contains(_polyhedronId) && !allFaces.empty()) {
 		filename = "acf_" + to_string(idx) + " " + Block::getLoggerNumericCode(_polyhedronId);
 		_pBlock->dumpPolygonObj(filename, allFaces);
 	}

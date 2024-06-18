@@ -36,6 +36,16 @@ namespace Tolerance
 		return 1.0e-9; // meters
 	}
 
+	inline double planeCoincidentDistTol()
+	{
+		return 1.0e-7; // meters
+	}
+
+	inline double planeCoincidentCrossProductTol()
+	{
+		return 1.0e-6; // meters
+	}
+
 	inline double paramTol() {
 		return 1.0e-12;
 	}
