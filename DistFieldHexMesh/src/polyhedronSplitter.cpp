@@ -469,10 +469,16 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 		_pBlock->dumpPolygonObj(filename, modelFaces);
 	}
 
-	MTC::vector<Index3DId> newFaceIds;
+	MTC::set<Index3DId> newFaceIds;
 	for (const auto& faceId : faceIds) {
 		PolygonSplitter ps(getBlockPtr(), faceId);
 		ps.createTrimmedFacesFromFaces(modelFaces, newFaceIds);
+	}
+	newFaceIds.insert(modelFaces.begin(), modelFaces.end());
+
+	{
+		string filename = "anf " + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
+		_pBlock->dumpPolygonObj(filename, newFaceIds);
 	}
 
 	std::vector<std::vector<std::vector<size_t>>> allChains;

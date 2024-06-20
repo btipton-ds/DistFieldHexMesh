@@ -59,14 +59,14 @@ void Block::NAME##Func(TopolgyState state, const Index3DId& id, const function<v
 #define LAMBDA_CLIENT_FUNC_IMPL_0(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
 void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
-	auto p = getBlockPtr(); \
+	CONST auto p = getBlockPtr(); \
 	p->NAME##Func(id, func); \
 }
 
 #define LAMBDA_CLIENT_FUNC_IMPL_1(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
 void CLASS::NAME##Func(TopolgyState state, const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
-	auto p = getBlockPtr(); \
+	CONST auto p = getBlockPtr(); \
 	p->NAME##Func(state, id, func); \
 }
 

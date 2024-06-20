@@ -44,10 +44,21 @@ PolygonSplitter::PolygonSplitter(Block* pBlock, const Index3DId& polygonId)
 {
 }
 
+Index3DId PolygonSplitter::addVertex(const Vector3d& pt) const
+{
+	return _pBlock->addVertex(pt);
+}
+
+Index3DId PolygonSplitter::addFace(const Polygon& face) const
+{
+	return _pBlock->addFace(face);
+}
+
+
 bool PolygonSplitter::splitAtCentroid()
 {
 	Vector3d ctr;
-	_pBlock->faceAvailFunc(TS_REFERENCE, _polygonId, [&ctr](const Polygon& face) {
+	getBlockPtr()->faceAvailFunc(TS_REFERENCE, _polygonId, [&ctr](const Polygon& face) {
 		ctr = face.calCentroid();
 		});
 
@@ -56,22 +67,22 @@ bool PolygonSplitter::splitAtCentroid()
 
 bool PolygonSplitter::splitAtPoint(const Vector3d& pt)
 {
-	_pBlock->makeRefPolygonIfRequired(_polygonId);
+	getBlockPtr()->makeRefPolygonIfRequired(_polygonId);
 
-	assert(_pBlock->polygonExists(TS_REFERENCE, _polygonId));
-	Polygon& referenceFace = _pBlock->getPolygon(TS_REFERENCE, _polygonId);
+	assert(getBlockPtr()->polygonExists(TS_REFERENCE, _polygonId));
+	Polygon& referenceFace = getBlockPtr()->getPolygon(TS_REFERENCE, _polygonId);
 
 	if (!referenceFace._splitFaceProductIds.empty()) {
 		return false;
 	}
 
-	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
-	Polygon& realFace = _pBlock->getPolygon(TS_REAL, _polygonId);
+	assert(getBlockPtr()->polygonExists(TS_REAL, _polygonId));
+	Polygon& realFace = getBlockPtr()->getPolygon(TS_REAL, _polygonId);
 
 	bool result = splitAtPointInner(realFace, referenceFace, pt);
 
-	if (_pBlock->polygonExists(TS_REAL, _polygonId)) {
-		_pBlock->freePolygon(_polygonId, true);
+	if (getBlockPtr()->polygonExists(TS_REAL, _polygonId)) {
+		getBlockPtr()->freePolygon(_polygonId, true);
 	}
 
 	return result;
@@ -79,8 +90,8 @@ bool PolygonSplitter::splitAtPoint(const Vector3d& pt)
 
 bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const
 {
-	assert(_pBlock->isPolygonReference(&referanceFace));
-	assert(_pBlock->polygonExists(TS_REAL, _polygonId));
+	assert(getBlockPtr()->isPolygonReference(&referanceFace));
+	assert(getBlockPtr()->polygonExists(TS_REAL, _polygonId));
 	const double sinAngleTol = sin(Tolerance::angleTol());
 
 	assert(referanceFace.cellsOwnThis());
@@ -96,11 +107,11 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 
 		// Be sure to project directly to the edge itself. 
 		// DO NOT project to the face followed by the edge, because that can result in two points on the same edge.
-		Vector3d edgePt = edge.projectPt(_pBlock, pt);
+		Vector3d edgePt = edge.projectPt(getBlockPtr(), pt);
 		bool inBounds;
-		double t = edge.paramOfPt(_pBlock, edgePt, inBounds);
+		double t = edge.paramOfPt(getBlockPtr(), edgePt, inBounds);
 		if (inBounds) {
-			Index3DId vertId = _pBlock->addVertex(edgePt);
+			Index3DId vertId = addVertex(edgePt);
 			edgePtIds[i] = vertId;
 
 			referanceFace.addSplitEdgeVert(edge, vertId);
@@ -119,7 +130,7 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 	}
 #endif
 
-	Index3DId facePtId = _pBlock->addVertex(facePt);
+	Index3DId facePtId = addVertex(facePt);
 
 #ifdef _DEBUG
 	Vector3d srcNorm = referanceFace.calUnitNormal();
@@ -134,17 +145,17 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 		Polygon newFace({ facePtId, priorEdgeId, vertId, nextEdgeId });
 
 #ifdef _DEBUG
-		Vector3d newNorm = Polygon::calUnitNormalStat(_pBlock, newFace.getVertexIds());
+		Vector3d newNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFace.getVertexIds());
 		double cp = newNorm.cross(srcNorm).norm();
 		assert(cp < sinAngleTol);
 #endif // _DEBUG
 
-		auto newFaceId = _pBlock->addFace(newFace);
+		auto newFaceId = addFace(newFace);
 		referanceFace.addToSplitFaceProductIds(newFaceId);
 	}
 
 	for (const auto& cellId : cellIds) {
-		if (_pBlock->polyhedronExists(TS_REAL, cellId)) {
+		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId)) {
 			size_t splitLevel = realFace.getSplitLevel(cellId);
 			const auto& splits = referanceFace._splitFaceProductIds;
 
@@ -163,21 +174,21 @@ bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patch
 {
 	const double SDTol = Tolerance::sameDistTol();
 
-	auto pMesh = _pBlock->getModelMesh();
+	auto pMesh = getBlockPtr()->getModelMesh();
 	MTC::set<Edge> newFaceEdges;
 	MTC::vector<Index3DId> newVertIds;
 
 	MTC::vector<Index3DId> faceVertIds;
 	Planed facePlane;
-	_pBlock->faceFunc(TS_REAL, _polygonId, [&faceVertIds, &facePlane](const Polygon& face) {
+	getBlockPtr()->faceFunc(TS_REAL, _polygonId, [&faceVertIds, &facePlane](const Polygon& face) {
 		faceVertIds = face.getVertexIds();
 		facePlane = face.calPlane();
 	});
 
 	for (const auto& patchFaceEdges : patchFaces) {
 		for (const auto& cuttingEdge : patchFaceEdges) {
-			Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge.getVertex(0));
-			Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge.getVertex(1));
+			Vector3d imprintPt0 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(0));
+			Vector3d imprintPt1 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(1));
 
 			if (!facePlane.isCoincident(imprintPt0, SDTol) || !facePlane.isCoincident(imprintPt1, SDTol))
 				continue;
@@ -204,9 +215,9 @@ bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patch
 	}
 
 	MTC::vector<Index3DId> vertices;
-	if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(_pBlock, newFaceEdges, vertices)) {
+	if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(getBlockPtr(), newFaceEdges, vertices)) {
 		if (vertices.size() > 2)
-			result = _pBlock->addFace(vertices);
+			result = getBlockPtr()->addFace(vertices);
 		else
 			assert(!"Bad vertex set to face");
 	}
@@ -231,15 +242,15 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 	});
 
 	if (pts.size() == 2) {
-		Index3DId vertId0 = getBlockPtr()->addVertex(pts[0]);
-		Index3DId vertId1 = getBlockPtr()->addVertex(pts[1]);
+		Index3DId vertId0 = addVertex(pts[0]);
+		Index3DId vertId1 = addVertex(pts[1]);
 		return Edge(vertId0, vertId1);
 	}
 
 	return Edge();
 }
 
-void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::vector<Index3DId>& newFaceIds)
+void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds)
 {
 	faceFunc(TS_REAL, _polygonId, [&](const Polygon& realFace) {
 		Planed facePlane = realFace.calPlane();
@@ -306,77 +317,8 @@ void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& mod
 			if (!verts.empty()) {
 				// make a face
 				Index3DId newFaceId = getBlockPtr()->addFace(verts);
-				newFaceIds.push_back(newFaceId);
+				newFaceIds.insert(newFaceId);
 			}
-		}
-	});
-}
-
-void PolygonSplitter::createModelInterectionEdges(const std::vector<size_t>& modFaceTris, const BuildCFDParams& params, MTC::set<Edge>& faceEdges)
-{
-	faceFunc(TS_REAL, _polygonId, [&](const Polygon& realFace) {
-		auto pMesh = getBlockPtr()->getModelMesh();
-		MTC::set<IntersectVertId> interVerts;
-		const auto& vertIds = realFace.getVertexIds();
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			const auto& vertId0 = vertIds[i];
-			const auto& vertId1 = vertIds[j];
-			Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
-			Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
-
-			LineSegmentd seg(pt0, pt1);
-			for (size_t triIdx : modFaceTris) {
-				RayHitd hit;
-				if (pMesh->intersectsTri(seg, triIdx, hit)) {
-					auto vertId = getBlockPtr()->addVertex(hit.hitPt);
-					interVerts.insert(IntersectVertId(vertId, triIdx));
-				}
-			}
-		}
-
-		MTC::set<Index3DId> pierceVerts;
-		const double sinEdgeAngle = sin(params.getSharpAngleRadians());
-		for (size_t triIdx : modFaceTris) {
-			const auto& tri = pMesh->getTri(triIdx);
-			for (int i = 0; i < 3; i++) {
-				int j = (i + 1) % 3;
-				size_t edgeIdx = pMesh->findEdge(TriMesh::CEdge(tri[i], tri[j]));
-				if (edgeIdx != -1) {
-					if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
-						const auto& edge = pMesh->getEdge(edgeIdx);
-						auto seg = edge.getSeg(pMesh);
-						RayHitd hit;
-						if (realFace.intersect(seg, hit)) {
-							auto pierceVert = getBlockPtr()->addVertex(hit.hitPt);
-							pierceVerts.insert(pierceVert);
-						}
-					}
-					const auto& edge = pMesh->getEdge(edgeIdx);
-				}
-			}
-		}
-
-		if (pierceVerts.size() == 2) {
-			auto iter = pierceVerts.begin();
-			faceEdges.insert(Edge(*iter++, *iter++));
-		}
-		else if (interVerts.size() == 1) {
-			assert(pierceVerts.size() == 1);
-			auto pierceVert = *pierceVerts.begin();
-
-			if (pierceVert.isValid()) {
-				const auto& vertId0 = *interVerts.begin();
-				if (vertId0 != pierceVert)
-					faceEdges.insert(Edge(vertId0, pierceVert));
-			}
-		}
-		else if (interVerts.size() == 2) {
-			auto iter = interVerts.begin();
-			const auto& vertId0 = *iter++;
-			const auto& vertId1 = *iter++;
-			if (vertId0 != vertId1)
-				faceEdges.insert(Edge(vertId0, vertId1));
 		}
 	});
 }
@@ -494,15 +436,15 @@ bool PolygonSplitter::calModelNorm(const MTC::map<Index3DId, MTC::set<Edge>>& ve
 
 bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const Edge& cuttingEdge, Edge& newEdge)
 {
-	auto pMesh = _pBlock->getModelMesh();
+	auto pMesh = getBlockPtr()->getModelMesh();
 	const auto& vertId0 = srcEdge.getVertex(0);
 	const auto& vertId1 = srcEdge.getVertex(1);
 
-	const Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge.getVertex(0));
-	const Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge.getVertex(1));
+	const Vector3d imprintPt0 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(0));
+	const Vector3d imprintPt1 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(1));
 
-	const Vector3d vertPt0 = _pBlock->getVertexPoint(vertId0);
-	const Vector3d vertPt1 = _pBlock->getVertexPoint(vertId1);
+	const Vector3d vertPt0 = getBlockPtr()->getVertexPoint(vertId0);
+	const Vector3d vertPt1 = getBlockPtr()->getVertexPoint(vertId1);
 	const LineSegment seg(vertPt0, vertPt1);
 #if 0
 	size_t triIndex0 = cuttingEdge._vertIds[0]._triIndex;

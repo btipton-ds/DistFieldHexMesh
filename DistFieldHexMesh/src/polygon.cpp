@@ -989,46 +989,6 @@ bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vec
 
 }
 
-void Polygon::imprintModelEdges(const MTC::set<Edge>& modelEdges, MTC::set<Edge>& edges)
-{
-	bool changed = true;
-	while (changed) {
-		changed = false;
-		MTC::set<Edge> tmpEdges;
-		for (auto iter = edges.begin(); iter != edges.end(); iter++) {
-			auto iter2 = iter;
-			iter2++;
-			const auto& testEdge = *iter;
-			auto seg = testEdge.getSegment(getBlockPtr());
-			bool didSplit = false;
-			for (; iter2 != edges.end(); iter2++) {
-				const auto& edge1 = *iter2;
-				for (int i = 0; i < 2; i++) {
-					double t;
-					const auto iVert = edge1.getVertex(i);
-					const auto& pt = getBlockPtr()->getVertexPoint(iVert);
-					if (seg.contains(pt, t, Tolerance::sameDistTol()) && t > Tolerance::sameDistTol() && t < 1 - Tolerance::sameDistTol()) {
-						for (int j = 0; j < 2; j++) {
-							const auto& vertId = testEdge.getVertex(j);
-							if (vertId != iVert) {
-								Edge e(vertId, iVert);
-								if (!tmpEdges.contains(e)) {
-									changed = didSplit = true;
-									tmpEdges.insert(e);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if (!didSplit)
-				tmpEdges.insert(testEdge);
-		}
-		edges = tmpEdges;
-	}
-}
-
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
 {
 	for (size_t i = 0; i < vertIds.size(); i++) {

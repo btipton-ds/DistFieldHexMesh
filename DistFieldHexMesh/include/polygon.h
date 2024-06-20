@@ -214,7 +214,6 @@ private:
 	TopolgyState getState() const;
 	void clearCache() const;
 	size_t getCellTris(std::vector<size_t>& indices) const;
-	void imprintModelEdges(const MTC::set<Edge>& modelEdges, MTC::set<Edge>& edges);
 
 	size_t _createdDuringSplitNumber = 0;
 	MTC::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
