@@ -38,6 +38,16 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+namespace
+{
+
+std::set<Index3DId> breakIds = {
+	Index3DId(3, 9, 0, 33),
+	Index3DId(3, 9, 0, 52),
+};
+
+}
+
 PolygonSplitter::PolygonSplitter(Block* pBlock, const Index3DId& polygonId)
 	: _pBlock(pBlock)
 	, _polygonId(polygonId)
@@ -253,6 +263,10 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds)
 {
 	faceFunc(TS_REAL, _polygonId, [&](const Polygon& realFace) {
+		if (breakIds.contains(_polygonId)) {
+			int dbgBreak = 1;
+		}
+
 		Planed facePlane = realFace.calPlane();
 		MTC::set<Edge> modelEdges, edges;
 		for (const auto& faceId : modelFaces) {
@@ -364,44 +378,47 @@ void PolygonSplitter::createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges,
 			edgeIntersectionMap.insert(make_pair(1, vertIds[j]));
 
 			auto iter = edgeIntersectionMap.begin();
-			auto iter2 = iter;
-			iter2++;
 
-			MTC::set<Edge> legEdges;
-			while (iter2 != edgeIntersectionMap.end()) {
+			while ((iter + 1) != edgeIntersectionMap.end()) {
+				double t0 = iter->first;
 				const auto& vertId0 = iter->second;
-				const auto& vertId1 = iter2->second;
-				legEdges.insert(Edge(vertId0, vertId1));
-				iter = iter2;
-				iter2++;
-			}
 
-			for (const auto& edge : legEdges) {
-				const auto& vertId0 = edge.getVertex(0);
-				const auto& vertId1 = edge.getVertex(1);
+				double t1 = (iter + 1)->first;
+				const auto& vertId1 = (iter + 1)->second;
+				assert(t1 > t0);
+
 				Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
 				Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
-				Vector3d midPt = (pt0 + pt1) / 2;
-				Vector3d v0 = pt0 - midPt;
-				Vector3d v1 = pt1 - midPt;
+				Vector3d v0 = pt1 - pt0;
+				Vector3d v1 = -v0;
 
 				Vector3d modelNorm0, modelNorm1;
 				bool hasModelNorm0 = calModelNorm(vertModEdgeMap, vertId0, modelNorm0);
 				bool hasModelNorm1 = calModelNorm(vertModEdgeMap, vertId1, modelNorm1);
 				if (hasModelNorm0 && hasModelNorm1) {
-					if ((modelNorm0.dot(v0) < 0) && (modelNorm1.dot(v1) < 0)) {
+
+					double dp0 = modelNorm0.dot(v0);
+					double dp1 = modelNorm1.dot(v1);
+					if ((dp0 > 0) && (dp1 > 0)) {
+						trimEdges.insert(Edge(vertId0, vertId1));
+					}
+				} else if (hasModelNorm0) {
+					double dp = modelNorm0.dot(v0);
+					if (dp > 0) {
+						trimEdges.insert(Edge(vertId0, vertId1));
+					}
+				} else if (hasModelNorm1) {
+					double dp = modelNorm1.dot(v1);
+					if (dp > 0) {
 						trimEdges.insert(Edge(vertId0, vertId1));
 					}
 				}
-				else if (hasModelNorm0 && modelNorm0.dot(v0) < 0) {
-					trimEdges.insert(Edge(vertId0, vertId1));
-				}
-				else if (hasModelNorm1 && modelNorm1.dot(v1) < 0) {
-					trimEdges.insert(Edge(vertId0, vertId1));
-				}
+
+				iter++;
 			}
-			trimEdges.insert(modFaceEdges.begin(), modFaceEdges.end());
 		}
+
+		trimEdges.insert(modFaceEdges.begin(), modFaceEdges.end());
 	});
 }
 

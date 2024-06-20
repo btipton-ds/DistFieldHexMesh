@@ -304,6 +304,9 @@ bool PolyhedronSplitter::createAllPatchFaces(const std::vector<TriMesh::PatchPtr
 						std::reverse(verts.begin(), verts.end());
 
 					Index3DId faceId = getBlockPtr()->addFace(verts);
+					faceFunc(TS_REAL, faceId, [&modelFaceNorm](const Polygon& face) {
+						assert(face.calUnitNormal().dot(modelFaceNorm) > 0);
+					});
 					modelFaces.insert(faceId);
 				}
 			}
@@ -472,7 +475,14 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 	MTC::set<Index3DId> newFaceIds;
 	for (const auto& faceId : faceIds) {
 		PolygonSplitter ps(getBlockPtr(), faceId);
-		ps.createTrimmedFacesFromFaces(modelFaces, newFaceIds);
+		MTC::set<Index3DId> tmp;
+		ps.createTrimmedFacesFromFaces(modelFaces, tmp);
+		{
+			string filename = "anf " + getBlockPtr()->getLoggerNumericCode() + "_face_" + to_string(faceId.elementId());
+			_pBlock->dumpPolygonObj(filename, tmp);
+		}
+
+		newFaceIds.insert(tmp.begin(), tmp.end());
 	}
 	newFaceIds.insert(modelFaces.begin(), modelFaces.end());
 
