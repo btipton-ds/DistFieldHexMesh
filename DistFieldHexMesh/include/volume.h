@@ -99,7 +99,6 @@ public:
 
 private:
 	friend class Vertex;
-	friend class Edge;
 	friend class Polygon;
 	friend class Polyhedron;
 	friend class Block;

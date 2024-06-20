@@ -44,7 +44,7 @@ namespace DFHM {
 
 		bool splitAtCentroid();
 		bool splitAtPoint(const Vector3d& pt);
-		bool createTrimmedFace(const MTC::vector<MTC::set<IntersectEdge>>& patchFaceEdges, 
+		bool createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patchFaceEdges, 
 			const MTC::set<Index3DId>& skippedVerts, Index3DId& faceId);
 		Edge createIntersectionEdge(const Planed& plane);
 
@@ -60,7 +60,7 @@ namespace DFHM {
 
 	private:
 		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
-		bool createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge);
+		bool createTrimmedEdge(const Edge& srcEdge, const Edge& cuttingEdge, Edge& newEdge);
 
 		Block* _pBlock;
 		Index3DId _polygonId;

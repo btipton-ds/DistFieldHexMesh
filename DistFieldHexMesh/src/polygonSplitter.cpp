@@ -157,7 +157,7 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 	return true;
 }
 
-bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<IntersectEdge>>& patchFaces,
+bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patchFaces,
 	const MTC::set<Index3DId>& skippedVerts, Index3DId& result)
 {
 	const double SDTol = Tolerance::sameDistTol();
@@ -175,13 +175,13 @@ bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<IntersectEdge
 
 	for (const auto& patchFaceEdges : patchFaces) {
 		for (const auto& cuttingEdge : patchFaceEdges) {
-			Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
-			Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
+			Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge.getVertex(0));
+			Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge.getVertex(1));
 
 			if (!facePlane.isCoincident(imprintPt0, SDTol) || !facePlane.isCoincident(imprintPt1, SDTol))
 				continue;
 
-			newFaceEdges.insert(Edge(cuttingEdge._vertIds[0], cuttingEdge._vertIds[1]));
+			newFaceEdges.insert(Edge(cuttingEdge.getVertex(0), cuttingEdge.getVertex(1)));
 
 			for (size_t i = 0; i < faceVertIds.size(); i++) {
 				size_t j = (i + 1) % faceVertIds.size();
@@ -238,18 +238,19 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 	return Edge();
 }
 
-bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge& cuttingEdge, Edge& newEdge)
+bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const Edge& cuttingEdge, Edge& newEdge)
 {
 	auto pMesh = _pBlock->getModelMesh();
 	const auto& vertId0 = srcEdge.getVertex(0);
 	const auto& vertId1 = srcEdge.getVertex(1);
 
-	const Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge._vertIds[0]);
-	const Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge._vertIds[1]);
+	const Vector3d imprintPt0 = _pBlock->getVertexPoint(cuttingEdge.getVertex(0));
+	const Vector3d imprintPt1 = _pBlock->getVertexPoint(cuttingEdge.getVertex(1));
 
 	const Vector3d vertPt0 = _pBlock->getVertexPoint(vertId0);
 	const Vector3d vertPt1 = _pBlock->getVertexPoint(vertId1);
 	const LineSegment seg(vertPt0, vertPt1);
+#if 0
 	size_t triIndex0 = cuttingEdge._vertIds[0]._triIndex;
 	size_t triIndex1 = cuttingEdge._vertIds[1]._triIndex;
 
@@ -303,7 +304,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const IntersectEdge
 			return true;
 		}
 	}
-
+#endif
 	return false;
 }
 

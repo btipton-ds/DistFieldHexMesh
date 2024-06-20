@@ -47,6 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <io_utils.h>
 #include <tolerances.h>
 #include <polygonSplitter.h>
+#include <splitParams.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
@@ -363,23 +364,18 @@ bool Polygon::isCoplanar(const Vector3d& pt) const
 bool Polygon::isCoplanar(const Planed& pl) const
 {
 	Planed ourPlane = calPlane();
-	if (fabs(pl.distanceToPoint(ourPlane.getOrgin())) >= Tolerance::sameDistTol())
-		return false;
-
-	double mcp = pl.getNormal().cross(ourPlane.getNormal()).norm();
-	if (mcp > sin(Tolerance::angleTol()))
-		return false;
-	return true;
+	return ourPlane.isCoincident(pl, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol());
 }
 
 bool Polygon::isCoplanar(const Edge& edge) const
 {
-	const auto pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	if (!isPointOnPlane(pt0))
+	Planed pl = calPlane();
+	const auto pt0 = getBlockPtr()->getVertexPoint(edge.getVertex(0));
+	if (!pl.isCoincident(pt0, Tolerance::sameDistTol()))
 		return false;
 
-	const auto pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
-	if (!isPointOnPlane(pt1))
+	const auto pt1 = getBlockPtr()->getVertexPoint(edge.getVertex(1));
+	if (!pl.isCoincident(pt1, Tolerance::sameDistTol()))
 		return false;
 
 	return true;
@@ -952,27 +948,336 @@ bool Polygon::isPointOnEdge(const Vector3d& pt) const
 	return false;
 }
 
-void Polygon::splitWithEdges(const MTC::set<Edge>& edges, MTC::vector<Index3DId>& newFaceIds) const
+namespace
 {
-	auto faceEdges = getEdges();
-	MTC::set<Edge> allEdges;
-	allEdges.insert(edges.begin(), edges.end());
-	allEdges.insert(faceEdges.begin(), faceEdges.end());
-	string fileName = "splitFaceEdges_" + to_string(_thisId[0]) + "_" + to_string(_thisId[1]) + "_" + to_string(_thisId[2]) + "_" + to_string(_thisId.elementId());
-	getBlockPtr()->dumpEdgeObj(fileName, allEdges);
-#if 0
-	// First, imprint vertices
-	Polygon temp(*this);
-	temp.setId(getBlockPtr(), _thisId.elementId());
-	for (const auto& edge : edges) {
-		auto verts = edge.getVertexIds();
-		temp.imprintVertex(verts[0]);
-		temp.imprintVertex(verts[1]);
+
+bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vector3d>& vertModelNormalMap, MTC::map<Index3DId, MTC::vector<Edge>>& vertEdgeMap, 
+	MTC::vector<Edge>& edges)
+{
+	bool addedToList = false;
+	for (size_t i = edges.size() - 1; i != -1; i--) {
+		Index3DId firstId, lastId, nextId;
+		const auto edge = edges[i];
+		firstId = verts.front();
+		lastId = verts.back();
+
+		if (lastId == edge.getVertex(0) || lastId == edge.getVertex(1)) {
+			addedToList = true;
+			nextId = edge.getOtherVert(lastId);
+			verts.push_back(nextId);
+			edges.pop_back();
+		} else if (firstId == edge.getVertex(0) || firstId == edge.getVertex(1)) {
+			addedToList = true;
+			nextId = edge.getOtherVert(firstId);
+			verts.push_back(nextId);
+			edges.pop_back();
+		}
+
+		if (nextId.isValid()) {
+			auto iter = vertEdgeMap.find(nextId);
+			if (iter != vertEdgeMap.end()) {
+				auto& otherEdges = iter->second;
+				auto iter2 = std::find(otherEdges.begin(), otherEdges.end(), edge);
+				if (iter2 != otherEdges.end())
+					otherEdges.erase(iter2);
+			}
+		}
 	}
 
-	vector<vector<Edge>> loops;
-	Utils::formEdgeLoops(getBlockPtr(), edges, faceEdges, loops);
+	return addedToList;
+}
+
+}
+
+void Polygon::imprintModelEdges(const MTC::set<Edge>& modelEdges, MTC::set<Edge>& edges)
+{
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		MTC::set<Edge> tmpEdges;
+		for (auto iter = edges.begin(); iter != edges.end(); iter++) {
+			auto iter2 = iter;
+			iter2++;
+			const auto& testEdge = *iter;
+			auto seg = testEdge.getSegment(getBlockPtr());
+			bool didSplit = false;
+			for (; iter2 != edges.end(); iter2++) {
+				const auto& edge1 = *iter2;
+				for (int i = 0; i < 2; i++) {
+					double t;
+					const auto iVert = edge1.getVertex(i);
+					const auto& pt = getBlockPtr()->getVertexPoint(iVert);
+					if (seg.contains(pt, t, Tolerance::sameDistTol()) && t > Tolerance::sameDistTol() && t < 1 - Tolerance::sameDistTol()) {
+						for (int j = 0; j < 2; j++) {
+							const auto& vertId = testEdge.getVertex(j);
+							if (vertId != iVert) {
+								Edge e(vertId, iVert);
+								if (!tmpEdges.contains(e)) {
+									changed = didSplit = true;
+									tmpEdges.insert(e);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (!didSplit)
+				tmpEdges.insert(testEdge);
+		}
+		edges = tmpEdges;
+	}
+}
+
+void Polygon::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::vector<Index3DId>& newFaceIds)
+{
+	Planed facePlane = calPlane();
+	MTC::set<Edge> modelEdges, edges;
+	for (const auto& faceId : modelFaces) {
+		faceFunc(TS_REAL, faceId, [this, &modelEdges](const Polygon& modelFace) {
+			const auto& modelFaceEdges = modelFace.getEdges();
+			for (const auto& modelEdge : modelFaceEdges) {
+				if (isCoplanar(modelEdge)) {
+#if 0
+					MTC::set<Index3DId> faceIds = modelEdge.getFaceIds();
+					auto iter = modelEdges.find(modelEdge);
+					if (iter != modelEdges.end()) {
+						const auto& modFaceIds = iter->getFaceIds();
+						faceIds.insert(modFaceIds.begin(), modFaceIds.end());
+						modelEdges.erase(modelEdge);
+					}
+					faceIds.insert(modelFace.getId());
+					modelEdges.insert(Edge(modelEdge.getVertex(0), modelEdge.getVertex(1), faceIds));
 #endif
+					modelEdges.insert(modelEdge);
+				} else {
+					int dbgBreak = 1;
+				}
+			}
+		});
+	}
+
+	createTrimmedFaceEdges(modelEdges, edges);
+	
+	MTC::map<Index3DId, MTC::set<Index3DId>> vertToVertMap;
+	for (const auto& edge : edges) {
+		for (int i = 0; i < 2; i++) {
+			const auto& vertId = edge.getVertex(i);
+			auto iter = vertToVertMap.insert(std::make_pair(vertId, MTC::set<Index3DId>())).first;
+			iter->second.insert(edge.getOtherVert(vertId));
+		}
+	}
+
+	while (!vertToVertMap.empty()) {
+		MTC::vector<Index3DId> verts;
+		MTC::set<Index3DId> usedVerts;
+		auto iter = vertToVertMap.begin();
+
+		verts.push_back(iter->first);
+		usedVerts.insert(verts.back());
+		const auto& others = iter->second;
+		assert(!others.empty());
+
+		verts.push_back(*others.begin());
+		usedVerts.insert(verts.back());
+
+		vertToVertMap.erase(vertToVertMap.find(verts.front()));
+
+		iter = vertToVertMap.find(verts.back());
+		while (iter != vertToVertMap.end()) {
+			const auto& others = iter->second;
+			bool found = false;
+			for (const auto& other : others) {
+				if (!usedVerts.contains(other)) {
+					verts.push_back(other);
+					usedVerts.insert(verts.back());
+					vertToVertMap.erase(iter);
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				vertToVertMap.erase(vertToVertMap.find(verts.back()));
+			}
+
+			iter = vertToVertMap.find(verts.back());
+		}
+		if (!verts.empty()) {
+			// make a face
+			Index3DId newFaceId = getBlockPtr()->addFace(verts);
+			newFaceIds.push_back(newFaceId);
+		}
+	}
+}
+
+void Polygon::createModelInterectionEdges(const std::vector<size_t>& modFaceTris, const BuildCFDParams& params, MTC::set<Edge>& faceEdges)
+{
+	auto pMesh = getBlockPtr()->getModelMesh();
+	MTC::set<IntersectVertId> interVerts;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		const auto& vertId0 = _vertexIds[i];
+		const auto& vertId1 = _vertexIds[j];
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
+
+		LineSegmentd seg(pt0, pt1);
+		for (size_t triIdx : modFaceTris) {
+			RayHitd hit;
+			if (pMesh->intersectsTri(seg, triIdx, hit)) {
+				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
+				interVerts.insert(IntersectVertId(vertId, triIdx));
+			}
+		}
+	}
+
+	MTC::set<Index3DId> pierceVerts;
+	const double sinEdgeAngle = sin(params.getSharpAngleRadians());
+	for (size_t triIdx : modFaceTris) {
+		const auto& tri = pMesh->getTri(triIdx);
+		for (int i = 0; i < 3; i++) {
+			int j = (i + 1) % 3;
+			size_t edgeIdx = pMesh->findEdge(TriMesh::CEdge(tri[i], tri[j]));
+			if (edgeIdx != -1) {
+				if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
+					const auto& edge = pMesh->getEdge(edgeIdx);
+					auto seg = edge.getSeg(pMesh);
+					RayHitd hit;
+					if (intersect(seg, hit)) {
+						auto pierceVert = getBlockPtr()->addVertex(hit.hitPt);
+						pierceVerts.insert(pierceVert);
+					}
+				}
+				const auto& edge = pMesh->getEdge(edgeIdx);
+			}
+		}
+	}
+
+	if (pierceVerts.size() == 2) {
+		auto iter = pierceVerts.begin();
+		faceEdges.insert(Edge(*iter++, *iter++));
+	} else if (interVerts.size() == 1) {
+		assert(pierceVerts.size() == 1);
+		auto pierceVert = *pierceVerts.begin();
+
+		if (pierceVert.isValid()) {
+			const auto& vertId0 = *interVerts.begin();
+			if (vertId0 != pierceVert)
+				faceEdges.insert(Edge(vertId0, pierceVert));
+		}
+	} else if (interVerts.size() == 2) {
+		auto iter = interVerts.begin();
+		const auto& vertId0 = *iter++;
+		const auto& vertId1 = *iter++;
+		if (vertId0 != vertId1)
+			faceEdges.insert(Edge(vertId0, vertId1));
+	}
+}
+
+bool Polygon::calModelNorm(const MTC::map<Index3DId, MTC::set<Edge>>& vertModEdgeMap, const Index3DId& vertId, Vector3d& modNorm) const
+{
+	auto modIter = vertModEdgeMap.find(vertId);
+	if (modIter != vertModEdgeMap.end()) {
+		const auto& edges = modIter->second;
+		if (edges.size() != 1) {
+			assert(!"Unexpected condition");
+			return false;
+		}
+
+		const auto& modFaces = edges.begin()->getFaceIds();
+		if (modFaces.size() != 1) {
+			assert(!"Unexpected condition");
+			return false;
+		}
+
+		const auto& modFaceId = *modFaces.begin();
+
+		// multiple intersection with and edge
+		faceFunc(TS_REAL, modFaceId, [&modNorm](const Polygon& face) {
+			modNorm = face.calUnitNormal();
+		});
+
+		return true;
+	}
+
+	return false;
+}
+
+void Polygon::createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges, MTC::set<Edge>& trimEdges)
+{
+	MTC::map<Index3DId, MTC::set<Edge>> vertModEdgeMap;
+	for (const auto& edge : modFaceEdges) {
+		assert(isCoplanar(edge));
+
+		for (int i = 0; i < 2; i++) {
+			const auto& vert = edge.getVertex(i);
+			auto iter = vertModEdgeMap.insert(std::make_pair(vert, set<Edge>())).first;
+			iter->second.insert(edge);
+		}
+	}
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge e(_vertexIds[i], _vertexIds[j]);
+		auto seg = e.getSegment(getBlockPtr());
+		MTC::map<double, Index3DId> edgeIntersectionMap;
+
+		for (const auto& modEdge : modFaceEdges) {
+			for (int i = 0; i < 2; i++) {
+				const auto& vert = modEdge.getVertex(i);
+				Vector3d pt = getBlockPtr()->getVertexPoint(vert);
+				double t;
+				if (seg.contains(pt, t, Tolerance::sameDistTol())) {
+					edgeIntersectionMap.insert(make_pair(t, vert));
+				}
+			}
+		}
+
+		if (edgeIntersectionMap.empty()) {
+			trimEdges.insert(e);
+			continue;
+		}
+
+		edgeIntersectionMap.insert(make_pair(0, _vertexIds[i]));
+		edgeIntersectionMap.insert(make_pair(1, _vertexIds[j]));
+
+		auto iter = edgeIntersectionMap.begin();
+		auto iter2 = iter;
+		iter2++;
+
+		MTC::set<Edge> legEdges;
+		while (iter2 != edgeIntersectionMap.end()) {
+			const auto& vertId0 = iter->second;
+			const auto& vertId1 = iter2->second;
+			legEdges.insert(Edge(vertId0, vertId1));
+			iter = iter2;
+			iter2++;
+		}
+
+		for (const auto& edge : legEdges) {
+			const auto& vertId0 = edge.getVertex(0);
+			const auto& vertId1 = edge.getVertex(1);
+			Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
+			Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
+			Vector3d midPt = (pt0 + pt1) / 2;
+			Vector3d v0 = pt0 - midPt;
+			Vector3d v1 = pt1 - midPt;
+
+			Vector3d modelNorm0, modelNorm1;
+			bool hasModelNorm0 = calModelNorm(vertModEdgeMap, vertId0, modelNorm0);
+			bool hasModelNorm1 = calModelNorm(vertModEdgeMap, vertId1, modelNorm1);
+			if (hasModelNorm0 && hasModelNorm1) {
+				if ((modelNorm0.dot(v0) < 0) && (modelNorm1.dot(v1) < 0)) {
+					trimEdges.insert(Edge(vertId0, vertId1));
+				}
+			} else if (hasModelNorm0 && modelNorm0.dot(v0) < 0) {
+				trimEdges.insert(Edge(vertId0, vertId1));
+			} else if (hasModelNorm1 && modelNorm1.dot(v1) < 0) {
+				trimEdges.insert(Edge(vertId0, vertId1));
+			}
+		}
+		trimEdges.insert(modFaceEdges.begin(), modFaceEdges.end());
+	}
 }
 
 bool Polygon::verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
