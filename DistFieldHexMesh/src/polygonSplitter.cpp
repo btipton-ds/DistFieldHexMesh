@@ -354,8 +354,14 @@ void PolygonSplitter::createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges,
 		const auto& vertIds = realFace.getVertexIds();
 		for (size_t i = 0; i < vertIds.size(); i++) {
 			size_t j = (i + 1) % vertIds.size();
-			Edge e(vertIds[i], vertIds[j]);
-			auto seg = e.getSegment(getBlockPtr());
+
+			const auto& vertId0 = vertIds[i];
+			const auto& vertId1 = vertIds[j];
+
+			Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
+			Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
+			LineSegmentd seg(pt0, pt1);
+
 			MTC::map<double, Index3DId> edgeIntersectionMap;
 
 			for (const auto& modEdge : modFaceEdges) {
@@ -370,12 +376,12 @@ void PolygonSplitter::createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges,
 			}
 
 			if (edgeIntersectionMap.empty()) {
-				trimEdges.insert(e);
+				trimEdges.insert(Edge(vertId0, vertId1));
 				continue;
 			}
 
-			edgeIntersectionMap.insert(make_pair(0, vertIds[i]));
-			edgeIntersectionMap.insert(make_pair(1, vertIds[j]));
+			edgeIntersectionMap.insert(make_pair(0, vertId0));
+			edgeIntersectionMap.insert(make_pair(1, vertId1));
 
 			auto iter = edgeIntersectionMap.begin();
 

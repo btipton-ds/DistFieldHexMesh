@@ -838,8 +838,6 @@ bool Polygon::isPlanar() const
 
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
-	assert(isPlanar()); // Not sure if there's a good way to intersect with a non planar polygon
-
 	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
 	for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
 		size_t j = (i + 1);

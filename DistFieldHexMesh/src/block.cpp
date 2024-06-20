@@ -594,10 +594,11 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	return _pVol->getBlockPtr(blockIdx);
 }
 
-Index3DId Block::idOfPoint(const Index3D& blockId, const Vector3d& pt) const
+Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
-	auto* pOwner = getOwner(blockId);
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result;
 	pOwner->_pVertTree->find(pt, result);
 
@@ -606,21 +607,21 @@ Index3DId Block::idOfPoint(const Index3D& blockId, const Vector3d& pt) const
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
-	auto* pOwner = getOwner(ownerBlockIdx);
-
-	Index3DId result = idOfPoint(ownerBlockIdx, pt);
+	Index3DId result = idOfPoint(pt);
 	if (result.isValid())
 		return result;
 
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
+	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	auto* pOwner = getOwner(ownerBlockIdx);
+
 	Vertex vert(pt);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
 
 	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
-	assert(idOfPoint(ownerBlockIdx, pt) == result);
+	assert(idOfPoint(pt) == result);
 #endif // _DEBUG
 
 	return result;
