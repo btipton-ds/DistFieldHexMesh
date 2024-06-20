@@ -471,9 +471,8 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 
 	MTC::vector<Index3DId> newFaceIds;
 	for (const auto& faceId : faceIds) {
-		faceFunc(TS_REAL, faceId, [&modelFaces, &newFaceIds](Polygon& face) {
-			face.createTrimmedFacesFromFaces(modelFaces, newFaceIds);
-		});
+		PolygonSplitter ps(getBlockPtr(), faceId);
+		ps.createTrimmedFacesFromFaces(modelFaces, newFaceIds);
 	}
 
 	std::vector<std::vector<std::vector<size_t>>> allChains;

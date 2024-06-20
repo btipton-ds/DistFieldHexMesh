@@ -187,9 +187,6 @@ public:
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges);
 	bool isPointOnEdge(const Vector3d& pt) const;
-	void createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::vector<Index3DId>& newFaceIds);
-	void createModelInterectionEdges(const std::vector<size_t>& modFaceTris, const BuildCFDParams& params, MTC::set<Edge>& faceEdges);
-	void createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges, MTC::set<Edge>& trimEdges);
 
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
@@ -218,7 +215,6 @@ private:
 	void clearCache() const;
 	size_t getCellTris(std::vector<size_t>& indices) const;
 	void imprintModelEdges(const MTC::set<Edge>& modelEdges, MTC::set<Edge>& edges);
-	bool calModelNorm(const MTC::map<Index3DId, MTC::set<Edge>>& vertModEdgeMap, const Index3DId& vertId, Vector3d& norm) const;
 
 	size_t _createdDuringSplitNumber = 0;
 	MTC::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
