@@ -408,18 +408,23 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 {
 	Vector3d norm(0, 0, 0);
 
-	Vector3d ctr = calCentroidStat(pBlock, vertIds);
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		size_t j = (i + 1) % vertIds.size();
+	size_t i = 0;
+	Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
+	for (size_t j = 1; j < vertIds.size() - 1; j++) {
+		size_t k = (j + 1) % vertIds.size();
 
-		Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
 		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
+		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
 
-		Vector3d v0 = pt0 - ctr;
-		Vector3d v1 = pt1 - ctr;
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
 
-		Vector3d n = v0.cross(v1).normalized();
-		norm += n;
+		Vector3d n = v1.cross(v0);
+		double l = n.norm();
+		if (l > Tolerance::angleTol()) {
+			n /= l;
+			norm += n;
+		}
 	}
 	norm.normalize();
 	return norm;
