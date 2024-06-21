@@ -303,7 +303,7 @@ size_t Block::numPolyhedra() const
 bool Block::verifyTopology() const
 {
 	bool result = true;
-	vector<Index3DId> badCellIds;
+	MTC::vector<Index3DId> badCellIds;
 	_modelData._polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
 		if (!cell.verifyTopology()) {
 			badCellIds.push_back(id);
@@ -791,7 +791,7 @@ std::string Block::getObjFilePath() const
 	return path;
 }
 
-void Block::dumpPolyhedraObj(const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
+void Block::dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const MTC::vector<Vector3d>& pts) const
 {
 	string path = getObjFilePath();
 	for (const auto& cellId : cellIds) {

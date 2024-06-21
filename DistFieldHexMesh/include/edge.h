@@ -78,8 +78,21 @@ public:
 	bool isColinearWith(const Block* pBlock, const Edge& other) const;
 	bool isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
-	double calSinDihedralAngle(const Block* pBlock) const;
 	LineSegmentd getSegment(const Block* pBlock) const;
+
+	/*
+	The dihedral angle is defined so that 
+		coplanar faces with aligned normals have angle == 0
+		external, perpendicular faces have angle == pi / 2
+		internal, perpendicular faces have angle == -pi / 2
+		external, highly acute faces have angle ~ 0.99 * pi
+		internal, highly acute faces have angle ~ -0.99 * pi
+		Positive angles are convex, negative are concave
+
+		This corresponds to a lofting definition of a negative surface having concave regions.
+	*/
+	double calDihedralAngleRadians(const Block* pBlock) const;
+	bool isConvex(const Block* pBlock) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

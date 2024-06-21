@@ -73,7 +73,10 @@ public:
 	void clearCache() const;
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
-	bool intersectsModel() const;
+	double calVolume() const;
+	bool isConvex() const;
+	bool intersectsModel() const;		 // Uses bounding box
+	bool intersectsModelPrecise() const; // Requires cell is convex and uses the actual faces
 	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
 
 	void setNeedsDivideAtCentroid();
@@ -89,8 +92,10 @@ public:
 	void setNeedToMakeReference();
 	bool setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params);
 	bool needToDivideDueToSplitFaces(const BuildCFDParams& params);
+	bool containsPointPrecise(const Vector3d& pt) const;
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
+	void orientFaces() const;
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
@@ -147,6 +152,7 @@ private:
 	std::vector<size_t> _triIndices, _edgeIndices;
 
 	mutable bool _needsConditionalSplitTest = true;
+	mutable bool _isOriented = false;
 	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
 	mutable bool _needsCurvatureCheck = true;

@@ -199,6 +199,14 @@ public:
 	bool unload(std::ostream& out, size_t idSelf);
 	bool load(std::istream& out, size_t idSelf);
 
+	template<class F>
+	void iterateEdges(F fLambda) const;
+	template<class F>
+	void iterateEdges(F fLambda);
+
+	template<class F>
+	void iterateTriangles(F fLambda) const;
+
 	LAMBDA_CLIENT_DECLS
 
 private:
@@ -322,6 +330,40 @@ inline size_t Polygon::getCreatedDuringSplitNumber() const
 inline void Polygon::setCreatedDuringSplitNumber(size_t val)
 {
 	_createdDuringSplitNumber = val;
+}
+
+template<class F>
+void Polygon::iterateEdges(F fLambda) const
+{
+	const auto& verts = _vertexIds;
+	for (size_t i = 0; i < verts.size(); i++) {
+		size_t j = (i + 1) % verts.size();
+		if (!fLambda(verts[i], verts[j]))
+			break;
+	}
+}
+
+template<class F>
+void Polygon::iterateEdges(F fLambda)
+{
+	const auto& verts = _vertexIds;
+	for (size_t i = 0; i < verts.size(); i++) {
+		size_t j = (i + 1) % verts.size();
+		if (!fLambda(verts[i], verts[j]))
+			break;
+	}
+}
+
+template<class F>
+void Polygon::iterateTriangles(F fLambda) const
+{
+	const auto& verts = _vertexIds;
+	size_t i = 0;
+	for (size_t j = 1; j < verts.size() - 1; j++) {
+		size_t k = j + 1;
+		if (!fLambda(verts[i], verts[j], verts[k]))
+			break;
+	}
 }
 
 std::ostream& operator << (std::ostream& out, const Polygon& face);

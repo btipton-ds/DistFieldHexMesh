@@ -414,6 +414,53 @@ Vector3d Polyhedron::calCentroid() const
 	return ctr;
 }
 
+double Polyhedron::calVolume() const
+{
+	double vol = 0;
+	for (const auto& faceId : _faceIds) {
+		double v;
+		faceFunc(TS_REAL, faceId, [this, &v](const Polygon& face) {
+			const auto& verts = face.getVertexIds();
+			face.iterateTriangles([this, &v](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
+				const Vector3d zAxis(0, 0, 1);
+				Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
+				Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
+				Vector3d pt2 = getBlockPtr()->getVertexPoint(vertId2);
+				Vector3d ctr = (pt0 + pt1 + pt2) / 3;
+				Vector3d v0 = pt0 - pt1;
+				Vector3d v1 = pt2 - pt1;
+				double area = 0.5 * v1.cross(v0).dot(zAxis);
+				double h = ctr.dot(zAxis);
+				v = h * area;
+				return true;
+			});
+		});
+
+		if (faceId.isUserFlagSet(UF_FACE_REVERSED))
+			vol -= v;
+		else
+			vol += v;
+	}
+	return vol;
+}
+
+bool Polyhedron::isConvex() const
+{
+	if (!isClosed()) {
+		assert(!"open cell cannot be tested for convexity");
+		return false;
+	}
+
+	orientFaces();
+	const auto& edges = getEdges(false);
+	for (const auto& edge : edges) {
+		if (!edge.isConvex(getBlockPtr()))
+			return false;
+	}
+
+	return true;
+}
+
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
@@ -430,13 +477,14 @@ bool Polyhedron::intersectsModel() const
 		if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
 			for (const auto& faceId : _faceIds) {
 				faceFunc(TS_REAL, faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
+					const double tol = Tolerance::sameDistTol();
 					const auto& vertIds = face.getVertexIds();
 					for (size_t i = 0; i < vertIds.size(); i++) {
 						size_t j = (i + 1) % vertIds.size();
 						LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
 						for (size_t triIdx : triEntries) {
 							RayHitd hit;
-							if (pTriMesh->intersectsTri(seg, triIdx, hit)) {
+							if (pTriMesh->intersectsTri(seg, triIdx, tol, hit)) {
 								_intersectsModel = IS_TRUE;
 								break;
 							}
@@ -453,6 +501,79 @@ bool Polyhedron::intersectsModel() const
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
+}
+
+bool Polyhedron::intersectsModelPrecise() const
+{
+	orientFaces();
+	assert(isConvex());
+
+	auto pMesh = getBlockPtr()->getModelMesh();
+	auto bbox = getBoundingBox();
+	vector<size_t> triEntries;
+	if (pMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
+		for (const auto& faceId : _faceIds) {
+			bool result = false;
+			faceFunc(TS_REAL, faceId, [this, &triEntries, &pMesh, &result](const Polygon& face) {
+				const double tol = Tolerance::sameDistTol();
+				const auto& vertIds = face.getVertexIds();
+				for (size_t i = 0; i < vertIds.size(); i++) {
+					size_t j = (i + 1) % vertIds.size();
+					const auto& vertId0 = vertIds[i];
+					const auto& vertId1 = vertIds[j];
+
+					Vector3d pt0 = getVertexPoint(vertId0);
+					Vector3d pt1 = getVertexPoint(vertId1);
+					LineSegmentd seg(pt0, pt1);
+					for (size_t triIdx : triEntries) {
+						RayHitd hit;
+						if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
+							if (containsPointPrecise(pt0) || containsPointPrecise(pt1)) {
+								result = true;
+								break;
+							}
+						}
+					}
+					if (result)
+						break;
+				}
+			});
+
+			if (result)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+bool Polyhedron::containsPointPrecise(const Vector3d& pt) const
+{
+	if (!isConvex()) {
+		assert(!"Cell is not convex.");
+		return false;
+	}
+	for (const auto& faceId : _faceIds) {
+		bool result = true;
+		faceFunc(TS_REAL, faceId, [this, &pt, &result](const Polygon& face) {
+			face.iterateTriangles([this, &pt, &result](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
+				auto pt0 = getBlockPtr()->getVertexPoint(vertId0);
+				auto pt1 = getBlockPtr()->getVertexPoint(vertId1);
+				auto pt2 = getBlockPtr()->getVertexPoint(vertId2);
+				Vector3d v0 = pt0 - pt1;
+				Vector3d v1 = pt2 - pt1;
+				Vector3d n = v1.cross(v0).normalized();
+				Planed pl(pt0, n);
+				double d = pl.distanceToPoint(pt);
+				result = d < -Tolerance::sameDistTol();
+				return result;
+			});
+		});
+		if (!result)
+			return false;
+	}
+
+	return true;
 }
 
 bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
@@ -537,6 +658,79 @@ bool Polyhedron::containsSharps() const
 	}
 
 	return false;
+}
+
+void Polyhedron::orientFaces() const
+{
+	if (_isOriented)
+		return;
+
+	Index3DId seedFace;
+	double maxArea = 0;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(TS_REAL, faceId, [&seedFace, &maxArea](const Polygon& face) {
+			double faceArea;
+			Vector3d ctr;
+			face.calAreaAndCentroid(faceArea, ctr);
+			if (faceArea > maxArea) {
+				maxArea = faceArea;
+				seedFace = face.getId();
+			}
+			});
+	}
+
+	const auto& edges = getEdges(false);
+	MTC::set<Index3DId> tested;
+	tested.insert(seedFace);
+	for (auto& faceId : _faceIds) {
+		bool faceReversed = false;
+		faceFunc(TS_REAL, faceId, [this, &edges, &faceReversed, &tested](const Polygon& face) {
+			face.iterateEdges([this, &tested, &edges, &faceReversed, &face](const Index3DId& vertId00, const Index3DId& vertId01)->bool {
+				bool done = false;
+				const auto& iter = *edges.find(Edge(vertId00, vertId01));
+				const auto& adjFaces = iter.getFaceIds();
+				assert(adjFaces.size() == 2);
+				for (const auto& adjFaceId : adjFaces) {
+					if (tested.contains(adjFaceId))
+						continue;
+
+					tested.insert(adjFaceId);
+					if (adjFaceId != face.getId()) {
+						faceFunc(TS_REAL, adjFaceId, [&faceReversed, &vertId00, &vertId01, &done](const Polygon& adjFace) {
+							adjFace.iterateEdges([&faceReversed, &vertId00, &vertId01, &done](const Index3DId& vertId10, const Index3DId& vertId11)->bool {
+								if (vertId00 == vertId10 && vertId01 == vertId11) {
+									done = faceReversed = true;
+									return false;
+								} else if (vertId00 == vertId11 && vertId01 == vertId10) {
+									// edges match and orientation is reversed.
+									return false;
+								}
+								return true;
+							});
+						});
+					}
+
+					if (done)
+						break;
+				}
+				return !done;
+			});
+		});
+		faceId.setUserFlag(UF_FACE_REVERSED, faceReversed);
+	}
+
+	double vol = calVolume();
+	if (vol < 0) {
+		// flip all face orientation flags
+		for (auto& faceId : _faceIds) {
+			bool faceReversed = faceId.isUserFlagSet(UF_FACE_REVERSED);
+			faceId.setUserFlag(UF_FACE_REVERSED, !faceReversed);
+		}
+		vol = calVolume();
+		assert(vol > 0);
+	}
+
+	_isOriented = true;
 }
 
 void Polyhedron::getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const
@@ -1111,6 +1305,7 @@ void Polyhedron::clearCache() const
 	_needsCurvatureCheck = true;
 	_cachedEdges0Vaild = false;
 	_cachedEdges1Vaild = false;
+	_isOriented = false;
 
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_cachedIsClosed = IS_UNKNOWN;

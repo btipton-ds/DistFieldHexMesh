@@ -74,4 +74,11 @@ enum VertexLockType {
 	VLT_MODEL_MESH,
 };
 
+enum Index3IdUserFlags {
+	UF_FACE_REVERSED = 1,
+	UF_UNUSED1 = 2,
+	UF_UNUSED2 = 4,
+	UF_UNUSED3 = 8,
+};
+
 }

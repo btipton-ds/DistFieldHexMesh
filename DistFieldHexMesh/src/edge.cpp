@@ -198,17 +198,36 @@ bool Edge::isConnectedTo(const Edge& other) const
 	return false;
 }
 
-double Edge::calSinDihedralAngle(const Block* pBlock) const
+double Edge::calDihedralAngleRadians(const Block* pBlock) const
 {
 	assert(_faceIds.size() == 2);
 	auto fIter = _faceIds.begin();
 	const auto& faceId0 = *fIter++;
 	const auto& faceId1 = *fIter++;
-	Vector3d norm0, norm1;
-	pBlock->faceFunc(TS_REAL,faceId0, [&norm0](const Polygon& face) { norm0 = face.calUnitNormal(); });
-	pBlock->faceFunc(TS_REAL,faceId1, [&norm1](const Polygon& face) { norm1 = face.calUnitNormal(); });
-	double cp = norm1.cross(norm0).norm();
-	return cp;
+	Planed plane0, plane1;
+	pBlock->faceFunc(TS_REAL,faceId0, [&plane0](const Polygon& face) { plane0 = face.calPlane(); });
+	pBlock->faceFunc(TS_REAL,faceId1, [&plane1](const Polygon& face) { plane1 = face.calPlane(); });
+
+	Vector3d edgeCtr = calCenter(pBlock);
+	Vector3d edgeDir = calUnitDir(pBlock);
+	Vector3d xAxis = plane0.getOrgin() - edgeCtr;
+	xAxis = xAxis - edgeDir.dot(xAxis) * edgeDir;
+	xAxis.normalize();
+
+	const auto& zAxis = plane0.getNormal();
+	Vector3d yAxis = zAxis.cross(xAxis);
+
+	Vector3d v = plane1.getOrgin() - edgeCtr;
+	double cosTheta = v.dot(xAxis);
+	double sinTheta = v.dot(-zAxis);
+	double angle = atan2(sinTheta, cosTheta);
+
+	return angle;
+}
+
+bool Edge::isConvex(const Block* pBlock) const
+{
+	return calDihedralAngleRadians(pBlock) >= -Tolerance::angleTol();
 }
 
 LineSegmentd Edge::getSegment(const Block* pBlock) const

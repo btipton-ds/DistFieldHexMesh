@@ -224,12 +224,15 @@ public:
 	bool isValid() const;
 	size_t elementId() const;
 	Index3D blockIdx() const;
+	bool isUserFlagSet(uint32_t bit) const;
+	void setUserFlag(uint32_t bit, bool val) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
 private:
 	size_t _elementId = -1;
+	mutable uint32_t _userFlags = 0;
 };
 
 inline Index3DId::Index3DId(const Index3DBase& src, size_t elementId)

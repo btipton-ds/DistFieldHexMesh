@@ -103,6 +103,19 @@ ostream& DFHM::operator << (ostream& out, const Index3D& idx)
 	return out;
 }
 
+bool Index3DId::isUserFlagSet(uint32_t bit) const
+{
+	return (_userFlags & bit) == bit;
+}
+
+void Index3DId::setUserFlag(uint32_t bit, bool val) const
+{
+	if (val)
+		_userFlags = _userFlags | bit;
+	else
+		_userFlags = _userFlags & ~bit;
+}
+
 void Index3DId::write(std::ostream& out) const
 {
 	Index3DBase::write(out);

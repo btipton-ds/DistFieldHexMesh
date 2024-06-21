@@ -879,6 +879,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 
 bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges)
 {
+	const double tol = Tolerance::sameDistTol();
 	auto pMesh = getBlockPtr()->getModelMesh();
 
 	RayHitd hit;
@@ -911,7 +912,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 				if (skip)
 					continue;
 
-				if (pMesh->intersectsTri(seg, triIdx, hit)) {
+				if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
 					auto vertId = getBlockPtr()->addVertex(hit.hitPt);
 					vertexFunc(vertId, [](Vertex& vert) {
 						vert.setLockType(VLT_MODEL_MESH);
