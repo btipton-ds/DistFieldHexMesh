@@ -66,6 +66,7 @@ private:
 	bool splitWithPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds);
 
 	bool createCellsFromFaces(MTC::set<Index3DId>& faceIds, MTC::set<Index3DId>& newCellIds);
+	bool createConvexCells(const MTC::set<Index3DId>& cellFaces, MTC::set<Index3DId>& newCellIds);
 	bool cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds);
 	bool createModelMeshPatches(const BuildCFDParams& params, std::vector<TriMesh::PatchPtr>& patches,
 		std::vector<std::vector<std::vector<size_t>>>& allChains) const;

@@ -224,12 +224,14 @@ bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patch
 		}
 	}
 
-	MTC::vector<Index3DId> vertices;
-	if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(getBlockPtr(), newFaceEdges, vertices)) {
-		if (vertices.size() > 2)
-			result = getBlockPtr()->addFace(vertices);
-		else
-			assert(!"Bad vertex set to face");
+	MTC::vector<MTC::vector<Index3DId>> faceVertices;
+	if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(getBlockPtr(), newFaceEdges, faceVertices)) {
+		for (const auto& vertices : faceVertices) {
+			if (vertices.size() > 2)
+				result = getBlockPtr()->addFace(vertices);
+			else
+				assert(!"Bad vertex set to face");
+		}
 	}
 
 	return result.isValid();
@@ -260,7 +262,7 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 	return Edge();
 }
 
-void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds)
+void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& imprintedVertIds, MTC::set<Index3DId>& newFaceIds)
 {
 	faceFunc(TS_REAL, _polygonId, [&](const Polygon& realFace) {
 		if (breakIds.contains(_polygonId)) {
@@ -328,13 +330,253 @@ void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& mod
 
 				iter = vertToVertMap.find(verts.back());
 			}
+
 			if (!verts.empty()) {
+				MTC::vector<MTC::vector<Index3DId>> faceVerts;
+				createConvexFaceVerts(verts, imprintedVertIds, faceVerts);
+
 				// make a face
-				Index3DId newFaceId = getBlockPtr()->addFace(verts);
-				newFaceIds.insert(newFaceId);
+				for (const auto& verts : faceVerts) {
+					Index3DId newFaceId = getBlockPtr()->addFace(verts);
+					newFaceIds.insert(newFaceId);
+				}
 			}
 		}
 	});
+}
+
+namespace
+{
+void addEdgeToMap(MTC::map<Index3DId, MTC::set<Edge>>& vertEdgeMap, const Edge& edge) {
+	for (int i = 0; i < 2; i++) {
+		const auto& v = edge.getVertex(i);
+		auto iter = vertEdgeMap.insert(std::make_pair(v, MTC::set<Edge> ())).first;
+		iter->second.insert(edge);
+	}
+}
+
+void createVertEdgeMap(Block* pBlock, const MTC::vector<Index3DId>& verts, MTC::map<Edge, size_t>& edges, MTC::map<Index3DId, MTC::set<Edge>>& vertEdgeMap)
+{
+	size_t numVerts = verts.size();
+	for (size_t i = 0; i < numVerts; i++) {
+		size_t j = (i + 1) % numVerts;
+		Edge e(verts[i], verts[j]);
+		edges.insert(std::make_pair(e, 1));
+		addEdgeToMap(vertEdgeMap, e);
+	}
+}
+
+bool getInwardVectors(Block* pBlock, const Index3DId& vertId, const MTC::map<Index3DId, MTC::set<Edge>>& vertEdgeMap,
+	Vector3d& pt, Vector3d& v0, Vector3d& v1)
+{
+	auto iter = vertEdgeMap.find(vertId);
+	if (iter == vertEdgeMap.end()) {
+		assert(!"Should not be possible");
+		return false;
+	}
+
+	const auto& ccVertEdges = iter->second;
+	auto vIter = ccVertEdges.begin();
+	const auto& e0 = *vIter++;
+	const auto& e1 = *vIter;
+
+	Vector3d pt0 = pBlock->getVertexPoint(e0.getOtherVert(vertId));
+	pt = pBlock->getVertexPoint(vertId);
+	Vector3d pt1 = pBlock->getVertexPoint(e1.getOtherVert(vertId));
+
+	v0 = (pt - pt0).normalized();
+	v1 = (pt - pt1).normalized();
+
+	return true;
+}
+
+void createFacesVerts(const Block* pBlock, const Vector3d& faceNormal, MTC::map<Edge, size_t>& edgeCountMap, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
+{
+#if 1
+	MTC::set<Edge> edges;
+	for (const auto& pair : edgeCountMap) {
+		edges.insert(pair.first);
+	}
+	PolygonSplitter::connectEdges(pBlock, edges, convexFaceVerts);
+#else
+	while (!edgeCountMap.empty()) {
+		Edge seedEdge;
+		bool useNormal = false;
+		for (auto& pair : edgeCountMap) {
+			if (pair.second == 2) {
+				seedEdge = pair.first;
+				useNormal = true;
+				break;
+			}
+		}
+
+		if (!seedEdge.isValid()) {
+			seedEdge = edgeCountMap.begin()->first;
+			edgeCountMap.erase(edgeCountMap.begin());
+		}
+
+		MTC::vector<Index3DId> faceVerts;
+		MTC::set<Index3DId> usedVerts;
+
+		faceVerts.push_back(seedEdge.getVertex(0));
+		faceVerts.push_back(seedEdge.getVertex(1));
+
+		usedVerts.insert(faceVerts.front());
+		usedVerts.insert(faceVerts.back());
+
+		bool found = true;
+		while (found) {
+			found = false;
+			const auto& priorVertId = faceVerts[faceVerts.size() - 2];
+			const auto& lastVertId = faceVerts[faceVerts.size() - 1];
+			Vector3d pt0 = pBlock->getVertexPoint(priorVertId);
+			Vector3d pt1 = pBlock->getVertexPoint(lastVertId);
+			Vector3d v0 = (pt0 - pt1);
+			for (auto& pair : edgeCountMap) {
+				if (pair.second < 2) {
+					const auto& edge = pair.first;
+					if (edge.containsVertex(lastVertId)) {
+						const auto& nextId = edge.getOtherVert(lastVertId);
+						if (nextId == faceVerts.front())
+							continue;
+
+						if (!usedVerts.contains(nextId)) {
+							Vector3d pt2 = pBlock->getVertexPoint(nextId);
+							Vector3d v1 = pt2 - pt1;
+							if (!useNormal || v1.cross(v0).dot(faceNormal) > 0) {
+								found = true;
+								usedVerts.insert(nextId);
+								faceVerts.push_back(nextId);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (!faceVerts.empty()) {
+			for (size_t i = 0; i < faceVerts.size(); i++) {
+				size_t j = (i + 1) % faceVerts.size();
+				auto iter = edgeCountMap.find(Edge(faceVerts[i], faceVerts[j]));
+				if (iter != edgeCountMap.end()) {
+					iter->second--;
+					if (iter->second == 0) {
+						edgeCountMap.erase(iter);
+					}
+				}
+			}
+			convexFaceVerts.push_back(faceVerts);
+		}
+	}
+#endif
+}
+
+}
+
+bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::set<Index3DId>& imprintedVertIds, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
+{
+	MTC::vector<Index3DId> concaveVerts;
+	Polygon::findConcaveVertIdsStat(getBlockPtr(), verts, concaveVerts);
+	if (concaveVerts.empty()) {
+		convexFaceVerts.push_back(verts);
+		return true;
+	}
+
+	Vector3d origin, xAxis, yAxis, zAxis;
+	Polygon::calCoordSysStat(getBlockPtr(), verts, origin, xAxis, yAxis, zAxis);
+
+	MTC::map<Edge, size_t> edgeCountMap;
+	MTC::map<Index3DId, MTC::set<Edge>> vertEdgeMap;
+	createVertEdgeMap(getBlockPtr(), verts, edgeCountMap, vertEdgeMap);
+
+	for (const auto& ccVertId : concaveVerts) {
+		Vector3d ccPt, ccV[2];
+		getInwardVectors(getBlockPtr(), ccVertId, vertEdgeMap, ccPt, ccV[0], ccV[1]);
+
+		double maxDp = 0;
+		Vector3d norm0, norm1; // This is normal to the cutting plane to find the intersection
+		for (int i = 0; i < 2; i++) {
+			double dpX = ccV[i].dot(xAxis);
+			double dpY = ccV[i].dot(yAxis);
+			if (fabs(dpX) > fabs(dpY)) {
+				if (fabs(dpX) > maxDp) {
+					norm0 = ccV[i];
+					norm1 = ccV[1 - i];
+					maxDp = fabs(dpX);
+				}
+			} else if (fabs(dpY) > fabs(dpX)) {
+				if (fabs(dpY) > maxDp) {
+					norm0 = ccV[i];
+					norm1 = ccV[1 - i];
+					maxDp = fabs(dpY);
+				}
+			}
+		}
+		double cp = norm0.cross(norm1).norm();
+		MTC::vector<Planed> cuttingPlanes;
+		if (cp > cos(M_PI / 4.0)) {
+			// Two plane cut
+			cuttingPlanes.push_back(Planed(ccPt, norm0));
+			cuttingPlanes.push_back(Planed(ccPt, norm1));
+		} else {
+			// single plane cut
+			Vector3d bisector = norm0 + norm1;
+			Vector3d perpBisector = zAxis.cross(bisector).normalized();
+			cuttingPlanes.push_back(Planed(ccPt, perpBisector));
+		}
+
+		for (const auto& cutPlane : cuttingPlanes) {
+			MTC::set<Edge> newEdges, newSplitEdges, deadEdges;
+			for (const auto& edgePair : edgeCountMap) {
+				const auto& edge = edgePair.first;
+				auto seg = edge.getSegment(getBlockPtr());
+				RayHitd hit;
+				if (cutPlane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+					double l = seg.calLength();
+					double t = (hit.hitPt - seg._pts[0]).norm() / l;
+					double conjT = 1 - t;
+					if (t < 1.0e-9 || conjT < 1.0e-9)
+						continue;
+
+					double r = t > conjT ? t / conjT : conjT / t;
+					if (r < 2.5) {
+						deadEdges.insert(edge);
+						Index3DId midVertId = getBlockPtr()->addVertex(hit.hitPt);
+						imprintedVertIds.insert(midVertId);
+						newEdges.insert(Edge(edge.getVertex(0), midVertId));
+						newEdges.insert(Edge(edge.getVertex(1), midVertId));
+						newSplitEdges.insert(Edge(ccVertId, midVertId));
+					}
+				}
+			}
+
+			for (const auto& deadEdge : deadEdges) {
+				auto iter = edgeCountMap.find(deadEdge);
+				if (iter != edgeCountMap.end())
+					edgeCountMap.erase(iter);
+			}
+
+			for (const auto& newEdge : newEdges)
+				edgeCountMap.insert(std::make_pair(newEdge, 1));
+			for (const auto& newSplitEdge : newSplitEdges)
+				edgeCountMap.insert(std::make_pair(newSplitEdge, 2));
+			
+		}
+	}
+
+	{
+		MTC::set<Edge> dmpEdges;
+		for (const auto& e : edgeCountMap) {
+			dmpEdges.insert(e.first);
+		}
+		std::string filename = "dmpEdges_" + getBlockPtr()->getLoggerNumericCode();
+		getBlockPtr()->dumpEdgeObj(filename, dmpEdges);
+	}
+
+	createFacesVerts(getBlockPtr(), zAxis, edgeCountMap, convexFaceVerts);
+
+	return true;
 }
 
 void PolygonSplitter::createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges, MTC::set<Edge>& trimEdges)
@@ -527,7 +769,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const Edge& cutting
 	return false;
 }
 
-bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<Index3DId>& vertices)
+bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices)
 {
 	if (edges.empty())
 		return false;
@@ -540,22 +782,132 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 		interEdges.insert(IntersectEdge(iv0, iv1));
 	}
 
-	MTC::vector<IntersectVertId> iVerts;
-	if (connectIntersectEdges(pBlock, interEdges, iVerts, false)) {
-		for (const auto& vert : iVerts)
-			vertices.push_back(vert);
+	MTC::vector<MTC::vector<IntersectVertId>> iFaceVerts;
+	if (connectIntersectEdges(pBlock, interEdges, iFaceVerts, false)) {
+		for (const auto& iVerts : iFaceVerts) {
+			MTC::vector<Index3DId> vertices;
+			for (const auto& vert : iVerts)
+				vertices.push_back(vert);
+			faceVertices.push_back(vertices);
+		}
 	}
 
-	return !vertices.empty();
+	return !faceVertices.empty();
 }
 
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edgesIn, MTC::vector<IntersectVertId>& vertices, bool isIntersection)
+namespace
 {
-	if (edgesIn.size() < 3)
+
+bool isLoopClosed(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& vertToNextVertMap, const MTC::vector<IntersectVertId>& verts)
+{
+	if (verts.size() > 2) {
+		auto iter = vertToNextVertMap.find(verts.back());
+		if (iter != vertToNextVertMap.end()) {
+			const auto& nextVerts = iter->second;
+			return nextVerts.contains(verts.front());
+		}
+	}
+	return false;
+}
+
+bool extendLoop(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& vertToNextVertMap, MTC::set<IntersectVertId>& usedVerts, MTC::vector<IntersectVertId>& verts)
+{
+	auto iter = vertToNextVertMap.find(verts.back());
+	if (iter == vertToNextVertMap.end())
 		return false;
 
+	const auto& nextVerts = iter->second;
+	MTC::vector<IntersectVertId> bestBranch;
+	for (const auto& nextVert : nextVerts) {
+		if (!usedVerts.contains(nextVert)) {
+			MTC::set<IntersectVertId> usedChainVerts(usedVerts);
+			MTC::vector<IntersectVertId> chainVerts(verts);
+			usedChainVerts.insert(nextVert);
+			chainVerts.push_back(nextVert);
+			if (isLoopClosed(vertToNextVertMap, chainVerts)) {
+				if (bestBranch.empty() || chainVerts.size() < bestBranch.size())
+					bestBranch = chainVerts;
+			} else if (extendLoop(vertToNextVertMap, usedChainVerts, chainVerts)) {
+				if (bestBranch.empty() || chainVerts.size() < bestBranch.size())
+					bestBranch = chainVerts;
+			}
+		}
+	}
+
+	if (!bestBranch.empty()) {
+		verts = bestBranch;
+		return true;
+	}
+
+	return false;
+}
+
+}
+
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<MTC::vector<IntersectVertId>>& faceVertices, bool isIntersection)
+{
+	if (edges.size() < 3)
+		return false;
+
+	faceVertices.clear();
+
+#if 1
+	MTC::map<IntersectVertId, MTC::set<IntersectVertId>> vertToNextVertMap;
+	for (const auto& edge : edges) {
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<IntersectVertId>())).first;
+		iter->second.insert(edge._vertIds[1]);
+
+		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<IntersectVertId>())).first;
+		iter->second.insert(edge._vertIds[0]);
+	}
+
+	MTC::set<IntersectEdge> sharedEdges;
+	for (const auto& edge : edges) {
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<IntersectVertId>())).first;
+		size_t count0 = iter->second.size();
+
+		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<IntersectVertId>())).first;
+		size_t count1 = iter->second.size();
+		if (count0 > 2 && count1 > 2)
+			sharedEdges.insert(edge);
+	}
+
+	if (sharedEdges.empty()) {
+		MTC::set<IntersectVertId> usedVerts;
+		MTC::vector<IntersectVertId> verts;
+
+		IntersectVertId firstVert = vertToNextVertMap.begin()->first;
+
+		usedVerts.insert(firstVert);
+		verts.push_back(firstVert);
+
+		if (extendLoop(vertToNextVertMap, usedVerts, verts)) {
+			faceVertices.push_back(verts);
+		}
+	} else {
+		MTC::set<IntersectVertId> usedVerts;
+		for (const auto& edge : sharedEdges) {
+			usedVerts.insert(edge._vertIds[0]);
+			usedVerts.insert(edge._vertIds[1]);
+
+			for (int i = 0; i < 2; i++) {
+				MTC::vector<IntersectVertId> verts;
+				verts.push_back(edge._vertIds[0]);
+				verts.push_back(edge._vertIds[1]);
+
+				if (extendLoop(vertToNextVertMap, usedVerts, verts)) {
+					usedVerts.insert(verts.begin(), verts.end());
+					faceVertices.push_back(verts);
+					if (usedVerts.size() == vertToNextVertMap.size())
+						break;
+				}
+			}
+		}
+	}
+
+#else
+	assert(!"TODO, make this work with nonmanifold edges and multiple faces. Currently only works on a single face.");
 	MTC::set<IntersectEdge> edges(edgesIn);
-	vertices.clear();
 	MTC::vector<IntersectVertId> verts;
 	verts.push_back(edges.begin()->_vertIds[0]);
 	edges.erase(edges.begin());
@@ -609,10 +961,14 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 			std::reverse(verts.begin(), verts.end());
 		}
 	}
+
+	MTC::vector<IntersectVertId> vertices;
 	for (const auto& v : verts)
 		vertices.insert(vertices.end(), v);
-
-	return !vertices.empty();
+	if (!vertices.empty())
+		faceVertices.push_back(vertices);
+#endif
+	return !faceVertices.empty();
 }
 
 const Block* PolygonSplitter::getBlockPtr() const

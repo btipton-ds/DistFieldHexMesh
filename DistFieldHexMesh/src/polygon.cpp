@@ -108,6 +108,7 @@ void Polygon::clearCache() const
 {
 	_sortCacheVaild = false;
 	_cachedEdgesVaild = false;
+	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedEdges.clear();
 	_sortedIds.clear();
@@ -279,15 +280,15 @@ const MTC::set<Edge>& Polygon::getEdges() const
 
 bool Polygon::containsPoint(const Vector3d& pt) const
 {
-	if (!isPointOnPlane(pt))
+	if (!isPointOnPlane(pt) || !isConvex())
 		return false;
 
 	Vector3d norm = calUnitNormal();
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
 		Vector3d v1 = (pt1 - pt0).normalized();
 		Vector3d v0 = pt - pt0;
 		v0 = v0 - v0.dot(v1) * v1;
@@ -370,11 +371,11 @@ bool Polygon::isCoplanar(const Planed& pl) const
 bool Polygon::isCoplanar(const Edge& edge) const
 {
 	Planed pl = calPlane();
-	const auto pt0 = getBlockPtr()->getVertexPoint(edge.getVertex(0));
+	const auto pt0 = getVertexPoint(edge.getVertex(0));
 	if (!pl.isCoincident(pt0, Tolerance::sameDistTol()))
 		return false;
 
-	const auto pt1 = getBlockPtr()->getVertexPoint(edge.getVertex(1));
+	const auto pt1 = getVertexPoint(edge.getVertex(1));
 	if (!pl.isCoincident(pt1, Tolerance::sameDistTol()))
 		return false;
 
@@ -402,6 +403,44 @@ Vector3d Polygon::calCentroidStat(const Block* pBlock, const MTC::vector<Index3D
 	ctr /= vertIds.size();
 
 	return ctr;
+}
+
+void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis)
+{
+	origin = calCentroidStat(pBlock, vertIds);
+	zAxis = Polygon::calUnitNormalStat(pBlock, vertIds);
+	xAxis = Vector3d(1, 0, 0);
+	if (fabs(xAxis.dot(zAxis)) > 0.7071) {
+		xAxis = Vector3d(0, 1, 0);
+		if (fabs(xAxis.dot(zAxis)) > 0.7071) {
+			xAxis = Vector3d(0, 0, 1);
+		}
+	}
+	xAxis = xAxis - xAxis.dot(zAxis) * zAxis;
+	xAxis.normalize();
+	yAxis = zAxis.cross(xAxis);
+}
+
+void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::vector<Index3DId>& cVertIds)
+{
+	auto zAxis = calUnitNormalStat(pBlock, vertIds);
+
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		size_t k = (j + 1) % vertIds.size();
+
+		auto pt0 = pBlock->getVertexPoint(vertIds[i]);
+		auto pt1 = pBlock->getVertexPoint(vertIds[j]);
+		auto pt2 = pBlock->getVertexPoint(vertIds[k]);
+
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+		Vector3d vN = v1.cross(v0);
+		if (vN.dot(zAxis) < 0) {
+			// Concave vertex
+			cVertIds.push_back(vertIds[j]);
+		}
+	}
 }
 
 Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
@@ -467,7 +506,7 @@ Planed Polygon::calPlane() const
 
 #ifdef _DEBUG
 	for (const auto& vId : _vertexIds) {
-		Vector3d pt = getBlockPtr()->getVertexPoint(vId);
+		Vector3d pt = getVertexPoint(vId);
 		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
 	}
 #endif // _DEBUG
@@ -504,8 +543,8 @@ double Polygon::getShortestEdge() const
 	double minDist = DBL_MAX;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 		double l = (pt1 - pt0).norm();
 		if (l < minDist)
 			minDist = l;
@@ -518,8 +557,8 @@ double Polygon::distanceToPoint(const Vector3d& pt) const
 	Vector3d ctr = calCentroid();
 	for (size_t i = 0; i < _vertexIds.size() - 1; i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
+		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
 		Vector3d v0 = pt0 - ctr;
 		Vector3d v1 = pt1 - ctr;
 		Vector3d n = v1.cross(v0).normalized();
@@ -539,10 +578,10 @@ Vector3d Polygon::interpolatePoint(double t, double u) const
 {
 	assert(_vertexIds.size() == 4);
 	Vector3d pts[] = {
-		getBlockPtr()->getVertexPoint(_vertexIds[0]),
-		getBlockPtr()->getVertexPoint(_vertexIds[1]),
-		getBlockPtr()->getVertexPoint(_vertexIds[2]),
-		getBlockPtr()->getVertexPoint(_vertexIds[3]),
+		getVertexPoint(_vertexIds[0]),
+		getVertexPoint(_vertexIds[1]),
+		getVertexPoint(_vertexIds[2]),
+		getVertexPoint(_vertexIds[3]),
 	};
 
 	return BI_LERP(pts[0], pts[1], pts[2], pts[3], t, u);
@@ -584,7 +623,7 @@ bool Polygon::intersectsModel() const
 			auto pMesh = getBlockPtr()->getModelMesh();
 			CBoundingBox3Dd bbox;
 			for (const auto& vertId : _vertexIds) {
-				bbox.merge(getBlockPtr()->getVertexPoint(vertId));
+				bbox.merge(getVertexPoint(vertId));
 			}
 
 			std::vector<size_t> triIndices;
@@ -620,7 +659,7 @@ bool Polygon::intersectsModel() const
 
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
-	Plane pl(getBlockPtr()->getVertexPoint(_vertexIds[0]), calUnitNormal());
+	Plane pl(getVertexPoint(_vertexIds[0]), calUnitNormal());
 	return pl.distanceToPoint(pt);
 }
 
@@ -635,11 +674,11 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
 	for (size_t j = 1; j < _vertexIds.size() - 1; j++) {
 		size_t k = j + 1;
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
-		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[k]);
+		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
+		Vector3d pt2 = getVertexPoint(_vertexIds[k]);
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
 		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
@@ -655,7 +694,7 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
 {
-	Vector3d origin = getBlockPtr()->getVertexPoint(_vertexIds[0]); // And point will do
+	Vector3d origin = getVertexPoint(_vertexIds[0]); // And point will do
 	Vector3d normal = calUnitNormal();
 	Plane pl(origin, normal);
 	auto result = pl.projectPoint(pt);
@@ -743,7 +782,7 @@ void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<I
 	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
 	for (const auto& vertId : verts) {
 		if (!vertSet.contains(vertId)) { // ignore vertices already in the face
-			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+			Vector3d pt = getVertexPoint(vertId);
 			if (distanceToPoint(pt) < SAME_DIST_TOL) {
 				onFaceVerts.push_back(vertId);
 			}
@@ -755,7 +794,7 @@ void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<I
 		Edge edge(_vertexIds[i], _vertexIds[j]);
 		auto seg = edge.getSegment(getBlockPtr());
 		for (const auto& vertId : onFaceVerts) {
-			Vector3d pt = getBlockPtr()->getVertexPoint(vertId);
+			Vector3d pt = getVertexPoint(vertId);
 			double t;
 			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
 				imprintVerts.insert(vertId);
@@ -782,7 +821,7 @@ size_t Polygon::getImprintIndex(const Vector3d& imprintPoint) const
 
 size_t Polygon::getImprintIndex(const Index3DId& imprintVert) const
 {
-	Vector3d pt = getBlockPtr()->getVertexPoint(imprintVert);
+	Vector3d pt = getVertexPoint(imprintVert);
 	return getImprintIndex(pt);
 }
 
@@ -799,7 +838,7 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 			size_t j = (i + 1) % tmp.size();
 			Edge edge(tmp[i], tmp[j]);
 			auto seg = edge.getSegment(getBlockPtr());
-			Vector3d pt = getBlockPtr()->getVertexPoint(imprintVert);
+			Vector3d pt = getVertexPoint(imprintVert);
 			double t;
 			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
 				_vertexIds.push_back(imprintVert);
@@ -828,7 +867,7 @@ bool Polygon::isPlanar() const
 	Vector3d norm = calUnitNormal();
 	Planed pl(ctr, norm);
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		Vector3d pt = getBlockPtr()->getVertexPoint(_vertexIds[i]);
+		Vector3d pt = getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
 			return false;
 	}
@@ -838,11 +877,11 @@ bool Polygon::isPlanar() const
 
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
 	for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
 		size_t j = (i + 1);
-		Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[i]);
-		Vector3d pt2 = getBlockPtr()->getVertexPoint(_vertexIds[j]);
+		Vector3d pt1 = getVertexPoint(_vertexIds[i]);
+		Vector3d pt2 = getVertexPoint(_vertexIds[j]);
 		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
 			return true;
 	}
@@ -888,7 +927,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 		size_t j = (i + 1) % _vertexIds.size();
 		auto facePlane = calPlane();
 		RayHitd hit;
-		LineSegmentd seg(getBlockPtr()->getVertexPoint(_vertexIds[i]), getBlockPtr()->getVertexPoint(_vertexIds[j]));
+		LineSegmentd seg(getVertexPoint(_vertexIds[i]), getVertexPoint(_vertexIds[j]));
 		const auto& faces = pPatch->getFaces();
 		for (const auto& patchFace : faces) {
 			for (auto triIdx : patchFace) {
@@ -1093,7 +1132,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		out << Logger::Pad() << "vertexIds: (" << face._vertexIds.size() << "): {\n";
 		for (const auto& vertId : face._vertexIds) {
 			Logger::Indent sp;
-			auto pt = face.getBlockPtr()->getVertexPoint(vertId);
+			auto pt = face.getVertexPoint(vertId);
 			out << Logger::Pad() << "v" << vertId << ": (" << pt << ")\n";
 		}
 		out << "}\n";
@@ -1141,6 +1180,12 @@ void Polygon::CellId_SplitLevel::read(istream& in)
 	_cellId.read(in);
 	in.read((char*)&_splitLevel, sizeof(size_t));
 }
+
+inline Vector3d Polygon::getVertexPoint(const Index3DId& id) const
+{
+	return getBlockPtr()->getVertexPoint(id);
+}
+
 
 //LAMBDA_CLIENT_IMPLS(Polygon)
 void Polygon::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {

@@ -115,6 +115,8 @@ public:
 	static void createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
+	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
+	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::vector<Index3DId>& cVertIds);
 
 	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const MTC::vector<Index3DId>& vertIds);
 	static void dumpPolygonPoints(std::ostream& out, const MTC::vector<Vector3d>& pts);
@@ -140,17 +142,19 @@ public:
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
-	bool isOuter() const;
-	bool isBlockBoundary() const;
-	bool containsPoint(const Vector3d& pt) const;
-	bool isPointOnPlane(const Vector3d& pt) const;
-	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
-	bool containsEdge(const Edge& edge) const;
-	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
-	bool containsVertex(const Index3DId& vertId) const;
 	bool isCoplanar(const Vector3d& pt) const;
 	bool isCoplanar(const Planed& pl) const;
 	bool isCoplanar(const Edge& edge) const;
+	bool isConvex()const;
+	bool isOuter() const;
+	bool isBlockBoundary() const;
+	bool isPointOnPlane(const Vector3d& pt) const;
+	bool containsPoint(const Vector3d& pt) const;
+	bool containsEdge(const Edge& edge) const;
+	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
+	bool containsVertex(const Index3DId& vertId) const;
+	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
+
 	bool verifyUnique() const;
 	bool verifyTopology() const;
 
@@ -188,6 +192,7 @@ public:
 	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges);
 	bool isPointOnEdge(const Vector3d& pt) const;
 
+	Vector3d getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
 
@@ -232,7 +237,8 @@ private:
 
 	mutable bool _sortCacheVaild = false;
 	mutable bool _cachedEdgesVaild = false;
-	mutable Trinary _cachedIntersectsModel = Trinary::IS_UNKNOWN;
+	mutable Trinary _isConvex = IS_UNKNOWN;
+	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable MTC::vector<Index3DId> _sortedIds;
 	mutable MTC::set<Edge> _cachedEdges;
 };
@@ -300,6 +306,16 @@ inline const MTC::set<Polygon::CellId_SplitLevel>& Polygon::getCellIds() const
 inline bool Polygon::usedByCell(const Index3DId& cellId) const
 {
 	return _cellIds.count(CellId_SplitLevel(cellId)) != 0;
+}
+
+inline bool Polygon::isConvex() const
+{
+	if (_isConvex == IS_UNKNOWN) {
+		MTC::vector<Index3DId> tmp;
+		findConcaveVertIdsStat(getBlockPtr(), _vertexIds, tmp);
+		_isConvex = tmp.empty() ? IS_TRUE : IS_FALSE;
+	}
+	return _isConvex == IS_TRUE;
 }
 
 inline bool Polygon::isOuter() const

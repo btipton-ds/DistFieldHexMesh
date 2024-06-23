@@ -296,18 +296,20 @@ bool PolyhedronSplitter::createAllModelMeshFaces(const std::vector<TriMesh::Patc
 			for (const auto& modelFaceTris : pPatch->getFaces()) {
 				MTC::set<Edge> faceEdges;
 				createFaceEdgesFromMeshFace(cell, modelFaceTris, params, faceEdges);
-				MTC::vector<Index3DId> verts;
-				if (PolygonSplitter::connectEdges(getBlockPtr(), faceEdges, verts)) {
+				MTC::vector<MTC::vector<Index3DId>> faceVerts;
+				if (PolygonSplitter::connectEdges(getBlockPtr(), faceEdges, faceVerts)) {
 					Vector3d modelFaceNorm = calModelFaceNormal(modelFaceTris);
-					Vector3d faceNorm = Polygon::calUnitNormalStat(getBlockPtr(), verts);
-					if (faceNorm.dot(modelFaceNorm) < 0)
-						std::reverse(verts.begin(), verts.end());
+					for (auto& verts : faceVerts) {
+						Vector3d faceNorm = Polygon::calUnitNormalStat(getBlockPtr(), verts);
+						if (faceNorm.dot(modelFaceNorm) < 0)
+							std::reverse(verts.begin(), verts.end());
 
-					Index3DId faceId = getBlockPtr()->addFace(verts);
-					faceFunc(TS_REAL, faceId, [&modelFaceNorm](const Polygon& face) {
-						assert(face.calUnitNormal().dot(modelFaceNorm) > 0);
-					});
-					modelFaces.insert(faceId);
+						Index3DId faceId = getBlockPtr()->addFace(verts);
+						faceFunc(TS_REAL, faceId, [&modelFaceNorm](const Polygon& face) {
+							assert(face.calUnitNormal().dot(modelFaceNorm) > 0);
+						});
+						modelFaces.insert(faceId);
+					}
 				}
 			}
 		}
@@ -394,31 +396,36 @@ bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::set<Index3DId>
 		}
 
 		if (!posEdges.empty()) {
-			MTC::vector<Index3DId> vertices;
-			if (PolygonSplitter::connectEdges(getBlockPtr(), posEdges, vertices)) {
-				Index3DId faceId = getBlockPtr()->addFace(vertices);
-				posFaceIds.insert(faceId);
+			MTC::vector<MTC::vector<Index3DId>> faceVertices;
+			if (PolygonSplitter::connectEdges(getBlockPtr(), posEdges, faceVertices)) {
+				for (const auto& vertices : faceVertices) {
+					Index3DId faceId = getBlockPtr()->addFace(vertices);
+					posFaceIds.insert(faceId);
+				}
 			}
 		}
 		if (!negEdges.empty()) {
-			MTC::vector<Index3DId> vertices;
-			if (PolygonSplitter::connectEdges(getBlockPtr(), negEdges, vertices)) {
-				Index3DId faceId = getBlockPtr()->addFace(vertices);
-				negFaceIds.insert(faceId);
+			MTC::vector<MTC::vector<Index3DId>> faceVertices;
+			if (PolygonSplitter::connectEdges(getBlockPtr(), negEdges, faceVertices)) {
+				for (const auto& vertices : faceVertices) {
+					Index3DId faceId = getBlockPtr()->addFace(vertices);
+					negFaceIds.insert(faceId);
+				}
 			}
 		}
 	}
 
-	MTC::vector<Index3DId> vertices;
-	if (!PolygonSplitter::connectEdges(getBlockPtr(), splitEdges, vertices))
+	MTC::vector<MTC::vector<Index3DId>> faceVertices;
+	if (!PolygonSplitter::connectEdges(getBlockPtr(), splitEdges, faceVertices))
 		return false;
 
-	Index3DId splitFaceId = getBlockPtr()->addFace(vertices);
-	if (!splitFaceId.isValid())
-		return false;
-
-	posFaceIds.insert(splitFaceId);
-	negFaceIds.insert(splitFaceId);
+	for (const auto& vertices : faceVertices) {
+		Index3DId splitFaceId = getBlockPtr()->addFace(vertices);
+		if (!splitFaceId.isValid())
+			return false;
+		posFaceIds.insert(splitFaceId);
+		negFaceIds.insert(splitFaceId);
+	}
 
 	Index3DId cellId;
 
@@ -587,13 +594,33 @@ bool PolyhedronSplitter::createCellsFromFaces(MTC::set<Index3DId>& faceIds, MTC:
 		}
 
 		if (!cellFaces.empty()) {
-			auto newCellId = getBlockPtr()->addCell(cellFaces);
-			newCellIds.insert(newCellId);
-			numNewFaces++;
+			MTC::set<Index3DId> tmp;
+			if (createConvexCells(cellFaces, tmp)) {
+				numNewFaces += tmp.size();
+				newCellIds.insert(tmp.begin(), tmp.end());
+			}
 		}
 	}
 
 	return numNewFaces > 0;
+}
+
+bool PolyhedronSplitter::createConvexCells(const MTC::set<Index3DId>& cellFacesIn, MTC::set<Index3DId>& newCellIds)
+{
+	MTC::set<Index3DId> cellFaces(cellFacesIn);
+
+	Polyhedron cell(cellFaces);
+	cell.setId(getBlockPtr(), 0);
+	cell.orientFaces();
+	const auto edges = cell.getEdges(false);
+	for (const auto& edge : edges) {
+		if (!edge.isConvex(getBlockPtr())) {
+		}
+	}
+	
+	auto newCellId = getBlockPtr()->addCell(cellFaces);
+	newCellIds.insert(newCellId);
+	return true;
 }
 
 bool PolyhedronSplitter::cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds)
@@ -640,11 +667,12 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 	}
 
 	const auto& faceIds = realCell.getFaceIds();
-	MTC::set<Index3DId> newFaceIds;
+	MTC::set<Index3DId> newFaceIds, imprintedVertIds;
+
 	for (const auto& faceId : faceIds) {
 		PolygonSplitter ps(getBlockPtr(), faceId);
 		MTC::set<Index3DId> tmp;
-		ps.createTrimmedFacesFromFaces(modelFaces, tmp);
+		ps.createTrimmedFacesFromFaces(modelFaces, imprintedVertIds, tmp);
 #if 0
 		{
 			string filename = "anf " + getBlockPtr()->getLoggerNumericCode() + "_face_" + to_string(faceId.elementId());
@@ -652,7 +680,7 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 	}
 #endif
 		newFaceIds.insert(tmp.begin(), tmp.end());
-}
+	}
 	newFaceIds.insert(modelFaces.begin(), modelFaces.end());
 
 	{
