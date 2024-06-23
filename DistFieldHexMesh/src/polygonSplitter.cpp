@@ -476,6 +476,7 @@ void createFacesVerts(const Block* pBlock, const Vector3d& faceNormal, MTC::map<
 
 bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::set<Index3DId>& imprintedVertIds, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
 {
+	const bool primaryAxisCuts = true;
 	MTC::vector<Index3DId> concaveVerts;
 	Polygon::findConcaveVertIdsStat(getBlockPtr(), verts, concaveVerts);
 	if (concaveVerts.empty()) {
@@ -501,14 +502,24 @@ bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts,
 			double dpY = ccV[i].dot(yAxis);
 			if (fabs(dpX) > fabs(dpY)) {
 				if (fabs(dpX) > maxDp) {
-					norm0 = ccV[i];
-					norm1 = ccV[1 - i];
+					if (primaryAxisCuts) {
+						norm0 = xAxis;
+						norm1 = yAxis;
+					} else {
+						norm0 = ccV[i];
+						norm1 = ccV[1 - i];
+					}
 					maxDp = fabs(dpX);
 				}
 			} else if (fabs(dpY) > fabs(dpX)) {
 				if (fabs(dpY) > maxDp) {
-					norm0 = ccV[i];
-					norm1 = ccV[1 - i];
+					if (primaryAxisCuts) {
+						norm0 = yAxis;
+						norm1 = zAxis;
+					} else {
+						norm0 = ccV[i];
+						norm1 = ccV[1 - i];
+					}
 					maxDp = fabs(dpY);
 				}
 			}
