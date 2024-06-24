@@ -65,16 +65,6 @@ Index3DId PolygonSplitter::addFace(const Polygon& face) const
 }
 
 
-bool PolygonSplitter::splitAtCentroid()
-{
-	Vector3d ctr;
-	getBlockPtr()->faceAvailFunc(TS_REFERENCE, _polygonId, [&ctr](const Polygon& face) {
-		ctr = face.calCentroid();
-		});
-
-	return splitAtPoint(ctr);
-}
-
 bool PolygonSplitter::splitAtPoint(const Vector3d& pt)
 {
 	getBlockPtr()->makeRefPolygonIfRequired(_polygonId);
@@ -179,64 +169,6 @@ bool PolygonSplitter::splitAtPointInner(Polygon& realFace, Polygon& referanceFac
 	return true;
 }
 
-bool PolygonSplitter::createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patchFaces,
-	const MTC::set<Index3DId>& skippedVerts, Index3DId& result)
-{
-	const double SDTol = Tolerance::sameDistTol();
-
-	auto pMesh = getBlockPtr()->getModelMesh();
-	MTC::set<Edge> newFaceEdges;
-	MTC::vector<Index3DId> newVertIds;
-
-	MTC::vector<Index3DId> faceVertIds;
-	Planed facePlane;
-	getBlockPtr()->faceFunc(TS_REAL, _polygonId, [&faceVertIds, &facePlane](const Polygon& face) {
-		faceVertIds = face.getVertexIds();
-		facePlane = face.calPlane();
-	});
-
-	for (const auto& patchFaceEdges : patchFaces) {
-		for (const auto& cuttingEdge : patchFaceEdges) {
-			Vector3d imprintPt0 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(0));
-			Vector3d imprintPt1 = getBlockPtr()->getVertexPoint(cuttingEdge.getVertex(1));
-
-			if (!facePlane.isCoincident(imprintPt0, SDTol) || !facePlane.isCoincident(imprintPt1, SDTol))
-				continue;
-
-			newFaceEdges.insert(Edge(cuttingEdge.getVertex(0), cuttingEdge.getVertex(1)));
-
-			for (size_t i = 0; i < faceVertIds.size(); i++) {
-				size_t j = (i + 1) % faceVertIds.size();
-				Edge faceEdge(faceVertIds[i], faceVertIds[j]), newEdge;
-				if (createTrimmedEdge(faceEdge, cuttingEdge, newEdge))
-					newFaceEdges.insert(newEdge);
-			}
-		}
-	}
-
-	// Add all edges which are outside the cutting surface and not included yet
-	for (size_t i = 0; i < faceVertIds.size(); i++) {
-		size_t j = (i + 1) % faceVertIds.size();
-		const auto& vertId0 = faceVertIds[i];
-		const auto& vertId1 = faceVertIds[j];
-		if (!skippedVerts.contains(vertId0) && !skippedVerts.contains(vertId1)) {
-			newFaceEdges.insert(Edge(vertId0, vertId1));
-		}
-	}
-
-	MTC::vector<MTC::vector<Index3DId>> faceVertices;
-	if (newFaceEdges.size() > 2 && PolygonSplitter::connectEdges(getBlockPtr(), newFaceEdges, faceVertices)) {
-		for (const auto& vertices : faceVertices) {
-			if (vertices.size() > 2)
-				result = getBlockPtr()->addFace(vertices);
-			else
-				assert(!"Bad vertex set to face");
-		}
-	}
-
-	return result.isValid();
-}
-
 Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 {
 	MTC::vector<Vector3d> pts;
@@ -262,7 +194,7 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 	return Edge();
 }
 
-void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& imprintedVertIds, MTC::set<Index3DId>& newFaceIds)
+void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds)
 {
 	faceFunc(TS_REAL, _polygonId, [&](const Polygon& realFace) {
 		if (breakIds.contains(_polygonId)) {
@@ -333,7 +265,7 @@ void PolygonSplitter::createTrimmedFacesFromFaces(const MTC::set<Index3DId>& mod
 
 			if (!verts.empty()) {
 				MTC::vector<MTC::vector<Index3DId>> faceVerts;
-				createConvexFaceVerts(verts, imprintedVertIds, faceVerts);
+				createConvexFaceVerts(verts, faceVerts);
 
 				// make a face
 				for (const auto& verts : faceVerts) {
@@ -474,7 +406,7 @@ void createFacesVerts(const Block* pBlock, const Vector3d& faceNormal, MTC::map<
 
 }
 
-bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::set<Index3DId>& imprintedVertIds, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
+bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
 {
 	const bool primaryAxisCuts = true;
 	MTC::set<Index3DId> concaveVerts;
@@ -554,7 +486,6 @@ bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts,
 					if (r < 2.5) {
 						deadEdges.insert(edge);
 						Index3DId midVertId = getBlockPtr()->addVertex(hit.hitPt);
-						imprintedVertIds.insert(midVertId);
 						newEdges.insert(Edge(edge.getVertex(0), midVertId));
 						newEdges.insert(Edge(edge.getVertex(1), midVertId));
 						newSplitEdges.insert(Edge(ccVertId, midVertId));

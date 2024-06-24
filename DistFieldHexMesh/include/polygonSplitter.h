@@ -41,12 +41,9 @@ namespace DFHM {
 	public:
 		PolygonSplitter(Block* pBlock, const Index3DId& polygonId);
 
-		bool splitAtCentroid();
 		bool splitAtPoint(const Vector3d& pt);
-		bool createTrimmedFace(const MTC::vector<MTC::set<Edge>>& patchFaceEdges, 
-			const MTC::set<Index3DId>& skippedVerts, Index3DId& faceId);
 		Edge createIntersectionEdge(const Planed& plane);
-		void createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& imprintedVertIds, MTC::set<Index3DId>& newFaceIds);
+		void createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds);
 
 		// Create ordered vertices to form a new polygon who's face normal is in the same direction as triangle normals defined in edges.
 		// Edges should be created by intersectModelTris which will record the triangle normals from the model as they are intersected.
@@ -62,7 +59,7 @@ namespace DFHM {
 		bool calModelNorm(const MTC::map<Index3DId, MTC::set<Edge>>& vertModEdgeMap, const Index3DId& vertId, Vector3d& norm) const;
 		bool createTrimmedEdge(const Edge& srcEdge, const Edge& cuttingEdge, Edge& newEdge);
 		void createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges, MTC::set<Edge>& trimEdges);
-		bool createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::set<Index3DId>& imprintedVertIds, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts);
+		bool createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts);
 
 		Index3DId addVertex(const Vector3d& pt) const;
 		Index3DId addFace(const Polygon& face) const;
