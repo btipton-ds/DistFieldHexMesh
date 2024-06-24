@@ -33,43 +33,20 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM
 {
 
-struct IntersectVertId : public Index3DId {
-	IntersectVertId() = default;
-	IntersectVertId(const IntersectVertId& src) = default;
-	IntersectVertId(const Index3DId& id, const RayHitd& hit);
-	IntersectVertId(const Index3DId& id);
-
-	bool operator < (const IntersectVertId& rhs) const;
-};
-
 struct IntersectEdge {
 	IntersectEdge() = default;
 	IntersectEdge(const IntersectEdge& src) = default;
-	IntersectEdge(const IntersectVertId& vert0, const IntersectVertId& vert1);
+	IntersectEdge(const Index3DId& vert0, const Index3DId& vert1);
 
 	IntersectEdge& operator = (const IntersectEdge& rhs) = default;
 
 	bool operator < (const IntersectEdge& rhs) const;
 
-	IntersectVertId _vertIds[2];
+	Index3DId _vertIds[2];
 };
 
-inline IntersectVertId::IntersectVertId(const Index3DId& id, const RayHitd& hit)
-	: Index3DId(id)
-{
-}
 
-inline IntersectVertId::IntersectVertId(const Index3DId& id)
-	: Index3DId(id)
-{
-}
-
-inline bool IntersectVertId::operator < (const IntersectVertId& rhs) const
-{
-	return Index3DId::operator<(rhs);
-}
-
-inline IntersectEdge::IntersectEdge(const IntersectVertId& vert0, const IntersectVertId& vert1)
+inline IntersectEdge::IntersectEdge(const Index3DId& vert0, const Index3DId& vert1)
 {
 	_vertIds[0] = vert0;
 	_vertIds[1] = vert1;

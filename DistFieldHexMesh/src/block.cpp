@@ -432,15 +432,6 @@ VertexLockType Block::getVertexLockType(const Index3DId& vertId) const
 	return getOwner(vertId)->_vertices[vertId].getLockType();
 }
 
-Index3DId Block::addFace(const MTC::vector<IntersectVertId>& vertIndices)
-{
-	MTC::vector<Index3DId> verts;
-	for (const auto& id : vertIndices)
-		verts.push_back(id);
-
-	return addFace(verts);
-}
-
 Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)

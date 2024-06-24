@@ -922,7 +922,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 	auto pMesh = getBlockPtr()->getModelMesh();
 
 	RayHitd hit;
-	set<IntersectVertId> vertSet;
+	set<Index3DId> vertSet;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		auto facePlane = calPlane();
@@ -957,7 +957,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 						vert.setLockType(VLT_MODEL_MESH);
 					});
 
-					vertSet.insert(IntersectVertId(vertId, hit));
+					vertSet.insert(vertId);
 				}
 			}
 		}

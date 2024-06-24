@@ -87,7 +87,7 @@ private:
 	bool splitWithSharpEdgePlanes(std::vector<std::vector<std::vector<size_t>>>& allChains, MTC::set<Index3DId>& newCellIds);
 	bool findPiercePoints(const std::vector<std::vector<size_t>>& faceEdgeChains, std::vector<Vector3d>& pts) const;
 	bool findPiercePoints(const std::vector<std::vector<std::vector<size_t>>>& allFaceEdgeChains, std::vector<Vector3d>& pts) const;
-	IntersectVertId createPierceVertex(const Polygon& face, const std::vector<size_t>& pierceChain) const;
+	Index3DId createPierceVertex(const Polygon& face, const std::vector<size_t>& pierceChain) const;
 	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
 	// Outside is relative to the model/patch, not the cell or face.
 	Vector3d calModelFaceNormal(const std::vector<size_t>& modelFaceTris) const;

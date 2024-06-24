@@ -787,13 +787,13 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 
 	MTC::set<IntersectEdge> interEdges;
 	for (const auto& edge : edges) {
-		IntersectVertId iv0(edge.getVertex(0));
-		IntersectVertId iv1(edge.getVertex(1));
+		Index3DId iv0(edge.getVertex(0));
+		Index3DId iv1(edge.getVertex(1));
 
 		interEdges.insert(IntersectEdge(iv0, iv1));
 	}
 
-	MTC::vector<MTC::vector<IntersectVertId>> iFaceVerts;
+	MTC::vector<MTC::vector<Index3DId>> iFaceVerts;
 	if (connectIntersectEdges(pBlock, interEdges, iFaceVerts, false)) {
 		for (const auto& iVerts : iFaceVerts) {
 			MTC::vector<Index3DId> vertices;
@@ -809,7 +809,7 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 namespace
 {
 
-bool isLoopClosed(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& vertToNextVertMap, const MTC::vector<IntersectVertId>& verts)
+bool isLoopClosed(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMap, const MTC::vector<Index3DId>& verts)
 {
 	if (verts.size() > 2) {
 		auto iter = vertToNextVertMap.find(verts.back());
@@ -821,18 +821,18 @@ bool isLoopClosed(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& ve
 	return false;
 }
 
-bool extendLoop(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& vertToNextVertMap, MTC::set<IntersectVertId>& usedVerts, MTC::vector<IntersectVertId>& verts)
+bool extendLoop(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMap, MTC::set<Index3DId>& usedVerts, MTC::vector<Index3DId>& verts)
 {
 	auto iter = vertToNextVertMap.find(verts.back());
 	if (iter == vertToNextVertMap.end())
 		return false;
 
 	const auto& nextVerts = iter->second;
-	MTC::vector<IntersectVertId> bestBranch;
+	MTC::vector<Index3DId> bestBranch;
 	for (const auto& nextVert : nextVerts) {
 		if (!usedVerts.contains(nextVert)) {
-			MTC::set<IntersectVertId> usedChainVerts(usedVerts);
-			MTC::vector<IntersectVertId> chainVerts(verts);
+			MTC::set<Index3DId> usedChainVerts(usedVerts);
+			MTC::vector<Index3DId> chainVerts(verts);
 			usedChainVerts.insert(nextVert);
 			chainVerts.push_back(nextVert);
 			if (isLoopClosed(vertToNextVertMap, chainVerts)) {
@@ -855,7 +855,7 @@ bool extendLoop(const MTC::map<IntersectVertId, MTC::set<IntersectVertId>>& vert
 
 }
 
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<MTC::vector<IntersectVertId>>& faceVertices, bool isIntersection)
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection)
 {
 	if (edges.size() < 3)
 		return false;
@@ -863,31 +863,31 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 	faceVertices.clear();
 
 #if 1
-	MTC::map<IntersectVertId, MTC::set<IntersectVertId>> vertToNextVertMap;
+	MTC::map<Index3DId, MTC::set<Index3DId>> vertToNextVertMap;
 	for (const auto& edge : edges) {
-		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<IntersectVertId>())).first;
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<Index3DId>())).first;
 		iter->second.insert(edge._vertIds[1]);
 
-		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<IntersectVertId>())).first;
+		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<Index3DId>())).first;
 		iter->second.insert(edge._vertIds[0]);
 	}
 
 	MTC::set<IntersectEdge> sharedEdges;
 	for (const auto& edge : edges) {
-		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<IntersectVertId>())).first;
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<Index3DId>())).first;
 		size_t count0 = iter->second.size();
 
-		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<IntersectVertId>())).first;
+		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<Index3DId>())).first;
 		size_t count1 = iter->second.size();
 		if (count0 > 2 && count1 > 2)
 			sharedEdges.insert(edge);
 	}
 
 	if (sharedEdges.empty()) {
-		MTC::set<IntersectVertId> usedVerts;
-		MTC::vector<IntersectVertId> verts;
+		MTC::set<Index3DId> usedVerts;
+		MTC::vector<Index3DId> verts;
 
-		IntersectVertId firstVert = vertToNextVertMap.begin()->first;
+		Index3DId firstVert = vertToNextVertMap.begin()->first;
 
 		usedVerts.insert(firstVert);
 		verts.push_back(firstVert);
@@ -896,13 +896,13 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 			faceVertices.push_back(verts);
 		}
 	} else {
-		MTC::set<IntersectVertId> usedVerts;
+		MTC::set<Index3DId> usedVerts;
 		for (const auto& edge : sharedEdges) {
 			usedVerts.insert(edge._vertIds[0]);
 			usedVerts.insert(edge._vertIds[1]);
 
 			for (int i = 0; i < 2; i++) {
-				MTC::vector<IntersectVertId> verts;
+				MTC::vector<Index3DId> verts;
 				verts.push_back(edge._vertIds[0]);
 				verts.push_back(edge._vertIds[1]);
 
@@ -919,7 +919,7 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 #else
 	assert(!"TODO, make this work with nonmanifold edges and multiple faces. Currently only works on a single face.");
 	MTC::set<IntersectEdge> edges(edgesIn);
-	MTC::vector<IntersectVertId> verts;
+	MTC::vector<Index3DId> verts;
 	verts.push_back(edges.begin()->_vertIds[0]);
 	edges.erase(edges.begin());
 	bool found = true;
@@ -973,7 +973,7 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 		}
 	}
 
-	MTC::vector<IntersectVertId> vertices;
+	MTC::vector<Index3DId> vertices;
 	for (const auto& v : verts)
 		vertices.insert(vertices.end(), v);
 	if (!vertices.empty())
