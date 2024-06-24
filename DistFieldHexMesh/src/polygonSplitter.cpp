@@ -726,32 +726,6 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const Edge& cutting
 	return false;
 }
 
-bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices)
-{
-	if (edges.empty())
-		return false;
-
-	MTC::set<Edge> interEdges;
-	for (const auto& edge : edges) {
-		Index3DId iv0(edge.getVertex(0));
-		Index3DId iv1(edge.getVertex(1));
-
-		interEdges.insert(Edge(iv0, iv1));
-	}
-
-	MTC::vector<MTC::vector<Index3DId>> iFaceVerts;
-	if (connectIntersectEdges(pBlock, interEdges, iFaceVerts, false)) {
-		for (const auto& iVerts : iFaceVerts) {
-			MTC::vector<Index3DId> vertices;
-			for (const auto& vert : iVerts)
-				vertices.push_back(vert);
-			faceVertices.push_back(vertices);
-		}
-	}
-
-	return !faceVertices.empty();
-}
-
 namespace
 {
 
@@ -801,7 +775,7 @@ bool extendLoop(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMa
 
 }
 
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection)
+bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection)
 {
 	if (edges.size() < 3)
 		return false;
