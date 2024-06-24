@@ -268,13 +268,13 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	return true;
 }
 
-bool PolyhedronSplitter::createAllModelMeshFaces(const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Index3DId>& modelFaces)
+bool PolyhedronSplitter::createAllModelMeshFaces(const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Edge>& pierceEdges, MTC::set<Index3DId>& modelFaces)
 {
 	cellFunc(TS_REAL, _polyhedronId, [&](const Polyhedron& cell) {
 		for (const auto& pPatch : patches) {
 			for (const auto& modelFaceTris : pPatch->getFaces()) {
 				MTC::set<Edge> faceEdges;
-				createFaceEdgesFromMeshFace(cell, modelFaceTris, params, faceEdges);
+				createFaceEdgesFromMeshFace(cell, modelFaceTris, params, faceEdges, pierceEdges);
 				MTC::vector<MTC::vector<Index3DId>> faceVerts;
 				if (PolygonSplitter::connectEdges(getBlockPtr(), faceEdges, faceVerts)) {
 					Vector3d modelFaceNorm = calModelFaceNormal(modelFaceTris);
@@ -638,11 +638,14 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 {
 
 	MTC::set<Index3DId> modelFaces;
-	if (!createAllModelMeshFaces(patches, params, modelFaces))
+	MTC::set<Edge> pierceEdges;
+	if (!createAllModelMeshFaces(patches, params, pierceEdges, modelFaces))
 		return false;
 	{
 		string filename = "amf " + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
 		_pBlock->dumpPolygonObj(filename, modelFaces);
+		filename = "pe " + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
+		_pBlock->dumpEdgeObj(filename, pierceEdges);
 	}
 
 	const auto& faceIds = realCell.getFaceIds();
@@ -679,7 +682,7 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 }
 
 void PolyhedronSplitter::createFaceEdgesFromMeshFace(const Polyhedron& realCell, const std::vector<size_t>& modelFaceTris, const BuildCFDParams& params,
-	MTC::set<Edge>& patchEdges) const
+	MTC::set<Edge>& patchEdges, MTC::set<Edge>& pierceEdges) const
 {
 	const double sinEdgeAngle = sin(params.getSharpAngleRadians());
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -696,7 +699,12 @@ void PolyhedronSplitter::createFaceEdgesFromMeshFace(const Polyhedron& realCell,
 		}
 	}
 
-	createPierceEdges(realCell, sharpEdges, patchEdges);
+
+	// This complexity is to store the pierce edges for later use.
+	MTC::set<Edge> tmpPierceEdges;
+	createPierceEdges(realCell, sharpEdges, tmpPierceEdges);
+	patchEdges.insert(tmpPierceEdges.begin(), tmpPierceEdges.end());
+	pierceEdges.insert(tmpPierceEdges.begin(), tmpPierceEdges.end());
 
 	auto faceIds = realCell.getFaceIds();
 	for (const auto& faceId : faceIds) {
