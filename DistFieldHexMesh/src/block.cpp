@@ -839,16 +839,6 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	}
 }
 
-void Block::dumpEdgeObj(std::string& fileName, const MTC::set<IntersectEdge>& interEdges) const
-{
-	MTC::set<Edge> edges;
-	for (const auto& ie : interEdges) {
-		edges.insert(Edge(ie._vertIds[0], ie._vertIds[1]));
-	}
-
-	dumpEdgeObj(fileName, edges);
-}
-
 void Block::dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const
 {
 	string path = getObjFilePath();

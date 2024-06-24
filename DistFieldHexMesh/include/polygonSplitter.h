@@ -31,7 +31,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_plane.h>
 #include <index3D.h>
 #include <polygon.h>
-#include <intersectEdge.h>
 
 namespace DFHM {
 
@@ -51,7 +50,7 @@ namespace DFHM {
 
 		// Create ordered vertices to form a new polygon who's face normal is in the same direction as triangle normals defined in edges.
 		// Edges should be created by intersectModelTris which will record the triangle normals from the model as they are intersected.
-		static bool connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection = false);
+		static bool connectIntersectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection = false);
 		static bool connectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices);
 
 		const Block* getBlockPtr() const;

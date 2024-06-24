@@ -700,7 +700,7 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 }
 
 void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId, const std::vector<size_t>& modFaceTris, const BuildCFDParams& params,
-	MTC::set<IntersectEdge>& faceEdges)
+	MTC::set<Edge>& faceEdges)
 {
 	faceFunc(TS_REAL, faceId, [this, &modFaceTris, &params, &faceEdges](const Polygon& face) {
 		auto pMesh = getBlockPtr()->getModelMesh();
@@ -751,7 +751,7 @@ void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId
 
 			auto pierceVert0 = *iter++;
 			auto pierceVert1 = *iter++;
-			faceEdges.insert(IntersectEdge(pierceVert0, pierceVert1));
+			faceEdges.insert(Edge(pierceVert0, pierceVert1));
 		} else if (interVerts.size() == 1) {
 			assert(pierceVerts.size() == 1);
 			auto pierceVert = *pierceVerts.begin();
@@ -759,7 +759,7 @@ void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId
 			if (pierceVert.isValid()) {
 				const auto& vertId0 = *interVerts.begin();
 				if (vertId0 != pierceVert)
-					faceEdges.insert(IntersectEdge(vertId0, pierceVert));
+					faceEdges.insert(Edge(vertId0, pierceVert));
 			}
 		}
 		else if (interVerts.size() == 2) {
@@ -767,7 +767,7 @@ void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId
 			const auto& vertId0 = *iter++;
 			const auto& vertId1 = *iter++;
 			if (vertId0 != vertId1)
-				faceEdges.insert(IntersectEdge(vertId0, vertId1));
+				faceEdges.insert(Edge(vertId0, vertId1));
 		}
 	});
 }

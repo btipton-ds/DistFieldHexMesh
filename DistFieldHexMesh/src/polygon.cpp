@@ -916,7 +916,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
-bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<IntersectEdge>& newEdges)
+bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>& newEdges)
 {
 	const double tol = Tolerance::sameDistTol();
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -966,7 +966,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Inter
 	if (!vertSet.empty()) {
 		if (vertSet.size() <= 2) {
 			auto iter = vertSet.begin();
-			IntersectEdge edge(*iter++, *iter++);
+			Edge edge(*iter++, *iter++);
 			newEdges.insert(edge);
 		}
 		else {

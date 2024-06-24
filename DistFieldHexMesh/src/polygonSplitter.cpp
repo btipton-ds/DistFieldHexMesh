@@ -722,61 +722,7 @@ bool PolygonSplitter::createTrimmedEdge(const Edge& srcEdge, const Edge& cutting
 	const Vector3d vertPt0 = getBlockPtr()->getVertexPoint(vertId0);
 	const Vector3d vertPt1 = getBlockPtr()->getVertexPoint(vertId1);
 	const LineSegment seg(vertPt0, vertPt1);
-#if 0
-	size_t triIndex0 = cuttingEdge._vertIds[0]._triIndex;
-	size_t triIndex1 = cuttingEdge._vertIds[1]._triIndex;
 
-	Vector3d v;
-	double t, dp;
-	if (triIndex0 != -1 && seg.contains(imprintPt0, t, Tolerance::sameDistTol())) {
-		const Vector3d meshNorm0 = pMesh->triUnitNormal(triIndex0);
-		if (t < Tolerance::paramTol()) {
-			dp = meshNorm0.dot(vertPt1 - imprintPt0);
-			if (dp >= 0) {
-				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
-				return true;
-			}
-		} else if (t > 1 - Tolerance::paramTol()) {
-			dp = meshNorm0.dot(vertPt0 - imprintPt0);
-			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
-				return true;
-			}
-		} else {
-			dp = meshNorm0.dot(vertPt0 - imprintPt0);
-			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vertIds[0]);
-			} else {
-				newEdge = Edge(vertId1, cuttingEdge._vertIds[0]);
-			}
-			return true;
-		}
-	} else if (triIndex1 != -1 && seg.contains(imprintPt1, t, Tolerance::sameDistTol())) {
-		const Vector3d meshNorm1 = pMesh->triUnitNormal(triIndex1);
-		if (t < Tolerance::paramTol()) {
-			dp = meshNorm1.dot(vertPt1 - imprintPt1);
-			if (dp >= 0) {
-				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
-				return true;
-			}
-		} else if (t > 1 - Tolerance::paramTol()) {
-			dp = meshNorm1.dot(vertPt0 - imprintPt0);
-			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
-				return true;
-			}
-		} else {
-			dp = meshNorm1.dot(vertPt0 - imprintPt1);
-			if (dp >= 0) {
-				newEdge = Edge(vertId0, cuttingEdge._vertIds[1]);
-			}
-			else {
-				newEdge = Edge(vertId1, cuttingEdge._vertIds[1]);
-			}
-			return true;
-		}
-	}
-#endif
 	return false;
 }
 
@@ -785,12 +731,12 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 	if (edges.empty())
 		return false;
 
-	MTC::set<IntersectEdge> interEdges;
+	MTC::set<Edge> interEdges;
 	for (const auto& edge : edges) {
 		Index3DId iv0(edge.getVertex(0));
 		Index3DId iv1(edge.getVertex(1));
 
-		interEdges.insert(IntersectEdge(iv0, iv1));
+		interEdges.insert(Edge(iv0, iv1));
 	}
 
 	MTC::vector<MTC::vector<Index3DId>> iFaceVerts;
@@ -855,7 +801,7 @@ bool extendLoop(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMa
 
 }
 
-bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<IntersectEdge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection)
+bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<Edge>& edges, MTC::vector<MTC::vector<Index3DId>>& faceVertices, bool isIntersection)
 {
 	if (edges.size() < 3)
 		return false;
@@ -865,19 +811,19 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 #if 1
 	MTC::map<Index3DId, MTC::set<Index3DId>> vertToNextVertMap;
 	for (const auto& edge : edges) {
-		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<Index3DId>())).first;
-		iter->second.insert(edge._vertIds[1]);
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge.getVertex(0), MTC::set<Index3DId>())).first;
+		iter->second.insert(edge.getVertex(1));
 
-		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<Index3DId>())).first;
-		iter->second.insert(edge._vertIds[0]);
+		iter = vertToNextVertMap.insert(std::make_pair(edge.getVertex(1), MTC::set<Index3DId>())).first;
+		iter->second.insert(edge.getVertex(0));
 	}
 
-	MTC::set<IntersectEdge> sharedEdges;
+	MTC::set<Edge> sharedEdges;
 	for (const auto& edge : edges) {
-		auto iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[0], MTC::set<Index3DId>())).first;
+		auto iter = vertToNextVertMap.insert(std::make_pair(edge.getVertex(0), MTC::set<Index3DId>())).first;
 		size_t count0 = iter->second.size();
 
-		iter = vertToNextVertMap.insert(std::make_pair(edge._vertIds[1], MTC::set<Index3DId>())).first;
+		iter = vertToNextVertMap.insert(std::make_pair(edge.getVertex(1), MTC::set<Index3DId>())).first;
 		size_t count1 = iter->second.size();
 		if (count0 > 2 && count1 > 2)
 			sharedEdges.insert(edge);
@@ -898,13 +844,13 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 	} else {
 		MTC::set<Index3DId> usedVerts;
 		for (const auto& edge : sharedEdges) {
-			usedVerts.insert(edge._vertIds[0]);
-			usedVerts.insert(edge._vertIds[1]);
+			usedVerts.insert(edge.getVertex(0));
+			usedVerts.insert(edge.getVertex(1));
 
 			for (int i = 0; i < 2; i++) {
 				MTC::vector<Index3DId> verts;
-				verts.push_back(edge._vertIds[0]);
-				verts.push_back(edge._vertIds[1]);
+				verts.push_back(edge.getVertex(0));
+				verts.push_back(edge.getVertex(1));
 
 				if (extendLoop(vertToNextVertMap, usedVerts, verts)) {
 					usedVerts.insert(verts.begin(), verts.end());
@@ -918,7 +864,7 @@ bool PolygonSplitter::connectIntersectEdges(const Block* pBlock, const MTC::set<
 
 #else
 	assert(!"TODO, make this work with nonmanifold edges and multiple faces. Currently only works on a single face.");
-	MTC::set<IntersectEdge> edges(edgesIn);
+	MTC::set<Edge> edges(edgesIn);
 	MTC::vector<Index3DId> verts;
 	verts.push_back(edges.begin()->_vertIds[0]);
 	edges.erase(edges.begin());

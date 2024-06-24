@@ -72,7 +72,7 @@ private:
 		std::vector<std::vector<std::vector<size_t>>>& allChains) const;
 	bool cutWithPatches(const Polyhedron& realCell, const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Index3DId>& newCellIds);
 	void createModelFaceInterectionEdges(const Index3DId& faceId, const std::vector<size_t>& modFaceTris, const BuildCFDParams& params,
-		MTC::set<IntersectEdge>& faceEdges);
+		MTC::set<Edge>& faceEdges);
 	bool createAllModelMeshFaces(const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Index3DId>& modelFaces);
 	void createAllFaceEdges(const Polyhedron& realCell, const std::vector<size_t>& modFaceTris, const BuildCFDParams& params,
 		MTC::set<Index3DId>& skippedVerts, MTC::set<Edge>& faceEdges) const;
