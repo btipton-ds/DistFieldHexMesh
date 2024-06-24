@@ -787,8 +787,8 @@ bool PolygonSplitter::connectEdges(const Block* pBlock, const MTC::set<Edge>& ed
 
 	MTC::set<IntersectEdge> interEdges;
 	for (const auto& edge : edges) {
-		IntersectVertId iv0(edge.getVertex(0), -1);
-		IntersectVertId iv1(edge.getVertex(1), -1);
+		IntersectVertId iv0(edge.getVertex(0));
+		IntersectVertId iv1(edge.getVertex(1));
 
 		interEdges.insert(IntersectEdge(iv0, iv1));
 	}

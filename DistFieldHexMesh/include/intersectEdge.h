@@ -37,11 +37,9 @@ struct IntersectVertId : public Index3DId {
 	IntersectVertId() = default;
 	IntersectVertId(const IntersectVertId& src) = default;
 	IntersectVertId(const Index3DId& id, const RayHitd& hit);
-	IntersectVertId(const Index3DId& id, size_t triIdx);
+	IntersectVertId(const Index3DId& id);
 
 	bool operator < (const IntersectVertId& rhs) const;
-
-	size_t _triIndex = -1;
 };
 
 struct IntersectEdge {
@@ -58,13 +56,11 @@ struct IntersectEdge {
 
 inline IntersectVertId::IntersectVertId(const Index3DId& id, const RayHitd& hit)
 	: Index3DId(id)
-	, _triIndex(hit.triIdx)
 {
 }
 
-inline IntersectVertId::IntersectVertId(const Index3DId& id, size_t triIdx)
+inline IntersectVertId::IntersectVertId(const Index3DId& id)
 	: Index3DId(id)
-	, _triIndex(triIdx)
 {
 }
 

@@ -719,7 +719,7 @@ void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId
 				RayHitd hit;
 				if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
 					auto vertId = _pBlock->addVertex(hit.hitPt);
-					interVerts.insert(IntersectVertId(vertId, triIdx));
+					interVerts.insert(IntersectVertId(vertId));
 				}
 			}
 		}
@@ -749,12 +749,12 @@ void PolyhedronSplitter::createModelFaceInterectionEdges(const Index3DId& faceId
 		if (pierceVerts.size() == 2) {
 			auto iter = pierceVerts.begin();
 
-			auto pierceVert0 = IntersectVertId(*iter++, -1);
-			auto pierceVert1 = IntersectVertId(*iter++, -1);
+			auto pierceVert0 = IntersectVertId(*iter++);
+			auto pierceVert1 = IntersectVertId(*iter++);
 			faceEdges.insert(IntersectEdge(pierceVert0, pierceVert1));
 		} else if (interVerts.size() == 1) {
 			assert(pierceVerts.size() == 1);
-			auto pierceVert = IntersectVertId(*pierceVerts.begin(), -1);
+			auto pierceVert = IntersectVertId(*pierceVerts.begin());
 
 			if (pierceVert.isValid()) {
 				const auto& vertId0 = *interVerts.begin();
@@ -810,7 +810,7 @@ void PolyhedronSplitter::createAllFaceEdges(const Polyhedron& realCell, const st
 					RayHitd hit;
 					if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
 						auto vertId = _pBlock->addVertex(hit.hitPt);
-						interVerts.insert(IntersectVertId(vertId, triIdx));
+						interVerts.insert(IntersectVertId(vertId));
 						Vector3d modNorm = pMesh->triUnitNormal(triIdx);
 						Vector3d v = pt0 - hit.hitPt;
 						if (modNorm.dot(v) < 0)
@@ -880,7 +880,7 @@ void PolyhedronSplitter::createAllPatchFaceEdges_deprecated(const Polyhedron& re
 						RayHitd hit;
 						if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
 							auto vertId = _pBlock->addVertex(hit.hitPt);
-							interVerts.insert(IntersectVertId(vertId, triIdx));
+							interVerts.insert(IntersectVertId(vertId));
 							Vector3d modNorm = pMesh->triUnitNormal(triIdx);
 							Vector3d v = pt0 - hit.hitPt;
 							if (modNorm.dot(v) < 0)
@@ -952,7 +952,7 @@ void PolyhedronSplitter::createFaceEdgesFromMeshFace(const Polyhedron& realCell,
 					RayHitd hit;
 					if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
 						auto vertId = _pBlock->addVertex(hit.hitPt);
-						interVerts.insert(IntersectVertId(vertId, triIdx));
+						interVerts.insert(IntersectVertId(vertId));
 					}
 				}
 			}
@@ -1057,7 +1057,7 @@ IntersectVertId PolyhedronSplitter::createPierceVertex(const Polygon& face, cons
 	Vector3d pt;
 	if (findPiercePoint(face, pierceChain, pt)) {
 		Index3DId vertId = _pBlock->addVertex(pt);
-		return IntersectVertId(vertId, -1);
+		return IntersectVertId(vertId);
 	}
 
 	return IntersectVertId();
