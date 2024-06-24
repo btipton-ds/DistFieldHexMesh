@@ -477,7 +477,7 @@ void createFacesVerts(const Block* pBlock, const Vector3d& faceNormal, MTC::map<
 bool PolygonSplitter::createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::set<Index3DId>& imprintedVertIds, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
 {
 	const bool primaryAxisCuts = true;
-	MTC::vector<Index3DId> concaveVerts;
+	MTC::set<Index3DId> concaveVerts;
 	Polygon::findConcaveVertIdsStat(getBlockPtr(), verts, concaveVerts);
 	if (concaveVerts.empty()) {
 		convexFaceVerts.push_back(verts);

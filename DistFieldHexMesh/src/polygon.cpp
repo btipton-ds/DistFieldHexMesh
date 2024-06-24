@@ -421,7 +421,7 @@ void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>&
 	yAxis = zAxis.cross(xAxis);
 }
 
-void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::vector<Index3DId>& cVertIds)
+void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds)
 {
 	auto zAxis = calUnitNormalStat(pBlock, vertIds);
 
@@ -438,7 +438,7 @@ void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Inde
 		Vector3d vN = v1.cross(v0);
 		if (vN.dot(zAxis) < 0) {
 			// Concave vertex
-			cVertIds.push_back(vertIds[j]);
+			cVertIds.insert(vertIds[j]);
 		}
 	}
 }

@@ -115,7 +115,7 @@ public:
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
-	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::vector<Index3DId>& cVertIds);
+	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
 	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const MTC::vector<Index3DId>& vertIds);
 	static void dumpPolygonPoints(std::ostream& out, const MTC::vector<Vector3d>& pts);
@@ -310,7 +310,7 @@ inline bool Polygon::usedByCell(const Index3DId& cellId) const
 inline bool Polygon::isConvex() const
 {
 	if (_isConvex == IS_UNKNOWN) {
-		MTC::vector<Index3DId> tmp;
+		MTC::set<Index3DId> tmp;
 		findConcaveVertIdsStat(getBlockPtr(), _vertexIds, tmp);
 		_isConvex = tmp.empty() ? IS_TRUE : IS_FALSE;
 	}
