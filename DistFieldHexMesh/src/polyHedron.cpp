@@ -421,7 +421,7 @@ double Polyhedron::calVolume() const
 		double v;
 		faceFunc(TS_REAL, faceId, [this, &v](const Polygon& face) {
 			const auto& verts = face.getVertexIds();
-			face.iterateTriangles([this, &v](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
+			face.iterateOrientedTriangles([this, &v](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
 				const Vector3d zAxis(0, 0, 1);
 				Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
 				Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
@@ -433,13 +433,9 @@ double Polyhedron::calVolume() const
 				double h = ctr.dot(zAxis);
 				v = h * area;
 				return true;
-			});
+			}, getId());
 		});
 
-		if (faceId.isUserFlagSet(UF_FACE_REVERSED))
-			vol -= v;
-		else
-			vol += v;
 	}
 	return vol;
 }
@@ -451,7 +447,6 @@ bool Polyhedron::isConvex() const
 		return false;
 	}
 
-	orientFaces();
 	const auto& edges = getEdges(false);
 	for (const auto& edge : edges) {
 		if (!edge.isConvex(getBlockPtr()))
@@ -505,7 +500,6 @@ bool Polyhedron::intersectsModel() const
 
 bool Polyhedron::intersectsModelPrecise() const
 {
-	orientFaces();
 	assert(isConvex());
 
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -660,71 +654,61 @@ bool Polyhedron::containsSharps() const
 	return false;
 }
 
-void Polyhedron::orientFaces() const
+void Polyhedron::orientFaces()
 {
 	if (_isOriented)
 		return;
 
-	Index3DId seedFace;
-	double maxArea = 0;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [&seedFace, &maxArea](const Polygon& face) {
-			double faceArea;
-			Vector3d ctr;
-			face.calAreaAndCentroid(faceArea, ctr);
-			if (faceArea > maxArea) {
-				maxArea = faceArea;
-				seedFace = face.getId();
-			}
-			});
-	}
-
-	const auto& edges = getEdges(false);
-	MTC::set<Index3DId> tested;
-	tested.insert(seedFace);
-	for (auto& faceId : _faceIds) {
-		bool faceReversed = false;
-		faceFunc(TS_REAL, faceId, [this, &edges, &faceReversed, &tested](const Polygon& face) {
-			face.iterateEdges([this, &tested, &edges, &faceReversed, &face](const Index3DId& vertId00, const Index3DId& vertId01)->bool {
-				bool done = false;
-				const auto& iter = *edges.find(Edge(vertId00, vertId01));
-				const auto& adjFaces = iter.getFaceIds();
-				assert(adjFaces.size() == 2);
-				for (const auto& adjFaceId : adjFaces) {
-					if (tested.contains(adjFaceId))
-						continue;
-
-					tested.insert(adjFaceId);
-					if (adjFaceId != face.getId()) {
-						faceFunc(TS_REAL, adjFaceId, [&faceReversed, &vertId00, &vertId01, &done](const Polygon& adjFace) {
-							adjFace.iterateEdges([&faceReversed, &vertId00, &vertId01, &done](const Index3DId& vertId10, const Index3DId& vertId11)->bool {
-								if (vertId00 == vertId10 && vertId01 == vertId11) {
-									done = faceReversed = true;
-									return false;
-								} else if (vertId00 == vertId11 && vertId01 == vertId10) {
-									// edges match and orientation is reversed.
-									return false;
-								}
-								return true;
-							});
-						});
-					}
-
-					if (done)
-						break;
-				}
-				return !done;
-			});
+		faceFunc(TS_REAL, faceId, [](Polygon& face) {
+			for (auto& cellId : face.getCellIds())
+				cellId.setUserFlag(UF_FACE_REVERSED, false);
 		});
-		faceId.setUserFlag(UF_FACE_REVERSED, faceReversed);
 	}
+
+	MTC::set<Index3DId> orientedIds, unorientedIds(_faceIds);
+	orientedIds.insert(*unorientedIds.begin());
+	unorientedIds.erase(*orientedIds.begin());
+	while (!unorientedIds.empty()) {
+		bool found = false;
+		for (const auto& oriented : orientedIds) {
+			faceFunc(TS_REAL, oriented, [&](const Polygon& orientedFace) {
+				orientedFace.iterateOrientedEdges([&](const Edge& edgeA) {
+					for (const auto& unoriented : unorientedIds) {
+						faceFunc(TS_REAL, unoriented, [&](Polygon& unorientedFace) {
+							unorientedFace.iterateOrientedEdges([&](const Edge& edgeB) {
+								if (edgeA == edgeB) {
+									if (edgeA.getVertex(0) == edgeB.getVertex(0)) { // face is reversed
+										unorientedFace.flipReversed(getId());
+									}
+									orientedIds.insert(unoriented);
+									unorientedIds.erase(unoriented);
+									found = true;
+								}
+								return !found;
+							}, getId());
+						});
+
+						if (found)
+							break;
+					}
+					return !found;
+				}, getId());
+			});
+
+			if (found)
+				break;
+		}
+	}
+
 
 	double vol = calVolume();
 	if (vol < 0) {
 		// flip all face orientation flags
 		for (auto& faceId : _faceIds) {
-			bool faceReversed = faceId.isUserFlagSet(UF_FACE_REVERSED);
-			faceId.setUserFlag(UF_FACE_REVERSED, !faceReversed);
+			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+				face.flipReversed(getId());
+			});
 		}
 		vol = calVolume();
 		assert(vol > 0);
@@ -897,7 +881,7 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 	// If this cell cannot be split due to a neighbor, then the neighbor is split - now, this cell can be split; even though this cell didn't change.
 	blockingCellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		Polygon::CellId_SplitLevel adjCellId;
+		Index3DId adjCellId;
 		size_t faceSplitLevel;
 		faceFunc(TS_REAL, faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
 			for (const auto& id : face.getCellIds()) {
@@ -908,7 +892,7 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 			}
 		});
 
-		if (adjCellId.getId().isValid()) {
+		if (adjCellId.isValid()) {
 			if (faceSplitLevel > 0) {
 				blockingCellIds.insert(adjCellId);
 			} else {

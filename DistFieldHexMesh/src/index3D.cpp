@@ -76,11 +76,15 @@ void Index3DBase::clampInBounds(const Index3DBase& bounds)
 
 void Index3DBase::write(std::ostream& out) const
 {
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
 	out.write((char*)&_iVal, sizeof(_iVal));
 }
 
 void Index3DBase::read(std::istream& in)
 {
+	uint8_t version = 0;
+	in.read((char*)&version, sizeof(version));
 	in.read((char*)&_iVal, sizeof(_iVal));
 }
 
@@ -119,12 +123,20 @@ void Index3DId::setUserFlag(uint32_t bit, bool val) const
 void Index3DId::write(std::ostream& out) const
 {
 	Index3DBase::write(out);
+
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
 	out.write((char*)&_elementId, sizeof(_elementId));
+	out.write((char*)&_splitLevel, sizeof(_splitLevel));
+	out.write((char*)&_userFlags, sizeof(_userFlags));
 }
 
 void Index3DId::read(std::istream& in)
 {
 	Index3DBase::read(in);
+	uint8_t version = 0;
+	in.read((char*)&version, sizeof(version));
 	in.read((char*)&_elementId, sizeof(_elementId));
+	in.read((char*)&_splitLevel, sizeof(_splitLevel));
+	in.read((char*)&_userFlags, sizeof(_userFlags));
 }
-

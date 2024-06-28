@@ -38,14 +38,10 @@ using namespace DFHM;
 
 Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
+	, _reversed(vert1 < vert0)
 {
-	if (vert0 < vert1) {
-		_vertexIds[0] = vert0;
-		_vertexIds[1] = vert1;
-	} else {
-		_vertexIds[0] = vert1;
-		_vertexIds[1] = vert0;
-	}
+	_vertexIds[0] = vert0;
+	_vertexIds[1] = vert1;
 }
 
 Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
@@ -55,23 +51,30 @@ Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	_vertexIds[1] = src._vertexIds[1];
 }
 
-bool Edge::operator == (const Edge& rhs) const
-{
-	return (_vertexIds[0] == rhs._vertexIds[0]) && (_vertexIds[1] == rhs._vertexIds[1]);
-
-}
-
 bool Edge::isValid() const
 {
 	return _vertexIds[0].isValid() && _vertexIds[1].isValid();
 }
 
+bool Edge::operator == (const Edge& rhs) const
+{
+	return !operator < (rhs) && !rhs.operator<(*this);
+}
+
+bool Edge::operator != (const Edge& rhs) const
+{
+	return !operator == (rhs);
+}
+
 bool Edge::operator < (const Edge& rhs) const
 {
 	for (int i = 0; i < 2; i++) {
-		if (_vertexIds[i] < rhs._vertexIds[i])
+		const auto& v = _reversed ? _vertexIds[1 - i] : _vertexIds[i];
+		const auto& rhsV = rhs._reversed ? rhs._vertexIds[1 - i] : rhs._vertexIds[i];
+
+		if (v < rhsV)
 			return true;
-		else if (rhs._vertexIds[i] < _vertexIds[i])
+		else if (rhsV < v)
 			return false;
 	}
 	return false;

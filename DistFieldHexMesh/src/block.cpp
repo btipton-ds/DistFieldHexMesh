@@ -488,6 +488,8 @@ Index3DId Block::addCell(const Polyhedron& cell)
 			cellFace.addCellId(cellId, 0);
 		});
 	}
+	newCell.orientFaces();
+
 	return cellId;
 }
 
@@ -786,22 +788,20 @@ void Block::dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool include
 {
 	string path = getObjFilePath();
 	for (const auto& cellId : cellIds) {
-		cellFunc(TS_REAL,cellId, [this, &path, includeModel, useEdges, sharpOnly, &pts](const Polyhedron& cell) {
-			stringstream ss;
-			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
-			_pVol->writeObj(ss.str(), { cell.getId() }, includeModel, useEdges, sharpOnly, pts);
-		});
+		stringstream ss;
+		ss << path << "cell_" << getLoggerNumericCode() << "_" << cellId.elementId() << ".obj";
+		_pVol->writeObj(ss.str(), { cellId }, includeModel, useEdges, sharpOnly, pts);
 	}
 }
 
-void Block::dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds) const
+void Block::dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId) const
 {
 	MTC::vector<Index3DId> vecIds;
 	vecIds.insert(vecIds.end(), faceIds.begin(), faceIds.end());
-	dumpPolygonObj(fileName, vecIds);
+	dumpPolygonObj(fileName, vecIds, cellId);
 }
 
-void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds) const
+void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId) const
 {
 	string path = getObjFilePath();
 	string filename = path + fileName + ".obj";
@@ -809,8 +809,9 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	vector<Vector3d> points;
 	map<Index3DId, size_t> vertIdToPtMap;
 	for (const auto& faceId : faceIds) {
-		faceAvailFunc(TS_REAL, faceId, [this, &points, &vertIdToPtMap](const Polygon& face) {
-			for (const auto& vertId : face.getVertexIds()) {
+		faceAvailFunc(TS_REAL, faceId, [this, &points, &vertIdToPtMap, &cellId](const Polygon& face) {
+			MTC::vector<Index3DId> vertIds = cellId.isUserFlagSet(UF_FACE_REVERSED) ? face.getOrientedVertexIds() : face.getVertexIds();
+			for (const auto& vertId : vertIds) {
 				auto iter = vertIdToPtMap.find(vertId);
 				if (iter == vertIdToPtMap.end()) {
 					size_t idx = points.size();

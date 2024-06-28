@@ -749,7 +749,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	for (const auto& faceId : faceIds) {
 		auto pBlk = getBlockPtr(faceId);
 		pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
-			const auto& vIds = face.getVertexIds();
+			const auto vIds = face.getVertexIds();
 			for (const auto& vertId : vIds) {
 				Vector3d pt = pBlk->getVertexPoint(vertId);
 				size_t vertIdx;

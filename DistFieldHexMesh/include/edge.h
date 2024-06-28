@@ -59,6 +59,7 @@ public:
 	bool isValid() const;
 	bool operator < (const Edge& rhs) const;
 	bool operator == (const Edge& rhs) const;
+	bool operator != (const Edge& rhs) const;
 
 	const Index3DId& getVertex(size_t idx) const;
 	const Index3DId* getVertexIds() const;
@@ -100,6 +101,7 @@ public:
 private:
 	Index3DId _vertexIds[2];
 	MTC::set<Index3DId> _faceIds;
+	bool _reversed = false;
 	mutable const Block* _pBlock;
 };
 

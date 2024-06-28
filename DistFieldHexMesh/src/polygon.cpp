@@ -709,7 +709,7 @@ void Polygon::removeCellId(const Index3DId& cellId)
 
 void Polygon::removeDeadCellIds()
 {
-	set<CellId_SplitLevel> tmp;
+	set<Index3DId> tmp;
 	for (const auto& cellId : _cellIds) {
 		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			tmp.insert(cellId);
@@ -733,7 +733,8 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 #endif
 
 	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
-	_cellIds.insert(CellId_SplitLevel(cellId, level));
+	cellId.setSplitLevel(level);
+	_cellIds.insert(cellId);
 #if 1
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
@@ -1157,28 +1158,6 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 #endif
 
 	return out;
-}
-
-Polygon::CellId_SplitLevel::CellId_SplitLevel(const Index3DId& cellId, size_t splitLevel)
-	: _cellId(cellId)
-	, _splitLevel(splitLevel)
-{
-}
-
-void Polygon::CellId_SplitLevel::write(ostream& out) const
-{
-	uint8_t version = 0;
-	out.write((char*)&version, sizeof(uint8_t));
-	_cellId.write(out);
-	out.write((char*)&_splitLevel, sizeof(size_t));
-}
-
-void Polygon::CellId_SplitLevel::read(istream& in)
-{
-	uint8_t version;
-	in.read((char*)&version, sizeof(uint8_t));
-	_cellId.read(in);
-	in.read((char*)&_splitLevel, sizeof(size_t));
 }
 
 inline Vector3d Polygon::getVertexPoint(const Index3DId& id) const

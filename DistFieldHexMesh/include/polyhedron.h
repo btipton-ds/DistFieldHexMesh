@@ -95,7 +95,7 @@ public:
 	bool containsPointPrecise(const Vector3d& pt) const;
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
-	void orientFaces() const;
+	void orientFaces();
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);

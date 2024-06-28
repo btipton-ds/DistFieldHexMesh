@@ -589,8 +589,12 @@ bool PolyhedronSplitter::createConvexCells(const MTC::set<Index3DId>& cellFacesI
 	MTC::set<Index3DId> cellFaces(cellFacesIn);
 
 	Polyhedron cell(cellFaces);
-	cell.setId(getBlockPtr(), 0);
+	cell.setId(getBlockPtr(), 10000);
+	assert(cell.isClosed());
 	cell.orientFaces();
+
+	string filename = "ocf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
+	getBlockPtr()->dumpPolygonObj(filename, cell.getFaceIds(), cell.getId());
 	const auto edges = cell.getEdges(false);
 	for (const auto& edge : edges) {
 		if (!edge.isConvex(getBlockPtr())) {

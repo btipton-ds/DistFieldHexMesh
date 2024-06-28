@@ -170,8 +170,8 @@ public:
 	bool load();
 
 	void dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const MTC::vector<Vector3d>& pts = MTC::vector<Vector3d>()) const;
-	void dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds) const;
-	void dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds) const;
+	void dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
+	void dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
 	void dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const;
 
 	template<class F>
