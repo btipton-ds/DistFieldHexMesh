@@ -609,14 +609,47 @@ bool PolyhedronSplitter::createConvexCells(const MTC::set<Index3DId>& cellFacesI
 		filename = "ce_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
 		getBlockPtr()->dumpEdgeObj(filename, concaveEdges);
 		for (const auto& edge : concaveEdges) {
-			int dbgBreak = 1;
+			splitCellAtConcaveEdge(cell, edge, newCellIds);
 		}
+		cell.detachFaces();
+		return true;
 	}
 	
 	cell.detachFaces();
 	auto newCellId = getBlockPtr()->addCell(cellFaces);
 	newCellIds.insert(newCellId);
 	return true;
+}
+
+void PolyhedronSplitter::splitCellAtConcaveEdge(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds) const
+{
+	assert(!edge.isConvex(getBlockPtr(), cell.getId()));
+	auto iter = cell.getFaceIds().begin();
+
+	const auto& faceId0 = *iter++;
+	const auto& faceId1 = *iter;
+	Vector3d norm0, norm1;
+	faceFunc(TS_REAL, faceId0, [&cell, &norm0](const Polygon& face) {
+		norm0 = face.calOrientedUnitNormal(cell.getId());
+	});
+	faceFunc(TS_REAL, faceId1, [&cell, &norm1](const Polygon& face) {
+		norm1 = face.calOrientedUnitNormal(cell.getId());
+	});
+
+	double angle = edge.calDihedralAngleRadians(getBlockPtr(), cell.getId());
+	if (angle > 3 / 4.0 * M_PI) {
+		splitConcaveEdgeSingle(cell, edge, norm0, norm1, newCellIds);
+	} else {
+		splitConcaveEdgeDouble(cell, edge, norm0, norm1, newCellIds);
+	}
+}
+
+void PolyhedronSplitter::splitConcaveEdgeSingle(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const
+{
+}
+
+void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const
+{
 }
 
 bool PolyhedronSplitter::cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds)

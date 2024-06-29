@@ -731,24 +731,6 @@ void Polyhedron::orientFaces()
 	_isOriented = true;
 }
 
-void Polyhedron::getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const
-{
-	Vector3d cellCtr = calCentroid();
-	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [&cellCtr, &faces](const Polygon& face) {
-			Vector3d faceCtr = face.calCentroid();
-			Vector3d faceNorm = face.calUnitNormal();
-			Vector3d outwardNorm = faceCtr - cellCtr;
-			outwardNorm.normalize();
-			auto verts = face.getVertexIds();
-			if (faceNorm.dot(outwardNorm) < 0)
-				reverse(verts.begin(), verts.end());
-			Polygon dupFace(verts);
-			faces.push_back(dupFace);
-		});
-	}
-}
-
 void Polyhedron::imprintTVertices(Block* pDstBlock)
 {
 #if DEBUG_BREAKS && defined(_DEBUG)

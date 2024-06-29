@@ -65,6 +65,9 @@ private:
 
 	bool createCellsFromFaces(MTC::set<Index3DId>& faceIds, MTC::set<Index3DId>& newCellIds);
 	bool createConvexCells(const MTC::set<Index3DId>& cellFaces, MTC::set<Index3DId>& newCellIds);
+	void splitCellAtConcaveEdge(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds) const;
+	void splitConcaveEdgeSingle(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const;
+	void splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const;
 	bool cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds);
 	bool createModelMeshPatches(const BuildCFDParams& params, std::vector<TriMesh::PatchPtr>& patches,
 		std::vector<std::vector<std::vector<size_t>>>& allChains) const;

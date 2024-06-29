@@ -99,7 +99,6 @@ public:
 	void setEdgeIndices(const std::vector<size_t>& indices);
 	void setTriIndices(const std::vector<size_t>& indices);
 	void orientFaces();
-	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
 	void attachFaces();
