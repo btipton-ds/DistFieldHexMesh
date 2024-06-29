@@ -573,11 +573,16 @@ bool PolyhedronSplitter::createCellsFromFaces(MTC::set<Index3DId>& faceIds, MTC:
 		}
 
 		if (!cellFaces.empty()) {
+#if 1
+			auto newCellId = getBlockPtr()->addCell(cellFaces);
+			newCellIds.insert(newCellId);
+#else
 			MTC::set<Index3DId> tmp;
 			if (createConvexCells(cellFaces, tmp)) {
 				numNewFaces += tmp.size();
 				newCellIds.insert(tmp.begin(), tmp.end());
 			}
+#endif
 		}
 	}
 

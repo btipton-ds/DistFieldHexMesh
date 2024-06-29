@@ -74,6 +74,8 @@ public:
 	bool contains(const Vector3d& pt) const;
 	Vector3d calCentroid() const;
 	double calVolume() const;
+	bool isClosed() const;
+	bool isOriented() const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
 	bool intersectsModelPrecise() const; // Requires cell is convex and uses the actual faces
@@ -120,7 +122,6 @@ public:
 	bool load(std::istream& out);
 	void dumpFaces() const;
 
-	bool isClosed() const;
 	bool lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayHitd>& hits, MTC::vector<Index3DId>& faceIds) const;
 	bool hasTooManySplits() const;
 	bool verifyTopology() const;

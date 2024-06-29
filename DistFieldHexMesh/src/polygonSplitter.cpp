@@ -324,84 +324,11 @@ bool getInwardVectors(Block* pBlock, const Index3DId& vertId, const MTC::map<Ind
 
 void createFacesVerts(const Block* pBlock, const Vector3d& faceNormal, MTC::map<Edge, size_t>& edgeCountMap, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts)
 {
-#if 1
 	MTC::set<Edge> edges;
 	for (const auto& pair : edgeCountMap) {
 		edges.insert(pair.first);
 	}
 	PolygonSplitter::connectEdges(pBlock, edges, convexFaceVerts);
-#else
-	while (!edgeCountMap.empty()) {
-		Edge seedEdge;
-		bool useNormal = false;
-		for (auto& pair : edgeCountMap) {
-			if (pair.second == 2) {
-				seedEdge = pair.first;
-				useNormal = true;
-				break;
-			}
-		}
-
-		if (!seedEdge.isValid()) {
-			seedEdge = edgeCountMap.begin()->first;
-			edgeCountMap.erase(edgeCountMap.begin());
-		}
-
-		MTC::vector<Index3DId> faceVerts;
-		MTC::set<Index3DId> usedVerts;
-
-		faceVerts.push_back(seedEdge.getVertex(0));
-		faceVerts.push_back(seedEdge.getVertex(1));
-
-		usedVerts.insert(faceVerts.front());
-		usedVerts.insert(faceVerts.back());
-
-		bool found = true;
-		while (found) {
-			found = false;
-			const auto& priorVertId = faceVerts[faceVerts.size() - 2];
-			const auto& lastVertId = faceVerts[faceVerts.size() - 1];
-			Vector3d pt0 = pBlock->getVertexPoint(priorVertId);
-			Vector3d pt1 = pBlock->getVertexPoint(lastVertId);
-			Vector3d v0 = (pt0 - pt1);
-			for (auto& pair : edgeCountMap) {
-				if (pair.second < 2) {
-					const auto& edge = pair.first;
-					if (edge.containsVertex(lastVertId)) {
-						const auto& nextId = edge.getOtherVert(lastVertId);
-						if (nextId == faceVerts.front())
-							continue;
-
-						if (!usedVerts.contains(nextId)) {
-							Vector3d pt2 = pBlock->getVertexPoint(nextId);
-							Vector3d v1 = pt2 - pt1;
-							if (!useNormal || v1.cross(v0).dot(faceNormal) > 0) {
-								found = true;
-								usedVerts.insert(nextId);
-								faceVerts.push_back(nextId);
-								break;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if (!faceVerts.empty()) {
-			for (size_t i = 0; i < faceVerts.size(); i++) {
-				size_t j = (i + 1) % faceVerts.size();
-				auto iter = edgeCountMap.find(Edge(faceVerts[i], faceVerts[j]));
-				if (iter != edgeCountMap.end()) {
-					iter->second--;
-					if (iter->second == 0) {
-						edgeCountMap.erase(iter);
-					}
-				}
-			}
-			convexFaceVerts.push_back(faceVerts);
-		}
-	}
-#endif
 }
 
 }

@@ -94,11 +94,14 @@ public:
 	*/
 	double calDihedralAngleRadians(const Block* pBlock) const;
 	bool isConvex(const Block* pBlock) const;
+	bool isOriented(const Block* pBlock) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
 private:
+	Index3DId getCommonCellId(const Block* pBlock, const auto& id0, const auto& id1) const;
+
 	Index3DId _vertexIds[2];
 	MTC::set<Index3DId> _faceIds;
 	bool _reversed = false;

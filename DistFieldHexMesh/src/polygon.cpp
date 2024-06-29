@@ -498,10 +498,35 @@ Vector3d Polygon::calUnitNormal() const
 	return calUnitNormalStat(getBlockPtr(), _vertexIds);
 }
 
+Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
+{
+	Vector3d result = calUnitNormalStat(getBlockPtr(), _vertexIds);
+	if (isReversed(cellId))
+		return -result;
+
+	return result;
+}
+
 Planed Polygon::calPlane() const
 {
 	Vector3d origin = calCentroid(); // Use every point to get more preceision
 	Vector3d normal = calUnitNormal();
+	Planed result(origin, normal);
+
+#ifdef _DEBUG
+	for (const auto& vId : _vertexIds) {
+		Vector3d pt = getVertexPoint(vId);
+		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
+	}
+#endif // _DEBUG
+
+	return result;
+}
+
+Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
+{
+	Vector3d origin = calCentroid(); // Use every point to get more preceision
+	Vector3d normal = calOrientedUnitNormal(cellId);
 	Planed result(origin, normal);
 
 #ifdef _DEBUG

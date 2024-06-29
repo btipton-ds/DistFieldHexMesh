@@ -450,6 +450,8 @@ Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 #endif // _DEBUG
 
 	Index3DId faceId = addFace(newFace);
+	auto& face = _modelData._polygons[faceId];
+	assert(face.isConvex());
 
 	return faceId;
 }
@@ -489,6 +491,9 @@ Index3DId Block::addCell(const Polyhedron& cell)
 		});
 	}
 	newCell.orientFaces();
+	assert(newCell.isOriented());
+	assert(newCell.isConvex());
+	assert(newCell.calVolume() > 0);
 
 	return cellId;
 }
@@ -810,7 +815,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	map<Index3DId, size_t> vertIdToPtMap;
 	for (const auto& faceId : faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [this, &points, &vertIdToPtMap, &cellId](const Polygon& face) {
-			MTC::vector<Index3DId> vertIds = cellId.isUserFlagSet(UF_FACE_REVERSED) ? face.getOrientedVertexIds() : face.getVertexIds();
+			MTC::vector<Index3DId> vertIds = cellId.isValid() && cellId.isUserFlagSet(UF_FACE_REVERSED) ? face.getOrientedVertexIds(cellId) : face.getVertexIds();
 			for (const auto& vertId : vertIds) {
 				auto iter = vertIdToPtMap.find(vertId);
 				if (iter == vertIdToPtMap.end()) {

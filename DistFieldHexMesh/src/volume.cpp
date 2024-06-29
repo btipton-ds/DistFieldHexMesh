@@ -333,7 +333,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 // TODO we should be able to clear the reference topology now
 
-		cutWithTriMesh(params, multiCore);
+//		cutWithTriMesh(params, multiCore);
 	}
 
 	Utils::Timer::dumpAll();
@@ -684,13 +684,13 @@ void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool
 void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
 {
 	auto pMesh = getModelMesh();
-	set<Index3DId> faceIds;
+	map<Index3DId, set<Index3DId>> cellToFaceIdsMap;
 	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(TS_REAL,cellId, [&faceIds, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
+		pBlk->cellFunc(TS_REAL,cellId, [&cellToFaceIdsMap, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
-			faceIds.insert(ids.begin(), ids.end());
+			cellToFaceIdsMap.insert(std::make_pair(cell.getId(), ids));
 			if (includeModel) {
 				auto tmp = cell.getTriIndices();
 				auto bbox = cell.getBoundingBox();
@@ -746,20 +746,22 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		}
 	}
 
-	for (const auto& faceId : faceIds) {
-		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
-			const auto vIds = face.getVertexIds();
-			for (const auto& vertId : vIds) {
-				Vector3d pt = pBlk->getVertexPoint(vertId);
-				size_t vertIdx;
-				if (!pointToIdxMap.find(pt, vertIdx)) {
-					vertIdx = pts.size();
-					pts.push_back(pt);
-					pointToIdxMap.add(pt, vertIdx);
+	for (const auto& pair : cellToFaceIdsMap) {
+		for (const auto& faceId : pair.second) {
+			auto pBlk = getBlockPtr(faceId);
+			pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
+				const auto& vIds = face.getVertexIds();
+				for (const auto& vertId : vIds) {
+					Vector3d pt = pBlk->getVertexPoint(vertId);
+					size_t vertIdx;
+					if (!pointToIdxMap.find(pt, vertIdx)) {
+						vertIdx = pts.size();
+						pts.push_back(pt);
+						pointToIdxMap.add(pt, vertIdx);
+					}
 				}
-			}
-		});
+			});
+		}
 	}
 
 	out << "#Vertices " << pts.size() << "\n";
@@ -771,22 +773,29 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
 	}
 
-	out << "#Faces " << faceIds.size() << "\n";
-	for (const auto& faceId : faceIds) {
-		auto pBlk = getBlockPtr(faceId);
-		pBlk->faceFunc(TS_REAL, faceId, [&out, &pBlk, &pointToIdxMap](const Polygon& face) {
-			out << "#id: " << face.getId() << "\n";
-			out << "#NumVerts: " << face.getVertexIds().size() << "\n";
-			out << "f ";
-			const auto& vIds = face.getVertexIds();
-			for (const auto& vertId : vIds) {
-				Vector3d pt = pBlk->getVertexPoint(vertId);
-				size_t vertIdx;
-				if (pointToIdxMap.find(pt, vertIdx))
-					out << (vertIdx + 1) << " ";
-			}
-			out << "\n";
-		});
+	size_t num = 0;
+	for (const auto& pair : cellToFaceIdsMap) {
+		num += pair.second.size();
+	}
+
+	out << "#Faces " << num << "\n";
+	for (const auto& pair : cellToFaceIdsMap) {
+		for (const auto& faceId : pair.second) {
+			auto pBlk = getBlockPtr(faceId);
+			pBlk->faceFunc(TS_REAL, faceId, [&out, &pBlk, &pair, &pointToIdxMap](const Polygon& face) {
+				out << "#id: " << face.getId() << "\n";
+				out << "#NumVerts: " << face.getVertexIds().size() << "\n";
+				out << "f ";
+				const auto vIds = face.getOrientedVertexIds(pair.first);
+				for (const auto& vertId : vIds) {
+					Vector3d pt = pBlk->getVertexPoint(vertId);
+					size_t vertIdx;
+					if (pointToIdxMap.find(pt, vertIdx))
+						out << (vertIdx + 1) << " ";
+				}
+				out << "\n";
+			});
+		}
 	}
 
 	if (includeModel) {
@@ -804,7 +813,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 				out << "\n";
 			}
 		} else {
-			out << "#Model Faces " << faceIds.size() << "\n";
+			out << "#Model Faces " << modelTriIndices.size() << "\n";
 			for (auto triIdx : modelTriIndices) {
 				const auto& tri = _pModelTriMesh->getTri(triIdx);
 				out << "f ";

@@ -235,6 +235,9 @@ public:
 
 private:
 	size_t _elementId = -1;
+
+	// These attributes are mutable, because this structures is used as a sort key
+	// This allows changing attributes without corrupting the sort.
 	mutable size_t _splitLevel = -1;
 	mutable uint32_t _userFlags = 0;
 };

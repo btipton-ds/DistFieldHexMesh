@@ -138,7 +138,7 @@ public:
 	bool operator < (const Polygon& rhs) const;
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
-	MTC::vector<Index3DId> getOrientedVertexIds() const;
+	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	const MTC::set<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
@@ -146,7 +146,9 @@ public:
 	double calVertexAngle(size_t index) const;
 	double distanceToPoint(const Vector3d& pt) const;
 	Planed calPlane() const;
+	Planed calOrientedPlane(const Index3DId& cellId) const;
 	Vector3d calUnitNormal() const;
+	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	Vector3d calCentroid() const;
 	bool intersectsModel() const;
 	double distFromPlane(const Vector3d& pt) const;
@@ -230,26 +232,34 @@ inline bool Polygon::verifyUnique() const
 
 inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 {
-	auto iter = _cellIds.find(cellId);
-	if (iter != _cellIds.end())
-		iter->setUserFlag(UF_FACE_REVERSED, reversed);
+	for (const auto& id : _cellIds) {
+		if (id == cellId) {
+			id.setUserFlag(UF_FACE_REVERSED, reversed);
+			break;
+		}
+	}
 }
 
 inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is relative to cellId
 {
-	auto iter = _cellIds.find(cellId);
-	if (iter != _cellIds.end()) {
-		bool reversed = iter->isUserFlagSet(UF_FACE_REVERSED);
-		iter->setUserFlag(UF_FACE_REVERSED, !reversed);
+	for (const auto& id : _cellIds) {
+		if (id == cellId) {
+			bool reversed = id.isUserFlagSet(UF_FACE_REVERSED);
+			id.setUserFlag(UF_FACE_REVERSED, !reversed);
+			break;
+		}
 	}
 }
 
 inline bool Polygon::isReversed(const Index3DId& cellId) const
 {
-	auto iter = _cellIds.find(cellId);
-	if (iter != _cellIds.end())
-		return iter->isUserFlagSet(UF_FACE_REVERSED);
+	for (const auto& id : _cellIds) {
+		if (id == cellId) {
+			return id.isUserFlagSet(UF_FACE_REVERSED);
+		}
+	}
 	return false;
+
 }
 
 inline size_t Polygon::numCells() const
@@ -287,10 +297,11 @@ inline const MTC::vector<Index3DId>& Polygon::getVertexIds() const
 	return _vertexIds;
 }
 
-inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds() const
+inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cellId) const
 {
 	MTC::vector<Index3DId> result(_vertexIds);
-	std::reverse(result.begin(), result.end());
+	if (isReversed(cellId))
+		std::reverse(result.begin(), result.end());
 	return result;
 }
 
@@ -329,12 +340,14 @@ void Polygon::iterateEdges(F fLambda) const
 template<class F>
 void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 {
-	auto verts = _vertexIds;
-	if (isReversed(cellId))
-		std::reverse(verts.begin(), verts.end());
+	const auto& verts = _vertexIds;
 
+	bool reversed = isReversed(cellId);
 	for (size_t i = 0; i < verts.size(); i++) {
 		size_t j = (i + 1) % verts.size();
+		if (reversed)
+			std::swap(i, j);
+
 		Edge e(verts[i], verts[j]);
 		if (!fLambda(e))
 			break;
@@ -356,13 +369,14 @@ void Polygon::iterateTriangles(F fLambda) const
 template<class F>
 void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 {
-	auto verts = _vertexIds;
-	if (isReversed(cellId))
-		std::reverse(verts.begin(), verts.end());
+	const auto& verts = _vertexIds;
 
 	size_t i = 0;
 	for (size_t j = 1; j < verts.size() - 1; j++) {
 		size_t k = j + 1;
+		if (isReversed(cellId))
+			std::swap(i, k);
+
 		if (!fLambda(verts[i], verts[j], verts[k]))
 			break;
 	}

@@ -352,7 +352,7 @@ CBoundingBox3Dd Polyhedron::getBoundingBox() const
 	MTC::set<Index3DId> vertIds;
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
-		bbox.merge(getBlockPtr()->getVertexPoint(vertId));
+		bbox.merge(getVertexPoint(vertId));
 	}
 
 	return bbox;
@@ -418,26 +418,29 @@ double Polyhedron::calVolume() const
 {
 	double vol = 0;
 	for (const auto& faceId : _faceIds) {
-		double v;
-		faceFunc(TS_REAL, faceId, [this, &v](const Polygon& face) {
-			const auto& verts = face.getVertexIds();
-			face.iterateOrientedTriangles([this, &v](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
-				const Vector3d zAxis(0, 0, 1);
-				Vector3d pt0 = getBlockPtr()->getVertexPoint(vertId0);
-				Vector3d pt1 = getBlockPtr()->getVertexPoint(vertId1);
-				Vector3d pt2 = getBlockPtr()->getVertexPoint(vertId2);
-				Vector3d ctr = (pt0 + pt1 + pt2) / 3;
-				Vector3d v0 = pt0 - pt1;
-				Vector3d v1 = pt2 - pt1;
-				double area = 0.5 * v1.cross(v0).dot(zAxis);
-				double h = ctr.dot(zAxis);
-				v = h * area;
-				return true;
-			}, getId());
+		faceFunc(TS_REAL, faceId, [this, &vol](const Polygon& face) {
+			const Vector3d zAxis(0, 0, 1);
+			Vector3d norm = face.calOrientedUnitNormal(getId());
+			double area;
+			Vector3d ctr;
+			face.calAreaAndCentroid(area, ctr);
+			double h = ctr.dot(zAxis);
+			double dp = norm.dot(zAxis);
+			double v = dp * h * area;
+			vol += v;
 		});
-
 	}
 	return vol;
+}
+
+bool Polyhedron::isOriented() const
+{
+	const auto& edges = getEdges(false);
+	for (const auto& edge : edges) {
+		if (!edge.isOriented(getBlockPtr()))
+			return false;
+	}
+	return true;
 }
 
 bool Polyhedron::isConvex() const
@@ -449,8 +452,11 @@ bool Polyhedron::isConvex() const
 
 	const auto& edges = getEdges(false);
 	for (const auto& edge : edges) {
-		if (!edge.isConvex(getBlockPtr()))
+		if (!edge.isConvex(getBlockPtr())) {
+			std::string filename = "cvx_" + getBlockPtr()->getLoggerNumericCode() + "_" + std::to_string(getId().elementId());
+			getBlockPtr()->dumpPolyhedraObj({ getId() }, false, false, false);
 			return false;
+		}
 	}
 
 	return true;
@@ -551,9 +557,9 @@ bool Polyhedron::containsPointPrecise(const Vector3d& pt) const
 		bool result = true;
 		faceFunc(TS_REAL, faceId, [this, &pt, &result](const Polygon& face) {
 			face.iterateTriangles([this, &pt, &result](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
-				auto pt0 = getBlockPtr()->getVertexPoint(vertId0);
-				auto pt1 = getBlockPtr()->getVertexPoint(vertId1);
-				auto pt2 = getBlockPtr()->getVertexPoint(vertId2);
+				auto pt0 = getVertexPoint(vertId0);
+				auto pt1 = getVertexPoint(vertId1);
+				auto pt2 = getVertexPoint(vertId2);
 				Vector3d v0 = pt0 - pt1;
 				Vector3d v1 = pt2 - pt1;
 				Vector3d n = v1.cross(v0).normalized();
@@ -660,9 +666,8 @@ void Polyhedron::orientFaces()
 		return;
 
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [](Polygon& face) {
-			for (auto& cellId : face.getCellIds())
-				cellId.setUserFlag(UF_FACE_REVERSED, false);
+		faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+			face.setReversed(getId(), false);
 		});
 	}
 
