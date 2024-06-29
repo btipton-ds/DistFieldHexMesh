@@ -344,11 +344,13 @@ void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 
 	bool reversed = isReversed(cellId);
 	for (size_t i = 0; i < verts.size(); i++) {
-		size_t j = (i + 1) % verts.size();
+		const size_t j = (i + 1) % verts.size();
+		size_t ii = i;
+		size_t jj = j;
 		if (reversed)
-			std::swap(i, j);
+			std::swap(ii, jj);
 
-		Edge e(verts[i], verts[j]);
+		Edge e(verts[ii], verts[jj]);
 		if (!fLambda(e))
 			break;
 	}
@@ -371,13 +373,17 @@ void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 {
 	const auto& verts = _vertexIds;
 
-	size_t i = 0;
+	const size_t i = 0;
 	for (size_t j = 1; j < verts.size() - 1; j++) {
-		size_t k = j + 1;
-		if (isReversed(cellId))
-			std::swap(i, k);
+		const size_t k = j + 1;
 
-		if (!fLambda(verts[i], verts[j], verts[k]))
+		size_t ii = i;
+		size_t jj = j;
+		size_t kk = k;
+		if (isReversed(cellId))
+			std::swap(ii, kk);
+
+		if (!fLambda(verts[ii], verts[jj], verts[kk]))
 			break;
 	}
 }

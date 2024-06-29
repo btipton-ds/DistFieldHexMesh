@@ -76,6 +76,7 @@ public:
 	double calVolume() const;
 	bool isClosed() const;
 	bool isOriented() const;
+	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
 	bool intersectsModelPrecise() const; // Requires cell is convex and uses the actual faces
@@ -101,6 +102,7 @@ public:
 	void getOutwardOrientedFaces(MTC::vector<Polygon>& faces) const;
 
 	void imprintTVertices(Block* pDstBlock);
+	void attachFaces();
 	void detachFaces();
 	void replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(MTC::set<Index3DId>& blockingCellIds) const;

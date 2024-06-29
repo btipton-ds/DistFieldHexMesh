@@ -57,9 +57,10 @@ namespace DFHM {
 	private:
 		bool splitAtPointInner(Polygon& realFace, Polygon& referanceFace, const Vector3d& pt) const;
 		bool calModelNorm(const MTC::map<Index3DId, MTC::set<Edge>>& vertModEdgeMap, const Index3DId& vertId, Vector3d& norm) const;
-		bool createTrimmedEdge(const Edge& srcEdge, const Edge& cuttingEdge, Edge& newEdge);
 		void createTrimmedFaceEdges(const MTC::set<Edge>& modFaceEdges, MTC::set<Edge>& trimEdges);
-		bool createConvexFaceVerts(const MTC::vector<Index3DId>& verts, MTC::vector<MTC::vector<Index3DId>>& convexFaceVerts);
+		static bool isLoopClosed(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMap, const MTC::vector<Index3DId>& verts);
+		static bool extendLoop(const MTC::map<Index3DId, MTC::set<Index3DId>>& vertToNextVertMap, MTC::set<Index3DId>& usedVerts, MTC::vector<Index3DId>& verts);
+
 
 		Index3DId addVertex(const Vector3d& pt) const;
 		Index3DId addFace(const Polygon& face) const;

@@ -46,6 +46,7 @@ Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3
 
 Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	: _faceIds(faceIds)
+	, _reversed(src._reversed)
 {
 	_vertexIds[0] = src._vertexIds[0];
 	_vertexIds[1] = src._vertexIds[1];
@@ -103,6 +104,24 @@ Vector3d Edge::calUnitDir(const Block* pBlock) const
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 	return v;
+}
+
+Vector3d Edge::calCoedgeUnitDir(const Block* pBlock, const Index3DId& faceId, const Index3DId& cellId) const
+{
+	Vector3d result;
+	bool found = false;
+	pBlock->faceFunc(TS_REAL, faceId, [this, pBlock, &cellId, &result, &found](const Polygon& face) {
+		face.iterateOrientedEdges([this, pBlock, &cellId, &result, &found](const Edge& edge)->bool {
+			if (edge == *this) {
+				result = edge.calUnitDir(pBlock);
+				found = true;
+			}
+			return !found; // continue the loop
+		}, cellId);
+	});
+
+	assert(found);
+	return result;
 }
 
 Vector3d Edge::calPointAt(const Block* pBlock, double t) const
@@ -201,43 +220,37 @@ bool Edge::isConnectedTo(const Edge& other) const
 	return false;
 }
 
-double Edge::calDihedralAngleRadians(const Block* pBlock) const
+double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCellId) const
 {
 	assert(_faceIds.size() == 2);
 	auto fIter = _faceIds.begin();
 	const auto& faceId0 = *fIter++;
 	const auto& faceId1 = *fIter++;
-	const auto& cellId = getCommonCellId(pBlock, faceId0, faceId1);
-	Planed plane0, plane1;
-	pBlock->faceFunc(TS_REAL,faceId0, [&plane0, &cellId](const Polygon& face) { 
-		plane0 = face.calOrientedPlane(cellId); 
+	Vector3d normal0, normal1;
+	pBlock->faceFunc(TS_REAL,faceId0, [&normal0, &refCellId](const Polygon& face) {
+		normal0 = face.calOrientedUnitNormal(refCellId);
 	});
-	pBlock->faceFunc(TS_REAL,faceId1, [&plane1, &cellId](const Polygon& face) { 
-		plane1 = face.calOrientedPlane(cellId);
+	pBlock->faceFunc(TS_REAL,faceId1, [&normal1, &refCellId](const Polygon& face) {
+		normal1 = face.calOrientedUnitNormal(refCellId);
 	});
 
-	Vector3d edgeCtr = calCenter(pBlock);
-	Vector3d edgeDir = calUnitDir(pBlock);
-	Vector3d xAxis = edgeCtr - plane0.getOrgin(); // xAxis points from plane0 center to the edge
-	xAxis = xAxis - edgeDir.dot(xAxis) * edgeDir;
-	xAxis.normalize();
+	const auto& zAxis = normal0;
+	Vector3d yAxis = calCoedgeUnitDir(pBlock, faceId0, refCellId);
+	Vector3d xAxis = yAxis.cross(zAxis); // xAxis points from plane0 center to the edge
 
-	const auto& zAxis = plane0.getNormal();
-
-	Vector3d v = plane1.getOrgin() - edgeCtr; // v points from the edge to plane1 center. If they are identical, the angle is zero
-	double cosTheta = v.dot(xAxis);
-	double sinTheta = -v.dot(zAxis);
+	double cosTheta = -normal1.dot(zAxis);
+	double sinTheta = normal1.dot(xAxis);
 	double angle = atan2(sinTheta, cosTheta);
 
 	return angle;
 }
 
-bool Edge::isConvex(const Block* pBlock) const
+bool Edge::isConvex(const Block* pBlock, const Index3DId& refCellId) const
 {
-	return calDihedralAngleRadians(pBlock) >= -Tolerance::angleTol();
+	return calDihedralAngleRadians(pBlock, refCellId) >= -Tolerance::angleTol();
 }
 
-bool Edge::isOriented(const Block* pBlock) const
+bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
 {
 	bool result = true;
 	if (_faceIds.size() != 2)
@@ -247,23 +260,18 @@ bool Edge::isOriented(const Block* pBlock) const
 	const auto& id0 = *iter++;
 	const auto& id1 = *iter;
 
-	auto cellId = getCommonCellId(pBlock, id0, id1);
-	if (!cellId.isValid())
-		return false;
-
-
-	pBlock->faceFunc(TS_REAL, id0, [pBlock, &id1, &cellId, &result](const Polygon& face0) {
-		face0.iterateOrientedEdges([pBlock, &id1, &cellId, &result](const auto& edge0)->bool {
-			pBlock->faceFunc(TS_REAL, id1, [&cellId, &edge0, &result](const Polygon& face1) {
+	pBlock->faceFunc(TS_REAL, id0, [pBlock, &id1, &refCellId, &result](const Polygon& face0) {
+		face0.iterateOrientedEdges([pBlock, &id1, &refCellId, &result](const auto& edge0)->bool {
+			pBlock->faceFunc(TS_REAL, id1, [&refCellId, &edge0, &result](const Polygon& face1) {
 				face1.iterateOrientedEdges([&edge0, &result](const auto& edge1)->bool {
 					if (edge0._vertexIds[0] == edge1._vertexIds[0] && edge0._vertexIds[1] == edge1._vertexIds[1]) {
 						result = false;
 					}
 					return result;
-				}, cellId);
+				}, refCellId);
 			});
 			return result;
-		}, cellId);
+		}, refCellId);
 	});
 
 	return result;
@@ -274,33 +282,6 @@ LineSegmentd Edge::getSegment(const Block* pBlock) const
 	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
 	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
 	LineSegmentd result(pt0, pt1);
-	return result;
-}
-
-Index3DId Edge::getCommonCellId(const Block* pBlock, const auto& id0, const auto& id1) const
-{
-	Index3DId result;
-
-	MTC::set<Index3DId> faceCells0, faceCells1, commonCellIds;
-	pBlock->faceFunc(TS_REAL, id0, [&faceCells0](const Polygon& face0) {
-		faceCells0 = face0.getCellIds();
-	});
-	pBlock->faceFunc(TS_REAL, id1, [&faceCells1](const Polygon& face1) {
-		faceCells1 = face1.getCellIds();
-	});
-
-	for (const auto& ci : faceCells0) {
-		if (faceCells1.contains(ci))
-			commonCellIds.insert(ci);
-	}
-	for (const auto& ci : faceCells1) {
-		if (faceCells0.contains(ci))
-			commonCellIds.insert(ci);
-	}
-
-	if (commonCellIds.size() == 1)
-		result = *commonCellIds.begin();
-	
 	return result;
 }
 

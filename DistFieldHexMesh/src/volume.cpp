@@ -333,7 +333,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 // TODO we should be able to clear the reference topology now
 
-//		cutWithTriMesh(params, multiCore);
+		cutWithTriMesh(params, false && multiCore);
 	}
 
 	Utils::Timer::dumpAll();
@@ -458,7 +458,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 			}
 		});
 		return true;
-	}, false && multiCore);
+	}, multiCore);
 
 	if (changed)
 		finishSplits(multiCore);

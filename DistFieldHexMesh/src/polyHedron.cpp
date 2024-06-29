@@ -437,10 +437,21 @@ bool Polyhedron::isOriented() const
 {
 	const auto& edges = getEdges(false);
 	for (const auto& edge : edges) {
-		if (!edge.isOriented(getBlockPtr()))
+		if (!edge.isOriented(getBlockPtr(), getId()))
 			return false;
 	}
 	return true;
+}
+
+void Polyhedron::classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const
+{
+	const auto& edges = getEdges(false);
+	for (const auto& edge : edges) {
+		if (edge.isConvex(getBlockPtr(), getId()))
+			convexEdges.insert(edge);
+		else
+			concaveEdges.insert(edge);
+	}
 }
 
 bool Polyhedron::isConvex() const
@@ -452,9 +463,7 @@ bool Polyhedron::isConvex() const
 
 	const auto& edges = getEdges(false);
 	for (const auto& edge : edges) {
-		if (!edge.isConvex(getBlockPtr())) {
-			std::string filename = "cvx_" + getBlockPtr()->getLoggerNumericCode() + "_" + std::to_string(getId().elementId());
-			getBlockPtr()->dumpPolyhedraObj({ getId() }, false, false, false);
+		if (!edge.isConvex(getBlockPtr(), getId())) {
 			return false;
 		}
 	}
@@ -819,6 +828,17 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 		clearCache();
 	}
 #endif
+}
+
+void Polyhedron::attachFaces()
+{
+	for (const auto& faceId : _faceIds) {
+		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
+			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+				face.addCellId(getId(), 0);
+			});
+		}
+	}
 }
 
 void Polyhedron::detachFaces()

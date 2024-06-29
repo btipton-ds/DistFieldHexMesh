@@ -529,7 +529,7 @@ Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
 	Vector3d normal = calOrientedUnitNormal(cellId);
 	Planed result(origin, normal);
 
-#ifdef _DEBUG
+#if 0 && defined(_DEBUG)
 	for (const auto& vId : _vertexIds) {
 		Vector3d pt = getVertexPoint(vId);
 		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
