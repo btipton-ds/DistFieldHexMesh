@@ -173,22 +173,55 @@ Edge PolygonSplitter::createIntersectionEdge(const Planed& plane)
 {
 	MTC::vector<Vector3d> pts;
 	faceFunc(TS_REAL, _polygonId, [this, &plane, &pts](const Polygon& face) {
-		const auto& vertIds = face.getVertexIds();
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			Edge e(vertIds[i], vertIds[j]);
-			auto seg = e.getSegment(getBlockPtr());
+		face.iterateEdges([this, &plane, &pts](const Edge& ie) {
+			auto seg = ie.getSegment(getBlockPtr());
 			RayHitd hit;
 			if (plane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
 				pts.push_back(hit.hitPt);
 			}
-		}
+			return true;
+		});
 	});
 
 	if (pts.size() == 2) {
 		Index3DId vertId0 = addVertex(pts[0]);
 		Index3DId vertId1 = addVertex(pts[1]);
 		return Edge(vertId0, vertId1);
+	}
+
+	return Edge();
+}
+
+Edge PolygonSplitter::createIntersectionEdge(const Planed& cuttingPlane, const Planed& keepPlane)
+{
+	MTC::vector<Vector3d> pts;
+	faceFunc(TS_REAL, _polygonId, [this, &cuttingPlane, &keepPlane, &pts](const Polygon& face) {
+		face.iterateEdges([this, &cuttingPlane, &keepPlane, &pts](const Edge& ie) {
+			auto seg = ie.getSegment(getBlockPtr());
+			RayHitd hit;
+			if (cuttingPlane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+				double dist = keepPlane.distanceToPoint(hit.hitPt, false);
+				if (-Tolerance::sameDistTol() < dist)
+					pts.push_back(hit.hitPt);
+			}
+			return true;
+			});
+		});
+
+	// Points can be duplicated if there is an intersection at an existing vertex.
+	// This collapses them to
+	MTC::set<Index3DId> ids;
+	for (const auto& pt : pts) {
+		ids.insert(addVertex(pt));
+	}
+
+	if (ids.size() == 2) {
+		auto iter = ids.begin(); // Order is not important
+		const auto& vertId0 = *iter++;
+		const auto& vertId1 = *iter;
+
+		if (vertId0 != vertId1)
+			return Edge(vertId0, vertId1);
 	}
 
 	return Edge();

@@ -307,6 +307,38 @@ Vector3d PolyhedronSplitter::calModelFaceNormal(const std::vector<size_t>& model
 	return normal;
 }
 
+Vector3d PolyhedronSplitter::choosePrincipalAxis(const Vector3d& v, const Vector3d& skipV)
+{
+	static const Vector3d xAxis(1, 0, 0);
+	static const Vector3d yAxis(0, 1, 0);
+	static const Vector3d zAxis(0, 0, 1);
+	const double tol = Tolerance::sameDistTol();
+
+	Vector3d result;
+
+	double maxDp = 0, dp;
+
+	dp = xAxis.dot(v);
+	if (!tolerantEquals(xAxis, skipV, tol) && fabs(dp) > maxDp) {
+		result = xAxis;
+		maxDp = fabs(dp);
+	}
+
+	dp = yAxis.dot(v);
+	if (!tolerantEquals(yAxis, skipV, tol) && fabs(dp) > maxDp) {
+		result = yAxis;
+		maxDp = fabs(dp);
+	}
+
+	dp = zAxis.dot(v);
+	if (!tolerantEquals(zAxis, skipV, tol) && fabs(dp) > maxDp) {
+		result = zAxis;
+		maxDp = fabs(dp);
+	}
+
+	return result;
+}
+
 bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)
 {
 	MTC::set<Index3DId> faceIds;
@@ -621,35 +653,108 @@ bool PolyhedronSplitter::createConvexCells(const MTC::set<Index3DId>& cellFacesI
 	return true;
 }
 
-void PolyhedronSplitter::splitCellAtConcaveEdge(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds) const
+void PolyhedronSplitter::splitCellAtConcaveEdge(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds)
 {
 	assert(!edge.isConvex(getBlockPtr(), cell.getId()));
-	auto iter = cell.getFaceIds().begin();
-
-	const auto& faceId0 = *iter++;
-	const auto& faceId1 = *iter;
-	Vector3d norm0, norm1;
-	faceFunc(TS_REAL, faceId0, [&cell, &norm0](const Polygon& face) {
-		norm0 = face.calOrientedUnitNormal(cell.getId());
-	});
-	faceFunc(TS_REAL, faceId1, [&cell, &norm1](const Polygon& face) {
-		norm1 = face.calOrientedUnitNormal(cell.getId());
-	});
-
 	double angle = edge.calDihedralAngleRadians(getBlockPtr(), cell.getId());
 	if (angle > 3 / 4.0 * M_PI) {
-		splitConcaveEdgeSingle(cell, edge, norm0, norm1, newCellIds);
+		splitConcaveEdgeSingle(cell, edge, newCellIds);
 	} else {
-		splitConcaveEdgeDouble(cell, edge, norm0, norm1, newCellIds);
+		splitConcaveEdgeDouble(cell, edge, newCellIds);
 	}
 }
 
-void PolyhedronSplitter::splitConcaveEdgeSingle(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const
+void PolyhedronSplitter::splitConcaveEdgeSingle(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds)
 {
+
 }
 
-void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, const Vector3d& norm0, const Vector3d& norm1, MTC::set<Index3DId>& newCellIds) const
+void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds)
 {
+	auto iter = edge.getFaceIds().begin();
+
+	const auto& faceId0 = *iter++;
+	const auto& faceId1 = *iter;
+
+	Vector3d norm0, keepDir0, norm1, keepDir1, edgeDir;
+	faceFunc(TS_REAL, faceId0, [this, &cell, &norm0, &keepDir0, &edge, &edgeDir](const Polygon& face) {
+		norm0 = face.calOrientedUnitNormal(cell.getId());
+		norm0 = choosePrincipalAxis(norm0);
+		bool found = false;
+		face.iterateEdges([this, &edge, &edgeDir, &found](const Edge& fe) {
+			if (edge == fe) {
+				edgeDir = fe.calUnitDir(getBlockPtr());
+				found = true;
+			}
+			return !found;
+		});
+		assert(found);
+
+		keepDir0 = norm0.cross(edgeDir);
+	});
+
+	faceFunc(TS_REAL, faceId1, [&cell, &norm0, &norm1, &keepDir1, &edgeDir](const Polygon& face) {
+		norm1 = face.calOrientedUnitNormal(cell.getId());
+		norm1 = choosePrincipalAxis(norm1, norm0);
+		norm1 = (norm1 - norm1.dot(edgeDir) * edgeDir).normalized();
+		keepDir1 = norm1.cross(edgeDir);
+	});
+
+	norm0 = (norm0 - norm0.dot(edgeDir) * edgeDir).normalized();
+	norm1 = (norm1 - norm1.dot(edgeDir) * edgeDir).normalized();
+	assert(norm0.cross(norm1).norm() > 0);
+
+	Index3DId faceId = createPartingFace(cell, edge, norm0, keepDir0);
+	faceId = createPartingFace(cell, edge, norm1, keepDir1);
+}
+
+Index3DId PolyhedronSplitter::createPartingFace(const Polyhedron& cell, const Edge& edge, const Vector3d& norm, const Vector3d& keepDir)
+{
+	const double tol = Tolerance::sameDistTol();
+	MTC::set<Edge> edges;
+	edges.insert(edge);
+	Vector3d origin = edge.calCenter(getBlockPtr());
+	Planed cuttingPlane(origin, norm);
+	Planed keepPlane(origin, keepDir);
+	for (const auto& faceId : cell.getFaceIds()) {
+		PolygonSplitter ps(getBlockPtr(), faceId);
+		auto interEdge = ps.createIntersectionEdge(cuttingPlane, keepPlane);
+		if (!interEdge.isValid())
+			continue;
+
+		Vector3d pt0 = getBlockPtr()->getVertexPoint(interEdge.getVertex(0));
+		Vector3d pt1 = getBlockPtr()->getVertexPoint(interEdge.getVertex(1));
+		double dist0 = keepPlane.distanceToPoint(pt0, false);
+		double dist1 = keepPlane.distanceToPoint(pt1, false);
+		if (-tol < dist0 && dist1 > -tol) {
+			edges.insert(interEdge);
+		}
+	}
+
+#if 0
+	{
+		std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
+		getBlockPtr()->dumpEdgeObj(filename, edges);
+	}
+#endif
+
+	Index3DId faceId;
+	MTC::vector<MTC::vector<Index3DId>> faceVerts;
+	if (PolygonSplitter::connectEdges(getBlockPtr(), edges, faceVerts)) {
+		assert(faceVerts.size() == 1);
+		faceId = getBlockPtr()->addFace(faceVerts.front());
+
+#if 1
+		{
+			std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(faceId.elementId());
+			MTC::vector<Index3DId> faceIds;
+			faceIds.push_back(faceId);
+			getBlockPtr()->dumpPolygonObj(filename, faceIds);
+		}
+#endif
+	}
+
+	return faceId;
 }
 
 bool PolyhedronSplitter::cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds)

@@ -43,6 +43,7 @@ namespace DFHM {
 
 		bool splitAtPoint(const Vector3d& pt);
 		Edge createIntersectionEdge(const Planed& plane);
+		Edge createIntersectionEdge(const Planed& cuttingPlane, const Planed& keepPlane);
 		void createTrimmedFacesFromFaces(const MTC::set<Index3DId>& modelFaces, MTC::set<Index3DId>& newFaceIds);
 
 		// Create ordered vertices to form a new polygon who's face normal is in the same direction as triangle normals defined in edges.
