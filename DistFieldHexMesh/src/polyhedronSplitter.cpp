@@ -704,8 +704,18 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 	norm1 = (norm1 - norm1.dot(edgeDir) * edgeDir).normalized();
 	assert(norm0.cross(norm1).norm() > 0);
 
+	MTC::set<Index3DId> partingFaceIds;
 	Index3DId faceId = createPartingFace(cell, edge, norm0, keepDir0);
+	partingFaceIds.insert(faceId);
 	faceId = createPartingFace(cell, edge, norm1, keepDir1);
+	partingFaceIds.insert(faceId);
+
+#if 1
+	{
+		std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+		getBlockPtr()->dumpPolygonObj(filename, partingFaceIds);
+	}
+#endif
 }
 
 Index3DId PolyhedronSplitter::createPartingFace(const Polyhedron& cell, const Edge& edge, const Vector3d& norm, const Vector3d& keepDir)
@@ -731,27 +741,11 @@ Index3DId PolyhedronSplitter::createPartingFace(const Polyhedron& cell, const Ed
 		}
 	}
 
-#if 0
-	{
-		std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(_polyhedronId.elementId());
-		getBlockPtr()->dumpEdgeObj(filename, edges);
-	}
-#endif
-
 	Index3DId faceId;
 	MTC::vector<MTC::vector<Index3DId>> faceVerts;
 	if (PolygonSplitter::connectEdges(getBlockPtr(), edges, faceVerts)) {
 		assert(faceVerts.size() == 1);
 		faceId = getBlockPtr()->addFace(faceVerts.front());
-
-#if 1
-		{
-			std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(faceId.elementId());
-			MTC::vector<Index3DId> faceIds;
-			faceIds.push_back(faceId);
-			getBlockPtr()->dumpPolygonObj(filename, faceIds);
-		}
-#endif
 	}
 
 	return faceId;
