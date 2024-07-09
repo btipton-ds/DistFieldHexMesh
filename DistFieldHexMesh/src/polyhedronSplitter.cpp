@@ -705,6 +705,7 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 	norm1 = (norm1 - norm1.dot(edgeDir) * edgeDir).normalized();
 	assert(norm0.cross(norm1).norm() > 0);
 
+	const auto& faceIds = cell.getFaceIds();
 	MTC::set<Index3DId> partingFaceIds;
 	Index3DId faceId = createPartingFace(cell, edge, norm0, keepDir0);
 	partingFaceIds.insert(faceId);
@@ -715,11 +716,13 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 	{
 		std::string filename = "ptf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
 		getBlockPtr()->dumpPolygonObj(filename, partingFaceIds);
+		filename = "cellFaces_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+		getBlockPtr()->dumpPolygonObj(filename, faceIds, cell.getId());
 	}
 #endif
 
 	MTC::set<Index3DId> availFaceIds;
-	for (const auto& faceId : cell.getFaceIds()) {
+	for (const auto& faceId : faceIds) {
 		// TODO Move this to PolygonSplitter when it's working
 		MTC::set<Edge> faceEdges;
 		MTC::set<Edge> partingEdges;
