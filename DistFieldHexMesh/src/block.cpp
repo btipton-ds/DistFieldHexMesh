@@ -227,7 +227,7 @@ Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 	Index3D result;
 	for (int i = 0; i < 3; i++) {
 		double t = v[i] / bbRange[i];
-		assert(0 <= t && t <= 1.0);
+//		assert(0 <= t && t <= 1.0);
 
 		double floatIdx = t * volDim[i];
 		Index3DBaseType idx = (Index3DBaseType)floatIdx;

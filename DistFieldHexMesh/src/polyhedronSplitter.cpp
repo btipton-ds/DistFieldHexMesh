@@ -671,6 +671,7 @@ void PolyhedronSplitter::splitConcaveEdgeSingle(const Polyhedron& cell, const Ed
 
 void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds)
 {
+	const double distTol = Tolerance::sameDistTol();
 	auto iter = edge.getFaceIds().begin();
 
 	const auto& faceId0 = *iter++;
@@ -716,6 +717,119 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 		getBlockPtr()->dumpPolygonObj(filename, partingFaceIds);
 	}
 #endif
+
+	MTC::set<Index3DId> availFaceIds;
+	for (const auto& faceId : cell.getFaceIds()) {
+		// TODO Move this to PolygonSplitter when it's working
+		MTC::set<Edge> faceEdges;
+		MTC::set<Edge> partingEdges;
+		faceFunc(TS_REAL, faceId, [this, &faceEdges, &partingFaceIds, &partingEdges](const Polygon& face) {
+			const auto& tmp = face.getEdges();
+			faceEdges.insert(tmp.begin(), tmp.end());
+
+			for (const auto& partingFaceId : partingFaceIds) {
+				faceFunc(TS_REAL, partingFaceId, [this, &face, &faceEdges, &partingEdges](const Polygon& partingFace) {
+					partingFace.iterateEdges([&face, &partingEdges](const Edge& pfe) {
+						if (face.isCoplanar(pfe))
+							partingEdges.insert(pfe);
+						return true;
+					});
+				});
+			}
+		});
+
+		if (partingEdges.empty())
+			return;
+
+		MTC::set<Index3DId> partingVertIds;
+		for (const auto& e : partingEdges) {
+			partingVertIds.insert(e.getVertex(0));
+			partingVertIds.insert(e.getVertex(1));
+		}
+
+		MTC::set<Edge> newEdges;
+		for (const auto& fe : faceEdges) {
+			auto seg = fe.getSegment(getBlockPtr());
+			double len = seg.calLength();
+			bool hasSplit = false;
+			for (const auto& vId : partingVertIds) {
+				Vector3d pt = getBlockPtr()->getVertexPoint(vId);
+				double t;
+				if (seg.contains(pt, t, distTol)) {
+					double interDist = t * len;
+					if (distTol < interDist && interDist < len - distTol) {
+						hasSplit = true;
+						const auto& vertId0 = fe.getVertex(0);
+						const auto& vertId1 = fe.getVertex(1);
+						const auto& midVert = getBlockPtr()->addVertex(pt);
+						newEdges.insert(Edge(vertId0, midVert));
+						newEdges.insert(Edge(vertId1, midVert));
+					}
+				}
+			}
+
+			if (!hasSplit)
+				newEdges.insert(fe);
+		}
+		assert(newEdges.size() >= faceEdges.size());
+		if (newEdges.size() == faceEdges.size()) {
+			availFaceIds.insert(faceId);
+#if 1
+			{
+				std::string filename = "spf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+				getBlockPtr()->dumpPolygonObj(filename, availFaceIds);
+			}
+#endif
+		} else {
+			newEdges.insert(partingEdges.begin(), partingEdges.end());
+#if 1
+			{
+				std::string filename = "spe_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+				getBlockPtr()->dumpEdgeObj(filename, newEdges);
+			}
+#endif
+			MTC::vector<MTC::vector<Index3DId>> faceVertices;
+			if (PolygonSplitter::connectEdges(getBlockPtr(), newEdges, faceVertices)) {
+				for (const auto& verts : faceVertices) {
+					auto faceId = getBlockPtr()->addFace(verts);
+					availFaceIds.insert(faceId);
+#if 1
+					{
+						std::string filename = "spf_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+						getBlockPtr()->dumpPolygonObj(filename, availFaceIds);
+					}
+#endif
+				}
+			} else
+				assert(!"Should not be possible");
+		}
+	} // end for (const auto& faceId
+
+
+	for (const auto& partingFaceId : partingFaceIds) {
+		MTC::set<Index3DId> faceIds;
+		const Index3DId adjFaceId = findAdjacentFaceId(availFaceIds, partingFaceId);
+		if (!adjFaceId.isValid())
+			continue;
+
+		faceIds.insert(partingFaceId);
+		faceIds.insert(adjFaceId);
+		availFaceIds.erase(adjFaceId);
+		while (addAdjacentFaceToSet(availFaceIds, adjFaceId, faceIds))
+			;
+	}
+}
+
+Index3DId PolyhedronSplitter::findAdjacentFaceId(const MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId) const
+{
+	Index3DId result;
+
+	return result;
+}
+
+bool PolyhedronSplitter::addAdjacentFaceToSet(MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId, MTC::set<Index3DId>& faceIds) const
+{
+	return false;
 }
 
 Index3DId PolyhedronSplitter::createPartingFace(const Polyhedron& cell, const Edge& edge, const Vector3d& norm, const Vector3d& keepDir)

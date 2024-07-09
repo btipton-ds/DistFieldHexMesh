@@ -88,6 +88,8 @@ private:
 	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
 	// Outside is relative to the model/patch, not the cell or face.
 	Vector3d calModelFaceNormal(const std::vector<size_t>& modelFaceTris) const;
+	Index3DId findAdjacentFaceId(const MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId) const;
+	bool addAdjacentFaceToSet(MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId, MTC::set<Index3DId>& faceIds) const;
 	static Vector3d choosePrincipalAxis(const Vector3d& v, const Vector3d& skipV = Vector3d(0, 0, 0));
 
 	Block* _pBlock;
