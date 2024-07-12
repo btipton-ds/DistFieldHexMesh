@@ -64,6 +64,8 @@ public:
 	const Index3DId& getVertex(size_t idx) const;
 	const Index3DId* getVertexIds() const;
 	bool containsVertex(const Index3DId& vertexId) const;
+	bool vertexLiesOnEdge(const Block* pBlock, const Index3DId& vertexId) const;
+	bool pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const;
 	const MTC::set<Index3DId>& getFaceIds() const;
 	void getFaceIds(MTC::set<Index3DId>& faceIds) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;

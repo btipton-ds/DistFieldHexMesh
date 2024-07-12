@@ -750,8 +750,11 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 			}
 		});
 
-		if (partingEdges.empty())
+		if (partingEdges.empty()) {
+			// This face does not need to be split, but needs to be in the list
+			availFaceIds.insert(faceId);
 			continue;
+		}
 
 		if (partingEdges.size() > 1) {
 			int dbgBreak = 1;

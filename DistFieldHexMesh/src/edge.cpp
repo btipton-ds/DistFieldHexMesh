@@ -290,6 +290,21 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
 
+bool Edge::vertexLiesOnEdge(const Block* pBlock, const Index3DId& vertexId) const
+{
+	const auto& pt = pBlock->getVertexPoint(vertexId);
+	return pointLiesOnEdge(pBlock, pt);
+}
+
+bool Edge::pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const
+{
+	const double tol = Tolerance::sameDistTol();
+	auto seg = getSegment(pBlock);
+	double t;
+	return seg.contains(pt, t, tol);
+
+}
+
 Index3DId Edge::getOtherVert(const Index3DId& vert) const
 {
 	if (vert == _vertexIds[0])

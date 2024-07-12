@@ -360,6 +360,7 @@ bool Polygon::contains(const Edge& edge, bool& isUsed) const
 
 	Vector3d pt0 = getBlockPtr()->getVertexPoint(edge.getVertex(0));
 	Vector3d pt1 = getBlockPtr()->getVertexPoint(edge.getVertex(1));
+	bool intersects = false;
 	if (isConvex()) {
 		if (containsPoint(pt0) || containsPoint(pt1))
 			return true;
@@ -368,7 +369,6 @@ bool Polygon::contains(const Edge& edge, bool& isUsed) const
 		Vector3d v = edge.calUnitDir(getBlockPtr());
 		Vector3d iNorm = v.cross(faceNorm).normalized();
 		Planed iPlane(pt0, iNorm);
-		bool intersects = false;
 		iterateEdges([this, &iPlane, &intersects](const Edge& ie) {
 			auto seg = ie.getSegment(getBlockPtr());
 			RayHitd hit;
@@ -378,14 +378,15 @@ bool Polygon::contains(const Edge& edge, bool& isUsed) const
 			return !intersects;
 		});
 
-		return intersects;
-	}
-	else {
-		int dbgBreak = 1;
+	} else {
+		iterateEdges([this, &pt0, &pt1, &intersects](const Edge& ie) {
+			if (ie.pointLiesOnEdge(getBlockPtr(), pt0) || ie.pointLiesOnEdge(getBlockPtr(), pt1))
+				intersects = true;
+			return !intersects;
+		});
 	}
 
-
-	return false;
+	return intersects;
 }
 
 bool Polygon::containsVertex(const Index3DId& vertId) const
