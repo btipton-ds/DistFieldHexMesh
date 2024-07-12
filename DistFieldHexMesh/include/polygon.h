@@ -127,8 +127,10 @@ public:
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
-	bool containsEdge(const Edge& edge) const;
-	bool containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
+	bool usesEdge(const Edge& edge) const;
+	bool usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
+	bool isPointOnEdge(const Vector3d& pt) const;
+	bool contains(const Edge& edge, bool& isUsed) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 
@@ -170,7 +172,6 @@ public:
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>& newEdges);
-	bool isPointOnEdge(const Vector3d& pt) const;
 
 	Vector3d getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;

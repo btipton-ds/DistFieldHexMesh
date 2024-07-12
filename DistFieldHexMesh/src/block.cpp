@@ -834,6 +834,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 
 	for (const auto& faceId : faceIds) {
 		faceAvailFunc(TS_REAL, faceId, [this, &out, &vertIdToPtMap, &cellId](const Polygon& face) {
+			out << "# " << face.getId() << "\n";
 			out << "f";
 			MTC::vector<Index3DId> vertIds = face.getOrientedVertexIds(cellId);
 			for (const auto& vertId : vertIds) {

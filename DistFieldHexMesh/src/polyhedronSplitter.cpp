@@ -706,11 +706,12 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 	assert(norm0.cross(norm1).norm() > 0);
 
 	const auto& faceIds = cell.getFaceIds();
+
 	MTC::set<Index3DId> partingFaceIds;
-	Index3DId faceId = createPartingFace(cell, edge, norm0, keepDir0);
-	partingFaceIds.insert(faceId);
-	faceId = createPartingFace(cell, edge, norm1, keepDir1);
-	partingFaceIds.insert(faceId);
+	Index3DId partingFaceId = createPartingFace(cell, edge, norm0, keepDir0);
+	partingFaceIds.insert(partingFaceId);
+	partingFaceId = createPartingFace(cell, edge, norm1, keepDir1);
+	partingFaceIds.insert(partingFaceId);
 
 #if 1
 	{
@@ -724,6 +725,13 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 	MTC::set<Index3DId> availFaceIds;
 	for (const auto& faceId : faceIds) {
 		// TODO Move this to PolygonSplitter when it's working
+		if (faceId == Index3DId(3, 9, 0, 71) || faceId == Index3DId(3, 9, 0, 73)) {
+			int dbgBreak = 1;
+			std::string filename = "cellFace_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(faceId.elementId());
+			MTC::vector<Index3DId> faceVec;
+			faceVec.push_back(faceId);
+			getBlockPtr()->dumpPolygonObj(filename, faceVec, cell.getId());
+		}
 		MTC::set<Edge> faceEdges;
 		MTC::set<Edge> partingEdges;
 		faceFunc(TS_REAL, faceId, [this, &faceEdges, &partingFaceIds, &partingEdges](const Polygon& face) {
@@ -733,7 +741,8 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 			for (const auto& partingFaceId : partingFaceIds) {
 				faceFunc(TS_REAL, partingFaceId, [this, &face, &faceEdges, &partingEdges](const Polygon& partingFace) {
 					partingFace.iterateEdges([&face, &partingEdges](const Edge& pfe) {
-						if (face.isCoplanar(pfe))
+						bool isUsed;
+						if (face.contains(pfe, isUsed) && !isUsed)
 							partingEdges.insert(pfe);
 						return true;
 					});
@@ -742,7 +751,17 @@ void PolyhedronSplitter::splitConcaveEdgeDouble(const Polyhedron& cell, const Ed
 		});
 
 		if (partingEdges.empty())
-			return;
+			continue;
+
+		if (partingEdges.size() > 1) {
+			int dbgBreak = 1;
+#if 1
+			{
+				std::string filename = "pte_" + getBlockPtr()->getLoggerNumericCode() + "_" + to_string(cell.getId().elementId());
+				getBlockPtr()->dumpEdgeObj(filename, partingEdges);
+			}
+#endif
+		}
 
 		MTC::set<Index3DId> partingVertIds;
 		for (const auto& e : partingEdges) {

@@ -323,13 +323,13 @@ bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vect
 	return !piercePoints.empty();
 }
 
-bool Polygon::containsEdge(const Edge& edge) const
+bool Polygon::usesEdge(const Edge& edge) const
 {
 	size_t idx0, idx1;
-	return containsEdge(edge, idx0, idx1);
+	return usesEdge(edge, idx0, idx1);
 }
 
-bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
+bool Polygon::usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -344,6 +344,47 @@ bool Polygon::containsEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 	}
 
 	idx0 = idx1 = -1;
+	return false;
+}
+
+bool Polygon::contains(const Edge& edge, bool& isUsed) const
+{
+	isUsed = false;
+	if (!isCoplanar(edge))
+		return false;
+
+	if (usesEdge(edge)) {
+		isUsed = true;
+		return true;
+	}
+
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(edge.getVertex(0));
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(edge.getVertex(1));
+	if (isConvex()) {
+		if (containsPoint(pt0) || containsPoint(pt1))
+			return true;
+
+		Vector3d faceNorm = calUnitNormal();
+		Vector3d v = edge.calUnitDir(getBlockPtr());
+		Vector3d iNorm = v.cross(faceNorm).normalized();
+		Planed iPlane(pt0, iNorm);
+		bool intersects = false;
+		iterateEdges([this, &iPlane, &intersects](const Edge& ie) {
+			auto seg = ie.getSegment(getBlockPtr());
+			RayHitd hit;
+			if (iPlane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+				intersects = true;
+			}
+			return !intersects;
+		});
+
+		return intersects;
+	}
+	else {
+		int dbgBreak = 1;
+	}
+
+
 	return false;
 }
 
