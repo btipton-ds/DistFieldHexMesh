@@ -28,7 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <tm_lineSegment.hpp>
-#include <Index3D.h>
+#include <index3D.h>
 
 namespace DFHM {
 

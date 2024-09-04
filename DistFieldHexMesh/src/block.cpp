@@ -36,7 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_spatialSearch.hpp>
 
 #include <tolerances.h>
-#include <Index3D.h>
+#include <index3D.h>
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>

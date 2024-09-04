@@ -99,7 +99,6 @@ bool TestMultiCore::testSpeed(size_t numCores)
 #endif
 
 	startCount = endCount;
-#endif // _WIN32
 
 	size_t check = 0;
 	for (size_t i = 0; i < v.size(); i++)
@@ -107,5 +106,6 @@ bool TestMultiCore::testSpeed(size_t numCores)
 
 	TEST_EQUAL(check, size, "testSpeed size match");
 
+#endif // _WIN32
 	return true;
 }

@@ -43,6 +43,7 @@ include_directories(
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
+	"../../triMesh/tests/include/"
 	"../../utilities/threads/include/"
 	"${OpenGlDir}/include/"
 	"${OpenGlDir}/include/${OpenGlPlatform}/"

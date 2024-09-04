@@ -36,7 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <stdexcept>
 #include <tm_vector3.h>
 #include <tm_ioUtil.h>
-#include <Index3D.h>
+#include <index3D.h>
 #include <patient_lock_guard.h>
 
 namespace DFHM {
