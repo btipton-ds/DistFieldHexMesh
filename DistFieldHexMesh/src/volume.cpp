@@ -1081,6 +1081,12 @@ int Volume::getFaceOwnerIdx(const Index3DId& faceId, const PolymeshTables& table
 	return minCellIdx;
 }
 
+#ifdef _WIN32
+#define FMT_SIZE "%llu\n"
+#else
+#define FMT_SIZE "%lu\n"
+#endif
+
 void Volume::writePolyMeshPoints(const string& dirName, const PolymeshTables& tables) const
 {
 	string filename = dirName + "/points";
@@ -1088,7 +1094,7 @@ void Volume::writePolyMeshPoints(const string& dirName, const PolymeshTables& ta
 	try {
 		writeFOAMHeader(fOut, "binary", "vectorField", "points");
 
-		fprintf(fOut, "%llu\n", tables.vertIdxIdMap.size());
+		fprintf(fOut, FMT_SIZE, tables.vertIdxIdMap.size());
 		fprintf(fOut, "(");
 
 		vector<double> vals;
@@ -1166,7 +1172,7 @@ void Volume::writePolyMeshFaces(const string& dirName, const PolymeshTables& tab
 		}
 		faceIndices[faceIndices.size() - 1] = idx; // Append the index of the start of the next face, even though that face doesn't exist.
 
-		fprintf(fOut, "%llu\n", faceIndices.size());
+		fprintf(fOut, FMT_SIZE, faceIndices.size());
 		fprintf(fOut, "(");
 
 		fwrite(faceIndices.data(), sizeof(int), faceIndices.size(), fOut);
@@ -1188,7 +1194,7 @@ void Volume::writePolyMeshFaces(const string& dirName, const PolymeshTables& tab
 			}
 		}
 
-		fprintf(fOut, "%llu\n", vertIndices.size());
+		fprintf(fOut, FMT_SIZE, vertIndices.size());
 		fprintf(fOut, "(");
 		fwrite(vertIndices.data(), sizeof(int), vertIndices.size(), fOut);
 		fprintf(fOut, ")\n");
@@ -1221,7 +1227,7 @@ void Volume::writePolyMeshOwnerCells(const std::string& dirName, const PolymeshT
 			indices.push_back(minIdx);
 		}
 
-		fprintf(fOut, "%llu\n", indices.size());
+		fprintf(fOut, FMT_SIZE, indices.size());
 		fprintf(fOut, "(");
 		fwrite(indices.data(), sizeof(int), indices.size(), fOut);
 		fprintf(fOut, ")\n");
@@ -1255,7 +1261,7 @@ void Volume::writePolyMeshNeighborCells(const std::string& dirName, const Polyme
 			}
 		}
 
-		fprintf(fOut, "%llu\n", indices.size());
+		fprintf(fOut, FMT_SIZE, indices.size());
 		fprintf(fOut, "(");
 		fwrite(indices.data(), sizeof(int32_t), indices.size(), fOut);
 		fprintf(fOut, ")\n");

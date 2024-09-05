@@ -30,6 +30,9 @@ This file is part of the DistFieldHexMesh application/library.
 #ifdef _WIN32
 #include <windows.h>
 #include <profileapi.h>
+#else
+#include <cstdint>
+#include <time.h>
 #endif // _WIN32
 
 using namespace DFHM;
@@ -160,6 +163,43 @@ static std::vector<TimerRec> s_times;
 
 namespace
 {
+
+#ifndef _WIN32
+typedef union _LARGE_INTEGER {
+  struct {
+    uint32_t LowPart;
+    uint32_t HighPart;
+  } DUMMYSTRUCTNAME;
+  struct {
+    uint32_t LowPart;
+    uint32_t HighPart;
+  } u;
+  uint64_t QuadPart;
+} LARGE_INTEGER;
+
+inline bool QueryPerformanceFrequency(LARGE_INTEGER *value)
+{
+  value->QuadPart = 1000000000L;
+  return true;
+}
+ 
+inline bool QueryPerformanceCounter(LARGE_INTEGER *value)
+{
+  timespec ts;
+  // CLOCK_MONOTONIC is available on more systems than CLOCK_THREAD_CPUTIME_ID
+  bool result = clock_gettime(CLOCK_MONOTONIC, &ts);
+  // assume call succeeds 
+  value->QuadPart = ts.tv_nsec;
+  if (result = -1) {
+    // mimic windows error behavior, 0=error
+    result = 0;
+    value->QuadPart = 0;
+  }
+  
+  return result;
+}
+#endif
+
 	static LARGE_INTEGER initFreq()
 	{
 		LARGE_INTEGER r;

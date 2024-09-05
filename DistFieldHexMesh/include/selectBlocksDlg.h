@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include "wx/wxprec.h"
 #include <tm_vector3.h>
-#include <Index3D.h>
+#include <index3D.h>
 
 #ifndef WX_PRECOMP
 #include "wx/wx.h"

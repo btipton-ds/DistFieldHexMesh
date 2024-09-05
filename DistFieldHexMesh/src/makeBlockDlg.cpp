@@ -31,7 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/wfstream.h>
 #include <filesystem>
 #include <block.h>
-#include <Vertex.h>
+#include <vertex.h>
 #include <volume.h>
 
 #ifdef WIN32
