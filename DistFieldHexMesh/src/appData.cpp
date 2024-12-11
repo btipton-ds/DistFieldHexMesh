@@ -37,7 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <appData.h>
 #include <tm_math.h>
 #include <triMesh.h>
-#include <readStl.h>
+#include <readWriteStl.h>
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
 #include <buildCFDHexesDlg.h>
@@ -120,7 +120,7 @@ void AppData::doOpen()
 void AppData::readStl(const wstring& pathIn, const wstring& filename)
 {
     CMeshPtr pMesh = make_shared<CMesh>();
-    CReadSTL reader(pMesh);
+    CReadWriteSTL reader(pMesh);
 
     wstring path(pathIn);
     auto pos = path.find(filename);

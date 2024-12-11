@@ -37,7 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_math.h>
 #include <triMesh.h>
-#include <readStl.h>
+#include <readWriteStl.h>
 #include <MultiCoreUtil.h>
 
 #include <splitParams.h>
