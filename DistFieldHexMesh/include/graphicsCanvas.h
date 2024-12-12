@@ -147,8 +147,8 @@ public:
 
 private:
     struct GraphicsUBO {
-        m44f modelView; // Model matrix is always identity, so this is the view matrix
-        m44f proj;
+        m44f modelViewX; // Model matrix is always identity, so this is the view matrix
+        m44f projX;
         p3f defColor;
         float ambient = 0;
         int numLights = 0;
@@ -168,7 +168,7 @@ private:
     };
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
-    Eigen::Matrix4d getProjection() const;
+    void setProjection();
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
@@ -208,7 +208,7 @@ private:
     Eigen::Vector2d _mouseStartLoc2D;
     Vector3d _origin, _mouseStartLoc3D;
     Vector3f _mouseLoc3D;
-    Eigen::Matrix4d _rotToGl, _trans, _intitialTrans;
+    Eigen::Matrix4d _modelView, _projection, _intitialModelView;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;

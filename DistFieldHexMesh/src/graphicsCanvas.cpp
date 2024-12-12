@@ -176,12 +176,10 @@ namespace {
 void GraphicsCanvas::setView(Vector3d viewVec)
 {
     _viewBounds = _pAppData->getBoundingBox();
-    _graphicsUBO.modelView = m44f().identity();
-    _graphicsUBO.proj = m44f().identity();
-    _trans.setIdentity();
-    _intitialTrans = _trans;
+    _modelView.setIdentity();
+    _intitialModelView.setIdentity();
+    _projection.setIdentity();
 
-    _rotToGl.setIdentity();
     viewVec.normalize();
     double alpha = atan2(viewVec[1], viewVec[0]);
     double r = sqrt(viewVec[0] * viewVec[0] + viewVec[1] * viewVec[1]);
@@ -203,7 +201,7 @@ void GraphicsCanvas::setView(Vector3d viewVec)
     tmpRotation = Eigen::AngleAxisd(phi, (Eigen::Matrix<double, 3, 1>)rotatedXAxis).toRotationMatrix();
     rotation = tmpRotation * rotation;
 
-    _rotToGl = rot3ToRot4<Eigen::Matrix4d>(rotation);
+    _modelView = rot3ToRot4<Eigen::Matrix4d>(rotation);
 
 }
 
@@ -347,7 +345,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         _mouseStartLoc3D = NDCPointToModel(_mouseStartLoc2D);
     }
 
-    _intitialTrans = _trans;
+    _intitialModelView = _modelView;
     _leftDown = true;
 }
 
@@ -359,7 +357,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
     _mouseStartLoc2D = screenToNDC(event.GetPosition());
-    _intitialTrans = _trans;
+    _intitialModelView = _modelView;
     _middleDown = true;
 }
 
@@ -378,7 +376,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
 {
     _mouseStartLoc2D = screenToNDC(event.GetPosition());
-    _intitialTrans = _trans;
+    _intitialModelView = _modelView;
     _rightDown = true;
 }
 
@@ -437,6 +435,8 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
     } else
         return;
     _viewScale *= scale;
+
+    setProjection();
 }
 
 void GraphicsCanvas::clearMesh3D()
@@ -739,8 +739,6 @@ void GraphicsCanvas::moveOrigin(const Vector3d& delta)
 {
     Eigen::Matrix4d pan(createTranslation(delta));
 
-    _trans = _intitialTrans;
-    _trans *= pan;
 }
 
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
@@ -748,10 +746,10 @@ inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotation
     Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, (Eigen::Matrix<double, 3, 1>)rotationAxis).toRotationMatrix();
     Eigen::Matrix4d rot(rot3ToRot4<Eigen::Matrix4d>(rot3)), translate(createTranslation((Eigen::Matrix<double, 3, 1>)rotationCenter)), unTranslate(createTranslation((Eigen::Matrix<double, 3, 1>) -rotationCenter));
 
-    _trans = _intitialTrans;
-    _trans *= translate;
-    _trans *= rot;
-    _trans *= unTranslate;
+    _modelView = _intitialModelView;
+    _modelView *= translate;
+    _modelView *= rot;
+    _modelView *= unTranslate;
 }
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
@@ -781,41 +779,39 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     scale(10) = sf;
     result = scale * result;
 
-    result = _rotToGl * result;
+    result = _modelView * result;
     result = rotZUp * result;
     if (withProjection)
-        result = getProjection() * result;
+        result = _projection * result;
 
     return result;
 }
 
-Eigen::Matrix4d GraphicsCanvas::getProjection() const
+void GraphicsCanvas::setProjection()
 {
-    Eigen::Matrix4d result;
-    result.setIdentity();
+    _projection.setIdentity();
 
     wxSize frameSize = GetSize();
     double ratio = frameSize.y / (double)frameSize.x;
     if (ratio >= 1)
-        result(1, 1) = 1 / ratio;
+        _projection(1, 1) = 1 / ratio;
     else
-        result(0, 0) = ratio;
+        _projection(0, 0) = ratio;
 
     for (int i = 0; i < 2; i++)
-        result(i, i) *= _viewScale;
+        _projection(i, i) *= _viewScale;
 
-    return result;
 }
 
 void GraphicsCanvas::updateView()
 {
-    Eigen::Matrix4d m(cumTransform(false)), proj(getProjection());
+    Eigen::Matrix4d m(cumTransform(false));
 
-    float* pMV = _graphicsUBO.modelView;
-    float* pPr = _graphicsUBO.proj;
+    float* pMV = _graphicsUBO.modelViewX;
+    float* pPr = _graphicsUBO.projX;
     for (int i = 0; i < 16; i++) {
         pMV[i] = (float)m(i);
-        pPr[i] = (float)proj(i);
+        pPr[i] = (float)_projection(i);
     }
 }
 
