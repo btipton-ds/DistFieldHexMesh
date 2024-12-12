@@ -168,6 +168,8 @@ void MainFrame::createViewMenu()
 {
     wxMenu* menu= new wxMenu;
 
+    addViewSubMenu(menu);
+
     menu->Append(ID_SHOW_SHARP_EDGES, "Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowSharpEdges, this, ID_SHOW_SHARP_EDGES);
 
@@ -220,6 +222,31 @@ void MainFrame::createViewMenu()
     item = _menuBar->FindItem(ID_SHOW_OUTER);
     if (item)
         item->Check(getCanvas()->showOuter());
+}
+
+void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
+{
+    wxMenu* pMenu = new wxMenu;
+
+    pMenu->Append(ID_VIEW_FRONT, "Front", "Set view to front", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewFront, this, ID_VIEW_FRONT);
+
+    pMenu->Append(ID_VIEW_BACK, "Back", "Set view to back", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewBack, this, ID_VIEW_BACK);
+
+    pMenu->Append(ID_VIEW_RIGHT, "Right", "Set view to right", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewRight, this, ID_VIEW_RIGHT);
+
+    pMenu->Append(ID_VIEW_LEFT, "Left", "Set view to left", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewLeft, this, ID_VIEW_LEFT);
+
+    pMenu->Append(ID_VIEW_TOP, "Top", "Set view to top", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewTop, this, ID_VIEW_TOP);
+
+    pMenu->Append(ID_VIEW_BOTTOM, "Bottom", "Set view to bottom", false);
+    Bind(wxEVT_MENU, &MainFrame::OnSetViewBottom, this, ID_VIEW_BOTTOM);
+
+    pParentMenu->AppendSubMenu(pMenu, "Principal Views", "Principle views");
 }
 
 void MainFrame::createHelpMenu()
@@ -430,4 +457,34 @@ void MainFrame::OnShowSelectedBlocks(wxCommandEvent& event)
     if (dlg.ShowModal() == wxID_OK) {
         _pAppData->doSelectBlocks(dlg);
     }
+}
+
+void MainFrame::OnSetViewFront(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_FRONT);
+}
+
+void MainFrame::OnSetViewBack(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_BACK);
+}
+
+void MainFrame::OnSetViewRight(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_RIGHT);
+}
+
+void MainFrame::OnSetViewLeft(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_LEFT);
+}
+
+void MainFrame::OnSetViewTop(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_TOP);
+}
+
+void MainFrame::OnSetViewBottom(wxCommandEvent& event)
+{
+    _pCanvas->setView(GraphicsCanvas::VIEW_BOTTOM);
 }

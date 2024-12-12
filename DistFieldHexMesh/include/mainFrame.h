@@ -60,6 +60,12 @@ enum DFHM_MENU_ID
     ID_BuildCFDHexes,
     ID_WRITE_POLYMESH,
 
+    ID_VIEW_FRONT,
+    ID_VIEW_BACK,
+    ID_VIEW_TOP,
+    ID_VIEW_BOTTOM,
+    ID_VIEW_LEFT,
+    ID_VIEW_RIGHT,
     ID_SHOW_SHARP_EDGES,
     ID_SHOW_CURVATURE,
     ID_SHOW_SHARP_VERTS,
@@ -106,6 +112,7 @@ private:
     void createFileMenu();
     void createEditMenu();
     void createViewMenu();
+    void addViewSubMenu(wxMenu* pSubMenu);
     void createHelpMenu();
 
     void OnOpen(wxCommandEvent& event);
@@ -135,6 +142,13 @@ private:
     void OnShowOuter(wxCommandEvent& event);
     void OnShowModelBoundary(wxCommandEvent& event);
     void OnShowSelectedBlocks(wxCommandEvent& event);
+
+    void OnSetViewFront(wxCommandEvent& event);
+    void OnSetViewBack(wxCommandEvent& event);
+    void OnSetViewRight(wxCommandEvent& event);
+    void OnSetViewLeft(wxCommandEvent& event);
+    void OnSetViewTop(wxCommandEvent& event);
+    void OnSetViewBottom(wxCommandEvent& event);
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

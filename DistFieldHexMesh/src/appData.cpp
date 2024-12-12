@@ -166,7 +166,7 @@ void AppData::postReadMesh()
 
     pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
 
-    pCanvas->setView(0, 0, 0);
+    pCanvas->setView(GraphicsCanvas::VIEW_FRONT);
 }
 
 void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)

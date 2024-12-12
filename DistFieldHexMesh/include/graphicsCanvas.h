@@ -68,6 +68,15 @@ class GraphicsCanvas : public GraphicsCanvasBase
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
+    enum View {
+        VIEW_FRONT,
+        VIEW_BACK,
+        VIEW_TOP,
+        VIEW_BOTTOM,
+        VIEW_LEFT,
+        VIEW_RIGHT,
+    };
+
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
 
@@ -77,7 +86,7 @@ public:
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
 
-    void setView(double xRotation, double yRotation, double zRotation);
+    void setView(Vector3d viewVec);
     void setLights();
 
     void beginFaceTesselation(bool useModel);
@@ -124,6 +133,8 @@ public:
     bool toggleShowModelBoundary();
 
     void setShowSelectedBlocks(bool val);
+
+    void setView(View v);
 
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);

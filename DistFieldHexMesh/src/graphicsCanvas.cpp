@@ -110,6 +110,14 @@ namespace
         return result;
     }
 
+    template<class A, class B>
+    A rot3ToRot4(const B& src)
+    {
+        A result = changeSize<A,B>(src);
+        result(3, 3) = 1;
+        return result;
+    }
+
     template<class T, int n, int m>
     Eigen::Matrix<T, n, 1> changeVectorSize(const Eigen::Matrix<T, m, 1>& src)
     {
@@ -140,7 +148,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
 
     setLights();
-    setView(0, 0, 0);
+    setView(GraphicsCanvas::VIEW_FRONT);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -165,7 +173,7 @@ namespace {
     }
 }
 
-void GraphicsCanvas::setView(double xRotation, double yRotation, double zRotation)
+void GraphicsCanvas::setView(Vector3d viewVec)
 {
     _viewBounds = _pAppData->getBoundingBox();
     _graphicsUBO.modelView = m44f().identity();
@@ -174,15 +182,56 @@ void GraphicsCanvas::setView(double xRotation, double yRotation, double zRotatio
     _intitialTrans = _trans;
 
     _rotToGl.setIdentity();
+    viewVec.normalize();
+    double alpha = atan2(viewVec[1], viewVec[0]);
+    double r = sqrt(viewVec[0] * viewVec[0] + viewVec[1] * viewVec[1]);
 
-    double angle = -90.0 * M_PI / 180.0;
-    Vector3d axis(1, 0, 0);
-    Eigen::AngleAxisd aad(angle, (Eigen::Matrix<double, 3, 1>)axis);
-    Eigen::Matrix3d rot3 = aad.toRotationMatrix();
+    double phi = atan2(viewVec[2], r);
 
-    _rotToGl = changeSize<Eigen::Matrix4d>(rot3);
-    _rotToGl(3, 3) = 1;
+    Vector3d zAxis(0, 0, 1);
+    Eigen::Vector3d rotatedXAxis(1, 0, 0);
+    rotatedXAxis.normalize();
 
+    Eigen::Matrix3d rotation, tmpRotation;
+    Vector3d xAxis(1, 0, 0);
+    rotation.setIdentity();
+
+    tmpRotation = Eigen::AngleAxisd(alpha, (Eigen::Matrix<double, 3, 1>)zAxis).toRotationMatrix();
+    rotation = tmpRotation * rotation;
+    rotatedXAxis = rotation * rotatedXAxis;
+
+    tmpRotation = Eigen::AngleAxisd(phi, (Eigen::Matrix<double, 3, 1>)rotatedXAxis).toRotationMatrix();
+    rotation = tmpRotation * rotation;
+
+    _rotToGl = rot3ToRot4<Eigen::Matrix4d>(rotation);
+
+}
+
+void GraphicsCanvas::setView(View v)
+{
+    switch (v) {
+    case VIEW_RIGHT:
+        setView(Vector3d(1, 0, 0));
+        break;
+    case VIEW_LEFT:
+        setView(Vector3d(-1, 0, 0));
+        break;
+
+    case VIEW_FRONT:
+        setView(Vector3d(0, 1, 0));
+        break;
+    case VIEW_BACK:
+        setView(Vector3d(0, -1, 0));
+        break;
+
+    case VIEW_TOP:
+        setView(Vector3d(0, 0, -1));
+        break;
+    case VIEW_BOTTOM:
+        setView(Vector3d(0, 0, 1));
+        break;
+
+    }
 }
 
 void GraphicsCanvas::setLights()
@@ -695,8 +744,7 @@ void GraphicsCanvas::moveOrigin(const Vector3d& delta)
 inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
 {
     Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, (Eigen::Matrix<double, 3, 1>)rotationAxis).toRotationMatrix();
-    Eigen::Matrix4d rot(changeSize<Eigen::Matrix4d>(rot3)), translate(createTranslation((Eigen::Matrix<double, 3, 1>)rotationCenter)), unTranslate(createTranslation((Eigen::Matrix<double, 3, 1>) -rotationCenter));
-    rot(3, 3) = 1;
+    Eigen::Matrix4d rot(rot3ToRot4<Eigen::Matrix4d>(rot3)), translate(createTranslation((Eigen::Matrix<double, 3, 1>)rotationCenter)), unTranslate(createTranslation((Eigen::Matrix<double, 3, 1>) -rotationCenter));
 
     _trans = _intitialTrans;
     _trans *= translate;
@@ -713,6 +761,11 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     result.setIdentity();
     scale.setIdentity();
 
+    Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
+    double makeZUprightAngle = -90.0 * M_PI / 180.0;
+    Eigen::Matrix3d tmpRotation = Eigen::AngleAxisd(makeZUprightAngle, xAxis).toRotationMatrix();
+    Eigen::Matrix4d rotZUp = rot3ToRot4<Eigen::Matrix4d>(tmpRotation);
+
     view = createTranslation(-viewOrigin) * view;
     result *= view;
     double maxDim = 0;
@@ -726,11 +779,8 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     scale(10) = sf;
     result = scale * result;
 
-    Eigen::Matrix4d correctY;
-    correctY.setIdentity();
-    correctY(2, 2) = -1; // TODO - This puts z into the screen, but OGL documentation says it should be out.
-
-    result = _rotToGl * correctY * result;
+    result = _rotToGl * result;
+    result = rotZUp * result;
     if (withProjection)
         result = getProjection() * result;
 
@@ -752,7 +802,8 @@ Eigen::Matrix4d GraphicsCanvas::getProjection() const
     for (int i = 0; i < 2; i++)
         result(i, i) *= _viewScale;
 
-    result(1, 1) = -result(1, 1);
+
+//    result(1, 1) = -result(1, 1);
     return result;
 }
 
