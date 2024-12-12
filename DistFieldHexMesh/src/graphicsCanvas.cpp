@@ -326,11 +326,11 @@ bool GraphicsCanvas::toggleShowModelBoundary()
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = screenToNDC(event.GetPosition());
     Vector3d dir(screenVectorToModel(Vector3d(0, 0, -1)));
     CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
     if (pMesh) {
-        Vector3d temp = screenPointToModel(_mouseStartLoc2D);
+        Vector3d temp = NDCPointToModel(_mouseStartLoc2D);
         dir.normalize();
         Rayd ray(temp, dir);
         vector<RayHitd> hits;
@@ -344,7 +344,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         }
     } else {
         // Rotate about point hit at arbitrary depth
-        _mouseStartLoc3D = screenPointToModel(_mouseStartLoc2D);
+        _mouseStartLoc3D = NDCPointToModel(_mouseStartLoc2D);
     }
 
     _intitialTrans = _trans;
@@ -358,7 +358,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = screenToNDC(event.GetPosition());
     _intitialTrans = _trans;
     _middleDown = true;
 }
@@ -367,9 +367,9 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 {
     _middleDown = false;
 
-    Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
-    Vector3d sp = screenPointToModel(_mouseStartLoc2D);
-    Vector3d ep = screenPointToModel(pos);
+    Eigen::Vector2d pos = screenToNDC(event.GetPosition());
+    Vector3d sp = NDCPointToModel(_mouseStartLoc2D);
+    Vector3d ep = NDCPointToModel(pos);
     Vector3d delta = ep - sp;
     delta *= 2;
     _origin += delta;
@@ -377,7 +377,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = calMouseLoc(event.GetPosition());
+    _mouseStartLoc2D = screenToNDC(event.GetPosition());
     _intitialTrans = _trans;
     _rightDown = true;
 }
@@ -387,19 +387,21 @@ void GraphicsCanvas::onMouseRightUp(wxMouseEvent& event)
     _rightDown = false;
 }
 
-Eigen::Vector2d GraphicsCanvas::calMouseLoc(const wxPoint& pt)
+Eigen::Vector2d GraphicsCanvas::screenToNDC(const wxPoint& pt)
 {
+    // Screen coordinates are left to right TOP to BOTTOM - like text
+    // NDC are (-1,-1,-1) to (1,1,1) with the origin at the center.
     wxSize frameSize = GetSize();
     double x = -1 + 2 * pt.x / (double)frameSize.x;
     double y = -1 + 2 * pt.y / (double)frameSize.y;
-    return Eigen::Vector2d(x, y);
+    return Eigen::Vector2d(x, -y); // Invert the y axis
 }
 
 void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 {
-    Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
+    Eigen::Vector2d pos = screenToNDC(event.GetPosition());
     {
-        Vector3d temp = screenPointToModel(pos);
+        Vector3d temp = NDCPointToModel(pos);
         _mouseLoc3D = Vector3f((float)temp[0], (float)temp[1], (float)temp[2]);
     }
     if (_leftDown) {
@@ -421,8 +423,8 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
-    Eigen::Vector2d pos = calMouseLoc(event.GetPosition());
-    Vector3d centerPt = screenPointToModel(pos);
+    Eigen::Vector2d pos = screenToNDC(event.GetPosition());
+    Vector3d centerPt = NDCPointToModel(pos);
 
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
     double scaleMult = 1 + t * 0.05;
@@ -704,7 +706,7 @@ void GraphicsCanvas::drawEdges()
     _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
-Vector3d GraphicsCanvas::screenPointToModel(const Eigen::Vector2d& pt2d) const
+Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const
 {
     Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
     Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
@@ -802,8 +804,6 @@ Eigen::Matrix4d GraphicsCanvas::getProjection() const
     for (int i = 0; i < 2; i++)
         result(i, i) *= _viewScale;
 
-
-//    result(1, 1) = -result(1, 1);
     return result;
 }
 
