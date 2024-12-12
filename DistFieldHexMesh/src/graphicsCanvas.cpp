@@ -706,7 +706,8 @@ inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotation
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
-    Vector3d viewOrigin = _viewBounds.getMin() + _viewBounds.range() * 0.5;
+    Vector3d span = _viewBounds.range();
+    Vector3d viewOrigin = _viewBounds.getMin() + span * 0.5;
     Eigen::Matrix4d view, result, scale;
     view.setIdentity();
     result.setIdentity();
@@ -714,7 +715,12 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 
     view = createTranslation(-viewOrigin) * view;
     result *= view;
-    double sf = 0.1;
+    double maxDim = 0;
+    for (int i = 0; i < 3; i++) {
+        if (span[i] > maxDim)
+            maxDim = span[i];
+    }
+    double sf = maxDim > 0 ? 1.0 / maxDim : 1;
     scale(0) = sf;
     scale(5) = -sf;
     scale(10) = sf;
