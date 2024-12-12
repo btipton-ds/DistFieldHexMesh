@@ -752,6 +752,7 @@ Eigen::Matrix4d GraphicsCanvas::getProjection() const
     for (int i = 0; i < 2; i++)
         result(i, i) *= _viewScale;
 
+    result(1, 1) = -result(1, 1);
     return result;
 }
 
