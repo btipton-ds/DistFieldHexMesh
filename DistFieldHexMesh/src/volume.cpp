@@ -220,6 +220,13 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	return make_shared<Block>(this, blockIdx, pts);
 }
 
+CBoundingBox3Dd Volume::getBBox() const
+{
+	CBoundingBox3Dd result(_originMeters, _originMeters + _spanMeters);
+
+	return result;
+}
+
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();

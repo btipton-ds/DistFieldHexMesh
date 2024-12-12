@@ -139,7 +139,7 @@ void AppData::readStl(const wstring& pathIn, const wstring& filename)
 
 void AppData::postReadMesh()
 {
-    _pMesh->squeezeSkinnyTriangles(0.025);
+//    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
     _pMesh->buildCentroids();
     _pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
     _pMesh->calGaps();
@@ -147,7 +147,7 @@ void AppData::postReadMesh()
     auto pCanvas = _pMainFrame->getCanvas();
 
     pCanvas->beginFaceTesselation(true);
-    auto pSharpVertMesh = getSharpVertMesh();
+    CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
     _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
     if (pSharpVertMesh)
         _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
@@ -165,6 +165,8 @@ void AppData::postReadMesh()
         _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
 
     pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
+
+    pCanvas->setView(0, 0, 0);
 }
 
 void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
@@ -187,10 +189,10 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     bool hasVolume;
     in.read((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume) {
-        _volume = make_shared<Volume>();
-        _volume->setModelMesh(_pMesh);
+        _pVolume = make_shared<Volume>();
+        _pVolume->setModelMesh(_pMesh);
 
-        _volume->read(in);
+        _pVolume->read(in);
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     }
 }
@@ -226,10 +228,10 @@ void AppData::writeDHFM() const
     if (_pMesh)
         _pMesh->write(out);
 
-    bool hasVolume = _volume != nullptr;
+    bool hasVolume = _pVolume != nullptr;
     out.write((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume)
-        _volume->write(out);    
+        _pVolume->write(out);    
 }
 
 void AppData::doVerifyClosed()
@@ -369,6 +371,17 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     updateTessellation(min, max);
 }
 
+CBoundingBox3Dd AppData::getBoundingBox() const
+{
+    CBoundingBox3Dd result;
+    if (_pMesh)
+        result.merge(_pMesh->getBBox());
+    if (_pVolume)
+        result.merge(_pVolume->getBBox());
+
+    return result;
+}
+
 void AppData::getDisplayMinMax(Index3D& min, Index3D& max) const
 {
     min = _minDisplayBlock;
@@ -418,11 +431,11 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
     try {
         auto pCanvas = _pMainFrame->getCanvas();
         pCanvas->clearMesh3D();
-        _volume = make_shared<Volume>();
+        _pVolume = make_shared<Volume>();
 
         dlg.getParams(_params);
 
-        _volume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
+        _pVolume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
 
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     } catch (const char* errStr) {
@@ -446,7 +459,7 @@ void AppData::updateTessellation(const Index3D& min, const Index3D& max)
 void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::TriMeshGroup blockMeshes;
-    _volume->makeFaceTris(blockMeshes, min, max, multiCore);
+    _pVolume->makeFaceTris(blockMeshes, min, max, multiCore);
 
     pCanvas->beginFaceTesselation(false);
 
@@ -470,7 +483,7 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
 void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::glPointsGroup edgeSets;
-    _volume->makeEdgeSets(edgeSets, min, max, multiCore);
+    _pVolume->makeEdgeSets(edgeSets, min, max, multiCore);
 
     pCanvas->beginEdgeTesselation(false);
 

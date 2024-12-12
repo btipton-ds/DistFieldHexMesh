@@ -77,6 +77,9 @@ public:
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
 
+    void setView(double xRotation, double yRotation, double zRotation);
+    void setLights();
+
     void beginFaceTesselation(bool useModel);
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
     const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
@@ -133,12 +136,24 @@ public:
 
 private:
     struct GraphicsUBO {
-        m44f modelView;
+        m44f modelView; // Model matrix is always identity, so this is the view matrix
         m44f proj;
         p3f defColor;
         float ambient = 0;
         int numLights = 0;
         p3f lightDir[8];
+    };
+
+    struct VBORec {
+        VBORec();
+        const OGLIndices
+            * _pTriTess = nullptr,
+            * _pSharpVertTess = nullptr,
+            * _pSharpEdgeTess = nullptr,
+            * _pNormalTess = nullptr;
+        std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+
+        COglMultiVboHandler _faceVBO, _edgeVBO;
     };
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
@@ -155,11 +170,14 @@ private:
     void drawFaces();
     void drawEdges();
 
+    void initialize();
+    void loadShaders();
+    static Eigen::Matrix4d createTranslation(const Vector3d& delta);
+
+    Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     std::shared_ptr<wxGLContext> _pContext;
     
-    AppDataPtr _pAppData;
     bool _initialized = false;
-
     bool 
         _showSharpEdges = false, 
         _showSharpVerts = false, 
@@ -171,13 +189,11 @@ private:
         _showCurvature = false,
         _showSelectedBlocks = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
-    void initialize();
-    void loadShaders();
-    static Eigen::Matrix4d createTranslation(const Vector3d& delta);
-
-    Eigen::Vector2d calMouseLoc(const wxPoint& pt);
     
     double _viewScale = 1;
+
+    AppDataPtr _pAppData;
+    CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLoc2D;
     Vector3d _origin, _mouseStartLoc3D;
     Vector3f _mouseLoc3D;
@@ -186,18 +202,6 @@ private:
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
-
-    struct VBORec {
-        VBORec();
-        const OGLIndices
-            * _pTriTess = nullptr,
-            * _pSharpVertTess = nullptr,
-            * _pSharpEdgeTess = nullptr,
-            * _pNormalTess = nullptr;
-        std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
-
-        COglMultiVboHandler _faceVBO, _edgeVBO;
-    };
 
     std::shared_ptr<VBORec> _modelVBOs, _meshVBOs, _activeVBOs;
 

@@ -138,41 +138,9 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     _pContext = make_shared<wxGLContext>(this);
 
-    float lightAz[] = { 
-        toRad(0.0f), 
-        toRad(90 + 30.0f), 
-    };
-    float lightEl[] = { 
-        toRad(0.0f), 
-        toRad(30.0f),
-    };
-    
-    _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
-    _graphicsUBO.ambient = 0.15f;
-    _graphicsUBO.numLights = 1;
-    _graphicsUBO.modelView = m44f().identity();
-    _graphicsUBO.proj = m44f().identity();
-    for (int i = 0; i < _graphicsUBO.numLights; i++) {
-        float sinAz = sinf(lightAz[i]);
-        float cosAz = cosf(lightAz[i]);
-        float sinEl = sinf(lightEl[i]);
-        float cosEl = cosf(lightEl[i]);
 
-        _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
-    }
-
-    _trans.setIdentity();
-    _intitialTrans = _trans;
-
-    _rotToGl.setIdentity();
-
-    double angle = -90.0 * M_PI / 180.0;
-    Vector3d axis(1, 0, 0);
-    Eigen::AngleAxisd aad(angle, (Eigen::Matrix<double, 3, 1>)axis);
-    Eigen::Matrix3d rot3 = aad.toRotationMatrix();
-
-    _rotToGl = changeSize<Eigen::Matrix4d>(rot3);
-    _rotToGl(3, 3) = 1;
+    setLights();
+    setView(0, 0, 0);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -186,6 +154,59 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
 GraphicsCanvas::~GraphicsCanvas()
 {
+}
+
+namespace {
+    void fromMatrixToGl(const Eigen::Matrix4d& src, m44f& dst)
+    {
+        float* pDst = (float*) & dst;
+        for (int i = 0; i < 16; i++)
+            pDst[i] = src(i);
+    }
+}
+
+void GraphicsCanvas::setView(double xRotation, double yRotation, double zRotation)
+{
+    _viewBounds = _pAppData->getBoundingBox();
+    _graphicsUBO.modelView = m44f().identity();
+    _graphicsUBO.proj = m44f().identity();
+    _trans.setIdentity();
+    _intitialTrans = _trans;
+
+    _rotToGl.setIdentity();
+
+    double angle = -90.0 * M_PI / 180.0;
+    Vector3d axis(1, 0, 0);
+    Eigen::AngleAxisd aad(angle, (Eigen::Matrix<double, 3, 1>)axis);
+    Eigen::Matrix3d rot3 = aad.toRotationMatrix();
+
+    _rotToGl = changeSize<Eigen::Matrix4d>(rot3);
+    _rotToGl(3, 3) = 1;
+
+}
+
+void GraphicsCanvas::setLights()
+{
+    float lightAz[] = {
+        toRad(0.0f),
+        toRad(90 + 30.0f),
+    };
+    float lightEl[] = {
+        toRad(0.0f),
+        toRad(30.0f),
+    };
+
+    _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
+    _graphicsUBO.ambient = 0.15f;
+    _graphicsUBO.numLights = 1;
+    for (int i = 0; i < _graphicsUBO.numLights; i++) {
+        float sinAz = sinf(lightAz[i]);
+        float cosAz = cosf(lightAz[i]);
+        float sinEl = sinf(lightEl[i]);
+        float cosEl = cosf(lightEl[i]);
+
+        _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
+    }
 }
 
 bool GraphicsCanvas::toggleShowSharpEdges()
@@ -685,13 +706,29 @@ inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotation
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
+    Vector3d viewOrigin = _viewBounds.getMin() + _viewBounds.range() * 0.5;
+    Eigen::Matrix4d view, result, scale;
+    view.setIdentity();
+    result.setIdentity();
+    scale.setIdentity();
+
+    view = createTranslation(-viewOrigin) * view;
+    result *= view;
+    double sf = 0.1;
+    scale(0) = sf;
+    scale(5) = -sf;
+    scale(10) = sf;
+    result = scale * result;
+
     Eigen::Matrix4d correctY;
     correctY.setIdentity();
     correctY(2, 2) = -1; // TODO - This puts z into the screen, but OGL documentation says it should be out.
+
+    result = _rotToGl * correctY * result;
     if (withProjection)
-        return correctY * _rotToGl * _trans * getProjection();
-    else
-        return correctY * _rotToGl * _trans;
+        result = getProjection() * result;
+
+    return result;
 }
 
 Eigen::Matrix4d GraphicsCanvas::getProjection() const

@@ -70,11 +70,13 @@ public:
 
     inline VolumePtr getVolume() const
     {
-        return _volume;
+        return _pVolume;
     }
 
+    CBoundingBox3Dd getBoundingBox() const;
     void getDisplayMinMax(Index3D& min, Index3D& max) const;
     void setDisplayMinMax(const Index3D& min, const Index3D& max);
+
     BuildCFDParams& getParams();
     const BuildCFDParams& getParams() const;
 
@@ -95,7 +97,7 @@ private:
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pMesh;
-    VolumePtr _volume;
+    VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelNormalTess = nullptr;

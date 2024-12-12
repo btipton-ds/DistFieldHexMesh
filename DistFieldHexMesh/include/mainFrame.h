@@ -41,6 +41,13 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
+/*
+TODO 
+Fix the annoying graphics!! Get clipping, pan, rotate zoom working right.
+Support reading multiple mesh files with settings.
+Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
+*/
+    
 class Volume;
 
 enum DFHM_MENU_ID

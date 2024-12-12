@@ -65,6 +65,7 @@ public:
 
 	void setModelMesh(const CMeshPtr& pMesh);
 	const CMeshPtr& getModelMesh() const;
+	CBoundingBox3Dd getBBox() const;
 
 	void setOrigin(const Vector3d& origin);
 	void setSpan(const Vector3d& span);
