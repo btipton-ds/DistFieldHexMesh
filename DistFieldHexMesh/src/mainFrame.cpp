@@ -246,6 +246,11 @@ void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
     pMenu->Append(ID_VIEW_BOTTOM, "Bottom", "Set view to bottom", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewBottom, this, ID_VIEW_BOTTOM);
 
+    pMenu->AppendSeparator();
+
+    pMenu->Append(ID_VIEW_RESET, "Reset", "Reset view to default", false);
+    Bind(wxEVT_MENU, &MainFrame::OnResetView, this, ID_VIEW_RESET);
+
     pParentMenu->AppendSubMenu(pMenu, "Principal Views", "Principle views");
 }
 
@@ -487,4 +492,9 @@ void MainFrame::OnSetViewTop(wxCommandEvent& event)
 void MainFrame::OnSetViewBottom(wxCommandEvent& event)
 {
     _pCanvas->setView(GraphicsCanvas::VIEW_BOTTOM);
+}
+
+void MainFrame::OnResetView(wxCommandEvent& event)
+{
+    _pCanvas->resetView();
 }

@@ -136,6 +136,7 @@ public:
     void setShowSelectedBlocks(bool val);
 
     void setView(View v);
+    void resetView();
 
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
@@ -209,7 +210,7 @@ private:
     AppDataPtr _pAppData;
     CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLocNDC_2D;
-    Vector3d _origin, _mouseStartModel;
+    Vector3d _mouseStartModel;
     Vector3f _mouseLoc3D;
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 

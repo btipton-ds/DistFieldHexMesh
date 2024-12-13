@@ -66,6 +66,7 @@ enum DFHM_MENU_ID
     ID_VIEW_BOTTOM,
     ID_VIEW_LEFT,
     ID_VIEW_RIGHT,
+    ID_VIEW_RESET,
     ID_SHOW_SHARP_EDGES,
     ID_SHOW_CURVATURE,
     ID_SHOW_SHARP_VERTS,
@@ -149,6 +150,7 @@ private:
     void OnSetViewLeft(wxCommandEvent& event);
     void OnSetViewTop(wxCommandEvent& event);
     void OnSetViewBottom(wxCommandEvent& event);
+    void OnResetView(wxCommandEvent& event);
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

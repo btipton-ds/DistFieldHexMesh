@@ -139,7 +139,6 @@ GraphicsCanvas::VBORec::VBORec()
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
-    , _origin(0, 0, 0)
 {
     _modelVBOs = make_shared<VBORec>();
     _meshVBOs = make_shared<VBORec>();
@@ -229,6 +228,13 @@ void GraphicsCanvas::setView(View v)
         break;
 
     }
+}
+
+void GraphicsCanvas::resetView()
+{
+    _viewScale = 2;
+    initProjection();
+    setView(GraphicsCanvas::VIEW_FRONT);
 }
 
 void GraphicsCanvas::setLights()
@@ -374,13 +380,6 @@ void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 {
     _middleDown = false;
-
-    Eigen::Vector2d pos = screenToNDC(event.GetPosition());
-    Vector3d sp = NDCPointToModel(_mouseStartLocNDC_2D);
-    Vector3d ep = NDCPointToModel(pos);
-    Vector3d delta = ep - sp;
-    delta *= 2;
-    _origin += delta;
 }
 
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
@@ -432,7 +431,7 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
     Eigen::Vector2d pos = screenToNDC(event.GetPosition());
 
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
-    double scaleMult = 1 + t * 0.025;
+    double scaleMult = 1 + t * 0.1;
 
     if (event.m_wheelRotation > 0) {
         scaleMult = scaleMult;
