@@ -104,17 +104,22 @@ void MainFrame::createFileMenu()
 {
     _fileMenu = new wxMenu;
 
-    _fileMenu->Append(wxID_OPEN);
-    Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
-
     _fileMenu->Append(wxID_NEW, "New...");
     Bind(wxEVT_MENU, &MainFrame::OnNew, this, wxID_NEW);
+
+    _fileMenu->Append(wxID_OPEN);
+    Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 
     _fileMenu->Append(wxID_SAVE);
     Bind(wxEVT_MENU, &MainFrame::OnSave, this, wxID_SAVE);
 
     _fileMenu->Append(wxID_SAVEAS);
     Bind(wxEVT_MENU, &MainFrame::OnSaveAs, this, wxID_SAVEAS);
+
+    _fileMenu->AppendSeparator();
+
+    _fileMenu->Append(ID_IMPORT_MESH, "Import mesh...");
+    Bind(wxEVT_MENU, &MainFrame::OnImportMesh, this, ID_IMPORT_MESH);
 
     _fileMenu->Append(ID_WRITE_POLYMESH, "Write Polymesh...");
     Bind(wxEVT_MENU, &MainFrame::OnWritePolymesh, this, ID_WRITE_POLYMESH);
@@ -292,6 +297,11 @@ void MainFrame::OnInternalIdle()
 void MainFrame::OnOpen(wxCommandEvent& event)
 {
     _pAppData->doOpen();
+}
+
+void MainFrame::OnImportMesh(wxCommandEvent& event)
+{
+    _pAppData->doImportMesh();
 }
 
 void MainFrame::OnNew(wxCommandEvent& event)

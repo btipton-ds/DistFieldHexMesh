@@ -43,6 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <buildCFDHexesDlg.h>
 
 #include <splitParams.h>
+#include <meshData.h>
 #include <makeBlockDlg.h>
 #include <mainFrame.h>
 #include <graphicsCanvas.h>
@@ -86,7 +87,6 @@ void AppData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>
         normIndices.push_back((int)normIndices.size());
         normIndices.push_back((int)normIndices.size());
     }
-
 }
 
 void AppData::doOpen()
@@ -111,13 +111,14 @@ void AppData::doOpen()
         pos = path.find(L"\\");
     }
     if (filename.find(L".stl") != -1) {
-        readStl(path, filename);
-    } else if (filename.find(L".dfhm") != -1) {
+        _pMesh = readStl(path, filename);
+    }
+    else if (filename.find(L".dfhm") != -1) {
         readDHFM(path, filename);
     }
 }
 
-void AppData::readStl(const wstring& pathIn, const wstring& filename)
+CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
 {
     CMeshPtr pMesh = make_shared<CMesh>();
     CReadWriteSTL reader(pMesh);
@@ -129,12 +130,14 @@ void AppData::readStl(const wstring& pathIn, const wstring& filename)
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
             postReadMesh();
+            return pMesh;
         }
     }
     catch (const char* errStr) {
         cout << errStr << "\n";
     }
 
+    return nullptr;
 }
 
 void AppData::postReadMesh()
@@ -194,6 +197,34 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
 
         _pVolume->read(in);
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
+    }
+}
+
+void AppData::doImportMesh()
+{
+    wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
+        "All (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (openFileDialog.ShowModal() == wxID_CANCEL)
+        return;     // the user changed idea...
+
+    // this can be done with e.g. wxWidgets input streams:
+    _workDirName = openFileDialog.GetDirectory();
+    wxString pathStr = openFileDialog.GetPath();
+    wstring path(pathStr.ToStdWstring());
+    wstring filename(openFileDialog.GetFilename().ToStdWstring());
+    auto pos = path.find(filename);
+    path = path.replace(pos, filename.length(), L"");
+    pos = path.find(L"\\");
+    while (pos != wstring::npos) {
+        path = path.replace(pos, 1, L"/");
+        pos = path.find(L"\\");
+    }
+    if (filename.find(L".stl") != -1) {
+        auto pMesh = readStl(path, filename);
+        auto pos = filename.find(L".");
+        wstring name = filename.replace(pos, filename.size(), L"");
+        MeshDataPtr pData = make_shared<MeshData>(pMesh, name);
+        _meshData.push_back(pData);
     }
 }
 

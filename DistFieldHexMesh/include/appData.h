@@ -47,12 +47,16 @@ class MakeBlockDlg;
 class SelectBlocksDlg;
 class BuildCFDHexesDlg;
 
+class MeshData;
+using MeshDataPtr = std::shared_ptr<MeshData>;
+
 class AppData {
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
     AppData(MainFrame* pMainFrame = nullptr);
     void doOpen();
+    void doImportMesh();
     void doSave();
     void doSaveAs();
     void doVerifyClosed();
@@ -89,7 +93,7 @@ private:
     void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
     CMeshPtr getSharpVertMesh() const;
     void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
-    void readStl(const std::wstring& path, const std::wstring& filename);
+    CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
     void postReadMesh();
@@ -97,6 +101,7 @@ private:
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pMesh;
+    std::vector<MeshDataPtr> _meshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;

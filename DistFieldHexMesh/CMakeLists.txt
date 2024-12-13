@@ -97,7 +97,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
-)
+ "src/meshData.cpp")
 
 add_executable (TestDFM         
 	
@@ -121,7 +121,7 @@ add_executable (TestDFM
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
-)
+ "src/meshData.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
