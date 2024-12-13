@@ -328,12 +328,12 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
     Vector3d hitModel;
     if (pMesh) {
-        Vector3d dir(screenVectorToModel(Vector3d(0, 0, -1)));
+        Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
         Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
         Rayd ray(temp, dir);
         vector<RayHitd> hits;
-        if (pMesh->rayCast(ray, hits, false)) {
+        if (pMesh->rayCast(ray, hits)) {
             // Rotate about hit point
             hitModel = hits.front().hitPt; // Initialize for safety
             double minDist = DBL_MAX;
@@ -415,7 +415,7 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
     if (_leftDown) {
         wxSize frameSize = GetSize();
         Eigen::Vector2d delta = pos - _mouseStartLocNDC_2D;
-        double angleSpin = -delta[0] * M_PI / 2;
+        double angleSpin = delta[0] * M_PI / 2;
         double anglePitch = delta[1] * M_PI / 2;
         applyRotation(angleSpin, anglePitch, _mouseStartModel);
 
@@ -818,8 +818,9 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     double sf = maxDim > 0 ? 1.0 / maxDim : 1;
     sf *= 0.5;
     scale(0) = sf;
-    scale(5) = -sf;
-    scale(10) = sf;
+    scale(5) = sf;
+    scale(10) = -sf; // Open gl'z NDC xAxis is left to right, yAxis i bottom to top and zAxis is INTO the screen (depth) when it should be out of the screen - it's left handed.
+                     // Screen coordinates are x left to right and Y TOP to BOTTOM - it's right handed.
     result = scale * result;
 
     result = _modelView * result;
@@ -841,7 +842,7 @@ void GraphicsCanvas::initProjection()
         _projection(0, 0) = ratio;
 
     Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
-    double makeZUpAngle = -90.0 * M_PI / 180.0;
+    double makeZUpAngle = 90.0 * M_PI / 180.0;
     Eigen::Matrix3d tmpRotation = Eigen::AngleAxisd(makeZUpAngle, xAxis).toRotationMatrix();
     Eigen::Matrix4d rotZUp = rot3ToRot4<Eigen::Matrix4d>(tmpRotation);
 
