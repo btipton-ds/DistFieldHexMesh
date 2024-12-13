@@ -768,7 +768,7 @@ namespace
 }
 inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC)
 {
-    Eigen::Vector3d xAxis = transformVector(Vector3d(1, 0, 0), _intitialModelView.inverse());
+    Eigen::Vector3d xAxis(1, 0, 0);
     Eigen::Vector3d zAxis(0, 0, 1);
     Eigen::Matrix4d translate(createTranslation(-rotationCenterLC));
     Eigen::Matrix4d unTranslate(createTranslation(rotationCenterLC));
@@ -776,10 +776,10 @@ inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, c
     Eigen::Matrix4d rotPitch = rot3ToRot4<Eigen::Matrix4d>(Eigen::AngleAxisd(anglePitch, xAxis).toRotationMatrix());
 
     _modelView = _intitialModelView;
-    _modelView *= translate;
-    _modelView *= rotPitch;
-    _modelView *= rotSpin;
-    _modelView *= unTranslate;
+    _modelView = translate * _modelView;
+    _modelView = rotSpin * _modelView;
+    _modelView = rotPitch * _modelView;
+    _modelView = unTranslate * _modelView;
 
     updateView();
 }
