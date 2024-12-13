@@ -178,7 +178,6 @@ void GraphicsCanvas::setView(Vector3d viewVec)
     _viewBounds = _pAppData->getBoundingBox();
     _modelView.setIdentity();
     _intitialModelView.setIdentity();
-    _projection.setIdentity();
 
     viewVec.normalize();
     double alpha = atan2(viewVec[1], viewVec[0]);
@@ -796,11 +795,6 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     result.setIdentity();
     scale.setIdentity();
 
-    Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
-    double makeZUprightAngle = -90.0 * M_PI / 180.0;
-    Eigen::Matrix3d tmpRotation = Eigen::AngleAxisd(makeZUprightAngle, xAxis).toRotationMatrix();
-    Eigen::Matrix4d rotZUp = rot3ToRot4<Eigen::Matrix4d>(tmpRotation);
-
     view = createTranslation(-viewOrigin) * view;
     result *= view;
     double maxDim = 0;
@@ -815,7 +809,6 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     result = scale * result;
 
     result = _modelView * result;
-    result = rotZUp * result;
     if (withProjection)
         result = _projection * result;
 
@@ -836,6 +829,12 @@ void GraphicsCanvas::setProjection()
     for (int i = 0; i < 2; i++)
         _projection(i, i) *= _viewScale;
 
+    Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
+    double makeZUpAngle = -90.0 * M_PI / 180.0;
+    Eigen::Matrix3d tmpRotation = Eigen::AngleAxisd(makeZUpAngle, xAxis).toRotationMatrix();
+    Eigen::Matrix4d rotZUp = rot3ToRot4<Eigen::Matrix4d>(tmpRotation);
+
+    _projection = rotZUp * _projection;
 }
 
 void GraphicsCanvas::updateView()
