@@ -367,7 +367,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
-    _intitialModelView = _modelView;
+    _initialProjection = _projection;
     _middleDown = true;
 }
 
@@ -421,9 +421,8 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 
     } else if (_middleDown) {
         Eigen::Vector2d delta2D = pos - _mouseStartLocNDC_2D;
-        Vector3d delta3D(screenVectorToModel(delta2D, 0));
 
-        moveOrigin(delta3D);
+        moveOrigin(delta2D);
     } else if (_rightDown) {
     }
 }
@@ -431,10 +430,9 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
     Eigen::Vector2d pos = screenToNDC(event.GetPosition());
-    cout << pos << "\n";
 
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
-    double scaleMult = 1 + t * 0.05;
+    double scaleMult = 1 + t * 0.025;
 
     if (event.m_wheelRotation > 0) {
         scaleMult = scaleMult;
@@ -750,10 +748,11 @@ Eigen::Matrix4d GraphicsCanvas::createTranslation(const Vector3d& delta)
     return result;
 }
 
-void GraphicsCanvas::moveOrigin(const Vector3d& delta)
+void GraphicsCanvas::moveOrigin(const Eigen::Vector2d& delta)
 {
-    Eigen::Matrix4d pan(createTranslation(delta));
-
+    Eigen::Matrix4d pan(createTranslation(Vector3d(delta[0], delta[1], 0)));
+    _projection = _initialProjection;
+    _projection = pan * _projection;
 }
 
 namespace

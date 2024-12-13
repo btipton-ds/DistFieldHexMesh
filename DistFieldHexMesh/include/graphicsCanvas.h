@@ -105,7 +105,7 @@ public:
     Vector3d NDCPointToModel(const Eigen::Vector2d& pt2d) const;
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
     Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
-    void moveOrigin(const Vector3d& delta);
+    void moveOrigin(const Eigen::Vector2d& delta);
     void applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC);
     void applyScaleFactor(double scaleMult, const Eigen::Vector2d& center);
 
@@ -211,7 +211,7 @@ private:
     Eigen::Vector2d _mouseStartLocNDC_2D;
     Vector3d _origin, _mouseStartModel;
     Vector3f _mouseLoc3D;
-    Eigen::Matrix4d _modelView, _projection, _intitialModelView;
+    Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<COglShader> _phongShader;
