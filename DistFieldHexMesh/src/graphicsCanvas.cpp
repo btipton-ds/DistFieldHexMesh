@@ -146,7 +146,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     _pContext = make_shared<wxGLContext>(this);
 
-    setProjection();
+    initProjection();
     setLights();
     setView(GraphicsCanvas::VIEW_FRONT);
 
@@ -431,21 +431,19 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
 void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 {
     Eigen::Vector2d pos = screenToNDC(event.GetPosition());
-    Vector3d centerPt = NDCPointToModel(pos);
+    cout << pos << "\n";
 
     double t = fabs(event.m_wheelRotation / (double)event.m_wheelDelta);
     double scaleMult = 1 + t * 0.05;
-    double scale = 1.0;
 
     if (event.m_wheelRotation > 0) {
-        scale *= scaleMult;
+        scaleMult = scaleMult;
     } else if (event.m_wheelRotation < 0) {
-        scale /= scaleMult;
+        scaleMult = 1 / scaleMult;
     } else
         return;
-    _viewScale *= scale;
 
-    setProjection();
+    applyScaleFactor(scaleMult, pos);
 }
 
 void GraphicsCanvas::clearMesh3D()
@@ -786,6 +784,21 @@ inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, c
     updateView();
 }
 
+void GraphicsCanvas::applyScaleFactor(double scaleMult, const Eigen::Vector2d& center)
+{
+    Vector3d center3d(center[0], center[1], 0);
+    Eigen::Matrix4d translate(createTranslation(-center3d)), untranslate(createTranslation(center3d));
+    Eigen::Matrix4d scale;
+    scale.setIdentity();
+    for (int i = 0; i < 2; i++)
+        scale(i, i) = scaleMult;
+
+    _projection = translate * _projection;
+    _projection = scale * _projection;
+    _projection = untranslate * _projection;
+
+}
+
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 {
     Vector3d span = _viewBounds.range();
@@ -803,6 +816,7 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
             maxDim = span[i];
     }
     double sf = maxDim > 0 ? 1.0 / maxDim : 1;
+    sf *= 0.5;
     scale(0) = sf;
     scale(5) = -sf;
     scale(10) = sf;
@@ -815,7 +829,7 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     return result;
 }
 
-void GraphicsCanvas::setProjection()
+void GraphicsCanvas::initProjection()
 {
     _projection.setIdentity();
 
@@ -826,15 +840,19 @@ void GraphicsCanvas::setProjection()
     else
         _projection(0, 0) = ratio;
 
-    for (int i = 0; i < 2; i++)
-        _projection(i, i) *= _viewScale;
-
     Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
     double makeZUpAngle = -90.0 * M_PI / 180.0;
     Eigen::Matrix3d tmpRotation = Eigen::AngleAxisd(makeZUpAngle, xAxis).toRotationMatrix();
     Eigen::Matrix4d rotZUp = rot3ToRot4<Eigen::Matrix4d>(tmpRotation);
 
     _projection = rotZUp * _projection;
+
+    Eigen::Matrix4d scale;
+    scale.setIdentity();
+    for (int i = 0; i < 2; i++)
+        scale(i, i) *= _viewScale;
+
+    _projection = scale * _projection;
 }
 
 void GraphicsCanvas::updateView()

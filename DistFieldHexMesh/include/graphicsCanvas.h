@@ -107,6 +107,7 @@ public:
     Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
     void moveOrigin(const Vector3d& delta);
     void applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC);
+    void applyScaleFactor(double scaleMult, const Eigen::Vector2d& center);
 
     bool showSharpEdges() const;
     bool toggleShowSharpEdges();
@@ -168,7 +169,7 @@ private:
     };
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
-    void setProjection();
+    void initProjection();
     Vector3d pointToLocal(const Vector3d& pointMC) const;
 
     void glClearColor(const rgbaColor& color);
@@ -203,7 +204,7 @@ private:
         _showSelectedBlocks = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
-    double _viewScale = 1;
+    double _viewScale = 2;
 
     AppDataPtr _pAppData;
     CBoundingBox3Dd _viewBounds;
