@@ -106,7 +106,7 @@ public:
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
     Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
     void moveOrigin(const Vector3d& delta);
-    void applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis);
+    void applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC);
 
     bool showSharpEdges() const;
     bool toggleShowSharpEdges();
@@ -169,6 +169,8 @@ private:
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
     void setProjection();
+    Vector3d pointToLocal(const Vector3d& pointMC) const;
+
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
@@ -205,8 +207,8 @@ private:
 
     AppDataPtr _pAppData;
     CBoundingBox3Dd _viewBounds;
-    Eigen::Vector2d _mouseStartLoc2D;
-    Vector3d _origin, _mouseStartLoc3D;
+    Eigen::Vector2d _mouseStartLocNDC_2D;
+    Vector3d _origin, _mouseStartModel;
     Vector3f _mouseLoc3D;
     Eigen::Matrix4d _modelView, _projection, _intitialModelView;
 

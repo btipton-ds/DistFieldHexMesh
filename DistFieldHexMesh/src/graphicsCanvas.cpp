@@ -146,7 +146,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     _pContext = make_shared<wxGLContext>(this);
 
-
+    setProjection();
     setLights();
     setView(GraphicsCanvas::VIEW_FRONT);
 
@@ -324,26 +324,37 @@ bool GraphicsCanvas::toggleShowModelBoundary()
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = screenToNDC(event.GetPosition());
-    Vector3d dir(screenVectorToModel(Vector3d(0, 0, -1)));
+    _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
+    _mouseStartLocNDC_2D[2] = 1000;
     CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
+    Vector3d hitModel;
     if (pMesh) {
-        Vector3d temp = NDCPointToModel(_mouseStartLoc2D);
+        Vector3d dir(screenVectorToModel(Vector3d(0, 0, -1)));
         dir.normalize();
+        Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
         Rayd ray(temp, dir);
         vector<RayHitd> hits;
-        if (pMesh->rayCast(ray, hits)) {
+        if (pMesh->rayCast(ray, hits, false)) {
             // Rotate about hit point
-            _mouseStartLoc3D = hits.front().hitPt;
+            hitModel = hits.front().hitPt; // Initialize for safety
+            double minDist = DBL_MAX;
+            for (const auto& hit : hits) {
+                if (hit.dist < minDist) {
+                    minDist = hit.dist;
+                    hitModel = hit.hitPt;
+                }
+            }
         } else {
             // Rotate about model center
             auto bbox = pMesh->getBBox();
-            _mouseStartLoc3D = (bbox.getMin() + bbox.getMax()) * 0.5;
+            hitModel = (bbox.getMin() + bbox.getMax()) * 0.5;
         }
     } else {
         // Rotate about point hit at arbitrary depth
-        _mouseStartLoc3D = NDCPointToModel(_mouseStartLoc2D);
+        hitModel = NDCPointToModel(_mouseStartLocNDC_2D);
     }
+
+    _mouseStartModel = pointToLocal(hitModel);
 
     _intitialModelView = _modelView;
     _leftDown = true;
@@ -356,7 +367,7 @@ void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseMiddleDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = screenToNDC(event.GetPosition());
+    _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     _intitialModelView = _modelView;
     _middleDown = true;
 }
@@ -366,7 +377,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
     _middleDown = false;
 
     Eigen::Vector2d pos = screenToNDC(event.GetPosition());
-    Vector3d sp = NDCPointToModel(_mouseStartLoc2D);
+    Vector3d sp = NDCPointToModel(_mouseStartLocNDC_2D);
     Vector3d ep = NDCPointToModel(pos);
     Vector3d delta = ep - sp;
     delta *= 2;
@@ -375,7 +386,7 @@ void GraphicsCanvas::onMouseMiddleUp(wxMouseEvent& event)
 
 void GraphicsCanvas::onMouseRightDown(wxMouseEvent& event)
 {
-    _mouseStartLoc2D = screenToNDC(event.GetPosition());
+    _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     _intitialModelView = _modelView;
     _rightDown = true;
 }
@@ -403,15 +414,14 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
         _mouseLoc3D = Vector3f((float)temp[0], (float)temp[1], (float)temp[2]);
     }
     if (_leftDown) {
-        Eigen::Vector2d delta = pos - _mouseStartLoc2D;
-        Eigen::Vector2d orth(-delta[1], delta[0]);
-        Vector3d axis(screenVectorToModel(orth, 0));
-        axis.normalize();
-        double angle = -delta.norm() * M_PI / 4;
-        applyRotation(angle, _mouseStartLoc3D, axis);
+        wxSize frameSize = GetSize();
+        Eigen::Vector2d delta = pos - _mouseStartLocNDC_2D;
+        double angleSpin = -delta[0] * M_PI / 2;
+        double anglePitch = delta[1] * M_PI / 2;
+        applyRotation(angleSpin, anglePitch, _mouseStartModel);
 
     } else if (_middleDown) {
-        Eigen::Vector2d delta2D = pos - _mouseStartLoc2D;
+        Eigen::Vector2d delta2D = pos - _mouseStartLocNDC_2D;
         Vector3d delta3D(screenVectorToModel(delta2D, 0));
 
         moveOrigin(delta3D);
@@ -487,6 +497,14 @@ void GraphicsCanvas::loadShaders()
 
     _meshVBOs->_faceVBO.setShader(_phongShader.get());
     _meshVBOs->_edgeVBO.setShader(_phongShader.get());
+}
+
+Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
+{
+    Eigen::Vector4d pointMC4(pointMC[0], pointMC[1], pointMC[2], 1);
+    Eigen::Vector4d pointLC4 = cumTransform(false) * pointMC4;
+    Vector3d result(pointLC4[0], pointLC4[1], pointLC4[2]);
+    return result;
 }
 
 void GraphicsCanvas::glClearColor(const rgbaColor& color)
@@ -708,7 +726,7 @@ void GraphicsCanvas::drawEdges()
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const
 {
-    Eigen::Vector4d pt3d(pt2d[0], -pt2d[1], 0, 1);
+    Eigen::Vector4d pt3d(pt2d[0], pt2d[1], 0, 1);
     Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
     Eigen::Matrix<double, 3, 1> t = changeSize<Eigen::Matrix<double, 3, 1>, Eigen::Vector4d>(r);
     return Vector3d(t[0], t[1], t[2]);
@@ -720,9 +738,9 @@ Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z)
 }
 Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector3d& v) const
 {
-    Eigen::Vector4d pt3d(v[0], -v[1], v[2], 0);
-    Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
-    Eigen::Matrix<double, 3, 1> t = changeSize<Eigen::Matrix<double, 3, 1>, Eigen::Vector4d>(r);
+    Eigen::Vector4d v3(v[0], v[1], v[2], 0);
+    Eigen::Vector4d r = cumTransform(true).inverse() * v3;
+    Eigen::Vector3d t = changeSize<Eigen::Vector3d>(r);
     return Vector3d(t[0], t[1], t[2]);
 }
 
@@ -741,15 +759,32 @@ void GraphicsCanvas::moveOrigin(const Vector3d& delta)
 
 }
 
-inline void GraphicsCanvas::applyRotation(double angle, const Vector3d& rotationCenter, const Vector3d& rotationAxis)
+namespace
 {
-    Eigen::Matrix3d rot3 = Eigen::AngleAxisd(angle, (Eigen::Matrix<double, 3, 1>)rotationAxis).toRotationMatrix();
-    Eigen::Matrix4d rot(rot3ToRot4<Eigen::Matrix4d>(rot3)), translate(createTranslation((Eigen::Matrix<double, 3, 1>)rotationCenter)), unTranslate(createTranslation((Eigen::Matrix<double, 3, 1>) -rotationCenter));
+    Vector3d transformVector(const Vector3d& v, const Eigen::Matrix4d& mat)
+    {
+        Eigen::Vector4d v4(v[0], v[1], v[2], 0);
+        v4 = mat * v4;
+        Vector3d result(v4[0], v4[1], v4[2]);
+        return result;
+    }
+}
+inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC)
+{
+    Eigen::Vector3d xAxis = transformVector(Vector3d(1, 0, 0), _intitialModelView.inverse());
+    Eigen::Vector3d zAxis(0, 0, 1);
+    Eigen::Matrix4d translate(createTranslation(-rotationCenterLC));
+    Eigen::Matrix4d unTranslate(createTranslation(rotationCenterLC));
+    Eigen::Matrix4d rotSpin = rot3ToRot4<Eigen::Matrix4d>(Eigen::AngleAxisd(angleSpin, zAxis).toRotationMatrix());
+    Eigen::Matrix4d rotPitch = rot3ToRot4<Eigen::Matrix4d>(Eigen::AngleAxisd(anglePitch, xAxis).toRotationMatrix());
 
     _modelView = _intitialModelView;
     _modelView *= translate;
-    _modelView *= rot;
+    _modelView *= rotPitch;
+    _modelView *= rotSpin;
     _modelView *= unTranslate;
+
+    updateView();
 }
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
