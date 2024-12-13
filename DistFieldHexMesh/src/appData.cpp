@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
+#include <wx/dataview.h>
 
 #include "defines.h"
 
@@ -200,12 +201,12 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     }
 }
 
-void AppData::doImportMesh()
+bool AppData::doImportMesh()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
         "All (*.stl)|*.stl", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (openFileDialog.ShowModal() == wxID_CANCEL)
-        return;     // the user changed idea...
+        return false;     // the user changed idea...
 
     // this can be done with e.g. wxWidgets input streams:
     _workDirName = openFileDialog.GetDirectory();
@@ -224,8 +225,10 @@ void AppData::doImportMesh()
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pData = make_shared<MeshData>(pMesh, name);
-        _meshData.push_back(pData);
+        _meshData.insert(std::make_pair(name, pData));
+        return true;
     }
+    return false;
 }
 
 void AppData::doSave()

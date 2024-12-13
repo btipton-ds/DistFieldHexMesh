@@ -34,6 +34,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include "wx/wx.h"
 #endif
 
+#include <wx/dataview.h>
+
 #include <memory>
 #include <triMesh.h>
 #include <volume.h>
@@ -101,14 +103,9 @@ public:
     GraphicsCanvas* getCanvas();
 
     AppDataPtr getAppData();
+    void rereshObjectTree();
 
 private:
-    wxMenuBar* _menuBar = nullptr;
-    wxMenu *_editMenu = nullptr,
-        *_fileMenu = nullptr;
-    AppDataPtr _pAppData;
-    GraphicsCanvas* _pCanvas = nullptr;
-
     void addMenus();
     void addModelPanel();
     void addStatusBar();
@@ -156,6 +153,16 @@ private:
     void OnSetViewTop(wxCommandEvent& event);
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
+
+    void refreshObjectTree();
+
+    wxMenuBar* _menuBar = nullptr;
+    wxMenu* _editMenu = nullptr,
+        * _fileMenu = nullptr;
+    wxDataViewTreeCtrl* _pObjectTree;
+    AppDataPtr _pAppData;
+    GraphicsCanvas* _pCanvas = nullptr;
+    wxWithImages::Images _images;
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

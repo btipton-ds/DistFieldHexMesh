@@ -43,6 +43,8 @@ namespace DFHM {
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 
 		const TriMesh::CMeshPtr& getMesh() const;
+		const std::wstring& getName() const;
+
 	private:
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
@@ -51,6 +53,11 @@ namespace DFHM {
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
 	{
 		return _pMesh;
+	}
+
+	inline const std::wstring& MeshData::getName() const
+	{
+		return _name;
 	}
 
 }

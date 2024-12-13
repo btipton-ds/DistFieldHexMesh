@@ -29,7 +29,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
-#include <wx/dataview.h>
 #include <filesystem>
 
 #ifdef WIN32
@@ -47,6 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <selectBlocksDlg.h>
 #include <buildCFDHexesDlg.h>
 #include <graphicsCanvas.h>
+#include <meshData.h>
 #include <volume.h>
 #include <vertex.h>
 
@@ -75,12 +75,29 @@ MainFrame::MainFrame(wxWindow* parent,
 #endif // WIN32
 
     _pAppData = make_shared<AppData>(this);
+
+    auto sizer = new wxBoxSizer(wxHORIZONTAL);
+
     _pCanvas = new GraphicsCanvas(this, _pAppData);
     _pCanvas->setBackColor(rgbaColor(0.9f, 0.9f, 1.0f));
+
+    _pObjectTree = new wxDataViewTreeCtrl(this, 2,wxDefaultPosition, wxSize(200, 200));
+
+    sizer->Add(_pObjectTree, 0, wxEXPAND | wxDOWN, FromDIP(0));
+    sizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
+
+    SetSizer(sizer);
 
     addMenus();
     addModelPanel();
     addStatusBar();
+
+    wxBitmapBundle bitMap0, bitMap1;
+    bitMap0.FromFiles("D:/DarkSky/Projects/DistFieldHexMesh/DistFieldHexMesh/src/SheetIcon.bmp");
+    bitMap1.FromFiles("D:/DarkSky/Projects/DistFieldHexMesh/DistFieldHexMesh/src/SolidIcon.bmp");
+    _images.push_back(bitMap0);
+    _images.push_back(bitMap1);
+
 }
 
 MainFrame::~MainFrame()
@@ -306,9 +323,31 @@ void MainFrame::OnOpen(wxCommandEvent& event)
     _pAppData->doOpen();
 }
 
+void MainFrame::refreshObjectTree()
+{
+    _pObjectTree->DeleteAllItems();
+    const auto& meshObjects = _pAppData->getMeshObjects();
+    _pObjectTree->SetImages(_images);
+    auto solidsItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Solids", -1, 0);
+    auto surfacesItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Surfaces", -1, 0);
+    for (const auto& pair : meshObjects) {
+        wxDataViewItem item;
+        const auto pMesh = pair.second->getMesh();
+        if (pMesh->isClosed())
+            item = _pObjectTree->AppendItem(solidsItem, pair.second->getName());
+        else
+            item = _pObjectTree->AppendItem(surfacesItem, pair.second->getName());
+
+    }
+    _pObjectTree->Expand(solidsItem);
+    _pObjectTree->Expand(surfacesItem);
+}
+
 void MainFrame::OnImportMesh(wxCommandEvent& event)
 {
-    _pAppData->doImportMesh();
+    if (_pAppData->doImportMesh()) {
+        refreshObjectTree();
+    }
 }
 
 void MainFrame::OnNew(wxCommandEvent& event)

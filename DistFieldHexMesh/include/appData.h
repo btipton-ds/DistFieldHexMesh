@@ -56,7 +56,7 @@ public:
 
     AppData(MainFrame* pMainFrame = nullptr);
     void doOpen();
-    void doImportMesh();
+    bool doImportMesh();
     void doSave();
     void doSaveAs();
     void doVerifyClosed();
@@ -84,6 +84,8 @@ public:
     BuildCFDParams& getParams();
     const BuildCFDParams& getParams() const;
 
+    const std::map<std::wstring, MeshDataPtr>& getMeshObjects() const;
+
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
@@ -101,7 +103,7 @@ private:
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pMesh;
-    std::vector<MeshDataPtr> _meshData;
+    std::map<std::wstring, MeshDataPtr> _meshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
@@ -126,6 +128,11 @@ inline BuildCFDParams& AppData::getParams()
 inline const BuildCFDParams& AppData::getParams() const
 {
     return _params;
+}
+
+inline const std::map<std::wstring, MeshDataPtr>& AppData::getMeshObjects() const
+{
+    return _meshData;
 }
 
 
