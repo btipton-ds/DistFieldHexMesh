@@ -97,10 +97,6 @@ public:
 
     virtual ~MainFrame();
 
-    void addMenus();
-    void addStatusBar();
-    void OnInternalIdle();
-
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();
 
@@ -112,6 +108,11 @@ private:
         *_fileMenu = nullptr;
     AppDataPtr _pAppData;
     GraphicsCanvas* _pCanvas = nullptr;
+
+    void addMenus();
+    void addModelPanel();
+    void addStatusBar();
+    void OnInternalIdle();
 
     void createFileMenu();
     void createEditMenu();

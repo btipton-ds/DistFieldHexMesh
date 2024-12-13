@@ -137,7 +137,7 @@ GraphicsCanvas::VBORec::VBORec()
 }
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
-    : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
+    : wxGLCanvas(parent, wxID_ANY, attribs, wxPoint(200, 0), wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
 {
     _modelVBOs = make_shared<VBORec>();

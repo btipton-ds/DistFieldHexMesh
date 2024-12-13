@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
+#include <wx/dataview.h>
 #include <filesystem>
 
 #ifdef WIN32
@@ -75,9 +76,10 @@ MainFrame::MainFrame(wxWindow* parent,
 
     _pAppData = make_shared<AppData>(this);
     _pCanvas = new GraphicsCanvas(this, _pAppData);
-    _pCanvas->setBackColor(rgbaColor(1.0f, 1.0f, 1.0f));
+    _pCanvas->setBackColor(rgbaColor(0.9f, 0.9f, 1.0f));
 
     addMenus();
+    addModelPanel();
     addStatusBar();
 }
 
@@ -267,6 +269,11 @@ void MainFrame::createHelpMenu()
 
     _menuBar->Append(menuHelp, "&Help");
 
+
+}
+
+void MainFrame::addModelPanel()
+{
 
 }
 
