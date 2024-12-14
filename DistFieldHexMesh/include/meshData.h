@@ -49,11 +49,13 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-
+		MeshData(const VBORec::ChangeElementsOptions& options);
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
 
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
+		void write(std::ostream& out) const;
+		void read(std::istream& in);
 
 		const COglMultiVboHandler::OGLIndices* getFaceTess() const;
 		const COglMultiVboHandler::OGLIndices* getEdgeTess() const;

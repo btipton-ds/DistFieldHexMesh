@@ -173,12 +173,7 @@ void AppData::writeDHFM() const
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
     for (const auto& pair : _meshData) {
-        const auto& name = pair.first;
-        const auto& pData = pair.second;
-        size_t numChars = name.size();
-        out.write((char*)&numChars, sizeof(numChars));
-        out.write((char*)name.c_str(), numChars * sizeof(wchar_t));
-        pData->getMesh()->write(out);
+        pair.second->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
@@ -214,21 +209,11 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            wchar_t buf[1024];
-            for (size_t j = 0; j < 1024; j++)
-                buf[j] = 0;
-            size_t numChars;
-
-            in.read((char*)&numChars, sizeof(numChars));
-            in.read((char*)buf, numChars * sizeof(wchar_t));
-            CMeshPtr pMesh = make_shared<CMesh>();
-            pMesh->read(in);
-
-            wstring name(buf);
-            MeshDataPtr pData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
+            MeshDataPtr pData = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions());
+            pData->read(in);
             _pMainFrame->registerMeshData(pData);
             pData->makeOGLTess();
-            _meshData.insert(make_pair(name, pData));
+            _meshData.insert(make_pair(pData->getName(), pData));
         }
 
     }

@@ -34,12 +34,49 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+MeshData::MeshData(const VBORec::ChangeElementsOptions& options)
+: _options(options)
+{
+	_VBOs = make_shared<VBORec>();
+}
+
 MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
 	: _name(name)
 	, _pMesh(pMesh)
 	, _options(options)
 {
 	_VBOs = make_shared<VBORec>();
+}
+
+void MeshData::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	out.write((char*)&version, sizeof(version));
+
+	out.write((char*)&_active, sizeof(_active));
+
+	size_t numChars = _name.size();
+	out.write((char*)&numChars, sizeof(numChars));
+	out.write((char*)_name.c_str(), numChars * sizeof(wchar_t));
+	_pMesh->write(out);
+}
+
+void MeshData::read(std::istream& in)
+{
+	uint8_t version = 0;
+	in.read((char*)&version, sizeof(version));
+
+	in.read((char*)&_active, sizeof(_active));
+
+	size_t numChars;
+	in.read((char*)&numChars, sizeof(numChars));
+	wchar_t buf[1024];
+	in.read((char*)buf, numChars * sizeof(wchar_t));
+	buf[numChars] = (wchar_t)0;
+	_name = wstring(buf);
+
+	_pMesh = make_shared<CMesh>();
+	_pMesh->read(in);
 }
 
 void MeshData::beginFaceTesselation()
