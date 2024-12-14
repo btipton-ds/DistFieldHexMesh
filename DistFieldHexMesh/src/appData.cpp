@@ -418,6 +418,9 @@ CBoundingBox3Dd AppData::getBoundingBox() const
     CBoundingBox3Dd result;
     if (_pMesh)
         result.merge(_pMesh->getBBox());
+    for (const auto& pair : _meshData) {
+        result.merge(pair.second->getMesh()->getBBox());
+    }
     if (_pVolume)
         result.merge(_pVolume->getBBox());
 

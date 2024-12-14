@@ -327,31 +327,43 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     _mouseStartLocNDC_2D[2] = 1000;
     CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
+    vector<CMeshPtr> meshes;
+    if (pMesh)
+        meshes.push_back(pMesh);
+    for (const auto& md : _pAppData->getMeshObjects()) {
+        if (md.second->getMesh())
+            meshes.push_back(md.second->getMesh());
+    }
     Vector3d hitModel;
-    if (pMesh) {
-        Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
-        dir.normalize();
-        Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
-        Rayd ray(temp, dir);
-        vector<RayHitd> hits;
-        if (pMesh->rayCast(ray, hits)) {
-            // Rotate about hit point
-            hitModel = hits.front().hitPt; // Initialize for safety
-            double minDist = DBL_MAX;
-            for (const auto& hit : hits) {
-                if (hit.dist < minDist) {
-                    minDist = hit.dist;
-                    hitModel = hit.hitPt;
-                }
-            }
-        } else {
-            // Rotate about model center
-            auto bbox = pMesh->getBBox();
-            hitModel = (bbox.getMin() + bbox.getMax()) * 0.5;
-        }
-    } else {
+    double minDist = DBL_MAX;
+    bool hadHit = false;
+    CBoundingBox3Dd bbox;
+    if (meshes.empty()) {
         // Rotate about point hit at arbitrary depth
         hitModel = NDCPointToModel(_mouseStartLocNDC_2D);
+    } else {
+        for (const auto pMesh : meshes) {
+            bbox.merge(pMesh->getBBox());
+            Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
+            dir.normalize();
+            Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
+            Rayd ray(temp, dir);
+            vector<RayHitd> hits;
+            if (pMesh->rayCast(ray, hits)) {
+                hadHit = true;
+                // Rotate about hit point
+                hitModel = hits.front().hitPt; // Initialize for safety
+                for (const auto& hit : hits) {
+                    if (hit.dist < minDist) {
+                        minDist = hit.dist;
+                        hitModel = hit.hitPt;
+                    }
+                }
+            }
+        }
+        if (!hadHit) {
+            hitModel = bbox.getMin() + bbox.range() * 0.5;
+        }
     }
 
     _mouseStartModel = pointToLocal(hitModel);
