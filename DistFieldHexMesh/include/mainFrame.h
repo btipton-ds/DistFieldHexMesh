@@ -138,8 +138,6 @@ private:
     void OnCut(wxCommandEvent& event);
     void OnCopy(wxCommandEvent& event);
     void OnPaste(wxCommandEvent& event);
-    void OnAnalyzeGaps(wxCommandEvent& event);
-    void OnFindMinGap(wxCommandEvent& event);
     void OnBuildCFDHexes(wxCommandEvent& event);
 
     void OnShowSharpEdges(wxCommandEvent& event);

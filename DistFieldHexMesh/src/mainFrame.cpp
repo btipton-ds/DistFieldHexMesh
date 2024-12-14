@@ -169,12 +169,6 @@ void MainFrame::createEditMenu()
 
     _editMenu->AppendSeparator();
 
-    _editMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
-    Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_AnalyzeGaps);
-    
-    _editMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
-    Bind(wxEVT_MENU, &MainFrame::OnFindMinGap, this, ID_FindMinimumGap);
-
     _editMenu->Append(ID_BuildCFDHexes, "Build CFD Hexes");
     Bind(wxEVT_MENU, &MainFrame::OnBuildCFDHexes, this, ID_BuildCFDHexes);
 
@@ -407,17 +401,6 @@ void MainFrame::OnCopy(wxCommandEvent& event)
 
 void MainFrame::OnPaste(wxCommandEvent& event)
 {
-
-}
-
-void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
-{
-    _pAppData->doAnalyzeGaps();
-}
-
-void MainFrame::OnFindMinGap(wxCommandEvent& event)
-{
-    _pAppData->doFindMinGap();
 
 }
 

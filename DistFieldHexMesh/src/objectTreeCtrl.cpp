@@ -77,6 +77,13 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 		contextMenu->Append(ID_VerifyNormals, "Verify Normals");
 		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnVerifyNormals, this, ID_VerifyNormals);
 
+		contextMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
+		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnAnalyzeGaps, this, ID_AnalyzeGaps);
+
+		contextMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
+		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnFindMinGap, this, ID_FindMinimumGap);
+
+
 		PopupMenu(contextMenu, event.GetPosition());
 		delete contextMenu;
 	}
@@ -106,6 +113,22 @@ void ObjectTreeCtrl::OnVerifyNormals(wxCommandEvent& event)
 	const auto& pAppData = _pMainFrame->getAppData();
 	const auto& pData = pAppData->getMeshObjects().find(name)->second;
 	pAppData->doVerifyNormals(pData->getMesh());
+}
+
+void ObjectTreeCtrl::OnAnalyzeGaps(wxCommandEvent& event)
+{
+	auto name = getCurrentItemName();
+	const auto& pAppData = _pMainFrame->getAppData();
+	const auto& pData = pAppData->getMeshObjects().find(name)->second;
+	pAppData->doAnalyzeGaps(pData->getMesh());
+}
+
+void ObjectTreeCtrl::OnFindMinGap(wxCommandEvent& event)
+{
+	auto name = getCurrentItemName();
+	const auto& pAppData = _pMainFrame->getAppData();
+	const auto& pData = pAppData->getMeshObjects().find(name)->second;
+	pAppData->doFindMinGap(pData->getMesh());
 }
 
 wstring ObjectTreeCtrl::getCurrentItemName() const

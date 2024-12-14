@@ -57,6 +57,8 @@ namespace DFHM {
 		void OnToggleShow(wxCommandEvent& event);
 		void OnMeshStats(wxCommandEvent& event);
 		void OnVerifyNormals(wxCommandEvent& event);
+		void OnAnalyzeGaps(wxCommandEvent& event);
+		void OnFindMinGap(wxCommandEvent& event);
 
 		MainFrame* _pMainFrame;
 		std::wstring getCurrentItemName() const;

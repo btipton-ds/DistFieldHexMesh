@@ -61,8 +61,8 @@ public:
     void doSaveAs();
     void doVerifyClosed(const CMeshPtr& pMesh);
     void doVerifyNormals(const CMeshPtr& pMesh);
-    void doAnalyzeGaps();
-    void doFindMinGap() const;
+    void doAnalyzeGaps(const CMeshPtr& pMesh);
+    void doFindMinGap(const CMeshPtr& pMesh) const;
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);

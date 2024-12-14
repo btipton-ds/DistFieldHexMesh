@@ -281,13 +281,12 @@ void AppData::doVerifyNormals(const CMeshPtr& pMesh)
     wxMessageBox(ss.str().c_str(), "Verify Normals", wxOK | wxICON_INFORMATION);
 }
 
-void AppData::doAnalyzeGaps()
+void AppData::doAnalyzeGaps(const CMeshPtr& pMesh)
 {
-    /*
     vector<double> binSizes({ 0.050 / 64, 0.050 / 32, 0.050 / 16, 0.050 / 8, 0.050 / 4, 0.050 / 2, 0.050 });
     vector<size_t> bins;
     bins.resize(binSizes.size(), 0);
-    _pMesh->getGapHistogram(binSizes, bins, true);
+    pMesh->getGapHistogram(binSizes, bins, true);
 
     stringstream ss;
     ss << "Gap histogram\n";
@@ -295,14 +294,13 @@ void AppData::doAnalyzeGaps()
         ss << "hits < " << binSizes[i] << ": " << bins[i] << "\n";
     }
     wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
-    */
+    
 }
 
-void AppData::doFindMinGap() const
+void AppData::doFindMinGap(const CMeshPtr& pMesh) const
 {
-    /*
-    double t = _pMesh->findMinGap() * 10;
-    auto bb = _pMesh->getBBox();
+    double t = pMesh->findMinGap() * 10;
+    auto bb = pMesh->getBBox();
     auto bbMin = bb.getMin();
     auto range = bb.range();
     size_t numX = (size_t)(range[0] / t + 0.5);
@@ -343,7 +341,6 @@ void AppData::doFindMinGap() const
     stringstream ss;
     ss << "Span: [" << numX << ", " << numY << ", " << numZ << "]\n";
     wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
-    */
 }
 
 void AppData::doNew(const MakeBlockDlg& dlg)
