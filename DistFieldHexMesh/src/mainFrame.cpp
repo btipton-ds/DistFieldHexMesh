@@ -307,11 +307,12 @@ void MainFrame::OnInternalIdle()
     _pCanvas->Refresh();
 
     if (_editMenu) {
-        _editMenu->Enable(ID_VerifyClosed, _pAppData->getMesh() != nullptr);
-        _editMenu->Enable(ID_VerifyNormals, _pAppData->getMesh() != nullptr);
-        _editMenu->Enable(ID_AnalyzeGaps, _pAppData->getMesh() != nullptr);
-        _editMenu->Enable(ID_FindMinimumGap, _pAppData->getMesh() != nullptr);
-        _editMenu->Enable(ID_BuildCFDHexes, _pAppData->getMesh() != nullptr);
+        bool hasMesh = !_pAppData->getMeshObjects().empty();
+        _editMenu->Enable(ID_VerifyClosed, hasMesh);
+        _editMenu->Enable(ID_VerifyNormals, hasMesh);
+        _editMenu->Enable(ID_AnalyzeGaps, hasMesh);
+        _editMenu->Enable(ID_FindMinimumGap, hasMesh);
+        _editMenu->Enable(ID_BuildCFDHexes, hasMesh);
     }
     if (_fileMenu) {
 

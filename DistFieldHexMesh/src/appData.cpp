@@ -60,40 +60,10 @@ AppData::AppData(MainFrame* pMainFrame)
 {
 }
 
-void AppData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
-{
-    normPts.clear();
-    normIndices.clear();
-
-    for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
-        const Index3D& triIndices = _pMesh->getTri(triIdx);
-        const auto pt0 = _pMesh->getVert(triIndices[0])._pt;
-        const auto pt1 = _pMesh->getVert(triIndices[1])._pt;
-        const auto pt2 = _pMesh->getVert(triIndices[2])._pt;
-
-        Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
-        Vector3d v0 = pt0 - pt1;
-        Vector3d v1 = pt2 - pt1;
-        Vector3d n = v1.cross(v0);
-        double area = n.norm() / 2;
-        double charLen = sqrt(area);
-        Vector3d ptEnd = ctr + n.normalized() * 0.01;// *charLen;
-
-        for (int j = 0; j < 3; j++)
-            normPts.push_back((float)ctr[j]);
-
-        for (int j = 0; j < 3; j++)
-            normPts.push_back((float)ptEnd[j]);
-
-        normIndices.push_back((int)normIndices.size());
-        normIndices.push_back((int)normIndices.size());
-    }
-}
-
 void AppData::doOpen()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
-        "All (*.stl;*.dfhm)|*.stl;*.dfhm|TriMesh files (*.stl)|*.stl|DFHM files (*.dfhm)|*.dfhm", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+        "All (*.dfhm)|*.dfhm|DFHM files (*.dfhm)|*.dfhm", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return;     // the user changed idea...
 
@@ -111,10 +81,7 @@ void AppData::doOpen()
         path = path.replace(pos, 1, L"/");
         pos = path.find(L"\\");
     }
-    if (filename.find(L".stl") != -1) {
-        _pMesh = readStl(path, filename);
-    }
-    else if (filename.find(L".dfhm") != -1) {
+    if (filename.find(L".dfhm") != -1) {
         readDHFM(path, filename);
     }
 }
@@ -129,8 +96,6 @@ CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
     path = path.substr(0, pos);
     try {
         if (reader.read(path, filename)) {
-            _pMesh = pMesh;
-            postReadMesh(_pMesh);
             return pMesh;
         }
     }
@@ -139,38 +104,6 @@ CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
     }
 
     return nullptr;
-}
-
-void AppData::postReadMesh(CMeshPtr& pMesh)
-{
-    auto pCanvas = _pMainFrame->getCanvas();
-
-    //    pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
-    pMesh->buildCentroids();
-    pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
-    pMesh->calGaps();
-
-    pCanvas->beginFaceTesselation(true);
-    CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
-    _modelFaceTess = pCanvas->setFaceTessellation(pMesh);
-    if (pSharpVertMesh)
-        _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
-    pCanvas->endFaceTesselation(_modelFaceTess, _sharpPointTess, false);
-
-    vector<float> normPts;
-    vector<unsigned int> normIndices;
-    getEdgeData(normPts, normIndices);
-
-    pCanvas->beginEdgeTesselation(true);
-
-    _modelEdgeTess = pCanvas->setEdgeSegTessellation(pMesh);
-
-    if (!normPts.empty())
-        _modelNormalTess = pCanvas->setEdgeSegTessellation(pMesh->getId() + 10000, pMesh->getChangeNumber(), normPts, normIndices);
-
-    pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
-
-    pCanvas->setView(GraphicsCanvas::VIEW_FRONT);
 }
 
 void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
@@ -185,16 +118,13 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     bool hasMesh;
     in.read((char*)&hasMesh, sizeof(hasMesh));
     if (hasMesh) {
-        _pMesh = make_shared<TriMesh::CMesh>();
-        _pMesh->read(in);
-        postReadMesh(_pMesh);
     }
 
     bool hasVolume;
     in.read((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume) {
         _pVolume = make_shared<Volume>();
-        _pVolume->setModelMesh(_pMesh);
+//        _pVolume->setModelMesh(_pMesh);
 
         _pVolume->read(in);
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
@@ -265,10 +195,12 @@ void AppData::writeDHFM() const
     uint8_t version = 0;
     out.write((char*)&version, sizeof(version));
 
-    bool hasMesh = _pMesh != nullptr;
+    bool hasMesh = !_meshData.empty();
     out.write((char*)&hasMesh, sizeof(hasMesh));
+    /*
     if (_pMesh)
         _pMesh->write(out);
+        */
 
     bool hasVolume = _pVolume != nullptr;
     out.write((char*)&hasVolume, sizeof(hasVolume));
@@ -278,15 +210,18 @@ void AppData::writeDHFM() const
 
 void AppData::doVerifyClosed()
 {
+    /*
     int numOpen = _pMesh->numLaminarEdges();
 
     stringstream ss;
     ss << "Number of edges: " << _pMesh->numEdges() << "\nNumber of open edges: " << numOpen;
     wxMessageBox(ss.str().c_str(), "Verify Closed", wxOK | wxICON_INFORMATION);
+    */
 }
 
 void AppData::doVerifyNormals()
 {
+    /*
     size_t numMisMatched = 0;
     size_t numEdges = _pMesh->numEdges();
     for (size_t i = 0; i < numEdges; i++) {
@@ -321,10 +256,12 @@ void AppData::doVerifyNormals()
     stringstream ss;
     ss << "Number of tris: " << _pMesh->numTris() << "\nNumber of opposed faces: " << numMisMatched;
     wxMessageBox(ss.str().c_str(), "Verify Normals", wxOK | wxICON_INFORMATION);
+    */
 }
 
 void AppData::doAnalyzeGaps()
 {
+    /*
     vector<double> binSizes({ 0.050 / 64, 0.050 / 32, 0.050 / 16, 0.050 / 8, 0.050 / 4, 0.050 / 2, 0.050 });
     vector<size_t> bins;
     bins.resize(binSizes.size(), 0);
@@ -336,10 +273,12 @@ void AppData::doAnalyzeGaps()
         ss << "hits < " << binSizes[i] << ": " << bins[i] << "\n";
     }
     wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
+    */
 }
 
 void AppData::doFindMinGap() const
 {
+    /*
     double t = _pMesh->findMinGap() * 10;
     auto bb = _pMesh->getBBox();
     auto bbMin = bb.getMin();
@@ -382,6 +321,7 @@ void AppData::doFindMinGap() const
     stringstream ss;
     ss << "Span: [" << numX << ", " << numY << ", " << numZ << "]\n";
     wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
+    */
 }
 
 void AppData::doNew(const MakeBlockDlg& dlg)
@@ -416,8 +356,6 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
-    if (_pMesh)
-        result.merge(_pMesh->getBBox());
     for (const auto& pair : _meshData) {
         result.merge(pair.second->getMesh()->getBBox());
     }
@@ -448,7 +386,6 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->beginFaceTesselation(true);
-    auto triTess = pCanvas->setFaceTessellation(_pMesh);
 
     Block::TriMeshGroup blockMeshes;
     Block::glPointsGroup faceEdges;
@@ -480,7 +417,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-        _pVolume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
+//        _pVolume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
 
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     } catch (const char* errStr) {
@@ -555,53 +492,3 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
     pCanvas->endEdgeTesselation(edgeTesselations);
 }
 
-CMeshPtr AppData::getSharpVertMesh() const
-{
-    auto bBox = _pMesh->getBBox();
-    double span = bBox.range().norm();
-    double radius = span / 500;
-    bBox.grow(2 * radius);
-
-    vector<size_t> sVerts;
-    Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
-    if (!sVerts.empty()) {
-        CMeshPtr pMesh = make_shared<CMesh>(bBox);
-        for (size_t vertIdx : sVerts) {
-            auto pt = _pMesh->getVert(vertIdx)._pt;
-            addPointMarker(pMesh, pt, radius);
-        }
-
-        return pMesh;
-    }
-
-    return nullptr;
-}
-
-void AppData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
-{
-    Vector3d xAxis(radius, 0, 0), yAxis(0, radius, 0), zAxis(0, 0, radius);
-    size_t stepsI = 72;
-    size_t stepsJ = stepsI / 2;
-    for (size_t i = 0; i < stepsI; i++) {
-        double alpha0 = 2 * M_PI * i / (double)stepsI;
-        double alpha1 = 2 * M_PI * (i + 1) / (double)stepsI;
-
-        for (size_t j = 0; j < stepsJ; j++) {
-            double phi0 = M_PI * (-0.5 + j / (double)stepsJ);
-            double phi1 = M_PI * (-0.5 + (j + 1) / (double)stepsJ);
-
-            Vector3d pt00 = origin + cos(phi0) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi0) * zAxis;
-            Vector3d pt01 = origin + cos(phi0) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi0) * zAxis;
-            Vector3d pt10 = origin + cos(phi1) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi1) * zAxis;
-            Vector3d pt11 = origin + cos(phi1) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi1) * zAxis;
-            if (j == 0) {
-                pMesh->addTriangle(pt00, pt11, pt10);
-            } else if (j == stepsJ - 1) {
-                pMesh->addTriangle(pt00, pt01, pt11);
-            } else {
-                pMesh->addTriangle(pt00, pt01, pt11);
-                pMesh->addTriangle(pt00, pt11, pt10);
-            }
-        }
-    }
-}

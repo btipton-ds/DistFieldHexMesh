@@ -330,10 +330,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     _mouseStartLocNDC_2D[2] = 1000;
-    CMeshPtr pMesh = _pAppData ? _pAppData->getMesh() : nullptr;
     vector<CMeshPtr> meshes;
-    if (pMesh)
-        meshes.push_back(pMesh);
     for (const auto& md : _pAppData->getMeshObjects()) {
         if (md.second->getMesh())
             meshes.push_back(md.second->getMesh());

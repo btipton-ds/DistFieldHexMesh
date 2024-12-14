@@ -67,11 +67,6 @@ public:
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
 
-	inline CMeshPtr getMesh() const
-    {
-        return _pMesh;
-    }
-
     inline VolumePtr getVolume() const
     {
         return _pVolume;
@@ -92,17 +87,12 @@ private:
     void updateTessellation(const Index3D& min, const Index3D& max);
     void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
-    void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
-    CMeshPtr getSharpVertMesh() const;
-    void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
-    void postReadMesh(CMeshPtr& pMesh);
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    CMeshPtr _pMesh;
     std::map<std::wstring, MeshDataPtr> _meshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;

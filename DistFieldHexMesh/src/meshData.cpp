@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <rgbaColor.h>
 #include <index3D.h>
 #include <meshData.h>
-//#include <graphicsCanvas.h>
+#include <volume.h>
 
 using namespace std;
 using namespace DFHM;
@@ -211,5 +211,58 @@ void MeshData::changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts)
 void MeshData::setShader(std::shared_ptr<COglShader> pShader)
 {
 	_VBOs->_faceVBO.setShader(pShader.get());
+}
+
+void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
+{
+	Vector3d xAxis(radius, 0, 0), yAxis(0, radius, 0), zAxis(0, 0, radius);
+	size_t stepsI = 72;
+	size_t stepsJ = stepsI / 2;
+	for (size_t i = 0; i < stepsI; i++) {
+		double alpha0 = 2 * M_PI * i / (double)stepsI;
+		double alpha1 = 2 * M_PI * (i + 1) / (double)stepsI;
+
+		for (size_t j = 0; j < stepsJ; j++) {
+			double phi0 = M_PI * (-0.5 + j / (double)stepsJ);
+			double phi1 = M_PI * (-0.5 + (j + 1) / (double)stepsJ);
+
+			Vector3d pt00 = origin + cos(phi0) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi0) * zAxis;
+			Vector3d pt01 = origin + cos(phi0) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi0) * zAxis;
+			Vector3d pt10 = origin + cos(phi1) * (cos(alpha0) * xAxis + sin(alpha0) * yAxis) + sin(phi1) * zAxis;
+			Vector3d pt11 = origin + cos(phi1) * (cos(alpha1) * xAxis + sin(alpha1) * yAxis) + sin(phi1) * zAxis;
+			if (j == 0) {
+				pMesh->addTriangle(pt00, pt11, pt10);
+			}
+			else if (j == stepsJ - 1) {
+				pMesh->addTriangle(pt00, pt01, pt11);
+			}
+			else {
+				pMesh->addTriangle(pt00, pt01, pt11);
+				pMesh->addTriangle(pt00, pt11, pt10);
+			}
+		}
+	}
+}
+
+CMeshPtr MeshData::getSharpVertMesh() const
+{
+	auto bBox = _pMesh->getBBox();
+	double span = bBox.range().norm();
+	double radius = span / 500;
+	bBox.grow(2 * radius);
+
+	vector<size_t> sVerts;
+	Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
+	if (!sVerts.empty()) {
+		CMeshPtr pMesh = make_shared<CMesh>(bBox);
+		for (size_t vertIdx : sVerts) {
+			auto pt = _pMesh->getVert(vertIdx)._pt;
+			addPointMarker(pMesh, pt, radius);
+		}
+
+		return pMesh;
+	}
+
+	return nullptr;
 }
 

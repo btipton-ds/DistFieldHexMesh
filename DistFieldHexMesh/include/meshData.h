@@ -85,6 +85,9 @@ namespace DFHM {
 		void changeFaceViewElements(const VBORec::ChangeElementsOptions& opts);
 		void changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts);
 
+		void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
+		CMeshPtr getSharpVertMesh() const;
+
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
