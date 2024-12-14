@@ -82,6 +82,7 @@ add_executable (DistFieldHexMesh
 	"src/makeBlockDlg.cpp"
 	"src/meshData.cpp"
 	"src/objectPool.cpp" 
+	"src/objectTreeCtrl.cpp"
 	"src/polygon.cpp"
 	"src/polygonSplitter.cpp" 
 	"src/polyHedron.cpp"

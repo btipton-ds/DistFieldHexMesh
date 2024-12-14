@@ -106,6 +106,9 @@ public:
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
+    void changeFaceViewElements();
+    void changeEdgeViewElements();
+
     Vector3d NDCPointToModel(const Eigen::Vector2d& pt2d) const;
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
     Vector3d screenVectorToModel(const Eigen::Vector3d& v) const;
@@ -171,8 +174,6 @@ private:
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
     void updateView();
-    void changeFaceViewElements();
-    void changeEdgeViewElements();
     void drawMousePos3D();
     void drawFaces();
     void drawEdges();

@@ -27,47 +27,38 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <memory>
-
 #include <defines.h>
-#include <tm_vector3.h>
-#include <triMesh.h>
-#include <OGLMath.h>
-#include <OGLMultiVboHandler.h>
-#include <OGLExtensions.h>
+#include "wx/wxprec.h"
 
-class COglShader;
+
+#ifndef WX_PRECOMP
+#include "wx/wx.h"
+#endif
+
+#include <wx/dataview.h>
 
 namespace DFHM {
-	struct VBORec {
-		using OGLIndices = COglMultiVboHandler::OGLIndices;
+	class MainFrame;
 
-		struct ChangeElementsOptions {
-			bool 
-				showSharpEdges = false,
-				showSharpVerts = false,
-				showTriNormals = false,
-				showEdges = true,
-				showFaces = true,
-				showModelBoundary = false,
-				showOuter = false,
-				showCurvature = false,
-				showSelectedBlocks = false;
-		};
+	class ObjectTreeCtrl : public wxDataViewTreeCtrl
+	{
+	public:
+		ObjectTreeCtrl(MainFrame* pMainFrame,
+			wxWindowID id,
+			const wxPoint& pos = wxDefaultPosition,
+			const wxSize& size = wxDefaultSize,
+			long style = wxDV_NO_HEADER | wxDV_ROW_LINES,
+			const wxValidator& validator = wxDefaultValidator);
 
-		VBORec();
-		void changeFaceViewElements(bool visible, const ChangeElementsOptions& opts);
-		void changeEdgeViewElements(bool visible, const ChangeElementsOptions& opts);
+		void onSelectionChanged(wxDataViewEvent& event);
+		void onContextMenu(wxDataViewEvent& event);
 
-		const OGLIndices
-			* _pTriTess = nullptr,
-			* _pSharpVertTess = nullptr,
-			* _pSharpEdgeTess = nullptr,
-			* _pNormalTess = nullptr;
-		std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+	private:
+		MainFrame* _pMainFrame;
+		std::wstring getCurrentItemName() const;
+		void OnToggleShow(wxCommandEvent& event);
 
-		COglMultiVboHandler _faceVBO, _edgeVBO;
-
+	protected:
+		wxDECLARE_EVENT_TABLE();
 	};
-
 }

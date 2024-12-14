@@ -200,12 +200,12 @@ void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int
 
 void MeshData::changeFaceViewElements(const VBORec::ChangeElementsOptions& opts)
 {
-	_VBOs->changeFaceViewElements(opts);
+	_VBOs->changeFaceViewElements(_active, opts);
 }
 
 void MeshData::changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts)
 {
-	_VBOs->changeEdgeViewElements(opts);
+	_VBOs->changeEdgeViewElements(_active, opts);
 }
 
 void MeshData::setShader(std::shared_ptr<COglShader> pShader)
@@ -264,5 +264,14 @@ CMeshPtr MeshData::getSharpVertMesh() const
 	}
 
 	return nullptr;
+}
+
+void MeshData::setActive(bool val)
+{
+	if (_active == val)
+		return;
+
+	_active = val;
+	
 }
 

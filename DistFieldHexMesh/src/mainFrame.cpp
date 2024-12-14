@@ -81,7 +81,7 @@ MainFrame::MainFrame(wxWindow* parent,
     _pCanvas = new GraphicsCanvas(this, _pAppData);
     _pCanvas->setBackColor(rgbaColor(0.9f, 0.9f, 1.0f));
 
-    _pObjectTree = new wxDataViewTreeCtrl(this, 2,wxDefaultPosition, wxSize(200, 200));
+    _pObjectTree = new ObjectTreeCtrl(this, ID_OBJ_TREE_CTRL, wxDefaultPosition, wxSize(200, 200));
 
     sizer->Add(_pObjectTree, 0, wxEXPAND | wxDOWN, FromDIP(0));
     sizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
@@ -343,6 +343,7 @@ void MainFrame::refreshObjectTree()
             item = _pObjectTree->AppendItem(solidsItem, pair.second->getName());
         else
             item = _pObjectTree->AppendItem(surfacesItem, pair.second->getName());
+
 
     }
     _pObjectTree->Expand(solidsItem);

@@ -37,94 +37,101 @@ VBORec::VBORec()
 {
 }
 
-void VBORec::changeFaceViewElements(const ChangeElementsOptions& opts)
+void VBORec::changeFaceViewElements(bool visible, const ChangeElementsOptions& opts)
 {
     _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
-    if (_pTriTess) {
-        if (opts.showCurvature)
-            _faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *_pTriTess);
-        else
-            _faceVBO.includeElementIndices(DS_MODEL, *_pTriTess);
+
+    if (visible) {
+        if (_pTriTess) {
+            if (opts.showCurvature)
+                _faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *_pTriTess);
+            else
+                _faceVBO.includeElementIndices(DS_MODEL, *_pTriTess);
+        }
+
+        if (opts.showSharpVerts && _pSharpVertTess)
+            _faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
+
+        if (opts.showFaces) {
+            if (opts.showSelectedBlocks) {
+                if (FT_ALL < _faceTessellations.size()) {
+                    for (auto pBlockTess : _faceTessellations[FT_ALL]) {
+                        if (pBlockTess)
+                            _faceVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+                    }
+                }
+            }
+            else if (opts.showOuter) {
+                if (FT_OUTER < _faceTessellations.size()) {
+                    for (auto pBlockTess : _faceTessellations[FT_OUTER]) {
+                        if (pBlockTess)
+                            _faceVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
+                    }
+                }
+            }
+            else {
+                if (FT_MODEL_BOUNDARY < _faceTessellations.size()) {
+                    for (auto pBlockTess : _faceTessellations[FT_MODEL_BOUNDARY]) {
+                        if (pBlockTess)
+                            _faceVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
+                    }
+                }
+
+                if (FT_BLOCK_BOUNDARY < _faceTessellations.size()) {
+                    for (auto pBlockTess : _faceTessellations[FT_BLOCK_BOUNDARY]) {
+                        if (pBlockTess)
+                            _faceVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+                    }
+                }
+            }
+        }
     }
 
-    if (opts.showSharpVerts && _pSharpVertTess)
-        _faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *_pSharpVertTess);
-
-    if (opts.showFaces) {
-        if (opts.showSelectedBlocks) {
-            if (FT_ALL < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_ALL]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
-                }
-            }
-        }
-        else if (opts.showOuter) {
-            if (FT_OUTER < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_OUTER]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
-                }
-            }
-        }
-        else {
-            if (FT_MODEL_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_MODEL_BOUNDARY]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
-                }
-            }
-
-            if (FT_BLOCK_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_BLOCK_BOUNDARY]) {
-                    if (pBlockTess)
-                        _faceVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
-                }
-            }
-        }
-    }
     _faceVBO.endSettingElementIndices();
 }
 
-void VBORec::changeEdgeViewElements(const ChangeElementsOptions& opts)
+void VBORec::changeEdgeViewElements(bool visible, const ChangeElementsOptions& opts)
 {
     _edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    if (opts.showSharpEdges && _pSharpEdgeTess) {
-        _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
-    }
-    if (opts.showTriNormals && _pNormalTess) {
-        _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
-    }
-    if (opts.showEdges && !_edgeTessellations.empty()) {
-        if (opts.showOuter && FT_OUTER < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
-                if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
-            }
+    if (visible) {
+        if (opts.showSharpEdges && _pSharpEdgeTess) {
+            _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
         }
+        if (opts.showTriNormals && _pNormalTess) {
+            _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
+        }
+        if (opts.showEdges && !_edgeTessellations.empty()) {
+            if (opts.showOuter && FT_OUTER < _edgeTessellations.size()) {
+                for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
+                    if (pBlockTess)
+                        _edgeVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
+                }
+            }
 
-        if (!opts.showOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
-                if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
+            if (!opts.showOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
+                for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
+                    if (pBlockTess)
+                        _edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
+                }
             }
-        }
 
-        if (!opts.showOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
-                if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+            if (!opts.showOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+                for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
+                    if (pBlockTess)
+                        _edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+                }
             }
-        }
 
-        if (!opts.showSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
-                if (pBlockTess)
-                    _edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+            if (!opts.showSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
+                for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
+                    if (pBlockTess)
+                        _edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+                }
             }
         }
     }
+
     _edgeVBO.endSettingElementIndices();
 
 }

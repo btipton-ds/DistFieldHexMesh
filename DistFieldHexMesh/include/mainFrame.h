@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <volume.h>
 #include <appData.h>
+#include <objectTreeCtrl.h>
 
 namespace DFHM {
 
@@ -80,7 +81,11 @@ enum DFHM_MENU_ID
     ID_SHOW_FACES,
     ID_SHOW_MODEL_BOUNDARY,
     ID_SHOW_OUTER,
-    ID_SHOW_SELECTED_BLOCKS
+    ID_SHOW_SELECTED_BLOCKS,
+
+    ID_OBJ_TREE_CTRL,
+    ID_TREE_CTRL_SHOW,
+
 };
 
 class GraphicsCanvas;
@@ -160,7 +165,7 @@ private:
     wxMenuBar* _menuBar = nullptr;
     wxMenu* _editMenu = nullptr,
         * _fileMenu = nullptr;
-    wxDataViewTreeCtrl* _pObjectTree;
+    ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;
     GraphicsCanvas* _pCanvas = nullptr;
     wxWithImages::Images _images;

@@ -1002,7 +1002,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    _modelVBOs->changeFaceViewElements(_viewOptions);
+    _modelVBOs->changeFaceViewElements(true, _viewOptions);
     auto& objs = _pAppData->getMeshObjects();
     for (auto& pair : objs) {
         auto& obj = pair.second;
@@ -1012,7 +1012,7 @@ void GraphicsCanvas::changeFaceViewElements()
 
 void GraphicsCanvas::changeEdgeViewElements()
 {
-    _modelVBOs->changeEdgeViewElements(_viewOptions);
+    _modelVBOs->changeEdgeViewElements(true, _viewOptions);
     auto& objs = _pAppData->getMeshObjects();
     for (auto& pair : objs) {
         auto& obj = pair.second;

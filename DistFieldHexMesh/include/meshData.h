@@ -68,6 +68,9 @@ namespace DFHM {
 		void makeOGLTess();
 		void setShader(std::shared_ptr<COglShader> pShader);
 
+		bool isActive() const;
+		void setActive(bool val);
+
 	private:
 
 		void beginFaceTesselation();
@@ -91,6 +94,7 @@ namespace DFHM {
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
+		bool _active = true;
 
 		const COglMultiVboHandler::OGLIndices* _faceTess = nullptr;
 		const COglMultiVboHandler::OGLIndices* _edgeTess = nullptr;
@@ -138,6 +142,11 @@ namespace DFHM {
 	inline COglMultiVboHandler& MeshData::getEdgeVBO()
 	{
 		return _VBOs->_edgeVBO;
+	}
+
+	inline bool MeshData::isActive() const
+	{
+		return _active;
 	}
 
 }
