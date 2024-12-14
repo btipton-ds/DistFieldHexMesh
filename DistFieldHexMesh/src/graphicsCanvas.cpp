@@ -50,18 +50,19 @@ This file is part of the DistFieldHexMesh application/library.
 //Not necessary, but if it was, it needs to be replaced by process.h AND io.h
 #endif
 
+#include <defines.h>
 #include <cmath>
 #include <Eigen/Geometry>
 #include <Eigen/src/Core/Matrix.h>
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
 #include <OGLMath.h>
-#include <defines.h>
 #include <tm_vector3.h>
 #include <tm_ray.h>
 #include <triMesh.h>
 #include <volume.h>
 #include <appData.h>
+#include <meshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -128,12 +129,6 @@ namespace
         }
         return result;
     }
-}
-
-GraphicsCanvas::VBORec::VBORec()
-    : _faceVBO(GL_TRIANGLES, 20)
-    , _edgeVBO(GL_LINES, 20)
-{
 }
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
@@ -263,68 +258,68 @@ void GraphicsCanvas::setLights()
 
 bool GraphicsCanvas::toggleShowSharpEdges()
 {
-    _showSharpEdges = !_showSharpEdges;
+    _viewOptions.showSharpEdges = !_viewOptions.showSharpEdges;
     changeEdgeViewElements();
 
-    return _showSharpEdges;
+    return _viewOptions.showSharpEdges;
 }
 
 bool GraphicsCanvas::toggleShowSharpVerts()
 {
-    _showSharpVerts = !_showSharpVerts;
+    _viewOptions.showSharpVerts = !_viewOptions.showSharpVerts;
     changeFaceViewElements();
 
-    return _showSharpVerts;
+    return _viewOptions.showSharpVerts;
 }
 
 bool GraphicsCanvas::toggleShowTriNormals()
 {
-    _showTriNormals = !_showTriNormals;
+    _viewOptions.showTriNormals = !_viewOptions.showTriNormals;
     changeEdgeViewElements();
 
-    return _showTriNormals;
+    return _viewOptions.showTriNormals;
 }
 
 bool GraphicsCanvas::toggleShowFaces()
 {
-    _showFaces = !_showFaces;
+    _viewOptions.showFaces = !_viewOptions.showFaces;
     changeFaceViewElements();
 
-    return _showFaces;
+    return _viewOptions.showFaces;
 }
 
 bool GraphicsCanvas::toggleShowCurvature()
 {
-    _showCurvature = !_showCurvature;
+    _viewOptions.showCurvature = !_viewOptions.showCurvature;
     changeFaceViewElements();
-    return _showCurvature;
+    return _viewOptions.showCurvature;
 }
 
 bool GraphicsCanvas::toggleShowEdges()
 {
-    _showEdges = !_showEdges;
+    _viewOptions.showEdges = !_viewOptions.showEdges;
     changeFaceViewElements();
     changeEdgeViewElements();
 
-    return _showEdges;
+    return _viewOptions.showEdges;
 }
 
 bool GraphicsCanvas::toggleShowOuter()
 {
-    _showOuter = !_showOuter;
+    _viewOptions.showOuter = !_viewOptions.showOuter;
     changeFaceViewElements();
     changeEdgeViewElements();
 
-    return _showOuter;
+    return _viewOptions.showOuter;
 }
 
 bool GraphicsCanvas::toggleShowModelBoundary()
 {
-    _showModelBoundary = !_showModelBoundary;
+    _viewOptions.showModelBoundary = !_viewOptions.showModelBoundary;
     changeFaceViewElements();
     changeEdgeViewElements();
 
-    return _showOuter;
+    return _viewOptions.showOuter;
 }
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
@@ -449,6 +444,11 @@ void GraphicsCanvas::clearMesh3D()
     _meshVBOs->_faceVBO.clear();
     _meshVBOs->_edgeTessellations.clear();
     _meshVBOs->_faceTessellations.clear();
+}
+
+void GraphicsCanvas::registerMeshData(MeshDataPtr& pMeshData)
+{
+    pMeshData->setShader(_phongShader);
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
@@ -645,7 +645,7 @@ void GraphicsCanvas::drawFaces()
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
-        if (_showSharpEdges) {
+        if (_viewOptions.showSharpEdges) {
             glEnable(GL_POLYGON_OFFSET_FILL);
             glPolygonOffset(1.0f, 2.0f);
         }
@@ -664,7 +664,14 @@ void GraphicsCanvas::drawFaces()
         };
 
     _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+//    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+
+    auto& meshObjects = _pAppData->getMeshObjects();
+    for (auto& d : meshObjects)
+    {
+        auto& VBO = d.second->getFaceVBO();
+        VBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    }
 }
 
 void GraphicsCanvas::drawEdges()
@@ -866,73 +873,57 @@ void GraphicsCanvas::updateView()
     }
 }
 
-namespace
+void GraphicsCanvas::beginFaceTesselation(bool useModel)
 {
-    float HueToRGB(float v1, float v2, float vH) {
-        if (vH < 0)
-            vH += 1;
-
-        if (vH > 1)
-            vH -= 1;
-
-        if ((6 * vH) < 1)
-            return (v1 + (v2 - v1) * 6 * vH);
-
-        if ((2 * vH) < 1)
-            return v2;
-
-        if ((3 * vH) < 2)
-            return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
-
-        return v1;
-    }
-
-    rgbaColor HSVToRGB(float h, float s, float v) {
-        float C = s * v;
-        float X = C * (1 - abs(fmod(h / 60.0, 2) - 1));
-        float m = v - C;
-        float r, g, b;
-        if (h >= 0 && h < 60) {
-            r = C, g = X, b = 0;
-        }
-        else if (h >= 60 && h < 120) {
-            r = X, g = C, b = 0;
-        }
-        else if (h >= 120 && h < 180) {
-            r = 0, g = C, b = X;
-        }
-        else if (h >= 180 && h < 240) {
-            r = 0, g = X, b = C;
-        }
-        else if (h >= 240 && h < 300) {
-            r = X, g = 0, b = C;
-        }
-        else {
-            r = C, g = 0, b = X;
-        }
-        uint8_t R = (uint8_t) ((r + m) * 255);
-        uint8_t G = (uint8_t) ((g + m) * 255);
-        uint8_t B = (uint8_t) ((b + m) * 255);
-        return rgbaColor(r + m, g + m, b + m, 1);
-    }
-
-    rgbaColor curvatureToColor(float cur)
-    {
-        const float maxRadius = 0.5f; // meter
-        const float minRadius = 0.001f; // meter
-        float radius = 1 / cur;
-        float t = (radius - minRadius) / (maxRadius - minRadius);
-        if (t < 0)
-            t = 0;
-        else if (t > 1)
-            t = 1;
-
-        t = 1 - t;
-        float hue = 2 / 3.0f - 2 / 3.0f * t;
-        hue = 360 * hue;
-        return HSVToRGB(hue, 1, 1);
-    }
+    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
+    _activeVBOs->_faceVBO.beginFaceTesselation();
 }
+
+void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
+{
+    _activeVBOs->_faceVBO.endFaceTesselation(smoothNormals);
+    _activeVBOs->_pTriTess = pTriTess;
+    _activeVBOs->_pSharpVertTess = pSharpVertTess;
+    _activeVBOs->_faceTessellations.clear();
+
+    changeFaceViewElements();
+}
+
+void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
+{
+    _activeVBOs->_faceVBO.endFaceTesselation(false);
+    _activeVBOs->_faceTessellations = faceTess;
+
+    changeFaceViewElements();
+}
+
+void GraphicsCanvas::beginEdgeTesselation(bool useModel)
+{
+    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
+    _activeVBOs->_edgeVBO.beginEdgeTesselation();
+}
+
+void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
+{
+    _activeVBOs->_edgeVBO.endEdgeTesselation();
+
+    _activeVBOs->_pSharpEdgeTess = pSharpEdgeTess;
+    _activeVBOs->_pNormalTess = pNormalTess;
+    _activeVBOs->_edgeTessellations.clear();
+
+    changeEdgeViewElements();
+}
+
+void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
+{
+    _activeVBOs->_edgeVBO.endEdgeTesselation();
+
+    _activeVBOs->_edgeTessellations = edgeTess;
+
+    changeEdgeViewElements();
+}
+
+
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
 {
@@ -983,104 +974,13 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    changeFaceViewElements(true);
-    changeFaceViewElements(false);
+    _modelVBOs->changeFaceViewElements(_viewOptions);
+    _meshVBOs->changeFaceViewElements(_viewOptions);
 }
 
 void GraphicsCanvas::changeEdgeViewElements()
 {
-    changeEdgeViewElements(true);
-    changeEdgeViewElements(false);
+    _modelVBOs->changeEdgeViewElements(_viewOptions);
+    _meshVBOs->changeEdgeViewElements(_viewOptions);
 }
 
-void GraphicsCanvas::changeFaceViewElements(bool isModel)
-{
-    auto& vbo = isModel ? *_modelVBOs : *_meshVBOs;
-    vbo._faceVBO.beginSettingElementIndices(0xffffffffffffffff);
-    if (vbo._pTriTess) {
-        if (_showCurvature)
-            vbo._faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *vbo._pTriTess);
-        else
-            vbo._faceVBO.includeElementIndices(DS_MODEL, *vbo._pTriTess);
-    }
-
-    if (_showSharpVerts && vbo._pSharpVertTess)
-        vbo._faceVBO.includeElementIndices(DS_MODEL_SHARP_VERTS, *vbo._pSharpVertTess);
-
-    if (_showFaces) {
-        if (_showSelectedBlocks) {
-            if (FT_ALL < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[FT_ALL]) {
-                    if (pBlockTess)
-                        vbo._faceVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
-                }
-            }
-        } else if (_showOuter) {
-            if (FT_OUTER < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[FT_OUTER]) {
-                    if (pBlockTess)
-                        vbo._faceVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
-                }
-            }
-        } else {
-            if (FT_MODEL_BOUNDARY < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[FT_MODEL_BOUNDARY]) {
-                    if (pBlockTess)
-                        vbo._faceVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
-                }
-            }
-
-            if (FT_BLOCK_BOUNDARY < vbo._faceTessellations.size()) {
-                for (auto pBlockTess : vbo._faceTessellations[FT_BLOCK_BOUNDARY]) {
-                    if (pBlockTess)
-                        vbo._faceVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
-                }
-            }
-        }
-    }
-    vbo._faceVBO.endSettingElementIndices();
-}
-
-void GraphicsCanvas::changeEdgeViewElements(bool isModel)
-{
-    auto& vbo = isModel ? *_modelVBOs : *_meshVBOs;
-    vbo._edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
-
-    if (_showSharpEdges && vbo._pSharpEdgeTess) {
-        vbo._edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *vbo._pSharpEdgeTess);
-    }
-    if (_showTriNormals && vbo._pNormalTess) {
-        vbo._edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *vbo._pNormalTess);
-    }
-    if (_showEdges && !vbo._edgeTessellations.empty()) {
-        if (_showOuter && FT_OUTER < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[FT_OUTER]) {
-                if (pBlockTess)
-                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
-            }
-        } 
-        
-        if (!_showOuter && FT_MODEL_BOUNDARY < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[FT_MODEL_BOUNDARY]) {
-                if (pBlockTess)
-                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
-            }
-        }
-        
-        if (!_showOuter && FT_BLOCK_BOUNDARY < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[FT_BLOCK_BOUNDARY]) {
-                if (pBlockTess)
-                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
-            }
-        }
-
-        if (!_showSelectedBlocks && FT_ALL < vbo._edgeTessellations.size()) {
-            for (auto pBlockTess : vbo._edgeTessellations[FT_ALL]) {
-                if (pBlockTess)
-                    vbo._edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
-            }
-        }
-    }
-    vbo._edgeVBO.endSettingElementIndices();
-
-}

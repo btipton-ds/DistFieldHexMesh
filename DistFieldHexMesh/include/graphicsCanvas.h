@@ -33,6 +33,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/glcanvas.h>
 #include <rgbaColor.h>
 #include <triMesh.h>
+#include <meshData.h>
+#include <graphicsVBORec.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
@@ -82,6 +84,8 @@ public:
 
     void preDestroy();
     void clearMesh3D();
+    void registerMeshData(MeshDataPtr& pMeshData);
+    const VBORec::ChangeElementsOptions& getViewOptions() const;
 
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
@@ -157,18 +161,6 @@ private:
         p3f lightDir[8];
     };
 
-    struct VBORec {
-        VBORec();
-        const OGLIndices
-            * _pTriTess = nullptr,
-            * _pSharpVertTess = nullptr,
-            * _pSharpEdgeTess = nullptr,
-            * _pNormalTess = nullptr;
-        std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
-
-        COglMultiVboHandler _faceVBO, _edgeVBO;
-    };
-
     Eigen::Matrix4d cumTransform(bool withProjection) const;
     void initProjection();
     Vector3d pointToLocal(const Vector3d& pointMC) const;
@@ -179,8 +171,6 @@ private:
     void updateView();
     void changeFaceViewElements();
     void changeEdgeViewElements();
-    void changeFaceViewElements(bool isModel);
-    void changeEdgeViewElements(bool isModel);
     void drawMousePos3D();
     void drawFaces();
     void drawEdges();
@@ -193,16 +183,7 @@ private:
     std::shared_ptr<wxGLContext> _pContext;
     
     bool _initialized = false;
-    bool 
-        _showSharpEdges = false, 
-        _showSharpVerts = false, 
-        _showTriNormals = false, 
-        _showEdges = true, 
-        _showFaces = true, 
-        _showModelBoundary = false,
-        _showOuter = false,
-        _showCurvature = false,
-        _showSelectedBlocks = false;
+    VBORec::ChangeElementsOptions _viewOptions;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
     double _viewScale = 2;
@@ -234,99 +215,54 @@ inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
     _backColor = color;
 }
 
-inline void GraphicsCanvas::beginFaceTesselation(bool useModel)
+inline const VBORec::ChangeElementsOptions& GraphicsCanvas::getViewOptions() const
 {
-    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
-    _activeVBOs->_faceVBO.beginFaceTesselation();
-}
-
-inline void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
-{
-    _activeVBOs->_faceVBO.endFaceTesselation(smoothNormals);
-    _activeVBOs->_pTriTess = pTriTess;
-    _activeVBOs->_pSharpVertTess = pSharpVertTess;
-    _activeVBOs->_faceTessellations.clear();
-
-    changeFaceViewElements();
-}
-
-inline void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
-{
-    _activeVBOs->_faceVBO.endFaceTesselation(false);
-    _activeVBOs->_faceTessellations = faceTess;
-
-    changeFaceViewElements();
-}
-
-inline void GraphicsCanvas::beginEdgeTesselation(bool useModel)
-{
-    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
-    _activeVBOs->_edgeVBO.beginEdgeTesselation();
-}
-
-inline void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
-{
-    _activeVBOs->_edgeVBO.endEdgeTesselation();
-
-    _activeVBOs->_pSharpEdgeTess = pSharpEdgeTess;
-    _activeVBOs->_pNormalTess = pNormalTess;
-    _activeVBOs->_edgeTessellations.clear();
-
-    changeEdgeViewElements();
-}
-
-inline void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
-{
-    _activeVBOs->_edgeVBO.endEdgeTesselation();
-
-    _activeVBOs->_edgeTessellations = edgeTess;
-
-    changeEdgeViewElements();
+    return _viewOptions;
 }
 
 inline bool GraphicsCanvas::showSharpEdges() const
 {
-    return _showSharpEdges;
+    return _viewOptions.showSharpEdges;
 }
 
 inline bool GraphicsCanvas::showSharpVerts() const
 {
-    return _showSharpVerts;
+    return _viewOptions.showSharpVerts;
 }
 
 inline bool GraphicsCanvas::showTriNormals() const
 {
-    return _showTriNormals;
+    return _viewOptions.showTriNormals;
 }
 
 inline bool GraphicsCanvas::showFaces() const
 {
-    return _showFaces;
+    return _viewOptions.showFaces;
 }
 
 inline bool GraphicsCanvas::showCurvature() const
 {
-    return _showCurvature;
+    return _viewOptions.showCurvature;
 }
 
 inline bool GraphicsCanvas::showEdges() const
 {
-    return _showEdges;
+    return _viewOptions.showEdges;
 }
 
 inline bool GraphicsCanvas::showOuter() const
 {
-    return _showOuter;
+    return _viewOptions.showOuter;
 }
 
 inline bool GraphicsCanvas::showModelBoundary() const
 {
-    return _showModelBoundary;
+    return _viewOptions.showModelBoundary;
 }
 
 inline void GraphicsCanvas::setShowSelectedBlocks(bool val)
 {
-    _showSelectedBlocks = val;
+    _viewOptions.showSelectedBlocks = val;
 }
 
 }

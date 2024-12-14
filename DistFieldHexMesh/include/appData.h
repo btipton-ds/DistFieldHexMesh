@@ -98,7 +98,7 @@ private:
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
-    void postReadMesh();
+    void postReadMesh(CMeshPtr& pMesh);
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;

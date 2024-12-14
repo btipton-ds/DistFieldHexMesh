@@ -27,26 +27,47 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define _USE_MATH_DEFINES
-#include <tm_defines.h>
-#include <math.h>
+#include <memory>
 
-#define RUN_MULTI_THREAD 1
-#define USE_MULTI_THREAD_CONTAINERS 1 // Combined, local_heap and ThreadPool drop a base case from 2.7 sec to 2.0 sec. In heavier cases, it drops from minutes to seconds.
-#define SHARP_EDGE_ANGLE_DEGREES 15
-#define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
-#define GRAPHICS_OVER_SAMPLING 2
+#include <defines.h>
+#include <tm_vector3.h>
+#include <triMesh.h>
+#include <OGLMath.h>
+#include <OGLMultiVboHandler.h>
+#include <OGLExtensions.h>
 
-#define VERIFY_REDUCED_FINDER 0
-#define LOGGING_ENABLED 1
-#define DEBUG_BREAKS 0
-#define CAN_FREE_TESTS_ENABLED 0
-#define LOGGING_VERBOSE_ENABLED (1 && LOGGING_ENABLED)
-#define DUMP_BAD_CELL_OBJS 1
-#define DUMP_OPEN_CELL_OBJS 1
+class COglShader;
 
-#if USE_MULTI_THREAD_CONTAINERS
-#define MTC MultiCore
-#else
-#define MTC std
-#endif
+namespace DFHM {
+	struct VBORec {
+		using OGLIndices = COglMultiVboHandler::OGLIndices;
+
+		struct ChangeElementsOptions {
+			bool 
+				showSharpEdges = false,
+				showSharpVerts = false,
+				showTriNormals = false,
+				showEdges = true,
+				showFaces = true,
+				showModelBoundary = false,
+				showOuter = false,
+				showCurvature = false,
+				showSelectedBlocks = false;
+		};
+
+		VBORec();
+		void changeFaceViewElements(const ChangeElementsOptions& opts);
+		void changeEdgeViewElements(const ChangeElementsOptions& opts);
+
+		const OGLIndices
+			* _pTriTess = nullptr,
+			* _pSharpVertTess = nullptr,
+			* _pSharpEdgeTess = nullptr,
+			* _pNormalTess = nullptr;
+		std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+
+		COglMultiVboHandler _faceVBO, _edgeVBO;
+
+	};
+
+}

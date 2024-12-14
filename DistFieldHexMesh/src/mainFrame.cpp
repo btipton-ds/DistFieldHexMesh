@@ -323,6 +323,11 @@ void MainFrame::OnOpen(wxCommandEvent& event)
     _pAppData->doOpen();
 }
 
+void MainFrame::registerMeshData(MeshDataPtr& pMeshData)
+{
+    _pCanvas->registerMeshData(pMeshData);
+}
+
 void MainFrame::refreshObjectTree()
 {
     _pObjectTree->DeleteAllItems();

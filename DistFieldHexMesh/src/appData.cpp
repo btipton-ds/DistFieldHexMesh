@@ -130,7 +130,7 @@ CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
     try {
         if (reader.read(path, filename)) {
             _pMesh = pMesh;
-            postReadMesh();
+            postReadMesh(_pMesh);
             return pMesh;
         }
     }
@@ -141,18 +141,18 @@ CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
     return nullptr;
 }
 
-void AppData::postReadMesh()
+void AppData::postReadMesh(CMeshPtr& pMesh)
 {
-//    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
-    _pMesh->buildCentroids();
-    _pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
-    _pMesh->calGaps();
-
     auto pCanvas = _pMainFrame->getCanvas();
+
+    //    pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
+    pMesh->buildCentroids();
+    pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
+    pMesh->calGaps();
 
     pCanvas->beginFaceTesselation(true);
     CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
-    _modelFaceTess = pCanvas->setFaceTessellation(_pMesh);
+    _modelFaceTess = pCanvas->setFaceTessellation(pMesh);
     if (pSharpVertMesh)
         _sharpPointTess = pCanvas->setFaceTessellation(pSharpVertMesh);
     pCanvas->endFaceTesselation(_modelFaceTess, _sharpPointTess, false);
@@ -163,10 +163,10 @@ void AppData::postReadMesh()
 
     pCanvas->beginEdgeTesselation(true);
 
-    _modelEdgeTess = pCanvas->setEdgeSegTessellation(_pMesh);
+    _modelEdgeTess = pCanvas->setEdgeSegTessellation(pMesh);
 
     if (!normPts.empty())
-        _modelNormalTess = pCanvas->setEdgeSegTessellation(_pMesh->getId() + 10000, _pMesh->getChangeNumber(), normPts, normIndices);
+        _modelNormalTess = pCanvas->setEdgeSegTessellation(pMesh->getId() + 10000, pMesh->getChangeNumber(), normPts, normIndices);
 
     pCanvas->endEdgeTesselation(_modelEdgeTess, _modelNormalTess);
 
@@ -187,7 +187,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     if (hasMesh) {
         _pMesh = make_shared<TriMesh::CMesh>();
         _pMesh->read(in);
-        postReadMesh();
+        postReadMesh(_pMesh);
     }
 
     bool hasVolume;
@@ -224,8 +224,16 @@ bool AppData::doImportMesh()
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
-        MeshDataPtr pData = make_shared<MeshData>(pMesh, name);
-        _meshData.insert(std::make_pair(name, pData));
+        MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
+
+        _pMainFrame->registerMeshData(pMeshData);
+        //    pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
+        pMeshData->makeOGLTess();
+        _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
+
+        _pMainFrame->refreshObjectTree();
+
+        _pMainFrame->getCanvas()->resetView();
         return true;
     }
     return false;

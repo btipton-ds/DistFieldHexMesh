@@ -85,6 +85,8 @@ enum DFHM_MENU_ID
 
 class GraphicsCanvas;
 class MainFrame;
+class MeshData;
+using MeshDataPtr = std::shared_ptr<MeshData>;
 
 class MainFrame : public wxFrame
 {
@@ -103,7 +105,8 @@ public:
     GraphicsCanvas* getCanvas();
 
     AppDataPtr getAppData();
-    void rereshObjectTree();
+    void registerMeshData(MeshDataPtr& pMeshData);
+    void refreshObjectTree();
 
 private:
     void addMenus();
@@ -153,8 +156,6 @@ private:
     void OnSetViewTop(wxCommandEvent& event);
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
-
-    void refreshObjectTree();
 
     wxMenuBar* _menuBar = nullptr;
     wxMenu* _editMenu = nullptr,

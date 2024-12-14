@@ -75,10 +75,12 @@ add_executable (DistFieldHexMesh
     "src/index3D.cpp"
 	"src/fixedPoint.cpp"
 	"src/graphicsCanvas.cpp"
+	"src/graphicsVBORec.cpp"
 	"src/logger.cpp"
 	"src/main.cpp" 
 	"src/mainFrame.cpp"
 	"src/makeBlockDlg.cpp"
+	"src/meshData.cpp"
 	"src/objectPool.cpp" 
 	"src/polygon.cpp"
 	"src/polygonSplitter.cpp" 
@@ -97,7 +99,8 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
- "src/meshData.cpp")
+	"${OpenGlDir}/src/rgbaColor.cpp"
+)
 
 add_executable (TestDFM         
 	
@@ -121,7 +124,7 @@ add_executable (TestDFM
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
- "src/meshData.cpp")
+)
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
