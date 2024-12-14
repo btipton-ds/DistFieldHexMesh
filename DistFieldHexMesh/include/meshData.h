@@ -55,13 +55,15 @@ namespace DFHM {
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
 
-		const COglMultiVboHandler::OGLIndices* getFaceTess();
-		const COglMultiVboHandler::OGLIndices* getEdgeTess();
-		const COglMultiVboHandler::OGLIndices* getNormalTess();
-		const COglMultiVboHandler::OGLIndices* getPointTess();
+		const COglMultiVboHandler::OGLIndices* getFaceTess() const;
+		const COglMultiVboHandler::OGLIndices* getEdgeTess() const;
+		const COglMultiVboHandler::OGLIndices* getNormalTess() const;
+		const COglMultiVboHandler::OGLIndices* getPointTess() const;
 
 		COglMultiVboHandler& getFaceVBO();
 		COglMultiVboHandler& getEdgeVBO();
+		void changeFaceViewElements(const VBORec::ChangeElementsOptions& opts);
+		void changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts);
 
 		void makeOGLTess();
 		void setShader(std::shared_ptr<COglShader> pShader);
@@ -70,7 +72,7 @@ namespace DFHM {
 
 		void beginFaceTesselation();
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const COglMultiVboHandler::OGLIndices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh);
+		const OGLIndices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh);
 		void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
 		void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
 
@@ -82,8 +84,6 @@ namespace DFHM {
 		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
-		void changeFaceViewElements(const VBORec::ChangeElementsOptions& opts);
-		void changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts);
 
 		void addPointMarker(CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		CMeshPtr getSharpVertMesh() const;
@@ -110,22 +110,22 @@ namespace DFHM {
 		return _name;
 	}
 
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getFaceTess()
+	inline const COglMultiVboHandler::OGLIndices* MeshData::getFaceTess() const
 	{
 		return _faceTess;
 	}
 
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getEdgeTess()
+	inline const COglMultiVboHandler::OGLIndices* MeshData::getEdgeTess() const
 	{
 		return _edgeTess;
 	}
 
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getNormalTess()
+	inline const COglMultiVboHandler::OGLIndices* MeshData::getNormalTess() const
 	{
 		return _normalTess;
 	}
 
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getPointTess()
+	inline const COglMultiVboHandler::OGLIndices* MeshData::getPointTess() const
 	{
 		return _sharpPointTess;
 	}
