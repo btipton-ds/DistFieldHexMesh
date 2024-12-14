@@ -169,12 +169,6 @@ void MainFrame::createEditMenu()
 
     _editMenu->AppendSeparator();
 
-    _editMenu->Append(ID_VerifyClosed, "Verify Closed");
-    Bind(wxEVT_MENU, &MainFrame::OnVerifyClosed, this, ID_VerifyClosed);
-
-    _editMenu->Append(ID_VerifyNormals, "Verify Normals");
-    Bind(wxEVT_MENU, &MainFrame::OnVerifyNormals, this, ID_VerifyNormals);
-
     _editMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
     Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_AnalyzeGaps);
     
@@ -414,16 +408,6 @@ void MainFrame::OnCopy(wxCommandEvent& event)
 void MainFrame::OnPaste(wxCommandEvent& event)
 {
 
-}
-
-void MainFrame::OnVerifyClosed(wxCommandEvent& event)
-{
-    _pAppData->doVerifyClosed();
-}
-
-void MainFrame::OnVerifyNormals(wxCommandEvent& event)
-{
-    _pAppData->doVerifyNormals();
 }
 
 void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)

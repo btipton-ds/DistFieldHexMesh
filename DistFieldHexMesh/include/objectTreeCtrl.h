@@ -54,9 +54,12 @@ namespace DFHM {
 		void onContextMenu(wxDataViewEvent& event);
 
 	private:
+		void OnToggleShow(wxCommandEvent& event);
+		void OnMeshStats(wxCommandEvent& event);
+		void OnVerifyNormals(wxCommandEvent& event);
+
 		MainFrame* _pMainFrame;
 		std::wstring getCurrentItemName() const;
-		void OnToggleShow(wxCommandEvent& event);
 
 	protected:
 		wxDECLARE_EVENT_TABLE();

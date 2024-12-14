@@ -233,30 +233,27 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     _pMainFrame->getCanvas()->resetView();
 }
 
-void AppData::doVerifyClosed()
+void AppData::doVerifyClosed(const CMeshPtr& pMesh)
 {
-    /*
-    int numOpen = _pMesh->numLaminarEdges();
+    int numOpen = pMesh->numLaminarEdges();
 
     stringstream ss;
-    ss << "Number of edges: " << _pMesh->numEdges() << "\nNumber of open edges: " << numOpen;
+    ss << "Number of edges: " << pMesh->numEdges() << "\nNumber of open edges: " << numOpen;
     wxMessageBox(ss.str().c_str(), "Verify Closed", wxOK | wxICON_INFORMATION);
-    */
 }
 
-void AppData::doVerifyNormals()
+void AppData::doVerifyNormals(const CMeshPtr& pMesh)
 {
-    /*
     size_t numMisMatched = 0;
-    size_t numEdges = _pMesh->numEdges();
+    size_t numEdges = pMesh->numEdges();
     for (size_t i = 0; i < numEdges; i++) {
-        const auto& edge = _pMesh->getEdge(i);
+        const auto& edge = pMesh->getEdge(i);
         if (edge._numFaces == 2) {
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Index3D& faceIndices0 = _pMesh->getTri(edge._faceIndices[0]);
-            const Index3D& faceIndices1 = _pMesh->getTri(edge._faceIndices[1]);
+            const Index3D& faceIndices0 = pMesh->getTri(edge._faceIndices[0]);
+            const Index3D& faceIndices1 = pMesh->getTri(edge._faceIndices[1]);
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {
@@ -278,10 +275,10 @@ void AppData::doVerifyNormals()
             }
         }
     }
+
     stringstream ss;
-    ss << "Number of tris: " << _pMesh->numTris() << "\nNumber of opposed faces: " << numMisMatched;
+    ss << "Number of tris: " << pMesh->numTris() << "\nNumber of opposed faces: " << numMisMatched;
     wxMessageBox(ss.str().c_str(), "Verify Normals", wxOK | wxICON_INFORMATION);
-    */
 }
 
 void AppData::doAnalyzeGaps()

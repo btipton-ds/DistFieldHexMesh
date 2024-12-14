@@ -59,8 +59,8 @@ public:
     bool doImportMesh();
     void doSave();
     void doSaveAs();
-    void doVerifyClosed();
-    void doVerifyNormals();
+    void doVerifyClosed(const CMeshPtr& pMesh);
+    void doVerifyNormals(const CMeshPtr& pMesh);
     void doAnalyzeGaps();
     void doFindMinGap() const;
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);

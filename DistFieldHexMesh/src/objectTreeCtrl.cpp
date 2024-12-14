@@ -69,6 +69,14 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 		if (item)
 			item->Check(pData->isActive());
 
+		contextMenu->AppendSeparator();
+
+		contextMenu->Append(ID_VerifyClosed, "Mesh stats...", "", true);
+		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnMeshStats, this, ID_VerifyClosed);
+
+		contextMenu->Append(ID_VerifyNormals, "Verify Normals");
+		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnVerifyNormals, this, ID_VerifyNormals);
+
 		PopupMenu(contextMenu, event.GetPosition());
 		delete contextMenu;
 	}
@@ -82,6 +90,22 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 	pData->setActive(!pData->isActive());
 	_pMainFrame->getCanvas()->changeFaceViewElements();
 	_pMainFrame->getCanvas()->changeEdgeViewElements();
+}
+
+void ObjectTreeCtrl::OnMeshStats(wxCommandEvent& event)
+{
+	auto name = getCurrentItemName();
+	const auto& pAppData = _pMainFrame->getAppData();
+	const auto& pData = pAppData->getMeshObjects().find(name)->second;
+	pAppData->doVerifyClosed(pData->getMesh());
+}
+
+void ObjectTreeCtrl::OnVerifyNormals(wxCommandEvent& event)
+{
+	auto name = getCurrentItemName();
+	const auto& pAppData = _pMainFrame->getAppData();
+	const auto& pData = pAppData->getMeshObjects().find(name)->second;
+	pAppData->doVerifyNormals(pData->getMesh());
 }
 
 wstring ObjectTreeCtrl::getCurrentItemName() const
