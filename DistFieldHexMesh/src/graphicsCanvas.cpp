@@ -69,6 +69,7 @@ using namespace DFHM;
 
 BEGIN_EVENT_TABLE(GraphicsCanvas, wxGLCanvas)
 EVT_PAINT(GraphicsCanvas::doPaint)
+EVT_SIZE(GraphicsCanvas::onSizeChange)
 END_EVENT_TABLE()
 
 #define DRAW_MOUSE_POSITION 0
@@ -131,6 +132,7 @@ namespace
     }
 }
 
+
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxPoint(200, 0), wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
@@ -143,6 +145,8 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     initProjection();
     setLights();
     setView(GraphicsCanvas::VIEW_FRONT);
+
+//    Bind(wxEVT_SIZE, &GraphicsCanvas::onSizeChange, this);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -448,6 +452,12 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
         return;
 
     applyScaleFactor(scaleMult, pos);
+}
+
+void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
+{
+    updateProjectionAspect();
+    event.Skip();
 }
 
 void GraphicsCanvas::clearMesh3D()
@@ -847,16 +857,22 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
     return result;
 }
 
-void GraphicsCanvas::initProjection()
+void GraphicsCanvas::updateProjectionAspect()
 {
-    _projection.setIdentity();
+    _projAspect.setIdentity();
 
     wxSize frameSize = GetSize();
     double ratio = frameSize.y / (double)frameSize.x;
     if (ratio >= 1)
-        _projection(1, 1) = 1 / ratio;
+        _projAspect(1, 1) = 1 / ratio;
     else
-        _projection(0, 0) = ratio;
+        _projAspect(0, 0) = ratio;
+}
+
+void GraphicsCanvas::initProjection()
+{
+    updateProjectionAspect();
+    _projection.setIdentity();
 
     Eigen::Matrix<double, 3, 1> xAxis(1, 0, 0);
     double makeZUpAngle = 90.0 * M_PI / 180.0;
@@ -876,12 +892,15 @@ void GraphicsCanvas::initProjection()
 void GraphicsCanvas::updateView()
 {
     Eigen::Matrix4d m(cumTransform(false));
+    Eigen::Matrix4d proj;
+
+    proj = _projAspect * _projection;
 
     float* pMV = _graphicsUBO.modelViewX;
     float* pPr = _graphicsUBO.projX;
     for (int i = 0; i < 16; i++) {
         pMV[i] = (float)m(i);
-        pPr[i] = (float)_projection(i);
+        pPr[i] = (float)proj(i);
     }
 }
 

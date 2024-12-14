@@ -150,6 +150,7 @@ public:
     void onMouseRightUp(wxMouseEvent& event);
     void onMouseMove(wxMouseEvent& event);
     void onMouseWheel(wxMouseEvent& event);
+    void onSizeChange(wxSizeEvent& event);
 
 private:
     struct GraphicsUBO {
@@ -163,6 +164,7 @@ private:
 
     Eigen::Matrix4d cumTransform(bool withProjection) const;
     void initProjection();
+    void updateProjectionAspect();
     Vector3d pointToLocal(const Vector3d& pointMC) const;
 
     void glClearColor(const rgbaColor& color);
@@ -193,6 +195,7 @@ private:
     Eigen::Vector2d _mouseStartLocNDC_2D;
     Vector3d _mouseStartModel;
     Vector3f _mouseLoc3D;
+    Eigen::Matrix4d _projAspect;
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
@@ -202,7 +205,7 @@ private:
     std::shared_ptr<VBORec> _modelVBOs, _meshVBOs, _activeVBOs;
 
 protected:
-    DECLARE_EVENT_TABLE()
+    wxDECLARE_EVENT_TABLE(); 
 };
 
 inline void GraphicsCanvas::preDestroy()
