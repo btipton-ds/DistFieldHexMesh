@@ -332,7 +332,8 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     _mouseStartLocNDC_2D[2] = 1000;
     vector<CMeshPtr> meshes;
     for (const auto& md : _pAppData->getMeshObjects()) {
-        if (md.second->getMesh())
+        auto pMeshData = md.second;
+        if (pMeshData->isActive() && !pMeshData->isReference() && pMeshData->getMesh())
             meshes.push_back(md.second->getMesh());
     }
     Vector3d hitModel;
@@ -682,8 +683,8 @@ void GraphicsCanvas::drawFaces()
     auto postTexDraw = [this]() {
         };
 
-    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-//    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+//    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
     auto& meshObjects = _pAppData->getMeshObjects();
     for (auto& d : meshObjects)
@@ -740,8 +741,15 @@ void GraphicsCanvas::drawEdges()
     auto postTexDraw = [this]() {
         };
 
-    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+//    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+
+    auto& meshObjects = _pAppData->getMeshObjects();
+    for (auto& d : meshObjects)
+    {
+        auto& VBO = d.second->getEdgeVBO();
+        VBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+    }
 }
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const

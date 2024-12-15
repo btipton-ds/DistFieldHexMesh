@@ -248,6 +248,7 @@ void MeshData::changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts)
 void MeshData::setShader(std::shared_ptr<COglShader> pShader)
 {
 	_VBOs->_faceVBO.setShader(pShader.get());
+	_VBOs->_edgeVBO.setShader(pShader.get());
 }
 
 void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const

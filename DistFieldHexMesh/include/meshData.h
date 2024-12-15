@@ -73,6 +73,9 @@ namespace DFHM {
 		bool isActive() const;
 		void setActive(bool val);
 
+		bool isReference() const;
+		void setReference(bool val);
+
 	private:
 
 		void beginFaceTesselation();
@@ -96,7 +99,9 @@ namespace DFHM {
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
-		bool _active = true;
+		bool 
+			_active = true,
+			_reference = false;
 
 		const COglMultiVboHandler::OGLIndices* _faceTess = nullptr;
 		const COglMultiVboHandler::OGLIndices* _edgeTess = nullptr;
@@ -149,6 +154,16 @@ namespace DFHM {
 	inline bool MeshData::isActive() const
 	{
 		return _active;
+	}
+
+	inline bool MeshData::isReference() const
+	{
+		return _reference;
+	}
+
+	inline void MeshData::setReference(bool val)
+	{
+		_reference = val;
 	}
 
 }
