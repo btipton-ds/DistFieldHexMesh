@@ -392,7 +392,9 @@ CBoundingBox3Dd AppData::getMeshBoundingBox() const
 {
     CBoundingBox3Dd result;
     for (const auto& pair : _meshData) {
-        result.merge(pair.second->getMesh()->getBBox());
+        const auto pData = pair.second;
+        if (!pData->isReference() && pData->isActive())
+            result.merge(pData->getMesh()->getBBox());
     }
 
     return result;
@@ -449,6 +451,11 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 
     dlg.getParams(_params);
 
+    wstring name(L"Bounds");
+    auto iter = _meshData.find(name);
+    if (iter != _meshData.end())
+        _meshData.erase(iter);
+
     auto bbox = getMeshBoundingBox();
     Vector3d ctr = bbox.getMin() + bbox.range() * 0.5;
 
@@ -504,31 +511,26 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 
     xform = xform.inverse();
     bbox.clear();
+    Vector3d cubePts[8];
     for (size_t i = 0; i < 8; i++) {
         Eigen::Vector4d pt4 = xform * cubePts4[i];
-        _cubePts[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
-        bbox.merge(_cubePts[i]);
+        cubePts[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
+        bbox.merge(cubePts[i]);
     }
 
-    wstring name(L"Bounds");
     CMeshPtr pMesh = make_shared<CMesh>(bbox);
-    pMesh->addQuad(_cubePts[0], _cubePts[3], _cubePts[2], _cubePts[1]);
-    pMesh->addQuad(_cubePts[4], _cubePts[5], _cubePts[6], _cubePts[7]);
-    pMesh->addQuad(_cubePts[0], _cubePts[1], _cubePts[5], _cubePts[4]);
+    pMesh->addQuad(cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
+    pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
+    pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
 
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
     _pMainFrame->registerMeshData(pMeshData);
     pMeshData->makeOGLTess();
-    auto iter = _meshData.find(name);
-    if (iter != _meshData.end())
-        _meshData.erase(iter);
     _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
-
-//    _pMainFrame->getCanvas()->resetView();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

@@ -97,7 +97,6 @@ private:
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     std::map<std::wstring, MeshDataPtr> _meshData;
-    Vector3d _cubePts[8];
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
