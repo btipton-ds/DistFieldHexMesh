@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <makeBlockDlg.h>
 #include <selectBlocksDlg.h>
 #include <buildCFDHexesDlg.h>
+#include <createBaseMeshDlg.h>
 #include <graphicsCanvas.h>
 #include <meshData.h>
 #include <volume.h>
@@ -79,7 +80,7 @@ MainFrame::MainFrame(wxWindow* parent,
     auto sizer = new wxBoxSizer(wxHORIZONTAL);
 
     _pCanvas = new GraphicsCanvas(this, _pAppData);
-    _pCanvas->setBackColor(rgbaColor(0.9f, 0.9f, 1.0f));
+    _pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.1f));
 
     _pObjectTree = new ObjectTreeCtrl(this, ID_OBJ_TREE_CTRL, wxDefaultPosition, wxSize(200, 200));
 
@@ -169,7 +170,10 @@ void MainFrame::createEditMenu()
 
     _editMenu->AppendSeparator();
 
-    _editMenu->Append(ID_BuildCFDHexes, "Build CFD Hexes");
+    _editMenu->Append(ID_CREATE_BASE_MESH, "Create Base Mesh...");
+    Bind(wxEVT_MENU, &MainFrame::OnCreateBaseMesh, this, ID_CREATE_BASE_MESH);
+
+    _editMenu->Append(ID_BuildCFDHexes, "Build CFD Hexes...");
     Bind(wxEVT_MENU, &MainFrame::OnBuildCFDHexes, this, ID_BuildCFDHexes);
 
     _menuBar->Append(_editMenu, "&Edit");
@@ -296,10 +300,7 @@ void MainFrame::OnInternalIdle()
 
     if (_editMenu) {
         bool hasMesh = !_pAppData->getMeshObjects().empty();
-        _editMenu->Enable(ID_VerifyClosed, hasMesh);
-        _editMenu->Enable(ID_VerifyNormals, hasMesh);
-        _editMenu->Enable(ID_AnalyzeGaps, hasMesh);
-        _editMenu->Enable(ID_FindMinimumGap, hasMesh);
+        _editMenu->Enable(ID_CREATE_BASE_MESH, hasMesh);
         _editMenu->Enable(ID_BuildCFDHexes, hasMesh);
     }
     if (_fileMenu) {
@@ -402,6 +403,15 @@ void MainFrame::OnCopy(wxCommandEvent& event)
 void MainFrame::OnPaste(wxCommandEvent& event)
 {
 
+}
+
+void MainFrame::OnCreateBaseMesh(wxCommandEvent& event)
+{
+    BuildCFDParams& params = _pAppData->getParams();
+    CreateBaseMeshDlg dlg(params, this, 1, wxString("Create base volume"), wxPoint(40, 40));
+    if (dlg.ShowModal() == wxID_OK) {
+        _pAppData->doCreateBaseVolume(dlg);
+    }
 }
 
 void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)

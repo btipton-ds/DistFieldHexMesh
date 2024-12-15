@@ -46,11 +46,12 @@ namespace DFHM {
 
 /*
 TODO 
-Support reading multiple mesh files with settings.
+Add base cube
 Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
 Add subdivision of a triMesh to curvature works better.
 
-Fix the annoying graphics!! Get clipping, pan, rotate zoom working right. Done
+Done Fix the annoying graphics!! Get clipping, pan, rotate zoom working right.
+Done Support reading multiple mesh files with settings.
 */
     
 class Volume;
@@ -62,6 +63,7 @@ enum DFHM_MENU_ID
     ID_VerifyNormals,
     ID_AnalyzeGaps,
     ID_FindMinimumGap,
+    ID_CREATE_BASE_MESH,
     ID_BuildCFDHexes,
     ID_IMPORT_MESH,
     ID_WRITE_POLYMESH,
@@ -138,6 +140,7 @@ private:
     void OnCut(wxCommandEvent& event);
     void OnCopy(wxCommandEvent& event);
     void OnPaste(wxCommandEvent& event);
+    void OnCreateBaseMesh(wxCommandEvent& event);
     void OnBuildCFDHexes(wxCommandEvent& event);
 
     void OnShowSharpEdges(wxCommandEvent& event);

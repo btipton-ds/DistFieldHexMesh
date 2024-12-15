@@ -155,6 +155,8 @@ public:
     void onMouseWheel(wxMouseEvent& event);
     void onSizeChange(wxSizeEvent& event);
 
+    static Eigen::Matrix4d createTranslation(const Vector3d& delta);
+    static Eigen::Matrix4d createRotation(const Vector3d& axis, double angle);
 private:
     struct GraphicsUBO {
         m44f modelViewX; // Model matrix is always identity, so this is the view matrix
@@ -180,7 +182,6 @@ private:
 
     void initialize();
     void loadShaders();
-    static Eigen::Matrix4d createTranslation(const Vector3d& delta);
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
     std::shared_ptr<wxGLContext> _pContext;

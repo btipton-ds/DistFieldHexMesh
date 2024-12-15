@@ -71,6 +71,7 @@ add_executable (DistFieldHexMesh
 	
 	"src/block.cpp"	
 	"src/buildCFDHexesDlg.cpp"
+	"src/createBaseMeshDlg.cpp"
     "src/edge.cpp"
     "src/index3D.cpp"
 	"src/fixedPoint.cpp"

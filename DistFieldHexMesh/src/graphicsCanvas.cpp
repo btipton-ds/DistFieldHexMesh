@@ -773,6 +773,13 @@ Eigen::Matrix4d GraphicsCanvas::createTranslation(const Vector3d& delta)
     return result;
 }
 
+Eigen::Matrix4d GraphicsCanvas::createRotation(const Vector3d& axis, double angle)
+{
+    Eigen::Vector3d eAxis(axis[0], axis[1], axis[2]);
+    Eigen::Matrix4d result = rot3ToRot4<Eigen::Matrix4d>(Eigen::AngleAxisd(angle, eAxis).toRotationMatrix());
+    return result;
+}
+
 void GraphicsCanvas::moveOrigin(const Eigen::Vector2d& delta)
 {
     Eigen::Matrix4d pan(createTranslation(Vector3d(delta[0], delta[1], 0)));

@@ -27,60 +27,51 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <defines.h>
-#include <cmath>
+#include "wx/wxprec.h"
+#include <tm_vector3.h>
+
+#ifndef WX_PRECOMP
+#include "wx/wx.h"
+#include <wx/dialog.h>
+#endif
 
 namespace DFHM {
+	struct CreateB;
 
-struct BuildCFDParams {
-	inline size_t numConditionalPasses() const
-	{
-		size_t result = 0;
+	class CreateBaseMeshDlg : public wxDialog {
+	public:
 
-		if (numIntersectionDivs > result)
-			result = numIntersectionDivs;
+		CreateBaseMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
+			const wxPoint& pos = wxDefaultPosition);
 
-		if (numSharpVertDivs > result)
-			result = numSharpVertDivs;
+		void getParams(BuildCFDParams& params) const;
 
-		if (numCurvatureDivs > result)
-			result = numCurvatureDivs;
+	private:
+		void getValue(wxTextCtrl* item, size_t& curValue) const;
+		void getValue(wxTextCtrl* item, double& curValue) const;
 
-		if (numSharpEdgeIntersectionDivs > result)
-			result = numSharpEdgeIntersectionDivs;
+		wxStaticText
+			* _baseBoxOffsetPrompt = nullptr,
+			* _xRotatationPrompt = nullptr,
+			* _yRotatationPrompt = nullptr,
+			* _zRotatationPrompt = nullptr;
 
-		return result;
-	}
-	double getSharpAngleRadians() const;
-	double getSharpAngleDegrees() const;
+		wxCheckBox
+			* _symXCheckBox = nullptr,
+			* _symYCheckBox = nullptr,
+			* _symZCheckBox = nullptr;
 
-	bool uniformRatio = false;
-	bool splitAtSharpVerts = true;
+		wxTextCtrl
+			* _baseBoxOffsetText,
+			* _xRotationText,
+			* _yRotationText,
+			* _zRotationText;
 
-	bool symXAxis = false;
-	bool symYAxis = true;
-	bool symZAxis = false;
+		wxButton
+			* _okButton,
+			* _cancelButton;
 
-	size_t minBlocksPerSide = 6;
-	size_t numBlockDivs = 0;
-	size_t numSimpleDivs = 0;
-	size_t numIntersectionDivs = 0;
-	size_t numSharpVertDivs = 0;
-	size_t numSharpEdgeIntersectionDivs = 2;
-	size_t numCurvatureDivs = 0;
-	size_t divsPerCurvatureRadius = 2;
-	size_t divsPerGapCurvatureRadius = 4;
-	size_t maxCellFaces = 12;
+	};
 
-	double baseBoxOffset = 1;
-	double xRotationDeg = 0;
-	double yRotationDeg = 0;
-	double zRotationDeg = 0;
-	double maxGapSize = 0.01; // 10 mm
-	double maxCurvatureRadius_meters = 1.0; // 1m
-	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
-	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
-	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
-};
 
 }

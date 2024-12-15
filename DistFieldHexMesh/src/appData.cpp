@@ -33,6 +33,9 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include "defines.h"
 
+#include <Eigen/Geometry>
+#include <Eigen/src/Core/Matrix.h>
+
 #include <tm_ray.h>
 #include <splitParams.h>
 #include <appData.h>
@@ -41,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <readWriteStl.h>
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
+#include <createBaseMeshDlg.h>
 #include <buildCFDHexesDlg.h>
 
 #include <splitParams.h>
@@ -384,6 +388,16 @@ CBoundingBox3Dd AppData::getBoundingBox() const
     return result;
 }
 
+CBoundingBox3Dd AppData::getMeshBoundingBox() const
+{
+    CBoundingBox3Dd result;
+    for (const auto& pair : _meshData) {
+        result.merge(pair.second->getMesh()->getBBox());
+    }
+
+    return result;
+}
+
 void AppData::getDisplayMinMax(Index3D& min, Index3D& max) const
 {
     min = _minDisplayBlock;
@@ -425,6 +439,92 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
 
 void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 {
+}
+
+void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
+{
+    auto pCanvas = _pMainFrame->getCanvas();
+    pCanvas->clearMesh3D();
+    _pVolume = make_shared<Volume>();
+
+    dlg.getParams(_params);
+
+    auto bbox = getMeshBoundingBox();
+    Vector3d ctr = bbox.getMin() + bbox.range() * 0.5;
+
+    Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
+    Eigen::Matrix4d trans(GraphicsCanvas::createTranslation(-ctr)), untrans(GraphicsCanvas::createTranslation(ctr));
+    Eigen::Matrix4d xRot = GraphicsCanvas::createRotation(xAxis, _params.xRotationDeg * M_PI / 180);
+    Eigen::Matrix4d yRot = GraphicsCanvas::createRotation(yAxis, _params.yRotationDeg * M_PI / 180);
+    Eigen::Matrix4d zRot = GraphicsCanvas::createRotation(zAxis, _params.zRotationDeg * M_PI / 180);
+    Eigen::Matrix4d xform;
+    xform.setIdentity();
+    xform = trans * xform;
+    xform = xRot * xform;
+    xform = yRot * xform;
+    xform = zRot * xform;
+
+    CBoundingBox3Dd bboxOriented;
+    for (const auto& pair : _meshData) {
+        const auto pMesh = pair.second->getMesh();
+        for (size_t i = 0; i < pMesh->numVertices(); i++) {
+            const Vector3d& pt = pMesh->getVert(i)._pt;
+            Eigen::Vector4d pt4(pt[0], pt[1], pt[2], 1);
+            pt4 = xform * pt4;
+            Vector3d ptX(pt4[0], pt4[1], pt4[2]);
+            bboxOriented.merge(ptX);
+        }
+    }
+
+    Eigen::Vector4d cubePts4[8];
+    auto min = bboxOriented.getMin();
+    auto max = bboxOriented.getMax();
+
+    if (!_params.symXAxis)
+        min[0] -= _params.baseBoxOffset;
+    if (!_params.symYAxis)
+        min[1] -= _params.baseBoxOffset;
+    if (!_params.symZAxis)
+        min[2] -= _params.baseBoxOffset;
+
+    max[0] += _params.baseBoxOffset;
+    max[1] += _params.baseBoxOffset;
+    max[2] += _params.baseBoxOffset;
+
+    size_t idx = 0;
+    cubePts4[idx++] = Eigen::Vector4d(min[0], min[1], min[2], 1);
+    cubePts4[idx++] = Eigen::Vector4d(max[0], min[1], min[2], 1);
+    cubePts4[idx++] = Eigen::Vector4d(max[0], max[1], min[2], 1);
+    cubePts4[idx++] = Eigen::Vector4d(min[0], max[1], min[2], 1);
+
+    cubePts4[idx++] = Eigen::Vector4d(min[0], min[1], max[2], 1); // 1
+    cubePts4[idx++] = Eigen::Vector4d(max[0], min[1], max[2], 1); // 2
+    cubePts4[idx++] = Eigen::Vector4d(max[0], max[1], max[2], 1); // 3
+    cubePts4[idx++] = Eigen::Vector4d(min[0], max[1], max[2], 1); // 4
+
+    xform = xform.inverse();
+    bbox.clear();
+    Vector3d cubePts[8];
+    for (size_t i = 0; i < 8; i++) {
+        Eigen::Vector4d pt4 = xform * cubePts4[i];
+        cubePts[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
+        bbox.merge(cubePts[i]);
+    }
+
+    CMeshPtr pMesh = make_shared<CMesh>(bbox);
+    pMesh->addQuad(cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
+    pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
+    pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
+
+    MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, L"bounds", _pMainFrame->getCanvas()->getViewOptions());
+
+    _pMainFrame->registerMeshData(pMeshData);
+    pMeshData->makeOGLTess();
+    _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
+
+    _pMainFrame->refreshObjectTree();
+
+    _pMainFrame->getCanvas()->resetView();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

@@ -53,7 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Index3D Volume::s_volDim;
+Index3D Volume::s_volDim(0, 0, 0);
 
 Volume::Volume()
 {

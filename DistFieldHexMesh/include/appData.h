@@ -46,6 +46,7 @@ class MainFrame;
 class MakeBlockDlg;
 class SelectBlocksDlg;
 class BuildCFDHexesDlg;
+class CreateBaseMeshDlg;
 
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
@@ -63,6 +64,7 @@ public:
     void doVerifyNormals(const CMeshPtr& pMesh);
     void doAnalyzeGaps(const CMeshPtr& pMesh);
     void doFindMinGap(const CMeshPtr& pMesh) const;
+    void doCreateBaseVolume(const CreateBaseMeshDlg& dlg);
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
@@ -73,6 +75,7 @@ public:
     }
 
     CBoundingBox3Dd getBoundingBox() const;
+    CBoundingBox3Dd getMeshBoundingBox() const;
     void getDisplayMinMax(Index3D& min, Index3D& max) const;
     void setDisplayMinMax(const Index3D& min, const Index3D& max);
 
