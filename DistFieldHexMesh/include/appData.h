@@ -96,6 +96,7 @@ private:
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
+    TriMesh::CMeshRepoPtr _pModelMeshRepo, _hexMeshRepo;
     std::map<std::wstring, MeshDataPtr> _meshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;

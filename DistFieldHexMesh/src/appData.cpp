@@ -62,6 +62,8 @@ using namespace DFHM;
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
+    _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
+    _hexMeshRepo = make_shared<TriMesh::CMeshRepo>();
 }
 
 void AppData::doOpen()
@@ -92,7 +94,7 @@ void AppData::doOpen()
 
 CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
 {
-    CMeshPtr pMesh = make_shared<CMesh>();
+    CMeshPtr pMesh = make_shared<CMesh>(_pModelMeshRepo);
     CReadWriteSTL reader(pMesh);
 
     wstring path(pathIn);
@@ -199,7 +201,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         bool hasMesh;
         in.read((char*)&hasMesh, sizeof(hasMesh));
         if (hasMesh) {
-            CMeshPtr pMesh = make_shared<CMesh>();
+            CMeshPtr pMesh = make_shared<CMesh>(_pModelMeshRepo);
             pMesh->read(in);
             wstring name(L"default");
             MeshDataPtr pData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
@@ -213,7 +215,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            MeshDataPtr pData = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions());
+            MeshDataPtr pData = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
             pData->read(in);
             _pMainFrame->registerMeshData(pData);
             pData->makeOGLTess();
@@ -518,7 +520,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
         bbox.merge(cubePts[i]);
     }
 
-    CMeshPtr pMesh = make_shared<CMesh>(bbox);
+    CMeshPtr pMesh = make_shared<CMesh>(bbox, _hexMeshRepo);
     pMesh->addQuad(cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
     pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
     pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);

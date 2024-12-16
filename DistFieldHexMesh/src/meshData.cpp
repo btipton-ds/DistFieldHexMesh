@@ -34,8 +34,9 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const VBORec::ChangeElementsOptions& options)
+MeshData::MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo)
 : _options(options)
+, _pRepo(pRepo)
 {
 	_VBOs = make_shared<VBORec>();
 }
@@ -43,6 +44,7 @@ MeshData::MeshData(const VBORec::ChangeElementsOptions& options)
 MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
 	: _name(name)
 	, _pMesh(pMesh)
+	, _pRepo(pMesh->getRepo())
 	, _options(options)
 {
 	_VBOs = make_shared<VBORec>();
@@ -75,7 +77,7 @@ void MeshData::read(std::istream& in)
 	buf[numChars] = (wchar_t)0;
 	_name = wstring(buf);
 
-	_pMesh = make_shared<CMesh>();
+	_pMesh = make_shared<CMesh>(_pRepo);
 	_pMesh->read(in);
 }
 
@@ -292,7 +294,7 @@ CMeshPtr MeshData::getSharpVertMesh() const
 	vector<size_t> sVerts;
 	Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
 	if (!sVerts.empty()) {
-		CMeshPtr pMesh = make_shared<CMesh>(bBox);
+		CMeshPtr pMesh = make_shared<CMesh>(bBox, _pRepo);
 		for (size_t vertIdx : sVerts) {
 			auto pt = _pMesh->getVert(vertIdx)._pt;
 			addPointMarker(pMesh, pt, radius);

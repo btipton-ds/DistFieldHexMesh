@@ -49,7 +49,7 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData(const VBORec::ChangeElementsOptions& options);
+		MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo);
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
 
 		const TriMesh::CMeshPtr& getMesh() const;
@@ -97,6 +97,7 @@ namespace DFHM {
 		CMeshPtr getSharpVertMesh() const;
 
 		std::wstring _name;
+		TriMesh::CMeshRepoPtr _pRepo;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
 		bool 
