@@ -60,7 +60,7 @@ void MeshData::write(std::ostream& out) const
 	size_t numChars = _name.size();
 	out.write((char*)&numChars, sizeof(numChars));
 	out.write((char*)_name.c_str(), numChars * sizeof(wchar_t));
-	_pMesh->write(out);
+	_pMesh->write(out, false);
 }
 
 void MeshData::read(std::istream& in)
@@ -78,7 +78,7 @@ void MeshData::read(std::istream& in)
 	_name = wstring(buf);
 
 	_pMesh = make_shared<CMesh>(_pRepo);
-	_pMesh->read(in);
+	_pMesh->read(in, false);
 }
 
 void MeshData::beginFaceTesselation()

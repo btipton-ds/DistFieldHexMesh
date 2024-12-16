@@ -66,6 +66,11 @@ AppData::AppData(MainFrame* pMainFrame)
     _hexMeshRepo = make_shared<TriMesh::CMeshRepo>();
 }
 
+AppData::~AppData()
+{
+    _meshData.clear();
+}
+
 void AppData::doOpen()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
@@ -172,8 +177,10 @@ void AppData::writeDHFM() const
 {
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
-    uint8_t version = 1;
+    uint8_t version = 2;
     out.write((char*)&version, sizeof(version));
+
+    _pModelMeshRepo->write(out);
 
     size_t numMeshes = _meshData.size();
     out.write((char*)&numMeshes, sizeof(numMeshes));
@@ -197,31 +204,20 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     uint8_t version;
     in.read((char*)&version, sizeof(version));
     if (version == 0) {
-
-        bool hasMesh;
-        in.read((char*)&hasMesh, sizeof(hasMesh));
-        if (hasMesh) {
-            CMeshPtr pMesh = make_shared<CMesh>(_pModelMeshRepo);
-            pMesh->read(in);
-            wstring name(L"default");
-            MeshDataPtr pData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
-            _pMainFrame->registerMeshData(pData);
-            pData->makeOGLTess();
-            _meshData.insert(make_pair(name, pData));
-        }
-
     } else if (version == 1) {
-        size_t numMeshes;
+    } else if (version == 2) {
+        _pModelMeshRepo->read(in);
+
+        size_t numMeshes = _meshData.size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            MeshDataPtr pData = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
-            pData->read(in);
-            _pMainFrame->registerMeshData(pData);
-            pData->makeOGLTess();
-            _meshData.insert(make_pair(pData->getName(), pData));
+            auto p = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
+            p->read(in);
+            _pMainFrame->registerMeshData(p);
+            p->makeOGLTess();
+            _meshData.insert(make_pair(p->getName(), p));
         }
-
     }
 
     bool hasVolume;

@@ -56,6 +56,8 @@ public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
     AppData(MainFrame* pMainFrame = nullptr);
+    virtual ~AppData();
+
     void doOpen();
     bool doImportMesh();
     void doSave();

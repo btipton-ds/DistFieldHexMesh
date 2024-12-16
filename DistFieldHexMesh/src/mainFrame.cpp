@@ -311,6 +311,7 @@ void MainFrame::OnInternalIdle()
 void MainFrame::OnOpen(wxCommandEvent& event)
 {
     _pAppData->doOpen();
+    refreshObjectTree();
 }
 
 void MainFrame::registerMeshData(MeshDataPtr& pMeshData)
