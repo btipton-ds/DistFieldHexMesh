@@ -254,12 +254,13 @@ void AppData::doVerifyNormals(const CMeshPtr& pMesh)
     size_t numEdges = pMesh->numEdges();
     for (size_t i = 0; i < numEdges; i++) {
         const auto& edge = pMesh->getEdge(i);
-        if (edge._numFaces == 2) {
+        auto pTopol = edge.getTopol(pMesh->getId());
+        if (pTopol->_numFaces == 2) {
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Index3D& faceIndices0 = pMesh->getTri(edge._faceIndices[0]);
-            const Index3D& faceIndices1 = pMesh->getTri(edge._faceIndices[1]);
+            const Index3D& faceIndices0 = pMesh->getTri(pTopol->_faceIndices[0]);
+            const Index3D& faceIndices1 = pMesh->getTri(pTopol->_faceIndices[1]);
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {

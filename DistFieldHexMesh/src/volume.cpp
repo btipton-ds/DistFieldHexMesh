@@ -137,7 +137,8 @@ void Volume::findSharpEdgeEdges()
 	const double sinSharpAngle = sin(getSharpAngleRad());
 	for (size_t edgeIdx = 0; edgeIdx < _pModelTriMesh->numEdges(); edgeIdx++) {
 		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
-		if (edge._numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
+		auto pTopol = edge.getTopol(_pModelTriMesh->getId());
+		if (pTopol->_numFaces == 2 && _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
 			_sharpEdgeIndices.insert(edgeIdx);
 		}
 	}
@@ -151,9 +152,9 @@ void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngle
 	for (size_t vIdx = 0; vIdx < numVerts; vIdx++) {
 		const auto& vert = pMesh->getVert(vIdx);
 		double maxDp = 1;
-		const auto& edgeIndices = vert._edgeIndices;
+		const auto pEdgeIndices = vert.getEdgeIndices(pMesh->getId());
 		vector<Vector3d> radiantVectors;
-		for (size_t edgeIdx : edgeIndices) {
+		for (size_t edgeIdx : *pEdgeIndices) {
 			if (pMesh->isEdgeSharp(edgeIdx, sinSharpAngle)) {
 				auto edge0 = pMesh->getEdge(edgeIdx);
 				size_t opIdx0 = edge0._vertIndex[0] == vIdx ? edge0._vertIndex[1] : edge0._vertIndex[0];
