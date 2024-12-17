@@ -446,6 +446,26 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 {
 }
 
+void AppData::addDividedQuadFace(const CMeshPtr& pMesh, 
+    size_t div0, size_t div1, 
+    const Vector3d& cpt0, const Vector3d& cpt1, const Vector3d& cpt2, const Vector3d& cpt3) const
+{
+    for (size_t i = 0; i < div0; i++) {
+        double t0 = i / (double)div0;
+        double t1 = (i + 1) / (double)div0;
+        for (size_t i = 0; i < div1; i++) {
+            double u0 = i / (double)div1;
+            double u1 = (i + 1) / (double)div1;
+            auto pt0 = BI_LERP(cpt0, cpt1, cpt2, cpt3, t0, u0);
+            auto pt1 = BI_LERP(cpt0, cpt1, cpt2, cpt3, t1, u0);
+            auto pt2 = BI_LERP(cpt0, cpt1, cpt2, cpt3, t1, u1);
+            auto pt3 = BI_LERP(cpt0, cpt1, cpt2, cpt3, t0, u1);
+            pMesh->addQuad(pt0, pt3, pt2, pt1);
+        }
+    }
+
+}
+
 void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 {
 //    Volume::setVolDim(Index3D(5, 5, 5));
@@ -520,21 +540,10 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     }
 
     CMeshPtr pMesh = make_shared<CMesh>(bbox, _hexMeshRepo);
-    for (size_t i = 0; i < _params.xDivs; i++) {
-        double t0 = i / (double)_params.xDivs;
-        double t1 = (i + 1) / (double)_params.xDivs;
-        for (size_t i = 0; i < _params.xDivs; i++) {
-            double u0 = i / (double)_params.xDivs;
-            double u1 = (i + 1) / (double)_params.xDivs;
-            auto pt0 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t0, u0);
-            auto pt1 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t1, u0);
-            auto pt2 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t1, u1);
-            auto pt3 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t0, u1);
-            pMesh->addQuad(pt0, pt3, pt2, pt1);
-        }
-    }
-    pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
-    pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
+    addDividedQuadFace(pMesh, _params.xDivs, _params.zDivs, cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
+    addDividedQuadFace(pMesh, _params.yDivs, _params.xDivs, cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
+    addDividedQuadFace(pMesh, _params.yDivs, _params.zDivs, cubePts[0], cubePts[3], cubePts[7], cubePts[4]);
+
 
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, baseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);

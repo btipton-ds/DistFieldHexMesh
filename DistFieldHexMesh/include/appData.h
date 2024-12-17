@@ -97,6 +97,9 @@ private:
     void updateTessellation(const Index3D& min, const Index3D& max);
     void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void addDividedQuadFace(const CMeshPtr& pMesh, 
+        size_t div0, size_t div1, 
+        const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const;
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;

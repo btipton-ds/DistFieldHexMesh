@@ -727,7 +727,7 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.75f, 0, 0);
                 break;
             case DS_MODEL_REF_EDGES:
-                glLineWidth(2.0f);
+                glLineWidth(0.75f);
                 _graphicsUBO.defColor = p3f(1.0f, 0, 0);
                 break;
         }
