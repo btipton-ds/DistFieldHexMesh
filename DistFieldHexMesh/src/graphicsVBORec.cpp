@@ -41,11 +41,11 @@ VBORec::~VBORec()
 {
 }
 
-void VBORec::changeFaceViewElements(bool visible, const ChangeElementsOptions& opts)
+void VBORec::changeFaceViewElements(bool visible, bool reference, const ChangeElementsOptions& opts)
 {
     _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    if (visible) {
+    if (visible && !reference) {
         if (_pTriTess) {
             if (opts.showCurvature)
                 _faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *_pTriTess);
@@ -94,43 +94,47 @@ void VBORec::changeFaceViewElements(bool visible, const ChangeElementsOptions& o
     _faceVBO.endSettingElementIndices();
 }
 
-void VBORec::changeEdgeViewElements(bool visible, const ChangeElementsOptions& opts)
+void VBORec::changeEdgeViewElements(bool visible, bool reference, const ChangeElementsOptions& opts)
 {
     _edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
     if (visible) {
-        if (opts.showSharpEdges && _pSharpEdgeTess) {
-            _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
-        }
-        if (opts.showTriNormals && _pNormalTess) {
-            _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
-        }
-        if (opts.showEdges && !_edgeTessellations.empty()) {
-            if (opts.showOuter && FT_OUTER < _edgeTessellations.size()) {
-                for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
-                    if (pBlockTess)
-                        _edgeVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
-                }
+        if (reference) {
+            _edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, *_pTriTess);
+        } else {
+            if (opts.showSharpEdges && _pSharpEdgeTess) {
+                _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);
             }
-
-            if (!opts.showOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
-                for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
-                    if (pBlockTess)
-                        _edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
-                }
+            if (opts.showTriNormals && _pNormalTess) {
+                _edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *_pNormalTess);
             }
-
-            if (!opts.showOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
-                for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
-                    if (pBlockTess)
-                        _edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+            if (opts.showEdges && !_edgeTessellations.empty()) {
+                if (opts.showOuter && FT_OUTER < _edgeTessellations.size()) {
+                    for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
+                        if (pBlockTess)
+                            _edgeVBO.includeElementIndices(DS_BLOCK_OUTER, *pBlockTess);
+                    }
                 }
-            }
 
-            if (!opts.showSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
-                for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
-                    if (pBlockTess)
-                        _edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+                if (!opts.showOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
+                    for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
+                        if (pBlockTess)
+                            _edgeVBO.includeElementIndices(DS_BLOCK_INNER, *pBlockTess);
+                    }
+                }
+
+                if (!opts.showOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+                    for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
+                        if (pBlockTess)
+                            _edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, *pBlockTess);
+                    }
+                }
+
+                if (!opts.showSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
+                    for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
+                        if (pBlockTess)
+                            _edgeVBO.includeElementIndices(DS_BLOCK_ALL, *pBlockTess);
+                    }
                 }
             }
         }

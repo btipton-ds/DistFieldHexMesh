@@ -58,8 +58,8 @@ namespace DFHM {
 		VBORec();
 		virtual ~VBORec();
 
-		void changeFaceViewElements(bool visible, const ChangeElementsOptions& opts);
-		void changeEdgeViewElements(bool visible, const ChangeElementsOptions& opts);
+		void changeFaceViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
+		void changeEdgeViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
 
 		const OGLIndices
 			* _pTriTess = nullptr,

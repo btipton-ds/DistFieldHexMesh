@@ -520,7 +520,19 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     }
 
     CMeshPtr pMesh = make_shared<CMesh>(bbox, _hexMeshRepo);
-    pMesh->addQuad(cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
+    for (size_t i = 0; i < _params.xDivs; i++) {
+        double t0 = i / (double)_params.xDivs;
+        double t1 = (i + 1) / (double)_params.xDivs;
+        for (size_t i = 0; i < _params.xDivs; i++) {
+            double u0 = i / (double)_params.xDivs;
+            double u1 = (i + 1) / (double)_params.xDivs;
+            auto pt0 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t0, u0);
+            auto pt1 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t1, u0);
+            auto pt2 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t1, u1);
+            auto pt3 = BI_LERP(cubePts[0], cubePts[3], cubePts[2], cubePts[1], t0, u1);
+            pMesh->addQuad(pt0, pt3, pt2, pt1);
+        }
+    }
     pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
     pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
 

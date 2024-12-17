@@ -62,6 +62,7 @@ namespace DFHM {
 		AppDataPtr _pAppData;
 
 		wxStaticText
+			* _divsPrompt = nullptr,
 			* _baseBoxOffsetPrompt = nullptr,
 			* _xRotatationPrompt = nullptr,
 			* _yRotatationPrompt = nullptr,
@@ -76,7 +77,10 @@ namespace DFHM {
 			* _baseBoxOffsetText,
 			* _xRotationText,
 			* _yRotationText,
-			* _zRotationText;
+			* _zRotationText,
+			* _xDivsText,
+			* _yDivsText,
+			* _zDivsText;
 
 		wxButton
 			* _applyButton,

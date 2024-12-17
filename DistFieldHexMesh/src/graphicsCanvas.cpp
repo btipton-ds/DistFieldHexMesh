@@ -726,6 +726,10 @@ void GraphicsCanvas::drawEdges()
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.75f, 0, 0);
                 break;
+            case DS_MODEL_REF_EDGES:
+                glLineWidth(2.0f);
+                _graphicsUBO.defColor = p3f(1.0f, 0, 0);
+                break;
         }
         _graphicsUBO.ambient = 1.0f;
         glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
@@ -1020,7 +1024,7 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    _modelVBOs->changeFaceViewElements(true, _viewOptions);
+    _modelVBOs->changeFaceViewElements(true, false, _viewOptions);
     auto& objs = _pAppData->getMeshObjects();
     for (auto& pair : objs) {
         auto& obj = pair.second;
@@ -1030,7 +1034,7 @@ void GraphicsCanvas::changeFaceViewElements()
 
 void GraphicsCanvas::changeEdgeViewElements()
 {
-    _modelVBOs->changeEdgeViewElements(true, _viewOptions);
+    _modelVBOs->changeEdgeViewElements(true, false, _viewOptions);
     auto& objs = _pAppData->getMeshObjects();
     for (auto& pair : objs) {
         auto& obj = pair.second;

@@ -62,6 +62,7 @@ struct BuildCFDParams {
 	bool symZAxis = false;
 
 	size_t minBlocksPerSide = 6;
+	size_t xDivs = 5, yDivs = 5, zDivs = 5;
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 0;
 	size_t numIntersectionDivs = 0;

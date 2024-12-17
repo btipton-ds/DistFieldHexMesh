@@ -89,7 +89,7 @@ namespace DFHM {
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 		const OGLIndices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
 		const OGLIndices* setEdgeSegTessellation(const CMeshPtr& pMesh);
-		void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
+		void endEdgeTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
 		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
@@ -110,7 +110,7 @@ namespace DFHM {
 		const COglMultiVboHandler::OGLIndices* _normalTess = nullptr;
 		const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
 
-		VBORec _VBOs;
+		std::shared_ptr<VBORec> _VBOs;
 	};
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
@@ -145,12 +145,12 @@ namespace DFHM {
 
 	inline COglMultiVboHandler& MeshData::getFaceVBO()
 	{
-		return _VBOs._faceVBO;
+		return _VBOs->_faceVBO;
 	}
 
 	inline COglMultiVboHandler& MeshData::getEdgeVBO()
 	{
-		return _VBOs._edgeVBO;
+		return _VBOs->_edgeVBO;
 	}
 
 	inline bool MeshData::isActive() const

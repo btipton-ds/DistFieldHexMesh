@@ -50,6 +50,10 @@ namespace
 		Y_ROT_ANGLE,
 		Z_ROT_ANGLE,
 
+		X_DIVS,
+		Y_DIVS,
+		Z_DIVS,
+
 		X_SYM,
 		Y_SYM,
 		Z_SYM,
@@ -68,11 +72,12 @@ END_EVENT_TABLE()
 int frameWidth = 400;
 int frameHeight = 460;
 int rightEdge = frameWidth - 20;
-int gap = 3;
+int gap = 2;
 int descent = 3;
-int promptWidth = 140;
+int promptWidth = 110;
 int buttonWidth = 80;
 int boxWidth = 80;
+int boxWidth1 = 30;
 int boxHeight = 21;
 int rowHeight = boxHeight + descent;
 int col0 = 8;
@@ -115,6 +120,12 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	rowNum++;
 	_baseBoxOffsetPrompt = new wxStaticText(this, 0, _T("Base offset"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_baseBoxOffsetText = new wxTextCtrl(this, BASE_OFFSET, std::to_string(params.baseBoxOffset), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_divsPrompt = new wxStaticText(this, 0, _T("Divs (x,y,z)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xDivsText = new wxTextCtrl(this, X_DIVS, std::to_string(params.xDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_yDivsText = new wxTextCtrl(this, Y_DIVS, std::to_string(params.yDivs), wxPoint(col1 + 1 * (boxWidth1 + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_zDivsText = new wxTextCtrl(this, Z_DIVS, std::to_string(params.zDivs), wxPoint(col1 + 2 * (boxWidth1 + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_symXCheckBox = new wxCheckBox(this, X_SYM, _T("Y-Z Symmetry"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -164,6 +175,11 @@ void CreateBaseMeshDlg::getParams(BuildCFDParams& params) const
 	getValue(_xRotationText, params.xRotationDeg);
 	getValue(_yRotationText, params.yRotationDeg);
 	getValue(_zRotationText, params.zRotationDeg);
+
+	getValue(_xDivsText, params.xDivs);
+	getValue(_yDivsText, params.yDivs);
+	getValue(_zDivsText, params.zDivs);
+
 	getValue(_baseBoxOffsetText, params.baseBoxOffset);
 
 }

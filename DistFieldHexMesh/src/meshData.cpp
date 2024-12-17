@@ -38,6 +38,7 @@ MeshData::MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::
 : _options(options)
 , _pRepo(pRepo)
 {
+	_VBOs = make_shared<VBORec>();
 }
 
 MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
@@ -46,6 +47,7 @@ MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name, con
 	, _pRepo(pMesh->getRepo())
 	, _options(options)
 {
+	_VBOs = make_shared<VBORec>();
 }
 
 MeshData::~MeshData()
@@ -85,7 +87,7 @@ void MeshData::read(std::istream& in)
 
 void MeshData::beginFaceTesselation()
 {
-	_VBOs._faceVBO.beginFaceTesselation();
+	_VBOs->_faceVBO.beginFaceTesselation();
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
@@ -104,23 +106,23 @@ const COglMultiVboHandler::OGLIndices* MeshData::createFaceTessellation(const Tr
 		};
 
 	const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-	return _VBOs._faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
+	return _VBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
 }
 
 void MeshData::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
 {
-	_VBOs._faceVBO.endFaceTesselation(smoothNormals);
-	_VBOs._pTriTess = pTriTess;
-	_VBOs._pSharpVertTess = pSharpVertTess;
-	_VBOs._faceTessellations.clear();
+	_VBOs->_faceVBO.endFaceTesselation(smoothNormals);
+	_VBOs->_pTriTess = pTriTess;
+	_VBOs->_pSharpVertTess = pSharpVertTess;
+	_VBOs->_faceTessellations.clear();
 
 	changeFaceViewElements(_options);
 }
 
 void MeshData::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
 {
-	_VBOs._faceVBO.endFaceTesselation(false);
-	_VBOs._faceTessellations = faceTess;
+	_VBOs->_faceVBO.endFaceTesselation(false);
+	_VBOs->_faceTessellations = faceTess;
 
 	changeFaceViewElements(_options);
 }
@@ -128,13 +130,13 @@ void MeshData::endFaceTesselation(const std::vector<std::vector<const OGLIndices
 
 void MeshData::beginEdgeTesselation()
 {
-	_VBOs._edgeVBO.beginEdgeTesselation();
+	_VBOs->_edgeVBO.beginEdgeTesselation();
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 const OGLIndices* MeshData::setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices)
 {
-	return _VBOs._edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
+	return _VBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
 const OGLIndices* MeshData::setEdgeSegTessellation(const CMeshPtr& pMesh)
@@ -154,27 +156,28 @@ const OGLIndices* MeshData::setEdgeSegTessellation(const CMeshPtr& pMesh)
 		return true;
 		};
 
-	pMesh->getGlEdges(colorFunc, false, points, colors, indices);
+	pMesh->getGlEdges(colorFunc, _reference, points, colors, indices);
 
-	return _VBOs._edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
+	return _VBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }
 
-void MeshData::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
+void MeshData::endEdgeTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
 {
-	_VBOs._edgeVBO.endEdgeTesselation();
+	_VBOs->_edgeVBO.endEdgeTesselation();
 
-	_VBOs._pSharpEdgeTess = pSharpEdgeTess;
-	_VBOs._pNormalTess = pNormalTess;
-	_VBOs._edgeTessellations.clear();
+	_VBOs->_pTriTess = pTriTess;
+	_VBOs->_pSharpEdgeTess = pSharpEdgeTess;
+	_VBOs->_pNormalTess = pNormalTess;
+	_VBOs->_edgeTessellations.clear();
 
 	changeEdgeViewElements(_options);
 }
 
 void MeshData::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
 {
-	_VBOs._edgeVBO.endEdgeTesselation();
+	_VBOs->_edgeVBO.endEdgeTesselation();
 
-	_VBOs._edgeTessellations = edgeTess;
+	_VBOs->_edgeTessellations = edgeTess;
 
 	changeEdgeViewElements(_options);
 }
@@ -206,7 +209,7 @@ void MeshData::makeOGLTess()
 	if (!normPts.empty())
 		_normalTess = setEdgeSegTessellation(_pMesh->getId() + 10000ull, _pMesh->getChangeNumber(), normPts, normIndices);
 
-	endEdgeTesselation(_edgeTess, _normalTess);
+	endEdgeTesselation(_edgeTess, nullptr, _normalTess);
 
 }
 
@@ -242,18 +245,18 @@ void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int
 
 void MeshData::changeFaceViewElements(const VBORec::ChangeElementsOptions& opts)
 {
-	_VBOs.changeFaceViewElements(_active, opts);
+	_VBOs->changeFaceViewElements(_active, _reference, opts);
 }
 
 void MeshData::changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts)
 {
-	_VBOs.changeEdgeViewElements(_active, opts);
+	_VBOs->changeEdgeViewElements(_active, _reference, opts);
 }
 
 void MeshData::setShader(std::shared_ptr<COglShader> pShader)
 {
-	_VBOs._faceVBO.setShader(pShader.get());
-	_VBOs._edgeVBO.setShader(pShader.get());
+	_VBOs->_faceVBO.setShader(pShader.get());
+	_VBOs->_edgeVBO.setShader(pShader.get());
 }
 
 void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
