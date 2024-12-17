@@ -103,9 +103,8 @@ MainFrame::MainFrame(wxWindow* parent,
 
 MainFrame::~MainFrame()
 {
-    // Clear the canvas first
-    _pCanvas->preDestroy();
     _pAppData = nullptr;
+    _pCanvas->preDestroy();
 }
 
 void MainFrame::addMenus()
@@ -408,11 +407,8 @@ void MainFrame::OnPaste(wxCommandEvent& event)
 
 void MainFrame::OnCreateBaseMesh(wxCommandEvent& event)
 {
-    BuildCFDParams& params = _pAppData->getParams();
-    CreateBaseMeshDlg dlg(params, this, 1, wxString("Create base volume"), wxPoint(40, 40));
-    if (dlg.ShowModal() == wxID_OK) {
-        _pAppData->doCreateBaseVolume(dlg);
-    }
+    CreateBaseMeshDlg* pDlg = new CreateBaseMeshDlg(_pAppData, this, 1, wxString("Create base volume"), wxPoint(40, 40));
+    pDlg->Show();
 }
 
 void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)

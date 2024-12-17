@@ -51,6 +51,7 @@ namespace DFHM {
 	public:
 		MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo);
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
+		virtual ~MeshData();
 
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
@@ -109,7 +110,7 @@ namespace DFHM {
 		const COglMultiVboHandler::OGLIndices* _normalTess = nullptr;
 		const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
 
-		std::shared_ptr<VBORec> _VBOs;
+		VBORec _VBOs;
 	};
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
@@ -144,12 +145,12 @@ namespace DFHM {
 
 	inline COglMultiVboHandler& MeshData::getFaceVBO()
 	{
-		return _VBOs->_faceVBO;
+		return _VBOs._faceVBO;
 	}
 
 	inline COglMultiVboHandler& MeshData::getEdgeVBO()
 	{
-		return _VBOs->_edgeVBO;
+		return _VBOs._edgeVBO;
 	}
 
 	inline bool MeshData::isActive() const

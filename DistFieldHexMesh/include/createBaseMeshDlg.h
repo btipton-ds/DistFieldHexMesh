@@ -36,19 +36,30 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 namespace DFHM {
+	class AppData;
+	using AppDataPtr = std::shared_ptr<AppData>;
 	struct CreateB;
 
 	class CreateBaseMeshDlg : public wxDialog {
 	public:
 
-		CreateBaseMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
+		CreateBaseMeshDlg(AppDataPtr& params, wxWindow* parent, wxWindowID id, const wxString& title,
 			const wxPoint& pos = wxDefaultPosition);
+		~CreateBaseMeshDlg();
 
 		void getParams(BuildCFDParams& params) const;
+
+		void OnApply(wxCommandEvent& event);
+		void OnOk(wxCommandEvent& event);
+		void OnCancel(wxCommandEvent& event);
 
 	private:
 		void getValue(wxTextCtrl* item, size_t& curValue) const;
 		void getValue(wxTextCtrl* item, double& curValue) const;
+
+		bool _createdMesh = false;
+
+		AppDataPtr _pAppData;
 
 		wxStaticText
 			* _baseBoxOffsetPrompt = nullptr,
@@ -68,9 +79,11 @@ namespace DFHM {
 			* _zRotationText;
 
 		wxButton
+			* _applyButton,
 			* _okButton,
 			* _cancelButton;
 
+		wxDECLARE_EVENT_TABLE();
 	};
 
 

@@ -59,6 +59,11 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+namespace
+{
+    wstring baseVolumeName(L"Bounds");
+}
+
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
@@ -68,7 +73,6 @@ AppData::AppData(MainFrame* pMainFrame)
 
 AppData::~AppData()
 {
-    _meshData.clear();
 }
 
 void AppData::doOpen()
@@ -444,16 +448,14 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 
 void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 {
+//    Volume::setVolDim(Index3D(5, 5, 5));
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
     _pVolume = make_shared<Volume>();
 
     dlg.getParams(_params);
 
-    wstring name(L"Bounds");
-    auto iter = _meshData.find(name);
-    if (iter != _meshData.end())
-        _meshData.erase(iter);
+    doRemoveBaseVolume();
 
     auto bbox = getMeshBoundingBox();
     Vector3d ctr = bbox.getMin() + bbox.range() * 0.5;
@@ -522,7 +524,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     pMesh->addQuad(cubePts[4], cubePts[5], cubePts[6], cubePts[7]);
     pMesh->addQuad(cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
 
-    MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
+    MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, baseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
     _pMainFrame->registerMeshData(pMeshData);
@@ -530,6 +532,23 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
+}
+
+void AppData::doRemoveBaseVolume()
+{
+    auto iter = _meshData.find(baseVolumeName);
+    if (iter != _meshData.end()) {
+        auto pData = iter->second;
+        _meshData.erase(iter);
+
+    }
+
+    _pMainFrame->refreshObjectTree();
+}
+
+bool AppData::doesBaseMeshExist() const
+{
+    return _meshData.find(baseVolumeName) != _meshData.end();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

@@ -160,6 +160,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
 GraphicsCanvas::~GraphicsCanvas()
 {
+    cout << "GraphicsCanvas()\n";
 }
 
 namespace {
@@ -344,23 +345,25 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         // Rotate about point hit at arbitrary depth
         hitModel = NDCPointToModel(_mouseStartLocNDC_2D);
     } else {
+        Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
+        dir.normalize();
+        Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
+        Rayd ray(temp, dir);
         for (const auto pMesh : meshes) {
             bbox.merge(pMesh->getBBox());
-            Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
-            dir.normalize();
-            Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
-            Rayd ray(temp, dir);
             vector<RayHitd> hits;
             if (pMesh->rayCast(ray, hits)) {
                 hadHit = true;
                 // Rotate about hit point
                 hitModel = hits.front().hitPt; // Initialize for safety
                 for (const auto& hit : hits) {
+                    cout << "dist: " << hit.dist << "\n";
                     if (hit.dist < minDist) {
                         minDist = hit.dist;
                         hitModel = hit.hitPt;
                     }
                 }
+                cout << "minDist: " << minDist << "\n\n";
             }
         }
         if (!hadHit) {
@@ -368,7 +371,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         }
     }
 
-    _mouseStartModel = pointToLocal(hitModel);
+    _mouseStartLocal = pointToLocal(hitModel);
 
     _intitialModelView = _modelView;
     _leftDown = true;
@@ -425,7 +428,7 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
         Eigen::Vector2d delta = pos - _mouseStartLocNDC_2D;
         double angleSpin = delta[0] * M_PI / 2;
         double anglePitch = delta[1] * M_PI / 2;
-        applyRotation(angleSpin, anglePitch, _mouseStartModel);
+        applyRotation(angleSpin, anglePitch, _mouseStartLocal);
 
     } else if (_middleDown) {
         Eigen::Vector2d delta2D = pos - _mouseStartLocNDC_2D;

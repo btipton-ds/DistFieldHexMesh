@@ -195,7 +195,7 @@ private:
     AppDataPtr _pAppData;
     CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLocNDC_2D;
-    Vector3d _mouseStartModel;
+    Vector3d _mouseStartLocal;
     Vector3f _mouseLoc3D;
     Eigen::Matrix4d _projAspect;
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;

@@ -51,6 +51,9 @@ class CreateBaseMeshDlg;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 
+class AppData;
+using AppDataPtr = std::shared_ptr<AppData>;
+
 class AppData {
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
@@ -67,6 +70,7 @@ public:
     void doAnalyzeGaps(const CMeshPtr& pMesh);
     void doFindMinGap(const CMeshPtr& pMesh) const;
     void doCreateBaseVolume(const CreateBaseMeshDlg& dlg);
+    void doRemoveBaseVolume();
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
@@ -85,6 +89,7 @@ public:
     const BuildCFDParams& getParams() const;
 
     const std::map<std::wstring, MeshDataPtr>& getMeshObjects() const;
+    bool doesBaseMeshExist() const;
 
 private:
 	void makeBlock(const MakeBlockDlg& dlg);
@@ -113,8 +118,6 @@ private:
     BuildCFDParams _params;
     std::wstring _dhfmFilename;
 };
-
-using AppDataPtr = std::shared_ptr<AppData>;
 
 inline BuildCFDParams& AppData::getParams()
 {

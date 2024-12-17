@@ -56,6 +56,8 @@ namespace DFHM {
 		};
 
 		VBORec();
+		virtual ~VBORec();
+
 		void changeFaceViewElements(bool visible, const ChangeElementsOptions& opts);
 		void changeEdgeViewElements(bool visible, const ChangeElementsOptions& opts);
 

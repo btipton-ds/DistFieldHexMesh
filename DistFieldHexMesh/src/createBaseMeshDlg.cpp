@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <vertex.h>
 #include <volume.h>
+#include <appData.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -57,36 +58,48 @@ namespace
 	};
 }
 
-CreateBaseMeshDlg::CreateBaseMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
-	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
-{
+BEGIN_EVENT_TABLE(CreateBaseMeshDlg, wxDialog)
+EVT_BUTTON(wxID_APPLY, CreateBaseMeshDlg::OnApply)
+EVT_BUTTON(wxID_OK, CreateBaseMeshDlg::OnOk)
+EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnCancel)
+END_EVENT_TABLE()
 
 #ifdef WIN32
-	int gap = 3;
-	int descent = 3;
-	int promptWidth = 140;
-	int boxWidth = 80;
-	int boxHeight = 21;
-	int rowHeight = boxHeight + descent;
-	int col0 = 8;
-	int col1 = col0 + promptWidth + gap;
-	int col2 = col1 + promptWidth + gap;
-	int col3 = col2 + promptWidth + gap;
-	int baseRowPixels = 5;
+int frameWidth = 400;
+int frameHeight = 460;
+int rightEdge = frameWidth - 20;
+int gap = 3;
+int descent = 3;
+int promptWidth = 140;
+int buttonWidth = 80;
+int boxWidth = 80;
+int boxHeight = 21;
+int rowHeight = boxHeight + descent;
+int col0 = 8;
+int col1 = col0 + promptWidth + gap;
+int col2 = col1 + promptWidth + gap;
+int col3 = col2 + promptWidth + gap;
+int baseRowPixels = 5;
 #else
-	int gap = 3;
-	int descent = 3;
-	int promptWidth = 50;
-	int boxWidth = 20;
-	int boxHeight = 21;
-	int rowHeight = boxHeight + descent;
-	int col0 = 8;
-	int col1 = col0 + promptWidth + gap;
-	int col2 = col1 + promptWidth + gap;
-	int col3 = col2 + promptWidth + gap;
-	int baseRowPixels = 5;
+int gap = 3;
+int descent = 3;
+int promptWidth = 50;
+int boxWidth = 20;
+int boxHeight = 21;
+int rowHeight = boxHeight + descent;
+int col0 = 8;
+int col1 = col0 + promptWidth + gap;
+int col2 = col1 + promptWidth + gap;
+int col3 = col2 + promptWidth + gap;
+int baseRowPixels = 5;
 #endif
 
+CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
+	: wxDialog(parent, id, title, pos, wxSize(frameWidth, frameHeight), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
+	, _pAppData(pAppData)
+{
+	_createdMesh = !_pAppData->doesBaseMeshExist();
+	const auto& params = pAppData->getParams();
 	int rowNum = 0;
 	_xRotatationPrompt = new wxStaticText(this, 0, _T("X rotation (deg)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_xRotationText = new wxTextCtrl(this, X_ROT_ANGLE, std::to_string(params.xRotationDeg), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
@@ -116,9 +129,14 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(BuildCFDParams& params, wxWindow* parent, w
 	_symZCheckBox->SetValue(params.symZAxis);
 
 	rowNum++;
-	_okButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(col1 + 100, baseRowPixels + rowNum * rowHeight));
-	_cancelButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(col1, baseRowPixels + rowNum * rowHeight));
+	_applyButton = new wxButton(this, wxID_APPLY, _T("Apply"), wxPoint(rightEdge - 3 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_okButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(rightEdge - 2 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_cancelButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(rightEdge - 1 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
 
+}
+
+CreateBaseMeshDlg::~CreateBaseMeshDlg()
+{
 }
 
 void CreateBaseMeshDlg::getValue(wxTextCtrl* item, size_t& value) const
@@ -148,4 +166,24 @@ void CreateBaseMeshDlg::getParams(BuildCFDParams& params) const
 	getValue(_zRotationText, params.zRotationDeg);
 	getValue(_baseBoxOffsetText, params.baseBoxOffset);
 
+}
+
+void CreateBaseMeshDlg::OnApply(wxCommandEvent& event)
+{
+	_pAppData->doCreateBaseVolume(*this);
+}
+
+void CreateBaseMeshDlg::OnOk(wxCommandEvent& event)
+{
+	_pAppData->doCreateBaseVolume(*this);
+	_pAppData = nullptr;
+	Destroy();
+}
+
+void CreateBaseMeshDlg::OnCancel(wxCommandEvent& event)
+{
+	if (_createdMesh)
+		_pAppData->doRemoveBaseVolume();
+	_pAppData = nullptr;
+	Destroy();
 }

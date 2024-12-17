@@ -37,6 +37,10 @@ VBORec::VBORec()
 {
 }
 
+VBORec::~VBORec()
+{
+}
+
 void VBORec::changeFaceViewElements(bool visible, const ChangeElementsOptions& opts)
 {
     _faceVBO.beginSettingElementIndices(0xffffffffffffffff);
