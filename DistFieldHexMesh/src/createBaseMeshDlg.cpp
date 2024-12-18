@@ -50,9 +50,13 @@ namespace
 		Y_ROT_ANGLE,
 		Z_ROT_ANGLE,
 
-		X_DIVS,
-		Y_DIVS,
-		Z_DIVS,
+		X_DIM,
+		Y_DIM,
+		Z_DIM,
+
+		X_MIN, X_MAX,
+		Y_MIN, Y_MAX,
+		Z_MIN, Z_MAX,
 
 		X_SYM,
 		Y_SYM,
@@ -104,7 +108,20 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	, _pAppData(pAppData)
 {
 	_createdMesh = !_pAppData->doesBaseMeshExist();
-	const auto& params = pAppData->getParams();
+	auto& params = pAppData->getParams();
+	const auto& bbox = _pAppData->getBoundingBox();
+	const auto& min = bbox.getMin();
+	const auto& max = bbox.getMax();
+
+	params.xMin = min[0];
+	params.xMax = max[0];
+
+	params.yMin = min[1];
+	params.yMax = max[1];
+
+	params.zMin = min[2];
+	params.zMax = max[2];
+
 	int rowNum = 0;
 	_xRotatationPrompt = new wxStaticText(this, 0, _T("X rotation (deg)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_xRotationText = new wxTextCtrl(this, X_ROT_ANGLE, std::to_string(params.xRotationDeg), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
@@ -123,9 +140,24 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 
 	rowNum++;
 	_divsPrompt = new wxStaticText(this, 0, _T("Divs (x,y,z)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xDivsText = new wxTextCtrl(this, X_DIVS, std::to_string(params.xDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
-	_yDivsText = new wxTextCtrl(this, Y_DIVS, std::to_string(params.yDivs), wxPoint(col1 + 1 * (boxWidth1 + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
-	_zDivsText = new wxTextCtrl(this, Z_DIVS, std::to_string(params.zDivs), wxPoint(col1 + 2 * (boxWidth1 + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_xDivsText = new wxTextCtrl(this, X_DIM, std::to_string(params.xDim), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yDivsText = new wxTextCtrl(this, Y_DIM, std::to_string(params.yDim), wxPoint(col1 + 1 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zDivsText = new wxTextCtrl(this, Z_DIM, std::to_string(params.zDim), wxPoint(col1 + 2 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_xMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max X"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xMinText = new wxTextCtrl(this, X_MIN, std::to_string(params.xMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_xMaxText = new wxTextCtrl(this, X_MAX, std::to_string(params.xMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_yMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max Y"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_yMinText = new wxTextCtrl(this, Y_MIN, std::to_string(params.yMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yMaxText = new wxTextCtrl(this, Y_MAX, std::to_string(params.yMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_zMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max Z"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_zMinText = new wxTextCtrl(this, Z_MIN, std::to_string(params.zMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zMaxText = new wxTextCtrl(this, Z_MAX, std::to_string(params.zMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_symXCheckBox = new wxCheckBox(this, X_SYM, _T("Y-Z Symmetry"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -176,9 +208,18 @@ void CreateBaseMeshDlg::getParams(BuildCFDParams& params) const
 	getValue(_yRotationText, params.yRotationDeg);
 	getValue(_zRotationText, params.zRotationDeg);
 
-	getValue(_xDivsText, params.xDivs);
-	getValue(_yDivsText, params.yDivs);
-	getValue(_zDivsText, params.zDivs);
+	getValue(_xDivsText, params.xDim);
+	getValue(_yDivsText, params.yDim);
+	getValue(_zDivsText, params.zDim);
+
+	getValue(_xMinText, params.xMin);
+	getValue(_xMaxText, params.xMax);
+
+	getValue(_yMinText, params.yMin);
+	getValue(_yMaxText, params.yMax);
+
+	getValue(_zMinText, params.zMin);
+	getValue(_zMaxText, params.zMax);
 
 	getValue(_baseBoxOffsetText, params.baseBoxOffset);
 

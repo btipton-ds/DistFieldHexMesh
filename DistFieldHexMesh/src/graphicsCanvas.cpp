@@ -160,7 +160,6 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
 GraphicsCanvas::~GraphicsCanvas()
 {
-    cout << "GraphicsCanvas()\n";
 }
 
 namespace {
@@ -232,7 +231,7 @@ void GraphicsCanvas::setView(View v)
 
 void GraphicsCanvas::resetView()
 {
-    _viewScale = 2;
+    _viewScale = INIT_VIEW_SCALE;
     initProjection();
     setView(GraphicsCanvas::VIEW_FRONT);
 }
@@ -330,7 +329,6 @@ bool GraphicsCanvas::toggleShowModelBoundary()
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
-    _mouseStartLocNDC_2D[2] = 1000;
     vector<CMeshPtr> meshes;
     for (const auto& md : _pAppData->getMeshObjects()) {
         auto pMeshData = md.second;
@@ -341,29 +339,26 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     double minDist = DBL_MAX;
     bool hadHit = false;
     CBoundingBox3Dd bbox;
+    Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (meshes.empty()) {
         // Rotate about point hit at arbitrary depth
-        hitModel = NDCPointToModel(_mouseStartLocNDC_2D);
+        hitModel = startPt;
     } else {
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
-        Vector3d temp = NDCPointToModel(_mouseStartLocNDC_2D);
-        Rayd ray(temp, dir);
+        Rayd ray(startPt, dir);
         for (const auto pMesh : meshes) {
             bbox.merge(pMesh->getBBox());
             vector<RayHitd> hits;
             if (pMesh->rayCast(ray, hits)) {
                 hadHit = true;
                 // Rotate about hit point
-                hitModel = hits.front().hitPt; // Initialize for safety
                 for (const auto& hit : hits) {
-                    cout << "dist: " << hit.dist << "\n";
                     if (hit.dist < minDist) {
                         minDist = hit.dist;
                         hitModel = hit.hitPt;
                     }
                 }
-                cout << "minDist: " << minDist << "\n\n";
             }
         }
         if (!hadHit) {
@@ -727,8 +722,8 @@ void GraphicsCanvas::drawEdges()
                 _graphicsUBO.defColor = p3f(0.75f, 0, 0);
                 break;
             case DS_MODEL_REF_EDGES:
-                glLineWidth(0.75f);
-                _graphicsUBO.defColor = p3f(1.0f, 0, 0);
+                glLineWidth(0.5f);
+                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
                 break;
         }
         _graphicsUBO.ambient = 1.0f;
@@ -761,9 +756,12 @@ void GraphicsCanvas::drawEdges()
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const
 {
-    Eigen::Vector4d pt3d(pt2d[0], pt2d[1], 0, 1);
-    Eigen::Vector4d r = cumTransform(true).inverse() * pt3d;
-    Eigen::Matrix<double, 3, 1> t = changeSize<Eigen::Matrix<double, 3, 1>, Eigen::Vector4d>(r);
+    auto xform = cumTransform(true);
+    auto invXform = xform.inverse();
+
+    Eigen::Vector4d pt4d(pt2d[0], pt2d[1], 0, 1);
+    Eigen::Vector4d r = invXform * pt4d;
+    Eigen::Vector3d t = changeSize<Eigen::Vector3d>(r);
     return Vector3d(t[0], t[1], t[2]);
 }
 
@@ -771,10 +769,14 @@ Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector2d& v, double z)
 {
     return screenVectorToModel(Vector3d(v[0], v[1], z));
 }
+
 Vector3d GraphicsCanvas::screenVectorToModel(const Eigen::Vector3d& v) const
 {
-    Eigen::Vector4d v3(v[0], v[1], v[2], 0);
-    Eigen::Vector4d r = cumTransform(true).inverse() * v3;
+    auto xform = cumTransform(true);
+    auto invXform = xform.inverse();
+
+    Eigen::Vector4d v4(v[0], v[1], v[2], 0);
+    Eigen::Vector4d r = invXform * v4;
     Eigen::Vector3d t = changeSize<Eigen::Vector3d>(r);
     return Vector3d(t[0], t[1], t[2]);
 }
@@ -862,7 +864,7 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
             maxDim = span[i];
     }
     double sf = maxDim > 0 ? 1.0 / maxDim : 1;
-    sf *= 0.5;
+    sf *= 1 / _viewScale;
     scale(0) = sf;
     scale(5) = sf;
     scale(10) = -sf; // Open gl'z NDC xAxis is left to right, yAxis i bottom to top and zAxis is INTO the screen (depth) when it should be out of the screen - it's left handed.
@@ -871,7 +873,7 @@ inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const
 
     result = _modelView * result;
     if (withProjection)
-        result = _projection * result;
+        result = _projAspect * _projection * result;
 
     return result;
 }

@@ -62,7 +62,6 @@ struct BuildCFDParams {
 	bool symZAxis = false;
 
 	size_t minBlocksPerSide = 6;
-	size_t xDivs = 5, yDivs = 5, zDivs = 5;
 	size_t numBlockDivs = 0;
 	size_t numSimpleDivs = 0;
 	size_t numIntersectionDivs = 0;
@@ -77,6 +76,10 @@ struct BuildCFDParams {
 	double xRotationDeg = 0;
 	double yRotationDeg = 0;
 	double zRotationDeg = 0;
+	double xDim = 1, yDim = 1, zDim = 1;
+	double xMin = 0, xMax = 1;
+	double yMin = 0, yMax = 1;
+	double zMin = 0, zMax = 1;
 	double maxGapSize = 0.01; // 10 mm
 	double maxCurvatureRadius_meters = 1.0; // 1m
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;

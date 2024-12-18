@@ -388,6 +388,11 @@ CBoundingBox3Dd AppData::getBoundingBox() const
     if (_pVolume)
         result.merge(_pVolume->getBBox());
 
+    if (result.empty()) {
+        result.merge(Vector3d(-1, -1, -1));
+        result.merge(Vector3d(1, 1, 1));
+    }
+
     return result;
 }
 
@@ -498,6 +503,16 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
         for (size_t i = 0; i < pMesh->numVertices(); i++) {
             const Vector3d& pt = pMesh->getVert(i)._pt;
             Eigen::Vector4d pt4(pt[0], pt[1], pt[2], 1);
+
+            if (_params.symXAxis && pt4[0] < 0)
+                pt4[0] = 0;
+
+            if (_params.symYAxis && pt4[1] < 0)
+                pt4[1] = 0;
+
+            if (_params.symZAxis && pt4[2] < 0)
+                pt4[2] = 0;
+
             pt4 = xform * pt4;
             Vector3d ptX(pt4[0], pt4[1], pt4[2]);
             bboxOriented.merge(ptX);
@@ -532,17 +547,49 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 
     xform = xform.inverse();
     bbox.clear();
-    Vector3d cubePts[8];
+    Vector3d cubePts0[8];
     for (size_t i = 0; i < 8; i++) {
         Eigen::Vector4d pt4 = xform * cubePts4[i];
-        cubePts[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
-        bbox.merge(cubePts[i]);
+        cubePts0[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
+        bbox.merge(cubePts0[i]);
     }
 
     CMeshPtr pMesh = make_shared<CMesh>(bbox, _hexMeshRepo);
-    addDividedQuadFace(pMesh, _params.xDivs, _params.zDivs, cubePts[0], cubePts[1], cubePts[5], cubePts[4]);
-    addDividedQuadFace(pMesh, _params.yDivs, _params.xDivs, cubePts[0], cubePts[3], cubePts[2], cubePts[1]);
-    addDividedQuadFace(pMesh, _params.yDivs, _params.zDivs, cubePts[0], cubePts[3], cubePts[7], cubePts[4]);
+
+    size_t xDivs = (size_t) ((cubePts0[1][0] - cubePts0[0][0]) / _params.xDim + 0.5);
+    if (xDivs < 2)
+        xDivs = 2;
+
+    size_t yDivs = (size_t)((cubePts0[3][1] - cubePts0[0][1]) / _params.yDim + 0.5);
+    if (yDivs < 2)
+        yDivs = 2;
+
+    size_t zDivs = (size_t)((cubePts0[4][2] - cubePts0[0][2]) / _params.zDim + 0.5);
+    if (zDivs < 2)
+        zDivs = 2;
+
+    addDividedQuadFace(pMesh, xDivs, zDivs, cubePts0[0], cubePts0[1], cubePts0[5], cubePts0[4]);
+    addDividedQuadFace(pMesh, yDivs, xDivs, cubePts0[0], cubePts0[3], cubePts0[2], cubePts0[1]);
+    addDividedQuadFace(pMesh, yDivs, zDivs, cubePts0[0], cubePts0[3], cubePts0[7], cubePts0[4]);
+
+    Vector3d cubePts1[8] = {
+        Vector3d(_params.xMin, _params.yMin, _params.zMin),
+        Vector3d(_params.xMax, _params.yMin, _params.zMin),
+        Vector3d(_params.xMax, _params.yMax, _params.zMin),
+        Vector3d(_params.xMin, _params.yMax, _params.zMin),
+        Vector3d(_params.xMin, _params.yMin, _params.zMax),
+        Vector3d(_params.xMax, _params.yMin, _params.zMax),
+        Vector3d(_params.xMax, _params.yMax, _params.zMax),
+        Vector3d(_params.xMin, _params.yMax, _params.zMax),
+    };
+    if (_params.symYAxis)
+        ctr[1] = 0;
+    for (int i = 0; i < 8; i++) {
+        cubePts1[i] += ctr;
+    }
+
+    pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[2], cubePts1[1]);
+    pMesh->addQuad(cubePts1[0], cubePts1[4], cubePts1[5], cubePts1[1]);
 
 
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, baseVolumeName, _pMainFrame->getCanvas()->getViewOptions());

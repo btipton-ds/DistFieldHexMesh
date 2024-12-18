@@ -190,7 +190,8 @@ private:
     VBORec::ChangeElementsOptions _viewOptions;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
-    double _viewScale = 2;
+#define INIT_VIEW_SCALE 10
+    double _viewScale = INIT_VIEW_SCALE;
 
     AppDataPtr _pAppData;
     CBoundingBox3Dd _viewBounds;
