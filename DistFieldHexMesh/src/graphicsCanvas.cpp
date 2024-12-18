@@ -332,8 +332,11 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     vector<CMeshPtr> meshes;
     for (const auto& md : _pAppData->getMeshObjects()) {
         auto pMeshData = md.second;
-        if (pMeshData->isActive() && !pMeshData->isReference() && pMeshData->getMesh())
-            meshes.push_back(md.second->getMesh());
+        if (pMeshData->isActive() && !pMeshData->isReference()) {
+            auto pMesh = pMeshData->getMesh();
+            if (pMesh)
+                meshes.push_back(pMesh);
+        }
     }
     Vector3d hitModel;
     double minDist = DBL_MAX;

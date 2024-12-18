@@ -383,7 +383,9 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
     for (const auto& pair : _meshData) {
-        result.merge(pair.second->getMesh()->getBBox());
+        const auto& pData = pair.second;
+        if (!pData->isReference())
+            result.merge(pData->getMesh()->getBBox());
     }
     if (_pVolume)
         result.merge(_pVolume->getBBox());
@@ -582,11 +584,6 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
         Vector3d(_params.xMax, _params.yMax, _params.zMax),
         Vector3d(_params.xMin, _params.yMax, _params.zMax),
     };
-    if (_params.symYAxis)
-        ctr[1] = 0;
-    for (int i = 0; i < 8; i++) {
-        cubePts1[i] += ctr;
-    }
 
     pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[2], cubePts1[1]);
     pMesh->addQuad(cubePts1[0], cubePts1[4], cubePts1[5], cubePts1[1]);

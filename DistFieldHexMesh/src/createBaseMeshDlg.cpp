@@ -122,6 +122,15 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	params.zMin = min[2];
 	params.zMax = max[2];
 
+	if (params.symXAxis && params.xMin < 0)
+		params.xMin = 0;
+
+	if (params.symYAxis && params.yMin < 0)
+		params.yMin = 0;
+
+	if (params.symZAxis && params.zMin < 0)
+		params.zMin = 0;
+
 	int rowNum = 0;
 	_xRotatationPrompt = new wxStaticText(this, 0, _T("X rotation (deg)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_xRotationText = new wxTextCtrl(this, X_ROT_ANGLE, std::to_string(params.xRotationDeg), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
