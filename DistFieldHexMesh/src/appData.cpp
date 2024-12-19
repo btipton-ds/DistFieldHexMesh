@@ -103,7 +103,7 @@ void AppData::doOpen()
 
 CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
 {
-    CMeshPtr pMesh = make_shared<CMesh>(_pModelMeshRepo);
+    CMeshPtr pMesh = make_shared<CMesh>();
     CReadWriteSTL reader(pMesh);
 
     wstring path(pathIn);
@@ -184,13 +184,17 @@ void AppData::writeDHFM() const
     uint8_t version = 2;
     out.write((char*)&version, sizeof(version));
 
-    _pModelMeshRepo->write(out);
-
-    size_t numMeshes = _meshData.size();
+    std::vector<MeshDataPtr> meshesToWrite;
+    for (const auto& pair : _meshData) {
+        auto pData = pair.second;
+        if (!pData->isReference())
+            meshesToWrite.push_back(pData);
+    }
+    size_t numMeshes = meshesToWrite.size();
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    for (const auto& pair : _meshData) {
-        pair.second->write(out);
+    for (const auto& pData : meshesToWrite) {
+        pData->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
@@ -210,8 +214,6 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     if (version == 0) {
     } else if (version == 1) {
     } else if (version == 2) {
-        _pModelMeshRepo->read(in);
-
         size_t numMeshes = _meshData.size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
@@ -553,10 +555,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     for (size_t i = 0; i < 8; i++) {
         Eigen::Vector4d pt4 = xform * cubePts4[i];
         cubePts0[i] = Vector3d(pt4[0], pt4[1], pt4[2]);
-        bbox.merge(cubePts0[i]);
     }
-
-    CMeshPtr pMesh = make_shared<CMesh>(bbox, _hexMeshRepo);
 
     size_t xDivs = (size_t) ((cubePts0[1][0] - cubePts0[0][0]) / _params.xDim + 0.5);
     if (xDivs < 2)
@@ -570,10 +569,6 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     if (zDivs < 2)
         zDivs = 2;
 
-    addDividedQuadFace(pMesh, xDivs, zDivs, cubePts0[0], cubePts0[1], cubePts0[5], cubePts0[4]);
-    addDividedQuadFace(pMesh, yDivs, xDivs, cubePts0[0], cubePts0[3], cubePts0[2], cubePts0[1]);
-    addDividedQuadFace(pMesh, yDivs, zDivs, cubePts0[0], cubePts0[3], cubePts0[7], cubePts0[4]);
-
     Vector3d cubePts1[8] = {
         Vector3d(_params.xMin, _params.yMin, _params.zMin),
         Vector3d(_params.xMax, _params.yMin, _params.zMin),
@@ -584,10 +579,21 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
         Vector3d(_params.xMax, _params.yMax, _params.zMax),
         Vector3d(_params.xMin, _params.yMax, _params.zMax),
     };
+    for (size_t i = 0; i < 8; i++) {
+        bbox.merge(cubePts0[i]);
+        bbox.merge(cubePts1[i]);
+    }
+    bbox.growPercent(0.05);
+
+    CMeshPtr pMesh = make_shared<CMesh>(bbox);
+
+    addDividedQuadFace(pMesh, xDivs, zDivs, cubePts0[0], cubePts0[1], cubePts0[5], cubePts0[4]);
+    addDividedQuadFace(pMesh, yDivs, xDivs, cubePts0[0], cubePts0[3], cubePts0[2], cubePts0[1]);
+    addDividedQuadFace(pMesh, yDivs, zDivs, cubePts0[0], cubePts0[3], cubePts0[7], cubePts0[4]);
 
     pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[2], cubePts1[1]);
     pMesh->addQuad(cubePts1[0], cubePts1[4], cubePts1[5], cubePts1[1]);
-
+    pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[7], cubePts1[4]);
 
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, baseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);

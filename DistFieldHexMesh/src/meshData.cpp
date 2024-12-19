@@ -56,15 +56,17 @@ MeshData::~MeshData()
 
 void MeshData::write(std::ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_active, sizeof(_active));
+	out.write((char*)&_reference, sizeof(_reference));
 
 	size_t numChars = _name.size();
 	out.write((char*)&numChars, sizeof(numChars));
 	out.write((char*)_name.c_str(), numChars * sizeof(wchar_t));
-	_pMesh->write(out, false);
+//	assert(_pMesh->verifyTopology(false));
+	_pMesh->write(out);
 }
 
 void MeshData::read(std::istream& in)
@@ -73,6 +75,8 @@ void MeshData::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	in.read((char*)&_active, sizeof(_active));
+	if (version > 0)
+		in.read((char*)&_reference, sizeof(_reference));
 
 	size_t numChars;
 	in.read((char*)&numChars, sizeof(numChars));
@@ -82,7 +86,7 @@ void MeshData::read(std::istream& in)
 	_name = wstring(buf);
 
 	_pMesh = make_shared<CMesh>(_pRepo);
-	_pMesh->read(in, false);
+	_pMesh->read(in);
 }
 
 void MeshData::beginFaceTesselation()
