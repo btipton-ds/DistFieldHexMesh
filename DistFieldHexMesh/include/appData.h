@@ -69,7 +69,7 @@ public:
     void doVerifyNormals(const CMeshPtr& pMesh);
     void doAnalyzeGaps(const CMeshPtr& pMesh);
     void doFindMinGap(const CMeshPtr& pMesh) const;
-    void doCreateBaseVolume(const CreateBaseMeshDlg& dlg);
+    void doCreateBaseVolume();
     void doRemoveBaseVolume();
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);

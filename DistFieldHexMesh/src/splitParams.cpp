@@ -29,6 +29,25 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace DFHM;
 
+size_t BuildCFDParams::numConditionalPasses() const
+{
+	size_t result = 0;
+
+	if (numIntersectionDivs > result)
+		result = numIntersectionDivs;
+
+	if (numSharpVertDivs > result)
+		result = numSharpVertDivs;
+
+	if (numCurvatureDivs > result)
+		result = numCurvatureDivs;
+
+	if (numSharpEdgeIntersectionDivs > result)
+		result = numSharpEdgeIntersectionDivs;
+
+	return result;
+}
+
 double BuildCFDParams::getSharpAngleRadians() const
 {
 	return sharpAngle_degrees / 180.0 * M_PI;
@@ -37,5 +56,91 @@ double BuildCFDParams::getSharpAngleRadians() const
 double BuildCFDParams::getSharpAngleDegrees() const
 {
 	return sharpAngle_degrees;
+}
+
+void BuildCFDParams::read(std::istream& in)
+{
+	size_t version;
+	in.read((char*)&version, sizeof(size_t));
+
+	in.read((char*)&uniformRatio, sizeof(uniformRatio));
+	in.read((char*)&splitAtSharpVerts, sizeof(splitAtSharpVerts));
+
+	in.read((char*)&symXAxis, sizeof(symXAxis));
+	in.read((char*)&symYAxis, sizeof(symYAxis));
+	in.read((char*)&symZAxis, sizeof(symZAxis));
+
+	in.read((char*)&minBlocksPerSide, sizeof(minBlocksPerSide));
+	in.read((char*)&numBlockDivs, sizeof(numBlockDivs));
+	in.read((char*)&numSimpleDivs, sizeof(numSimpleDivs));
+	in.read((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
+	in.read((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
+	in.read((char*)&numSharpEdgeIntersectionDivs, sizeof(numSharpEdgeIntersectionDivs));
+	in.read((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
+	in.read((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
+	in.read((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
+	in.read((char*)&maxCellFaces, sizeof(maxCellFaces));
+
+	in.read((char*)&baseBoxOffset, sizeof(baseBoxOffset));
+	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
+	in.read((char*)&yRotationDeg, sizeof(yRotationDeg));
+	in.read((char*)&zRotationDeg, sizeof(zRotationDeg));
+	in.read((char*)&xDim, sizeof(xDim));
+	in.read((char*)&yDim, sizeof(yDim));
+	in.read((char*)&zDim, sizeof(zDim));
+	in.read((char*)&xMin, sizeof(xMin));
+	in.read((char*)&xMax, sizeof(xMax));
+	in.read((char*)&yMin, sizeof(yMin));
+	in.read((char*)&yMax, sizeof(yMax));
+	in.read((char*)&zMin, sizeof(zMin));
+	in.read((char*)&zMax, sizeof(zMax));
+	in.read((char*)&maxGapSize, sizeof(maxGapSize));
+	in.read((char*)&maxCurvatureRadius_meters, sizeof(maxCurvatureRadius_meters));
+	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
+	in.read((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
+	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
+}
+
+void BuildCFDParams::write(std::ostream& out) const
+{
+	size_t version = 0;
+	out.write((char*)&version, sizeof(size_t));
+
+	out.write((char*)&uniformRatio, sizeof(uniformRatio));
+	out.write((char*)&splitAtSharpVerts, sizeof(splitAtSharpVerts));
+
+	out.write((char*)&symXAxis, sizeof(symXAxis));
+	out.write((char*)&symYAxis, sizeof(symYAxis));
+	out.write((char*)&symZAxis, sizeof(symZAxis));
+
+	out.write((char*)&minBlocksPerSide, sizeof(minBlocksPerSide));
+	out.write((char*)&numBlockDivs, sizeof(numBlockDivs));
+	out.write((char*)&numSimpleDivs, sizeof(numSimpleDivs));
+	out.write((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
+	out.write((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
+	out.write((char*)&numSharpEdgeIntersectionDivs, sizeof(numSharpEdgeIntersectionDivs));
+	out.write((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
+	out.write((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
+	out.write((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
+	out.write((char*)&maxCellFaces, sizeof(maxCellFaces));
+
+	out.write((char*)&baseBoxOffset, sizeof(baseBoxOffset));
+	out.write((char*)&xRotationDeg, sizeof(xRotationDeg));
+	out.write((char*)&yRotationDeg, sizeof(yRotationDeg));
+	out.write((char*)&zRotationDeg, sizeof(zRotationDeg));
+	out.write((char*)&xDim, sizeof(xDim));
+	out.write((char*)&yDim, sizeof(yDim));
+	out.write((char*)&zDim, sizeof(zDim));
+	out.write((char*)&xMin, sizeof(xMin));
+	out.write((char*)&xMax, sizeof(xMax));
+	out.write((char*)&yMin, sizeof(yMin));
+	out.write((char*)&yMax, sizeof(yMax));
+	out.write((char*)&zMin, sizeof(zMin));
+	out.write((char*)&zMax, sizeof(zMax));
+	out.write((char*)&maxGapSize, sizeof(maxGapSize));
+	out.write((char*)&maxCurvatureRadius_meters, sizeof(maxCurvatureRadius_meters));
+	out.write((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
+	out.write((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
+	out.write((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
 }
 

@@ -47,7 +47,7 @@ namespace DFHM {
 			const wxPoint& pos = wxDefaultPosition);
 		~CreateBaseMeshDlg();
 
-		void getParams(BuildCFDParams& params) const;
+		void getParams() const;
 
 		void OnApply(wxCommandEvent& event);
 		void OnOk(wxCommandEvent& event);

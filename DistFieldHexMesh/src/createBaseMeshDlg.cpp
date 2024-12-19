@@ -109,18 +109,20 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 {
 	_createdMesh = !_pAppData->doesBaseMeshExist();
 	auto& params = pAppData->getParams();
-	const auto& bbox = _pAppData->getBoundingBox();
-	const auto& min = bbox.getMin();
-	const auto& max = bbox.getMax();
+	if (params.yMin == DBL_MAX) {
+		const auto& bbox = _pAppData->getBoundingBox();
+		const auto& min = bbox.getMin();
+		const auto& max = bbox.getMax();
 
-	params.xMin = min[0];
-	params.xMax = max[0];
+		params.xMin = min[0];
+		params.xMax = max[0];
 
-	params.yMin = min[1];
-	params.yMax = max[1];
+		params.yMin = min[1];
+		params.yMax = max[1];
 
-	params.zMin = min[2];
-	params.zMax = max[2];
+		params.zMin = min[2];
+		params.zMax = max[2];
+	}
 
 	if (params.symXAxis && params.xMin < 0)
 		params.xMin = 0;
@@ -207,8 +209,10 @@ void CreateBaseMeshDlg::getValue(wxTextCtrl* item, double& value) const
 	}
 }
 
-void CreateBaseMeshDlg::getParams(BuildCFDParams& params) const
+void CreateBaseMeshDlg::getParams() const
 {
+	auto& params = _pAppData->getParams();
+
 	params.xRotationDeg = _symXCheckBox->GetValue();
 	params.yRotationDeg = _symYCheckBox->GetValue();
 	params.zRotationDeg = _symZCheckBox->GetValue();
@@ -236,12 +240,14 @@ void CreateBaseMeshDlg::getParams(BuildCFDParams& params) const
 
 void CreateBaseMeshDlg::OnApply(wxCommandEvent& event)
 {
-	_pAppData->doCreateBaseVolume(*this);
+	getParams();
+	_pAppData->doCreateBaseVolume();
 }
 
 void CreateBaseMeshDlg::OnOk(wxCommandEvent& event)
 {
-	_pAppData->doCreateBaseVolume(*this);
+	getParams();
+	_pAppData->doCreateBaseVolume();
 	_pAppData = nullptr;
 	Destroy();
 }

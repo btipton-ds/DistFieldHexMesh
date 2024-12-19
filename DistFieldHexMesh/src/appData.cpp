@@ -61,7 +61,7 @@ using namespace DFHM;
 
 namespace
 {
-    wstring baseVolumeName(L"Bounds");
+    wstring _gBaseVolumeName(L"Bounds");
 }
 
 AppData::AppData(MainFrame* pMainFrame)
@@ -181,23 +181,30 @@ void AppData::writeDHFM() const
 {
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
-    uint8_t version = 2;
+    uint8_t version = 3;
     out.write((char*)&version, sizeof(version));
 
-    std::vector<MeshDataPtr> meshesToWrite;
+    _params.write(out);
+    bool hasBaseMesh = _meshData.find(_gBaseVolumeName) != _meshData.end();
+    out.write((char*)&hasBaseMesh, sizeof(hasBaseMesh));
+
+    size_t numMeshes = 0;
     for (const auto& pair : _meshData) {
-        auto pData = pair.second;
+        const auto& pData = pair.second;
         if (!pData->isReference())
-            meshesToWrite.push_back(pData);
+            numMeshes++;
     }
-    size_t numMeshes = meshesToWrite.size();
+
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    for (const auto& pData : meshesToWrite) {
-        pData->write(out);
+    for (const auto& pair : _meshData) {
+        const auto& pData = pair.second;
+        if (!pData->isReference())
+            pData->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
+    hasVolume = false;
     out.write((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume)
         _pVolume->write(out);    
@@ -205,6 +212,7 @@ void AppData::writeDHFM() const
 
 void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
 {
+    bool hasBaseMesh = false;
     _dhfmFilename = path + filename;
 
     ifstream in(filesystem::path(_dhfmFilename), ifstream::binary);
@@ -213,7 +221,12 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     in.read((char*)&version, sizeof(version));
     if (version == 0) {
     } else if (version == 1) {
-    } else if (version == 2) {
+    } else if (version >= 2) {
+        if (version >= 3) {
+            _params.read(in);
+            in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
+        }
+
         size_t numMeshes = _meshData.size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
@@ -236,6 +249,8 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
     }
 
+    if (hasBaseMesh)
+        doCreateBaseVolume();
     _pMainFrame->refreshObjectTree();
 
     _pMainFrame->getCanvas()->resetView();
@@ -475,14 +490,12 @@ void AppData::addDividedQuadFace(const CMeshPtr& pMesh,
 
 }
 
-void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
+void AppData::doCreateBaseVolume()
 {
 //    Volume::setVolDim(Index3D(5, 5, 5));
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
     _pVolume = make_shared<Volume>();
-
-    dlg.getParams(_params);
 
     doRemoveBaseVolume();
 
@@ -585,7 +598,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     }
     bbox.growPercent(0.05);
 
-    CMeshPtr pMesh = make_shared<CMesh>(bbox);
+    CMeshPtr pMesh = make_shared<CMesh>(bbox/*, _pModelMeshRepo*/);
 
     addDividedQuadFace(pMesh, xDivs, zDivs, cubePts0[0], cubePts0[1], cubePts0[5], cubePts0[4]);
     addDividedQuadFace(pMesh, yDivs, xDivs, cubePts0[0], cubePts0[3], cubePts0[2], cubePts0[1]);
@@ -595,7 +608,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
     pMesh->addQuad(cubePts1[0], cubePts1[4], cubePts1[5], cubePts1[1]);
     pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[7], cubePts1[4]);
 
-    MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, baseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
+    MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
     _pMainFrame->registerMeshData(pMeshData);
@@ -607,7 +620,7 @@ void AppData::doCreateBaseVolume(const CreateBaseMeshDlg& dlg)
 
 void AppData::doRemoveBaseVolume()
 {
-    auto iter = _meshData.find(baseVolumeName);
+    auto iter = _meshData.find(_gBaseVolumeName);
     if (iter != _meshData.end()) {
         auto pData = iter->second;
         _meshData.erase(iter);
@@ -619,7 +632,7 @@ void AppData::doRemoveBaseVolume()
 
 bool AppData::doesBaseMeshExist() const
 {
-    return _meshData.find(baseVolumeName) != _meshData.end();
+    return _meshData.find(_gBaseVolumeName) != _meshData.end();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

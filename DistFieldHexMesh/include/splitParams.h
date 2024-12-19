@@ -29,30 +29,17 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <cmath>
+#include <iostream>
 
 namespace DFHM {
 
 struct BuildCFDParams {
-	inline size_t numConditionalPasses() const
-	{
-		size_t result = 0;
-
-		if (numIntersectionDivs > result)
-			result = numIntersectionDivs;
-
-		if (numSharpVertDivs > result)
-			result = numSharpVertDivs;
-
-		if (numCurvatureDivs > result)
-			result = numCurvatureDivs;
-
-		if (numSharpEdgeIntersectionDivs > result)
-			result = numSharpEdgeIntersectionDivs;
-
-		return result;
-	}
+	size_t numConditionalPasses() const;
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
+
+	void read(std::istream& in);
+	void write(std::ostream& out) const;
 
 	bool uniformRatio = false;
 	bool splitAtSharpVerts = true;
@@ -77,9 +64,9 @@ struct BuildCFDParams {
 	double yRotationDeg = 0;
 	double zRotationDeg = 0;
 	double xDim = 1, yDim = 1, zDim = 1;
-	double xMin = 0, xMax = 1;
-	double yMin = 0, yMax = 1;
-	double zMin = 0, zMax = 1;
+	double xMin = DBL_MAX, xMax = 1;
+	double yMin = DBL_MAX, yMax = 1;
+	double zMin = DBL_MAX, zMax = 1;
 	double maxGapSize = 0.01; // 10 mm
 	double maxCurvatureRadius_meters = 1.0; // 1m
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
