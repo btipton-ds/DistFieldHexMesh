@@ -58,6 +58,16 @@ class AppData {
 public:
     using OGLIndices = COglMultiVboHandler::OGLIndices;
 
+    enum CubeTopolType {
+        CTT_BOTTOM,
+        CTT_TOP,
+        CTT_LEFT,
+        CTT_RIGHT,
+        CTT_FRONT,
+        CTT_BACK,
+
+    };
+
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
 
@@ -101,12 +111,20 @@ private:
         size_t div0, size_t div1, 
         const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const;
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
+    void makeSuround(CMeshPtr& pMesh, Vector3d cPts[8]) const;
+    template<class L>
+    void makeGradedHexFace(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
+    template<class L>
+    void makeGradedHexEdge(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
+    template<class L>
+    void makeGradedHexCorners(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    TriMesh::CMeshRepoPtr _pModelMeshRepo, _hexMeshRepo;
+    CMeshPtr _pHexMesh;
+    TriMesh::CMeshRepoPtr _pModelMeshRepo;
     std::map<std::wstring, MeshDataPtr> _meshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;

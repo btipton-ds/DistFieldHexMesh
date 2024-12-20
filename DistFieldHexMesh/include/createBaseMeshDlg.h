@@ -67,9 +67,12 @@ namespace DFHM {
 			* _xRotatationPrompt = nullptr,
 			* _yRotatationPrompt = nullptr,
 			* _zRotatationPrompt = nullptr,
-			* _xMinMaxPrompt = nullptr,
-			* _yMinMaxPrompt = nullptr,
-			* _zMinMaxPrompt = nullptr;
+			* _xMinPrompt = nullptr,
+			* _xMaxPrompt = nullptr,
+			* _yMinPrompt = nullptr,
+			* _yMaxPrompt = nullptr,
+			* _zMinPrompt = nullptr,
+			* _zMaxPrompt = nullptr;
 
 		wxCheckBox
 			* _symXCheckBox = nullptr,
@@ -81,12 +84,15 @@ namespace DFHM {
 			* _xRotationText,
 			* _yRotationText,
 			* _zRotationText,
-			* _xDivsText,
-			* _yDivsText,
-			* _zDivsText,
-			* _xMinText, * _xMaxText,
-			* _yMinText, * _yMaxText,
-			* _zMinText, * _zMaxText;
+			* _xDimsText,
+			* _yDimsText,
+			* _zDimsText,
+			* _xMinText, * _xMinDivsText, * _xMinGradingText,
+			* _xMaxText, * _xMaxDivsText, * _xMaxGradingText,
+			* _yMinText, * _yMinDivsText, * _yMinGradingText,
+			* _yMaxText, * _yMaxDivsText, * _yMaxGradingText,
+			* _zMinText, * _zMinDivsText, * _zMinGradingText,
+			* _zMaxText, * _zMaxDivsText, * _zMaxGradingText;
 
 		wxButton
 			* _applyButton,

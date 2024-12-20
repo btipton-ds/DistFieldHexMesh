@@ -58,6 +58,14 @@ namespace
 		Y_MIN, Y_MAX,
 		Z_MIN, Z_MAX,
 
+		X_MIN_DIVS, X_MAX_DIVS,
+		Y_MIN_DIVS, Y_MAX_DIVS,
+		Z_MIN_DIVS, Z_MAX_DIVS,
+
+		X_MIN_GRADING, X_MAX_GRADING,
+		Y_MIN_GRADING, Y_MAX_GRADING,
+		Z_MIN_GRADING, Z_MAX_GRADING,
+
 		X_SYM,
 		Y_SYM,
 		Z_SYM,
@@ -150,25 +158,46 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	_baseBoxOffsetText = new wxTextCtrl(this, BASE_OFFSET, std::to_string(params.baseBoxOffset), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_divsPrompt = new wxStaticText(this, 0, _T("Divs (x,y,z)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xDivsText = new wxTextCtrl(this, X_DIM, std::to_string(params.xDim), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_yDivsText = new wxTextCtrl(this, Y_DIM, std::to_string(params.yDim), wxPoint(col1 + 1 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_zDivsText = new wxTextCtrl(this, Z_DIM, std::to_string(params.zDim), wxPoint(col1 + 2 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_divsPrompt = new wxStaticText(this, 0, _T("Dims (x,y,z)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xDimsText = new wxTextCtrl(this, X_DIM, std::to_string(params.xDim), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yDimsText = new wxTextCtrl(this, Y_DIM, std::to_string(params.yDim), wxPoint(col1 + 1 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zDimsText = new wxTextCtrl(this, Z_DIM, std::to_string(params.zDim), wxPoint(col1 + 2 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_xMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max X"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xMinText = new wxTextCtrl(this, X_MIN, std::to_string(params.xMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_xMaxText = new wxTextCtrl(this, X_MAX, std::to_string(params.xMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_xMinPrompt = new wxStaticText(this, 0, _T("X Min/Divs/Grade"),                                       wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xMinText = new wxTextCtrl(this, X_MIN, std::to_string(params.xMin),                       wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_xMinDivsText = new wxTextCtrl(this, X_MIN_DIVS, std::to_string(params.xMinDivs),          wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_xMinGradingText = new wxTextCtrl(this, X_MIN_GRADING, std::to_string(params.xMinGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_yMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max Y"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xMaxPrompt = new wxStaticText(this, 0, _T("X Max/Divs/Grade"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_xMaxText = new wxTextCtrl(this, X_MAX, std::to_string(params.xMax), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_xMaxDivsText = new wxTextCtrl(this, X_MAX_DIVS, std::to_string(params.xMaxDivs), wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_xMaxGradingText = new wxTextCtrl(this, X_MAX_GRADING, std::to_string(params.xMaxGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_yMinPrompt = new wxStaticText(this, 0, _T("Y Min/Divs/Grade"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_yMinText = new wxTextCtrl(this, Y_MIN, std::to_string(params.yMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_yMaxText = new wxTextCtrl(this, Y_MAX, std::to_string(params.yMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yMinDivsText = new wxTextCtrl(this, Y_MIN_DIVS, std::to_string(params.yMinDivs), wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_yMinGradingText = new wxTextCtrl(this, Y_MIN_GRADING, std::to_string(params.yMinGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_zMinMaxPrompt = new wxStaticText(this, 0, _T("Min/Max Z"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_yMaxPrompt = new wxStaticText(this, 0, _T("Y Max"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_yMaxText = new wxTextCtrl(this, Y_MAX, std::to_string(params.yMax), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yMaxDivsText = new wxTextCtrl(this, Y_MAX_DIVS, std::to_string(params.yMaxDivs), wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_yMaxGradingText = new wxTextCtrl(this, Y_MAX_GRADING, std::to_string(params.yMaxGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_zMinPrompt = new wxStaticText(this, 0, _T("Z Min"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_zMinText = new wxTextCtrl(this, Z_MIN, std::to_string(params.zMin), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_zMaxText = new wxTextCtrl(this, Z_MAX, std::to_string(params.zMax), wxPoint(col1 + boxWidth + gap, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zMinDivsText = new wxTextCtrl(this, Z_MIN_DIVS, std::to_string(params.zMinDivs), wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_zMinGradingText = new wxTextCtrl(this, Z_MIN_GRADING, std::to_string(params.zMinGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+
+	rowNum++;
+	_zMaxPrompt = new wxStaticText(this, 0, _T("Z Max"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_zMaxText = new wxTextCtrl(this, Z_MAX, std::to_string(params.zMax), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zMaxDivsText = new wxTextCtrl(this, Z_MAX_DIVS, std::to_string(params.zMaxDivs), wxPoint(col1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth1, boxHeight), wxTE_RIGHT);
+	_zMaxGradingText = new wxTextCtrl(this, Z_MAX_GRADING, std::to_string(params.zMaxGrading), wxPoint(col1 + gap + boxWidth1 + gap + boxWidth, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_symXCheckBox = new wxCheckBox(this, X_SYM, _T("Y-Z Symmetry"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -221,18 +250,33 @@ void CreateBaseMeshDlg::getParams() const
 	getValue(_yRotationText, params.yRotationDeg);
 	getValue(_zRotationText, params.zRotationDeg);
 
-	getValue(_xDivsText, params.xDim);
-	getValue(_yDivsText, params.yDim);
-	getValue(_zDivsText, params.zDim);
+	getValue(_xDimsText, params.xDim);
+	getValue(_yDimsText, params.yDim);
+	getValue(_zDimsText, params.zDim);
 
 	getValue(_xMinText, params.xMin);
+	getValue(_xMinDivsText, params.xMinDivs);
+	getValue(_xMinGradingText, params.xMinGrading);
+
 	getValue(_xMaxText, params.xMax);
+	getValue(_xMaxDivsText, params.xMaxDivs);
+	getValue(_xMaxGradingText, params.xMaxGrading);
 
 	getValue(_yMinText, params.yMin);
+	getValue(_yMinDivsText, params.yMinDivs);
+	getValue(_yMinGradingText, params.yMinGrading);
+
 	getValue(_yMaxText, params.yMax);
+	getValue(_yMaxDivsText, params.yMaxDivs);
+	getValue(_yMaxGradingText, params.yMaxGrading);
 
 	getValue(_zMinText, params.zMin);
+	getValue(_zMinDivsText, params.zMinDivs);
+	getValue(_zMinGradingText, params.zMinGrading);
+
 	getValue(_zMaxText, params.zMax);
+	getValue(_zMaxDivsText, params.zMaxDivs);
+	getValue(_zMaxGradingText, params.zMaxGrading);
 
 	getValue(_baseBoxOffsetText, params.baseBoxOffset);
 

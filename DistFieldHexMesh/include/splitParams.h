@@ -59,6 +59,13 @@ struct BuildCFDParams {
 	size_t divsPerGapCurvatureRadius = 4;
 	size_t maxCellFaces = 12;
 
+	size_t xMinDivs = 5;
+	size_t xMaxDivs = 5;
+	size_t yMinDivs = 5;
+	size_t yMaxDivs = 5;
+	size_t zMinDivs = 5;
+	size_t zMaxDivs = 5;
+
 	double baseBoxOffset = 1;
 	double xRotationDeg = 0;
 	double yRotationDeg = 0;
@@ -72,6 +79,13 @@ struct BuildCFDParams {
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
+
+	double xMinGrading = 2;
+	double xMaxGrading = 2;
+	double yMinGrading = 2;
+	double yMaxGrading = 2;
+	double zMinGrading = 2;
+	double zMaxGrading = 2;
 };
 
 }

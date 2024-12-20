@@ -68,7 +68,7 @@ AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
     _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
-    _hexMeshRepo = make_shared<TriMesh::CMeshRepo>();
+    _pHexMesh = make_shared<CMesh>();
 }
 
 AppData::~AppData()
@@ -243,7 +243,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     in.read((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume) {
         _pVolume = make_shared<Volume>();
-        //        _pVolume->setModelMesh(_pMesh);
+        _pVolume->setModelMesh(_pHexMesh);
 
         _pVolume->read(in);
         updateTessellation(Index3D(0, 0, 0), Volume::volDim());
@@ -604,9 +604,7 @@ void AppData::doCreateBaseVolume()
     addDividedQuadFace(pMesh, yDivs, xDivs, cubePts0[0], cubePts0[3], cubePts0[2], cubePts0[1]);
     addDividedQuadFace(pMesh, yDivs, zDivs, cubePts0[0], cubePts0[3], cubePts0[7], cubePts0[4]);
 
-    pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[2], cubePts1[1]);
-    pMesh->addQuad(cubePts1[0], cubePts1[4], cubePts1[5], cubePts1[1]);
-    pMesh->addQuad(cubePts1[0], cubePts1[3], cubePts1[7], cubePts1[4]);
+    makeSuround(pMesh, cubePts0);
 
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
@@ -616,6 +614,403 @@ void AppData::doCreateBaseVolume()
     _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
+}
+
+void AppData::makeSuround(CMeshPtr& pMesh, Vector3d cPts[8]) const
+{
+    auto f = [&pMesh] (const Vector3d cPts0[8]) {
+        pMesh->addQuad(cPts0[0], cPts0[3], cPts0[2], cPts0[1]);
+        pMesh->addQuad(cPts0[4], cPts0[5], cPts0[6], cPts0[7]);
+        pMesh->addQuad(cPts0[1], cPts0[2], cPts0[6], cPts0[5]);
+        pMesh->addQuad(cPts0[0], cPts0[4], cPts0[7], cPts0[3]);
+        pMesh->addQuad(cPts0[0], cPts0[1], cPts0[5], cPts0[4]);
+        pMesh->addQuad(cPts0[3], cPts0[7], cPts0[6], cPts0[2]);
+       };
+
+    makeGradedHexFace(pMesh, cPts, CTT_BOTTOM, f);
+    makeGradedHexFace(pMesh, cPts, CTT_TOP, f);
+    makeGradedHexFace(pMesh, cPts, CTT_FRONT, f);
+    makeGradedHexFace(pMesh, cPts, CTT_BACK, f);
+    if (!_params.symYAxis)
+        makeGradedHexFace(pMesh, cPts, CTT_LEFT, f);
+    makeGradedHexFace(pMesh, cPts, CTT_RIGHT, f);
+
+    makeGradedHexEdge(pMesh, cPts, CTT_BACK, CTT_BOTTOM, f);
+    makeGradedHexEdge(pMesh, cPts, CTT_BACK, CTT_TOP, f);
+    if (!_params.symYAxis)
+        makeGradedHexEdge(pMesh, cPts, CTT_BACK, CTT_LEFT, f);
+    makeGradedHexEdge(pMesh, cPts, CTT_BACK, CTT_RIGHT, f);
+
+    makeGradedHexEdge(pMesh, cPts, CTT_FRONT, CTT_BOTTOM, f);
+    makeGradedHexEdge(pMesh, cPts, CTT_FRONT, CTT_TOP, f);
+    if (!_params.symYAxis)
+        makeGradedHexEdge(pMesh, cPts, CTT_FRONT, CTT_LEFT, f);
+    makeGradedHexEdge(pMesh, cPts, CTT_FRONT, CTT_RIGHT, f);
+
+    makeGradedHexEdge(pMesh, cPts, CTT_RIGHT, CTT_BOTTOM, f);
+    makeGradedHexEdge(pMesh, cPts, CTT_RIGHT, CTT_TOP, f);
+
+    makeGradedHexCorners(pMesh, cPts, f);
+
+}
+
+template<class L>
+void AppData::makeGradedHexFace(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const
+{
+    Vector3d pts[8];
+
+    switch (dir) {
+        case CTT_BACK:
+            pts[0] = pts[1] = cPts[0];
+            pts[3] = pts[2] = cPts[3];
+            pts[7] = pts[6] = cPts[7];
+            pts[4] = pts[5] = cPts[4];
+            pts[0][0] = _params.xMin;
+            pts[3][0] = _params.xMin;
+            pts[7][0] = _params.xMin;
+            pts[4][0] = _params.xMin;
+            break;
+        case CTT_FRONT:
+            pts[0] = pts[1] = cPts[1];
+            pts[3] = pts[2] = cPts[2];
+            pts[7] = pts[6] = cPts[6];
+            pts[4] = pts[5] = cPts[5];
+            pts[1][0] = _params.xMax;
+            pts[2][0] = _params.xMax;
+            pts[6][0] = _params.xMax;
+            pts[5][0] = _params.xMax;
+            break;
+        case CTT_BOTTOM:
+            pts[4] = pts[0] = cPts[0];
+            pts[5] = pts[1] = cPts[1];
+            pts[6] = pts[2] = cPts[2];
+            pts[7] = pts[3] = cPts[3];
+            pts[0][2] = _params.zMin;
+            pts[1][2] = _params.zMin;
+            pts[2][2] = _params.zMin;
+            pts[3][2] = _params.zMin;
+            break;
+        case CTT_TOP:
+            pts[4] = pts[0] = cPts[4];
+            pts[7] = pts[3] = cPts[5];
+            pts[6] = pts[2] = cPts[6];
+            pts[5] = pts[1] = cPts[7];
+            pts[4][2] = _params.zMax;
+            pts[5][2] = _params.zMax;
+            pts[6][2] = _params.zMax;
+            pts[7][2] = _params.zMax;
+            break;
+        case CTT_LEFT:
+            pts[2] = pts[1] = cPts[2];
+            pts[3] = pts[0] = cPts[3];
+            pts[7] = pts[4] = cPts[7];
+            pts[6] = pts[5] = cPts[6];
+            pts[1][1] = _params.yMin;
+            pts[0][1] = _params.yMin;
+            pts[4][1] = _params.yMin;
+            pts[5][1] = _params.yMin;
+            break;
+        case CTT_RIGHT:
+            pts[3] = pts[0] = cPts[3];
+            pts[2] = pts[1] = cPts[2];
+            pts[7] = pts[4] = cPts[7];
+            pts[6] = pts[5] = cPts[6];
+            pts[2][1] = _params.yMax;
+            pts[3][1] = _params.yMax;
+            pts[7][1] = _params.yMax;
+            pts[6][1] = _params.yMax;
+            break;
+    }
+
+    fLambda(pts);
+}
+
+template<class L>
+void AppData::makeGradedHexEdge(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const
+{
+    Vector3d pts[8];
+
+    switch (dir0) {
+    case CTT_BACK:
+        switch (dir1) {
+        case CTT_BOTTOM:
+            pts[1] = pts[4] = pts[5] = cPts[0];
+            pts[2] = pts[7] = pts[6] = cPts[3];
+
+            pts[1][2] = _params.zMin;
+            pts[2][2] = _params.zMin;
+
+            pts[7][0] = _params.xMin;
+            pts[4][0] = _params.xMin;
+
+            pts[0] = Vector3d(_params.xMin, cPts[0][1], _params.zMin);
+            pts[3] = Vector3d(_params.xMin, cPts[3][1], _params.zMin);
+            break;
+        case CTT_TOP:
+            pts[1] = cPts[4];
+            pts[0] = Vector3d(_params.xMin, cPts[4][1], cPts[4][2]);
+            pts[5] = Vector3d(cPts[4][0], cPts[4][1], _params.zMax);
+            pts[4] = Vector3d(_params.xMin, cPts[4][1], _params.zMax);
+
+            pts[2] = cPts[7];
+            pts[3] = Vector3d(_params.xMin, cPts[7][1], cPts[7][2]);
+            pts[6] = Vector3d(cPts[7][0], cPts[7][1], _params.zMax);
+            pts[7] = Vector3d(_params.xMin, cPts[7][1], _params.zMax);
+            break;
+        case CTT_LEFT:
+            pts[0] = pts[1] = pts[2] = pts[3] = cPts[2];
+            pts[0][0] = _params.xMin;
+            pts[2][1] = _params.yMin;
+            pts[3][0] = _params.xMin;
+            pts[3][1] = _params.yMin;
+
+            pts[4] = pts[5] = pts[6] = pts[7] = cPts[6];
+            pts[4][0] = _params.xMin;
+            pts[6][1] = _params.yMin;
+            pts[7][0] = _params.xMin;
+            pts[7][1] = _params.yMin;
+            break;
+        case CTT_RIGHT:
+            pts[3] = pts[1] = pts[0] = pts[2] = cPts[3];
+            pts[0][0] = _params.xMin;
+            pts[0][1] = _params.yMax;
+            pts[1][1] = _params.yMax;
+            pts[3][0] = _params.xMin;
+
+            pts[7] = pts[5] = pts[4] = pts[6] = cPts[7];
+            pts[4][0] = _params.xMin;
+            pts[4][1] = _params.yMax;
+            pts[5][1] = _params.yMax;
+            pts[7][0] = _params.xMin;
+            break;
+        }
+        break;
+    case CTT_FRONT:
+        switch (dir1) {
+        case CTT_BOTTOM:
+            pts[0] = pts[1] = pts[4] = pts[5] = cPts[1];
+            pts[0][2] = _params.zMin;
+            pts[5][0] = _params.xMax;
+            pts[1][0] = _params.xMax;
+            pts[1][2] = _params.zMin;
+
+            pts[2] = pts[3] = pts[6] = pts[7] = cPts[2];
+            pts[6][0] = _params.xMax;
+            pts[3][2] = _params.zMin;
+            pts[2][0] = _params.xMax;
+            pts[2][2] = _params.zMin;
+            break;
+        case CTT_TOP:
+            pts[0] = pts[1] = pts[4] = pts[5] = cPts[5];
+            pts[1][0] = _params.xMax;
+            pts[4][2] = _params.zMax;
+            pts[5][0] = _params.xMax;
+            pts[5][2] = _params.zMax;
+
+            pts[2] = pts[3] = pts[6] = pts[7] = cPts[6];
+            pts[2][0] = _params.xMax;
+            pts[7][2] = _params.zMax;
+            pts[6][0] = _params.xMax;
+            pts[6][2] = _params.zMax;
+            break;
+        case CTT_LEFT:
+            return;
+            break;
+        case CTT_RIGHT:
+            pts[3] = pts[1] = pts[0] = pts[2] = cPts[2];
+            pts[2][0] = _params.xMax;
+            pts[0][1] = _params.yMax;
+            pts[1][0] = _params.xMax;
+            pts[1][1] = _params.yMax;
+
+            pts[4] = pts[5] = pts[6] = pts[7] = cPts[6];
+            pts[6][0] = _params.xMax;
+            pts[4][1] = _params.yMax;
+            pts[5][0] = _params.xMax;
+            pts[5][1] = _params.yMax;
+            break;
+        }
+        break;
+    case CTT_BOTTOM:
+        return;
+        break;
+    case CTT_TOP:
+        return;
+        break;
+    case CTT_LEFT:
+        return;
+        break;
+    case CTT_RIGHT:
+        switch (dir1) {
+        case CTT_BOTTOM:
+            pts[0] = pts[3] = pts[4] = pts[7] = cPts[3];
+            pts[3][2] = _params.zMin;
+            pts[4][1] = _params.yMax;
+            pts[0][1] = _params.yMax;
+            pts[0][2] = _params.zMin;
+
+            pts[1] = pts[2] = pts[5] = pts[6] = cPts[2];
+            pts[2][2] = _params.zMin;
+            pts[5][1] = _params.yMax;
+            pts[1][1] = _params.yMax;
+            pts[1][2] = _params.zMin;
+            break;
+        case CTT_TOP:
+            pts[0] = pts[3] = pts[4] = pts[7] = cPts[7];
+            pts[0][1] = _params.yMax;
+            pts[7][2] = _params.zMax;
+            pts[4][1] = _params.yMax;
+            pts[4][2] = _params.zMax;
+
+            pts[1] = pts[2] = pts[5] = pts[6] = cPts[6];
+            pts[6][2] = _params.zMax;
+            pts[1][1] = _params.yMax;
+            pts[5][1] = _params.yMax;
+            pts[5][2] = _params.zMax;
+            break;
+        case CTT_LEFT:
+            return;
+            break;
+        case CTT_RIGHT:
+            return;
+            break;
+        }
+        break;
+    }
+
+    fLambda(pts);
+}
+template<class L>
+void AppData::makeGradedHexCorners(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const
+{
+    Vector3d pts[8];
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++)
+            pts[j] = cPts[i];
+        switch (i) {
+        case 0: {
+            if (_params.symXAxis || _params.symYAxis || _params.symZAxis)
+                continue;
+            continue;
+            break;
+        }
+        case 1: {
+            if (_params.symYAxis || _params.symZAxis)
+                continue;
+            continue;
+            break;
+        }
+        case 2: {
+            if (_params.symZAxis)
+                continue;
+
+            pts[0][2] = _params.zMin;
+
+            pts[1][0] = _params.xMax;
+            pts[1][2] = _params.zMin;
+
+            pts[2] = Vector3d(_params.xMax, _params.yMax, _params.zMin);
+
+            pts[3][1] = _params.yMax;
+            pts[3][2] = _params.zMin;
+
+            // pts[4]
+
+            pts[5][0] = _params.xMax;
+
+            pts[6][0] = _params.xMax;
+            pts[6][1] = _params.yMax;
+
+            pts[7][1] = _params.yMax;
+            break;
+        }
+        case 3: {
+            if (_params.symXAxis || _params.symZAxis)
+                continue;
+
+            pts[0][0] = _params.xMin;
+            pts[0][2] = _params.zMin;
+
+            pts[1][2] = _params.zMin;
+
+            pts[2][1] = _params.yMax;
+            pts[2][2] = _params.zMin;
+
+            pts[3] = Vector3d(_params.xMin, _params.yMax, _params.zMin);
+
+            pts[4][0] = _params.xMin;
+
+            // pts[5]
+
+            pts[6][1] = _params.yMax;
+
+            pts[7][0] = _params.xMin;
+            pts[7][1] = _params.yMax;
+            break;
+        }
+        case 4: {
+            if (_params.symXAxis || _params.symYAxis)
+                continue;
+            continue;
+            break;
+        }
+        case 5: {
+            if (_params.symYAxis)
+                continue;
+            continue;
+            break;
+        }
+        case 6: {
+            // pts[0]
+
+            pts[1][0] = _params.xMax;
+
+            pts[2][0] = _params.xMax;
+            pts[2][1] = _params.yMax;
+
+            pts[3][1] = _params.yMax;
+
+            pts[4][2] = _params.zMax;
+
+            pts[5][0] = _params.xMax;
+            pts[5][2] = _params.zMax;
+
+            pts[6] = Vector3d(_params.xMax, _params.yMax, _params.zMax);
+
+            pts[7][1] = _params.yMax;
+            pts[7][2] = _params.zMax;
+            break;
+        }
+        case 7: {
+            if (_params.symXAxis)
+                continue;
+
+            pts[0][0] = _params.xMin;
+
+            // pts[1]
+
+            pts[2][1] = _params.yMax;
+
+            pts[3][0] = _params.xMin;
+            pts[3][1] = _params.yMax;
+
+            pts[4][0] = _params.xMin;
+            pts[4][2] = _params.zMax;
+
+            pts[5][2] = _params.zMax;
+
+            pts[6][1] = _params.yMax;
+            pts[6][2] = _params.zMax;
+
+            pts[7] = Vector3d(_params.xMin, _params.yMax, _params.zMax);
+            break;
+        }
+        }
+
+        fLambda(pts);
+    }
+
 }
 
 void AppData::doRemoveBaseVolume()
