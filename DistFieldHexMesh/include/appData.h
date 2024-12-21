@@ -102,25 +102,30 @@ public:
     bool doesBaseMeshExist() const;
 
 private:
-	void makeBlock(const MakeBlockDlg& dlg);
+    struct GradingRec {
+        Vector3i divs = Vector3i(0, 0, 0);
+        Vector3d grading;
+        void createVec(int axis, double& scale, double& growFactor) const;
+    };
+
+    void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void updateTessellation(const Index3D& min, const Index3D& max);
     void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
-    void addDividedQuadFace(const CMeshPtr& pMesh, 
-        size_t div0, size_t div1, 
-        const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const;
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
-    void makeSuround(CMeshPtr& pMesh, Vector3d cPts[8]) const;
     template<class L>
-    void makeGradedHexFace(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
+    void makeSuround(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
     template<class L>
-    void makeGradedHexEdge(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
+    void makeGradedHexOnFace(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
     template<class L>
-    void makeGradedHexCorners(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
+    void makeGradedHexOnEdge(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
+    template<class L>
+    void makeGradedHexOnCorners(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 
+    size_t _xDivs, _yDivs, _zDivs;
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pHexMesh;
