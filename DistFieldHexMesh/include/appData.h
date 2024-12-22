@@ -105,7 +105,7 @@ public:
 
 private:
     struct GradingRec {
-        Vector3i divs = Vector3i(0, 0, 0);
+        Index3D divs = Index3D(0, 0, 0);
         Vector3d grading;
         void createVec(int axis, double& scale, double& growFactor) const;
     };
@@ -128,7 +128,6 @@ private:
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 
-    size_t _xDivs, _yDivs, _zDivs;
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pHexMesh;

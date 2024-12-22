@@ -274,6 +274,12 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
+void Volume::init(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore)
+{
+	for (int i = 0; i < 8; i++)
+		_cornerPts.push_back(pts[i]);
+}
+
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
 	_pModelTriMesh = pTriMesh;

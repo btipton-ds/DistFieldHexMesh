@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <cmath>
 #include <iostream>
+#include <index3D.h>
 
 namespace DFHM {
 
@@ -86,6 +87,8 @@ struct BuildCFDParams {
 	double yMaxGrading = 2;
 	double zMinGrading = 2;
 	double zMaxGrading = 2;
+
+	Index3D volDivs;
 };
 
 }
