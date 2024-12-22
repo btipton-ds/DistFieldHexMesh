@@ -49,9 +49,9 @@ namespace DFHM {
 
 		void getParams() const;
 
-		void OnApply(wxCommandEvent& event);
-		void OnOk(wxCommandEvent& event);
-		void OnCancel(wxCommandEvent& event);
+		void OnUpdate(wxCommandEvent& event);
+		void OnCreate(wxCommandEvent& event);
+		void OnDone(wxCommandEvent& event);
 
 	private:
 		void getValue(wxTextCtrl* item, size_t& curValue) const;
@@ -95,9 +95,9 @@ namespace DFHM {
 			* _zMaxText, * _zMaxDivsText, * _zMaxGradingText;
 
 		wxButton
-			* _applyButton,
-			* _okButton,
-			* _cancelButton;
+			* _updateButton,
+			* _createButton,
+			* _doneButton;
 
 		wxDECLARE_EVENT_TABLE();
 	};

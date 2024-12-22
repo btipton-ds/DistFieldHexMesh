@@ -79,6 +79,8 @@ public:
     void doVerifyNormals(const CMeshPtr& pMesh);
     void doAnalyzeGaps(const CMeshPtr& pMesh);
     void doFindMinGap(const CMeshPtr& pMesh) const;
+    void doCreateBaseVolumePreview();
+    void doRemoveBaseVolumePreview();
     void doCreateBaseVolume();
     void doRemoveBaseVolume();
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
@@ -113,15 +115,16 @@ private:
     void updateTessellation(const Index3D& min, const Index3D& max);
     void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>
-    void makeSuround(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
+    void makeSuround(Vector3d cPts[8], const L& fLambda) const;
     template<class L>
-    void makeGradedHexOnFace(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
+    void makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
     template<class L>
-    void makeGradedHexOnEdge(CMeshPtr& pMesh, Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
+    void makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
     template<class L>
-    void makeGradedHexOnCorners(CMeshPtr& pMesh, Vector3d cPts[8], const L& fLambda) const;
+    void makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const;
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 

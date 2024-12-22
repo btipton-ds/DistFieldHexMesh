@@ -71,13 +71,16 @@ namespace
 		Z_SYM,
 
 		BASE_OFFSET,
+		ID_UPDATE,
+		ID_CREATE,
+		ID_DONE,
 	};
 }
 
 BEGIN_EVENT_TABLE(CreateBaseMeshDlg, wxDialog)
-EVT_BUTTON(wxID_APPLY, CreateBaseMeshDlg::OnApply)
-EVT_BUTTON(wxID_OK, CreateBaseMeshDlg::OnOk)
-EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnCancel)
+EVT_BUTTON(ID_UPDATE, CreateBaseMeshDlg::OnUpdate)
+EVT_BUTTON(ID_CREATE, CreateBaseMeshDlg::OnCreate)
+EVT_BUTTON(ID_DONE, CreateBaseMeshDlg::OnDone)
 END_EVENT_TABLE()
 
 #ifdef WIN32
@@ -212,9 +215,9 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	_symZCheckBox->SetValue(params.symZAxis);
 
 	rowNum++;
-	_applyButton = new wxButton(this, wxID_APPLY, _T("Apply"), wxPoint(rightEdge - 3 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
-	_okButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(rightEdge - 2 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
-	_cancelButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(rightEdge - 1 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_createButton = new wxButton(this, ID_CREATE, _T("Create"), wxPoint(rightEdge - 3 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_updateButton = new wxButton(this, ID_UPDATE, _T("Preview"), wxPoint(rightEdge - 2 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_doneButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(rightEdge - 1 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
 
 }
 
@@ -282,13 +285,13 @@ void CreateBaseMeshDlg::getParams() const
 
 }
 
-void CreateBaseMeshDlg::OnApply(wxCommandEvent& event)
+void CreateBaseMeshDlg::OnUpdate(wxCommandEvent& event)
 {
 	getParams();
-	_pAppData->doCreateBaseVolume();
+	_pAppData->doCreateBaseVolumePreview();
 }
 
-void CreateBaseMeshDlg::OnOk(wxCommandEvent& event)
+void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)
 {
 	getParams();
 	_pAppData->doCreateBaseVolume();
@@ -296,10 +299,10 @@ void CreateBaseMeshDlg::OnOk(wxCommandEvent& event)
 	Destroy();
 }
 
-void CreateBaseMeshDlg::OnCancel(wxCommandEvent& event)
+void CreateBaseMeshDlg::OnDone(wxCommandEvent& event)
 {
 	if (_createdMesh)
-		_pAppData->doRemoveBaseVolume();
+		_pAppData->doRemoveBaseVolumePreview();
 	_pAppData = nullptr;
 	Destroy();
 }
