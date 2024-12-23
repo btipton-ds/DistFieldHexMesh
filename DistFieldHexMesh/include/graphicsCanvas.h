@@ -82,7 +82,6 @@ public:
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
 
-    void preDestroy();
     void clearMesh3D();
     void registerMeshData(MeshDataPtr& pMeshData);
     const VBORec::ChangeElementsOptions& getViewOptions() const;
@@ -210,11 +209,6 @@ private:
 protected:
     wxDECLARE_EVENT_TABLE(); 
 };
-
-inline void GraphicsCanvas::preDestroy()
-{
-    _pAppData = nullptr;
-}
 
 inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
 {

@@ -67,12 +67,9 @@ public:
 	const CMeshPtr& getModelMesh() const;
 	CBoundingBox3Dd getBBox() const;
 
-	void setOrigin(const Vector3d& origin);
-	void setSpan(const Vector3d& span);
-
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void init(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore);
+	void buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore);
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 	void makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
@@ -115,6 +112,7 @@ private:
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
 	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
+	std::shared_ptr<Block> createBlock(size_t linearIdx);
 
 	// Currently flow direction is along positive x axis.
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -169,7 +167,6 @@ private:
 	static Index3D s_volDim;
 
 	CMeshPtr _pModelTriMesh;
-	Vector3d _originMeters, _spanMeters;
 	double _sharpAngleRad;
 	CMesh::BoundingBox _boundingBox;
 
@@ -193,16 +190,6 @@ inline void Volume::setModelMesh(const CMeshPtr& pMesh)
 inline const CMeshPtr& Volume::getModelMesh() const
 {
 	return _pModelTriMesh;
-}
-
-inline void Volume::setOrigin(const Vector3d& origin)
-{
-	_originMeters = origin;
-}
-
-inline void Volume::setSpan(const Vector3d& span)
-{
-	_spanMeters = span;
 }
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const

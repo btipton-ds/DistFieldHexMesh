@@ -71,7 +71,6 @@ struct BuildCFDParams {
 	double xRotationDeg = 0;
 	double yRotationDeg = 0;
 	double zRotationDeg = 0;
-	double xDim = 1, yDim = 1, zDim = 1;
 	double xMin = DBL_MAX, xMax = 1;
 	double yMin = DBL_MAX, yMax = 1;
 	double zMin = DBL_MAX, zMax = 1;
@@ -88,7 +87,8 @@ struct BuildCFDParams {
 	double zMinGrading = 2;
 	double zMaxGrading = 2;
 
-	Index3D volDivs;
+	Vector3d dims = Vector3d(1, 1, 1);
+	Index3D volDivs = Index3D(1, 1, 1);
 };
 
 }

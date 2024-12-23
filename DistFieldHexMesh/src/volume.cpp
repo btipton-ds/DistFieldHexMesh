@@ -61,9 +61,7 @@ Volume::Volume()
 }
 
 Volume::Volume(const Volume& src)
-	: _originMeters(src._originMeters) 
-	, _spanMeters(src._spanMeters)
-	, _blocks(src._blocks)
+	: _blocks(src._blocks)
 	, _threadPool(MultiCore::getNumCores())
 {
 }
@@ -188,42 +186,30 @@ void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngle
 
 shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 {
-	const auto& dim = volDim();
-	const Vector3d xAxis(1, 0, 0);
-	const Vector3d yAxis(0, 1, 0);
-	const Vector3d zAxis(0, 0, 1);
-
 	size_t idx = calLinearBlockIndex(blockIdx);
 	auto pBlock = _blocks[idx];
 	if (pBlock)
 		return pBlock;
 
-	Vector3d origin, span;
-	for (int i = 0; i < 3; i++) {
-		span[i] = _spanMeters[i] / dim[i];
-	}
+	return make_shared<Block>(this, blockIdx, _cornerPts);
+}
 
-	origin[0] = _originMeters[0] + blockIdx[0] * span[0];
-	origin[1] = _originMeters[1] + blockIdx[1] * span[1];
-	origin[2] = _originMeters[2] + blockIdx[2] * span[2];
-	vector<Vector3d> pts = {
-		origin,
-		origin + xAxis * span[0],
-		origin + xAxis * span[0] + yAxis * span[1],
-		origin + yAxis * span[1],
+std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
+{
+	auto pBlock = _blocks[linearIdx];
+	if (pBlock)
+		return pBlock;
 
-		origin + zAxis * span[2],
-		origin + zAxis * span[2] + xAxis * span[0],
-		origin + zAxis * span[2] + xAxis * span[0] + yAxis * span[1],
-		origin + zAxis * span[2] + yAxis * span[1],
-	};
-
-	return make_shared<Block>(this, blockIdx, pts);
+	Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
+	return make_shared<Block>(this, blockIdx, _cornerPts);
 }
 
 CBoundingBox3Dd Volume::getBBox() const
 {
-	CBoundingBox3Dd result(_originMeters, _originMeters + _spanMeters);
+	CBoundingBox3Dd result;
+
+	for (const auto& pt : _cornerPts)
+		result.merge(pt);
 
 	return result;
 }
@@ -231,19 +217,11 @@ CBoundingBox3Dd Volume::getBBox() const
 void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();
-	Vector3d origin, blockSpan;
-	for (int i = 0; i < 3; i++) {
-		blockSpan[i] = _spanMeters[i] / dim[i];
-	}
 
 	Index3D blkIdx;
 	for (blkIdx[0] = 0; blkIdx[0] < dim[0]; blkIdx[0]++) {
-		origin[1] = _originMeters[1] + blkIdx[0] * blockSpan[1];
 		for (blkIdx[1] = 0; blkIdx[1] < dim[1]; blkIdx[1]++) {
-			origin[1] = _originMeters[1] + blkIdx[1] * blockSpan[1];
-
 			for (blkIdx[2] = 0; blkIdx[2] < dim[2]; blkIdx[2]++) {
-				origin[2] = _originMeters[2] + blkIdx[2] * blockSpan[2];
 				auto linearIdx = calLinearBlockIndex(blkIdx);
 				_blocks[linearIdx] = createBlock(blkIdx);
 			}
@@ -274,19 +252,25 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::init(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore)
+void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore)
 {
 	for (int i = 0; i < 8; i++)
 		_cornerPts.push_back(pts[i]);
+	
+	const auto& dim = volDim();
+	size_t numBlocks = dim[0] * dim[1] * dim[2];
+	_blocks.resize(numBlocks);
+	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
+		_blocks[linearIdx] = createBlock(linearIdx);
+	}
 }
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
 {
+#if 0
 	_pModelTriMesh = pTriMesh;
 	_boundingBox = pTriMesh->getBBox();
 	_boundingBox.growPercent(0.0125);
-	_originMeters = _boundingBox.getMin();
-	_spanMeters = _boundingBox.range();
 
 	Index3D blockSize;
 	if (params.uniformRatio) {
@@ -355,6 +339,7 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
+#endif
 }
 
 void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
@@ -846,13 +831,11 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 bool Volume::write(ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
 	s_volDim.write(out);
-	writeVector3(out, _originMeters);
-	writeVector3(out, _spanMeters);
 
 	_boundingBox.write(out);
 
@@ -879,8 +862,11 @@ bool Volume::read(istream& in)
 
 	in.read((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
 	s_volDim.read(in);
-	readVector3(in, _originMeters);
-	readVector3(in, _spanMeters);
+	if (version < 1) {
+		Vector3d tmpV;
+		readVector3(in, tmpV);
+		readVector3(in, tmpV);
+	}
 
 	_boundingBox.read(in);
 

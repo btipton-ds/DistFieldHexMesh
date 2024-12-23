@@ -73,14 +73,13 @@ namespace
 		BASE_OFFSET,
 		ID_UPDATE,
 		ID_CREATE,
-		ID_DONE,
 	};
 }
 
 BEGIN_EVENT_TABLE(CreateBaseMeshDlg, wxDialog)
 EVT_BUTTON(ID_UPDATE, CreateBaseMeshDlg::OnUpdate)
 EVT_BUTTON(ID_CREATE, CreateBaseMeshDlg::OnCreate)
-EVT_BUTTON(ID_DONE, CreateBaseMeshDlg::OnDone)
+EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnDone)
 END_EVENT_TABLE()
 
 #ifdef WIN32
@@ -162,9 +161,9 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 
 	rowNum++;
 	_divsPrompt = new wxStaticText(this, 0, _T("Dims (x,y,z)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_xDimsText = new wxTextCtrl(this, X_DIM, std::to_string(params.xDim), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_yDimsText = new wxTextCtrl(this, Y_DIM, std::to_string(params.yDim), wxPoint(col1 + 1 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-	_zDimsText = new wxTextCtrl(this, Z_DIM, std::to_string(params.zDim), wxPoint(col1 + 2 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_xDimsText = new wxTextCtrl(this, X_DIM, std::to_string(params.dims[0]), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_yDimsText = new wxTextCtrl(this, Y_DIM, std::to_string(params.dims[1]), wxPoint(col1 + 1 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_zDimsText = new wxTextCtrl(this, Z_DIM, std::to_string(params.dims[2]), wxPoint(col1 + 2 * (boxWidth + gap), baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_xMinPrompt = new wxStaticText(this, 0, _T("X Min/Divs/Grade"),                                       wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -217,7 +216,7 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	rowNum++;
 	_createButton = new wxButton(this, ID_CREATE, _T("Create"), wxPoint(rightEdge - 3 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
 	_updateButton = new wxButton(this, ID_UPDATE, _T("Preview"), wxPoint(rightEdge - 2 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
-	_doneButton = new wxButton(this, wxID_CANCEL, _T("Cancel"), wxPoint(rightEdge - 1 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
+	_doneButton = new wxButton(this, wxID_CANCEL, _T("Done"), wxPoint(rightEdge - 1 * (buttonWidth + gap), baseRowPixels + rowNum * rowHeight));
 
 }
 
@@ -253,9 +252,9 @@ void CreateBaseMeshDlg::getParams() const
 	getValue(_yRotationText, params.yRotationDeg);
 	getValue(_zRotationText, params.zRotationDeg);
 
-	getValue(_xDimsText, params.xDim);
-	getValue(_yDimsText, params.yDim);
-	getValue(_zDimsText, params.zDim);
+	getValue(_xDimsText, params.dims[0]);
+	getValue(_yDimsText, params.dims[1]);
+	getValue(_zDimsText, params.dims[2]);
 
 	getValue(_xMinText, params.xMin);
 	getValue(_xMinDivsText, params.xMinDivs);
@@ -289,6 +288,8 @@ void CreateBaseMeshDlg::OnUpdate(wxCommandEvent& event)
 {
 	getParams();
 	_pAppData->doCreateBaseVolumePreview();
+	_pAppData = nullptr;
+	Destroy();
 }
 
 void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)

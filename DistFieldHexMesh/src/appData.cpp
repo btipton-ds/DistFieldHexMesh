@@ -443,8 +443,8 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
     Volume::setVolDim(Index3D(2, 2, 2));
 	Volume vol;
-    vol.setOrigin(dlg.getBlockOrigin());
-    vol.setSpan(dlg.getBlockSpan());
+//    vol.setOrigin(dlg.getBlockOrigin());
+//    vol.setSpan(dlg.getBlockSpan());
     
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->beginFaceTesselation(true);
@@ -664,7 +664,7 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     xLen += pts[6][0] - pts[7][0];
     xLen /= 4.0;
 
-    _params.volDivs[0] = (size_t)(xLen / _params.xDim + 0.5);
+    _params.volDivs[0] = (size_t)(xLen / _params.dims[0] + 0.5);
     if (_params.volDivs[0] < 2)
         _params.volDivs[0] = 2;
 
@@ -675,7 +675,7 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     yLen += pts[7][1] - pts[4][1];
     yLen /= 4.0;
 
-    _params.volDivs[1] = (size_t)(yLen / _params.yDim + 0.5);
+    _params.volDivs[1] = (size_t)(yLen / _params.dims[1] + 0.5);
     if (_params.volDivs[1] < 2)
         _params.volDivs[1] = 2;
 
@@ -686,7 +686,7 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     zLen += pts[7][2] - pts[3][2];
     zLen /= 4.0;
 
-    _params.volDivs[2] = (size_t)(zLen / _params.zDim + 0.5);
+    _params.volDivs[2] = (size_t)(zLen / _params.dims[2] + 0.5);
     if (_params.volDivs[2] < 2)
         _params.volDivs[2] = 2;
 
@@ -1250,7 +1250,7 @@ void AppData::doCreateBaseVolume()
     Vector3d cubePts[8];
     CBoundingBox3Dd volBox;
     makeCubePoints(cubePts, volBox);
-
+    _pVolume->buildBlocks(_params, cubePts, false);
 
 //    makeSuround(cubePts, makeGradedBlock);
 

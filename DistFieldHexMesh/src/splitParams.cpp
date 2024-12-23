@@ -85,9 +85,13 @@ void BuildCFDParams::read(std::istream& in)
 	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
 	in.read((char*)&yRotationDeg, sizeof(yRotationDeg));
 	in.read((char*)&zRotationDeg, sizeof(zRotationDeg));
-	in.read((char*)&xDim, sizeof(xDim));
-	in.read((char*)&yDim, sizeof(yDim));
-	in.read((char*)&zDim, sizeof(zDim));
+	if (version == 0) {
+		double x, y, z;
+		in.read((char*)&x, sizeof(x));
+		in.read((char*)&y, sizeof(y));
+		in.read((char*)&z, sizeof(z));
+		dims = Vector3d(x, y, z);
+	}
 	in.read((char*)&xMin, sizeof(xMin));
 	in.read((char*)&xMax, sizeof(xMax));
 	in.read((char*)&yMin, sizeof(yMin));
@@ -99,11 +103,30 @@ void BuildCFDParams::read(std::istream& in)
 	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	in.read((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
+
+	if (version > 0) {
+		in.read((char*)&xMinDivs, sizeof(size_t));
+		in.read((char*)&xMaxDivs, sizeof(size_t));
+		in.read((char*)&yMinDivs, sizeof(size_t));
+		in.read((char*)&yMaxDivs, sizeof(size_t));
+		in.read((char*)&zMinDivs, sizeof(size_t));
+		in.read((char*)&zMaxDivs, sizeof(size_t));
+
+		in.read((char*)&xMinGrading, sizeof(double));
+		in.read((char*)&xMaxGrading, sizeof(double));
+		in.read((char*)&yMinGrading, sizeof(double));
+		in.read((char*)&yMaxGrading, sizeof(double));
+		in.read((char*)&zMinGrading, sizeof(double));
+		in.read((char*)&zMaxGrading, sizeof(double));
+
+		in.read((char*)dims.data(), 3 * sizeof(double));
+		volDivs.read(in);
+	}
 }
 
 void BuildCFDParams::write(std::ostream& out) const
 {
-	size_t version = 0;
+	size_t version = 1;
 	out.write((char*)&version, sizeof(size_t));
 
 	out.write((char*)&uniformRatio, sizeof(uniformRatio));
@@ -128,9 +151,7 @@ void BuildCFDParams::write(std::ostream& out) const
 	out.write((char*)&xRotationDeg, sizeof(xRotationDeg));
 	out.write((char*)&yRotationDeg, sizeof(yRotationDeg));
 	out.write((char*)&zRotationDeg, sizeof(zRotationDeg));
-	out.write((char*)&xDim, sizeof(xDim));
-	out.write((char*)&yDim, sizeof(yDim));
-	out.write((char*)&zDim, sizeof(zDim));
+
 	out.write((char*)&xMin, sizeof(xMin));
 	out.write((char*)&xMax, sizeof(xMax));
 	out.write((char*)&yMin, sizeof(yMin));
@@ -142,5 +163,22 @@ void BuildCFDParams::write(std::ostream& out) const
 	out.write((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	out.write((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	out.write((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
+
+	out.write((char*)&xMinDivs, sizeof(size_t));
+	out.write((char*)&xMaxDivs, sizeof(size_t));
+	out.write((char*)&yMinDivs, sizeof(size_t));
+	out.write((char*)&yMaxDivs, sizeof(size_t));
+	out.write((char*)&zMinDivs, sizeof(size_t));
+	out.write((char*)&zMaxDivs, sizeof(size_t));
+
+	out.write((char*)&xMinGrading, sizeof(double));
+	out.write((char*)&xMaxGrading, sizeof(double));
+	out.write((char*)&yMinGrading, sizeof(double));
+	out.write((char*)&yMaxGrading, sizeof(double));
+	out.write((char*)&zMinGrading, sizeof(double));
+	out.write((char*)&zMaxGrading, sizeof(double));
+
+	out.write((char*)dims.data(), 3 * sizeof(double));
+	volDivs.write(out);
 }
 

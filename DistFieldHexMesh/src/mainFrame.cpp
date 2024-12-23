@@ -104,7 +104,6 @@ MainFrame::MainFrame(wxWindow* parent,
 MainFrame::~MainFrame()
 {
     _pAppData = nullptr;
-    _pCanvas->preDestroy();
 }
 
 void MainFrame::addMenus()
