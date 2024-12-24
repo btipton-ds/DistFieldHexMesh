@@ -54,6 +54,9 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+class MeshData;
+using MeshDataPtr = std::shared_ptr<MeshData>;
+
 struct BuildCFDParams;
 class Volume;
 class Edge;
@@ -113,6 +116,7 @@ public:
 	void createBlockFaces();
 
 	const CMeshPtr& getModelMesh() const;
+	const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getModelMeshData() const;
 	void getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh);
 	void makeEdgeSets(FaceType meshType, glPointsPtr& points);
 
@@ -131,7 +135,7 @@ public:
 	Index3DId addCell(const Polyhedron& cell);
 	Index3DId addCell(const MTC::set<Index3DId>& faceIds);
 	Index3DId addCell(const MTC::vector<Index3DId>& faceIds);
-	Index3DId addHexCell(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+	Index3DId addHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
@@ -222,7 +226,7 @@ private:
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
 	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
-	MTC::vector<Index3DId> getSubBlockCornerVertIds(const Vector3d* blockPts, size_t divs, const Index3D& subBlockIdx);
+	MTC::vector<Index3DId> getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
 
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);

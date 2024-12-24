@@ -46,8 +46,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
+#include <meshData.h>
 
-using namespace std;
+//using namespace std;
 using namespace DFHM;
 
 atomic<size_t> Block::GlPoints::_statId = 0;
@@ -95,9 +96,20 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
 		
 		// This is close to working, but the full search is finding solutions the partial search is not
 	auto pMesh = getModelMesh();
-	pMesh->findEdges(_boundBox, _edgeIndices);
-	pMesh->findTris(_boundBox, _triIndices);
-
+	if (pMesh) {
+		pMesh->findEdges(_boundBox, _edgeIndices);
+		pMesh->findTris(_boundBox, _triIndices);
+	} else {
+		auto pMeshData = getModelMeshData();
+		if (pMeshData) {
+			for (auto& pair : *pMeshData) {
+				auto pData = pair.second;
+				pMesh = pData->getMesh();
+				pMesh->findEdges(_boundBox, _edgeIndices);
+				pMesh->findTris(_boundBox, _triIndices);
+			}
+		}
+	}
 	MultiCore::scoped_set_local_heap st(&_heap);
 	_pLocalData = new LocalData();
 
@@ -180,6 +192,10 @@ const CMeshPtr& Block::getModelMesh() const
 	return _pVol->getModelMesh();
 }
 
+const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& Block::getModelMeshData() const
+{
+	return _pVol->getModelMeshData();
+}
 
 void Block::getAdjacentBlockIndices(MTC::set<Index3D>& indices) const
 {
@@ -323,7 +339,7 @@ void Block::createBlockCells(TopolgyState refState)
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				addHexCell(_corners.data(), _blockDim, idx, false);
+				addHexCell(_corners, _blockDim, idx, false);
 			}
 		}
 	}
@@ -333,7 +349,7 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 {
 
 	auto blockCornerPts = getCornerPts();	
-	auto polyId = addHexCell(blockCornerPts.data(), _blockDim, subBlockIdx, false);
+	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx, false);
 }
 
 const vector<Vector3d>& Block::getCornerPts() const
@@ -341,18 +357,18 @@ const vector<Vector3d>& Block::getCornerPts() const
 	return _corners;
 }
 
-MTC::vector<Index3DId> Block::getSubBlockCornerVertIds(const Vector3d* blockPts, size_t divs, const Index3D& index)
+MTC::vector<Index3DId> Block::getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& index)
 {
 	Vector3d pts[] = {
-		triLinInterp(blockPts, divs, index + Index3D(0, 0, 0)),
-		triLinInterp(blockPts, divs, index + Index3D(1, 0, 0)),
-		triLinInterp(blockPts, divs, index + Index3D(1, 1, 0)),
-		triLinInterp(blockPts, divs, index + Index3D(0, 1, 0)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 0)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 0)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 0)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 0)),
 
-		triLinInterp(blockPts, divs, index + Index3D(0, 0, 1)),
-		triLinInterp(blockPts, divs, index + Index3D(1, 0, 1)),
-		triLinInterp(blockPts, divs, index + Index3D(1, 1, 1)),
-		triLinInterp(blockPts, divs, index + Index3D(0, 1, 1)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 1)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 1)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 1)),
+		triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 1)),
 	};
 
 	MTC::vector<Index3DId> result;
@@ -511,7 +527,7 @@ Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 	return cellId;
 }
 
-Index3DId Block::addHexCell(const Vector3d* blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
+Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto vertIds = getSubBlockCornerVertIds(blockPts, blockDim, subBlockIdx);
 
@@ -618,7 +634,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
-	assert(idOfPoint(pt) == result);
+//	assert(idOfPoint(pt) == result);
 #endif // _DEBUG
 
 	return result;
@@ -1000,8 +1016,10 @@ void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 	if (numFaces(true) == 0)
 		return;
 
+	cout << "Adding polygons " << _modelData._polygons.size() << "\n";
 	_modelData._polygons.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInRender(meshType, face)) {
+			cout << "Adding intersecting polygon\n";
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
 			pts.reserve(vertIds.size());
@@ -1111,7 +1129,7 @@ bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
 	return pOwner && pOwner->data(refState)._polyhedra.exists(id);
 }
 
-Polygon& Block::getPolygon(TopolgyState refState, const Index3DId& id)
+DFHM::Polygon& Block::getPolygon(TopolgyState refState, const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	return pOwner->data(refState)._polygons[id];

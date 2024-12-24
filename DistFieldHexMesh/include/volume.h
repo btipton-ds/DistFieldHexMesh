@@ -46,6 +46,8 @@ namespace TriMesh {
 namespace DFHM {
 
 struct BuildCFDParams;
+class MeshData;
+using MeshDataPtr = std::shared_ptr<MeshData>;
 
 class Volume {
 public:
@@ -65,11 +67,13 @@ public:
 
 	void setModelMesh(const CMeshPtr& pMesh);
 	const CMeshPtr& getModelMesh() const;
+	void setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData);
+	const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getModelMeshData() const;
 	CBoundingBox3Dd getBBox() const;
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore);
+	void buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 	void makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
@@ -167,6 +171,7 @@ private:
 	static Index3D s_volDim;
 
 	CMeshPtr _pModelTriMesh;
+	std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
 	double _sharpAngleRad;
 	CMesh::BoundingBox _boundingBox;
 
@@ -190,6 +195,16 @@ inline void Volume::setModelMesh(const CMeshPtr& pMesh)
 inline const CMeshPtr& Volume::getModelMesh() const
 {
 	return _pModelTriMesh;
+}
+
+inline void Volume::setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData)
+{
+	_pModelMeshData = pMeshData;
+}
+
+inline const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& Volume::getModelMeshData() const
+{
+	return _pModelMeshData;
 }
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const

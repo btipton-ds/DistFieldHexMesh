@@ -137,7 +137,6 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxPoint(200, 0), wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
 {
-    _modelVBOs = make_shared<VBORec>();
     _meshVBOs = make_shared<VBORec>();
 
     _pContext = make_shared<wxGLContext>(this);
@@ -330,7 +329,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     vector<CMeshPtr> meshes;
-    for (const auto& md : _pAppData->getMeshObjects()) {
+    for (const auto& md : *_pAppData->getMeshData()) {
         auto pMeshData = md.second;
         if (pMeshData->isActive() && !pMeshData->isReference()) {
             auto pMesh = pMeshData->getMesh();
@@ -506,9 +505,6 @@ void GraphicsCanvas::loadShaders()
     _phongShader->setVertexSrcFile(path + "phong.vert");
     _phongShader->setFragmentSrcFile(path + "phong.frag");
     _phongShader->load();
-
-    _modelVBOs->_faceVBO.setShader(_phongShader.get());
-    _modelVBOs->_edgeVBO.setShader(_phongShader.get());
 
     _meshVBOs->_faceVBO.setShader(_phongShader.get());
     _meshVBOs->_edgeVBO.setShader(_phongShader.get());
@@ -687,7 +683,7 @@ void GraphicsCanvas::drawFaces()
 //    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
-    auto& meshObjects = _pAppData->getMeshObjects();
+    auto& meshObjects = *_pAppData->getMeshData();
     for (auto& d : meshObjects)
     {
         auto& VBO = d.second->getFaceVBO();
@@ -749,7 +745,7 @@ void GraphicsCanvas::drawEdges()
 //    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
-    auto& meshObjects = _pAppData->getMeshObjects();
+    auto& meshObjects = *_pAppData->getMeshData();
     for (auto& d : meshObjects)
     {
         auto& VBO = d.second->getEdgeVBO();
@@ -928,52 +924,50 @@ void GraphicsCanvas::updateView()
     }
 }
 
-void GraphicsCanvas::beginFaceTesselation(bool useModel)
+void GraphicsCanvas::beginFaceTesselation()
 {
-    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
-    _activeVBOs->_faceVBO.beginFaceTesselation();
+    _meshVBOs->_faceVBO.beginFaceTesselation();
 }
 
 void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
 {
-    _activeVBOs->_faceVBO.endFaceTesselation(smoothNormals);
-    _activeVBOs->_pTriTess = pTriTess;
-    _activeVBOs->_pSharpVertTess = pSharpVertTess;
-    _activeVBOs->_faceTessellations.clear();
+    _meshVBOs->_faceVBO.endFaceTesselation(smoothNormals);
+    _meshVBOs->_pTriTess = pTriTess;
+    _meshVBOs->_pSharpVertTess = pSharpVertTess;
+    _meshVBOs->_faceTessellations.clear();
 
     changeFaceViewElements();
 }
 
 void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
 {
-    _activeVBOs->_faceVBO.endFaceTesselation(false);
-    _activeVBOs->_faceTessellations = faceTess;
+    _meshVBOs->_faceVBO.endFaceTesselation(false);
+    _meshVBOs->_faceTessellations = faceTess;
 
     changeFaceViewElements();
 }
 
-void GraphicsCanvas::beginEdgeTesselation(bool useModel)
+void GraphicsCanvas::beginEdgeTesselation()
 {
-    _activeVBOs = useModel ? _modelVBOs : _meshVBOs;
-    _activeVBOs->_edgeVBO.beginEdgeTesselation();
+    _meshVBOs->_edgeVBO.beginEdgeTesselation();
 }
 
 void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
 {
-    _activeVBOs->_edgeVBO.endEdgeTesselation();
+    _meshVBOs->_edgeVBO.endEdgeTesselation();
 
-    _activeVBOs->_pSharpEdgeTess = pSharpEdgeTess;
-    _activeVBOs->_pNormalTess = pNormalTess;
-    _activeVBOs->_edgeTessellations.clear();
+    _meshVBOs->_pSharpEdgeTess = pSharpEdgeTess;
+    _meshVBOs->_pNormalTess = pNormalTess;
+    _meshVBOs->_edgeTessellations.clear();
 
     changeEdgeViewElements();
 }
 
 void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
 {
-    _activeVBOs->_edgeVBO.endEdgeTesselation();
+    _meshVBOs->_edgeVBO.endEdgeTesselation();
 
-    _activeVBOs->_edgeTessellations = edgeTess;
+    _meshVBOs->_edgeTessellations = edgeTess;
 
     changeEdgeViewElements();
 }
@@ -995,14 +989,14 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
     };
 
     const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-    return _activeVBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
+    return _meshVBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, 
     const std::vector<unsigned int>& indices)
 {
-    return _activeVBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
+    return _meshVBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
 const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
@@ -1024,13 +1018,13 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
 
     pMesh->getGlEdges(colorFunc, false, points, colors, indices);
 
-    return _activeVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
+    return _meshVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }
 
 void GraphicsCanvas::changeFaceViewElements()
 {
-    _modelVBOs->changeFaceViewElements(true, false, _viewOptions);
-    auto& objs = _pAppData->getMeshObjects();
+    _meshVBOs->changeFaceViewElements(true, false, _viewOptions);
+    auto& objs = *_pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
         obj->changeFaceViewElements(_viewOptions);
@@ -1039,8 +1033,8 @@ void GraphicsCanvas::changeFaceViewElements()
 
 void GraphicsCanvas::changeEdgeViewElements()
 {
-    _modelVBOs->changeEdgeViewElements(true, false, _viewOptions);
-    auto& objs = _pAppData->getMeshObjects();
+    _meshVBOs->changeEdgeViewElements(true, false, _viewOptions);
+    auto& objs = *_pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
         obj->changeEdgeViewElements(_viewOptions);

@@ -802,7 +802,7 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
 	cellId.setSplitLevel(level);
 	_cellIds.insert(cellId);
-#if 1
+#if 0
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
 			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));

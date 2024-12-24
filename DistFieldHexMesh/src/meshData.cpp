@@ -143,7 +143,7 @@ const OGLIndices* MeshData::setEdgeSegTessellation(size_t entityKey, size_t chan
 	return _VBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-const OGLIndices* MeshData::setEdgeSegTessellation(const CMeshPtr& pMesh)
+const OGLIndices* MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh)
 {
 	vector<float> points, colors;
 	vector<unsigned int> indices;

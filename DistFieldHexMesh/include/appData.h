@@ -100,7 +100,7 @@ public:
     BuildCFDParams& getParams();
     const BuildCFDParams& getParams() const;
 
-    const std::map<std::wstring, MeshDataPtr>& getMeshObjects() const;
+    const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getMeshData() const;
     bool doesBaseMeshExist() const;
 
 private:
@@ -132,7 +132,7 @@ private:
     MainFrame* _pMainFrame = nullptr;
     CMeshPtr _pHexMesh;
     TriMesh::CMeshRepoPtr _pModelMeshRepo;
-    std::map<std::wstring, MeshDataPtr> _meshData;
+    std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pMeshData;
     VolumePtr _pVolume;
     const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
     const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
@@ -157,9 +157,9 @@ inline const BuildCFDParams& AppData::getParams() const
     return _params;
 }
 
-inline const std::map<std::wstring, MeshDataPtr>& AppData::getMeshObjects() const
+inline const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& AppData::getMeshData() const
 {
-    return _meshData;
+    return _pMeshData;
 }
 
 

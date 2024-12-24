@@ -209,9 +209,6 @@ inline bool Index3DBase::operator != (const T& rhs) const
 class Index3DId : public Index3DBase
 {
 public:
-	static void setBlockDim(size_t val);
-	static size_t getBlockDim();
-
 	Index3DId() = default;
 	Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseType k, size_t id);
 	Index3DId(const Index3DId& src) = default;

@@ -201,7 +201,24 @@ std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
 		return pBlock;
 
 	Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-	return make_shared<Block>(this, blockIdx, _cornerPts);
+	Vector3d uvw[2];
+	for (int i = 0; i < 3; i++) {
+		uvw[0][i] = blockIdx[i] / (double)s_volDim[i];
+		uvw[1][i] = (blockIdx[i] + 1) / (double)s_volDim[i];
+	}
+	std::vector<Vector3d> pts({
+		TRI_LERP(_cornerPts, uvw[0][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(_cornerPts, uvw[1][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(_cornerPts, uvw[1][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(_cornerPts, uvw[0][0], uvw[1][1], uvw[0][2]),
+
+		TRI_LERP(_cornerPts, uvw[0][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(_cornerPts, uvw[1][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(_cornerPts, uvw[1][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(_cornerPts, uvw[0][0], uvw[1][1], uvw[1][2]),
+	});
+
+	return make_shared<Block>(this, blockIdx, pts);
 }
 
 CBoundingBox3Dd Volume::getBBox() const
@@ -252,10 +269,14 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], bool multiCore)
+void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
 {
-	for (int i = 0; i < 8; i++)
+	_boundingBox.clear();
+	_boundingBox.merge(volBox);
+	for (int i = 0; i < 8; i++) {
+		_boundingBox.merge(pts[i]);
 		_cornerPts.push_back(pts[i]);
+	}
 	
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
@@ -263,6 +284,12 @@ void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], bo
 	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
 		_blocks[linearIdx] = createBlock(linearIdx);
 	}
+
+	// Cannot create subBlocks until all blocks are created so they can be connected
+	runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		pBlk->createBlockCells(TS_REAL);
+		return true;
+	}, multiCore);
 }
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
@@ -1399,6 +1426,9 @@ void Volume::runThreadPool333(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
+
+	if (_blocks.empty())
+		return;
 
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
