@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_ioUtil.h>
 #include <tm_spatialSearch.hpp>
+#include <tm_math.h>
 
 #include <tolerances.h>
 #include <index3D.h>
@@ -235,17 +236,18 @@ Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
 	const double iMax = 1.0 - 1.0 / (1ull << 18);
 	const Index3D& volDim = Volume::volDim();
+	const auto& volCorners = _pVol->getCornerPts();
 	const auto& bbox = _pVol->_boundingBox;
 	const auto& bbMin = bbox.getMin();
 	const auto& bbRange = bbox.range();
 
+	Vector3<double> uvw;
+	TRI_LERP_INV(point, volCorners, uvw);
 	Vector3 v = point - bbMin;
 	Index3D result;
 	for (int i = 0; i < 3; i++) {
-		double t = v[i] / bbRange[i];
-//		assert(0 <= t && t <= 1.0);
 
-		double floatIdx = t * volDim[i];
+		double floatIdx = uvw[i] * volDim[i];
 		Index3DBaseType idx = (Index3DBaseType)floatIdx;
 		floatIdx -= idx;
 		if (floatIdx > iMax)
@@ -359,23 +361,30 @@ const vector<Vector3d>& Block::getCornerPts() const
 
 MTC::vector<Index3DId> Block::getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& index)
 {
-	Vector3d pts[] = {
-		triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 0)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 0)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 0)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 0)),
-
-		triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 1)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 1)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 1)),
-		triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 1)),
-	};
-
 	MTC::vector<Index3DId> result;
 	result.reserve(8);
-	for (const auto& pt : pts) {
-		auto vertId = addVertex(pt);
-		result.push_back(vertId);
+	if (divs <= 1) {
+		for (const auto& pt : blockPts) {
+			auto vertId = addVertex(pt);
+			result.push_back(vertId);
+		}
+	} else {
+		Vector3d pts[] = {
+			triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 0)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 0)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 0)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 0)),
+
+			triLinInterp(blockPts.data(), divs, index + Index3D(0, 0, 1)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(1, 0, 1)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(1, 1, 1)),
+			triLinInterp(blockPts.data(), divs, index + Index3D(0, 1, 1)),
+		};
+
+		for (const auto& pt : pts) {
+			auto vertId = addVertex(pt);
+			result.push_back(vertId);
+		}
 	}
 	return result;
 }
@@ -631,10 +640,11 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	Vertex vert(pt);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
 
+	// Bounding box is off due to skewing
 	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
-//	assert(idOfPoint(pt) == result);
+	assert(idOfPoint(pt) == result);
 #endif // _DEBUG
 
 	return result;

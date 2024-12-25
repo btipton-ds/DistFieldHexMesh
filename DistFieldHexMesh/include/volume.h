@@ -85,6 +85,7 @@ public:
 	const std::vector<size_t>& getSharpVertIndices() const;
 	bool getSharpVertPlane(Planed& plane) const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
+	const std::vector<Vector3d>& getCornerPts() const;
 
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
@@ -217,6 +218,11 @@ inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
 	auto idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
+}
+
+inline const std::vector<Vector3d>& Volume::getCornerPts() const
+{
+	return _cornerPts;
 }
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const

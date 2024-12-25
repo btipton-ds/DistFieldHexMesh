@@ -57,8 +57,6 @@ namespace DFHM {
 		void getValue(wxTextCtrl* item, size_t& curValue) const;
 		void getValue(wxTextCtrl* item, double& curValue) const;
 
-		bool _createdMesh = false;
-
 		AppDataPtr _pAppData;
 
 		wxStaticText

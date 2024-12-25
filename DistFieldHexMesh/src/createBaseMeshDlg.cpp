@@ -117,7 +117,6 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxW
 	: wxDialog(parent, id, title, pos, wxSize(frameWidth, frameHeight), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
 	, _pAppData(pAppData)
 {
-	_createdMesh = !_pAppData->doesBaseMeshExist();
 	auto& params = pAppData->getParams();
 	if (params.yMin == DBL_MAX) {
 		const auto& bbox = _pAppData->getBoundingBox();
@@ -288,8 +287,6 @@ void CreateBaseMeshDlg::OnUpdate(wxCommandEvent& event)
 {
 	getParams();
 	_pAppData->doCreateBaseVolumePreview();
-	_pAppData = nullptr;
-	Destroy();
 }
 
 void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)
@@ -302,8 +299,7 @@ void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)
 
 void CreateBaseMeshDlg::OnDone(wxCommandEvent& event)
 {
-	if (_createdMesh)
-		_pAppData->doRemoveBaseVolumePreview();
+	_pAppData->doRemoveBaseVolumePreview();
 	_pAppData = nullptr;
 	Destroy();
 }
