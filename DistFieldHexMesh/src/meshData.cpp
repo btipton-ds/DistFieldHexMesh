@@ -110,7 +110,9 @@ const COglMultiVboHandler::OGLIndices* MeshData::createFaceTessellation(const Tr
 		};
 
 	const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-	return _VBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
+	auto meshId = pMesh->getId();
+	auto changeNumber = pMesh->getChangeNumber();
+	return _VBOs->_faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
 }
 
 void MeshData::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
@@ -160,16 +162,19 @@ const OGLIndices* MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMes
 		return true;
 		};
 
-	pMesh->getGlEdges(colorFunc, _reference, points, colors, indices);
+	bool includeSmooth = false;
+	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, indices);
 
-	return _VBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
+	auto meshId = pMesh->getId();
+	auto changeNumber = pMesh->getChangeNumber();
+	return _VBOs->_edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, indices);
 }
 
-void MeshData::endEdgeTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
+void MeshData::endEdgeTesselation(const OGLIndices* pEdgeTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
 {
 	_VBOs->_edgeVBO.endEdgeTesselation();
 
-	_VBOs->_pTriTess = pTriTess;
+	_VBOs->_pEdgeTess = pEdgeTess;
 	_VBOs->_pSharpEdgeTess = pSharpEdgeTess;
 	_VBOs->_pNormalTess = pNormalTess;
 	_VBOs->_edgeTessellations.clear();

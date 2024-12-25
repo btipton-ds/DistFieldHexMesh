@@ -63,6 +63,7 @@ namespace DFHM {
 
 		const OGLIndices
 			* _pTriTess = nullptr,
+			* _pEdgeTess = nullptr,
 			* _pSharpVertTess = nullptr,
 			* _pSharpEdgeTess = nullptr,
 			* _pNormalTess = nullptr;

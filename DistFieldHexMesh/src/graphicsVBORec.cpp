@@ -100,7 +100,7 @@ void VBORec::changeEdgeViewElements(bool visible, bool reference, const ChangeEl
 
     if (visible) {
         if (reference) {
-            _edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, *_pTriTess);
+            _edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, *_pEdgeTess);
         } else {
             if (opts.showSharpEdges && _pSharpEdgeTess) {
                 _edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, *_pSharpEdgeTess);

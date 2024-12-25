@@ -932,8 +932,10 @@ void GraphicsCanvas::beginFaceTesselation()
 void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
 {
     _meshVBOs->_faceVBO.endFaceTesselation(smoothNormals);
+
     _meshVBOs->_pTriTess = pTriTess;
     _meshVBOs->_pSharpVertTess = pSharpVertTess;
+
     _meshVBOs->_faceTessellations.clear();
 
     changeFaceViewElements();
@@ -942,6 +944,7 @@ void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLInd
 void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
 {
     _meshVBOs->_faceVBO.endFaceTesselation(false);
+
     _meshVBOs->_faceTessellations = faceTess;
 
     changeFaceViewElements();
@@ -958,6 +961,7 @@ void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const 
 
     _meshVBOs->_pSharpEdgeTess = pSharpEdgeTess;
     _meshVBOs->_pNormalTess = pNormalTess;
+
     _meshVBOs->_edgeTessellations.clear();
 
     changeEdgeViewElements();

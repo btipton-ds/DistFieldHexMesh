@@ -1026,10 +1026,8 @@ void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 	if (numFaces(true) == 0)
 		return;
 
-	cout << "Adding polygons " << _modelData._polygons.size() << "\n";
 	_modelData._polygons.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInRender(meshType, face)) {
-			cout << "Adding intersecting polygon\n";
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
 			pts.reserve(vertIds.size());

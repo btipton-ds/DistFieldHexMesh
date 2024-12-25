@@ -87,7 +87,7 @@ namespace DFHM {
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 		const OGLIndices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
 		const OGLIndices* setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh);
-		void endEdgeTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
+		void endEdgeTesselation(const OGLIndices* pEdgeTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
 		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
