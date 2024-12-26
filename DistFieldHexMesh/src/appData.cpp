@@ -595,6 +595,7 @@ void AppData::doCreateBaseVolumePreview()
         bbox.merge(cubePts[i]);
     }
     bbox.growPercent(0.05);
+    volBox.growPercent(0.05);
 
     pMesh = make_shared<CMesh>(volBox/*, _pModelMeshRepo*/);
     {
@@ -612,6 +613,7 @@ void AppData::doCreateBaseVolumePreview()
 
     _pMainFrame->refreshObjectTree();
     makeModelTess();
+    pCanvas->changeViewElements();
 }
 
 void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
