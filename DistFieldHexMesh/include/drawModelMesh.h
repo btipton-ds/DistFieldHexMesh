@@ -26,61 +26,20 @@ This file is part of the DistFieldHexMesh application/library.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
-#include "defines.h"
+
+#include <drawMesh.h>
+
+class COglShader;
 
 namespace DFHM {
+	class DrawModelMesh : public DrawMesh {
+	public:
+		DrawModelMesh(GraphicsCanvas* pCanvas);
+		virtual ~DrawModelMesh();
 
-enum Dir {
-	Positive = 1,
-	Negetive = -1
-};
-
-
-enum Trinary
-{
-	IS_UNKNOWN,
-	IS_TRUE,
-	IS_FALSE
-};
-
-enum TopolgyState
-{
-	TS_REAL,			// As originally created without any splits
-	TS_REFERENCE,		// Was intact, now there is a split version and this is for reference
-};
-
-enum FaceType {
-	FT_OUTER,
-	FT_MODEL_BOUNDARY,
-	FT_BLOCK_BOUNDARY,
-	FT_ALL,
-};
-
-enum DrawStates {
-    DS_MODEL_FACES,
-	DS_MODEL_EDGES,
-	DS_MODEL_CURVATURE,
-	DS_MODEL_SHARP_EDGES,
-    DS_MODEL_SHARP_VERTS,
-    DS_MODEL_NORMALS,
-    DS_BLOCK_OUTER,
-    DS_BLOCK_INNER,
-	DS_BLOCK_BOUNDARY,
-	DS_MODEL_REF_EDGES,
-	DS_BLOCK_ALL,
-};
-
-enum VertexLockType {
-	VLT_NONE,
-	VLT_ALL_AXES,
-	VLT_MODEL_MESH,
-};
-
-enum Index3IdUserFlags {
-	UF_FACE_REVERSED = 1,
-	UF_UNUSED1 = 2,
-	UF_UNUSED2 = 4,
-	UF_UNUSED3 = 8,
-};
-
+		void drawEdges() override;
+		void drawFaces() override;
+		void changeViewElements(const ChangeElementsOptions& opts) override;
+	private:
+	};
 }

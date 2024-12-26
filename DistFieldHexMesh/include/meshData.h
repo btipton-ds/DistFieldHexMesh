@@ -40,13 +40,15 @@ This file is part of the DistFieldHexMesh application/library.
 class COglShader;
 
 namespace DFHM {
+	class DrawModelMesh;
+
 	class MeshData;
 	using MeshDataPtr = std::shared_ptr<MeshData>;
 
-	using OGLIndices = COglMultiVboHandler::OGLIndices;
-
 	class MeshData {
 	public:
+		using OGLIndices = COglMultiVboHandler::OGLIndices;
+
 		MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
 		virtual ~MeshData();
@@ -56,18 +58,7 @@ namespace DFHM {
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
 
-		const COglMultiVboHandler::OGLIndices* getFaceTess() const;
-		const COglMultiVboHandler::OGLIndices* getEdgeTess() const;
-		const COglMultiVboHandler::OGLIndices* getNormalTess() const;
-		const COglMultiVboHandler::OGLIndices* getPointTess() const;
-
-		COglMultiVboHandler& getFaceVBO();
-		COglMultiVboHandler& getEdgeVBO();
-		void changeFaceViewElements(const VBORec::ChangeElementsOptions& opts);
-		void changeEdgeViewElements(const VBORec::ChangeElementsOptions& opts);
-
-		void makeOGLTess();
-		void setShader(std::shared_ptr<COglShader> pShader);
+		void makeOGLTess(std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
 
 		bool isActive() const;
 		void setActive(bool val);
@@ -75,40 +66,44 @@ namespace DFHM {
 		bool isReference() const;
 		void setReference(bool val);
 
+		const OGLIndices* getFaceTess() const;
+		const OGLIndices* getEdgeTess() const;
+		const OGLIndices* getNormalTess() const;
+
 	private:
 
-		void beginFaceTesselation();
+//		void beginFaceTesselation();
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const OGLIndices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh);
-		void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
-		void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
+		const OGLIndices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
+//		void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
+//		void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
 
-		void beginEdgeTesselation();
+//		void beginEdgeTesselation();
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const OGLIndices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
-		const OGLIndices* setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh);
-		void endEdgeTesselation(const OGLIndices* pEdgeTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
-		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
+		const OGLIndices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, 
+			const std::vector<unsigned int>& indices, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+		const OGLIndices* setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+//		void endEdgeTesselation(const OGLIndices* pEdgeTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
+//		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		TriMesh::CMeshPtr getSharpVertMesh() const;
 
+		bool
+			_active = true,
+			_reference = false;
+
 		std::wstring _name;
 		TriMesh::CMeshRepoPtr _pRepo;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
-		bool 
-			_active = true,
-			_reference = false;
 
-		const COglMultiVboHandler::OGLIndices* _faceTess = nullptr;
-		const COglMultiVboHandler::OGLIndices* _edgeTess = nullptr;
-		const COglMultiVboHandler::OGLIndices* _normalTess = nullptr;
-		const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
-
-		std::shared_ptr<VBORec> _VBOs;
+		const OGLIndices* _faceTess = nullptr;
+		const OGLIndices* _edgeTess = nullptr;
+		const OGLIndices* _normalTess = nullptr;
+		const OGLIndices* _sharpPointTess = nullptr;
 	};
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
@@ -119,36 +114,6 @@ namespace DFHM {
 	inline const std::wstring& MeshData::getName() const
 	{
 		return _name;
-	}
-
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getFaceTess() const
-	{
-		return _faceTess;
-	}
-
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getEdgeTess() const
-	{
-		return _edgeTess;
-	}
-
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getNormalTess() const
-	{
-		return _normalTess;
-	}
-
-	inline const COglMultiVboHandler::OGLIndices* MeshData::getPointTess() const
-	{
-		return _sharpPointTess;
-	}
-
-	inline COglMultiVboHandler& MeshData::getFaceVBO()
-	{
-		return _VBOs->_faceVBO;
-	}
-
-	inline COglMultiVboHandler& MeshData::getEdgeVBO()
-	{
-		return _VBOs->_edgeVBO;
 	}
 
 	inline bool MeshData::isActive() const
@@ -164,6 +129,21 @@ namespace DFHM {
 	inline void MeshData::setReference(bool val)
 	{
 		_reference = val;
+	}
+
+	inline const MeshData::OGLIndices* MeshData::getFaceTess() const
+	{
+		return _faceTess;
+	}
+
+	inline const MeshData::OGLIndices* MeshData::getEdgeTess() const
+	{
+		return _edgeTess;
+	}
+
+	inline const MeshData::OGLIndices* MeshData::getNormalTess() const
+	{
+		return _normalTess;
 	}
 
 }

@@ -73,6 +73,9 @@ add_executable (DistFieldHexMesh
 	"src/buildCFDHexesDlg.cpp"
 	"src/createBaseMeshDlg.cpp"
     "src/edge.cpp"
+	"src/drawMesh.cpp"
+	"src/drawHexMesh.cpp" 
+	"src/drawModelMesh.cpp"
     "src/index3D.cpp"
 	"src/fixedPoint.cpp"
 	"src/graphicsCanvas.cpp"
@@ -102,7 +105,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-)
+  )
 
 add_executable (TestDFM         
 	

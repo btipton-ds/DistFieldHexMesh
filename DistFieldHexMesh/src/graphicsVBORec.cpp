@@ -50,7 +50,7 @@ void VBORec::changeFaceViewElements(bool visible, bool reference, const ChangeEl
             if (opts.showCurvature)
                 _faceVBO.includeElementIndices(DS_MODEL_CURVATURE, *_pTriTess);
             else
-                _faceVBO.includeElementIndices(DS_MODEL, *_pTriTess);
+                _faceVBO.includeElementIndices(DS_MODEL_FACES, *_pTriTess);
         }
 
         if (opts.showSharpVerts && _pSharpVertTess)

@@ -112,7 +112,6 @@ public:
     GraphicsCanvas* getCanvas();
 
     AppDataPtr getAppData();
-    void registerMeshData(MeshDataPtr& pMeshData);
     void refreshObjectTree();
 
 private:

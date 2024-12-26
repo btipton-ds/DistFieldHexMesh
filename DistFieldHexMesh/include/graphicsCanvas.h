@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <meshData.h>
 #include <graphicsVBORec.h>
+#include <drawMesh.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
@@ -45,6 +46,8 @@ This file is part of the DistFieldHexMesh application/library.
 class COglShader;
 
 namespace DFHM {
+class DrawHexMesh;
+class DrawModelMesh;
 
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
@@ -79,12 +82,31 @@ public:
         VIEW_RIGHT,
     };
 
+    struct GraphicsUBO {
+        m44f modelViewX; // Model matrix is always identity, so this is the view matrix
+        m44f projX;
+        p3f defColor;
+        float ambient = 0;
+        int numLights = 0;
+        p3f lightDir[8];
+    };
+
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
 
     void clearMesh3D();
-    void registerMeshData(MeshDataPtr& pMeshData);
+
     const VBORec::ChangeElementsOptions& getViewOptions() const;
+
+    GraphicsUBO& getUBO();
+    const GraphicsUBO& getUBO() const;
+
+    std::shared_ptr<DrawModelMesh> getDrawModelMesh();
+    const std::shared_ptr<DrawModelMesh> getDrawModelMesh() const;
+
+    std::shared_ptr<DrawHexMesh> getDrawHexMesh();
+    const std::shared_ptr<DrawHexMesh> getDrawHexMesh() const;
+
 
     void doPaint(wxPaintEvent& event);
     void setBackColor(const rgbaColor& color);
@@ -105,8 +127,9 @@ public:
     void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
     void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
-    void changeFaceViewElements();
-    void changeEdgeViewElements();
+    void changeViewElements();
+    void changeFaceViewElementsX();
+    void changeEdgeViewElementsX();
 
     Vector3d NDCPointToModel(const Eigen::Vector2d& pt2d) const;
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
@@ -157,15 +180,6 @@ public:
     static Eigen::Matrix4d createTranslation(const Vector3d& delta);
     static Eigen::Matrix4d createRotation(const Vector3d& axis, double angle);
 private:
-    struct GraphicsUBO {
-        m44f modelViewX; // Model matrix is always identity, so this is the view matrix
-        m44f projX;
-        p3f defColor;
-        float ambient = 0;
-        int numLights = 0;
-        p3f lightDir[8];
-    };
-
     Eigen::Matrix4d cumTransform(bool withProjection) const;
     void initProjection();
     void updateProjectionAspect();
@@ -193,6 +207,8 @@ private:
     double _viewScale = INIT_VIEW_SCALE;
 
     AppDataPtr _pAppData;
+    std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
+    std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
     CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLocNDC_2D;
     Vector3d _mouseStartLocal;
@@ -210,14 +226,44 @@ protected:
     wxDECLARE_EVENT_TABLE(); 
 };
 
-inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
-{
-    _backColor = color;
-}
-
 inline const VBORec::ChangeElementsOptions& GraphicsCanvas::getViewOptions() const
 {
     return _viewOptions;
+}
+
+inline GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO()
+{
+    return _graphicsUBO;
+}
+
+inline const GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO() const
+{
+    return _graphicsUBO;
+}
+
+inline std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh()
+{
+    return _pDrawModelMesh;
+}
+
+inline const std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh() const
+{
+    return _pDrawModelMesh;
+}
+
+inline std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh()
+{
+    return _pDrawHexMesh;
+}
+
+inline const std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh() const
+{
+    return _pDrawHexMesh;
+}
+
+inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
+{
+    _backColor = color;
 }
 
 inline bool GraphicsCanvas::showSharpEdges() const

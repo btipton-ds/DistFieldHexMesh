@@ -95,8 +95,7 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 	const auto& pAppData = _pMainFrame->getAppData();
 	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pData->setActive(!pData->isActive());
-	_pMainFrame->getCanvas()->changeFaceViewElements();
-	_pMainFrame->getCanvas()->changeEdgeViewElements();
+	_pMainFrame->getCanvas()->changeViewElements();
 }
 
 void ObjectTreeCtrl::OnMeshStats(wxCommandEvent& event)

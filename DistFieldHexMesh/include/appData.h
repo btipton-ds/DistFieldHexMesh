@@ -71,7 +71,7 @@ public:
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
 
-    void doOpen();
+    bool doOpen();
     bool doImportMesh();
     void doSave();
     void doSaveAs();
@@ -112,6 +112,7 @@ private:
 
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
+    void makeModelTess();
     void updateTessellation(const Index3D& min, const Index3D& max);
     void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);

@@ -51,6 +51,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <makeBlockDlg.h>
 #include <mainFrame.h>
+#include <drawModelMesh.h>
+#include <drawHexMesh.h>
 #include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
@@ -76,12 +78,12 @@ AppData::~AppData()
 {
 }
 
-void AppData::doOpen()
+bool AppData::doOpen()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
         "All (*.dfhm)|*.dfhm|DFHM files (*.dfhm)|*.dfhm", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (openFileDialog.ShowModal() == wxID_CANCEL)
-        return;     // the user changed idea...
+        return false;     // the user canceled
 
 
     // proceed loading the file chosen by the user;
@@ -99,7 +101,10 @@ void AppData::doOpen()
     }
     if (filename.find(L".dfhm") != -1) {
         readDHFM(path, filename);
+        makeModelTess();
+        return true;
     }
+    return false;
 }
 
 CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
@@ -141,22 +146,38 @@ bool AppData::doImportMesh()
         path = path.replace(pos, 1, L"/");
         pos = path.find(L"\\");
     }
+
+    auto pCanvas = _pMainFrame->getCanvas();
+    auto pDrawModelMesh = pCanvas->getDrawModelMesh();
+    auto pVBOs = pDrawModelMesh->getVBOs();
     if (filename.find(L".stl") != -1) {
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
-
-        _pMainFrame->registerMeshData(pMeshData);
-        pMeshData->makeOGLTess();
         _pMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
-        _pMainFrame->refreshObjectTree();
-
-        _pMainFrame->getCanvas()->resetView();
+        makeModelTess();
         return true;
     }
+
     return false;
+}
+
+void AppData::makeModelTess()
+{
+    auto pCanvas = _pMainFrame->getCanvas();
+    auto pDrawModelMesh = pCanvas->getDrawModelMesh();
+    auto pVBOs = pDrawModelMesh->getVBOs();
+
+    pVBOs->_edgeVBO.beginEdgeTesselation();
+    pVBOs->_faceVBO.beginFaceTesselation();
+    for (auto& pair : *_pMeshData) {
+        auto pData = pair.second;
+        pData->makeOGLTess(pDrawModelMesh);
+    }
+    pVBOs->_faceVBO.endFaceTesselation(false);
+    pVBOs->_edgeVBO.endEdgeTesselation();
 }
 
 void AppData::doSave()
@@ -238,10 +259,10 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         for (size_t i = 0; i < numMeshes; i++) {
             auto p = make_shared<MeshData>(_pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
             p->read(in);
-            _pMainFrame->registerMeshData(p);
-            p->makeOGLTess();
             _pMeshData->insert(make_pair(p->getName(), p));
         }
+
+        makeModelTess();
     }
 
     bool hasVolume;
@@ -587,11 +608,10 @@ void AppData::doCreateBaseVolumePreview()
     MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
-    _pMainFrame->registerMeshData(pMeshData);
-    pMeshData->makeOGLTess();
     _pMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
+    makeModelTess();
 }
 
 void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)

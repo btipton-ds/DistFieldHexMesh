@@ -63,6 +63,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <appData.h>
 #include <meshData.h>
+#include <drawHexMesh.h>
+#include <drawModelMesh.h>
 
 using namespace std;
 using namespace DFHM;
@@ -137,6 +139,9 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxPoint(200, 0), wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
 {
+    _pDrawHexMesh = make_shared<DrawHexMesh>(this);
+    _pDrawModelMesh = make_shared<DrawModelMesh>(this);
+
     _meshVBOs = make_shared<VBORec>();
 
     _pContext = make_shared<wxGLContext>(this);
@@ -262,7 +267,7 @@ void GraphicsCanvas::setLights()
 bool GraphicsCanvas::toggleShowSharpEdges()
 {
     _viewOptions.showSharpEdges = !_viewOptions.showSharpEdges;
-    changeEdgeViewElements();
+    changeViewElements();
 
     return _viewOptions.showSharpEdges;
 }
@@ -270,7 +275,7 @@ bool GraphicsCanvas::toggleShowSharpEdges()
 bool GraphicsCanvas::toggleShowSharpVerts()
 {
     _viewOptions.showSharpVerts = !_viewOptions.showSharpVerts;
-    changeFaceViewElements();
+    changeViewElements();
 
     return _viewOptions.showSharpVerts;
 }
@@ -278,7 +283,7 @@ bool GraphicsCanvas::toggleShowSharpVerts()
 bool GraphicsCanvas::toggleShowTriNormals()
 {
     _viewOptions.showTriNormals = !_viewOptions.showTriNormals;
-    changeEdgeViewElements();
+    changeViewElements();
 
     return _viewOptions.showTriNormals;
 }
@@ -286,7 +291,7 @@ bool GraphicsCanvas::toggleShowTriNormals()
 bool GraphicsCanvas::toggleShowFaces()
 {
     _viewOptions.showFaces = !_viewOptions.showFaces;
-    changeFaceViewElements();
+    changeViewElements();
 
     return _viewOptions.showFaces;
 }
@@ -294,15 +299,14 @@ bool GraphicsCanvas::toggleShowFaces()
 bool GraphicsCanvas::toggleShowCurvature()
 {
     _viewOptions.showCurvature = !_viewOptions.showCurvature;
-    changeFaceViewElements();
+    changeViewElements();
     return _viewOptions.showCurvature;
 }
 
 bool GraphicsCanvas::toggleShowEdges()
 {
     _viewOptions.showEdges = !_viewOptions.showEdges;
-    changeFaceViewElements();
-    changeEdgeViewElements();
+    changeViewElements();
 
     return _viewOptions.showEdges;
 }
@@ -310,8 +314,7 @@ bool GraphicsCanvas::toggleShowEdges()
 bool GraphicsCanvas::toggleShowOuter()
 {
     _viewOptions.showOuter = !_viewOptions.showOuter;
-    changeFaceViewElements();
-    changeEdgeViewElements();
+    changeViewElements();
 
     return _viewOptions.showOuter;
 }
@@ -319,8 +322,7 @@ bool GraphicsCanvas::toggleShowOuter()
 bool GraphicsCanvas::toggleShowModelBoundary()
 {
     _viewOptions.showModelBoundary = !_viewOptions.showModelBoundary;
-    changeFaceViewElements();
-    changeEdgeViewElements();
+    changeViewElements();
 
     return _viewOptions.showOuter;
 }
@@ -466,11 +468,6 @@ void GraphicsCanvas::clearMesh3D()
     _meshVBOs->_faceTessellations.clear();
 }
 
-void GraphicsCanvas::registerMeshData(MeshDataPtr& pMeshData)
-{
-    pMeshData->setShader(_phongShader);
-}
-
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }
@@ -508,6 +505,9 @@ void GraphicsCanvas::loadShaders()
 
     _meshVBOs->_faceVBO.setShader(_phongShader.get());
     _meshVBOs->_edgeVBO.setShader(_phongShader.get());
+
+    _pDrawModelMesh->setShader(_phongShader);
+    _pDrawHexMesh->setShader(_phongShader);
 }
 
 Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
@@ -594,6 +594,9 @@ layout(binding = 0) uniform UniformBufferObject {
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
     drawMousePos3D(); // Available for mouse position testing
+    _pDrawHexMesh->render();
+    _pDrawModelMesh->render();
+
     drawFaces();
     drawEdges();
 
@@ -637,7 +640,7 @@ void GraphicsCanvas::drawFaces()
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
             default:
-            case DS_MODEL:
+            case DS_MODEL_FACES:
                 _graphicsUBO.defColor = p3f(0.9f, 0.9f, 1.0f);
                 break;
             case DS_MODEL_CURVATURE:
@@ -683,12 +686,6 @@ void GraphicsCanvas::drawFaces()
 //    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
-    auto& meshObjects = *_pAppData->getMeshData();
-    for (auto& d : meshObjects)
-    {
-        auto& VBO = d.second->getFaceVBO();
-        VBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-    }
 }
 
 void GraphicsCanvas::drawEdges()
@@ -697,7 +694,7 @@ void GraphicsCanvas::drawEdges()
         COglMultiVBO::DrawVertexColorMode result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         switch (key) {
             default:
-            case DS_MODEL:
+            case DS_MODEL_EDGES:
                 glLineWidth(2.0f);
                 _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
                 break;
@@ -745,12 +742,6 @@ void GraphicsCanvas::drawEdges()
 //    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
     _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
-    auto& meshObjects = *_pAppData->getMeshData();
-    for (auto& d : meshObjects)
-    {
-        auto& VBO = d.second->getEdgeVBO();
-        VBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-    }
 }
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const
@@ -938,7 +929,7 @@ void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLInd
 
     _meshVBOs->_faceTessellations.clear();
 
-    changeFaceViewElements();
+    changeFaceViewElementsX();
 }
 
 void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
@@ -947,7 +938,7 @@ void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLI
 
     _meshVBOs->_faceTessellations = faceTess;
 
-    changeFaceViewElements();
+    changeFaceViewElementsX();
 }
 
 void GraphicsCanvas::beginEdgeTesselation()
@@ -964,7 +955,7 @@ void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const 
 
     _meshVBOs->_edgeTessellations.clear();
 
-    changeEdgeViewElements();
+    changeEdgeViewElementsX();
 }
 
 void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
@@ -973,7 +964,7 @@ void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLI
 
     _meshVBOs->_edgeTessellations = edgeTess;
 
-    changeEdgeViewElements();
+    changeEdgeViewElementsX();
 }
 
 
@@ -1025,23 +1016,55 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const C
     return _meshVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }
 
-void GraphicsCanvas::changeFaceViewElements()
+void GraphicsCanvas::changeViewElements()
+{
+    auto& faceVBO = _pDrawModelMesh->getVBOs()->_faceVBO;
+    auto& edgeVBO = _pDrawModelMesh->getVBOs()->_edgeVBO;
+
+    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
+    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+
+    const auto& meshData = *_pAppData->getMeshData();
+    for (auto& pair : meshData) {
+        auto pData = pair.second;
+        if (!pData->isActive())
+            continue;
+
+        if (pData->isReference() && pData->getEdgeTess()) {
+            edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, *pData->getEdgeTess());
+        } else {
+            if (_viewOptions.showFaces && pData->getFaceTess()) {
+                faceVBO.includeElementIndices(_viewOptions.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, *pData->getFaceTess());
+                if (_viewOptions.showTriNormals && pData->getEdgeTess())
+                    edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *pData->getEdgeTess());
+            }
+            if (_viewOptions.showEdges && pData->getEdgeTess()) {
+                edgeVBO.includeElementIndices(DS_MODEL_EDGES, *pData->getEdgeTess());
+
+            }
+        }
+    }
+    faceVBO.endSettingElementIndices();
+    edgeVBO.endSettingElementIndices();
+}
+
+void GraphicsCanvas::changeFaceViewElementsX()
 {
     _meshVBOs->changeFaceViewElements(true, false, _viewOptions);
     auto& objs = *_pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
-        obj->changeFaceViewElements(_viewOptions);
+//        obj->changeFaceViewElements(_viewOptions);
     }
 }
 
-void GraphicsCanvas::changeEdgeViewElements()
+void GraphicsCanvas::changeEdgeViewElementsX()
 {
     _meshVBOs->changeEdgeViewElements(true, false, _viewOptions);
     auto& objs = *_pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
-        obj->changeEdgeViewElements(_viewOptions);
+//        obj->changeEdgeViewElements(_viewOptions);
     }
 }
 

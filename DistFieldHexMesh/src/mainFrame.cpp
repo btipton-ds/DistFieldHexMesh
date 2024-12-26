@@ -308,13 +308,11 @@ void MainFrame::OnInternalIdle()
 
 void MainFrame::OnOpen(wxCommandEvent& event)
 {
-    _pAppData->doOpen();
-    refreshObjectTree();
-}
-
-void MainFrame::registerMeshData(MeshDataPtr& pMeshData)
-{
-    _pCanvas->registerMeshData(pMeshData);
+    if (_pAppData->doOpen()) {
+        refreshObjectTree();
+        _pCanvas->changeViewElements();
+        _pCanvas->resetView();
+    }
 }
 
 void MainFrame::refreshObjectTree()
@@ -342,6 +340,8 @@ void MainFrame::OnImportMesh(wxCommandEvent& event)
 {
     if (_pAppData->doImportMesh()) {
         refreshObjectTree();
+        _pCanvas->changeViewElements();
+        _pCanvas->resetView();
     }
 }
 
