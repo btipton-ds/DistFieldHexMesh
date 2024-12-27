@@ -492,7 +492,7 @@ void GraphicsCanvas::loadShaders()
     SetCurrent(*_pContext);
     string path = "shaders/";
     
-    _phongShader = make_shared<OGL::COglShader>();
+    _phongShader = make_shared<OGL::Shader>();
 
     _phongShader->setShaderVertexAttribName("inPosition");
     _phongShader->setShaderNormalAttribName("inNormal");
@@ -563,10 +563,10 @@ layout(binding = 0) uniform UniformBufferObject {
     size_t cBlockSize = sizeof(GraphicsUBO);
     const GLchar* names[] = { "modelView", "proj", "defColor", "ambient", "numLights", "lightDir" };
     GLuint indices[6] = { 0, 0, 0, 0, 0 };
-    glGetUniformIndices(_phongShader->programID(), 6, names, indices); COglShader::dumpGlErrors();
+    glGetUniformIndices(_phongShader->programID(), 6, names, indices); Shader::dumpGlErrors();
 
     GLint offset0[6];
-    glGetActiveUniformsiv(_phongShader->programID(), 6, indices, GL_UNIFORM_OFFSET, offset0); COglShader::dumpGlErrors();
+    glGetActiveUniformsiv(_phongShader->programID(), 6, indices, GL_UNIFORM_OFFSET, offset0); Shader::dumpGlErrors();
 
     GraphicsUBO testSize;
     size_t addr0 = (size_t) &testSize;
@@ -635,8 +635,8 @@ void GraphicsCanvas::drawMousePos3D()
 
 void GraphicsCanvas::drawFaces()
 {
-    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
-        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
             default:
@@ -644,7 +644,7 @@ void GraphicsCanvas::drawFaces()
                 _graphicsUBO.defColor = p3f(0.9f, 0.9f, 1.0f);
                 break;
             case DS_MODEL_CURVATURE:
-                result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+                result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
                 break;
             case DS_MODEL_SHARP_VERTS:
@@ -690,8 +690,8 @@ void GraphicsCanvas::drawFaces()
 
 void GraphicsCanvas::drawEdges()
 {
-    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
-        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         switch (key) {
             default:
             case DS_MODEL_EDGES:
@@ -701,7 +701,7 @@ void GraphicsCanvas::drawEdges()
             case DS_MODEL_SHARP_EDGES:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0);
-                result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+                result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
                 break;
             case DS_MODEL_NORMALS:
                 glLineWidth(1.0f);
@@ -920,7 +920,7 @@ void GraphicsCanvas::beginFaceTesselation()
     _meshVBOs->_faceVBO.beginFaceTesselation();
 }
 
-void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals)
+void GraphicsCanvas::endFaceTesselation(const OGL::Indices* pTriTess, const OGL::Indices* pSharpVertTess, bool smoothNormals)
 {
     _meshVBOs->_faceVBO.endFaceTesselation(smoothNormals);
 
@@ -932,7 +932,7 @@ void GraphicsCanvas::endFaceTesselation(const OGLIndices* pTriTess, const OGLInd
     changeFaceViewElementsX();
 }
 
-void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess)
+void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<const OGL::Indices*>>& faceTess)
 {
     _meshVBOs->_faceVBO.endFaceTesselation(false);
 
@@ -946,7 +946,7 @@ void GraphicsCanvas::beginEdgeTesselation()
     _meshVBOs->_edgeVBO.beginEdgeTesselation();
 }
 
-void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess)
+void GraphicsCanvas::endEdgeTesselation(const OGL::Indices* pSharpEdgeTess, const OGL::Indices* pNormalTess)
 {
     _meshVBOs->_edgeVBO.endEdgeTesselation();
 
@@ -958,7 +958,7 @@ void GraphicsCanvas::endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const 
     changeEdgeViewElementsX();
 }
 
-void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess)
+void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGL::Indices*>>& edgeTess)
 {
     _meshVBOs->_edgeVBO.endEdgeTesselation();
 
@@ -969,7 +969,7 @@ void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<const OGLI
 
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
+const OGL::Indices* GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
 {
     const auto& points = pMesh->getGlTriPoints();
     const auto& normals = pMesh->getGlTriNormals(false);
@@ -988,13 +988,13 @@ const GraphicsCanvas::OGLIndices* GraphicsCanvas::setFaceTessellation(const CMes
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, 
+const OGL::Indices* GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points,
     const std::vector<unsigned int>& indices)
 {
     return _meshVBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-const GraphicsCanvas::OGLIndices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
+const OGL::Indices* GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
 {
     vector<float> points, colors;
     vector<unsigned int> indices;

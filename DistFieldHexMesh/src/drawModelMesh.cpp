@@ -60,9 +60,9 @@ DrawModelMesh::~DrawModelMesh()
 
 void DrawModelMesh::drawEdges()
 {
-    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
+    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
         auto& UBO = _pCanvas->getUBO();
-        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         switch (key) {
         default:
         case DS_MODEL:
@@ -72,7 +72,7 @@ void DrawModelMesh::drawEdges()
         case DS_MODEL_SHARP_EDGES:
             glLineWidth(1.0f);
             UBO.defColor = p3f(0.0f, 0.0f, 0);
-            result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+            result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
             break;
         case DS_MODEL_NORMALS:
             glLineWidth(1.0f);
@@ -115,8 +115,8 @@ void DrawModelMesh::drawEdges()
 
 void DrawModelMesh::drawFaces()
 {
-    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
-        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         auto& UBO = _pCanvas->getUBO();
         UBO.ambient = 0.2f;
         switch (key) {
@@ -125,7 +125,7 @@ void DrawModelMesh::drawFaces()
             UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
             break;
         case DS_MODEL_CURVATURE:
-            result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+            result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
             UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
             break;
         case DS_MODEL_SHARP_VERTS:

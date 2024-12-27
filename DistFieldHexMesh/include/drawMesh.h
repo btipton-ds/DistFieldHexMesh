@@ -38,15 +38,16 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLExtensions.h>
 #include <OGLShader.h>
 
-class COglShader;
+namespace OGL
+{
+class Shader;
+}
 
 namespace DFHM {
 	class GraphicsCanvas;
 
-	class DrawMesh : public OGL::COglExtensions {
+	class DrawMesh : public OGL::Extensions {
 	public:
-		using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
-
 		struct ChangeElementsOptions {
 			bool
 				showSharpEdges = false,
@@ -63,7 +64,7 @@ namespace DFHM {
 		DrawMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawMesh();
 
-		void setShader(std::shared_ptr<OGL::COglShader>& pShader);
+		void setShader(std::shared_ptr<OGL::Shader>& pShader);
 		std::shared_ptr<VBORec> getVBOs();
 		const std::shared_ptr<VBORec> getVBOs() const;
 
@@ -74,13 +75,13 @@ namespace DFHM {
 
 	protected:
 		GraphicsCanvas* _pCanvas;
-		const OGLIndices
+		const OGL::Indices
 			* _pTriTess = nullptr,
 			* _pEdgeTess = nullptr,
 			* _pSharpVertTess = nullptr,
 			* _pSharpEdgeTess = nullptr,
 			* _pNormalTess = nullptr;
-		std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+		std::vector<std::vector<const OGL::Indices*>> _faceTessellations, _edgeTessellations;
 
 		std::shared_ptr<VBORec> _VBOs;
 	};

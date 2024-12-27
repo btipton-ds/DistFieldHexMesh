@@ -43,7 +43,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_vector3.h>
 #include <enums.h>
 
-class COglShader;
+namespace OGL {
+class Shader;
+}
 
 namespace DFHM {
 class DrawHexMesh;
@@ -65,14 +67,12 @@ using GraphicsCanvasBase = wxGLCanvas;
 #endif
 
 #ifdef WIN32
-class GraphicsCanvas : public GraphicsCanvasBase, public OGL::COglExtensions
+class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
 #else
 class GraphicsCanvas : public GraphicsCanvasBase 
 #endif
 {
 public:
-    using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
-
     enum View {
         VIEW_FRONT,
         VIEW_BACK,
@@ -116,16 +116,16 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGLIndices* setFaceTessellation(const CMeshPtr& pMesh);
-    void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
-    void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
+    const OGL::Indices* setFaceTessellation(const CMeshPtr& pMesh);
+    void endFaceTesselation(const OGL::Indices* pTriTess, const OGL::Indices* pSharpVertTess, bool smoothNormals);
+    void endFaceTesselation(const std::vector<std::vector<const OGL::Indices*>>& faceTess);
 
     void beginEdgeTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGLIndices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
-    const OGLIndices* setEdgeSegTessellation(const CMeshPtr& pMesh);
-    void endEdgeTesselation(const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
-    void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
+    const OGL::Indices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
+    const OGL::Indices* setEdgeSegTessellation(const CMeshPtr& pMesh);
+    void endEdgeTesselation(const OGL::Indices* pSharpEdgeTess, const OGL::Indices* pNormalTess);
+    void endEdgeTesselation(const std::vector<std::vector<const OGL::Indices*>>& edgeTess);
 
     void changeViewElements();
     void changeFaceViewElementsX();
@@ -217,7 +217,7 @@ private:
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
-    std::shared_ptr<OGL::COglShader> _phongShader;
+    std::shared_ptr<OGL::Shader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
 
     std::shared_ptr<VBORec> _meshVBOs;

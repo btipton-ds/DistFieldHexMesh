@@ -29,7 +29,10 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <drawMesh.h>
 
-class COglShader;
+namespace OGL
+{
+	class Shader;
+}
 
 namespace DFHM {
 	class DrawHexMesh : public DrawMesh {

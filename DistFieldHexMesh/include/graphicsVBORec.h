@@ -36,12 +36,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
 
-class COglShader;
+namespace OGL
+{
+	class Shader;
+}
 
 namespace DFHM {
 	struct VBORec {
-		using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
-
 		struct ChangeElementsOptions {
 			bool 
 				showSharpEdges = false,
@@ -61,15 +62,15 @@ namespace DFHM {
 		void changeFaceViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
 		void changeEdgeViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
 
-		const OGLIndices
+		const OGL::Indices
 			* _pTriTess = nullptr,
 			* _pEdgeTess = nullptr,
 			* _pSharpVertTess = nullptr,
 			* _pSharpEdgeTess = nullptr,
 			* _pNormalTess = nullptr;
-		std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
+		std::vector<std::vector<const OGL::Indices*>> _faceTessellations, _edgeTessellations;
 
-		OGL::COglMultiVboHandler _faceVBO, _edgeVBO;
+		OGL::MultiVboHandler _faceVBO, _edgeVBO;
 
 	};
 

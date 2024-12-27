@@ -41,7 +41,7 @@ DrawMesh::~DrawMesh()
 
 }
 
-void DrawMesh::setShader(std::shared_ptr<OGL::COglShader>& pShader)
+void DrawMesh::setShader(std::shared_ptr<OGL::Shader>& pShader)
 {
     _VBOs->_faceVBO.setShader(pShader.get());
     _VBOs->_edgeVBO.setShader(pShader.get());
