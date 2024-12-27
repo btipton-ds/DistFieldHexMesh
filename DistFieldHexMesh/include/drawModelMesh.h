@@ -35,14 +35,24 @@ namespace OGL
 }
 
 namespace DFHM {
+	class MeshData;
+	using MeshDataPtr = std::shared_ptr<MeshData>;
+
 	class DrawModelMesh : public DrawMesh {
 	public:
 		DrawModelMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawModelMesh();
 
-		void drawEdges() override;
-		void drawFaces() override;
-		void changeViewElements(const ChangeElementsOptions& opts) override;
+		void changeViewElements(MeshDataPtr& pData, const VBORec::ChangeElementsOptions& params);
+
+	protected:
+		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
+		void postDrawEdges() override;
+
+		OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key) override;
+		void postDrawFaces() override;
+
 	private:
+
 	};
 }

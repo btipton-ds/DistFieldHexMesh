@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include<drawMesh.h>
 #include <OGLShader.h>
+#include <OGLMultiVboHandlerTempl.h>
 
 using namespace DFHM;
 
@@ -51,4 +52,70 @@ void DrawMesh::render()
 {
     drawEdges();
     drawFaces();
+}
+
+void DrawMesh::drawEdges()
+{
+    _VBOs->_edgeVBO.drawAllKeys(
+        [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        return preDrawEdges(key);
+        },
+        [this]() {
+            postDrawEdges();
+        }, 
+        [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
+            return preTexDraw(texId);
+        },
+        [this]() {
+            postTexDraw();
+        }
+    );
+}
+
+void DrawMesh::drawFaces()
+{
+    _VBOs->_faceVBO.drawAllKeys(
+        [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+            return preDrawFaces(key);
+        },
+        [this]() {
+            postDrawFaces();
+        },
+        [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
+            return preTexDraw(texId);
+        },
+        [this]() {
+            postTexDraw();
+        }
+    );
+}
+
+OGL::MultiVBO::DrawVertexColorMode DrawMesh::preDrawEdges(int key)
+{
+    return OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+}
+
+void DrawMesh::postDrawEdges()
+{
+
+}
+
+OGL::MultiVBO::DrawVertexColorMode DrawMesh::preDrawFaces(int key)
+{
+    return OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+}
+
+void DrawMesh::postDrawFaces()
+{
+
+}
+
+OGL::MultiVBO::DrawVertexColorMode DrawMesh::preTexDraw(int key)
+{
+    return OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+}
+
+void DrawMesh::postTexDraw()
+{
+
 }

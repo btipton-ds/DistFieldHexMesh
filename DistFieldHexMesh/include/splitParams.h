@@ -38,6 +38,7 @@ struct BuildCFDParams {
 	size_t numConditionalPasses() const;
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
+	double getSinSharpAngle() const;
 
 	void read(std::istream& in);
 	void write(std::ostream& out) const;

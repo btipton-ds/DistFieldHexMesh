@@ -39,15 +39,3 @@ DrawHexMesh::~DrawHexMesh()
 
 }
 
-void DrawHexMesh::drawEdges()
-{
-}
-
-void DrawHexMesh::drawFaces()
-{
-}
-
-void DrawHexMesh::changeViewElements(const ChangeElementsOptions& opts)
-{
-}
-

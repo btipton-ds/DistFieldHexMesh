@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <appData.h>
 #include <OGLShader.h>
 #include <rgbaColor.h>
 #include <index3D.h>
@@ -35,14 +36,16 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo)
-: _options(options)
+MeshData::MeshData(const AppData* pAppData, const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo)
+: _pAppData(pAppData)
+, _options(options)
 , _pRepo(pRepo)
 {
 }
 
-MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
-	: _name(name)
+MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
+	: _pAppData(pAppData)
+	, _name(name)
 	, _pMesh(pMesh)
 	, _pRepo(pMesh->getRepo())
 	, _options(options)
@@ -119,7 +122,7 @@ const OGL::IndicesPtr MeshData::setEdgeSegTessellation(size_t entityKey, size_t 
 	return edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-const OGL::IndicesPtr MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
+void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	vector<float> points, colors;
 	vector<unsigned int> indices;
@@ -142,7 +145,33 @@ const OGL::IndicesPtr MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& 
 	auto meshId = pMesh->getId();
 	auto changeNumber = pMesh->getChangeNumber();
 	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
-	return edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, indices);
+	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, indices);
+
+	vector<float> normPts;
+	vector<unsigned int> normIndices, sharpEdgeIndices, smoothEdgeIndices;
+	getEdgeData(normPts, normIndices);
+
+	const auto& params = _pAppData->getParams();
+	const auto sinSharpAngle = params.getSinSharpAngle();
+	unsigned int indexCount = 0;
+	for (size_t idx = 0; idx < pMesh->numEdges(); idx++) {
+		const auto& edge = pMesh->getEdge(idx);
+		unsigned int idx0 = indexCount++;
+		unsigned int idx1 = indexCount++;
+		if (pMesh->isEdgeSharp(idx, sinSharpAngle)) {
+			sharpEdgeIndices.push_back(idx0);
+			sharpEdgeIndices.push_back(idx1);
+		} else {
+			smoothEdgeIndices.push_back(idx0);
+			smoothEdgeIndices.push_back(idx1);
+		}
+	}
+
+	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, sharpEdgeIndices);
+	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, smoothEdgeIndices);
+
+	if (!normPts.empty())
+		_normalTess = setEdgeSegTessellation(_pMesh->getId() + 10000ull, _pMesh->getChangeNumber(), normPts, normIndices, pDrawModelMesh);
 }
 
 void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
@@ -157,14 +186,39 @@ void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
 	if (pSharpVertMesh)
 		_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
 
-	vector<float> normPts;
-	vector<unsigned int> normIndices;
-	getEdgeData(normPts, normIndices);
+	setEdgeSegTessellation(_pMesh, pDrawModelMesh);
+}
 
-	_edgeTess = setEdgeSegTessellation(_pMesh, pDrawModelMesh);
+void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const VBORec::ChangeElementsOptions& params)
+{
+	if (!isActive())
+		return;
 
-	if (!normPts.empty())
-		_normalTess = setEdgeSegTessellation(_pMesh->getId() + 10000ull, _pMesh->getChangeNumber(), normPts, normIndices, pDrawModelMesh);
+	auto& faceVBO = pDraw->getVBOs()->_faceVBO;
+	auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
+
+	if (isReference()) {
+		edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, getAllEdgeTess());
+	}
+	else {
+		if (params.showFaces) {
+			faceVBO.includeElementIndices(params.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, getFaceTess());
+			if (params.showTriNormals)
+				edgeVBO.includeElementIndices(DS_MODEL_NORMALS, getAllEdgeTess());
+		}
+		if (params.showEdges) {
+			if (params.showSharpEdges) {
+				edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, getSharpEdgeTess());
+				edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, getSmoothEdgeTess());
+			}
+			else {
+				edgeVBO.includeElementIndices(DS_MODEL_EDGES, getAllEdgeTess());
+			}
+		}
+		else if (params.showSharpEdges) {
+			edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, getSharpEdgeTess());
+		}
+	}
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const

@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
 #include <graphicsCanvas.h>
+#include <meshData.h>
 
 using namespace DFHM;
 
@@ -58,116 +59,119 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-void DrawModelMesh::drawEdges()
+void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeElementsOptions& params)
 {
-    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-        auto& UBO = _pCanvas->getUBO();
-        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        switch (key) {
-        default:
-        case DS_MODEL:
-            glLineWidth(2.0f);
-            UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
-            break;
-        case DS_MODEL_SHARP_EDGES:
-            glLineWidth(1.0f);
-            UBO.defColor = p3f(0.0f, 0.0f, 0);
-            result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-            break;
-        case DS_MODEL_NORMALS:
-            glLineWidth(1.0f);
-            UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
-            break;
-        case DS_BLOCK_ALL:
-        case DS_BLOCK_OUTER:
-        case DS_BLOCK_INNER:
-            glLineWidth(1.0f);
-            UBO.defColor = p3f(0.0f, 0.0f, 0.50f);
-            break;
-        case DS_BLOCK_BOUNDARY:
-            glLineWidth(1.0f);
-            UBO.defColor = p3f(0.75f, 0, 0);
-            break;
-        case DS_MODEL_REF_EDGES:
-            glLineWidth(0.5f);
-            UBO.defColor = p3f(1.0f, 1.0f, 0);
-            break;
+    if (!pData->isActive())
+        return;
+
+    auto& faceVBO = _VBOs->_faceVBO;
+    auto& edgeVBO = _VBOs->_edgeVBO;
+
+    if (pData->isReference()) {
+        edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, pData->getAllEdgeTess());
+    }
+    else {
+        if (params.showFaces) {
+            faceVBO.includeElementIndices(params.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
+            if (params.showTriNormals)
+                edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getAllEdgeTess());
         }
-        UBO.ambient = 1.0f;
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-
-        return result;
-        };
-
-    auto postDraw = [this]() {
-        };
-
-    auto preTexDraw = [this](int key) {
-        };
-
-    auto postTexDraw = [this]() {
-        };
-
-    _VBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+        if (params.showEdges) {
+            if (params.showSharpEdges) {
+                edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
+                edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
+            }
+            else {
+                edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
+            }
+        }
+        else if (params.showSharpEdges) {
+            edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
+        }
+    }
 }
 
-void DrawModelMesh::drawFaces()
+OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 {
-    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        auto& UBO = _pCanvas->getUBO();
-        UBO.ambient = 0.2f;
-        switch (key) {
-        default:
-        case DS_MODEL:
-            UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
-            break;
-        case DS_MODEL_CURVATURE:
-            result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-            UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
-            break;
-        case DS_MODEL_SHARP_VERTS:
-            UBO.defColor = p3f(1.0f, 1.0f, 0);
-            break;
-        case DS_BLOCK_ALL:
-        case DS_BLOCK_OUTER:
-            UBO.defColor = p3f(0.0f, 0.8f, 0);
-            break;
-        case DS_BLOCK_INNER:
-            UBO.defColor = p3f(0.75f, 1, 1);
-            break;
-        case DS_BLOCK_BOUNDARY:
-            UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
-            break;
-        }
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
+    OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto& UBO = _pCanvas->getUBO();
+    switch (key) {
+    default:
+        break;
+    case DS_MODEL_EDGES:
+    case DS_MODEL_SMOOTH_EDGES:
+        glLineWidth(1.0f);
+        UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+        break;
+    case DS_MODEL_SHARP_EDGES:
+        glLineWidth(1.0f);
+        UBO.defColor = p3f(1.0f, 0.0f, 0);
+        break;
+    case DS_MODEL_NORMALS:
+        glLineWidth(1.0f);
+        UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
+        break;
+    case DS_MODEL_REF_EDGES:
+        glLineWidth(0.5f);
+        UBO.defColor = p3f(1.0f, 1.0f, 0);
+        break;
+    }
+    UBO.ambient = 1.0f;
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 
-        if (_pCanvas->getViewOptions().showSharpEdges) {
-            glEnable(GL_POLYGON_OFFSET_FILL);
-            glPolygonOffset(1.0f, 2.0f);
-        }
+    return result;
 
-        return result;
-        };
-
-    auto postDraw = [this]() {
-        glDisable(GL_POLYGON_OFFSET_FILL);
-        };
-
-    auto preTexDraw = [this](int key) {
-        };
-
-    auto postTexDraw = [this]() {
-        };
-
-    _VBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 }
 
-void DrawModelMesh::changeViewElements(const ChangeElementsOptions& opts)
+void DrawModelMesh::postDrawEdges()
 {
+    glDisable(GL_DEPTH_TEST);
+}
+
+OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
+{
+    OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto& UBO = _pCanvas->getUBO();
+    UBO.ambient = 0.2f;
+    switch (key) {
+    default:
+    case DS_MODEL:
+        UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
+        break;
+    case DS_MODEL_CURVATURE:
+        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
+        break;
+    case DS_MODEL_SHARP_VERTS:
+        UBO.defColor = p3f(1.0f, 1.0f, 0);
+        break;
+    case DS_BLOCK_ALL:
+    case DS_BLOCK_OUTER:
+        UBO.defColor = p3f(0.0f, 0.8f, 0);
+        break;
+    case DS_BLOCK_INNER:
+        UBO.defColor = p3f(0.75f, 1, 1);
+        break;
+    case DS_BLOCK_BOUNDARY:
+        UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
+        break;
+    }
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+    if (_pCanvas->getViewOptions().showSharpEdges) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 2.0f);
+    }
+
+    return result;
+}
+
+void DrawModelMesh::postDrawFaces()
+{
+    glDisable(GL_POLYGON_OFFSET_FILL);
 }
 

@@ -58,6 +58,11 @@ double BuildCFDParams::getSharpAngleDegrees() const
 	return sharpAngle_degrees;
 }
 
+double BuildCFDParams::getSinSharpAngle() const
+{
+	return sin(getSharpAngleRadians());
+}
+
 void BuildCFDParams::read(std::istream& in)
 {
 	size_t version;

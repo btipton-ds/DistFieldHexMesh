@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include "wx/wx.h"
 #endif
 
+#include <defines.h>
 #include <memory>
 #include <triMesh.h>
 #include <OGLMultiVboHandler.h>

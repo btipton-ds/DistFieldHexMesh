@@ -40,9 +40,6 @@ namespace DFHM {
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();
 
-		void drawEdges() override;
-		void drawFaces() override;
-		void changeViewElements(const ChangeElementsOptions& opts) override;
 	private:
 	};
 }

@@ -677,7 +677,7 @@ void GraphicsCanvas::drawFaces()
         glDisable(GL_POLYGON_OFFSET_FILL);
         };
 
-    auto preTexDraw = [this](int key) {
+    auto preTexDraw = [this](unsigned int texId) {
         };
 
     auto postTexDraw = [this]() {
@@ -733,7 +733,8 @@ void GraphicsCanvas::drawEdges()
     auto postDraw = [this]() {
         };
 
-    auto preTexDraw = [this](int key) {
+    auto preTexDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        return OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         };
 
     auto postTexDraw = [this]() {
@@ -1027,22 +1028,7 @@ void GraphicsCanvas::changeViewElements()
     const auto& meshData = *_pAppData->getMeshData();
     for (auto& pair : meshData) {
         auto pData = pair.second;
-        if (!pData->isActive())
-            continue;
-
-        if (pData->isReference() && pData->getEdgeTess()) {
-            edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, pData->getEdgeTess());
-        } else {
-            if (_viewOptions.showFaces && pData->getFaceTess()) {
-                faceVBO.includeElementIndices(_viewOptions.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
-                if (_viewOptions.showTriNormals && pData->getEdgeTess())
-                    edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getEdgeTess());
-            }
-            if (_viewOptions.showEdges && pData->getEdgeTess()) {
-                edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getEdgeTess());
-
-            }
-        }
+        _pDrawModelMesh->changeViewElements(pData, _viewOptions);
     }
     faceVBO.endSettingElementIndices();
     edgeVBO.endSettingElementIndices();

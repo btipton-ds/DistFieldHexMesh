@@ -71,11 +71,19 @@ namespace DFHM {
 		const std::shared_ptr<VBORec> getVBOs() const;
 
 		void render();
-		virtual void drawEdges() = 0;
-		virtual void drawFaces() = 0;
-		virtual void changeViewElements(const ChangeElementsOptions& opts) = 0;
+		void drawEdges();
+		void drawFaces();
 
 	protected:
+		virtual OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key);
+		virtual OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key);
+
+		virtual void postDrawEdges();
+		virtual void postDrawFaces();
+
+		virtual OGL::MultiVBO::DrawVertexColorMode preTexDraw(int key);
+		virtual void postTexDraw();
+
 		GraphicsCanvas* _pCanvas;
 		const OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
 		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;

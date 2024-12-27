@@ -27,9 +27,9 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
 #include <memory>
 
-#include <defines.h>
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <graphicsVBORec.h>
@@ -45,13 +45,15 @@ namespace OGL
 namespace DFHM {
 	class DrawModelMesh;
 
+	class AppData;
+
 	class MeshData;
 	using MeshDataPtr = std::shared_ptr<MeshData>;
 
 	class MeshData {
 	public:
-		MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
-		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
+		MeshData(const AppData* pAppData, const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
+		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
 		virtual ~MeshData();
 
 		const TriMesh::CMeshPtr& getMesh() const;
@@ -60,6 +62,7 @@ namespace DFHM {
 		void read(std::istream& in);
 
 		void makeOGLTess(std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+		void changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const VBORec::ChangeElementsOptions& params);
 
 		bool isActive() const;
 		void setActive(bool val);
@@ -68,7 +71,9 @@ namespace DFHM {
 		void setReference(bool val);
 
 		const OGL::IndicesPtr getFaceTess() const;
-		const OGL::IndicesPtr getEdgeTess() const;
+		const OGL::IndicesPtr getAllEdgeTess() const;
+		const OGL::IndicesPtr getSmoothEdgeTess() const;
+		const OGL::IndicesPtr getSharpEdgeTess() const;
 		const OGL::IndicesPtr getNormalTess() const;
 
 	private:
@@ -79,7 +84,7 @@ namespace DFHM {
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 		const OGL::IndicesPtr setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
 			const std::vector<unsigned int>& indices, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-		const OGL::IndicesPtr setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+		void setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
@@ -90,12 +95,19 @@ namespace DFHM {
 			_active = true,
 			_reference = false;
 
+		const AppData* _pAppData;
 		std::wstring _name;
 		TriMesh::CMeshRepoPtr _pRepo;
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
 
-		OGL::IndicesPtr _faceTess, _edgeTess, _normalTess, _sharpPointTess;
+		OGL::IndicesPtr 
+			_faceTess, 
+			_allEdgeTess,
+			_smoothEdgeTess,
+			_sharpEdgeTess,
+			_normalTess, 
+			_sharpPointTess;
 	};
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
@@ -128,9 +140,19 @@ namespace DFHM {
 		return _faceTess;
 	}
 
-	inline const OGL::IndicesPtr MeshData::getEdgeTess() const
+	inline const OGL::IndicesPtr MeshData::getAllEdgeTess() const
 	{
-		return _edgeTess;
+		return _allEdgeTess;
+	}
+
+	inline const OGL::IndicesPtr MeshData::getSmoothEdgeTess() const
+	{
+		return _smoothEdgeTess;
+	}
+
+	inline const OGL::IndicesPtr MeshData::getSharpEdgeTess() const
+	{
+		return _sharpEdgeTess;
 	}
 
 	inline const OGL::IndicesPtr MeshData::getNormalTess() const
