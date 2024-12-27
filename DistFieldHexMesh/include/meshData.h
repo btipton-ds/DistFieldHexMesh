@@ -72,19 +72,13 @@ namespace DFHM {
 
 	private:
 
-//		void beginFaceTesselation();
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 		const OGLIndices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
-//		void endFaceTesselation(const OGLIndices* pTriTess, const OGLIndices* pSharpVertTess, bool smoothNormals);
-//		void endFaceTesselation(const std::vector<std::vector<const OGLIndices*>>& faceTess);
 
-//		void beginEdgeTesselation();
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
 		const OGLIndices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points, 
 			const std::vector<unsigned int>& indices, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
 		const OGLIndices* setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-//		void endEdgeTesselation(const OGLIndices* pEdgeTess, const OGLIndices* pSharpEdgeTess, const OGLIndices* pNormalTess);
-//		void endEdgeTesselation(const std::vector<std::vector<const OGLIndices*>>& edgeTess);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
