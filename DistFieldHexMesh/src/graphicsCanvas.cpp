@@ -554,7 +554,7 @@ layout(binding = 0) uniform UniformBufferObject {
     static GLuint buffer = -1;
     if (vertUboIdx == -1) {
         vertUboIdx = glGetUniformBlockIndex(_phongShader->programID(), "UniformBufferObject");
-        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); OGL::GL_ASSERT
+        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); GL_ASSERT
         glGenBuffers(1, &buffer);
     }
 
