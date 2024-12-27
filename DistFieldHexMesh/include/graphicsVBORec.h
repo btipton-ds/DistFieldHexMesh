@@ -62,13 +62,8 @@ namespace DFHM {
 		void changeFaceViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
 		void changeEdgeViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
 
-		const OGL::Indices
-			* _pTriTess = nullptr,
-			* _pEdgeTess = nullptr,
-			* _pSharpVertTess = nullptr,
-			* _pSharpEdgeTess = nullptr,
-			* _pNormalTess = nullptr;
-		std::vector<std::vector<const OGL::Indices*>> _faceTessellations, _edgeTessellations;
+		OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
+		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
 
 		OGL::MultiVboHandler _faceVBO, _edgeVBO;
 

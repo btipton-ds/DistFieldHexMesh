@@ -482,9 +482,9 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     Block::TriMeshGroup blockMeshes;
     Block::glPointsGroup faceEdges;
     vol.addAllBlocks(blockMeshes, faceEdges);
-    vector<vector<const OGL::Indices*>> faceTesselations;
+    vector<vector<OGL::IndicesPtr>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
-        faceTesselations.push_back(vector<const OGL::Indices*>());
+        faceTesselations.push_back(vector<OGL::IndicesPtr>());
         for (size_t i = 0; i < blockMeshes[mode].size(); i++) {
             auto pBlockMesh = blockMeshes[mode][i];
             auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
@@ -1338,10 +1338,10 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
 
     pCanvas->beginFaceTesselation();
 
-    vector<vector<const OGL::Indices*>> faceTesselations;
+    vector<vector<OGL::IndicesPtr>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
         auto& thisGroup = blockMeshes[mode];
-        faceTesselations.push_back(vector<const OGL::Indices*>());
+        faceTesselations.push_back(vector<OGL::IndicesPtr>());
         faceTesselations.back().reserve(thisGroup.size());
 
         for (const auto& pBlockMesh : thisGroup) {
@@ -1362,10 +1362,10 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
 
     pCanvas->beginEdgeTesselation();
 
-    vector<vector<const OGL::Indices*>> edgeTesselations;
+    vector<vector<OGL::IndicesPtr>> edgeTesselations;
     edgeTesselations.reserve(edgeSets.size());
     for (size_t mode = 0; mode < edgeSets.size(); mode++) {
-        edgeTesselations.push_back(vector<const OGL::Indices*>());
+        edgeTesselations.push_back(vector<OGL::IndicesPtr>());
         for (const auto& faceEdgesPtr : edgeSets[mode]) {
             if (faceEdgesPtr) {
                 const auto& faceEdges = *faceEdgesPtr;

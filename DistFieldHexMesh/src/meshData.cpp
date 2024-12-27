@@ -89,7 +89,7 @@ void MeshData::read(std::istream& in)
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::Indices* MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pMesh, shared_ptr<DrawModelMesh>& pDrawModelMesh)
+const OGL::IndicesPtr MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pMesh, shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	const auto& points = pMesh->getGlTriPoints();
 	const auto& normals = pMesh->getGlTriNormals(false);
@@ -112,14 +112,14 @@ const OGL::Indices* MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pM
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::Indices* MeshData::setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
+const OGL::IndicesPtr MeshData::setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
 	const std::vector<unsigned int>& indices, shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
 	return edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
 }
 
-const OGL::Indices* MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
+const OGL::IndicesPtr MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	vector<float> points, colors;
 	vector<unsigned int> indices;

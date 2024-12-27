@@ -116,16 +116,16 @@ public:
 
     void beginFaceTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGL::Indices* setFaceTessellation(const CMeshPtr& pMesh);
-    void endFaceTesselation(const OGL::Indices* pTriTess, const OGL::Indices* pSharpVertTess, bool smoothNormals);
-    void endFaceTesselation(const std::vector<std::vector<const OGL::Indices*>>& faceTess);
+    const OGL::IndicesPtr setFaceTessellation(const CMeshPtr& pMesh);
+    void endFaceTesselation(const OGL::IndicesPtr& pTriTess, const OGL::IndicesPtr& pSharpVertTess, bool smoothNormals);
+    void endFaceTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& faceTess);
 
     void beginEdgeTesselation();
     // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGL::Indices* setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
-    const OGL::Indices* setEdgeSegTessellation(const CMeshPtr& pMesh);
-    void endEdgeTesselation(const OGL::Indices* pSharpEdgeTess, const OGL::Indices* pNormalTess);
-    void endEdgeTesselation(const std::vector<std::vector<const OGL::Indices*>>& edgeTess);
+    const OGL::IndicesPtr setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
+    const OGL::IndicesPtr setEdgeSegTessellation(const CMeshPtr& pMesh);
+    void endEdgeTesselation(const OGL::IndicesPtr& pSharpEdgeTess, const OGL::IndicesPtr& pNormalTess);
+    void endEdgeTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& edgeTess);
 
     void changeViewElements();
     void changeFaceViewElementsX();

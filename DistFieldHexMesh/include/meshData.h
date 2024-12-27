@@ -67,19 +67,19 @@ namespace DFHM {
 		bool isReference() const;
 		void setReference(bool val);
 
-		const OGL::Indices* getFaceTess() const;
-		const OGL::Indices* getEdgeTess() const;
-		const OGL::Indices* getNormalTess() const;
+		const OGL::IndicesPtr getFaceTess() const;
+		const OGL::IndicesPtr getEdgeTess() const;
+		const OGL::IndicesPtr getNormalTess() const;
 
 	private:
 
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const OGL::Indices* createFaceTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
+		const OGL::IndicesPtr createFaceTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
 
 		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const OGL::Indices* setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
+		const OGL::IndicesPtr setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
 			const std::vector<unsigned int>& indices, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-		const OGL::Indices* setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+		const OGL::IndicesPtr setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
@@ -95,10 +95,7 @@ namespace DFHM {
 		TriMesh::CMeshPtr _pMesh;
 		const VBORec::ChangeElementsOptions& _options;
 
-		const OGL::Indices* _faceTess = nullptr;
-		const OGL::Indices* _edgeTess = nullptr;
-		const OGL::Indices* _normalTess = nullptr;
-		const OGL::Indices* _sharpPointTess = nullptr;
+		OGL::IndicesPtr _faceTess, _edgeTess, _normalTess, _sharpPointTess;
 	};
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
@@ -126,17 +123,17 @@ namespace DFHM {
 		_reference = val;
 	}
 
-	inline const OGL::Indices* MeshData::getFaceTess() const
+	inline const OGL::IndicesPtr MeshData::getFaceTess() const
 	{
 		return _faceTess;
 	}
 
-	inline const OGL::Indices* MeshData::getEdgeTess() const
+	inline const OGL::IndicesPtr MeshData::getEdgeTess() const
 	{
 		return _edgeTess;
 	}
 
-	inline const OGL::Indices* MeshData::getNormalTess() const
+	inline const OGL::IndicesPtr MeshData::getNormalTess() const
 	{
 		return _normalTess;
 	}

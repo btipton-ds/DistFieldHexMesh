@@ -133,10 +133,11 @@ private:
     TriMesh::CMeshRepoPtr _pModelMeshRepo;
     std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pMeshData;
     VolumePtr _pVolume;
-    const OGL::Indices* _modelFaceTess = nullptr;
-    const OGL::Indices* _modelEdgeTess = nullptr;
-    const OGL::Indices* _modelNormalTess = nullptr;
-    const OGL::Indices* _sharpPointTess = nullptr;
+    const OGL::IndicesPtr 
+        _modelFaceTess, 
+        _modelEdgeTess, 
+        _modelNormalTess, 
+        _sharpPointTess;
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
     std::vector<double> _binSizes;
