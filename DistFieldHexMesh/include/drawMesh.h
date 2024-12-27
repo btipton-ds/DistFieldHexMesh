@@ -36,15 +36,16 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
+#include <OGLShader.h>
 
 class COglShader;
 
 namespace DFHM {
 	class GraphicsCanvas;
 
-	class DrawMesh : public COglExtensions {
+	class DrawMesh : public OGL::COglExtensions {
 	public:
-		using OGLIndices = COglMultiVboHandler::OGLIndices;
+		using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
 
 		struct ChangeElementsOptions {
 			bool
@@ -62,7 +63,7 @@ namespace DFHM {
 		DrawMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawMesh();
 
-		void setShader(std::shared_ptr<COglShader>& pShader);
+		void setShader(std::shared_ptr<OGL::COglShader>& pShader);
 		std::shared_ptr<VBORec> getVBOs();
 		const std::shared_ptr<VBORec> getVBOs() const;
 

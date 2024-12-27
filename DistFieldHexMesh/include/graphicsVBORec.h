@@ -40,7 +40,7 @@ class COglShader;
 
 namespace DFHM {
 	struct VBORec {
-		using OGLIndices = COglMultiVboHandler::OGLIndices;
+		using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
 
 		struct ChangeElementsOptions {
 			bool 
@@ -69,7 +69,7 @@ namespace DFHM {
 			* _pNormalTess = nullptr;
 		std::vector<std::vector<const OGLIndices*>> _faceTessellations, _edgeTessellations;
 
-		COglMultiVboHandler _faceVBO, _edgeVBO;
+		OGL::COglMultiVboHandler _faceVBO, _edgeVBO;
 
 	};
 

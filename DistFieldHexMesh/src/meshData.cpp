@@ -89,7 +89,7 @@ void MeshData::read(std::istream& in)
 }
 
 // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const COglMultiVboHandler::OGLIndices* MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pMesh, shared_ptr<DrawModelMesh>& pDrawModelMesh)
+const OGL::COglMultiVboHandler::OGLIndices* MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pMesh, shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	const auto& points = pMesh->getGlTriPoints();
 	const auto& normals = pMesh->getGlTriNormals(false);

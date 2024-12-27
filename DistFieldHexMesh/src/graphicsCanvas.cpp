@@ -492,7 +492,7 @@ void GraphicsCanvas::loadShaders()
     SetCurrent(*_pContext);
     string path = "shaders/";
     
-    _phongShader = make_shared<COglShader>();
+    _phongShader = make_shared<OGL::COglShader>();
 
     _phongShader->setShaderVertexAttribName("inPosition");
     _phongShader->setShaderNormalAttribName("inNormal");
@@ -554,7 +554,7 @@ layout(binding = 0) uniform UniformBufferObject {
     static GLuint buffer = -1;
     if (vertUboIdx == -1) {
         vertUboIdx = glGetUniformBlockIndex(_phongShader->programID(), "UniformBufferObject");
-        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);GL_ASSERT
+        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); OGL::GL_ASSERT
         glGenBuffers(1, &buffer);
     }
 
@@ -635,8 +635,8 @@ void GraphicsCanvas::drawMousePos3D()
 
 void GraphicsCanvas::drawFaces()
 {
-    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
-        COglMultiVBO::DrawVertexColorMode result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
+        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         _graphicsUBO.ambient = 0.2f;
         switch (key) {
             default:
@@ -644,7 +644,7 @@ void GraphicsCanvas::drawFaces()
                 _graphicsUBO.defColor = p3f(0.9f, 0.9f, 1.0f);
                 break;
             case DS_MODEL_CURVATURE:
-                result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+                result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
                 break;
             case DS_MODEL_SHARP_VERTS:
@@ -690,8 +690,8 @@ void GraphicsCanvas::drawFaces()
 
 void GraphicsCanvas::drawEdges()
 {
-    auto preDraw = [this](int key) -> COglMultiVBO::DrawVertexColorMode {
-        COglMultiVBO::DrawVertexColorMode result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto preDraw = [this](int key) -> OGL::COglMultiVBO::DrawVertexColorMode {
+        OGL::COglMultiVBO::DrawVertexColorMode result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
         switch (key) {
             default:
             case DS_MODEL_EDGES:
@@ -701,7 +701,7 @@ void GraphicsCanvas::drawEdges()
             case DS_MODEL_SHARP_EDGES:
                 glLineWidth(1.0f);
                 _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0);
-                result = COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
+                result = OGL::COglMultiVBO::DrawVertexColorMode::DRAW_COLOR;
                 break;
             case DS_MODEL_NORMALS:
                 glLineWidth(1.0f);

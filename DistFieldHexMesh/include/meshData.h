@@ -47,7 +47,7 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		using OGLIndices = COglMultiVboHandler::OGLIndices;
+		using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
 
 		MeshData(const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
 		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);

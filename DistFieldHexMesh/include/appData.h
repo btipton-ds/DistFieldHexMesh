@@ -56,7 +56,7 @@ using AppDataPtr = std::shared_ptr<AppData>;
 
 class AppData {
 public:
-    using OGLIndices = COglMultiVboHandler::OGLIndices;
+    using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
 
     enum CubeTopolType {
         CTT_BOTTOM,
@@ -135,10 +135,10 @@ private:
     TriMesh::CMeshRepoPtr _pModelMeshRepo;
     std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pMeshData;
     VolumePtr _pVolume;
-    const COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
-    const COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
-    const COglMultiVboHandler::OGLIndices* _modelNormalTess = nullptr;
-    const COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
+    const OGL::COglMultiVboHandler::OGLIndices* _modelFaceTess = nullptr;
+    const OGL::COglMultiVboHandler::OGLIndices* _modelEdgeTess = nullptr;
+    const OGL::COglMultiVboHandler::OGLIndices* _modelNormalTess = nullptr;
+    const OGL::COglMultiVboHandler::OGLIndices* _sharpPointTess = nullptr;
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
     std::vector<double> _binSizes;

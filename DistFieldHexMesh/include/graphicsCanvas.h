@@ -65,13 +65,13 @@ using GraphicsCanvasBase = wxGLCanvas;
 #endif
 
 #ifdef WIN32
-class GraphicsCanvas : public GraphicsCanvasBase, public COglExtensions 
+class GraphicsCanvas : public GraphicsCanvasBase, public OGL::COglExtensions
 #else
 class GraphicsCanvas : public GraphicsCanvasBase 
 #endif
 {
 public:
-    using OGLIndices = COglMultiVboHandler::OGLIndices;
+    using OGLIndices = OGL::COglMultiVboHandler::OGLIndices;
 
     enum View {
         VIEW_FRONT,
@@ -217,7 +217,7 @@ private:
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
-    std::shared_ptr<COglShader> _phongShader;
+    std::shared_ptr<OGL::COglShader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
 
     std::shared_ptr<VBORec> _meshVBOs;
