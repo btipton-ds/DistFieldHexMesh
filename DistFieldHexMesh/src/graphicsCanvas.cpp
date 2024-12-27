@@ -1031,15 +1031,15 @@ void GraphicsCanvas::changeViewElements()
             continue;
 
         if (pData->isReference() && pData->getEdgeTess()) {
-            edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, *pData->getEdgeTess());
+            edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, pData->getEdgeTess());
         } else {
             if (_viewOptions.showFaces && pData->getFaceTess()) {
-                faceVBO.includeElementIndices(_viewOptions.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, *pData->getFaceTess());
+                faceVBO.includeElementIndices(_viewOptions.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
                 if (_viewOptions.showTriNormals && pData->getEdgeTess())
-                    edgeVBO.includeElementIndices(DS_MODEL_NORMALS, *pData->getEdgeTess());
+                    edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getEdgeTess());
             }
             if (_viewOptions.showEdges && pData->getEdgeTess()) {
-                edgeVBO.includeElementIndices(DS_MODEL_EDGES, *pData->getEdgeTess());
+                edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getEdgeTess());
 
             }
         }
