@@ -101,7 +101,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
     case DS_MODEL_EDGES:
     case DS_MODEL_SMOOTH_EDGES:
         glLineWidth(1.0f);
-        UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+        UBO.defColor = p3f(0.0f, 0.0f, 0.5f);
         break;
     case DS_MODEL_SHARP_EDGES:
         glLineWidth(1.0f);

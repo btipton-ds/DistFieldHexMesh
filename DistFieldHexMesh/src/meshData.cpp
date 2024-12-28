@@ -114,14 +114,6 @@ const OGL::IndicesPtr MeshData::createFaceTessellation(const TriMesh::CMeshPtr& 
 	return faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
 }
 
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::IndicesPtr MeshData::setEdgeSegTessellation(size_t entityKey, size_t changeNumber, const std::vector<float>& points,
-	const std::vector<unsigned int>& indices, shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
-	return edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
-}
-
 void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
 	const auto& params = _pAppData->getParams();
@@ -150,16 +142,18 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 	auto meshId = pMesh->getId();
 	auto changeNumber = pMesh->getChangeNumber();
 	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
-	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, indices);
-	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, sharpIndices);
-	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, smoothIndices);
+	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
+	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
+	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
 
 	vector<float> normPts;
 	vector<unsigned int> normIndices;
 	getEdgeData(normPts, normIndices);
 
-	if (!normPts.empty())
-		_normalTess = setEdgeSegTessellation(_pMesh->getId() + 10000ull, _pMesh->getChangeNumber(), normPts, normIndices, pDrawModelMesh);
+	if (!normPts.empty()) {
+		_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, points, indices);
+
+	}
 }
 
 void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
