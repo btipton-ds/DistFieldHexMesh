@@ -139,7 +139,7 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 		return true;
 		};
 
-	bool includeSmooth = false;
+	bool includeSmooth = !_reference;
 	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, indices);
 
 	auto meshId = pMesh->getId();

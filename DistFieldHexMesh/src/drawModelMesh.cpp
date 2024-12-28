@@ -74,7 +74,7 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
         if (params.showFaces) {
             faceVBO.includeElementIndices(params.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
             if (params.showTriNormals)
-                edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getAllEdgeTess());
+                edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
         if (params.showEdges) {
             if (params.showSharpEdges) {
