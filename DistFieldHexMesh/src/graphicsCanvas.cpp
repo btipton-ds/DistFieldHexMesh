@@ -998,7 +998,7 @@ const OGL::IndicesPtr GraphicsCanvas::setEdgeSegTessellation(long entityKey, int
 const OGL::IndicesPtr GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
 {
     vector<float> points, colors;
-    vector<unsigned int> indices;
+    vector<unsigned int> sharpIndices, indices;
     auto colorFunc = [](float curvature, float rgb[3])->bool {
         rgbaColor c;
         if (curvature < 0)
@@ -1012,7 +1012,9 @@ const OGL::IndicesPtr GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMe
         return true;
     };
 
-    pMesh->getGlEdges(colorFunc, false, points, colors, indices);
+    auto sinSharpAngle = _pAppData->getParams().getSinSharpAngle();
+    pMesh->getGlEdges(colorFunc, false, points, colors, sinSharpAngle, sharpIndices, indices);
+    indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
     return _meshVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
 }

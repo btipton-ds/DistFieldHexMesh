@@ -124,8 +124,11 @@ const OGL::IndicesPtr MeshData::setEdgeSegTessellation(size_t entityKey, size_t 
 
 void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
+	const auto& params = _pAppData->getParams();
+	const auto sinSharpAngle = params.getSinSharpAngle();
+
 	vector<float> points, colors;
-	vector<unsigned int> indices;
+	vector<unsigned int> indices, sharpIndices, smoothIndices;
 	auto colorFunc = [](float curvature, float rgb[3])->bool {
 		rgbaColor c;
 		if (curvature < 0)
@@ -140,35 +143,20 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 		};
 
 	bool includeSmooth = !_reference;
-	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, indices);
+	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+	indices = smoothIndices;
+	indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
 	auto meshId = pMesh->getId();
 	auto changeNumber = pMesh->getChangeNumber();
 	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
 	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, indices);
+	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, sharpIndices);
+	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, smoothIndices);
 
 	vector<float> normPts;
-	vector<unsigned int> normIndices, sharpEdgeIndices, smoothEdgeIndices;
+	vector<unsigned int> normIndices;
 	getEdgeData(normPts, normIndices);
-
-	const auto& params = _pAppData->getParams();
-	const auto sinSharpAngle = params.getSinSharpAngle();
-	unsigned int indexCount = 0;
-	for (size_t idx = 0; idx < pMesh->numEdges(); idx++) {
-		const auto& edge = pMesh->getEdge(idx);
-		unsigned int idx0 = indexCount++;
-		unsigned int idx1 = indexCount++;
-		if (pMesh->isEdgeSharp(idx, sinSharpAngle)) {
-			sharpEdgeIndices.push_back(idx0);
-			sharpEdgeIndices.push_back(idx1);
-		} else {
-			smoothEdgeIndices.push_back(idx0);
-			smoothEdgeIndices.push_back(idx1);
-		}
-	}
-
-	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, sharpEdgeIndices);
-	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, points, colors, smoothEdgeIndices);
 
 	if (!normPts.empty())
 		_normalTess = setEdgeSegTessellation(_pMesh->getId() + 10000ull, _pMesh->getChangeNumber(), normPts, normIndices, pDrawModelMesh);
