@@ -142,8 +142,6 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     _pDrawHexMesh = make_shared<DrawHexMesh>(this);
     _pDrawModelMesh = make_shared<DrawModelMesh>(this);
 
-    _meshVBOs = make_shared<VBORec>();
-
     _pContext = make_shared<wxGLContext>(this);
 
     initProjection();
@@ -462,10 +460,8 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    _meshVBOs->_edgeVBO.clear();
-    _meshVBOs->_faceVBO.clear();
-    _meshVBOs->_edgeTessellations.clear();
-    _meshVBOs->_faceTessellations.clear();
+    _pDrawHexMesh->getVBOs()->_edgeVBO.clear();
+    _pDrawHexMesh->getVBOs()->_faceVBO.clear();
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
@@ -502,9 +498,6 @@ void GraphicsCanvas::loadShaders()
     _phongShader->setVertexSrcFile(path + "phong.vert");
     _phongShader->setFragmentSrcFile(path + "phong.frag");
     _phongShader->load();
-
-    _meshVBOs->_faceVBO.setShader(_phongShader.get());
-    _meshVBOs->_edgeVBO.setShader(_phongShader.get());
 
     _pDrawModelMesh->setShader(_phongShader);
     _pDrawHexMesh->setShader(_phongShader);
@@ -684,7 +677,7 @@ void GraphicsCanvas::drawFaces()
         };
 
 //    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+//    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
 }
 
@@ -741,7 +734,7 @@ void GraphicsCanvas::drawEdges()
         };
 
 //    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-    _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
+//    _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
 
 }
 
@@ -916,109 +909,6 @@ void GraphicsCanvas::updateView()
     }
 }
 
-void GraphicsCanvas::beginFaceTesselation()
-{
-    _meshVBOs->_faceVBO.beginFaceTesselation();
-}
-
-void GraphicsCanvas::endFaceTesselation(const OGL::IndicesPtr& pTriTess, const OGL::IndicesPtr& pSharpVertTess, bool smoothNormals)
-{
-    _meshVBOs->_faceVBO.endFaceTesselation(smoothNormals);
-
-    _meshVBOs->_pTriTess = pTriTess;
-    _meshVBOs->_pSharpVertTess = pSharpVertTess;
-
-    _meshVBOs->_faceTessellations.clear();
-
-    changeFaceViewElementsX();
-}
-
-void GraphicsCanvas::endFaceTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& faceTess)
-{
-    _meshVBOs->_faceVBO.endFaceTesselation(false);
-
-    _meshVBOs->_faceTessellations = faceTess;
-
-    changeFaceViewElementsX();
-}
-
-void GraphicsCanvas::beginEdgeTesselation()
-{
-    _meshVBOs->_edgeVBO.beginEdgeTesselation();
-}
-
-void GraphicsCanvas::endEdgeTesselation(const OGL::IndicesPtr& pSharpEdgeTess, const OGL::IndicesPtr& pNormalTess)
-{
-    _meshVBOs->_edgeVBO.endEdgeTesselation();
-
-    _meshVBOs->_pSharpEdgeTess = pSharpEdgeTess;
-    _meshVBOs->_pNormalTess = pNormalTess;
-
-    _meshVBOs->_edgeTessellations.clear();
-
-    changeEdgeViewElementsX();
-}
-
-void GraphicsCanvas::endEdgeTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& edgeTess)
-{
-    _meshVBOs->_edgeVBO.endEdgeTesselation();
-
-    _meshVBOs->_edgeTessellations = edgeTess;
-
-    changeEdgeViewElementsX();
-}
-
-
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::IndicesPtr GraphicsCanvas::setFaceTessellation(const CMeshPtr& pMesh)
-{
-    const auto& points = pMesh->getGlTriPoints();
-    const auto& normals = pMesh->getGlTriNormals(false);
-    const auto& parameters = pMesh->getGlTriParams();
-    const auto& vertIndices = pMesh->getGlTriIndices();
-
-    auto colorFunc = [](float curvature, float rgb[3])->bool {
-        rgbaColor c = curvatureToColor(curvature);
-        for (int i = 0; i < 3; i++)
-            rgb[i] = c._rgba[i] / 255.0f;
-        return true;
-    };
-
-    const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-    return _meshVBOs->_faceVBO.setFaceTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, normals, parameters, colors, vertIndices);
-}
-
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::IndicesPtr GraphicsCanvas::setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points,
-    const std::vector<unsigned int>& indices)
-{
-    return _meshVBOs->_edgeVBO.setEdgeSegTessellation(entityKey, changeNumber, points, indices);
-}
-
-const OGL::IndicesPtr GraphicsCanvas::setEdgeSegTessellation(const CMeshPtr& pMesh)
-{
-    vector<float> points, colors;
-    vector<unsigned int> sharpIndices, indices;
-    auto colorFunc = [](float curvature, float rgb[3])->bool {
-        rgbaColor c;
-        if (curvature < 0)
-            c = rgbaColor(1, 0, 0);
-        else if (curvature < 1.0e-6)
-            c = rgbaColor(0, 0, 0);
-        else
-            c = curvatureToColor(curvature);
-        for (int i = 0; i < 3; i++)
-            rgb[i] = c._rgba[i] / 255.0f;
-        return true;
-    };
-
-    auto sinSharpAngle = _pAppData->getParams().getSinSharpAngle();
-    pMesh->getGlEdges(colorFunc, false, points, colors, sinSharpAngle, sharpIndices, indices);
-    indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
-
-    return _meshVBOs->_edgeVBO.setEdgeSegTessellation(pMesh->getId(), pMesh->getChangeNumber(), points, colors, indices);
-}
-
 void GraphicsCanvas::changeViewElements()
 {
     auto& faceVBO = _pDrawModelMesh->getVBOs()->_faceVBO;
@@ -1034,25 +924,7 @@ void GraphicsCanvas::changeViewElements()
     }
     faceVBO.endSettingElementIndices();
     edgeVBO.endSettingElementIndices();
-}
 
-void GraphicsCanvas::changeFaceViewElementsX()
-{
-    _meshVBOs->changeFaceViewElements(true, false, _viewOptions);
-    auto& objs = _pAppData->getMeshData();
-    for (auto& pair : objs) {
-        auto& obj = pair.second;
-//        obj->changeFaceViewElements(_viewOptions);
-    }
-}
-
-void GraphicsCanvas::changeEdgeViewElementsX()
-{
-    _meshVBOs->changeEdgeViewElements(true, false, _viewOptions);
-    auto& objs = _pAppData->getMeshData();
-    for (auto& pair : objs) {
-        auto& obj = pair.second;
-//        obj->changeEdgeViewElements(_viewOptions);
-    }
+    _pDrawHexMesh->changeViewElements(_viewOptions);
 }
 

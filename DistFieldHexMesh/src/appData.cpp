@@ -466,6 +466,7 @@ void AppData::setDisplayMinMax(const Index3D& min, const Index3D& max)
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {
+#if 0
     Volume::setVolDim(Index3D(2, 2, 2));
 	Volume vol;
 //    vol.setOrigin(dlg.getBlockOrigin());
@@ -489,6 +490,7 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
     }
 
     pCanvas->endFaceTesselation(faceTesselations);
+#endif
 }
 
 void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
@@ -1318,18 +1320,21 @@ void AppData::updateTessellation(const Index3D& min, const Index3D& max)
 
     auto pCanvas = _pMainFrame->getCanvas();
 
-    addFacesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
-    addEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+    addHexFacesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+    addHexEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
 
     setDisplayMinMax(min, max);
+    pCanvas->changeViewElements();
 }
 
-void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
+void AppData::addHexFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::TriMeshGroup blockMeshes;
     _pVolume->makeFaceTris(blockMeshes, min, max, multiCore);
 
-    pCanvas->beginFaceTesselation();
+    auto pDraw = pCanvas->getDrawHexMesh();
+    auto& faceVBO = pDraw->getVBOs()->_faceVBO;
+    faceVBO.beginFaceTesselation();
 
     vector<vector<OGL::IndicesPtr>> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
@@ -1339,21 +1344,31 @@ void AppData::addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
 
         for (const auto& pBlockMesh : thisGroup) {
             if (pBlockMesh && pBlockMesh->numTris() > 0) {
-                auto pBlockTess = pCanvas->setFaceTessellation(pBlockMesh);
+                auto meshId = pBlockMesh->getId();
+                auto changeNumber = pBlockMesh->getChangeNumber();
+                const auto& points = pBlockMesh->getGlTriPoints();
+                const auto& normals = pBlockMesh->getGlTriNormals(false);
+                const auto& parameters = pBlockMesh->getGlTriParams();
+                const auto& vertIndices = pBlockMesh->getGlTriIndices();
+                auto pBlockTess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, vertIndices);
                 if (pBlockTess)
                     faceTesselations.back().push_back(pBlockTess);
             }
         }
     }
-    pCanvas->endFaceTesselation(faceTesselations);
+
+    pDraw->setFaceTessellations(faceTesselations);
+    faceVBO.endFaceTesselation(false);
 }
 
-void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
+void AppData::addHexEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::glPointsGroup edgeSets;
     _pVolume->makeEdgeSets(edgeSets, min, max, multiCore);
 
-    pCanvas->beginEdgeTesselation();
+    auto pDraw = pCanvas->getDrawHexMesh();
+    auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
+    edgeVBO.beginEdgeTesselation();
 
     vector<vector<OGL::IndicesPtr>> edgeTesselations;
     edgeTesselations.reserve(edgeSets.size());
@@ -1367,7 +1382,7 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
                 for (size_t j = 0; j < faceEdges.size(); j++)
                     indices.push_back(j);
                 if (!faceEdges.empty()) {
-                    auto pEdgeTess = pCanvas->setEdgeSegTessellation(faceEdgesPtr->getId(), faceEdgesPtr->changeNumber(), faceEdges, indices);
+                    auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceEdgesPtr->getId(), faceEdgesPtr->changeNumber(), faceEdges, indices);
                     if (pEdgeTess)
                         edgeTesselations[mode].push_back(pEdgeTess);
                 }
@@ -1375,6 +1390,7 @@ void AppData::addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const
         }
     }
 
-    pCanvas->endEdgeTesselation(edgeTesselations);
+    pDraw->setEdgeTessellations(edgeTesselations);
+    edgeVBO.endEdgeTesselation();
 }
 

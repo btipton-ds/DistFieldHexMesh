@@ -114,22 +114,7 @@ public:
     void setView(Vector3d viewVec);
     void setLights();
 
-    void beginFaceTesselation();
-    // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGL::IndicesPtr setFaceTessellation(const CMeshPtr& pMesh);
-    void endFaceTesselation(const OGL::IndicesPtr& pTriTess, const OGL::IndicesPtr& pSharpVertTess, bool smoothNormals);
-    void endFaceTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& faceTess);
-
-    void beginEdgeTesselation();
-    // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGL::IndicesPtr setEdgeSegTessellation(long entityKey, int changeNumber, const std::vector<float>& points, const std::vector<unsigned int>& indices);
-    const OGL::IndicesPtr setEdgeSegTessellation(const CMeshPtr& pMesh);
-    void endEdgeTesselation(const OGL::IndicesPtr& pSharpEdgeTess, const OGL::IndicesPtr& pNormalTess);
-    void endEdgeTesselation(const std::vector<std::vector<OGL::IndicesPtr>>& edgeTess);
-
     void changeViewElements();
-    void changeFaceViewElementsX();
-    void changeEdgeViewElementsX();
 
     Vector3d NDCPointToModel(const Eigen::Vector2d& pt2d) const;
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;
@@ -219,8 +204,6 @@ private:
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<OGL::Shader> _phongShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
-
-    std::shared_ptr<VBORec> _meshVBOs;
 
 protected:
     wxDECLARE_EVENT_TABLE(); 

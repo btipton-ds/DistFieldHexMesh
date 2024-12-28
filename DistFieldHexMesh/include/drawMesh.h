@@ -67,8 +67,7 @@ namespace DFHM {
 		virtual ~DrawMesh();
 
 		void setShader(std::shared_ptr<OGL::Shader>& pShader);
-		std::shared_ptr<VBORec> getVBOs();
-		const std::shared_ptr<VBORec> getVBOs() const;
+		const std::shared_ptr<VBORec>& getVBOs() const;
 
 		void render();
 		void drawEdges();
@@ -86,17 +85,11 @@ namespace DFHM {
 
 		GraphicsCanvas* _pCanvas;
 		const OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
-		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
 
 		std::shared_ptr<VBORec> _VBOs;
 	};
 
-	inline std::shared_ptr<VBORec> DrawMesh::getVBOs()
-	{
-		return _VBOs;
-	}
-
-	inline const std::shared_ptr<VBORec> DrawMesh::getVBOs() const
+	inline const std::shared_ptr<VBORec>& DrawMesh::getVBOs() const
 	{
 		return _VBOs;
 	}

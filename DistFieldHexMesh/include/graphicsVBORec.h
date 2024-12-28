@@ -59,14 +59,7 @@ namespace DFHM {
 		VBORec();
 		virtual ~VBORec();
 
-		void changeFaceViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
-		void changeEdgeViewElements(bool visible, bool reference, const ChangeElementsOptions& opts);
-
-		OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
-		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
-
 		OGL::MultiVboHandler _faceVBO, _edgeVBO;
-
 	};
 
 }

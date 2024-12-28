@@ -113,8 +113,8 @@ private:
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelTess();
     void updateTessellation(const Index3D& min, const Index3D& max);
-    void addFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
-    void addEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void addHexFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void addHexEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
     void makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>

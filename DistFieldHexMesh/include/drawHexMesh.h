@@ -40,6 +40,29 @@ namespace DFHM {
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();
 
+		void setFaceTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
+		void setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
+		void changeViewElements(const VBORec::ChangeElementsOptions& params);
+
+	protected:
+		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
+		void postDrawEdges() override;
+
+		OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key) override;
+		void postDrawFaces() override;
+
 	private:
+		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
 	};
+
+	inline void DrawHexMesh::setFaceTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src)
+	{
+		_faceTessellations = src;
+	}
+
+	inline void DrawHexMesh::setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src)
+	{
+		_edgeTessellations = src;
+	}
+
 }
