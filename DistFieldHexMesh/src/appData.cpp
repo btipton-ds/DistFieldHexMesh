@@ -68,7 +68,6 @@ namespace
 
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
-    , _pMeshData(make_shared<map<wstring, MeshDataPtr>>())
 {
     _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
     _pHexMesh = make_shared<CMesh>();
@@ -155,7 +154,7 @@ bool AppData::doImportMesh()
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
-        _pMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
+        _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
 
         makeModelTess();
         return true;
@@ -172,7 +171,7 @@ void AppData::makeModelTess()
 
     pVBOs->_edgeVBO.beginEdgeTesselation();
     pVBOs->_faceVBO.beginFaceTesselation();
-    for (auto& pair : *_pMeshData) {
+    for (auto& pair : _meshData) {
         auto pData = pair.second;
         pData->makeOGLTess(pDrawModelMesh);
     }
@@ -207,26 +206,22 @@ void AppData::writeDHFM() const
     out.write((char*)&version, sizeof(version));
 
     _params.write(out);
-    bool hasBaseMesh = _pMeshData->find(_gBaseVolumeName) != _pMeshData->end();
+    bool hasBaseMesh = _meshData.find(_gBaseVolumeName) != _meshData.end();
     out.write((char*)&hasBaseMesh, sizeof(hasBaseMesh));
 
     size_t numMeshes = 0;
-    if (_pMeshData) {
-        for (const auto& pair : *_pMeshData) {
-            const auto& pData = pair.second;
-            if (!pData->isReference())
-                numMeshes++;
-        }
+    for (const auto& pair : _meshData) {
+        const auto& pData = pair.second;
+        if (!pData->isReference())
+            numMeshes++;
     }
 
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    if (_pMeshData) {
-        for (const auto& pair : *_pMeshData) {
-            const auto& pData = pair.second;
-            if (!pData->isReference())
-                pData->write(out);
-        }
+    for (const auto& pair : _meshData) {
+        const auto& pData = pair.second;
+        if (!pData->isReference())
+            pData->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
@@ -253,14 +248,17 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
             in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
         }
 
-        size_t numMeshes = _pMeshData->size();
+        size_t numMeshes = _meshData.size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            auto p = make_shared<MeshData>(this, _pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
-            p->read(in);
-            _pMeshData->insert(make_pair(p->getName(), p));
+            auto pData = make_shared<MeshData>(this, _pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
+            pData->read(in);
+            _meshData.insert(make_pair(pData->getName(), pData));
         }
+
+        if (hasBaseMesh)
+            doCreateBaseVolumePreview();
 
         makeModelTess();
     }
@@ -425,13 +423,12 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
-    if (_pMeshData) {
-        for (const auto& pair : *_pMeshData) {
-            const auto& pData = pair.second;
-            if (!pData->isReference())
-                result.merge(pData->getMesh()->getBBox());
-        }
+    for (const auto& pair : _meshData) {
+        const auto& pData = pair.second;
+        if (!pData->isReference())
+            result.merge(pData->getMesh()->getBBox());
     }
+
     if (_pVolume)
         result.merge(_pVolume->getBBox());
 
@@ -446,12 +443,10 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 CBoundingBox3Dd AppData::getMeshBoundingBox() const
 {
     CBoundingBox3Dd result;
-    if (_pMeshData) {
-        for (const auto& pair : *_pMeshData) {
-            const auto pData = pair.second;
-            if (!pData->isReference() && pData->isActive())
-                result.merge(pData->getMesh()->getBBox());
-        }
+    for (const auto& pair : _meshData) {
+        const auto pData = pair.second;
+        if (!pData->isReference() && pData->isActive())
+            result.merge(pData->getMesh()->getBBox());
     }
 
     return result;
@@ -609,7 +604,7 @@ void AppData::doCreateBaseVolumePreview()
     MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
-    _pMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
+    _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
     makeModelTess();
@@ -634,10 +629,8 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     xform = zRot * xform;
 
     CBoundingBox3Dd bboxOriented;
-    if (!_pMeshData)
-        return;
 
-    for (const auto& pair : *_pMeshData) {
+    for (const auto& pair : _meshData) {
         const auto pMesh = pair.second->getMesh();
         for (size_t i = 0; i < pMesh->numVertices(); i++) {
             const Vector3d& pt = pMesh->getVert(i)._pt;
@@ -1198,10 +1191,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
 
 void AppData::doRemoveBaseVolumePreview()
 {
-    auto iter = _pMeshData->find(_gBaseVolumeName);
-    if (iter != _pMeshData->end()) {
+    auto iter = _meshData.find(_gBaseVolumeName);
+    if (iter != _meshData.end()) {
         auto pData = iter->second;
-        _pMeshData->erase(iter);
+        _meshData.erase(iter);
 
     }
 
@@ -1298,7 +1291,7 @@ void AppData::doRemoveBaseVolume()
 
 bool AppData::doesBaseMeshExist() const
 {
-    return _pMeshData->find(_gBaseVolumeName) != _pMeshData->end();
+    return _meshData.find(_gBaseVolumeName) != _meshData.end();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

@@ -133,6 +133,7 @@ void DrawModelMesh::postDrawEdges()
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    const auto& options = _pCanvas->getViewOptions();
     auto& UBO = _pCanvas->getUBO();
     UBO.ambient = 0.2f;
     switch (key) {
@@ -162,7 +163,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    if (_pCanvas->getViewOptions().showSharpEdges) {
+    if (options.showSharpEdges || options.showEdges || options.showSharpEdges) {
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1.0f, 2.0f);
     }

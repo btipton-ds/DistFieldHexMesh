@@ -299,7 +299,6 @@ void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)
 
 void CreateBaseMeshDlg::OnDone(wxCommandEvent& event)
 {
-	_pAppData->doRemoveBaseVolumePreview();
 	_pAppData = nullptr;
 	Destroy();
 }

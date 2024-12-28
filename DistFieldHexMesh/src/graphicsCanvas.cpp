@@ -331,7 +331,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     vector<CMeshPtr> meshes;
-    for (const auto& md : *_pAppData->getMeshData()) {
+    for (const auto& md : _pAppData->getMeshData()) {
         auto pMeshData = md.second;
         if (pMeshData->isActive() && !pMeshData->isReference()) {
             auto pMesh = pMeshData->getMesh();
@@ -1027,7 +1027,7 @@ void GraphicsCanvas::changeViewElements()
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    const auto& meshData = *_pAppData->getMeshData();
+    const auto& meshData = _pAppData->getMeshData();
     for (auto& pair : meshData) {
         auto pData = pair.second;
         _pDrawModelMesh->changeViewElements(pData, _viewOptions);
@@ -1039,7 +1039,7 @@ void GraphicsCanvas::changeViewElements()
 void GraphicsCanvas::changeFaceViewElementsX()
 {
     _meshVBOs->changeFaceViewElements(true, false, _viewOptions);
-    auto& objs = *_pAppData->getMeshData();
+    auto& objs = _pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
 //        obj->changeFaceViewElements(_viewOptions);
@@ -1049,7 +1049,7 @@ void GraphicsCanvas::changeFaceViewElementsX()
 void GraphicsCanvas::changeEdgeViewElementsX()
 {
     _meshVBOs->changeEdgeViewElements(true, false, _viewOptions);
-    auto& objs = *_pAppData->getMeshData();
+    auto& objs = _pAppData->getMeshData();
     for (auto& pair : objs) {
         auto& obj = pair.second;
 //        obj->changeEdgeViewElements(_viewOptions);

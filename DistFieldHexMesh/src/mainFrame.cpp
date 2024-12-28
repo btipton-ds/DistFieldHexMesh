@@ -297,7 +297,7 @@ void MainFrame::OnInternalIdle()
     _pCanvas->Refresh();
 
     if (_editMenu) {
-        bool hasMesh = !_pAppData->getMeshData()->empty();
+        bool hasMesh = !_pAppData->getMeshData().empty();
         _editMenu->Enable(ID_CREATE_BASE_MESH, hasMesh);
         _editMenu->Enable(ID_BuildCFDHexes, hasMesh);
     }
@@ -318,7 +318,7 @@ void MainFrame::OnOpen(wxCommandEvent& event)
 void MainFrame::refreshObjectTree()
 {
     _pObjectTree->DeleteAllItems();
-    const auto& meshObjects = *_pAppData->getMeshData();
+    const auto& meshObjects = _pAppData->getMeshData();
     _pObjectTree->SetImages(_images);
     auto solidsItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Solids", -1, 0);
     auto surfacesItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Surfaces", -1, 0);

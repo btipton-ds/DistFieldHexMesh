@@ -48,7 +48,7 @@ namespace DFHM {
 				showSharpEdges = false,
 				showSharpVerts = false,
 				showTriNormals = false,
-				showEdges = true,
+				showEdges = false,
 				showFaces = true,
 				showModelBoundary = false,
 				showOuter = false,
