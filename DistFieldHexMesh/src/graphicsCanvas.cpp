@@ -262,67 +262,67 @@ void GraphicsCanvas::setLights()
     }
 }
 
-bool GraphicsCanvas::toggleShowSharpEdges()
+bool GraphicsCanvas::toggleShowModelSharpEdges()
 {
-    _viewOptions.showSharpEdges = !_viewOptions.showSharpEdges;
+    _viewOptions.showModelSharpEdges = !_viewOptions.showModelSharpEdges;
     changeViewElements();
 
-    return _viewOptions.showSharpEdges;
+    return _viewOptions.showModelSharpEdges;
 }
 
 bool GraphicsCanvas::toggleShowSharpVerts()
 {
-    _viewOptions.showSharpVerts = !_viewOptions.showSharpVerts;
+    _viewOptions.showModelSharpVerts = !_viewOptions.showModelSharpVerts;
     changeViewElements();
 
-    return _viewOptions.showSharpVerts;
+    return _viewOptions.showModelSharpVerts;
 }
 
 bool GraphicsCanvas::toggleShowTriNormals()
 {
-    _viewOptions.showTriNormals = !_viewOptions.showTriNormals;
+    _viewOptions.showModelTriNormals = !_viewOptions.showModelTriNormals;
     changeViewElements();
 
-    return _viewOptions.showTriNormals;
+    return _viewOptions.showModelTriNormals;
 }
 
-bool GraphicsCanvas::toggleShowFaces()
+bool GraphicsCanvas::toggleShowModelFaces()
 {
-    _viewOptions.showFaces = !_viewOptions.showFaces;
+    _viewOptions.showModelFaces = !_viewOptions.showModelFaces;
     changeViewElements();
 
-    return _viewOptions.showFaces;
+    return _viewOptions.showModelFaces;
 }
 
 bool GraphicsCanvas::toggleShowCurvature()
 {
-    _viewOptions.showCurvature = !_viewOptions.showCurvature;
+    _viewOptions.showModelCurvature = !_viewOptions.showModelCurvature;
     changeViewElements();
-    return _viewOptions.showCurvature;
+    return _viewOptions.showModelCurvature;
 }
 
-bool GraphicsCanvas::toggleShowEdges()
+bool GraphicsCanvas::toggleShowModelEdges()
 {
-    _viewOptions.showEdges = !_viewOptions.showEdges;
+    _viewOptions.showModelEdges = !_viewOptions.showModelEdges;
     changeViewElements();
 
-    return _viewOptions.showEdges;
+    return _viewOptions.showModelEdges;
 }
 
-bool GraphicsCanvas::toggleShowOuter()
+bool GraphicsCanvas::toggleShowMeshOuter()
 {
-    _viewOptions.showOuter = !_viewOptions.showOuter;
+    _viewOptions.showMeshOuter = !_viewOptions.showMeshOuter;
     changeViewElements();
 
-    return _viewOptions.showOuter;
+    return _viewOptions.showMeshOuter;
 }
 
-bool GraphicsCanvas::toggleShowModelBoundary()
+bool GraphicsCanvas::toggleShowMeshBoundary()
 {
-    _viewOptions.showModelBoundary = !_viewOptions.showModelBoundary;
+    _viewOptions.showMeshBoundary = !_viewOptions.showMeshBoundary;
     changeViewElements();
 
-    return _viewOptions.showOuter;
+    return _viewOptions.showMeshBoundary;
 }
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
@@ -658,7 +658,7 @@ void GraphicsCanvas::drawFaces()
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
-        if (_viewOptions.showSharpEdges) {
+        if (_viewOptions.showModelSharpEdges) {
             glEnable(GL_POLYGON_OFFSET_FILL);
             glPolygonOffset(1.0f, 2.0f);
         }

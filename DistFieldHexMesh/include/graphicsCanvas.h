@@ -123,8 +123,8 @@ public:
     void applyRotation(double angleSpin, double anglePitch, const Vector3d& rotationCenterLC);
     void applyScaleFactor(double scaleMult, const Eigen::Vector2d& center);
 
-    bool showSharpEdges() const;
-    bool toggleShowSharpEdges();
+    bool showModelSharpEdges() const;
+    bool toggleShowModelSharpEdges();
 
     bool showSharpVerts() const;
     bool toggleShowSharpVerts();
@@ -132,22 +132,22 @@ public:
     bool showTriNormals() const;
     bool toggleShowTriNormals();
 
-    bool showFaces() const;
-    bool toggleShowFaces();
+    bool showModelFaces() const;
+    bool toggleShowModelFaces();
 
     bool showCurvature() const;
     bool toggleShowCurvature();
 
-    bool showEdges() const;
-    bool toggleShowEdges();
+    bool showModelEdges() const;
+    bool toggleShowModelEdges();
 
-    bool showOuter() const;
-    bool toggleShowOuter();
+    bool showMeshOuter() const;
+    bool toggleShowMeshOuter();
 
-    bool showModelBoundary() const;
-    bool toggleShowModelBoundary();
+    bool showMeshBoundary() const;
+    bool toggleShowMeshBoundary();
 
-    void setShowSelectedBlocks(bool val);
+    void setShowMeshSelectedBlocks(bool val);
 
     void setView(View v);
     void resetView();
@@ -249,49 +249,49 @@ inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
     _backColor = color;
 }
 
-inline bool GraphicsCanvas::showSharpEdges() const
+inline bool GraphicsCanvas::showModelSharpEdges() const
 {
-    return _viewOptions.showSharpEdges;
+    return _viewOptions.showModelSharpEdges;
 }
 
 inline bool GraphicsCanvas::showSharpVerts() const
 {
-    return _viewOptions.showSharpVerts;
+    return _viewOptions.showModelSharpVerts;
 }
 
 inline bool GraphicsCanvas::showTriNormals() const
 {
-    return _viewOptions.showTriNormals;
+    return _viewOptions.showModelTriNormals;
 }
 
-inline bool GraphicsCanvas::showFaces() const
+inline bool GraphicsCanvas::showModelFaces() const
 {
-    return _viewOptions.showFaces;
+    return _viewOptions.showModelFaces;
 }
 
 inline bool GraphicsCanvas::showCurvature() const
 {
-    return _viewOptions.showCurvature;
+    return _viewOptions.showModelCurvature;
 }
 
-inline bool GraphicsCanvas::showEdges() const
+inline bool GraphicsCanvas::showModelEdges() const
 {
-    return _viewOptions.showEdges;
+    return _viewOptions.showModelEdges;
 }
 
-inline bool GraphicsCanvas::showOuter() const
+inline bool GraphicsCanvas::showMeshOuter() const
 {
-    return _viewOptions.showOuter;
+    return _viewOptions.showMeshOuter;
 }
 
-inline bool GraphicsCanvas::showModelBoundary() const
+inline bool GraphicsCanvas::showMeshBoundary() const
 {
-    return _viewOptions.showModelBoundary;
+    return _viewOptions.showMeshBoundary;
 }
 
-inline void GraphicsCanvas::setShowSelectedBlocks(bool val)
+inline void GraphicsCanvas::setShowMeshSelectedBlocks(bool val)
 {
-    _viewOptions.showSelectedBlocks = val;
+    _viewOptions.showMeshSelectedBlocks = val;
 }
 
 }

@@ -183,22 +183,11 @@ void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const V
 		edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, getAllEdgeTess());
 	}
 	else {
-		if (params.showFaces) {
-			faceVBO.includeElementIndices(params.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, getFaceTess());
-			if (params.showTriNormals)
-				edgeVBO.includeElementIndices(DS_MODEL_NORMALS, getAllEdgeTess());
+		if (params.showMeshFaces) {
+			faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());
 		}
-		if (params.showEdges) {
-			if (params.showSharpEdges) {
-				edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, getSharpEdgeTess());
-				edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, getSmoothEdgeTess());
-			}
-			else {
-				edgeVBO.includeElementIndices(DS_MODEL_EDGES, getAllEdgeTess());
-			}
-		}
-		else if (params.showSharpEdges) {
-			edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, getSharpEdgeTess());
+		if (params.showMeshEdges) {
+			edgeVBO.includeElementIndices(DS_MESH_EDGES, getAllEdgeTess());
 		}
 	}
 }

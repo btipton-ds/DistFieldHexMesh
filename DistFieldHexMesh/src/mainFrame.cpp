@@ -184,8 +184,8 @@ void MainFrame::createViewMenu()
 
     addViewSubMenu(menu);
 
-    menu->Append(ID_SHOW_SHARP_EDGES, "Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowSharpEdges, this, ID_SHOW_SHARP_EDGES);
+    menu->Append(ID_SHOW_MODEL_SHARP_EDGES, "Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSharpEdges, this, ID_SHOW_MODEL_SHARP_EDGES);
 
     menu->Append(ID_SHOW_SHARP_VERTS, "Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowSharpVerts, this, ID_SHOW_SHARP_VERTS);
@@ -196,26 +196,26 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_CURVATURE, "Show Curvature", "Turns rendering of curvature on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowCurvature, this, ID_SHOW_CURVATURE);
 
-    menu->Append(ID_SHOW_FACES, "Show Faces", "Turns rendering of faces on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowFaces, this, ID_SHOW_FACES);
+    menu->Append(ID_SHOW_MODEL_FACES, "Show Faces", "Turns rendering of faces on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowFaces, this, ID_SHOW_MODEL_FACES);
 
-    menu->Append(ID_SHOW_EDGES, "Show Edges", "Turns rendering of edges on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowEdges, this, ID_SHOW_EDGES);
+    menu->Append(ID_SHOW_MODEL_EDGES, "Show Edges", "Turns rendering of edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowEdges, this, ID_SHOW_MODEL_EDGES);
 
-    menu->Append(ID_SHOW_OUTER, "Show Outer", "Turns rendering of edges on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_OUTER);
+    menu->Append(ID_SHOW_MESH_OUTER, "Show Mesh Outer", "Turns rendering of edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_MESH_OUTER);
 
-    menu->Append(ID_SHOW_MODEL_BOUNDARY, "Show Model Boundary", "Turns rendering of model boundary", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_MODEL_BOUNDARY);
+    menu->Append(ID_SHOW_MESH_BOUNDARY, "Show Mesh Boundary", "Turns rendering of model boundary", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowOuter, this, ID_SHOW_MESH_BOUNDARY);
 
-    menu->Append(ID_SHOW_SELECTED_BLOCKS, "Show Selected Blocks", "Shows only selected blocks", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowSelectedBlocks, this, ID_SHOW_SELECTED_BLOCKS);
+    menu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Show Selected Mesh Blocks", "Shows only selected blocks", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
 
     _menuBar->Append(menu, "&View");
 
-    auto item = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    auto item = _menuBar->FindItem(ID_SHOW_MODEL_SHARP_EDGES);
     if (item)
-        item->Check(getCanvas()->showSharpEdges());
+        item->Check(getCanvas()->showModelSharpEdges());
 
     item = _menuBar->FindItem(ID_SHOW_SHARP_VERTS);
     if (item)
@@ -225,17 +225,17 @@ void MainFrame::createViewMenu()
     if (item)
         item->Check(getCanvas()->showTriNormals());
 
-    item = _menuBar->FindItem(ID_SHOW_FACES);
+    item = _menuBar->FindItem(ID_SHOW_MODEL_FACES);
     if (item)
-        item->Check(getCanvas()->showFaces());
+        item->Check(getCanvas()->showModelFaces());
 
-    item = _menuBar->FindItem(ID_SHOW_EDGES);
+    item = _menuBar->FindItem(ID_SHOW_MODEL_EDGES);
     if (item)
-        item->Check(getCanvas()->showEdges());
+        item->Check(getCanvas()->showModelEdges());
 
-    item = _menuBar->FindItem(ID_SHOW_OUTER);
+    item = _menuBar->FindItem(ID_SHOW_MESH_OUTER);
     if (item)
-        item->Check(getCanvas()->showOuter());
+        item->Check(getCanvas()->showMeshOuter());
 }
 
 void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
@@ -421,11 +421,11 @@ void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
 
 void MainFrame::OnShowSharpEdges(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowSharpEdges();
+    getCanvas()->toggleShowModelSharpEdges();
 
-    auto item = _menuBar->FindItem(ID_SHOW_SHARP_EDGES);
+    auto item = _menuBar->FindItem(ID_SHOW_MODEL_SHARP_EDGES);
     if (item)
-        item->Check(getCanvas()->showSharpEdges());
+        item->Check(getCanvas()->showModelSharpEdges());
 }
 
 void MainFrame::OnShowSharpVerts(wxCommandEvent& event)
@@ -457,38 +457,38 @@ void MainFrame::OnShowCurvature(wxCommandEvent& event)
 
 void MainFrame::OnShowFaces(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowFaces();
+    getCanvas()->toggleShowModelFaces();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_FACES);
+    auto normItem = _menuBar->FindItem(ID_SHOW_MODEL_FACES);
     if (normItem)
-        normItem->Check(getCanvas()->showFaces());
+        normItem->Check(getCanvas()->showModelFaces());
 }
 
 void MainFrame::OnShowEdges(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowEdges();
+    getCanvas()->toggleShowModelEdges();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_EDGES);
+    auto normItem = _menuBar->FindItem(ID_SHOW_MODEL_EDGES);
     if (normItem)
-        normItem->Check(getCanvas()->showEdges());
+        normItem->Check(getCanvas()->showModelEdges());
 }
 
 void MainFrame::OnShowOuter(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowOuter();
+    getCanvas()->toggleShowMeshOuter();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_OUTER);
+    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_OUTER);
     if (normItem)
-        normItem->Check(getCanvas()->showOuter());
+        normItem->Check(getCanvas()->showMeshOuter());
 }
 
 void MainFrame::OnShowModelBoundary(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowModelBoundary();
+    getCanvas()->toggleShowMeshBoundary();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_MODEL_BOUNDARY);
+    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_BOUNDARY);
     if (normItem)
-        normItem->Check(getCanvas()->showOuter());
+        normItem->Check(getCanvas()->showMeshBoundary());
 }
 
 void MainFrame::OnShowSelectedBlocks(wxCommandEvent& event)

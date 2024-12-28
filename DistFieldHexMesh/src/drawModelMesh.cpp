@@ -71,13 +71,13 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
         edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, pData->getAllEdgeTess());
     }
     else {
-        if (params.showFaces) {
-            faceVBO.includeElementIndices(params.showCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
-            if (params.showTriNormals)
+        if (params.showModelFaces) {
+            faceVBO.includeElementIndices(params.showModelCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
+            if (params.showModelTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
-        if (params.showEdges) {
-            if (params.showSharpEdges) {
+        if (params.showModelEdges) {
+            if (params.showModelSharpEdges) {
                 edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
                 edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
             }
@@ -85,7 +85,7 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
                 edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
             }
         }
-        else if (params.showSharpEdges) {
+        else if (params.showModelSharpEdges) {
             edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
         }
     }
@@ -163,7 +163,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    if (options.showSharpEdges || options.showEdges || options.showSharpEdges) {
+    if (options.showModelSharpEdges || options.showModelEdges || options.showModelSharpEdges) {
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1.0f, 2.0f);
     }

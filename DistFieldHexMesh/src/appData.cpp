@@ -415,7 +415,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
-    pCanvas->setShowSelectedBlocks(true);
+    pCanvas->setShowMeshSelectedBlocks(true);
 
     updateTessellation(min, max);
 }

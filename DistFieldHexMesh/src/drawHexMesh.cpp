@@ -49,15 +49,15 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    if (opts.showFaces && !_faceTessellations.empty()) {
-        if (opts.showSelectedBlocks) {
+    if (opts.showMeshFaces && !_faceTessellations.empty()) {
+        if (opts.showMeshSelectedBlocks) {
             if (FT_ALL < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_ALL]) {
                     if (pBlockTess)
                         faceVBO.includeElementIndices(DS_BLOCK_ALL, pBlockTess);
                 }
             }
-        } else if (opts.showOuter) {
+        } else if (opts.showMeshOuter) {
             if (FT_OUTER < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_OUTER]) {
                     if (pBlockTess)
@@ -97,29 +97,29 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
         }
     }
 
-    if (opts.showEdges && !_edgeTessellations.empty()) {
-        if (opts.showOuter && FT_OUTER < _edgeTessellations.size()) {
+    if (opts.showMeshEdges && !_edgeTessellations.empty()) {
+        if (opts.showMeshOuter && FT_OUTER < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
                 if (pBlockTess)
                     edgeVBO.includeElementIndices(DS_BLOCK_OUTER, pBlockTess);
             }
         }
 
-        if (!opts.showOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
+        if (!opts.showMeshOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
                 if (pBlockTess)
                     edgeVBO.includeElementIndices(DS_BLOCK_INNER, pBlockTess);
             }
         }
 
-        if (!opts.showOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+        if (!opts.showMeshOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
                     edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, pBlockTess);
             }
         }
 
-        if (!opts.showSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
+        if (!opts.showMeshSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
                 if (pBlockTess)
                     edgeVBO.includeElementIndices(DS_BLOCK_ALL, pBlockTess);

@@ -45,15 +45,17 @@ namespace DFHM {
 	struct VBORec {
 		struct ChangeElementsOptions {
 			bool 
-				showSharpEdges = false,
-				showSharpVerts = false,
-				showTriNormals = false,
-				showEdges = false,
-				showFaces = true,
-				showModelBoundary = false,
-				showOuter = false,
-				showCurvature = false,
-				showSelectedBlocks = false;
+				showModelSharpEdges = false,
+				showModelSharpVerts = false,
+				showModelTriNormals = false,
+				showModelEdges = false,
+				showModelFaces = true,
+				showModelCurvature = false,
+				showMeshBoundary = false,
+				showMeshEdges = true,
+				showMeshFaces = false,
+				showMeshOuter = false,
+				showMeshSelectedBlocks = false;
 		};
 
 		VBORec();
