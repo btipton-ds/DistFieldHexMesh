@@ -72,7 +72,7 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
     }
     else {
         if (params.showModelFaces) {
-            faceVBO.includeElementIndices(params.showModelCurvature ? DS_MODEL_CURVATURE : DS_MODEL_FACES, pData->getFaceTess());
+            faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
             if (params.showModelTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
@@ -116,6 +116,12 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
         UBO.defColor = p3f(1.0f, 1.0f, 0);
         break;
     }
+
+    if (_showCurvature) {
+        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
+    }
+
     UBO.ambient = 1.0f;
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
     glEnable(GL_DEPTH_TEST);
@@ -141,10 +147,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     case DS_MODEL:
         UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
         break;
-    case DS_MODEL_CURVATURE:
-        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
-        break;
     case DS_MODEL_SHARP_VERTS:
         UBO.defColor = p3f(1.0f, 1.0f, 0);
         break;
@@ -159,6 +161,12 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
         UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
         break;
     }
+
+    if (_showCurvature) {
+        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
+    }
+
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);

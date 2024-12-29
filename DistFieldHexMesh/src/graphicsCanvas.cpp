@@ -294,11 +294,16 @@ bool GraphicsCanvas::toggleShowModelFaces()
     return _viewOptions.showModelFaces;
 }
 
+bool GraphicsCanvas::showCurvature() const
+{
+    return _pDrawModelMesh->showCurvature();
+}
+
 bool GraphicsCanvas::toggleShowCurvature()
 {
-    _viewOptions.showModelCurvature = !_viewOptions.showModelCurvature;
+    _pDrawModelMesh->toggleShowCurvature();
     changeViewElements();
-    return _viewOptions.showModelCurvature;
+    return _pDrawModelMesh->showCurvature();
 }
 
 bool GraphicsCanvas::toggleShowModelEdges()
@@ -307,6 +312,22 @@ bool GraphicsCanvas::toggleShowModelEdges()
     changeViewElements();
 
     return _viewOptions.showModelEdges;
+}
+
+bool GraphicsCanvas::toggleShowMeshEdges()
+{
+    _viewOptions.showMeshEdges = !_viewOptions.showMeshEdges;
+    changeViewElements();
+
+    return _viewOptions.showMeshEdges;
+}
+
+bool GraphicsCanvas::toggleShowMeshFaces()
+{
+    _viewOptions.showMeshFaces = !_viewOptions.showMeshFaces;
+    changeViewElements();
+
+    return _viewOptions.showMeshFaces;
 }
 
 bool GraphicsCanvas::toggleShowMeshOuter()
@@ -590,9 +611,6 @@ layout(binding = 0) uniform UniformBufferObject {
     _pDrawHexMesh->render();
     _pDrawModelMesh->render();
 
-    drawFaces();
-    drawEdges();
-
     SwapBuffers();
     _phongShader->unBind();
 }
@@ -624,118 +642,6 @@ void GraphicsCanvas::drawMousePos3D()
     glEnd();
 
 #endif //  DRAW_MOUSE_POSITION
-}
-
-void GraphicsCanvas::drawFaces()
-{
-    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        _graphicsUBO.ambient = 0.2f;
-        switch (key) {
-            default:
-            case DS_MODEL_FACES:
-                _graphicsUBO.defColor = p3f(0.9f, 0.9f, 1.0f);
-                break;
-            case DS_MODEL_CURVATURE:
-                result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
-                break;
-            case DS_MODEL_SHARP_VERTS:
-                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
-                break;
-            case DS_BLOCK_ALL:
-            case DS_BLOCK_OUTER:
-                _graphicsUBO.defColor = p3f(0.0f, 0.8f, 0);
-                break;
-            case DS_BLOCK_INNER:
-                _graphicsUBO.defColor = p3f(0.75f, 1, 1);
-                break;
-            case DS_BLOCK_BOUNDARY:
-                _graphicsUBO.defColor = p3f(1.0f, 0.5f, 0.5f);
-                break;
-        }
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-
-        if (_viewOptions.showModelSharpEdges) {
-            glEnable(GL_POLYGON_OFFSET_FILL);
-            glPolygonOffset(1.0f, 2.0f);
-        }
-
-        return result;
-    };
-
-    auto postDraw = [this]() {
-        glDisable(GL_POLYGON_OFFSET_FILL);
-        };
-
-    auto preTexDraw = [this](unsigned int texId) {
-        };
-
-    auto postTexDraw = [this]() {
-        };
-
-//    _modelVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-//    _meshVBOs->_faceVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-
-}
-
-void GraphicsCanvas::drawEdges()
-{
-    auto preDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-        OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        switch (key) {
-            default:
-            case DS_MODEL_EDGES:
-                glLineWidth(2.0f);
-                _graphicsUBO.defColor = p3f(1.0f, 0.0f, 0.0f);
-                break;
-            case DS_MODEL_SHARP_EDGES:
-                glLineWidth(1.0f);
-                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0);
-                result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-                break;
-            case DS_MODEL_NORMALS:
-                glLineWidth(1.0f);
-                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 1.0f);
-                break;
-            case DS_BLOCK_ALL:
-            case DS_BLOCK_OUTER:
-            case DS_BLOCK_INNER:
-                glLineWidth(1.0f);
-                _graphicsUBO.defColor = p3f(0.0f, 0.0f, 0.50f);
-                break;
-            case DS_BLOCK_BOUNDARY:
-                glLineWidth(1.0f);
-                _graphicsUBO.defColor = p3f(0.75f, 0, 0);
-                break;
-            case DS_MODEL_REF_EDGES:
-                glLineWidth(0.5f);
-                _graphicsUBO.defColor = p3f(1.0f, 1.0f, 0);
-                break;
-        }
-        _graphicsUBO.ambient = 1.0f;
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-
-        return result;
-    };
-
-    auto postDraw = [this]() {
-        };
-
-    auto preTexDraw = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-        return OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-        };
-
-    auto postTexDraw = [this]() {
-        };
-
-//    _modelVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-//    _meshVBOs->_edgeVBO.drawAllKeys(preDraw, postDraw, preTexDraw, postTexDraw);
-
 }
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const

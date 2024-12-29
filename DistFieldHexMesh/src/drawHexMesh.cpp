@@ -139,19 +139,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
     switch (key) {
     default:
-    case DS_MODEL_EDGES:
-        glLineWidth(2.0f);
-        UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
-        break;
-    case DS_MODEL_SHARP_EDGES:
-        glLineWidth(1.0f);
-        UBO.defColor = p3f(0.0f, 0.0f, 0);
-        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-        break;
-    case DS_MODEL_NORMALS:
-        glLineWidth(1.0f);
-        UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
-        break;
     case DS_BLOCK_ALL:
     case DS_BLOCK_OUTER:
     case DS_BLOCK_INNER:
@@ -161,10 +148,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     case DS_BLOCK_BOUNDARY:
         glLineWidth(1.0f);
         UBO.defColor = p3f(0.75f, 0, 0);
-        break;
-    case DS_MODEL_REF_EDGES:
-        glLineWidth(0.5f);
-        UBO.defColor = p3f(1.0f, 1.0f, 0);
         break;
     }
     UBO.ambient = 1.0f;
@@ -188,16 +171,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     UBO.ambient = 0.2f;
     switch (key) {
     default:
-    case DS_MODEL_FACES:
-        UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
-        break;
-    case DS_MODEL_CURVATURE:
-        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
-        break;
-    case DS_MODEL_SHARP_VERTS:
-        UBO.defColor = p3f(1.0f, 1.0f, 0);
-        break;
     case DS_BLOCK_ALL:
     case DS_BLOCK_OUTER:
         UBO.defColor = p3f(0.0f, 0.8f, 0);

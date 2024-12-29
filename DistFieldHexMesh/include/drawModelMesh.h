@@ -45,6 +45,9 @@ namespace DFHM {
 
 		void changeViewElements(MeshDataPtr& pData, const VBORec::ChangeElementsOptions& params);
 
+		void toggleShowCurvature();
+		bool showCurvature() const;
+
 	protected:
 		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
 		void postDrawEdges() override;
@@ -53,6 +56,17 @@ namespace DFHM {
 		void postDrawFaces() override;
 
 	private:
-
+		bool _showCurvature = false;
 	};
+
+	inline void DrawModelMesh::toggleShowCurvature()
+	{
+		_showCurvature = !_showCurvature;
+	}
+
+	inline bool DrawModelMesh::showCurvature() const
+	{
+		return _showCurvature;
+	}
+
 }

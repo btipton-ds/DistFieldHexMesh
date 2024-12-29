@@ -151,7 +151,7 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 	getEdgeData(normPts, normIndices);
 
 	if (!normPts.empty()) {
-		_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, points, indices);
+		_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
 
 	}
 }

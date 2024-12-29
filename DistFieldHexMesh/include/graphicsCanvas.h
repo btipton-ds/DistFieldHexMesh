@@ -141,6 +141,12 @@ public:
     bool showModelEdges() const;
     bool toggleShowModelEdges();
 
+    bool showMeshEdges() const;
+    bool toggleShowMeshEdges();
+
+    bool showMeshFaces() const;
+    bool toggleShowMeshFaces();
+
     bool showMeshOuter() const;
     bool toggleShowMeshOuter();
 
@@ -175,8 +181,6 @@ private:
     void render();
     void updateView();
     void drawMousePos3D();
-    void drawFaces();
-    void drawEdges();
 
     void initialize();
     void loadShaders();
@@ -269,14 +273,19 @@ inline bool GraphicsCanvas::showModelFaces() const
     return _viewOptions.showModelFaces;
 }
 
-inline bool GraphicsCanvas::showCurvature() const
-{
-    return _viewOptions.showModelCurvature;
-}
-
 inline bool GraphicsCanvas::showModelEdges() const
 {
     return _viewOptions.showModelEdges;
+}
+
+inline bool GraphicsCanvas::showMeshEdges() const
+{
+    return _viewOptions.showMeshEdges;
+}
+
+inline bool GraphicsCanvas::showMeshFaces() const
+{
+    return _viewOptions.showMeshFaces;
 }
 
 inline bool GraphicsCanvas::showMeshOuter() const

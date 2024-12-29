@@ -75,12 +75,16 @@ enum DFHM_MENU_ID
     ID_VIEW_LEFT,
     ID_VIEW_RIGHT,
     ID_VIEW_RESET,
+
     ID_SHOW_CURVATURE,
     ID_SHOW_SHARP_VERTS,
     ID_SHOW_TRI_NORMALS,
     ID_SHOW_MODEL_SHARP_EDGES,
     ID_SHOW_MODEL_EDGES,
     ID_SHOW_MODEL_FACES,
+
+    ID_SHOW_MESH_EDGES,
+    ID_SHOW_MESH_FACES,
     ID_SHOW_MESH_BOUNDARY,
     ID_SHOW_MESH_OUTER,
     ID_SHOW_MESH_SELECTED_BLOCKS,
@@ -142,15 +146,18 @@ private:
     void OnCreateBaseMesh(wxCommandEvent& event);
     void OnBuildCFDHexes(wxCommandEvent& event);
 
-    void OnShowSharpEdges(wxCommandEvent& event);
-    void OnShowSharpVerts(wxCommandEvent& event);
-    void OnShowTriNormals(wxCommandEvent& event);
-    void OnShowCurvature(wxCommandEvent& event);
-    void OnShowFaces(wxCommandEvent& event);
-    void OnShowEdges(wxCommandEvent& event);
-    void OnShowOuter(wxCommandEvent& event);
-    void OnShowModelBoundary(wxCommandEvent& event);
-    void OnShowSelectedBlocks(wxCommandEvent& event);
+    void OnShowModelSharpEdges(wxCommandEvent& event);
+    void OnShowModelSharpVerts(wxCommandEvent& event);
+    void OnShowModelTriNormals(wxCommandEvent& event);
+    void OnShowModelCurvature(wxCommandEvent& event);
+    void OnShowModelFaces(wxCommandEvent& event);
+    void OnShowModelEdges(wxCommandEvent& event);
+
+    void OnShowMeshFaces(wxCommandEvent& event);
+    void OnShowMeshEdges(wxCommandEvent& event);
+    void OnShowMeshOuter(wxCommandEvent& event);
+    void OnShowMeshBoundary(wxCommandEvent& event);
+    void OnShowMeshSelectedBlocks(wxCommandEvent& event);
 
     void OnSetViewFront(wxCommandEvent& event);
     void OnSetViewBack(wxCommandEvent& event);

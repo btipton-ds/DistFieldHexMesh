@@ -50,7 +50,6 @@ namespace DFHM {
 				showModelTriNormals = false,
 				showModelEdges = false,
 				showModelFaces = true,
-				showModelCurvature = false,
 				showMeshBoundary = false,
 				showMeshEdges = true,
 				showMeshFaces = false,
