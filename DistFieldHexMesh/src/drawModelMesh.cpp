@@ -76,6 +76,7 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
             if (params.showModelTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
+
         if (params.showModelEdges) {
             if (params.showModelSharpEdges) {
                 edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
@@ -84,8 +85,7 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData, const VBORec::ChangeE
             else {
                 edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
             }
-        }
-        else if (params.showModelSharpEdges) {
+        } else if (params.showModelSharpEdges) {
             edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
         }
     }
@@ -150,16 +150,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     case DS_MODEL_SHARP_VERTS:
         UBO.defColor = p3f(1.0f, 1.0f, 0);
         break;
-    case DS_BLOCK_ALL:
-    case DS_BLOCK_OUTER:
-        UBO.defColor = p3f(0.0f, 0.8f, 0);
-        break;
-    case DS_BLOCK_INNER:
-        UBO.defColor = p3f(0.75f, 1, 1);
-        break;
-    case DS_BLOCK_BOUNDARY:
-        UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
-        break;
     }
 
     if (_showCurvature) {
@@ -171,7 +161,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    if (options.showModelSharpEdges || options.showModelEdges || options.showModelSharpEdges) {
+    if (options.showModelSharpEdges || options.showModelEdges) {
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(1.0f, 2.0f);
     }
