@@ -225,7 +225,6 @@ void AppData::writeDHFM() const
     }
 
     bool hasVolume = _pVolume != nullptr;
-    hasVolume = false;
     out.write((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume)
         _pVolume->write(out);    
