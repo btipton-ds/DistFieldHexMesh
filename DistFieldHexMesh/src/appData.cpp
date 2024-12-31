@@ -269,7 +269,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
         _pVolume->setModelMesh(_pHexMesh);
 
         _pVolume->read(in);
-        updateTessellation(Index3D(0, 0, 0), Volume::volDim());
+        updateTessellation();
     }
 
     if (hasBaseMesh)
@@ -409,14 +409,12 @@ void AppData::doNew(const MakeBlockDlg& dlg)
 
 void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 {
-    Index3D min = dlg.getMin();
-    Index3D max = dlg.getMax();
 
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
     pCanvas->setShowMeshSelectedBlocks(true);
 
-    updateTessellation(min, max);
+    updateTessellation();
 }
 
 CBoundingBox3Dd AppData::getBoundingBox() const
@@ -429,7 +427,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
     }
 
     if (_pVolume)
-        result.merge(_pVolume->getBBox());
+        result.merge(_pVolume->getModelBBox());
 
     if (result.empty()) {
         result.merge(Vector3d(-1, -1, -1));
@@ -516,7 +514,7 @@ void AppData::GradingRec::createVec(int axis, double& scale, double& growFactor)
 void AppData::doCreateBaseVolumePreview()
 {
     CMeshPtr pMesh;
-    auto makeGradedBlock = [&pMesh](const Vector3d cPts[8], const GradingRec& gr) {
+    auto makeGradedBlock = [&pMesh](const Vector3d cPts[8], CubeTopolType dir, CubeTopolType dir1, CubeTopolType dir2, const GradingRec& gr) {
         if (gr.divs[0] == 0) {
             pMesh->addQuad(cPts[0], cPts[3], cPts[2], cPts[1]);
             pMesh->addQuad(cPts[4], cPts[5], cPts[6], cPts[7]);
@@ -597,10 +595,10 @@ void AppData::doCreateBaseVolumePreview()
     {
         GradingRec r;
         r.divs = _params.volDivs;
-        makeGradedBlock(cubePts, r);
+        makeGradedBlock(cubePts, CTT_UNDEFINED, CTT_UNDEFINED, CTT_UNDEFINED, r);
     }
 
-    makeSuround(cubePts, makeGradedBlock);
+    makeSuroundingBlocks(cubePts, makeGradedBlock);
 
     MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
@@ -735,9 +733,24 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 }
 
 template<class L>
-void AppData::makeSuround(Vector3d cPts[8], const L& f) const
+void AppData::makeSuroundingBlocks(Vector3d cPts[8], const L& f) const
 {
-#if 1
+    if (!_params.symXAxis)
+        _pVolume->insertBlocks(_params, CTT_BACK);
+
+    _pVolume->insertBlocks(_params, CTT_FRONT);
+
+    if (!_params.symYAxis)
+        _pVolume->insertBlocks(_params, CTT_LEFT);
+
+    _pVolume->insertBlocks(_params, CTT_RIGHT);
+
+    if (!_params.symZAxis)
+        _pVolume->insertBlocks(_params, CTT_BOTTOM);
+
+    _pVolume->insertBlocks(_params, CTT_TOP);
+
+#if 0
     makeGradedHexOnFace(cPts, CTT_BOTTOM, f);
     makeGradedHexOnFace(cPts, CTT_TOP, f);
     makeGradedHexOnFace(cPts, CTT_FRONT, f);
@@ -760,9 +773,10 @@ void AppData::makeSuround(Vector3d cPts[8], const L& f) const
 
     makeGradedHexOnEdge(cPts, CTT_RIGHT, CTT_BOTTOM, f);
     makeGradedHexOnEdge(cPts, CTT_RIGHT, CTT_TOP, f);
-#endif
 
     makeGradedHexOnCorners(cPts, f);
+#endif
+
 }
 
 template<class L>
@@ -851,7 +865,7 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             break;
     }
 
-    fLambda(pts, gr);
+    fLambda(pts, dir, CTT_UNDEFINED, CTT_UNDEFINED, gr);
 }
 
 template<class L>
@@ -1041,7 +1055,7 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
         break;
     }
 
-    fLambda(pts, gr);
+    fLambda(pts, dir0, dir1, CTT_UNDEFINED, gr);
 }
 
 template<class L>
@@ -1049,6 +1063,7 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
 {
     Vector3d pts[8];
     GradingRec gr;
+    CubeTopolType dir0, dir1, dir2;
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++)
@@ -1069,6 +1084,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
         case 2: {
             if (_params.symZAxis)
                 continue;
+
+            dir0 = CTT_FRONT;
+            dir1 = CTT_RIGHT;
+            dir2 = CTT_BOTTOM;
 
             gr.divs = Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMinDivs);
             gr.grading = Vector3d(_params.xMaxGrading, _params.yMaxGrading, 1 / _params.zMinGrading);
@@ -1096,6 +1115,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
         case 3: {
             if (_params.symXAxis || _params.symZAxis)
                 continue;
+
+            dir0 = CTT_BACK;
+            dir1 = CTT_RIGHT;
+            dir2 = CTT_BOTTOM;
 
             gr.divs = Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMinDivs);
             gr.grading = Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, 1 / _params.zMinGrading);
@@ -1135,6 +1158,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
         case 6: {
             // pts[0]
 
+            dir0 = CTT_FRONT;
+            dir1 = CTT_RIGHT;
+            dir2 = CTT_TOP;
+
             gr.divs = Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMaxDivs);
             gr.grading = Vector3d(_params.xMaxGrading, _params.yMaxGrading, _params.zMaxGrading);
 
@@ -1159,6 +1186,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
         case 7: {
             if (_params.symXAxis)
                 continue;
+
+            dir0 = CTT_BACK;
+            dir1 = CTT_RIGHT;
+            dir2 = CTT_TOP;
 
             gr.divs = Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMaxDivs);
             gr.grading = Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, _params.zMaxGrading);
@@ -1185,7 +1216,7 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
         }
         }
 
-        fLambda(pts, gr);
+        fLambda(pts, dir0, dir1, dir2, gr);
     }
 
 }
@@ -1205,18 +1236,9 @@ void AppData::doRemoveBaseVolumePreview()
 void AppData::doCreateBaseVolume()
 {
     _pVolume = nullptr;
-    auto makeGradedBlock = [this](const Vector3d cubePts[8], const GradingRec& gr) {
-#if 0
-        if (gr.divs[0] == 0) {
-           
-            addQuad(cPts[0], cPts[3], cPts[2], cPts[1]);
-            pMesh->addQuad(cPts[4], cPts[5], cPts[6], cPts[7]);
-            pMesh->addQuad(cPts[1], cPts[2], cPts[6], cPts[5]);
-            pMesh->addQuad(cPts[0], cPts[4], cPts[7], cPts[3]);
-            pMesh->addQuad(cPts[0], cPts[1], cPts[5], cPts[4]);
-            pMesh->addQuad(cPts[3], cPts[7], cPts[6], cPts[2]);
-        }
-        else {
+    auto makeGradedBlock = [this](const Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, CubeTopolType dir2, const GradingRec& gr) {
+#if 1
+        if (gr.divs[0] != 0) {
             double xScale, yScale, zScale;
             double xGrading, yGrading, zGrading;
             gr.createVec(0, xScale, xGrading);
@@ -1241,7 +1263,35 @@ void AppData::doCreateBaseVolume()
                         double v1 = v0 + 1.0 / (double)gr.divs[2] * kz * zScale;
                         kz *= zGrading;
 
-                        Vector3d gPts[8];
+                        Index3D blkIdx(i, j, k);
+                        if (dir1 == CTT_UNDEFINED && dir2 == CTT_UNDEFINED) {
+                            switch (dir0) {
+                            case CTT_BACK:
+                                blkIdx[0] = 0;
+                                break;
+                            case CTT_FRONT:
+                                blkIdx[0] = gr.divs[0] - 1;
+                                break;
+                            case CTT_LEFT:
+                                blkIdx[1] = 0;
+                                break;
+                            case CTT_RIGHT:
+                                blkIdx[1] = gr.divs[1] - 1;
+                                break;
+                            case CTT_BOTTOM:
+                                blkIdx[2] = 0;
+                                break;
+                            case CTT_TOP:
+                                blkIdx[2] = gr.divs[2] - 1;
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                        auto ownerBlock = _pVolume->getBoundingBlock(blkIdx, cPts);
+
+                        vector<Vector3d> gPts;
+                        gPts.resize(8);
                         gPts[0] = TRI_LERP(cPts, t0, u0, v0);
                         gPts[1] = TRI_LERP(cPts, t1, u0, v0);
                         gPts[2] = TRI_LERP(cPts, t1, u1, v0);
@@ -1250,13 +1300,7 @@ void AppData::doCreateBaseVolume()
                         gPts[5] = TRI_LERP(cPts, t1, u0, v1);
                         gPts[6] = TRI_LERP(cPts, t1, u1, v1);
                         gPts[7] = TRI_LERP(cPts, t0, u1, v1);
-
-                        pMesh->addQuad(gPts[0], gPts[3], gPts[2], gPts[1]);
-                        pMesh->addQuad(gPts[4], gPts[5], gPts[6], gPts[7]);
-                        pMesh->addQuad(gPts[1], gPts[2], gPts[6], gPts[5]);
-                        pMesh->addQuad(gPts[0], gPts[4], gPts[7], gPts[3]);
-                        pMesh->addQuad(gPts[0], gPts[1], gPts[5], gPts[4]);
-                        pMesh->addQuad(gPts[3], gPts[7], gPts[6], gPts[2]);
+                        ownerBlock->addHexCell(gPts);
 
                         v0 = v1;
                     }
@@ -1268,10 +1312,11 @@ void AppData::doCreateBaseVolume()
 #endif
     };
 
-    Volume::setVolDim(_params.volDivs);
+    _pVolume = make_shared<Volume>(_params.volDivs);
+
+    _pVolume->setVolCornerPts(_params.getVolBounds());
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
-    _pVolume = make_shared<Volume>();
 
     doRemoveBaseVolumePreview();
 #if 1
@@ -1281,9 +1326,9 @@ void AppData::doCreateBaseVolume()
     Index3D::setBlockDim(1);
     _pVolume->buildBlocks(_params, cubePts, volBox, false);
 
-//    makeSuround(cubePts, makeGradedBlock);
+    makeSuroundingBlocks(cubePts, makeGradedBlock);
 
-    updateTessellation(Index3D(0, 0, 0), Volume::volDim());
+    updateTessellation();
 #endif
 }
 
@@ -1306,29 +1351,32 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
 //        _pVolume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
 
-        updateTessellation(Index3D(0, 0, 0), Volume::volDim());
+        updateTessellation();
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
 }
 
-void AppData::updateTessellation(const Index3D& min, const Index3D& max)
+void AppData::updateTessellation()
 {
+    const Index3D min(0, 0, 0);
+    const Index3D max(_pVolume->volDim());
     Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
     cout << "Tessellating graphics.\n";
 
-    auto pCanvas = _pMainFrame->getCanvas();
-
-    addHexFacesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
-    addHexEdgesToScene(pCanvas, min, max, RUN_MULTI_THREAD);
+    addHexFacesToScene(min, max, RUN_MULTI_THREAD);
+    addHexEdgesToScene(min, max, RUN_MULTI_THREAD);
 
     setDisplayMinMax(min, max);
+
+    auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->changeViewElements();
 }
 
-void AppData::addHexFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
+void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::TriMeshGroup blockMeshes;
+    auto pCanvas = _pMainFrame->getCanvas();
     _pVolume->makeFaceTris(blockMeshes, min, max, multiCore);
 
     auto pDraw = pCanvas->getDrawHexMesh();
@@ -1360,9 +1408,10 @@ void AppData::addHexFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, co
     faceVBO.endFaceTesselation(false);
 }
 
-void AppData::addHexEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore)
+void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool multiCore)
 {
     Block::glPointsGroup edgeSets;
+    auto pCanvas = _pMainFrame->getCanvas();
     _pVolume->makeEdgeSets(edgeSets, min, max, multiCore);
 
     auto pDraw = pCanvas->getDrawHexMesh();

@@ -142,8 +142,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     case DS_BLOCK_ALL:
     case DS_BLOCK_OUTER:
     case DS_BLOCK_INNER:
-        glLineWidth(1.0f);
-        UBO.defColor = p3f(0.0f, 0.0f, 0.50f);
+        glLineWidth(0.25f);
+        UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
         break;
     case DS_BLOCK_BOUNDARY:
         glLineWidth(1.0f);

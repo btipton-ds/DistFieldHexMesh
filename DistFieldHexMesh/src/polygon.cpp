@@ -1159,7 +1159,7 @@ bool Polygon::verifyTopology() const
 
 	if (valid) {
 		std::vector<Planed> boundaryPlanes;
-		getOurBlockPtr()->getVolume()->getBoundaryPlanes(boundaryPlanes);
+		getOurBlockPtr()->getVolume()->getModelBoundaryPlanes(boundaryPlanes);
 		auto facePlane = calPlane();
 		bool isModelFace = true;
 		bool isBoundaryFace = false;

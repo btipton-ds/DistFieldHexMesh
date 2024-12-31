@@ -65,17 +65,22 @@ Block::GlPoints::GlPoints(const GlPoints& src)
 }
 
 Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
+	: Block(pVol, blockIdx, pts.data())
+{
+	assert(pts.size() == 8);
+}
+
+Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8])
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
 	, _modelData(this)
-	, _vertices(this, false)
+	, _vertices(this, true)
 	, _refData(this)
 	, _heap(2 * 1024, 12 * sizeof(Edge))
 {
 	_blockDim = Index3D::getBlockDim();
-	assert(pts.size() == 8);
-	_corners.resize(8);
-	for (size_t i = 0; i < pts.size(); i++) {
+//	_corners.resize(8);
+	for (size_t i = 0; i < 8; i++) {
 		_boundBox.merge(pts[i]);
 		_corners[i] = pts[i];
 	}
@@ -124,8 +129,6 @@ Block::~Block()
 void Block::clear()
 {
 	MultiCore::scoped_set_local_heap st(&_heap);
-
-	_corners.clear();
 
 	delete (_pLocalData);
 	_pLocalData = nullptr;
@@ -234,31 +237,7 @@ Index3D Block::determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const
 
 Index3D Block::determineOwnerBlockIdx(const Vector3d& point) const
 {
-	const double iMax = 1.0 - 1.0 / (1ull << 18);
-	const Index3D& volDim = Volume::volDim();
-	const auto& volCorners = _pVol->getCornerPts();
-	const auto& bbox = _pVol->_boundingBox;
-	const auto& bbMin = bbox.getMin();
-	const auto& bbRange = bbox.range();
-
-	Vector3<double> uvw;
-	TRI_LERP_INV(point, volCorners, uvw);
-	Vector3 v = point - bbMin;
-	Index3D result;
-	for (int i = 0; i < 3; i++) {
-
-		double floatIdx = uvw[i] * volDim[i];
-		Index3DBaseType idx = (Index3DBaseType)floatIdx;
-		floatIdx -= idx;
-		if (floatIdx > iMax)
-			idx += 1;
-
-		if (idx >= volDim[i])
-			idx -= 1;
-
-		result[i] = idx;
-	}
-	return result;
+	return _pVol->determineOwnerBlockIdx(point);
 }
 
 Index3D Block::determineOwnerBlockIdx(const Vertex& vert) const
@@ -457,6 +436,11 @@ VertexLockType Block::getVertexLockType(const Index3DId& vertId) const
 	return getOwner(vertId)->_vertices[vertId].getLockType();
 }
 
+CBoundingBox3Dd Block::getBBox() const
+{
+	return _corners.getBBox();
+}
+
 Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)
@@ -492,7 +476,7 @@ Index3DId Block::addFace(const MTC::vector<Vector3d>& pts)
 	return addFace(vertIds);
 }
 
-Index3DId Block::addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Index3DId>& verts)
+Index3DId Block::addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId>& verts)
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(verts);
 	assert(ownerBlockIdx.isValid());
@@ -536,6 +520,43 @@ Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 	return cellId;
 }
 
+Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
+{
+	assert(cellPts.size() == 8);
+	MTC::vector<Index3DId> vertIds;
+	vertIds.resize(8);
+	for (size_t i = 0; i < cellPts.size(); i++) {
+		Vertex vert(cellPts[i]);
+		auto id = _vertices.findOrAdd(vert);
+		vertIds[i] = id;
+	}
+
+	Index3DId subBlockIdx;
+	MTC::vector<Index3DId> faceIds;
+	faceIds.reserve(6);
+
+	// add left and right
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
+
+	// add front and back
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
+
+	// add bottom and top
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
+
+	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
+	cellFunc(TS_REAL, polyhedronId, [this](Polyhedron& cell) {
+		assert(cell.isClosed());
+		cell.setTriIndices(_triIndices);
+		cell.setEdgeIndices(_edgeIndices);
+		});
+
+	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
+}
+
 Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto vertIds = getSubBlockCornerVertIds(blockPts, blockDim, subBlockIdx);
@@ -566,16 +587,16 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(0, subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
-	faceIds.push_back(addFace(0, subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
 
 	// add front and back
-	faceIds.push_back(addFace(1, subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
-	faceIds.push_back(addFace(1, subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
 
 	// add bottom and top
-	faceIds.push_back(addFace(2, subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
-	faceIds.push_back(addFace(2, subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
+	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 	cellFunc(TS_REAL,polyhedronId, [this](Polyhedron& cell) {
@@ -695,7 +716,8 @@ bool Block::write(ostream& out) const
 	_innerBoundBox.write(out);
 
 	out.write((char*)&_blockDim, sizeof(_blockDim));
-	IoUtil::writeVector3(out, _corners);
+	vector<Vector3<double>> t = _corners;
+	IoUtil::writeVector3(out, t);
 	out.write((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
 	out.write((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
 	out.write((char*)&_baseIdxPolyhedra, sizeof(_baseIdxPolyhedra));
@@ -722,7 +744,9 @@ bool Block::read(istream& in)
 
 	in.read((char*)&_blockDim, sizeof(_blockDim));
 
-	IoUtil::readVector3(in, _corners);
+	vector<Vector3<double>> t;
+	IoUtil::readVector3(in, t);
+	_corners = t;
 
 	in.read((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
 	in.read((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
@@ -1026,48 +1050,98 @@ void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 	if (numFaces(true) == 0)
 		return;
 
-	_modelData._polygons.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, face)) {
-			const auto& vertIds = face.getVertexIds();
-			vector<Vector3d> pts;
-			pts.reserve(vertIds.size());
-			for (const auto& vertId : vertIds) {
-				pts.push_back(getVertexPoint(vertId));
-			}
+	const auto& polys = _modelData._polygons;
+	if (polys.empty()) {
+		pMesh->addQuad(_corners[0], _corners[3], _corners[2], _corners[1]);
+#if 0
+		pMesh->addQuad(_corners[4], _corners[5], _corners[6], _corners[7]);
 
-			if (pts.size() > 4) {
-				Vector3d ctr = face.calCentroid();
-				for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-					size_t idx1 = (idx0 + 1) % pts.size();
-					pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
+		pMesh->addQuad(_corners[0], _corners[4], _corners[7], _corners[3]);
+		pMesh->addQuad(_corners[1],_corners[2], _corners[6], _corners[5]);
+
+		pMesh->addQuad(_corners[0], _corners[1], _corners[5], _corners[4]);
+		pMesh->addQuad(_corners[2], _corners[6], _corners[7], _corners[3]);
+#endif
+	} else {
+		polys.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
+			if (includeFaceInRender(meshType, face)) {
+				const auto& vertIds = face.getVertexIds();
+				vector<Vector3d> pts;
+				pts.reserve(vertIds.size());
+				for (const auto& vertId : vertIds) {
+					pts.push_back(getVertexPoint(vertId));
 				}
-			} else {
-				for (size_t i = 1; i < pts.size() - 1; i++) {
-					size_t idx0 = 0;
-					size_t idx1 = i;
-					size_t idx2 = i + 1;
-					pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+
+				if (pts.size() > 4) {
+					Vector3d ctr = face.calCentroid();
+					for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+						size_t idx1 = (idx0 + 1) % pts.size();
+						pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
+					}
+				}
+				else {
+					for (size_t i = 1; i < pts.size() - 1; i++) {
+						size_t idx0 = 0;
+						size_t idx1 = i;
+						size_t idx2 = i + 1;
+						pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+					}
 				}
 			}
-		}
-	});
+		});
+	}
+}
+
+void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
+{
+	auto& vals = *points;
+
+	Vector3d pt0 = _corners[idx0];
+	vals.push_back((float)pt0[0]);
+	vals.push_back((float)pt0[1]);
+	vals.push_back((float)pt0[2]);
+
+	Vector3d pt1 = _corners[idx1];
+	vals.push_back((float)pt1[0]);
+	vals.push_back((float)pt1[1]);
+	vals.push_back((float)pt1[2]);
 }
 
 void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 {
 	set<Edge> edges;
 
-	_modelData._polygons.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, face)) {
-			const auto& vertIds = face.getVertexIds();
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t j = (i + 1) % vertIds.size();
-				Edge edge(vertIds[i], vertIds[j]);
-				edges.insert(edge);
-			}
-		}
-	});
+	const auto& polys = _modelData._polygons;
+	if (polys.empty()) {
+		if (!points)
+			points = make_shared< GlPoints>();
 
+		addEdgeToGLPoints(points, 0, 1);
+		addEdgeToGLPoints(points, 3, 2);
+		addEdgeToGLPoints(points, 4, 5);
+		addEdgeToGLPoints(points, 7, 6);
+
+		addEdgeToGLPoints(points, 0, 4);
+		addEdgeToGLPoints(points, 1, 5);
+		addEdgeToGLPoints(points, 2, 6);
+		addEdgeToGLPoints(points, 3, 7);
+
+		addEdgeToGLPoints(points, 0, 3);
+		addEdgeToGLPoints(points, 1, 2);
+		addEdgeToGLPoints(points, 4, 7);
+		addEdgeToGLPoints(points, 5, 6);
+	} else {
+		polys.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
+			if (includeFaceInRender(meshType, face)) {
+				const auto& vertIds = face.getVertexIds();
+				for (size_t i = 0; i < vertIds.size(); i++) {
+					size_t j = (i + 1) % vertIds.size();
+					Edge edge(vertIds[i], vertIds[j]);
+					edges.insert(edge);
+				}
+			}
+		});
+	}
 	if (!edges.empty()) {
 		if (!points)
 			points = make_shared< GlPoints>();

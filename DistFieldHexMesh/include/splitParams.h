@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <cmath>
+#include <vector>
 #include <iostream>
 #include <index3D.h>
 
@@ -39,6 +40,7 @@ struct BuildCFDParams {
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
 	double getSinSharpAngle() const;
+	std::vector<Vector3d> getVolBounds() const;
 
 	void read(std::istream& in);
 	void write(std::ostream& out) const;

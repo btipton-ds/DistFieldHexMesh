@@ -43,7 +43,6 @@ bool App::OnInit()
     frame->UpdateInfoText();
 #endif
 
-	Volume::setVolDim(Index3D(0, 0, 0));
     // enter the main message loop and run the app
     return true;
 }

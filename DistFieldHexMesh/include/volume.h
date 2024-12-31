@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <MultiCoreUtil.h>
 #include <index3D.h>
 #include <triMesh.h>
+#include <tm_spatialSearch.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
@@ -51,25 +52,30 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 
 class Volume {
 public:
-	Volume();
+	Volume(const Index3D& dims = Index3D(0, 0, 0));
 	Volume(const Volume& src);
 	~Volume();
 
-	static void setVolDim(const Index3D& size);
-	static const Index3D& volDim();
 	static void findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices);
 
 	void startOperation();
 	void endOperation();
 
+	void setVolDim(const Index3D& size);
+	const Index3D& volDim() const;
+	void setVolCornerPts(const std::vector<Vector3d>& pts);
+
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);
+	std::shared_ptr<Block>& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
+	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 
 	void setModelMesh(const CMeshPtr& pMesh);
 	const CMeshPtr& getModelMesh() const;
 	void setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData);
 	const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getModelMeshData() const;
-	CBoundingBox3Dd getBBox() const;
+	CBoundingBox3Dd getModelBBox() const;
+	CBoundingBox3Dd getVolumeBBox() const;
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
@@ -85,11 +91,13 @@ public:
 	const std::vector<size_t>& getSharpVertIndices() const;
 	bool getSharpVertPlane(Planed& plane) const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
-	const std::vector<Vector3d>& getCornerPts() const;
+	const std::vector<Vector3d>& getModelCornerPts() const;
+
+	void insertBlocks(const BuildCFDParams& params, CubeTopolType face);
 
 	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
 	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
-	void getBoundaryPlanes(std::vector<Planed>& vals) const;
+	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
@@ -169,15 +177,16 @@ private:
 	template<class L>
 	void runThreadPool333(const L& fLambda, bool multiCore);
 
-	static Index3D s_volDim;
+	Index3D _volDim;
 
 	CMeshPtr _pModelTriMesh;
 	std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
 	double _sharpAngleRad;
-	CMesh::BoundingBox _boundingBox;
+	CMesh::BoundingBox _modelBundingBox;
 
-	std::vector<Vector3d> _cornerPts;
+	std::vector<Vector3d> _modelCornerPts, _volCornerPts;
 	std::vector<std::shared_ptr<Block>> _blocks;
+	std::shared_ptr<CSpatialSearchSTd> _pAdHocBlockTree; // This for boundary blocks which don't follow the cartesian grid assignment rules.
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;
 	bool _hasSharpVertPlane = false;
@@ -220,14 +229,14 @@ inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 	return _blocks[idx].get();
 }
 
-inline const std::vector<Vector3d>& Volume::getCornerPts() const
+inline const std::vector<Vector3d>& Volume::getModelCornerPts() const
 {
-	return _cornerPts;
+	return _modelCornerPts;
 }
 
 inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	return blockIdx[0] + s_volDim[0] * (blockIdx[1] + s_volDim[1] * blockIdx[2]);
+	return blockIdx[0] + _volDim[0] * (blockIdx[1] + _volDim[1] * blockIdx[2]);
 }
 
 inline double Volume::getSharpAngleRad() const

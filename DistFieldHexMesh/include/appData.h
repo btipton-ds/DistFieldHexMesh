@@ -57,16 +57,6 @@ using AppDataPtr = std::shared_ptr<AppData>;
 
 class AppData {
 public:
-    enum CubeTopolType {
-        CTT_BOTTOM,
-        CTT_TOP,
-        CTT_LEFT,
-        CTT_RIGHT,
-        CTT_FRONT,
-        CTT_BACK,
-
-    };
-
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
 
@@ -112,13 +102,13 @@ private:
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelTess();
-    void updateTessellation(const Index3D& min, const Index3D& max);
-    void addHexFacesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
-    void addHexEdgesToScene(GraphicsCanvas* pCanvas, const Index3D& min, const Index3D& max, bool multiCore);
+    void updateTessellation();
+    void addHexFacesToScene(const Index3D& min, const Index3D& max, bool multiCore);
+    void addHexEdgesToScene(const Index3D& min, const Index3D& max, bool multiCore);
     void makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>
-    void makeSuround(Vector3d cPts[8], const L& fLambda) const;
+    void makeSuroundingBlocks(Vector3d cPts[8], const L& fLambda) const;
     template<class L>
     void makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
     template<class L>

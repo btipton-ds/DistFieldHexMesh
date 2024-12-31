@@ -53,15 +53,15 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Index3D Volume::s_volDim(0, 0, 0);
-
-Volume::Volume()
+Volume::Volume(const Index3D& dims)
+	: _volDim(dims)
 {
 	_sharpAngleRad = 30.0 / 180.0 * M_PI;
 }
 
 Volume::Volume(const Volume& src)
-	: _blocks(src._blocks)
+	: _volDim(src._volDim)
+	, _blocks(src._blocks)
 	, _threadPool(MultiCore::getNumCores())
 {
 }
@@ -81,12 +81,20 @@ void Volume::endOperation()
 
 void Volume::setVolDim(const Index3D& blockSize)
 {
-	s_volDim = blockSize;
+	_volDim = blockSize;
+	size_t numBlocks = _volDim[0] * _volDim[1] * _volDim[2];
+	_blocks.clear();
+	_blocks.resize(numBlocks);
 }
 
-const Index3D& Volume::volDim()
+const Index3D& Volume::volDim() const
 {
-	return s_volDim;
+	return _volDim;
+}
+
+void Volume::setVolCornerPts(const std::vector<Vector3d>& pts)
+{
+	_volCornerPts = pts;
 }
 
 Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
@@ -184,6 +192,77 @@ void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngle
 	}
 }
 
+std::shared_ptr<Block>& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8])
+{
+	size_t linIdx = calLinearBlockIndex(blkIdx);
+	assert(linIdx < _blocks.size());
+	if (!_blocks[linIdx]) {
+		if (!_pAdHocBlockTree) {
+			auto volBox = getVolumeBBox();
+			volBox.growPercent(0.01);
+			_pAdHocBlockTree = make_shared<CSpatialSearchSTd>(volBox);
+		}
+
+		auto p = make_shared<Block>(this, blkIdx, cPts);
+		_blocks[linIdx] = p;
+
+		auto bBox = p->getBBox();
+		_pAdHocBlockTree->add(bBox, linIdx);
+	}
+	return _blocks[linIdx];
+}
+
+Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
+{
+	Index3D result;
+	const double iMax = 1.0 - 1.0 / (1ull << 18);
+	const Index3D& vDim = volDim();
+	const auto& modelCorners = getModelCornerPts();
+	const auto& bbox = _modelBundingBox;
+	const auto& bbMin = bbox.getMin();
+	const auto& bbRange = bbox.range();
+
+	Vector3<double> uvw;
+	TRI_LERP_INV(point, modelCorners, uvw);
+	Vector3 v = point - bbMin;
+	bool inBounds = true;
+	for (int i = 0; i < 3; i++) {
+
+		double floatIdx = uvw[i] * vDim[i];
+		Index3DBaseType idx = (Index3DBaseType)floatIdx;
+		floatIdx -= idx;
+		if (floatIdx > iMax)
+			idx += 1;
+
+		if (idx >= vDim[i])
+			idx -= 1;
+
+		result[i] = idx;
+		if (result[i] >= vDim[i]) {
+			inBounds = false;
+			break;
+		}
+	}
+
+	if (inBounds && result.isValid())
+		return result;
+
+	std::vector<size_t> indices;
+	CBoundingBox3Dd ptBox(point);
+	if (_pAdHocBlockTree && _pAdHocBlockTree->find(ptBox, indices)) {
+		for (size_t linIdx : indices) {
+			const auto& pBlk = _blocks[linIdx];
+			const auto& uBBox = pBlk->getUnalignedBBox();
+			if (uBBox.contains(point)) {
+				result = calBlockIndexFromLinearIndex(linIdx);
+				break;
+			}
+		}
+	}
+
+	return result;
+}
+
 shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 {
 	size_t idx = calLinearBlockIndex(blockIdx);
@@ -191,7 +270,7 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	if (pBlock)
 		return pBlock;
 
-	return make_shared<Block>(this, blockIdx, _cornerPts);
+	return make_shared<Block>(this, blockIdx, _modelCornerPts);
 }
 
 std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
@@ -203,29 +282,39 @@ std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
 	Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 	Vector3d uvw[2];
 	for (int i = 0; i < 3; i++) {
-		uvw[0][i] = blockIdx[i] / (double)s_volDim[i];
-		uvw[1][i] = (blockIdx[i] + 1) / (double)s_volDim[i];
+		uvw[0][i] = blockIdx[i] / (double)_volDim[i];
+		uvw[1][i] = (blockIdx[i] + 1) / (double)_volDim[i];
 	}
 	std::vector<Vector3d> pts({
-		TRI_LERP(_cornerPts, uvw[0][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(_cornerPts, uvw[1][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(_cornerPts, uvw[1][0], uvw[1][1], uvw[0][2]),
-		TRI_LERP(_cornerPts, uvw[0][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[1][1], uvw[0][2]),
 
-		TRI_LERP(_cornerPts, uvw[0][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(_cornerPts, uvw[1][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(_cornerPts, uvw[1][0], uvw[1][1], uvw[1][2]),
-		TRI_LERP(_cornerPts, uvw[0][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[1][1], uvw[1][2]),
 	});
 
 	return make_shared<Block>(this, blockIdx, pts);
 }
 
-CBoundingBox3Dd Volume::getBBox() const
+CBoundingBox3Dd Volume::getModelBBox() const
 {
 	CBoundingBox3Dd result;
 
-	for (const auto& pt : _cornerPts)
+	for (const auto& pt : _modelCornerPts)
+		result.merge(pt);
+
+	return result;
+}
+
+CBoundingBox3Dd Volume::getVolumeBBox() const
+{
+	CBoundingBox3Dd result;
+
+	for (const auto& pt : _volCornerPts)
 		result.merge(pt);
 
 	return result;
@@ -271,11 +360,11 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 
 void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
 {
-	_boundingBox.clear();
-	_boundingBox.merge(volBox);
+	_modelBundingBox.clear();
+	_modelBundingBox.merge(volBox);
 	for (int i = 0; i < 8; i++) {
-		_boundingBox.merge(pts[i]);
-		_cornerPts.push_back(pts[i]);
+		_modelBundingBox.merge(pts[i]);
+		_modelCornerPts.push_back(pts[i]);
 	}
 	
 	const auto& dim = volDim();
@@ -551,9 +640,233 @@ void Volume::dumpOpenCells(bool multiCore) const
 #endif
 }
 
+void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
+{
+	shared_ptr<Volume> pSrc = make_shared<Volume>(*this);
+	auto srcDims = pSrc->volDim();
+	auto dstDims = srcDims;
+
+	switch (face) {
+	case CTT_FRONT:
+	case CTT_BACK:
+		dstDims[0]++;
+		break;
+	case CTT_RIGHT:
+	case CTT_LEFT:
+		dstDims[1]++;
+		break;
+	case CTT_TOP:
+	case CTT_BOTTOM:
+		dstDims[2]++;
+		break;
+	default:
+		break;
+	}
+
+	setVolDim(dstDims);
+	Index3D idxSrc, idxDst;
+	for (idxSrc[0] = 0; idxSrc[0] < srcDims[0]; idxSrc[0]++) {
+		for (idxSrc[1] = 0; idxSrc[1] < srcDims[1]; idxSrc[1]++) {
+			for (idxSrc[2] = 0; idxSrc[2] < srcDims[2]; idxSrc[2]++) {
+				idxDst = idxSrc;
+				switch (face) {
+				case CTT_BACK:
+					idxDst[0] += 1;
+					break;
+				case CTT_LEFT:
+					idxDst[1] += 1;
+					break;
+				case CTT_BOTTOM:
+					idxDst[2] += 1;
+					break;
+				default:
+					break;
+				}
+
+				size_t linIdxSrc = pSrc->calLinearBlockIndex(idxSrc);
+				size_t linIdxDst = calLinearBlockIndex(idxDst);
+
+				auto pBlk = pSrc->_blocks[linIdxSrc];
+				_blocks[linIdxDst] = pBlk;
+			}
+		}
+	}
+
+	// Get rid of the copy
+	pSrc = nullptr;
+
+	Vector3d newCorners[8];
+	size_t linIdxSrc, linIdxDst;
+	switch (face) {
+	case CTT_FRONT:
+		idxSrc[0] = dstDims[0] - 2;
+		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+				idxDst = idxSrc;
+				idxDst[0] = dstDims[0] - 1;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[1] = newCorners[0] = cPts[1];
+				newCorners[2] = newCorners[3] = cPts[2];
+				newCorners[5] = newCorners[4] = cPts[5];
+				newCorners[6] = newCorners[7] = cPts[6];
+				newCorners[1][0] = newCorners[2][0] = newCorners[5][0] = newCorners[6][0] = params.xMax;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	case CTT_BACK:
+		idxSrc[0] = 1;
+		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+				idxDst = idxSrc;
+				idxDst[0] = 0;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[1] = newCorners[0] = cPts[0];
+				newCorners[2] = newCorners[3] = cPts[3];
+				newCorners[5] = newCorners[4] = cPts[4];
+				newCorners[6] = newCorners[7] = cPts[7];
+				newCorners[0][0] = newCorners[3][0] = newCorners[4][0] = newCorners[7][0] = params.xMin;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+		
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	case CTT_LEFT:
+		idxSrc[1] = 1;
+		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+				idxDst = idxSrc;
+				idxDst[1] = 0;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[3] = newCorners[0] = cPts[0];
+				newCorners[2] = newCorners[1] = cPts[1];
+				newCorners[7] = newCorners[4] = cPts[4];
+				newCorners[6] = newCorners[5] = cPts[5];
+				newCorners[3][1] = newCorners[2][1] = newCorners[7][1] = newCorners[6][1] = params.yMax;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	case CTT_RIGHT:
+		idxSrc[1] = dstDims[1] - 2;
+		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+				idxDst = idxSrc;
+				idxDst[1] = dstDims[1] - 1;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[0] = newCorners[3] = cPts[3];
+				newCorners[1] = newCorners[2] = cPts[2];
+				newCorners[4] = newCorners[7] = cPts[7];
+				newCorners[5] = newCorners[6] = cPts[6];
+				newCorners[0][1] = newCorners[1][1] = newCorners[5][1] = newCorners[4][1] = params.yMax;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	case CTT_TOP:
+		idxSrc[2] = dstDims[2] - 2;
+		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+				idxDst = idxSrc;
+				idxDst[2] = dstDims[2] - 1;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[0] = newCorners[4] = cPts[4];
+				newCorners[1] = newCorners[5] = cPts[5];
+				newCorners[2] = newCorners[6] = cPts[6];
+				newCorners[3] = newCorners[7] = cPts[7];
+				newCorners[4][2] = newCorners[5][2] = newCorners[6][2] = newCorners[7][2] = params.zMax;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	case CTT_BOTTOM:
+		idxSrc[2] = 1;
+		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+				idxDst = idxSrc;
+				idxDst[2] = 0;
+				linIdxSrc = calLinearBlockIndex(idxSrc);
+				linIdxDst = calLinearBlockIndex(idxDst);
+				auto pBlkSrc = _blocks[linIdxSrc];
+
+				const vector<Vector3d>& cPts = pBlkSrc->_corners;
+				newCorners[0] = newCorners[4] = cPts[0];
+				newCorners[1] = newCorners[5] = cPts[1];
+				newCorners[2] = newCorners[6] = cPts[2];
+				newCorners[3] = newCorners[7] = cPts[3];
+				newCorners[0][2] = newCorners[1][2] = newCorners[2][2] = newCorners[3][2] = params.zMin;
+				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+				_blocks[linIdxDst] = pNewBlock;
+			}
+		}
+
+#if 1 && defined(_DEBUG)
+		for (const auto& p : _blocks)
+			assert(p);
+#endif // _DEBUG)
+
+		break;
+	default:
+		break;
+	}
+
+}
+
 void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
-	CBoundingBox3Dd bbox = _boundingBox;
+	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
 	
 	CMeshPtr pMesh = triMeshes[faceType][threadNum];
@@ -567,7 +880,6 @@ void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, 
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
-
 	size_t numThreads = MultiCore::getNumCores();
 	triMeshes.resize(4);
 	triMeshes[FT_OUTER].resize(numThreads);
@@ -580,14 +892,12 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 			Index3D blkIdx = blockPtr->getBlockIdx();
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
-					if (blockPtr->numFaces(true) > 0) {
-						makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
-						makeFaceTriMesh(FT_MODEL_BOUNDARY, triMeshes, blockPtr, threadNum);
-						makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
-						makeFaceTriMesh(FT_ALL, triMeshes, blockPtr, threadNum);
-					}
-				}
+				makeFaceTriMesh(FT_OUTER, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_MODEL_BOUNDARY, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_BLOCK_BOUNDARY, triMeshes, blockPtr, threadNum);
+				makeFaceTriMesh(FT_ALL, triMeshes, blockPtr, threadNum);
 			}
+		}
 		return true;
 	}, multiCore);
 
@@ -608,7 +918,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 
 void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
-	CBoundingBox3Dd bbox = _boundingBox;
+	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
 
 	Block::glPointsPtr pPoints = faceEdges[faceType][threadNum];
@@ -635,12 +945,10 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 			Index3D blkIdx = blockPtr->getBlockIdx();
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
-				if (blockPtr->numFaces(true) > 0) {
-					makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_MODEL_BOUNDARY, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
-					makeFaceEdges(FT_ALL, faceEdges, blockPtr, threadNum);
-				}
+				makeFaceEdges(FT_OUTER, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_MODEL_BOUNDARY, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_BLOCK_BOUNDARY, faceEdges, blockPtr, threadNum);
+				makeFaceEdges(FT_ALL, faceEdges, blockPtr, threadNum);
 			}
 		}
 		return true;
@@ -730,7 +1038,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 	vector<Vector3d> pts;
 	set<TriMesh::CEdge> modelEdgeSet;
-	VertSearchTree_size_t_8 pointToIdxMap(_boundingBox);
+	VertSearchTree_size_t_8 pointToIdxMap(_modelBundingBox);
 
 	if (!modelTriIndices.empty()) {
 		const double sinSharp = sin(SHARP_EDGE_ANGLE_RADIANS);
@@ -862,11 +1170,11 @@ bool Volume::write(ostream& out) const
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
-	s_volDim.write(out);
+	_volDim.write(out);
 
-	_boundingBox.write(out);
+	_modelBundingBox.write(out);
 
-	IoUtil::writeVector3(out, _cornerPts);
+	IoUtil::writeVector3(out, _modelCornerPts);
 
 	size_t num = _blocks.size();
 	out.write((char*)&num, sizeof(num));
@@ -888,16 +1196,16 @@ bool Volume::read(istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	in.read((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
-	s_volDim.read(in);
+	_volDim.read(in);
 	if (version < 1) {
 		Vector3d tmpV;
 		readVector3(in, tmpV);
 		readVector3(in, tmpV);
 	}
 
-	_boundingBox.read(in);
+	_modelBundingBox.read(in);
 
-	IoUtil::readVector3(in, _cornerPts);
+	IoUtil::readVector3(in, _modelCornerPts);
 	size_t num;
 	in.read((char*)&num, sizeof(num));
 	if (num > 0) {
@@ -968,16 +1276,16 @@ void Volume::writePolyMesh(const string& dirNameIn)
 	writePolyMeshBoundaries(dirName, tables);
 }
 
-void Volume::getBoundaryPlanes(std::vector<Planed>& vals) const
+void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	vals.push_back(Planed(_boundingBox.getMin(), xAxis)); // frontPlane
-	vals.push_back(Planed(_boundingBox.getMin(), yAxis)); // leftPlane
-	vals.push_back(Planed(_boundingBox.getMin(), zAxis)); // bottomPlane
-	vals.push_back(Planed(_boundingBox.getMax(), xAxis)); // backPlane
-	vals.push_back(Planed(_boundingBox.getMax(), yAxis)); // rightPlane
-	vals.push_back(Planed(_boundingBox.getMax(), zAxis)); // topPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), xAxis)); // frontPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), yAxis)); // leftPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), zAxis)); // bottomPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // backPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis)); // rightPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis)); // topPlane
 
 }
 
@@ -1006,7 +1314,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 	}
 
 	std::vector<Planed> planes;
-	getBoundaryPlanes(planes);
+	getModelBoundaryPlanes(planes);
 
 	vector<Index3DId> outerBounds[6], wall;
 	for (auto pBlk : _blocks) {
@@ -1440,9 +1748,9 @@ void Volume::runThreadPool333(const L& fLambda, bool multiCore)
 				// Collect the indices for all blocks in this phase
 				blocksToProcess.clear();
 
-				for (idx[2] = phaseIdx[2]; idx[2] < s_volDim[2]; idx[2] += stride) {
-					for (idx[1] = phaseIdx[1]; idx[1] < s_volDim[1]; idx[1] += stride) {
-						for (idx[0] = phaseIdx[0]; idx[0] < s_volDim[0]; idx[0] += stride) {
+				for (idx[2] = phaseIdx[2]; idx[2] < _volDim[2]; idx[2] += stride) {
+					for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
+						for (idx[0] = phaseIdx[0]; idx[0] < _volDim[0]; idx[0] += stride) {
 							size_t linearIdx = calLinearBlockIndex(idx);
 							blocksToProcess.push_back(linearIdx);
 						}

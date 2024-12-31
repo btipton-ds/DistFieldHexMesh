@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <logger.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
+#include <unalignedBBox.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <vertexSpatialTree.h>
@@ -85,14 +86,17 @@ public:
 	using TriMeshVector = std::vector<CMeshPtr>;
 	using TriMeshGroup = std::vector<TriMeshVector>;
 
+	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
+	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8]);
+	~Block();
+
 	Volume* getVolume() override;
 	const Volume* getVolume() const override;
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
 	Block* getOwner(const Index3D& blockIdx) override;
+	const UnalignedBBox<double>& getUnalignedBBox() const;
 
-	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
-	~Block();
 	void clear();
 
 	size_t blockDim() const;
@@ -126,6 +130,8 @@ public:
 	void setVertexLockType(const Index3DId& vertId, VertexLockType val);
 	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
+	CBoundingBox3Dd getBBox() const;
+
 	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
 	Index3DId addFace(const MTC::vector<Vector3d>& pts);
@@ -135,6 +141,7 @@ public:
 	Index3DId addCell(const Polyhedron& cell);
 	Index3DId addCell(const MTC::set<Index3DId>& faceIds);
 	Index3DId addCell(const MTC::vector<Index3DId>& faceIds);
+	Index3DId addHexCell(const std::vector<Vector3d>& cellPts);
 	Index3DId addHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	bool vertexExists(const Index3DId& id) const;
@@ -231,7 +238,9 @@ private:
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
-	Index3DId addFace(int axis, const Index3D& subBlockIdx, const MTC::vector<Index3DId>& vertIds);
+	Index3DId addFace(Block* pOwner, const MTC::vector<Index3DId>& vertIds);
+	Index3DId addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId>& vertIds);
+	void addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
@@ -271,7 +280,7 @@ private:
 	
 	size_t _blockDim;   // This is the dimension of the block = the number of cells across the block
 
-	std::vector<Vector3d> _corners;
+	UnalignedBBox<double> _corners;
 
 	std::string _filename;
 
@@ -288,6 +297,11 @@ private:
 inline size_t Block::GlPoints::getId() const
 {
 	return _id;
+}
+
+inline const UnalignedBBox<double>& Block::getUnalignedBBox() const
+{
+	return _corners;
 }
 
 inline size_t Block::GlPoints::changeNumber() const

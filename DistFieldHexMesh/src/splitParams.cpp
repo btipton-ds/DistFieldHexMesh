@@ -63,6 +63,23 @@ double BuildCFDParams::getSinSharpAngle() const
 	return sin(getSharpAngleRadians());
 }
 
+std::vector<Vector3d> BuildCFDParams::getVolBounds() const
+{
+	std::vector<Vector3d> result = {
+		Vector3d(xMin, yMin, zMin),
+		Vector3d(xMax, yMin, zMin),
+		Vector3d(xMax, yMax, zMin),
+		Vector3d(xMin, yMax, zMin),
+
+		Vector3d(xMin, yMin, zMax),
+		Vector3d(xMax, yMin, zMax),
+		Vector3d(xMax, yMax, zMax),
+		Vector3d(xMin, yMax, zMax),
+	};
+
+	return result;
+}
+
 void BuildCFDParams::read(std::istream& in)
 {
 	size_t version;
