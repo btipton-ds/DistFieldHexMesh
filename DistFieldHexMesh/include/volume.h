@@ -70,6 +70,9 @@ public:
 	std::shared_ptr<Block>& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 
+	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
+	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
+
 	void setModelMesh(const CMeshPtr& pMesh);
 	const CMeshPtr& getModelMesh() const;
 	void setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData);
@@ -126,10 +129,6 @@ private:
 	bool blockExists(const Index3D& blockIdx) const;
 	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
 	std::shared_ptr<Block> createBlock(size_t linearIdx);
-
-	// Currently flow direction is along positive x axis.
-	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
-	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
 	const Vertex& getVertex(const Index3DId& id) const;
 	const Polygon& getPolygon(const Index3DId& id) const;

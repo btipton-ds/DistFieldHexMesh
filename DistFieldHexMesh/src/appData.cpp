@@ -57,6 +57,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <vertex.h>
 #include <utils.h>
+#include <gradingRec.h>
 
 using namespace std;
 using namespace DFHM;
@@ -494,23 +495,6 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 {
 }
 
-void AppData::GradingRec::createVec(int axis, double& scale, double& growFactor) const
-{
-    scale = 1;
-    growFactor = 1;
-    if (grading[axis] > 0 && fabs(grading[axis] - 1) > 1.0e-6) {
-        growFactor = pow(grading[axis], 1.0 / (divs[axis] - 1));
-        double l = 0, k = 1;
-        for (size_t i = 0; i < divs[axis]; i++) {
-            l += k;
-            k *= growFactor;
-        }
-        l = l / divs[axis];
-        scale = 1.0 / l;
-    }
-
-}
-
 void AppData::doCreateBaseVolumePreview()
 {
     CMeshPtr pMesh;
@@ -525,9 +509,9 @@ void AppData::doCreateBaseVolumePreview()
         } else {
             double xScale, yScale, zScale;
             double xGrading, yGrading, zGrading;
-            gr.createVec(0, xScale, xGrading);
-            gr.createVec(1, yScale, yGrading);
-            gr.createVec(2, zScale, zGrading);
+            gr.calGradingFactors(0, xScale, xGrading);
+            gr.calGradingFactors(1, yScale, yGrading);
+            gr.calGradingFactors(2, zScale, zGrading);
 
             double kx = 1;
             double t0 = 0;
@@ -1241,9 +1225,9 @@ void AppData::doCreateBaseVolume()
         if (gr.divs[0] != 0) {
             double xScale, yScale, zScale;
             double xGrading, yGrading, zGrading;
-            gr.createVec(0, xScale, xGrading);
-            gr.createVec(1, yScale, yGrading);
-            gr.createVec(2, zScale, zGrading);
+            gr.calGradingFactors(0, xScale, xGrading);
+            gr.calGradingFactors(1, yScale, yGrading);
+            gr.calGradingFactors(2, zScale, zGrading);
 
             double kx = 1;
             double t0 = 0;

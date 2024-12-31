@@ -93,12 +93,6 @@ public:
     bool doesBaseMeshExist() const;
 
 private:
-    struct GradingRec {
-        Index3D divs = Index3D(0, 0, 0);
-        Vector3d grading;
-        void createVec(int axis, double& scale, double& growFactor) const;
-    };
-
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelTess();
