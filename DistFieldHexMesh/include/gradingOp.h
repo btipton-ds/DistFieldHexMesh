@@ -33,29 +33,41 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
-
-struct GradingRec {
-	Index3D divs = Index3D(0, 0, 0);
-	Vector3d grading;
+class GradingOp {
+public:
+	GradingOp(const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
 	void calGradingFactors(int axis, double& scale, double& growFactor) const;
+
+	const Index3D& getDivs() const;
+	void setDivs(const Index3D& divs);
+
+	const Vector3d& getGrading() const;
+	void setGrading(const Vector3d& grading);
+
+private:
+	Index3D _divs;
+	Vector3d _grading;
+
 };
 
-inline void GradingRec::calGradingFactors(int axis, double& scale, double& growFactor) const
+inline const Index3D& GradingOp::getDivs() const
 {
-	scale = 1;
-	growFactor = 1;
-	if (grading[axis] > 0 && fabs(grading[axis] - 1) > 1.0e-6) {
-		growFactor = pow(grading[axis], 1.0 / (divs[axis] - 1));
-		double l = 0, k = 1;
-		for (size_t i = 0; i < divs[axis]; i++) {
-			l += k;
-			k *= growFactor;
-		}
-		l = l / divs[axis];
-		scale = 1.0 / l;
-	}
-
+	return _divs;
 }
 
+inline void GradingOp::setDivs(const Index3D& divs)
+{
+	_divs = divs;
+}
+
+inline const Vector3d& GradingOp::getGrading() const
+{
+	_grading;
+}
+
+inline void GradingOp::setGrading(const Vector3d& grading)
+{
+	_grading = grading;
+}
 
 }

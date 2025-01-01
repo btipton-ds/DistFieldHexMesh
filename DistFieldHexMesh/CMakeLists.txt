@@ -105,7 +105,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-  )
+   "src/gradingOp.cpp")
 
 add_executable (TestDFM         
 	
@@ -129,7 +129,7 @@ add_executable (TestDFM
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
-)
+ "src/gradingOp.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

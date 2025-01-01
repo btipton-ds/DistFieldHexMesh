@@ -57,7 +57,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <vertex.h>
 #include <utils.h>
-#include <gradingRec.h>
+#include <gradingOp.h>
 
 using namespace std;
 using namespace DFHM;
@@ -498,8 +498,9 @@ void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 void AppData::doCreateBaseVolumePreview()
 {
     CMeshPtr pMesh;
-    auto makeGradedBlock = [&pMesh](const Vector3d cPts[8], CubeTopolType dir, CubeTopolType dir1, CubeTopolType dir2, const GradingRec& gr) {
-        if (gr.divs[0] == 0) {
+    auto makeGradedBlock = [&pMesh](const Vector3d cPts[8], CubeTopolType dir, CubeTopolType dir1, CubeTopolType dir2, const GradingOp& gr) {
+        const auto& divs = gr.getDivs();
+        if (divs[0] == 0) {
             pMesh->addQuad(cPts[0], cPts[3], cPts[2], cPts[1]);
             pMesh->addQuad(cPts[4], cPts[5], cPts[6], cPts[7]);
             pMesh->addQuad(cPts[1], cPts[2], cPts[6], cPts[5]);
@@ -515,20 +516,20 @@ void AppData::doCreateBaseVolumePreview()
 
             double kx = 1;
             double t0 = 0;
-            for (size_t i = 0; i < gr.divs[0]; i++) {
-                double t1 = t0 + 1.0 / (double)gr.divs[0] * kx * xScale;
+            for (size_t i = 0; i < divs[0]; i++) {
+                double t1 = t0 + 1.0 / (double)divs[0] * kx * xScale;
                 kx *= xGrading;
 
                 double ky = 1;
                 double u0 = 0;
-                for (size_t j = 0; j < gr.divs[1]; j++) {
-                    double u1 = u0 + 1.0 / (double)gr.divs[1] * ky * yScale;
+                for (size_t j = 0; j < divs[1]; j++) {
+                    double u1 = u0 + 1.0 / (double)divs[1] * ky * yScale;
                     ky *= yGrading;
 
                     double kz = 1;
                     double v0 = 0;
-                    for (size_t k = 0; k < gr.divs[2]; k++) {
-                        double v1 = v0 + 1.0 / (double)gr.divs[2] * kz * zScale;
+                    for (size_t k = 0; k < divs[2]; k++) {
+                        double v1 = v0 + 1.0 / (double)divs[2] * kz * zScale;
                         kz *= zGrading;
 
                         Vector3d gPts[8];
@@ -577,8 +578,8 @@ void AppData::doCreateBaseVolumePreview()
 
     pMesh = make_shared<CMesh>(volBox/*, _pModelMeshRepo*/);
     {
-        GradingRec r;
-        r.divs = _params.volDivs;
+        GradingOp r;
+        r.setDivs(_params.volDivs);
         makeGradedBlock(cubePts, CTT_UNDEFINED, CTT_UNDEFINED, CTT_UNDEFINED, r);
     }
 
@@ -767,12 +768,12 @@ template<class L>
 void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const
 {
     Vector3d pts[8];
-    GradingRec gr;
+    GradingOp gr;
 
     switch (dir) {
         case CTT_BACK:
-            gr.divs = Vector3i(_params.xMinDivs, _params.volDivs[1], _params.volDivs[2]);
-            gr.grading = Vector3d(1 / _params.xMinGrading, 1, 1);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.volDivs[1], _params.volDivs[2]));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, 1, 1));
 
             pts[0] = pts[1] = cPts[0];
             pts[3] = pts[2] = cPts[3];
@@ -784,8 +785,8 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             pts[4][0] = _params.xMin;
             break;
         case CTT_FRONT:
-            gr.divs = Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.volDivs[2]);
-            gr.grading = Vector3d(_params.xMaxGrading, 1, 1);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.volDivs[2]));
+            gr.setGrading(Vector3d(_params.xMaxGrading, 1, 1));
 
             pts[0] = pts[1] = cPts[1];
             pts[3] = pts[2] = cPts[2];
@@ -797,8 +798,8 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             pts[5][0] = _params.xMax;
             break;
         case CTT_BOTTOM:
-            gr.divs = Vector3i(_params.volDivs[0], _params.volDivs[1], _params.zMinDivs);
-            gr.grading = Vector3d(1, 1, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.volDivs[1], _params.zMinDivs));
+            gr.setGrading(Vector3d(1, 1, 1 / _params.zMinGrading));
             pts[4] = pts[0] = cPts[0];
             pts[5] = pts[1] = cPts[1];
             pts[6] = pts[2] = cPts[2];
@@ -809,8 +810,8 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             pts[3][2] = _params.zMin;
             break;
         case CTT_TOP:
-            gr.divs = Vector3i(_params.volDivs[0], _params.volDivs[1], _params.zMaxDivs);
-            gr.grading = Vector3d(1, 1, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.volDivs[1], _params.zMaxDivs));
+            gr.setGrading(Vector3d(1, 1, _params.zMaxGrading));
 
             pts[4] = pts[0] = cPts[4];
             pts[5] = pts[1] = cPts[5];
@@ -822,8 +823,8 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             pts[7][2] = _params.zMax;
             break;
         case CTT_LEFT:
-            gr.divs = Vector3i(_params.volDivs[0], _params.yMinDivs, _params.volDivs[2]);
-            gr.grading = Vector3d(1, 1 / _params.yMinGrading, 1);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.yMinDivs, _params.volDivs[2]));
+            gr.setGrading(Vector3d(1, 1 / _params.yMinGrading, 1));
 
             pts[2] = pts[1] = cPts[2];
             pts[3] = pts[0] = cPts[3];
@@ -835,8 +836,8 @@ void AppData::makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& 
             pts[5][1] = _params.yMin;
             break;
         case CTT_RIGHT:
-            gr.divs = Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.volDivs[2]);
-            gr.grading = Vector3d(1, _params.yMaxGrading, 1);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.volDivs[2]));
+            gr.setGrading(Vector3d(1, _params.yMaxGrading, 1));
 
             pts[3] = pts[0] = cPts[3];
             pts[2] = pts[1] = cPts[2];
@@ -856,14 +857,14 @@ template<class L>
 void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const
 {
     Vector3d pts[8];
-    GradingRec gr;
+    GradingOp gr;
 
     switch (dir0) {
     case CTT_BACK:
         switch (dir1) {
         case CTT_BOTTOM:
-            gr.divs = Vector3i(_params.xMinDivs, _params.volDivs[1], _params.zMinDivs);
-            gr.grading = Vector3d(1 / _params.xMinGrading, 1, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.volDivs[1], _params.zMinDivs));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, 1, 1 / _params.zMinGrading));
 
             pts[1] = pts[4] = pts[5] = cPts[0];
             pts[2] = pts[7] = pts[6] = cPts[3];
@@ -878,8 +879,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             pts[3] = Vector3d(_params.xMin, cPts[3][1], _params.zMin);
             break;
         case CTT_TOP:
-            gr.divs = Vector3i(_params.xMinDivs, _params.volDivs[1], _params.zMaxDivs);
-            gr.grading = Vector3d(1 / _params.xMinGrading, 1, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.volDivs[1], _params.zMaxDivs));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, 1, _params.zMaxGrading));
 
             pts[1] = cPts[4];
             pts[0] = Vector3d(_params.xMin, cPts[4][1], cPts[4][2]);
@@ -892,8 +893,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             pts[7] = Vector3d(_params.xMin, cPts[7][1], _params.zMax);
             break;
         case CTT_LEFT:
-            gr.divs = Vector3i(_params.xMinDivs, _params.yMinDivs, _params.volDivs[2]);
-            gr.grading = Vector3d(1 / _params.xMinGrading, 1 / _params.yMinGrading, 1);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.yMinDivs, _params.volDivs[2]));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, 1 / _params.yMinGrading, 1));
             pts[0] = pts[1] = pts[2] = pts[3] = cPts[2];
             pts[0][0] = _params.xMin;
             pts[2][1] = _params.yMin;
@@ -907,8 +908,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             pts[7][1] = _params.yMin;
             break;
         case CTT_RIGHT:
-            gr.divs = Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.volDivs[2]);
-            gr.grading = Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, 1);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.volDivs[2]));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, 1));
 
             pts[0] = pts[2] = pts[3] = pts[1] = cPts[3];
             // pts[1]
@@ -929,8 +930,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
     case CTT_FRONT:
         switch (dir1) {
         case CTT_BOTTOM:
-            gr.divs = Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.zMinDivs);
-            gr.grading = Vector3d(_params.xMaxGrading, 1, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.zMinDivs));
+            gr.setGrading(Vector3d(_params.xMaxGrading, 1, 1 / _params.zMinGrading));
 
             pts[0] = pts[1] = pts[4] = pts[5] = cPts[1];
             pts[0][2] = _params.zMin;
@@ -945,8 +946,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             pts[2][2] = _params.zMin;
             break;
         case CTT_TOP:
-            gr.divs = Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.zMaxDivs);
-            gr.grading = Vector3d(_params.xMaxGrading, 1, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.volDivs[1], _params.zMaxDivs));
+            gr.setGrading(Vector3d(_params.xMaxGrading, 1, _params.zMaxGrading));
             pts[0] = pts[1] = pts[4] = pts[5] = cPts[5];
             pts[1][0] = _params.xMax;
             pts[4][2] = _params.zMax;
@@ -963,8 +964,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             return;
             break;
         case CTT_RIGHT:
-            gr.divs = Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.volDivs[2]);
-            gr.grading = Vector3d(_params.xMaxGrading, _params.yMaxGrading, 1);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.volDivs[2]));
+            gr.setGrading(Vector3d(_params.xMaxGrading, _params.yMaxGrading, 1));
 
             pts[0] = pts[1] = pts[2] = pts[3] = cPts[2];
             // pts[0]
@@ -994,8 +995,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
     case CTT_RIGHT:
         switch (dir1) {
         case CTT_BOTTOM:
-            gr.divs = Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.zMinDivs);
-            gr.grading = Vector3d(1, _params.yMaxGrading, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.zMinDivs));
+            gr.setGrading(Vector3d(1, _params.yMaxGrading, 1 / _params.zMinGrading));
 
             pts[0] = pts[3] = pts[4] = pts[7] = cPts[3];
             pts[0][2] = _params.zMin;
@@ -1012,8 +1013,8 @@ void AppData::makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopo
             pts[2][2] = _params.zMin;
             break;
         case CTT_TOP:
-            gr.divs = Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.zMaxDivs);
-            gr.grading = Vector3d(1, _params.yMaxGrading, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.volDivs[0], _params.yMaxDivs, _params.zMaxDivs));
+            gr.setGrading(Vector3d(1, _params.yMaxGrading, _params.zMaxGrading));
 
             pts[0] = pts[3] = pts[4] = pts[7] = cPts[7];
             // pts[0]
@@ -1046,7 +1047,7 @@ template<class L>
 void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
 {
     Vector3d pts[8];
-    GradingRec gr;
+    GradingOp gr;
     CubeTopolType dir0, dir1, dir2;
 
     for (int i = 0; i < 8; i++) {
@@ -1073,8 +1074,8 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
             dir1 = CTT_RIGHT;
             dir2 = CTT_BOTTOM;
 
-            gr.divs = Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMinDivs);
-            gr.grading = Vector3d(_params.xMaxGrading, _params.yMaxGrading, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMinDivs));
+            gr.setGrading(Vector3d(_params.xMaxGrading, _params.yMaxGrading, 1 / _params.zMinGrading));
 
             pts[0][2] = _params.zMin;
 
@@ -1104,8 +1105,8 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
             dir1 = CTT_RIGHT;
             dir2 = CTT_BOTTOM;
 
-            gr.divs = Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMinDivs);
-            gr.grading = Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, 1 / _params.zMinGrading);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMinDivs));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, 1 / _params.zMinGrading));
 
             pts[0][0] = _params.xMin;
             pts[0][2] = _params.zMin;
@@ -1146,8 +1147,8 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
             dir1 = CTT_RIGHT;
             dir2 = CTT_TOP;
 
-            gr.divs = Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMaxDivs);
-            gr.grading = Vector3d(_params.xMaxGrading, _params.yMaxGrading, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.xMaxDivs, _params.yMaxDivs, _params.zMaxDivs));
+            gr.setGrading(Vector3d(_params.xMaxGrading, _params.yMaxGrading, _params.zMaxGrading));
 
             pts[1][0] = _params.xMax;
 
@@ -1175,8 +1176,8 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
             dir1 = CTT_RIGHT;
             dir2 = CTT_TOP;
 
-            gr.divs = Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMaxDivs);
-            gr.grading = Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, _params.zMaxGrading);
+            gr.setDivs(Vector3i(_params.xMinDivs, _params.yMaxDivs, _params.zMaxDivs));
+            gr.setGrading(Vector3d(1 / _params.xMinGrading, _params.yMaxGrading, _params.zMaxGrading));
 
             pts[0][0] = _params.xMin;
 
@@ -1220,9 +1221,10 @@ void AppData::doRemoveBaseVolumePreview()
 void AppData::doCreateBaseVolume()
 {
     _pVolume = nullptr;
-    auto makeGradedBlock = [this](const Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, CubeTopolType dir2, const GradingRec& gr) {
+    auto makeGradedBlock = [this](const Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, CubeTopolType dir2, const GradingOp& gr) {
 #if 1
-        if (gr.divs[0] != 0) {
+        const auto& divs = gr.getDivs();
+        if (divs[0] != 0) {
             double xScale, yScale, zScale;
             double xGrading, yGrading, zGrading;
             gr.calGradingFactors(0, xScale, xGrading);
@@ -1231,20 +1233,20 @@ void AppData::doCreateBaseVolume()
 
             double kx = 1;
             double t0 = 0;
-            for (size_t i = 0; i < gr.divs[0]; i++) {
-                double t1 = t0 + 1.0 / (double)gr.divs[0] * kx * xScale;
+            for (size_t i = 0; i < divs[0]; i++) {
+                double t1 = t0 + 1.0 / (double)divs[0] * kx * xScale;
                 kx *= xGrading;
 
                 double ky = 1;
                 double u0 = 0;
-                for (size_t j = 0; j < gr.divs[1]; j++) {
-                    double u1 = u0 + 1.0 / (double)gr.divs[1] * ky * yScale;
+                for (size_t j = 0; j < divs[1]; j++) {
+                    double u1 = u0 + 1.0 / (double)divs[1] * ky * yScale;
                     ky *= yGrading;
 
                     double kz = 1;
                     double v0 = 0;
-                    for (size_t k = 0; k < gr.divs[2]; k++) {
-                        double v1 = v0 + 1.0 / (double)gr.divs[2] * kz * zScale;
+                    for (size_t k = 0; k < divs[2]; k++) {
+                        double v1 = v0 + 1.0 / (double)divs[2] * kz * zScale;
                         kz *= zGrading;
 
                         Index3D blkIdx(i, j, k);
@@ -1254,19 +1256,19 @@ void AppData::doCreateBaseVolume()
                                 blkIdx[0] = 0;
                                 break;
                             case CTT_FRONT:
-                                blkIdx[0] = gr.divs[0] - 1;
+                                blkIdx[0] = divs[0] - 1;
                                 break;
                             case CTT_LEFT:
                                 blkIdx[1] = 0;
                                 break;
                             case CTT_RIGHT:
-                                blkIdx[1] = gr.divs[1] - 1;
+                                blkIdx[1] = divs[1] - 1;
                                 break;
                             case CTT_BOTTOM:
                                 blkIdx[2] = 0;
                                 break;
                             case CTT_TOP:
-                                blkIdx[2] = gr.divs[2] - 1;
+                                blkIdx[2] = divs[2] - 1;
                                 break;
                             default:
                                 break;
