@@ -65,9 +65,10 @@ void GradingOp::calGradingFactors(int axis, double& scale, double& growFactor) c
 
 void GradingOp::createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const
 {
+
     if (ft2 == CFT_UNDEFINED) {
         if (ft1 == CFT_UNDEFINED)
-            createGradedCellOnFace(ft0);
+            createGradedCells();
         else
             createGradedCellOnEdge(ft0, ft1);
     } else {
@@ -146,10 +147,10 @@ void GradingOp::createGradedCellOnFace(CubeFaceType ft0) const
         break;
     }
 
-    createGradedCells(pts);
+//    createGradedCells(pts);
 }
 
-void GradingOp::createGradedCells(const Vector3d cPts[8]) const {
+void GradingOp::createGradedCells() const {
     if (_divs[0] == 0)
         return;
 
@@ -159,6 +160,7 @@ void GradingOp::createGradedCells(const Vector3d cPts[8]) const {
     calGradingFactors(1, yScale, yGrading);
     calGradingFactors(2, zScale, zGrading);
 
+    const auto cPts = _pBlk->getCornerPts().data();
     double kx = 1;
     double t0 = 0;
     for (size_t i = 0; i < _divs[0]; i++) {

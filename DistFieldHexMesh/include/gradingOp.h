@@ -49,12 +49,12 @@ public:
 	const Vector3d& getGrading() const;
 	void setGrading(const Vector3d& grading);
 
+	void createGradedCells() const;
 	void createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
 private:
 	void createGradedCellOnFace(CubeFaceType ft0) const;
 	void createGradedCellOnEdge(CubeFaceType ft0, CubeFaceType ft1) const;
 	void createGradedCellOnCorner(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
-	void createGradedCells(const Vector3d cPts[8]) const;
 
 	Block* _pBlk;
 	const BuildCFDParams& _params;

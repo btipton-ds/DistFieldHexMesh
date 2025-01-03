@@ -821,8 +821,8 @@ void AppData::gradeSurroundingBlocks() const
                 }
 
                 auto pBlk = _pVolume->getBlockPtr(idx);
-                GradingOp gr(pBlk, _params, idx, grading);
-                gr.createGradedCell(dir0, dir1, dir2);
+                GradingOp gr(pBlk, _params, divs, grading);
+                gr.createGradedCells();
             }
         }
     }
