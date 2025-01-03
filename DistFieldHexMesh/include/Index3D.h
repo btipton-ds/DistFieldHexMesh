@@ -60,6 +60,8 @@ public:
 
 	Index3DBase operator + (const Index3DBase& rhs) const;
 	Index3DBase& operator += (const Index3DBase& rhs);
+	Index3DBase operator - (const Index3DBase& rhs) const;
+	Index3DBase& operator -= (const Index3DBase& rhs);
 
 	const Index3DBaseType& operator[](int idx) const;
 	Index3DBaseType& operator[](int idx);

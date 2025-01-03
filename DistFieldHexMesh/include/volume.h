@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <triMesh.h>
 #include <tm_spatialSearch.h>
+#include <unalignedBBox.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
@@ -47,6 +48,9 @@ namespace TriMesh {
 namespace DFHM {
 
 struct BuildCFDParams;
+class Block;
+using BlockPtr = std::shared_ptr<Block>;
+
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 
@@ -61,13 +65,15 @@ public:
 	void startOperation();
 	void endOperation();
 
-	void setVolDim(const Index3D& size);
+	void setVolDim(const Index3D& size, bool resetBoundaryDim);
 	const Index3D& volDim() const;
 	void setVolCornerPts(const std::vector<Vector3d>& pts);
 
+	const Index3D& modelDim() const;
+
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);
-	std::shared_ptr<Block>& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
+	BlockPtr& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
@@ -96,10 +102,10 @@ public:
 	const std::set<size_t>& getSharpEdgeIndices() const;
 	const std::vector<Vector3d>& getModelCornerPts() const;
 
-	void insertBlocks(const BuildCFDParams& params, CubeTopolType face);
+	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
-	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
-	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const std::shared_ptr<Block>& pBlock, size_t threadNum) const;
+	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const BlockPtr& pBlock, size_t threadNum) const;
+	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
@@ -127,14 +133,17 @@ private:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-	std::shared_ptr<Block> createBlock(const Index3D& blockIdx);
-	std::shared_ptr<Block> createBlock(size_t linearIdx);
+	BlockPtr createBlock(const Index3D& blockIdx);
+	BlockPtr createBlock(size_t linearIdx);
 
 	const Vertex& getVertex(const Index3DId& id) const;
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
+	void resetBlockIndices_unsafe();
+
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
+	void updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks);
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
 	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);
@@ -176,16 +185,18 @@ private:
 	template<class L>
 	void runThreadPool333(const L& fLambda, bool multiCore);
 
-	Index3D _volDim;
+	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 
 	CMeshPtr _pModelTriMesh;
 	std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
 	double _sharpAngleRad;
 	CMesh::BoundingBox _modelBundingBox;
 
-	std::vector<Vector3d> _modelCornerPts, _volCornerPts;
-	std::vector<std::shared_ptr<Block>> _blocks;
-	std::shared_ptr<CSpatialSearchSTd> _pAdHocBlockTree; // This for boundary blocks which don't follow the cartesian grid assignment rules.
+	UnalignedBBoxd _modelCornerPts, _volCornerPts;
+	std::vector<BlockPtr> _blocks;
+	CSpatialSearch<double, BlockPtr> _adHocBlockTree;   // This for boundary blocks which don't follow the cartesian grid assignment rules.
+														// Must use BlockPtr, NOT size_t, because the indices change during insertions.
+
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;
 	bool _hasSharpVertPlane = false;

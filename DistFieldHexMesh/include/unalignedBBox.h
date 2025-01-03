@@ -60,6 +60,9 @@ private:
 	std::vector<Vector3<T>> _corners;
 };
 
+using UnalignedBBoxd = UnalignedBBox<double>;
+using UnalignedBBoxf = UnalignedBBox<float>;
+
 template<class T>
 inline UnalignedBBox<T>::UnalignedBBox()
 {

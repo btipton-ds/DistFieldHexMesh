@@ -95,7 +95,7 @@ public:
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
 	Block* getOwner(const Index3D& blockIdx) override;
-	const UnalignedBBox<double>& getUnalignedBBox() const;
+	const UnalignedBBoxd& getUnalignedBBox() const;
 
 	void clear();
 
@@ -110,6 +110,7 @@ public:
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
+	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool verifyTopology() const;
 	void createBlockCells(TopolgyState refState);
@@ -228,11 +229,11 @@ private:
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
 
+	void resetBlockIndex_unsafe(const Index3D& idx);
 	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
-	const std::vector<Vector3d>& getCornerPts() const; // Change to returning fractions so we can assign boundary values.
 	MTC::vector<Index3DId> getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
 
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
@@ -280,7 +281,7 @@ private:
 	
 	size_t _blockDim;   // This is the dimension of the block = the number of cells across the block
 
-	UnalignedBBox<double> _corners;
+	UnalignedBBoxd _corners;
 
 	std::string _filename;
 
@@ -299,9 +300,15 @@ inline size_t Block::GlPoints::getId() const
 	return _id;
 }
 
-inline const UnalignedBBox<double>& Block::getUnalignedBBox() const
+inline const UnalignedBBoxd& Block::getUnalignedBBox() const
 {
 	return _corners;
+}
+
+inline void Block::resetBlockIndex_unsafe(const Index3D& idx)
+{
+	if (_blockIdx != idx)
+		_blockIdx = idx;
 }
 
 inline size_t Block::GlPoints::changeNumber() const

@@ -58,6 +58,22 @@ Index3DBase Index3DBase::operator + (const Index3DBase& rhs) const
 	return temp;
 }
 
+Index3DBase& Index3DBase::operator -= (const Index3DBase& rhs)
+{
+	_vals[0] -= rhs._vals[0];
+	_vals[1] -= rhs._vals[1];
+	_vals[2] -= rhs._vals[2];
+
+	return *this;
+}
+
+Index3DBase Index3DBase::operator - (const Index3DBase& rhs) const
+{
+	Index3DBase temp(*this);
+	temp -= rhs;
+	return temp;
+}
+
 void Index3DBase::clampInBounds(size_t bound)
 {
 	for (size_t i = 0; i < 3; i++) {

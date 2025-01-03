@@ -30,12 +30,17 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <tm_vector3.h>
 #include <index3D.h>
+#include <enums.h>
 
 namespace DFHM {
 
+class Block;
+class Volume;
+struct BuildCFDParams;
+
 class GradingOp {
 public:
-	GradingOp(const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
+	GradingOp(Block* pBlk, const BuildCFDParams& params, const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
 	void calGradingFactors(int axis, double& scale, double& growFactor) const;
 
 	const Index3D& getDivs() const;
@@ -44,7 +49,15 @@ public:
 	const Vector3d& getGrading() const;
 	void setGrading(const Vector3d& grading);
 
+	void createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
 private:
+	void createGradedCellOnFace(CubeFaceType ft0) const;
+	void createGradedCellOnEdge(CubeFaceType ft0, CubeFaceType ft1) const;
+	void createGradedCellOnCorner(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
+	void createGradedCells(const Vector3d cPts[8]) const;
+
+	Block* _pBlk;
+	const BuildCFDParams& _params;
 	Index3D _divs;
 	Vector3d _grading;
 

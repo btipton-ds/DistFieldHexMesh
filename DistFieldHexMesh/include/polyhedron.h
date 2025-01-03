@@ -59,6 +59,7 @@ public:
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	bool containsFace(const Index3DId& faceId) const;
 	const MTC::set<Index3DId>& getFaceIds() const;
+	size_t getNumFaces() const;
 	void getVertIds(MTC::set<Index3DId>& vertIds) const;
 	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
@@ -168,6 +169,11 @@ private:
 inline const MTC::set<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
+}
+
+inline size_t Polyhedron::getNumFaces() const
+{
+	return _faceIds.size();
 }
 
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const

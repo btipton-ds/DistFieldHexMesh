@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_ray.h>
 #include <tm_bestFit.h>
 #include <tm_plane.h>
+#include <tm_spatialSearch.hpp>
 #include <triMesh.h>
 
 #include <block.h>
@@ -55,14 +56,19 @@ using namespace DFHM;
 
 Volume::Volume(const Index3D& dims)
 	: _volDim(dims)
+	, _modelDim(dims)
+	, _modelDimOrigin(0, 0, 0)
 {
 	_sharpAngleRad = 30.0 / 180.0 * M_PI;
 }
 
 Volume::Volume(const Volume& src)
 	: _volDim(src._volDim)
+	, _modelDim(src._modelDim)
+	, _modelDimOrigin(src._modelDimOrigin)
 	, _blocks(src._blocks)
 	, _threadPool(MultiCore::getNumCores())
+	, _adHocBlockTree(src._adHocBlockTree)
 {
 }
 
@@ -79,9 +85,14 @@ void Volume::endOperation()
 {
 }
 
-void Volume::setVolDim(const Index3D& blockSize)
+void Volume::setVolDim(const Index3D& blockSize, bool resetBoundaryDim)
 {
-	_volDim = blockSize;
+	_volDim =  blockSize;
+	if (resetBoundaryDim) {
+		_modelDimOrigin = Index3D(0, 0, 0);
+		_modelDim = _volDim;
+	}
+
 	size_t numBlocks = _volDim[0] * _volDim[1] * _volDim[2];
 	_blocks.clear();
 	_blocks.resize(numBlocks);
@@ -90,6 +101,11 @@ void Volume::setVolDim(const Index3D& blockSize)
 const Index3D& Volume::volDim() const
 {
 	return _volDim;
+}
+
+const Index3D& Volume::modelDim() const
+{
+	return _modelDim;
 }
 
 void Volume::setVolCornerPts(const std::vector<Vector3d>& pts)
@@ -192,22 +208,16 @@ void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngle
 	}
 }
 
-std::shared_ptr<Block>& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8])
+BlockPtr& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8])
 {
 	size_t linIdx = calLinearBlockIndex(blkIdx);
 	assert(linIdx < _blocks.size());
 	if (!_blocks[linIdx]) {
-		if (!_pAdHocBlockTree) {
-			auto volBox = getVolumeBBox();
-			volBox.growPercent(0.01);
-			_pAdHocBlockTree = make_shared<CSpatialSearchSTd>(volBox);
-		}
-
-		auto p = make_shared<Block>(this, blkIdx, cPts);
+		BlockPtr p = make_shared<Block>(this, blkIdx, cPts);
 		_blocks[linIdx] = p;
 
 		auto bBox = p->getBBox();
-		_pAdHocBlockTree->add(bBox, linIdx);
+		_adHocBlockTree.add(bBox, p);
 	}
 	return _blocks[linIdx];
 }
@@ -215,47 +225,66 @@ std::shared_ptr<Block>& Volume::getBoundingBlock(const Index3D& blkIdx, const Ve
 Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 {
 	Index3D result;
+	const double pTol = Tolerance::paramTol();
+	const double dTolSqr = Tolerance::sameDistTol() * Tolerance::sameDistTol();
+
 	const double iMax = 1.0 - 1.0 / (1ull << 18);
-	const Index3D& vDim = volDim();
+	const Index3D& mDim = modelDim();
 	const auto& modelCorners = getModelCornerPts();
-	const auto& bbox = _modelBundingBox;
-	const auto& bbMin = bbox.getMin();
-	const auto& bbRange = bbox.range();
 
 	Vector3<double> uvw;
 	TRI_LERP_INV(point, modelCorners, uvw);
-	Vector3 v = point - bbMin;
+#if 1 && defined(_DEBUG)
+	Vector3d testPt = TRI_LERP(modelCorners, uvw);
+	double errSqr = (testPt - point).squaredNorm();
+	assert(errSqr < dTolSqr);
+#endif
 	bool inBounds = true;
 	for (int i = 0; i < 3; i++) {
+		if (uvw[i] < -pTol || 1 + pTol < uvw[i]) {
+			inBounds = false;
+			break;
+		}
 
-		double floatIdx = uvw[i] * vDim[i];
+		double floatIdx = uvw[i] * mDim[i];
 		Index3DBaseType idx = (Index3DBaseType)floatIdx;
 		floatIdx -= idx;
 		if (floatIdx > iMax)
 			idx += 1;
 
-		if (idx >= vDim[i])
+		if (idx >= mDim[i])
 			idx -= 1;
 
 		result[i] = idx;
-		if (result[i] >= vDim[i]) {
+		if (result[i] >= mDim[i]) {
 			inBounds = false;
 			break;
 		}
 	}
 
-	if (inBounds && result.isValid())
-		return result;
+	if (inBounds) {
+#if 1 && defined(_DEBUG)
+		if (_modelDimOrigin != Index3D(0, 0, 0)) {
+			int dbgBreak = 1;
+		}
+#endif;
+		result += _modelDimOrigin;
+		if (result.isValid())
+			return result;
+	}
 
-	std::vector<size_t> indices;
+	std::vector<BlockPtr> foundBlocks;
 	CBoundingBox3Dd ptBox(point);
-	if (_pAdHocBlockTree && _pAdHocBlockTree->find(ptBox, indices)) {
-		for (size_t linIdx : indices) {
-			const auto& pBlk = _blocks[linIdx];
+	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
+		for (size_t idx = 0; idx < foundBlocks.size(); idx++) {
+			const auto& pBlk = foundBlocks[idx];
+			if (idx == 76) {
+				int dbgBreak = 1;
+			}
 			const auto& uBBox = pBlk->getUnalignedBBox();
 			if (uBBox.contains(point)) {
-				result = calBlockIndexFromLinearIndex(linIdx);
-				break;
+				result = pBlk->getBlockIdx();
+				return result;
 			}
 		}
 	}
@@ -273,7 +302,7 @@ shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
 	return make_shared<Block>(this, blockIdx, _modelCornerPts);
 }
 
-std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
+BlockPtr Volume::createBlock(size_t linearIdx)
 {
 	auto pBlock = _blocks[linearIdx];
 	if (pBlock)
@@ -282,19 +311,20 @@ std::shared_ptr<Block> Volume::createBlock(size_t linearIdx)
 	Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 	Vector3d uvw[2];
 	for (int i = 0; i < 3; i++) {
-		uvw[0][i] = blockIdx[i] / (double)_volDim[i];
-		uvw[1][i] = (blockIdx[i] + 1) / (double)_volDim[i];
+		uvw[0][i] = blockIdx[i] / (double)_modelDim[i];
+		uvw[1][i] = (blockIdx[i] + 1) / (double)_modelDim[i];
 	}
+	const vector<Vector3d>& cPts = _modelCornerPts;
 	std::vector<Vector3d> pts({
-		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[1][1], uvw[0][2]),
-		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(cPts, uvw[0][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(cPts, uvw[1][0], uvw[0][1], uvw[0][2]),
+		TRI_LERP(cPts, uvw[1][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(cPts, uvw[0][0], uvw[1][1], uvw[0][2]),
 
-		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(_modelCornerPts, uvw[1][0], uvw[1][1], uvw[1][2]),
-		TRI_LERP(_modelCornerPts, uvw[0][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(cPts, uvw[0][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(cPts, uvw[1][0], uvw[0][1], uvw[1][2]),
+		TRI_LERP(cPts, uvw[1][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(cPts, uvw[0][0], uvw[1][1], uvw[1][2]),
 	});
 
 	return make_shared<Block>(this, blockIdx, pts);
@@ -304,7 +334,8 @@ CBoundingBox3Dd Volume::getModelBBox() const
 {
 	CBoundingBox3Dd result;
 
-	for (const auto& pt : _modelCornerPts)
+	const vector<Vector3d>& cPts = _modelCornerPts;
+	for (const auto& pt : cPts)
 		result.merge(pt);
 
 	return result;
@@ -314,7 +345,8 @@ CBoundingBox3Dd Volume::getVolumeBBox() const
 {
 	CBoundingBox3Dd result;
 
-	for (const auto& pt : _volCornerPts)
+	const vector<Vector3d>& cPts = _volCornerPts;
+	for (const auto& pt : cPts)
 		result.merge(pt);
 
 	return result;
@@ -340,7 +372,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 void Volume::clear()
 {
 	// Clear contents to remove cross block pointers
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (pBlk)
 			pBlk->clear();
 		return true;
@@ -364,7 +396,7 @@ void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], co
 	_modelBundingBox.merge(volBox);
 	for (int i = 0; i < 8; i++) {
 		_modelBundingBox.merge(pts[i]);
-		_modelCornerPts.push_back(pts[i]);
+		_modelCornerPts[i] = pts[i];
 	}
 	
 	const auto& dim = volDim();
@@ -375,7 +407,7 @@ void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], co
 	}
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
@@ -458,16 +490,29 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif
 }
 
+void Volume::resetBlockIndices_unsafe()
+{
+	Index3D idxDst;
+	for (idxDst[0] = 0; idxDst[0] < _volDim[0]; idxDst[0]++) {
+		for (idxDst[1] = 0; idxDst[1] < _volDim[1]; idxDst[1]++) {
+			for (idxDst[2] = 0; idxDst[2] < _volDim[2]; idxDst[2]++) {
+				auto pBlk = getBlockPtr(idxDst);
+				pBlk->resetBlockIndex_unsafe(idxDst);
+			}
+		}
+	}
+}
+
 void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
 {
-	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
 		_blocks[linearIdx] = createBlock(blockIdx);
 		return true;
 	}, multiCore);
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
@@ -493,7 +538,7 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 	if (params.numSimpleDivs > 0) {
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
-			runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+			runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
 					cell.setNeedsDivideAtCentroid();
 				});
@@ -520,7 +565,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 				int count = 0;
 				while (didSplit && count < 3) {
 					didSplit = false;
-					runThreadPool333([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+					runThreadPool333([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 						if (pBlk->doPresplits(params))
 							didSplit = true;
 						return true;
@@ -530,7 +575,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 			}
 
 			bool changed = false;
-			runThreadPool333([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+			runThreadPool333([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
 					if (cell.setNeedToSplitConditional(passNum, params))
 						changed = true;
@@ -553,7 +598,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 {
 	bool changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.containsSharps()) {
 				if (cell.setNeedsCleanFaces())
@@ -564,7 +609,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 	}, multiCore);
 
 	changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				PolyhedronSplitter ps(pBlk.get(), cellId);
@@ -585,17 +630,17 @@ void Volume::finishSplits(bool multiCore)
 	int i = 0;
 	while (!done) {
 		done = true;
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->splitRequiredPolyhedra();
 			return true;
 		}, multiCore);
 
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack();
 			return true;
 		}, multiCore);
 
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->hasPendingSplits()) {
 				done = false;
 				return false; // We need to split 1, so we need to split all. Exit early
@@ -613,13 +658,13 @@ void Volume::finishSplits(bool multiCore)
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->imprintTJointVertices();
 		return true;
 	}, multiCore);
 #ifdef _DEBUG
 	bool allCellsClosed = true;
-	runThreadPool([this, &allCellsClosed](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this, &allCellsClosed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (!pBlk->allCellsClosed()) {
 			allCellsClosed = false;
 			return false;
@@ -633,50 +678,59 @@ void Volume::imprintTJointVertices(bool multiCore)
 void Volume::dumpOpenCells(bool multiCore) const
 {
 #if DUMP_OPEN_CELL_OBJS
-	runThreadPool([this](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->dumpOpenCells();
 		return true;
 	}, multiCore);
 #endif
 }
 
-void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
+void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 {
 	shared_ptr<Volume> pSrc = make_shared<Volume>(*this);
 	auto srcDims = pSrc->volDim();
 	auto dstDims = srcDims;
 
 	switch (face) {
-	case CTT_FRONT:
-	case CTT_BACK:
+	case CFT_FRONT:
 		dstDims[0]++;
 		break;
-	case CTT_RIGHT:
-	case CTT_LEFT:
+	case CFT_BACK:
+		dstDims[0]++;
+		_modelDimOrigin[0]++;
+		break;
+	case CFT_RIGHT:
 		dstDims[1]++;
 		break;
-	case CTT_TOP:
-	case CTT_BOTTOM:
+	case CFT_LEFT:
+		dstDims[1]++;
+		_modelDimOrigin[1]++;
+		break;
+	case CFT_TOP:
 		dstDims[2]++;
+		break;
+	case CFT_BOTTOM:
+		dstDims[2]++;
+		_modelDimOrigin[2]++;
 		break;
 	default:
 		break;
 	}
 
-	setVolDim(dstDims);
+	setVolDim(dstDims, false);
 	Index3D idxSrc, idxDst;
 	for (idxSrc[0] = 0; idxSrc[0] < srcDims[0]; idxSrc[0]++) {
 		for (idxSrc[1] = 0; idxSrc[1] < srcDims[1]; idxSrc[1]++) {
 			for (idxSrc[2] = 0; idxSrc[2] < srcDims[2]; idxSrc[2]++) {
 				idxDst = idxSrc;
 				switch (face) {
-				case CTT_BACK:
+				case CFT_BACK:
 					idxDst[0] += 1;
 					break;
-				case CTT_LEFT:
+				case CFT_LEFT:
 					idxDst[1] += 1;
 					break;
-				case CTT_BOTTOM:
+				case CFT_BOTTOM:
 					idxDst[2] += 1;
 					break;
 				default:
@@ -695,10 +749,11 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 	// Get rid of the copy
 	pSrc = nullptr;
 
+	vector<BlockPtr> adHocBlocks;
 	Vector3d newCorners[8];
 	size_t linIdxSrc, linIdxDst;
 	switch (face) {
-	case CTT_FRONT:
+	case CFT_FRONT:
 		idxSrc[0] = dstDims[0] - 2;
 		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
 			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
@@ -716,6 +771,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				newCorners[1][0] = newCorners[2][0] = newCorners[5][0] = newCorners[6][0] = params.xMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 #if 1 && defined(_DEBUG)
@@ -724,7 +780,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 #endif // _DEBUG)
 
 		break;
-	case CTT_BACK:
+	case CFT_BACK:
 		idxSrc[0] = 1;
 		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
 			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
@@ -742,6 +798,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				newCorners[0][0] = newCorners[3][0] = newCorners[4][0] = newCorners[7][0] = params.xMin;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 		
@@ -751,7 +808,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 #endif // _DEBUG)
 
 		break;
-	case CTT_LEFT:
+	case CFT_LEFT:
 		idxSrc[1] = 1;
 		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
 			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
@@ -769,6 +826,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				newCorners[3][1] = newCorners[2][1] = newCorners[7][1] = newCorners[6][1] = params.yMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 #if 1 && defined(_DEBUG)
@@ -777,7 +835,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 #endif // _DEBUG)
 
 		break;
-	case CTT_RIGHT:
+	case CFT_RIGHT:
 		idxSrc[1] = dstDims[1] - 2;
 		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
 			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
@@ -790,11 +848,12 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				const vector<Vector3d>& cPts = pBlkSrc->_corners;
 				newCorners[0] = newCorners[3] = cPts[3];
 				newCorners[1] = newCorners[2] = cPts[2];
-				newCorners[4] = newCorners[7] = cPts[7];
 				newCorners[5] = newCorners[6] = cPts[6];
-				newCorners[0][1] = newCorners[1][1] = newCorners[5][1] = newCorners[4][1] = params.yMax;
+				newCorners[4] = newCorners[7] = cPts[7];
+				newCorners[3][1] = newCorners[2][1] = newCorners[6][1] = newCorners[7][1] = params.yMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
@@ -804,7 +863,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 #endif // _DEBUG)
 
 		break;
-	case CTT_TOP:
+	case CFT_TOP:
 		idxSrc[2] = dstDims[2] - 2;
 		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
 			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
@@ -822,6 +881,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				newCorners[4][2] = newCorners[5][2] = newCorners[6][2] = newCorners[7][2] = params.zMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
@@ -831,7 +891,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 #endif // _DEBUG)
 
 		break;
-	case CTT_BOTTOM:
+	case CFT_BOTTOM:
 		idxSrc[2] = 1;
 		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
 			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
@@ -849,6 +909,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 				newCorners[0][2] = newCorners[1][2] = newCorners[2][2] = newCorners[3][2] = params.zMin;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
+				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
@@ -862,8 +923,49 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeTopolType face)
 		break;
 	}
 
+	resetBlockIndices_unsafe();
+	updateAdHocBlockSearchTree(adHocBlocks);
 }
 
+void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks)
+{
+	if (_adHocBlockTree.getBounds().empty()) {
+		auto volBox = getVolumeBBox();
+		volBox.growPercent(0.01);
+		_adHocBlockTree.reset(volBox);
+	}
+
+	for (const auto& pBlock : adHocBlocks) {
+		const auto& blkIdx = pBlock->getBlockIdx();
+		const auto& bBox = pBlock->getBBox();
+
+		_adHocBlockTree.add(bBox, pBlock);
+
+
+		const auto& pts = pBlock->getCornerPts();
+		Vector3d ctr(0, 0, 0);
+		for (int i = 0; i < 8; i++)
+			ctr += pts[i];
+		ctr /= 8;
+		auto tstIdx = determineOwnerBlockIdx(ctr); // This uses the newly added tree entry
+		assert(tstIdx == blkIdx);
+	}
+
+	for (size_t linIdx = 0; linIdx < _blocks.size(); linIdx++) {
+		const auto& pBlk = _blocks[linIdx];
+		const auto& pts = pBlk->getCornerPts();
+		Vector3d ctr(0, 0, 0);
+		for (int i = 0; i < 8; i++)
+			ctr += pts[i];
+		ctr /= 8;
+		if (pBlk->getBlockIdx() == Index3D(6, 0, 0)) {
+			int dbgBreak = 1;
+		}
+		auto blkIdx = determineOwnerBlockIdx(ctr);
+		cout << blkIdx << "\n";
+		assert(blkIdx == pBlk->getBlockIdx());
+	}
+}
 void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
@@ -886,7 +988,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 	triMeshes[FT_MODEL_BOUNDARY].resize(numThreads);
 	triMeshes[FT_BLOCK_BOUNDARY].resize(numThreads);
 	triMeshes[FT_ALL].resize(numThreads);
-	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& blockPtr)->bool {
+	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
 		if (blockPtr) {
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
 			Index3D blkIdx = blockPtr->getBlockIdx();
@@ -939,7 +1041,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 	faceEdges[FT_BLOCK_BOUNDARY].resize(numThreads);
 	faceEdges[FT_ALL].resize(numThreads);
 
-	runThreadPool([this, &faceEdges, &min, &max](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& blockPtr)->bool {
+	runThreadPool([this, &faceEdges, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
 		if (blockPtr) {
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
 			Index3D blkIdx = blockPtr->getBlockIdx();
@@ -1166,15 +1268,18 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 bool Volume::write(ostream& out) const
 {
-	uint8_t version = 1;
+	uint8_t version = 2;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
 	_volDim.write(out);
+	_modelDim.write(out);
+	_modelDimOrigin.write(out);
 
 	_modelBundingBox.write(out);
 
-	IoUtil::writeVector3(out, _modelCornerPts);
+	const vector<Vector3d>& cPts = _modelCornerPts;
+	IoUtil::writeVector3(out, cPts);
 
 	size_t num = _blocks.size();
 	out.write((char*)&num, sizeof(num));
@@ -1201,11 +1306,17 @@ bool Volume::read(istream& in)
 		Vector3d tmpV;
 		readVector3(in, tmpV);
 		readVector3(in, tmpV);
+	} else if (version >= 2) {
+		_modelDim.read(in);
+		_modelDimOrigin.read(in);
 	}
 
 	_modelBundingBox.read(in);
 
-	IoUtil::readVector3(in, _modelCornerPts);
+	vector<Vector3d> cPts;
+	IoUtil::readVector3(in, cPts);
+	_modelCornerPts = cPts;
+
 	size_t num;
 	in.read((char*)&num, sizeof(num));
 	if (num > 0) {
@@ -1688,7 +1799,7 @@ bool Volume::verifyTopology(bool multiCore) const
 {
 	bool result = true;
 
-	runThreadPool([this, &result](size_t threadNum, size_t linearIdx, const std::shared_ptr<Block>& pBlk)->bool {
+	runThreadPool([this, &result](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (pBlk)
 			if (!pBlk->verifyTopology()) {
 				result = false;

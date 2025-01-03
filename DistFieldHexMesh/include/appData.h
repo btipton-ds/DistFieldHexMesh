@@ -102,11 +102,12 @@ private:
     void makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>
-    void makeSuroundingBlocks(Vector3d cPts[8], const L& fLambda) const;
+    void makeSurroundingBlocks(Vector3d cPts[8], const L& fLambda) const;
+    void gradeSurroundingBlocks() const;
     template<class L>
-    void makeGradedHexOnFace(Vector3d cPts[8], CubeTopolType dir, const L& fLambda) const;
+    void makeGradedHexOnFace(Vector3d cPts[8], CubeFaceType dir, const L& fLambda) const;
     template<class L>
-    void makeGradedHexOnEdge(Vector3d cPts[8], CubeTopolType dir0, CubeTopolType dir1, const L& fLambda) const;
+    void makeGradedHexOnEdge(Vector3d cPts[8], CubeFaceType dir0, CubeFaceType dir1, const L& fLambda) const;
     template<class L>
     void makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const;
     void readDHFM(const std::wstring& path, const std::wstring& filename);

@@ -49,14 +49,14 @@ enum TopolgyState
 	TS_REFERENCE,		// Was intact, now there is a split version and this is for reference
 };
 
-enum CubeTopolType {
-	CTT_UNDEFINED,
-	CTT_BOTTOM,
-	CTT_TOP,
-	CTT_LEFT,
-	CTT_RIGHT,
-	CTT_FRONT,
-	CTT_BACK,
+enum CubeFaceType {
+	CFT_UNDEFINED,
+	CFT_BOTTOM,
+	CFT_TOP,
+	CFT_LEFT,
+	CFT_RIGHT,
+	CFT_FRONT,
+	CFT_BACK,
 
 };
 
