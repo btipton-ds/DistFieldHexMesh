@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_vector3.h>
 #include <tm_ioUtil.h>
 #include <index3D.h>
+#include <pool_map.h>
 #include <patient_lock_guard.h>
 
 namespace DFHM {
@@ -90,16 +91,23 @@ public:
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 	const Index3DId& getId() const;
 
-protected:
-	Index3DId _thisId;
+	virtual void remapId(const std::map<Index3D, Index3D>& idRemap);
+	virtual bool verifyIndices(const Index3D& idx) const;
 
+protected:
 	bool isOwnerBeingDestroyed() const;
+
+	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::set<Index3DId>& vals);
+	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::vector<Index3DId>& vals);
+	template<class T>
+	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::map<T, Index3DId>& vals);
+
+	Index3DId _thisId;
 
 private:
 	template<class T>
 	friend class ObjectPool;
 	ObjectPoolOwner* _pPoolOwner = nullptr;
-
 };
 
 template<class T>

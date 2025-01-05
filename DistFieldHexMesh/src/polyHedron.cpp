@@ -134,7 +134,7 @@ size_t Polyhedron::getNumSplitFaces() const
 MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 {
 	MTC::vector<size_t> result;
-
+#if 0
 	auto bbox = getBoundingBox();
 	auto pMesh = getBlockPtr()->getModelMesh();
 	const auto& allVerts = getBlockPtr()->getVolume()->getSharpVertIndices();
@@ -144,7 +144,7 @@ MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 			result.push_back(vertIdx);
 		}
 	}
-
+#endif
 	return result;
 }
 
@@ -154,13 +154,14 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFD
 
 	result.clear();
 
+#if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
 	for (size_t edgeIdx : _edgeIndices) {
 		if (pMesh->isEdgeSharp(edgeIdx, sinEdgeAngle)) {
 			result.push_back(edgeIdx);
 		}
 	}
-
+#endif
 	return !result.empty();
 }
 
@@ -196,6 +197,13 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 {
 	assert(!"Polyhdra aren't sorted. Should never call this.");
 	return false;
+}
+
+void Polyhedron::remapId(const std::map<Index3D, Index3D>& idRemap)
+{
+	ObjectPoolOwnerUser::remapId(idRemap);
+
+	remap(idRemap, _faceIds);
 }
 
 void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
@@ -473,6 +481,7 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::intersectsModel() const
 {
+#if 0
 	if (_intersectsModel == IS_UNKNOWN) {
 		CBoundingBox3Dd bbox = getBoundingBox();
 		auto pTriMesh = getBlockPtr()->getModelMesh();
@@ -509,14 +518,14 @@ bool Polyhedron::intersectsModel() const
 			}
 		}
 	}
-
+#endif
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
 bool Polyhedron::intersectsModelPrecise() const
 {
 	assert(isConvex());
-
+#if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
 	vector<size_t> triEntries;
@@ -552,7 +561,7 @@ bool Polyhedron::intersectsModelPrecise() const
 				return true;
 		}
 	}
-
+#endif
 	return false;
 }
 
@@ -589,7 +598,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 {
 	if (_sharpEdgesIntersectModel == IS_FALSE || _edgeIndices.empty())
 		return false;
-
+#if 0
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
 	MTC::vector<size_t> sharpEdges;
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -620,7 +629,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 		if (_sharpEdgesIntersectModel == IS_TRUE)
 			return true;
 	}
-
+#endif
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
@@ -653,7 +662,7 @@ bool Polyhedron::setNeedsCleanFaces()
 bool Polyhedron::containsSharps() const
 {
 	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
-
+#if 0
 	auto bbox = getBoundingBox();
 	auto pMesh = getBlockPtr()->getModelMesh();
 	for (size_t vertIdx : vertIndices) {
@@ -665,7 +674,7 @@ bool Polyhedron::containsSharps() const
 	vector<size_t> triIndices;
 	if (pMesh->processFoundTris(_triIndices, bbox, triIndices) > 0) {
 	}
-
+#endif
 	return false;
 }
 
@@ -993,9 +1002,11 @@ void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
 	_edgeIndices.clear();
 	if (!indices.empty()) {
+#if 0
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
 		pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
+#endif
 	}
 }
 
@@ -1003,9 +1014,11 @@ void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
 	_triIndices.clear();
 	if (!indices.empty()) {
+#if 0
 		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
 		pTriMesh->processFoundTris(indices, bbox, _triIndices);
+#endif
 	}
 }
 
@@ -1052,6 +1065,7 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 {
 	if (!_needsCurvatureCheck)
 		return 0;
+#if 0
 	_needsCurvatureCheck = false;
 
 	if (_triIndices.empty())
@@ -1104,12 +1118,13 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		}
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
 double Polyhedron::minGap() const
 {
+#if 0
 	if (_cachedMinGap < 0) {
 		_cachedMinGap = DBL_MAX;
 
@@ -1124,7 +1139,7 @@ double Polyhedron::minGap() const
 			}
 		}
 	}
-
+#endif
 	return _cachedMinGap;
 }
 

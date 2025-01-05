@@ -58,18 +58,27 @@ Volume::Volume(const Index3D& dims)
 	: _volDim(dims)
 	, _modelDim(dims)
 	, _modelDimOrigin(0, 0, 0)
+	, _threadPool(MultiCore::getNumCores())
 {
-	_sharpAngleRad = 30.0 / 180.0 * M_PI;
 }
 
 Volume::Volume(const Volume& src)
 	: _volDim(src._volDim)
 	, _modelDim(src._modelDim)
 	, _modelDimOrigin(src._modelDimOrigin)
+	, _pAppData(src._pAppData)
+	, _modelBundingBox(src._modelBundingBox)
+	, _modelCornerPts(src._modelCornerPts)
+	, _volCornerPts(src._volCornerPts)
 	, _blocks(src._blocks)
-	, _threadPool(MultiCore::getNumCores())
 	, _adHocBlockTree(src._adHocBlockTree)
+	, _sharpEdgeIndices(src._sharpEdgeIndices)
+	, _sharpVertIndices(src._sharpVertIndices)
+	, _hasSharpVertPlane(src._hasSharpVertPlane)
+	, _sharpVertPlane(src._sharpVertPlane)
+	, _threadPool(MultiCore::getNumCores())
 {
+
 }
 
 Volume::~Volume()
@@ -94,7 +103,6 @@ void Volume::setVolDim(const Index3D& blockSize, bool resetBoundaryDim)
 	}
 
 	size_t numBlocks = _volDim[0] * _volDim[1] * _volDim[2];
-	_blocks.clear();
 	_blocks.resize(numBlocks);
 }
 
@@ -113,31 +121,35 @@ void Volume::setVolCornerPts(const std::vector<Vector3d>& pts)
 	_volCornerPts = pts;
 }
 
-Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const
+Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx, const Index3D& volDim)
 {
 	Index3D result;
 	size_t temp = linearIdx;
-	const auto& dim = volDim();
 
-	size_t denom = dim[0] * dim[1];
+	size_t denom = volDim[0] * volDim[1];
 	result[2] = (Index3DBaseType)(temp / denom);
 	temp = temp % denom;
 
-	denom = dim[0];
+	denom = volDim[0];
 
 	result[1] = (Index3DBaseType)(temp / denom);
 	temp = temp % denom;
 	result[0] = (Index3DBaseType)temp;
 
-	if (calLinearBlockIndex(result) != linearIdx) {
+	if (calLinearBlockIndex(result, volDim) != linearIdx) {
 		throw runtime_error("calBlockIndexFromLinearIndex failed");
 	}
 
 	return result;
 }
 
+Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx) const {
+	return calBlockIndexFromLinearIndex(linearIdx, _volDim);
+}
+
 void Volume::findFeatures()
 {
+#if 0
 	// This function is already running on multiple cores, DO NOT calculate centroids or normals using muliple cores.
 	_pModelTriMesh->buildCentroids(false);
 	_pModelTriMesh->buildNormals(false);
@@ -152,10 +164,12 @@ void Volume::findFeatures()
 	double err;
 	_hasSharpVertPlane = bestFitPlane(sharpPoints, _sharpVertPlane, err) && err < Tolerance::sameDistTol();
 	findSharpEdgeEdges();
+#endif
 }
 
 void Volume::findSharpEdgeEdges()
 {
+#if 0
 	const double sinSharpAngle = sin(getSharpAngleRad());
 	for (size_t edgeIdx = 0; edgeIdx < _pModelTriMesh->numEdges(); edgeIdx++) {
 		const auto& edge = _pModelTriMesh->getEdge(edgeIdx);
@@ -164,6 +178,7 @@ void Volume::findSharpEdgeEdges()
 			_sharpEdgeIndices.insert(edgeIdx);
 		}
 	}
+#endif
 }
 
 void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices)
@@ -292,14 +307,14 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	return result;
 }
 
-shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx)
+shared_ptr<Block> Volume::createBlock(const Index3D& blockIdx, bool forReading)
 {
 	size_t idx = calLinearBlockIndex(blockIdx);
 	auto pBlock = _blocks[idx];
 	if (pBlock)
 		return pBlock;
 
-	return make_shared<Block>(this, blockIdx, _modelCornerPts);
+	return make_shared<Block>(this, blockIdx, _modelCornerPts, forReading);
 }
 
 BlockPtr Volume::createBlock(size_t linearIdx)
@@ -361,7 +376,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 		for (blkIdx[1] = 0; blkIdx[1] < dim[1]; blkIdx[1]++) {
 			for (blkIdx[2] = 0; blkIdx[2] < dim[2]; blkIdx[2]++) {
 				auto linearIdx = calLinearBlockIndex(blkIdx);
-				_blocks[linearIdx] = createBlock(blkIdx);
+				_blocks[linearIdx] = createBlock(blkIdx, false);
 			}
 		}
 	}
@@ -490,24 +505,11 @@ void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& param
 #endif
 }
 
-void Volume::resetBlockIndices_unsafe()
-{
-	Index3D idxDst;
-	for (idxDst[0] = 0; idxDst[0] < _volDim[0]; idxDst[0]++) {
-		for (idxDst[1] = 0; idxDst[1] < _volDim[1]; idxDst[1]++) {
-			for (idxDst[2] = 0; idxDst[2] < _volDim[2]; idxDst[2]++) {
-				auto pBlk = getBlockPtr(idxDst);
-				pBlk->resetBlockIndex_unsafe(idxDst);
-			}
-		}
-	}
-}
-
 void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
 {
 	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-		_blocks[linearIdx] = createBlock(blockIdx);
+		_blocks[linearIdx] = createBlock(blockIdx, false);
 		return true;
 	}, multiCore);
 
@@ -687,9 +689,13 @@ void Volume::dumpOpenCells(bool multiCore) const
 
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 {
-	shared_ptr<Volume> pSrc = make_shared<Volume>(*this);
-	auto srcDims = pSrc->volDim();
+	size_t linIdxSrc, linIdxDst;
+	Index3D idxSrc, idxDst;
+	map<Index3D, Index3D> idRemap;
+
+	auto srcDims = volDim();
 	auto dstDims = srcDims;
+	const size_t srcSize = _blocks.size();
 
 	switch (face) {
 	case CFT_FRONT:
@@ -718,40 +724,41 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 	}
 
 	setVolDim(dstDims, false);
-	Index3D idxSrc, idxDst;
-	for (idxSrc[0] = 0; idxSrc[0] < srcDims[0]; idxSrc[0]++) {
-		for (idxSrc[1] = 0; idxSrc[1] < srcDims[1]; idxSrc[1]++) {
-			for (idxSrc[2] = 0; idxSrc[2] < srcDims[2]; idxSrc[2]++) {
-				idxDst = idxSrc;
-				switch (face) {
-				case CFT_BACK:
-					idxDst[0] += 1;
-					break;
-				case CFT_LEFT:
-					idxDst[1] += 1;
-					break;
-				case CFT_BOTTOM:
-					idxDst[2] += 1;
-					break;
-				default:
-					break;
-				}
 
-				size_t linIdxSrc = pSrc->calLinearBlockIndex(idxSrc);
-				size_t linIdxDst = calLinearBlockIndex(idxDst);
+	for (size_t i = srcSize - 1; i != -1; i--) {
+		Index3D idxSrc = calBlockIndexFromLinearIndex(i, srcDims);
+		idxDst = idxSrc;
+		switch (face) {
+		case CFT_BACK:
+			idxDst[0] += 1;
+			break;
+		case CFT_LEFT:
+			idxDst[1] += 1;
+			break;
+		case CFT_BOTTOM:
+			idxDst[2] += 1;
+			break;
+		default:
+			break;
+		}
 
-				auto pBlk = pSrc->_blocks[linIdxSrc];
-				_blocks[linIdxDst] = pBlk;
-			}
+		linIdxSrc = calLinearBlockIndex(idxSrc, srcDims);
+		linIdxDst = calLinearBlockIndex(idxDst);
+		idRemap[idxSrc] = idxDst;
+
+		_blocks[linIdxDst] = _blocks[linIdxSrc];
+		if (linIdxDst != linIdxSrc) {
+			_blocks[linIdxSrc] = nullptr;
 		}
 	}
 
-	// Get rid of the copy
-	pSrc = nullptr;
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		if (_blocks[i])
+			_blocks[i]->remapBlockIndices(idRemap);
+	}
 
 	vector<BlockPtr> adHocBlocks;
 	Vector3d newCorners[8];
-	size_t linIdxSrc, linIdxDst;
 	switch (face) {
 	case CFT_FRONT:
 		idxSrc[0] = dstDims[0] - 2;
@@ -923,7 +930,12 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 		break;
 	}
 
-	resetBlockIndices_unsafe();
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		const auto& pBlk = _blocks[i];
+		Index3D blkIdx = calBlockIndexFromLinearIndex(i);
+		assert(pBlk->verifyIndices(blkIdx));
+	}
+
 	updateAdHocBlockSearchTree(adHocBlocks);
 }
 
@@ -1119,7 +1131,7 @@ void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool
 
 void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
 {
-	auto pMesh = getModelMesh();
+#if 0
 	map<Index3DId, set<Index3DId>> cellToFaceIdsMap;
 	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
@@ -1264,14 +1276,14 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			}
 		}
 	}
+#endif
 }
 
 bool Volume::write(ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 3;
 	out.write((char*)&version, sizeof(version));
 
-	out.write((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
 	_volDim.write(out);
 	_modelDim.write(out);
 	_modelDimOrigin.write(out);
@@ -1300,7 +1312,10 @@ bool Volume::read(istream& in)
 	uint8_t version = -1;
 	in.read((char*)&version, sizeof(version));
 
-	in.read((char*)&_sharpAngleRad, sizeof(_sharpAngleRad));
+	if (version < 3) {
+		double oldAngle;
+		in.read((char*)&oldAngle, sizeof(oldAngle));
+	}
 	_volDim.read(in);
 	if (version < 1) {
 		Vector3d tmpV;
@@ -1328,7 +1343,7 @@ bool Volume::read(istream& in)
 				continue;
 
 			Index3D blockIdx = calBlockIndexFromLinearIndex(i);
-			auto pBlock = createBlock(blockIdx);
+			auto pBlock = createBlock(blockIdx, true);
 			_blocks[i] = pBlock;
 			pBlock->_pVol = this;
 			pBlock->read(in);

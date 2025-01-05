@@ -350,7 +350,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     vector<CMeshPtr> meshes;
-    for (const auto& md : _pAppData->getMeshData()) {
+    for (const auto& md : *_pAppData->getMeshData()) {
         auto pMeshData = md.second;
         if (pMeshData->isActive() && !pMeshData->isReference()) {
             auto pMesh = pMeshData->getMesh();
@@ -824,7 +824,7 @@ void GraphicsCanvas::changeViewElements()
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
     const auto& meshData = _pAppData->getMeshData();
-    for (auto& pair : meshData) {
+    for (auto& pair : *meshData) {
         auto pData = pair.second;
         _pDrawModelMesh->changeViewElements(pData, _viewOptions);
     }

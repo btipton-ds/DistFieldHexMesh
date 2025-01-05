@@ -70,12 +70,19 @@ namespace
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
+    _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
     _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
-    _pHexMesh = make_shared<CMesh>();
 }
 
 AppData::~AppData()
 {
+}
+
+void AppData::preDestroy()
+{
+    // Clear these to avoid infinite loop on shared_ptr destruction. Ugly, but gets around hang on exit.
+    _pVolume = nullptr;
+    _pModelMeshData = nullptr;
 }
 
 bool AppData::doOpen()
@@ -155,7 +162,7 @@ bool AppData::doImportMesh()
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
-        _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
+        _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
         makeModelTess();
         return true;
@@ -172,7 +179,7 @@ void AppData::makeModelTess()
 
     pVBOs->_edgeVBO.beginEdgeTesselation();
     pVBOs->_faceVBO.beginFaceTesselation();
-    for (auto& pair : _meshData) {
+    for (auto& pair : *_pModelMeshData) {
         auto pData = pair.second;
         pData->makeOGLTess(pDrawModelMesh);
     }
@@ -207,11 +214,11 @@ void AppData::writeDHFM() const
     out.write((char*)&version, sizeof(version));
 
     _params.write(out);
-    bool hasBaseMesh = _meshData.find(_gBaseVolumeName) != _meshData.end();
+    bool hasBaseMesh = _pModelMeshData->find(_gBaseVolumeName) != _pModelMeshData->end();
     out.write((char*)&hasBaseMesh, sizeof(hasBaseMesh));
 
     size_t numMeshes = 0;
-    for (const auto& pair : _meshData) {
+    for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
         if (!pData->isReference())
             numMeshes++;
@@ -219,7 +226,7 @@ void AppData::writeDHFM() const
 
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    for (const auto& pair : _meshData) {
+    for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
         if (!pData->isReference())
             pData->write(out);
@@ -231,7 +238,7 @@ void AppData::writeDHFM() const
         _pVolume->write(out);    
 }
 
-void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
+void AppData::readDHFM(const wstring& path, const wstring& filename)
 {
     bool hasBaseMesh = false;
     _dhfmFilename = path + filename;
@@ -248,13 +255,13 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
             in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
         }
 
-        size_t numMeshes = _meshData.size();
+        size_t numMeshes = _pModelMeshData->size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
             auto pData = make_shared<MeshData>(this, _pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
             pData->read(in);
-            _meshData.insert(make_pair(pData->getName(), pData));
+            _pModelMeshData->insert(make_pair(pData->getName(), pData));
         }
 
         if (hasBaseMesh)
@@ -267,7 +274,7 @@ void AppData::readDHFM(const std::wstring& path, const std::wstring& filename)
     in.read((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume) {
         _pVolume = make_shared<Volume>();
-        _pVolume->setModelMesh(_pHexMesh);
+        _pVolume->setAppData(shared_from_this());
 
         _pVolume->read(in);
         updateTessellation();
@@ -421,7 +428,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pair : _meshData) {
+    for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
         if (!pData->isReference())
             result.merge(pData->getMesh()->getBBox());
@@ -441,7 +448,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 CBoundingBox3Dd AppData::getMeshBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pair : _meshData) {
+    for (const auto& pair : *_pModelMeshData) {
         const auto pData = pair.second;
         if (!pData->isReference() && pData->isActive())
             result.merge(pData->getMesh()->getBBox());
@@ -567,7 +574,7 @@ void AppData::doCreateBaseVolumePreview()
 
     Vector3d cubePts[8];
     CBoundingBox3Dd bbox, volBox;
-    makeCubePoints(cubePts, volBox);
+    makeModelCubePoints(cubePts, volBox);
 
     for (size_t i = 0; i < 8; i++) {
         bbox.merge(cubePts[i]);
@@ -590,14 +597,14 @@ void AppData::doCreateBaseVolumePreview()
     MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
     pMeshData->setReference(true);
 
-    _meshData.insert(make_pair(pMeshData->getName(), pMeshData));
+    _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
     _pMainFrame->refreshObjectTree();
     makeModelTess();
     pCanvas->changeViewElements();
 }
 
-void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
+void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 {
     auto bbox = getMeshBoundingBox();
     Vector3d ctr = bbox.getMin() + bbox.range() * 0.5;
@@ -616,7 +623,7 @@ void AppData::makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 
     CBoundingBox3Dd bboxOriented;
 
-    for (const auto& pair : _meshData) {
+    for (const auto& pair : *_pModelMeshData) {
         const auto pMesh = pair.second->getMesh();
         for (size_t i = 0; i < pMesh->numVertices(); i++) {
             const Vector3d& pt = pMesh->getVert(i)._pt;
@@ -724,7 +731,7 @@ void AppData::makeSurroundingBlocks(Vector3d cPts[8], const L& f) const
 {
     if (!_params.symXAxis)
         _pVolume->insertBlocks(_params, CFT_BACK);
-
+#if 1
     _pVolume->insertBlocks(_params, CFT_FRONT);
 
     if (!_params.symYAxis)
@@ -736,7 +743,7 @@ void AppData::makeSurroundingBlocks(Vector3d cPts[8], const L& f) const
         _pVolume->insertBlocks(_params, CFT_BOTTOM);
 
     _pVolume->insertBlocks(_params, CFT_TOP);
-
+#endif
 
 #if 0
     makeGradedHexOnFace(cPts, CFT_BOTTOM, f);
@@ -773,6 +780,7 @@ void AppData::gradeSurroundingBlocks() const
     const auto& dims = _pVolume->volDim();
     CubeFaceType dir0, dir1, dir2;
 
+#if 1
     for (idx[0] = 0; idx[0] < dims[0]; idx[0]++) {
         for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
             for (int j = 0; j < 2; j++) {
@@ -783,8 +791,10 @@ void AppData::gradeSurroundingBlocks() const
                 if (j == 0) {
                     idx[2] = 0;
                     dir0 = CFT_BOTTOM;
-                    divs[2] = _params.zMinDivs;
-                    grading[2] = 1 / _params.zMinGrading;
+                    if (!_params.symZAxis) {
+                        divs[2] = _params.zMinDivs;
+                        grading[2] = 1 / _params.zMinGrading;
+                    }
                 } else {
                     idx[2] = dims[2] - 1;
                     dir0 = CFT_TOP;
@@ -792,7 +802,7 @@ void AppData::gradeSurroundingBlocks() const
                     grading[2] = _params.zMaxGrading;
                 }
 
-                if (idx[0] == 0) {
+                if (idx[0] == 0 && !_params.symXAxis) {
                     dir1 = CFT_BACK;
                     divs[0] = _params.xMinDivs;
                     grading[0] = 1 / _params.xMinGrading;
@@ -802,7 +812,7 @@ void AppData::gradeSurroundingBlocks() const
                     grading[0] = _params.xMaxGrading;
                 }
 
-                if (idx[1] == 0) {
+                if (idx[1] == 0 && !_params.symYAxis) {
                     divs[1] = _params.yMinDivs;
                     grading[1] = 1 / _params.yMinGrading;
 
@@ -826,6 +836,7 @@ void AppData::gradeSurroundingBlocks() const
             }
         }
     }
+#endif
 }
 
 template<class L>
@@ -1272,11 +1283,10 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
 
 void AppData::doRemoveBaseVolumePreview()
 {
-    auto iter = _meshData.find(_gBaseVolumeName);
-    if (iter != _meshData.end()) {
+    auto iter = _pModelMeshData->find(_gBaseVolumeName);
+    if (iter != _pModelMeshData->end()) {
         auto pData = iter->second;
-        _meshData.erase(iter);
-
+        _pModelMeshData->erase(iter);
     }
 
     _pMainFrame->refreshObjectTree();
@@ -1363,6 +1373,7 @@ void AppData::doCreateBaseVolume()
     };
 
     _pVolume = make_shared<Volume>(_params.volDivs);
+    _pVolume->setAppData(shared_from_this());
 
     _pVolume->setVolCornerPts(_params.getVolBounds());
     auto pCanvas = _pMainFrame->getCanvas();
@@ -1372,10 +1383,10 @@ void AppData::doCreateBaseVolume()
 #if 1
     Vector3d cubePts[8];
     CBoundingBox3Dd volBox;
-    makeCubePoints(cubePts, volBox);
+    makeModelCubePoints(cubePts, volBox);
     Index3D::setBlockDim(1);
-    _pVolume->buildBlocks(_params, cubePts, volBox, false);
 
+    _pVolume->buildBlocks(_params, cubePts, volBox, false);
     makeSurroundingBlocks(cubePts, makeGradedBlock);
     gradeSurroundingBlocks();
 
@@ -1388,7 +1399,7 @@ void AppData::doRemoveBaseVolume()
 
 bool AppData::doesBaseMeshExist() const
 {
-    return _meshData.find(_gBaseVolumeName) != _meshData.end();
+    return _pModelMeshData->find(_gBaseVolumeName) != _pModelMeshData->end();
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

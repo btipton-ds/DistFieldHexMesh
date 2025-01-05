@@ -55,10 +55,11 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
 
-class AppData {
+class AppData : public std::enable_shared_from_this<AppData> {
 public:
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
+    void preDestroy();
 
     bool doOpen();
     bool doImportMesh();
@@ -89,7 +90,7 @@ public:
     BuildCFDParams& getParams();
     const BuildCFDParams& getParams() const;
 
-    const std::map<std::wstring, MeshDataPtr>& getMeshData() const;
+    const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
     bool doesBaseMeshExist() const;
 
 private:
@@ -99,7 +100,7 @@ private:
     void updateTessellation();
     void addHexFacesToScene(const Index3D& min, const Index3D& max, bool multiCore);
     void addHexEdgesToScene(const Index3D& min, const Index3D& max, bool multiCore);
-    void makeCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
+    void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>
     void makeSurroundingBlocks(Vector3d cPts[8], const L& fLambda) const;
@@ -115,9 +116,8 @@ private:
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    CMeshPtr _pHexMesh;
     TriMesh::CMeshRepoPtr _pModelMeshRepo;
-    std::map<std::wstring, MeshDataPtr> _meshData;
+    std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
     VolumePtr _pVolume;
     const OGL::IndicesPtr 
         _modelFaceTess, 
@@ -143,9 +143,9 @@ inline const BuildCFDParams& AppData::getParams() const
     return _params;
 }
 
-inline const std::map<std::wstring, MeshDataPtr>& AppData::getMeshData() const
+inline const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> AppData::getMeshData() const
 {
-    return _meshData;
+    return _pModelMeshData;
 }
 
 

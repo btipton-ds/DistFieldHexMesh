@@ -76,7 +76,7 @@ template<class T>
 inline UnalignedBBox<T>::UnalignedBBox(const std::vector<Vector3<T>>& corners)
 {
 	assert(corners.size() == 8);
-	_corners->resize(8);
+	_corners.resize(8);
 	for (size_t i = 0; i < 8; i++)
 		_corners[i] = corners[i];
 }
@@ -85,7 +85,7 @@ template<class T>
 inline UnalignedBBox<T>::UnalignedBBox(const Vector3<T> corners[8])
 {
 	assert(corners.size() == 8);
-	_corners->resize(8);
+	_corners.resize(8);
 	for (int i = 0; i < 8; i++)
 		_corners[i] = corners[i];
 }
@@ -93,7 +93,7 @@ inline UnalignedBBox<T>::UnalignedBBox(const Vector3<T> corners[8])
 template<class T>
 inline UnalignedBBox<T>::UnalignedBBox(const UnalignedBBox& src)
 {
-	_corners->resize(8);
+	_corners.resize(8);
 	for (int i = 0; i < 8; i++)
 		_corners[i] = src._corners[i];
 }
@@ -101,7 +101,7 @@ inline UnalignedBBox<T>::UnalignedBBox(const UnalignedBBox& src)
 template<class T>
 inline UnalignedBBox<T>::UnalignedBBox(const CBoundingBox3D<T>& src)
 {
-	_corners->resize(8);
+	_corners.resize(8);
 	const auto& min = src.getMin();
 	const auto& max = src.getMax();
 	_corners[0] = min;

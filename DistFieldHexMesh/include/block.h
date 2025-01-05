@@ -86,8 +86,8 @@ public:
 	using TriMeshVector = std::vector<CMeshPtr>;
 	using TriMeshGroup = std::vector<TriMeshVector>;
 
-	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts);
-	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8]);
+	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts, bool forReading = false);
+	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading = false);
 	~Block();
 
 	Volume* getVolume() override;
@@ -113,6 +113,7 @@ public:
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool verifyTopology() const;
+	bool verifyIndices(const Index3D& idx) const;
 	void createBlockCells(TopolgyState refState);
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
@@ -120,8 +121,7 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	const CMeshPtr& getModelMesh() const;
-	const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getModelMeshData() const;
+	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
 	void getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh);
 	void makeEdgeSets(FaceType meshType, glPointsPtr& points);
 
@@ -221,6 +221,9 @@ private:
 		ModelData(Block* pBlk, const ModelData& src);
 		void clear();
 
+		void remapIds(const std::map<Index3D, Index3D>& idRemap);
+		bool verifyIndices(const Index3D& idx) const;
+
 		ObjectPool<Polygon> _polygons;
 		ObjectPool<Polyhedron> _polyhedra;
 	};
@@ -229,7 +232,7 @@ private:
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
 
-	void resetBlockIndex_unsafe(const Index3D& idx);
+	void remapBlockIndices(const std::map<Index3D, Index3D>& idRemap);
 	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
@@ -303,12 +306,6 @@ inline size_t Block::GlPoints::getId() const
 inline const UnalignedBBoxd& Block::getUnalignedBBox() const
 {
 	return _corners;
-}
-
-inline void Block::resetBlockIndex_unsafe(const Index3D& idx)
-{
-	if (_blockIdx != idx)
-		_blockIdx = idx;
 }
 
 inline size_t Block::GlPoints::changeNumber() const

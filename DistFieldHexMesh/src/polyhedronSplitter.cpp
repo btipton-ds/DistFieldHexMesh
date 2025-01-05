@@ -299,11 +299,13 @@ bool PolyhedronSplitter::createAllModelMeshFaces(const std::vector<TriMesh::Patc
 
 Vector3d PolyhedronSplitter::calModelFaceNormal(const std::vector<size_t>& modelFaceTris) const
 {
+	Vector3d normal(-1, 0, 0);
+#if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
-	Vector3d normal(0, 0, 0);
 	for (size_t triIdx : modelFaceTris)
 		normal += pMesh->triUnitNormal(triIdx);
 	normal.normalize();
+#endif
 	return normal;
 }
 
@@ -512,6 +514,7 @@ bool PolyhedronSplitter::cutWithModelMesh(const BuildCFDParams& params)
 bool PolyhedronSplitter::createModelMeshPatches(const BuildCFDParams& params, std::vector<TriMesh::PatchPtr>& patches,
 	std::vector<std::vector<std::vector<size_t>>>& allChains) const
 {
+#if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
 	std::vector<size_t> tris;
 	MTC::set<Index3DId> faceIds;
@@ -535,7 +538,7 @@ bool PolyhedronSplitter::createModelMeshPatches(const BuildCFDParams& params, st
 		}
 		allChains.push_back(faceChains);
 	}
-
+#endif
 	return true;
 }
 
@@ -969,6 +972,8 @@ bool PolyhedronSplitter::cutWithPatches(const Polyhedron& realCell, const std::v
 void PolyhedronSplitter::createFaceEdgesFromMeshFace(const Polyhedron& realCell, const std::vector<size_t>& modelFaceTris, const BuildCFDParams& params,
 	MTC::set<Edge>& faceEdges) const
 {
+#if 0
+
 	const double sinEdgeAngle = sin(params.getSharpAngleRadians());
 	auto pMesh = getBlockPtr()->getModelMesh();
 
@@ -1030,11 +1035,13 @@ void PolyhedronSplitter::createFaceEdgesFromMeshFace(const Polyhedron& realCell,
 			}
 			});
 	}
-
+#endif
 }
 
 void PolyhedronSplitter::createPierceEdges(const Polyhedron& realCell, const std::vector<size_t>& sharpEdges, MTC::set<Edge>& pierceEdges) const
 {
+#if 0
+
 	auto pMesh = _pBlock->getModelMesh();
 	const auto& faceIds = realCell.getFaceIds();
 	MTC::set<Index3DId> intVerts;
@@ -1060,11 +1067,12 @@ void PolyhedronSplitter::createPierceEdges(const Polyhedron& realCell, const std
 		pierceEdges.insert(edge);
 	}
 	
-
+#endif
 }
 
 bool PolyhedronSplitter::findPiercePoint(const Polygon& face, const std::vector<size_t>& pierceChain, Vector3d& pt) const
 {
+#if 0
 	auto pMesh = _pBlock->getModelMesh();
 
 	for (size_t edgeIdx : pierceChain) {
@@ -1076,7 +1084,7 @@ bool PolyhedronSplitter::findPiercePoint(const Polygon& face, const std::vector<
 			return true;
 		}
 	}
-
+#endif
 	return false;
 }
 

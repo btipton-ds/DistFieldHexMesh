@@ -48,6 +48,10 @@ namespace TriMesh {
 namespace DFHM {
 
 struct BuildCFDParams;
+
+class AppData;
+using AppDataPtr = std::shared_ptr<AppData>;
+
 class Block;
 using BlockPtr = std::shared_ptr<Block>;
 
@@ -76,13 +80,14 @@ public:
 	BlockPtr& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 
+	static size_t calLinearBlockIndex(const Index3D& blockIdx, const Index3D& volDim);
 	size_t calLinearBlockIndex(const Index3D& blockIdx) const;
+
+	static Index3D calBlockIndexFromLinearIndex(size_t linearIdx, const Index3D& volDim);
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	void setModelMesh(const CMeshPtr& pMesh);
-	const CMeshPtr& getModelMesh() const;
-	void setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData);
-	const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& getModelMeshData() const;
+	void setAppData(const AppDataPtr& pAppData);
+	const AppDataPtr& getAppData() const;
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
 
@@ -95,7 +100,6 @@ public:
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
-	double getSharpAngleRad() const;
 
 	const std::vector<size_t>& getSharpVertIndices() const;
 	bool getSharpVertPlane(Planed& plane) const;
@@ -133,14 +137,12 @@ private:
 
 	// Get the block using a block index
 	bool blockExists(const Index3D& blockIdx) const;
-	BlockPtr createBlock(const Index3D& blockIdx);
+	BlockPtr createBlock(const Index3D& blockIdx, bool forReading);
 	BlockPtr createBlock(size_t linearIdx);
 
 	const Vertex& getVertex(const Index3DId& id) const;
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
-
-	void resetBlockIndices_unsafe();
 
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks);
@@ -187,9 +189,7 @@ private:
 
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 
-	CMeshPtr _pModelTriMesh;
-	std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
-	double _sharpAngleRad;
+	AppDataPtr _pAppData;
 	CMesh::BoundingBox _modelBundingBox;
 
 	UnalignedBBoxd _modelCornerPts, _volCornerPts;
@@ -207,24 +207,14 @@ private:
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-inline void Volume::setModelMesh(const CMeshPtr& pMesh)
+inline void Volume::setAppData(const AppDataPtr& pAppData)
 {
-	_pModelTriMesh = pMesh;
+	_pAppData = pAppData;
 }
 
-inline const CMeshPtr& Volume::getModelMesh() const
+inline const AppDataPtr& Volume::getAppData() const
 {
-	return _pModelTriMesh;
-}
-
-inline void Volume::setModelMeshData(const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& pMeshData)
-{
-	_pModelMeshData = pMeshData;
-}
-
-inline const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& Volume::getModelMeshData() const
-{
-	return _pModelMeshData;
+	return _pAppData;
 }
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
@@ -244,14 +234,14 @@ inline const std::vector<Vector3d>& Volume::getModelCornerPts() const
 	return _modelCornerPts;
 }
 
-inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
+inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx, const Index3D& volDim)
 {
-	return blockIdx[0] + _volDim[0] * (blockIdx[1] + _volDim[1] * blockIdx[2]);
+	return blockIdx[0] + volDim[0] * (blockIdx[1] + volDim[1] * blockIdx[2]);
 }
 
-inline double Volume::getSharpAngleRad() const
+inline size_t Volume::calLinearBlockIndex(const Index3D& blockIdx) const
 {
-	return _sharpAngleRad;
+	return calLinearBlockIndex(blockIdx, _volDim);
 }
 
 inline const std::vector<size_t>& Volume::getSharpVertIndices() const

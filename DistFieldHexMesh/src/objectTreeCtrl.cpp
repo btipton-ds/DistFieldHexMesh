@@ -58,8 +58,8 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
 	const auto& meshObjs = pAppData->getMeshData();
-	auto iter = meshObjs.find(name);
-	if (iter != meshObjs.end()) {
+	auto iter = meshObjs->find(name);
+	if (iter != meshObjs->end()) {
 		const auto& pData = iter->second;
 		wxMenu* contextMenu = new wxMenu;
 
@@ -93,7 +93,7 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData().find(name)->second;
+	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pData->setActive(!pData->isActive());
 	_pMainFrame->getCanvas()->changeViewElements();
 }
@@ -102,7 +102,7 @@ void ObjectTreeCtrl::OnMeshStats(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData().find(name)->second;
+	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pAppData->doVerifyClosed(pData->getMesh());
 }
 
@@ -110,7 +110,7 @@ void ObjectTreeCtrl::OnVerifyNormals(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData().find(name)->second;
+	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pAppData->doVerifyNormals(pData->getMesh());
 }
 
@@ -118,7 +118,7 @@ void ObjectTreeCtrl::OnAnalyzeGaps(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData().find(name)->second;
+	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pAppData->doAnalyzeGaps(pData->getMesh());
 }
 
@@ -126,7 +126,7 @@ void ObjectTreeCtrl::OnFindMinGap(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData().find(name)->second;
+	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pAppData->doFindMinGap(pData->getMesh());
 }
 

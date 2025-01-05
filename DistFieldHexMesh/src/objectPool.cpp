@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <string>
 #include <sstream>
+#include <pool_map.hpp>
 #include <objectPool.h>
 #include <vertex.h>
 #include <polygon.h>
@@ -114,6 +115,44 @@ void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
 const Index3DId& ObjectPoolOwnerUser::getId() const
 {
 	return _thisId;
+}
+
+void ObjectPoolOwnerUser::remapId(const map<Index3D, Index3D>& idRemap)
+{
+	auto iter = idRemap.find(_thisId);
+	if (iter != idRemap.end()) {
+		size_t elementId = _thisId.elementId();
+		_thisId = Index3DId(iter->second, elementId);
+	}
+}
+
+bool ObjectPoolOwnerUser::verifyIndices(const Index3D& idx) const
+{
+	return _thisId.blockIdx() == idx;
+}
+
+void ObjectPoolOwnerUser::remap(const map<Index3D, Index3D>& idRemap, MTC::set<Index3DId>& vals)
+{
+	MTC::set<Index3DId> tmp(vals);
+	vals.clear();
+	for (auto& v : tmp) {
+		auto iter = idRemap.find(v);
+		if (iter != idRemap.end()) 
+			vals.insert(Index3DId(iter->second, v.elementId()));
+		else
+			vals.insert(v);
+	}
+}
+
+void ObjectPoolOwnerUser::remap(const map<Index3D, Index3D>& idRemap, MTC::vector<Index3DId>& vals)
+{
+	for (size_t i = 0; i < vals.size(); i++) {
+		const auto& v = vals[i];
+		auto iter = idRemap.find(v);
+		if (iter != idRemap.end()) {
+			vals[i] = Index3DId(iter->second, vals[i].elementId());
+		}
+	}
 }
 
 bool ObjectPoolOwnerUser::isOwnerBeingDestroyed() const

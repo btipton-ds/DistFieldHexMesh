@@ -48,6 +48,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <logger.h>
 #include <meshData.h>
+#include <appData.h>
 
 //using namespace std;
 using namespace DFHM;
@@ -64,13 +65,13 @@ Block::GlPoints::GlPoints(const GlPoints& src)
 	_id = _statId++;
 }
 
-Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts)
-	: Block(pVol, blockIdx, pts.data())
+Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts, bool forReading)
+	: Block(pVol, blockIdx, pts.data(), forReading)
 {
 	assert(pts.size() == 8);
 }
 
-Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8])
+Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
 	, _modelData(this)
@@ -100,22 +101,17 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8])
 	treeBBox.grow(Tolerance::sameDistTol());
 	_pVertTree = make_shared<SearchTree>(treeBBox);
 		
-		// This is close to working, but the full search is finding solutions the partial search is not
-	auto pMesh = getModelMesh();
-	if (pMesh) {
-		pMesh->findEdges(_boundBox, _edgeIndices);
-		pMesh->findTris(_boundBox, _triIndices);
-	} else {
-		auto pMeshData = getModelMeshData();
-		if (pMeshData) {
-			for (auto& pair : *pMeshData) {
-				auto pData = pair.second;
-				pMesh = pData->getMesh();
-				pMesh->findEdges(_boundBox, _edgeIndices);
-				pMesh->findTris(_boundBox, _triIndices);
-			}
+	// This is close to working, but the full search is finding solutions the partial search is not
+	auto pMeshData = _pVol->getAppData()->getMeshData();
+	if (pMeshData && !forReading) { // if we're reading, we'll read indices in to save time
+		for (auto& pair : *pMeshData) {
+			auto pData = pair.second;
+			auto pMesh = pData->getMesh();
+			pMesh->findEdges(_boundBox, _edgeIndices);
+			pMesh->findTris(_boundBox, _triIndices);
 		}
 	}
+
 	MultiCore::scoped_set_local_heap st(&_heap);
 	_pLocalData = new LocalData();
 
@@ -149,6 +145,34 @@ void Block::ModelData::clear()
 {
 	_polygons.clear();
 	_polyhedra.clear();
+}
+
+void Block::ModelData::remapIds(const map<Index3D, Index3D>& idRemap)
+{
+	_polygons.iterateInOrder([&idRemap](const Index3DId& faceId, Polygon& face) {
+		face.remapId(idRemap);
+	});
+
+	_polyhedra.iterateInOrder([&idRemap](const Index3DId& faceId, Polyhedron& cell) {
+		cell.remapId(idRemap);
+	});
+}
+
+bool Block::ModelData::verifyIndices(const Index3D& idx) const
+{
+	bool result = true;
+
+	_polygons.iterateInOrder([&idx, &result](const Index3DId& faceId, const Polygon& face) {
+		if (!face.verifyIndices(idx))
+			result = false;
+	});
+
+	_polyhedra.iterateInOrder([&idx, &result](const Index3DId& faceId, const Polyhedron& cell) {
+		if (!cell.verifyIndices(idx))
+			result = false;
+	});
+
+	return result;
 }
 
 const Index3D& Block::getBlockIdx() const
@@ -191,14 +215,24 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-const CMeshPtr& Block::getModelMesh() const
+const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> Block::getModelMeshData() const
 {
-	return _pVol->getModelMesh();
+	auto& pAppData = _pVol->getAppData();
+	return pAppData->getMeshData();
 }
 
-const std::shared_ptr<std::map<std::wstring, MeshDataPtr>>& Block::getModelMeshData() const
+void Block::remapBlockIndices(const map<Index3D, Index3D>& idRemap)
 {
-	return _pVol->getModelMeshData();
+	auto iter = idRemap.find(_blockIdx);
+	if (iter != idRemap.end())
+		_blockIdx = iter->second;
+
+
+	_vertices.iterateInOrder([&idRemap](const Index3DId& id, Vertex& vert) {
+		vert.remapId(idRemap);
+	});
+	_modelData.remapIds(idRemap);
+	_refData.remapIds(idRemap);
 }
 
 void Block::getAdjacentBlockIndices(MTC::set<Index3D>& indices) const
@@ -307,11 +341,37 @@ bool Block::verifyTopology() const
 			result = false;
 		}
 	});
+
 	if (!result) {
 		dumpPolyhedraObj(badCellIds, false, false, false);
 	}
 
 	return result;
+}
+
+bool Block::verifyIndices(const Index3D& idx) const
+{
+	if (idx != _blockIdx)
+		return false;
+
+	auto OPBlkIdx = getBlockIdx();
+	if (OPBlkIdx != idx)
+		return false;
+
+	auto pOwner = _pVol->getBlockPtr(idx);
+	if (pOwner != this)
+		return false;
+
+	_modelData.verifyIndices(idx);
+	_refData.verifyIndices(idx);
+
+	bool result = true;
+	_vertices.iterateInOrder([&idx, &result](const Index3DId& id, const Vertex& vert) {
+		if (!vert.verifyIndices(idx))
+			result = false;
+	});
+
+	return true;
 }
 
 void Block::createBlockCells(TopolgyState refState)
@@ -573,10 +633,12 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 		if (!found) {
 			auto sharps = _pVol->getSharpVertIndices();
 			for (const auto& vertIdx : sharps) {
+#if 0
 				if (bbox.contains(getModelMesh()->getVert(vertIdx)._pt, Tolerance::sameDistTol())) {
 					found = true;
 					break;
 				}
+#endif
 			}
 		}
 		if (!found)
@@ -1051,45 +1113,31 @@ void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
 		return;
 
 	const auto& polys = _modelData._polygons;
-	if (polys.empty()) {
-		pMesh->addQuad(_corners[0], _corners[3], _corners[2], _corners[1]);
-#if 0
-		pMesh->addQuad(_corners[4], _corners[5], _corners[6], _corners[7]);
+	polys.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
+		if (includeFaceInRender(meshType, face)) {
+			const auto& vertIds = face.getVertexIds();
+			vector<Vector3d> pts;
+			pts.reserve(vertIds.size());
+			for (const auto& vertId : vertIds) {
+				pts.push_back(getVertexPoint(vertId));
+			}
 
-		pMesh->addQuad(_corners[0], _corners[4], _corners[7], _corners[3]);
-		pMesh->addQuad(_corners[1],_corners[2], _corners[6], _corners[5]);
-
-		pMesh->addQuad(_corners[0], _corners[1], _corners[5], _corners[4]);
-		pMesh->addQuad(_corners[2], _corners[6], _corners[7], _corners[3]);
-#endif
-	} else {
-		polys.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
-			if (includeFaceInRender(meshType, face)) {
-				const auto& vertIds = face.getVertexIds();
-				vector<Vector3d> pts;
-				pts.reserve(vertIds.size());
-				for (const auto& vertId : vertIds) {
-					pts.push_back(getVertexPoint(vertId));
+			if (pts.size() > 4) {
+				Vector3d ctr = face.calCentroid();
+				for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+					size_t idx1 = (idx0 + 1) % pts.size();
+					pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
 				}
-
-				if (pts.size() > 4) {
-					Vector3d ctr = face.calCentroid();
-					for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-						size_t idx1 = (idx0 + 1) % pts.size();
-						pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
-					}
-				}
-				else {
-					for (size_t i = 1; i < pts.size() - 1; i++) {
-						size_t idx0 = 0;
-						size_t idx1 = i;
-						size_t idx2 = i + 1;
-						pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
-					}
+			} else {
+				for (size_t i = 1; i < pts.size() - 1; i++) {
+					size_t idx0 = 0;
+					size_t idx1 = i;
+					size_t idx2 = i + 1;
+					pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
 				}
 			}
-		});
-	}
+		}
+	});
 }
 
 void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
@@ -1112,36 +1160,17 @@ void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
 	set<Edge> edges;
 
 	const auto& polys = _modelData._polygons;
-	if (polys.empty()) {
-		if (!points)
-			points = make_shared< GlPoints>();
-
-		addEdgeToGLPoints(points, 0, 1);
-		addEdgeToGLPoints(points, 3, 2);
-		addEdgeToGLPoints(points, 4, 5);
-		addEdgeToGLPoints(points, 7, 6);
-
-		addEdgeToGLPoints(points, 0, 4);
-		addEdgeToGLPoints(points, 1, 5);
-		addEdgeToGLPoints(points, 2, 6);
-		addEdgeToGLPoints(points, 3, 7);
-
-		addEdgeToGLPoints(points, 0, 3);
-		addEdgeToGLPoints(points, 1, 2);
-		addEdgeToGLPoints(points, 4, 7);
-		addEdgeToGLPoints(points, 5, 6);
-	} else {
-		polys.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
-			if (includeFaceInRender(meshType, face)) {
-				const auto& vertIds = face.getVertexIds();
-				for (size_t i = 0; i < vertIds.size(); i++) {
-					size_t j = (i + 1) % vertIds.size();
-					Edge edge(vertIds[i], vertIds[j]);
-					edges.insert(edge);
-				}
+	polys.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
+		if (includeFaceInRender(meshType, face)) {
+			const auto& vertIds = face.getVertexIds();
+			for (size_t i = 0; i < vertIds.size(); i++) {
+				size_t j = (i + 1) % vertIds.size();
+				Edge edge(vertIds[i], vertIds[j]);
+				edges.insert(edge);
 			}
-		});
-	}
+		}
+	});
+
 	if (!edges.empty()) {
 		if (!points)
 			points = make_shared< GlPoints>();
@@ -1376,25 +1405,29 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 
 size_t Block::processEdges(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& edgeIndices) const
 {
+#if 0
 	auto pMesh = getModelMesh();
 	pMesh->processFoundEdges(_edgeIndices, bbox, edgeIndices);
+
 #if VERIFY_REDUCED_FINDER
 	vector<size_t> edgeIndices1;
 	pMesh->findEdges(bbox, edgeIndices1);
 	assert(edgeIndices.size() == edgeIndices1.size());
 #endif
-
+#endif
 	return edgeIndices.size();
 }
 
 size_t Block::processTris(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& triIndices) const
 {
+#if 0
 	auto pMesh = getModelMesh();
 	pMesh->processFoundTris(_triIndices, bbox, triIndices);
 #if VERIFY_REDUCED_FINDER
 	vector<size_t> triIndices1;
 	pMesh->findTris(bbox, triIndices1);
 	assert(triIndices.size() == triIndices1.size());
+#endif
 #endif
 
 	return triIndices.size();

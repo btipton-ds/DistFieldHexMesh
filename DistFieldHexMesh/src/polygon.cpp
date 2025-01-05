@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
 #include <tm_ioUtil.h>
+#include <objectPool.hpp>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
@@ -96,6 +97,17 @@ Polygon& Polygon::operator = (const Polygon& rhs)
 	_cachedEdges = rhs._cachedEdges;
 
 	return *this;
+}
+
+void Polygon::remapId(const std::map<Index3D, Index3D>& idRemap)
+{
+	ObjectPoolOwnerUser::remapId(idRemap);
+
+	remap(idRemap, _splitFaceProductIds);
+	remap(idRemap, _splitEdgeVertMap);
+
+	remap(idRemap, _vertexIds);
+	remap(idRemap, _cellIds);
 }
 
 void Polygon::addVertex(const Index3DId& vertId)
@@ -308,6 +320,7 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const
 {
 	piercePoints.clear();
+#if 0
 	Planed pl = calPlane();
 	auto pMesh = getBlockPtr()->getModelMesh();
 	for (size_t edgeIdx : edgeIndices) {
@@ -319,7 +332,7 @@ bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vect
 			piercePoints.push_back(hit);
 		}
 	}
-
+#endif
 	return !piercePoints.empty();
 }
 
@@ -687,6 +700,7 @@ bool Polygon::intersectsModel() const
 		std::vector<size_t> cellTris;
 
 		if (getCellTris(cellTris) > 0) {
+#if 0
 			auto pMesh = getBlockPtr()->getModelMesh();
 			CBoundingBox3Dd bbox;
 			for (const auto& vertId : _vertexIds) {
@@ -718,6 +732,7 @@ bool Polygon::intersectsModel() const
 						break;
 				}
 			}
+#endif
 		}
 	}
 
@@ -986,6 +1001,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 
 bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>& newEdges)
 {
+#if 0
 	const double tol = Tolerance::sameDistTol();
 	auto pMesh = getBlockPtr()->getModelMesh();
 
@@ -1042,7 +1058,7 @@ bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>
 		}
 		return true;
 	}
-
+#endif
 	return false;
 }
 

@@ -105,6 +105,8 @@ public:
 
 	Polygon& operator = (const Polygon& rhs);
 
+	void remapId(const std::map<Index3D, Index3D>& idRemap) override;
+
 	void addVertex(const Index3DId& vertId);
 
 	void addCellId(const Index3DId& cellId, size_t level);
