@@ -745,69 +745,36 @@ void AppData::makeSurroundingBlocks(Vector3d cPts[8], const L& f) const
     _pVolume->insertBlocks(_params, CFT_TOP);
 #endif
 
-#if 0
-    makeGradedHexOnFace(cPts, CFT_BOTTOM, f);
-    makeGradedHexOnFace(cPts, CFT_TOP, f);
-    makeGradedHexOnFace(cPts, CFT_FRONT, f);
-    makeGradedHexOnFace(cPts, CFT_BACK, f);
-    if (!_params.symYAxis)
-        makeGradedHexOnFace(cPts, CFT_LEFT, f);
-    makeGradedHexOnFace(cPts, CFT_RIGHT, f);
-
-    makeGradedHexOnEdge(cPts, CFT_BACK, CFT_BOTTOM, f);
-    makeGradedHexOnEdge(cPts, CFT_BACK, CFT_TOP, f);
-    if (!_params.symYAxis)
-        makeGradedHexOnEdge(cPts, CFT_BACK, CFT_LEFT, f);
-    makeGradedHexOnEdge(cPts, CFT_BACK, CFT_RIGHT, f);
-
-    makeGradedHexOnEdge(cPts, CFT_FRONT, CFT_BOTTOM, f);
-    makeGradedHexOnEdge(cPts, CFT_FRONT, CFT_TOP, f);
-    if (!_params.symYAxis)
-        makeGradedHexOnEdge(cPts, CFT_FRONT, CFT_LEFT, f);
-    makeGradedHexOnEdge(cPts, CFT_FRONT, CFT_RIGHT, f);
-
-    makeGradedHexOnEdge(cPts, CFT_RIGHT, CFT_BOTTOM, f);
-    makeGradedHexOnEdge(cPts, CFT_RIGHT, CFT_TOP, f);
-
-    makeGradedHexOnCorners(cPts, f);
-#endif
-
 }
 
 void AppData::gradeSurroundingBlocks() const
 {
     Index3D idx;
     const auto& dims = _pVolume->volDim();
-    CubeFaceType dir0, dir1, dir2;
 
 #if 1
     for (idx[0] = 0; idx[0] < dims[0]; idx[0]++) {
         for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
             for (int j = 0; j < 2; j++) {
-                dir0 = dir1 = dir2 = CFT_UNDEFINED;
                 Index3D divs(1, 1, 1);
                 Vector3d grading(1, 1, 1);
 
                 if (j == 0) {
                     idx[2] = 0;
-                    dir0 = CFT_BOTTOM;
                     if (!_params.symZAxis) {
                         divs[2] = _params.zMinDivs;
                         grading[2] = 1 / _params.zMinGrading;
                     }
                 } else {
                     idx[2] = dims[2] - 1;
-                    dir0 = CFT_TOP;
                     divs[2] = _params.zMaxDivs;
                     grading[2] = _params.zMaxGrading;
                 }
 
                 if (idx[0] == 0 && !_params.symXAxis) {
-                    dir1 = CFT_BACK;
                     divs[0] = _params.xMinDivs;
                     grading[0] = 1 / _params.xMinGrading;
                 } else if (idx[0] == dims[0] - 1) {
-                    dir1 = CFT_FRONT;
                     divs[0] = _params.xMaxDivs;
                     grading[0] = _params.xMaxGrading;
                 }
@@ -815,19 +782,82 @@ void AppData::gradeSurroundingBlocks() const
                 if (idx[1] == 0 && !_params.symYAxis) {
                     divs[1] = _params.yMinDivs;
                     grading[1] = 1 / _params.yMinGrading;
-
-                    if (dir1 == CFT_UNDEFINED)
-                        dir1 = CFT_LEFT;
-                    else
-                        dir2 = CFT_LEFT;
                 } else if (idx[1] == dims[1] - 1) {
                     divs[1] = _params.yMaxDivs;
                     grading[1] = _params.yMaxGrading;
+                }
 
-                    if (dir1 == CFT_UNDEFINED)
-                        dir1 = CFT_RIGHT;
-                    else
-                        dir2 = CFT_RIGHT;
+                auto pBlk = _pVolume->getBlockPtr(idx);
+                GradingOp gr(pBlk, _params, divs, grading);
+                gr.createGradedCells();
+            }
+        }
+    }
+#endif
+
+#if 1
+    for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
+        for (idx[2] = 1; idx[2] < dims[2] - 1; idx[2]++) {
+            for (int j = 0; j < 2; j++) {
+                Index3D divs(1, 1, 1);
+                Vector3d grading(1, 1, 1);
+
+                if (j == 0) {
+                    idx[0] = 0;
+                    if (!_params.symXAxis) {
+                        divs[0] = _params.xMinDivs;
+                        grading[0] = 1 / _params.xMinGrading;
+                    }
+                } else {
+                    idx[0] = dims[0] - 1;
+                    divs[0] = _params.xMaxDivs;
+                    grading[0] = _params.xMaxGrading;
+                }
+
+                if (idx[1] == 0 && !_params.symYAxis) {
+                    divs[1] = _params.yMinDivs;
+                    grading[1] = 1 / _params.yMinGrading;
+                }
+                else if (idx[1] == dims[1] - 1) {
+                    divs[1] = _params.yMaxDivs;
+                    grading[1] = _params.yMaxGrading;
+                }
+
+                auto pBlk = _pVolume->getBlockPtr(idx);
+                GradingOp gr(pBlk, _params, divs, grading);
+                gr.createGradedCells();
+            }
+        }
+    }
+#endif
+
+#if 1
+    for (idx[0] = 1; idx[0] < dims[0] - 1; idx[0]++) {
+        for (idx[2] = 1; idx[2] < dims[2] - 1; idx[2]++) {
+            for (int j = 0; j < 2; j++) {
+                Index3D divs(1, 1, 1);
+                Vector3d grading(1, 1, 1);
+
+                if (j == 0) {
+                    idx[1] = 0;
+                    if (!_params.symYAxis) {
+                        divs[1] = _params.yMinDivs;
+                        grading[1] = 1 / _params.yMinGrading;
+                    }
+                }
+                else {
+                    idx[1] = dims[1] - 1;
+                    divs[1] = _params.yMaxDivs;
+                    grading[1] = _params.yMaxGrading;
+                }
+
+                if (idx[1] == 0 && !_params.symYAxis) {
+                    divs[1] = _params.yMinDivs;
+                    grading[1] = 1 / _params.yMinGrading;
+                }
+                else if (idx[1] == dims[1] - 1) {
+                    divs[1] = _params.yMaxDivs;
+                    grading[1] = _params.yMaxGrading;
                 }
 
                 auto pBlk = _pVolume->getBlockPtr(idx);
@@ -1424,7 +1454,6 @@ void AppData::updateTessellation()
     const Index3D min(0, 0, 0);
     const Index3D max(_pVolume->volDim());
     Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
-    cout << "Tessellating graphics.\n";
 
     addHexFacesToScene(min, max, RUN_MULTI_THREAD);
     addHexEdgesToScene(min, max, RUN_MULTI_THREAD);

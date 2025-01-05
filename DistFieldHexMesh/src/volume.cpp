@@ -974,7 +974,6 @@ void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks
 			int dbgBreak = 1;
 		}
 		auto blkIdx = determineOwnerBlockIdx(ctr);
-		cout << blkIdx << "\n";
 		assert(blkIdx == pBlk->getBlockIdx());
 	}
 }
