@@ -113,6 +113,7 @@ public:
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool verifyTopology() const;
+	bool verifyDeterminOwnerBlockIndex() const;
 	bool verifyIndices(const Index3D& idx) const;
 	void createBlockCells(TopolgyState refState);
 

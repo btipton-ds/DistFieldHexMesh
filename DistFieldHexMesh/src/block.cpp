@@ -349,6 +349,113 @@ bool Block::verifyTopology() const
 	return result;
 }
 
+bool Block::verifyDeterminOwnerBlockIndex() const
+{
+	// Check the centroid is in our block
+	Vector3d ctr(0, 0, 0);
+	for (int i = 0; i < 8; i++)
+		ctr += _corners[i];
+	ctr /= 8;
+
+	Index3D 
+		blkIdx = determineOwnerBlockIdx(ctr);
+	if (blkIdx != getBlockIdx())
+		return false;
+
+	Vector3d facePts[4];
+	for (int i = 0; i < 6; i++) {
+		CubeFaceType ft = (CubeFaceType) i;
+		switch (ft) {
+		case CFT_BACK:
+			facePts[0] = _corners[0];
+			facePts[1] = _corners[4];
+			facePts[2] = _corners[7];
+			facePts[3] = _corners[3];
+			break;
+		case CFT_FRONT:
+			facePts[0] = _corners[1];
+			facePts[1] = _corners[2];
+			facePts[2] = _corners[6];
+			facePts[3] = _corners[5];
+			break;
+		case CFT_BOTTOM:
+			facePts[0] = _corners[0];
+			facePts[1] = _corners[1];
+			facePts[2] = _corners[2];
+			facePts[3] = _corners[3];
+			break;
+		case CFT_TOP:
+			facePts[0] = _corners[4];
+			facePts[1] = _corners[5];
+			facePts[2] = _corners[6];
+			facePts[3] = _corners[7];
+			break;
+		case CFT_LEFT:
+			facePts[0] = _corners[0];
+			facePts[1] = _corners[1];
+			facePts[2] = _corners[5];
+			facePts[3] = _corners[6];
+			break;
+		case CFT_RIGHT:
+			facePts[0] = _corners[2];
+			facePts[1] = _corners[6];
+			facePts[2] = _corners[7];
+			facePts[3] = _corners[3];
+			break;
+		default:
+			return false;
+		}
+
+		size_t steps = 3;
+		for (size_t i = 0; i < steps; i++) {
+			double t = i / (steps - 1.0);
+			for (size_t j = 0; j < steps; j++) {
+				double u = i / (steps - 1.0);
+
+				Vector3d testPt = BI_LERP(facePts[0], facePts[1], facePts[2], facePts[3], t, u);
+				blkIdx = determineOwnerBlockIdx(testPt);
+				switch (ft) {
+				case CFT_FRONT:
+					blkIdx[0] += 1;
+					if (i == steps - 1)
+						blkIdx[1] += 1;
+					if (j == steps - 1)
+						blkIdx[2] += 1;
+					break;
+				case CFT_TOP:
+					blkIdx[2] += 1;
+					if (i == steps - 1)
+						blkIdx[0] += 1;
+					if (j == steps - 1)
+						blkIdx[1] += 1;
+					break;
+				case CFT_RIGHT:
+					blkIdx[1] += 1;
+					if (i == steps - 1)
+						blkIdx[0] += 1;
+					if (j == steps - 1)
+						blkIdx[2] += 1;
+					break;
+				default:
+					break;
+				}
+
+				const auto& volDim = _pVol->volDim();
+				for (int i = 0; i < 3; i++) {
+					if (blkIdx[i] >= volDim[i])
+						blkIdx[i] = volDim[i] - 1;
+				}
+
+				if (blkIdx != getBlockIdx())
+					return false;
+			}
+		}
+
+	}
+
+	return true;
+}
+
 bool Block::verifyIndices(const Index3D& idx) const
 {
 	if (idx != _blockIdx)

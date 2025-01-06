@@ -50,13 +50,13 @@ enum TopolgyState
 };
 
 enum CubeFaceType {
-	CFT_UNDEFINED,
 	CFT_BOTTOM,
 	CFT_TOP,
 	CFT_LEFT,
 	CFT_RIGHT,
 	CFT_FRONT,
 	CFT_BACK,
+	CFT_UNDEFINED,
 
 };
 

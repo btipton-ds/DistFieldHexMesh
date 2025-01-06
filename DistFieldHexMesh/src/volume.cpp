@@ -248,44 +248,40 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	const auto& modelCorners = getModelCornerPts();
 
 	Vector3<double> uvw;
-	TRI_LERP_INV(point, modelCorners, uvw);
-#if 1 && defined(_DEBUG)
-	Vector3d testPt = TRI_LERP(modelCorners, uvw);
-	double errSqr = (testPt - point).squaredNorm();
-	assert(errSqr < dTolSqr);
-#endif
-	bool inBounds = true;
-	for (int i = 0; i < 3; i++) {
-		if (uvw[i] < -pTol || 1 + pTol < uvw[i]) {
-			inBounds = false;
-			break;
-		}
-
-		double floatIdx = uvw[i] * mDim[i];
-		Index3DBaseType idx = (Index3DBaseType)floatIdx;
-		floatIdx -= idx;
-		if (floatIdx > iMax)
-			idx += 1;
-
-		if (idx >= mDim[i])
-			idx -= 1;
-
-		result[i] = idx;
-		if (result[i] >= mDim[i]) {
-			inBounds = false;
-			break;
-		}
-	}
-
+	bool inBounds = TRI_LERP_INV(point, modelCorners, uvw);
 	if (inBounds) {
-#if 1 && defined(_DEBUG)
-		if (_modelDimOrigin != Index3D(0, 0, 0)) {
-			int dbgBreak = 1;
+		for (int i = 0; i < 3; i++) {
+			if (uvw[i] < -pTol || 1 + pTol < uvw[i]) {
+				inBounds = false;
+				break;
+			}
+
+			double floatIdx = uvw[i] * mDim[i];
+			Index3DBaseType idx = (Index3DBaseType)floatIdx;
+			floatIdx -= idx;
+			if (floatIdx > iMax)
+				idx += 1;
+
+			if (idx >= mDim[i])
+				idx -= 1;
+
+			result[i] = idx;
+			if (result[i] >= mDim[i]) {
+				inBounds = false;
+				break;
+			}
 		}
+
+		if (inBounds) {
+#if 1 && defined(_DEBUG)
+			if (_modelDimOrigin != Index3D(0, 0, 0)) {
+				int dbgBreak = 1;
+			}
 #endif;
-		result += _modelDimOrigin;
-		if (result.isValid())
-			return result;
+			result += _modelDimOrigin;
+			if (result.isValid())
+				return result;
+		}
 	}
 
 	std::vector<BlockPtr> foundBlocks;
@@ -293,15 +289,24 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
 		for (size_t idx = 0; idx < foundBlocks.size(); idx++) {
 			const auto& pBlk = foundBlocks[idx];
-			if (idx == 76) {
-				int dbgBreak = 1;
-			}
-			const auto& uBBox = pBlk->getUnalignedBBox();
-			if (uBBox.contains(point)) {
-				result = pBlk->getBlockIdx();
-				return result;
+			const vector<Vector3d>& blockCorners = pBlk->getUnalignedBBox();
+			Vector3d blkUvw;
+			if (TRI_LERP_INV(point, blockCorners, blkUvw)) {
+				inBounds = true;
+				for (int i = 0; i < 3; i++) {
+					if (blkUvw[i]  < -Tolerance::paramTol() || 1 + Tolerance::paramTol() < blkUvw[i]) {
+						inBounds = false;
+						break;
+					}
+				}
+				if (inBounds) {
+					result = pBlk->getBlockIdx();
+					return result;
+				}
 			}
 		}
+	} else {
+		int dbgBreak = 1;
 	}
 
 	return result;
@@ -963,20 +968,16 @@ void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks
 		assert(tstIdx == blkIdx);
 	}
 
+#if 0 && defined(_DEBUG)
 	for (size_t linIdx = 0; linIdx < _blocks.size(); linIdx++) {
 		const auto& pBlk = _blocks[linIdx];
-		const auto& pts = pBlk->getCornerPts();
-		Vector3d ctr(0, 0, 0);
-		for (int i = 0; i < 8; i++)
-			ctr += pts[i];
-		ctr /= 8;
-		if (pBlk->getBlockIdx() == Index3D(6, 0, 0)) {
-			int dbgBreak = 1;
+		if (!pBlk->verifyDeterminOwnerBlockIndex()) {
+			assert(!"verifyDeterminOwnerBlockIndex failed");
 		}
-		auto blkIdx = determineOwnerBlockIdx(ctr);
-		assert(blkIdx == pBlk->getBlockIdx());
 	}
+#endif
 }
+
 void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
