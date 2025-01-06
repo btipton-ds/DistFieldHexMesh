@@ -127,12 +127,28 @@ void BuildCFDParams::read(std::istream& in)
 	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
 
 	if (version > 0) {
-		in.read((char*)&xMinDivs, sizeof(size_t));
-		in.read((char*)&xMaxDivs, sizeof(size_t));
-		in.read((char*)&yMinDivs, sizeof(size_t));
-		in.read((char*)&yMaxDivs, sizeof(size_t));
-		in.read((char*)&zMinDivs, sizeof(size_t));
-		in.read((char*)&zMaxDivs, sizeof(size_t));
+		if (version < 2) {
+			size_t tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			xMinDivs = (Index3DBaseType)tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			xMaxDivs = (Index3DBaseType)tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			yMinDivs = (Index3DBaseType)tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			yMaxDivs = (Index3DBaseType)tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			zMinDivs = (Index3DBaseType)tmp;
+			in.read((char*)&tmp, sizeof(tmp));
+			zMaxDivs = (Index3DBaseType)tmp;
+		} else {
+			in.read((char*)&xMinDivs, sizeof(xMinDivs));
+			in.read((char*)&xMaxDivs, sizeof(xMaxDivs));
+			in.read((char*)&yMinDivs, sizeof(yMinDivs));
+			in.read((char*)&yMaxDivs, sizeof(yMaxDivs));
+			in.read((char*)&zMinDivs, sizeof(zMinDivs));
+			in.read((char*)&zMaxDivs, sizeof(zMaxDivs));
+		}
 
 		in.read((char*)&xMinGrading, sizeof(double));
 		in.read((char*)&xMaxGrading, sizeof(double));
@@ -148,7 +164,7 @@ void BuildCFDParams::read(std::istream& in)
 
 void BuildCFDParams::write(std::ostream& out) const
 {
-	size_t version = 1;
+	size_t version = 2;
 	out.write((char*)&version, sizeof(size_t));
 
 	out.write((char*)&uniformRatio, sizeof(uniformRatio));

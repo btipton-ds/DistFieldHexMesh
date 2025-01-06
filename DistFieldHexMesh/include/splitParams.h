@@ -63,12 +63,12 @@ struct BuildCFDParams {
 	size_t divsPerGapCurvatureRadius = 4;
 	size_t maxCellFaces = 12;
 
-	size_t xMinDivs = 5;
-	size_t xMaxDivs = 5;
-	size_t yMinDivs = 5;
-	size_t yMaxDivs = 5;
-	size_t zMinDivs = 5;
-	size_t zMaxDivs = 5;
+	Index3DBaseType xMinDivs = 5;
+	Index3DBaseType xMaxDivs = 5;
+	Index3DBaseType yMinDivs = 5;
+	Index3DBaseType yMaxDivs = 5;
+	Index3DBaseType zMinDivs = 5;
+	Index3DBaseType zMaxDivs = 5;
 
 	double baseBoxOffset = 1;
 	double xRotationDeg = 0;

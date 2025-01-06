@@ -93,7 +93,7 @@ public:
 
 	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
+	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
 	void makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 	void makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
@@ -145,6 +145,8 @@ private:
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
+	void makeSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8]);
+	void gradeSurroundingBlocks(const BuildCFDParams& params);
 	void updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks);
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);

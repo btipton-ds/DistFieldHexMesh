@@ -50,6 +50,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertexSpatialTree.h>
 #include <tolerances.h>
 #include <utils.h>
+#include <gradingOp.h>
 
 using namespace std;
 using namespace DFHM;
@@ -239,6 +240,8 @@ BlockPtr& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]
 
 Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 {
+	const int64_t numSubDivisions = 1024;
+
 	Index3D result;
 	const double pTol = Tolerance::paramTol();
 	const double dTolSqr = Tolerance::sameDistTol() * Tolerance::sameDistTol();
@@ -251,36 +254,27 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	bool inBounds = TRI_LERP_INV(point, modelCorners, uvw);
 	if (inBounds) {
 		for (int i = 0; i < 3; i++) {
-			if (uvw[i] < -pTol || 1 + pTol < uvw[i]) {
+			const int64_t numDivisions = mDim[i] * numSubDivisions;
+			int64_t n = (int64_t) (numDivisions * uvw[i]);
+			if (n < 0 || n > numDivisions) {
 				inBounds = false;
 				break;
 			}
 
-			double floatIdx = uvw[i] * mDim[i];
-			Index3DBaseType idx = (Index3DBaseType)floatIdx;
-			floatIdx -= idx;
-			if (floatIdx > iMax)
-				idx += 1;
+			Index3DBaseType blockIVal = (Index3DBaseType) (n / numSubDivisions);
+			int64_t subDivIval = n % numSubDivisions;
 
-			if (idx >= mDim[i])
-				idx -= 1;
-
-			result[i] = idx;
-			if (result[i] >= mDim[i]) {
-				inBounds = false;
-				break;
-			}
+			result[i] = blockIVal;
+			
+			if (subDivIval == numSubDivisions - 1 && result[i] < _volDim[i] - 1)
+				result[i]++;
 		}
 
 		if (inBounds) {
-#if 1 && defined(_DEBUG)
-			if (_modelDimOrigin != Index3D(0, 0, 0)) {
-				int dbgBreak = 1;
-			}
-#endif;
 			result += _modelDimOrigin;
-			if (result.isValid())
+			if (result.isValid()) {
 				return result;
+			}
 		}
 	}
 
@@ -289,20 +283,15 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
 		for (size_t idx = 0; idx < foundBlocks.size(); idx++) {
 			const auto& pBlk = foundBlocks[idx];
-			const vector<Vector3d>& blockCorners = pBlk->getUnalignedBBox();
-			Vector3d blkUvw;
-			if (TRI_LERP_INV(point, blockCorners, blkUvw)) {
-				inBounds = true;
+			const auto& blockCorners = pBlk->getUnalignedBBox();
+			bool storeInAdjBlock[3];
+			if (blockCorners.contains(point, numSubDivisions, storeInAdjBlock)) {
+				result = pBlk->getBlockIdx();
 				for (int i = 0; i < 3; i++) {
-					if (blkUvw[i]  < -Tolerance::paramTol() || 1 + Tolerance::paramTol() < blkUvw[i]) {
-						inBounds = false;
-						break;
-					}
+					if (storeInAdjBlock[i] && result[i] < _volDim[i] - 1)
+						result[i]++;
 				}
-				if (inBounds) {
-					result = pBlk->getBlockIdx();
-					return result;
-				}
+				return result;
 			}
 		}
 	} else {
@@ -410,7 +399,7 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
-void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
+void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
 {
 	_modelBundingBox.clear();
 	_modelBundingBox.merge(volBox);
@@ -426,11 +415,180 @@ void Volume::buildBlocks(const BuildCFDParams& params, const Vector3d pts[8], co
 		_blocks[linearIdx] = createBlock(linearIdx);
 	}
 
+/*
 	// Cannot create subBlocks until all blocks are created so they can be connected
 	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
+*/
+	makeSurroundingBlocks(params, pts);
+
+	Index3D idx;
+	for (idx[0] = 0; idx[0] < _modelDim[0]; idx[0]++) {
+		for (idx[1] = 0; idx[1] < _modelDim[1]; idx[1]++) {
+			for (idx[2] = 0; idx[2] < _modelDim[2]; idx[2]++) {
+				auto pBlk = getBlockPtr(idx + _modelDimOrigin);
+				pBlk->createBlockCells(TS_REAL);
+			}
+		}
+	}
+
+	gradeSurroundingBlocks(params);
+}
+
+void Volume::makeSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8])
+{
+	if (!params.symXAxis)
+		insertBlocks(params, CFT_BACK);
+#if 1
+	insertBlocks(params, CFT_FRONT);
+
+	if (!params.symYAxis)
+		insertBlocks(params, CFT_LEFT);
+
+	insertBlocks(params, CFT_RIGHT);
+
+	if (!params.symZAxis)
+		insertBlocks(params, CFT_BOTTOM);
+
+	insertBlocks(params, CFT_TOP);
+#endif
+
+}
+
+void Volume::gradeSurroundingBlocks(const BuildCFDParams& params)
+{
+	Index3D idx;
+	const auto& dims = volDim();
+
+#if 1
+	for (idx[0] = 0; idx[0] < dims[0]; idx[0]++) {
+		for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
+			for (int j = 0; j < 2; j++) {
+				Index3D divs(1, 1, 1);
+				Vector3d grading(1, 1, 1);
+
+				if (j == 0) {
+					if (params.symZAxis)
+						continue;
+					idx[2] = 0;
+					divs[2] = params.zMinDivs;
+					grading[2] = 1 / params.zMinGrading;
+				} else {
+					idx[2] = dims[2] - 1;
+					divs[2] = params.zMaxDivs;
+					grading[2] = params.zMaxGrading;
+				}
+
+				if (idx[0] == 0) {
+					if (params.symXAxis)
+						continue;
+
+					divs[0] = params.xMinDivs;
+					grading[0] = 1 / params.xMinGrading;
+				} else if (idx[0] == dims[0] - 1) {
+					divs[0] = params.xMaxDivs;
+					grading[0] = params.xMaxGrading;
+				}
+
+				if (idx[1] == 0) {
+					if (!params.symYAxis) {
+						divs[1] = params.yMinDivs;
+						grading[1] = 1 / params.yMinGrading;
+					}
+				} else if (idx[1] == dims[1] - 1) {
+					divs[1] = params.yMaxDivs;
+					grading[1] = params.yMaxGrading;
+				}
+
+				auto pBlk = getBlockPtr(idx);
+				GradingOp gr(pBlk, params, divs, grading);
+				gr.createGradedCells();
+			}
+		}
+	}
+#endif
+
+#if 1
+	for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
+		for (idx[2] = 1; idx[2] < dims[2] - 1; idx[2]++) {
+			for (int j = 0; j < 2; j++) {
+				Index3D divs(1, 1, 1);
+				Vector3d grading(1, 1, 1);
+
+				if (j == 0) {
+					if (params.symXAxis)
+						continue;
+					idx[0] = 0;
+					divs[0] = params.xMinDivs;
+					grading[0] = 1 / params.xMinGrading;
+				}
+				else {
+					idx[0] = dims[0] - 1;
+					divs[0] = params.xMaxDivs;
+					grading[0] = params.xMaxGrading;
+				}
+
+				if (idx[1] == 0) {
+					if (!params.symYAxis) {
+						divs[1] = params.yMinDivs;
+						grading[1] = 1 / params.yMinGrading;
+					}
+				}
+				else if (idx[1] == dims[1] - 1) {
+					divs[1] = params.yMaxDivs;
+					grading[1] = params.yMaxGrading;
+				}
+
+				auto pBlk = getBlockPtr(idx);
+				GradingOp gr(pBlk, params, divs, grading);
+				gr.createGradedCells();
+			}
+		}
+	}
+#endif
+
+#if 1
+	for (idx[0] = 1; idx[0] < dims[0] - 1; idx[0]++) {
+		for (idx[2] = 1; idx[2] < dims[2] - 1; idx[2]++) {
+			for (int j = 0; j < 2; j++) {
+				Index3D divs(1, 1, 1);
+				Vector3d grading(1, 1, 1);
+
+				if (j == 0) {
+					if (params.symYAxis)
+						continue;
+
+					idx[1] = 0;
+					if (!params.symYAxis) {
+						divs[1] = params.yMinDivs;
+						grading[1] = 1 / params.yMinGrading;
+					}
+				}
+				else {
+					idx[1] = dims[1] - 1;
+					divs[1] = params.yMaxDivs;
+					grading[1] = params.yMaxGrading;
+				}
+
+				if (idx[1] == 0) {
+					if (!params.symYAxis) {
+						divs[1] = params.yMinDivs;
+						grading[1] = 1 / params.yMinGrading;
+					}
+				} else if (idx[1] == dims[1] - 1) {
+					divs[1] = params.yMaxDivs;
+					grading[1] = params.yMaxGrading;
+				}
+
+				auto pBlk = getBlockPtr(idx);
+				GradingOp gr(pBlk, params, divs, grading);
+				gr.createGradedCells();
+			}
+		}
+	}
+#endif
 }
 
 void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)

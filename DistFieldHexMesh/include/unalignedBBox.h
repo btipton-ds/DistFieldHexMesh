@@ -43,7 +43,7 @@ public:
 	UnalignedBBox(const UnalignedBBox& src);
 	UnalignedBBox(const CBoundingBox3D<T>& src);
 
-	bool contains(const Vector3<T>& pt) const;
+	bool contains(const Vector3<T>& pt, int64_t numSubDivisions, bool storeInAdjCell[3]) const;
 	CBoundingBox3D<T> getBBox() const;
 
 	const Vector3<T>& operator[](size_t i) const;
@@ -54,8 +54,10 @@ public:
 	operator const std::vector<Vector3<T>>& () const;
 	operator std::vector<Vector3<T>>& ();
 
+	void getFacePoints(CubeFaceType ft, Vector3<T> pts[4]) const;
+
 private:
-	bool isOnPosSide(const Vector3<T>& pt, size_t idx0, size_t idx1, size_t idx2, size_t idx3) const;
+	double distFromFace(const Vector3<T>& pt, CubeFaceType ft) const;
 
 	std::vector<Vector3<T>> _corners;
 };
@@ -79,6 +81,49 @@ inline UnalignedBBox<T>::UnalignedBBox(const std::vector<Vector3<T>>& corners)
 	_corners.resize(8);
 	for (size_t i = 0; i < 8; i++)
 		_corners[i] = corners[i];
+}
+
+template<class T>
+void UnalignedBBox<T>::getFacePoints(CubeFaceType ft, Vector3<T> pts[4]) const
+{
+	switch (ft) {
+	case CFT_BOTTOM:
+		pts[0] = _corners[0];
+		pts[1] = _corners[3];
+		pts[2] = _corners[2];
+		pts[3] = _corners[1];
+		break;
+	case CFT_TOP:
+		pts[0] = _corners[4];
+		pts[1] = _corners[5];
+		pts[2] = _corners[6];
+		pts[3] = _corners[7];
+		break;
+	case CFT_BACK:
+		pts[0] = _corners[0];
+		pts[1] = _corners[4];
+		pts[2] = _corners[7];
+		pts[3] = _corners[3];
+		break;
+	case CFT_FRONT:
+		pts[0] = _corners[1];
+		pts[1] = _corners[2];
+		pts[2] = _corners[6];
+		pts[3] = _corners[5];
+		break;
+	case CFT_LEFT:
+		pts[0] = _corners[0];
+		pts[1] = _corners[1];
+		pts[2] = _corners[5];
+		pts[3] = _corners[4];
+		break;
+	case CFT_RIGHT:
+		pts[0] = _corners[3];
+		pts[1] = _corners[7];
+		pts[2] = _corners[6];
+		pts[3] = _corners[2];
+		break;
+	}
 }
 
 template<class T>
@@ -109,53 +154,44 @@ inline UnalignedBBox<T>::UnalignedBBox(const CBoundingBox3D<T>& src)
 }
 
 template<class T>
-bool UnalignedBBox<T>::isOnPosSide(const Vector3<T>& pt, size_t idx0, size_t idx1, size_t idx2, size_t idx3) const
+double UnalignedBBox<T>::distFromFace(const Vector3<T>& pt, CubeFaceType ft) const
 {
-	const auto& pt0 = _corners[idx0];
-	const auto& pt1 = _corners[idx1];
-	const auto& pt2 = _corners[idx2];
-	const auto& pt3 = _corners[idx3];
-
 	Vector3<T> v, v0, v1, norm, norm1;
+	Vector3<T> pts[4];
+	getFacePoints(ft, pts);
+	Vector3<T> ctr(0, 0, 0);
+	for (int i = 0; i < 4; i++)
+		ctr += pts[i];
+	ctr /= 4;
 
-	v = pt - pt0;
+	v = pt - ctr;
 
-	v0 = pt0 - pt1;
-	v1 = pt2 - pt1;
-	norm = v1.cross(v0).normalized();
+	v0 = pts[0] - pts[1];
+	v1 = pts[2] - pts[1];
+	norm = v1.cross(v0);
 
-	v0 = pt2 - pt3;
-	v1 = pt0 - pt3;
-	norm1 = v1.cross(v0).normalized();
+	v0 = pts[2] - pts[3];
+	v1 = pts[0] - pts[3];
+	norm1 = v1.cross(v0);
 
 	norm = norm + norm1;
 	norm.normalize();
-	if (v.dot(norm) > 0)
-		return true;
-
-	return false;
+	return v.dot(norm);
 }
 
 template<class T>
-bool UnalignedBBox<T>::contains(const Vector3<T>& pt) const
+bool UnalignedBBox<T>::contains(const Vector3<T>& pt, int64_t numSubDivisions, bool storeInAdjBlock[3]) const
 {
-	if (isOnPosSide(pt, 4, 5, 6, 7)) // top
+	Vector3<T> uvw;
+	if (!TRI_LERP_INV(pt, _corners, uvw))
 		return false;
 
-	if (isOnPosSide(pt, 0, 3, 2, 1)) // bottom
-		return false;
-
-	if (isOnPosSide(pt, 0, 4, 7, 3)) // back
-		return false;
-
-	if (isOnPosSide(pt, 1, 2, 6, 5)) // front
-		return false;
-
-	if (isOnPosSide(pt, 0, 1, 5, 4)) // right
-		return false;
-
-	if (isOnPosSide(pt, 2, 3, 7, 6)) // left
-		return false;
+	for (int i = 0; i < 3; i++) {
+		int64_t n = (int64_t)(uvw[i] * numSubDivisions);
+		if (n < 0 || n > numSubDivisions)
+			return false;
+		storeInAdjBlock[i] = n == numSubDivisions;
+	}
 
 	return true;
 }

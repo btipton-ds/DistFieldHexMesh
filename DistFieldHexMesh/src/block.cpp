@@ -693,8 +693,10 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
 	MTC::vector<Index3DId> vertIds;
 	vertIds.resize(8);
 	for (size_t i = 0; i < cellPts.size(); i++) {
+		Index3D ownerBlockIdx = determineOwnerBlockIdx(cellPts[i]);
+		auto pOwner = getOwner(ownerBlockIdx);
 		Vertex vert(cellPts[i]);
-		auto id = _vertices.findOrAdd(vert);
+		auto id = pOwner->_vertices.findOrAdd(vert);
 		vertIds[i] = id;
 	}
 

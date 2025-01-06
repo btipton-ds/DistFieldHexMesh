@@ -752,7 +752,7 @@ void AppData::gradeSurroundingBlocks() const
     Index3D idx;
     const auto& dims = _pVolume->volDim();
 
-#if 1
+#if 0
     for (idx[0] = 0; idx[0] < dims[0]; idx[0]++) {
         for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
             for (int j = 0; j < 2; j++) {
@@ -760,18 +760,21 @@ void AppData::gradeSurroundingBlocks() const
                 Vector3d grading(1, 1, 1);
 
                 if (j == 0) {
+                    if (_params.symZAxis)
+                        continue;
                     idx[2] = 0;
-                    if (!_params.symZAxis) {
-                        divs[2] = _params.zMinDivs;
-                        grading[2] = 1 / _params.zMinGrading;
-                    }
+                    divs[2] = _params.zMinDivs;
+                    grading[2] = 1 / _params.zMinGrading;
                 } else {
                     idx[2] = dims[2] - 1;
                     divs[2] = _params.zMaxDivs;
                     grading[2] = _params.zMaxGrading;
                 }
 
-                if (idx[0] == 0 && !_params.symXAxis) {
+                if (idx[0] == 0) {
+                    if (_params.symXAxis)
+                        continue;
+
                     divs[0] = _params.xMinDivs;
                     grading[0] = 1 / _params.xMinGrading;
                 } else if (idx[0] == dims[0] - 1) {
@@ -779,7 +782,9 @@ void AppData::gradeSurroundingBlocks() const
                     grading[0] = _params.xMaxGrading;
                 }
 
-                if (idx[1] == 0 && !_params.symYAxis) {
+                if (idx[1] == 0) {
+                    if (_params.symYAxis)
+                        continue;
                     divs[1] = _params.yMinDivs;
                     grading[1] = 1 / _params.yMinGrading;
                 } else if (idx[1] == dims[1] - 1) {
@@ -795,7 +800,7 @@ void AppData::gradeSurroundingBlocks() const
     }
 #endif
 
-#if 1
+#if 0
     for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
         for (idx[2] = 1; idx[2] < dims[2] - 1; idx[2]++) {
             for (int j = 0; j < 2; j++) {
@@ -803,18 +808,20 @@ void AppData::gradeSurroundingBlocks() const
                 Vector3d grading(1, 1, 1);
 
                 if (j == 0) {
+                    if (_params.symXAxis)
+                        continue;
                     idx[0] = 0;
-                    if (!_params.symXAxis) {
-                        divs[0] = _params.xMinDivs;
-                        grading[0] = 1 / _params.xMinGrading;
-                    }
+                    divs[0] = _params.xMinDivs;
+                    grading[0] = 1 / _params.xMinGrading;
                 } else {
                     idx[0] = dims[0] - 1;
                     divs[0] = _params.xMaxDivs;
                     grading[0] = _params.xMaxGrading;
                 }
 
-                if (idx[1] == 0 && !_params.symYAxis) {
+                if (idx[1] == 0) {
+                    if (_params.symYAxis)
+                        continue;
                     divs[1] = _params.yMinDivs;
                     grading[1] = 1 / _params.yMinGrading;
                 }
@@ -839,13 +846,15 @@ void AppData::gradeSurroundingBlocks() const
                 Vector3d grading(1, 1, 1);
 
                 if (j == 0) {
+                    if (_params.symYAxis)
+                        continue;
+
                     idx[1] = 0;
                     if (!_params.symYAxis) {
                         divs[1] = _params.yMinDivs;
                         grading[1] = 1 / _params.yMinGrading;
                     }
-                }
-                else {
+                } else {
                     idx[1] = dims[1] - 1;
                     divs[1] = _params.yMaxDivs;
                     grading[1] = _params.yMaxGrading;
@@ -1326,80 +1335,6 @@ void AppData::doCreateBaseVolume()
 {
     _pVolume = nullptr;
     auto makeGradedBlock = [this](const Vector3d cPts[8], CubeFaceType dir0, CubeFaceType dir1, CubeFaceType dir2, const GradingOp& gr) {
-#if 1
-        const auto& divs = gr.getDivs();
-        if (divs[0] != 0) {
-            double xScale, yScale, zScale;
-            double xGrading, yGrading, zGrading;
-            gr.calGradingFactors(0, xScale, xGrading);
-            gr.calGradingFactors(1, yScale, yGrading);
-            gr.calGradingFactors(2, zScale, zGrading);
-
-            double kx = 1;
-            double t0 = 0;
-            for (size_t i = 0; i < divs[0]; i++) {
-                double t1 = t0 + 1.0 / (double)divs[0] * kx * xScale;
-                kx *= xGrading;
-
-                double ky = 1;
-                double u0 = 0;
-                for (size_t j = 0; j < divs[1]; j++) {
-                    double u1 = u0 + 1.0 / (double)divs[1] * ky * yScale;
-                    ky *= yGrading;
-
-                    double kz = 1;
-                    double v0 = 0;
-                    for (size_t k = 0; k < divs[2]; k++) {
-                        double v1 = v0 + 1.0 / (double)divs[2] * kz * zScale;
-                        kz *= zGrading;
-
-                        Index3D blkIdx(i, j, k);
-                        if (dir1 == CFT_UNDEFINED && dir2 == CFT_UNDEFINED) {
-                            switch (dir0) {
-                            case CFT_BACK:
-                                blkIdx[0] = 0;
-                                break;
-                            case CFT_FRONT:
-                                blkIdx[0] = divs[0] - 1;
-                                break;
-                            case CFT_LEFT:
-                                blkIdx[1] = 0;
-                                break;
-                            case CFT_RIGHT:
-                                blkIdx[1] = divs[1] - 1;
-                                break;
-                            case CFT_BOTTOM:
-                                blkIdx[2] = 0;
-                                break;
-                            case CFT_TOP:
-                                blkIdx[2] = divs[2] - 1;
-                                break;
-                            default:
-                                break;
-                            }
-                        }
-                        auto ownerBlock = _pVolume->getBoundingBlock(blkIdx, cPts);
-
-                        vector<Vector3d> gPts;
-                        gPts.resize(8);
-                        gPts[0] = TRI_LERP(cPts, t0, u0, v0);
-                        gPts[1] = TRI_LERP(cPts, t1, u0, v0);
-                        gPts[2] = TRI_LERP(cPts, t1, u1, v0);
-                        gPts[3] = TRI_LERP(cPts, t0, u1, v0);
-                        gPts[4] = TRI_LERP(cPts, t0, u0, v1);
-                        gPts[5] = TRI_LERP(cPts, t1, u0, v1);
-                        gPts[6] = TRI_LERP(cPts, t1, u1, v1);
-                        gPts[7] = TRI_LERP(cPts, t0, u1, v1);
-                        ownerBlock->addHexCell(gPts);
-
-                        v0 = v1;
-                    }
-                    u0 = u1;
-                }
-                t0 = t1;
-            }
-        }
-#endif
     };
 
     _pVolume = make_shared<Volume>(_params.volDivs);
@@ -1416,9 +1351,7 @@ void AppData::doCreateBaseVolume()
     makeModelCubePoints(cubePts, volBox);
     Index3D::setBlockDim(1);
 
-    _pVolume->buildBlocks(_params, cubePts, volBox, false);
-    makeSurroundingBlocks(cubePts, makeGradedBlock);
-    gradeSurroundingBlocks();
+    _pVolume->buildModelBlocks(_params, cubePts, volBox, false);
 
     updateTessellation();
 #endif

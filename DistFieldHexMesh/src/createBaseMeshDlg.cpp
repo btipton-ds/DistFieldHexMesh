@@ -223,6 +223,15 @@ CreateBaseMeshDlg::~CreateBaseMeshDlg()
 {
 }
 
+void CreateBaseMeshDlg::getValue(wxTextCtrl* item, unsigned short& value) const
+{
+	wxString wstr = item->GetValue();
+	if (wstr.length() > 0) {
+		value = (unsigned short)stoi(wstr.c_str().AsChar());
+	}
+
+}
+
 void CreateBaseMeshDlg::getValue(wxTextCtrl* item, size_t& value) const
 {
 	wxString wstr = item->GetValue();
