@@ -211,11 +211,11 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshEdges, this, ID_SHOW_MESH_EDGES);
 
-    menu->Append(ID_SHOW_MESH_OUTER, "Mesh - Show Outer", "Turns rendering of edges on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowMeshOuter, this, ID_SHOW_MESH_OUTER);
+    menu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of edges on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
 
     menu->Append(ID_SHOW_MESH_BOUNDARY, "Mesh - Show Boundary", "Turns rendering of model boundary", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowMeshOuter, this, ID_SHOW_MESH_BOUNDARY);
+    Bind(wxEVT_MENU, &MainFrame::OnShowMeshBoundary, this, ID_SHOW_MESH_BOUNDARY);
 
     menu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
@@ -250,9 +250,9 @@ void MainFrame::createViewMenu()
     if (item)
         item->Check(getCanvas()->showMeshEdges());
 
-    item = _menuBar->FindItem(ID_SHOW_MESH_OUTER);
+    item = _menuBar->FindItem(ID_SHOW_MESH_WALL);
     if (item)
-        item->Check(getCanvas()->showMeshOuter());
+        item->Check(getCanvas()->showMeshWalls());
 }
 
 void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
@@ -508,13 +508,13 @@ void MainFrame::OnShowMeshEdges(wxCommandEvent& event)
         normItem->Check(getCanvas()->showMeshEdges());
 }
 
-void MainFrame::OnShowMeshOuter(wxCommandEvent& event)
+void MainFrame::OnShowMeshWalls(wxCommandEvent& event)
 {
-    getCanvas()->toggleShowMeshOuter();
+    getCanvas()->toggleShowMeshWalls();
 
-    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_OUTER);
+    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_WALL);
     if (normItem)
-        normItem->Check(getCanvas()->showMeshOuter());
+        normItem->Check(getCanvas()->showMeshWalls());
 }
 
 void MainFrame::OnShowMeshBoundary(wxCommandEvent& event)

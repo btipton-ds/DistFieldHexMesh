@@ -316,11 +316,21 @@ Index3D Block::determineOwnerBlockIdx(const Polygon& face) const
 	return determineOwnerBlockIdx(ctr);
 }
 
+Index3DId Block::getVertexIdOfPoint(const Vector3d& point)
+{
+	auto blkIdx = determineOwnerBlockIdx(point);
+	auto pBlockOwner = _pVol->getBlockPtr(blkIdx);
+	if (pBlockOwner)
+		return pBlockOwner->_vertices.findOrAdd(point);
+	assert(!"bad index");
+	return Index3DId();
+}
+
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;
 	_modelData._polygons.iterateInOrder([&result, includeInner](const Index3DId& id, const Polygon& face) {
-		if (includeInner || face.isOuter())
+		if (includeInner || face.isBlockBoundary())
 			result++;
 	});
 	return result;
@@ -693,11 +703,7 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
 	MTC::vector<Index3DId> vertIds;
 	vertIds.resize(8);
 	for (size_t i = 0; i < cellPts.size(); i++) {
-		Index3D ownerBlockIdx = determineOwnerBlockIdx(cellPts[i]);
-		auto pOwner = getOwner(ownerBlockIdx);
-		Vertex vert(cellPts[i]);
-		auto id = pOwner->_vertices.findOrAdd(vert);
-		vertIds[i] = id;
+		vertIds[i] = getVertexIdOfPoint(cellPts[i]);
 	}
 
 	Index3DId subBlockIdx;
@@ -1158,31 +1164,32 @@ void Block::imprintTJointVertices()
 	});
 }
 
-bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
+bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
 	if (meshType == FT_ALL)
 		return true;
-#if 1
+
+	bool intersectsModel = false;
+#if 0
 	result = face.intersectsModel();
 #else
 	auto ids = face.getCellIds();
 	for (const auto& cellId : ids) {
 		if (polyhedronExists(TS_REAL, cellId)) {
-			cellFunc(TS_REAL,cellId, [&result](const Polyhedron& cell) {
-				result = cell.intersectsModel();
-				});
+			cellFunc(TS_REAL,cellId, [&intersectsModel](const Polyhedron& cell) {
+				intersectsModel = cell.intersectsModel();
+			});
+			if (intersectsModel)
+				break;
 		}
-		if (result)
-			break;
 	}
 #endif
-	if (!result)
-		return false;
 
-	bool isOuter = face.isOuter();
+	bool isWall = face.isWall();
+	bool isVolBoundary = face.isVolumeBoundary(planes);
 	bool isBlockBoundary = face.isBlockBoundary();
-	bool isModelBoundary = isOuter;
+	bool isModelBoundary = isWall;
 	if (isModelBoundary) {
 		for (const auto& vertId : face.getVertexIds()) {
 			vertexFunc(vertId, [&isModelBoundary](const Vertex& vert) {
@@ -1205,25 +1212,25 @@ bool Block::includeFaceInRender(FaceType meshType, const Polygon& face) const
 		case FT_MODEL_BOUNDARY:
 			result = isModelBoundary && !isBlockBoundary;
 			break;
-		case FT_OUTER:
-			result = isOuter;
+		case FT_WALL:
+			result = isWall;
 			break;
 		case FT_BLOCK_BOUNDARY:
-			result = !isOuter && isBlockBoundary;
+			result = !isWall && isBlockBoundary;
 			break;
 	}
 
 	return result;
 }
 
-void Block::getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh)
+void Block::getBlockTriMesh(FaceType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
 {
 	if (numFaces(true) == 0)
 		return;
 
 	const auto& polys = _modelData._polygons;
-	polys.iterateInOrder([this, &pMesh, meshType](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, face)) {
+	polys.iterateInOrder([this, &pMesh, planes, meshType](const Index3DId& id, const Polygon& face) {
+		if (includeFaceInRender(meshType, planes, face)) {
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
 			pts.reserve(vertIds.size());
@@ -1264,13 +1271,13 @@ void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
 	vals.push_back((float)pt1[2]);
 }
 
-void Block::makeEdgeSets(FaceType meshType, glPointsPtr& points)
+void Block::makeEdgeSets(FaceType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
 {
 	set<Edge> edges;
 
 	const auto& polys = _modelData._polygons;
-	polys.iterateInOrder([this, &edges, meshType](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, face)) {
+	polys.iterateInOrder([this, &edges, meshType, planes](const Index3DId& id, const Polygon& face) {
+		if (includeFaceInRender(meshType, planes, face)) {
 			const auto& vertIds = face.getVertexIds();
 			for (size_t i = 0; i < vertIds.size(); i++) {
 				size_t j = (i + 1) % vertIds.size();

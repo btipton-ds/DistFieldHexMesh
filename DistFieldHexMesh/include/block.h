@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <tm_vector3.h>
+#include <tm_plane.h>
 #include <triMesh.h>
 #include <tm_spatialSearch.h>
 #include <enums.h>
@@ -108,6 +109,8 @@ public:
 	Index3D determineOwnerBlockIdx(const MTC::vector<Index3DId>& verts) const;
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
+	Index3DId getVertexIdOfPoint(const Vector3d& point);
+
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
 	const std::vector<Vector3d>& getCornerPts() const;
@@ -123,8 +126,8 @@ public:
 	void createBlockFaces();
 
 	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
-	void getBlockTriMesh(FaceType meshType, CMeshPtr& pMesh);
-	void makeEdgeSets(FaceType meshType, glPointsPtr& points);
+	void getBlockTriMesh(FaceType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
+	void makeEdgeSets(FaceType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -248,7 +251,7 @@ private:
 	void addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFaceInRender(FaceType meshType, const Polygon& face) const;
+	bool includeFaceInRender(FaceType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
 
 	bool doPresplits(const BuildCFDParams& params);
 	void dumpOpenCells() const;

@@ -53,7 +53,7 @@ namespace DFHM {
 				showMeshBoundary = false,
 				showMeshEdges = true,
 				showMeshFaces = false,
-				showMeshOuter = false,
+				showMeshWalls = false,
 				showMeshSelectedBlocks = false;
 		};
 

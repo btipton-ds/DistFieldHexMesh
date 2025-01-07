@@ -41,10 +41,10 @@ namespace {
         DS_MODEL_SHARP_VERTS,
         DS_MODEL_NORMALS,
         DS_BLOCK_OUTER,
-        DS_BLOCK_INNER,
-        DS_BLOCK_BOUNDARY,
+        DS_MESH_INNER,
+        DS_MESH_BOUNDARY,
         DS_MODEL_REF_EDGES,
-        DS_BLOCK_ALL,
+        DS_MESH_ALL,
     };
 
 }

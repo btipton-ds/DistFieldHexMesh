@@ -125,7 +125,8 @@ public:
 	bool isCoplanar(const Planed& pl) const;
 	bool isCoplanar(const Edge& edge) const;
 	bool isConvex()const;
-	bool isOuter() const;
+	bool isWall() const;
+	bool isVolumeBoundary(const std::vector<Planed>& planes) const;
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
@@ -290,7 +291,7 @@ inline bool Polygon::isConvex() const
 	return _isConvex == IS_TRUE;
 }
 
-inline bool Polygon::isOuter() const
+inline bool Polygon::isWall() const
 {
 	return _cellIds.size() == 1;
 }

@@ -54,14 +54,14 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
             if (FT_ALL < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_ALL]) {
                     if (pBlockTess)
-                        faceVBO.includeElementIndices(DS_BLOCK_ALL, pBlockTess);
+                        faceVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
                 }
             }
-        } else if (opts.showMeshOuter) {
-            if (FT_OUTER < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_OUTER]) {
+        } else if (opts.showMeshWalls) {
+            if (FT_WALL < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_WALL]) {
                     if (pBlockTess)
-                        faceVBO.includeElementIndices(DS_BLOCK_OUTER, pBlockTess);
+                        faceVBO.includeElementIndices(DS_MESH_WALL, pBlockTess);
                 }
             }
         } else {
@@ -69,7 +69,7 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
             if (FT_MODEL_BOUNDARY < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_MODEL_BOUNDARY]) {
                     if (pBlockTess) {
-                        faceVBO.includeElementIndices(DS_BLOCK_INNER, pBlockTess);
+                        faceVBO.includeElementIndices(DS_MESH_INNER, pBlockTess);
                         blocksAdded = true;
                     }
                 }
@@ -79,7 +79,7 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
                 for (auto pBlockTess : _faceTessellations[FT_BLOCK_BOUNDARY]) {
                     if (pBlockTess) {
                         blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_BLOCK_BOUNDARY, pBlockTess);
+                        faceVBO.includeElementIndices(DS_MESH_BOUNDARY, pBlockTess);
                     }
                 }
             }
@@ -89,7 +89,7 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
                     for (auto pBlockTess : _faceTessellations[FT_ALL]) {
                         if (pBlockTess) {
                             blocksAdded = true;
-                            faceVBO.includeElementIndices(DS_BLOCK_ALL, pBlockTess);
+                            faceVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
                         }
                     }
                 }
@@ -98,31 +98,31 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
     }
 
     if (opts.showMeshEdges && !_edgeTessellations.empty()) {
-        if (opts.showMeshOuter && FT_OUTER < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_OUTER]) {
+        if (opts.showMeshWalls && FT_WALL < _edgeTessellations.size()) {
+            for (auto pBlockTess : _edgeTessellations[FT_WALL]) {
                 if (pBlockTess)
-                    edgeVBO.includeElementIndices(DS_BLOCK_OUTER, pBlockTess);
+                    edgeVBO.includeElementIndices(DS_MESH_WALL, pBlockTess);
             }
         }
 
-        if (!opts.showMeshOuter && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
+        if (!opts.showMeshWalls && FT_MODEL_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_MODEL_BOUNDARY]) {
                 if (pBlockTess)
-                    edgeVBO.includeElementIndices(DS_BLOCK_INNER, pBlockTess);
+                    edgeVBO.includeElementIndices(DS_MESH_INNER, pBlockTess);
             }
         }
 
-        if (!opts.showMeshOuter && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+        if (!opts.showMeshWalls && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
                 if (pBlockTess)
-                    edgeVBO.includeElementIndices(DS_BLOCK_BOUNDARY, pBlockTess);
+                    edgeVBO.includeElementIndices(DS_MESH_BOUNDARY, pBlockTess);
             }
         }
 
         if (!opts.showMeshSelectedBlocks && FT_ALL < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
                 if (pBlockTess)
-                    edgeVBO.includeElementIndices(DS_BLOCK_ALL, pBlockTess);
+                    edgeVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
             }
         }
     }
@@ -139,13 +139,16 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
     switch (key) {
     default:
-    case DS_BLOCK_ALL:
-    case DS_BLOCK_OUTER:
-    case DS_BLOCK_INNER:
+    case DS_MESH_WALL:
+        glLineWidth(0.25f);
+        UBO.defColor = p3f(0.25f, 0.5f, 0.250f);
+        break;
+    case DS_MESH_ALL:
+    case DS_MESH_INNER:
         glLineWidth(0.25f);
         UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
         break;
-    case DS_BLOCK_BOUNDARY:
+    case DS_MESH_BOUNDARY:
         glLineWidth(1.0f);
         UBO.defColor = p3f(0.75f, 0, 0);
         break;
@@ -171,14 +174,16 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     UBO.ambient = 0.2f;
     switch (key) {
     default:
-    case DS_BLOCK_ALL:
-    case DS_BLOCK_OUTER:
+    case DS_MESH_WALL:
+        UBO.defColor = p3f(0.5f, 1.f, 0.5f);
+        break;
+    case DS_MESH_ALL:
         UBO.defColor = p3f(0.0f, 0.8f, 0);
         break;
-    case DS_BLOCK_INNER:
+    case DS_MESH_INNER:
         UBO.defColor = p3f(0.75f, 1, 1);
         break;
-    case DS_BLOCK_BOUNDARY:
+    case DS_MESH_BOUNDARY:
         UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
         break;
     }

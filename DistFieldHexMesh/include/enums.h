@@ -61,7 +61,7 @@ enum CubeFaceType {
 };
 
 enum FaceType {
-	FT_OUTER,
+	FT_WALL,
 	FT_MODEL_BOUNDARY,
 	FT_BLOCK_BOUNDARY,
 	FT_ALL,
@@ -77,10 +77,10 @@ enum DrawStates {
 	DS_MODEL_REF_EDGES,
 	DS_MESH_FACES,
 	DS_MESH_EDGES,
-	DS_BLOCK_OUTER,
-    DS_BLOCK_INNER,
-	DS_BLOCK_BOUNDARY,
-	DS_BLOCK_ALL,
+	DS_MESH_WALL,
+    DS_MESH_INNER,
+	DS_MESH_BOUNDARY,
+	DS_MESH_ALL,
 };
 
 enum VertexLockType {

@@ -330,12 +330,12 @@ bool GraphicsCanvas::toggleShowMeshFaces()
     return _viewOptions.showMeshFaces;
 }
 
-bool GraphicsCanvas::toggleShowMeshOuter()
+bool GraphicsCanvas::toggleShowMeshWalls()
 {
-    _viewOptions.showMeshOuter = !_viewOptions.showMeshOuter;
+    _viewOptions.showMeshWalls = !_viewOptions.showMeshWalls;
     changeViewElements();
 
-    return _viewOptions.showMeshOuter;
+    return _viewOptions.showMeshWalls;
 }
 
 bool GraphicsCanvas::toggleShowMeshBoundary()

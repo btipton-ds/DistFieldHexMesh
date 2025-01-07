@@ -147,8 +147,8 @@ public:
     bool showMeshFaces() const;
     bool toggleShowMeshFaces();
 
-    bool showMeshOuter() const;
-    bool toggleShowMeshOuter();
+    bool showMeshWalls() const;
+    bool toggleShowMeshWalls();
 
     bool showMeshBoundary() const;
     bool toggleShowMeshBoundary();
@@ -288,9 +288,9 @@ inline bool GraphicsCanvas::showMeshFaces() const
     return _viewOptions.showMeshFaces;
 }
 
-inline bool GraphicsCanvas::showMeshOuter() const
+inline bool GraphicsCanvas::showMeshWalls() const
 {
-    return _viewOptions.showMeshOuter;
+    return _viewOptions.showMeshWalls;
 }
 
 inline bool GraphicsCanvas::showMeshBoundary() const

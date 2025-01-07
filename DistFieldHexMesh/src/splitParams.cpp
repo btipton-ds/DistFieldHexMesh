@@ -202,12 +202,12 @@ void BuildCFDParams::write(std::ostream& out) const
 	out.write((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	out.write((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
 
-	out.write((char*)&xMinDivs, sizeof(size_t));
-	out.write((char*)&xMaxDivs, sizeof(size_t));
-	out.write((char*)&yMinDivs, sizeof(size_t));
-	out.write((char*)&yMaxDivs, sizeof(size_t));
-	out.write((char*)&zMinDivs, sizeof(size_t));
-	out.write((char*)&zMaxDivs, sizeof(size_t));
+	out.write((char*)&xMinDivs, sizeof(xMinDivs));
+	out.write((char*)&xMaxDivs, sizeof(xMaxDivs));
+	out.write((char*)&yMinDivs, sizeof(yMinDivs));
+	out.write((char*)&yMaxDivs, sizeof(yMaxDivs));
+	out.write((char*)&zMinDivs, sizeof(zMinDivs));
+	out.write((char*)&zMaxDivs, sizeof(zMaxDivs));
 
 	out.write((char*)&xMinGrading, sizeof(double));
 	out.write((char*)&xMaxGrading, sizeof(double));

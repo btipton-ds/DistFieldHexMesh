@@ -255,6 +255,15 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
+bool Polygon::isVolumeBoundary(const std::vector<Planed>& planes) const
+{
+	for (const auto& pl : planes) {
+		if (isCoplanar(pl))
+			return true;
+	}
+	return false;
+}
+
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {
