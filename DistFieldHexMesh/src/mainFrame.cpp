@@ -205,6 +205,8 @@ void MainFrame::createViewMenu()
 
     menu->AppendSeparator();
 
+    addBoundarySubMenu(menu);
+
     menu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshFaces, this, ID_SHOW_MESH_FACES);
 
@@ -283,6 +285,31 @@ void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
     Bind(wxEVT_MENU, &MainFrame::OnResetView, this, ID_VIEW_RESET);
 
     pParentMenu->AppendSubMenu(pMenu, "Principal Views", "Principle views");
+}
+
+void MainFrame::addBoundarySubMenu(wxMenu* pParentMenu)
+{
+    wxMenu* pMenu = new wxMenu;
+
+    pMenu->Append(ID_SHOW_FRONT, "Front", "Show front boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowFront, this, ID_SHOW_FRONT);
+
+    pMenu->Append(ID_SHOW_BACK, "Back", "Show back boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowBack, this, ID_SHOW_BACK);
+
+    pMenu->Append(ID_SHOW_RIGHT, "Right", "Show right boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowRight, this, ID_SHOW_RIGHT);
+
+    pMenu->Append(ID_SHOW_LEFT, "Left", "Show left boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLeft, this, ID_SHOW_LEFT);
+
+    pMenu->Append(ID_SHOW_TOP, "Top", "Show top boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowTop, this, ID_SHOW_TOP);
+
+    pMenu->Append(ID_SHOW_BOTTOM, "Bottom", "Show bottom boundary faces", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowBottom, this, ID_SHOW_BOTTOM);
+
+    pParentMenu->AppendSubMenu(pMenu, "Show boundaries", "Boundary face drawing");
 }
 
 void MainFrame::createHelpMenu()
@@ -569,3 +596,52 @@ void MainFrame::OnResetView(wxCommandEvent& event)
 {
     _pCanvas->resetView();
 }
+
+void MainFrame::OnShowFront(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_FRONT);
+    auto pItem = _menuBar->FindItem(ID_SHOW_FRONT);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_FRONT));
+}
+
+void MainFrame::OnShowBack(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BACK);
+    auto pItem = _menuBar->FindItem(ID_SHOW_BACK);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_BACK));
+}
+
+void MainFrame::OnShowRight(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_RIGHT);
+    auto pItem = _menuBar->FindItem(ID_SHOW_RIGHT);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_RIGHT));
+}
+
+void MainFrame::OnShowLeft(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_LEFT);
+    auto pItem = _menuBar->FindItem(ID_SHOW_LEFT);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_LEFT));
+}
+
+void MainFrame::OnShowTop(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_TOP);
+    auto pItem = _menuBar->FindItem(ID_SHOW_TOP);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_TOP));
+}
+
+void MainFrame::OnShowBottom(wxCommandEvent& event)
+{
+    _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BOTTOM);
+    auto pItem = _menuBar->FindItem(ID_SHOW_BOTTOM);
+    if (pItem)
+        pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_BOTTOM));
+}
+

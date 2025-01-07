@@ -1187,7 +1187,6 @@ bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& pl
 #endif
 
 	bool isWall = face.isWall();
-	bool isVolBoundary = face.isVolumeBoundary(planes);
 	bool isBlockBoundary = face.isBlockBoundary();
 	bool isModelBoundary = isWall;
 	if (isModelBoundary) {
@@ -1218,6 +1217,17 @@ bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& pl
 		case FT_BLOCK_BOUNDARY:
 			result = !isWall && isBlockBoundary;
 			break;
+
+		case FT_BACK:
+		case FT_FRONT:
+		case FT_BOTTOM:
+		case FT_TOP:
+		case FT_LEFT:
+		case FT_RIGHT: {
+			size_t idx = meshType - FT_BOTTOM;
+			result = face.isOnPlane(planes[idx]);
+			break;
+		}
 	}
 
 	return result;

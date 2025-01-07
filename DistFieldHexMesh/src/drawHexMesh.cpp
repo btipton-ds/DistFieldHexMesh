@@ -81,6 +81,66 @@ void DrawHexMesh::changeViewElements()
                 }
             }
 
+            if (FT_BACK < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_BACK]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_BACK, pBlockTess);
+                    }
+                }
+            }
+
+            if (FT_FRONT < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_FRONT]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_FRONT, pBlockTess);
+                    }
+                }
+            }
+
+            if (FT_LEFT < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_LEFT]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_LEFT, pBlockTess);
+                    }
+                }
+            }
+
+            if (FT_RIGHT < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_RIGHT]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_RIGHT, pBlockTess);
+                    }
+                }
+            }
+
+            if (FT_BOTTOM < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_BOTTOM]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_BOTTOM, pBlockTess);
+                    }
+                }
+            }
+
+            if (FT_TOP < _faceTessellations.size()) {
+                for (auto pBlockTess : _faceTessellations[FT_TOP]) {
+                    if (pBlockTess) {
+                        drewSomething = true;
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_TOP, pBlockTess);
+                    }
+                }
+            }
+
             if (FT_BLOCK_BOUNDARY < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_BLOCK_BOUNDARY]) {
                     if (pBlockTess) {
@@ -144,11 +204,10 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
     switch (key) {
     default:
-    case DS_MESH_WALL:
-        glLineWidth(0.25f);
-        UBO.defColor = p3f(0.25f, 0.5f, 0.250f);
-        break;
     case DS_MESH_ALL:
+        glLineWidth(0.25f);
+        UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
+        break;
     case DS_MESH_INNER:
         glLineWidth(0.25f);
         UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
@@ -156,6 +215,10 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     case DS_MESH_BOUNDARY:
         glLineWidth(1.0f);
         UBO.defColor = p3f(0.75f, 0, 0);
+        break;
+    case DS_MESH_WALL:
+        glLineWidth(0.25f);
+        UBO.defColor = p3f(0.25f, 0.5f, 0.250f);
         break;
     }
     UBO.ambient = 1.0f;
@@ -189,6 +252,30 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         break;
     case DS_MESH_BOUNDARY:
         UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
+        break;
+
+    case DS_MESH_BACK:
+        UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+        break;
+
+    case DS_MESH_FRONT:
+        UBO.defColor = p3f(0.0f, 1.0f, 0.0f);
+        break;
+
+    case DS_MESH_BOTTOM:
+        UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
+        break;
+
+    case DS_MESH_TOP:
+        UBO.defColor = p3f(0.0f, 1.0f, 1.0f);
+        break;
+
+    case DS_MESH_LEFT:
+        UBO.defColor = p3f(1.0f, 0.0f, 1.0f);
+        break;
+
+    case DS_MESH_RIGHT:
+        UBO.defColor = p3f(1.0f, 1.0f, 0.0f);
         break;
     }
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);

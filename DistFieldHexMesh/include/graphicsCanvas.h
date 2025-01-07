@@ -73,12 +73,13 @@ class GraphicsCanvas : public GraphicsCanvasBase
 {
 public:
     enum View {
-        VIEW_FRONT,
-        VIEW_BACK,
-        VIEW_TOP,
         VIEW_BOTTOM,
+        VIEW_TOP,
         VIEW_LEFT,
         VIEW_RIGHT,
+        VIEW_FRONT,
+        VIEW_BACK,
+
     };
 
     struct GraphicsUBO {
@@ -153,6 +154,8 @@ public:
     void setShowMeshSelectedBlocks(bool val);
 
     void setView(View v);
+    void toggleShowFace(View v);
+    bool showFace(View v) const;
     void resetView();
 
     void onMouseLeftDown(wxMouseEvent& event);

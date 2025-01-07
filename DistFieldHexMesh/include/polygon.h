@@ -126,7 +126,7 @@ public:
 	bool isCoplanar(const Edge& edge) const;
 	bool isConvex()const;
 	bool isWall() const;
-	bool isVolumeBoundary(const std::vector<Planed>& planes) const;
+	bool isOnPlane(const Planed& plane) const;
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;

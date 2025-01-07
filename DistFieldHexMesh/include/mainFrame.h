@@ -76,6 +76,14 @@ enum DFHM_MENU_ID
     ID_VIEW_RIGHT,
     ID_VIEW_RESET,
 
+    ID_SHOW_FRONT,
+    ID_SHOW_BACK,
+    ID_SHOW_TOP,
+    ID_SHOW_BOTTOM,
+    ID_SHOW_LEFT,
+    ID_SHOW_RIGHT,
+    ID_SHOW_RESET,
+
     ID_SHOW_CURVATURE,
     ID_SHOW_SHARP_VERTS,
     ID_SHOW_TRI_NORMALS,
@@ -127,7 +135,8 @@ private:
     void createFileMenu();
     void createEditMenu();
     void createViewMenu();
-    void addViewSubMenu(wxMenu* pSubMenu);
+    void addViewSubMenu(wxMenu* pParentMenu);
+    void addBoundarySubMenu(wxMenu* pParentMenu);
     void createHelpMenu();
 
     void OnOpen(wxCommandEvent& event);
@@ -166,6 +175,13 @@ private:
     void OnSetViewTop(wxCommandEvent& event);
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
+
+    void OnShowFront(wxCommandEvent& event);
+    void OnShowBack(wxCommandEvent& event);
+    void OnShowRight(wxCommandEvent& event);
+    void OnShowLeft(wxCommandEvent& event);
+    void OnShowTop(wxCommandEvent& event);
+    void OnShowBottom(wxCommandEvent& event);
 
     wxMenuBar* _menuBar = nullptr;
     wxMenu* _editMenu = nullptr,

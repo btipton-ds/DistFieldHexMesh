@@ -231,6 +231,56 @@ void GraphicsCanvas::setView(View v)
     }
 }
 
+void GraphicsCanvas::toggleShowFace(View v)
+{
+    switch (v) {
+    case VIEW_RIGHT:
+        _pDrawHexMesh->toggleShowRight();
+        break;
+    case VIEW_LEFT:
+        _pDrawHexMesh->toggleShowLeft();
+        break;
+
+    case VIEW_FRONT:
+        _pDrawHexMesh->toggleShowFront();
+        break;
+    case VIEW_BACK:
+        _pDrawHexMesh->toggleShowBack();
+        break;
+
+    case VIEW_TOP:
+        _pDrawHexMesh->toggleShowTop();
+        break;
+    case VIEW_BOTTOM:
+        _pDrawHexMesh->toggleShowBottom();
+        break;
+    }
+    _pDrawHexMesh->changeViewElements();
+}
+
+bool GraphicsCanvas::showFace(View v) const
+{
+    switch (v) {
+    case VIEW_RIGHT:
+        return _pDrawHexMesh->showRight();
+    case VIEW_LEFT:
+        return _pDrawHexMesh->showLeft();
+
+    case VIEW_FRONT:
+        return _pDrawHexMesh->showFront();
+    case VIEW_BACK:
+        return _pDrawHexMesh->showBack();
+
+    case VIEW_TOP:
+        return _pDrawHexMesh->showTop();
+    case VIEW_BOTTOM:
+        return _pDrawHexMesh->showBottom();
+    default:
+        break;
+    }
+    return false;
+}
+
 void GraphicsCanvas::resetView()
 {
     _viewScale = INIT_VIEW_SCALE;

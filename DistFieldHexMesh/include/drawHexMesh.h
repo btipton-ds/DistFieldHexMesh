@@ -34,6 +34,20 @@ namespace OGL
 	class Shader;
 }
 
+#define DECL_OPTS(NAME) \
+	bool show##NAME() const; \
+	bool toggleShow##NAME();
+
+#define IMPL_OPTS(NAME) \
+	inline bool DrawHexMesh::show##NAME() const \
+	{\
+		return _options.show##NAME;\
+	}\
+	inline bool DrawHexMesh::toggleShow##NAME()\
+	{\
+		return toggle(_options.show##NAME);\
+	}
+
 namespace DFHM {
 	struct HexMeshViewOptions {
 		bool
@@ -41,6 +55,14 @@ namespace DFHM {
 			showFaces = false,
 			showBoundary = false,
 			showWalls = false,
+
+			showBack = false,
+			showFront = false,
+			showBottom = false,
+			showTop = false,
+			showLeft = false,
+			showRight = false,
+
 			showSelectedBlocks = false;
 	};
 
@@ -54,18 +76,18 @@ namespace DFHM {
 		void setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
 		void changeViewElements();
 
-		bool showEdges() const;
-		bool toggleShowEdges();
+		DECL_OPTS(Edges)
+		DECL_OPTS(Faces)
+		DECL_OPTS(Walls)
+		DECL_OPTS(Boundary)
 
-		bool showFaces() const;
-		bool toggleShowFaces();
-
-		bool showWalls() const;
-		bool toggleShowWalls();
-
-		bool showBoundary() const;
-		bool toggleShowBoundary();
-
+		DECL_OPTS(Back)
+		DECL_OPTS(Front)
+		DECL_OPTS(Bottom)
+		DECL_OPTS(Top)
+		DECL_OPTS(Left)
+		DECL_OPTS(Right)
+			
 		void setShowSelectedBlocks(bool val);
 
 	protected:
@@ -90,45 +112,17 @@ namespace DFHM {
 		_edgeTessellations = src;
 	}
 
-	inline bool DrawHexMesh::showEdges() const
-	{
-		return _options.showEdges;
-	}
+	IMPL_OPTS(Edges)
+	IMPL_OPTS(Faces)
+	IMPL_OPTS(Walls)
+	IMPL_OPTS(Boundary)
 
-	inline bool DrawHexMesh::toggleShowEdges()
-	{
-		return toggle(_options.showEdges);
-	}
-
-	inline bool DrawHexMesh::showFaces() const
-	{
-		return _options.showFaces;
-	}
-
-	inline bool DrawHexMesh::toggleShowFaces()
-	{
-		return toggle(_options.showFaces);
-	}
-
-	inline bool DrawHexMesh::showWalls() const
-	{
-		return _options.showWalls;
-	}
-
-	inline bool DrawHexMesh::toggleShowWalls()
-	{
-		return toggle(_options.showWalls);
-	}
-
-	inline bool DrawHexMesh::showBoundary() const
-	{
-		return _options.showBoundary;
-	}
-
-	inline bool DrawHexMesh::toggleShowBoundary()
-	{
-		return toggle(_options.showBoundary);
-	}
+	IMPL_OPTS(Back)
+	IMPL_OPTS(Front)
+	IMPL_OPTS(Bottom)
+	IMPL_OPTS(Top)
+	IMPL_OPTS(Left)
+	IMPL_OPTS(Right)
 
 	inline void DrawHexMesh::setShowSelectedBlocks(bool val)
 	{
