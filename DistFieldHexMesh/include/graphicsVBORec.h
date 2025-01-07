@@ -43,19 +43,6 @@ namespace OGL
 
 namespace DFHM {
 	struct VBORec {
-		struct ChangeElementsOptions {
-			bool 
-				showModelSharpEdges = false,
-				showModelSharpVerts = false,
-				showModelTriNormals = false,
-				showModelEdges = false,
-				showModelFaces = true,
-				showMeshBoundary = false,
-				showMeshEdges = true,
-				showMeshFaces = false,
-				showMeshWalls = false,
-				showMeshSelectedBlocks = false;
-		};
 
 		VBORec();
 		virtual ~VBORec();

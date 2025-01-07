@@ -30,25 +30,22 @@ This file is part of the DistFieldHexMesh application/library.
 #include <rgbaColor.h>
 #include <index3D.h>
 #include <meshData.h>
-#include <drawModelMesh.h>
 #include <volume.h>
 
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const AppData* pAppData, const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo)
+MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshRepoPtr& pRepo)
 : _pAppData(pAppData)
-, _options(options)
 , _pRepo(pRepo)
 {
 }
 
-MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options)
+MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 	: _pAppData(pAppData)
 	, _name(name)
 	, _pMesh(pMesh)
 	, _pRepo(pMesh->getRepo())
-	, _options(options)
 {
 }
 
@@ -171,7 +168,7 @@ void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
 	setEdgeSegTessellation(_pMesh, pDrawModelMesh);
 }
 
-void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const VBORec::ChangeElementsOptions& params)
+void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw)
 {
 	if (!isActive())
 		return;
@@ -183,10 +180,10 @@ void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const V
 		edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, getAllEdgeTess());
 	}
 	else {
-		if (params.showMeshFaces) {
+		if (pDraw->showFaces()) {
 			faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());
 		}
-		if (params.showMeshEdges) {
+		if (pDraw->showEdges()) {
 			edgeVBO.includeElementIndices(DS_MESH_EDGES, getAllEdgeTess());
 		}
 	}

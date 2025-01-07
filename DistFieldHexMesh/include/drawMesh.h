@@ -50,18 +50,6 @@ namespace DFHM {
 
 	class DrawMesh : public OGL::Extensions {
 	public:
-		struct ChangeElementsOptions {
-			bool
-				showSharpEdges = false,
-				showSharpVerts = false,
-				showTriNormals = false,
-				showEdges = true,
-				showFaces = true,
-				showModelBoundary = false,
-				showOuter = false,
-				showCurvature = false,
-				showSelectedBlocks = false;
-		};
 
 		DrawMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawMesh();
@@ -74,6 +62,7 @@ namespace DFHM {
 		void drawFaces();
 
 	protected:
+		static bool toggle(bool& val);
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key);
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key);
 
@@ -88,6 +77,12 @@ namespace DFHM {
 
 		std::shared_ptr<VBORec> _VBOs;
 	};
+
+	inline bool DrawMesh::toggle(bool& val)
+	{
+		val = !val;
+		return val;
+	}
 
 	inline const std::shared_ptr<VBORec>& DrawMesh::getVBOs() const
 	{

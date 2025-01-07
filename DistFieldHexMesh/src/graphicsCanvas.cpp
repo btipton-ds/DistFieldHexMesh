@@ -264,34 +264,34 @@ void GraphicsCanvas::setLights()
 
 bool GraphicsCanvas::toggleShowModelSharpEdges()
 {
-    _viewOptions.showModelSharpEdges = !_viewOptions.showModelSharpEdges;
+    bool result = _pDrawModelMesh->toggleShowSharpEdges();
     changeViewElements();
 
-    return _viewOptions.showModelSharpEdges;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowSharpVerts()
 {
-    _viewOptions.showModelSharpVerts = !_viewOptions.showModelSharpVerts;
+    bool result = _pDrawModelMesh->toggleShowSharpVerts();
     changeViewElements();
 
-    return _viewOptions.showModelSharpVerts;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowTriNormals()
 {
-    _viewOptions.showModelTriNormals = !_viewOptions.showModelTriNormals;
+    bool result = _pDrawModelMesh->showTriNormals();
     changeViewElements();
 
-    return _viewOptions.showModelTriNormals;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowModelFaces()
 {
-    _viewOptions.showModelFaces = !_viewOptions.showModelFaces;
+    bool result = _pDrawModelMesh->toggleShowFaces();
     changeViewElements();
 
-    return _viewOptions.showModelFaces;
+    return result;
 }
 
 bool GraphicsCanvas::showCurvature() const
@@ -301,49 +301,49 @@ bool GraphicsCanvas::showCurvature() const
 
 bool GraphicsCanvas::toggleShowCurvature()
 {
-    _pDrawModelMesh->toggleShowCurvature();
+    bool result = _pDrawModelMesh->toggleShowCurvature();
     changeViewElements();
-    return _pDrawModelMesh->showCurvature();
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowModelEdges()
 {
-    _viewOptions.showModelEdges = !_viewOptions.showModelEdges;
+    bool result = _pDrawModelMesh->toggleShowEdges();
     changeViewElements();
 
-    return _viewOptions.showModelEdges;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowMeshEdges()
 {
-    _viewOptions.showMeshEdges = !_viewOptions.showMeshEdges;
+    bool result = _pDrawHexMesh->toggleShowEdges();
     changeViewElements();
 
-    return _viewOptions.showMeshEdges;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowMeshFaces()
 {
-    _viewOptions.showMeshFaces = !_viewOptions.showMeshFaces;
+    bool result = _pDrawHexMesh->toggleShowFaces();
     changeViewElements();
 
-    return _viewOptions.showMeshFaces;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowMeshWalls()
 {
-    _viewOptions.showMeshWalls = !_viewOptions.showMeshWalls;
+    bool result = _pDrawHexMesh->toggleShowWalls();
     changeViewElements();
 
-    return _viewOptions.showMeshWalls;
+    return result;
 }
 
 bool GraphicsCanvas::toggleShowMeshBoundary()
 {
-    _viewOptions.showMeshBoundary = !_viewOptions.showMeshBoundary;
+    bool result = _pDrawHexMesh->toggleShowBoundary();
     changeViewElements();
 
-    return _viewOptions.showMeshBoundary;
+    return result;
 }
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
@@ -826,11 +826,11 @@ void GraphicsCanvas::changeViewElements()
     const auto& meshData = _pAppData->getMeshData();
     for (auto& pair : *meshData) {
         auto pData = pair.second;
-        _pDrawModelMesh->changeViewElements(pData, _viewOptions);
+        _pDrawModelMesh->changeViewElements(pData);
     }
     faceVBO.endSettingElementIndices();
     edgeVBO.endSettingElementIndices();
 
-    _pDrawHexMesh->changeViewElements(_viewOptions);
+    _pDrawHexMesh->changeViewElements();
 }
 

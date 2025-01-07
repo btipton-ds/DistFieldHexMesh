@@ -41,7 +41,7 @@ DrawHexMesh::~DrawHexMesh()
 
 }
 
-void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
+void DrawHexMesh::changeViewElements()
 {
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
@@ -49,9 +49,9 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    if (opts.showMeshFaces && !_faceTessellations.empty()) {
+    if (_options.showFaces && !_faceTessellations.empty()) {
         bool drewSomething = false;
-        if (opts.showMeshSelectedBlocks) {
+        if (_options.showSelectedBlocks) {
             if (FT_ALL < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_ALL]) {
                     if (pBlockTess) {
@@ -60,7 +60,7 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
                     }
                 }
             }
-        } else if (opts.showMeshWalls) {
+        } else if (_options.showWalls) {
             if (FT_WALL < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_WALL]) {
                     if (pBlockTess) {
@@ -104,9 +104,9 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
         }
     }
 
-    if (opts.showMeshEdges && !_edgeTessellations.empty()) {
+    if (_options.showEdges && !_edgeTessellations.empty()) {
         bool drewSomething = false;
-        if (opts.showMeshWalls && FT_WALL < _edgeTessellations.size()) {
+        if (_options.showWalls && FT_WALL < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_WALL]) {
                 if (pBlockTess) {
                     drewSomething = true;
@@ -115,7 +115,7 @@ void DrawHexMesh::changeViewElements(const VBORec::ChangeElementsOptions& opts)
             }
         }
 
-        if (opts.showMeshBoundary && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
+        if (_options.showBoundary && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
             for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
                 if (pBlockTess) {
                     drewSomething = true;
@@ -141,7 +141,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
-    const auto& opts = _pCanvas->getViewOptions();
 
     switch (key) {
     default:
@@ -176,7 +175,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
-    const auto& opts = _pCanvas->getViewOptions();
     UBO.ambient = 0.2f;
     switch (key) {
     default:

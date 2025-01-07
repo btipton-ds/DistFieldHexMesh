@@ -35,7 +35,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <meshData.h>
 #include <graphicsVBORec.h>
-#include <drawMesh.h>
+#include <drawHexMesh.h>
+#include <drawModelMesh.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
@@ -48,8 +49,6 @@ class Shader;
 }
 
 namespace DFHM {
-class DrawHexMesh;
-class DrawModelMesh;
 
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
@@ -95,8 +94,6 @@ public:
     ~GraphicsCanvas();
 
     void clearMesh3D();
-
-    const VBORec::ChangeElementsOptions& getViewOptions() const;
 
     GraphicsUBO& getUBO();
     const GraphicsUBO& getUBO() const;
@@ -189,7 +186,6 @@ private:
     std::shared_ptr<wxGLContext> _pContext;
     
     bool _initialized = false;
-    VBORec::ChangeElementsOptions _viewOptions;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
 #define INIT_VIEW_SCALE 10
@@ -212,11 +208,6 @@ private:
 protected:
     wxDECLARE_EVENT_TABLE(); 
 };
-
-inline const VBORec::ChangeElementsOptions& GraphicsCanvas::getViewOptions() const
-{
-    return _viewOptions;
-}
 
 inline GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO()
 {
@@ -255,52 +246,52 @@ inline void GraphicsCanvas::setBackColor(const rgbaColor& color)
 
 inline bool GraphicsCanvas::showModelSharpEdges() const
 {
-    return _viewOptions.showModelSharpEdges;
+    return _pDrawModelMesh->showSharpEdges();
 }
 
 inline bool GraphicsCanvas::showSharpVerts() const
 {
-    return _viewOptions.showModelSharpVerts;
+    return _pDrawModelMesh->showSharpVerts();
 }
 
 inline bool GraphicsCanvas::showTriNormals() const
 {
-    return _viewOptions.showModelTriNormals;
+    return _pDrawModelMesh->showTriNormals();
 }
 
 inline bool GraphicsCanvas::showModelFaces() const
 {
-    return _viewOptions.showModelFaces;
+    return _pDrawModelMesh->showFaces();
 }
 
 inline bool GraphicsCanvas::showModelEdges() const
 {
-    return _viewOptions.showModelEdges;
+    return _pDrawModelMesh->showEdges();
 }
 
 inline bool GraphicsCanvas::showMeshEdges() const
 {
-    return _viewOptions.showMeshEdges;
+    return _pDrawHexMesh->showEdges();
 }
 
 inline bool GraphicsCanvas::showMeshFaces() const
 {
-    return _viewOptions.showMeshFaces;
+    return _pDrawHexMesh->showFaces();
 }
 
 inline bool GraphicsCanvas::showMeshWalls() const
 {
-    return _viewOptions.showMeshWalls;
+    return _pDrawHexMesh->showWalls();
 }
 
 inline bool GraphicsCanvas::showMeshBoundary() const
 {
-    return _viewOptions.showMeshBoundary;
+    return _pDrawHexMesh->showBoundary();
 }
 
 inline void GraphicsCanvas::setShowMeshSelectedBlocks(bool val)
 {
-    _viewOptions.showMeshSelectedBlocks = val;
+    _pDrawHexMesh->setShowSelectedBlocks(val);
 }
 
 }

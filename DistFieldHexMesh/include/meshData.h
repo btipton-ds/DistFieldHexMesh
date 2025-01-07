@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
+#include <drawModelMesh.h>
 
 namespace OGL
 {
@@ -52,8 +53,8 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData(const AppData* pAppData, const VBORec::ChangeElementsOptions& options, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
-		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name, const VBORec::ChangeElementsOptions& options);
+		MeshData(const AppData* pAppData, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
+		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
 		const TriMesh::CMeshPtr& getMesh() const;
@@ -62,7 +63,7 @@ namespace DFHM {
 		void read(std::istream& in);
 
 		void makeOGLTess(std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-		void changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw, const VBORec::ChangeElementsOptions& params);
+		void changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw);
 
 		bool isActive() const;
 		void setActive(bool val);
@@ -97,7 +98,6 @@ namespace DFHM {
 		std::wstring _name;
 		TriMesh::CMeshRepoPtr _pRepo;
 		TriMesh::CMeshPtr _pMesh;
-		const VBORec::ChangeElementsOptions& _options;
 
 		OGL::IndicesPtr 
 			_faceTess, 

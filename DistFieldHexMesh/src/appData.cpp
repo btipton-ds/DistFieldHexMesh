@@ -161,7 +161,7 @@ bool AppData::doImportMesh()
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
-        MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name, _pMainFrame->getCanvas()->getViewOptions());
+        MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name);
         _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
         makeModelTess();
@@ -259,7 +259,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            auto pData = make_shared<MeshData>(this, _pMainFrame->getCanvas()->getViewOptions(), _pModelMeshRepo);
+            auto pData = make_shared<MeshData>(this, _pModelMeshRepo);
             pData->read(in);
             _pModelMeshData->insert(make_pair(pData->getName(), pData));
         }
@@ -594,7 +594,7 @@ void AppData::doCreateBaseVolumePreview()
 
     makeSurroundingBlocks(cubePts, makeGradedBlock);
 
-    MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName, _pMainFrame->getCanvas()->getViewOptions());
+    MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName);
     pMeshData->setReference(true);
 
     _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));

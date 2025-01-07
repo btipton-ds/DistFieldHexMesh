@@ -38,15 +38,40 @@ namespace DFHM {
 	class MeshData;
 	using MeshDataPtr = std::shared_ptr<MeshData>;
 
+	struct ModelViewOptions {
+		bool
+			showSharpEdges = false,
+			showTriNormals = false,
+			showSharpVerts = false,
+			showEdges = false,
+			showFaces = true,
+			showCurvature = false;
+	};
+
 	class DrawModelMesh : public DrawMesh {
 	public:
 		DrawModelMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawModelMesh();
 
-		void changeViewElements(MeshDataPtr& pData, const VBORec::ChangeElementsOptions& params);
+		void changeViewElements(MeshDataPtr& pData);
 
-		void toggleShowCurvature();
+		bool showSharpEdges() const;
+		bool toggleShowSharpEdges();
+
+		bool showSharpVerts() const;
+		bool toggleShowSharpVerts();
+
+		bool showTriNormals() const;
+		bool toggleShowTriNormals();
+
+		bool showFaces() const;
+		bool toggleShowFaces();
+
 		bool showCurvature() const;
+		bool toggleShowCurvature();
+
+		bool showEdges() const;
+		bool toggleShowEdges();
 
 	protected:
 		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
@@ -56,17 +81,67 @@ namespace DFHM {
 		void postDrawFaces() override;
 
 	private:
-		bool _showCurvature = false;
+		ModelViewOptions _options;
 	};
 
-	inline void DrawModelMesh::toggleShowCurvature()
+	inline bool DrawModelMesh::showSharpEdges() const
 	{
-		_showCurvature = !_showCurvature;
+		return _options.showSharpEdges;
+	}
+
+	inline bool DrawModelMesh::toggleShowSharpEdges()
+	{
+		return toggle(_options.showSharpEdges);
+	}
+
+	inline bool DrawModelMesh::showSharpVerts() const
+	{
+		return _options.showSharpVerts;
+	}
+
+	inline bool DrawModelMesh::toggleShowSharpVerts()
+	{
+		return toggle(_options.showSharpVerts);
+	}
+
+	inline bool DrawModelMesh::showTriNormals() const
+	{
+		return _options.showTriNormals;
+	}
+
+	inline bool DrawModelMesh::toggleShowTriNormals()
+	{
+		return toggle(_options.showTriNormals);
+	}
+
+	inline bool DrawModelMesh::showFaces() const
+	{
+		return _options.showFaces;
+	}
+
+	inline bool DrawModelMesh::toggleShowFaces()
+	{
+		return toggle(_options.showFaces);
 	}
 
 	inline bool DrawModelMesh::showCurvature() const
 	{
-		return _showCurvature;
+		return _options.showCurvature;
+	}
+
+	inline bool DrawModelMesh::toggleShowCurvature()
+	{
+		return toggle(_options.showCurvature);
+	}
+
+	inline bool DrawModelMesh::showEdges() const
+	{
+		return _options.showEdges;
+	}
+
+	inline bool DrawModelMesh::toggleShowEdges()
+	{
+		return toggle(_options.showEdges);
 	}
 
 }

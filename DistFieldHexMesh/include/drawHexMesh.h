@@ -35,6 +35,16 @@ namespace OGL
 }
 
 namespace DFHM {
+	struct HexMeshViewOptions {
+		bool
+			showEdges = true,
+			showFaces = false,
+			showBoundary = false,
+			showWalls = false,
+			showSelectedBlocks = false;
+	};
+
+
 	class DrawHexMesh : public DrawMesh {
 	public:
 		DrawHexMesh(GraphicsCanvas* pCanvas);
@@ -42,7 +52,21 @@ namespace DFHM {
 
 		void setFaceTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
 		void setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
-		void changeViewElements(const VBORec::ChangeElementsOptions& params);
+		void changeViewElements();
+
+		bool showEdges() const;
+		bool toggleShowEdges();
+
+		bool showFaces() const;
+		bool toggleShowFaces();
+
+		bool showWalls() const;
+		bool toggleShowWalls();
+
+		bool showBoundary() const;
+		bool toggleShowBoundary();
+
+		void setShowSelectedBlocks(bool val);
 
 	protected:
 		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
@@ -52,6 +76,7 @@ namespace DFHM {
 		void postDrawFaces() override;
 
 	private:
+		HexMeshViewOptions _options;
 		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
 	};
 
@@ -63,6 +88,51 @@ namespace DFHM {
 	inline void DrawHexMesh::setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src)
 	{
 		_edgeTessellations = src;
+	}
+
+	inline bool DrawHexMesh::showEdges() const
+	{
+		return _options.showEdges;
+	}
+
+	inline bool DrawHexMesh::toggleShowEdges()
+	{
+		return toggle(_options.showEdges);
+	}
+
+	inline bool DrawHexMesh::showFaces() const
+	{
+		return _options.showFaces;
+	}
+
+	inline bool DrawHexMesh::toggleShowFaces()
+	{
+		return toggle(_options.showFaces);
+	}
+
+	inline bool DrawHexMesh::showWalls() const
+	{
+		return _options.showWalls;
+	}
+
+	inline bool DrawHexMesh::toggleShowWalls()
+	{
+		return toggle(_options.showWalls);
+	}
+
+	inline bool DrawHexMesh::showBoundary() const
+	{
+		return _options.showBoundary;
+	}
+
+	inline bool DrawHexMesh::toggleShowBoundary()
+	{
+		return toggle(_options.showBoundary);
+	}
+
+	inline void DrawHexMesh::setShowSelectedBlocks(bool val)
+	{
+		_options.showSelectedBlocks = val;
 	}
 
 }
