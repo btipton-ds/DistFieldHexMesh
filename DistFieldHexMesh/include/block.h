@@ -126,8 +126,8 @@ public:
 	void createBlockFaces();
 
 	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
-	void getBlockTriMesh(FaceType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
-	void makeEdgeSets(FaceType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
+	void getBlockTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
+	void makeEdgeSets(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -251,7 +251,7 @@ private:
 	void addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFaceInRender(FaceType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
+	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
 
 	bool doPresplits(const BuildCFDParams& params);
 	void dumpOpenCells() const;

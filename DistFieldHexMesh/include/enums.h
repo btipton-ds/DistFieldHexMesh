@@ -60,7 +60,7 @@ enum CubeFaceType {
 
 };
 
-enum FaceType {
+enum FaceDrawType {
 	FT_WALL,
 	FT_MODEL_BOUNDARY,
 	FT_BLOCK_BOUNDARY,
@@ -83,6 +83,7 @@ enum DrawStates {
 	DS_MODEL_SHARP_VERTS,
     DS_MODEL_NORMALS,
 	DS_MODEL_REF_EDGES,
+
 	DS_MESH_FACES,
 	DS_MESH_EDGES,
 	DS_MESH_WALL,

@@ -1164,7 +1164,7 @@ void Block::imprintTJointVertices()
 	});
 }
 
-bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& planes, const Polygon& face) const
+bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
 	if (meshType == FT_ALL)
@@ -1187,6 +1187,13 @@ bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& pl
 #endif
 
 	bool isWall = face.isWall();
+	for (const auto& pl : planes) {
+		if (face.isCoplanar(pl)) {
+			isWall = false;
+			break;
+		}
+	}
+
 	bool isBlockBoundary = face.isBlockBoundary();
 	bool isModelBoundary = isWall;
 	if (isModelBoundary) {
@@ -1218,29 +1225,46 @@ bool Block::includeFaceInRender(FaceType meshType, const std::vector<Planed>& pl
 			result = !isWall && isBlockBoundary;
 			break;
 
-		case FT_BACK:
-		case FT_FRONT:
 		case FT_BOTTOM:
-		case FT_TOP:
-		case FT_LEFT:
-		case FT_RIGHT: {
-			size_t idx = meshType - FT_BOTTOM;
-			result = face.isOnPlane(planes[idx]);
+			result = face.isOnPlane(planes[CFT_BOTTOM]);
+			if (result) {
+				int dbgBreak = 1;
+			}
 			break;
-		}
+
+		case FT_TOP:
+			result = face.isOnPlane(planes[CFT_TOP]);
+			break;
+
+		case FT_LEFT:
+			result = face.isOnPlane(planes[CFT_LEFT]);
+			break;
+
+		case FT_RIGHT:
+			result = face.isOnPlane(planes[CFT_RIGHT]);
+			break;
+		case FT_BACK:
+			result = face.isOnPlane(planes[CFT_BACK]);
+			break;
+		
+		case FT_FRONT: 
+			result = face.isOnPlane(planes[CFT_FRONT]);
+			break;
+		
+		
 	}
 
 	return result;
 }
 
-void Block::getBlockTriMesh(FaceType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
+void Block::getBlockTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
 {
 	if (numFaces(true) == 0)
 		return;
 
 	const auto& polys = _modelData._polygons;
 	polys.iterateInOrder([this, &pMesh, planes, meshType](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, planes, face)) {
+		if (includeFaceInDrawKey(meshType, planes, face)) {
 			const auto& vertIds = face.getVertexIds();
 			vector<Vector3d> pts;
 			pts.reserve(vertIds.size());
@@ -1281,13 +1305,13 @@ void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
 	vals.push_back((float)pt1[2]);
 }
 
-void Block::makeEdgeSets(FaceType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
+void Block::makeEdgeSets(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
 {
 	set<Edge> edges;
 
 	const auto& polys = _modelData._polygons;
 	polys.iterateInOrder([this, &edges, meshType, planes](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInRender(meshType, planes, face)) {
+		if (includeFaceInDrawKey(meshType, planes, face)) {
 			const auto& vertIds = face.getVertexIds();
 			for (size_t i = 0; i < vertIds.size(); i++) {
 				size_t j = (i + 1) % vertIds.size();

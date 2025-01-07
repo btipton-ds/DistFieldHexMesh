@@ -1136,7 +1136,7 @@ void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks
 #endif
 }
 
-void Volume::makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
+void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMeshes, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1158,7 +1158,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 	size_t numThreads = MultiCore::getNumCores();
 	triMeshes.resize(FT_ALL + 1);
 	for (int j = FT_WALL; j <= FT_ALL; j++) {
-		FaceType ft = (FaceType)j;
+		FaceDrawType ft = (FaceDrawType)j;
 		triMeshes[ft].resize(numThreads);
 	}
 
@@ -1170,7 +1170,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 
 				for (int j = FT_WALL; j <= FT_ALL; j++) {
-					FaceType ft = (FaceType)j;
+					FaceDrawType ft = (FaceDrawType)j;
 					makeFaceTriMesh(ft, triMeshes, blockPtr, threadNum);
 				}
 			}
@@ -1180,14 +1180,14 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 
 	for (size_t i = 0; i < numThreads; i++) {
 		for (int j = FT_WALL; j <= FT_ALL; j++) {
-			FaceType ft = (FaceType)j;
+			FaceDrawType ft = (FaceDrawType)j;
 			if (triMeshes[ft][i])
 				triMeshes[ft][i]->changed();
 		}
 	}
 }
 
-void Volume::makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
+void Volume::makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1210,7 +1210,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 
 	faceEdges.resize(FT_ALL + 1);
 	for (int j = FT_WALL; j <= FT_ALL; j++) {
-		FaceType ft = (FaceType)j;
+		FaceDrawType ft = (FaceDrawType)j;
 		faceEdges[ft].resize(numThreads);
 	}
 
@@ -1223,7 +1223,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 
 				for (int j = FT_WALL; j <= FT_ALL; j++) {
-					FaceType ft = (FaceType)j;
+					FaceDrawType ft = (FaceDrawType)j;
 					makeFaceEdges(ft, faceEdges, blockPtr, threadNum);
 				}
 			}
@@ -1233,7 +1233,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 
 	for (size_t i = 0; i < numThreads; i++) {
 		for (int j = FT_WALL; j <= FT_ALL; j++) {
-			FaceType ft = (FaceType)j;
+			FaceDrawType ft = (FaceDrawType)j;
 			if (faceEdges[ft][i])
 				faceEdges[ft][i]->changed();
 		}
@@ -1563,12 +1563,12 @@ void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	vals.push_back(Planed(_modelBundingBox.getMin(), xAxis)); // frontPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), yAxis)); // leftPlane
 	vals.push_back(Planed(_modelBundingBox.getMin(), zAxis)); // bottomPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // backPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis)); // rightPlane
 	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis)); // topPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), yAxis)); // leftPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis)); // rightPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), xAxis)); // frontPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // backPlane
 
 }
 

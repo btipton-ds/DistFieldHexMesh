@@ -108,8 +108,8 @@ public:
 
 	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
-	void makeFaceTriMesh(FaceType faceType, Block::TriMeshGroup& triMeshes, const BlockPtr& pBlock, size_t threadNum) const;
-	void makeFaceEdges(FaceType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
+	void makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMeshes, const BlockPtr& pBlock, size_t threadNum) const;
+	void makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
