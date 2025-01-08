@@ -61,6 +61,8 @@ public:
     virtual ~AppData();
     void preDestroy();
 
+    size_t numBytes() const;
+
     bool doOpen();
     bool doImportMesh();
     void doSave();

@@ -100,6 +100,7 @@ public:
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
+	size_t numBytes() const;
 
 	const std::vector<size_t>& getSharpVertIndices() const;
 	bool getSharpVertPlane(Planed& plane) const;
@@ -196,8 +197,9 @@ private:
 
 	UnalignedBBoxd _modelCornerPts, _volCornerPts;
 	std::vector<BlockPtr> _blocks;
-	CSpatialSearch<double, BlockPtr> _adHocBlockTree;   // This for boundary blocks which don't follow the cartesian grid assignment rules.
+	CSpatialSearch<double, BlockPtr> _adHocBlockTree;   // This is for boundary blocks which don't follow the cartesian grid assignment rules.
 														// Must use BlockPtr, NOT size_t, because the indices change during insertions.
+														// The block is still stored in _blocks, but is not under cartesian access.
 
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;

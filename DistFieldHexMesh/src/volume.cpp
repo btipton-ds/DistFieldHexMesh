@@ -1262,6 +1262,20 @@ size_t Volume::numPolyhedra() const
 	return result;
 }
 
+size_t Volume::numBytes() const
+{
+	size_t result = sizeof(Volume);
+	for (const auto& pBlk : _blocks) {
+		if (pBlk)
+			result += pBlk->numBytes();
+	}
+
+	result += _sharpEdgeIndices.size() * sizeof(size_t);
+	result += _sharpVertIndices.size() * sizeof(size_t);
+
+	return result;
+}
+
 namespace {
 	void appendDir(string& dirName, const string& str)
 	{

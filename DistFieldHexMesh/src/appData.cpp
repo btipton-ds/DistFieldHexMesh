@@ -85,6 +85,26 @@ void AppData::preDestroy()
     _pModelMeshData = nullptr;
 }
 
+size_t AppData::numBytes() const
+{
+    size_t result = 0;
+    if (_pVolume)
+        result += _pVolume->numBytes();
+
+    result += _pModelMeshRepo->numBytes();
+    result += _pModelMeshData->size() * sizeof (pair<wstring, MeshDataPtr>);
+    for (const auto& pair : *_pModelMeshData) {
+        result += sizeof(pair.first);
+        result += pair.first.length() * sizeof(wchar_t);
+        result += pair.second->numBytes();
+    }
+
+    if (_pVolume)
+        result += _pVolume->numBytes();
+
+    return result;
+}
+
 bool AppData::doOpen()
 {
     wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
@@ -299,16 +319,16 @@ void AppData::doVerifyClosed(const CMeshPtr& pMesh)
 void AppData::doVerifyNormals(const CMeshPtr& pMesh)
 {
     size_t numMisMatched = 0;
+    size_t meshId = pMesh->getId();
     size_t numEdges = pMesh->numEdges();
     for (size_t i = 0; i < numEdges; i++) {
         const auto& edge = pMesh->getEdge(i);
-        auto pTopol = edge.getTopol(pMesh->getId());
-        if (pTopol->_numFaces == 2) {
+        if (edge.numFaces(meshId) == 2) {
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Index3D& faceIndices0 = pMesh->getTri(pTopol->_faceIndices[0]);
-            const Index3D& faceIndices1 = pMesh->getTri(pTopol->_faceIndices[1]);
+            const Index3D& faceIndices0 = pMesh->getTri(edge.getTriIdx(meshId, 0));
+            const Index3D& faceIndices1 = pMesh->getTri(edge.getTriIdx(meshId, 1));
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {

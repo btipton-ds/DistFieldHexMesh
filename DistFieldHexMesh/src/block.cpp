@@ -147,6 +147,16 @@ void Block::ModelData::clear()
 	_polyhedra.clear();
 }
 
+size_t Block::ModelData::numBytes() const
+{
+	size_t result = 0;
+	result += sizeof(ModelData);
+	result += _polygons.numBytes();
+	result += _polyhedra.numBytes();
+
+	return result;
+}
+
 void Block::ModelData::remapIds(const map<Index3D, Index3D>& idRemap)
 {
 	_polygons.iterateInOrder([&idRemap](const Index3DId& faceId, Polygon& face) {
@@ -339,6 +349,14 @@ size_t Block::numFaces(bool includeInner) const
 size_t Block::numPolyhedra() const
 {
 	return _modelData._polyhedra.size();
+}
+
+size_t Block::numBytes() const
+{
+	size_t result = 0;
+	result += _modelData.numBytes();
+	result += _refData.numBytes();
+	return result;
 }
 
 bool Block::verifyTopology() const

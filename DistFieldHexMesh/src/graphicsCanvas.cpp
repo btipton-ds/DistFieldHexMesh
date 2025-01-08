@@ -83,7 +83,6 @@ namespace
         return v * M_PI / 180.0f;
     }
 
-
     int attribs[] = {
         WX_GL_DEPTH_SIZE, 16,
 #if GRAPHICS_OVER_SAMPLING > 1
@@ -132,6 +131,13 @@ namespace
         }
         return result;
     }
+
+    void fromMatrixToGl(const Eigen::Matrix4d& src, m44f& dst)
+    {
+        float* pDst = (float*)&dst;
+        for (int i = 0; i < 16; i++)
+            pDst[i] = src(i);
+    }
 }
 
 
@@ -164,13 +170,18 @@ GraphicsCanvas::~GraphicsCanvas()
 {
 }
 
-namespace {
-    void fromMatrixToGl(const Eigen::Matrix4d& src, m44f& dst)
-    {
-        float* pDst = (float*) & dst;
-        for (int i = 0; i < 16; i++)
-            pDst[i] = src(i);
-    }
+size_t GraphicsCanvas::numBytes() const
+{
+    size_t result = sizeof(GraphicsCanvas);
+
+    if (_pDrawHexMesh)
+        result += _pDrawHexMesh->numBytes();
+    if (_pDrawModelMesh)
+        result += _pDrawModelMesh->numBytes();
+    std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
+    std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+
+    return result;
 }
 
 void GraphicsCanvas::setView(Vector3d viewVec)

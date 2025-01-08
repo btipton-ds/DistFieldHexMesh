@@ -54,6 +54,8 @@ namespace DFHM {
 		DrawMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawMesh();
 
+		virtual size_t numBytes() const;
+
 		void setShader(std::shared_ptr<OGL::Shader>& pShader);
 		const std::shared_ptr<VBORec>& getVBOs() const;
 

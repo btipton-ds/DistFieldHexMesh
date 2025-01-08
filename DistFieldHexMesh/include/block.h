@@ -113,6 +113,8 @@ public:
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
+	size_t numBytes() const;
+
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool verifyTopology() const;
@@ -224,6 +226,7 @@ private:
 		ModelData(Block* pBlk);
 		ModelData(Block* pBlk, const ModelData& src);
 		void clear();
+		size_t numBytes() const;
 
 		void remapIds(const std::map<Index3D, Index3D>& idRemap);
 		bool verifyIndices(const Index3D& idx) const;

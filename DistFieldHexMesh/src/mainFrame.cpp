@@ -331,7 +331,6 @@ void MainFrame::addModelPanel()
 void MainFrame::addStatusBar()
 {
     CreateStatusBar();
-    SetStatusText("Welcome to DistFieldHexMesh!");
 }
 
 void MainFrame::OnInternalIdle()
@@ -348,6 +347,20 @@ void MainFrame::OnInternalIdle()
     if (_fileMenu) {
 
     }
+
+    size_t numCells = 0, numFaces = 0, numBytes = 0;
+    wstringstream ss;
+    auto pVol = _pAppData->getVolume();
+    if (pVol) {
+        numCells = pVol->numPolyhedra();
+        numFaces = pVol->numFaces(true);
+    }
+    numBytes = _pAppData->numBytes();
+    numBytes += _pCanvas->numBytes();
+
+    double mem = numBytes / 1024.0 / 1024.0;
+    ss << L"Num Cells: " << numCells << ", Num Faces: " << numFaces << ", Memory: " << mem << " mb";
+    SetStatusText(ss.str());
 }
 
 void MainFrame::OnOpen(wxCommandEvent& event)

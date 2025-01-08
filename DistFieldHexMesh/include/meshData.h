@@ -57,6 +57,8 @@ namespace DFHM {
 		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
+		size_t numBytes() const;
+
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
 		void write(std::ostream& out) const;

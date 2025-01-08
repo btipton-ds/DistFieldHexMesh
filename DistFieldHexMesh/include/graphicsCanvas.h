@@ -96,6 +96,8 @@ public:
 
     void clearMesh3D();
 
+    size_t numBytes() const;
+
     GraphicsUBO& getUBO();
     const GraphicsUBO& getUBO() const;
 

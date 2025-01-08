@@ -127,6 +127,7 @@ public:
 	void addToLookup(const Index3DId& id);
 
 	void resize(size_t size);
+	size_t numBytes() const;
 
 	size_t getRawIndex(const Index3DId& id) const;
 	Index3DId findId(const T& obj) const;
@@ -354,6 +355,22 @@ void ObjectPool<T>::resize(size_t size)
 			}
 		}
 	}
+}
+
+template<class T>
+size_t ObjectPool<T>::numBytes() const
+{
+	size_t result = sizeof(ObjectPool<T>);
+	result += _idToIndexMap.size() * sizeof(size_t);
+	result += _availableIndices.size() * sizeof(size_t);
+	for (const auto& pSeg : _objectSegs) {
+
+		result += pSeg->size() * sizeof(T);
+	}
+
+	result += _objToIdMap.size() * sizeof(std::pair<size_t, size_t>);
+
+	return result;
 }
 
 template<class T>

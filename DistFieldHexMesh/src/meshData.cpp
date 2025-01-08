@@ -53,6 +53,25 @@ MeshData::~MeshData()
 {
 }
 
+size_t MeshData::numBytes() const
+{
+	size_t result = sizeof(MeshData);
+	result += sizeof(_name) + _name.length() * sizeof(wchar_t);
+	result += _pRepo->numBytes();
+	result += _pMesh->numBytes();
+
+
+	OGL::IndicesPtr
+		_faceTess,
+		_allEdgeTess,
+		_smoothEdgeTess,
+		_sharpEdgeTess,
+		_normalTess,
+		_sharpPointTess;
+
+	return result;
+}
+
 void MeshData::write(std::ostream& out) const
 {
 	uint8_t version = 1;
