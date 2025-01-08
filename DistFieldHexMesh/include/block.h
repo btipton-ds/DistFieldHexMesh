@@ -42,7 +42,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <objectPool.h>
 #include <pool_set.h>
-#include <local_heap.h>
 #include <logger.h>
 #include <lambdaMacros.h>
 #include <vertex.h>
@@ -50,6 +49,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <polyhedron.h>
 #include <vertexSpatialTree.h>
+
+#if USE_MULTI_THREAD_CONTAINERS
+#include <local_heap.h>
+#endif
 
 namespace DFHM {
 
@@ -165,8 +168,10 @@ public:
 	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
 
+#if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::local_heap* getHeapPtr();
 	const MultiCore::local_heap* getHeapPtr() const;
+#endif
 
 	void addToSplitStack0(const Index3DId& cellIds);
 	void updateSplitStack();
@@ -302,7 +307,9 @@ private:
 	SearchTreePtr _pVertTree;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
+#if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
+#endif
 };
 
 inline size_t Block::GlPoints::getId() const
@@ -330,6 +337,7 @@ inline size_t Block::blockDim() const
 	return _blockDim;
 }
 
+#if USE_MULTI_THREAD_CONTAINERS			
 inline MultiCore::local_heap* Block::getHeapPtr()
 {
 	return &_heap;
@@ -339,6 +347,7 @@ inline const MultiCore::local_heap* Block::getHeapPtr() const
 {
 	return &_heap;
 }
+#endif
 
 inline Volume* Block::getVolume()
 {

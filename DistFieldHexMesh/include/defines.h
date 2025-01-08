@@ -36,8 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 #include <math.h>
 
-#define RUN_MULTI_THREAD 0
-#define USE_MULTI_THREAD_CONTAINERS 1 // Combined, local_heap and ThreadPool drop a base case from 2.7 sec to 2.0 sec. In heavier cases, it drops from minutes to seconds.
+#define RUN_MULTI_THREAD 1
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 2
@@ -50,7 +49,14 @@ This file is part of the DistFieldHexMesh application/library.
 #define DUMP_BAD_CELL_OBJS 1
 #define DUMP_OPEN_CELL_OBJS 1
 
+#define USE_MULTI_THREAD_CONTAINERS 0 
 #if USE_MULTI_THREAD_CONTAINERS
+// Combined, local_heap and ThreadPool drop a base case from 2.7 sec to 2.0 sec. In heavier cases, it drops from minutes to seconds.
+// This was a complicated and unproductive experiment to make unique
+// It did speed up processing, but garbage collection isn't working and memory usages expladed.
+// Not actually a leak because because it's deleted on exit
+// heaps for each threat to avoid mutex locks.
+// Keeping in case it's worth resurrecting
 #define MTC MultiCore
 #else
 #define MTC std

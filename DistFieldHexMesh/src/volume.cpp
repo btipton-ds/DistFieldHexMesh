@@ -1164,7 +1164,9 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 
 	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
 		if (blockPtr) {
+#if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
+#endif
 			Index3D blkIdx = blockPtr->getBlockIdx();
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
@@ -1217,7 +1219,9 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 
 	runThreadPool([this, &faceEdges, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
 		if (blockPtr) {
+#if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
+#endif
 			Index3D blkIdx = blockPtr->getBlockIdx();
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
@@ -2002,7 +2006,9 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 		Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
 			fLambda(threadNum, linearIdx, pBlk);
 		} else {
 			fLambda(threadNum, linearIdx, nullptr);
@@ -2017,7 +2023,9 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 		Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
 			fLambda(threadNum, linearIdx, pBlk);
 		}
 		else {
@@ -2062,7 +2070,9 @@ void Volume::runThreadPool333(const L& fLambda, bool multiCore)
 						Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 						auto& pBlk = _blocks[linearIdx];
 						if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS
 							MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
 							fLambda(threadNum, linearIdx, pBlk);
 						} else {
 							fLambda(threadNum, linearIdx, nullptr);

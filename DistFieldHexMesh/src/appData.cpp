@@ -1297,7 +1297,7 @@ void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool mu
     Block::TriMeshGroup blockMeshes;
     auto pCanvas = _pMainFrame->getCanvas();
     _pVolume->makeFaceTris(blockMeshes, min, max, multiCore);
-
+#if 1
     auto pDraw = pCanvas->getDrawHexMesh();
     auto& faceVBO = pDraw->getVBOs()->_faceVBO;
     faceVBO.beginFaceTesselation();
@@ -1325,6 +1325,7 @@ void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool mu
 
     pDraw->setFaceTessellations(faceTesselations);
     faceVBO.endFaceTesselation(false);
+#endif
 }
 
 void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool multiCore)

@@ -77,7 +77,9 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 	, _modelData(this)
 	, _vertices(this, true)
 	, _refData(this)
+#if USE_MULTI_THREAD_CONTAINERS			
 	, _heap(1, 512)
+#endif
 {
 	_blockDim = Index3D::getBlockDim();
 //	_corners.resize(8);
@@ -112,9 +114,10 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 		}
 	}
 
+#if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
 	_pLocalData = new LocalData();
-
+#endif
 }
 
 Block::~Block()
@@ -124,7 +127,9 @@ Block::~Block()
 
 void Block::clear()
 {
+#if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
+#endif
 
 	delete (_pLocalData);
 	_pLocalData = nullptr;
