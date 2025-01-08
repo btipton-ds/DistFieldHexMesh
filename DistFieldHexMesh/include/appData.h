@@ -71,8 +71,6 @@ public:
     void doVerifyNormals(const CMeshPtr& pMesh);
     void doAnalyzeGaps(const CMeshPtr& pMesh);
     void doFindMinGap(const CMeshPtr& pMesh) const;
-    void doCreateBaseVolumePreview();
-    void doRemoveBaseVolumePreview();
     void doCreateBaseVolume();
     void doRemoveBaseVolume();
     void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
@@ -93,7 +91,6 @@ public:
     const BuildCFDParams& getParams() const;
 
     const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
-    bool doesBaseMeshExist() const;
 
 private:
     void makeBlock(const MakeBlockDlg& dlg);

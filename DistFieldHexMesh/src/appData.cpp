@@ -230,12 +230,10 @@ void AppData::writeDHFM() const
 {
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
-    uint8_t version = 3;
+    uint8_t version = 4;
     out.write((char*)&version, sizeof(version));
 
     _params.write(out);
-    bool hasBaseMesh = _pModelMeshData->find(_gBaseVolumeName) != _pModelMeshData->end();
-    out.write((char*)&hasBaseMesh, sizeof(hasBaseMesh));
 
     size_t numMeshes = 0;
     for (const auto& pair : *_pModelMeshData) {
@@ -260,7 +258,6 @@ void AppData::writeDHFM() const
 
 void AppData::readDHFM(const wstring& path, const wstring& filename)
 {
-    bool hasBaseMesh = false;
     _dhfmFilename = path + filename;
 
     ifstream in(filesystem::path(_dhfmFilename), ifstream::binary);
@@ -272,7 +269,10 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     } else if (version >= 2) {
         if (version >= 3) {
             _params.read(in);
-            in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
+            if (version < 4) {
+                bool hasBaseMesh;
+                in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
+            }
         }
 
         size_t numMeshes = _pModelMeshData->size();
@@ -283,9 +283,6 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
             pData->read(in);
             _pModelMeshData->insert(make_pair(pData->getName(), pData));
         }
-
-        if (hasBaseMesh)
-            doCreateBaseVolumePreview();
 
         makeModelTess();
     }
@@ -300,8 +297,6 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         updateTessellation();
     }
 
-    if (hasBaseMesh)
-        doCreateBaseVolumePreview();
     _pMainFrame->refreshObjectTree();
 
     _pMainFrame->getCanvas()->resetView();
@@ -520,108 +515,6 @@ void AppData::makeBlock(const MakeBlockDlg& dlg)
 
 void AppData::makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder)
 {
-}
-
-void AppData::doCreateBaseVolumePreview()
-{
-    CMeshPtr pMesh;
-    auto makeGradedBlock = [&pMesh](const Vector3d cPts[8], CubeFaceType dir, CubeFaceType dir1, CubeFaceType dir2, const GradingOp& gr) {
-        const auto& divs = gr.getDivs();
-        if (divs[0] == 0) {
-            pMesh->addQuad(cPts[0], cPts[3], cPts[2], cPts[1]);
-            pMesh->addQuad(cPts[4], cPts[5], cPts[6], cPts[7]);
-            pMesh->addQuad(cPts[1], cPts[2], cPts[6], cPts[5]);
-            pMesh->addQuad(cPts[0], cPts[4], cPts[7], cPts[3]);
-            pMesh->addQuad(cPts[0], cPts[1], cPts[5], cPts[4]);
-            pMesh->addQuad(cPts[3], cPts[7], cPts[6], cPts[2]);
-        } else {
-            double xScale, yScale, zScale;
-            double xGrading, yGrading, zGrading;
-            gr.calGradingFactors(0, xScale, xGrading);
-            gr.calGradingFactors(1, yScale, yGrading);
-            gr.calGradingFactors(2, zScale, zGrading);
-
-            double kx = 1;
-            double t0 = 0;
-            for (size_t i = 0; i < divs[0]; i++) {
-                double t1 = t0 + 1.0 / (double)divs[0] * kx * xScale;
-                kx *= xGrading;
-
-                double ky = 1;
-                double u0 = 0;
-                for (size_t j = 0; j < divs[1]; j++) {
-                    double u1 = u0 + 1.0 / (double)divs[1] * ky * yScale;
-                    ky *= yGrading;
-
-                    double kz = 1;
-                    double v0 = 0;
-                    for (size_t k = 0; k < divs[2]; k++) {
-                        double v1 = v0 + 1.0 / (double)divs[2] * kz * zScale;
-                        kz *= zGrading;
-
-                        Vector3d gPts[8];
-                        gPts[0] = TRI_LERP(cPts, t0, u0, v0);
-                        gPts[1] = TRI_LERP(cPts, t1, u0, v0);
-                        gPts[2] = TRI_LERP(cPts, t1, u1, v0);
-                        gPts[3] = TRI_LERP(cPts, t0, u1, v0);
-                        gPts[4] = TRI_LERP(cPts, t0, u0, v1);
-                        gPts[5] = TRI_LERP(cPts, t1, u0, v1);
-                        gPts[6] = TRI_LERP(cPts, t1, u1, v1);
-                        gPts[7] = TRI_LERP(cPts, t0, u1, v1);
-
-                        pMesh->addQuad(gPts[0], gPts[3], gPts[2], gPts[1]);
-                        pMesh->addQuad(gPts[4], gPts[5], gPts[6], gPts[7]);
-                        pMesh->addQuad(gPts[1], gPts[2], gPts[6], gPts[5]);
-                        pMesh->addQuad(gPts[0], gPts[4], gPts[7], gPts[3]);
-                        pMesh->addQuad(gPts[0], gPts[1], gPts[5], gPts[4]);
-                        pMesh->addQuad(gPts[3], gPts[7], gPts[6], gPts[2]);
-
-                        v0 = v1;
-                    }
-                    u0 = u1;
-                }
-                t0 = t1;
-            }
-        }
-        };
-
-    //    Volume::setVolDim(Index3D(5, 5, 5));
-    auto pCanvas = _pMainFrame->getCanvas();
-    pCanvas->clearMesh3D();
-    _pVolume = make_shared<Volume>();
-
-    doRemoveBaseVolumePreview();
-
-    Vector3d cubePts[8];
-    CBoundingBox3Dd bbox, volBox;
-    makeModelCubePoints(cubePts, volBox);
-
-    for (size_t i = 0; i < 8; i++) {
-        bbox.merge(cubePts[i]);
-        bbox.merge(cubePts[i]);
-    }
-    bbox.growPercent(0.05);
-    volBox.growPercent(0.05);
-
-    pMesh = make_shared<CMesh>(volBox/*, _pModelMeshRepo*/);
-#if 0
-    {
-        GradingOp r;
-        r.setDivs(_params.volDivs);
-        makeGradedBlock(cubePts, CFT_UNDEFINED, CFT_UNDEFINED, CFT_UNDEFINED, r);
-    }
-#endif
-
-    makeSurroundingBlocks(cubePts, makeGradedBlock);
-
-    MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, _gBaseVolumeName);
-    pMeshData->setReference(true);
-
-    _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
-
-    _pMainFrame->refreshObjectTree();
-    makeModelTess();
-    pCanvas->changeViewElements();
 }
 
 void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
@@ -1340,23 +1233,9 @@ void AppData::makeGradedHexOnCorners(Vector3d cPts[8], const L& fLambda) const
 
 }
 
-void AppData::doRemoveBaseVolumePreview()
-{
-    auto iter = _pModelMeshData->find(_gBaseVolumeName);
-    if (iter != _pModelMeshData->end()) {
-        auto pData = iter->second;
-        _pModelMeshData->erase(iter);
-    }
-
-    _pMainFrame->refreshObjectTree();
-}
-
 void AppData::doCreateBaseVolume()
 {
     _pVolume = nullptr;
-    auto makeGradedBlock = [this](const Vector3d cPts[8], CubeFaceType dir0, CubeFaceType dir1, CubeFaceType dir2, const GradingOp& gr) {
-    };
-
     _pVolume = make_shared<Volume>(_params.volDivs);
     _pVolume->setAppData(shared_from_this());
 
@@ -1364,7 +1243,6 @@ void AppData::doCreateBaseVolume()
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
 
-    doRemoveBaseVolumePreview();
 #if 1
     Vector3d cubePts[8];
     CBoundingBox3Dd volBox;
@@ -1378,11 +1256,8 @@ void AppData::doCreateBaseVolume()
 }
 
 void AppData::doRemoveBaseVolume()
-{}
-
-bool AppData::doesBaseMeshExist() const
 {
-    return _pModelMeshData->find(_gBaseVolumeName) != _pModelMeshData->end();
+    _pVolume = nullptr;
 }
 
 void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)

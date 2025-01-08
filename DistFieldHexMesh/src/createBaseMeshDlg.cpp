@@ -295,7 +295,7 @@ void CreateBaseMeshDlg::getParams() const
 void CreateBaseMeshDlg::OnUpdate(wxCommandEvent& event)
 {
 	getParams();
-	_pAppData->doCreateBaseVolumePreview();
+	_pAppData->doCreateBaseVolume();
 }
 
 void CreateBaseMeshDlg::OnCreate(wxCommandEvent& event)

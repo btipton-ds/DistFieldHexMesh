@@ -1155,7 +1155,7 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMesh
 
 void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
-	size_t numThreads = MultiCore::getNumCores();
+	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 	triMeshes.resize(FT_ALL + 1);
 	for (int j = FT_WALL; j <= FT_ALL; j++) {
 		FaceDrawType ft = (FaceDrawType)j;
@@ -1206,7 +1206,7 @@ void Volume::makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdge
 
 void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const
 {
-	size_t numThreads = MultiCore::getNumCores();
+	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 
 	faceEdges.resize(FT_ALL + 1);
 	for (int j = FT_WALL; j <= FT_ALL; j++) {
