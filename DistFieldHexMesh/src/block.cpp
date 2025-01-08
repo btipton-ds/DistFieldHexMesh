@@ -77,7 +77,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 	, _modelData(this)
 	, _vertices(this, true)
 	, _refData(this)
-	, _heap(2 * 1024, 12 * sizeof(Edge))
+	, _heap(1, 512)
 {
 	_blockDim = Index3D::getBlockDim();
 //	_corners.resize(8);
