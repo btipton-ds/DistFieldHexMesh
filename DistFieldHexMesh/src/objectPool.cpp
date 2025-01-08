@@ -66,6 +66,11 @@ ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser&
 	return *this;
 }
 
+void ObjectPoolOwnerUser::setPoolOwner(ObjectPoolOwner* pPoolOwner) const
+{
+	_pPoolOwner = pPoolOwner;
+}
+
 const Block* ObjectPoolOwnerUser::getOurBlockPtr() const
 {
 	return dynamic_cast<const Block*>(_pPoolOwner);

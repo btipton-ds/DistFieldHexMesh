@@ -79,6 +79,7 @@ public:
 
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
+	void setPoolOwner(ObjectPoolOwner* pPoolOwner) const;
 	const Block* getOurBlockPtr() const;
 	Block* getOurBlockPtr();
 
@@ -107,7 +108,7 @@ protected:
 private:
 	template<class T>
 	friend class ObjectPool;
-	ObjectPoolOwner* _pPoolOwner = nullptr;
+	mutable ObjectPoolOwner* _pPoolOwner = nullptr;
 };
 
 template<class T>
@@ -223,7 +224,7 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	, _idToIndexMap(src._idToIndexMap)
 	, _availableIndices(src._availableIndices)
 {
-	_objectSegs.reserve(src._objectSegs.size());
+//	_objectSegs.reserve(src._objectSegs.size());
 	for (size_t i = 0; i < src._objectSegs.size(); i++) {
 		const auto& pSrcVec = src._objectSegs[i];
 		const auto& srcVec = *pSrcVec;
@@ -360,7 +361,7 @@ void ObjectPool<T>::resize(size_t size)
 		for (size_t i = 0; i < numSegs; i++) {
 			// Reserve the segment size so the array won't resize during use
 			_objectSegs[i] = std::make_shared<std::vector<T>>();
-			_objectSegs[i]->reserve(_objectSegmentSize);
+//			_objectSegs[i]->reserve(_objectSegmentSize);
 			if (size > _objectSegmentSize) {
 				_objectSegs[i]->resize(_objectSegmentSize);
 				size -= _objectSegmentSize;
@@ -440,12 +441,13 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 template<class T>
 size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 {
+	obj.setPoolOwner(_pPoolOwner);
 	size_t index = -1, segNum = -1, segIdx = -1;
 	if (_availableIndices.empty()) {
 		if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
 			// Reserve the segment size so the array won't resize during use
 			_objectSegs.push_back(new std::vector<T>);
-			_objectSegs.back()->reserve(_objectSegmentSize);
+//			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
 		segNum = _objectSegs.size() - 1;
 
@@ -462,7 +464,7 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 		if (segNum >= _objectSegs.size()) {
 			// Reserve the segment size so the array won't resize during use
 			_objectSegs.push_back(new std::vector<T>);
-			_objectSegs.back()->reserve(_objectSegmentSize);
+//			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
 		auto& segData = *_objectSegs[segNum];
 
@@ -477,6 +479,7 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 template<class T>
 Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 {
+	obj.setPoolOwner(_pPoolOwner);
 	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
 	if (currentId.isValid()) {
 #if DEBUG_BREAKS && defined(_DEBUG)

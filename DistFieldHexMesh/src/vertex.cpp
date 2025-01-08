@@ -36,13 +36,15 @@ using namespace std;
 using namespace DFHM;
 
 Vertex::Vertex(const Vertex& src)
-	: _pt(src._pt)
+	: ObjectPoolOwnerUser(src)
+	, _pt(src._pt)
 	, _lockType(src._lockType)
 {
 }
 
 Vertex& Vertex::operator = (const Vertex& rhs)
 {
+	ObjectPoolOwnerUser::operator= (rhs);
 	_pt = rhs._pt;
 	_lockType = rhs._lockType;
 

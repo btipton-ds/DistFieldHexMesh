@@ -74,7 +74,8 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 }
 
 Polygon::Polygon(const Polygon& src)
-	: _createdDuringSplitNumber(src._createdDuringSplitNumber)
+	: ObjectPoolOwnerUser(src)
+	, _createdDuringSplitNumber(src._createdDuringSplitNumber)
 	, _splitFaceProductIds(src._splitFaceProductIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
@@ -88,6 +89,7 @@ Polygon::Polygon(const Polygon& src)
 Polygon& Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
+	ObjectPoolOwnerUser::operator=(rhs);
 	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
 	_splitFaceProductIds = rhs._splitFaceProductIds;
 	_vertexIds = rhs._vertexIds;

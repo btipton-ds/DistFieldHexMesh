@@ -75,7 +75,8 @@ Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds)
 }
 
 Polyhedron::Polyhedron(const Polyhedron& src)
-	: _faceIds(src._faceIds)
+	: ObjectPoolOwnerUser(src)
+	, _faceIds(src._faceIds)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 {
@@ -83,6 +84,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 
 Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
+	ObjectPoolOwnerUser::operator=(rhs);
 	clearCache();
 	_faceIds = rhs._faceIds;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;

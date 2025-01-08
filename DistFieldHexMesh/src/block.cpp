@@ -330,8 +330,10 @@ Index3DId Block::getVertexIdOfPoint(const Vector3d& point)
 {
 	auto blkIdx = determineOwnerBlockIdx(point);
 	auto pBlockOwner = _pVol->getBlockPtr(blkIdx);
-	if (pBlockOwner)
-		return pBlockOwner->_vertices.findOrAdd(point);
+	if (pBlockOwner) {
+		Vertex vert(point);
+		return pBlockOwner->_vertices.findOrAdd(vert);
+	}
 	assert(!"bad index");
 	return Index3DId();
 }
@@ -710,7 +712,8 @@ Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 {
 	MTC::set<Index3DId> faceSet;
 	faceSet.insert(faceIds.begin(), faceIds.end());
-	Index3DId cellId = _modelData._polyhedra.findOrAdd(Polyhedron(faceSet));
+	Polyhedron hex(faceSet);
+	Index3DId cellId = _modelData._polyhedra.findOrAdd(hex);
 
 	return cellId;
 }
@@ -854,6 +857,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto* pOwner = getOwner(ownerBlockIdx);
 
 	Vertex vert(pt);
+	vert.setPoolOwner(this);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
 
 	// Bounding box is off due to skewing
