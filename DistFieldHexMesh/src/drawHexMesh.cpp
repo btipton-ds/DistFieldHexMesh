@@ -53,91 +53,73 @@ void DrawHexMesh::changeViewElements()
         bool drewSomething = false;
         if (_options.showSelectedBlocks) {
             if (FT_ALL < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_ALL]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        faceVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
-                    }
+                if (_faceTessellations[FT_ALL]) {
+                    drewSomething = true;
+                    faceVBO.includeElementIndices(DS_MESH_ALL, _faceTessellations[FT_ALL]);
                 }
             }
         } else if (_options.showWalls) {
             if (FT_WALL < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_WALL]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        faceVBO.includeElementIndices(DS_MESH_WALL, pBlockTess);
-                    }
+                if (_faceTessellations[FT_WALL]) {
+                    drewSomething = true;
+                    faceVBO.includeElementIndices(DS_MESH_WALL, _faceTessellations[FT_WALL]);
                 }
             }
         } else {
             bool blocksAdded = false;
             if (_options.showBack && FT_BACK < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_BACK]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_BACK, pBlockTess);
-                    }
+                if (_faceTessellations[FT_BACK]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_BACK, _faceTessellations[FT_BACK]);
                 }
             }
 
             if (_options.showFront && FT_FRONT < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_FRONT]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_FRONT, pBlockTess);
-                    }
+                if (_faceTessellations[FT_FRONT]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_FRONT, _faceTessellations[FT_FRONT]);
                 }
             }
 
             if (_options.showLeft && FT_LEFT < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_LEFT]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_LEFT, pBlockTess);
-                    }
+                if (_faceTessellations[FT_LEFT]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_LEFT, _faceTessellations[FT_LEFT]);
                 }
             }
 
             if (_options.showRight && FT_RIGHT < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_RIGHT]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_RIGHT, pBlockTess);
-                    }
+                if (_faceTessellations[FT_RIGHT]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_RIGHT, _faceTessellations[FT_RIGHT]);
                 }
             }
 
             if (_options.showBottom && FT_BOTTOM < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_BOTTOM]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_BOTTOM, pBlockTess);
-                    }
+                if (_faceTessellations[FT_BOTTOM]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_BOTTOM, _faceTessellations[FT_BOTTOM]);
                 }
             }
 
             if (_options.showTop && FT_TOP < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_TOP]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_TOP, pBlockTess);
-                    }
+                if (_faceTessellations[FT_TOP]) {
+                    drewSomething = true;
+                    blocksAdded = true;
+                    faceVBO.includeElementIndices(DS_MESH_TOP, _faceTessellations[FT_TOP]);
                 }
             }
 
             if (!blocksAdded || !drewSomething) {
                 if (FT_ALL < _faceTessellations.size()) {
-                    for (auto pBlockTess : _faceTessellations[FT_ALL]) {
-                        if (pBlockTess) {
-                            blocksAdded = true;
-                            faceVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
-                        }
+                    if (_faceTessellations[FT_ALL]) {
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_ALL, _faceTessellations[FT_ALL]);
                     }
                 }
             }

@@ -109,7 +109,7 @@ public:
 
 	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
-	void makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMeshes, const BlockPtr& pBlock, size_t threadNum) const;
+	void makeFaceTriMesh(FaceDrawType faceType, CMeshPtr& pMesh, const BlockPtr& pBlock) const;
 	void createHexFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 

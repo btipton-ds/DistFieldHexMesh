@@ -72,7 +72,7 @@ namespace DFHM {
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();
 
-		void setFaceTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
+		void setFaceTessellations(const std::vector<OGL::IndicesPtr>& src);
 		void setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
 		void changeViewElements();
 
@@ -99,10 +99,11 @@ namespace DFHM {
 
 	private:
 		HexMeshViewOptions _options;
-		std::vector<std::vector<OGL::IndicesPtr>> _faceTessellations, _edgeTessellations;
+		std::vector<OGL::IndicesPtr> _faceTessellations;
+		std::vector<std::vector<OGL::IndicesPtr>> _edgeTessellations;
 	};
 
-	inline void DrawHexMesh::setFaceTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src)
+	inline void DrawHexMesh::setFaceTessellations(const std::vector<OGL::IndicesPtr>& src)
 	{
 		_faceTessellations = src;
 	}

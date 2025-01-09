@@ -1297,35 +1297,46 @@ void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool mu
     Block::TriMeshGroup blockMeshes;
     auto pCanvas = _pMainFrame->getCanvas();
     _pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
-#if 1
+
     auto pDraw = pCanvas->getDrawHexMesh();
     auto& faceVBO = pDraw->getVBOs()->_faceVBO;
     faceVBO.beginFaceTesselation();
 
-    vector<vector<OGL::IndicesPtr>> faceTesselations;
+    vector<OGL::IndicesPtr> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
         auto& thisGroup = blockMeshes[mode];
-        faceTesselations.push_back(vector<OGL::IndicesPtr>());
-        faceTesselations.back().reserve(thisGroup.size());
 
+        size_t meshId = -1, changeNumber = -1;
+        vector<float> points, normals, parameters;
+        vector<unsigned int> vertIndices;
         for (const auto& pBlockMesh : thisGroup) {
             if (pBlockMesh && pBlockMesh->numTris() > 0) {
-                auto meshId = pBlockMesh->getId();
-                auto changeNumber = pBlockMesh->getChangeNumber();
-                const auto& points = pBlockMesh->getGlTriPoints();
-                const auto& normals = pBlockMesh->getGlTriNormals(false);
-                const auto& parameters = pBlockMesh->getGlTriParams();
-                const auto& vertIndices = pBlockMesh->getGlTriIndices();
-                auto pBlockTess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, vertIndices);
-                if (pBlockTess)
-                    faceTesselations.back().push_back(pBlockTess);
+                meshId = pBlockMesh->getId();
+                changeNumber = pBlockMesh->getChangeNumber();
+                const auto& tmpPoints = pBlockMesh->getGlTriPoints();
+                const auto& tmpNormals = pBlockMesh->getGlTriNormals(false);
+                const auto& tmpParameters = pBlockMesh->getGlTriParams();
+                const auto& tmpVertIndices = pBlockMesh->getGlTriIndices();
+
+                auto baseIdx = points.size() / 3;
+
+                points.insert(points.end(), tmpPoints.begin(), tmpPoints.end());
+                normals.insert(normals.end(), tmpNormals.begin(), tmpNormals.end());
+                parameters.insert(parameters.end(), tmpParameters.begin(), tmpParameters.end());
+
+                vertIndices.reserve(vertIndices.size() + tmpVertIndices.size());
+                for (const auto& idx : tmpVertIndices)
+                    vertIndices.push_back(baseIdx + idx);
             }
         }
+        auto pBlockTess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, vertIndices);
+        if (pBlockTess)
+            faceTesselations.push_back(pBlockTess);
     }
 
     pDraw->setFaceTessellations(faceTesselations);
     faceVBO.endFaceTesselation(false);
-#endif
+
 }
 
 void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool multiCore)
