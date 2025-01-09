@@ -95,8 +95,8 @@ public:
 
 	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
-	void makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
-	void makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
+	void createHexFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
+	void createHexFaceEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -110,7 +110,7 @@ public:
 	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
 	void makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMeshes, const BlockPtr& pBlock, size_t threadNum) const;
-	void makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
+	void createHexFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;

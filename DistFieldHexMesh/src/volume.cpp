@@ -375,7 +375,7 @@ void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& 
 		}
 	}
 
-	makeFaceTris(triMeshes, Index3D(0, 0, 0), volDim(), true);
+	createHexFaceTris(triMeshes, Index3D(0, 0, 0), volDim(), true);
 }
 
 void Volume::clear()
@@ -1144,16 +1144,16 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::TriMeshGroup& triMesh
 	std::vector<Planed> planes;
 	getModelBoundaryPlanes(planes);
 
-	CMeshPtr pMesh = triMeshes[faceType][threadNum];
-	if (!pMesh) {
-		pMesh = make_shared<CMesh>(bbox);
-		pMesh->setEnforceManifold(false); // Block meshes are none manifold
-		triMeshes[faceType][threadNum] = pMesh;
+	auto& faceTypeMeshes = triMeshes[faceType];
+	if (!faceTypeMeshes[threadNum]) {
+		faceTypeMeshes[threadNum] = make_shared<CMesh>(bbox);
+		faceTypeMeshes[threadNum]->setEnforceManifold(false); // Block meshes are none manifold
 	}
-	pBlock->getBlockTriMesh(faceType, planes, pMesh);
+	CMeshPtr pMesh = faceTypeMeshes[threadNum];
+	pBlock->createHexTriMesh(faceType, planes, pMesh);
 }
 
-void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
+void Volume::createHexFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 	triMeshes.resize(FT_ALL + 1);
@@ -1189,7 +1189,7 @@ void Volume::makeFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, co
 	}
 }
 
-void Volume::makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
+void Volume::createHexFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1197,16 +1197,16 @@ void Volume::makeFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdge
 	std::vector<Planed> planes;
 	getModelBoundaryPlanes(planes);
 
-	Block::glPointsPtr pPoints = faceEdges[faceType][threadNum];
-	if (!pPoints) {
-		pPoints = make_shared<Block::GlPoints>();
-		faceEdges[faceType][threadNum] = pPoints;
+	auto& faceTypeEdges = faceEdges[faceType];
+	if (!faceTypeEdges[threadNum]) {
+		faceTypeEdges[threadNum] = make_shared<Block::GlPoints>();
 	}
+	Block::glPointsPtr pPoints = faceTypeEdges[threadNum];
 
-	pBlock->makeEdgeSets(faceType, planes, pPoints);
+	pBlock->createHexFaceEdges(faceType, planes, pPoints);
 }
 
-void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const
+void Volume::createHexFaceEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 
@@ -1228,7 +1228,7 @@ void Volume::makeEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, c
 
 				for (int j = FT_WALL; j <= FT_ALL; j++) {
 					FaceDrawType ft = (FaceDrawType)j;
-					makeFaceEdges(ft, faceEdges, blockPtr, threadNum);
+					createHexFaceEdges(ft, faceEdges, blockPtr, threadNum);
 				}
 			}
 		}
@@ -1581,12 +1581,12 @@ void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	vals.push_back(Planed(_modelBundingBox.getMin(), zAxis)); // bottomPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), -zAxis)); // bottomPlane
 	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis)); // topPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), yAxis)); // leftPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), -yAxis)); // leftPlane
 	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis)); // rightPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), xAxis)); // frontPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // backPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), -xAxis)); // backPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // frontPlane
 
 }
 

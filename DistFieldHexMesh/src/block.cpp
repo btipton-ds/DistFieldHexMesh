@@ -1242,40 +1242,34 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_ALL:
 			result = true;
 			break;
-		case FT_MODEL_BOUNDARY:
-			result = isModelBoundary && !isBlockBoundary;
+		case FT_INNER:
+			result = !isWall;
 			break;
 		case FT_WALL:
 			result = isWall;
 			break;
-		case FT_BLOCK_BOUNDARY:
-			result = !isWall && isBlockBoundary;
-			break;
 
 		case FT_BOTTOM:
-			result = face.isOnPlane(planes[CFT_BOTTOM]);
-			if (result) {
-				int dbgBreak = 1;
-			}
+			result = face.isCoplanar(planes[CFT_BOTTOM]);
 			break;
 
 		case FT_TOP:
-			result = face.isOnPlane(planes[CFT_TOP]);
+			result = face.isCoplanar(planes[CFT_TOP]);
 			break;
 
 		case FT_LEFT:
-			result = face.isOnPlane(planes[CFT_LEFT]);
+			result = face.isCoplanar(planes[CFT_LEFT]);
 			break;
 
 		case FT_RIGHT:
-			result = face.isOnPlane(planes[CFT_RIGHT]);
+			result = face.isCoplanar(planes[CFT_RIGHT]);
 			break;
+
 		case FT_BACK:
-			result = face.isOnPlane(planes[CFT_BACK]);
+			result = face.isCoplanar(planes[CFT_BACK]);
 			break;
-		
 		case FT_FRONT: 
-			result = face.isOnPlane(planes[CFT_FRONT]);
+			result = face.isCoplanar(planes[CFT_FRONT]);
 			break;
 		
 		
@@ -1284,7 +1278,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	return result;
 }
 
-void Block::getBlockTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
+void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
 {
 	if (numFaces(true) == 0)
 		return;
@@ -1332,7 +1326,7 @@ void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
 	vals.push_back((float)pt1[2]);
 }
 
-void Block::makeEdgeSets(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
+void Block::createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
 {
 	set<Edge> edges;
 

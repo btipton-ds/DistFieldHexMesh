@@ -71,16 +71,6 @@ void DrawHexMesh::changeViewElements()
             }
         } else {
             bool blocksAdded = false;
-            if (FT_MODEL_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_MODEL_BOUNDARY]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_INNER, pBlockTess);
-                    }
-                }
-            }
-
             if (_options.showBack && FT_BACK < _faceTessellations.size()) {
                 for (auto pBlockTess : _faceTessellations[FT_BACK]) {
                     if (pBlockTess) {
@@ -141,16 +131,6 @@ void DrawHexMesh::changeViewElements()
                 }
             }
 
-            if (FT_BLOCK_BOUNDARY < _faceTessellations.size()) {
-                for (auto pBlockTess : _faceTessellations[FT_BLOCK_BOUNDARY]) {
-                    if (pBlockTess) {
-                        drewSomething = true;
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_BOUNDARY, pBlockTess);
-                    }
-                }
-            }
-
             if (!blocksAdded || !drewSomething) {
                 if (FT_ALL < _faceTessellations.size()) {
                     for (auto pBlockTess : _faceTessellations[FT_ALL]) {
@@ -171,15 +151,6 @@ void DrawHexMesh::changeViewElements()
                 if (pBlockTess) {
                     drewSomething = true;
                     edgeVBO.includeElementIndices(DS_MESH_WALL, pBlockTess);
-                }
-            }
-        }
-
-        if (_options.showBoundary && FT_BLOCK_BOUNDARY < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_BLOCK_BOUNDARY]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_BOUNDARY, pBlockTess);
                 }
             }
         }
@@ -267,10 +238,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
             break;
-        case DS_MESH_BOUNDARY:
-            glLineWidth(1.0f);
-            UBO.defColor = p3f(0.75f, 0, 0);
-            break;
         case DS_MESH_WALL:
             UBO.defColor = p3f(0.25f, 0.5f, 0.250f);
             break;
@@ -329,9 +296,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         break;
     case DS_MESH_INNER:
         UBO.defColor = p3f(0.75f, 1, 1);
-        break;
-    case DS_MESH_BOUNDARY:
-        UBO.defColor = p3f(1.0f, 0.5f, 0.5f);
         break;
 
     case DS_MESH_BACK:

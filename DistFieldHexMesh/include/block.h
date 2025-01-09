@@ -131,8 +131,8 @@ public:
 	void createBlockFaces();
 
 	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
-	void getBlockTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
-	void makeEdgeSets(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
+	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
+	void createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());

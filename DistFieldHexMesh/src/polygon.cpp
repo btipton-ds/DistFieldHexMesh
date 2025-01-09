@@ -257,11 +257,6 @@ bool Polygon::operator < (const Polygon& rhs) const
 	return false;
 }
 
-bool Polygon::isOnPlane(const Planed& plane) const
-{
-	return isCoplanar(plane);
-}
-
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {

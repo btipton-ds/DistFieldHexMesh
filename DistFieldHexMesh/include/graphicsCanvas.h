@@ -77,8 +77,8 @@ public:
         VIEW_TOP,
         VIEW_LEFT,
         VIEW_RIGHT,
-        VIEW_FRONT,
         VIEW_BACK,
+        VIEW_FRONT,
 
     };
 
