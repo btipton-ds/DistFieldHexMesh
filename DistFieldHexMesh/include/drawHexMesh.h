@@ -73,7 +73,7 @@ namespace DFHM {
 		virtual ~DrawHexMesh();
 
 		void setFaceTessellations(const std::vector<OGL::IndicesPtr>& src);
-		void setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src);
+		void setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src);
 		void changeViewElements();
 
 		DECL_OPTS(Edges)
@@ -99,8 +99,7 @@ namespace DFHM {
 
 	private:
 		HexMeshViewOptions _options;
-		std::vector<OGL::IndicesPtr> _faceTessellations;
-		std::vector<std::vector<OGL::IndicesPtr>> _edgeTessellations;
+		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
 
 	inline void DrawHexMesh::setFaceTessellations(const std::vector<OGL::IndicesPtr>& src)
@@ -108,7 +107,7 @@ namespace DFHM {
 		_faceTessellations = src;
 	}
 
-	inline void DrawHexMesh::setEdgeTessellations(const std::vector<std::vector<OGL::IndicesPtr>>& src)
+	inline void DrawHexMesh::setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src)
 	{
 		_edgeTessellations = src;
 	}

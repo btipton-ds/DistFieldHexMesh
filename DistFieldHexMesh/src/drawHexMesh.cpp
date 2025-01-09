@@ -129,73 +129,57 @@ void DrawHexMesh::changeViewElements()
     if (_options.showEdges && !_edgeTessellations.empty()) {
         bool drewSomething = false;
         if (_options.showWalls && FT_WALL < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_WALL]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_WALL, pBlockTess);
-                }
+            if (_edgeTessellations[FT_WALL]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_WALL, _edgeTessellations[FT_WALL]);
             }
         }
 
         if (_options.showBack && FT_BACK < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_BACK]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_BACK, pBlockTess);
-                }
+            if (_edgeTessellations[FT_BACK]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_BACK, _edgeTessellations[FT_BACK]);
             }
         }
 
         if (_options.showFront && FT_FRONT < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_FRONT]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_FRONT, pBlockTess);
-                }
+            if (_edgeTessellations[FT_FRONT]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_FRONT, _edgeTessellations[FT_FRONT]);
             }
         }
 
         if (_options.showLeft && FT_LEFT < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_LEFT]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_LEFT, pBlockTess);
-                }
+            if (_edgeTessellations[FT_LEFT]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_LEFT, _edgeTessellations[FT_LEFT]);
             }
         }
 
         if (_options.showRight && FT_RIGHT < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_RIGHT]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_RIGHT, pBlockTess);
-                }
+            if (_edgeTessellations[FT_RIGHT]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_RIGHT, _edgeTessellations[FT_RIGHT]);
             }
         }
 
         if (_options.showBottom && FT_BOTTOM < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_BOTTOM]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_BOTTOM, pBlockTess);
-                }
+            if (_edgeTessellations[FT_BOTTOM]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_BOTTOM, _edgeTessellations[FT_BOTTOM]);
             }
         }
 
         if (_options.showTop && FT_TOP < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_TOP]) {
-                if (pBlockTess) {
-                    drewSomething = true;
-                    edgeVBO.includeElementIndices(DS_MESH_TOP, pBlockTess);
-                }
+            if (_edgeTessellations[FT_TOP]) {
+                drewSomething = true;
+                edgeVBO.includeElementIndices(DS_MESH_TOP, _edgeTessellations[FT_TOP]);
             }
         }
 
         if (!drewSomething && FT_ALL < _edgeTessellations.size()) {
-            for (auto pBlockTess : _edgeTessellations[FT_ALL]) {
-                if (pBlockTess)
-                    edgeVBO.includeElementIndices(DS_MESH_ALL, pBlockTess);
-            }
+            if (_edgeTessellations[FT_ALL])
+                edgeVBO.includeElementIndices(DS_MESH_ALL, _edgeTessellations[FT_ALL]);
         }
 
     }

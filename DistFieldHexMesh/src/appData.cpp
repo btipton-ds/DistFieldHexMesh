@@ -1349,24 +1349,32 @@ void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool mu
     auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
     edgeVBO.beginEdgeTesselation();
 
-    vector<vector<OGL::IndicesPtr>> edgeTesselations;
+    vector<OGL::IndicesPtr> edgeTesselations;
     edgeTesselations.reserve(edgeSets.size());
     for (size_t mode = 0; mode < edgeSets.size(); mode++) {
-        edgeTesselations.push_back(vector<OGL::IndicesPtr>());
+        FaceDrawType faceType = (FaceDrawType)mode;
+        vector<float> edgePoints;
+        vector<unsigned int> indices;
+        unsigned int idx = 0;
+        size_t meshId = -1, changeNumber = -1;
+
         for (const auto& faceEdgesPtr : edgeSets[mode]) {
             if (faceEdgesPtr) {
-                const auto& faceEdges = *faceEdgesPtr;
-                vector<unsigned int> indices;
-                indices.reserve(faceEdges.size());
-                for (size_t j = 0; j < faceEdges.size(); j++)
-                    indices.push_back(j);
-                if (!faceEdges.empty()) {
-                    auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceEdgesPtr->getId(), faceEdgesPtr->changeNumber(), faceEdges, indices);
-                    if (pEdgeTess)
-                        edgeTesselations[mode].push_back(pEdgeTess);
+                meshId = faceEdgesPtr->getId();
+                changeNumber = faceEdgesPtr->changeNumber();
+                const auto& faceEdgePoints = *faceEdgesPtr;
+
+                edgePoints.reserve(edgePoints.size() + faceEdgePoints.size());
+                for (size_t j = 0; j < faceEdgePoints.size(); j++) {
+                    edgePoints.push_back(faceEdgePoints[j]);
+                    indices.push_back(idx++);
                 }
             }
         }
+
+        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, edgePoints, indices);
+        if (pEdgeTess)
+            edgeTesselations.push_back(pEdgeTess);
     }
 
     pDraw->setEdgeTessellations(edgeTesselations);
