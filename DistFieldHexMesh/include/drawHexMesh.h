@@ -127,13 +127,16 @@ using VolumePtr = std::shared_ptr<Volume>;
 		size_t getVertexIdx(const Vector3f& pt);
 		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);
 
+		void clearPrior();
+		void clearPost();
+
+		HexMeshViewOptions _options;
+
 		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
 		std::map<GLEdge, size_t> _edgeMap;
 		std::vector<float> _triPoints, _triNormals, _edgePoints;
 		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
 
-		HexMeshViewOptions _options;
-		std::vector<OGL::ElementVBORec> _faceIndexVBOs, _edgeIndexVBOs;
 		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
 

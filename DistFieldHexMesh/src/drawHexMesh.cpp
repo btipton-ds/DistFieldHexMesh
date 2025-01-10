@@ -45,13 +45,36 @@ DrawHexMesh::~DrawHexMesh()
 
 }
 
+void DrawHexMesh::clearPrior()
+{
+    _faceTessellations.clear();
+    _edgeTessellations.clear();
+}
+
+void DrawHexMesh::clearPost()
+{
+    _triVertexToIndexMap.clear();
+    _edgeVertexToIndexMap.clear();
+    _edgeMap.clear();
+    _triPoints.clear();
+    _triNormals.clear();
+    _edgePoints.clear();
+    _triIndices.clear();
+    _edgeIndices.clear();
+
+}
+
 void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
 {
+    clearPrior();
+
     Block::GlHexMeshGroup blockMeshes;
     pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
 
     auto& faceVBO = getVBOs()->_faceVBO;
     auto& edgeVBO = getVBOs()->_edgeVBO;
+    faceVBO.clear();
+    edgeVBO.clear();
 
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
@@ -110,9 +133,10 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
         _edgeTessellations[faceType] = pEdgeTess;
     }
 
-
     faceVBO.endFaceTesselation(false);
     edgeVBO.endEdgeTesselation();
+
+    clearPost();
 }
 
 void DrawHexMesh::changeViewElements()
