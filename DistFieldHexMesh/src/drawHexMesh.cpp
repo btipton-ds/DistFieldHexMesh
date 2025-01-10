@@ -27,8 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include<drawHexMesh.h>
 #include <enums.h>
+#include <volume.h>
 #include <graphicsCanvas.h>
 
+using namespace std;
 using namespace DFHM;
 
 DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
@@ -39,6 +41,70 @@ DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
 DrawHexMesh::~DrawHexMesh()
 {
 
+}
+
+void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
+{
+    Block::GlHexMeshGroup blockMeshes;
+    pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
+
+    auto& faceVBO = getVBOs()->_faceVBO;
+    auto& edgeVBO = getVBOs()->_edgeVBO;
+
+    faceVBO.beginFaceTesselation();
+    edgeVBO.beginEdgeTesselation();
+
+    vector<OGL::IndicesPtr> faceTesselations, edgeTesselations;
+    for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
+        FaceDrawType faceType = (FaceDrawType)mode;
+        auto& thisGroup = blockMeshes[mode];
+
+        size_t changeNumber = 0;
+        vector<float> triPoints, triNormals, triParameters, edgePoints;
+        vector<unsigned int> vertIndices, edgeIndices;
+        size_t triIdx = 0, edgeIdx = 0;
+        for (const auto& pBlockMesh : thisGroup) {
+            if (pBlockMesh) {
+                size_t numTriVerts = pBlockMesh->numTriVertices();
+                if (numTriVerts > 0) {
+                    const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
+                    const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
+                    vector<float> tmpTriParameters;
+                    tmpTriParameters.resize(3 * numTriVerts);
+
+
+                    triPoints.insert(triPoints.end(), tmpTriPoints.begin(), tmpTriPoints.end());
+                    triNormals.insert(triNormals.end(), tmpTriNormals.begin(), tmpTriNormals.end());
+                    triParameters.insert(triParameters.end(), tmpTriParameters.begin(), tmpTriParameters.end());
+
+                    vertIndices.reserve(vertIndices.size() + numTriVerts);
+                    for (size_t i = 0; i < numTriVerts; i++)
+                        vertIndices.push_back(triIdx++);
+                }
+
+                size_t numEdgeVerts = pBlockMesh->numEdgeVertices();
+                if (numEdgeVerts > 0) {
+                    const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
+                    edgePoints.insert(edgePoints.end(), tmpEdgePoints.begin(), tmpEdgePoints.end());
+                    edgeIndices.reserve(edgeIndices.size() + numEdgeVerts);
+                    for (size_t i = 0; i < numEdgeVerts; i++)
+                        edgeIndices.push_back(edgeIdx++);
+                }
+            }
+        }
+
+        auto pFaceTess = faceVBO.setFaceTessellation(faceType, changeNumber, triPoints, triNormals, triParameters, vertIndices);
+        faceTesselations.push_back(pFaceTess);
+
+        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, changeNumber, edgePoints, edgeIndices);
+        edgeTesselations.push_back(pFaceTess);
+    }
+
+    setFaceTessellations(faceTesselations);
+    setEdgeTessellations(edgeTesselations);
+
+    faceVBO.endFaceTesselation(false);
+    edgeVBO.endEdgeTesselation();
 }
 
 void DrawHexMesh::changeViewElements()

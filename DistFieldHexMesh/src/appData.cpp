@@ -1283,79 +1283,10 @@ void AppData::updateTessellation()
     const Index3D max(_pVolume->volDim());
     Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
 
-    addHexFacesToScene(min, max, RUN_MULTI_THREAD);
-//    addHexEdgesToScene(min, max, RUN_MULTI_THREAD);
+    auto pCanvas = _pMainFrame->getCanvas();
+    pCanvas->getDrawHexMesh()->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
 
     setDisplayMinMax(min, max);
 
-    auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->changeViewElements();
 }
-
-void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool multiCore)
-{
-    auto pCanvas = _pMainFrame->getCanvas();
-
-    Block::GlHexMeshGroup blockMeshes;
-    _pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
-
-    auto pDraw = pCanvas->getDrawHexMesh();
-    auto& faceVBO = pDraw->getVBOs()->_faceVBO;
-    auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
-
-    faceVBO.beginFaceTesselation();
-    edgeVBO.beginEdgeTesselation();
-
-    vector<OGL::IndicesPtr> faceTesselations, edgeTesselations;
-    for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
-        FaceDrawType faceType = (FaceDrawType)mode;
-        auto& thisGroup = blockMeshes[mode];
-
-        size_t changeNumber = 0;
-        vector<float> triPoints, triNormals, triParameters, edgePoints;
-        vector<unsigned int> vertIndices, edgeIndices;
-        size_t triIdx = 0, edgeIdx = 0;
-        for (const auto& pBlockMesh : thisGroup) {
-            if (pBlockMesh) {
-                size_t numTriVerts = pBlockMesh->numTriVertices();
-                if (numTriVerts > 0) {
-                    const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
-                    const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
-                    vector<float> tmpTriParameters;
-                    tmpTriParameters.resize(3 * numTriVerts);
-
-
-                    triPoints.insert(triPoints.end(), tmpTriPoints.begin(), tmpTriPoints.end());
-                    triNormals.insert(triNormals.end(), tmpTriNormals.begin(), tmpTriNormals.end());
-                    triParameters.insert(triParameters.end(), tmpTriParameters.begin(), tmpTriParameters.end());
-
-                    vertIndices.reserve(vertIndices.size() + numTriVerts);
-                    for (size_t i = 0; i < numTriVerts; i++)
-                        vertIndices.push_back(triIdx++);
-                }
-
-                size_t numEdgeVerts = pBlockMesh->numEdgeVertices();
-                if (numEdgeVerts > 0) {
-                    const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
-                    edgePoints.insert(edgePoints.end(), tmpEdgePoints.begin(), tmpEdgePoints.end());
-                    edgeIndices.reserve(edgeIndices.size() + numEdgeVerts);
-                    for (size_t i = 0; i < numEdgeVerts; i++)
-                        edgeIndices.push_back(edgeIdx++);
-                }
-            }
-        }
-
-        auto pFaceTess = faceVBO.setFaceTessellation(faceType, changeNumber, triPoints, triNormals, triParameters, vertIndices);
-        faceTesselations.push_back(pFaceTess);
-
-        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, changeNumber, edgePoints, edgeIndices);
-        edgeTesselations.push_back(pFaceTess);
-    }
-
-    pDraw->setFaceTessellations(faceTesselations);
-    pDraw->setEdgeTessellations(edgeTesselations);
-
-    faceVBO.endFaceTesselation(false);
-    edgeVBO.endEdgeTesselation();
-}
-

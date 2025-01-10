@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <drawMesh.h>
+#include <Index3D.h>
 
 namespace OGL
 {
@@ -49,6 +50,10 @@ namespace OGL
 	}
 
 namespace DFHM {
+
+class Volume;
+using VolumePtr = std::shared_ptr<Volume>;
+
 	struct HexMeshViewOptions {
 		bool
 			showEdges = true,
@@ -89,6 +94,7 @@ namespace DFHM {
 		DECL_OPTS(Right)
 			
 		void setShowSelectedBlocks(bool val);
+		void addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
 
 	protected:
 		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;

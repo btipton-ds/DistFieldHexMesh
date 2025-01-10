@@ -97,7 +97,6 @@ private:
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelTess();
     void updateTessellation();
-    void addHexFacesToScene(const Index3D& min, const Index3D& max, bool multiCore);
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     template<class L>
