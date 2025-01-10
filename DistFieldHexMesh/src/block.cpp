@@ -1278,35 +1278,89 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	return result;
 }
 
-void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh)
+void Block::GlHexFaces::addFace(const Block& blk, const Polygon& face)
+{
+	const auto& vertIds = face.getVertexIds();
+	vector<Vector3d> pts;
+	pts.reserve(vertIds.size());
+	for (const auto& vertId : vertIds) {
+		pts.push_back(blk.getVertexPoint(vertId));
+	}
+
+	if (pts.size() > 4) {
+		Vector3d ctr = face.calCentroid();
+		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+			size_t idx1 = (idx0 + 1) % pts.size();
+			addTriangle(ctr, pts[idx0], pts[idx1]);
+		}
+	} else {
+		for (size_t i = 1; i < pts.size() - 1; i++) {
+			size_t idx0 = 0;
+			size_t idx1 = i;
+			size_t idx2 = i + 1;
+			addTriangle(pts[idx0], pts[idx1], pts[idx2]);
+		}
+	}
+
+	// TBD compress the edges in the block
+	for (size_t i = 0; i < pts.size(); i++) {
+		size_t j = (i + 1) % pts.size();
+		const auto& pt0 = pts[i];
+		const auto& pt1 = pts[j];
+
+		for (int i = 0; i < 3; i++)
+			_glEdgePoints.push_back(pt0[i]);
+
+		for (int i = 0; i < 3; i++)
+			_glEdgePoints.push_back(pt1[i]);
+	}
+}
+
+void Block::GlHexFaces::addTriangle(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
+{
+	Vector3d v0 = pt0 - pt1;
+	Vector3d v1 = pt2 - pt1;
+	Vector3d n = v0.cross(v1).normalized();
+
+	for (int i = 0; i < 3; i++) {
+		_glTriPoints.push_back(pt0[i]);
+		_glTriNormals.push_back(n[i]);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		_glTriPoints.push_back(pt1[i]);
+		_glTriNormals.push_back(n[i]);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		_glTriPoints.push_back(pt2[i]);
+		_glTriNormals.push_back(n[i]);
+	}
+
+}
+
+size_t Block::GlHexFaces::numTriVertices() const
+{
+	return _glTriPoints.size() / 3;
+}
+
+size_t Block::GlHexFaces::numEdgeVertices() const
+{
+	return _glEdgePoints.size() / 2;
+}
+
+void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& glPolys)
 {
 	if (numFaces(true) == 0)
 		return;
 
+	if (!glPolys)
+		glPolys = make_shared<GlHexFaces>();
 	const auto& polys = _modelData._polygons;
-	polys.iterateInOrder([this, &pMesh, planes, meshType](const Index3DId& id, const Polygon& face) {
+	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInDrawKey(meshType, planes, face)) {
-			const auto& vertIds = face.getVertexIds();
-			vector<Vector3d> pts;
-			pts.reserve(vertIds.size());
-			for (const auto& vertId : vertIds) {
-				pts.push_back(getVertexPoint(vertId));
-			}
+			glPolys->addFace(*this, face);
 
-			if (pts.size() > 4) {
-				Vector3d ctr = face.calCentroid();
-				for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-					size_t idx1 = (idx0 + 1) % pts.size();
-					pMesh->addTriangle(ctr, pts[idx0], pts[idx1]);
-				}
-			} else {
-				for (size_t i = 1; i < pts.size() - 1; i++) {
-					size_t idx0 = 0;
-					size_t idx1 = i;
-					size_t idx2 = i + 1;
-					pMesh->addTriangle(pts[idx0], pts[idx1], pts[idx2]);
-				}
-			}
 		}
 	});
 }

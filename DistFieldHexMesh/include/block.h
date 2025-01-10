@@ -87,8 +87,19 @@ public:
 	using glPointsVector = std::vector<glPointsPtr>;
 	using glPointsGroup = std::vector<glPointsVector>;
 
-	using TriMeshVector = std::vector<CMeshPtr>;
-	using TriMeshGroup = std::vector<TriMeshVector>;
+	struct GlHexFaces {
+		// all faces for a block
+		void addFace(const Block& blk, const Polygon& face);
+		void addTriangle(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2);
+		size_t numTriVertices() const;
+		size_t numEdgeVertices() const;
+
+		std::vector<float> _glTriPoints, _glTriNormals, _glEdgePoints;
+	};
+
+	using GlHexFacesPtr = std::shared_ptr<GlHexFaces>;
+	using GlHexFacesVectorPtr = std::vector<GlHexFacesPtr>;
+	using GlHexMeshGroup = std::vector<GlHexFacesVectorPtr>;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts, bool forReading = false);
 	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading = false);
@@ -131,7 +142,7 @@ public:
 	void createBlockFaces();
 
 	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
-	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, CMeshPtr& pMesh);
+	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 	void createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;

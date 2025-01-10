@@ -78,6 +78,7 @@ add_executable (DistFieldHexMesh
 	"src/drawModelMesh.cpp"
     "src/index3D.cpp"
 	"src/fixedPoint.cpp"
+	"src/gradingOp.cpp"
 	"src/graphicsCanvas.cpp"
 	"src/graphicsVBORec.cpp"
 	"src/logger.cpp"
@@ -105,12 +106,13 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-   "src/gradingOp.cpp")
+)
 
 add_executable (TestDFM         
 	
 	"src/block.cpp"	
  	"src/edge.cpp" 
+	"src/gradingOp.cpp"
     "src/index3D.cpp"
 	"src/logger.cpp"
 	"src/objectPool.cpp" 
@@ -129,7 +131,7 @@ add_executable (TestDFM
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
- "src/gradingOp.cpp")
+)
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

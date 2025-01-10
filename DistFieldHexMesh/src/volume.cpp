@@ -361,7 +361,7 @@ CBoundingBox3Dd Volume::getVolumeBBox() const
 	return result;
 }
 
-void Volume::addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
+void Volume::addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();
 
@@ -1136,7 +1136,7 @@ void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks
 #endif
 }
 
-void Volume::makeFaceTriMesh(FaceDrawType faceType, CMeshPtr& pMesh, const shared_ptr<Block>& pBlock) const
+void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
 {
 	CBoundingBox3Dd bbox = _modelBundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1144,14 +1144,10 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, CMeshPtr& pMesh, const share
 	std::vector<Planed> planes;
 	getModelBoundaryPlanes(planes);
 
-	if (!pMesh) {
-		pMesh = make_shared<CMesh>(bbox);
-		pMesh->setEnforceManifold(false); // Block meshes are none manifold
-	}
-	pBlock->createHexTriMesh(faceType, planes, pMesh);
+	pBlock->createHexTriMesh(faceType, planes, polys);
 }
 
-void Volume::createHexFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
+void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 	triMeshes.resize(FT_ALL + 1);
@@ -1181,8 +1177,10 @@ void Volume::createHexFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& mi
 	for (size_t i = 0; i < numThreads; i++) {
 		for (int j = FT_WALL; j <= FT_ALL; j++) {
 			FaceDrawType ft = (FaceDrawType)j;
+#if 0
 			if (triMeshes[ft][i])
 				triMeshes[ft][i]->changed();
+#endif
 		}
 	}
 }

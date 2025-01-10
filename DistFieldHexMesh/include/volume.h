@@ -91,11 +91,12 @@ public:
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
 
-	void addAllBlocks(Block::TriMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
+	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
 	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
-	void createHexFaceTris(Block::TriMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
+
+	void createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 	void createHexFaceEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
@@ -109,7 +110,7 @@ public:
 
 	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
-	void makeFaceTriMesh(FaceDrawType faceType, CMeshPtr& pMesh, const BlockPtr& pBlock) const;
+	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void createHexFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const BlockPtr& pBlock, size_t threadNum) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 
