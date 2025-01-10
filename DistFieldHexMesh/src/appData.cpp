@@ -1304,6 +1304,7 @@ void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool mu
 
     vector<OGL::IndicesPtr> faceTesselations;
     for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
+        FaceDrawType faceType = (FaceDrawType)mode;
         auto& thisGroup = blockMeshes[mode];
 
         size_t meshId = -1, changeNumber = -1;
@@ -1329,7 +1330,7 @@ void AppData::addHexFacesToScene(const Index3D& min, const Index3D& max, bool mu
                     vertIndices.push_back(baseIdx + idx);
             }
         }
-        auto pBlockTess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, vertIndices);
+        auto pBlockTess = faceVBO.setFaceTessellation(faceType, changeNumber, points, normals, parameters, vertIndices);
         if (pBlockTess)
             faceTesselations.push_back(pBlockTess);
     }
@@ -1350,7 +1351,7 @@ void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool mu
     edgeVBO.beginEdgeTesselation();
 
     vector<OGL::IndicesPtr> edgeTesselations;
-    edgeTesselations.reserve(edgeSets.size());
+    edgeTesselations.resize(edgeSets.size());
     for (size_t mode = 0; mode < edgeSets.size(); mode++) {
         FaceDrawType faceType = (FaceDrawType)mode;
         vector<float> edgePoints;
@@ -1372,9 +1373,10 @@ void AppData::addHexEdgesToScene(const Index3D& min, const Index3D& max, bool mu
             }
         }
 
-        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, changeNumber, edgePoints, indices);
-        if (pEdgeTess)
-            edgeTesselations.push_back(pEdgeTess);
+        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, changeNumber, edgePoints, indices);
+        edgeTesselations[faceType] = pEdgeTess;
+        const auto& elIndices = pEdgeTess->m_elementIndices;
+        cout << "Adding edges " << faceType << pEdgeTess << " #indices: " << elIndices.size() << "\n";
     }
 
     pDraw->setEdgeTessellations(edgeTesselations);

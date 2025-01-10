@@ -1311,21 +1311,6 @@ void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& p
 	});
 }
 
-void Block::addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1)
-{
-	auto& vals = *points;
-
-	Vector3d pt0 = _corners[idx0];
-	vals.push_back((float)pt0[0]);
-	vals.push_back((float)pt0[1]);
-	vals.push_back((float)pt0[2]);
-
-	Vector3d pt1 = _corners[idx1];
-	vals.push_back((float)pt1[0]);
-	vals.push_back((float)pt1[1]);
-	vals.push_back((float)pt1[2]);
-}
-
 void Block::createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
 {
 	set<Edge> edges;

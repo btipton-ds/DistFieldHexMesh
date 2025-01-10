@@ -44,9 +44,6 @@ DrawHexMesh::~DrawHexMesh()
 void DrawHexMesh::changeViewElements()
 {
     auto& faceVBO = _VBOs->_faceVBO;
-    auto& edgeVBO = _VBOs->_edgeVBO;
-
-    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
     if (_options.showFaces && !_faceTessellations.empty()) {
@@ -125,7 +122,10 @@ void DrawHexMesh::changeViewElements()
             }
         }
     }
+    faceVBO.endSettingElementIndices();
 
+    auto& edgeVBO = _VBOs->_edgeVBO;
+    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     if (_options.showEdges && !_edgeTessellations.empty()) {
         bool drewSomething = false;
         if (_options.showWalls && FT_WALL < _edgeTessellations.size()) {
@@ -185,7 +185,6 @@ void DrawHexMesh::changeViewElements()
     }
 
     edgeVBO.endSettingElementIndices();
-    faceVBO.endSettingElementIndices();
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)

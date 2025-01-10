@@ -256,7 +256,6 @@ private:
 
 	Index3DId addFace(Block* pOwner, const MTC::vector<Index3DId>& vertIds);
 	Index3DId addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId>& vertIds);
-	void addEdgeToGLPoints(glPointsPtr& points, size_t idx0, size_t idx1);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
