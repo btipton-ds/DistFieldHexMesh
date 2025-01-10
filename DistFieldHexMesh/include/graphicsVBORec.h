@@ -47,6 +47,8 @@ namespace DFHM {
 		VBORec();
 		virtual ~VBORec();
 
+		void clear();
+
 		OGL::MultiVboHandler _faceVBO, _edgeVBO;
 	};
 

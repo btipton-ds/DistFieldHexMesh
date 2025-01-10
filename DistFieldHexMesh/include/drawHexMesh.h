@@ -27,8 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <OGLMultiVbo.h>
 #include <drawMesh.h>
 #include <Index3D.h>
+#include <block.h>
 
 namespace OGL
 {
@@ -104,7 +106,34 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void postDrawFaces() override;
 
 	private:
+		struct VertexPointAndNormal {
+			VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());
+			bool operator < (const VertexPointAndNormal& rhs) const;
+			Vector3<int> _iPoint, _iNormal;
+		};
+
+		struct GLEdge {
+			GLEdge(unsigned int idx0 = -1, unsigned int idx1 = -1);
+			GLEdge(const GLEdge& src) = default;
+
+			bool operator < (const GLEdge& rhs) const;
+
+			const unsigned int _idx0;
+			const unsigned int _idx1;
+		};
+
+		void createVertexBuffers(const Block::GlHexFacesVector& faces);
+
+		size_t getVertexIdx(const Vector3f& pt);
+		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);
+
+		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
+		std::map<GLEdge, size_t> _edgeMap;
+		std::vector<float> _triPoints, _triNormals, _edgePoints;
+		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
+
 		HexMeshViewOptions _options;
+		std::vector<OGL::ElementVBORec> _faceIndexVBOs, _edgeIndexVBOs;
 		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
 

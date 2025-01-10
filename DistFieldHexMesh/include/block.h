@@ -98,8 +98,8 @@ public:
 	};
 
 	using GlHexFacesPtr = std::shared_ptr<GlHexFaces>;
-	using GlHexFacesVectorPtr = std::vector<GlHexFacesPtr>;
-	using GlHexMeshGroup = std::vector<GlHexFacesVectorPtr>;
+	using GlHexFacesVector = std::vector<GlHexFacesPtr>;
+	using GlHexMeshGroup = std::vector<GlHexFacesVector>;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts, bool forReading = false);
 	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading = false);

@@ -41,3 +41,9 @@ VBORec::~VBORec()
 {
 }
 
+void VBORec::clear()
+{
+    _edgeVBO.clear();
+    _faceVBO.clear();
+}
+

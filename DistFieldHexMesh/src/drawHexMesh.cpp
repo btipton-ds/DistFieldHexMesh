@@ -25,7 +25,9 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
 #include<drawHexMesh.h>
+
 #include <enums.h>
 #include <volume.h>
 #include <graphicsCanvas.h>
@@ -54,54 +56,60 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
 
-    vector<OGL::IndicesPtr> faceTesselations, edgeTesselations;
-    for (size_t mode = 0; mode < blockMeshes.size(); mode++) {
+    createVertexBuffers(blockMeshes[FT_ALL]);
+
+    for (size_t mode = 0; mode < FT_ALL; mode++) {
         FaceDrawType faceType = (FaceDrawType)mode;
+        vector<unsigned int> triIndices, edgeIndices;
         auto& thisGroup = blockMeshes[mode];
 
-        size_t changeNumber = 0;
-        vector<float> triPoints, triNormals, triParameters, edgePoints;
-        vector<unsigned int> vertIndices, edgeIndices;
-        size_t triIdx = 0, edgeIdx = 0;
+        std::map<GLEdge, size_t> localEdgeMap;
         for (const auto& pBlockMesh : thisGroup) {
             if (pBlockMesh) {
                 size_t numTriVerts = pBlockMesh->numTriVertices();
                 if (numTriVerts > 0) {
                     const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
                     const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
-                    vector<float> tmpTriParameters;
-                    tmpTriParameters.resize(3 * numTriVerts);
-
-
-                    triPoints.insert(triPoints.end(), tmpTriPoints.begin(), tmpTriPoints.end());
-                    triNormals.insert(triNormals.end(), tmpTriNormals.begin(), tmpTriNormals.end());
-                    triParameters.insert(triParameters.end(), tmpTriParameters.begin(), tmpTriParameters.end());
-
-                    vertIndices.reserve(vertIndices.size() + numTriVerts);
-                    for (size_t i = 0; i < numTriVerts; i++)
-                        vertIndices.push_back(triIdx++);
+                    for (size_t i = 0; i < numTriVerts; i++) {
+                        Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
+                        Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
+                        size_t idx = getVertexIdx(ptf, normf);
+                        triIndices.push_back(idx);
+                    }
                 }
 
-                size_t numEdgeVerts = pBlockMesh->numEdgeVertices();
-                if (numEdgeVerts > 0) {
-                    const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
-                    edgePoints.insert(edgePoints.end(), tmpEdgePoints.begin(), tmpEdgePoints.end());
-                    edgeIndices.reserve(edgeIndices.size() + numEdgeVerts);
-                    for (size_t i = 0; i < numEdgeVerts; i++)
-                        edgeIndices.push_back(edgeIdx++);
+                const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
+                size_t numEdges = tmpEdgePoints.size() / (2 * 3);
+                if (numEdges > 0) {
+                    for (size_t i = 0; i < numEdges; i++) {
+                        int vIdx = 2 * i;
+
+                        Vector3f ptf0((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                        size_t idx0 = getVertexIdx(ptf0);
+
+                        vIdx++;
+                        Vector3f ptf1((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                        size_t idx1 = getVertexIdx(ptf1);
+
+                        GLEdge e(idx0, idx1);
+                        if (localEdgeMap.find(e) == localEdgeMap.end()) {
+                            size_t eIdx = edgeIndices.size() / 2;
+                            edgeIndices.push_back(idx0);
+                            edgeIndices.push_back(idx1);
+                            localEdgeMap.insert(make_pair(e, eIdx));
+                        }
+                    }
                 }
             }
         }
 
-        auto pFaceTess = faceVBO.setFaceTessellation(faceType, changeNumber, triPoints, triNormals, triParameters, vertIndices);
-        faceTesselations.push_back(pFaceTess);
+        auto pFaceTess = faceVBO.setFaceTessellation(faceType, _faceTessellations[FT_ALL], triIndices);
+        _faceTessellations[faceType] = pFaceTess;
 
-        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, changeNumber, edgePoints, edgeIndices);
-        edgeTesselations.push_back(pFaceTess);
+        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, _edgeTessellations[FT_ALL], edgeIndices);
+        _edgeTessellations[faceType] = pEdgeTess;
     }
 
-    setFaceTessellations(faceTesselations);
-    setEdgeTessellations(edgeTesselations);
 
     faceVBO.endFaceTesselation(false);
     edgeVBO.endEdgeTesselation();
@@ -366,3 +374,130 @@ void DrawHexMesh::postDrawFaces()
 
 }
 
+void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
+{
+    _triIndices.resize(FT_ALL + 1);
+    _edgeIndices.resize(FT_ALL + 1);
+    _faceTessellations.resize(FT_ALL + 1);
+    _edgeTessellations.resize(FT_ALL + 1);
+
+    size_t triIdx = 0, edgeIdx = 0;
+    for (const auto& pBlockMesh : faces) {
+        if (!pBlockMesh)
+            continue;
+
+        size_t numTriVerts = pBlockMesh->numTriVertices();
+
+        if (numTriVerts > 0) {
+            const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
+            const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
+
+            for (size_t i = 0; i < numTriVerts; i++) {
+                Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
+                Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
+                size_t idx = getVertexIdx(ptf, normf);
+                _triIndices[FT_ALL].push_back(idx);
+            }
+        }
+
+        const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
+        size_t numEdges = tmpEdgePoints.size() / (2 * 3);
+        if (numEdges > 0) {
+            for (size_t i = 0; i < numEdges; i++) {
+                int vIdx = 2 * i;
+
+                Vector3f ptf0((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                size_t idx0 = getVertexIdx(ptf0);
+
+                vIdx++;
+                Vector3f ptf1((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                size_t idx1 = getVertexIdx(ptf1);
+
+                GLEdge e(idx0, idx1);
+                if (_edgeMap.find(e) == _edgeMap.end()) {
+                    size_t eIdx = _edgeIndices.size() / 2;
+                    _edgeIndices[FT_ALL].push_back(idx0);
+                    _edgeIndices[FT_ALL].push_back(idx1);
+                    _edgeMap.insert(make_pair(e, eIdx));
+                }
+            }
+        }
+    }
+
+    vector<float> triParameters;
+    triParameters.resize(_triPoints.size(), 0);
+    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(FT_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[FT_ALL]);
+    _faceTessellations[FT_ALL] = pFaceTess;
+
+    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(FT_ALL, 0, _edgePoints, _edgeIndices[FT_ALL]);
+    _edgeTessellations[FT_ALL] = pEdgeTess;
+
+}
+
+DrawHexMesh::VertexPointAndNormal::VertexPointAndNormal(const Vector3f& pt, const Vector3f& normal)
+{
+    for (int i = 0; i < 3; i++) {
+        _iPoint[i] = (int)(pt[i] * 100000);
+        _iNormal[i] = (int)(normal[i] * 100000);
+    }
+}
+
+bool DrawHexMesh::VertexPointAndNormal::operator < (const VertexPointAndNormal& rhs) const
+{
+    if (_iPoint < rhs._iPoint)
+        return true;
+    else if (rhs._iPoint < _iPoint)
+        return false;
+
+    return _iNormal < rhs._iNormal;
+}
+
+size_t DrawHexMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
+{
+    VertexPointAndNormal val(pt, normal);
+    auto iter = _triVertexToIndexMap.find(val);
+    if (iter == _triVertexToIndexMap.end()) {
+        size_t idx = _triPoints.size() / 3;
+
+        for (int i = 0; i < 3; i++) {
+            _triPoints.push_back(pt[i]);
+            _triNormals.push_back(normal[i]);
+        }
+
+        iter = _triVertexToIndexMap.insert(make_pair(val, idx)).first;
+    }
+
+    return iter->second;
+}
+
+size_t DrawHexMesh::getVertexIdx(const Vector3f& pt)
+{
+    VertexPointAndNormal val(pt);
+    auto iter = _edgeVertexToIndexMap.find(val);
+    if (iter == _edgeVertexToIndexMap.end()) {
+        size_t idx = _edgePoints.size() / 3;
+        _edgePoints.push_back(pt[0]);
+        _edgePoints.push_back(pt[1]);
+        _edgePoints.push_back(pt[2]);
+
+        iter = _edgeVertexToIndexMap.insert(make_pair(val, idx)).first;
+    }
+
+    return iter->second;
+}
+
+DrawHexMesh::GLEdge::GLEdge(unsigned int idx0, unsigned int idx1)
+    : _idx0(idx0 < idx1 ? idx0 : idx1)
+    , _idx1(idx0 < idx1 ? idx1 : idx0)
+{
+}
+
+bool DrawHexMesh::GLEdge::operator < (const GLEdge& rhs) const
+{
+    if (_idx0 < rhs._idx0)
+        return true;
+    else if (_idx0 > rhs._idx0)
+        return false;
+
+    return _idx1 < rhs._idx1;
+}
