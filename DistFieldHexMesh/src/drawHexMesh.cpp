@@ -350,6 +350,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
+    _priorDrawTwoSided = UBO.twoSideLighting;
+    UBO.twoSideLighting = 1;
 
     switch (key) {
     default:
@@ -387,7 +389,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         UBO.defColor = p3f(1.0f, 1.0f, 0.0f);
         break;
     }
+
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -396,7 +400,10 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
 void DrawHexMesh::postDrawFaces()
 {
+    auto& UBO = _pCanvas->getUBO();
+    UBO.twoSideLighting = _priorDrawTwoSided;
 
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
 }
 
 void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)

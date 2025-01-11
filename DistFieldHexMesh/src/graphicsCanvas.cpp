@@ -319,7 +319,7 @@ void GraphicsCanvas::setLights()
     };
 
     _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
-    _graphicsUBO.ambient = 0.15f;
+    _graphicsUBO.ambient = 0.3f;
     _graphicsUBO.numLights = 2;
     for (int i = 0; i < _graphicsUBO.numLights; i++) {
         float sinAz = sinf(toRad(lightAz[i]));

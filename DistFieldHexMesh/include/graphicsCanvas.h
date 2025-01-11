@@ -79,7 +79,6 @@ public:
         VIEW_RIGHT,
         VIEW_BACK,
         VIEW_FRONT,
-
     };
 
     struct GraphicsUBO {
@@ -87,9 +86,9 @@ public:
         m44f proj;
         p3f defColor;
         float ambient = 0;
+        int twoSideLighting = 0;
         int numLights = 0;
         p3f lightDir[8];
-        int twoSideLighting = 0;
     };
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
