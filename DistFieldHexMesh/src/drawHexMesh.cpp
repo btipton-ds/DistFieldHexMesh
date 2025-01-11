@@ -153,27 +153,29 @@ void DrawHexMesh::changeViewElements()
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
+    bool blocksAdded = false;
+
     if (_options.showFaces && !_faceTessellations.empty()) {
-        bool drewSomething = false;
+        blocksAdded = false;
         if (_options.showSelectedBlocks) {
             if (FT_ALL < _faceTessellations.size()) {
                 if (_faceTessellations[FT_ALL]) {
-                    drewSomething = true;
+                    blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_ALL, _faceTessellations[FT_ALL]);
                 }
             }
-        } else if (_options.showWalls) {
-            if (FT_WALL < _faceTessellations.size()) {
-                if (_faceTessellations[FT_WALL]) {
-                    drewSomething = true;
-                    faceVBO.includeElementIndices(DS_MESH_WALL, _faceTessellations[FT_WALL]);
+        } else {
+            if (_options.showWalls) {
+                if (FT_WALL < _faceTessellations.size()) {
+                    if (_faceTessellations[FT_WALL]) {
+                        blocksAdded = true;
+                        faceVBO.includeElementIndices(DS_MESH_WALL, _faceTessellations[FT_WALL]);
+                    }
                 }
             }
-        } else {
-            bool blocksAdded = false;
+
             if (_options.showBack && FT_BACK < _faceTessellations.size()) {
                 if (_faceTessellations[FT_BACK]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_BACK, _faceTessellations[FT_BACK]);
                 }
@@ -181,7 +183,6 @@ void DrawHexMesh::changeViewElements()
 
             if (_options.showFront && FT_FRONT < _faceTessellations.size()) {
                 if (_faceTessellations[FT_FRONT]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_FRONT, _faceTessellations[FT_FRONT]);
                 }
@@ -189,7 +190,6 @@ void DrawHexMesh::changeViewElements()
 
             if (_options.showLeft && FT_LEFT < _faceTessellations.size()) {
                 if (_faceTessellations[FT_LEFT]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_LEFT, _faceTessellations[FT_LEFT]);
                 }
@@ -197,7 +197,6 @@ void DrawHexMesh::changeViewElements()
 
             if (_options.showRight && FT_RIGHT < _faceTessellations.size()) {
                 if (_faceTessellations[FT_RIGHT]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_RIGHT, _faceTessellations[FT_RIGHT]);
                 }
@@ -205,7 +204,6 @@ void DrawHexMesh::changeViewElements()
 
             if (_options.showBottom && FT_BOTTOM < _faceTessellations.size()) {
                 if (_faceTessellations[FT_BOTTOM]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_BOTTOM, _faceTessellations[FT_BOTTOM]);
                 }
@@ -213,13 +211,12 @@ void DrawHexMesh::changeViewElements()
 
             if (_options.showTop && FT_TOP < _faceTessellations.size()) {
                 if (_faceTessellations[FT_TOP]) {
-                    drewSomething = true;
                     blocksAdded = true;
                     faceVBO.includeElementIndices(DS_MESH_TOP, _faceTessellations[FT_TOP]);
                 }
             }
 
-            if (!blocksAdded || !drewSomething) {
+            if (!blocksAdded) {
                 if (FT_ALL < _faceTessellations.size()) {
                     if (_faceTessellations[FT_ALL]) {
                         blocksAdded = true;
@@ -230,58 +227,58 @@ void DrawHexMesh::changeViewElements()
         }
     }
 
-    if (_options.showEdges && !_edgeTessellations.empty()) {
-        bool drewSomething = false;
+    if (_options.showEdges && FT_ALL < _edgeTessellations.size()) {
+        blocksAdded = false;
         if (_options.showWalls && FT_WALL < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_WALL]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_WALL, _edgeTessellations[FT_WALL]);
             }
         }
 
         if (_options.showBack && FT_BACK < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_BACK]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_BACK, _edgeTessellations[FT_BACK]);
             }
         }
 
         if (_options.showFront && FT_FRONT < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_FRONT]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_FRONT, _edgeTessellations[FT_FRONT]);
             }
         }
 
         if (_options.showLeft && FT_LEFT < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_LEFT]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_LEFT, _edgeTessellations[FT_LEFT]);
             }
         }
 
         if (_options.showRight && FT_RIGHT < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_RIGHT]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_RIGHT, _edgeTessellations[FT_RIGHT]);
             }
         }
 
         if (_options.showBottom && FT_BOTTOM < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_BOTTOM]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_BOTTOM, _edgeTessellations[FT_BOTTOM]);
             }
         }
 
         if (_options.showTop && FT_TOP < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_TOP]) {
-                drewSomething = true;
+                blocksAdded = true;
                 edgeVBO.includeElementIndices(DS_MESH_TOP, _edgeTessellations[FT_TOP]);
             }
         }
 
-        if (!drewSomething && FT_ALL < _edgeTessellations.size()) {
+        if (!blocksAdded && FT_ALL < _edgeTessellations.size()) {
             if (_edgeTessellations[FT_ALL])
                 edgeVBO.includeElementIndices(DS_MESH_ALL, _edgeTessellations[FT_ALL]);
         }
@@ -307,7 +304,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         switch (key) {
         default:
         case DS_MESH_ALL:
-            UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
+            UBO.defColor = p3f(0.0f, 0.0f, 0.5f);
             break;
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
