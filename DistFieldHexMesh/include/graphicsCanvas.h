@@ -84,7 +84,7 @@ public:
     struct GraphicsUBO {
         m44f modelView; // Model matrix is always identity, so this is the view matrix
         m44f proj;
-        p3f defColor;
+        p4f defColor;
         float ambient = 0;
         int useDefColor = 1;
         int normalShadingOn = 1;

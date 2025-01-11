@@ -615,7 +615,6 @@ void GraphicsCanvas::render()
 {
     SetCurrent(*_pContext);
 	initialize();
-    setLights();
 
     updateView();
     _phongShader->bind();
@@ -678,8 +677,8 @@ layout(binding = 0) uniform UniformBufferObject {
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
     drawMousePos3D(); // Available for mouse position testing
-    _pDrawHexMesh->render();
     _pDrawModelMesh->render();
+    _pDrawHexMesh->render();
 
     SwapBuffers();
     _phongShader->unBind();

@@ -341,6 +341,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     }
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -358,40 +359,52 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     _priorDrawTwoSided = UBO.twoSideLighting;
     UBO.twoSideLighting = 1;
 
+    float alpha = 0.5f;
+
     switch (key) {
     default:
     case DS_MESH_WALL:
-        UBO.defColor = p3f(0.5f, 1.f, 0.5f);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(0.5f, 1.f, 0.5f, alpha);
         break;
     case DS_MESH_ALL:
         UBO.defColor = p3f(0.0f, 0.8f, 0);
         break;
     case DS_MESH_INNER:
-        UBO.defColor = p3f(0.75f, 1, 1);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(0.75f, 1, 1, alpha);
         break;
 
     case DS_MESH_BACK:
-        UBO.defColor = p3f(1.0f, satVal, satVal);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        UBO.defColor = p4f(1.0f, satVal, satVal, alpha);
         break;
 
     case DS_MESH_FRONT:
-        UBO.defColor = p3f(satVal, 1.0f, satVal);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        UBO.defColor = p4f(satVal, 1.0f, satVal, alpha);
         break;
 
     case DS_MESH_BOTTOM:
-        UBO.defColor = p3f(satVal, satVal, 1.0f);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(satVal, satVal, 1.0f, alpha);
         break;
 
     case DS_MESH_TOP:
-        UBO.defColor = p3f(satVal, 1.0f, 1.0f);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(satVal, 1.0f, 1.0f, alpha);
         break;
 
     case DS_MESH_LEFT:
-        UBO.defColor = p3f(1.0f, satVal, 1.0f);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(1.0f, satVal, 1.0f, alpha);
         break;
 
     case DS_MESH_RIGHT:
-        UBO.defColor = p3f(1.0f, 1.0f, satVal);
+        glEnable(GL_BLEND);
+        UBO.defColor = p4f(1.0f, 1.0f, satVal, alpha);
         break;
     }
 
@@ -414,6 +427,8 @@ void DrawHexMesh::postDrawFaces()
     UBO.twoSideLighting = _priorDrawTwoSided;
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
+    glDisable(GL_BLEND);
 }
 
 void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
