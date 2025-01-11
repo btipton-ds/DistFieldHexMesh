@@ -86,6 +86,8 @@ public:
         m44f proj;
         p3f defColor;
         float ambient = 0;
+        int useDefColor = 1;
+        int normalShadingOn = 1;
         int twoSideLighting = 0;
         int numLights = 0;
         p3f lightDir[8];

@@ -95,6 +95,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
+    UBO.useDefColor = 1;
 
     switch (key) {
     default:
@@ -120,12 +121,11 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 
     if (_options.showCurvature) {
         result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
+        UBO.useDefColor = 0;
     }
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
 
-    glDisable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -135,13 +135,13 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 
 void DrawModelMesh::postDrawEdges()
 {
-    glEnable(GL_LIGHTING);
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
+    UBO.useDefColor = 1;
 
     switch (key) {
     default:
@@ -154,8 +154,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     }
 
     if (_options.showCurvature) {
+        UBO.useDefColor = 0;
         result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-        UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
     }
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);

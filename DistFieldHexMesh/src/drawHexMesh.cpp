@@ -35,6 +35,12 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+namespace
+{
+    const float satVal = 0.5f;
+
+}
+
 DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
     : DrawMesh(pCanvas)
 {
@@ -290,10 +296,13 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
+    UBO.useDefColor = 1;
     glLineWidth(0.25f);
 
+    p3f black(0.0f, 0.0f, 0.0f);
     if (_options.showFaces) {
-        UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
+        glLineWidth(0.5f);
+        UBO.defColor = black;
     } else {
         switch (key) {
         default:
@@ -308,27 +317,27 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
             break;
 
         case DS_MESH_BACK:
-            UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
+            UBO.defColor = p3f(1.0f, satVal, satVal);
             break;
 
         case DS_MESH_FRONT:
-            UBO.defColor = p3f(0.0f, 1.0f, 0.0f);
+            UBO.defColor = p3f(satVal, 1.0f, satVal);
             break;
 
         case DS_MESH_BOTTOM:
-            UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
+            UBO.defColor = p3f(satVal, satVal, 1.0f);
             break;
 
         case DS_MESH_TOP:
-            UBO.defColor = p3f(0.0f, 1.0f, 1.0f);
+            UBO.defColor = p3f(satVal, 1.0f, 1.0f);
             break;
 
         case DS_MESH_LEFT:
-            UBO.defColor = p3f(1.0f, 0.0f, 1.0f);
+            UBO.defColor = p3f(1.0f, satVal, 1.0f);
             break;
 
         case DS_MESH_RIGHT:
-            UBO.defColor = p3f(1.0f, 1.0f, 0.0f);
+            UBO.defColor = p3f(1.0f, 1.0f, satVal);
             break;
 
         }
@@ -343,7 +352,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
 void DrawHexMesh::postDrawEdges()
 {
-
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
@@ -366,31 +374,36 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         break;
 
     case DS_MESH_BACK:
-        UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+        UBO.defColor = p3f(1.0f, satVal, satVal);
         break;
 
     case DS_MESH_FRONT:
-        UBO.defColor = p3f(0.0f, 1.0f, 0.0f);
+        UBO.defColor = p3f(satVal, 1.0f, satVal);
         break;
 
     case DS_MESH_BOTTOM:
-        UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
+        UBO.defColor = p3f(satVal, satVal, 1.0f);
         break;
 
     case DS_MESH_TOP:
-        UBO.defColor = p3f(0.0f, 1.0f, 1.0f);
+        UBO.defColor = p3f(satVal, 1.0f, 1.0f);
         break;
 
     case DS_MESH_LEFT:
-        UBO.defColor = p3f(1.0f, 0.0f, 1.0f);
+        UBO.defColor = p3f(1.0f, satVal, 1.0f);
         break;
 
     case DS_MESH_RIGHT:
-        UBO.defColor = p3f(1.0f, 1.0f, 0.0f);
+        UBO.defColor = p3f(1.0f, 1.0f, satVal);
         break;
     }
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
+    if (_options.showEdges) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 2.0f);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
