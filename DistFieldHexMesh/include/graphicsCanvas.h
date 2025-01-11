@@ -89,6 +89,7 @@ public:
         float ambient = 0;
         int numLights = 0;
         p3f lightDir[8];
+        int twoSideLighting = 0;
     };
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
