@@ -95,6 +95,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
+
     switch (key) {
     default:
         break;
@@ -122,8 +123,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
         UBO.defColor = p3f(0.0f, 0.0f, 0.0f); // Must be all 0 to turn on vertex color drawing
     }
 
-    UBO.ambient = 1.0f;
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
+    glDisable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -133,14 +135,14 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 
 void DrawModelMesh::postDrawEdges()
 {
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
-    UBO.ambient = 0.2f;
+
     switch (key) {
     default:
     case DS_MODEL:
@@ -170,6 +172,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
 
 void DrawModelMesh::postDrawFaces()
 {
-    glDisable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_DEPTH_TEST);
+    if (_options.showSharpEdges || _options.showEdges) {
+        glDisable(GL_POLYGON_OFFSET_FILL);
+    }
 }
 

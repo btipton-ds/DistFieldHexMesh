@@ -83,8 +83,8 @@ public:
     };
 
     struct GraphicsUBO {
-        m44f modelViewX; // Model matrix is always identity, so this is the view matrix
-        m44f projX;
+        m44f modelView; // Model matrix is always identity, so this is the view matrix
+        m44f proj;
         p3f defColor;
         float ambient = 0;
         int numLights = 0;

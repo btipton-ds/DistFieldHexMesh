@@ -301,25 +301,33 @@ void GraphicsCanvas::resetView()
 
 void GraphicsCanvas::setLights()
 {
+    const float elOffset = 0.0f;
     float lightAz[] = {
-        toRad(0.0f),
-        toRad(90 + 30.0f),
+        0.0f,
+        0.0f,
+        0.0f,
+        30.0f,
+        60.0f,
     };
+
     float lightEl[] = {
-        toRad(0.0f),
-        toRad(30.0f),
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
     };
 
     _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
     _graphicsUBO.ambient = 0.15f;
-    _graphicsUBO.numLights = 1;
+    _graphicsUBO.numLights = 2;
     for (int i = 0; i < _graphicsUBO.numLights; i++) {
-        float sinAz = sinf(lightAz[i]);
-        float cosAz = cosf(lightAz[i]);
-        float sinEl = sinf(lightEl[i]);
-        float cosEl = cosf(lightEl[i]);
+        float sinAz = sinf(toRad(lightAz[i]));
+        float cosAz = cosf(toRad(lightAz[i]));
+        float sinEl = sinf(toRad(lightEl[i] + elOffset));
+        float cosEl = cosf(toRad(lightEl[i] + elOffset));
 
-        _graphicsUBO.lightDir[i] = p3f(cosEl * sinAz, sinEl, cosEl * cosAz);
+        _graphicsUBO.lightDir[i] = -p3f(cosEl * sinAz, cosEl * cosAz, sinEl);
     }
 }
 
@@ -607,6 +615,7 @@ void GraphicsCanvas::render()
 {
     SetCurrent(*_pContext);
 	initialize();
+    setLights();
 
     updateView();
     _phongShader->bind();
@@ -868,8 +877,8 @@ void GraphicsCanvas::updateView()
 
     proj = _projAspect * _projection;
 
-    float* pMV = _graphicsUBO.modelViewX;
-    float* pPr = _graphicsUBO.projX;
+    float* pMV = _graphicsUBO.modelView;
+    float* pPr = _graphicsUBO.proj;
     for (int i = 0; i < 16; i++) {
         pMV[i] = (float)m(i);
         pPr[i] = (float)proj(i);

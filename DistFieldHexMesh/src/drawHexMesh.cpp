@@ -291,6 +291,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
     glLineWidth(0.25f);
+
     if (_options.showFaces) {
         UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
     } else {
@@ -307,7 +308,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
             break;
 
         case DS_MESH_BACK:
-            UBO.defColor = p3f(1.0f, 0.0f, 0.0f);
+            UBO.defColor = p3f(0.0f, 0.0f, 0.0f);
             break;
 
         case DS_MESH_FRONT:
@@ -332,7 +333,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
         }
     }
-    UBO.ambient = 1.0f;
+
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -349,7 +350,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
-    UBO.ambient = 0.2f;
+
     switch (key) {
     default:
     case DS_MESH_WALL:
