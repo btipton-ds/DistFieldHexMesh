@@ -296,10 +296,13 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     UBO.useDefColor = 1;
     glLineWidth(0.25f);
 
-    p3f black(0.0f, 0.0f, 0.0f);
+    const auto& alpha = _options.alpha;
+
     if (_options.showFaces) {
         glLineWidth(0.5f);
-        UBO.defColor = black;
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        UBO.defColor = p4f(0.0f, 0.0f, 0.0f, alpha);
     } else {
         switch (key) {
         default:
@@ -359,56 +362,61 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     _priorDrawTwoSided = UBO.twoSideLighting;
     UBO.twoSideLighting = 1;
 
-    float alpha = 0.5f;
+    bool blend = false;
+    const auto& alpha = _options.alpha;
 
     switch (key) {
     default:
     case DS_MESH_WALL:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(0.5f, 1.f, 0.5f, alpha);
         break;
     case DS_MESH_ALL:
-        UBO.defColor = p3f(0.0f, 0.8f, 0);
+        blend = true;
+        UBO.defColor = p4f(0.0f, 0.8f, 0, alpha);
         break;
     case DS_MESH_INNER:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(0.75f, 1, 1, alpha);
         break;
 
     case DS_MESH_BACK:
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        blend = true;
         UBO.defColor = p4f(1.0f, satVal, satVal, alpha);
         break;
 
     case DS_MESH_FRONT:
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        blend = true;
         UBO.defColor = p4f(satVal, 1.0f, satVal, alpha);
         break;
 
     case DS_MESH_BOTTOM:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(satVal, satVal, 1.0f, alpha);
         break;
 
     case DS_MESH_TOP:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(satVal, 1.0f, 1.0f, alpha);
         break;
 
     case DS_MESH_LEFT:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(1.0f, satVal, 1.0f, alpha);
         break;
 
     case DS_MESH_RIGHT:
-        glEnable(GL_BLEND);
+        blend = true;
         UBO.defColor = p4f(1.0f, 1.0f, satVal, alpha);
         break;
     }
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
+    if (blend) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
     if (_options.showEdges) {
         glEnable(GL_POLYGON_OFFSET_FILL);

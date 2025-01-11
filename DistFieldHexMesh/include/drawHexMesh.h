@@ -71,6 +71,8 @@ using VolumePtr = std::shared_ptr<Volume>;
 			showRight = false,
 
 			showSelectedBlocks = false;
+
+			float alpha = 0.3f;
 	};
 
 

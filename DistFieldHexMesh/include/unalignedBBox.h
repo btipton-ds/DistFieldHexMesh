@@ -147,10 +147,8 @@ template<class T>
 inline UnalignedBBox<T>::UnalignedBBox(const CBoundingBox3D<T>& src)
 {
 	_corners.resize(8);
-	const auto& min = src.getMin();
-	const auto& max = src.getMax();
-	_corners[0] = min;
-	_corners[1] = Vector3<T>;
+	for (size_t i = 0; i < _corners.size(); i++)
+		_corners[i] = src._corners[i];
 }
 
 template<class T>
