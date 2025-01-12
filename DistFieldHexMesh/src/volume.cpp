@@ -1920,12 +1920,12 @@ void Volume::writePolyMeshNeighborCells(const std::string& dirName, const Polyme
 void Volume::writePolyMeshBoundaries(const std::string& dirName, const PolymeshTables& tables) const
 {
 	const string names[6] = {
-		"front",
-		"left",
 		"bottom",
-		"back",
-		"right",
 		"top",
+		"left",
+		"right",
+		"back",
+		"front",
 	};
 
 	string filename = dirName + "/boundary";
