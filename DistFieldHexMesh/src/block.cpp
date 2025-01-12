@@ -101,7 +101,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 
 	CBoundingBox3Dd treeBBox(_boundBox);
 	treeBBox.grow(Tolerance::sameDistTol());
-	_pVertTree = make_shared<SearchTree>(treeBBox);
 		
 	// This is close to working, but the full search is finding solutions the partial search is not
 	auto pMeshData = _pVol->getAppData()->getMeshData();
@@ -140,7 +139,6 @@ void Block::clear()
 
 	_edgeIndices.clear();
 	_triIndices.clear();
-	_pVertTree->clear();
 	_vertices.clear();
 	_modelData.clear();
 	_refData.clear();
@@ -845,8 +843,7 @@ Index3DId Block::idOfPoint(const Vector3d& pt) const
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	Index3DId result;
-	pOwner->_pVertTree->find(pt, result);
+	Index3DId result = pOwner->_vertices.findId(pt);
 
 	return result;
 }
@@ -862,11 +859,8 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	auto* pOwner = getOwner(ownerBlockIdx);
 
 	Vertex vert(pt);
-	vert.setPoolOwner(this);
+	vert.setPoolOwner(pOwner);
 	result = pOwner->_vertices.findOrAdd(vert, currentId);
-
-	// Bounding box is off due to skewing
-	pOwner->_pVertTree->add(pt, result);
 
 #ifdef _DEBUG
 	assert(idOfPoint(pt) == result);

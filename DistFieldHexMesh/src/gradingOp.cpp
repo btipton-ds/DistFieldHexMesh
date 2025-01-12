@@ -179,7 +179,12 @@ void GradingOp::createGradedCells() const {
                 double v1 = v0 + 1.0 / (double)_divs[2] * kz * zScale;
                 kz *= zGrading;
 
-                Index3D blkIdx(i, j, k);
+#if 0
+                Index3D testIdx(0, 1, 1);
+                if (_pBlk->getBlockIdx() == testIdx && i == _divs[0] - 1) {
+                    int dbgBreak = 1;
+                }
+#endif
 
                 vector<Vector3d> gPts;
                 gPts.resize(8);

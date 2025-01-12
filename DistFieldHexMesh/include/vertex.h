@@ -53,20 +53,24 @@ public:
 	LockType getLockType(size_t& idx) const;
 #endif
 
-	void setPoint(const Vector3d& pt);
-	Vector3d getPoint() const;
-	operator Vector3d () const;
+	const Vector3d& getPoint() const;
+	operator const Vector3d& () const;
 	CBoundingBox3Dd getBBox() const;
 	void setLockType(VertexLockType val);
 	VertexLockType getLockType() const;
 
 	const bool operator < (const Vertex& rhs) const;
+	const bool operator > (const Vertex& rhs) const;
+	const bool operator == (const Vertex& rhs) const;
+	const bool operator != (const Vertex& rhs) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
 private:
-
+	static int64_t scaleToSearh();
+	static int64_t scaleToSearh(double v);
+	static Vector3<int64_t> scaleToSearh(const Vector3d& pt);
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
 
 	/*
@@ -83,23 +87,18 @@ inline CBoundingBox3Dd Vertex::getBBox() const
 }
 
 inline Vertex::Vertex(const Vector3d& pt)
+	: _pt(pt)
 {
-	setPoint(pt);
 }
 
-inline void Vertex::setPoint(const Vector3d& pt)
-{
-	_pt = pt;
-}
-
-inline Vector3d Vertex::getPoint() const
+inline const Vector3d& Vertex::getPoint() const
 {
 	return _pt;
 }
 
-inline Vertex::operator Vector3d () const
+inline Vertex::operator const Vector3d& () const
 {
-	return getPoint();
+	return _pt;
 }
 
 inline void Vertex::setLockType(VertexLockType val)

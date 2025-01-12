@@ -209,6 +209,9 @@ public:
 	void dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const;
 
 	template<class F>
+	void iterateVerticesInOrder(F fLambda) const;
+
+	template<class F>
 	void iteratePolygonsInOrder(TopolgyState state, F fLambda) const;
 
 	template<class F>
@@ -314,7 +317,6 @@ private:
 	LocalData* _pLocalData = nullptr;
 
 	std::vector<size_t> _edgeIndices, _triIndices;
-	SearchTreePtr _pVertTree;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
 #if USE_MULTI_THREAD_CONTAINERS
@@ -389,6 +391,12 @@ inline const Block::ModelData& Block::data(TopolgyState refState) const
 inline Block::ModelData& Block::data(TopolgyState refState)
 {
 	return refState == TS_REAL ? _modelData : _refData;
+}
+
+template<class F>
+inline void Block::iterateVerticesInOrder(F fLambda) const
+{
+	_vertices.iterateInOrder(fLambda);
 }
 
 template<class F>

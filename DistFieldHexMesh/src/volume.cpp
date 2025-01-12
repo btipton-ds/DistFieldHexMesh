@@ -240,7 +240,7 @@ BlockPtr& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]
 
 Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 {
-	const int64_t numSubDivisions = 1024;
+	const int64_t numSubDivisions = 2 * 1024;
 
 	Index3D result;
 	const double pTol = Tolerance::paramTol();
@@ -252,6 +252,12 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 
 	Vector3<double> uvw;
 	bool inBounds = TRI_LERP_INV(point, modelCorners, uvw);
+#if 0 && defined(_DEBUG)
+	if (fabs(uvw[0]) < 1.0e-8 && fabs(uvw[2]) < 1.0e-8) {
+		int dbgBreak = 1;
+	}
+#endif
+
 	if (inBounds) {
 		for (int i = 0; i < 3; i++) {
 			const int64_t numDivisions = mDim[i] * numSubDivisions;
@@ -280,19 +286,26 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 
 	std::vector<BlockPtr> foundBlocks;
 	CBoundingBox3Dd ptBox(point);
+	ptBox.grow(0.0001); // 1/10 mm
 	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
+		set<Index3D> candidates;
 		for (size_t idx = 0; idx < foundBlocks.size(); idx++) {
 			const auto& pBlk = foundBlocks[idx];
 			const auto& blockCorners = pBlk->getUnalignedBBox();
-			bool storeInAdjBlock[3];
-			if (blockCorners.contains(point, numSubDivisions, storeInAdjBlock)) {
-				result = pBlk->getBlockIdx();
-				for (int i = 0; i < 3; i++) {
-					if (storeInAdjBlock[i] && result[i] < _volDim[i] - 1)
-						result[i]++;
-				}
-				return result;
+			bool inNextBlock[3];
+			if (blockCorners.contains(point, numSubDivisions, inNextBlock)) {
+				Index3D idx = pBlk->getBlockIdx();
+
+				for (int i = 0; i < 3; i++)
+					if (inNextBlock[i] && idx[i] < _volDim[i] - 1)
+						idx[i] += 1;
+				candidates.insert(idx);
 			}
+		}
+		if (candidates.size() == 1) {
+			return *candidates.begin();
+		} else if (candidates.size() > 1) {
+			int dbgBreak = 1;
 		}
 	} else {
 		int dbgBreak = 1;
@@ -422,7 +435,8 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 		return true;
 	}, multiCore);
 */
-	makeSurroundingBlocks(params, pts);
+
+	buildSurroundingBlocks(params, pts);
 
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _modelDim[0]; idx[0]++) {
@@ -437,7 +451,7 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 	gradeSurroundingBlocks(params);
 }
 
-void Volume::makeSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8])
+void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8])
 {
 	if (!params.symXAxis)
 		insertBlocks(params, CFT_BACK);
@@ -1093,29 +1107,27 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 		break;
 	}
 
+	createAdHocBlockSearchTree();
+#if 1 && defined(_DEBUG)
 	for (size_t i = 0; i < _blocks.size(); i++) {
 		const auto& pBlk = _blocks[i];
 		Index3D blkIdx = calBlockIndexFromLinearIndex(i);
 		assert(pBlk->verifyIndices(blkIdx));
 	}
-
-	updateAdHocBlockSearchTree(adHocBlocks);
+#endif
 }
 
-void Volume::updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks)
+void Volume::createAdHocBlockSearchTree()
 {
-	if (_adHocBlockTree.getBounds().empty()) {
-		auto volBox = getVolumeBBox();
-		volBox.growPercent(0.01);
-		_adHocBlockTree.reset(volBox);
-	}
+	auto volBox = getVolumeBBox();
+	volBox.growPercent(0.01);
+	_adHocBlockTree.reset(volBox);
 
-	for (const auto& pBlock : adHocBlocks) {
+	for (const auto& pBlock : _blocks) {
 		const auto& blkIdx = pBlock->getBlockIdx();
 		const auto& bBox = pBlock->getBBox();
 
 		_adHocBlockTree.add(bBox, pBlock);
-
 
 		const auto& pts = pBlock->getCornerPts();
 		Vector3d ctr(0, 0, 0);
@@ -1993,6 +2005,68 @@ bool Volume::verifyTopology(bool multiCore) const
 		return true;
 	}, multiCore);
 	return result;
+}
+
+bool Volume::verifyUniqueGeometry(bool multiCore) const
+{
+	return verifyUniquePoints(multiCore) && verifyUniquePolygons(multiCore);
+}
+
+bool Volume::verifyUniquePoints(bool multiCore) const
+{
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		const auto& pBlk = _blocks[i];
+		pBlk->iterateVerticesInOrder([this, i](const Index3DId& id0, const Vertex& vert) {
+			const auto pt0 = vert.getPoint();
+			for (size_t j = i + 1; j < _blocks.size(); j++) {
+				const auto& pBlk = _blocks[j];
+				const auto& id2 = pBlk->_vertices.findId(vert);
+				if (id2.isValid()) {
+					const auto& pt1 = pBlk->getVertexPoint(id2);
+					auto err = (pt1 - pt0).norm();
+					if (err > Tolerance::sameDistTol()) {
+						cout << "Duplicate pt found. id0: " << id0 << ", id2: " << id2 << "\n";
+					}
+				}
+			}
+		});
+	}
+
+	return true;
+}
+
+bool Volume::verifyUniquePolygons(bool multiCore) const
+{
+#if 0
+	for (size_t i = 0; i < _blocks.size(); i++) {
+		const auto& pBlk0 = _blocks[i];
+		pBlk0->iteratePolygonsInOrder(TS_REAL, [this, i](const Index3DId& vertId0, const Polygon& polygon0) {
+			vector<Vector3d> verts0;
+			const auto& vertIds0 = polygon0.getVertexIds();
+			for (const auto& id : vertIds0) {
+				verts0.push_back(getVertex(id).getPoint());
+			}
+
+			for (size_t j = i + 1; j < _blocks.size(); j++) {
+				const auto& pBlk1 = _blocks[j];
+				const auto& tree = pBlk->_pVertTree;
+				vector<typename Block::SearchTree::Entry> foundIndices;
+				if (tree->find(pt0, foundIndices)) {
+					for (const auto& foundEntry : foundIndices) {
+						const auto& id = foundEntry.getIndex();
+						const auto& pt1 = pBlk->getVertexPoint(id);
+						auto err = (pt1 - pt0).norm();
+						if (err > Tolerance::sameDistTol()) {
+							cout << "Duplicate pt found. Idx0: " << vertId0 << ", idx1: " << id << "\n";
+						}
+					}
+				}
+			}
+			});
+	}
+#endif
+
+	return true;
 }
 
 template<class L>

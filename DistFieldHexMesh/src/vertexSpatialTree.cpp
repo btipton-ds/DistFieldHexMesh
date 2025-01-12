@@ -40,6 +40,17 @@ VertSearchTree<INDEX_TYPE, S>::VertSearchTree(const CBoundingBox3Dd& bbox)
 }
 
 template <class INDEX_TYPE, int S>
+bool VertSearchTree<INDEX_TYPE, S>::find(const Vector3d& pt, std::vector<typename BaseTree::Entry>& entries) const
+{
+	CBoundingBox3Dd bbox = Vertex::calBBox(pt);
+	if (BaseTree::find(bbox, entries) > 0) {
+		return true;
+	}
+
+	return false;
+}
+
+template <class INDEX_TYPE, int S>
 bool VertSearchTree<INDEX_TYPE, S>::find(const Vector3d& pt, INDEX_TYPE& result) const
 {
 	CBoundingBox3Dd bbox = Vertex::calBBox(pt);

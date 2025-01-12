@@ -36,10 +36,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 #include <math.h>
 
-#define RUN_MULTI_THREAD 0
+#define RUN_MULTI_THREAD 1
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
-#define GRAPHICS_OVER_SAMPLING 2
+#define GRAPHICS_OVER_SAMPLING 4
 
 #define VERIFY_REDUCED_FINDER 0
 #define LOGGING_ENABLED 1

@@ -644,7 +644,6 @@ void AppData::makeSurroundingBlocks(Vector3d cPts[8], const L& f) const
 {
     if (!_params.symXAxis)
         _pVolume->insertBlocks(_params, CFT_BACK);
-#if 1
     _pVolume->insertBlocks(_params, CFT_FRONT);
 
     if (!_params.symYAxis)
@@ -656,8 +655,6 @@ void AppData::makeSurroundingBlocks(Vector3d cPts[8], const L& f) const
         _pVolume->insertBlocks(_params, CFT_BOTTOM);
 
     _pVolume->insertBlocks(_params, CFT_TOP);
-#endif
-
 }
 
 void AppData::gradeSurroundingBlocks() const
@@ -1250,6 +1247,8 @@ void AppData::doCreateBaseVolume()
     Index3D::setBlockDim(1);
 
     _pVolume->buildModelBlocks(_params, cubePts, volBox, false);
+
+    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
     updateTessellation();
 #endif

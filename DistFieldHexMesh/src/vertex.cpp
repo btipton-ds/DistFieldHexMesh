@@ -85,9 +85,55 @@ CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
 	return result;
 }
 
+inline int64_t Vertex::scaleToSearh()
+{
+	const int64_t micronInv = 1000000;
+	return 10 * micronInv; // 1/10 micron
+}
+
+inline int64_t Vertex::scaleToSearh(double v)
+{
+	return (int64_t)(v * scaleToSearh());
+}
+
+inline Vector3<int64_t> Vertex::scaleToSearh(const Vector3d& pt)
+{
+	return Vector3<int64_t>(scaleToSearh(pt[0]), scaleToSearh(pt[1]), scaleToSearh(pt[2]));
+}
+
 const bool Vertex::operator < (const Vertex& rhs) const
 {
-	return _pt < rhs._pt;
+	/*
+		this is an innefficient implementation of Edelsbrunner's and Mucke's simulation of simplicity - https://arxiv.org/abs/math/9410209.
+
+		Their approach was to simulate floating point numbers with fixed point integers. This avoids tolerancing errors when doing <, ==, > testing.
+		It effectively "rounds" each floating point value to a scaled integer value.
+
+		The original implementation stores the fixed point value and all math is done in that form. That makes floating point math extremely tricky to overflows and underflows.
+
+		This approach stores a double precision value of the point, and only converts it for comparisons. It's a bit time consuming, but it solves vertex sharing across
+		blocks which is a key to high performance multithreading.
+
+	*/
+
+	Vector3<int64_t> iPt(scaleToSearh(_pt)), iRhsPt(scaleToSearh(rhs._pt));
+	return iPt < iRhsPt;
+}
+
+const bool Vertex::operator > (const Vertex& rhs) const
+{
+	return rhs < *this;
+}
+
+const bool Vertex::operator == (const Vertex& rhs) const
+{
+	Vector3<int64_t> iPt(scaleToSearh(_pt)), iRhsPt(scaleToSearh(rhs._pt));
+	return !iPt.operator<(iRhsPt) && !iRhsPt.operator<(iPt);
+}
+
+const bool Vertex::operator != (const Vertex& rhs) const
+{
+	return !operator==(rhs);
 }
 
 ostream& DFHM::operator << (ostream& out, const Vertex& vert)

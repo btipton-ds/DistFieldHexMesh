@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
+#include <vector>
 #include <tm_spatialSearch.h>
 #include <index3D.h>
 
@@ -39,6 +41,7 @@ public:
 	using BaseTree = CSpatialSearchBase<double, INDEX_TYPE, S>;
 
 	VertSearchTree(const CBoundingBox3Dd& bbox);
+	bool find(const Vector3d& pt, std::vector<typename BaseTree::Entry>& results) const;
 	bool find(const Vector3d& pt, INDEX_TYPE& result) const;
 	void add(const Vector3d& pt, const INDEX_TYPE& idx);
 };

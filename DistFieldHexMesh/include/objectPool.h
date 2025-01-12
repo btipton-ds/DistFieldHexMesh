@@ -201,7 +201,7 @@ private:
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
 	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices and polygons.
-	std::map<size_t, size_t, CompareFunctor> _objToIdMap;
+	std::map<size_t, size_t, CompareFunctor> _objToIdMap; // TODO, may want to change this to a sorted array with bisection lookup for space savings
 	thread_local static const T* _tl_pCompareObj;
 };
 

@@ -123,6 +123,9 @@ public:
 	bool read(std::istream& inStream);
 
 	bool verifyTopology(bool multiCore) const;
+	bool verifyUniqueGeometry(bool multiCore) const;
+	bool verifyUniquePoints(bool multiCore) const;
+	bool verifyUniquePolygons(bool multiCore) const;
 
 private:
 	friend class Vertex;
@@ -147,9 +150,9 @@ private:
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
-	void makeSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8]);
+	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8]);
 	void gradeSurroundingBlocks(const BuildCFDParams& params);
-	void updateAdHocBlockSearchTree(const std::vector<BlockPtr>& adHocBlocks);
+	void createAdHocBlockSearchTree();
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
 	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);
