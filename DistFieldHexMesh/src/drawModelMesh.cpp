@@ -96,6 +96,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
     UBO.useDefColor = 1;
+    _priorNormalShadingOn = UBO.normalShadingOn;
+    UBO.normalShadingOn = 0;
 
     switch (key) {
     default:
@@ -135,6 +137,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
 
 void DrawModelMesh::postDrawEdges()
 {
+    auto& UBO = _pCanvas->getUBO();
+    UBO.normalShadingOn = _priorNormalShadingOn ? 1 : 0;
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)

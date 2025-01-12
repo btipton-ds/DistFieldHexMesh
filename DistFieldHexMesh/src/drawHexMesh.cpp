@@ -294,6 +294,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
     UBO.useDefColor = 1;
+    _priorNormalShadingOn = UBO.normalShadingOn;
+    UBO.normalShadingOn = 0;
     glLineWidth(0.25f);
 
     const auto& alpha = _options.alpha;
@@ -353,6 +355,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
 void DrawHexMesh::postDrawEdges()
 {
+    auto& UBO = _pCanvas->getUBO();
+    UBO.normalShadingOn = _priorNormalShadingOn ? 1 : 0;
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)

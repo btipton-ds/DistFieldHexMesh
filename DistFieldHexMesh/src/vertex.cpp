@@ -88,7 +88,7 @@ CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
 inline int64_t Vertex::scaleToSearh()
 {
 	const int64_t micronInv = 1000000;
-	return 10 * micronInv; // 1/10 micron
+	return 100 * micronInv; // 1/100 micron
 }
 
 inline int64_t Vertex::scaleToSearh(double v)

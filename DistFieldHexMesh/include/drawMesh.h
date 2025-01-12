@@ -74,6 +74,8 @@ namespace DFHM {
 		virtual OGL::MultiVBO::DrawVertexColorMode preTexDraw(int key);
 		virtual void postTexDraw();
 
+		bool _priorNormalShadingOn;
+
 		GraphicsCanvas* _pCanvas;
 		const OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
 
