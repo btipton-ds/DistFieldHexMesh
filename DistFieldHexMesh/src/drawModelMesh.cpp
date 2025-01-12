@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <graphicsCanvas.h>
 #include <meshData.h>
 
+using namespace std;
 using namespace DFHM;
 
 namespace {
@@ -59,32 +60,42 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-void DrawModelMesh::changeViewElements(MeshDataPtr& pData)
+void DrawModelMesh::changeViewElements(const map<wstring, MeshDataPtr>& meshData)
 {
-    if (!pData->isActive())
-        return;
-
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
 
-    if (_options.showFaces) {
-        faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
-        if (_options.showTriNormals)
-            edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
+    faceVBO.endSettingElementIndices();
+    edgeVBO.endSettingElementIndices();
+
+    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
+    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+
+    for (auto& pair : meshData) {
+        auto pData = pair.second;
+
+        if (_options.showFaces) {
+            faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
+            if (_options.showTriNormals)
+                edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
+        }
+
+        if (_options.showEdges) {
+            if (_options.showSharpEdges) {
+                edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
+                edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
+            }
+            else {
+                edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
+            }
+        }
+        else if (_options.showSharpEdges) {
+            edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
+        }
     }
 
-    if (_options.showEdges) {
-        if (_options.showSharpEdges) {
-            edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
-            edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
-        }
-        else {
-            edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
-        }
-    } else if (_options.showSharpEdges) {
-        edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
-    }
-    
+    faceVBO.endSettingElementIndices();
+    edgeVBO.endSettingElementIndices();
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)

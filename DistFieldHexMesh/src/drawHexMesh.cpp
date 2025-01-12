@@ -375,6 +375,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     bool blend = false;
     const auto& alpha = _options.alpha;
+    const float den = 255.0f;
 
     switch (key) {
     default:
@@ -384,7 +385,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         break;
     case DS_MESH_ALL:
         blend = true;
-        UBO.defColor = p4f(0.0f, 0.8f, 0, alpha);
+        UBO.defColor = p4f(210 / den, 180 / den, 140 / den, alpha);
         break;
     case DS_MESH_INNER:
         blend = true;

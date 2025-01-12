@@ -27,6 +27,9 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
+#include <map>
+#include <string>
 #include <drawMesh.h>
 
 namespace OGL
@@ -53,7 +56,7 @@ namespace DFHM {
 		DrawModelMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawModelMesh();
 
-		void changeViewElements(MeshDataPtr& pData);
+		void changeViewElements(const std::map<std::wstring, MeshDataPtr>& meshData);
 
 		bool showSharpEdges() const;
 		bool toggleShowSharpEdges();

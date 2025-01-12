@@ -633,6 +633,8 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     volBox.clear();
     for (int i = 0; i < 8; i++)
         volBox.merge(cubePts1[i]);
+
+    _pVolume->setVolDim(_params.volDivs, true);
 }
 
 template<class L>
@@ -1236,18 +1238,16 @@ void AppData::doCreateBaseVolume()
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
 
-#if 1
+    Index3D::setBlockDim(1);
     Vector3d cubePts[8];
     CBoundingBox3Dd volBox;
     makeModelCubePoints(cubePts, volBox);
-    Index3D::setBlockDim(1);
 
     _pVolume->buildModelBlocks(_params, cubePts, volBox, false);
 
-    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
+//    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
     updateTessellation();
-#endif
 }
 
 void AppData::doRemoveBaseVolume()

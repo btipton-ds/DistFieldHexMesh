@@ -1188,9 +1188,6 @@ void Block::imprintTJointVertices()
 bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
-	if (meshType == FT_ALL)
-		return true;
-
 	bool intersectsModel = false;
 #if 0
 	result = face.intersectsModel();
@@ -1208,6 +1205,10 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 #endif
 
 	bool isWall = face.isWall();
+	bool isInner = face.numCells() == 2;
+	if (isInner) {
+		int dbgBreak = 1;
+	}
 	for (const auto& pl : planes) {
 		if (face.isCoplanar(pl)) {
 			isWall = false;
@@ -1234,10 +1235,10 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	switch (meshType) {
 		default:
 		case FT_ALL:
-			result = true;
+			result = !isInner;
 			break;
 		case FT_INNER:
-			result = !isWall;
+			result = isInner;
 			break;
 		case FT_WALL:
 			result = isWall;

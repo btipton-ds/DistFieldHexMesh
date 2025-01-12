@@ -876,20 +876,8 @@ void GraphicsCanvas::updateView()
 
 void GraphicsCanvas::changeViewElements()
 {
-    auto& faceVBO = _pDrawModelMesh->getVBOs()->_faceVBO;
-    auto& edgeVBO = _pDrawModelMesh->getVBOs()->_edgeVBO;
-
-    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
-    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
-
-    const auto& meshData = _pAppData->getMeshData();
-    for (auto& pair : *meshData) {
-        auto pData = pair.second;
-        _pDrawModelMesh->changeViewElements(pData);
-    }
-    faceVBO.endSettingElementIndices();
-    edgeVBO.endSettingElementIndices();
-
+    const auto& meshData = *_pAppData->getMeshData();
+    _pDrawModelMesh->changeViewElements(meshData);
     _pDrawHexMesh->changeViewElements();
 }
 
