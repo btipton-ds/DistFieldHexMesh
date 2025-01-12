@@ -57,6 +57,8 @@ namespace DFHM {
 		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
+		void clear();
+
 		size_t numBytes() const;
 
 		const TriMesh::CMeshPtr& getMesh() const;
@@ -69,9 +71,6 @@ namespace DFHM {
 
 		bool isActive() const;
 		void setActive(bool val);
-
-		bool isReference() const;
-		void setReference(bool val);
 
 		const OGL::IndicesPtr getFaceTess() const;
 		const OGL::IndicesPtr getAllEdgeTess() const;
@@ -92,9 +91,7 @@ namespace DFHM {
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		TriMesh::CMeshPtr getSharpVertMesh() const;
 
-		bool
-			_active = true,
-			_reference = false;
+		bool _active = true;
 
 		const AppData* _pAppData;
 		std::wstring _name;
@@ -123,16 +120,6 @@ namespace DFHM {
 	inline bool MeshData::isActive() const
 	{
 		return _active;
-	}
-
-	inline bool MeshData::isReference() const
-	{
-		return _reference;
-	}
-
-	inline void MeshData::setReference(bool val)
-	{
-		_reference = val;
 	}
 
 	inline const OGL::IndicesPtr MeshData::getFaceTess() const

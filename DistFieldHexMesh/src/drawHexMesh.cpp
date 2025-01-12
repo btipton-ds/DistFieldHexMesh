@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <enums.h>
 #include <volume.h>
 #include <graphicsCanvas.h>
+#include <utils.h>
 
 using namespace std;
 using namespace DFHM;
@@ -55,6 +56,9 @@ void DrawHexMesh::clearPrior()
 {
     _faceTessellations.clear();
     _edgeTessellations.clear();
+
+    _VBOs->_edgeVBO.clear();
+    _VBOs->_faceVBO.clear();
 }
 
 void DrawHexMesh::clearPost()
@@ -72,6 +76,9 @@ void DrawHexMesh::clearPost()
 
 void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
 {
+    Utils::ScopedRestore sr(_readyToDraw);
+    _readyToDraw = false;
+
     clearPrior();
 
     Block::GlHexMeshGroup blockMeshes;

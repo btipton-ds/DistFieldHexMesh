@@ -421,7 +421,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     vector<CMeshPtr> meshes;
     for (const auto& md : *_pAppData->getMeshData()) {
         auto pMeshData = md.second;
-        if (pMeshData->isActive() && !pMeshData->isReference()) {
+        if (pMeshData->isActive()) {
             auto pMesh = pMeshData->getMesh();
             if (pMesh)
                 meshes.push_back(pMesh);
@@ -620,17 +620,7 @@ void GraphicsCanvas::render()
     _phongShader->bind();
 
     wxPaintDC(this);
-    /*
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 modelView;
-    mat4 proj;
-    vec3 lightDir[2];
-    int numLights;
-    float ambient;
 
-} ubo;
-
-    */
     const GLuint bindingPoint = 1;
     static GLuint vertUboIdx = -1;
     static GLint blockSize = -1;

@@ -53,6 +53,16 @@ MeshData::~MeshData()
 {
 }
 
+void MeshData::clear()
+{
+	_faceTess = nullptr;
+	_allEdgeTess = nullptr;
+	_smoothEdgeTess = nullptr;
+	_sharpEdgeTess = nullptr;
+	_normalTess = nullptr;
+	_sharpPointTess = nullptr;
+}
+
 size_t MeshData::numBytes() const
 {
 	size_t result = sizeof(MeshData);
@@ -74,11 +84,10 @@ size_t MeshData::numBytes() const
 
 void MeshData::write(std::ostream& out) const
 {
-	uint8_t version = 1;
+	uint8_t version = 2;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_active, sizeof(_active));
-	out.write((char*)&_reference, sizeof(_reference));
 
 	size_t numChars = _name.size();
 	out.write((char*)&numChars, sizeof(numChars));
@@ -93,8 +102,10 @@ void MeshData::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	in.read((char*)&_active, sizeof(_active));
-	if (version > 0)
-		in.read((char*)&_reference, sizeof(_reference));
+	if (version == 1) {
+		bool deprecatedReference;
+		in.read((char*)&deprecatedReference, sizeof(deprecatedReference));
+	}
 
 	size_t numChars;
 	in.read((char*)&numChars, sizeof(numChars));
@@ -150,7 +161,7 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 		return true;
 		};
 
-	bool includeSmooth = !_reference;
+	bool includeSmooth = true;
 	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
 	indices = smoothIndices;
 	indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
@@ -195,16 +206,11 @@ void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw)
 	auto& faceVBO = pDraw->getVBOs()->_faceVBO;
 	auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
 
-	if (isReference()) {
-		edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, getAllEdgeTess());
+	if (pDraw->showFaces()) {
+		faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());
 	}
-	else {
-		if (pDraw->showFaces()) {
-			faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());
-		}
-		if (pDraw->showEdges()) {
-			edgeVBO.includeElementIndices(DS_MESH_EDGES, getAllEdgeTess());
-		}
+	if (pDraw->showEdges()) {
+		edgeVBO.includeElementIndices(DS_MESH_EDGES, getAllEdgeTess());
 	}
 }
 

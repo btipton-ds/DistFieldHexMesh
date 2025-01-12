@@ -235,19 +235,16 @@ void AppData::writeDHFM() const
 
     _params.write(out);
 
-    size_t numMeshes = 0;
+    size_t numMeshes = _pModelMeshData->size();
     for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
-        if (!pData->isReference())
-            numMeshes++;
     }
 
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
     for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
-        if (!pData->isReference())
-            pData->write(out);
+        pData->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
@@ -445,8 +442,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
     CBoundingBox3Dd result;
     for (const auto& pair : *_pModelMeshData) {
         const auto& pData = pair.second;
-        if (!pData->isReference())
-            result.merge(pData->getMesh()->getBBox());
+        result.merge(pData->getMesh()->getBBox());
     }
 
     if (_pVolume)
@@ -465,7 +461,7 @@ CBoundingBox3Dd AppData::getMeshBoundingBox() const
     CBoundingBox3Dd result;
     for (const auto& pair : *_pModelMeshData) {
         const auto pData = pair.second;
-        if (!pData->isReference() && pData->isActive())
+        if (pData->isActive())
             result.merge(pData->getMesh()->getBBox());
     }
 

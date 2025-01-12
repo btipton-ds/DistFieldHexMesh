@@ -132,9 +132,9 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void clearPrior();
 		void clearPost();
 
-		HexMeshViewOptions _options;
-
 		int _priorDrawTwoSided;
+
+		HexMeshViewOptions _options;
 
 		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
 		std::map<GLEdge, size_t> _edgeMap;

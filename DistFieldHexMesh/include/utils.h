@@ -61,6 +61,24 @@ private:
 	long long _startCount;
 };
 
+template <class T>
+class ScopedRestore {
+public:
+	inline ScopedRestore(T& val)
+		: _src(val)
+		, _originalValue(val)
+	{}
+
+	inline ~ScopedRestore()
+	{
+		_src = _originalValue;
+	}
+
+private:
+	T& _src;
+	const T _originalValue;
+};
+
 }
 
 }

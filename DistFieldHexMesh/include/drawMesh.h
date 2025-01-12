@@ -41,8 +41,6 @@ This file is part of the DistFieldHexMesh application/library.
 namespace OGL
 {
 class Shader;
-struct Indices;
-using IndicesPtr = std::shared_ptr<Indices>;
 }
 
 namespace DFHM {
@@ -74,10 +72,10 @@ namespace DFHM {
 		virtual OGL::MultiVBO::DrawVertexColorMode preTexDraw(int key);
 		virtual void postTexDraw();
 
+		bool _readyToDraw = true;
 		bool _priorNormalShadingOn;
 
 		GraphicsCanvas* _pCanvas;
-		const OGL::IndicesPtr _pTriTess, _pEdgeTess, _pSharpVertTess, _pSharpEdgeTess, _pNormalTess;
 
 		std::shared_ptr<VBORec> _VBOs;
 	};

@@ -52,17 +52,6 @@ size_t DrawMesh::numBytes() const
         result += _VBOs->_faceVBO.numBytes();
     }
 
-    if (_pTriTess)
-        result += _pTriTess->numBytes();
-    if (_pEdgeTess)
-        result += _pEdgeTess->numBytes();
-    if (_pSharpVertTess)
-        result += _pSharpVertTess->numBytes();
-    if (_pSharpEdgeTess)
-        result += _pSharpEdgeTess->numBytes();
-    if (_pNormalTess)
-        result += _pNormalTess->numBytes();
-
     return result;
 }
 
@@ -74,6 +63,9 @@ void DrawMesh::setShader(std::shared_ptr<OGL::Shader>& pShader)
 
 void DrawMesh::render()
 {
+    if (!_readyToDraw)
+        return;
+
     drawEdges();
     drawFaces();
 }

@@ -67,28 +67,24 @@ void DrawModelMesh::changeViewElements(MeshDataPtr& pData)
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
 
-    if (pData->isReference()) {
-        edgeVBO.includeElementIndices(DS_MODEL_REF_EDGES, pData->getAllEdgeTess());
+    if (_options.showFaces) {
+        faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
+        if (_options.showTriNormals)
+            edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
     }
-    else {
-        if (_options.showFaces) {
-            faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
-            if (_options.showTriNormals)
-                edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
-        }
 
-        if (_options.showEdges) {
-            if (_options.showSharpEdges) {
-                edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
-                edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
-            }
-            else {
-                edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
-            }
-        } else if (_options.showSharpEdges) {
+    if (_options.showEdges) {
+        if (_options.showSharpEdges) {
             edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
+            edgeVBO.includeElementIndices(DS_MODEL_SMOOTH_EDGES, pData->getSmoothEdgeTess());
         }
+        else {
+            edgeVBO.includeElementIndices(DS_MODEL_EDGES, pData->getAllEdgeTess());
+        }
+    } else if (_options.showSharpEdges) {
+        edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
     }
+    
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
@@ -114,10 +110,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
     case DS_MODEL_NORMALS:
         glLineWidth(1.0f);
         UBO.defColor = p3f(0.0f, 0.0f, 1.0f);
-        break;
-    case DS_MODEL_REF_EDGES:
-        glLineWidth(0.5f);
-        UBO.defColor = p3f(1.0f, 1.0f, 0);
         break;
     }
 
