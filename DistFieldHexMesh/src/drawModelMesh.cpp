@@ -65,9 +65,6 @@ void DrawModelMesh::changeViewElements(const map<wstring, MeshDataPtr>& meshData
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
 
-    faceVBO.endSettingElementIndices();
-    edgeVBO.endSettingElementIndices();
-
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 

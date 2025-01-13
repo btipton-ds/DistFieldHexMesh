@@ -139,17 +139,41 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
             }
         }
 
-        auto pFaceTess = faceVBO.setFaceTessellation(faceType, _faceTessellations[FT_ALL], triIndices);
-        _faceTessellations[faceType] = pFaceTess;
+        if (!triIndices.empty()) {
+            auto pFaceTess = faceVBO.setFaceTessellation(faceType, _faceTessellations[FT_ALL], triIndices);
+            _faceTessellations[faceType] = pFaceTess;
+        }
 
-        auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, _edgeTessellations[FT_ALL], edgeIndices);
-        _edgeTessellations[faceType] = pEdgeTess;
+        if (!edgeIndices.empty()) {
+            auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, _edgeTessellations[FT_ALL], edgeIndices);
+            _edgeTessellations[faceType] = pEdgeTess;
+        }
     }
 
     faceVBO.endFaceTesselation(false);
     edgeVBO.endEdgeTesselation();
 
     clearPost();
+}
+
+void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const
+{
+    if (tess.empty())
+        return;
+
+    bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, FT_ALL, tess); 
+    if (!blocksAdded) {            
+        blocksAdded |= includeElementIndices(_options.showWalls, VBO, FT_WALL, tess); 
+        blocksAdded |= includeElementIndices(_options.showIntersecting, VBO, FT_INTERSECTING, tess); 
+        blocksAdded |= includeElementIndices(_options.showBack, VBO, FT_BACK, tess); 
+        blocksAdded |= includeElementIndices(_options.showFront, VBO, FT_FRONT, tess); 
+        blocksAdded |= includeElementIndices(_options.showLeft, VBO, FT_LEFT, tess); 
+        blocksAdded |= includeElementIndices(_options.showRight, VBO, FT_RIGHT, tess); 
+        blocksAdded |= includeElementIndices(_options.showBottom, VBO, FT_BOTTOM, tess); 
+        blocksAdded |= includeElementIndices(_options.showTop, VBO, FT_TOP, tess); 
+                
+        includeElementIndices(!blocksAdded, VBO, FT_ALL, tess);
+    }
 }
 
 void DrawHexMesh::changeViewElements()
@@ -160,138 +184,12 @@ void DrawHexMesh::changeViewElements()
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    bool blocksAdded = false;
-
-    if (_options.showFaces && !_faceTessellations.empty()) {
-        blocksAdded = false;
-        if (_options.showSelectedBlocks) {
-            if (FT_ALL < _faceTessellations.size()) {
-                if (_faceTessellations[FT_ALL]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_ALL, _faceTessellations[FT_ALL]);
-                }
-            }
-        } else {
-            if (_options.showWalls) {
-                if (FT_WALL < _faceTessellations.size()) {
-                    if (_faceTessellations[FT_WALL]) {
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_WALL, _faceTessellations[FT_WALL]);
-                    }
-                }
-            }
-
-            if (_options.showBack && FT_BACK < _faceTessellations.size()) {
-                if (_faceTessellations[FT_BACK]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_BACK, _faceTessellations[FT_BACK]);
-                }
-            }
-
-            if (_options.showFront && FT_FRONT < _faceTessellations.size()) {
-                if (_faceTessellations[FT_FRONT]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_FRONT, _faceTessellations[FT_FRONT]);
-                }
-            }
-
-            if (_options.showLeft && FT_LEFT < _faceTessellations.size()) {
-                if (_faceTessellations[FT_LEFT]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_LEFT, _faceTessellations[FT_LEFT]);
-                }
-            }
-
-            if (_options.showRight && FT_RIGHT < _faceTessellations.size()) {
-                if (_faceTessellations[FT_RIGHT]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_RIGHT, _faceTessellations[FT_RIGHT]);
-                }
-            }
-
-            if (_options.showBottom && FT_BOTTOM < _faceTessellations.size()) {
-                if (_faceTessellations[FT_BOTTOM]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_BOTTOM, _faceTessellations[FT_BOTTOM]);
-                }
-            }
-
-            if (_options.showTop && FT_TOP < _faceTessellations.size()) {
-                if (_faceTessellations[FT_TOP]) {
-                    blocksAdded = true;
-                    faceVBO.includeElementIndices(DS_MESH_TOP, _faceTessellations[FT_TOP]);
-                }
-            }
-
-            if (!blocksAdded) {
-                if (FT_ALL < _faceTessellations.size()) {
-                    if (_faceTessellations[FT_ALL]) {
-                        blocksAdded = true;
-                        faceVBO.includeElementIndices(DS_MESH_ALL, _faceTessellations[FT_ALL]);
-                    }
-                }
-            }
-        }
-    }
-
-    if (_options.showEdges && FT_ALL < _edgeTessellations.size()) {
-        blocksAdded = false;
-        if (_options.showWalls && FT_WALL < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_WALL]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_WALL, _edgeTessellations[FT_WALL]);
-            }
-        }
-
-        if (_options.showBack && FT_BACK < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_BACK]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_BACK, _edgeTessellations[FT_BACK]);
-            }
-        }
-
-        if (_options.showFront && FT_FRONT < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_FRONT]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_FRONT, _edgeTessellations[FT_FRONT]);
-            }
-        }
-
-        if (_options.showLeft && FT_LEFT < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_LEFT]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_LEFT, _edgeTessellations[FT_LEFT]);
-            }
-        }
-
-        if (_options.showRight && FT_RIGHT < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_RIGHT]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_RIGHT, _edgeTessellations[FT_RIGHT]);
-            }
-        }
-
-        if (_options.showBottom && FT_BOTTOM < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_BOTTOM]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_BOTTOM, _edgeTessellations[FT_BOTTOM]);
-            }
-        }
-
-        if (_options.showTop && FT_TOP < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_TOP]) {
-                blocksAdded = true;
-                edgeVBO.includeElementIndices(DS_MESH_TOP, _edgeTessellations[FT_TOP]);
-            }
-        }
-
-        if (!blocksAdded && FT_ALL < _edgeTessellations.size()) {
-            if (_edgeTessellations[FT_ALL])
-                edgeVBO.includeElementIndices(DS_MESH_ALL, _edgeTessellations[FT_ALL]);
-        }
-
-    }
-
+    if (_options.showFaces) 
+        includeElements(faceVBO, _faceTessellations);
+    
+    if (_options.showEdges) 
+        includeElements(edgeVBO, _edgeTessellations);
+    
     edgeVBO.endSettingElementIndices();
     faceVBO.endSettingElementIndices();
 }
@@ -318,6 +216,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         case DS_MESH_ALL:
             UBO.defColor = p3f(0.0f, 0.0f, 0.5f);
             break;
+        case DS_MESH_INTERSECTING:
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
             break;
@@ -387,6 +286,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         blend = true;
         UBO.defColor = p4f(210 / den, 180 / den, 140 / den, alpha);
         break;
+    case DS_MESH_INTERSECTING:
     case DS_MESH_INNER:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 1, alpha);

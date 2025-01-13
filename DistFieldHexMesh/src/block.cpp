@@ -103,15 +103,8 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 	treeBBox.grow(Tolerance::sameDistTol());
 		
 	// This is close to working, but the full search is finding solutions the partial search is not
-	auto pMeshData = _pVol->getAppData()->getMeshData();
-	if (pMeshData && !forReading) { // if we're reading, we'll read indices in to save time
-		for (auto& pair : *pMeshData) {
-			auto pData = pair.second;
-			auto pMesh = pData->getMesh();
-			pMesh->findEdges(_boundBox, _edgeIndices);
-			pMesh->findTris(_boundBox, _triIndices);
-		}
-	}
+	if (!forReading)
+		initTriIndices(false);
 
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
@@ -641,6 +634,33 @@ CBoundingBox3Dd Block::getBBox() const
 	return _corners.getBBox();
 }
 
+void Block::initTriIndices(bool inRead)
+{
+	if (inRead && !_triIndices.empty())
+		return;
+
+	const auto intersectionType = CMesh::BoxTestType::Intersects;
+	const auto& meshData = *getModelMeshData();
+	for (const auto& pair : meshData) {
+		const auto& pMesh = pair.second->getMesh();
+		if (_pRepo && (_pRepo != pMesh->getRepo())) {
+			assert(!"Can't use multiple CMeshRepos");
+		} else {
+			_pRepo = pMesh->getRepo();
+		}
+
+		vector<size_t> indices;
+		if (pMesh && pMesh->findTris(_boundBox, indices, intersectionType)) {
+			_triIndices.insert(_triIndices.end(), indices.begin(), indices.end());
+		}
+
+		indices.clear();
+		if (pMesh && pMesh->findEdges(_boundBox, indices, intersectionType)) {
+			_edgeIndices.insert(_edgeIndices.end(), indices.begin(), indices.end());
+		}
+	}
+}
+
 Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)
@@ -751,7 +771,7 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
 		assert(cell.isClosed());
 		cell.setTriIndices(_triIndices);
 		cell.setEdgeIndices(_edgeIndices);
-		});
+	});
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -1243,6 +1263,9 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_WALL:
 			result = isWall;
 			break;
+		case FT_INTERSECTING:
+			result = intersectsModel;
+			break;
 
 		case FT_BOTTOM:
 			result = face.isCoplanar(planes[CFT_BOTTOM]);
@@ -1354,46 +1377,13 @@ void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& p
 	const auto& polys = _modelData._polygons;
 	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInDrawKey(meshType, planes, face)) {
-			glPolys->addFace(*this, face);
-
-		}
-	});
-}
-
-void Block::createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points)
-{
-	set<Edge> edges;
-
-	const auto& polys = _modelData._polygons;
-	polys.iterateInOrder([this, &edges, meshType, planes](const Index3DId& id, const Polygon& face) {
-		if (includeFaceInDrawKey(meshType, planes, face)) {
-			const auto& vertIds = face.getVertexIds();
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t j = (i + 1) % vertIds.size();
-				Edge edge(vertIds[i], vertIds[j]);
-				edges.insert(edge);
+			if (meshType == FT_INTERSECTING) {
+				int dbgBreak = 1;
 			}
+
+			glPolys->addFace(*this, face);
 		}
 	});
-
-	if (!edges.empty()) {
-		if (!points)
-			points = make_shared< GlPoints>();
-		auto& vals = *points;
-		for (const auto& edge : edges) {
-			const auto* vertIds = edge.getVertexIds();
-
-			Vector3d pt0 = getVertexPoint(vertIds[0]);
-			vals.push_back((float)pt0[0]);
-			vals.push_back((float)pt0[1]);
-			vals.push_back((float)pt0[2]);
-
-			Vector3d pt1 = getVertexPoint(vertIds[1]);
-			vals.push_back((float)pt1[0]);
-			vals.push_back((float)pt1[1]);
-			vals.push_back((float)pt1[2]);
-		}
-	}
 }
 
 bool Block::vertexExists(const Index3DId& id) const

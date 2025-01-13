@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <tm_lineSegment.hpp>
 #include <tm_ioUtil.h>
+#include <tm_repo.h>
 #include <pool_vector.h>
 #include <pool_map.h>
 #include <pool_set.h>
@@ -49,6 +50,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedronSplitter.h>
 #include <tolerances.h>
 #include <utils.h>
+#include <meshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -483,50 +485,99 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::intersectsModel() const
 {
-#if 0
-	if (_intersectsModel == IS_UNKNOWN) {
-		CBoundingBox3Dd bbox = getBoundingBox();
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
-		for (size_t idx : sharps) {
-			if (bbox.contains(pTriMesh->getVert(idx)._pt, Tolerance::sameDistTol()))
-				return true;
+	if (_intersectsModel == IS_UNKNOWN && !_triIndices.empty()) {
+		CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
+		const auto& pRepo = getBlockPtr()->getMeshRepo();
+		const auto& tris = pRepo->get<Vector3i>();
+		const auto& pts = pRepo->get<TriMesh::CVertex>();
+
+		for (size_t triIdx : _triIndices) {
+			const auto& tri = tris[triIdx];
+			for (int i = 0; i < 3; i++)
+				modelBBox.merge(pts[tri[i]]._pt);
 		}
+		_intersectsModel = bbox.intersectsOrContains(modelBBox, Tolerance::sameDistTol()) ? IS_TRUE : IS_FALSE;
+#if 0
+		const auto& modelData = *getBlockPtr()->getModelMeshData();
+		for (const auto& pair : modelData) {
+			auto pTriMesh = pair.second->getMesh();
+			auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
+			for (size_t idx : sharps) {
+				if (bbox.contains(pTriMesh->getVert(idx)._pt, Tolerance::sameDistTol()))
+					return true;
+			}
 
-		_intersectsModel = IS_FALSE;
-		vector<size_t> triEntries;
-		if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
-			for (const auto& faceId : _faceIds) {
-				faceFunc(TS_REAL, faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
-					const double tol = Tolerance::sameDistTol();
-					const auto& vertIds = face.getVertexIds();
-					for (size_t i = 0; i < vertIds.size(); i++) {
-						size_t j = (i + 1) % vertIds.size();
-						LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
-						for (size_t triIdx : triEntries) {
-							RayHitd hit;
-							if (pTriMesh->intersectsTri(seg, triIdx, tol, hit)) {
-								_intersectsModel = IS_TRUE;
-								break;
+			_intersectsModel = IS_FALSE;
+			vector<size_t> triEntries;
+			if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
+				for (const auto& faceId : _faceIds) {
+					faceFunc(TS_REAL, faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
+						const double tol = Tolerance::sameDistTol();
+						const auto& vertIds = face.getVertexIds();
+						for (size_t i = 0; i < vertIds.size(); i++) {
+							size_t j = (i + 1) % vertIds.size();
+							LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
+							for (size_t triIdx : triEntries) {
+								RayHitd hit;
+								if (pTriMesh->intersectsTri(seg, triIdx, tol, hit)) {
+									_intersectsModel = IS_TRUE;
+									break;
+								}
 							}
+							if (_intersectsModel = IS_TRUE)
+								break;
 						}
-						if (_intersectsModel = IS_TRUE)
-							break;
-					}
-				});
+						});
 
-				if (_intersectsModel = IS_TRUE)
-					break;
+					if (_intersectsModel = IS_TRUE)
+						break;
+				}
 			}
 		}
-	}
 #endif
+	}
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
 bool Polyhedron::intersectsModelPrecise() const
 {
 	assert(isConvex());
+
+	CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
+	const auto& pRepo = getBlockPtr()->getMeshRepo();
+	const auto& tris = pRepo->get<Vector3i>();
+	const auto& pts = pRepo->get<TriMesh::CVertex>();
+
+	for (const auto& faceId : _faceIds) {
+		bool result = false;
+		faceFunc(TS_REAL, faceId, [this, &pRepo, &result](const Polygon& face) {
+			const double tol = Tolerance::sameDistTol();
+			const auto& vertIds = face.getVertexIds();
+			for (size_t i = 0; i < vertIds.size(); i++) {
+				size_t j = (i + 1) % vertIds.size();
+				const auto& vertId0 = vertIds[i];
+				const auto& vertId1 = vertIds[j];
+
+				Vector3d pt0 = getVertexPoint(vertId0);
+				Vector3d pt1 = getVertexPoint(vertId1);
+				LineSegmentd seg(pt0, pt1);
+				for (size_t triIdx : _triIndices) {
+					RayHitd hit;
+					if (pRepo->intersectsTri(seg, triIdx, tol, hit) || containsPointPrecise(pt0) || containsPointPrecise(pt1)) {
+						result = true;
+						break;
+					}
+				}
+				if (result)
+					break;
+			}
+			});
+
+		if (result)
+			return true;
+	}
+
+	return false;
 #if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
 	auto bbox = getBoundingBox();
@@ -1004,11 +1055,21 @@ void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
 {
 	_edgeIndices.clear();
 	if (!indices.empty()) {
-#if 0
-		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
-		pTriMesh->processFoundEdges(indices, bbox, _edgeIndices);
-#endif
+
+		const auto& pRepo = getBlockPtr()->getMeshRepo();
+		const auto& edges = pRepo->get<TriMesh::CEdge>();
+		const auto& pts = pRepo->get<TriMesh::CVertex>();
+
+		for (size_t edgeIdx : indices) {
+			const auto& edge = edges[edgeIdx];
+			const auto& pt0 = pts[edge._vertIndex[0]]._pt;
+			const auto& pt1 = pts[edge._vertIndex[1]]._pt;
+			LineSegmentd seg(pt0, pt1);
+			if (bbox.intersectsOrContains(seg, Tolerance::sameDistTol(), -1)) {
+				_edgeIndices.push_back(edgeIdx);
+			}
+		}
 	}
 }
 
@@ -1016,11 +1077,22 @@ void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
 {
 	_triIndices.clear();
 	if (!indices.empty()) {
-#if 0
-		auto pTriMesh = getBlockPtr()->getModelMesh();
 		auto bbox = getBoundingBox();
-		pTriMesh->processFoundTris(indices, bbox, _triIndices);
-#endif
+
+		const auto& pRepo = getBlockPtr()->getMeshRepo();
+		const auto& tris = pRepo->get<Vector3i>();
+		const auto& pts = pRepo->get<TriMesh::CVertex>();
+
+		for (size_t triIdx : indices) {
+			const auto& tri = tris[triIdx];
+			const auto& pt0 = pts[tri[0]]._pt;
+			const auto& pt1 = pts[tri[1]]._pt;
+			const auto& pt2 = pts[tri[2]]._pt;
+
+			if (bbox.intersectsOrContains(pt0, pt1, pt2, Tolerance::sameDistTol())) {
+				_triIndices.push_back(triIdx);
+			}
+		}
 	}
 }
 

@@ -95,6 +95,7 @@ enum DFHM_MENU_ID
     ID_SHOW_MESH_FACES,
     ID_SHOW_MESH_BOUNDARY,
     ID_SHOW_MESH_WALL,
+    ID_SHOW_MESH_INTERSECTING,
     ID_SHOW_MESH_SELECTED_BLOCKS,
 
     ID_OBJ_TREE_CTRL,
@@ -165,6 +166,7 @@ private:
     void OnShowMeshFaces(wxCommandEvent& event);
     void OnShowMeshEdges(wxCommandEvent& event);
     void OnShowMeshWalls(wxCommandEvent& event);
+    void OnShowMeshIntersecting(wxCommandEvent& event);
     void OnShowMeshBoundary(wxCommandEvent& event);
     void OnShowMeshSelectedBlocks(wxCommandEvent& event);
 

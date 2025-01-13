@@ -407,6 +407,14 @@ bool GraphicsCanvas::toggleShowMeshWalls()
     return result;
 }
 
+bool GraphicsCanvas::toggleShowMeshIntersecting()
+{
+    bool result = _pDrawHexMesh->toggleShowIntersecting();
+    changeViewElements();
+
+    return result;
+}
+
 bool GraphicsCanvas::toggleShowMeshBoundary()
 {
     bool result = _pDrawHexMesh->toggleShowBoundary();

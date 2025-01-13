@@ -49,6 +49,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <polygonSplitter.h>
 #include <splitParams.h>
+#include <meshData.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
@@ -86,7 +87,7 @@ Polygon::Polygon(const Polygon& src)
 {
 }
 
-Polygon& Polygon::operator = (const Polygon& rhs)
+DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
 	ObjectPoolOwnerUser::operator=(rhs);
@@ -702,39 +703,41 @@ bool Polygon::intersectsModel() const
 		std::vector<size_t> cellTris;
 
 		if (getCellTris(cellTris) > 0) {
-#if 0
-			auto pMesh = getBlockPtr()->getModelMesh();
-			CBoundingBox3Dd bbox;
-			for (const auto& vertId : _vertexIds) {
-				bbox.merge(getVertexPoint(vertId));
-			}
+			const auto& pRepo = getBlockPtr()->getMeshRepo();
 
-			std::vector<size_t> triIndices;
-			if (pMesh->processFoundTris(cellTris, bbox, triIndices)) {
-				auto pTriMesh = getBlockPtr()->getModelMesh();
-				const auto& edges = getEdges();
+			const auto& meshData = *getBlockPtr()->getModelMeshData();
+			for (const auto& pair : meshData) {
+				auto pMesh = pair.second->getMesh();;
+				CBoundingBox3Dd bbox;
+				for (const auto& vertId : _vertexIds) {
+					bbox.merge(getVertexPoint(vertId));
+				}
 
-				for (const auto& triIdx : triIndices) {
-					const auto& tri = pTriMesh->getTri(triIdx);
-					const Vector3d* pts[3] = {
-						pts[0] = &(pTriMesh->getVert(tri[0])._pt),
-						pts[1] = &(pTriMesh->getVert(tri[1])._pt),
-						pts[2] = &(pTriMesh->getVert(tri[2])._pt),
-					};
+				std::vector<size_t> triIndices;
+				if (pMesh->processFoundTris(cellTris, bbox, triIndices)) {
+					const auto& edges = getEdges();
 
-					for (const auto& edge : edges) {
-						auto seg = edge.getSegment(getBlockPtr());
-						RayHitd hit;
-						if (seg.intersectTri(pts, hit, Tolerance::sameDistTol())) {
-							_cachedIntersectsModel = IS_TRUE;
-							break;
+					for (const auto& triIdx : triIndices) {
+						const auto& tri = pMesh->getTri(triIdx);
+						const Vector3d* pts[3] = {
+							pts[0] = &(pMesh->getVert(tri[0])._pt),
+							pts[1] = &(pMesh->getVert(tri[1])._pt),
+							pts[2] = &(pMesh->getVert(tri[2])._pt),
+						};
+
+						for (const auto& edge : edges) {
+							auto seg = edge.getSegment(getBlockPtr());
+							RayHitd hit;
+							if (seg.intersectTri(pts, hit, Tolerance::sameDistTol())) {
+								_cachedIntersectsModel = IS_TRUE;
+								break;
+							}
 						}
+						if (_cachedIntersectsModel == IS_TRUE)
+							break;
 					}
-					if (_cachedIntersectsModel == IS_TRUE)
-						break;
 				}
 			}
-#endif
 		}
 	}
 
@@ -819,7 +822,7 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
 	cellId.setSplitLevel(level);
 	_cellIds.insert(cellId);
-#if 1
+#if 1 && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
 			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));
@@ -998,69 +1001,6 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 		int dbgBreak = 1;
 	}
 
-	return false;
-}
-
-bool Polygon::intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>& newEdges)
-{
-#if 0
-	const double tol = Tolerance::sameDistTol();
-	auto pMesh = getBlockPtr()->getModelMesh();
-
-	RayHitd hit;
-	set<Index3DId> vertSet;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		auto facePlane = calPlane();
-		RayHitd hit;
-		LineSegmentd seg(getVertexPoint(_vertexIds[i]), getVertexPoint(_vertexIds[j]));
-		const auto& faces = pPatch->getFaces();
-		for (const auto& patchFace : faces) {
-			for (auto triIdx : patchFace) {
-				bool skip = false;
-				const auto& tri = pMesh->getTri(triIdx);
-				Vector3d vertPt;
-				for (int i = 0; i < 3; i++) {
-					auto vertPt = pMesh->getVert(tri[i])._pt;
-					if (facePlane.distanceToPoint(vertPt) <= Tolerance::sameDistTol()) {
-						skip = true;
-						break;
-					}
-				}
-				if (skip)
-					continue;
-
-				auto normal = pMesh->triUnitNormal(triIdx);
-				Planed triPlane(vertPt, normal);
-
-				skip = isCoplanar(triPlane);
-				if (skip)
-					continue;
-
-				if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
-					auto vertId = getBlockPtr()->addVertex(hit.hitPt);
-					vertexFunc(vertId, [](Vertex& vert) {
-						vert.setLockType(VLT_MODEL_MESH);
-					});
-
-					vertSet.insert(vertId);
-				}
-			}
-		}
-	}
-
-	if (!vertSet.empty()) {
-		if (vertSet.size() <= 2) {
-			auto iter = vertSet.begin();
-			Edge edge(*iter++, *iter++);
-			newEdges.insert(edge);
-		}
-		else {
-			int dbgBreak = 1;
-		}
-		return true;
-	}
-#endif
 	return false;
 }
 

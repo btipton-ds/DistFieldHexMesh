@@ -152,6 +152,9 @@ public:
     bool showMeshWalls() const;
     bool toggleShowMeshWalls();
 
+    bool showMeshIntersecting() const;
+    bool toggleShowMeshIntersecting();
+
     bool showMeshBoundary() const;
     bool toggleShowMeshBoundary();
 
@@ -289,6 +292,11 @@ inline bool GraphicsCanvas::showMeshFaces() const
 inline bool GraphicsCanvas::showMeshWalls() const
 {
     return _pDrawHexMesh->showWalls();
+}
+
+inline bool GraphicsCanvas::showMeshIntersecting() const
+{
+    return _pDrawHexMesh->showIntersecting();
 }
 
 inline bool GraphicsCanvas::showMeshBoundary() const

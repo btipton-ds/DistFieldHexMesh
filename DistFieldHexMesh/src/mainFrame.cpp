@@ -213,8 +213,11 @@ void MainFrame::createViewMenu()
     menu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshEdges, this, ID_SHOW_MESH_EDGES);
 
-    menu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of edges on/off", true);
+    menu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
+
+    menu->Append(ID_SHOW_MESH_INTERSECTING, "Mesh - Show Intersecting", "Turns rendering of intersecting on/off", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowMeshIntersecting, this, ID_SHOW_MESH_INTERSECTING);
 
     menu->Append(ID_SHOW_MESH_BOUNDARY, "Mesh - Show Boundary", "Turns rendering of model boundary", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshBoundary, this, ID_SHOW_MESH_BOUNDARY);
@@ -555,6 +558,15 @@ void MainFrame::OnShowMeshWalls(wxCommandEvent& event)
     auto normItem = _menuBar->FindItem(ID_SHOW_MESH_WALL);
     if (normItem)
         normItem->Check(getCanvas()->showMeshWalls());
+}
+
+void MainFrame::OnShowMeshIntersecting(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowMeshIntersecting();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_INTERSECTING);
+    if (normItem)
+        normItem->Check(getCanvas()->toggleShowMeshIntersecting());
 }
 
 void MainFrame::OnShowMeshBoundary(wxCommandEvent& event)

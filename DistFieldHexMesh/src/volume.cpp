@@ -1197,61 +1197,6 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 	}
 }
 
-void Volume::createHexFaceEdges(FaceDrawType faceType, Block::glPointsGroup& faceEdges, const shared_ptr<Block>& pBlock, size_t threadNum) const
-{
-	CBoundingBox3Dd bbox = _modelBundingBox;
-	bbox.merge(pBlock->_boundBox);
-
-	std::vector<Planed> planes;
-	getModelBoundaryPlanes(planes);
-
-	auto& faceTypeEdges = faceEdges[faceType];
-	if (!faceTypeEdges[threadNum]) {
-		faceTypeEdges[threadNum] = make_shared<Block::GlPoints>();
-	}
-	Block::glPointsPtr pPoints = faceTypeEdges[threadNum];
-
-	pBlock->createHexFaceEdges(faceType, planes, pPoints);
-}
-
-void Volume::createHexFaceEdgeSets(Block::glPointsGroup& faceEdges, const Index3D& min, const Index3D& max, bool multiCore) const
-{
-	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
-
-	faceEdges.resize(FT_ALL + 1);
-	for (int j = FT_WALL; j <= FT_ALL; j++) {
-		FaceDrawType ft = (FaceDrawType)j;
-		faceEdges[ft].resize(numThreads);
-	}
-
-
-	runThreadPool([this, &faceEdges, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
-		if (blockPtr) {
-#if USE_MULTI_THREAD_CONTAINERS			
-			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
-#endif
-			Index3D blkIdx = blockPtr->getBlockIdx();
-			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
-				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
-
-				for (int j = FT_WALL; j <= FT_ALL; j++) {
-					FaceDrawType ft = (FaceDrawType)j;
-					createHexFaceEdges(ft, faceEdges, blockPtr, threadNum);
-				}
-			}
-		}
-		return true;
-	}, multiCore);
-
-	for (size_t i = 0; i < numThreads; i++) {
-		for (int j = FT_WALL; j <= FT_ALL; j++) {
-			FaceDrawType ft = (FaceDrawType)j;
-			if (faceEdges[ft][i])
-				faceEdges[ft][i]->changed();
-		}
-	}
-}
-
 size_t Volume::numFaces(bool includeInner) const
 {
 	size_t result = 0;
@@ -1519,6 +1464,7 @@ bool Volume::read(istream& in)
 	in.read((char*)&num, sizeof(num));
 	if (num > 0) {
 		_blocks.resize(num);
+
 		for (size_t i = 0; i < _blocks.size(); i++) {
 			bool isNull;
 			in.read((char*)&isNull, sizeof(isNull));
@@ -1531,6 +1477,11 @@ bool Volume::read(istream& in)
 			pBlock->_pVol = this;
 			pBlock->read(in);
 		}
+
+		runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			pBlk->initTriIndices(true);
+			return true;
+		}, RUN_MULTI_THREAD);
 	}
 	return true;
 }

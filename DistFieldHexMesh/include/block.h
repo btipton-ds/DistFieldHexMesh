@@ -130,6 +130,7 @@ public:
 	size_t numBytes() const;
 
 	const std::vector<Vector3d>& getCornerPts() const;
+	const TriMesh::CMeshRepoPtr& getMeshRepo() const;
 
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
@@ -143,7 +144,6 @@ public:
 
 	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
-	void createHexFaceEdges(FaceDrawType meshType, const std::vector<Planed>& planes, glPointsPtr& points);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -152,6 +152,7 @@ public:
 	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBBox() const;
+	void initTriIndices(bool inRead);
 
 	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
@@ -300,7 +301,9 @@ private:
 	Index3D _blockIdx;
 
 	Volume* _pVol;
-	CBoundingBox3Dd 
+	TriMesh::CMeshRepoPtr _pRepo;
+
+	CBoundingBox3Dd
 		_boundBox,      // The precise bounding box for this box
 		_innerBoundBox; // An inner bounding box with a span of (_blockDim - 0.125) / _blockDim. Any vertex or face which is not completely within the inner box
 						// must be tested to see if it belongs to this box or a Adjacent box.
@@ -327,6 +330,11 @@ private:
 inline size_t Block::GlPoints::getId() const
 {
 	return _id;
+}
+
+inline const TriMesh::CMeshRepoPtr& Block::getMeshRepo() const
+{
+	return _pRepo;
 }
 
 inline const UnalignedBBoxd& Block::getUnalignedBBox() const

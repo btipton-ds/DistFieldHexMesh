@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 
 #include <defines.h>
+#include <enums.h>
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <graphicsVBORec.h>
@@ -63,6 +64,9 @@ namespace DFHM {
 
 	protected:
 		static bool toggle(bool& val);
+		static DrawStates faceTypeToDrawState(FaceDrawType ft);
+		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
+
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key);
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key);
 

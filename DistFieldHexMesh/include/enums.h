@@ -64,6 +64,8 @@ enum FaceDrawType {
 	FT_WALL,
 	FT_INNER,
 
+	FT_INTERSECTING,
+
 	FT_BOTTOM,
 	FT_TOP,
 	FT_LEFT,
@@ -86,6 +88,7 @@ enum DrawStates {
 	DS_MESH_EDGES,
 	DS_MESH_WALL,
     DS_MESH_INNER, // 10
+	DS_MESH_INTERSECTING,
 
 	DS_MESH_BOTTOM,
 	DS_MESH_TOP,

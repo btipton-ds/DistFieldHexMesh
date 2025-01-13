@@ -173,7 +173,6 @@ public:
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
-	bool intersectModelTris(const TriMesh::PatchPtr& pPatch, MTC::set<Edge>& newEdges);
 
 	Vector3d getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;

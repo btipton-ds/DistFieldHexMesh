@@ -62,6 +62,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 			showFaces = false,
 			showBoundary = false,
 			showWalls = false,
+			showIntersecting = false,
 
 			showBack = false,
 			showFront = false,
@@ -88,6 +89,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		DECL_OPTS(Edges)
 		DECL_OPTS(Faces)
 		DECL_OPTS(Walls)
+		DECL_OPTS(Intersecting)
 		DECL_OPTS(Boundary)
 
 		DECL_OPTS(Back)
@@ -108,6 +110,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void postDrawFaces() override;
 
 	private:
+		void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
 		struct VertexPointAndNormal {
 			VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());
 			bool operator < (const VertexPointAndNormal& rhs) const;
@@ -157,6 +160,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 	IMPL_OPTS(Edges)
 	IMPL_OPTS(Faces)
 	IMPL_OPTS(Walls)
+	IMPL_OPTS(Intersecting)
 	IMPL_OPTS(Boundary)
 
 	IMPL_OPTS(Back)
