@@ -171,11 +171,14 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFD
 
 void Polyhedron::write(std::ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
 
 	IoUtil::write(out, _faceIds);
 	out.write((char*)&_splitLevel, sizeof(size_t));
+
+	out.write((char*)&_splitLevel, sizeof(_splitLevel));
+	out.write((char*)&_layerNum, sizeof(_layerNum));
 }
 
 void Polyhedron::read(std::istream& in)
@@ -185,6 +188,11 @@ void Polyhedron::read(std::istream& in)
 
 	IoUtil::read(in, _faceIds);
 	in.read((char*)&_splitLevel, sizeof(size_t));
+
+	if (version >= 1) {
+		in.read((char*)&_splitLevel, sizeof(_splitLevel));
+		in.read((char*)&_layerNum, sizeof(_layerNum));
+	}
 }
 
 bool Polyhedron::unload(ostream& out)
@@ -1234,6 +1242,33 @@ double Polyhedron::getShortestEdge() const
 	}
 
 	return minDist;
+}
+
+bool Polyhedron::setLayerNum()
+{
+	bool result = false;
+	if (_layerNum == -1) {
+		if (intersectsModel()) {
+			_layerNum = 0;
+		} else {
+			set<Index3DId> adj = getAdjacentCells(true);
+			int64_t max = -1;
+			for (const auto& id : adj) {
+				cellFunc(TS_REAL, id, [&max](const Polyhedron& adjCell) {
+					auto val = adjCell.getLayerNum();
+					if (val > max)
+						max = val;
+				});
+			}
+
+			if (max != -1) {
+				_layerNum = max + 1;
+				result = true;
+			}
+		}
+	}
+
+	return result;
 }
 
 MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const

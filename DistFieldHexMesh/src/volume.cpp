@@ -864,6 +864,20 @@ void Volume::dumpOpenCells(bool multiCore) const
 #endif
 }
 
+void Volume::setLayerNums()
+{
+	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->resetLayerNums();
+		return true;
+	}, RUN_MULTI_THREAD);
+
+	for (size_t i = 0; i < 3; i++) {
+		runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			return pBlk->incrementLayerNums();
+		}, RUN_MULTI_THREAD);
+	}
+}
+
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 {
 	size_t linIdxSrc, linIdxDst;

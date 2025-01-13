@@ -107,6 +107,8 @@ public:
 	const std::set<size_t>& getSharpEdgeIndices() const;
 	const std::vector<Vector3d>& getModelCornerPts() const;
 
+	void setLayerNums();
+
 	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
 
 	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;

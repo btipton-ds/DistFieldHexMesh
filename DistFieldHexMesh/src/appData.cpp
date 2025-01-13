@@ -1247,6 +1247,8 @@ void AppData::doCreateBaseVolume()
 
 //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
+    _pVolume->setLayerNums();
+
     updateTessellation();
 }
 

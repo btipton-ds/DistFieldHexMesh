@@ -1208,21 +1208,6 @@ void Block::imprintTJointVertices()
 bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
-	bool intersectsModel = false;
-#if 0
-	result = face.intersectsModel();
-#else
-	auto ids = face.getCellIds();
-	for (const auto& cellId : ids) {
-		if (polyhedronExists(TS_REAL, cellId)) {
-			cellFunc(TS_REAL,cellId, [&intersectsModel](const Polyhedron& cell) {
-				intersectsModel = cell.intersectsModel();
-			});
-			if (intersectsModel)
-				break;
-		}
-	}
-#endif
 
 	bool isWall = face.isWall();
 	bool isInner = face.numCells() == 2;
@@ -1236,6 +1221,19 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		}
 	}
 
+	int64_t layerNum = -1;
+	const auto& cellIds = face.getCellIds();
+	for (const auto& cellId : cellIds) {
+		cellFunc(TS_REAL, cellId, [&layerNum](const Polyhedron& cell) {
+			int64_t cellLayerNum = cell.getLayerNum();
+			if (cellLayerNum != -1) {
+				if (layerNum == -1)
+					layerNum = cellLayerNum;
+				else if (cellLayerNum < layerNum)
+					layerNum = cellLayerNum;
+			}
+		});
+	}
 	bool isBlockBoundary = face.isBlockBoundary();
 	bool isModelBoundary = isWall;
 	if (isModelBoundary) {
@@ -1263,9 +1261,6 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_WALL:
 			result = isWall;
 			break;
-		case FT_INTERSECTING:
-			result = intersectsModel;
-			break;
 
 		case FT_BOTTOM:
 			result = face.isCoplanar(planes[CFT_BOTTOM]);
@@ -1290,7 +1285,47 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 			result = face.isCoplanar(planes[CFT_FRONT]);
 			break;
 		
-		
+		case FT_MESH_LAYER_0:
+			if (layerNum == 0)
+				result = true;
+			break;
+		case FT_MESH_LAYER_1:
+			if (layerNum == 1)
+				result = true;
+			break;
+		case FT_MESH_LAYER_2:
+			if (layerNum == 2)
+				result = true;
+			break;
+		case FT_MESH_LAYER_3:
+			if (layerNum == 3)
+				result = true;
+			break;
+		case FT_MESH_LAYER_4:
+			if (layerNum == 4)
+				result = true;
+			break;
+		case FT_MESH_LAYER_5:
+			if (layerNum == 5)
+				result = true;
+			break;
+		case FT_MESH_LAYER_6:
+			if (layerNum == 6)
+				result = true;
+			break;
+		case FT_MESH_LAYER_7:
+			if (layerNum == 7)
+				result = true;
+			break;
+		case FT_MESH_LAYER_8:
+			if (layerNum == 8)
+				result = true;
+			break;
+		case FT_MESH_LAYER_9:
+			if (layerNum == 9)
+				result = true;
+			break;
+
 	}
 
 	return result;
@@ -1532,6 +1567,24 @@ void Block::updateSplitStack()
 bool Block::hasPendingSplits() const
 {
 	return !getCantSplitYet().empty() || !getNeedToSplit().empty();
+}
+
+void Block::resetLayerNums()
+{
+	_modelData._polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
+		cell.clearLayerNum();
+	});
+}
+
+bool Block::incrementLayerNums()
+{
+	bool result = false;
+	_modelData._polyhedra.iterateInOrder([&result](const Index3DId& cellId, Polyhedron& cell) {
+		if (cell.setLayerNum())
+			result = true;
+	});
+
+	return result;
 }
 
 void Block::freePolygon(const Index3DId& id, bool requireRefExists)

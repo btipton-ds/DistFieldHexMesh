@@ -216,14 +216,10 @@ void MainFrame::createViewMenu()
     _viewMenu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
 
-    _viewMenu->Append(ID_SHOW_MESH_INTERSECTING, "Mesh - Show Intersecting", "Turns rendering of intersecting on/off", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowMeshIntersecting, this, ID_SHOW_MESH_INTERSECTING);
-
-    _viewMenu->Append(ID_SHOW_MESH_BOUNDARY, "Mesh - Show Boundary", "Turns rendering of model boundary", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowMeshBoundary, this, ID_SHOW_MESH_BOUNDARY);
-
     _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
+
+    addLayersMenu(_viewMenu);
 
     _menuBar->Append(_viewMenu, "&View");
 
@@ -323,6 +319,42 @@ void MainFrame::addBoundarySubMenu(wxMenu* pParentMenu)
     pParentMenu->AppendSubMenu(_viewBoundarySubMenu, "Show boundaries", "Boundary face drawing");
 }
 
+void MainFrame::addLayersMenu(wxMenu* pParentMenu)
+{
+    _layersSubMenu = new wxMenu;
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_0, "Show 0", "Show layer 0", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer0, this, ID_SHOW_MESH_LAYER_0);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_1, "Show 0-1", "Show layer 0-1", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer1, this, ID_SHOW_MESH_LAYER_1);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_2, "Show 0-1", "Show layer 0-2", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer2, this, ID_SHOW_MESH_LAYER_2);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_3, "Show 0-3", "Show layer 0-3", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer3, this, ID_SHOW_MESH_LAYER_3);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_4, "Show 0-4", "Show layer 0-4", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer4, this, ID_SHOW_MESH_LAYER_4);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_5, "Show 0-5", "Show layer 0-5", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer5, this, ID_SHOW_MESH_LAYER_5);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_6, "Show 0-6", "Show layer 0-6", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer1, this, ID_SHOW_MESH_LAYER_1);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_7, "Show 0-7", "Show layer 0-7", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer7, this, ID_SHOW_MESH_LAYER_1);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_8, "Show 0-8", "Show layer 0-8", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer8, this, ID_SHOW_MESH_LAYER_8);
+
+    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_9, "Show 0-9", "Show layer 0-9", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowLayer9, this, ID_SHOW_MESH_LAYER_9);
+
+    pParentMenu->AppendSubMenu(_layersSubMenu, "Show Layers", "Boundary layer drawing");
+}
 void MainFrame::createHelpMenu()
 {
     wxMenu* menuHelp = new wxMenu;
@@ -373,6 +405,18 @@ void MainFrame::OnInternalIdle()
             _viewBoundarySubMenu->Check(ID_SHOW_RIGHT, _pCanvas->showFace(GraphicsCanvas::VIEW_RIGHT));
             _viewBoundarySubMenu->Check(ID_SHOW_BOTTOM, _pCanvas->showFace(GraphicsCanvas::VIEW_BOTTOM));
             _viewBoundarySubMenu->Check(ID_SHOW_TOP, _pCanvas->showFace(GraphicsCanvas::VIEW_TOP));
+        }
+        if (_layersSubMenu) {
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_0, _pCanvas->showLayer(0));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_1, _pCanvas->showLayer(1));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_2, _pCanvas->showLayer(2));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_3, _pCanvas->showLayer(3));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_4, _pCanvas->showLayer(4));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_5, _pCanvas->showLayer(5));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_6, _pCanvas->showLayer(6));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_7, _pCanvas->showLayer(7));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_8, _pCanvas->showLayer(8));
+            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_9, _pCanvas->showLayer(9));
         }
     }
 
@@ -585,24 +629,6 @@ void MainFrame::OnShowMeshWalls(wxCommandEvent& event)
         normItem->Check(getCanvas()->showMeshWalls());
 }
 
-void MainFrame::OnShowMeshIntersecting(wxCommandEvent& event)
-{
-    getCanvas()->toggleShowMeshIntersecting();
-
-    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_INTERSECTING);
-    if (normItem)
-        normItem->Check(getCanvas()->showMeshIntersecting());
-}
-
-void MainFrame::OnShowMeshBoundary(wxCommandEvent& event)
-{
-    getCanvas()->toggleShowMeshBoundary();
-
-    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_BOUNDARY);
-    if (normItem)
-        normItem->Check(getCanvas()->showMeshBoundary());
-}
-
 void MainFrame::OnShowMeshSelectedBlocks(wxCommandEvent& event)
 {
     SelectBlocksDlg dlg(this, 1, wxString("Make Block"), wxPoint(40, 40));
@@ -734,4 +760,60 @@ void MainFrame::OnShowBottom(wxCommandEvent& event)
     if (pItem)
         pItem->Check(getCanvas()->showFace(GraphicsCanvas::VIEW_BOTTOM));
 }
+
+void MainFrame::OnShowLayer(int64_t layerNum)
+{
+    getCanvas()->toggleMeshShowLayer(layerNum);
+}
+
+void MainFrame::OnShowLayer0(wxCommandEvent& event)
+{
+    OnShowLayer(0);
+}
+
+void MainFrame::OnShowLayer1(wxCommandEvent& event)
+{
+    OnShowLayer(1);
+}
+
+void MainFrame::OnShowLayer2(wxCommandEvent& event)
+{
+    OnShowLayer(2);
+}
+
+void MainFrame::OnShowLayer3(wxCommandEvent& event)
+{
+    OnShowLayer(3);
+}
+
+void MainFrame::OnShowLayer4(wxCommandEvent& event)
+{
+    OnShowLayer(4);
+}
+
+void MainFrame::OnShowLayer5(wxCommandEvent& event)
+{
+    OnShowLayer(5);
+}
+
+void MainFrame::OnShowLayer6(wxCommandEvent& event)
+{
+    OnShowLayer(6);
+}
+
+void MainFrame::OnShowLayer7(wxCommandEvent& event)
+{
+    OnShowLayer(7);
+}
+
+void MainFrame::OnShowLayer8(wxCommandEvent& event)
+{
+    OnShowLayer(8);
+}
+
+void MainFrame::OnShowLayer9(wxCommandEvent& event)
+{
+    OnShowLayer(9);
+}
+
 

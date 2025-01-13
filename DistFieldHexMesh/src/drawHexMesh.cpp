@@ -45,6 +45,8 @@ namespace
 DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
     : DrawMesh(pCanvas)
 {
+    for (int i = 0; i < 10; i++)
+        _options.layers[i] = false;
 }
 
 DrawHexMesh::~DrawHexMesh()
@@ -59,8 +61,6 @@ DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
         return DS_MESH_WALL;
     case FT_INNER:
         return DS_MESH_INNER;
-    case FT_INTERSECTING:
-        return DS_MESH_INTERSECTING;
     case FT_BOTTOM:
         return DS_MESH_BOTTOM;
     case FT_TOP:
@@ -73,6 +73,28 @@ DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
         return DS_MESH_BACK;
     case FT_FRONT:
         return DS_MESH_FRONT;
+
+    case FT_MESH_LAYER_0:
+        return DS_MESH_LAYER_0;
+    case FT_MESH_LAYER_1:
+        return DS_MESH_LAYER_1;
+    case FT_MESH_LAYER_2:
+        return DS_MESH_LAYER_2;
+    case FT_MESH_LAYER_3:
+        return DS_MESH_LAYER_3;
+    case FT_MESH_LAYER_4:
+        return DS_MESH_LAYER_4;
+    case FT_MESH_LAYER_5:
+        return DS_MESH_LAYER_5;
+    case FT_MESH_LAYER_6:
+        return DS_MESH_LAYER_6;
+    case FT_MESH_LAYER_7:
+        return DS_MESH_LAYER_7;
+    case FT_MESH_LAYER_8:
+        return DS_MESH_LAYER_8;
+    case FT_MESH_LAYER_9:
+        return DS_MESH_LAYER_9;
+
     default:
     case FT_ALL:
         return DS_MESH_ALL;
@@ -113,6 +135,27 @@ void DrawHexMesh::clearPost()
     _triIndices.clear();
     _edgeIndices.clear();
 
+}
+
+bool DrawHexMesh::toggleShowLayer(int64_t layerNumber)
+{
+    bool hasLayerSet = false;
+    for (int i = 0; i < 10; i++) {
+        hasLayerSet = hasLayerSet | _options.layers[i];
+    }
+
+    if (hasLayerSet) { // clear all layers
+        for (int i = 0; i < 10; i++) {
+            _options.layers[i] = false;
+        }
+    } else { // set layers 0 - layerNumber
+        for (int i = 0; i <= layerNumber; i++) {
+            _options.layers[i] = true;
+        }
+
+    }
+
+    return !hasLayerSet;
 }
 
 void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
@@ -205,15 +248,23 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
     bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, FT_ALL, tess); 
     if (!blocksAdded) {            
         blocksAdded |= includeElementIndices(_options.showWalls, VBO, FT_WALL, tess); 
-        blocksAdded |= includeElementIndices(_options.showIntersecting, VBO, FT_INTERSECTING, tess); 
         blocksAdded |= includeElementIndices(_options.showBack, VBO, FT_BACK, tess); 
         blocksAdded |= includeElementIndices(_options.showFront, VBO, FT_FRONT, tess); 
         blocksAdded |= includeElementIndices(_options.showLeft, VBO, FT_LEFT, tess); 
         blocksAdded |= includeElementIndices(_options.showRight, VBO, FT_RIGHT, tess); 
         blocksAdded |= includeElementIndices(_options.showBottom, VBO, FT_BOTTOM, tess); 
         blocksAdded |= includeElementIndices(_options.showTop, VBO, FT_TOP, tess); 
-                
-        includeElementIndices(!blocksAdded, VBO, FT_ALL, tess);
+
+        blocksAdded |= includeElementIndices(_options.layers[0], VBO, FT_MESH_LAYER_0, tess);
+        blocksAdded |= includeElementIndices(_options.layers[1], VBO, FT_MESH_LAYER_1, tess);
+        blocksAdded |= includeElementIndices(_options.layers[2], VBO, FT_MESH_LAYER_2, tess);
+        blocksAdded |= includeElementIndices(_options.layers[3], VBO, FT_MESH_LAYER_3, tess);
+        blocksAdded |= includeElementIndices(_options.layers[4], VBO, FT_MESH_LAYER_4, tess);
+        blocksAdded |= includeElementIndices(_options.layers[5], VBO, FT_MESH_LAYER_5, tess);
+        blocksAdded |= includeElementIndices(_options.layers[6], VBO, FT_MESH_LAYER_6, tess);
+        blocksAdded |= includeElementIndices(_options.layers[7], VBO, FT_MESH_LAYER_7, tess);
+        blocksAdded |= includeElementIndices(_options.layers[8], VBO, FT_MESH_LAYER_8, tess);
+        blocksAdded |= includeElementIndices(_options.layers[9], VBO, FT_MESH_LAYER_9, tess);
     }
 }
 
@@ -257,7 +308,16 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         case DS_MESH_ALL:
             UBO.defColor = p3f(0.0f, 0.0f, 0.5f);
             break;
-        case DS_MESH_INTERSECTING:
+        case DS_MESH_LAYER_0:
+        case DS_MESH_LAYER_1:
+        case DS_MESH_LAYER_2:
+        case DS_MESH_LAYER_3:
+        case DS_MESH_LAYER_4:
+        case DS_MESH_LAYER_5:
+        case DS_MESH_LAYER_6:
+        case DS_MESH_LAYER_7:
+        case DS_MESH_LAYER_8:
+        case DS_MESH_LAYER_9:
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
             break;
@@ -327,7 +387,16 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         blend = true;
         UBO.defColor = p4f(210 / den, 180 / den, 140 / den, alpha);
         break;
-    case DS_MESH_INTERSECTING:
+    case DS_MESH_LAYER_0:
+    case DS_MESH_LAYER_1:
+    case DS_MESH_LAYER_2:
+    case DS_MESH_LAYER_3:
+    case DS_MESH_LAYER_4:
+    case DS_MESH_LAYER_5:
+    case DS_MESH_LAYER_6:
+    case DS_MESH_LAYER_7:
+    case DS_MESH_LAYER_8:
+    case DS_MESH_LAYER_9:
     case DS_MESH_INNER:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 1, alpha);

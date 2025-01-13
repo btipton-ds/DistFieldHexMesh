@@ -60,9 +60,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		bool
 			showEdges = true,
 			showFaces = true,
-			showBoundary = false,
 			showWalls = false,
-			showIntersecting = false,
 
 			showBack = true,
 			showFront = true,
@@ -70,8 +68,9 @@ using VolumePtr = std::shared_ptr<Volume>;
 			showTop = true,
 			showLeft = true,
 			showRight = true,
+			showSelectedBlocks = false,
+			layers[10];
 
-			showSelectedBlocks = false;
 
 			float alpha = 0.3f;
 	};
@@ -90,7 +89,6 @@ using VolumePtr = std::shared_ptr<Volume>;
 		DECL_OPTS(Faces)
 		DECL_OPTS(Walls)
 		DECL_OPTS(Intersecting)
-		DECL_OPTS(Boundary)
 
 		DECL_OPTS(Back)
 		DECL_OPTS(Front)
@@ -99,6 +97,9 @@ using VolumePtr = std::shared_ptr<Volume>;
 		DECL_OPTS(Left)
 		DECL_OPTS(Right)
 			
+		bool showLayer(int64_t layerNumber) const;
+		bool toggleShowLayer(int64_t layerNumber);
+
 		void setShowSelectedBlocks(bool val);
 		void addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
 
@@ -162,8 +163,6 @@ using VolumePtr = std::shared_ptr<Volume>;
 	IMPL_OPTS(Edges)
 	IMPL_OPTS(Faces)
 	IMPL_OPTS(Walls)
-	IMPL_OPTS(Intersecting)
-	IMPL_OPTS(Boundary)
 
 	IMPL_OPTS(Back)
 	IMPL_OPTS(Front)
@@ -171,6 +170,11 @@ using VolumePtr = std::shared_ptr<Volume>;
 	IMPL_OPTS(Top)
 	IMPL_OPTS(Left)
 	IMPL_OPTS(Right)
+
+	inline bool DrawHexMesh::showLayer(int64_t layerNumber) const
+	{
+		return _options.layers[layerNumber];
+	}
 
 	inline void DrawHexMesh::setShowSelectedBlocks(bool val)
 	{

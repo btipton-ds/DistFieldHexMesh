@@ -189,6 +189,9 @@ public:
 	void updateSplitStack();
 	bool hasPendingSplits() const;
 
+	void resetLayerNums();
+	bool incrementLayerNums();
+
 	void freePolygon(const Index3DId& id, bool requireRefExists);
 	void freePolyhedron(const Index3DId& id, bool requireRefExists);
 

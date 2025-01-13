@@ -407,17 +407,9 @@ bool GraphicsCanvas::toggleShowMeshWalls()
     return result;
 }
 
-bool GraphicsCanvas::toggleShowMeshIntersecting()
+bool GraphicsCanvas::toggleMeshShowLayer(int64_t layerNum)
 {
-    bool result = _pDrawHexMesh->toggleShowIntersecting();
-    changeViewElements();
-
-    return result;
-}
-
-bool GraphicsCanvas::toggleShowMeshBoundary()
-{
-    bool result = _pDrawHexMesh->toggleShowBoundary();
+    bool result = _pDrawHexMesh->toggleShowLayer(layerNum);
     changeViewElements();
 
     return result;

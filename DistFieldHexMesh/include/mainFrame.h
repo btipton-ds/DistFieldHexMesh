@@ -95,10 +95,19 @@ enum DFHM_MENU_ID
 
     ID_SHOW_MESH_EDGES,
     ID_SHOW_MESH_FACES,
-    ID_SHOW_MESH_BOUNDARY,
     ID_SHOW_MESH_WALL,
-    ID_SHOW_MESH_INTERSECTING,
     ID_SHOW_MESH_SELECTED_BLOCKS,
+
+    ID_SHOW_MESH_LAYER_0,
+    ID_SHOW_MESH_LAYER_1,
+    ID_SHOW_MESH_LAYER_2,
+    ID_SHOW_MESH_LAYER_3,
+    ID_SHOW_MESH_LAYER_4,
+    ID_SHOW_MESH_LAYER_5,
+    ID_SHOW_MESH_LAYER_6,
+    ID_SHOW_MESH_LAYER_7,
+    ID_SHOW_MESH_LAYER_8,
+    ID_SHOW_MESH_LAYER_9,
 
     ID_OBJ_TREE_CTRL,
     ID_TREE_CTRL_SHOW,
@@ -140,6 +149,7 @@ private:
     void createViewMenu();
     void addStandardViewsSubMenu(wxMenu* pParentMenu);
     void addBoundarySubMenu(wxMenu* pParentMenu);
+    void addLayersMenu(wxMenu* pParentMenu);
     void createHelpMenu();
 
     void OnOpen(wxCommandEvent& event);
@@ -168,8 +178,6 @@ private:
     void OnShowMeshFaces(wxCommandEvent& event);
     void OnShowMeshEdges(wxCommandEvent& event);
     void OnShowMeshWalls(wxCommandEvent& event);
-    void OnShowMeshIntersecting(wxCommandEvent& event);
-    void OnShowMeshBoundary(wxCommandEvent& event);
     void OnShowMeshSelectedBlocks(wxCommandEvent& event);
 
     void OnSetViewFront(wxCommandEvent& event);
@@ -190,13 +198,26 @@ private:
     void OnShowTop(wxCommandEvent& event);
     void OnShowBottom(wxCommandEvent& event);
 
+    void OnShowLayer(int64_t layerNum);
+    void OnShowLayer0(wxCommandEvent& event);
+    void OnShowLayer1(wxCommandEvent& event);
+    void OnShowLayer2(wxCommandEvent& event);
+    void OnShowLayer3(wxCommandEvent& event);
+    void OnShowLayer4(wxCommandEvent& event);
+    void OnShowLayer5(wxCommandEvent& event);
+    void OnShowLayer6(wxCommandEvent& event);
+    void OnShowLayer7(wxCommandEvent& event);
+    void OnShowLayer8(wxCommandEvent& event);
+    void OnShowLayer9(wxCommandEvent& event);
+
     wxMenuBar* _menuBar = nullptr;
     wxMenu
         * _editMenu = nullptr,
         * _fileMenu = nullptr,
         * _viewMenu = nullptr,
         * _viewBoundarySubMenu = nullptr,
-        * _viewStandardViewsSubMenu = nullptr;
+        * _viewStandardViewsSubMenu = nullptr,
+        * _layersSubMenu = nullptr;
 
     ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;
