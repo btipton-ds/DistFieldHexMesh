@@ -76,6 +76,8 @@ enum DFHM_MENU_ID
     ID_VIEW_RIGHT,
     ID_VIEW_RESET,
 
+    ID_SHOW_ALL_SIDES,
+    ID_HIDE_ALL_SIDES,
     ID_SHOW_FRONT,
     ID_SHOW_BACK,
     ID_SHOW_TOP,
@@ -136,7 +138,7 @@ private:
     void createFileMenu();
     void createEditMenu();
     void createViewMenu();
-    void addViewSubMenu(wxMenu* pParentMenu);
+    void addStandardViewsSubMenu(wxMenu* pParentMenu);
     void addBoundarySubMenu(wxMenu* pParentMenu);
     void createHelpMenu();
 
@@ -178,6 +180,9 @@ private:
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
 
+    void OnShowAllSides(wxCommandEvent& event);
+    void OnHideAllSides(wxCommandEvent& event);
+
     void OnShowFront(wxCommandEvent& event);
     void OnShowBack(wxCommandEvent& event);
     void OnShowRight(wxCommandEvent& event);
@@ -186,8 +191,13 @@ private:
     void OnShowBottom(wxCommandEvent& event);
 
     wxMenuBar* _menuBar = nullptr;
-    wxMenu* _editMenu = nullptr,
-        * _fileMenu = nullptr;
+    wxMenu
+        * _editMenu = nullptr,
+        * _fileMenu = nullptr,
+        * _viewMenu = nullptr,
+        * _viewBoundarySubMenu = nullptr,
+        * _viewStandardViewsSubMenu = nullptr;
+
     ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;
     GraphicsCanvas* _pCanvas = nullptr;

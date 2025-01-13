@@ -181,51 +181,51 @@ void MainFrame::createEditMenu()
 
 void MainFrame::createViewMenu()
 {
-    wxMenu* menu= new wxMenu;
+    _viewMenu = new wxMenu;
 
-    addViewSubMenu(menu);
+    addStandardViewsSubMenu(_viewMenu);
 
-    menu->Append(ID_SHOW_MODEL_FACES, "Model - Show Faces", "Turns rendering of faces on/off", true);
+    _viewMenu->Append(ID_SHOW_MODEL_FACES, "Model - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelFaces, this, ID_SHOW_MODEL_FACES);
 
-    menu->Append(ID_SHOW_MODEL_EDGES, "Model - Show Edges", "Turns rendering of edges on/off", true);
+    _viewMenu->Append(ID_SHOW_MODEL_EDGES, "Model - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelEdges, this, ID_SHOW_MODEL_EDGES);
 
-    menu->Append(ID_SHOW_MODEL_SHARP_EDGES, "Model - Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
+    _viewMenu->Append(ID_SHOW_MODEL_SHARP_EDGES, "Model - Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelSharpEdges, this, ID_SHOW_MODEL_SHARP_EDGES);
 
-    menu->Append(ID_SHOW_SHARP_VERTS, "Model - Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
+    _viewMenu->Append(ID_SHOW_SHARP_VERTS, "Model - Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelSharpVerts, this, ID_SHOW_SHARP_VERTS);
 
-    menu->Append(ID_SHOW_TRI_NORMALS, "Model - Show Tri Normals", "Turns rendering of triangle normals on/off", true);
+    _viewMenu->Append(ID_SHOW_TRI_NORMALS, "Model - Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelTriNormals, this, ID_SHOW_TRI_NORMALS);
 
-    menu->Append(ID_SHOW_CURVATURE, "Model - Show Curvature", "Turns rendering of curvature on/off", true);
+    _viewMenu->Append(ID_SHOW_CURVATURE, "Model - Show Curvature", "Turns rendering of curvature on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelCurvature, this, ID_SHOW_CURVATURE);
 
-    menu->AppendSeparator();
+    _viewMenu->AppendSeparator();
 
-    addBoundarySubMenu(menu);
+    addBoundarySubMenu(_viewMenu);
 
-    menu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
+    _viewMenu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshFaces, this, ID_SHOW_MESH_FACES);
 
-    menu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
+    _viewMenu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshEdges, this, ID_SHOW_MESH_EDGES);
 
-    menu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
+    _viewMenu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
 
-    menu->Append(ID_SHOW_MESH_INTERSECTING, "Mesh - Show Intersecting", "Turns rendering of intersecting on/off", true);
+    _viewMenu->Append(ID_SHOW_MESH_INTERSECTING, "Mesh - Show Intersecting", "Turns rendering of intersecting on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshIntersecting, this, ID_SHOW_MESH_INTERSECTING);
 
-    menu->Append(ID_SHOW_MESH_BOUNDARY, "Mesh - Show Boundary", "Turns rendering of model boundary", true);
+    _viewMenu->Append(ID_SHOW_MESH_BOUNDARY, "Mesh - Show Boundary", "Turns rendering of model boundary", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshBoundary, this, ID_SHOW_MESH_BOUNDARY);
 
-    menu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
+    _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
 
-    _menuBar->Append(menu, "&View");
+    _menuBar->Append(_viewMenu, "&View");
 
     auto item = _menuBar->FindItem(ID_SHOW_MODEL_SHARP_EDGES);
     if (item)
@@ -260,59 +260,67 @@ void MainFrame::createViewMenu()
         item->Check(getCanvas()->showMeshWalls());
 }
 
-void MainFrame::addViewSubMenu(wxMenu* pParentMenu)
+void MainFrame::addStandardViewsSubMenu(wxMenu* pParentMenu)
 {
-    wxMenu* pMenu = new wxMenu;
+    _viewStandardViewsSubMenu = new wxMenu;
 
-    pMenu->Append(ID_VIEW_FRONT, "Front", "Set view to front", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_FRONT, "Front", "Set view to front", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewFront, this, ID_VIEW_FRONT);
 
-    pMenu->Append(ID_VIEW_BACK, "Back", "Set view to back", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_BACK, "Back", "Set view to back", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewBack, this, ID_VIEW_BACK);
 
-    pMenu->Append(ID_VIEW_RIGHT, "Right", "Set view to right", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_RIGHT, "Right", "Set view to right", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewRight, this, ID_VIEW_RIGHT);
 
-    pMenu->Append(ID_VIEW_LEFT, "Left", "Set view to left", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_LEFT, "Left", "Set view to left", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewLeft, this, ID_VIEW_LEFT);
 
-    pMenu->Append(ID_VIEW_TOP, "Top", "Set view to top", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_TOP, "Top", "Set view to top", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewTop, this, ID_VIEW_TOP);
 
-    pMenu->Append(ID_VIEW_BOTTOM, "Bottom", "Set view to bottom", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_BOTTOM, "Bottom", "Set view to bottom", false);
     Bind(wxEVT_MENU, &MainFrame::OnSetViewBottom, this, ID_VIEW_BOTTOM);
 
-    pMenu->AppendSeparator();
+    _viewStandardViewsSubMenu->AppendSeparator();
 
-    pMenu->Append(ID_VIEW_RESET, "Reset", "Reset view to default", false);
+    _viewStandardViewsSubMenu->Append(ID_VIEW_RESET, "Reset", "Reset view to default", false);
     Bind(wxEVT_MENU, &MainFrame::OnResetView, this, ID_VIEW_RESET);
 
-    pParentMenu->AppendSubMenu(pMenu, "Principal Views", "Principle views");
+    pParentMenu->AppendSubMenu(_viewStandardViewsSubMenu, "Principal Views", "Principle views");
 }
 
 void MainFrame::addBoundarySubMenu(wxMenu* pParentMenu)
 {
-    wxMenu* pMenu = new wxMenu;
+    _viewBoundarySubMenu = new wxMenu;
 
-    pMenu->Append(ID_SHOW_FRONT, "Front", "Show front boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_ALL_SIDES, "Show All", "Show all boundary faces", false);
+    Bind(wxEVT_MENU, &MainFrame::OnShowAllSides, this, ID_SHOW_ALL_SIDES);
+
+    _viewBoundarySubMenu->Append(ID_HIDE_ALL_SIDES, "Hide All", "Hide all boundary faces", false);
+    Bind(wxEVT_MENU, &MainFrame::OnHideAllSides, this, ID_HIDE_ALL_SIDES);
+
+    _viewBoundarySubMenu->AppendSeparator();
+
+    _viewBoundarySubMenu->Append(ID_SHOW_FRONT, "Front", "Show front boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowFront, this, ID_SHOW_FRONT);
 
-    pMenu->Append(ID_SHOW_BACK, "Back", "Show back boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_BACK, "Back", "Show back boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowBack, this, ID_SHOW_BACK);
 
-    pMenu->Append(ID_SHOW_RIGHT, "Right", "Show right boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_RIGHT, "Right", "Show right boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowRight, this, ID_SHOW_RIGHT);
 
-    pMenu->Append(ID_SHOW_LEFT, "Left", "Show left boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_LEFT, "Left", "Show left boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowLeft, this, ID_SHOW_LEFT);
 
-    pMenu->Append(ID_SHOW_TOP, "Top", "Show top boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_TOP, "Top", "Show top boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowTop, this, ID_SHOW_TOP);
 
-    pMenu->Append(ID_SHOW_BOTTOM, "Bottom", "Show bottom boundary faces", true);
+    _viewBoundarySubMenu->Append(ID_SHOW_BOTTOM, "Bottom", "Show bottom boundary faces", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowBottom, this, ID_SHOW_BOTTOM);
 
-    pParentMenu->AppendSubMenu(pMenu, "Show boundaries", "Boundary face drawing");
+    pParentMenu->AppendSubMenu(_viewBoundarySubMenu, "Show boundaries", "Boundary face drawing");
 }
 
 void MainFrame::createHelpMenu()
@@ -349,6 +357,23 @@ void MainFrame::OnInternalIdle()
     }
     if (_fileMenu) {
 
+    }
+    if (_viewMenu) {
+        _viewMenu->Check(ID_SHOW_MODEL_FACES, _pCanvas->showModelFaces());
+        _viewMenu->Check(ID_SHOW_MODEL_EDGES, _pCanvas->showModelEdges());
+        _viewMenu->Check(ID_SHOW_MODEL_SHARP_EDGES, _pCanvas->showModelSharpEdges());
+        _viewMenu->Check(ID_SHOW_SHARP_VERTS, _pCanvas->showSharpVerts());
+        _viewMenu->Check(ID_SHOW_TRI_NORMALS, _pCanvas->showTriNormals());
+        _viewMenu->Check(ID_SHOW_CURVATURE, _pCanvas->showCurvature());
+
+        if (_viewBoundarySubMenu) {
+            _viewBoundarySubMenu->Check(ID_SHOW_FRONT, _pCanvas->showFace(GraphicsCanvas::VIEW_FRONT));
+            _viewBoundarySubMenu->Check(ID_SHOW_BACK, _pCanvas->showFace(GraphicsCanvas::VIEW_BACK));
+            _viewBoundarySubMenu->Check(ID_SHOW_LEFT, _pCanvas->showFace(GraphicsCanvas::VIEW_LEFT));
+            _viewBoundarySubMenu->Check(ID_SHOW_RIGHT, _pCanvas->showFace(GraphicsCanvas::VIEW_RIGHT));
+            _viewBoundarySubMenu->Check(ID_SHOW_BOTTOM, _pCanvas->showFace(GraphicsCanvas::VIEW_BOTTOM));
+            _viewBoundarySubMenu->Check(ID_SHOW_TOP, _pCanvas->showFace(GraphicsCanvas::VIEW_TOP));
+        }
     }
 
     size_t numCells = 0, numFaces = 0, numBytes = 0;
@@ -620,6 +645,46 @@ void MainFrame::OnSetViewBottom(wxCommandEvent& event)
 void MainFrame::OnResetView(wxCommandEvent& event)
 {
     _pCanvas->resetView();
+}
+
+void MainFrame::OnShowAllSides(wxCommandEvent& event)
+{
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_BACK))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BACK);
+
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_FRONT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_FRONT);
+
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_LEFT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_LEFT);
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_RIGHT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_RIGHT);
+
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_BOTTOM))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BOTTOM);
+    if (!_pCanvas->showFace(GraphicsCanvas::VIEW_TOP))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_TOP);
+
+}
+
+void MainFrame::OnHideAllSides(wxCommandEvent& event)
+{
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_BACK))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BACK);
+
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_FRONT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_FRONT);
+
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_LEFT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_LEFT);
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_RIGHT))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_RIGHT);
+
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_BOTTOM))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_BOTTOM);
+    if (_pCanvas->showFace(GraphicsCanvas::VIEW_TOP))
+        _pCanvas->toggleShowFace(GraphicsCanvas::VIEW_TOP);
+
 }
 
 void MainFrame::OnShowFront(wxCommandEvent& event)
