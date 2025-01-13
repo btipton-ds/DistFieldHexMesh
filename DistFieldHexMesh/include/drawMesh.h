@@ -64,8 +64,6 @@ namespace DFHM {
 
 	protected:
 		static bool toggle(bool& val);
-		static DrawStates faceTypeToDrawState(FaceDrawType ft);
-		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
 
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key);
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key);

@@ -59,17 +59,17 @@ using VolumePtr = std::shared_ptr<Volume>;
 	struct HexMeshViewOptions {
 		bool
 			showEdges = true,
-			showFaces = false,
+			showFaces = true,
 			showBoundary = false,
 			showWalls = false,
 			showIntersecting = false,
 
-			showBack = false,
-			showFront = false,
-			showBottom = false,
-			showTop = false,
-			showLeft = false,
-			showRight = false,
+			showBack = true,
+			showFront = true,
+			showBottom = true,
+			showTop = true,
+			showLeft = true,
+			showRight = true,
 
 			showSelectedBlocks = false;
 
@@ -110,6 +110,8 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void postDrawFaces() override;
 
 	private:
+		static DrawStates faceTypeToDrawState(FaceDrawType ft);
+		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
 		void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
 		struct VertexPointAndNormal {
 			VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());

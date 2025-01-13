@@ -1255,7 +1255,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	switch (meshType) {
 		default:
 		case FT_ALL:
-			result = !isInner;
+			result = true;
 			break;
 		case FT_INNER:
 			result = isInner;
@@ -1377,10 +1377,6 @@ void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& p
 	const auto& polys = _modelData._polygons;
 	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face) {
 		if (includeFaceInDrawKey(meshType, planes, face)) {
-			if (meshType == FT_INTERSECTING) {
-				int dbgBreak = 1;
-			}
-
 			glPolys->addFace(*this, face);
 		}
 	});

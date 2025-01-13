@@ -566,7 +566,7 @@ void MainFrame::OnShowMeshIntersecting(wxCommandEvent& event)
 
     auto normItem = _menuBar->FindItem(ID_SHOW_MESH_INTERSECTING);
     if (normItem)
-        normItem->Check(getCanvas()->toggleShowMeshIntersecting());
+        normItem->Check(getCanvas()->showMeshIntersecting());
 }
 
 void MainFrame::OnShowMeshBoundary(wxCommandEvent& event)

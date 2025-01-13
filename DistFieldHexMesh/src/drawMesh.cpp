@@ -32,47 +32,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-DrawStates DrawMesh::faceTypeToDrawState(FaceDrawType ft)
-{
-    switch (ft) {
-    case FT_WALL:
-        return DS_MESH_WALL;
-    case FT_INNER:
-        return DS_MESH_INNER;
-    case FT_INTERSECTING:
-        return DS_MESH_INTERSECTING;
-    case FT_BOTTOM:
-        return DS_MESH_BOTTOM;
-    case FT_TOP:
-        return DS_MESH_TOP;
-    case FT_LEFT:
-        return DS_MESH_LEFT;
-    case FT_RIGHT:
-        return DS_MESH_RIGHT;
-    case FT_BACK:
-        return DS_MESH_BACK;
-    case FT_FRONT:
-        return DS_MESH_FRONT;
-    default:
-    case FT_ALL:
-        return DS_MESH_ALL;
-    }
-
-}
-
-bool DrawMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, vector<OGL::IndicesPtr>& tessellations)
-{
-    if (enabled) {
-        DFHM::DrawStates drawState = faceTypeToDrawState(ft);
-
-        if (ft < tessellations.size() && tessellations[ft] && !tessellations[ft]->m_elementIndices.empty()) {
-            VBO.includeElementIndices(drawState, tessellations[ft]);
-            return true;
-        }
-    }
-
-    return false;
-}
 
 DrawMesh::DrawMesh(GraphicsCanvas* pCanvas)
 	: _pCanvas(pCanvas)
