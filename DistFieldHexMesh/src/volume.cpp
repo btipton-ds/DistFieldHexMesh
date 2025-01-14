@@ -477,7 +477,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 	const auto& dims = volDim();
 
 #if 1
-	runThreadPool_IJ(params, [this](const BuildCFDParams& params, const Index3D& dims, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJ(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -490,7 +490,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 			divs[2] = params.zMinDivs;
 			grading[2] = 1 / params.zMinGrading;
 		} else {
-			assert(idx[2] == dims[2] - 1);
+			assert(idx[2] == _volDim[2] - 1);
 			divs[2] = params.zMaxDivs;
 			grading[2] = params.zMaxGrading;
 		}
@@ -502,7 +502,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 			divs[0] = params.xMinDivs;
 			grading[0] = 1 / params.xMinGrading;
 		}
-		else if (idx[0] == dims[0] - 1) {
+		else if (idx[0] == _volDim[0] - 1) {
 			divs[0] = params.xMaxDivs;
 			grading[0] = params.xMaxGrading;
 		}
@@ -513,7 +513,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 				grading[1] = 1 / params.yMinGrading;
 			}
 		}
-		else if (idx[1] == dims[1] - 1) {
+		else if (idx[1] == _volDim[1] - 1) {
 			divs[1] = params.yMaxDivs;
 			grading[1] = params.yMaxGrading;
 		}
@@ -2125,7 +2125,6 @@ template<class L>
 void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
-	const Index3D& dims = volDim();
 	Index3D phaseIdx, idx;
 
 	if (_blocks.empty())
@@ -2146,7 +2145,7 @@ void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bo
 						continue;
 					idx[2] = 0;
 				} else {
-					idx[2] = dims[2] - 1;
+					idx[2] = _volDim[2] - 1;
 				}
 
 				for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
@@ -2160,16 +2159,16 @@ void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bo
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &dims, &blocksToProcess](size_t threadNum, size_t idx) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
 						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-						fLambda(params, dims, threadNum, pBlk);
+						fLambda(params, threadNum, pBlk);
 					} else {
-						fLambda(params, dims, threadNum, nullptr);
+						fLambda(params, threadNum, nullptr);
 					}
 				}, multiCore);
 			}

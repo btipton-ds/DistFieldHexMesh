@@ -652,7 +652,7 @@ void AppData::doCreateBaseVolume()
     CBoundingBox3Dd volBox;
     makeModelCubePoints(cubePts, volBox);
 
-    _pVolume->buildModelBlocks(_params, cubePts, volBox, false);
+    _pVolume->buildModelBlocks(_params, cubePts, volBox, RUN_MULTI_THREAD);
 
 //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
