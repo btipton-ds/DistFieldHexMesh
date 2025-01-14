@@ -72,7 +72,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 			layers[10];
 
 
-			float alpha = 0.3f;
+			float alpha = 0.5f;
 	};
 
 
