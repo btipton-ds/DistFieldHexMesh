@@ -150,8 +150,8 @@ private:
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
 	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
-	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8]);
-	void gradeSurroundingBlocks(const BuildCFDParams& params);
+	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore);
+	void gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore);
 	void createAdHocBlockSearchTree();
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
@@ -192,7 +192,10 @@ private:
 	void runThreadPool(const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool333(const L& fLambda, bool multiCore);
+	void runThreadPool_IJK(const L& fLambda, bool multiCore);
+
+	template<class L>
+	void runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bool multiCore);
 
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 

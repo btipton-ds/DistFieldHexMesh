@@ -394,7 +394,7 @@ void Volume::addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup
 void Volume::clear()
 {
 	// Clear contents to remove cross block pointers
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (pBlk)
 			pBlk->clear();
 		return true;
@@ -430,13 +430,13 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 
 /*
 	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
 */
 
-	buildSurroundingBlocks(params, pts);
+	buildSurroundingBlocks(params, pts, multiCore);
 
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _modelDim[0]; idx[0]++) {
@@ -448,10 +448,10 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 		}
 	}
 
-	gradeSurroundingBlocks(params);
+	gradeSurroundingBlocks(params, multiCore);
 }
 
-void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8])
+void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore)
 {
 	if (!params.symXAxis)
 		insertBlocks(params, CFT_BACK);
@@ -471,57 +471,57 @@ void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d
 
 }
 
-void Volume::gradeSurroundingBlocks(const BuildCFDParams& params)
+void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore)
 {
 	Index3D idx;
 	const auto& dims = volDim();
 
 #if 1
-	for (idx[0] = 0; idx[0] < dims[0]; idx[0]++) {
-		for (idx[1] = 0; idx[1] < dims[1]; idx[1]++) {
-			for (int j = 0; j < 2; j++) {
-				Index3D divs(1, 1, 1);
-				Vector3d grading(1, 1, 1);
+	runThreadPool_IJ(params, [this](const BuildCFDParams& params, const Index3D& dims, size_t threadNum, const BlockPtr& pBlk)->bool {
+		if (!pBlk)
+			return true;
 
-				if (j == 0) {
-					if (params.symZAxis)
-						continue;
-					idx[2] = 0;
-					divs[2] = params.zMinDivs;
-					grading[2] = 1 / params.zMinGrading;
-				} else {
-					idx[2] = dims[2] - 1;
-					divs[2] = params.zMaxDivs;
-					grading[2] = params.zMaxGrading;
-				}
+		Index3D idx = pBlk->getBlockIdx();
+		Index3D divs(1, 1, 1);
+		Vector3d grading(1, 1, 1);
 
-				if (idx[0] == 0) {
-					if (params.symXAxis)
-						continue;
+		if (idx[2] == 0) {
+			assert(idx[2] == 0);
+			divs[2] = params.zMinDivs;
+			grading[2] = 1 / params.zMinGrading;
+		} else {
+			assert(idx[2] == dims[2] - 1);
+			divs[2] = params.zMaxDivs;
+			grading[2] = params.zMaxGrading;
+		}
 
-					divs[0] = params.xMinDivs;
-					grading[0] = 1 / params.xMinGrading;
-				} else if (idx[0] == dims[0] - 1) {
-					divs[0] = params.xMaxDivs;
-					grading[0] = params.xMaxGrading;
-				}
+		if (idx[0] == 0) {
+			if (params.symXAxis)
+				return true;
 
-				if (idx[1] == 0) {
-					if (!params.symYAxis) {
-						divs[1] = params.yMinDivs;
-						grading[1] = 1 / params.yMinGrading;
-					}
-				} else if (idx[1] == dims[1] - 1) {
-					divs[1] = params.yMaxDivs;
-					grading[1] = params.yMaxGrading;
-				}
+			divs[0] = params.xMinDivs;
+			grading[0] = 1 / params.xMinGrading;
+		}
+		else if (idx[0] == dims[0] - 1) {
+			divs[0] = params.xMaxDivs;
+			grading[0] = params.xMaxGrading;
+		}
 
-				auto pBlk = getBlockPtr(idx);
-				GradingOp gr(pBlk, params, divs, grading);
-				gr.createGradedCells();
+		if (idx[1] == 0) {
+			if (!params.symYAxis) {
+				divs[1] = params.yMinDivs;
+				grading[1] = 1 / params.yMinGrading;
 			}
 		}
-	}
+		else if (idx[1] == dims[1] - 1) {
+			divs[1] = params.yMaxDivs;
+			grading[1] = params.yMaxGrading;
+		}
+
+		GradingOp gr(pBlk.get(), params, divs, grading);
+		gr.createGradedCells();
+		return true;
+	}, multiCore);
 #endif
 
 #if 1
@@ -691,7 +691,7 @@ void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpa
 	}, multiCore);
 
 	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool333([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->createBlockCells(TS_REAL);
 		return true;
 	}, multiCore);
@@ -717,7 +717,7 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 	if (params.numSimpleDivs > 0) {
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
-			runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
 					cell.setNeedsDivideAtCentroid();
 				});
@@ -744,7 +744,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 				int count = 0;
 				while (didSplit && count < 3) {
 					didSplit = false;
-					runThreadPool333([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+					runThreadPool_IJK([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 						if (pBlk->doPresplits(params))
 							didSplit = true;
 						return true;
@@ -754,7 +754,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 			}
 
 			bool changed = false;
-			runThreadPool333([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
 					if (cell.setNeedToSplitConditional(passNum, params))
 						changed = true;
@@ -777,7 +777,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 {
 	bool changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.containsSharps()) {
 				if (cell.setNeedsCleanFaces())
@@ -788,7 +788,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 	}, multiCore);
 
 	changed = false;
-	runThreadPool333([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				PolyhedronSplitter ps(pBlk.get(), cellId);
@@ -809,17 +809,17 @@ void Volume::finishSplits(bool multiCore)
 	int i = 0;
 	while (!done) {
 		done = true;
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->splitRequiredPolyhedra();
 			return true;
 		}, multiCore);
 
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack();
 			return true;
 		}, multiCore);
 
-		runThreadPool333([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->hasPendingSplits()) {
 				done = false;
 				return false; // We need to split 1, so we need to split all. Exit early
@@ -837,7 +837,7 @@ void Volume::finishSplits(bool multiCore)
 
 void Volume::imprintTJointVertices(bool multiCore)
 {
-	runThreadPool333([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->imprintTJointVertices();
 		return true;
 	}, multiCore);
@@ -873,7 +873,7 @@ void Volume::setLayerNums()
 
 	for (int i = 0; i < 10; i++) {
 		bool changed = false;
-		runThreadPool333([&changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([&changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->incrementLayerNums())
 				changed = true;
 			return true;
@@ -2072,7 +2072,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 }
 
 template<class L>
-void Volume::runThreadPool333(const L& fLambda, bool multiCore)
+void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -2119,4 +2119,61 @@ void Volume::runThreadPool333(const L& fLambda, bool multiCore)
 			}
 		}
 	}
+}
+
+template<class L>
+void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bool multiCore)
+{
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const Index3D& dims = volDim();
+	Index3D phaseIdx, idx;
+
+	if (_blocks.empty())
+		return;
+
+	// Pass one, process all cells. That can leave faces in an interim state.
+	// If the interim cell is also modified, it should be taken care of on pass 1
+	// Adjacents cells with face splits or vertex insertions may be left behind
+	vector<size_t> blocksToProcess;
+	for (phaseIdx[1] = 0; phaseIdx[1] < stride; phaseIdx[1]++) {
+		for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+			// Collect the indices for all blocks in this phase
+			blocksToProcess.clear();
+
+			for (size_t k = 0; k < 2; k++) {
+				if (k == 0) {
+					if (params.symZAxis)
+						continue;
+					idx[2] = 0;
+				} else {
+					idx[2] = dims[2] - 1;
+				}
+
+				for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
+					for (idx[0] = phaseIdx[0]; idx[0] < _volDim[0]; idx[0] += stride) {
+						size_t linearIdx = calLinearBlockIndex(idx);
+						blocksToProcess.push_back(linearIdx);
+					}
+				}
+			}
+
+			//				sort(blocksToProcess.begin(), blocksToProcess.end());
+							// Process those blocks in undetermined order
+			if (!blocksToProcess.empty()) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &dims, &blocksToProcess](size_t threadNum, size_t idx) {
+					size_t linearIdx = blocksToProcess[idx];
+					auto& pBlk = _blocks[linearIdx];
+					if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS
+						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
+						fLambda(params, dims, threadNum, pBlk);
+					} else {
+						fLambda(params, dims, threadNum, nullptr);
+					}
+				}, multiCore);
+			}
+		}
+	}
+	
 }
