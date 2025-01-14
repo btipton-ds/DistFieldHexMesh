@@ -561,24 +561,72 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 #endif
 
 #if 1
-	for (idx[0] = 1; idx[0] < _volDim[0] - 1; idx[0]++) {
-		for (idx[2] = 1; idx[2] < _volDim[2] - 1; idx[2]++) {
-			for (int j = 0; j < 2; j++) {
+#if 1
+	runThreadPool_IK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+		if (!pBlk)
+			return true;
+
+		Index3D idx = pBlk->getBlockIdx();
+		Index3D divs(1, 1, 1);
+		Vector3d grading(1, 1, 1);
+
+		if (idx[1] == 0) {
+			assert(idx[1] == 0);
+			if (!params.symYAxis) {
+				divs[1] = params.yMinDivs;
+				grading[1] = 1 / params.yMinGrading;
+			}
+		}
+		else {
+			assert(idx[1] == _volDim[1] - 1);
+			divs[1] = params.yMaxDivs;
+			grading[1] = params.yMaxGrading;
+		}
+
+		if (idx[1] == 0) {
+			if (!params.symYAxis) {
+				divs[1] = params.yMinDivs;
+				grading[1] = 1 / params.yMinGrading;
+			}
+		}
+		else if (idx[1] == _volDim[1] - 1) {
+			divs[1] = params.yMaxDivs;
+			grading[1] = params.yMaxGrading;
+		}
+
+		GradingOp gr(pBlk.get(), params, divs, grading);
+		gr.createGradedCells();	
+
+		return true;
+	}, multiCore);
+
+#else
+	for (int j = 0; j < 2; j++) {
+		if (j == 0) {
+			if (params.symYAxis)
+				continue;
+
+			idx[1] = 0;
+			if (!params.symYAxis) {
+			}
+		} else {
+			idx[1] = _volDim[1] - 1;
+		}
+
+		for (idx[0] = 1; idx[0] < _volDim[0] - 1; idx[0]++) {
+			for (idx[2] = 1; idx[2] < _volDim[2] - 1; idx[2]++) {
 				Index3D divs(1, 1, 1);
 				Vector3d grading(1, 1, 1);
 
 				if (j == 0) {
-					if (params.symYAxis)
-						continue;
-
-					idx[1] = 0;
+					assert(idx[1] == 0);
 					if (!params.symYAxis) {
 						divs[1] = params.yMinDivs;
 						grading[1] = 1 / params.yMinGrading;
 					}
 				}
 				else {
-					idx[1] = _volDim[1] - 1;
+					assert(idx[1] == _volDim[1] - 1);
 					divs[1] = params.yMaxDivs;
 					grading[1] = params.yMaxGrading;
 				}
@@ -599,6 +647,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 			}
 		}
 	}
+#endif
 #endif
 }
 
@@ -2204,6 +2253,63 @@ void Volume::runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bo
 
 				for (idx[2] = phaseIdx[2] + 1; idx[2] < _volDim[2] - 1; idx[2] += stride) {
 					for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
+						size_t linearIdx = calLinearBlockIndex(idx);
+						blocksToProcess.push_back(linearIdx);
+					}
+				}
+			}
+
+			//				sort(blocksToProcess.begin(), blocksToProcess.end());
+							// Process those blocks in undetermined order
+			if (!blocksToProcess.empty()) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &blocksToProcess](size_t threadNum, size_t idx) {
+					size_t linearIdx = blocksToProcess[idx];
+					auto& pBlk = _blocks[linearIdx];
+					if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS
+						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
+						fLambda(params, threadNum, pBlk);
+					}
+					else {
+						fLambda(params, threadNum, nullptr);
+					}
+					}, multiCore);
+			}
+		}
+	}
+}
+
+template<class L>
+void Volume::runThreadPool_IK(const BuildCFDParams& params, const L& fLambda, bool multiCore)
+{
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	Index3D phaseIdx, idx;
+
+	if (_blocks.empty())
+		return;
+
+	// Pass one, process all cells. That can leave faces in an interim state.
+	// If the interim cell is also modified, it should be taken care of on pass 1
+	// Adjacents cells with face splits or vertex insertions may be left behind
+	vector<size_t> blocksToProcess;
+	for (phaseIdx[2] = 0; phaseIdx[2] < stride; phaseIdx[2]++) {
+		for (phaseIdx[0] = 0; phaseIdx[0] < stride; phaseIdx[0]++) {
+			// Collect the indices for all blocks in this phase
+			blocksToProcess.clear();
+
+			for (size_t j = 0; j < 2; j++) {
+				if (j == 0) {
+					if (params.symYAxis)
+						continue;
+					idx[1] = 0;
+				}
+				else {
+					idx[1] = _volDim[1] - 1;
+				}
+
+				for (idx[2] = phaseIdx[2] + 1; idx[2] < _volDim[2] - 1; idx[2] += stride) {
+					for (idx[0] = phaseIdx[0] + 1; idx[0] < _volDim[0] - 1; idx[0] += stride) {
 						size_t linearIdx = calLinearBlockIndex(idx);
 						blocksToProcess.push_back(linearIdx);
 					}

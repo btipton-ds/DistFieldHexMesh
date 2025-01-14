@@ -200,6 +200,9 @@ private:
 	template<class L>
 	void runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bool multiCore);
 
+	template<class L>
+	void runThreadPool_IK(const BuildCFDParams& params, const L& fLambda, bool multiCore);
+
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 
 	AppDataPtr _pAppData;
