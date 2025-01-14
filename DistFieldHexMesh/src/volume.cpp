@@ -1497,10 +1497,6 @@ bool Volume::read(istream& in)
 			pBlock->read(in);
 		}
 
-		runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			pBlk->initTriIndices(true);
-			return true;
-		}, RUN_MULTI_THREAD);
 	}
 	return true;
 }

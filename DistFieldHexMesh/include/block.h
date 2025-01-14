@@ -152,7 +152,6 @@ public:
 	VertexLockType getVertexLockType(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBBox() const;
-	void initTriIndices(bool inRead);
 
 	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
@@ -322,7 +321,6 @@ private:
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	LocalData* _pLocalData = nullptr;
 
-	std::vector<size_t> _edgeIndices, _triIndices;
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
 #if USE_MULTI_THREAD_CONTAINERS

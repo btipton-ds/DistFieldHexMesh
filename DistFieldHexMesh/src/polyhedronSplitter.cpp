@@ -260,8 +260,6 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 			}
 #endif // _DEBUG
 
-			newCell.setTriIndices(realCell.getTriIndices());
-			newCell.setEdgeIndices(realCell.getEdgeIndices());
 		});
 	}
 
@@ -344,12 +342,9 @@ Vector3d PolyhedronSplitter::choosePrincipalAxis(const Vector3d& v, const Vector
 bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds)
 {
 	MTC::set<Index3DId> faceIds;
-	std::vector<size_t> edgeIndices, triIndices;
 	
-	cellFunc(TS_REAL, _polyhedronId, [&faceIds, &edgeIndices, &triIndices](const Polyhedron& cell) {
+	cellFunc(TS_REAL, _polyhedronId, [&faceIds](const Polyhedron& cell) {
 		faceIds = cell.getFaceIds();
-		edgeIndices = cell.getEdgeIndices();
-		triIndices = cell.getTriIndices();
 	});
 
 	for (const auto& faceId : faceIds) {
@@ -447,12 +442,6 @@ bool PolyhedronSplitter::splitWithPlane(const Planed& plane, MTC::set<Index3DId>
 
 	cellId = getBlockPtr()->addCell(negFaceIds);
 	newCellIds.insert(cellId);
-	for (const auto& cellId : newCellIds) {
-		cellFunc(TS_REAL, cellId, [&edgeIndices, &triIndices](Polyhedron& cell) {
-			cell.setEdgeIndices(edgeIndices);
-			cell.setTriIndices(triIndices);
-		});
-	}
 
 	return true;
 }

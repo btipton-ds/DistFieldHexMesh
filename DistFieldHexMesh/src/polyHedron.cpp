@@ -493,18 +493,42 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::intersectsModel() const
 {
-	if (_intersectsModel == IS_UNKNOWN && !_triIndices.empty()) {
+	if (_intersectsModel == IS_UNKNOWN) {
 		CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
-		const auto& pRepo = getBlockPtr()->getMeshRepo();
-		const auto& tris = pRepo->get<Vector3i>();
-		const auto& pts = pRepo->get<TriMesh::CVertex>();
 
-		for (size_t triIdx : _triIndices) {
-			const auto& tri = tris[triIdx];
-			for (int i = 0; i < 3; i++)
-				modelBBox.merge(pts[tri[i]]._pt);
+		auto& meshData = *getBlockPtr()->getModelMeshData();
+		for (auto& pair : meshData) {
+			auto& pMesh = pair.second->getMesh();
+			vector<size_t> triIndices;
+			if (pMesh->findTris(bbox, triIndices)) {
+				for (size_t triIdx : triIndices) {
+					const auto& tri = pMesh->getTri(triIdx);
+					for (int i = 0; i < 3; i++) {
+						const auto& pt = pMesh->getVert(tri[i])._pt;
+						if (contains(pt)) {
+							_intersectsModel = IS_TRUE;
+							return true;
+						}
+					}
+				}
+			}
 		}
-		_intersectsModel = bbox.intersectsOrContains(modelBBox, Tolerance::sameDistTol()) ? IS_TRUE : IS_FALSE;
+
+		for (const auto& faceId : _faceIds) {
+			faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
+				if (face.intersectsModel()) {
+					_intersectsModel = IS_TRUE;
+				}
+			});
+
+			if (_intersectsModel == IS_TRUE)
+				return true;
+		}
+
+		_intersectsModel = IS_FALSE;
+	}
+
+
 #if 0
 		const auto& modelData = *getBlockPtr()->getModelMeshData();
 		for (const auto& pair : modelData) {
@@ -542,13 +566,14 @@ bool Polyhedron::intersectsModel() const
 				}
 			}
 		}
+
 #endif
-	}
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
 bool Polyhedron::intersectsModelPrecise() const
 {
+#if 0
 	assert(isConvex());
 
 	CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
@@ -584,7 +609,7 @@ bool Polyhedron::intersectsModelPrecise() const
 		if (result)
 			return true;
 	}
-
+#endif
 	return false;
 #if 0
 	auto pMesh = getBlockPtr()->getModelMesh();
@@ -657,7 +682,7 @@ bool Polyhedron::containsPointPrecise(const Vector3d& pt) const
 
 bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 {
-	if (_sharpEdgesIntersectModel == IS_FALSE || _edgeIndices.empty())
+	if (_sharpEdgesIntersectModel == IS_FALSE)
 		return false;
 #if 0
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
@@ -1057,51 +1082,6 @@ bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 	}
 
 	return false;
-}
-
-void Polyhedron::setEdgeIndices(const std::vector<size_t>& indices)
-{
-	_edgeIndices.clear();
-	if (!indices.empty()) {
-		auto bbox = getBoundingBox();
-
-		const auto& pRepo = getBlockPtr()->getMeshRepo();
-		const auto& edges = pRepo->get<TriMesh::CEdge>();
-		const auto& pts = pRepo->get<TriMesh::CVertex>();
-
-		for (size_t edgeIdx : indices) {
-			const auto& edge = edges[edgeIdx];
-			const auto& pt0 = pts[edge._vertIndex[0]]._pt;
-			const auto& pt1 = pts[edge._vertIndex[1]]._pt;
-			LineSegmentd seg(pt0, pt1);
-			if (bbox.intersectsOrContains(seg, Tolerance::sameDistTol(), -1)) {
-				_edgeIndices.push_back(edgeIdx);
-			}
-		}
-	}
-}
-
-void Polyhedron::setTriIndices(const std::vector<size_t>& indices)
-{
-	_triIndices.clear();
-	if (!indices.empty()) {
-		auto bbox = getBoundingBox();
-
-		const auto& pRepo = getBlockPtr()->getMeshRepo();
-		const auto& tris = pRepo->get<Vector3i>();
-		const auto& pts = pRepo->get<TriMesh::CVertex>();
-
-		for (size_t triIdx : indices) {
-			const auto& tri = tris[triIdx];
-			const auto& pt0 = pts[tri[0]]._pt;
-			const auto& pt1 = pts[tri[1]]._pt;
-			const auto& pt2 = pts[tri[2]]._pt;
-
-			if (bbox.intersectsOrContains(pt0, pt1, pt2, Tolerance::sameDistTol())) {
-				_triIndices.push_back(triIdx);
-			}
-		}
-	}
 }
 
 bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const

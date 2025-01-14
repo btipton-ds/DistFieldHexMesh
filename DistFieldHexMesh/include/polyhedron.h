@@ -99,8 +99,6 @@ public:
 	bool setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params);
 	bool needToDivideDueToSplitFaces(const BuildCFDParams& params);
 	bool containsPointPrecise(const Vector3d& pt) const;
-	void setEdgeIndices(const std::vector<size_t>& indices);
-	void setTriIndices(const std::vector<size_t>& indices);
 	void orientFaces();
 
 	void imprintTVertices(Block* pDstBlock);
@@ -118,8 +116,6 @@ public:
 
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
-	const std::vector<size_t>& getTriIndices() const;
-	const std::vector<size_t>& getEdgeIndices() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const;
 
@@ -159,7 +155,6 @@ private:
 	int32_t _layerNum = -1;
 
 	bool _needsSplitAtCentroid = false;
-	std::vector<size_t> _triIndices, _edgeIndices;
 
 	mutable bool _needsConditionalSplitTest = true;
 	mutable bool _isOriented = false;
@@ -206,16 +201,6 @@ inline void Polyhedron::clearLayerNum()
 inline void Polyhedron::setSplitLevel(size_t val)
 {
 	_splitLevel = val;
-}
-
-inline const std::vector<size_t>& Polyhedron::getTriIndices() const
-{
-	return _triIndices;
-}
-
-inline const std::vector<size_t>& Polyhedron::getEdgeIndices() const
-{
-	return _edgeIndices;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

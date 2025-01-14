@@ -678,33 +678,43 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
-size_t Polygon::getCellTris(std::vector<size_t>& indices) const
-{
-	set<size_t> triSet;
-	for (const auto& cellId : _cellIds) {
-		cellFunc(TS_REAL, cellId, [&indices, &triSet](const Polyhedron& cell) {
-			const auto& ct = cell.getTriIndices();
-			for (size_t triIdx : ct) {
-				if (!triSet.contains(triIdx)) {
-					triSet.insert(triIdx);
-					indices.push_back(triIdx);
-				}
-			}
-		});
-	}
-	return indices.size();
-}
-
 bool Polygon::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
 
-		std::vector<size_t> cellTris;
+		for (auto& cellId : _cellIds) {
+			cellFunc(TS_REAL, cellId, [this](const Polyhedron& cell) {
+				auto& meshData = *getBlockPtr()->getModelMeshData();
+				for (auto& pair : meshData) {
+					auto& pMesh = pair.second->getMesh();
+					vector<size_t> triIndices;
+					if (pMesh->findTris(cell.getBoundingBox(), triIndices)) {
+						for (const auto& i : triIndices) {
+							const auto& triIdx = pMesh->getTri(i);
+							Vector3d modelTri[] = {
+								pMesh->getVert(triIdx[0])._pt,
+								pMesh->getVert(triIdx[1])._pt,
+								pMesh->getVert(triIdx[2])._pt
+							};
+							bool result = false;
+							getTriPoints([this, modelTri](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2) {
+								Vector3d meshTri[] = { pt0, pt1, pt2 };
+								if (collisionTriTri(modelTri, meshTri, Tolerance::sameDistTol())) {
+									_cachedIntersectsModel = IS_TRUE;
+								}
+							},
+								[](const Vector3d& pt0, const Vector3d& pt1) {
+							});
 
-		if (getCellTris(cellTris) > 0) {
-			const auto& pRepo = getBlockPtr()->getMeshRepo();
-
+							if (_cachedIntersectsModel == IS_TRUE)
+								break;
+						}
+					}
+				}
+			});
+		}
+#if 0
 			const auto& meshData = *getBlockPtr()->getModelMeshData();
 			for (const auto& pair : meshData) {
 				auto pMesh = pair.second->getMesh();;
@@ -739,6 +749,7 @@ bool Polygon::intersectsModel() const
 				}
 			}
 		}
+#endif
 	}
 
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells

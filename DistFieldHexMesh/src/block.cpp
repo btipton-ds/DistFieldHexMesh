@@ -102,10 +102,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 	CBoundingBox3Dd treeBBox(_boundBox);
 	treeBBox.grow(Tolerance::sameDistTol());
 		
-	// This is close to working, but the full search is finding solutions the partial search is not
-	if (!forReading)
-		initTriIndices(false);
-
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
 	_pLocalData = new LocalData();
@@ -130,8 +126,6 @@ void Block::clear()
 	_baseIdxPolygons = 0;
 	_baseIdxPolyhedra = 0;
 
-	_edgeIndices.clear();
-	_triIndices.clear();
 	_vertices.clear();
 	_modelData.clear();
 	_refData.clear();
@@ -634,33 +628,6 @@ CBoundingBox3Dd Block::getBBox() const
 	return _corners.getBBox();
 }
 
-void Block::initTriIndices(bool inRead)
-{
-	if (inRead && !_triIndices.empty())
-		return;
-
-	const auto intersectionType = CMesh::BoxTestType::Intersects;
-	const auto& meshData = *getModelMeshData();
-	for (const auto& pair : meshData) {
-		const auto& pMesh = pair.second->getMesh();
-		if (_pRepo && (_pRepo != pMesh->getRepo())) {
-			assert(!"Can't use multiple CMeshRepos");
-		} else {
-			_pRepo = pMesh->getRepo();
-		}
-
-		vector<size_t> indices;
-		if (pMesh && pMesh->findTris(_boundBox, indices, intersectionType)) {
-			_triIndices.insert(_triIndices.end(), indices.begin(), indices.end());
-		}
-
-		indices.clear();
-		if (pMesh && pMesh->findEdges(_boundBox, indices, intersectionType)) {
-			_edgeIndices.insert(_edgeIndices.end(), indices.begin(), indices.end());
-		}
-	}
-}
-
 Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 {
 #if 0 && defined(_DEBUG)
@@ -767,11 +734,6 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
 	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
-	cellFunc(TS_REAL, polyhedronId, [this](Polyhedron& cell) {
-		assert(cell.isClosed());
-		cell.setTriIndices(_triIndices);
-		cell.setEdgeIndices(_edgeIndices);
-	});
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -820,11 +782,6 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
-	cellFunc(TS_REAL,polyhedronId, [this](Polyhedron& cell) {
-		assert(cell.isClosed());
-		cell.setTriIndices(_triIndices);
-		cell.setEdgeIndices(_edgeIndices);
-	});
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -926,7 +883,7 @@ Vector3d Block::getVertexPoint(const Index3DId& vertId) const
 
 bool Block::write(ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
 
 	_blockIdx.write(out);
@@ -946,8 +903,6 @@ bool Block::write(ostream& out) const
 	_refData._polygons.write(out);
 	_refData._polyhedra.write(out);
 
-	IoUtil::write(out, _edgeIndices);
-	IoUtil::write(out, _triIndices);
 	return true;
 }
 
@@ -976,8 +931,11 @@ bool Block::read(istream& in)
 	_refData._polygons.read(in);
 	_refData._polyhedra.read(in);
 
-	IoUtil::read(in, _edgeIndices);
-	IoUtil::read(in, _triIndices);
+	if (version == 0) {
+		vector<size_t> deprecatedIndices;
+		IoUtil::read(in, deprecatedIndices);
+		IoUtil::read(in, deprecatedIndices);
+	}
 
 	return true;
 }
@@ -1331,44 +1289,6 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	return result;
 }
 
-void Block::GlHexFaces::addFace(const Block& blk, const Polygon& face)
-{
-	const auto& vertIds = face.getVertexIds();
-	vector<Vector3d> pts;
-	pts.reserve(vertIds.size());
-	for (const auto& vertId : vertIds) {
-		pts.push_back(blk.getVertexPoint(vertId));
-	}
-
-	if (pts.size() > 4) {
-		Vector3d ctr = face.calCentroid();
-		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-			size_t idx1 = (idx0 + 1) % pts.size();
-			addTriangle(ctr, pts[idx0], pts[idx1]);
-		}
-	} else {
-		for (size_t i = 1; i < pts.size() - 1; i++) {
-			size_t idx0 = 0;
-			size_t idx1 = i;
-			size_t idx2 = i + 1;
-			addTriangle(pts[idx0], pts[idx1], pts[idx2]);
-		}
-	}
-
-	// TBD compress the edges in the block
-	for (size_t i = 0; i < pts.size(); i++) {
-		size_t j = (i + 1) % pts.size();
-		const auto& pt0 = pts[i];
-		const auto& pt1 = pts[j];
-
-		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back(pt0[i]);
-
-		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back(pt1[i]);
-	}
-}
-
 void Block::GlHexFaces::addTriangle(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
 {
 	Vector3d v0 = pt0 - pt1;
@@ -1389,6 +1309,41 @@ void Block::GlHexFaces::addTriangle(const Vector3d& pt0, const Vector3d& pt1, co
 		_glTriPoints.push_back(pt2[i]);
 		_glTriNormals.push_back(n[i]);
 	}
+
+}
+
+void Block::GlHexFaces::addFace(const Block& blk, const Polygon& face)
+{
+	auto triFunc = [this](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2) {
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+		Vector3d n = v0.cross(v1).normalized();
+
+		for (int i = 0; i < 3; i++) {
+			_glTriPoints.push_back(pt0[i]);
+			_glTriNormals.push_back(n[i]);
+		}
+
+		for (int i = 0; i < 3; i++) {
+			_glTriPoints.push_back(pt1[i]);
+			_glTriNormals.push_back(n[i]);
+		}
+
+		for (int i = 0; i < 3; i++) {
+			_glTriPoints.push_back(pt2[i]);
+			_glTriNormals.push_back(n[i]);
+		}
+	};
+
+	auto edgeFunc = [this](const Vector3d& pt0, const Vector3d& pt1) {
+		for (int i = 0; i < 3; i++)
+			_glEdgePoints.push_back(pt0[i]);
+
+		for (int i = 0; i < 3; i++)
+			_glEdgePoints.push_back(pt1[i]);
+	};
+
+	face.getTriPoints(triFunc, edgeFunc);
 
 }
 

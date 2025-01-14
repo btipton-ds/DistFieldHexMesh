@@ -135,6 +135,8 @@ public:
 	bool contains(const Edge& edge, bool& isUsed) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
+	template<class TRI_FUNC, class EDGE_FUNC>
+	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
 
 	bool verifyUnique() const;
 	bool verifyTopology() const;
@@ -210,7 +212,6 @@ private:
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	TopolgyState getState() const;
 	void clearCache() const;
-	size_t getCellTris(std::vector<size_t>& indices) const;
 
 	size_t _createdDuringSplitNumber = 0;
 	MTC::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
@@ -387,6 +388,37 @@ void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 
 		if (!fLambda(verts[ii], verts[jj], verts[kk]))
 			break;
+	}
+}
+
+template<class TRI_FUNC, class EDGE_FUNC>
+void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
+{
+	std::vector<Vector3d> pts;
+	pts.resize(_vertexIds.size());
+	for (size_t i = 0; i < _vertexIds.size(); i++)
+		pts[i] = getVertexPoint(_vertexIds[i]);
+
+	if (pts.size() > 4) {
+		Vector3d ctr = calCentroid();
+		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+			size_t idx1 = (idx0 + 1) % pts.size();
+			triFunc(ctr, pts[idx0], pts[idx1]);
+		}
+	}
+	else {
+		for (size_t i = 1; i < pts.size() - 1; i++) {
+			size_t idx0 = 0;
+			size_t idx1 = i;
+			size_t idx2 = i + 1;
+			triFunc(pts[idx0], pts[idx1], pts[idx2]);
+		}
+	}
+
+	for (size_t i = 0; i < pts.size(); i++) {
+		size_t idx0 = i;
+		size_t idx1 = (idx0 + 1) % pts.size();
+		edgeFunc(pts[idx0], pts[idx1]);
 	}
 }
 
