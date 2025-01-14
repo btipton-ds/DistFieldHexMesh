@@ -319,6 +319,19 @@ void Edge::getFaceIds(MTC::set<Index3DId>& faceIds) const
 	faceIds = _faceIds;
 }
 
+void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
+{
+	cellIds.clear();
+	for (const auto& faceId : _faceIds) {
+		pBlock->faceFunc(TS_REAL, faceId, [&cellIds](const Polygon& face) {
+			const auto& adjCellIds = face.getCellIds();
+			for (const auto& cellId : adjCellIds) {
+				cellIds.insert(cellId);
+			}
+		});
+	}
+}
+
 void Edge::write(std::ostream& out) const
 {
 	uint8_t version = 0;

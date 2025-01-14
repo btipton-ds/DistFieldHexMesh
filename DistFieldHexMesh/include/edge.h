@@ -68,6 +68,7 @@ public:
 	bool pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const;
 	const MTC::set<Index3DId>& getFaceIds() const;
 	void getFaceIds(MTC::set<Index3DId>& faceIds) const;
+	void getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
 	double sameParamTol(const Block* pBlock) const;

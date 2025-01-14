@@ -874,7 +874,8 @@ void Volume::setLayerNums()
 	for (int i = 0; i < 10; i++) {
 		bool changed = false;
 		runThreadPool333([&changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			changed = pBlk->incrementLayerNums();
+			if (pBlk->incrementLayerNums())
+				changed = true;
 			return true;
 		}, RUN_MULTI_THREAD);
 

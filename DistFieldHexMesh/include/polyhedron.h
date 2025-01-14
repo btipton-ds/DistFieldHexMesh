@@ -59,13 +59,12 @@ public:
 	void remapId(const std::map<Index3D, Index3D>& idRemap) override;
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
-	bool containsFace(const Index3DId& faceId) const;
 	const MTC::set<Index3DId>& getFaceIds() const;
 	size_t getNumFaces() const;
 	void getVertIds(MTC::set<Index3DId>& vertIds) const;
 	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
-	MTC::set<Index3DId> getAdjacentCells(bool includeCornerCells) const;
+	MTC::set<Index3DId> getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	void getVertEdges(const Index3DId& vertId, MTC::set<Edge>& edges, bool includeAdjacentCells) const;
@@ -75,6 +74,10 @@ public:
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
 	bool contains(const Vector3d& pt) const;
+	bool containsVertex(const Index3DId& vertId) const;
+	bool containsFace(const Index3DId& faceId) const;
+	bool isVertexConnectedToCell(const Index3DId& cellId) const;
+	bool isVertexConnectedToFace(const Index3DId& faceId) const;
 	Vector3d calCentroid() const;
 	double calVolume() const;
 	bool isClosed() const;
@@ -191,11 +194,6 @@ inline size_t Polyhedron::getSplitLevel() const
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
-}
-
-inline void Polyhedron::clearLayerNum()
-{
-	_layerNum = -1;
 }
 
 inline void Polyhedron::setSplitLevel(size_t val)

@@ -303,27 +303,39 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 	}
 }
 
-MTC::set<Index3DId> Polyhedron::getAdjacentCells(bool includeCornerCells) const
+MTC::set<Index3DId> Polyhedron::getAdjacentCells() const
 {
 	MTC::set<Index3DId> cellIds;
 
-	if (includeCornerCells) {
-		const auto& edges = getEdges(true);
-		for (const auto& edge : edges) {
-			const auto& faceIds = edge.getFaceIds();
-			for (const auto& faceId : faceIds) {
-				faceAvailFunc(getState(), faceId, [&cellIds](const Polygon& face) {
-					const auto& tmp = face.getCellIds();
-					cellIds.insert(tmp.begin(), tmp.end());
+	set<Edge> edges = getEdges(true);
+	for (const auto& faceId : _faceIds) {
+		faceAvailFunc(getState(), faceId, [this, &edges](const Polygon& face) {
+			const auto& cellIds1 = face.getCellIds();
+			for (const auto& cellId : cellIds1) {
+				set<Edge> adjEdges;
+				cellAvailFunc(TS_REAL, cellId, [this, &adjEdges](const Polyhedron& adjCell) {
+					adjEdges = adjCell.getEdges(true);
 				});
+				set<Index3DId> vertIds;
+				getVertIds(vertIds);
+				for (const auto& edge : adjEdges) {
+					for (const auto& vertId : vertIds) {
+						if (edge.containsVertex(vertId)) {
+							edges.insert(edge);
+						}
+					}
+				}
 			}
-		}
-	} else {
-		for (const auto& faceId : _faceIds) {
-			faceAvailFunc(getState(), faceId, [this, &cellIds](const Polygon& face) {
-				const auto temp = face.getCellIds();
-				cellIds.insert(temp.begin(), temp.end());
-			});
+		});
+	}
+
+	auto pBlk = getBlockPtr();
+	for (const Edge& edge : edges) {
+		set<Index3DId> adjCellIds;
+		edge.getCellIds(pBlk, adjCellIds);
+		for (const auto& adjCellId : adjCellIds) {
+			if (isVertexConnectedToCell(adjCellId))
+				cellIds.insert(adjCellId);
 		}
 	}
 
@@ -336,7 +348,7 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, MTC::set<Edge>& result, b
 {
 	auto cellEdgeSet = getEdges(includeAdjacentCells);
 	if (includeAdjacentCells) {
-		set<Index3DId> adjCells = getAdjacentCells(false);
+		set<Index3DId> adjCells = getAdjacentCells();
 		for (const auto& adjCellId : adjCells) {
 			cellAvailFunc(getState(), adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
 				const auto& tmp = adjCell.getEdges(true);
@@ -402,6 +414,54 @@ bool Polyhedron::contains(const Vector3d& pt) const
 	}
 
 	return result;
+}
+
+bool Polyhedron::containsVertex(const Index3DId& vertId) const
+{
+	bool result = false;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(TS_REAL, faceId, [&vertId , &result](const Polygon& face) {
+			if (face.containsVertex(vertId))
+				result = true;
+		});
+
+		if (result)
+			return true;
+	}
+	return false;
+}
+
+bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
+{
+	set<Index3DId> ourVerts, otherVerts;
+	getVertIds(ourVerts);
+	cellAvailFunc(TS_REAL, cellId, [&otherVerts](const Polyhedron& cell) {
+		cell.getVertIds(otherVerts);
+	});
+
+	for (const auto& otherId : otherVerts) {
+		if (ourVerts.contains(otherId))
+			return true;
+	}
+
+	return false;
+}
+
+bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
+{
+	set<Index3DId> ourVerts;
+	vector<Index3DId> otherVerts;
+	getVertIds(ourVerts);
+	faceAvailFunc(TS_REAL, faceId, [&otherVerts](const Polygon& face) {
+		otherVerts = face.getVertexIds();
+	});
+
+	for (const auto& otherId : otherVerts) {
+		if (ourVerts.contains(otherId))
+			return true;
+	}
+
+	return false;
 }
 
 Vector3d Polyhedron::calCentroid() const
@@ -1224,6 +1284,11 @@ double Polyhedron::getShortestEdge() const
 	return minDist;
 }
 
+void Polyhedron::clearLayerNum()
+{
+	_layerNum = -1;
+}
+
 bool Polyhedron::setLayerNum()
 {
 	bool changed = false;
@@ -1233,12 +1298,12 @@ bool Polyhedron::setLayerNum()
 			changed = true;
 		}
 	} else {
-		set<Index3DId> adj = getAdjacentCells(true);
-		int32_t max = -1;
+		auto nextLayerNum = _layerNum + 1;
+		set<Index3DId> adj = getAdjacentCells();
 		for (const auto& id : adj) {
-			cellFunc(TS_REAL, id, [this, &max, &changed](Polyhedron& adjCell) {
+			cellFunc(TS_REAL, id, [this, nextLayerNum, &changed](Polyhedron& adjCell) {
 				if (adjCell._layerNum == -1) {
-					adjCell._layerNum = _layerNum + 1;
+					adjCell._layerNum = nextLayerNum;
 					changed = true;
 				}
 			});
