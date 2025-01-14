@@ -1578,13 +1578,13 @@ void Block::resetLayerNums()
 
 bool Block::incrementLayerNums()
 {
-	bool result = false;
-	_modelData._polyhedra.iterateInOrder([&result](const Index3DId& cellId, Polyhedron& cell) {
+	bool changed = false;
+	_modelData._polyhedra.iterateInOrder([&changed](const Index3DId& cellId, Polyhedron& cell) {
 		if (cell.setLayerNum())
-			result = true;
+			changed = true;
 	});
 
-	return result;
+	return changed;
 }
 
 void Block::freePolygon(const Index3DId& id, bool requireRefExists)

@@ -152,8 +152,9 @@ public:
     bool showMeshWalls() const;
     bool toggleShowMeshWalls();
 
-    bool showLayer(int64_t layerNum) const;
-    bool toggleMeshShowLayer(int64_t layerNum);
+    bool showLayersOn() const;
+    bool showLayer(int32_t layerNum) const;
+    void setShowLayer(int32_t layerNum);
 
     void setShowMeshSelectedBlocks(bool val);
 
@@ -291,7 +292,12 @@ inline bool GraphicsCanvas::showMeshWalls() const
     return _pDrawHexMesh->showWalls();
 }
 
-inline bool GraphicsCanvas::showLayer(int64_t layerNum) const
+inline bool GraphicsCanvas::showLayersOn() const
+{
+    return _pDrawHexMesh->showLayersOn();
+}
+
+inline bool GraphicsCanvas::showLayer(int32_t layerNum) const
 {
     return _pDrawHexMesh->showLayer(layerNum);
 }

@@ -43,7 +43,7 @@ namespace
 }
 
 DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
-    : DrawMesh(pCanvas)
+    : DrawMesh(pCanvas, 50)
 {
     for (int i = 0; i < 10; i++)
         _options.layers[i] = false;
@@ -137,25 +137,32 @@ void DrawHexMesh::clearPost()
 
 }
 
-bool DrawHexMesh::toggleShowLayer(int64_t layerNumber)
+bool DrawHexMesh::showLayersOn() const
 {
-    bool hasLayerSet = false;
     for (int i = 0; i < 10; i++) {
-        hasLayerSet = hasLayerSet | _options.layers[i];
+        if (_options.layers[i])
+            return true;
     }
 
-    if (hasLayerSet) { // clear all layers
-        for (int i = 0; i < 10; i++) {
-            _options.layers[i] = false;
-        }
-    } else { // set layers 0 - layerNumber
-        for (int i = 0; i <= layerNumber; i++) {
-            _options.layers[i] = true;
-        }
+    return false;
+}
 
+bool DrawHexMesh::showLayer(int32_t layerNumber) const
+{
+    int32_t maxLayer = -1;
+    for (int i = 0; i < 10; i++) {
+        if (_options.layers[i]) {
+            maxLayer = i;
+        }
     }
+    return maxLayer == layerNumber;
+}
 
-    return !hasLayerSet;
+void DrawHexMesh::setShowLayer(int32_t layerNumber)
+{
+    for (int i = 0; i < 10; i++) {
+        _options.layers[i] = (i <= layerNumber);
+    }
 }
 
 void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)

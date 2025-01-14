@@ -51,7 +51,7 @@ namespace {
 }
 
 DrawModelMesh::DrawModelMesh(GraphicsCanvas* pCanvas)
-    : DrawMesh(pCanvas)
+    : DrawMesh(pCanvas, 20)
 {
 }
 

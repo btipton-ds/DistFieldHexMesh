@@ -407,12 +407,10 @@ bool GraphicsCanvas::toggleShowMeshWalls()
     return result;
 }
 
-bool GraphicsCanvas::toggleMeshShowLayer(int64_t layerNum)
+void GraphicsCanvas::setShowLayer(int32_t layerNum)
 {
-    bool result = _pDrawHexMesh->toggleShowLayer(layerNum);
+    _pDrawHexMesh->setShowLayer(layerNum);
     changeViewElements();
-
-    return result;
 }
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)

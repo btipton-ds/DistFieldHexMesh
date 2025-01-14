@@ -44,7 +44,7 @@ namespace OGL
 namespace DFHM {
 	struct VBORec {
 
-		VBORec();
+		VBORec(int numLayers);
 		virtual ~VBORec();
 
 		void clear();

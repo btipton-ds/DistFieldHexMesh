@@ -50,7 +50,7 @@ namespace DFHM {
 	class DrawMesh : public OGL::Extensions {
 	public:
 
-		DrawMesh(GraphicsCanvas* pCanvas);
+		DrawMesh(GraphicsCanvas* pCanvas, int numLayers);
 		virtual ~DrawMesh();
 
 		virtual size_t numBytes() const;

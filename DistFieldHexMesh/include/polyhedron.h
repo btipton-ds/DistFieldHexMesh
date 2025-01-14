@@ -112,7 +112,7 @@ public:
 
 	size_t getSplitLevel() const;
 	void setSplitLevel(size_t val);
-	int64_t getLayerNum() const;
+	int32_t getLayerNum() const;
 	void clearLayerNum();
 	bool setLayerNum();
 
@@ -156,7 +156,7 @@ private:
 
 	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
-	int64_t _layerNum = -1;
+	int32_t _layerNum = -1;
 
 	bool _needsSplitAtCentroid = false;
 	std::vector<size_t> _triIndices, _edgeIndices;
@@ -193,7 +193,7 @@ inline size_t Polyhedron::getSplitLevel() const
 	return _splitLevel;
 }
 
-inline int64_t Polyhedron::getLayerNum() const
+inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
 }

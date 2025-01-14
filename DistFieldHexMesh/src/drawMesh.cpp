@@ -33,10 +33,10 @@ using namespace std;
 using namespace DFHM;
 
 
-DrawMesh::DrawMesh(GraphicsCanvas* pCanvas)
+DrawMesh::DrawMesh(GraphicsCanvas* pCanvas, int numLayers)
 	: _pCanvas(pCanvas)
 {
-	_VBOs = std::make_shared<VBORec>();
+	_VBOs = std::make_shared<VBORec>(numLayers);
 }
 
 DrawMesh::~DrawMesh()

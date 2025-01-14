@@ -31,9 +31,9 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace DFHM;
 
-VBORec::VBORec()
-    : _faceVBO(GL_TRIANGLES, 20)
-    , _edgeVBO(GL_LINES, 20)
+VBORec::VBORec(int numLayers)
+    : _faceVBO(GL_TRIANGLES, numLayers)
+    , _edgeVBO(GL_LINES, numLayers)
 {
 }
 

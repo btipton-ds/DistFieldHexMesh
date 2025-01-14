@@ -1246,29 +1246,26 @@ double Polyhedron::getShortestEdge() const
 
 bool Polyhedron::setLayerNum()
 {
-	bool result = false;
+	bool changed = false;
 	if (_layerNum == -1) {
 		if (intersectsModel()) {
 			_layerNum = 0;
-		} else {
-			set<Index3DId> adj = getAdjacentCells(true);
-			int64_t max = -1;
-			for (const auto& id : adj) {
-				cellFunc(TS_REAL, id, [&max](const Polyhedron& adjCell) {
-					auto val = adjCell.getLayerNum();
-					if (val > max)
-						max = val;
-				});
-			}
-
-			if (max != -1) {
-				_layerNum = max + 1;
-				result = true;
-			}
+			changed = true;
+		}
+	} else {
+		set<Index3DId> adj = getAdjacentCells(true);
+		int32_t max = -1;
+		for (const auto& id : adj) {
+			cellFunc(TS_REAL, id, [this, &max, &changed](Polyhedron& adjCell) {
+				if (adjCell._layerNum == -1) {
+					adjCell._layerNum = _layerNum + 1;
+					changed = true;
+				}
+			});
 		}
 	}
 
-	return result;
+	return changed;
 }
 
 MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const

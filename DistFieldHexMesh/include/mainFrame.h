@@ -98,6 +98,7 @@ enum DFHM_MENU_ID
     ID_SHOW_MESH_WALL,
     ID_SHOW_MESH_SELECTED_BLOCKS,
 
+    ID_SHOW_MESH_LAYERS_OFF,
     ID_SHOW_MESH_LAYER_0,
     ID_SHOW_MESH_LAYER_1,
     ID_SHOW_MESH_LAYER_2,
@@ -198,7 +199,7 @@ private:
     void OnShowTop(wxCommandEvent& event);
     void OnShowBottom(wxCommandEvent& event);
 
-    void OnShowLayer(int64_t layerNum);
+    void OnShowLayersOff(wxCommandEvent& event);
     void OnShowLayer0(wxCommandEvent& event);
     void OnShowLayer1(wxCommandEvent& event);
     void OnShowLayer2(wxCommandEvent& event);
