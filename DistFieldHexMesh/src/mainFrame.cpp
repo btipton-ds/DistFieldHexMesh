@@ -347,14 +347,21 @@ void MainFrame::OnInternalIdle()
 
     _pCanvas->Refresh();
 
+    const auto& pMeshData = _pAppData->getMeshData();
+    const auto& pVolume = _pAppData->getVolume();
+
+    bool hasModel = (pMeshData && !pMeshData->empty());
+    bool hasMesh = (pVolume && pVolume->numPolyhedra() > 0);
+
     if (_editMenu) {
-        bool hasMesh = !_pAppData->getMeshData()->empty();
-        _editMenu->Enable(ID_CREATE_BASE_MESH, hasMesh);
+        _editMenu->Enable(ID_CREATE_BASE_MESH, hasModel);
         _editMenu->Enable(ID_BuildCFDHexes, hasMesh);
     }
+
     if (_fileMenu) {
 
     }
+
     if (_viewMenu) {
         _viewMenu->Check(ID_SHOW_MODEL_FACES, _pCanvas->showModelFaces());
         _viewMenu->Check(ID_SHOW_MODEL_EDGES, _pCanvas->showModelEdges());
@@ -363,6 +370,24 @@ void MainFrame::OnInternalIdle()
         _viewMenu->Check(ID_SHOW_TRI_NORMALS, _pCanvas->showTriNormals());
         _viewMenu->Check(ID_SHOW_CURVATURE, _pCanvas->showCurvature());
 
+        _viewMenu->Check(ID_SHOW_MESH_FACES, _pCanvas->showMeshFaces());
+        _viewMenu->Check(ID_SHOW_MESH_EDGES, _pCanvas->showMeshEdges());
+        _viewMenu->Check(ID_SHOW_MESH_WALL, _pCanvas->showMeshWalls());
+//        _viewMenu->Check(ID_SHOW_MESH_SELECTED_BLOCKS, _pCanvas->showMeshFaces());
+
+
+        _viewMenu->Enable(ID_SHOW_MODEL_FACES, hasModel);
+        _viewMenu->Enable(ID_SHOW_MODEL_EDGES, hasModel);
+        _viewMenu->Enable(ID_SHOW_MODEL_SHARP_EDGES, hasModel);
+        _viewMenu->Enable(ID_SHOW_SHARP_VERTS, hasModel);
+        _viewMenu->Enable(ID_SHOW_TRI_NORMALS, hasModel);
+        _viewMenu->Enable(ID_SHOW_CURVATURE, hasModel);
+
+        _viewMenu->Enable(ID_SHOW_MESH_FACES, hasMesh);
+        _viewMenu->Enable(ID_SHOW_MESH_EDGES, hasMesh);
+        _viewMenu->Enable(ID_SHOW_MESH_WALL, hasMesh);
+        _viewMenu->Enable(ID_SHOW_MESH_SELECTED_BLOCKS, hasMesh);
+
         if (_viewBoundarySubMenu) {
             _viewBoundarySubMenu->Check(ID_SHOW_FRONT, _pCanvas->showFace(GraphicsCanvas::VIEW_FRONT));
             _viewBoundarySubMenu->Check(ID_SHOW_BACK, _pCanvas->showFace(GraphicsCanvas::VIEW_BACK));
@@ -370,9 +395,19 @@ void MainFrame::OnInternalIdle()
             _viewBoundarySubMenu->Check(ID_SHOW_RIGHT, _pCanvas->showFace(GraphicsCanvas::VIEW_RIGHT));
             _viewBoundarySubMenu->Check(ID_SHOW_BOTTOM, _pCanvas->showFace(GraphicsCanvas::VIEW_BOTTOM));
             _viewBoundarySubMenu->Check(ID_SHOW_TOP, _pCanvas->showFace(GraphicsCanvas::VIEW_TOP));
+
+            _viewBoundarySubMenu->Enable(ID_SHOW_ALL_SIDES, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_HIDE_ALL_SIDES, hasMesh);
+
+            _viewBoundarySubMenu->Enable(ID_SHOW_FRONT, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_SHOW_BACK, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_SHOW_LEFT, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_SHOW_RIGHT, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_SHOW_BOTTOM, hasMesh);
+            _viewBoundarySubMenu->Enable(ID_SHOW_TOP, hasMesh);
         }
+
         if (_layersSubMenu) {
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYERS_OFF, _pCanvas->showLayersOn());
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_0, _pCanvas->showLayer(0));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_1, _pCanvas->showLayer(1));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_2, _pCanvas->showLayer(2));
@@ -383,12 +418,25 @@ void MainFrame::OnInternalIdle()
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_7, _pCanvas->showLayer(7));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_8, _pCanvas->showLayer(8));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_9, _pCanvas->showLayer(9));
+
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYERS_OFF, hasMesh && _pCanvas->showLayersOn());
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_0, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_1, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_2, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_3, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_4, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_5, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_6, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_7, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_8, hasMesh);
+            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_9, hasMesh);
+
         }
     }
 
     wstringstream ss;
     double t = clock() / (double) CLOCKS_PER_SEC;
-    static auto lastTime = t;
+    static auto lastTime = t - 10;
 
     if (t - lastTime > 5) {
         lastTime = t;
