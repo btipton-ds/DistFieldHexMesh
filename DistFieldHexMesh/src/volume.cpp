@@ -469,6 +469,8 @@ void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d
 	insertBlocks(params, CFT_RIGHT, multiCore);
 
 	insertBlocks(params, CFT_TOP, multiCore);
+
+	createAdHocBlockSearchTree();
 }
 
 void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore)
@@ -942,7 +944,6 @@ void Volume::setLayerNums()
 
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)
 {
-	size_t linIdxSrc, linIdxDst;
 	Index3D idxSrc, idxDst;
 	vector<size_t> idRemap; 
 
@@ -1022,177 +1023,188 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 	Vector3d newCorners[8];
 	switch (face) {
 	case CFT_FRONT:
-		idxSrc[0] = dstDims[0] - 2;
-		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
-			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
-				idxDst = idxSrc;
-				idxDst[0] = dstDims[0] - 1;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			idxSrc[0] = dstDims[0] - 2;
+			size_t idx = 0;
+			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+				for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[1] = newCorners[0] = cPts[1];
-				newCorners[2] = newCorners[3] = cPts[2];
-				newCorners[5] = newCorners[4] = cPts[5];
-				newCorners[6] = newCorners[7] = cPts[6];
-				newCorners[1][0] = newCorners[2][0] = newCorners[5][0] = newCorners[6][0] = params.xMax;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+					idxDst = idxSrc;
+					idxDst[0] = dstDims[0] - 1;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[1] = newCorners[0] = cPts[1];
+					newCorners[2] = newCorners[3] = cPts[2];
+					newCorners[5] = newCorners[4] = cPts[5];
+					newCorners[6] = newCorners[7] = cPts[6];
+					newCorners[1][0] = newCorners[2][0] = newCorners[5][0] = newCorners[6][0] = params.xMax;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
+		}, multiCore);
 
 		break;
 	case CFT_BACK:
-		idxSrc[0] = 1;
-		for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
-			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
-				idxDst = idxSrc;
-				idxDst[0] = 0;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			size_t idx = 0;
+			idxSrc[0] = 1;
+			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+				for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[1] = newCorners[0] = cPts[0];
-				newCorners[2] = newCorners[3] = cPts[3];
-				newCorners[5] = newCorners[4] = cPts[4];
-				newCorners[6] = newCorners[7] = cPts[7];
-				newCorners[0][0] = newCorners[3][0] = newCorners[4][0] = newCorners[7][0] = params.xMin;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+					idxDst = idxSrc;
+					idxDst[0] = 0;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[1] = newCorners[0] = cPts[0];
+					newCorners[2] = newCorners[3] = cPts[3];
+					newCorners[5] = newCorners[4] = cPts[4];
+					newCorners[6] = newCorners[7] = cPts[7];
+					newCorners[0][0] = newCorners[3][0] = newCorners[4][0] = newCorners[7][0] = params.xMin;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-		
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
-
+		}, multiCore);
 		break;
 	case CFT_LEFT:
-		idxSrc[1] = 1;
-		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
-			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
-				idxDst = idxSrc;
-				idxDst[1] = 0;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			size_t idx = 0;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[3] = newCorners[0] = cPts[0];
-				newCorners[2] = newCorners[1] = cPts[1];
-				newCorners[7] = newCorners[4] = cPts[4];
-				newCorners[6] = newCorners[5] = cPts[5];
-				newCorners[3][1] = newCorners[2][1] = newCorners[7][1] = newCorners[6][1] = params.yMax;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+			idxSrc[1] = 1;
+			for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+				for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
+
+					idxDst = idxSrc;
+					idxDst[1] = 0;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[3] = newCorners[0] = cPts[0];
+					newCorners[2] = newCorners[1] = cPts[1];
+					newCorners[7] = newCorners[4] = cPts[4];
+					newCorners[6] = newCorners[5] = cPts[5];
+					newCorners[3][1] = newCorners[2][1] = newCorners[7][1] = newCorners[6][1] = params.yMax;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
+		}, multiCore);
 
 		break;
 	case CFT_RIGHT:
-		idxSrc[1] = dstDims[1] - 2;
-		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
-			for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
-				idxDst = idxSrc;
-				idxDst[1] = dstDims[1] - 1;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			size_t idx = 0;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[0] = newCorners[3] = cPts[3];
-				newCorners[1] = newCorners[2] = cPts[2];
-				newCorners[5] = newCorners[6] = cPts[6];
-				newCorners[4] = newCorners[7] = cPts[7];
-				newCorners[3][1] = newCorners[2][1] = newCorners[6][1] = newCorners[7][1] = params.yMax;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+			idxSrc[1] = dstDims[1] - 2;
+			for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+				for (idxSrc[2] = 0; idxSrc[2] < dstDims[2]; idxSrc[2]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
+
+					idxDst = idxSrc;
+					idxDst[1] = dstDims[1] - 1;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[0] = newCorners[3] = cPts[3];
+					newCorners[1] = newCorners[2] = cPts[2];
+					newCorners[5] = newCorners[6] = cPts[6];
+					newCorners[4] = newCorners[7] = cPts[7];
+					newCorners[3][1] = newCorners[2][1] = newCorners[6][1] = newCorners[7][1] = params.yMax;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
-
+		}, multiCore);
 		break;
 	case CFT_TOP:
-		idxSrc[2] = dstDims[2] - 2;
-		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
-			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
-				idxDst = idxSrc;
-				idxDst[2] = dstDims[2] - 1;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			size_t idx = 0;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[0] = newCorners[4] = cPts[4];
-				newCorners[1] = newCorners[5] = cPts[5];
-				newCorners[2] = newCorners[6] = cPts[6];
-				newCorners[3] = newCorners[7] = cPts[7];
-				newCorners[4][2] = newCorners[5][2] = newCorners[6][2] = newCorners[7][2] = params.zMax;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+			idxSrc[2] = dstDims[2] - 2;
+			for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+				for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
+
+					idxDst = idxSrc;
+					idxDst[2] = dstDims[2] - 1;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[0] = newCorners[4] = cPts[4];
+					newCorners[1] = newCorners[5] = cPts[5];
+					newCorners[2] = newCorners[6] = cPts[6];
+					newCorners[3] = newCorners[7] = cPts[7];
+					newCorners[4][2] = newCorners[5][2] = newCorners[6][2] = newCorners[7][2] = params.zMax;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
-
+		}, multiCore);
 		break;
 	case CFT_BOTTOM:
-		idxSrc[2] = 1;
-		for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
-			for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
-				idxDst = idxSrc;
-				idxDst[2] = 0;
-				linIdxSrc = calLinearBlockIndex(idxSrc);
-				linIdxDst = calLinearBlockIndex(idxDst);
-				auto pBlkSrc = _blocks[linIdxSrc];
+		MultiCore::runLambda([this, &dstDims, &params](size_t threadNum, size_t numThreads) {
+			Vector3d newCorners[8];
+			Index3D idxSrc, idxDst;
+			size_t idx = 0;
 
-				const vector<Vector3d>& cPts = pBlkSrc->_corners;
-				newCorners[0] = newCorners[4] = cPts[0];
-				newCorners[1] = newCorners[5] = cPts[1];
-				newCorners[2] = newCorners[6] = cPts[2];
-				newCorners[3] = newCorners[7] = cPts[3];
-				newCorners[0][2] = newCorners[1][2] = newCorners[2][2] = newCorners[3][2] = params.zMin;
-				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
-				_blocks[linIdxDst] = pNewBlock;
+			idxSrc[2] = 1;
+			for (idxSrc[0] = 0; idxSrc[0] < dstDims[0]; idxSrc[0]++) {
+				for (idxSrc[1] = 0; idxSrc[1] < dstDims[1]; idxSrc[1]++) {
+					if (idx++ % numThreads != threadNum)
+						continue;
+
+					idxDst = idxSrc;
+					idxDst[2] = 0;
+					size_t linIdxSrc = calLinearBlockIndex(idxSrc);
+					size_t linIdxDst = calLinearBlockIndex(idxDst);
+					auto pBlkSrc = _blocks[linIdxSrc];
+
+					const vector<Vector3d>& cPts = pBlkSrc->_corners;
+					newCorners[0] = newCorners[4] = cPts[0];
+					newCorners[1] = newCorners[5] = cPts[1];
+					newCorners[2] = newCorners[6] = cPts[2];
+					newCorners[3] = newCorners[7] = cPts[3];
+					newCorners[0][2] = newCorners[1][2] = newCorners[2][2] = newCorners[3][2] = params.zMin;
+					auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
+					_blocks[linIdxDst] = pNewBlock;
+				}
 			}
-		}
-
-#if 1 && defined(_DEBUG)
-		for (const auto& p : _blocks)
-			assert(p);
-#endif // _DEBUG)
-
+		}, multiCore);
 		break;
 	default:
 		break;
 	}
-
-	createAdHocBlockSearchTree();
-#if 1 && defined(_DEBUG)
-	for (size_t i = 0; i < _blocks.size(); i++) {
-		const auto& pBlk = _blocks[i];
-		Index3D blkIdx = calBlockIndexFromLinearIndex(i);
-		assert(pBlk->verifyIndices(blkIdx));
-	}
-#endif
 }
 
 void Volume::createAdHocBlockSearchTree()
