@@ -74,6 +74,7 @@ public:
 	void setVolCornerPts(const std::vector<Vector3d>& pts);
 
 	const Index3D& modelDim() const;
+	bool inModelBounds(const Index3D& idx) const;
 
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);

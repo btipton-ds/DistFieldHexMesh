@@ -412,6 +412,17 @@ bool Volume::blockExists(const Index3D& blockIdx) const
 	return _blocks[idx] != nullptr;
 }
 
+bool Volume::inModelBounds(const Index3D& idx) const
+{
+	for (int i = 0; i < 3; i++) {
+		if (idx[i] < _modelDimOrigin[i])
+			return false;
+		if (idx[i] >= _modelDimOrigin[i] + _modelDim[i])
+			return false;
+	}
+	return true;
+}
+
 void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
 {
 	_modelBundingBox.clear();
@@ -424,29 +435,20 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
-	for (size_t linearIdx = 0; linearIdx < _blocks.size(); linearIdx++) {
-		_blocks[linearIdx] = createBlock(linearIdx);
-	}
-
-/*
-	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->createBlockCells(TS_REAL);
-		return true;
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		for (size_t linearIdx = threadNum; linearIdx < _blocks.size(); linearIdx += numThreads) {
+			_blocks[linearIdx] = createBlock(linearIdx);
+		}
 	}, multiCore);
-*/
 
 	buildSurroundingBlocks(params, pts, multiCore);
 
-	Index3D idx;
-	for (idx[0] = 0; idx[0] < _modelDim[0]; idx[0]++) {
-		for (idx[1] = 0; idx[1] < _modelDim[1]; idx[1]++) {
-			for (idx[2] = 0; idx[2] < _modelDim[2]; idx[2]++) {
-				auto pBlk = getBlockPtr(idx + _modelDimOrigin);
-				pBlk->createBlockCells(TS_REAL);
-			}
+	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		if (inModelBounds(pBlk->getBlockIdx())) {
+			pBlk->createBlockCells(TS_REAL);
 		}
-	}
+		return true;
+	}, multiCore);
 
 	gradeSurroundingBlocks(params, multiCore);
 }
