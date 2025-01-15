@@ -131,6 +131,13 @@ void Block::clear()
 	_refData.clear();
 }
 
+void Block::clearAdjCellIdCache() const
+{
+	_modelData._polyhedra.iterateInOrder([](const Index3DId& cellId, const Polyhedron& cell) {
+		cell.clearAdjCellIdCache();
+	});
+}
+
 void Block::ModelData::clear()
 {
 	_polygons.clear();
@@ -153,7 +160,7 @@ void Block::ModelData::remapIds(const std::vector<size_t>& idRemap, const Index3
 		face.remapId(idRemap, srcDims);
 	});
 
-	_polyhedra.iterateInOrder([&idRemap, &srcDims](const Index3DId& faceId, Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&idRemap, &srcDims](const Index3DId& cellId, Polyhedron& cell) {
 		cell.remapId(idRemap, srcDims);
 	});
 }
@@ -1531,6 +1538,7 @@ void Block::resetLayerNums()
 {
 	_modelData._polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
 		cell.clearLayerNum();
+		cell.clearAdjCellIdCache();
 	});
 }
 

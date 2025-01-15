@@ -64,7 +64,7 @@ public:
 	void getVertIds(MTC::set<Index3DId>& vertIds) const;
 	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
-	MTC::set<Index3DId> getAdjacentCells() const;
+	const MTC::set<Index3DId>& getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	void getVertEdges(const Index3DId& vertId, MTC::set<Edge>& edges, bool includeAdjacentCells) const;
@@ -73,6 +73,7 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
+	void clearAdjCellIdCache() const;
 	bool contains(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsFace(const Index3DId& faceId) const;
@@ -159,15 +160,21 @@ private:
 
 	bool _needsSplitAtCentroid = false;
 
-	mutable bool _needsConditionalSplitTest = true;
-	mutable bool _isOriented = false;
-	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
-	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
-	mutable bool _needsCurvatureCheck = true;
 	mutable bool _cachedEdges0Vaild = false;
 	mutable bool _cachedEdges1Vaild = false;
+	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
+
+	mutable bool _cachedAdjCellIdsValid = false;
+	mutable MTC::set<Index3DId> _cachedAdjCellIds;
+
+	mutable bool _needsConditionalSplitTest = true;
+	mutable bool _isOriented = false;
+	mutable bool _needsCurvatureCheck = true;
+
+	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
+
 	mutable double _cachedMinGap = -1;
 };
 

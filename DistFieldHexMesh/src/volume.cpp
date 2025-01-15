@@ -926,6 +926,11 @@ void Volume::setLayerNums()
 		if (!changed)
 			break;
 	}
+
+	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->clearAdjCellIdCache();
+		return true;
+	}, RUN_MULTI_THREAD);
 }
 
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)
@@ -934,7 +939,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 	Index3D idxSrc, idxDst;
 	vector<size_t> idRemap; 
 
-	auto srcDims = volDim();
+	const auto srcDims = volDim();
 	auto dstDims = srcDims;
 	const size_t srcSize = _blocks.size();
 
@@ -967,33 +972,38 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 	setVolDim(dstDims, false);
 	idRemap.resize(_blocks.size(), -1);
 
-	for (size_t j = 0; j < srcSize; j++) {
-		size_t i = srcSize - 1 - j;
-		Index3D idxSrc = calBlockIndexFromLinearIndex(i, srcDims);
-		idxDst = idxSrc;
-		switch (face) {
-		case CFT_BACK:
-			idxDst[0] += 1;
-			break;
-		case CFT_LEFT:
-			idxDst[1] += 1;
-			break;
-		case CFT_BOTTOM:
-			idxDst[2] += 1;
-			break;
-		default:
-			break;
-		}
+	MultiCore::runLambda([this, face, srcSize, &idRemap, &srcDims](size_t threadNum, size_t numThreads) {
+		for (size_t j = 0; j < srcSize; j++) {
+			size_t i = srcSize - 1 - j;
+			if (i % numThreads != threadNum)
+				continue;
 
-		linIdxSrc = calLinearBlockIndex(idxSrc, srcDims);
-		linIdxDst = calLinearBlockIndex(idxDst);
-		idRemap[linIdxSrc] = linIdxDst;
+			Index3D idxSrc = calBlockIndexFromLinearIndex(i, srcDims);
+			Index3D idxDst = idxSrc;
+			switch (face) {
+			case CFT_BACK:
+				idxDst[0] += 1;
+				break;
+			case CFT_LEFT:
+				idxDst[1] += 1;
+				break;
+			case CFT_BOTTOM:
+				idxDst[2] += 1;
+				break;
+			default:
+				break;
+			}
 
-		_blocks[linIdxDst] = _blocks[linIdxSrc];
-		if (linIdxDst != linIdxSrc) {
-			_blocks[linIdxSrc] = nullptr;
+			size_t linIdxSrc = calLinearBlockIndex(idxSrc, srcDims);
+			size_t linIdxDst = calLinearBlockIndex(idxDst);
+			idRemap[linIdxSrc] = linIdxDst;
+
+			if (linIdxDst != linIdxSrc) {
+				assert(!_blocks[linIdxDst]);
+				std::swap(_blocks[linIdxDst], _blocks[linIdxSrc]);
+			}
 		}
-	}
+	}, false && multiCore); // This isn't running multi threaded
 
 	MultiCore::runLambda([this, &idRemap, &srcDims](size_t threadNum, size_t numThreads) {
 		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {

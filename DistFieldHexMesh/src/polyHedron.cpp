@@ -303,44 +303,44 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 	}
 }
 
-MTC::set<Index3DId> Polyhedron::getAdjacentCells() const
+const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 {
-	MTC::set<Index3DId> cellIds;
-
-	set<Edge> edges = getEdges(true);
-	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(getState(), faceId, [this, &edges](const Polygon& face) {
-			const auto& cellIds1 = face.getCellIds();
-			for (const auto& cellId : cellIds1) {
-				set<Edge> adjEdges;
-				cellAvailFunc(TS_REAL, cellId, [this, &adjEdges](const Polyhedron& adjCell) {
-					adjEdges = adjCell.getEdges(true);
-				});
-				set<Index3DId> vertIds;
-				getVertIds(vertIds);
-				for (const auto& edge : adjEdges) {
-					for (const auto& vertId : vertIds) {
-						if (edge.containsVertex(vertId)) {
-							edges.insert(edge);
+	if (_cachedAdjCellIdsValid) {
+		set<Edge> edges = getEdges(true);
+		for (const auto& faceId : _faceIds) {
+			faceAvailFunc(getState(), faceId, [this, &edges](const Polygon& face) {
+				const auto& cellIds1 = face.getCellIds();
+				for (const auto& cellId : cellIds1) {
+					set<Edge> adjEdges;
+					cellAvailFunc(TS_REAL, cellId, [this, &adjEdges](const Polyhedron& adjCell) {
+						adjEdges = adjCell.getEdges(true);
+						});
+					set<Index3DId> vertIds;
+					getVertIds(vertIds);
+					for (const auto& edge : adjEdges) {
+						for (const auto& vertId : vertIds) {
+							if (edge.containsVertex(vertId)) {
+								edges.insert(edge);
+							}
 						}
 					}
 				}
-			}
-		});
-	}
-
-	auto pBlk = getBlockPtr();
-	for (const Edge& edge : edges) {
-		set<Index3DId> adjCellIds;
-		edge.getCellIds(pBlk, adjCellIds);
-		for (const auto& adjCellId : adjCellIds) {
-			if (isVertexConnectedToCell(adjCellId))
-				cellIds.insert(adjCellId);
+				});
 		}
-	}
 
-	cellIds.erase(_thisId);
-	return cellIds;
+		auto pBlk = getBlockPtr();
+		for (const Edge& edge : edges) {
+			set<Index3DId> adjCellIds;
+			edge.getCellIds(pBlk, adjCellIds);
+			for (const auto& adjCellId : adjCellIds) {
+				if (isVertexConnectedToCell(adjCellId))
+					_cachedAdjCellIds.insert(adjCellId);
+			}
+		}
+
+		_cachedAdjCellIds.erase(_thisId);
+	}
+	return _cachedAdjCellIds;
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
@@ -1471,6 +1471,14 @@ void Polyhedron::clearCache() const
 
 	_cachedEdges0.clear();
 	_cachedEdges1.clear();
+
+	clearAdjCellIdCache();
+}
+
+void Polyhedron::clearAdjCellIdCache() const
+{
+	_cachedAdjCellIdsValid = false;
+	_cachedAdjCellIds.clear();
 }
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)

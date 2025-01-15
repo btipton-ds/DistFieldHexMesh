@@ -113,6 +113,7 @@ public:
 	const UnalignedBBoxd& getUnalignedBBox() const;
 
 	void clear();
+	void clearAdjCellIdCache() const;
 
 	size_t blockDim() const;
 
