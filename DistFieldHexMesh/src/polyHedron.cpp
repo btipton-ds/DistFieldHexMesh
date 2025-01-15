@@ -211,11 +211,11 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 	return false;
 }
 
-void Polyhedron::remapId(const std::map<Index3D, Index3D>& idRemap)
+void Polyhedron::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	ObjectPoolOwnerUser::remapId(idRemap);
+	ObjectPoolOwnerUser::remapId(idRemap, srcDims);
 
-	remap(idRemap, _faceIds);
+	remap(idRemap, srcDims, _faceIds);
 }
 
 void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)

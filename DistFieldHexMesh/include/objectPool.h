@@ -92,16 +92,16 @@ public:
 	void setId(const ObjectPoolOwner* poolOwner, size_t id);
 	const Index3DId& getId() const;
 
-	virtual void remapId(const std::map<Index3D, Index3D>& idRemap);
+	virtual void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims);
 	virtual bool verifyIndices(const Index3D& idx) const;
 
 protected:
 	bool isOwnerBeingDestroyed() const;
 
-	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::set<Index3DId>& vals);
-	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::vector<Index3DId>& vals);
+	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::set<Index3DId>& vals);
+	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::vector<Index3DId>& vals);
 	template<class T>
-	void remap(const std::map<Index3D, Index3D>& idRemap, MTC::map<T, Index3DId>& vals);
+	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::map<T, Index3DId>& vals);
 
 	Index3DId _thisId;
 

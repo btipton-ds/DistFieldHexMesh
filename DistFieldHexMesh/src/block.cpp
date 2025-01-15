@@ -147,14 +147,14 @@ size_t Block::ModelData::numBytes() const
 	return result;
 }
 
-void Block::ModelData::remapIds(const map<Index3D, Index3D>& idRemap)
+void Block::ModelData::remapIds(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	_polygons.iterateInOrder([&idRemap](const Index3DId& faceId, Polygon& face) {
-		face.remapId(idRemap);
+	_polygons.iterateInOrder([&idRemap, &srcDims](const Index3DId& faceId, Polygon& face) {
+		face.remapId(idRemap, srcDims);
 	});
 
-	_polyhedra.iterateInOrder([&idRemap](const Index3DId& faceId, Polyhedron& cell) {
-		cell.remapId(idRemap);
+	_polyhedra.iterateInOrder([&idRemap, &srcDims](const Index3DId& faceId, Polyhedron& cell) {
+		cell.remapId(idRemap, srcDims);
 	});
 }
 
@@ -221,18 +221,21 @@ const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> Block::getModel
 	return pAppData->getMeshData();
 }
 
-void Block::remapBlockIndices(const map<Index3D, Index3D>& idRemap)
+void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	auto iter = idRemap.find(_blockIdx);
-	if (iter != idRemap.end())
-		_blockIdx = iter->second;
+	size_t srcIdx = Volume::calLinearBlockIndex(_blockIdx, srcDims);
+	Index3D dstIdx;
+	if (idRemap[srcIdx] != -1) {
+		dstIdx = _pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+		_blockIdx = dstIdx;
+	}
 
 
-	_vertices.iterateInOrder([&idRemap](const Index3DId& id, Vertex& vert) {
-		vert.remapId(idRemap);
+	_vertices.iterateInOrder([&idRemap, &srcDims](const Index3DId& id, Vertex& vert) {
+		vert.remapId(idRemap, srcDims);
 	});
-	_modelData.remapIds(idRemap);
-	_refData.remapIds(idRemap);
+	_modelData.remapIds(idRemap, srcDims);
+	_refData.remapIds(idRemap, srcDims);
 }
 
 void Block::getAdjacentBlockIndices(MTC::set<Index3D>& indices) const

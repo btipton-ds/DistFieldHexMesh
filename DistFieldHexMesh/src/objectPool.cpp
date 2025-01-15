@@ -122,12 +122,16 @@ const Index3DId& ObjectPoolOwnerUser::getId() const
 	return _thisId;
 }
 
-void ObjectPoolOwnerUser::remapId(const map<Index3D, Index3D>& idRemap)
+void ObjectPoolOwnerUser::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	auto iter = idRemap.find(_thisId);
-	if (iter != idRemap.end()) {
+	auto pBlk = getOurBlockPtr();
+	auto pVol = pBlk->getVolume();
+	size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+	Index3D dstIdx;
+	if (idRemap[srcIdx] != -1) {
+		dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
 		size_t elementId = _thisId.elementId();
-		_thisId = Index3DId(iter->second, elementId);
+		_thisId = Index3DId(dstIdx, elementId);
 	}
 }
 
@@ -136,26 +140,37 @@ bool ObjectPoolOwnerUser::verifyIndices(const Index3D& idx) const
 	return _thisId.blockIdx() == idx;
 }
 
-void ObjectPoolOwnerUser::remap(const map<Index3D, Index3D>& idRemap, MTC::set<Index3DId>& vals)
+void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::set<Index3DId>& vals)
 {
 	MTC::set<Index3DId> tmp(vals);
 	vals.clear();
+
+	Index3D dstIdx;
+	auto pBlk = getOurBlockPtr();
+	auto pVol = pBlk->getVolume();
+
 	for (auto& v : tmp) {
-		auto iter = idRemap.find(v);
-		if (iter != idRemap.end()) 
-			vals.insert(Index3DId(iter->second, v.elementId()));
-		else
+		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		if (idRemap[srcIdx] != -1) {
+			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+			vals.insert(Index3DId(dstIdx, v.elementId()));
+		} else
 			vals.insert(v);
 	}
 }
 
-void ObjectPoolOwnerUser::remap(const map<Index3D, Index3D>& idRemap, MTC::vector<Index3DId>& vals)
+void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::vector<Index3DId>& vals)
 {
+	Index3D dstIdx;
+	auto pBlk = getOurBlockPtr();
+	auto pVol = pBlk->getVolume();
+
 	for (size_t i = 0; i < vals.size(); i++) {
 		const auto& v = vals[i];
-		auto iter = idRemap.find(v);
-		if (iter != idRemap.end()) {
-			vals[i] = Index3DId(iter->second, vals[i].elementId());
+		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		if (idRemap[srcIdx] != -1) {
+			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+			vals[i] = Index3DId(dstIdx, vals[i].elementId());
 		}
 	}
 }

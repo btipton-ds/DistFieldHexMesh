@@ -454,21 +454,19 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore)
 {
 	if (!params.symXAxis)
-		insertBlocks(params, CFT_BACK);
-#if 1
-	insertBlocks(params, CFT_FRONT);
+		insertBlocks(params, CFT_BACK, multiCore);
 
 	if (!params.symYAxis)
-		insertBlocks(params, CFT_LEFT);
-
-	insertBlocks(params, CFT_RIGHT);
+		insertBlocks(params, CFT_LEFT, multiCore);
 
 	if (!params.symZAxis)
-		insertBlocks(params, CFT_BOTTOM);
+		insertBlocks(params, CFT_BOTTOM, multiCore);
 
-	insertBlocks(params, CFT_TOP);
-#endif
+	insertBlocks(params, CFT_FRONT, multiCore);
 
+	insertBlocks(params, CFT_RIGHT, multiCore);
+
+	insertBlocks(params, CFT_TOP, multiCore);
 }
 
 void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore)
@@ -930,11 +928,11 @@ void Volume::setLayerNums()
 	}
 }
 
-void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
+void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)
 {
 	size_t linIdxSrc, linIdxDst;
 	Index3D idxSrc, idxDst;
-	map<Index3D, Index3D> idRemap;
+	vector<size_t> idRemap; 
 
 	auto srcDims = volDim();
 	auto dstDims = srcDims;
@@ -967,8 +965,10 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 	}
 
 	setVolDim(dstDims, false);
+	idRemap.resize(_blocks.size(), -1);
 
-	for (size_t i = srcSize - 1; i != -1; i--) {
+	for (size_t j = 0; j < srcSize; j++) {
+		size_t i = srcSize - 1 - j;
 		Index3D idxSrc = calBlockIndexFromLinearIndex(i, srcDims);
 		idxDst = idxSrc;
 		switch (face) {
@@ -987,7 +987,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 
 		linIdxSrc = calLinearBlockIndex(idxSrc, srcDims);
 		linIdxDst = calLinearBlockIndex(idxDst);
-		idRemap[idxSrc] = idxDst;
+		idRemap[linIdxSrc] = linIdxDst;
 
 		_blocks[linIdxDst] = _blocks[linIdxSrc];
 		if (linIdxDst != linIdxSrc) {
@@ -995,10 +995,12 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face)
 		}
 	}
 
-	for (size_t i = 0; i < _blocks.size(); i++) {
-		if (_blocks[i])
-			_blocks[i]->remapBlockIndices(idRemap);
-	}
+	MultiCore::runLambda([this, &idRemap, &srcDims](size_t threadNum, size_t numThreads) {
+		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
+			if (_blocks[i])
+				_blocks[i]->remapBlockIndices(idRemap, srcDims);
+		}
+	}, multiCore);
 
 	vector<BlockPtr> adHocBlocks;
 	Vector3d newCorners[8];

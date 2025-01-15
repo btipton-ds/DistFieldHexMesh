@@ -56,7 +56,7 @@ public:
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 
-	void remapId(const std::map<Index3D, Index3D>& idRemap) override;
+	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	const MTC::set<Index3DId>& getFaceIds() const;

@@ -102,15 +102,15 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	return *this;
 }
 
-void Polygon::remapId(const std::map<Index3D, Index3D>& idRemap)
+void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	ObjectPoolOwnerUser::remapId(idRemap);
+	ObjectPoolOwnerUser::remapId(idRemap, srcDims);
 
-	remap(idRemap, _splitFaceProductIds);
-	remap(idRemap, _splitEdgeVertMap);
+	remap(idRemap, srcDims, _splitFaceProductIds);
+	remap(idRemap, srcDims, _splitEdgeVertMap);
 
-	remap(idRemap, _vertexIds);
-	remap(idRemap, _cellIds);
+	remap(idRemap, srcDims, _vertexIds);
+	remap(idRemap, srcDims, _cellIds);
 }
 
 void Polygon::addVertex(const Index3DId& vertId)

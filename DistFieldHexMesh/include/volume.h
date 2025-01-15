@@ -109,7 +109,7 @@ public:
 
 	void setLayerNums();
 
-	void insertBlocks(const BuildCFDParams& params, CubeFaceType face);
+	void insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore);
 
 	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;

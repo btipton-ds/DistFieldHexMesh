@@ -250,7 +250,7 @@ private:
 		void clear();
 		size_t numBytes() const;
 
-		void remapIds(const std::map<Index3D, Index3D>& idRemap);
+		void remapIds(const std::vector<size_t>& idRemap, const Index3D& srcDims);
 		bool verifyIndices(const Index3D& idx) const;
 
 		ObjectPool<Polygon> _polygons;
@@ -261,7 +261,7 @@ private:
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
 
-	void remapBlockIndices(const std::map<Index3D, Index3D>& idRemap);
+	void remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims);
 	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;

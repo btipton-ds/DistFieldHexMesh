@@ -28,19 +28,25 @@ This file is part of the DistFieldHexMesh application/library.
 */
 #include <defines.h>
 #include <objectPool.h>
+#include <block.h>
+#include <Volume.h>
 
 namespace DFHM {
 
 	template<class T>
-	void ObjectPoolOwnerUser::remap(const std::map<Index3D, Index3D>& idRemap, MTC::map<T, Index3DId>& vals)
+	void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::map<T, Index3DId>& vals)
 	{
+		Index3D dstIdx;
+		auto pBlk = getOurBlockPtr();
+		auto pVol = pBlk->getVolume();
+
 		for (const auto& pair : vals) {
 			const T& key = pair.first;
 			const Index3DId& oldIdx = pair.second;
-			auto iter = idRemap.find(oldIdx);
-			if (iter != idRemap.end()) {
-				const auto& newIdx = iter->first;
-				vals[key] = Index3DId(newIdx, oldIdx.elementId());
+			size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+			if (idRemap[srcIdx] != -1) {
+				dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+				vals[key] = Index3DId(dstIdx, oldIdx.elementId());
 			}
 		}
 	}
