@@ -1019,7 +1019,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 		}
 	}, multiCore);
 
-	vector<BlockPtr> adHocBlocks;
 	Vector3d newCorners[8];
 	switch (face) {
 	case CFT_FRONT:
@@ -1040,7 +1039,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[1][0] = newCorners[2][0] = newCorners[5][0] = newCorners[6][0] = params.xMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 #if 1 && defined(_DEBUG)
@@ -1067,7 +1065,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[0][0] = newCorners[3][0] = newCorners[4][0] = newCorners[7][0] = params.xMin;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 		
@@ -1095,7 +1092,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[3][1] = newCorners[2][1] = newCorners[7][1] = newCorners[6][1] = params.yMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 #if 1 && defined(_DEBUG)
@@ -1122,7 +1118,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[3][1] = newCorners[2][1] = newCorners[6][1] = newCorners[7][1] = params.yMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
@@ -1150,7 +1145,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[4][2] = newCorners[5][2] = newCorners[6][2] = newCorners[7][2] = params.zMax;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
@@ -1178,7 +1172,6 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				newCorners[0][2] = newCorners[1][2] = newCorners[2][2] = newCorners[3][2] = params.zMin;
 				auto pNewBlock = make_shared<Block>(this, idxDst, newCorners);
 				_blocks[linIdxDst] = pNewBlock;
-				adHocBlocks.push_back(pNewBlock);
 			}
 		}
 
