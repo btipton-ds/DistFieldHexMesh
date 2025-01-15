@@ -115,8 +115,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 	Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 
-	MTC::set<Index3DId> cornerVerts;
-	referanceCell.getVertIds(cornerVerts);
+	const auto& cornerVerts = referanceCell.getVertIds();
 	assert(cornerVerts.size() == 8);
 	const auto& faceIds = referanceCell.getFaceIds();
 	assert(faceIds.size() == 6);

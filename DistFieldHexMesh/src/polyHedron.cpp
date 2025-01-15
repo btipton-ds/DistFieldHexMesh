@@ -228,77 +228,83 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 	clearCache();
 }
 
-void Polyhedron::getVertIds(MTC::set<Index3DId>& vertIds) const
+const MTC::set<Index3DId>& Polyhedron::getVertIds() const
 {
-	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(getState(), faceId, [&vertIds](const Polygon& refFace) {
-			const auto vertexIds = refFace.getVertexIds();
-			vertIds.insert(vertexIds.begin(), vertexIds.end());
-		});
+	if (_cachedVertIds.empty()) {
+		for (const auto& faceId : _faceIds) {
+			faceAvailFunc(getState(), faceId, [this](const Polygon& refFace) {
+				const auto vertexIds = refFace.getVertexIds();
+				_cachedVertIds.insert(vertexIds.begin(), vertexIds.end());
+			});
+		}
 	}
+
+	return _cachedVertIds;
 }
 
 const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
-	bool cacheValid = includeAdjacentCellFaces ? _cachedEdges1Vaild : _cachedEdges0Vaild;
-	if (!cacheValid) {
-		auto curState = getState();
-		MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
-		MTC::set<Index3DId> adjCellIds;
-		for (const auto& faceId : _faceIds) {
-			faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
-				if (includeAdjacentCellFaces) {
-					auto temp = face.getCellIds();
-					adjCellIds.insert(temp.begin(), temp.end());
-				}
-				const auto& edges = face.getEdges();
-				for (const auto& edge : edges) {
-					auto iter = edgeToFaceMap.find(edge);
-					if (iter == edgeToFaceMap.end()) {
-						MTC::set<Index3DId> data;
-						iter = edgeToFaceMap.insert(MTC::make_pair(edge, data)).first;
-					}
-					iter->second.insert(faceId);
-				}
-			});
-		}
+	if (includeAdjacentCellFaces) {
+		if (!_cachedEdges1.empty())
+			return _cachedEdges1;
+	} else if (!_cachedEdges0.empty())
+		return _cachedEdges1;
 
-		if (includeAdjacentCellFaces) {
-			adjCellIds.erase(_thisId);
-			for (const auto& adjCellId : adjCellIds) {
-				MTC::set<Index3DId> faceIds;
-				cellAvailFunc(curState, adjCellId, [&faceIds](const Polyhedron& cell) {
-					faceIds = cell.getFaceIds();
-				});
-				for (const auto& faceId : faceIds) {
-					faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
-						const auto& edges = face.getEdges();
-						for (const auto& edge : edges) {
-							auto iter = edgeToFaceMap.find(edge);
-							if (iter != edgeToFaceMap.end()) {
-								iter->second.insert(faceId);
-							}
-						}
-					});
-				}
-			}
-
-		}
-
-		for (const auto& pair : edgeToFaceMap) {
+	auto curState = getState();
+	MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
+	MTC::set<Index3DId> adjCellIds;
+	for (const auto& faceId : _faceIds) {
+		faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
 			if (includeAdjacentCellFaces) {
-				_cachedEdges1.insert(Edge(pair.first, pair.second));
-			} else {
-				_cachedEdges0.insert(Edge(pair.first, pair.second));
+				auto temp = face.getCellIds();
+				adjCellIds.insert(temp.begin(), temp.end());
 			}
-		}
+			const auto& edges = face.getEdges();
+			for (const auto& edge : edges) {
+				auto iter = edgeToFaceMap.find(edge);
+				if (iter == edgeToFaceMap.end()) {
+					MTC::set<Index3DId> data;
+					iter = edgeToFaceMap.insert(MTC::make_pair(edge, data)).first;
+				}
+				iter->second.insert(faceId);
+			}
+		});
 	}
 
 	if (includeAdjacentCellFaces) {
-		_cachedEdges1Vaild = true;
+		adjCellIds.erase(_thisId);
+		for (const auto& adjCellId : adjCellIds) {
+			MTC::set<Index3DId> faceIds;
+			cellAvailFunc(curState, adjCellId, [&faceIds](const Polyhedron& cell) {
+				faceIds = cell.getFaceIds();
+			});
+			for (const auto& faceId : faceIds) {
+				faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
+					const auto& edges = face.getEdges();
+					for (const auto& edge : edges) {
+						auto iter = edgeToFaceMap.find(edge);
+						if (iter != edgeToFaceMap.end()) {
+							iter->second.insert(faceId);
+						}
+					}
+				});
+			}
+		}
+
+	}
+
+	for (const auto& pair : edgeToFaceMap) {
+		if (includeAdjacentCellFaces) {
+			_cachedEdges1.insert(Edge(pair.first, pair.second));
+		} else {
+			_cachedEdges0.insert(Edge(pair.first, pair.second));
+		}
+	}
+	
+
+	if (includeAdjacentCellFaces) {
 		return _cachedEdges1;
 	} else {
-		_cachedEdges0Vaild = true;
 		return _cachedEdges0;
 	}
 }
@@ -308,15 +314,14 @@ const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 	if (_cachedAdjCellIds.empty()) { // All cells have adjacent cells. If this is empty, it hasn't been set
 		set<Edge> edges = getEdges(true);
 		for (const auto& faceId : _faceIds) {
-			faceAvailFunc(getState(), faceId, [this, &edges](const Polygon& face) {
+			faceFunc(getState(), faceId, [this, &edges](const Polygon& face) {
 				const auto& cellIds1 = face.getCellIds();
 				for (const auto& cellId : cellIds1) {
 					set<Edge> adjEdges;
-					cellAvailFunc(TS_REAL, cellId, [this, &adjEdges](const Polyhedron& adjCell) {
+					cellFunc(getState(), cellId, [this, &adjEdges](const Polyhedron& adjCell) {
 						adjEdges = adjCell.getEdges(true);
 						});
-					set<Index3DId> vertIds;
-					getVertIds(vertIds);
+					const auto& vertIds = getVertIds();
 					for (const auto& edge : adjEdges) {
 						for (const auto& vertId : vertIds) {
 							if (edge.containsVertex(vertId)) {
@@ -382,8 +387,7 @@ MTC::set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 CBoundingBox3Dd Polyhedron::getBoundingBox() const
 {
 	CBoundingBox3Dd bbox;
-	MTC::set<Index3DId> vertIds;
-	getVertIds(vertIds);
+	const auto& vertIds = getVertIds();
 	for (const auto& vertId : vertIds) {
 		bbox.merge(getVertexPoint(vertId));
 	}
@@ -419,48 +423,39 @@ bool Polyhedron::contains(const Vector3d& pt) const
 
 bool Polyhedron::containsVertex(const Index3DId& vertId) const
 {
-	bool result = false;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [&vertId , &result](const Polygon& face) {
-			if (face.containsVertex(vertId))
-				result = true;
-		});
-
-		if (result)
-			return true;
-	}
-	return false;
+	const auto& ourVerts = getVertIds();
+	return ourVerts.contains(vertId);
 }
 
 bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 {
-	set<Index3DId> ourVerts, otherVerts;
-	getVertIds(ourVerts);
-	cellAvailFunc(TS_REAL, cellId, [&otherVerts](const Polyhedron& cell) {
-		cell.getVertIds(otherVerts);
+	bool result = false;
+	cellAvailFunc(getState(), cellId, [this, &result](const Polyhedron& cell) {
+		const auto& ourVerts = getVertIds();
+		const auto& otherVerts = cell.getVertIds();
+		for (const auto& otherId : otherVerts) {
+			if (ourVerts.contains(otherId)) {
+				result = true;
+				break;
+			}
+		}
 	});
 
-	for (const auto& otherId : otherVerts) {
-		if (ourVerts.contains(otherId))
-			return true;
-	}
-
-	return false;
+	return result;
 }
 
 bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
 {
-	set<Index3DId> ourVerts;
-	vector<Index3DId> otherVerts;
-	getVertIds(ourVerts);
-	faceAvailFunc(TS_REAL, faceId, [&otherVerts](const Polygon& face) {
-		otherVerts = face.getVertexIds();
+	bool result = false;
+	faceAvailFunc(TS_REAL, faceId, [this, &result](const Polygon& face) {
+		const auto& ourVerts = getVertIds();
+		const auto& otherVerts = face.getVertexIds();
+		for (const auto& otherId : otherVerts) {
+			if (ourVerts.contains(otherId)) {
+				result = true;
+			}
+		}
 	});
-
-	for (const auto& otherId : otherVerts) {
-		if (ourVerts.contains(otherId))
-			return true;
-	}
 
 	return false;
 }
@@ -1469,8 +1464,6 @@ bool Polyhedron::verifyTopology() const
 void Polyhedron::clearCache() const
 {
 	_needsCurvatureCheck = true;
-	_cachedEdges0Vaild = false;
-	_cachedEdges1Vaild = false;
 	_isOriented = false;
 
 	_intersectsModel = IS_UNKNOWN; // Cached value
@@ -1480,6 +1473,7 @@ void Polyhedron::clearCache() const
 
 	_cachedEdges0.clear();
 	_cachedEdges1.clear();
+	_cachedVertIds.clear();
 
 	clearAdjCellIdCache();
 }

@@ -61,7 +61,7 @@ public:
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	const MTC::set<Index3DId>& getFaceIds() const;
 	size_t getNumFaces() const;
-	void getVertIds(MTC::set<Index3DId>& vertIds) const;
+	const MTC::set<Index3DId>& getVertIds() const;
 	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
 	const MTC::set<Index3DId>& getAdjacentCells() const;
@@ -160,11 +160,10 @@ private:
 
 	bool _needsSplitAtCentroid = false;
 
-	mutable bool _cachedEdges0Vaild = false;
-	mutable bool _cachedEdges1Vaild = false;
 	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 
 	mutable MTC::set<Index3DId> _cachedAdjCellIds;
+	mutable MTC::set<Index3DId> _cachedVertIds;
 
 	mutable bool _needsConditionalSplitTest = true;
 	mutable bool _isOriented = false;

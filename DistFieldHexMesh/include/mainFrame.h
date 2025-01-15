@@ -220,6 +220,10 @@ private:
         * _viewStandardViewsSubMenu = nullptr,
         * _layersSubMenu = nullptr;
 
+    size_t _numCells = 0;
+    size_t _numFaces = 0;
+    size_t _numBytes = 0;
+
     ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;
     GraphicsCanvas* _pCanvas = nullptr;

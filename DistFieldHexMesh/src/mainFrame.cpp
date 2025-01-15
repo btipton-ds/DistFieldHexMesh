@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <memory>
+#include <ctime>
 #include <wx/filedlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
@@ -385,18 +386,25 @@ void MainFrame::OnInternalIdle()
         }
     }
 
-    size_t numCells = 0, numFaces = 0, numBytes = 0;
     wstringstream ss;
-    auto pVol = _pAppData->getVolume();
-    if (pVol) {
-        numCells = pVol->numPolyhedra();
-        numFaces = pVol->numFaces(true);
-    }
-    numBytes = _pAppData->numBytes();
-    numBytes += _pCanvas->numBytes();
+    double t = clock() / (double) CLOCKS_PER_SEC;
+    static auto lastTime = t;
 
-    double mem = numBytes / 1024.0 / 1024.0;
-    ss << L"Num Cells: " << numCells << ", Num Faces: " << numFaces << ", Memory: " << mem << " mb";
+    if (t - lastTime > 5) {
+        lastTime = t;
+        t = clock() / (double)CLOCKS_PER_SEC;
+        _numCells = _numFaces = _numBytes = 0;
+        auto pVol = _pAppData->getVolume();
+        if (pVol) {
+            _numCells = pVol->numPolyhedra();
+            _numFaces = pVol->numFaces(true);
+        }
+        _numBytes = _pAppData->numBytes();
+        _numBytes += _pCanvas->numBytes();
+    }
+
+    double mem = _numBytes / 1024.0 / 1024.0;
+    ss << L"Num Cells: " << _numCells << ", Num Faces: " << _numFaces << ", Memory: " << mem << " mb";
     SetStatusText(ss.str());
 }
 

@@ -696,9 +696,12 @@ Index3DId Block::addCell(const Polyhedron& cell)
 		});
 	}
 	newCell.orientFaces();
+
+#if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());
 	assert(newCell.isConvex());
 	assert(newCell.calVolume() > 0);
+#endif
 
 	return cellId;
 }

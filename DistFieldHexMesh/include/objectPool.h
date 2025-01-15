@@ -196,7 +196,7 @@ private:
 		_idToIndexMap,
 		_availableIndices;
 
-	using ObjectSegPtr = std::vector<T>*;
+	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
 	std::vector<ObjectSegPtr> _objectSegs;
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
@@ -228,7 +228,7 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	for (size_t i = 0; i < src._objectSegs.size(); i++) {
 		const auto& pSrcVec = src._objectSegs[i];
 		const auto& srcVec = *pSrcVec;
-		_objectSegs.push_back(new std::vector<T>(srcVec));
+		_objectSegs.push_back(std::make_shared<std::vector<T>>(srcVec));
 	}
 	iterateInOrder([this](const Index3DId& id, T& obj) {
 		obj._pPoolOwner = _pPoolOwner;
@@ -239,7 +239,6 @@ template<class T>
 ObjectPool<T>::~ObjectPool()
 {
 	for (size_t i = 0; i < _objectSegs.size(); i++) {
-		delete _objectSegs[i];
 		_objectSegs[i] = nullptr;
 	}
 }
@@ -446,7 +445,7 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 	if (_availableIndices.empty()) {
 		if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
 			// Reserve the segment size so the array won't resize during use
-			_objectSegs.push_back(new std::vector<T>);
+			_objectSegs.push_back(std::make_shared<std::vector<T>>());
 //			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
 		segNum = _objectSegs.size() - 1;
@@ -463,7 +462,7 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 		calIndices(index, segNum, segIdx);
 		if (segNum >= _objectSegs.size()) {
 			// Reserve the segment size so the array won't resize during use
-			_objectSegs.push_back(new std::vector<T>);
+			_objectSegs.push_back(std::make_shared<std::vector<T>>());
 //			_objectSegs.back()->reserve(_objectSegmentSize);
 		}
 		auto& segData = *_objectSegs[segNum];
