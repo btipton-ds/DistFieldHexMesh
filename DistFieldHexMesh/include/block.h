@@ -165,6 +165,7 @@ public:
 	Index3DId addCell(const MTC::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const std::vector<Vector3d>& cellPts);
 	Index3DId addHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+	void addToSeedFillList(const Index3DId& cellId);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
@@ -190,7 +191,8 @@ public:
 	bool hasPendingSplits() const;
 
 	void resetLayerNums();
-	bool incrementLayerNums();
+	bool incrementLayerNums(int i);
+	void swapSeedBuffers();
 
 	void freePolygon(const Index3DId& id, bool requireRefExists);
 	void freePolyhedron(const Index3DId& id, bool requireRefExists);
@@ -324,6 +326,9 @@ private:
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;
+
+	int _seedFillReadIdx = 0;
+	std::vector<Index3DId> _seedFillList[2];
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

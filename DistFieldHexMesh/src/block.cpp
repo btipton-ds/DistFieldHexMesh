@@ -796,6 +796,16 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
+void Block::addToSeedFillList(const Index3DId& cellId)
+{
+	auto pOwner = getOwner(cellId);
+	if (pOwner == this) {
+		int writeIdx = 1 - _seedFillReadIdx;
+		_seedFillList[writeIdx].push_back(cellId);
+	} else
+		pOwner->addToSeedFillList(cellId);
+}
+
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
 #if 0 && RUN_MULTI_THREAD && defined(_DEBUG)
@@ -1536,21 +1546,44 @@ bool Block::hasPendingSplits() const
 
 void Block::resetLayerNums()
 {
+	int writeIdx = 1 - _seedFillReadIdx;
+	_seedFillList[writeIdx].clear();
+
 	_modelData._polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
 		cell.clearLayerNum();
 		cell.clearAdjCellIdCache();
 	});
 }
 
-bool Block::incrementLayerNums()
+bool Block::incrementLayerNums(int i)
 {
 	bool changed = false;
-	_modelData._polyhedra.iterateInOrder([&changed](const Index3DId& cellId, Polyhedron& cell) {
-		if (cell.setLayerNum())
-			changed = true;
-	});
+	if (i == 0) {
+		_modelData._polyhedra.iterateInOrder([i, &changed](const Index3DId& cellId, Polyhedron& cell) {
+			if (cell.setLayerNum(i, true))
+				changed = true;
+		});
+	} else {
+		const auto& cellIds = _seedFillList[_seedFillReadIdx];
+		for (const auto& cellId : cellIds) {
+			cellFunc(TS_REAL, cellId, [i, &changed](Polyhedron& cell) {
+				if (cell.setLayerNum(i, true))
+					changed = true;
+			});
+		}
+	}
 
 	return changed;
+}
+
+void Block::swapSeedBuffers()
+{
+	// Ping pong buffers, write becomes read, read becomes write, clear write
+
+	// Don't do this until all blocks are done incrementing layers
+	int writeIdx = _seedFillReadIdx;
+	_seedFillReadIdx = 1 - _seedFillReadIdx;
+	_seedFillList[writeIdx].clear();
 }
 
 void Block::freePolygon(const Index3DId& id, bool requireRefExists)

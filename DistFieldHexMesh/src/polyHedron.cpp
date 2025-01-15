@@ -305,7 +305,7 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 
 const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 {
-	if (_cachedAdjCellIdsValid) {
+	if (_cachedAdjCellIds.empty()) { // All cells have adjacent cells. If this is empty, it hasn't been set
 		set<Edge> edges = getEdges(true);
 		for (const auto& faceId : _faceIds) {
 			faceAvailFunc(getState(), faceId, [this, &edges](const Polygon& face) {
@@ -325,7 +325,7 @@ const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 						}
 					}
 				}
-				});
+			});
 		}
 
 		auto pBlk = getBlockPtr();
@@ -340,6 +340,7 @@ const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 
 		_cachedAdjCellIds.erase(_thisId);
 	}
+
 	return _cachedAdjCellIds;
 }
 
@@ -1289,24 +1290,32 @@ void Polyhedron::clearLayerNum()
 	_layerNum = -1;
 }
 
-bool Polyhedron::setLayerNum()
+bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)
 {
 	bool changed = false;
-	if (_layerNum == -1) {
-		if (intersectsModel()) {
-			_layerNum = 0;
+	if (thisLayerNum == 0) {
+		if (_layerNum == -1 && intersectsModel()) {
+			auto pBlk = getBlockPtr();
+			pBlk->addToSeedFillList(_thisId);
+			_layerNum = thisLayerNum;
 			changed = true;
 		}
 	} else {
-		auto nextLayerNum = _layerNum + 1;
-		set<Index3DId> adj = getAdjacentCells();
-		for (const auto& id : adj) {
-			cellFunc(TS_REAL, id, [this, nextLayerNum, &changed](Polyhedron& adjCell) {
-				if (adjCell._layerNum == -1) {
-					adjCell._layerNum = nextLayerNum;
-					changed = true;
-				}
-			});
+		if (propagate) {
+			const auto& adj = getAdjacentCells();
+			for (const auto& id : adj) {
+				cellFunc(TS_REAL, id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
+					if (adjCell.getLayerNum() == -1) {
+						adjCell.setLayerNum(thisLayerNum, false);
+						changed = true;
+					}
+				});
+			}
+		} else {
+			auto pBlk = getBlockPtr();
+			pBlk->addToSeedFillList(_thisId);
+			_layerNum = thisLayerNum;
+			changed = true;
 		}
 	}
 
@@ -1477,7 +1486,6 @@ void Polyhedron::clearCache() const
 
 void Polyhedron::clearAdjCellIdCache() const
 {
-	_cachedAdjCellIdsValid = false;
 	_cachedAdjCellIds.clear();
 }
 

@@ -116,7 +116,7 @@ public:
 	void setSplitLevel(size_t val);
 	int32_t getLayerNum() const;
 	void clearLayerNum();
-	bool setLayerNum();
+	bool setLayerNum(int i, bool propagate);
 
 	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
@@ -164,7 +164,6 @@ private:
 	mutable bool _cachedEdges1Vaild = false;
 	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 
-	mutable bool _cachedAdjCellIdsValid = false;
 	mutable MTC::set<Index3DId> _cachedAdjCellIds;
 
 	mutable bool _needsConditionalSplitTest = true;
