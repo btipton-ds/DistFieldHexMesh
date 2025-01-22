@@ -24,7 +24,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
-
+#include <triMesh.hpp>
 #include <appData.h>
 #include <OGLShader.h>
 #include <rgbaColor.h>
