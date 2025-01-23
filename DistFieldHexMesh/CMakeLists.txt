@@ -93,9 +93,10 @@ add_executable (DistFieldHexMesh
 	"src/polyHedron.cpp"
 	"src/polyhedronSplitter.cpp"
 	"src/selectBlocksDlg.cpp"
+	"src/splitLongTrisDlg.cpp"
 	"src/splitParams.cpp"
-	 "src/unalignedBBox.cpp"
-	 "src/utils.cpp"
+	"src/unalignedBBox.cpp"
+	"src/utils.cpp"
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
@@ -107,7 +108,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
- "src/splitLongTrisDlg.cpp")
+ )
 
 add_executable (TestDFM         
 	

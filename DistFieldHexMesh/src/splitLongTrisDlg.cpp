@@ -98,7 +98,7 @@ double SplitLongTrisDlg::getMaxLength() const
 	if (wstr.length() > 0) {
 		try {
 			value = stod(wstr.c_str().AsChar());
-		} catch (const invalid_argument& ex) {
+		} catch (const invalid_argument& ) {
 		}
 	}
 
