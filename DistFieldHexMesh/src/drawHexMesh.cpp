@@ -177,8 +177,6 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
 
     auto& faceVBO = getVBOs()->_faceVBO;
     auto& edgeVBO = getVBOs()->_edgeVBO;
-    faceVBO.clear();
-    edgeVBO.clear();
 
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
