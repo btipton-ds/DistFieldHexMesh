@@ -54,9 +54,9 @@ namespace DFHM {
 		void OnDone(wxCommandEvent& event);
 
 	private:
-		void getValue(wxTextCtrl* item, unsigned short& value) const;
-		void getValue(wxTextCtrl* item, size_t& value) const;
-		void getValue(wxTextCtrl* item, double& value) const;
+		bool getValue(wxTextCtrl* item, unsigned short& value) const;
+		bool getValue(wxTextCtrl* item, size_t& value) const;
+		bool getValue(wxTextCtrl* item, double& value) const;
 
 		AppDataPtr _pAppData;
 

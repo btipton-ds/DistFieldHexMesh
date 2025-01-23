@@ -224,29 +224,46 @@ CreateBaseMeshDlg::~CreateBaseMeshDlg()
 {
 }
 
-void CreateBaseMeshDlg::getValue(wxTextCtrl* item, unsigned short& value) const
+bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, unsigned short& value) const
 {
-	wxString wstr = item->GetValue();
-	if (wstr.length() > 0) {
-		value = (unsigned short)stoi(wstr.c_str().AsChar());
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = (unsigned short)stoi(wstr.c_str().AsChar());
+			return true;
+		}
+	} catch (const invalid_argument& ) {
 	}
 
+	return false;
 }
 
-void CreateBaseMeshDlg::getValue(wxTextCtrl* item, size_t& value) const
+bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, size_t& value) const
 {
-	wxString wstr = item->GetValue();
-	if (wstr.length() > 0) {
-		value = stoi(wstr.c_str().AsChar());
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = stoi(wstr.c_str().AsChar());
+			return true;
+		}
+	} catch (const invalid_argument& ) {
 	}
+
+	return false;
 }
 
-void CreateBaseMeshDlg::getValue(wxTextCtrl* item, double& value) const
+bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, double& value) const
 {
-	wxString wstr = item->GetValue();
-	if (wstr.length() > 0) {
-		value = stod(wstr.c_str().AsChar());
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = stod(wstr.c_str().AsChar());
+			return true;
+		}
+	} catch (const invalid_argument& ) {
 	}
+
+	return false;
 }
 
 void CreateBaseMeshDlg::getParams() const

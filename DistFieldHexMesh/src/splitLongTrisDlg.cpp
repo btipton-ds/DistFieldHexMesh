@@ -96,7 +96,10 @@ double SplitLongTrisDlg::getMaxLength() const
 	double value = -1;
 	wxString wstr = _maxLengthText->GetValue();
 	if (wstr.length() > 0) {
-		value = stod(wstr.c_str().AsChar());
+		try {
+			value = stod(wstr.c_str().AsChar());
+		} catch (const invalid_argument& ex) {
+		}
 	}
 
 	return value;

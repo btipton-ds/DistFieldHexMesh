@@ -163,20 +163,30 @@ BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	_cancelButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(col1, baseRowPixels + rowNum * rowHeight));
 }
 
-void BuildCFDHexesDlg::getValue(wxTextCtrl* item, size_t& value) const
+bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, size_t& value) const
 {
-	wxString wstr = item->GetValue();
-	if (wstr.length() > 0) {
-		value = stoi(wstr.c_str().AsChar());
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = stoi(wstr.c_str().AsChar());
+			return true;
+		}
+	} catch (const invalid_argument& ) {
 	}
+	return false;
 }
 
-void BuildCFDHexesDlg::getValue(wxTextCtrl* item, double& value) const
+bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, double& value) const
 {
-	wxString wstr = item->GetValue();
-	if (wstr.length() > 0) {
-		value = stod(wstr.c_str().AsChar());
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = stod(wstr.c_str().AsChar());
+			return true;
+		}
+	} catch (const invalid_argument& ) {
 	}
+	return false;
 }
 
 void BuildCFDHexesDlg::getParams(BuildCFDParams& params) const

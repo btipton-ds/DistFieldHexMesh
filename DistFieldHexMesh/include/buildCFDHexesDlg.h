@@ -48,8 +48,8 @@ namespace DFHM {
 		void getParams(BuildCFDParams& params) const;
 
 	private:
-		void getValue(wxTextCtrl* item, size_t& curValue) const;
-		void getValue(wxTextCtrl* item, double& curValue) const;
+		bool getValue(wxTextCtrl* item, size_t& curValue) const;
+		bool getValue(wxTextCtrl* item, double& curValue) const;
 
 		wxStaticText
 			* _minBlocksPerSidePrompt = nullptr,
