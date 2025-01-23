@@ -27,44 +27,37 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <defines.h>
 #include "wx/wxprec.h"
-
+#include <tm_vector3.h>
 
 #ifndef WX_PRECOMP
 #include "wx/wx.h"
+#include <wx/dialog.h>
 #endif
 
-#include <wx/dataview.h>
-
 namespace DFHM {
-	class MainFrame;
+	class AppData;
+	using AppDataPtr = std::shared_ptr<AppData>;
 
-	class ObjectTreeCtrl : public wxDataViewTreeCtrl
-	{
+	class SplitLongTrisDlg : public wxDialog {
 	public:
-		ObjectTreeCtrl(MainFrame* pMainFrame,
-			wxWindowID id,
-			const wxPoint& pos = wxDefaultPosition,
-			const wxSize& size = wxDefaultSize,
-			long style = wxDV_NO_HEADER | wxDV_ROW_LINES,
-			const wxValidator& validator = wxDefaultValidator);
 
-		void onSelectionChanged(wxDataViewEvent& event);
-		void onContextMenu(wxDataViewEvent& event);
+		SplitLongTrisDlg(wxWindow* parent, wxWindowID id, const wxString& title,
+			const wxPoint& pos = wxDefaultPosition);
+
+		double getMaxLength() const;
 
 	private:
-		void OnToggleShow(wxCommandEvent& event);
-		void OnMeshStats(wxCommandEvent& event);
-		void OnVerifyNormals(wxCommandEvent& event);
-		void OnAnalyzeGaps(wxCommandEvent& event);
-		void OnFindMinGap(wxCommandEvent& event);
-		void OnSplitLongTris(wxCommandEvent& event);
+		wxStaticText
+			* _maxLengthPrompt = nullptr;
 
-		MainFrame* _pMainFrame;
-		std::wstring getCurrentItemName() const;
+		wxTextCtrl
+			* _maxLengthText;
 
-	protected:
-		wxDECLARE_EVENT_TABLE();
+		wxButton
+			* _okButton,
+			* _cancelButton;
 	};
+
+
 }

@@ -45,42 +45,36 @@ using namespace DFHM;
 
 namespace
 {
-	enum Ids {
-		X_ROT_ANGLE = 1,
-		Y_ROT_ANGLE,
-		Z_ROT_ANGLE,
+enum Ids {
+	X_ROT_ANGLE = 1,
+	Y_ROT_ANGLE,
+	Z_ROT_ANGLE,
 
-		X_DIM,
-		Y_DIM,
-		Z_DIM,
+	X_DIM,
+	Y_DIM,
+	Z_DIM,
 
-		X_MIN, X_MAX,
-		Y_MIN, Y_MAX,
-		Z_MIN, Z_MAX,
+	X_MIN, X_MAX,
+	Y_MIN, Y_MAX,
+	Z_MIN, Z_MAX,
 
-		X_MIN_DIVS, X_MAX_DIVS,
-		Y_MIN_DIVS, Y_MAX_DIVS,
-		Z_MIN_DIVS, Z_MAX_DIVS,
+	X_MIN_DIVS, X_MAX_DIVS,
+	Y_MIN_DIVS, Y_MAX_DIVS,
+	Z_MIN_DIVS, Z_MAX_DIVS,
 
-		X_MIN_GRADING, X_MAX_GRADING,
-		Y_MIN_GRADING, Y_MAX_GRADING,
-		Z_MIN_GRADING, Z_MAX_GRADING,
+	X_MIN_GRADING, X_MAX_GRADING,
+	Y_MIN_GRADING, Y_MAX_GRADING,
+	Z_MIN_GRADING, Z_MAX_GRADING,
 
-		X_SYM,
-		Y_SYM,
-		Z_SYM,
+	X_SYM,
+	Y_SYM,
+	Z_SYM,
 
-		BASE_OFFSET,
-		ID_UPDATE,
-		ID_CREATE,
-	};
-}
+	BASE_OFFSET,
+	ID_UPDATE,
+	ID_CREATE,
+};
 
-BEGIN_EVENT_TABLE(CreateBaseMeshDlg, wxDialog)
-EVT_BUTTON(ID_UPDATE, CreateBaseMeshDlg::OnUpdate)
-EVT_BUTTON(ID_CREATE, CreateBaseMeshDlg::OnCreate)
-EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnDone)
-END_EVENT_TABLE()
 
 #ifdef WIN32
 int frameWidth = 400;
@@ -112,6 +106,13 @@ int col2 = col1 + promptWidth + gap;
 int col3 = col2 + promptWidth + gap;
 int baseRowPixels = 5;
 #endif
+}
+
+BEGIN_EVENT_TABLE(CreateBaseMeshDlg, wxDialog)
+EVT_BUTTON(ID_UPDATE, CreateBaseMeshDlg::OnUpdate)
+EVT_BUTTON(ID_CREATE, CreateBaseMeshDlg::OnCreate)
+EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnDone)
+END_EVENT_TABLE()
 
 CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
 	: wxDialog(parent, id, title, pos, wxSize(frameWidth, frameHeight), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))

@@ -107,7 +107,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-)
+ "src/splitLongTrisDlg.cpp")
 
 add_executable (TestDFM         
 	

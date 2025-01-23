@@ -45,6 +45,7 @@ namespace OGL
 
 namespace DFHM {
 	class DrawModelMesh;
+	struct BuildCFDParams;
 
 	class AppData;
 
@@ -63,6 +64,9 @@ namespace DFHM {
 
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
+
+		void splitLongTris(const BuildCFDParams& params, double maxLength);
+
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
 
@@ -90,6 +94,11 @@ namespace DFHM {
 
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		TriMesh::CMeshPtr getSharpVertMesh() const;
+
+		std::wstring getCacheFilename() const;
+		bool isMeshCashed() const;
+		void cacheMesh();
+		void readMeshFromCache();
 
 		bool _active = true;
 

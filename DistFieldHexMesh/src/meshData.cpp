@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <meshData.h>
 #include <volume.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -80,6 +81,16 @@ size_t MeshData::numBytes() const
 		_sharpPointTess;
 
 	return result;
+}
+
+void MeshData::splitLongTris(const BuildCFDParams& params, double maxLength)
+{
+	if (!isMeshCashed())
+		cacheMesh();
+	else
+		readMeshFromCache();
+	_pMesh->splitLongTris(maxLength);
+	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
 }
 
 void MeshData::write(std::ostream& out) const
@@ -295,6 +306,40 @@ CMeshPtr MeshData::getSharpVertMesh() const
 	}
 
 	return nullptr;
+}
+
+wstring MeshData::getCacheFilename() const
+{
+	auto tmpDir = _pAppData->getCacheDirName();
+	wstring filename = tmpDir + L"/" + _name + L".dfhm_tmp_mesh";
+	return filename;
+}
+
+bool MeshData::isMeshCashed() const
+{
+	auto filename = getCacheFilename();
+	return wxFileExists(filename);
+}
+
+void MeshData::cacheMesh() {
+	if (!_pMesh)
+		return;
+
+	auto filename = getCacheFilename();
+
+	ofstream out(filename, ios::out | ios::trunc | ios::binary);
+	_pMesh->write(out);
+}
+
+void MeshData::readMeshFromCache()
+{
+	auto filename = getCacheFilename();
+	ifstream in(filename, ifstream::binary);
+	CMeshPtr pMesh = make_shared<CMesh>();
+	if (pMesh->read(in)) {
+		_pMesh = pMesh;
+	}
+
 }
 
 void MeshData::setActive(bool val)

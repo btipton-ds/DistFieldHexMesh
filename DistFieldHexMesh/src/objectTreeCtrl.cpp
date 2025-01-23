@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <appData.h>
 #include <graphicsCanvas.h>
+#include <splitLongTrisDlg.h>
 #include <mainFrame.h>
 
 using namespace std;
@@ -83,6 +84,11 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 		contextMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
 		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnFindMinGap, this, ID_FindMinimumGap);
 
+		contextMenu->AppendSeparator();
+
+		contextMenu->Append(ID_REMESH, "Split Long Tris...");
+		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnSplitLongTris, this, ID_REMESH);
+
 
 		PopupMenu(contextMenu, event.GetPosition());
 		delete contextMenu;
@@ -128,6 +134,24 @@ void ObjectTreeCtrl::OnFindMinGap(wxCommandEvent& event)
 	const auto& pAppData = _pMainFrame->getAppData();
 	const auto& pData = pAppData->getMeshData()->find(name)->second;
 	pAppData->doFindMinGap(pData->getMesh());
+}
+
+void ObjectTreeCtrl::OnSplitLongTris(wxCommandEvent& event)
+{
+	auto name = getCurrentItemName();
+	const auto& pAppData = _pMainFrame->getAppData();
+	auto& pData = pAppData->getMeshData()->find(name)->second;
+	const auto& pCanvas = _pMainFrame->getCanvas();
+
+	if (pData) {
+		SplitLongTrisDlg dlg(this, 1, wxString("Split long tris"), wxPoint(40, 40));
+		if (dlg.ShowModal() == wxID_OK) {
+			double maxLen = dlg.getMaxLength();
+			pData->splitLongTris(pAppData->getParams(), maxLen);
+			pAppData->updateModelTess();
+			pCanvas->changeViewElements();
+		}
+	}
 }
 
 wstring ObjectTreeCtrl::getCurrentItemName() const

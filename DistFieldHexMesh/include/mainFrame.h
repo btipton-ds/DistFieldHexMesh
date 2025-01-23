@@ -68,6 +68,7 @@ enum DFHM_MENU_ID
     ID_VerifyNormals,
     ID_AnalyzeGaps,
     ID_FindMinimumGap,
+    ID_REMESH,
     ID_CREATE_BASE_MESH,
     ID_BuildCFDHexes,
     ID_IMPORT_MESH,

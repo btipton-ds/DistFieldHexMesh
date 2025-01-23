@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include "wx/wx.h"
 #endif
 
+#include <string>
 #include <defines.h>
 #include <memory>
 #include <triMesh.h>
@@ -90,12 +91,16 @@ public:
     BuildCFDParams& getParams();
     const BuildCFDParams& getParams() const;
 
+    std::wstring getCacheDirName() const;
+
     const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
 
+    void updateModelTess();
+
 private:
+    void clearCache();
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
-    void makeModelTess();
     void updateTessellation();
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);

@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/string.h>
 #include <wx/wfstream.h>
 #include <wx/dataview.h>
+#include <wx/dir.h>
 
 #include "defines.h"
 
@@ -72,6 +73,8 @@ AppData::AppData(MainFrame* pMainFrame)
 {
     _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
     _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
+
+    clearCache();
 }
 
 AppData::~AppData()
@@ -128,7 +131,7 @@ bool AppData::doOpen()
     }
     if (filename.find(L".dfhm") != -1) {
         readDHFM(path, filename);
-        makeModelTess();
+        updateModelTess();
         return true;
     }
     return false;
@@ -142,13 +145,8 @@ CMeshPtr AppData::readStl(const wstring& pathIn, const wstring& filename)
     wstring path(pathIn);
     auto pos = path.find(filename);
     path = path.substr(0, pos);
-    try {
-        if (reader.read(path, filename)) {
-            return pMesh;
-        }
-    }
-    catch (const char* errStr) {
-        cout << errStr << "\n";
+    if (reader.read(path, filename)) {
+        return pMesh;
     }
 
     return nullptr;
@@ -184,14 +182,23 @@ bool AppData::doImportMesh()
         MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name);
         _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
 
-        makeModelTess();
+        updateModelTess();
         return true;
     }
 
     return false;
 }
 
-void AppData::makeModelTess()
+std::wstring AppData::getCacheDirName() const
+{
+#ifdef _WIN32
+    return L"c:/tmp/";
+#else
+#endif // _WIN32
+
+}
+
+void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
     auto pDrawModelMesh = pCanvas->getDrawModelMesh();
@@ -281,7 +288,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
             _pModelMeshData->insert(make_pair(pData->getName(), pData));
         }
 
-        makeModelTess();
+        updateModelTess();
     }
 
     bool hasVolume;
@@ -478,6 +485,19 @@ void AppData::setDisplayMinMax(const Index3D& min, const Index3D& max)
 {
     _minDisplayBlock = min;
     _maxDisplayBlock = max;
+}
+
+void AppData::clearCache()
+{
+    auto dir = getCacheDirName();
+    wxArrayString list;
+    wxDir::GetAllFiles(dir, &list);
+    for (size_t i = 0; i < list.size(); i++) {
+        wstring fn(list[i]);
+        if (fn.find(L".dfhm_tmp_mesh") != wstring::npos) {
+            wxRemoveFile(fn);
+        }
+    }
 }
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
@@ -685,14 +705,16 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
 void AppData::updateTessellation()
 {
-    const Index3D min(0, 0, 0);
-    const Index3D max(_pVolume->volDim());
-    Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
+    if (_pVolume) {
+        const Index3D min(0, 0, 0);
+        const Index3D max(_pVolume ? _pVolume->volDim() : Index3D());
+        Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
 
-    auto pCanvas = _pMainFrame->getCanvas();
-    pCanvas->getDrawHexMesh()->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
+        auto pCanvas = _pMainFrame->getCanvas();
+        pCanvas->getDrawHexMesh()->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
 
-    setDisplayMinMax(min, max);
+        setDisplayMinMax(min, max);
 
-    pCanvas->changeViewElements();
+        pCanvas->changeViewElements();
+    }
 }
