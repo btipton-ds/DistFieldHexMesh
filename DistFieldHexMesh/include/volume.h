@@ -95,7 +95,7 @@ public:
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
-	void buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore);
+	void buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, bool multiCore);
 
 	void createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 

@@ -72,8 +72,6 @@ namespace DFHM {
 			* _splitSharpVertsCheckBox = nullptr;
 
 		wxTextCtrl
-			* _minBlocksPerSideBox = nullptr,
-			* _numBlockDivsBox = nullptr,
 			* _numSimpleDivsBox = nullptr,
 			* _numIntersectionDivsBox = nullptr,
 			* _numSharpEdgeIntersectionDivs = nullptr,

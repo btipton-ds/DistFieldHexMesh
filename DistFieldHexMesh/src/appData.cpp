@@ -695,7 +695,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-//        _pVolume->buildCFDHexes(_pMesh, _params, RUN_MULTI_THREAD);
+        _pVolume->buildCFDHexes(*_pModelMeshData, _params, RUN_MULTI_THREAD);
 
         updateTessellation();
     } catch (const char* errStr) {

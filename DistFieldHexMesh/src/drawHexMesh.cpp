@@ -167,6 +167,9 @@ void DrawHexMesh::setShowLayer(int32_t layerNumber)
 
 void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
 {
+    if (!pVolume || pVolume->numPolyhedra() == 0)
+        return;
+
     Utils::ScopedRestore sr(_readyToDraw);
     _readyToDraw = false;
 

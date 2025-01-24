@@ -47,14 +47,12 @@ namespace
 	enum Ids {
 		UNIFORM_RATIO_ID = 1,
 		SPLIT_SHARP_VERTS_ID = 1,
-		MAX_BLOCKS_PER_SIDE_ID,
 		MAX_CELL_FACES_ID,
 		MAX_GAP_SIZE_ID,
 		MAX_CURVATURE_RADIUS_ID,
 		MIN_EDGE_LENGTH_ID,
 		MIN_EDGE_LENGTH_GAP_ID,
 		SHARP_ANGLE_DEGREES_ID,
-		NUM_BLOCK_DIVS_ID,
 		NUM_SIMPLE_DIVS_ID,
 		NUM_INTERSECTION_DIVS_ID,
 		NUM_SHARP_EDGE_INTERSECTION_DIVS_ID,
@@ -123,16 +121,8 @@ BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	_sharpAngleBox = new wxTextCtrl(this, SHARP_ANGLE_DEGREES_ID, std::to_string(params.sharpAngle_degrees), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_minBlocksPerSidePrompt = new wxStaticText(this, 0, _T("Min blocks per side"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_minBlocksPerSideBox = new wxTextCtrl(this, MAX_BLOCKS_PER_SIDE_ID, std::to_string(params.minBlocksPerSide), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-
-	rowNum++;
 	_maxCellFacesPrompt = new wxStaticText(this, 0, _T("Max faces per cell"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_maxCellFacesBox = new wxTextCtrl(this, MAX_CELL_FACES_ID, std::to_string(params.maxCellFaces), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-
-	rowNum++;
-	_numBlockDivsPrompt = new wxStaticText(this, 0, _T("# block divs"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_numBlockDivsBox = new wxTextCtrl(this, NUM_BLOCK_DIVS_ID, std::to_string(params.numBlockDivs), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_numSimpleDivsPrompt = new wxStaticText(this, 0, _T("# simple divs"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -193,8 +183,6 @@ void BuildCFDHexesDlg::getParams(BuildCFDParams& params) const
 {
 	params.uniformRatio = _uniformRatioCheckBox->GetValue();
 	params.splitAtSharpVerts = _splitSharpVertsCheckBox->GetValue();
-	getValue(_minBlocksPerSideBox, params.minBlocksPerSide);
-	getValue(_numBlockDivsBox, params.numBlockDivs);
 	getValue(_numSimpleDivsBox, params.numSimpleDivs);
 	getValue(_numIntersectionDivsBox, params.numIntersectionDivs);
 	getValue(_numSharpEdgeIntersectionDivs, params.numSharpEdgeIntersectionDivs);

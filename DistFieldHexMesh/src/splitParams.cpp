@@ -92,8 +92,11 @@ void BuildCFDParams::read(std::istream& in)
 	in.read((char*)&symYAxis, sizeof(symYAxis));
 	in.read((char*)&symZAxis, sizeof(symZAxis));
 
-	in.read((char*)&minBlocksPerSide, sizeof(minBlocksPerSide));
-	in.read((char*)&numBlockDivs, sizeof(numBlockDivs));
+	if (version <= 2) {
+		size_t dummy;
+		in.read((char*)&dummy, sizeof(dummy));
+		in.read((char*)&dummy, sizeof(dummy));
+	}
 	in.read((char*)&numSimpleDivs, sizeof(numSimpleDivs));
 	in.read((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
 	in.read((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
@@ -164,7 +167,7 @@ void BuildCFDParams::read(std::istream& in)
 
 void BuildCFDParams::write(std::ostream& out) const
 {
-	size_t version = 2;
+	size_t version = 3;
 	out.write((char*)&version, sizeof(size_t));
 
 	out.write((char*)&uniformRatio, sizeof(uniformRatio));
@@ -174,8 +177,6 @@ void BuildCFDParams::write(std::ostream& out) const
 	out.write((char*)&symYAxis, sizeof(symYAxis));
 	out.write((char*)&symZAxis, sizeof(symZAxis));
 
-	out.write((char*)&minBlocksPerSide, sizeof(minBlocksPerSide));
-	out.write((char*)&numBlockDivs, sizeof(numBlockDivs));
 	out.write((char*)&numSimpleDivs, sizeof(numSimpleDivs));
 	out.write((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
 	out.write((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));

@@ -51,6 +51,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 #include <gradingOp.h>
+#include <meshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -653,63 +654,28 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 #endif
 }
 
-void Volume::buildCFDHexes(const CMeshPtr& pTriMesh, const BuildCFDParams& params, bool multiCore)
+void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, bool multiCore)
 {
-#if 0
-	_pModelTriMesh = pTriMesh;
-	_boundingBox = pTriMesh->getBBox();
-	_boundingBox.growPercent(0.0125);
-
-	Index3D blockSize;
-	if (params.uniformRatio) {
-		blockSize = Index3D(
-			params.minBlocksPerSide,
-			params.minBlocksPerSide,
-			params.minBlocksPerSide
-		);
-	} else {
-		double minSpan = DBL_MAX;
-		for (int i = 0; i < 3; i++) {
-			if (_spanMeters[i] < minSpan) {
-				minSpan = _spanMeters[i];
-			}
-		}
-		double targetBlockSize = minSpan / params.minBlocksPerSide;
-		size_t blockDim = 1;
-		Index3D::setBlockDim(blockDim);
-
-		blockSize = Index3D (
-			(size_t)(_spanMeters[0] / targetBlockSize + 0.5),
-			(size_t)(_spanMeters[1] / targetBlockSize + 0.5),
-			(size_t)(_spanMeters[2] / targetBlockSize + 0.5)
-		);
-	}
-
-	for (size_t i = 0; i < params.numBlockDivs; i++) {
-		for (int i = 0; i < 3; i++)
-			blockSize[i] *= 2;
-	}
-	setVolDim(blockSize);
-
-	const auto& dim = volDim();
-	Vector3d blockSpan(_spanMeters[0] / dim[0], _spanMeters[1] / dim[1], _spanMeters[2] / dim[2]);
-
-	size_t numBlocks = dim[0] * dim[1] * dim[2];
-	_blocks.resize(numBlocks);
-
 	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 	double sinEdgeAngle = sin(sharpAngleRadians);
 
 	std::vector<size_t> sharpEdges;
 	{
 		Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
-		_pModelTriMesh->buildCentroids(true);
-		_pModelTriMesh->buildNormals(true);
-		_pModelTriMesh->calCurvatures(sharpAngleRadians, true);
-		sharpEdges = _pModelTriMesh->getSharpEdgeIndices(sharpAngleRadians);
-		findFeatures();
+
+		for (auto& pair : meshData) {
+			const auto& pMesh = pair.second->getMesh();
+			pMesh->buildCentroids(true);
+			pMesh->buildNormals(true);
+			pMesh->calCurvatures(sharpAngleRadians, true);
+			auto tmp = pMesh->getSharpEdgeIndices(sharpAngleRadians);
+
+			sharpEdges.insert(sharpEdges.end(), tmp.begin(), tmp.end());
+			findFeatures();
+		}
 	}
 
+#if 0
 	{
 		Utils::Timer tmr0(Utils::Timer::TT_buildCFDHexMesh);
 
