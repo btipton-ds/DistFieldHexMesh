@@ -656,8 +656,12 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 
 void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, bool multiCore)
 {
-	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
-	double sinEdgeAngle = sin(sharpAngleRadians);
+	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
+		assert(!"Volume is not ready.");
+		return;
+	}
+
+	double sharpAngleRadians = params.getSharpAngleRadians();
 
 	std::vector<size_t> sharpEdges;
 	{
@@ -675,11 +679,10 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 		}
 	}
 
-#if 0
+#if 1
 	{
 		Utils::Timer tmr0(Utils::Timer::TT_buildCFDHexMesh);
 
-		createBlocks(params, blockSpan, multiCore);
 		divideSimple(params, multiCore);
 		divideConitional(params, multiCore);
 
@@ -694,21 +697,6 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 	cout << "Num polyhedra: " << numPolyhedra() << "\n";
 	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 #endif
-}
-
-void Volume::createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore)
-{
-	runThreadPool([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		auto blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-		_blocks[linearIdx] = createBlock(blockIdx, false);
-		return true;
-	}, multiCore);
-
-	// Cannot create subBlocks until all blocks are created so they can be connected
-	runThreadPool_IJK([this, &blockSpan](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->createBlockCells(TS_REAL);
-		return true;
-	}, multiCore);
 }
 
 /*
@@ -1465,7 +1453,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 bool Volume::write(ostream& out) const
 {
-	uint8_t version = 3;
+	uint8_t version = 4;
 	out.write((char*)&version, sizeof(version));
 
 	_volDim.write(out);
@@ -1476,6 +1464,9 @@ bool Volume::write(ostream& out) const
 
 	const vector<Vector3d>& cPts = _modelCornerPts;
 	IoUtil::writeVector3(out, cPts);
+
+	const vector<Vector3d>& vPts = _volCornerPts;
+	IoUtil::writeVector3(out, vPts);
 
 	size_t num = _blocks.size();
 	out.write((char*)&num, sizeof(num));
@@ -1515,6 +1506,12 @@ bool Volume::read(istream& in)
 	vector<Vector3d> cPts;
 	IoUtil::readVector3(in, cPts);
 	_modelCornerPts = cPts;
+
+	if (version >= 4) {
+		vector<Vector3d> volPts;
+		IoUtil::readVector3(in, volPts);
+		_volCornerPts = volPts;
+	}
 
 	size_t num;
 	in.read((char*)&num, sizeof(num));

@@ -66,7 +66,7 @@ ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser&
 	return *this;
 }
 
-void ObjectPoolOwnerUser::setPoolOwner(ObjectPoolOwner* pPoolOwner) const
+void ObjectPoolOwnerUser::setPoolOwner(ObjectPoolOwner* pPoolOwner)
 {
 	_pPoolOwner = pPoolOwner;
 }

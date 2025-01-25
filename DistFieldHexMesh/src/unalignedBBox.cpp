@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <algorithm>
 #include <enums.h>
 #include <tolerances.h>
 #include <unalignedBBox.h>
@@ -238,6 +239,62 @@ UnalignedBBox<T>& UnalignedBBox<T>::operator = (const std::vector<Vector3<T>>& r
 	assert(rhs.size() == 8);
 	_corners = rhs;
 	return *this;
+}
+
+template<class T>
+bool UnalignedBBox<T>::setPoints(std::vector<Vector3<T>> corners)
+{
+	if (corners.size() != 8)
+		return false;
+
+	Vector3<T> boxCtr, faceCtr0, faceCtr1;
+	for (const auto& pt : corners) {
+		boxCtr += pt;
+	}
+	boxCtr /= corners.size();
+
+	for (int i = 0; i < 4; i++) {
+		faceCtr0 += corners[i];
+		faceCtr1 += corners[i + 4];
+	}
+	faceCtr0 /= 4;
+	faceCtr1 /= 4;
+
+	Vector3<T> v0 = corners[1] - corners[0];
+	Vector3<T> v1 = corners[3] - corners[0];
+	Vector3<T> n = v1.cross(v0).normalized();
+	Vector3<T> v = (boxCtr - faceCtr0).normalized();
+
+	if (v.dot(n) < 0) {
+		std::swap<Vector3<T>>(corners[1], corners[3]);
+		std::swap<Vector3<T>>(corners[5], corners[7]);
+	}
+
+	v0 = corners[5] - corners[4];
+	v1 = corners[7] - corners[4];
+	n = v1.cross(v0).normalized();
+	v = (faceCtr1 - boxCtr).normalized();
+	bool isOriented = v.dot(n) >= 0;
+	if (isOriented) {
+		v0 = corners[3] - corners[2];
+		v1 = corners[1] - corners[2];
+		n = v1.cross(v0).normalized();
+		v = (faceCtr0 - boxCtr).normalized();
+		if (v.dot(n) >= 0)
+			return false;
+
+		v0 = corners[7] - corners[6];
+		v1 = corners[5] - corners[6];
+		n = v1.cross(v0).normalized();;
+		v = (faceCtr1 - boxCtr).normalized();
+		if (v.dot(n) < 0)
+			return false;
+
+		_corners = corners;
+		return true;
+	}
+
+	return false;
 }
 
 template<class T>

@@ -114,6 +114,7 @@ public:
 
 	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
+	void createAdHocBlockSearchTree();
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
@@ -150,10 +151,8 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
-	void createBlocks(const BuildCFDParams& params, const Vector3d& blockSpan, bool multiCore);
 	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore);
 	void gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore);
-	void createAdHocBlockSearchTree();
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
 	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);

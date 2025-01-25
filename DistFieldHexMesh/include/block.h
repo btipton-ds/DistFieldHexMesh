@@ -322,7 +322,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	LocalData* _pLocalData = nullptr;
+	std::shared_ptr<LocalData> _pLocalData;
 
 	ObjectPool<Vertex> _vertices;
 	ModelData _modelData, _refData;

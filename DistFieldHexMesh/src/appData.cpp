@@ -298,6 +298,8 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->setAppData(shared_from_this());
 
         _pVolume->read(in);
+        _pVolume->createAdHocBlockSearchTree();
+
         updateTessellation();
     }
 
@@ -691,7 +693,6 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
     try {
         auto pCanvas = _pMainFrame->getCanvas();
         pCanvas->clearMesh3D();
-        _pVolume = make_shared<Volume>();
 
         dlg.getParams(_params);
 

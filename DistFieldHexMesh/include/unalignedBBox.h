@@ -56,6 +56,7 @@ public:
 	operator const std::vector<Vector3<T>>& () const;
 	operator std::vector<Vector3<T>>& ();
 
+	bool setPoints(std::vector<Vector3<T>> corners);
 	void getFacePoints(CubeFaceType ft, Vector3<T> pts[4]) const;
 
 private:

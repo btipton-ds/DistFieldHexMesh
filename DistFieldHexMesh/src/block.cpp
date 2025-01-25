@@ -104,13 +104,12 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 		
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
-	_pLocalData = new LocalData();
 #endif
+	_pLocalData = make_shared<LocalData>();
 }
 
 Block::~Block()
 {
-	delete _pLocalData;
 }
 
 void Block::clear()
@@ -119,8 +118,7 @@ void Block::clear()
 	MultiCore::scoped_set_local_heap st(&_heap);
 #endif
 
-	delete (_pLocalData);
-	_pLocalData = nullptr;
+	_pLocalData = make_shared<LocalData>();
 
 	_baseIdxVerts = 0;
 	_baseIdxPolygons = 0;
@@ -842,6 +840,9 @@ Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
+	if (!ownerBlockIdx.isValid()) {
+		assert(!"failed to find blockIdx");
+	}
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_vertices.findId(pt);
 
@@ -1013,9 +1014,9 @@ bool Block::doPresplits(const BuildCFDParams& params)
 			MTC::set<Index3DId> blockers;
 			if (cell.canSplit(blockers)) {
 				Vector3d pt = cell.calCentroid();
-				PolyhedronSplitter splitter(this, id);
+				PolyhedronSplitter cellSplitter(this, id);
 				vector<Index3DId> newCellIds;
-				splitter.splitAtPoint(pt);
+				cellSplitter.splitAtPoint(pt);
 			} else {
 				cell.setNeedsDivideAtCentroid();
 			}
@@ -1717,19 +1718,17 @@ void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& f
 
 void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	auto p = getOwner(id); 
-	if (state == TS_REAL) 
-		func(p->_modelData._polygons[id]); 
-	else 
-		func(p->_refData._polygons[id]);
+	auto& polys = (state == TS_REAL) ? p->_modelData._polygons : p->_refData._polygons;
+	auto& face = polys[id];
+	func(face);
 } 
 
 void Block::faceFunc(TopolgyState state, const Index3DId& id, const function<void(Polygon& obj)>& func) {
-	auto p = getOwner(id); 
-	if (state == TS_REAL) 
-		func(p->_modelData._polygons[id]); 
-	else 
-		func(p->_refData._polygons[id]);
-} 
+	auto p = getOwner(id);
+	auto& polys = (state == TS_REAL) ? p->_modelData._polygons : p->_refData._polygons;
+	auto& face = polys[id];
+	func(face);
+}
 
 void Block::cellFunc(TopolgyState state, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	auto p = getOwner(id); 
