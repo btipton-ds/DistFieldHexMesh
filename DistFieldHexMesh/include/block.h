@@ -169,14 +169,9 @@ public:
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
-	bool isPolygonReference(const Polygon* face) const;
 
 	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
-	bool isPolyhedronReference(const Polyhedron* cell) const;
 	bool allCellsClosed() const;
-
-	void makeRefPolygonIfRequired(const Index3DId& id);
-	void makeRefPolyhedronIfRequired(const Index3DId& id);
 
 	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
 	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
@@ -247,19 +242,6 @@ private:
 		MTC::set<Index3DId> _needToSplit, _cantSplitYet;
 	};
 
-	struct ModelData {
-		ModelData(Block* pBlk);
-		ModelData(Block* pBlk, const ModelData& src);
-		void clear();
-		size_t numBytes() const;
-
-		void remapIds(const std::vector<size_t>& idRemap, const Index3D& srcDims);
-		bool verifyIndices(const Index3D& idx) const;
-
-		ObjectPool<Polygon> _polygons;
-		ObjectPool<Polyhedron> _polyhedra;
-	};
-
 	using SearchTree = VertSearchTreeIndex3DId_4;
 	using SearchTreePtr = std::shared_ptr<SearchTree>;
 	using SearchTreeConstPtr = std::shared_ptr<const SearchTree>;
@@ -292,9 +274,6 @@ private:
 	MTC::set<Index3DId>& getCantSplitYet();
 	const MTC::set<Index3DId>& getCantSplitYet() const;
 
-	const ModelData& data(TopolgyState refState) const;
-	ModelData& data(TopolgyState refState);
-
 	std::string getObjFilePath() const;
 
 #ifdef _DEBUG
@@ -325,7 +304,8 @@ private:
 	std::shared_ptr<LocalData> _pLocalData;
 
 	ObjectPool<Vertex> _vertices;
-	ModelData _modelData, _refData;
+	ObjectPool<Polygon> _polygons;
+	ObjectPool<Polyhedron> _polyhedra;
 
 	int _seedFillReadIdx = 0;
 	std::vector<Index3DId> _seedFillList[2];
@@ -398,16 +378,6 @@ inline bool Block::isUnloaded() const
 	return !_filename.empty();
 }
 
-inline const Block::ModelData& Block::data(TopolgyState refState) const
-{
-	return refState == TS_REAL ? _modelData : _refData;
-}
-
-inline Block::ModelData& Block::data(TopolgyState refState)
-{
-	return refState == TS_REAL ? _modelData : _refData;
-}
-
 template<class F>
 inline void Block::iterateVerticesInOrder(F fLambda) const
 {
@@ -417,25 +387,25 @@ inline void Block::iterateVerticesInOrder(F fLambda) const
 template<class F>
 inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda) const
 {
-	data(state)._polygons.iterateInOrder(fLambda);
+	_polygons.iterateInOrder(fLambda);
 }
 
 template<class F>
 inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda)
 {
-	data(state)._polygons.iterateInOrder(fLambda);
+	_polygons.iterateInOrder(fLambda);
 }
 
 template<class F>
 inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda) const
 {
-	data(state)._polyhedra.iterateInOrder(fLambda);
+	_polyhedra.iterateInOrder(fLambda);
 }
 
 template<class F>
 inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda)
 {
-	data(state)._polyhedra.iterateInOrder(fLambda);
+	_polyhedra.iterateInOrder(fLambda);
 }
 
 inline MTC::set<Index3DId>& Block::getNeedToSplit()

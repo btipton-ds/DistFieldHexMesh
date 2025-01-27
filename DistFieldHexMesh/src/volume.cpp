@@ -1548,14 +1548,14 @@ const DFHM::Polygon& Volume::getPolygon(const Index3DId& id) const
 {
 	const auto& pBlk = getBlockPtr(id);
 	assert(pBlk);
-	return pBlk->_modelData._polygons[id];
+	return pBlk->_polygons[id];
 }
 
 const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
 {
 	const auto& pBlk = getBlockPtr(id);
 	assert(pBlk);
-	return pBlk->_modelData._polyhedra[id];
+	return pBlk->_polyhedra[id];
 }
 
 void Volume::writePolyMesh(const string& dirNameIn)
@@ -1616,7 +1616,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 	// Cell order determines the order of shared faces. Create it first.
 	for (auto pBlk : _blocks) {
 		if (pBlk) {
-			pBlk->_modelData._polyhedra.iterateInOrder([&tables](const Index3DId& id, const Polyhedron& cell) {
+			pBlk->_polyhedra.iterateInOrder([&tables](const Index3DId& id, const Polyhedron& cell) {
 				int cIdx = (int)tables.cellIdxIdMap.size();
 				tables.cellIdxIdMap.push_back(id);
 				tables.cellIdIdxMap.insert(make_pair(id, cIdx));
@@ -1630,7 +1630,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 	vector<Index3DId> outerBounds[6], wall;
 	for (auto pBlk : _blocks) {
 		if (pBlk) {
-			pBlk->_modelData._polygons.iterateInOrder([&](const Index3DId& id, const Polygon& face) {
+			pBlk->_polygons.iterateInOrder([&](const Index3DId& id, const Polygon& face) {
 				if (face.numCells() == 1) {
 					bool onOuterBoundary = false;
 					for (int i = 0; i < 6; i++) {

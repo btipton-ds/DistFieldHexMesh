@@ -83,8 +83,6 @@ bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 	if (!_pBlock->polyhedronExists(TS_REAL, _polyhedronId))
 		return false;
 
-	_pBlock->makeRefPolyhedronIfRequired(_polyhedronId);
-
 	assert(_pBlock->polyhedronExists(TS_REFERENCE, _polyhedronId));
 	Polyhedron& referenceCell = _pBlock->getPolyhedron(TS_REFERENCE, _polyhedronId);
 

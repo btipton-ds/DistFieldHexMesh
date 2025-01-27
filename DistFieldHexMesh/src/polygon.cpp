@@ -137,8 +137,6 @@ void Polygon::clearCache() const
 
 bool Polygon::cellsOwnThis() const
 {
-	if (getBlockPtr()->isPolygonReference(this))
-		return true;
 	for (const auto& cellId : _cellIds) {
 		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
 			return false;
@@ -762,13 +760,6 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
-	if (!getBlockPtr()->isPolygonReference(this) && getBlockPtr()->polygonExists(TS_REFERENCE, _thisId)) {
-		faceFunc(TS_REFERENCE, _thisId, [&area, &centroid](const Polygon& self) {
-			self.calAreaAndCentroid(area, centroid);
-		});
-		return;
-	}
-
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
 	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
@@ -852,10 +843,7 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 
 TopolgyState Polygon::getState() const
 {
-	if (getBlockPtr()->isPolygonReference(this))
-		return TS_REFERENCE;
-	else
-		return TS_REAL;
+	return TS_REAL;
 }
 
 void Polygon::addToSplitFaceProductIds(const Index3DId& id) const

@@ -50,10 +50,7 @@ void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj
 void Block::NAME##Func(TopolgyState state, const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
 	auto p = getOwner(id); \
-	if (state == TS_REAL) \
-		func(p->_modelData.MEMBER_NAME[id]); \
-	else \
-		func(p->_refData.MEMBER_NAME[id]); \
+	func(p->MEMBER_NAME[id]); \
 }
 
 #define LAMBDA_CLIENT_FUNC_IMPL_0(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
@@ -81,17 +78,9 @@ void Block::NAME##AvailFunc(TopolgyState prefState, const Index3DId& id, const f
 { \
 	const auto p = getOwner(id); \
 	if (prefState == TS_REAL) {\
-		if (p->_modelData.MEMBER_NAME.exists(id)) {\
-			func(p->_modelData.MEMBER_NAME[id]); \
-		} else { \
-			func(p->_refData.MEMBER_NAME[id]); \
-		} \
+		func(p->MEMBER_NAME[id]); \
 	} else { \
-		if (p->_refData.MEMBER_NAME.exists(id)) {\
-			func(p->_refData.MEMBER_NAME[id]); \
-		} else {\
-			func(p->_modelData.MEMBER_NAME[id]); \
-		} \
+		func(p->MEMBER_NAME[id]); \
 	} \
 }
 

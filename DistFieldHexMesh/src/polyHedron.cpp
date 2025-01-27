@@ -115,10 +115,7 @@ void Polyhedron::dumpFaces() const
 
 TopolgyState Polyhedron::getState() const
 {
-	if (getBlockPtr()->isPolyhedronReference(this))
-		return TS_REFERENCE;
-	else
-		return TS_REAL;
+	return TS_REAL;
 }
 
 size_t Polyhedron::getNumSplitFaces() const
@@ -462,14 +459,6 @@ bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
 
 Vector3d Polyhedron::calCentroid() const
 {
-	if (!getBlockPtr()->isPolyhedronReference(this) && getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
-		Vector3d ctr;
-		cellFunc(TS_REFERENCE,_thisId, [&ctr](const Polyhedron& self) {
-			ctr = self.calCentroid();
-		});
-		return ctr;
-	}
-
 	auto bbox = getBoundingBox();
 	Vector3d testCtr = (bbox.getMin() + bbox.getMax()) * 0.5;
 	double area = 0;
@@ -910,7 +899,6 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 		});
 
 		if (!imprintVertices.empty()) {
-			getBlockPtr()->makeRefPolygonIfRequired(faceId);
 			getBlockPtr()->removeFaceFromLookUp(faceId);
 			faceFunc(TS_REAL, faceId, [&imprintVertices](Polygon& face) {
 				for (const auto& vertId : imprintVertices) {
