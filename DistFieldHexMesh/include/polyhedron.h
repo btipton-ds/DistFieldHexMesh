@@ -83,7 +83,7 @@ public:
 	double calVolume() const;
 	bool isClosed() const;
 	bool isOriented() const;
-	bool isSplit() const;
+	bool exists() const;
 	size_t classify(MTC::vector<Vector3d>& corners) const;
 	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
 	bool isConvex() const;
@@ -155,12 +155,18 @@ private:
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 
-	Index3DId _parentId;
+	/* 
+		The faceIds are invariant.
+		If a face is split, it's id stays in the list, but the face itself records it's been split and into which faces
+		The original face is marked as split, no longer really exists, and points to it's replacements.
+		The same applies for faces with split edges, but the number of faces is only 1.
+	*/
 	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1;
 
 	bool _needsSplitAtCentroid = false;
+	bool _exists = true;
 
 	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
 

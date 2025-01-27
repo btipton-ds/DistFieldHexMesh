@@ -375,22 +375,14 @@ MTC::set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 	return result;
 }
 
-bool Polyhedron::isSplit() const
+bool Polyhedron::exists() const
 {
-	return _parentId.isValid();
+	return _exists;
 }
 
 size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 {
 	corners.clear();
-
-	if (isSplit() && _parentId.isValid()) {
-		size_t result;
-		cellFunc(_parentId, [&result, &corners](const Polyhedron& parentCell) {
-			result = parentCell.classify(corners);
-			});
-		return result;
-	}
 
 	Vector3d cellCtr = calCentroid();
 

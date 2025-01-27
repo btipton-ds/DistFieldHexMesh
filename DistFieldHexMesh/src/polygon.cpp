@@ -76,7 +76,7 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
 	, _createdDuringSplitNumber(src._createdDuringSplitNumber)
-	, _splitFaceProductIds(src._splitFaceProductIds)
+	, _splitIds(src._splitIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _cachedIntersectsModel(src._cachedIntersectsModel)
@@ -91,7 +91,7 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	clearCache();
 	ObjectPoolOwnerUser::operator=(rhs);
 	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
-	_splitFaceProductIds = rhs._splitFaceProductIds;
+	_splitIds = rhs._splitIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
@@ -105,8 +105,7 @@ void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims
 {
 	ObjectPoolOwnerUser::remapId(idRemap, srcDims);
 
-	remap(idRemap, srcDims, _splitFaceProductIds);
-	remap(idRemap, srcDims, _splitEdgeVertMap);
+	remap(idRemap, srcDims, _splitIds);
 
 	remap(idRemap, srcDims, _vertexIds);
 	remap(idRemap, srcDims, _cellIds);
@@ -180,13 +179,12 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 
 void Polygon::write(ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::write(out, _splitFaceProductIds);
-	IoUtil::write(out, _splitEdgeVertMap);
+	IoUtil::write(out, _splitIds);
 	IoUtil::write(out, _vertexIds);
 	IoUtil::write(out, _cellIds);
 
@@ -199,8 +197,11 @@ void Polygon::read(istream& in)
 
 	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::read(in, _splitFaceProductIds);
-	IoUtil::read(in, _splitEdgeVertMap);
+	IoUtil::read(in, _splitIds);
+	if (version == 0) {
+		MTC::map<Edge, Index3DId> deprecated;
+		IoUtil::read(in, deprecated);
+	}
 	IoUtil::read(in, _vertexIds);
 	IoUtil::read(in, _cellIds);
 }
@@ -230,11 +231,6 @@ void Polygon::sortIds() const
 	}
 }
 
-
-void Polygon::pack()
-{
-	_sortedIds.clear();
-}
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
@@ -845,14 +841,7 @@ void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
 {
 	assert(getBlockPtr()->isPolygonReference(this));
 	Polygon* refSelf = const_cast<Polygon*>(this);
-	refSelf->_splitFaceProductIds.insert(id);
-}
-
-void Polygon::addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const
-{
-	assert(getBlockPtr()->isPolygonReference(this));
-	Polygon* refSelf = const_cast<Polygon*>(this);
-	refSelf->_splitEdgeVertMap.insert(make_pair(edge, vertId));
+	refSelf->_splitIds.insert(id);
 }
 
 void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
@@ -936,7 +925,7 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 
 bool Polygon::isSplit() const
 {
-	return _splitFaceProductIds.size() == _vertexIds.size();
+	return _splitIds.size() == _vertexIds.size();
 }
 
 bool Polygon::isPlanar() const
@@ -1163,9 +1152,9 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		}
 		out << "}\n";
 
-		if (!face._splitFaceProductIds.empty()) {
-			out << Logger::Pad() << "splitFaceIds: (" << face._splitFaceProductIds.size() << "): {";
-			for (const auto& faceId : face._splitFaceProductIds) {
+		if (!face._splitIds.empty()) {
+			out << Logger::Pad() << "splitFaceIds: (" << face._splitIds.size() << "): {";
+			for (const auto& faceId : face._splitIds) {
 				out << "f" << faceId << " ";
 			}
 			out << "}\n";

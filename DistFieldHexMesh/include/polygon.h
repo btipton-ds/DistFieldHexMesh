@@ -163,10 +163,8 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	const MTC::set<Index3DId>& getSplitFaceProductIds() const;
-	const MTC::map<Edge, Index3DId>& getSplitEdgeVertMap() const;
 
 	bool cellsOwnThis() const;
-	void addSplitEdgeVert(const Edge& edge, const Index3DId& vertId) const;
 	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
 	bool imprintVertex(const Index3DId& imprintVert);
 	size_t getImprintIndex(const Vector3d& imprintPoint) const;
@@ -179,8 +177,6 @@ public:
 	Vector3d getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
-
-	void pack();
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -213,8 +209,7 @@ private:
 	void clearCache() const;
 
 	size_t _createdDuringSplitNumber = 0;
-	MTC::set<Index3DId> _splitFaceProductIds;	// Entities referencing this one
-	MTC::map<Edge, Index3DId> _splitEdgeVertMap;
+	MTC::set<Index3DId> _splitIds;	// Entities referencing this one
 
 	MTC::vector<Index3DId> _vertexIds;
 	MTC::set<Index3DId> _cellIds;
@@ -309,12 +304,7 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 
 inline const MTC::set<Index3DId>& Polygon::getSplitFaceProductIds() const
 {
-	return _splitFaceProductIds;
-}
-
-inline const MTC::map<Edge, Index3DId>& Polygon::getSplitEdgeVertMap() const
-{
-	return _splitEdgeVertMap;
+	return _splitIds;
 }
 
 inline size_t Polygon::getCreatedDuringSplitNumber() const
@@ -393,31 +383,39 @@ void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 template<class TRI_FUNC, class EDGE_FUNC>
 void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 {
-	std::vector<Vector3d> pts;
-	pts.resize(_vertexIds.size());
-	for (size_t i = 0; i < _vertexIds.size(); i++)
-		pts[i] = getVertexPoint(_vertexIds[i]);
+	if (_splitIds.empty()) {
+		std::vector<Vector3d> pts;
+		pts.resize(_vertexIds.size());
+		for (size_t i = 0; i < _vertexIds.size(); i++)
+			pts[i] = getVertexPoint(_vertexIds[i]);
 
-	if (pts.size() > 4) {
-		Vector3d ctr = calCentroid();
-		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+		if (pts.size() > 4) {
+			Vector3d ctr = calCentroid();
+			for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+				size_t idx1 = (idx0 + 1) % pts.size();
+				triFunc(ctr, pts[idx0], pts[idx1]);
+			}
+		}
+		else {
+			for (size_t i = 1; i < pts.size() - 1; i++) {
+				size_t idx0 = 0;
+				size_t idx1 = i;
+				size_t idx2 = i + 1;
+				triFunc(pts[idx0], pts[idx1], pts[idx2]);
+			}
+		}
+
+		for (size_t i = 0; i < pts.size(); i++) {
+			size_t idx0 = i;
 			size_t idx1 = (idx0 + 1) % pts.size();
-			triFunc(ctr, pts[idx0], pts[idx1]);
+			edgeFunc(pts[idx0], pts[idx1]);
 		}
-	}
-	else {
-		for (size_t i = 1; i < pts.size() - 1; i++) {
-			size_t idx0 = 0;
-			size_t idx1 = i;
-			size_t idx2 = i + 1;
-			triFunc(pts[idx0], pts[idx1], pts[idx2]);
+	} else {
+		for (const auto& faceId : _splitIds) {
+			faceFunc(faceId, [this, &triFunc, &edgeFunc](const Polygon& subFace) {
+				subFace.getTriPoints(triFunc, edgeFunc);
+			});
 		}
-	}
-
-	for (size_t i = 0; i < pts.size(); i++) {
-		size_t idx0 = i;
-		size_t idx1 = (idx0 + 1) % pts.size();
-		edgeFunc(pts[idx0], pts[idx1]);
 	}
 }
 
