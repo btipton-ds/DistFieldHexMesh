@@ -51,8 +51,8 @@ public:
 	bool splitAtPoint(const Vector3d& pt);
 
 private:
-	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
-
+	bool splitAtPointInner(Polyhedron& realCell, const Polyhedron& referenceCell, const Vector3d& pt);
+	void splitFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

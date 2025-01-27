@@ -60,20 +60,18 @@ PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedro
 bool PolyhedronSplitter::splitIfNeeded()
 {
 	bool result = false;
-	_pBlock->cellFunc(_polyhedronId, [this, &result](const Polyhedron& cell) {
-		set<Index3DId> newCellIds;
-		Vector3d ctr;
-		Planed plane;
+	Vector3d ctr;
+	_pBlock->cellFunc(_polyhedronId, [this, &ctr, &result](const Polyhedron& cell) {
 		if (cell.needsDivideAtCentroid()) {
 			ctr = cell.calCentroid();
-			result = splitAtPoint(ctr);
-		} else {
+		}
+		else {
 			// TODO This needs to be an adaptive split to match the neighbor
 			// We get here when we have to split a neighbor cell prior to splitting a cell.
 			ctr = cell.calCentroid();
-			result = splitAtPoint(ctr);
 		}
-	});
+		});
+	result = splitAtPoint(ctr);
 
 	return result;
 }
@@ -83,25 +81,16 @@ bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 
-	assert(_pBlock->polyhedronExists(_polyhedronId));
-	Polyhedron& referenceCell = _pBlock->getPolyhedron(_polyhedronId);
-
-	assert(_pBlock->polyhedronExists(_polyhedronId));
+	const Polyhedron& referenceCell = _pBlock->getPolyhedron(_polyhedronId);
 	Polyhedron& realCell = _pBlock->getPolyhedron(_polyhedronId);
 
 	bool result = splitAtPointInner(realCell, referenceCell, pt);
 
-	if (result && _pBlock->polyhedronExists(_polyhedronId)) {
-		_pBlock->freePolyhedron(_polyhedronId, true);
-	}
-
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const
+bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedron& referenceCell, const Vector3d& pt)
 {
-#if 0
-	assert(_pBlock);
 
 #if 0 && defined(_DEBUG)
 	// Now split the cell
@@ -112,153 +101,137 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, Polyhedron& ref
 
 	Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
+	MTC::vector<Vector3d> corners;
+	if (referenceCell.classify(corners) == 8) {
+		Vector3d tuv;
+		if (TRI_LERP_INV(pt, corners, tuv)) {
+			MTC::vector<Vector3d> pts[] = {
+				{corners[0], corners[3], corners[2], corners[1]}, // bottom
+				{corners[4], corners[5], corners[6], corners[7]}, // top
 
-	const auto& cornerVerts = referanceCell.getVertIds();
-	assert(cornerVerts.size() == 8);
-	const auto& faceIds = referanceCell.getFaceIds();
-	assert(faceIds.size() == 6);
-	MTC::map<Index3DId, MTC::set<Index3DId>> cornerVertToFaceMap;
-	for (const auto& vertId : cornerVerts) {
-		cornerVertToFaceMap.insert(make_pair(vertId, set<Index3DId>()));
-	}
+				{corners[0], corners[4], corners[7], corners[3]}, // back
+				{corners[1], corners[2], corners[6], corners[5]}, // front
 
-	// Split all faces which require splitting
-	bool pass = true;
-	for (const auto& faceId : faceIds) {
+				{corners[0], corners[1], corners[5], corners[4]}, // right
+				{corners[3], corners[7], corners[6], corners[2]}, // left
+			};
+			MTC::vector<Index3DId> cornersToFaceIdMap;
+			for (int i = 0; i < 6; i++) {
+				const auto& facePts = pts[i];
+				MTC::vector<Index3DId> faceIds;
+				for (int j = 0; j < 4; j++) {
+					faceIds.push_back(_pBlock->getVertexIdOfPoint(facePts[j]));
+				}
 
-		PolygonSplitter splitter(_pBlock, faceId);
-		splitter.splitAtPoint(pt);
+				Polygon face(faceIds);
+				Index3DId faceId = _pBlock->findFace(face);
 
-		faceFunc(faceId, [this, &cornerVertToFaceMap, &pass](const Polygon& refFace) {
-			assert(refFace._splitFaceProductIds.size() == refFace.getVertexIds().size());
+				double t, u;
+				switch (i) {
+				case 0: // bottom
+				case 1: // top
+					t = tuv[0];
+					u = tuv[1];
+					break;
 
-			for (const auto& childFaceId : refFace._splitFaceProductIds) {
-				if (!_pBlock->polygonExists(childFaceId)) {
-					pass = false;
+				case 2: // back
+				case 3: // front
+					t = tuv[1];
+					u = tuv[2];
+					break;
+
+				case 4: // left
+				case 5: // right
+					t = tuv[0];
+					u = tuv[2];
 					break;
 				}
-				faceFunc(childFaceId, [&cornerVertToFaceMap](const Polygon& childFace) {
-					for (const auto& vertId : childFace.getVertexIds()) {
-						auto iter = cornerVertToFaceMap.find(vertId);
-						if (iter != cornerVertToFaceMap.end()) {
-							iter->second.insert(childFace.getId());
-						}
+
+				splitFaceAtParam(faceId, facePts, t, u);
+				cornersToFaceIdMap.push_back(faceId);
+			}
+
+			for (int i = 0; i < 2; i++) {
+				double t0 = (i == 0) ? 0 : tuv[0];
+				double t1 = (i == 0) ? tuv[0] : 1;
+				for (int j = 0; j < 2; j++) {
+					double u0 = (j == 0) ? 0 : tuv[1];
+					double u1 = (j == 0) ? tuv[1] : 1;
+					for (int k = 0; k < 2; k++) {
+						double v0 = (k == 0) ? 0 : tuv[2];
+						double v1 = (k == 0) ? tuv[2] : 1;
+
+						MTC::vector<Vector3d> subCorners = {
+							TRI_LERP(corners, t0, u0, v0),
+							TRI_LERP(corners, t1, u0, v0),
+							TRI_LERP(corners, t1, u1, v0),
+							TRI_LERP(corners, t0, u1, v0),
+
+							TRI_LERP(corners, t0, u0, v1),
+							TRI_LERP(corners, t1, u0, v1),
+							TRI_LERP(corners, t1, u1, v1),
+							TRI_LERP(corners, t0, u1, v1),
+						};
+
+						Index3DId newCellId = _pBlock->addHexCell(subCorners);
+						realCell.addSplitCellId(newCellId);
+						_pBlock->cellFunc(newCellId, [&referenceCell](Polyhedron& newCell) {
+							newCell.setParentId(referenceCell.getId());
+							});
+						int dbgBreak = 1;
 					}
-				});
-			}
-		});
-
-		if (!pass) {
-			break;
-		}
-	}
-
-#if _DEBUG
-	if (!pass) {
-		_pBlock->dumpPolyhedraObj({ realCell.getId() }, false, false, false);
-		return false;
-	}
-#endif
-
-	Index3DId cellMidId = _pBlock->addVertex(pt);
-
-	for (const auto& pair : cornerVertToFaceMap) {
-		auto cornerVertId = pair.first;
-		auto splitVertFaces = pair.second;
-		assert(splitVertFaces.size() == 3);
-		MTC::map<Edge, MTC::set<Index3DId>> fullEdgeToFaceMap;
-		for (const auto& splitFaceId : splitVertFaces) {
-			assert(_pBlock->polygonExists(splitFaceId));
-			_pBlock->faceAvailFunc(splitFaceId, [&fullEdgeToFaceMap](const Polygon& splitFace) {
-				assert(splitFace.getVertexIds().size() == 4);
-				const auto& verts = splitFace.getVertexIds();
-				for (size_t i = 0; i < verts.size(); i++) {
-					size_t j = (i + 1) % verts.size();
-					Edge edge(verts[i], verts[j]);
-					auto iter = fullEdgeToFaceMap.find(edge);
-					if (iter == fullEdgeToFaceMap.end())
-						iter = fullEdgeToFaceMap.insert(make_pair(edge, set<Index3DId>())).first;
-					iter->second.insert(splitFace.getId());
 				}
-			});
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-			int dbgBreak = 1;
-#endif
-		}
-
-		assert(fullEdgeToFaceMap.size() == 9);
-		MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
-		for (const auto& pair : fullEdgeToFaceMap) {
-			if (pair.second.size() == 2)
-				edgeToFaceMap.insert(pair);
-		}
-
-		assert(edgeToFaceMap.size() == 3);
-
-		for (const auto& pair : edgeToFaceMap) {
-			const auto& edge = pair.first;
-			const auto& edgeFaces = pair.second;
-
-			const auto& edgeVert1 = edge.getOtherVert(cornerVertId);
-
-			Index3DId faceVert0, faceVert1;
-			auto iter = edgeFaces.begin();
-			_pBlock->faceAvailFunc(*iter++, [&faceVert0](const Polygon& face) {
-				assert(face.getVertexIds().size() == 4);
-				faceVert0 = face.getVertexIds()[0];
-			});
-			_pBlock->faceAvailFunc(*iter, [&faceVert1](const Polygon& face) {
-				assert(face.getVertexIds().size() == 4);
-				faceVert1 = face.getVertexIds()[0];
-			});
-
-			MTC::vector<Index3DId> verts = {
-				edgeVert1,
-				faceVert0,
-				cellMidId,
-				faceVert1,
-			};
-
-			auto newFaceId = _pBlock->addFace(verts);
-			splitVertFaces.insert(newFaceId);
-		}
-
-
-		assert(splitVertFaces.size() == 6);
-		for (const auto& faceId : splitVertFaces) {
-#if DEBUG_BREAKS && defined(_DEBUG)
-			if (Index3DId(5, 5, 1, 45) == faceId) {
-				int dbgBreak = 1;
 			}
-#endif
-
-			_pBlock->faceFunc(faceId, [this](Polygon& face) {
-				face.removeCellId(_polyhedronId);
-				face.removeDeadCellIds();
-			});
 		}
-		Polyhedron newCell(splitVertFaces);
-
-		auto newCellId = _pBlock->addCell(newCell);
-#if DEBUG_BREAKS && defined(_DEBUG)
-		if (Index3DId(5, 5, 0, 45) == newCellId) {
-			int dbgBreak = 1;
-		}
-#endif
-
-		_pBlock->cellFunc(newCellId, [this, &realCell](Polyhedron& newCell) {
-			newCell.setSplitLevel(realCell.getSplitLevel() + 1);
-#ifdef _DEBUG
-			for (const auto& faceId : newCell.getFaceIds()) {
-				faceFunc(faceId, [this](const Polygon& face) {
-					assert(face.cellsOwnThis());
-				});
-			}
-#endif // _DEBUG
-
-		});
 	}
-#endif
+
 	return true;
 }
+
+void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u)
+{
+	_pBlock->faceFunc(faceId, [this, &facePts, t, u](const Polygon& refFace) {
+		_pBlock->faceFunc(refFace.getId(), [this, &facePts, &refFace, t, u](Polygon& dstFace) {
+			if (dstFace.isActive()) {
+				const auto& id = refFace.getId();
+				auto cellIds = refFace.getCellIds();
+				for (const auto& cellId : cellIds) {
+					dstFace.removeCellId(cellId); // detach this cell
+				}
+
+				for (int i = 0; i < 2; i++) {
+					double t0 = (i == 0) ? 0 : t;
+					double t1 = (i == 0) ? t : 1;
+					for (int j = 0; j < 2; j++) {
+						double u0 = (i == 0) ? 0 : u;
+						double u1 = (i == 0) ? u : 1;
+
+						vector<Vector3d> subFacePts = {
+							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0),
+							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0),
+							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1),
+							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1),
+						};
+
+						auto newFaceId = _pBlock->addFace(subFacePts);
+						MTC::vector<Index3DId> vertIds;
+						_pBlock->faceFunc(newFaceId, [&refFace, &cellIds, &vertIds](Polygon& newFace) {
+							vertIds = newFace.getVertexIds();
+							for (const auto& cellId : cellIds) {
+								newFace.addCellId(cellId);
+							}
+							});
+
+						dstFace.addSplitFaceId(newFaceId);
+						dstFace.setParentId(id);
+
+						for (const auto& cellId : cellIds) {
+							_pBlock->cellFunc(cellId, [&vertIds](Polyhedron& cell) {
+								cell.imprintFaceVertices(vertIds);
+								});
+						}
+					}
+				}
+			}
+			});
+		});
