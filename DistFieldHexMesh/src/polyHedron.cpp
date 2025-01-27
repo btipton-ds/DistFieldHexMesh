@@ -100,7 +100,7 @@ void Polyhedron::dumpFaces() const
 	size_t idx = 0;
 	for (const auto& faceId : _faceIds) {
 		cout << "face[" << idx++ << "]\n";
-		faceFunc(TS_REAL,faceId, [](const Polygon& face) {
+		faceFunc(faceId, [](const Polygon& face) {
 			Vector3d n = face.calUnitNormal();
 			auto pBlock = face.getBlockPtr();
 			cout << "  n: (" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
@@ -113,17 +113,12 @@ void Polyhedron::dumpFaces() const
 	}
 }
 
-TopolgyState Polyhedron::getState() const
-{
-	return TS_REAL;
-}
-
 size_t Polyhedron::getNumSplitFaces() const
 {
 	size_t n = 0;
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(TS_REFERENCE, faceId)) {
-			faceFunc(TS_REAL,faceId, [&n](const Polygon& face) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			faceFunc(faceId, [&n](const Polygon& face) {
 				if (face.isSplit())
 					n++;
 			});
@@ -218,7 +213,7 @@ void Polyhedron::remapId(const std::vector<size_t>& idRemap, const Index3D& srcD
 void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 {
 	_faceIds.insert(faceId);
-	faceFunc(TS_REAL,faceId, [this, splitLevel](Polygon& face) {
+	faceFunc(faceId, [this, splitLevel](Polygon& face) {
 		face.addCellId(_thisId, splitLevel);
 	});
 
@@ -229,7 +224,7 @@ const MTC::set<Index3DId>& Polyhedron::getVertIds() const
 {
 	if (_cachedVertIds.empty()) {
 		for (const auto& faceId : _faceIds) {
-			faceAvailFunc(getState(), faceId, [this](const Polygon& refFace) {
+			faceFunc(faceId, [this](const Polygon& refFace) {
 				const auto vertexIds = refFace.getVertexIds();
 				_cachedVertIds.insert(vertexIds.begin(), vertexIds.end());
 			});
@@ -247,11 +242,10 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 	} else if (!_cachedEdges0.empty())
 		return _cachedEdges1;
 
-	auto curState = getState();
 	MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
 	MTC::set<Index3DId> adjCellIds;
 	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
+		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
 			if (includeAdjacentCellFaces) {
 				auto temp = face.getCellIds();
 				adjCellIds.insert(temp.begin(), temp.end());
@@ -272,11 +266,11 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 		adjCellIds.erase(_thisId);
 		for (const auto& adjCellId : adjCellIds) {
 			MTC::set<Index3DId> faceIds;
-			cellAvailFunc(curState, adjCellId, [&faceIds](const Polyhedron& cell) {
+			cellFunc(adjCellId, [&faceIds](const Polyhedron& cell) {
 				faceIds = cell.getFaceIds();
 			});
 			for (const auto& faceId : faceIds) {
-				faceAvailFunc(curState, faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
+				faceFunc(faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
 					const auto& edges = face.getEdges();
 					for (const auto& edge : edges) {
 						auto iter = edgeToFaceMap.find(edge);
@@ -311,11 +305,11 @@ const MTC::set<Index3DId>& Polyhedron::getAdjacentCells() const
 	if (_cachedAdjCellIds.empty()) { // All cells have adjacent cells. If this is empty, it hasn't been set
 		set<Edge> edges = getEdges(true);
 		for (const auto& faceId : _faceIds) {
-			faceFunc(getState(), faceId, [this, &edges](const Polygon& face) {
+			faceFunc(faceId, [this, &edges](const Polygon& face) {
 				const auto& cellIds1 = face.getCellIds();
 				for (const auto& cellId : cellIds1) {
 					set<Edge> adjEdges;
-					cellFunc(getState(), cellId, [this, &adjEdges](const Polyhedron& adjCell) {
+					cellFunc(cellId, [this, &adjEdges](const Polyhedron& adjCell) {
 						adjEdges = adjCell.getEdges(true);
 						});
 					const auto& vertIds = getVertIds();
@@ -353,7 +347,7 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, MTC::set<Edge>& result, b
 	if (includeAdjacentCells) {
 		set<Index3DId> adjCells = getAdjacentCells();
 		for (const auto& adjCellId : adjCells) {
-			cellAvailFunc(getState(), adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
+			cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
 				const auto& tmp = adjCell.getEdges(true);
 				cellEdgeSet.insert(tmp.begin(), tmp.end());
 			});
@@ -397,7 +391,7 @@ bool Polyhedron::contains(const Vector3d& pt) const
 	bool result = true;
 	Vector3d ctr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL,faceId, [this, &pt, &ctr, &result](const Polygon& face) {
+		faceFunc(faceId, [this, &pt, &ctr, &result](const Polygon& face) {
 			const double tol = Tolerance::sameDistTol();
 			Vector3d faceCtr = face.calCentroid();
 			Vector3d norm = face.calUnitNormal();
@@ -427,7 +421,7 @@ bool Polyhedron::containsVertex(const Index3DId& vertId) const
 bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 {
 	bool result = false;
-	cellAvailFunc(getState(), cellId, [this, &result](const Polyhedron& cell) {
+	cellFunc(cellId, [this, &result](const Polyhedron& cell) {
 		const auto& ourVerts = getVertIds();
 		const auto& otherVerts = cell.getVertIds();
 		for (const auto& otherId : otherVerts) {
@@ -444,7 +438,7 @@ bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
 {
 	bool result = false;
-	faceAvailFunc(TS_REAL, faceId, [this, &result](const Polygon& face) {
+	faceFunc(faceId, [this, &result](const Polygon& face) {
 		const auto& ourVerts = getVertIds();
 		const auto& otherVerts = face.getVertexIds();
 		for (const auto& otherId : otherVerts) {
@@ -465,7 +459,7 @@ Vector3d Polyhedron::calCentroid() const
 	Vector3d ctr(0, 0, 0);
 
 	for (const auto& faceId : _faceIds) {
-		faceAvailFunc(getState(), faceId, [&area, &ctr](const Polygon& face) {
+		faceFunc(faceId, [&area, &ctr](const Polygon& face) {
 			double faceArea;
 			Vector3d faceCtr;
 			face.calAreaAndCentroid(faceArea, faceCtr);
@@ -483,7 +477,7 @@ double Polyhedron::calVolume() const
 {
 	double vol = 0;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [this, &vol](const Polygon& face) {
+		faceFunc(faceId, [this, &vol](const Polygon& face) {
 			const Vector3d zAxis(0, 0, 1);
 			Vector3d norm = face.calOrientedUnitNormal(getId());
 			double area;
@@ -560,7 +554,7 @@ bool Polyhedron::intersectsModel() const
 		}
 
 		for (const auto& faceId : _faceIds) {
-			faceFunc(TS_REAL, faceId, [this](const Polygon& face) {
+			faceFunc(faceId, [this](const Polygon& face) {
 				if (face.intersectsModel()) {
 					_intersectsModel = IS_TRUE;
 				}
@@ -588,7 +582,7 @@ bool Polyhedron::intersectsModel() const
 			vector<size_t> triEntries;
 			if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
 				for (const auto& faceId : _faceIds) {
-					faceFunc(TS_REAL, faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
+					faceFunc(faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
 						const double tol = Tolerance::sameDistTol();
 						const auto& vertIds = face.getVertexIds();
 						for (size_t i = 0; i < vertIds.size(); i++) {
@@ -628,7 +622,7 @@ bool Polyhedron::intersectsModelPrecise() const
 
 	for (const auto& faceId : _faceIds) {
 		bool result = false;
-		faceFunc(TS_REAL, faceId, [this, &pRepo, &result](const Polygon& face) {
+		faceFunc(faceId, [this, &pRepo, &result](const Polygon& face) {
 			const double tol = Tolerance::sameDistTol();
 			const auto& vertIds = face.getVertexIds();
 			for (size_t i = 0; i < vertIds.size(); i++) {
@@ -663,7 +657,7 @@ bool Polyhedron::intersectsModelPrecise() const
 	if (pMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
 		for (const auto& faceId : _faceIds) {
 			bool result = false;
-			faceFunc(TS_REAL, faceId, [this, &triEntries, &pMesh, &result](const Polygon& face) {
+			faceFunc(faceId, [this, &triEntries, &pMesh, &result](const Polygon& face) {
 				const double tol = Tolerance::sameDistTol();
 				const auto& vertIds = face.getVertexIds();
 				for (size_t i = 0; i < vertIds.size(); i++) {
@@ -704,7 +698,7 @@ bool Polyhedron::containsPointPrecise(const Vector3d& pt) const
 	}
 	for (const auto& faceId : _faceIds) {
 		bool result = true;
-		faceFunc(TS_REAL, faceId, [this, &pt, &result](const Polygon& face) {
+		faceFunc(faceId, [this, &pt, &result](const Polygon& face) {
 			face.iterateTriangles([this, &pt, &result](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
 				auto pt0 = getVertexPoint(vertId0);
 				auto pt1 = getVertexPoint(vertId1);
@@ -743,7 +737,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 
 	_sharpEdgesIntersectModel = IS_FALSE;
 	for (const auto& faceId : getFaceIds()) {
-		faceFunc(TS_REAL, faceId, [this, &sharpEdges, &pMesh](const Polygon& face) {
+		faceFunc(faceId, [this, &sharpEdges, &pMesh](const Polygon& face) {
 			size_t numHits = 0;
 			for (size_t edgeIdx : sharpEdges) {
 				const auto& edge = pMesh->getEdge(edgeIdx);
@@ -782,7 +776,7 @@ bool Polyhedron::needsDivideAtCentroid() const
 
 bool Polyhedron::setNeedsCleanFaces()
 {
-	if (getBlockPtr()->polyhedronExists(TS_REFERENCE, _thisId)) {
+	if (getBlockPtr()->polyhedronExists(_thisId)) {
 		setNeedsDivideAtCentroid();
 		return true;
 	}
@@ -815,7 +809,7 @@ void Polyhedron::orientFaces()
 		return;
 
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+		faceFunc(faceId, [this](Polygon& face) {
 			face.setReversed(getId(), false);
 		});
 	}
@@ -826,10 +820,10 @@ void Polyhedron::orientFaces()
 	while (!unorientedIds.empty()) {
 		bool found = false;
 		for (const auto& oriented : orientedIds) {
-			faceFunc(TS_REAL, oriented, [&](const Polygon& orientedFace) {
+			faceFunc(oriented, [&](const Polygon& orientedFace) {
 				orientedFace.iterateOrientedEdges([&](const Edge& edgeA) {
 					for (const auto& unoriented : unorientedIds) {
-						faceFunc(TS_REAL, unoriented, [&](Polygon& unorientedFace) {
+						faceFunc(unoriented, [&](Polygon& unorientedFace) {
 							unorientedFace.iterateOrientedEdges([&](const Edge& edgeB) {
 								if (edgeA == edgeB) {
 									if (edgeA.getVertex(0) == edgeB.getVertex(0)) { // face is reversed
@@ -860,7 +854,7 @@ void Polyhedron::orientFaces()
 	if (vol < 0) {
 		// flip all face orientation flags
 		for (auto& faceId : _faceIds) {
-			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+			faceFunc(faceId, [this](Polygon& face) {
 				face.flipReversed(getId());
 			});
 		}
@@ -882,7 +876,7 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 #if 1
 	MTC::set<Index3DId> verts;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [&verts](const Polygon& face) {
+		faceFunc(faceId, [&verts](const Polygon& face) {
 			const auto& tmp = face.getVertexIds();
 			verts.insert(tmp.begin(), tmp.end());
 		});
@@ -894,13 +888,13 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 			int dbgBreak = 1;
 		}
 		MTC::set<Index3DId> imprintVertices;
-		faceFunc(TS_REAL, faceId, [&verts, &imprintVertices](Polygon& face) {
+		faceFunc(faceId, [&verts, &imprintVertices](Polygon& face) {
 			face.needToImprintVertices(verts, imprintVertices);
 		});
 
 		if (!imprintVertices.empty()) {
 			getBlockPtr()->removeFaceFromLookUp(faceId);
-			faceFunc(TS_REAL, faceId, [&imprintVertices](Polygon& face) {
+			faceFunc(faceId, [&imprintVertices](Polygon& face) {
 				for (const auto& vertId : imprintVertices) {
 					face.imprintVertex(vertId);
 				}
@@ -913,13 +907,13 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 		clearCache();
 #else
 	set<Index3DId> refFaceIds;
-	cellFunc(TS_REFERENCE,_thisId, [&refFaceIds](const Polyhedron& refCell) {
+	cellFunc(_thisId, [&refFaceIds](const Polyhedron& refCell) {
 		refFaceIds = refCell.getFaceIds();
 	});
 
 	map<Edge, Index3DId> splitEdgeVertMap;
 	for (const auto& refFaceId : refFaceIds) {
-		faceAvailFunc(TS_REFERENCE, refFaceId, [&splitEdgeVertMap](const Polygon& refFace) {
+		faceFunc(refFaceId, [&splitEdgeVertMap](const Polygon& refFace) {
 			const auto& tmp = refFace.getSplitEdgeVertMap();
 			splitEdgeVertMap.insert(tmp.begin(), tmp.end());
 		});
@@ -927,8 +921,8 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 
 	set<Index3DId> imprintIds;
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
-			faceFunc(TS_REAL,faceId, [&splitEdgeVertMap, &imprintIds](const Polygon& face) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			faceFunc(faceId, [&splitEdgeVertMap, &imprintIds](const Polygon& face) {
 				if (face.needToImprintVertices(splitEdgeVertMap))
 					imprintIds.insert(face.getId());
 			});
@@ -939,8 +933,8 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 
 		for (const auto& faceId : imprintIds) {
 			pDstBlock->makeRefPolygonIfRequired(faceId);
-			if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
-				pDstBlock->faceFunc(TS_REAL,faceId, [&splitEdgeVertMap](Polygon& face) {
+			if (getBlockPtr()->polygonExists(faceId)) {
+				pDstBlock->faceFunc(faceId, [&splitEdgeVertMap](Polygon& face) {
 					face.imprintVertices(splitEdgeVertMap);
 				});
 			}
@@ -954,8 +948,8 @@ void Polyhedron::imprintTVertices(Block* pDstBlock)
 void Polyhedron::attachFaces()
 {
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
-			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			faceFunc(faceId, [this](Polygon& face) {
 				face.addCellId(getId(), 0);
 			});
 		}
@@ -965,8 +959,8 @@ void Polyhedron::attachFaces()
 void Polyhedron::detachFaces()
 {
 	for (const auto& faceId : _faceIds) {
-		if (getBlockPtr()->polygonExists(TS_REAL, faceId)) {
-			faceFunc(TS_REAL, faceId, [this](Polygon& face) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			faceFunc(faceId, [this](Polygon& face) {
 				face.removeCellId(getId());
 			});
 		}
@@ -978,13 +972,13 @@ void Polyhedron::replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3D
 	clearCache();
 	_faceIds.erase(curFaceId);
 
-	faceFunc(TS_REAL,curFaceId, [this](Polygon& curFace) {
+	faceFunc(curFaceId, [this](Polygon& curFace) {
 		curFace.removeCellId(_thisId);
 	});
 
 	for (const auto& newFaceId : newFaceIds) {
 		_faceIds.insert(newFaceId);
-		faceFunc(TS_REAL,newFaceId, [this, splitLevel](Polygon& newFace) {
+		faceFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
 			assert(!getBlockPtr()->isPolygonReference(&newFace));
 			newFace.addCellId(_thisId, splitLevel);
 		});
@@ -1029,7 +1023,7 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 	for (const auto& faceId : _faceIds) {
 		Index3DId adjCellId;
 		size_t faceSplitLevel;
-		faceFunc(TS_REAL, faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
+		faceFunc(faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
 			for (const auto& id : face.getCellIds()) {
 				if (id != _thisId) {
 					adjCellId = id;
@@ -1042,7 +1036,7 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 			if (faceSplitLevel > 0) {
 				blockingCellIds.insert(adjCellId);
 			} else {
-				cellFunc(TS_REAL, adjCellId, [this, &blockingCellIds](const Polyhedron& adjCell) {
+				cellFunc(adjCellId, [this, &blockingCellIds](const Polyhedron& adjCell) {
 					if (adjCell.getSplitLevel() < _splitLevel) {
 						blockingCellIds.insert(adjCell.getId());
 					}
@@ -1079,7 +1073,7 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 
 		CBoundingBox3Dd bbox = getBoundingBox();
 		set<Edge> edges;
-		cellAvailFunc(TS_REFERENCE, _thisId, [&edges](const Polyhedron& cell) {
+		cellFunc(_thisId, [&edges](const Polyhedron& cell) {
 			edges = cell.getEdges(false);
 		});
 
@@ -1249,16 +1243,16 @@ double Polyhedron::minGap() const
 	return _cachedMinGap;
 }
 
-bool Polyhedron::polygonExists(TopolgyState refState, const Index3DId& id) const
+bool Polyhedron::polygonExists(const Index3DId& id) const
 {
-	return getBlockPtr()->polygonExists(refState, id);
+	return getBlockPtr()->polygonExists(id);
 }
 
 double Polyhedron::getShortestEdge() const
 {
 	double minDist = DBL_MAX;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL,faceId, [&minDist](const Polygon& face) {
+		faceFunc(faceId, [&minDist](const Polygon& face) {
 			double l = face.getShortestEdge();
 			if (l < minDist)
 				minDist = l;
@@ -1287,7 +1281,7 @@ bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)
 		if (propagate) {
 			const auto& adj = getAdjacentCells();
 			for (const auto& id : adj) {
-				cellFunc(TS_REAL, id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
+				cellFunc(id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
 					if (adjCell.getLayerNum() == -1) {
 						adjCell.setLayerNum(thisLayerNum, false);
 						changed = true;
@@ -1311,7 +1305,7 @@ MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds)
 	// The edge may already exist.
 	MTC::set<Edge> edgeSet;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL,faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
+		faceFunc(faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
 			MTC::set<Index3DId> vertsInFace;
 			for (const auto& vertId : vertIds) {
 				if (face.containsVertex(vertId))
@@ -1389,7 +1383,7 @@ bool Polyhedron::isClosed() const
 bool Polyhedron::lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayHitd>& hits, MTC::vector<Index3DId>& faceIds) const
 {
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL, faceId, [this, &seg, &hits, &faceIds] (const Polygon& face) {
+		faceFunc(faceId, [this, &seg, &hits, &faceIds] (const Polygon& face) {
 			RayHitd hit;
 			if (face.intersect(seg, hit)) {
 				hits.push_back(hit);
@@ -1405,7 +1399,7 @@ bool Polyhedron::hasTooManySplits() const
 	bool result = false;
 
 	for (const auto& faceId : _faceIds) {
-		faceFunc(TS_REAL,faceId, [this, &result](const Polygon& face) {
+		faceFunc(faceId, [this, &result](const Polygon& face) {
 			if (face.getSplitLevel(_thisId) > 1)
 				result = true;
 		});
@@ -1421,8 +1415,8 @@ bool Polyhedron::verifyTopology() const
 	bool valid = true;
 
 	for (const auto& faceId : _faceIds) {
-		if (valid && polygonExists(TS_REAL, faceId)) {
-			faceFunc(TS_REAL,faceId, [this, &valid](const Polygon& face) {
+		if (valid && polygonExists(faceId)) {
+			faceFunc(faceId, [this, &valid](const Polygon& face) {
 				if (valid && !face.usedByCell(_thisId)) {
 					valid = false;
 				}
@@ -1490,7 +1484,7 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 
 		out << Logger::Pad() << "faces(" << cell._faceIds.size() << "): {\n";
 		for (const auto& faceId : cell._faceIds) {
-			pBlk->faceAvailFunc(TS_REAL, faceId, [&out](const Polygon& face) {
+			pBlk->faceFunc(faceId, [&out](const Polygon& face) {
 				Logger::Indent indent;
 				out << Logger::Pad() << face << "\n";
 			});
@@ -1523,43 +1517,4 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 return out;
 }
 
-//LAMBDA_CLIENT_IMPLS(Polyhedron)
-void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Polyhedron::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceFunc(state, id, func);
-} 
-
-void Polyhedron::faceFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->faceFunc(state, id, func);
-} 
-
-void Polyhedron::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellFunc(state, id, func);
-} 
-
-void Polyhedron::cellFunc(TopolgyState state, const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->cellFunc(state, id, func);
-} 
-
-void Polyhedron::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceAvailFunc(prefState, id, func);
-} 
-
-void Polyhedron::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellAvailFunc(prefState, id, func);
-}
+LAMBDA_CLIENT_IMPLS(Polyhedron)

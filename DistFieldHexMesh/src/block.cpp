@@ -479,7 +479,7 @@ bool Block::verifyIndices(const Index3D& idx) const
 	return true;
 }
 
-void Block::createBlockCells(TopolgyState refState)
+void Block::createBlockCells()
 {
 	Index3D idx;
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
@@ -616,7 +616,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	const auto& cellFaceIds = newCell.getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
-		faceFunc(TS_REAL,faceId, [this, &cellId](Polygon& cellFace) {
+		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
 			cellFace.addCellId(cellId, 0);
 		});
 	}
@@ -992,7 +992,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	vector<Vector3d> points;
 	map<Index3DId, size_t> vertIdToPtMap;
 	for (const auto& faceId : faceIds) {
-		faceAvailFunc(TS_REAL, faceId, [this, &points, &vertIdToPtMap](const Polygon& face) {
+		faceFunc(faceId, [this, &points, &vertIdToPtMap](const Polygon& face) {
 			const MTC::vector<Index3DId>& vertIds = face.getVertexIds();
 			for (const auto& vertId : vertIds) {
 				auto iter = vertIdToPtMap.find(vertId);
@@ -1012,7 +1012,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	}
 
 	for (const auto& faceId : faceIds) {
-		faceAvailFunc(TS_REAL, faceId, [this, &out, &vertIdToPtMap, &cellId](const Polygon& face) {
+		faceFunc(faceId, [this, &out, &vertIdToPtMap, &cellId](const Polygon& face) {
 			out << "# " << face.getId() << "\n";
 			out << "f";
 			MTC::vector<Index3DId> vertIds = face.getOrientedVertexIds(cellId);
@@ -1085,13 +1085,13 @@ bool Block::splitRequiredPolyhedra()
 	auto tmp = getNeedToSplit();
 	getNeedToSplit().clear();
 	for (const auto& cellId : tmp) {
-		if (polyhedronExists(TS_REAL, cellId)) {
+		if (polyhedronExists(cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
 			if (splitter.splitIfNeeded())
 				didSplit = true;
 			else
 				assert(!"splitFailed");
-			assert(!polyhedronExists(TS_REAL, cellId));
+			assert(!polyhedronExists(cellId));
 		}
 	}
 
@@ -1135,7 +1135,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	int64_t layerNum = -1;
 	const auto& cellIds = face.getCellIds();
 	for (const auto& cellId : cellIds) {
-		cellFunc(TS_REAL, cellId, [&layerNum](const Polyhedron& cell) {
+		cellFunc(cellId, [&layerNum](const Polyhedron& cell) {
 			int64_t cellLayerNum = cell.getLayerNum();
 			if (cellLayerNum != -1) {
 				if (layerNum == -1)
@@ -1331,7 +1331,7 @@ bool Block::vertexExists(const Index3DId& id) const
 	return pOwner && pOwner->_vertices.exists(id);
 }
 
-bool Block::polygonExists(TopolgyState refState, const Index3DId& id) const
+bool Block::polygonExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
 	return pOwner && pOwner->_polygons.exists(id);
@@ -1348,19 +1348,19 @@ bool Block::allCellsClosed() const
 	return result;
 }
 
-bool Block::polyhedronExists(TopolgyState refState, const Index3DId& id) const
+bool Block::polyhedronExists(const Index3DId& id) const
 {
 	auto pOwner = getOwner(id);
 	return pOwner && pOwner->_polyhedra.exists(id);
 }
 
-DFHM::Polygon& Block::getPolygon(TopolgyState refState, const Index3DId& id)
+DFHM::Polygon& Block::getPolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	return pOwner->_polygons[id];
 }
 
-Polyhedron& Block::getPolyhedron(TopolgyState refState, const Index3DId& id)
+Polyhedron& Block::getPolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
 	return pOwner->_polyhedra[id];
@@ -1370,7 +1370,7 @@ void Block::addToSplitStack0(const Index3DId& cellId)
 {
 	set<Index3DId> blockingIds;
 
-	assert(polyhedronExists(TS_REAL, cellId));
+	assert(polyhedronExists(cellId));
 	assert(cellId.blockIdx() == _blockIdx);
 
 	MTC::set<Index3DId> temp;
@@ -1388,7 +1388,7 @@ void Block::addToSplitStack0(const Index3DId& cellId)
 	while (!blockingIds.empty()) {
 		set<Index3DId> blockingIds2;
 		for (const auto& cellId : blockingIds) {
-			if (!polyhedronExists(TS_REAL, cellId))
+			if (!polyhedronExists(cellId))
 				continue;
 			auto pOwner = getOwner(cellId);
 			MTC::set<Index3DId> temp;
@@ -1479,7 +1479,7 @@ bool Block::incrementLayerNums(int i)
 	} else {
 		const auto& cellIds = _seedFillList[_seedFillReadIdx];
 		for (const auto& cellId : cellIds) {
-			cellFunc(TS_REAL, cellId, [i, &changed](Polyhedron& cell) {
+			cellFunc(cellId, [i, &changed](Polyhedron& cell) {
 				if (cell.setLayerNum(i, true))
 					changed = true;
 			});

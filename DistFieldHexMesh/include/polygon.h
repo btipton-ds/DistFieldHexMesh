@@ -210,7 +210,6 @@ private:
 	void initVertices(const Volume* pVol) const;
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
-	TopolgyState getState() const;
 	void clearCache() const;
 
 	size_t _createdDuringSplitNumber = 0;

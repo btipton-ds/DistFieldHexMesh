@@ -110,7 +110,7 @@ Vector3d Edge::calCoedgeUnitDir(const Block* pBlock, const Index3DId& faceId, co
 {
 	Vector3d result;
 	bool found = false;
-	pBlock->faceFunc(TS_REAL, faceId, [this, pBlock, &cellId, &result, &found](const Polygon& face) {
+	pBlock->faceFunc(faceId, [this, pBlock, &cellId, &result, &found](const Polygon& face) {
 		face.iterateOrientedEdges([this, pBlock, &cellId, &result, &found](const Edge& edge)->bool {
 			if (edge == *this) {
 				result = edge.calUnitDir(pBlock);
@@ -227,10 +227,10 @@ double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCe
 	const auto& faceId0 = *fIter++;
 	const auto& faceId1 = *fIter++;
 	Vector3d normal0, normal1;
-	pBlock->faceFunc(TS_REAL,faceId0, [&normal0, &refCellId](const Polygon& face) {
+	pBlock->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
 		normal0 = face.calOrientedUnitNormal(refCellId);
 	});
-	pBlock->faceFunc(TS_REAL,faceId1, [&normal1, &refCellId](const Polygon& face) {
+	pBlock->faceFunc(faceId1, [&normal1, &refCellId](const Polygon& face) {
 		normal1 = face.calOrientedUnitNormal(refCellId);
 	});
 
@@ -260,9 +260,9 @@ bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
 	const auto& id0 = *iter++;
 	const auto& id1 = *iter;
 
-	pBlock->faceFunc(TS_REAL, id0, [pBlock, &id1, &refCellId, &result](const Polygon& face0) {
+	pBlock->faceFunc(id0, [pBlock, &id1, &refCellId, &result](const Polygon& face0) {
 		face0.iterateOrientedEdges([pBlock, &id1, &refCellId, &result](const auto& edge0)->bool {
-			pBlock->faceFunc(TS_REAL, id1, [&refCellId, &edge0, &result](const Polygon& face1) {
+			pBlock->faceFunc(id1, [&refCellId, &edge0, &result](const Polygon& face1) {
 				face1.iterateOrientedEdges([&edge0, &result](const auto& edge1)->bool {
 					if (edge0._vertexIds[0] == edge1._vertexIds[0] && edge0._vertexIds[1] == edge1._vertexIds[1]) {
 						result = false;
@@ -323,7 +323,7 @@ void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
 {
 	cellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(TS_REAL, faceId, [&cellIds](const Polygon& face) {
+		pBlock->faceFunc(faceId, [&cellIds](const Polygon& face) {
 			const auto& adjCellIds = face.getCellIds();
 			for (const auto& cellId : adjCellIds) {
 				cellIds.insert(cellId);

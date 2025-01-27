@@ -446,7 +446,7 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 
 	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (inModelBounds(pBlk->getBlockIdx())) {
-			pBlk->createBlockCells(TS_REAL);
+			pBlk->createBlockCells();
 		}
 		return true;
 	}, multiCore);
@@ -720,7 +720,7 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
 			runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder(TS_REAL, [](const auto& cellId, Polyhedron& cell) {
+				pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 					cell.setNeedsDivideAtCentroid();
 				});
 				return true;
@@ -757,7 +757,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 
 			bool changed = false;
 			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder(TS_REAL, [&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
+				pBlk->iteratePolyhedraInOrder([&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
 					if (cell.setNeedToSplitConditional(passNum, params))
 						changed = true;
 				});
@@ -780,7 +780,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 {
 	bool changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.containsSharps()) {
 				if (cell.setNeedsCleanFaces())
 					changed = true;
@@ -791,7 +791,7 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 
 	changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				PolyhedronSplitter ps(pBlk.get(), cellId);
 #if 0
@@ -1310,7 +1310,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(TS_REAL,cellId, [&cellToFaceIdsMap, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
+		pBlk->cellFunc(cellId, [&cellToFaceIdsMap, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 			const auto& ids = cell.getFaceIds();
 			cellToFaceIdsMap.insert(std::make_pair(cell.getId(), ids));
 			if (includeModel) {
@@ -1371,7 +1371,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	for (const auto& pair : cellToFaceIdsMap) {
 		for (const auto& faceId : pair.second) {
 			auto pBlk = getBlockPtr(faceId);
-			pBlk->faceFunc(TS_REAL, faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
+			pBlk->faceFunc(faceId, [&pBlk, &pointToIdxMap, &pts](const Polygon& face) {
 				const auto& vIds = face.getVertexIds();
 				for (const auto& vertId : vIds) {
 					Vector3d pt = pBlk->getVertexPoint(vertId);
@@ -1404,7 +1404,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	for (const auto& pair : cellToFaceIdsMap) {
 		for (const auto& faceId : pair.second) {
 			auto pBlk = getBlockPtr(faceId);
-			pBlk->faceFunc(TS_REAL, faceId, [&out, &pBlk, &pair, &pointToIdxMap](const Polygon& face) {
+			pBlk->faceFunc(faceId, [&out, &pBlk, &pair, &pointToIdxMap](const Polygon& face) {
 				out << "#id: " << face.getId() << "\n";
 				out << "#NumVerts: " << face.getVertexIds().size() << "\n";
 				out << "f ";
@@ -2042,7 +2042,7 @@ bool Volume::verifyUniquePolygons(bool multiCore) const
 #if 0
 	for (size_t i = 0; i < _blocks.size(); i++) {
 		const auto& pBlk0 = _blocks[i];
-		pBlk0->iteratePolygonsInOrder(TS_REAL, [this, i](const Index3DId& vertId0, const Polygon& polygon0) {
+		pBlk0->iteratePolygonsInOrder([this, i](const Index3DId& vertId0, const Polygon& polygon0) {
 			vector<Vector3d> verts0;
 			const auto& vertIds0 = polygon0.getVertexIds();
 			for (const auto& id : vertIds0) {

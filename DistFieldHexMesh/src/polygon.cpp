@@ -129,7 +129,7 @@ void Polygon::clearCache() const
 
 	// Clear our owner cells' caches
 	for (const auto& cellId : _cellIds) {
-		cellFunc(getState(), cellId, [](const Polyhedron& cell) {
+		cellFunc(cellId, [](const Polyhedron& cell) {
 			cell.clearCache();
 		});
 	}
@@ -138,10 +138,10 @@ void Polygon::clearCache() const
 bool Polygon::cellsOwnThis() const
 {
 	for (const auto& cellId : _cellIds) {
-		if (!getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+		if (!getBlockPtr()->polyhedronExists(cellId))
 			return false;
 		bool result = true;
-		cellFunc(TS_REAL,cellId, [this, &result](const Polyhedron& cell) {
+		cellFunc(cellId, [this, &result](const Polyhedron& cell) {
 			if (!cell.containsFace(_thisId))
 				result = false;
 		});
@@ -681,7 +681,7 @@ bool Polygon::intersectsModel() const
 		_cachedIntersectsModel = IS_FALSE;
 
 		for (auto& cellId : _cellIds) {
-			cellFunc(TS_REAL, cellId, [this](const Polyhedron& cell) {
+			cellFunc(cellId, [this](const Polyhedron& cell) {
 				auto& meshData = *getBlockPtr()->getModelMeshData();
 				for (auto& pair : meshData) {
 					auto& pMesh = pair.second->getMesh();
@@ -799,7 +799,7 @@ void Polygon::removeDeadCellIds()
 {
 	set<Index3DId> tmp;
 	for (const auto& cellId : _cellIds) {
-		if (getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+		if (getBlockPtr()->polyhedronExists(cellId))
 			tmp.insert(cellId);
 	}
 
@@ -826,8 +826,8 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 #if 1 && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
-			assert(getBlockPtr()->polyhedronExists(TS_REAL, cellId1));
-			cellFunc(TS_REAL,cellId1, [this](const Polyhedron& cell) {
+			assert(getBlockPtr()->polyhedronExists(cellId1));
+			cellFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
 			});
 		}
@@ -839,11 +839,6 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 void Polygon::unlinkFromCell(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
-}
-
-TopolgyState Polygon::getState() const
-{
-	return TS_REAL;
 }
 
 void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
@@ -1100,10 +1095,10 @@ bool Polygon::verifyTopology() const
 
 	if (valid) {
 		for (const auto& cellId : _cellIds) {
-			if (valid && !getBlockPtr()->polyhedronExists(TS_REAL, cellId))
+			if (valid && !getBlockPtr()->polyhedronExists(cellId))
 				valid = false;
 
-			cellFunc(TS_REAL,cellId, [this, &valid](const Polyhedron& cell) {
+			cellFunc(cellId, [this, &valid](const Polyhedron& cell) {
 				if (valid && !cell.containsFace(_thisId)) {
 					valid = false;
 				}
@@ -1189,43 +1184,4 @@ inline Vector3d Polygon::getVertexPoint(const Index3DId& id) const
 }
 
 
-//LAMBDA_CLIENT_IMPLS(Polygon)
-void Polygon::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Polygon::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Polygon::faceFunc(TopolgyState state, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceFunc(state, id, func);
-} 
-
-void Polygon::faceFunc(TopolgyState state, const Index3DId& id, const function<void(Polygon& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->faceFunc(state, id, func);
-} 
-
-void Polygon::cellFunc(TopolgyState state, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellFunc(state, id, func);
-} 
-
-void Polygon::cellFunc(TopolgyState state, const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->cellFunc(state, id, func);
-} 
-
-void Polygon::faceAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->faceAvailFunc(prefState, id, func);
-} 
-
-void Polygon::cellAvailFunc(TopolgyState prefState, const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
-	auto p = getBlockPtr(); 
-	p->cellAvailFunc(prefState, id, func);
-}
+LAMBDA_CLIENT_IMPLS(Polygon)

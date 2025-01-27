@@ -45,8 +45,8 @@ enum Trinary
 
 enum TopolgyState
 {
-	TS_REAL,			// As originally created without any splits
-	TS_REFERENCE,		// Was intact, now there is a split version and this is for reference
+				// As originally created without any splits
+			// Was intact, now there is a split version and this is for reference
 };
 
 enum CubeFaceType {

@@ -118,7 +118,6 @@ public:
 	void clearLayerNum();
 	bool setLayerNum(int i, bool propagate);
 
-	TopolgyState getState() const;
 	size_t getNumSplitFaces() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const;
@@ -150,7 +149,7 @@ private:
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
 	double minGap() const;
-	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
+	bool polygonExists(const Index3DId& id) const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 

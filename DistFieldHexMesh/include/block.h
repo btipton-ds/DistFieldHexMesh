@@ -136,7 +136,7 @@ public:
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
 	bool verifyIndices(const Index3D& idx) const;
-	void createBlockCells(TopolgyState refState);
+	void createBlockCells();
 
 	size_t calLinearSubBlockIndex(const Index3D& subBlockIdx) const;
 	Index3D calSubBlockIndexFromLinear(size_t linearIdx) const;
@@ -168,13 +168,13 @@ public:
 	void addToSeedFillList(const Index3DId& cellId);
 
 	bool vertexExists(const Index3DId& id) const;
-	bool polygonExists(TopolgyState refState, const Index3DId& id) const;
+	bool polygonExists(const Index3DId& id) const;
 
-	bool polyhedronExists(TopolgyState refState, const Index3DId& id) const;
+	bool polyhedronExists(const Index3DId& id) const;
 	bool allCellsClosed() const;
 
-	Polygon& getPolygon(TopolgyState refState, const Index3DId& id);
-	Polyhedron& getPolyhedron(TopolgyState refState, const Index3DId& id);
+	Polygon& getPolygon(const Index3DId& id);
+	Polyhedron& getPolyhedron(const Index3DId& id);
 
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::local_heap* getHeapPtr();
@@ -213,16 +213,16 @@ public:
 	void iterateVerticesInOrder(F fLambda) const;
 
 	template<class F>
-	void iteratePolygonsInOrder(TopolgyState state, F fLambda) const;
+	void iteratePolygonsInOrder(F fLambda) const;
 
 	template<class F>
-	void iteratePolygonsInOrder(TopolgyState state, F fLambda);
+	void iteratePolygonsInOrder(F fLambda);
 
 	template<class F>
-	void iteratePolyhedraInOrder(TopolgyState state, F fLambda) const;
+	void iteratePolyhedraInOrder(F fLambda) const;
 
 	template<class F>
-	void iteratePolyhedraInOrder(TopolgyState state, F fLambda);
+	void iteratePolyhedraInOrder(F fLambda);
 
 
 	LAMBDA_BLOCK_DECLS
@@ -385,25 +385,25 @@ inline void Block::iterateVerticesInOrder(F fLambda) const
 }
 
 template<class F>
-inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda) const
+inline void Block::iteratePolygonsInOrder(F fLambda) const
 {
 	_polygons.iterateInOrder(fLambda);
 }
 
 template<class F>
-inline void Block::iteratePolygonsInOrder(TopolgyState state, F fLambda)
+inline void Block::iteratePolygonsInOrder(F fLambda)
 {
 	_polygons.iterateInOrder(fLambda);
 }
 
 template<class F>
-inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda) const
+inline void Block::iteratePolyhedraInOrder(F fLambda) const
 {
 	_polyhedra.iterateInOrder(fLambda);
 }
 
 template<class F>
-inline void Block::iteratePolyhedraInOrder(TopolgyState state, F fLambda)
+inline void Block::iteratePolyhedraInOrder(F fLambda)
 {
 	_polyhedra.iterateInOrder(fLambda);
 }
