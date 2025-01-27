@@ -609,6 +609,17 @@ Index3DId Block::addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId
 	return faceId;
 }
 
+Index3DId Block::findFace(const Polygon& face) const
+{
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);
+	assert(ownerBlockIdx.isValid());
+	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
+	auto faceId = pOwner->_polygons.findId(face);
+
+	return faceId;
+}
+
 Index3DId Block::addCell(const Polyhedron& cell)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);

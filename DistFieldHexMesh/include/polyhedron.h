@@ -83,6 +83,8 @@ public:
 	double calVolume() const;
 	bool isClosed() const;
 	bool isOriented() const;
+	bool isSplit() const;
+	size_t classify(MTC::vector<Vector3d>& corners) const;
 	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
@@ -153,6 +155,7 @@ private:
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 
+	Index3DId _parentId;
 	MTC::set<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1;

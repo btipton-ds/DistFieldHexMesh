@@ -375,6 +375,105 @@ MTC::set<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) const
 	return result;
 }
 
+bool Polyhedron::isSplit() const
+{
+	return _parentId.isValid();
+}
+
+size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
+{
+	corners.clear();
+
+	if (isSplit() && _parentId.isValid()) {
+		size_t result;
+		cellFunc(_parentId, [&result, &corners](const Polyhedron& parentCell) {
+			result = parentCell.classify(corners);
+			});
+		return result;
+	}
+
+	Vector3d cellCtr = calCentroid();
+
+	int numQuads = 0, numTris = 0;
+	MTC::vector<Index3DId> baseFaceVerts, oppFaceVerts;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &numQuads, &numTris, &baseFaceVerts](const Polygon& face) {
+			const auto& vertIds = face.getVertexIds();
+			if (vertIds.size() == 3)
+				numTris++;
+			else if (vertIds.size() == 4)
+				numQuads++;
+
+			if (baseFaceVerts.empty())
+				baseFaceVerts = vertIds;
+			});
+	}
+
+	if (numQuads == 6 && numTris == 0) {
+		// May be hexahedral
+		auto edges = getEdges(false);
+		for (size_t i = 0; i < baseFaceVerts.size(); i++) {
+			size_t j = (i + 1) % baseFaceVerts.size();
+			edges.erase(Edge(baseFaceVerts[i], baseFaceVerts[j]));
+		}
+		for (size_t i = 0; i < baseFaceVerts.size(); i++) {
+			for (const auto& e : edges) {
+				if (e.containsVertex(baseFaceVerts[i])) {
+					oppFaceVerts.push_back(e.getOtherVert(baseFaceVerts[i]));
+				}
+			}
+		}
+		if (baseFaceVerts.size() != 4 || oppFaceVerts.size() != 4)
+			return -1;
+
+		vector<Vector3d> pts, oppPts;
+		Vector3d faceCtr0, faceCtr1;
+		for (int i = 0; i < 4; i++) {
+			const Vector3d& pt0 = getVertexPoint(baseFaceVerts[i]);
+			pts.push_back(pt0);
+			faceCtr0 += pt0;
+
+			const Vector3d& pt1 = getVertexPoint(oppFaceVerts[i]);
+			oppPts.push_back(pt1);
+			faceCtr1 += pt1;
+		}
+		faceCtr0 /= 4;
+		faceCtr1 /= 4;
+
+		Vector3d v, v0, v1, norm;
+		v0 = pts[1] - pts[0];
+		v1 = pts[3] - pts[0];
+		norm = v1.cross(v0).normalized();
+		v = (cellCtr - faceCtr0).normalized();
+		if (v.dot(norm) < 0) {
+			std::swap(pts[1], pts[3]);
+			std::swap(oppPts[1], oppPts[3]);
+		}
+
+		v0 = oppPts[1] - oppPts[0];
+		v1 = oppPts[3] - oppPts[0];
+		norm = v1.cross(v0).normalized();
+		v = (cellCtr - faceCtr1).normalized();
+		if (v.dot(norm) < 0) {
+			corners.insert(corners.end(), pts.begin(), pts.end());
+			corners.insert(corners.end(), oppPts.begin(), oppPts.end());
+		}
+	}
+	else if (numQuads == 1 && numTris == 4) {
+		// May be pyramid
+	}
+	else if (numQuads == 3 && numTris == 2) {
+		// May be tri prism
+	}
+	else if (numQuads == 3 && numTris == 2) {
+		// May be tri prism
+	}
+	else if (numTris == 4 && numQuads == 0) {
+		// Must be tetrahedron
+	}
+	return corners.size();
+}
+
 CBoundingBox3Dd Polyhedron::getBoundingBox() const
 {
 	CBoundingBox3Dd bbox;

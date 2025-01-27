@@ -157,6 +157,7 @@ public:
 	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
 	Index3DId addFace(const MTC::vector<Vector3d>& pts);
+	Index3DId findFace(const Polygon& face) const;
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 

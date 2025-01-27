@@ -174,10 +174,12 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedro
 						};
 
 						Index3DId newCellId = _pBlock->addHexCell(subCorners);
+#if 0
 						realCell.addSplitCellId(newCellId);
 						_pBlock->cellFunc(newCellId, [&referenceCell](Polyhedron& newCell) {
 							newCell.setParentId(referenceCell.getId());
 							});
+#endif
 						int dbgBreak = 1;
 					}
 				}
@@ -192,7 +194,7 @@ void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::ve
 {
 	_pBlock->faceFunc(faceId, [this, &facePts, t, u](const Polygon& refFace) {
 		_pBlock->faceFunc(refFace.getId(), [this, &facePts, &refFace, t, u](Polygon& dstFace) {
-			if (dstFace.isActive()) {
+			if (true /*dstFace.isActive()*/) {
 				const auto& id = refFace.getId();
 				auto cellIds = refFace.getCellIds();
 				for (const auto& cellId : cellIds) {
@@ -218,10 +220,10 @@ void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::ve
 						_pBlock->faceFunc(newFaceId, [&refFace, &cellIds, &vertIds](Polygon& newFace) {
 							vertIds = newFace.getVertexIds();
 							for (const auto& cellId : cellIds) {
-								newFace.addCellId(cellId);
+								//								newFace.addCellId(cellId);
 							}
 							});
-
+#if 0
 						dstFace.addSplitFaceId(newFaceId);
 						dstFace.setParentId(id);
 
@@ -230,8 +232,10 @@ void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::ve
 								cell.imprintFaceVertices(vertIds);
 								});
 						}
+#endif
 					}
 				}
 			}
 			});
 		});
+}
