@@ -794,8 +794,10 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 		pBlk->iteratePolyhedraInOrder(TS_REAL, [&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				PolyhedronSplitter ps(pBlk.get(), cellId);
+#if 0
 				if (ps.cutWithModelMesh(params))
 					changed = true;
+#endif
 			}
 		});
 		return true;

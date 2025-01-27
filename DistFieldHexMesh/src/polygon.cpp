@@ -47,7 +47,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <io_utils.h>
 #include <tolerances.h>
-#include <polygonSplitter.h>
 #include <splitParams.h>
 #include <meshData.h>
 

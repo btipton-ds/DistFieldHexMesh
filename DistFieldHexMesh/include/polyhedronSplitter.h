@@ -50,60 +50,13 @@ public:
 	bool splitIfNeeded();
 	bool splitAtPoint(const Vector3d& pt);
 
-	// Cutting creates final faces "on" the model.
-	bool cutWithModelMesh(const BuildCFDParams& params);
-
-	const Block* getBlockPtr() const;
-	Block* getBlockPtr();
-
-	LAMBDA_CLIENT_DECLS
-
 private:
 	bool splitAtPointInner(Polyhedron& realCell, Polyhedron& referanceCell, const Vector3d& pt) const;
 
-	bool splitWithPlane(const Planed& plane, MTC::set<Index3DId>& newCellIds);
-
-	bool createCellsFromFaces(MTC::set<Index3DId>& faceIds, MTC::set<Index3DId>& newCellIds);
-	bool createConvexCells(const MTC::set<Index3DId>& cellFaces, MTC::set<Index3DId>& newCellIds);
-	void splitCellAtConcaveEdge(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds);
-	void splitConcaveEdgeSingle(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds);
-	void splitConcaveEdgeDouble(const Polyhedron& cell, const Edge& edge, MTC::set<Index3DId>& newCellIds);
-	Index3DId createPartingFace(const Polyhedron& cell, const Edge& edge, const Vector3d& norm, const Vector3d& keepDir);
-
-	bool cutWithModelMeshInner(const BuildCFDParams& params, MTC::set<Index3DId>& deadCellIds, MTC::set<Index3DId>& newCellIds);
-	bool createModelMeshPatches(const BuildCFDParams& params, std::vector<TriMesh::PatchPtr>& patches,
-		std::vector<std::vector<std::vector<size_t>>>& allChains) const;
-	bool cutWithPatches(const Polyhedron& realCell, const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Index3DId>& newCellIds);
-	bool createAllModelMeshFaces(const std::vector<TriMesh::PatchPtr>& patches, const BuildCFDParams& params, MTC::set<Index3DId>& modelFaces);
-
-	void createFaceEdgesFromMeshFace(const Polyhedron& realCell, const std::vector<size_t>& modelFaceTris, const BuildCFDParams& params,
-		MTC::set<Edge>& patchEdges) const;
-
-	void createPierceEdges(const Polyhedron& realCell, const std::vector<size_t>& sharpEdges, MTC::set<Edge>& pierceEdges) const;
-	bool findPiercePoint(const Polygon& face, const std::vector<size_t>& pierceChain, Vector3d& pt) const;
-	bool splitWithSharpEdgePlanes(std::vector<std::vector<std::vector<size_t>>>& allChains, MTC::set<Index3DId>& newCellIds);
-	bool findPiercePoints(const std::vector<std::vector<size_t>>& faceEdgeChains, std::vector<Vector3d>& pts) const;
-	bool findPiercePoints(const std::vector<std::vector<std::vector<size_t>>>& allFaceEdgeChains, std::vector<Vector3d>& pts) const;
-	Index3DId createPierceVertex(const Polygon& face, const std::vector<size_t>& pierceChain) const;
-	bool facesFormClosedCell(const MTC::set<Index3DId>& faceIds) const;
-	// Outside is relative to the model/patch, not the cell or face.
-	Vector3d calModelFaceNormal(const std::vector<size_t>& modelFaceTris) const;
-	Index3DId findAdjacentFaceId(const MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId) const;
-	bool addAdjacentFaceToSet(MTC::set<Index3DId>& availFaceIds, const Index3DId& adjFaceId, MTC::set<Index3DId>& faceIds) const;
-	static Vector3d choosePrincipalAxis(const Vector3d& v, const Vector3d& skipV = Vector3d(0, 0, 0));
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;
 };
 
-inline const Block* PolyhedronSplitter::getBlockPtr() const
-{
-	return _pBlock;
-}
-
-inline Block* PolyhedronSplitter::getBlockPtr()
-{
-	return _pBlock;
-}
 
 }
