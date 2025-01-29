@@ -434,26 +434,7 @@ void MainFrame::OnInternalIdle()
         }
     }
 
-    wstringstream ss;
-    double t = clock() / (double) CLOCKS_PER_SEC;
-    static auto lastTime = t - 10;
-
-    if (t - lastTime > 5) {
-        lastTime = t;
-        t = clock() / (double)CLOCKS_PER_SEC;
-        _numCells = _numFaces = _numBytes = 0;
-        auto pVol = _pAppData->getVolume();
-        if (pVol) {
-            _numCells = pVol->numPolyhedra();
-            _numFaces = pVol->numFaces(true);
-        }
-        _numBytes = _pAppData->numBytes();
-        _numBytes += _pCanvas->numBytes();
-    }
-
-    double mem = _numBytes / 1024.0 / 1024.0;
-    ss << L"Num Cells: " << _numCells << ", Num Faces: " << _numFaces << ", Memory: " << mem << " mb";
-    SetStatusText(ss.str());
+    updateStatusBar();
 }
 
 void MainFrame::OnOpen(wxCommandEvent& event)
@@ -837,4 +818,37 @@ void MainFrame::OnShowLayer9(wxCommandEvent& event)
     getCanvas()->setShowLayer(9);
 }
 
+void MainFrame::updateStatusBar()
+{
+    wstringstream ss;
+    double t = clock() / (double)CLOCKS_PER_SEC;
+    static auto lastTime = t - 10;
 
+    if (t - lastTime > 5) {
+        lastTime = t;
+        t = clock() / (double)CLOCKS_PER_SEC;
+        _numCells = _numFaces = _numBytes = 0;
+        auto pVol = _pAppData->getVolume();
+        if (pVol) {
+            _numCells = pVol->numPolyhedra();
+            _numFaces = pVol->numFaces(true);
+        }
+        _numBytes = _pAppData->numBytes();
+        _numBytes += _pCanvas->numBytes();
+    }
+
+    Index3D dim;
+    if (_pAppData) {
+        const auto& pVol = _pAppData->getVolume();
+        if (pVol)
+            dim = pVol->volDim();
+    }
+
+    double mem = _numBytes / 1024.0 / 1024.0;
+    if (dim.isValid())
+        ss << L"Volume Dimension: (" << dim[0] << L"," << dim[1] << L"," << dim[2] << L"), ";
+
+    ss << L"Num Cells: " << _numCells << ", Num Faces: " << _numFaces << ", Memory: " << mem << " mb";
+    SetStatusText(ss.str());
+
+}

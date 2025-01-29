@@ -217,6 +217,8 @@ private:
     void OnShowLayer8(wxCommandEvent& event);
     void OnShowLayer9(wxCommandEvent& event);
 
+    void updateStatusBar();
+
     wxMenuBar* _menuBar = nullptr;
     wxMenu
         * _editMenu = nullptr,
