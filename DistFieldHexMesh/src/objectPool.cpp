@@ -58,8 +58,18 @@ ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_
 {
 }
 
+ObjectPoolOwnerUser::~ObjectPoolOwnerUser()
+{
+	clear();
+}
+
+void ObjectPoolOwnerUser::clear()
+{
+}
+
 ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser& rhs)
 {
+	clear();
 	_pPoolOwner = rhs._pPoolOwner;
 	_thisId = rhs._thisId;
 

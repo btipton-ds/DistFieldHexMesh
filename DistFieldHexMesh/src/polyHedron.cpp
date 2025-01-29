@@ -84,6 +84,28 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 {
 }
 
+void Polyhedron::clear()
+{
+	ObjectPoolOwnerUser::clear();
+
+	const auto faceIds = _faceIds;
+	_faceIds.clear();
+
+	MTC::set<Index3DId> deadFaceIds;
+	for (const auto& faceId : faceIds) {
+		faceFunc(faceId, [this, &deadFaceIds](Polygon& face) {
+			face.removeCellId(getId());
+			if (face.numCells() == 0) {
+				deadFaceIds.insert(face.getId());
+			}
+		});
+	}
+
+	for (const auto& faceId : deadFaceIds) {
+		getBlockPtr()->freePolygon(faceId);
+	}
+}
+
 Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	ObjectPoolOwnerUser::operator=(rhs);

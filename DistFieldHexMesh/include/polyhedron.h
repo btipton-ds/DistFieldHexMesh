@@ -54,6 +54,8 @@ public:
 	explicit Polyhedron(const std::vector<Index3DId>& faceIds);
 	Polyhedron(const Polyhedron& src);
 
+	void clear() override;
+
 	Polyhedron& operator = (const Polyhedron& rhs);
 
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;

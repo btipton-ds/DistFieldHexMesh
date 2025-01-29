@@ -76,6 +76,8 @@ public:
 	ObjectPoolOwnerUser() = default;
 	ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src);
 	ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id = -1);
+	virtual ~ObjectPoolOwnerUser();
+	virtual void clear();
 
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
