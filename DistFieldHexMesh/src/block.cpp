@@ -74,9 +74,9 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts,
 Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
-	, _vertices(this, true)
-	, _polygons(this, true)
-	, _polyhedra(this, false)
+	, _vertices(this, true, 8*8)
+	, _polygons(this, true, 8*6)
+	, _polyhedra(this, false, 8)
 #if USE_MULTI_THREAD_CONTAINERS			
 	, _heap(1, 512)
 #endif
@@ -580,8 +580,11 @@ Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
 	}
 #endif // _DEBUG
 
-	Index3DId faceId = addFace(newFace);
-	auto& face = _polygons[faceId];
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(vertIndices);
+	assert(ownerBlockIdx.isValid());
+	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
+	Index3DId faceId = pOwner->addFace(newFace);
 
 	return faceId;
 }
@@ -628,7 +631,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 
 	for (const auto& faceId : cellFaceIds) {
 		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
-			cellFace.addCellId(cellId, 0);
+			cellFace.addCellId(cellId);
 		});
 	}
 	newCell.orientFaces();
@@ -1510,7 +1513,7 @@ void Block::swapSeedBuffers()
 	_seedFillList[writeIdx].clear();
 }
 
-void Block::freePolygon(const Index3DId& id, bool requireRefExists)
+void Block::freePolygon(const Index3DId& id)
 {
 #if CAN_FREE_TESTS_ENABLED
 	assert(!isPolygonInUse(id));
@@ -1519,14 +1522,11 @@ void Block::freePolygon(const Index3DId& id, bool requireRefExists)
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 		auto& polygons = pOwner->_polygons;
-		auto& refPolygons = pOwner->_polygons;
-		if (requireRefExists)
-			assert(refPolygons.exists(id));
 		polygons.free(id);
 	}
 }
 
-void Block::freePolyhedron(const Index3DId& id, bool requireRefExists)
+void Block::freePolyhedron(const Index3DId& id)
 {
 #if CAN_FREE_TESTS_ENABLED
 	assert(!isPolyhedronInUse(id));
@@ -1535,9 +1535,6 @@ void Block::freePolyhedron(const Index3DId& id, bool requireRefExists)
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 		auto& polyhedra = pOwner->_polyhedra;
-		auto& refPolyhedra = pOwner->_polyhedra;
-		if (requireRefExists)
-			assert(refPolyhedra.exists(id));
 		polyhedra.free(id);
 	}
 }

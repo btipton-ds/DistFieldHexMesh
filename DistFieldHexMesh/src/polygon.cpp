@@ -154,12 +154,36 @@ bool Polygon::cellsOwnThis() const
 
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
+	size_t result = -1;
 	auto iter = _cellIds.find(cellId);
 	assert(iter != _cellIds.end());
-	if (iter != _cellIds.end())
-		return iter->getSplitLevel();
+	if (iter != _cellIds.end()) {
+		cellFunc(*iter, [&result](const Polyhedron& cell) {
+			result = cell.getSplitLevel();
+		});
+	}
 
-	return -1;
+	return result;
+}
+
+void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
+{
+	assert(_splitIds.size() <= 1);
+	for (const auto& id : _splitIds) {
+		getBlockPtr()->freePolygon(id);
+	}
+
+	_splitIds.clear();
+	_splitIds.insert(faceIds.begin(), faceIds.end());
+
+	for (const auto& id : _splitIds) {
+		faceFunc(id, [this](Polygon& subFace) {
+			for (const auto& cellId : _cellIds) {
+				subFace.addCellId(cellId);
+			}
+		});
+	}
+
 }
 
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
@@ -184,9 +208,9 @@ void Polygon::write(ostream& out) const
 
 	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::write(out, _splitIds);
-	IoUtil::write(out, _vertexIds);
-	IoUtil::write(out, _cellIds);
+	IoUtil::writeObj(out, _splitIds);
+	IoUtil::writeObj(out, _vertexIds);
+	IoUtil::writeObj(out, _cellIds);
 
 }
 
@@ -197,13 +221,20 @@ void Polygon::read(istream& in)
 
 	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::read(in, _splitIds);
 	if (version == 0) {
+		IoUtil::read(in, _splitIds);
 		MTC::map<Edge, Index3DId> deprecated;
 		IoUtil::read(in, deprecated);
+
+		IoUtil::read(in, _vertexIds);
+		IoUtil::read(in, _cellIds);
+
+	} else {
+		// readObj handles version changes on Index3DId
+		IoUtil::readObj(in, _splitIds);
+		IoUtil::readObj(in, _vertexIds);
+		IoUtil::readObj(in, _cellIds);
 	}
-	IoUtil::read(in, _vertexIds);
-	IoUtil::read(in, _cellIds);
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -789,6 +820,11 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 void Polygon::removeCellId(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
+	for (const auto& subFaceId : _splitIds) {
+		faceFunc(subFaceId, [&cellId](Polygon& subFaceId) {
+			subFaceId.removeCellId(cellId);
+		});
+	}
 }
 
 void Polygon::removeDeadCellIds()
@@ -808,7 +844,7 @@ void Polygon::removeDeadCellIds()
 	_cellIds = tmp;
 }
 
-void Polygon::addCellId(const Index3DId& cellId, size_t level)
+void Polygon::addCellId(const Index3DId& cellId)
 {
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(4, 6, 1, 0) == cellId) {
@@ -817,7 +853,6 @@ void Polygon::addCellId(const Index3DId& cellId, size_t level)
 #endif
 
 	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
-	cellId.setSplitLevel(level);
 	_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
@@ -839,7 +874,6 @@ void Polygon::unlinkFromCell(const Index3DId& cellId)
 
 void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
 {
-	assert(getBlockPtr()->isPolygonReference(this));
 	Polygon* refSelf = const_cast<Polygon*>(this);
 	refSelf->_splitIds.insert(id);
 }
@@ -897,6 +931,25 @@ size_t Polygon::getImprintIndex(const Index3DId& imprintVert) const
 
 bool Polygon::imprintVertex(const Index3DId& imprintVert)
 {
+	bool result = false;
+	if (_splitIds.empty()) {
+		Index3DId subFaceId = getBlockPtr()->addFace(_vertexIds);
+		_splitIds.insert(subFaceId);
+	}
+
+	if (_splitIds.size() == 1) {
+		faceFunc(*_splitIds.begin(), [&result, &imprintVert](Polygon& subFace) {
+			subFace.imprintVertexInner(imprintVert);
+		});
+	} else {
+		assert(!"Should never imprint a vertex on split faces, it's redundant");
+	}
+
+	return result;
+}
+
+bool Polygon::imprintVertexInner(const Index3DId& imprintVert)
+{
 	auto tmp = _vertexIds;
 	_vertexIds.clear();
 	_vertexIds.reserve(tmp.size() + 1);
@@ -925,7 +978,7 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 
 bool Polygon::isSplit() const
 {
-	return _splitIds.size() == _vertexIds.size();
+	return _splitIds.size() > 1;
 }
 
 bool Polygon::isPlanar() const

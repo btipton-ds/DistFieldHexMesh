@@ -835,7 +835,7 @@ void Volume::finishSplits(bool multiCore)
 		if (i > 20)
 			break;
 	}
-	imprintTJointVertices(multiCore);
+//	imprintTJointVertices(multiCore);
 	cout << "FinishSplits " << i << "\n";
 }
 

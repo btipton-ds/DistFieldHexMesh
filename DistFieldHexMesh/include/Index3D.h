@@ -226,9 +226,6 @@ public:
 	bool isUserFlagSet(uint32_t bit) const;
 	void setUserFlag(uint32_t bit, bool val) const;
 
-	void setSplitLevel(size_t level) const;
-	bool getSplitLevel() const;
-
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
@@ -237,7 +234,7 @@ private:
 
 	// These attributes are mutable, because this structures is used as a sort key
 	// This allows changing attributes without corrupting the sort.
-	mutable size_t _splitLevel = -1;
+	mutable size_t _splitLevel_deprecated = -1;
 	mutable uint32_t _userFlags = 0;
 };
 
@@ -251,16 +248,6 @@ inline Index3DId::Index3DId(Index3DBaseType i, Index3DBaseType j, Index3DBaseTyp
 	: Index3DBase(i, j, k)
 	, _elementId(id)
 {
-}
-
-inline void Index3DId::setSplitLevel(size_t level) const
-{
-	_splitLevel = level;
-}
-
-inline bool Index3DId::getSplitLevel() const
-{
-	return _splitLevel;
 }
 
 inline bool Index3DId::operator < (const Index3DId& rhs) const

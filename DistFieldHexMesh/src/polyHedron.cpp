@@ -163,10 +163,10 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFD
 
 void Polyhedron::write(std::ostream& out) const
 {
-	uint8_t version = 1;
+	uint8_t version = 2;
 	out.write((char*)&version, sizeof(version));
 
-	IoUtil::write(out, _faceIds);
+	IoUtil::writeObj(out, _faceIds);
 	out.write((char*)&_splitLevel, sizeof(size_t));
 
 	out.write((char*)&_splitLevel, sizeof(_splitLevel));
@@ -178,7 +178,11 @@ void Polyhedron::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
 
-	IoUtil::read(in, _faceIds);
+	if (version < 2)
+		IoUtil::read(in, _faceIds);
+	else
+		IoUtil::readObj(in, _faceIds);
+
 	in.read((char*)&_splitLevel, sizeof(size_t));
 
 	if (version >= 1) {
@@ -214,7 +218,7 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 {
 	_faceIds.insert(faceId);
 	faceFunc(faceId, [this, splitLevel](Polygon& face) {
-		face.addCellId(_thisId, splitLevel);
+		face.addCellId(_thisId);
 	});
 
 	clearCache();
@@ -1041,7 +1045,7 @@ void Polyhedron::attachFaces()
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
 			faceFunc(faceId, [this](Polygon& face) {
-				face.addCellId(getId(), 0);
+				face.addCellId(getId());
 			});
 		}
 	}
@@ -1055,24 +1059,6 @@ void Polyhedron::detachFaces()
 				face.removeCellId(getId());
 			});
 		}
-	}
-}
-
-void Polyhedron::replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel)
-{
-	clearCache();
-	_faceIds.erase(curFaceId);
-
-	faceFunc(curFaceId, [this](Polygon& curFace) {
-		curFace.removeCellId(_thisId);
-	});
-
-	for (const auto& newFaceId : newFaceIds) {
-		_faceIds.insert(newFaceId);
-		faceFunc(newFaceId, [this, splitLevel](Polygon& newFace) {
-			assert(!getBlockPtr()->isPolygonReference(&newFace));
-			newFace.addCellId(_thisId, splitLevel);
-		});
 	}
 }
 

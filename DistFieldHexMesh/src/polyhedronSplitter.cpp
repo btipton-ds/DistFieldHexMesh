@@ -81,15 +81,15 @@ bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 
-	const Polyhedron& referenceCell = _pBlock->getPolyhedron(_polyhedronId);
-	Polyhedron& realCell = _pBlock->getPolyhedron(_polyhedronId);
-
-	bool result = splitAtPointInner(realCell, referenceCell, pt);
+	bool result = false;
+	_pBlock->cellFunc(_polyhedronId, [this, &pt, &result](Polyhedron& cell) {
+		result = splitAtPointInner(cell, pt);
+	});
 
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedron& referenceCell, const Vector3d& pt)
+bool PolyhedronSplitter::splitAtPointInner(Polyhedron& cell, const Vector3d& pt)
 {
 
 #if 0 && defined(_DEBUG)
@@ -102,7 +102,7 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedro
 	Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 	MTC::vector<Vector3d> corners;
-	if (referenceCell.classify(corners) == 8) {
+	if (cell.classify(corners) == 8) {
 		Vector3d tuv;
 		if (TRI_LERP_INV(pt, corners, tuv)) {
 			MTC::vector<Vector3d> pts[] = {
@@ -151,6 +151,8 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedro
 				cornersToFaceIdMap.push_back(faceId);
 			}
 
+			cell.detachFaces(); // This cell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+
 			for (int i = 0; i < 2; i++) {
 				double t0 = (i == 0) ? 0 : tuv[0];
 				double t1 = (i == 0) ? tuv[0] : 1;
@@ -174,16 +176,13 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedro
 						};
 
 						Index3DId newCellId = _pBlock->addHexCell(subCorners);
-#if 0
-						realCell.addSplitCellId(newCellId);
-						_pBlock->cellFunc(newCellId, [&referenceCell](Polyhedron& newCell) {
-							newCell.setParentId(referenceCell.getId());
-							});
-#endif
 						int dbgBreak = 1;
 					}
 				}
 			}
+
+			// It's been completely split, so this cell can be removed
+			_pBlock->freePolyhedron(_polyhedronId);
 		}
 	}
 
@@ -192,50 +191,32 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& realCell, const Polyhedro
 
 void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u)
 {
-	_pBlock->faceFunc(faceId, [this, &facePts, t, u](const Polygon& refFace) {
-		_pBlock->faceFunc(refFace.getId(), [this, &facePts, &refFace, t, u](Polygon& dstFace) {
-			if (true /*dstFace.isActive()*/) {
-				const auto& id = refFace.getId();
-				auto cellIds = refFace.getCellIds();
-				for (const auto& cellId : cellIds) {
-					dstFace.removeCellId(cellId); // detach this cell
+	_pBlock->faceFunc(faceId, [this, &facePts, t, u](Polygon& oldFace) {
+		if (!oldFace.isSplit()) {
+			const auto& id = oldFace.getId();
+
+			MTC::vector<Index3DId> splitIds;
+			for (int i = 0; i < 2; i++) {
+				double t0 = (i == 0) ? 0 : t;
+				double t1 = (i == 0) ? t : 1;
+				for (int j = 0; j < 2; j++) {
+					double u0 = (j == 0) ? 0 : u;
+					double u1 = (j == 0) ? u : 1;
+
+					vector<Vector3d> subFacePts = {
+						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0),
+						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0),
+						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1),
+						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1),
+					};
+
+					auto newFaceId = _pBlock->addFace(subFacePts);
+					splitIds.push_back(newFaceId);
 				}
-
-				for (int i = 0; i < 2; i++) {
-					double t0 = (i == 0) ? 0 : t;
-					double t1 = (i == 0) ? t : 1;
-					for (int j = 0; j < 2; j++) {
-						double u0 = (i == 0) ? 0 : u;
-						double u1 = (i == 0) ? u : 1;
-
-						vector<Vector3d> subFacePts = {
-							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0),
-							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0),
-							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1),
-							BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1),
-						};
-
-						auto newFaceId = _pBlock->addFace(subFacePts);
-						MTC::vector<Index3DId> vertIds;
-						_pBlock->faceFunc(newFaceId, [&refFace, &cellIds, &vertIds](Polygon& newFace) {
-							vertIds = newFace.getVertexIds();
-							for (const auto& cellId : cellIds) {
-								//								newFace.addCellId(cellId);
-							}
-							});
-#if 0
-						dstFace.addSplitFaceId(newFaceId);
-						dstFace.setParentId(id);
-
-						for (const auto& cellId : cellIds) {
-							_pBlock->cellFunc(cellId, [&vertIds](Polyhedron& cell) {
-								cell.imprintFaceVertices(vertIds);
-								});
-						}
-#endif
-					}
-				}
+				
 			}
-			});
-		});
+
+			oldFace.setSplitFaceIds(splitIds);
+		}
+	});
 }

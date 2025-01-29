@@ -190,8 +190,8 @@ public:
 	bool incrementLayerNums(int i);
 	void swapSeedBuffers();
 
-	void freePolygon(const Index3DId& id, bool requireRefExists);
-	void freePolyhedron(const Index3DId& id, bool requireRefExists);
+	void freePolygon(const Index3DId& id);
+	void freePolyhedron(const Index3DId& id);
 
 	size_t processEdges(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& edgeIndices) const;
 	size_t processTris(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& triIndices) const;

@@ -110,7 +110,6 @@ public:
 	void imprintTVertices(Block* pDstBlock);
 	void attachFaces();
 	void detachFaces();
-	void replaceFaces(const Index3DId& curFaceId, const MTC::set<Index3DId>& newFaceIds, size_t splitLevel);
 	bool canSplit(MTC::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
 

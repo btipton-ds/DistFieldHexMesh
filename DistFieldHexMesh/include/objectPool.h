@@ -114,7 +114,7 @@ private:
 template<class T>
 class ObjectPool {
 public:
-	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 512);
+	ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize = 16);
 	ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src);
 	~ObjectPool();
 
@@ -191,7 +191,7 @@ private:
 
 	bool _supportsReverseLookup;
 	ObjectPoolOwner* _pPoolOwner;
-	const size_t _objectSegmentSize;
+	const size_t _objectSegmentSize; // May want to tune this so the first segment only holds 1 cell since most blocks only contain one cell. We're allocating a lot of unused memory in sparse blocks
 	std::vector<size_t> 
 		_idToIndexMap,
 		_availableIndices;
@@ -225,7 +225,7 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	, _idToIndexMap(src._idToIndexMap)
 	, _availableIndices(src._availableIndices)
 {
-//	_objectSegs.reserve(src._objectSegs.size());
+	_objectSegs.reserve(src._objectSegs.size());
 	for (size_t i = 0; i < src._objectSegs.size(); i++) {
 		const auto& pSrcVec = src._objectSegs[i];
 		const auto& srcVec = *pSrcVec;
@@ -361,7 +361,7 @@ void ObjectPool<T>::resize(size_t size)
 		for (size_t i = 0; i < numSegs; i++) {
 			// Reserve the segment size so the array won't resize during use
 			_objectSegs[i] = std::make_shared<std::vector<T>>();
-//			_objectSegs[i]->reserve(_objectSegmentSize);
+			_objectSegs[i]->reserve(_objectSegmentSize);
 			if (size > _objectSegmentSize) {
 				_objectSegs[i]->resize(_objectSegmentSize);
 				size -= _objectSegmentSize;
@@ -449,6 +449,8 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 		segNum = _objectSegs.size() - 1;
 
 		auto& segData = *_objectSegs.back();
+		if (segData.capacity() == 0)
+			segData.reserve(_objectSegmentSize);
 
 		segIdx = segData.size();
 		segData.push_back(obj);
@@ -463,6 +465,8 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 			_objectSegs.push_back(std::make_shared<std::vector<T>>());
 		}
 		auto& segData = *_objectSegs[segNum];
+		if (segData.capacity() == 0)
+			segData.reserve(_objectSegmentSize);
 
 		if (segIdx >= segData.size())
 			segData.resize(segIdx + 1);

@@ -109,7 +109,7 @@ public:
 
 	void addVertex(const Index3DId& vertId);
 
-	void addCellId(const Index3DId& cellId, size_t level);
+	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
 	void removeDeadCellIds();
 	void unlinkFromCell(const Index3DId& cellId);
@@ -147,6 +147,7 @@ public:
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	const MTC::set<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
+	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 
 	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
@@ -204,6 +205,7 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void initVertices(const Volume* pVol) const;
+	bool imprintVertexInner(const Index3DId& imprintVert);
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	void clearCache() const;
