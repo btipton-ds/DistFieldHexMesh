@@ -956,10 +956,10 @@ bool Block::doPresplits(const BuildCFDParams& params)
 			result = true;
 			MTC::set<Index3DId> blockers;
 			if (cell.canSplit(blockers)) {
-				Vector3d pt = cell.calCentroid();
+				Vector3d tuv(0.5, 0.5, 0.5);
 				PolyhedronSplitter cellSplitter(this, id);
 				vector<Index3DId> newCellIds;
-				cellSplitter.splitAtPoint(pt);
+				cellSplitter.splitAtParam(tuv);
 			} else {
 				cell.setNeedsDivideAtCentroid();
 			}

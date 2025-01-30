@@ -48,10 +48,12 @@ public:
 	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
 
 	bool splitIfNeeded();
-	bool splitAtPoint(const Vector3d& pt);
+	// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
+	// match with the neighbor cells's faces.
+	bool splitAtParam(const Vector3d& tuv);
 
 private:
-	bool splitAtPointInner(Polyhedron& cell, const Vector3d& pt);
+	bool splitAtParamInner(Polyhedron& cell, const Vector3d& tuv);
 	void splitFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 
 	Block* _pBlock;

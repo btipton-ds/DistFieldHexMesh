@@ -409,7 +409,7 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 {
 	corners.clear();
 
-	Vector3d cellCtr = calCentroid();
+	Vector3d cellCtr = calCentroidApproxFast();
 
 	int numQuads = 0, numTris = 0;
 	MTC::vector<Index3DId> baseFaceVerts, oppFaceVerts;
@@ -569,23 +569,51 @@ bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
 
 Vector3d Polyhedron::calCentroid() const
 {
-	auto bbox = getBoundingBox();
-	Vector3d testCtr = (bbox.getMin() + bbox.getMax()) * 0.5;
-	double area = 0;
+	// Use the  curl algorithm over all triangles
 	Vector3d ctr(0, 0, 0);
-
+	double vol = 0;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&area, &ctr](const Polygon& face) {
-			double faceArea;
-			Vector3d faceCtr;
-			face.calAreaAndCentroid(faceArea, faceCtr);
-			area += faceArea;
-			ctr += faceArea * faceCtr;
+		faceFunc(faceId, [this, &vol, &ctr](const Polygon& face) {
+			face.iterateTriangles([this, &vol, &ctr](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
+				const Vector3d axis(1, 0, 0);
+				auto pBlk = getBlockPtr();
+				const auto& a = pBlk->getVertexPoint(idx0);
+				const auto& b = pBlk->getVertexPoint(idx1);
+				const auto& c = pBlk->getVertexPoint(idx2);
+
+				Vector3d triCtr = (a + b + c) / 3.0;
+				Vector3d norm = (b - a).cross(c - a);
+				double triArea = norm.norm() / 2;
+				Vector3d unitNorm = norm.normalized();
+
+				double dp = axis.dot(unitNorm);
+				double projArea = triArea * dp;
+				vol += projArea * triCtr.dot(axis);
+				for (int i = 0; i < 3; i++) {
+					double ab = a[i] + b[i];
+					double bc = b[i] + c[i];
+					double ca = c[i] + a[i];
+
+					ctr[i] += norm[i] * (ab * ab + bc * bc + ca * ca);
+				}
+				return true;
+			});
 		});
 	}
-	ctr /= area;
+	ctr *= 1 / (vol * 48.0);
+	return ctr;
+}
 
-	Vector3d err = ctr - testCtr;
+Vector3d Polyhedron::calCentroidApproxFast() const
+{
+	const auto& vertIds = getVertIds();
+	Vector3d ctr(0, 0, 0);
+	for (const auto& id : vertIds) {
+		ctr += getBlockPtr()->getVertexPoint(id);
+	}
+
+	ctr /= vertIds.size();
+
 	return ctr;
 }
 

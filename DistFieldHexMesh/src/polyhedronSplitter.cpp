@@ -60,36 +60,26 @@ PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedro
 bool PolyhedronSplitter::splitIfNeeded()
 {
 	bool result = false;
-	Vector3d ctr;
-	_pBlock->cellFunc(_polyhedronId, [this, &ctr, &result](const Polyhedron& cell) {
-		if (cell.needsDivideAtCentroid()) {
-			ctr = cell.calCentroid();
-		}
-		else {
-			// TODO This needs to be an adaptive split to match the neighbor
-			// We get here when we have to split a neighbor cell prior to splitting a cell.
-			ctr = cell.calCentroid();
-		}
-		});
-	result = splitAtPoint(ctr);
+	Vector3d tuv(0.5, 0.5, 0.5);
+	result = splitAtParam(tuv);
 
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPoint(const Vector3d& pt)
+bool PolyhedronSplitter::splitAtParam(const Vector3d& tuv)
 {
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 
 	bool result = false;
-	_pBlock->cellFunc(_polyhedronId, [this, &pt, &result](Polyhedron& cell) {
-		result = splitAtPointInner(cell, pt);
+	_pBlock->cellFunc(_polyhedronId, [this, &tuv, &result](Polyhedron& cell) {
+		result = splitAtParamInner(cell, tuv);
 	});
 
 	return result;
 }
 
-bool PolyhedronSplitter::splitAtPointInner(Polyhedron& cell, const Vector3d& pt)
+bool PolyhedronSplitter::splitAtParamInner(Polyhedron& cell, const Vector3d& tuv)
 {
 
 #if 0 && defined(_DEBUG)
@@ -103,88 +93,86 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& cell, const Vector3d& pt)
 
 	MTC::vector<Vector3d> corners;
 	if (cell.classify(corners) == 8) {
-		Vector3d tuv(0.5, 0.5, 0.5);
-		if (true /*TRI_LERP_INV(pt, corners, tuv)*/) {
-			MTC::vector<Vector3d> pts[] = {
-				{corners[0], corners[3], corners[2], corners[1]}, // bottom
-				{corners[4], corners[5], corners[6], corners[7]}, // top
+		MTC::vector<Vector3d> pts[] = {
+			{corners[0], corners[3], corners[2], corners[1]}, // bottom
+			{corners[4], corners[5], corners[6], corners[7]}, // top
 
-				{corners[0], corners[4], corners[7], corners[3]}, // back
-				{corners[1], corners[2], corners[6], corners[5]}, // front
+			{corners[0], corners[4], corners[7], corners[3]}, // back
+			{corners[1], corners[2], corners[6], corners[5]}, // front
 
-				{corners[0], corners[1], corners[5], corners[4]}, // right
-				{corners[3], corners[7], corners[6], corners[2]}, // left
-			};
-			MTC::vector<Index3DId> cornersToFaceIdMap;
-			for (int i = 0; i < 6; i++) {
-				const auto& facePts = pts[i];
-				MTC::vector<Index3DId> faceIds;
-				for (int j = 0; j < 4; j++) {
-					faceIds.push_back(_pBlock->getVertexIdOfPoint(facePts[j]));
-				}
-
-				Polygon face(faceIds);
-				Index3DId faceId = _pBlock->findFace(face);
-
-				double t, u;
-				switch (i) {
-				case 0: // bottom
-				case 1: // top
-					t = tuv[0];
-					u = tuv[1];
-					break;
-
-				case 2: // back
-				case 3: // front
-					t = tuv[1];
-					u = tuv[2];
-					break;
-
-				case 4: // left
-				case 5: // right
-					t = tuv[0];
-					u = tuv[2];
-					break;
-				}
-
-				splitFaceAtParam(faceId, facePts, t, u);
-				cornersToFaceIdMap.push_back(faceId);
+			{corners[0], corners[1], corners[5], corners[4]}, // right
+			{corners[3], corners[7], corners[6], corners[2]}, // left
+		};
+		MTC::vector<Index3DId> cornersToFaceIdMap;
+		for (int i = 0; i < 6; i++) {
+			const auto& facePts = pts[i];
+			MTC::vector<Index3DId> faceIds;
+			for (int j = 0; j < 4; j++) {
+				faceIds.push_back(_pBlock->getVertexIdOfPoint(facePts[j]));
 			}
 
-			cell.detachFaces(); // This cell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+			Polygon face(faceIds);
+			Index3DId faceId = _pBlock->findFace(face);
 
-			for (int i = 0; i < 2; i++) {
-				double t0 = (i == 0) ? 0 : tuv[0];
-				double t1 = (i == 0) ? tuv[0] : 1;
-				for (int j = 0; j < 2; j++) {
-					double u0 = (j == 0) ? 0 : tuv[1];
-					double u1 = (j == 0) ? tuv[1] : 1;
-					for (int k = 0; k < 2; k++) {
-						double v0 = (k == 0) ? 0 : tuv[2];
-						double v1 = (k == 0) ? tuv[2] : 1;
+			double t, u;
+			switch (i) {
+			case 0: // bottom
+			case 1: // top
+				t = tuv[0];
+				u = tuv[1];
+				break;
 
-						MTC::vector<Vector3d> subCorners = {
-							TRI_LERP(corners, t0, u0, v0),
-							TRI_LERP(corners, t1, u0, v0),
-							TRI_LERP(corners, t1, u1, v0),
-							TRI_LERP(corners, t0, u1, v0),
+			case 2: // back
+			case 3: // front
+				t = tuv[1];
+				u = tuv[2];
+				break;
 
-							TRI_LERP(corners, t0, u0, v1),
-							TRI_LERP(corners, t1, u0, v1),
-							TRI_LERP(corners, t1, u1, v1),
-							TRI_LERP(corners, t0, u1, v1),
-						};
-
-						Index3DId newCellId = _pBlock->addHexCell(subCorners);
-						int dbgBreak = 1;
-					}
-				}
+			case 4: // left
+			case 5: // right
+				t = tuv[0];
+				u = tuv[2];
+				break;
 			}
 
-			// It's been completely split, so this cell can be removed
-			_pBlock->freePolyhedron(_polyhedronId);
+			splitFaceAtParam(faceId, facePts, t, u);
+			cornersToFaceIdMap.push_back(faceId);
 		}
+
+		cell.detachFaces(); // This cell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+
+		for (int i = 0; i < 2; i++) {
+			double t0 = (i == 0) ? 0 : tuv[0];
+			double t1 = (i == 0) ? tuv[0] : 1;
+			for (int j = 0; j < 2; j++) {
+				double u0 = (j == 0) ? 0 : tuv[1];
+				double u1 = (j == 0) ? tuv[1] : 1;
+				for (int k = 0; k < 2; k++) {
+					double v0 = (k == 0) ? 0 : tuv[2];
+					double v1 = (k == 0) ? tuv[2] : 1;
+
+					MTC::vector<Vector3d> subCorners = {
+						TRI_LERP(corners, t0, u0, v0),
+						TRI_LERP(corners, t1, u0, v0),
+						TRI_LERP(corners, t1, u1, v0),
+						TRI_LERP(corners, t0, u1, v0),
+
+						TRI_LERP(corners, t0, u0, v1),
+						TRI_LERP(corners, t1, u0, v1),
+						TRI_LERP(corners, t1, u1, v1),
+						TRI_LERP(corners, t0, u1, v1),
+					};
+
+					Index3DId newCellId = _pBlock->addHexCell(subCorners);
+					int dbgBreak = 1;
+				}
+			}
+		}
+
+		// It's been completely split, so this cell can be removed
+		_pBlock->freePolyhedron(_polyhedronId);
 	}
+	
 
 	return true;
 }

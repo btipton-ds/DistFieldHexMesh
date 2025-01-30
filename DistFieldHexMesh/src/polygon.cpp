@@ -475,7 +475,8 @@ void Polygon::createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge
 		edgeSet.insert(Edge(verts[i], verts[j], faceSet));
 	}
 }
-Vector3d Polygon::calCentroidStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
+
+Vector3d Polygon::calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
 {
 	Vector3d ctr(0, 0, 0);
 	if (vertIds.empty())
@@ -487,9 +488,10 @@ Vector3d Polygon::calCentroidStat(const Block* pBlock, const MTC::vector<Index3D
 	return ctr;
 }
 
+
 void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis)
 {
-	origin = calCentroidStat(pBlock, vertIds);
+	origin = calCentroidApproxFastStat(pBlock, vertIds);
 	zAxis = Polygon::calUnitNormalStat(pBlock, vertIds);
 	xAxis = Vector3d(1, 0, 0);
 	if (fabs(xAxis.dot(zAxis)) > 0.7071) {
@@ -582,8 +584,15 @@ Vector3d Polygon::calUnitNormal() const
 
 Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 {
-	Vector3d result = calUnitNormalStat(getBlockPtr(), _vertexIds);
-	if (isReversed(cellId))
+	auto pBlk = getBlockPtr();
+	Vector3d result = calUnitNormalStat(pBlk, _vertexIds);
+	auto faceApproxCtr = calCentroidApproxFastStat(pBlk, _vertexIds);
+	Vector3d cellApproxCtr;
+	cellFunc(cellId, [&cellApproxCtr](const Polyhedron& cell) {
+		cellApproxCtr = cell.calCentroidApproxFast();
+	});
+	Vector3d v = faceApproxCtr - cellApproxCtr;
+	if (v.dot(result) < 0)
 		return -result;
 
 	return result;
@@ -702,6 +711,11 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
+Vector3d Polygon::calCentroidApproxFast() const
+{
+	return calCentroidApproxFastStat(getBlockPtr(), _vertexIds);
+}
+
 bool Polygon::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
@@ -796,7 +810,10 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 		Vector3d pt2 = getVertexPoint(_vertexIds[k]);
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
+
+		// This was confirmed with a second, geometric calculation with gave the same result.
 		Vector3d triCtr = (pt0 + pt1 + pt2) * (1.0 / 3.0);
+
 		Vector3d cp = v1.cross(v0);
 		double triArea = cp.norm() / 2.0;
 

@@ -88,7 +88,7 @@ public:
 	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
 	static void createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
-	static Vector3d calCentroidStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
+	static Vector3d calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
 	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
@@ -157,6 +157,7 @@ public:
 	Vector3d calUnitNormal() const;
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	Vector3d calCentroid() const;
+	Vector3d calCentroidApproxFast() const;
 	bool intersectsModel() const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;

@@ -82,6 +82,7 @@ public:
 	bool isVertexConnectedToCell(const Index3DId& cellId) const;
 	bool isVertexConnectedToFace(const Index3DId& faceId) const;
 	Vector3d calCentroid() const;
+	Vector3d calCentroidApproxFast() const;
 	double calVolume() const;
 	bool isClosed() const;
 	bool isOriented() const;
