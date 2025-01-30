@@ -241,6 +241,7 @@ BlockPtr& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]
 
 Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 {
+	const double tol = 1.0e-13;
 	const int64_t numSubDivisions = 2 * 1024;
 
 	Index3D result;
@@ -251,10 +252,10 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	const Index3D& mDim = modelDim();
 	const auto& modelCorners = getModelCornerPts();
 
-	Vector3<double> uvw;
-	bool inBounds = TRI_LERP_INV(point, modelCorners, uvw);
+	Vector3<double> tuv;
+	bool inBounds = TRI_LERP_INV(point, modelCorners, tuv, tol);
 #if 0 && defined(_DEBUG)
-	if (fabs(uvw[0]) < 1.0e-8 && fabs(uvw[2]) < 1.0e-8) {
+	if (fabs(tuv[0]) < 1.0e-8 && fabs(tuv[2]) < 1.0e-8) {
 		int dbgBreak = 1;
 	}
 #endif
@@ -262,7 +263,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	if (inBounds) {
 		for (int i = 0; i < 3; i++) {
 			const int64_t numDivisions = mDim[i] * numSubDivisions;
-			int64_t n = (int64_t) (numDivisions * uvw[i]);
+			int64_t n = (int64_t) (numDivisions * tuv[i]);
 			if (n < 0 || n > numDivisions) {
 				inBounds = false;
 				break;
@@ -332,22 +333,22 @@ BlockPtr Volume::createBlock(size_t linearIdx)
 		return pBlock;
 
 	Index3D blockIdx = calBlockIndexFromLinearIndex(linearIdx);
-	Vector3d uvw[2];
+	Vector3d tuv[2];
 	for (int i = 0; i < 3; i++) {
-		uvw[0][i] = blockIdx[i] / (double)_modelDim[i];
-		uvw[1][i] = (blockIdx[i] + 1) / (double)_modelDim[i];
+		tuv[0][i] = blockIdx[i] / (double)_modelDim[i];
+		tuv[1][i] = (blockIdx[i] + 1) / (double)_modelDim[i];
 	}
 	const vector<Vector3d>& cPts = _modelCornerPts;
 	std::vector<Vector3d> pts({
-		TRI_LERP(cPts, uvw[0][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(cPts, uvw[1][0], uvw[0][1], uvw[0][2]),
-		TRI_LERP(cPts, uvw[1][0], uvw[1][1], uvw[0][2]),
-		TRI_LERP(cPts, uvw[0][0], uvw[1][1], uvw[0][2]),
+		TRI_LERP(cPts, tuv[0][0], tuv[0][1], tuv[0][2]),
+		TRI_LERP(cPts, tuv[1][0], tuv[0][1], tuv[0][2]),
+		TRI_LERP(cPts, tuv[1][0], tuv[1][1], tuv[0][2]),
+		TRI_LERP(cPts, tuv[0][0], tuv[1][1], tuv[0][2]),
 
-		TRI_LERP(cPts, uvw[0][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(cPts, uvw[1][0], uvw[0][1], uvw[1][2]),
-		TRI_LERP(cPts, uvw[1][0], uvw[1][1], uvw[1][2]),
-		TRI_LERP(cPts, uvw[0][0], uvw[1][1], uvw[1][2]),
+		TRI_LERP(cPts, tuv[0][0], tuv[0][1], tuv[1][2]),
+		TRI_LERP(cPts, tuv[1][0], tuv[0][1], tuv[1][2]),
+		TRI_LERP(cPts, tuv[1][0], tuv[1][1], tuv[1][2]),
+		TRI_LERP(cPts, tuv[0][0], tuv[1][1], tuv[1][2]),
 	});
 
 	return make_shared<Block>(this, blockIdx, pts);

@@ -103,8 +103,8 @@ bool PolyhedronSplitter::splitAtPointInner(Polyhedron& cell, const Vector3d& pt)
 
 	MTC::vector<Vector3d> corners;
 	if (cell.classify(corners) == 8) {
-		Vector3d tuv;
-		if (TRI_LERP_INV(pt, corners, tuv)) {
+		Vector3d tuv(0.5, 0.5, 0.5);
+		if (true /*TRI_LERP_INV(pt, corners, tuv)*/) {
 			MTC::vector<Vector3d> pts[] = {
 				{corners[0], corners[3], corners[2], corners[1]}, // bottom
 				{corners[4], corners[5], corners[6], corners[7]}, // top
