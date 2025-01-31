@@ -85,20 +85,20 @@ CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
 	return result;
 }
 
-inline int64_t Vertex::scaleToSearh()
+inline int64_t Vertex::scaleToSearch()
 {
 	const int64_t micronInv = 1000000;
 	return 100 * micronInv; // 1/100 micron
 }
 
-inline int64_t Vertex::scaleToSearh(double v)
+inline int64_t Vertex::scaleToSearch(double v)
 {
-	return (int64_t)(v * scaleToSearh());
+	return (int64_t)(v * scaleToSearch());
 }
 
-inline Vector3<int64_t> Vertex::scaleToSearh(const Vector3d& pt)
+inline Vector3<int64_t> Vertex::scaleToSearch(const Vector3d& pt)
 {
-	return Vector3<int64_t>(scaleToSearh(pt[0]), scaleToSearh(pt[1]), scaleToSearh(pt[2]));
+	return Vector3<int64_t>(scaleToSearch(pt[0]), scaleToSearch(pt[1]), scaleToSearch(pt[2]));
 }
 
 const bool Vertex::operator < (const Vertex& rhs) const
@@ -116,7 +116,7 @@ const bool Vertex::operator < (const Vertex& rhs) const
 
 	*/
 
-	Vector3<int64_t> iPt(scaleToSearh(_pt)), iRhsPt(scaleToSearh(rhs._pt));
+	Vector3<int64_t> iPt(scaleToSearch(_pt)), iRhsPt(scaleToSearch(rhs._pt));
 	return iPt < iRhsPt;
 }
 
@@ -127,7 +127,7 @@ const bool Vertex::operator > (const Vertex& rhs) const
 
 const bool Vertex::operator == (const Vertex& rhs) const
 {
-	Vector3<int64_t> iPt(scaleToSearh(_pt)), iRhsPt(scaleToSearh(rhs._pt));
+	Vector3<int64_t> iPt(scaleToSearch(_pt)), iRhsPt(scaleToSearch(rhs._pt));
 	return !iPt.operator<(iRhsPt) && !iRhsPt.operator<(iPt);
 }
 

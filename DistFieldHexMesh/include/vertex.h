@@ -42,6 +42,7 @@ class Edge;
 class Vertex : public ObjectPoolOwnerUser {
 public:
 	static CBoundingBox3Dd calBBox(const Vector3d& pt);
+	static Vector3<int64_t> scaleToSearch(const Vector3d& pt);
 
 	Vertex() = default;
 	Vertex(const Vertex& src);
@@ -68,9 +69,8 @@ public:
 	void read(std::istream& in);
 
 private:
-	static int64_t scaleToSearh();
-	static int64_t scaleToSearh(double v);
-	static Vector3<int64_t> scaleToSearh(const Vector3d& pt);
+	static int64_t scaleToSearch();
+	static int64_t scaleToSearch(double v);
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
 
 	/*
