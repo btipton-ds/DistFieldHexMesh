@@ -255,7 +255,8 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
 
     bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, FT_ALL, tess); 
     if (!blocksAdded) {            
-        blocksAdded |= includeElementIndices(_options.showWalls, VBO, FT_WALL, tess); 
+        blocksAdded |= includeElementIndices(_options.showAll, VBO, FT_ALL, tess);
+        blocksAdded |= includeElementIndices(_options.showWalls, VBO, FT_WALL, tess);
         blocksAdded |= includeElementIndices(_options.showBack, VBO, FT_BACK, tess); 
         blocksAdded |= includeElementIndices(_options.showFront, VBO, FT_FRONT, tess); 
         blocksAdded |= includeElementIndices(_options.showLeft, VBO, FT_LEFT, tess); 
@@ -314,7 +315,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         switch (key) {
         default:
         case DS_MESH_ALL:
-            UBO.defColor = p3f(0.0f, 0.0f, 0.5f);
+            UBO.defColor = p3f(1.0f, 1.0f, 1.0f);
             break;
         case DS_MESH_LAYER_0:
         case DS_MESH_LAYER_1:

@@ -61,6 +61,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 			showEdges = true,
 			showFaces = true,
 			showWalls = false,
+			showAll = false,
 
 			showBack = true,
 			showFront = true,
@@ -88,6 +89,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		DECL_OPTS(Edges)
 		DECL_OPTS(Faces)
 		DECL_OPTS(Walls)
+		DECL_OPTS(All)
 		DECL_OPTS(Intersecting)
 
 		DECL_OPTS(Back)
@@ -164,6 +166,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 	IMPL_OPTS(Edges)
 	IMPL_OPTS(Faces)
 	IMPL_OPTS(Walls)
+	IMPL_OPTS(All)
 
 	IMPL_OPTS(Back)
 	IMPL_OPTS(Front)

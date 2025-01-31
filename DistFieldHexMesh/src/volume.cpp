@@ -1618,9 +1618,11 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 	for (auto pBlk : _blocks) {
 		if (pBlk) {
 			pBlk->_polyhedra.iterateInOrder([&tables](const Index3DId& id, const Polyhedron& cell) {
-				int cIdx = (int)tables.cellIdxIdMap.size();
-				tables.cellIdxIdMap.push_back(id);
-				tables.cellIdIdxMap.insert(make_pair(id, cIdx));
+				if (cell.exists()) {
+					int cIdx = (int)tables.cellIdxIdMap.size();
+					tables.cellIdxIdMap.push_back(id);
+					tables.cellIdIdxMap.insert(make_pair(id, cIdx));
+				}
 			});
 		}
 	}

@@ -102,6 +102,7 @@ enum DFHM_MENU_ID
     ID_SHOW_MESH_EDGES,
     ID_SHOW_MESH_FACES,
     ID_SHOW_MESH_WALL,
+    ID_SHOW_MESH_ALL_BLOCKS,
     ID_SHOW_MESH_SELECTED_BLOCKS,
 
     ID_SHOW_MESH_LAYERS_OFF,
@@ -185,6 +186,7 @@ private:
     void OnShowMeshFaces(wxCommandEvent& event);
     void OnShowMeshEdges(wxCommandEvent& event);
     void OnShowMeshWalls(wxCommandEvent& event);
+    void OnShowAllBlocks(wxCommandEvent& event);
     void OnShowMeshSelectedBlocks(wxCommandEvent& event);
 
     void OnSetViewFront(wxCommandEvent& event);

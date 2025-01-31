@@ -217,9 +217,11 @@ void MainFrame::createViewMenu()
     _viewMenu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
 
+    _viewMenu->Append(ID_SHOW_MESH_ALL_BLOCKS, "Mesh - Show all Blocks", "Shows all blocks", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowAllBlocks, this, ID_SHOW_MESH_ALL_BLOCKS);
+
     _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
-
     addLayersMenu(_viewMenu);
 
     _menuBar->Append(_viewMenu, "&View");
@@ -629,6 +631,15 @@ void MainFrame::OnShowMeshWalls(wxCommandEvent& event)
     auto normItem = _menuBar->FindItem(ID_SHOW_MESH_WALL);
     if (normItem)
         normItem->Check(getCanvas()->showMeshWalls());
+}
+
+void MainFrame::OnShowAllBlocks(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowMeshAll();
+
+    auto normItem = _menuBar->FindItem(ID_SHOW_MESH_WALL);
+    if (normItem)
+        normItem->Check(getCanvas()->showMeshAll());
 }
 
 void MainFrame::OnShowMeshSelectedBlocks(wxCommandEvent& event)

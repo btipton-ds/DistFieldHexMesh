@@ -407,6 +407,14 @@ bool GraphicsCanvas::toggleShowMeshWalls()
     return result;
 }
 
+bool GraphicsCanvas::toggleShowMeshAll()
+{
+    bool result = _pDrawHexMesh->toggleShowAll();
+    changeViewElements();
+
+    return result;
+}
+
 void GraphicsCanvas::setShowLayer(int32_t layerNum)
 {
     _pDrawHexMesh->setShowLayer(layerNum);
