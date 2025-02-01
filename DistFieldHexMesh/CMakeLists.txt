@@ -91,6 +91,7 @@ add_executable (DistFieldHexMesh
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
 	"src/polyhedronSplitter.cpp"
+	"src/polymeshTables.cpp"
 	"src/selectBlocksDlg.cpp"
 	"src/splitLongTrisDlg.cpp"
 	"src/splitParams.cpp"
@@ -107,7 +108,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
- )
+  )
 
 add_executable (TestDFM         
 	
@@ -120,6 +121,7 @@ add_executable (TestDFM
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"	
 	"src/polyhedronSplitter.cpp" 
+	"src/polymeshTables.cpp"
 	"src/splitParams.cpp"
 	"src/unalignedBBox.cpp"
 	"src/utils.cpp"
@@ -132,7 +134,7 @@ add_executable (TestDFM
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
-)
+ )
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

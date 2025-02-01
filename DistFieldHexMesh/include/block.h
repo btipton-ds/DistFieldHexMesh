@@ -229,6 +229,7 @@ public:
 	LAMBDA_BLOCK_DECLS
 
 private:
+	friend class PolymeshTables;
 	friend class Volume;
 	friend class TestBlock;
 	friend class MultiLockGuard;
