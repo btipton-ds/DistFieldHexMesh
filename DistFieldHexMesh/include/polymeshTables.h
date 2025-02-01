@@ -63,7 +63,7 @@ private:
 
 	int getFaceOwnerIdx(const Index3DId& faceId) const;
 	int getFaceNeighbourIdx(const Index3DId& faceId) const;
-	bool needToReverseNormal(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIndices) const;
+	void reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
 
 	const Volume* _pVol;
 	int32_t numInner = -1;
@@ -71,6 +71,7 @@ private:
 	int32_t boundaryIndices[6];
 	std::vector<Index3DId> vertIdxIdMap, faceIdxIdMap, cellIdxIdMap;
 	std::map<Index3DId, int32_t> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
+	std::vector<int32_t> faceIndices, vertIndices;
 };
 
 }

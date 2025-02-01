@@ -54,7 +54,7 @@ void PolymeshTables::create()
 				int32_t vIdx = (int32_t)vertIdxIdMap.size();
 				vertIdxIdMap.push_back(id);
 				vertIdIdxMap.insert(make_pair(id, vIdx));
-				});
+			});
 		}
 	}
 
@@ -71,78 +71,128 @@ void PolymeshTables::create()
 		}
 	}
 
+
+	for (auto pBlk : blocks) {
+		if (pBlk) {
+			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
+				size_t idx = faceIdxIdMap.size();
+				faceIdxIdMap.push_back(id);
+			});
+		}
+	}
+
 	std::vector<Planed> planes;
 	_pVol->getModelBoundaryPlanes(planes);
 
-	vector<Index3DId> outerBounds[6], wall;
-	for (auto pBlk : blocks) {
-		if (pBlk) {
-			pBlk->_polygons.iterateInOrder([&](const Index3DId& id, const Polygon& face) {
-				if (face.numCells() == 1) {
-					bool onOuterBoundary = false;
-					for (int i = 0; i < 6; i++) {
-						if (face.isCoplanar(planes[i])) {
-							onOuterBoundary = true;
-							outerBounds[i].push_back(id);
-							break;
-						}
-					}
-					if (!onOuterBoundary) {
-						wall.push_back(id);
-					}
-				}
-				});
-		}
-	}
+	sort(faceIdxIdMap.begin(), faceIdxIdMap.end(), [this, &planes](const Index3DId& lhsFaceId, const Index3DId& rhsFaceId) {
+		const Block *pBlk;
+		pBlk = _pVol->getBlockPtr(lhsFaceId);
+		const auto& lhsFace = _pVol->getPolygon(lhsFaceId);
+		const auto& rhsFace = _pVol->getPolygon(rhsFaceId);
+		const auto& lhsCellIds = lhsFace.getCellIds();
+		const auto& rhsCellIds = rhsFace.getCellIds();
 
-	// sort shared faces
-	for (size_t cellIdx = 0; cellIdx < cellIdxIdMap.size(); cellIdx++) {
-		const auto& cellId = cellIdxIdMap[cellIdx];
-		const auto& cell = _pVol->getPolyhedron(cellId);
-		const auto& faceIds = cell.getFaceIds();
-		vector<Index3DId> faceIdsOwnedByThisCell;
-		for (const auto& faceId : faceIds) {
-			const auto& face = _pVol->getPolygon(faceId);
-			if (face.numCells() == 2) {
-				int ownerIdx = getFaceOwnerIdx(faceId);
-				if (ownerIdx == cellIdx) {
-					if (faceIdIdxMap.find(faceId) == faceIdIdxMap.end()) {
-						faceIdsOwnedByThisCell.push_back(faceId);
-					}
+		if (lhsCellIds.size() == 1 && rhsCellIds.size() == 1) {
+			int lhsFaceIdx = -1, rhsFaceIdx = -1;
+			for (int i = 0; i < 6; i++) {
+				if (lhsFace.isCoplanar(planes[i])) {
+					lhsFaceIdx = i;
 				}
+				if (rhsFace.isCoplanar(planes[i])) {
+					rhsFaceIdx = i;
+				}
+			}
+
+			if (lhsFaceIdx < rhsFaceIdx)
+				return true;
+			else if (lhsFaceIdx > rhsFaceIdx)
+				return false;
+
+			return lhsFaceId < rhsFaceId;
+		} else if (lhsCellIds.size() > rhsCellIds.size())
+			return true;
+		else if (lhsCellIds.size() < rhsCellIds.size())
+			return false;
+		
+		int lhsIdx = getFaceOwnerIdx(lhsFaceId);
+		int rhsIdx = getFaceOwnerIdx(rhsFaceId);
+
+		if (lhsIdx < rhsIdx)
+			return true;
+		else if (lhsIdx > rhsIdx)
+			return false;
+
+		lhsIdx = getFaceNeighbourIdx(lhsFaceId);
+		rhsIdx = getFaceNeighbourIdx(rhsFaceId);
+
+		return lhsIdx < rhsIdx;
+	});
+
+	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
+		const auto& id = faceIdxIdMap[i];
+		const auto& face = _pVol->getPolygon(id);
+		int boundaryIdx = -1;
+		for (int i = 0; i < 6; i++) {
+			if (face.isCoplanar(planes[i])) {
+				boundaryIdx = i;
+				break;
 			}
 		}
 
-		sort(faceIdsOwnedByThisCell.begin(), faceIdsOwnedByThisCell.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId) {
-			int lhsIdx = getFaceNeighbourIdx(lhsId);
-			int rhsIdx = getFaceNeighbourIdx(rhsId);
-			return lhsIdx < rhsIdx;
-			});
+		const auto& cellIds = face.getCellIds();
+		size_t numCells = cellIds.size();
+		if (numCells > 1) {
+			cout << i << " " << id << ", nc: " << numCells << ", (";
+			for (const auto& id : cellIds) {
+				int cellIdx = cellIdIdxMap[id];
+				cout << " " << cellIdx;
+			}
+			cout << ")\n";
+		} else
+			cout << i << " " << id << ", nc: " << numCells << ", bc: " << boundaryIdx << "\n";
+	}
 
-		for (const auto& id : faceIdsOwnedByThisCell) {
-			int32_t fIdx = (int32_t)faceIdxIdMap.size();
-			faceIdxIdMap.push_back(id);
-			faceIdIdxMap.insert(make_pair(id, fIdx));
+	numInner = 0;
+	for (int i = 0; i < 6; i++)
+		boundaryIndices[i] = INT32_MAX;
+
+	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
+		const auto& faceId = faceIdxIdMap[i];
+		faceIdIdxMap.insert(make_pair(faceId, (int32_t)i));
+		const auto& face = _pVol->getPolygon(faceId);
+		if (face.numCells() > 1)
+			numInner++;
+
+		for (int j = 0; j < 6; j++) {
+			if (face.isCoplanar(planes[j])) {
+				if (i < boundaryIndices[j])
+					boundaryIndices[j] = (int32_t)i;
+			}
 		}
 	}
 
-	numInner = (int32_t)faceIdxIdMap.size();
+	int32_t idx = 0;
+	faceIndices.reserve(faceIdxIdMap.size() + 1);
+	vertIndices.reserve(4 * faceIdxIdMap.size());
 
-	for (int i = 0; i < 6; i++) {
-		boundaryIndices[i] = (int32_t)faceIdxIdMap.size();
-		for (const auto& id : outerBounds[i]) {
-			int32_t fIdx = (int32_t)faceIdxIdMap.size();
-			faceIdxIdMap.push_back(id);
-			faceIdIdxMap.insert(make_pair(id, fIdx));
+	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
+		const auto& face = _pVol->getPolygon(faceIdxIdMap[i]);
+		const auto& verts = face.getVertexIds();
+		vector<int32_t> faceVertIndices;
+		for (const auto& vId : verts) {
+			int32_t vIdx = vertIdIdxMap[vId];
+			faceVertIndices.push_back(vIdx);
 		}
-	}
 
-	boundaryIdx = (int32_t)faceIdxIdMap.size();
-	for (const auto& id : wall) {
-		int32_t fIdx = (int32_t)faceIdxIdMap.size();
-		faceIdxIdMap.push_back(id);
-		faceIdIdxMap.insert(make_pair(id, fIdx));
+		reverseFaceIfNeeded(face.getCellIds(), faceVertIndices);
+		vertIndices.insert(vertIndices.end(), faceVertIndices.begin(), faceVertIndices.end());
+
+		faceIndices.push_back(idx);
+
+
+		idx += (int32_t)faceVertIndices.size();
 	}
+	faceIndices.push_back(idx); // Append the index of the start of the next face, even though that face doesn't exist.
 
 }
 
@@ -150,21 +200,23 @@ int PolymeshTables::getFaceNeighbourIdx(const Index3DId& faceId) const
 {
 	const auto& face = _pVol->getPolygon(faceId);
 	const auto& cellIds = face.getCellIds();
-	assert(cellIds.size() == 2);
-	int maxCellIdx = -1;
-	for (const auto& cellId : cellIds) {
-		int cellIdx = cellIdIdxMap.find(cellId)->second;
-		if (cellIdx > maxCellIdx)
-			maxCellIdx = cellIdx;
+	if (cellIds.size() == 2) {
+		int maxCellIdx = -1;
+		for (const auto& cellId : cellIds) {
+			int cellIdx = cellIdIdxMap.find(cellId)->second;
+			if (cellIdx > maxCellIdx)
+				maxCellIdx = cellIdx;
+		}
+		return maxCellIdx;
 	}
-	return maxCellIdx;
+
+	return -1;
 }
 
 int PolymeshTables::getFaceOwnerIdx(const Index3DId& faceId) const
 {
 	const auto& face = _pVol->getPolygon(faceId);
 	const auto& cellIds = face.getCellIds();
-	assert(cellIds.size() == 2);
 	int minCellIdx = INT_MAX;
 	for (const auto& cellId : cellIds) {
 		int cellIdx = cellIdIdxMap.find(cellId)->second;
@@ -185,11 +237,6 @@ void PolymeshTables::writePoints(const string& dirName) const
 	string filename = dirName + "/points";
 	FILE* fOut = fopen(filename.c_str(), "wb");
 	try {
-		writeFOAMHeader(fOut, "binary", "vectorField", "points");
-
-		fprintf(fOut, FMT_SIZE, vertIdxIdMap.size());
-		fprintf(fOut, "(");
-
 		vector<double> vals;
 		vals.resize(3 * vertIdxIdMap.size());
 		size_t idx = 0;
@@ -204,6 +251,11 @@ void PolymeshTables::writePoints(const string& dirName) const
 			vals[idx++] = pt[1];
 			vals[idx++] = pt[2];
 		}
+
+		writeFOAMHeader(fOut, "binary", "vectorField", "points");
+
+		fprintf(fOut, FMT_SIZE, vertIdxIdMap.size());
+		fprintf(fOut, "(");
 		fwrite(vals.data(), sizeof(double), vals.size(), fOut);
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
@@ -220,21 +272,21 @@ void PolymeshTables::writePoints(const string& dirName) const
 	fclose(fOut);
 }
 
-bool PolymeshTables::needToReverseNormal(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIndices) const
+void PolymeshTables::reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, vector<int32_t>& faceVertIds)
 {
-	bool result = false;
+	bool needToReverse = false;
 	Vector3d faceCtr;
 	vector<Vector3d> pts;
-	for (size_t i = 0; i < faceVertIndices.size(); i++) {
-		const auto& vertId = vertIdxIdMap[faceVertIndices[i]];
+	for (size_t i = 0; i < faceVertIds.size(); i++) {
+		const auto& vertId = vertIdxIdMap[faceVertIds[i]];
 		const auto& pt = _pVol->getVertex(vertId).getPoint();
 		faceCtr += pt;
 		pts.push_back(pt);
 	}
 
-	faceCtr /= faceVertIndices.size();
-	Vector3d v0 = pts[1] - pts[0];
-	Vector3d v1 = pts[2] - pts[0];
+	faceCtr /= pts.size();
+	Vector3d v0 = pts[0] - pts[1];
+	Vector3d v1 = pts[2] - pts[1];
 	Vector3d n = v1.cross(v0).normalized();
 #ifdef _DEBUG
 	Vector3d v = pts[3] - pts[0];
@@ -247,29 +299,32 @@ bool PolymeshTables::needToReverseNormal(const MTC::set<Index3DId>& cellIds, std
 	if (cellIds.size() == 1) {
 		const Index3DId cellId = *cellIds.begin();
 		const auto& cell = _pVol->getPolyhedron(cellId);
-		cellCtr = cell.calCentroid();
-		Vector3d v = cellCtr - faceCtr;
-		if (v.dot(n) > 0)
-			result = true;
-	}
-	else {
+		cellCtr = cell.calCentroidApproxFast();
+		Vector3d v = (faceCtr - cellCtr).normalized();
+		if (v.dot(n) < 0)
+			needToReverse = true;
+	} else {
 		assert(cellIds.size() == 2);
 		int maxCellIdx = -1;
 		for (const auto& cellId : cellIds) {
-			int cellIdx = cellIdIdxMap.find(cellId)->second;
+			int cellIdx = cellIdIdxMap[cellId];
 			if (maxCellIdx < cellIdx) {
 				maxCellIdx = cellIdx;
 			}
 		}
 		const auto& cell = _pVol->getPolyhedron(cellIdxIdMap[maxCellIdx]);
-		cellCtr = cell.calCentroid();
+		cellCtr = cell.calCentroidApproxFast();
 
-		Vector3d v = cellCtr - faceCtr;
-		if (v.dot(n) < 0)
-			result = true;
+		Vector3d v = (faceCtr - cellCtr).normalized();
+		if (v.dot(n) > 0)
+			needToReverse = true;
 	}
 
-	return result;
+	if (needToReverse) {
+		auto iter0 = faceVertIds.begin();
+		auto iter1 = faceVertIds.end();
+		std::reverse(iter0, iter1);
+	}
 }
 
 void PolymeshTables::writeFaces(const string& dirName) const
@@ -277,49 +332,24 @@ void PolymeshTables::writeFaces(const string& dirName) const
 	string filename = dirName + "/faces";
 	FILE* fOut = fopen(filename.c_str(), "wb");
 	try {
-		writeFOAMHeader(fOut, "binary", "faceCompactList", "faces");
 
 		// Write poly index table
 		// An extra entry is required to compute the number of vertices in the last face
 		// So, this is actually #faces + 1, not #faces.
-		int32_t idx = 0;
-		vector<int32_t> faceIndices;
-		faceIndices.reserve(faceIdxIdMap.size() + 1);
-		vector<int32_t> vertIndices;
-		vertIndices.reserve(4 * faceIdxIdMap.size());
 
-		for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
-			const auto& face = _pVol->getPolygon(faceIdxIdMap[i]);
-			const auto& verts = face.getVertexIds();
-			vector<int32_t> faceVertIndices;
-			for (const auto& vId : verts) {
-				int32_t vIdx = vertIdIdxMap.find(vId)->second;
-				assert(vertIdxIdMap[vIdx] == vId);
-				faceVertIndices.push_back(vIdx);
-			}
-
-			if (needToReverseNormal(face.getCellIds(), faceVertIndices)) {
-				reverse(faceVertIndices.begin(), faceVertIndices.end());
-			}
-			for (size_t j = 0; j < faceVertIndices.size(); j++)
-				vertIndices.push_back(faceVertIndices[j]);
-
-			faceIndices.push_back(idx);
-			idx += (int32_t)faceVertIndices.size();
-		}
-		faceIndices.push_back(idx); // Append the index of the start of the next face, even though that face doesn't exist.
-
+		writeFOAMHeader(fOut, "binary", "faceCompactList", "faces");
 		fprintf(fOut, FMT_SIZE, faceIndices.size());
 		fprintf(fOut, "(");
-
 		fwrite(faceIndices.data(), sizeof(int32_t), faceIndices.size(), fOut);
 		fprintf(fOut, ")\n");
+
 		fprintf(fOut, "\n");
 
 		fprintf(fOut, FMT_SIZE, vertIndices.size());
 		fprintf(fOut, "(");
 		fwrite(vertIndices.data(), sizeof(int32_t), vertIndices.size(), fOut);
 		fprintf(fOut, ")\n");
+
 		fprintf(fOut, "//**********************************************************************************//\n");
 
 		{
@@ -385,22 +415,16 @@ void PolymeshTables::writeOwnerCells(const std::string& dirName) const
 	string filename = dirName + "/owner";
 	FILE* fOut = fopen(filename.c_str(), "wb");
 	try {
-		writeFOAMHeader(fOut, "binary", "labelList", "owner");
-
 		vector<int> indices;
 		indices.reserve(faceIdxIdMap.size());
 		for (const auto& faceId : faceIdxIdMap) {
 			const auto& face = _pVol->getPolygon(faceId);
 			const auto& cellIds = face.getCellIds();
-			int minIdx = INT_MAX;
-			for (const auto& cellId : cellIds) {
-				int cellIdx = cellIdIdxMap.find(cellId)->second;
-				if (cellIdx < minIdx)
-					minIdx = cellIdx;
-			}
-			indices.push_back(minIdx);
+			int oIdx = getFaceOwnerIdx(faceId);
+			indices.push_back(oIdx);
 		}
 
+		writeFOAMHeader(fOut, "binary", "labelList", "owner");
 		fprintf(fOut, FMT_SIZE, indices.size());
 		fprintf(fOut, "(");
 		fwrite(indices.data(), sizeof(int), indices.size(), fOut);
@@ -410,7 +434,7 @@ void PolymeshTables::writeOwnerCells(const std::string& dirName) const
 		{
 			ofstream out(filename + ".csv");
 			for (size_t i = 0; i < indices.size(); i++) {
-				out << i << "\n";
+				out << indices[i] << "\n";
 			}
 		}
 	}
@@ -425,24 +449,17 @@ void PolymeshTables::writeNeighborCells(const std::string& dirName) const
 	string filename = dirName + "/neighbour";
 	FILE* fOut = fopen(filename.c_str(), "wb");
 	try {
-		writeFOAMHeader(fOut, "binary", "labelList", "neighbour");
-
 		vector<int32_t> indices;
 		indices.reserve(faceIdxIdMap.size());
 		for (const auto& faceId : faceIdxIdMap) {
 			const auto& face = _pVol->getPolygon(faceId);
-			const auto& cellIds = face.getCellIds();
-			int32_t maxIdx = -1;
-			if (cellIds.size() == 2) {
-				for (const auto& cellId : cellIds) {
-					int32_t cellIdx = cellIdIdxMap.find(cellId)->second;
-					if (cellIdx > maxIdx)
-						maxIdx = cellIdx;
-				}
-				indices.push_back(maxIdx);
+			int nIdx = getFaceNeighbourIdx(faceId);
+			if (nIdx != -1) {
+				indices.push_back(nIdx);
 			}
 		}
 
+		writeFOAMHeader(fOut, "binary", "labelList", "neighbour");
 		fprintf(fOut, FMT_SIZE, indices.size());
 		fprintf(fOut, "(");
 		fwrite(indices.data(), sizeof(int32_t), indices.size(), fOut);
@@ -452,7 +469,7 @@ void PolymeshTables::writeNeighborCells(const std::string& dirName) const
 		{
 			ofstream out(filename + ".csv");
 			for (size_t i = 0; i < indices.size(); i++) {
-				out << i << "\n";
+				out << indices[i] << "\n";
 			}
 		}
 	}
@@ -477,12 +494,18 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 	string filename = dirName + "/boundary";
 	FILE* fOut = fopen(filename.c_str(), "wb");
 	try {
-		writeFOAMHeader(fOut, "binary", "polyBoundaryMesh", "boundary");
-		int32_t nWallFaces = (int32_t)faceIdxIdMap.size() - boundaryIdx;
+		int32_t nWallFaces = boundaryIdx > 0 ? (int32_t)faceIdxIdMap.size() - boundaryIdx : 0;
 		int32_t numBoundaries = 6;
 		if (nWallFaces > 0)
 			numBoundaries++;
 
+		writeFOAMHeader(fOut, "binary", "polyBoundaryMesh", "boundary");
+#if 0
+		numBoundaries = 0;
+		fprintf(fOut, "%d\n", numBoundaries);
+		fprintf(fOut, "(\n");
+		fprintf(fOut, ")\n");
+#else
 		fprintf(fOut, "%d\n", numBoundaries);
 		fprintf(fOut, "(\n");
 
@@ -493,8 +516,10 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 			int32_t nFaces;
 			if (i + 1 < 6)
 				nFaces = boundaryIndices[i + 1] - boundaryIndices[i];
-			else
+			else if (boundaryIdx > boundaryIndices[i])
 				nFaces = boundaryIdx - boundaryIndices[i];
+			else
+				nFaces = (int32_t)faceIdxIdMap.size() - boundaryIndices[i];
 			fprintf(fOut, "    nFaces %d;\n", nFaces);
 			fprintf(fOut, "    startFace %d;\n", boundaryIndices[i]);
 			fprintf(fOut, "  }\n");
@@ -510,6 +535,7 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 		}
 
 		fprintf(fOut, ")\n");
+#endif
 		fprintf(fOut, "//**********************************************************************************//\n");
 	}
 	catch (...) {
