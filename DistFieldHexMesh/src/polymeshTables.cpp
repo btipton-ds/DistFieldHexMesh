@@ -31,6 +31,8 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+#define WRITE_DEBUG_FILES 0
+
 void PolymeshTables::writeFile(const std::string& dirName) const
 {
 	writePoints(dirName);
@@ -138,18 +140,6 @@ void PolymeshTables::create()
 				break;
 			}
 		}
-
-		const auto& cellIds = face.getCellIds();
-		size_t numCells = cellIds.size();
-		if (numCells > 1) {
-			cout << i << " " << id << ", nc: " << numCells << ", (";
-			for (const auto& id : cellIds) {
-				int cellIdx = cellIdIdxMap[id];
-				cout << " " << cellIdx;
-			}
-			cout << ")\n";
-		} else
-			cout << i << " " << id << ", nc: " << numCells << ", bc: " << boundaryIdx << "\n";
 	}
 
 	numInner = 0;
@@ -259,6 +249,7 @@ void PolymeshTables::writePoints(const string& dirName) const
 		fwrite(vals.data(), sizeof(double), vals.size(), fOut);
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
+#if WRITE_DEBUG_FILES
 		{
 			ofstream out(filename + ".csv");
 			size_t nPts = vals.size() / 3;
@@ -266,6 +257,7 @@ void PolymeshTables::writePoints(const string& dirName) const
 				out << vals[3 * i + 0] << "," << vals[3 * i + 1] << "," << vals[3 * i + 2] << "\n";
 			}
 		}
+#endif
 	}
 	catch (...) {
 	}
@@ -352,6 +344,7 @@ void PolymeshTables::writeFaces(const string& dirName) const
 
 		fprintf(fOut, "//**********************************************************************************//\n");
 
+#if WRITE_DEBUG_FILES
 		{
 			ofstream out(filename + ".csv");
 			out << "Face indices\n";
@@ -402,6 +395,7 @@ void PolymeshTables::writeFaces(const string& dirName) const
 				out << "\n";
 			}
 		}
+#endif
 	}
 	catch (...) {
 	}
@@ -431,12 +425,14 @@ void PolymeshTables::writeOwnerCells(const std::string& dirName) const
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
 
+#if WRITE_DEBUG_FILES
 		{
 			ofstream out(filename + ".csv");
 			for (size_t i = 0; i < indices.size(); i++) {
 				out << indices[i] << "\n";
 			}
 		}
+#endif
 	}
 	catch (...) {
 	}
@@ -465,13 +461,14 @@ void PolymeshTables::writeNeighborCells(const std::string& dirName) const
 		fwrite(indices.data(), sizeof(int32_t), indices.size(), fOut);
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
-
+#if WRITE_DEBUG_FILES
 		{
 			ofstream out(filename + ".csv");
 			for (size_t i = 0; i < indices.size(); i++) {
 				out << indices[i] << "\n";
 			}
 		}
+#endif
 	}
 	catch (...) {
 	}
@@ -500,12 +497,7 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 			numBoundaries++;
 
 		writeFOAMHeader(fOut, "binary", "polyBoundaryMesh", "boundary");
-#if 0
-		numBoundaries = 0;
-		fprintf(fOut, "%d\n", numBoundaries);
-		fprintf(fOut, "(\n");
-		fprintf(fOut, ")\n");
-#else
+
 		fprintf(fOut, "%d\n", numBoundaries);
 		fprintf(fOut, "(\n");
 
@@ -535,7 +527,6 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 		}
 
 		fprintf(fOut, ")\n");
-#endif
 		fprintf(fOut, "//**********************************************************************************//\n");
 	}
 	catch (...) {
