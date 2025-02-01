@@ -1607,7 +1607,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 	for (auto pBlk : _blocks) {
 		if (pBlk) {
 			pBlk->_vertices.iterateInOrder([&tables](const Index3DId& id, const Vertex& vert) {
-				int vIdx = (int)tables.vertIdxIdMap.size();
+				int32_t vIdx = (int32_t)tables.vertIdxIdMap.size();
 				tables.vertIdxIdMap.push_back(id);
 				tables.vertIdIdxMap.insert(make_pair(id, vIdx));
 			});
@@ -1619,7 +1619,7 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 		if (pBlk) {
 			pBlk->_polyhedra.iterateInOrder([&tables](const Index3DId& id, const Polyhedron& cell) {
 				if (cell.exists()) {
-					int cIdx = (int)tables.cellIdxIdMap.size();
+					int32_t cIdx = (int32_t)tables.cellIdxIdMap.size();
 					tables.cellIdxIdMap.push_back(id);
 					tables.cellIdIdxMap.insert(make_pair(id, cIdx));
 				}
@@ -1676,26 +1676,26 @@ void Volume::createPolymeshTables(PolymeshTables& tables)
 		});
 
 		for (const auto& id : faceIdsOwnedByThisCell) {
-			int fIdx = (int)tables.faceIdxIdMap.size();
+			int32_t fIdx = (int32_t)tables.faceIdxIdMap.size();
 			tables.faceIdxIdMap.push_back(id);
 			tables.faceIdIdxMap.insert(make_pair(id, fIdx));
 		}
 	}
 
-	tables.numInner = (int)tables.faceIdxIdMap.size();
+	tables.numInner = (int32_t)tables.faceIdxIdMap.size();
 
 	for (int i = 0; i < 6; i++) {
-		tables.boundaryIndices[i] = (int)tables.faceIdxIdMap.size();
+		tables.boundaryIndices[i] = (int32_t)tables.faceIdxIdMap.size();
 		for (const auto& id : outerBounds[i]) {
-			int fIdx = (int)tables.faceIdxIdMap.size();
+			int32_t fIdx = (int32_t)tables.faceIdxIdMap.size();
 			tables.faceIdxIdMap.push_back(id);
 			tables.faceIdIdxMap.insert(make_pair(id, fIdx));
 		}
 	}
 
-	tables.boundaryIdx = (int)tables.faceIdxIdMap.size();
+	tables.boundaryIdx = (int32_t)tables.faceIdxIdMap.size();
 	for (const auto& id : wall) {
-		int fIdx = (int)tables.faceIdxIdMap.size();
+		int32_t fIdx = (int32_t)tables.faceIdxIdMap.size();
 		tables.faceIdxIdMap.push_back(id);
 		tables.faceIdIdxMap.insert(make_pair(id, fIdx));
 	}
@@ -1749,9 +1749,12 @@ void Volume::writePolyMeshPoints(const string& dirName, const PolymeshTables& ta
 		vector<double> vals;
 		vals.resize(3 * tables.vertIdxIdMap.size());
 		size_t idx = 0;
-		for (const auto& vertId : tables.vertIdxIdMap) {
-			const auto& vert = getVertex(vertId);
-			auto pt = vert.getPoint();
+		for (size_t i = 0; i < tables.vertIdxIdMap.size(); i++) {
+			const auto& vertId = tables.vertIdxIdMap[i];
+			auto iter = tables.vertIdIdxMap.find(vertId);
+			assert(iter != tables.vertIdIdxMap.end());
+			assert(iter->second == i);
+			const auto& pt = getVertex(vertId).getPoint();
 
 			vals[idx++] = pt[0];
 			vals[idx++] = pt[1];
@@ -1811,43 +1814,77 @@ void Volume::writePolyMeshFaces(const string& dirName, const PolymeshTables& tab
 		// Write poly index table
 		// An extra entry is required to compute the number of vertices in the last face
 		// So, this is actually #faces + 1, not #faces.
-		int idx = 0;
-		vector<int> faceIndices;
-		faceIndices.resize(tables.faceIdxIdMap.size() + 1);
+		int32_t idx = 0;
+		vector<int32_t> faceIndices;
+		faceIndices.reserve(tables.faceIdxIdMap.size() + 1);
+		vector<int32_t> vertIndices;
+		vertIndices.reserve(4 * tables.faceIdxIdMap.size());
+
 		for (size_t i = 0; i < tables.faceIdxIdMap.size(); i++) {
 			const auto& face = getPolygon(tables.faceIdxIdMap[i]);
-			faceIndices[i] = idx;
-			idx += (int)face.getVertexIds().size();
+			const auto& verts = face.getVertexIds();
+			vector<int32_t> faceVertIndices;
+			for (const auto& vId : verts) {
+				int32_t vIdx = tables.vertIdIdxMap.find(vId)->second;
+				assert(tables.vertIdxIdMap[vIdx] == vId);
+				faceVertIndices.push_back(vIdx);
+			}
+
+			if (needToReverseNormal(face, tables)) {
+				reverse(faceVertIndices.begin(), faceVertIndices.end());
+			}
+			vertIndices.insert(vertIndices.end(), faceVertIndices.begin(), faceVertIndices.end());
+
+			faceIndices.push_back(idx);
+			idx += (int32_t)faceVertIndices.size();
 		}
-		faceIndices[faceIndices.size() - 1] = idx; // Append the index of the start of the next face, even though that face doesn't exist.
+		faceIndices.push_back(idx); // Append the index of the start of the next face, even though that face doesn't exist.
 
 		fprintf(fOut, FMT_SIZE, faceIndices.size());
 		fprintf(fOut, "(");
 
-		fwrite(faceIndices.data(), sizeof(int), faceIndices.size(), fOut);
+		fwrite(faceIndices.data(), sizeof(int32_t), faceIndices.size(), fOut);
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "\n");
 
-		// Write the face vertex index list
-		vector<int> vertIndices;
-		vertIndices.reserve(tables.faceIdxIdMap.size() * 4);
-		for (const auto& faceId : tables.faceIdxIdMap) {
-			const auto& face = getPolygon(faceId);
-
-			auto verts = face.getVertexIds();
-			if (needToReverseNormal(face, tables)) {
-				reverse(verts.begin(), verts.end());
-			}
-			for (const auto& vId : verts) {
-				vertIndices.push_back(tables.vertIdIdxMap.find(vId)->second);
-			}
-		}
-
 		fprintf(fOut, FMT_SIZE, vertIndices.size());
 		fprintf(fOut, "(");
-		fwrite(vertIndices.data(), sizeof(int), vertIndices.size(), fOut);
+		fwrite(vertIndices.data(), sizeof(int32_t), vertIndices.size(), fOut);
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
+
+		{
+			ofstream out(dirName + "/faces.stl");
+			out << "solid test\n";
+			size_t numFaces = vertIndices.size() / 4;
+			for (size_t i = 0; i < numFaces; i++) {
+				Vector3d pts[4];
+				for (size_t j = 0; j < 4; j++) {
+					size_t idx = 4 * i + j;
+					const Index3DId& vertId = tables.vertIdxIdMap[vertIndices[idx]];
+					pts[j] = getVertex(vertId).getPoint();
+				}
+
+				for (int i = 0; i < 2; i++) {
+					int j = (i + 1) % 4;
+					int k = (j + 1) % 4;
+					const auto& pt0 = pts[0];
+					const auto& pt1 = pts[j];
+					const auto& pt2 = pts[k];
+					Vector3d v0 = pt0 - pt1;
+					Vector3d v1 = pt2 - pt1;
+					Vector3d n = v1.cross(v0).normalized();
+					out << "facet normal " << n[0] << " " << n[1] << " " << n[2] << "\n";
+					out << " outer loop\n";
+					out << "  vertex " << pt0[0] << " " << pt0[1] << " " << pt0[2] << "\n";
+					out << "  vertex " << pt1[0] << " " << pt1[1] << " " << pt1[2] << "\n";
+					out << "  vertex " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
+					out << " endloop\n";
+					out << "endfacet\n";
+				}
+			}
+			out << "endsolid test\n";
+		}
 	} catch (...) {
 	}
 
