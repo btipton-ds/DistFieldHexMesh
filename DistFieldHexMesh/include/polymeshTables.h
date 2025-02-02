@@ -42,10 +42,13 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <string>
 #include <index3D.h>
+#include <fastBisectionMap.h>
 
 namespace DFHM {
 
 class Volume;
+
+using Index3DToIdxMap = FastBisectionMap<Index3DId, int32_t>;
 
 class PolymeshTables {
 public:
@@ -70,7 +73,8 @@ private:
 	int32_t boundaryIdx = -1;
 	int32_t boundaryIndices[6];
 	std::vector<Index3DId> vertIdxIdMap, faceIdxIdMap, cellIdxIdMap;
-	std::map<Index3DId, int32_t> vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
+//	std::map<Index3DId, int32_t> ;
+	Index3DToIdxMap vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
 	std::vector<int32_t> faceIndices, vertIndices;
 };
 

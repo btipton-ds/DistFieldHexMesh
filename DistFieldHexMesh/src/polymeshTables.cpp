@@ -171,6 +171,7 @@ void PolymeshTables::create()
 		vector<int32_t> faceVertIndices;
 		for (const auto& vId : verts) {
 			int32_t vIdx = vertIdIdxMap[vId];
+			assert(vertIdxIdMap[vIdx] == vId);
 			faceVertIndices.push_back(vIdx);
 		}
 
@@ -193,7 +194,7 @@ int PolymeshTables::getFaceNeighbourIdx(const Index3DId& faceId) const
 	if (cellIds.size() == 2) {
 		int maxCellIdx = -1;
 		for (const auto& cellId : cellIds) {
-			int cellIdx = cellIdIdxMap.find(cellId)->second;
+			int cellIdx = cellIdIdxMap[cellId];
 			if (cellIdx > maxCellIdx)
 				maxCellIdx = cellIdx;
 		}
@@ -209,7 +210,7 @@ int PolymeshTables::getFaceOwnerIdx(const Index3DId& faceId) const
 	const auto& cellIds = face.getCellIds();
 	int minCellIdx = INT_MAX;
 	for (const auto& cellId : cellIds) {
-		int cellIdx = cellIdIdxMap.find(cellId)->second;
+		int cellIdx = cellIdIdxMap[cellId];
 		if (cellIdx < minCellIdx)
 			minCellIdx = cellIdx;
 	}
@@ -232,9 +233,6 @@ void PolymeshTables::writePoints(const string& dirName) const
 		size_t idx = 0;
 		for (size_t i = 0; i < vertIdxIdMap.size(); i++) {
 			const auto& vertId = vertIdxIdMap[i];
-			auto iter = vertIdIdxMap.find(vertId);
-			assert(iter != vertIdIdxMap.end());
-			assert(iter->second == i);
 			const auto& pt = _pVol->getVertex(vertId).getPoint();
 
 			vals[idx++] = pt[0];

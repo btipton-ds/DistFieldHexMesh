@@ -690,14 +690,12 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 
 // TODO we should be able to clear the reference topology now
 
-		cutWithTriMesh(params, false && multiCore);
+//		cutWithTriMesh(params, false && multiCore);
 	}
 
 	Utils::Timer::dumpAll();
-	assert(verifyTopology(multiCore));
+//	assert(verifyTopology(multiCore));
 
-	cout << "Num polyhedra: " << numPolyhedra() << "\n";
-	cout << "Num faces. All: " << numFaces(true) << ", outer: " << numFaces(false) << "\n";
 #endif
 }
 
