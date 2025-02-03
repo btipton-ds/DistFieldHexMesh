@@ -53,10 +53,13 @@ using Index3DToIdxMap = FastBisectionMap<Index3DId, int32_t>;
 class PolymeshTables {
 public:
 	PolymeshTables(const Volume* pVol);
-	void create();
-	void writeFile(const std::string& dirName) const;
+	template<class PROG_LAMBDA>
+	void create(PROG_LAMBDA progFunc);
+	template<class PROG_LAMBDA>
+	void writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const;
 
 private:
+	void createInner();
 	void writePoints(const std::string& dirName) const;
 	void writeFaces(const std::string& dirName) const;
 	void writeOwnerCells(const std::string& dirName) const;
@@ -77,5 +80,35 @@ private:
 	Index3DToIdxMap vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
 	std::vector<int32_t> faceIndices, vertIndices;
 };
+
+template<class PROG_LAMBDA>
+void PolymeshTables::create(PROG_LAMBDA progFunc)
+{
+	progFunc(0);
+	createInner();
+	progFunc(1 / 6.0);
+}
+
+template<class PROG_LAMBDA>
+void PolymeshTables::writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const
+{
+	int i = 1;
+	double steps = 6;
+	writePoints(dirName);
+	progFunc(++i / steps);
+
+	writeFaces(dirName);
+	progFunc(++i / steps);
+
+	writeOwnerCells(dirName);
+	progFunc(++i / steps);
+
+	writeNeighborCells(dirName);
+	progFunc(++i / steps);
+
+	writeBoundaries(dirName);
+	progFunc(++i / steps);
+
+}
 
 }

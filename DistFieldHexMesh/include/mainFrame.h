@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/dataview.h>
 
 #include <memory>
+#include <future>
 #include <triMesh.h>
 #include <volume.h>
 #include <appData.h>
@@ -120,6 +121,7 @@ enum DFHM_MENU_ID
     ID_OBJ_TREE_CTRL,
     ID_TREE_CTRL_SHOW,
 
+    ID_QUERY_PROGRESS,
 };
 
 class GraphicsCanvas;
@@ -166,6 +168,7 @@ private:
     void OnSave(wxCommandEvent& event);
     void OnSaveAs(wxCommandEvent& event);
     void OnWritePolymesh(wxCommandEvent& event);
+
     void OnClose(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
@@ -219,8 +222,14 @@ private:
     void OnShowLayer8(wxCommandEvent& event);
     void OnShowLayer9(wxCommandEvent& event);
 
+    void OnUpdateUI(wxUpdateUIEvent& event);
+
     void updateStatusBar();
 
+    std::future<bool> _pBackgroundFuture;
+    wxStatusBar* _statusBar;
+    int _progressValue = 0;
+    wxGauge* _progress;
     wxMenuBar* _menuBar = nullptr;
     wxMenu
         * _editMenu = nullptr,

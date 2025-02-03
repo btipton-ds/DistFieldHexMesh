@@ -52,7 +52,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 #include <meshData.h>
-#include <polymeshTables.h>
 
 using namespace std;
 using namespace DFHM;
@@ -1558,29 +1557,27 @@ const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
 	return pBlk->_polyhedra[id];
 }
 
-void Volume::writePolyMesh(const string& dirNameIn)
+std::string Volume::createPolymeshDirs(const string& pathIn)
 {
-	string dirName(dirNameIn);
+	string path(pathIn);
 
-	unifyDirectorySeparator(dirName);
+	unifyDirectorySeparator(path);
 
-	auto pos = dirName.find("constant");
+	auto pos = path.find("constant");
 	if (pos == string::npos) {
-		appendDir(dirName, "constant");
+		appendDir(path, "constant");
 	}
 	else {
-		dirName = dirName.substr(0, pos + 9);
+		path = path.substr(0, pos + 9);
 	}
-	if (dirName.find("polyMesh") == string::npos)
-		appendDir(dirName, "polyMesh/");
+	if (path.find("polyMesh") == string::npos)
+		appendDir(path, "polyMesh/");
 
-	filesystem::path dirPath(dirName);
+	filesystem::path dirPath(path);
 	filesystem::remove_all(dirPath);
 	filesystem::create_directories(dirPath);
 
-	PolymeshTables tables(this);
-	tables.create();
-	tables.writeFile(dirName);
+	return path;
 }
 
 void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const

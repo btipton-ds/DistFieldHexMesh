@@ -55,6 +55,8 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+#define PROG_MAX 300
+
 MainFrame::MainFrame(wxWindow* parent,
     wxWindowID id,
     const wxString& title,
@@ -99,7 +101,6 @@ MainFrame::MainFrame(wxWindow* parent,
     bitMap1.FromFiles("D:/DarkSky/Projects/DistFieldHexMesh/DistFieldHexMesh/src/SolidIcon.bmp");
     _images.push_back(bitMap0);
     _images.push_back(bitMap1);
-
 }
 
 MainFrame::~MainFrame()
@@ -340,7 +341,19 @@ void MainFrame::addModelPanel()
 
 void MainFrame::addStatusBar()
 {
-    CreateStatusBar();
+    _statusBar = new wxStatusBar(this, wxID_ANY, wxST_SIZEGRIP | wxNO_BORDER);
+    _statusBar->SetFieldsCount(2); // all fields will have text values except the second where I want the wxGauge
+    SetStatusBar(_statusBar);
+
+    wxRect rect;
+    auto field0 = _statusBar->GetField(0);
+    field0.SetWidth(250);
+    _statusBar->GetFieldRect(1, rect);
+    _progress = new wxGauge(_statusBar, ID_QUERY_PROGRESS, 0, rect.GetPosition(), rect.GetSize(), wxGA_SMOOTH);
+    _progress->SetRange(PROG_MAX);
+    _progress->SetValue(0);
+
+    Bind(wxEVT_UPDATE_UI, &MainFrame::OnUpdateUI, this);
 }
 
 void MainFrame::OnInternalIdle()
@@ -502,7 +515,18 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
     wxDirDialog dlg(this, "Choose OpenFoam Project Directory");
     if (dlg.ShowModal() == wxID_OK) {
         auto dirPath = dlg.GetPath().ToStdString();
-        _pAppData->getVolume()->writePolyMesh(dirPath);
+        _pBackgroundFuture = std::async(std::launch::async, [this, dirPath]()->bool { 
+            auto progressFunc = [this](double percent) {
+                int val = (int)(PROG_MAX * percent + 0.5);
+                if (val != _progressValue) {
+                    _progressValue = val;
+                    wxUpdateUIEvent evt(0);
+                    QueueEvent(evt.Clone());
+                }
+            };
+            _pAppData->getVolume()->writePolyMesh(dirPath, progressFunc);
+            return true;
+        });
     }
 }
 
@@ -827,6 +851,18 @@ void MainFrame::OnShowLayer8(wxCommandEvent& event)
 void MainFrame::OnShowLayer9(wxCommandEvent& event)
 {
     getCanvas()->setShowLayer(9);
+}
+
+void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
+{
+    if (_progress && _pBackgroundFuture.valid()) {
+        _progress->SetValue(_progressValue);
+        if (_pBackgroundFuture.wait_for(0.1ms) == future_status::ready) {
+            _pBackgroundFuture.get(); // clear it
+            _progressValue = 0;
+            _progress->SetValue(_progressValue);
+        }
+    }
 }
 
 void MainFrame::updateStatusBar()

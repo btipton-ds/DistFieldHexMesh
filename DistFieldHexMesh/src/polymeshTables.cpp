@@ -33,21 +33,12 @@ using namespace DFHM;
 
 #define WRITE_DEBUG_FILES 1
 
-void PolymeshTables::writeFile(const std::string& dirName) const
-{
-	writePoints(dirName);
-	writeFaces(dirName);
-	writeOwnerCells(dirName);
-	writeNeighborCells(dirName);
-	writeBoundaries(dirName);
-}
-
 PolymeshTables::PolymeshTables(const Volume* pVol)
 	:_pVol(pVol)
 {
 }
 
-void PolymeshTables::create()
+void PolymeshTables::createInner()
 {
 	const auto& blocks = _pVol->_blocks;
 	for (auto pBlk : blocks) {
