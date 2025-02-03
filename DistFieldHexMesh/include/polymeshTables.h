@@ -41,6 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 #include <string>
+#include <future>
 #include <index3D.h>
 #include <fastBisectionMap.h>
 
@@ -59,7 +60,12 @@ public:
 	void writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const;
 
 private:
-	void createInner();
+	void createVertMaps();
+	void createPolyhedraMaps();
+	void createPolygonMaps();
+	void createSortPolygons();
+	void createPolygonTables();
+
 	void writePoints(const std::string& dirName) const;
 	void writeFaces(const std::string& dirName) const;
 	void writeOwnerCells(const std::string& dirName) const;
@@ -79,36 +85,74 @@ private:
 //	std::map<Index3DId, int32_t> ;
 	Index3DToIdxMap vertIdIdxMap, faceIdIdxMap, cellIdIdxMap;
 	std::vector<int32_t> faceIndices, vertIndices;
+
+	struct SearchRec {
+		size_t faceIdx = -1, nCells = -1;
+		int32_t ownerIdx = -1, neighborIdx = -1;
+		int coplanarIdx = -1;
+	};
+
+	FastBisectionMap<Index3DId, SearchRec> faceIdToSearchRecMap;
 };
 
 template<class PROG_LAMBDA>
 void PolymeshTables::create(PROG_LAMBDA progFunc)
 {
+	double steps = 9;
+
 	progFunc(0);
-	createInner();
-	progFunc(1 / 6.0);
+	createVertMaps();
+	progFunc(1 / steps);
+
+	createPolyhedraMaps();
+	progFunc(2 / steps);
+
+	createPolygonMaps();
+	progFunc(3 / steps);
+
+	createSortPolygons();
+	progFunc(4 / steps);
+
+	createPolygonTables();
+	progFunc(5 / steps);
 }
 
 template<class PROG_LAMBDA>
 void PolymeshTables::writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const
 {
-	int i = 1;
-	double steps = 6;
-	writePoints(dirName);
-	progFunc(++i / steps);
+	double steps = 9;
 
-	writeFaces(dirName);
-	progFunc(++i / steps);
+	// These can all be done in parallel
+	auto f1 = std::async(std::launch::async, [this, dirName]()->bool {
+		writePoints(dirName);
+		return true;
+	});
 
-	writeOwnerCells(dirName);
-	progFunc(++i / steps);
+	auto f2 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeFaces(dirName);
+		return true;
+	});
 
-	writeNeighborCells(dirName);
-	progFunc(++i / steps);
+	auto f3 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeOwnerCells(dirName);
+		return true;
+	});
 
-	writeBoundaries(dirName);
-	progFunc(++i / steps);
+	auto f4 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeNeighborCells(dirName);
+		writeBoundaries(dirName);
+		return true;
+	});
 
+	// Wait for them fastest to slowest
+	f4.wait();
+	progFunc(6 / steps);
+	f3.wait();
+	progFunc(7 / steps);
+	f2.wait();
+	progFunc(8 / steps);
+	f1.wait();
+	progFunc(9 / steps);
 }
 
 }

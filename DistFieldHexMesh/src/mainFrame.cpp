@@ -525,6 +525,9 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
                 }
             };
             _pAppData->getVolume()->writePolyMesh(dirPath, progressFunc);
+
+            Sleep(500);
+
             return true;
         });
     }
@@ -859,6 +862,7 @@ void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
         _progress->SetValue(_progressValue);
         if (_pBackgroundFuture.wait_for(0.1ms) == future_status::ready) {
             _pBackgroundFuture.get(); // clear it
+            _pBackgroundFuture = {};
             _progressValue = 0;
             _progress->SetValue(_progressValue);
         }

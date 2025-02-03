@@ -38,10 +38,9 @@ PolymeshTables::PolymeshTables(const Volume* pVol)
 {
 }
 
-void PolymeshTables::createInner()
+void PolymeshTables::createVertMaps()
 {
-	const auto& blocks = _pVol->_blocks;
-	for (auto pBlk : blocks) {
+	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
 			pBlk->_vertices.iterateInOrder([this](const Index3DId& id, const Vertex& vert) {
 				int32_t vIdx = (int32_t)vertIdxIdMap.size();
@@ -50,9 +49,11 @@ void PolymeshTables::createInner()
 			});
 		}
 	}
+}
 
-	// Cell order determines the order of shared faces. Create it first.
-	for (auto pBlk : blocks) {
+void PolymeshTables::createPolyhedraMaps()
+{
+	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
 			pBlk->_polyhedra.iterateInOrder([this](const Index3DId& id, const Polyhedron& cell) {
 				if (cell.exists()) {
@@ -60,11 +61,14 @@ void PolymeshTables::createInner()
 					cellIdxIdMap.push_back(id);
 					cellIdIdxMap.insert(make_pair(id, cIdx), false);
 				}
-				});
+			});
 		}
 	}
+}
 
-	for (auto pBlk : blocks) {
+void PolymeshTables::createPolygonMaps()
+{
+	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
 			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
 				size_t idx = faceIdxIdMap.size();
@@ -73,20 +77,16 @@ void PolymeshTables::createInner()
 			});
 		}
 	}
-	 
+}
+
+void PolymeshTables::createSortPolygons()
+{
 	std::vector<Planed> planes;
 	_pVol->getModelBoundaryPlanes(planes);
 
-	struct SearchRec {
-		size_t faceIdx = -1, nCells = -1;
-		int32_t ownerIdx = -1, neighborIdx = -1;
-		int coplanarIdx = -1;
-	};
-
-	FastBisectionMap<Index3DId, SearchRec> faceIdToSearchRecMap;
-	for (auto pBlk : blocks) {
+	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
-			pBlk->_polygons.iterateInOrder([this, &faceIdToSearchRecMap, &planes](const Index3DId& id, const Polygon& face) {
+			pBlk->_polygons.iterateInOrder([this, &planes](const Index3DId& id, const Polygon& face) {
 				const auto& cellIds = face.getCellIds();
 				SearchRec r;
 				r.faceIdx = faceIdIdxMap[id];
@@ -94,7 +94,8 @@ void PolymeshTables::createInner()
 				r.ownerIdx = getFaceOwnerIdx(cellIds);
 				if (r.nCells > 1) {
 					r.neighborIdx = getFaceNeighbourIdx(cellIds);
-				} else {
+				}
+				else {
 					for (int i = 0; i < 6; i++) {
 						if (face.isCoplanar(planes[i])) {
 							r.coplanarIdx = i;
@@ -103,11 +104,11 @@ void PolymeshTables::createInner()
 				}
 
 				faceIdToSearchRecMap.insert(make_pair(id, r), false);
-			});
+				});
 		}
 	}
 
-	sort(faceIdxIdMap.begin(), faceIdxIdMap.end(), [this, &planes, &faceIdToSearchRecMap](const Index3DId& lhsFaceId, const Index3DId& rhsFaceId) {
+	sort(faceIdxIdMap.begin(), faceIdxIdMap.end(), [this, &planes](const Index3DId& lhsFaceId, const Index3DId& rhsFaceId) {
 		const auto& lhsSR = faceIdToSearchRecMap[lhsFaceId];
 		const auto& rhsSR = faceIdToSearchRecMap[rhsFaceId];
 
@@ -119,11 +120,12 @@ void PolymeshTables::createInner()
 				return false;
 
 			return lhsSR.faceIdx < rhsSR.faceIdx;
-		} else if (lhsSR.nCells > rhsSR.nCells)
+		}
+		else if (lhsSR.nCells > rhsSR.nCells)
 			return true; // Reverse order by size
 		else if (lhsSR.nCells < rhsSR.nCells)
 			return false; // Reverse order by size
-		
+
 		if (lhsSR.ownerIdx < rhsSR.ownerIdx)
 			return true;
 		else if (lhsSR.ownerIdx > rhsSR.ownerIdx)
@@ -131,6 +133,16 @@ void PolymeshTables::createInner()
 
 		return lhsSR.neighborIdx < rhsSR.neighborIdx;
 	});
+
+}
+
+void PolymeshTables::createPolygonTables()
+{
+	const auto& blocks = _pVol->_blocks;
+
+	// Cell order determines the order of shared faces. Create it first.
+
+	 
 
 	numInner = 0;
 	for (int i = 0; i < 6; i++)
