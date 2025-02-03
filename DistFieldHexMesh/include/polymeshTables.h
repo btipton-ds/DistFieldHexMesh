@@ -64,8 +64,8 @@ private:
 	void writeBoundaries(const std::string& dirName) const;
 	void writeFOAMHeader(FILE* fOut, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
 
-	int getFaceOwnerIdx(const Index3DId& faceId) const;
-	int getFaceNeighbourIdx(const Index3DId& faceId) const;
+	int getFaceOwnerIdx(const MTC::set<Index3DId>& cellIds) const;
+	int getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const;
 	void reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
 
 	const Volume* _pVol;

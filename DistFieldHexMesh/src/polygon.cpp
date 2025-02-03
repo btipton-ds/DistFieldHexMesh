@@ -121,6 +121,8 @@ void Polygon::clearCache() const
 {
 	_sortCacheVaild = false;
 	_cachedEdgesVaild = false;
+	_cachedCentroidValid = false;
+	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedEdges.clear();
@@ -579,13 +581,18 @@ void Polygon::dumpPolygonPoints(ostream& out, const MTC::vector<Vector3d>& pts)
 
 Vector3d Polygon::calUnitNormal() const
 {
-	return calUnitNormalStat(getBlockPtr(), _vertexIds);
+	if (_cachedNormalValid)
+		return _cachedNormal;
+
+	_cachedNormal = calUnitNormalStat(getBlockPtr(), _vertexIds);
+	_cachedNormalValid = true;
+	return _cachedNormal;
 }
 
 Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 {
 	auto pBlk = getBlockPtr();
-	Vector3d result = calUnitNormalStat(pBlk, _vertexIds);
+	Vector3d result = calUnitNormal();
 	auto faceApproxCtr = calCentroidApproxFastStat(pBlk, _vertexIds);
 	Vector3d cellApproxCtr;
 	cellFunc(cellId, [&cellApproxCtr](const Polyhedron& cell) {
@@ -801,6 +808,11 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
+	if (_cachedCentroidValid) {
+		area = _cachedArea;
+		centroid = _cachedCentroid;
+		return;
+	}
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
 	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
@@ -822,6 +834,10 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 	}
 
 	centroid /= area;
+
+	_cachedArea = area;
+	_cachedCentroid = centroid;
+	_cachedCentroidValid = true;
 }
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const

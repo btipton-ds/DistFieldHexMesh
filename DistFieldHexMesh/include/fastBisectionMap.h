@@ -37,11 +37,11 @@ template<class IDX, class VAL>
 class FastBisectionMap {
 public:
 	using PAIR = std::pair<IDX, VAL>;
-	void insert(const PAIR& pair);
+	void insert(const PAIR& pair, bool sort = false);
 	VAL operator[](const IDX& id) const;
 
 private:
-	size_t findIdx(const IDX& id, size_t& idx0, size_t& idx1) const;
+	void findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const;
 
 	bool isSorted() const;
 
@@ -50,10 +50,16 @@ private:
 };
 
 template<class IDX, class VAL>
-void FastBisectionMap<IDX, VAL>::insert(const PAIR& newEntry)
+void FastBisectionMap<IDX, VAL>::insert(const PAIR& newEntry, bool sort)
 {
+	if (!sort) {
+		_vals.push_back(newEntry);
+		_sorted = false;
+		return;
+	}
 	size_t idx0, idx1;
-	size_t idx = findIdx(newEntry.first, idx0, idx1);
+	size_t idx;
+	findIdx(newEntry.first, idx, idx0, idx1);
 	if (idx < _vals.size()) {
 		if (_vals[idx].first == newEntry.first)
 			return;
@@ -92,34 +98,42 @@ template<class IDX, class VAL>
 VAL FastBisectionMap<IDX, VAL>::operator[](const IDX& id) const
 {
 	size_t idx0, idx1;
-	size_t idx = findIdx(id, idx0, idx1);
+	size_t idx;
+	findIdx(id, idx, idx0, idx1);
 	if (idx < _vals.size()) {
 		if (_vals[idx].first == id)
 			return _vals[idx].second;
 	}
-	return -1;
+	return VAL();
 }
 
 template<class IDX, class VAL>
-size_t FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx0, size_t& idx1) const
+void FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const
 {
-	if (_vals.empty())
-		return -1;
+	if (_vals.empty()) {
+		idx = idx0 = idx1 = -1;
+		return;
+	}
+
 	if (!_sorted) {
 		auto comp = [](const PAIR& lhs, const PAIR& rhs)->bool {
 			return lhs.first < rhs.first;
 			};
 		std::sort(_vals.begin(), _vals.end(), comp);
+		_sorted = true;
 	}
 	idx0 = 0; 
 	idx1 = _vals.size() - 1;
 
-	if (_vals[idx0].first == id)
-		return _vals[idx0].second;
-	else if (_vals[idx1].first == id)
-		return _vals[idx1].second;
+	if (_vals[idx0].first == id) {
+		idx = idx0;
+		return;
+	} else if (_vals[idx1].first == id) {
+		idx = idx1;
+		return;
+	}
 
-	size_t idx = (idx0 + idx1 + 1) / 2;
+	idx = (idx0 + idx1 + 1) / 2;
 
 	while (idx0 != idx1) {
 		if (id < _vals[idx].first)
@@ -127,7 +141,7 @@ size_t FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx0, size_t& 
 		else if (_vals[idx].first < id)
 			idx0 = idx;
 		else {
-			return idx;
+			return;
 		}
 
 		size_t nextIdx = (idx0 + idx1) / 2;
@@ -136,8 +150,6 @@ size_t FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx0, size_t& 
 		}
 		idx = nextIdx;
 	}
-
-	return idx;
 }
 
 template<class IDX, class VAL>

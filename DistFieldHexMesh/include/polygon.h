@@ -219,10 +219,15 @@ private:
 
 	mutable bool _sortCacheVaild = false;
 	mutable bool _cachedEdgesVaild = false;
+	mutable bool _cachedCentroidValid = false;
+	mutable bool _cachedNormalValid = false;
+
 	mutable Trinary _isConvex = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable MTC::vector<Index3DId> _sortedIds;
 	mutable MTC::set<Edge> _cachedEdges;
+	mutable double _cachedArea;
+	mutable Vector3d _cachedCentroid, _cachedNormal;
 };
 
 inline bool Polygon::verifyUnique() const

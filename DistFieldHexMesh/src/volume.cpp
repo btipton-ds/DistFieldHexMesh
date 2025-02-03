@@ -1588,11 +1588,11 @@ void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
 	vals.push_back(Planed(_modelBundingBox.getMin(), -zAxis)); // bottomPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis)); // topPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), -yAxis)); // leftPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis)); // rightPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis));  // topPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis));  // leftPlane
+	vals.push_back(Planed(_modelBundingBox.getMin(), -yAxis)); // rightPlane
 	vals.push_back(Planed(_modelBundingBox.getMin(), -xAxis)); // backPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis)); // frontPlane
+	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis));  // frontPlane
 
 }
 

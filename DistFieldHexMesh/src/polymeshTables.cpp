@@ -31,7 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-#define WRITE_DEBUG_FILES 0
+#define WRITE_DEBUG_FILES 1
 
 void PolymeshTables::writeFile(const std::string& dirName) const
 {
@@ -55,7 +55,7 @@ void PolymeshTables::create()
 			pBlk->_vertices.iterateInOrder([this](const Index3DId& id, const Vertex& vert) {
 				int32_t vIdx = (int32_t)vertIdxIdMap.size();
 				vertIdxIdMap.push_back(id);
-				vertIdIdxMap.insert(make_pair(id, vIdx));
+				vertIdIdxMap.insert(make_pair(id, vIdx), false);
 			});
 		}
 	}
@@ -67,80 +67,79 @@ void PolymeshTables::create()
 				if (cell.exists()) {
 					int32_t cIdx = (int32_t)cellIdxIdMap.size();
 					cellIdxIdMap.push_back(id);
-					cellIdIdxMap.insert(make_pair(id, cIdx));
+					cellIdIdxMap.insert(make_pair(id, cIdx), false);
 				}
 				});
 		}
 	}
-
 
 	for (auto pBlk : blocks) {
 		if (pBlk) {
 			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
 				size_t idx = faceIdxIdMap.size();
 				faceIdxIdMap.push_back(id);
+				faceIdIdxMap.insert(make_pair(id, (int32_t)idx), false);
+			});
+		}
+	}
+	 
+	std::vector<Planed> planes;
+	_pVol->getModelBoundaryPlanes(planes);
+
+	struct SearchRec {
+		size_t faceIdx = -1, nCells = -1;
+		int32_t ownerIdx = -1, neighborIdx = -1;
+		int coplanarIdx = -1;
+	};
+
+	FastBisectionMap<Index3DId, SearchRec> faceIdToSearchRecMap;
+	for (auto pBlk : blocks) {
+		if (pBlk) {
+			pBlk->_polygons.iterateInOrder([this, &faceIdToSearchRecMap, &planes](const Index3DId& id, const Polygon& face) {
+				const auto& cellIds = face.getCellIds();
+				SearchRec r;
+				r.faceIdx = faceIdIdxMap[id];
+				r.nCells = cellIds.size();
+				r.ownerIdx = getFaceOwnerIdx(cellIds);
+				if (r.nCells > 1) {
+					r.neighborIdx = getFaceNeighbourIdx(cellIds);
+				} else {
+					for (int i = 0; i < 6; i++) {
+						if (face.isCoplanar(planes[i])) {
+							r.coplanarIdx = i;
+						}
+					}
+				}
+
+				faceIdToSearchRecMap.insert(make_pair(id, r), false);
 			});
 		}
 	}
 
-	std::vector<Planed> planes;
-	_pVol->getModelBoundaryPlanes(planes);
+	sort(faceIdxIdMap.begin(), faceIdxIdMap.end(), [this, &planes, &faceIdToSearchRecMap](const Index3DId& lhsFaceId, const Index3DId& rhsFaceId) {
+		const auto& lhsSR = faceIdToSearchRecMap[lhsFaceId];
+		const auto& rhsSR = faceIdToSearchRecMap[rhsFaceId];
 
-	sort(faceIdxIdMap.begin(), faceIdxIdMap.end(), [this, &planes](const Index3DId& lhsFaceId, const Index3DId& rhsFaceId) {
-		const Block *pBlk;
-		pBlk = _pVol->getBlockPtr(lhsFaceId);
-		const auto& lhsFace = _pVol->getPolygon(lhsFaceId);
-		const auto& rhsFace = _pVol->getPolygon(rhsFaceId);
-		const auto& lhsCellIds = lhsFace.getCellIds();
-		const auto& rhsCellIds = rhsFace.getCellIds();
+		if (lhsSR.nCells == 1 && rhsSR.nCells == 1) {
 
-		if (lhsCellIds.size() == 1 && rhsCellIds.size() == 1) {
-			int lhsFaceIdx = -1, rhsFaceIdx = -1;
-			for (int i = 0; i < 6; i++) {
-				if (lhsFace.isCoplanar(planes[i])) {
-					lhsFaceIdx = i;
-				}
-				if (rhsFace.isCoplanar(planes[i])) {
-					rhsFaceIdx = i;
-				}
-			}
-
-			if (lhsFaceIdx < rhsFaceIdx)
+			if (lhsSR.coplanarIdx < rhsSR.coplanarIdx)
 				return true;
-			else if (lhsFaceIdx > rhsFaceIdx)
+			else if (lhsSR.coplanarIdx > rhsSR.coplanarIdx)
 				return false;
 
-			return lhsFaceId < rhsFaceId;
-		} else if (lhsCellIds.size() > rhsCellIds.size())
-			return true;
-		else if (lhsCellIds.size() < rhsCellIds.size())
-			return false;
+			return lhsSR.faceIdx < rhsSR.faceIdx;
+		} else if (lhsSR.nCells > rhsSR.nCells)
+			return true; // Reverse order by size
+		else if (lhsSR.nCells < rhsSR.nCells)
+			return false; // Reverse order by size
 		
-		int lhsIdx = getFaceOwnerIdx(lhsFaceId);
-		int rhsIdx = getFaceOwnerIdx(rhsFaceId);
-
-		if (lhsIdx < rhsIdx)
+		if (lhsSR.ownerIdx < rhsSR.ownerIdx)
 			return true;
-		else if (lhsIdx > rhsIdx)
+		else if (lhsSR.ownerIdx > rhsSR.ownerIdx)
 			return false;
 
-		lhsIdx = getFaceNeighbourIdx(lhsFaceId);
-		rhsIdx = getFaceNeighbourIdx(rhsFaceId);
-
-		return lhsIdx < rhsIdx;
+		return lhsSR.neighborIdx < rhsSR.neighborIdx;
 	});
-
-	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
-		const auto& id = faceIdxIdMap[i];
-		const auto& face = _pVol->getPolygon(id);
-		int boundaryIdx = -1;
-		for (int i = 0; i < 6; i++) {
-			if (face.isCoplanar(planes[i])) {
-				boundaryIdx = i;
-				break;
-			}
-		}
-	}
 
 	numInner = 0;
 	for (int i = 0; i < 6; i++)
@@ -148,16 +147,12 @@ void PolymeshTables::create()
 
 	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
 		const auto& faceId = faceIdxIdMap[i];
-		faceIdIdxMap.insert(make_pair(faceId, (int32_t)i));
-		const auto& face = _pVol->getPolygon(faceId);
-		if (face.numCells() > 1)
+		const auto& r = faceIdToSearchRecMap[faceId];
+		if (r.nCells > 1) {
 			numInner++;
-
-		for (int j = 0; j < 6; j++) {
-			if (face.isCoplanar(planes[j])) {
-				if (i < boundaryIndices[j])
-					boundaryIndices[j] = (int32_t)i;
-			}
+		} else if (r.coplanarIdx != -1) {
+			if (i < boundaryIndices[r.coplanarIdx])
+				boundaryIndices[r.coplanarIdx] = (int32_t)i;			
 		}
 	}
 
@@ -187,10 +182,8 @@ void PolymeshTables::create()
 
 }
 
-int PolymeshTables::getFaceNeighbourIdx(const Index3DId& faceId) const
+int PolymeshTables::getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const
 {
-	const auto& face = _pVol->getPolygon(faceId);
-	const auto& cellIds = face.getCellIds();
 	if (cellIds.size() == 2) {
 		int maxCellIdx = -1;
 		for (const auto& cellId : cellIds) {
@@ -204,16 +197,15 @@ int PolymeshTables::getFaceNeighbourIdx(const Index3DId& faceId) const
 	return -1;
 }
 
-int PolymeshTables::getFaceOwnerIdx(const Index3DId& faceId) const
+int PolymeshTables::getFaceOwnerIdx(const MTC::set<Index3DId>& cellIds) const
 {
-	const auto& face = _pVol->getPolygon(faceId);
-	const auto& cellIds = face.getCellIds();
-	int minCellIdx = INT_MAX;
+	int32_t minCellIdx = INT_MAX;
 	for (const auto& cellId : cellIds) {
 		int cellIdx = cellIdIdxMap[cellId];
 		if (cellIdx < minCellIdx)
 			minCellIdx = cellIdx;
 	}
+
 	return minCellIdx;
 }
 
@@ -412,7 +404,7 @@ void PolymeshTables::writeOwnerCells(const std::string& dirName) const
 		for (const auto& faceId : faceIdxIdMap) {
 			const auto& face = _pVol->getPolygon(faceId);
 			const auto& cellIds = face.getCellIds();
-			int oIdx = getFaceOwnerIdx(faceId);
+			int oIdx = getFaceOwnerIdx(cellIds);
 			indices.push_back(oIdx);
 		}
 
@@ -447,7 +439,7 @@ void PolymeshTables::writeNeighborCells(const std::string& dirName) const
 		indices.reserve(faceIdxIdMap.size());
 		for (const auto& faceId : faceIdxIdMap) {
 			const auto& face = _pVol->getPolygon(faceId);
-			int nIdx = getFaceNeighbourIdx(faceId);
+			int nIdx = getFaceNeighbourIdx(face.getCellIds());
 			if (nIdx != -1) {
 				indices.push_back(nIdx);
 			}
