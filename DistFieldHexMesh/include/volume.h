@@ -155,7 +155,7 @@ private:
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
 	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
-	void gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore);
+	void gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
 	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);

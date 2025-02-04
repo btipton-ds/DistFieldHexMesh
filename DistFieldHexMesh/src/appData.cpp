@@ -672,7 +672,7 @@ void AppData::doCreateBaseVolume()
 
     Index3D::setBlockDim(1);
 
-    _pMainFrame->startProgress(10);
+    _pMainFrame->startProgress(12);
     auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
         Vector3d cubePts[8];
         CBoundingBox3Dd volBox;

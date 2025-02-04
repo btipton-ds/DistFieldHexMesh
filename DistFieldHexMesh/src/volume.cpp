@@ -461,8 +461,7 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 	}, multiCore);
 	reportProgress(pReporter);
 
-	gradeSurroundingBlocks(params, multiCore);
-	reportProgress(pReporter);
+	gradeSurroundingBlocks(params, pReporter, multiCore);
 }
 
 void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore)
@@ -492,7 +491,7 @@ void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d
 	reportProgress(pReporter);
 }
 
-void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore)
+void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	Index3D idx;
 
@@ -540,6 +539,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 		gr.createGradedCells();
 		return true;
 	}, multiCore);
+	reportProgress(pReporter);
 
 	runThreadPool_JK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
@@ -575,6 +575,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 
 		return true;
 	}, multiCore);
+	reportProgress(pReporter);
 
 	runThreadPool_IK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
@@ -613,6 +614,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 
 		return true;
 	}, multiCore);
+	reportProgress(pReporter);
 }
 
 void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
