@@ -265,7 +265,7 @@ const MTC::set<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 		if (!_cachedEdges1.empty())
 			return _cachedEdges1;
 	} else if (!_cachedEdges0.empty())
-		return _cachedEdges1;
+		return _cachedEdges0;
 
 	MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
 	MTC::set<Index3DId> adjCellIds;
@@ -1291,60 +1291,62 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 {
 	if (!_needsCurvatureCheck)
 		return 0;
-#if 0
-	_needsCurvatureCheck = false;
 
-	if (_triIndices.empty())
+	_needsCurvatureCheck = false;
+	const auto& meshData = *getBlockPtr()->getModelMeshData();
+
+	if (meshData.empty())
 		return 0;
 
-	auto pTriMesh = getBlockPtr()->getModelMesh();
+	for (const auto& pair : meshData) {
+		auto pTriMesh = pair.second->getMesh();
 
-	const auto& blkIdx = _thisId.blockIdx();
-	if (blkIdx[0] == 0 && blkIdx[1] == 0) {
-		int dbgBreak = 1;
-	}
-
-	vector<size_t> triIndices;
-//	size_t numTris = getBlockPtr()->processTris(bbox, triIndices);
-	size_t numTris = pTriMesh->processFoundTris(_triIndices, bbox, triIndices);
-	if (numTris > 0) {
-		static thread_local vector<double> radii;
-		if (radii.size() < pTriMesh->numTris()) {
-			radii.reserve(pTriMesh->numTris());
+		const auto& blkIdx = _thisId.blockIdx();
+		if (blkIdx[0] == 0 && blkIdx[1] == 0) {
+			int dbgBreak = 1;
 		}
-		radii.clear();
-		for (const auto triIdx : triIndices) {
-			double triCurv = pTriMesh->triCurvature(triIdx);
-			if (triCurv > 2) { // Radius < 1/2
-				radii.push_back(1 / triCurv);
+
+		vector<size_t> triIndices;
+		size_t numTris = pTriMesh->findTris(bbox, triIndices);
+		if (numTris > 0) {
+			static thread_local vector<double> radii;
+			if (radii.size() < pTriMesh->numTris()) {
+				radii.reserve(pTriMesh->numTris());
 			}
+			radii.clear();
+			for (const auto triIdx : triIndices) {
+				double triCurv = pTriMesh->triCurvature(triIdx);
+				if (triCurv > 2) { // Radius < 1/2
+					radii.push_back(1 / triCurv);
+				}
+			}
+
+			if (radii.empty())
+				return 1e6;
+
+			sort(radii.begin(), radii.end());
+			double maxRad = 0;
+			double avgRad = 0;
+			size_t count = 0;
+			for (size_t i = 0; i < radii.size(); i++) {
+				if (maxRad == 0 || radii[i] <= 1.5 * maxRad) {
+					if (radii[i] > maxRad)
+						maxRad = radii[i];
+
+					avgRad += radii[i];
+					count++;
+				}
+				else
+					break;
+			}
+
+			if (count > 0 && avgRad >= 0) {
+				avgRad /= count;
+				return avgRad;
+			}
+			return -1;
 		}
-
-		if (radii.empty())
-			return 1e6;
-
-		sort(radii.begin(), radii.end());
-		double maxRad = 0;
-		double avgRad = 0;
-		size_t count = 0;
-		for (size_t i = 0; i < radii.size(); i++) {
-			if (maxRad == 0 || radii[i] <= 1.5 * maxRad) {
-				if (radii[i] > maxRad)
-					maxRad = radii[i];
-
-				avgRad += radii[i];
-				count++;
-			} else
-				break;
-		}
-
-		if (count > 0 && avgRad >= 0) {
-			avgRad /= count;
-			return avgRad;
-		}
-		return -1;
 	}
-#endif
 	return 0;
 }
 

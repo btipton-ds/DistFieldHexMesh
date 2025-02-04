@@ -661,6 +661,7 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 //	assert(verifyTopology(multiCore));
 
 #endif
+	setLayerNums();
 }
 
 /*
