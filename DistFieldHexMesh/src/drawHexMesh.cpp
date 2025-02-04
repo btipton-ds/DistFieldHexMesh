@@ -178,8 +178,8 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
     Block::GlHexMeshGroup blockMeshes;
     pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
 
-    auto& faceVBO = getVBOs()->_faceVBO;
-    auto& edgeVBO = getVBOs()->_edgeVBO;
+    auto& faceVBO = _VBOs->_faceVBO;
+    auto& edgeVBO = _VBOs->_edgeVBO;
 
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();

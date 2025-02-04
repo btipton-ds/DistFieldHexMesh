@@ -148,7 +148,8 @@ const OGL::IndicesPtr MeshData::createFaceTessellation(const TriMesh::CMeshPtr& 
 	auto meshId = pMesh->getId();
 	auto changeNumber = pMesh->getChangeNumber();
 
-	auto& faceVBO = pDrawModelMesh->getVBOs()->_faceVBO;
+	auto& VBOs = pDrawModelMesh->getVBOs();
+	auto& faceVBO = VBOs->_faceVBO;
 	return faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
 }
 
@@ -177,9 +178,11 @@ void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::share
 	indices = smoothIndices;
 	indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
+	auto& VBOs = pDrawModelMesh->getVBOs();
+
 	auto meshId = pMesh->getId();
 	auto changeNumber = pMesh->getChangeNumber();
-	auto& edgeVBO = pDrawModelMesh->getVBOs()->_edgeVBO;
+	auto& edgeVBO = VBOs->_edgeVBO;
 	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
 	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
 	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
@@ -214,8 +217,9 @@ void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw)
 	if (!isActive())
 		return;
 
-	auto& faceVBO = pDraw->getVBOs()->_faceVBO;
-	auto& edgeVBO = pDraw->getVBOs()->_edgeVBO;
+	auto& VBOs = pDraw->getVBOs();
+	auto& faceVBO = VBOs->_faceVBO;
+	auto& edgeVBO = VBOs->_edgeVBO;
 
 	if (pDraw->showFaces()) {
 		faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());

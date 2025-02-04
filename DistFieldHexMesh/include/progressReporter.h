@@ -28,10 +28,31 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <mutex>
 
 namespace DFHM {
     class ProgressReporter {
     public:
-        virtual void reportProgress(double fraction) = 0;
+        void startProgress(size_t numSteps);
+        void reportProgress();
+    protected:
+        virtual void reportProgressInner(double fraction) = 0;
+
+    private:
+        std::mutex _mutex;
+        size_t _step, _numSteps;
     };
+
+    inline void ProgressReporter::startProgress(size_t numSteps)
+    {
+        _step = 0;
+        _numSteps = numSteps;
+    }
+
+    inline void ProgressReporter::reportProgress()
+    {
+        double fraction = _step++ / (double)_numSteps;
+        std::lock_guard lg(_mutex);
+        reportProgressInner(fraction);
+    }
 }

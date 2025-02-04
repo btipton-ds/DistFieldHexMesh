@@ -510,7 +510,7 @@ void MainFrame::OnSaveAs(wxCommandEvent& event)
 
 }
 
-void MainFrame::reportProgress(double fraction)
+void MainFrame::reportProgressInner(double fraction)
 {
     int val = (int)(PROG_MAX * fraction + 0.5);
     if (val != _progressValue) {
@@ -526,13 +526,13 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
     wxDirDialog dlg(this, "Choose OpenFoam Project Directory");
     if (dlg.ShowModal() == wxID_OK) {
         auto dirPath = dlg.GetPath().ToStdString();
-        _pBackgroundFuture = std::async(std::launch::async, [this, dirPath]()->bool { 
+        _pBackgroundFuture = make_shared<future<int>> (std::async(std::launch::async, [this, dirPath]()->int {
             _pAppData->getVolume()->writePolyMesh(dirPath, this);
 
             Sleep(500);
 
-            return true;
-        });
+            return 1;
+        }));
     }
 }
 
@@ -861,13 +861,23 @@ void MainFrame::OnShowLayer9(wxCommandEvent& event)
 
 void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
 {
-    if (_progress && _pBackgroundFuture.valid()) {
+    if (_progress && _pBackgroundFuture && _pBackgroundFuture->valid()) {
         _progress->SetValue(_progressValue);
-        if (_pBackgroundFuture.wait_for(0.1ms) == future_status::ready) {
-            _pBackgroundFuture.get(); // clear it
-            _pBackgroundFuture = {};
+        if (_pBackgroundFuture->wait_for(0.1ms) == future_status::ready) {
+            int result = _pBackgroundFuture->get(); // clear it
+            _pBackgroundFuture = nullptr;
             _progressValue = 0;
             _progress->SetValue(_progressValue);
+            if (result == 2) {
+                auto pVol = _pAppData->getVolume();
+                if (pVol) {
+                    const Index3D min(0, 0, 0);
+                    const Index3D max(pVol ? pVol->volDim() : Index3D());
+                    _pAppData->setDisplayMinMax(min, max);
+                    _pAppData->updateHexTess();
+                    _pCanvas->changeViewElements();
+                }
+            }
         }
     }
 }

@@ -147,7 +147,8 @@ public:
 
     AppDataPtr getAppData();
     void refreshObjectTree();
-    void reportProgress(double fraction) override;
+    void reportProgressInner(double fraction) override;
+    void setFuture(std::shared_ptr<std::future<int>>& pFuture);
 
 private:
     void addMenus();
@@ -227,7 +228,7 @@ private:
 
     void updateStatusBar();
 
-    std::future<bool> _pBackgroundFuture;
+    std::shared_ptr<std::future<int>> _pBackgroundFuture;
     wxStatusBar* _statusBar;
     int _progressValue = 0;
     wxGauge* _progress;
@@ -263,6 +264,11 @@ inline GraphicsCanvas* MainFrame::getCanvas()
 inline AppDataPtr MainFrame::getAppData()
 {
     return _pAppData;
+}
+
+inline void MainFrame::setFuture(std::shared_ptr<std::future<int>>& pFuture)
+{
+    _pBackgroundFuture = pFuture;
 }
 
 }

@@ -184,6 +184,12 @@ void Volume::findSharpEdgeEdges()
 #endif
 }
 
+void Volume::reportProgress(ProgressReporter* pProgress)
+{
+	if (pProgress)
+		pProgress->reportProgress();
+}
+
 void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices)
 {
 	const double sinSharpAngle = sin(sharpAngleRadians);
@@ -426,7 +432,7 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
-void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore)
+void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	_modelBundingBox.clear();
 	_modelBundingBox.merge(volBox);
@@ -438,49 +444,58 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
-	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+	MultiCore::runLambda([this, pReporter](size_t threadNum, size_t numThreads) {
 		for (size_t linearIdx = threadNum; linearIdx < _blocks.size(); linearIdx += numThreads) {
 			_blocks[linearIdx] = createBlock(linearIdx);
 		}
 	}, multiCore);
+	reportProgress(pReporter);
 
-	buildSurroundingBlocks(params, pts, multiCore);
+	buildSurroundingBlocks(params, pts, pReporter, multiCore);
 
-	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, pReporter](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		if (inModelBounds(pBlk->getBlockIdx())) {
 			pBlk->createBlockCells();
 		}
 		return true;
 	}, multiCore);
+	reportProgress(pReporter);
 
 	gradeSurroundingBlocks(params, multiCore);
+	reportProgress(pReporter);
 }
 
-void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore)
+void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore)
 {
 	if (!params.symXAxis)
 		insertBlocks(params, CFT_BACK, multiCore);
+	reportProgress(pReporter);
 
 	if (!params.symYAxis)
 		insertBlocks(params, CFT_LEFT, multiCore);
+	reportProgress(pReporter);
 
 	if (!params.symZAxis)
 		insertBlocks(params, CFT_BOTTOM, multiCore);
+	reportProgress(pReporter);
 
 	insertBlocks(params, CFT_FRONT, multiCore);
+	reportProgress(pReporter);
 
 	insertBlocks(params, CFT_RIGHT, multiCore);
+	reportProgress(pReporter);
 
 	insertBlocks(params, CFT_TOP, multiCore);
+	reportProgress(pReporter);
 
 	createAdHocBlockSearchTree();
+	reportProgress(pReporter);
 }
 
 void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore)
 {
 	Index3D idx;
 
-#if 1
 	runThreadPool_IJ(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
@@ -525,9 +540,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 		gr.createGradedCells();
 		return true;
 	}, multiCore);
-#endif
 
-#if 1
 	runThreadPool_JK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
@@ -563,10 +576,6 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 		return true;
 	}, multiCore);
 
-#endif
-
-#if 1
-#if 1
 	runThreadPool_IK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
@@ -604,59 +613,9 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore
 
 		return true;
 	}, multiCore);
-
-#else
-	for (int j = 0; j < 2; j++) {
-		if (j == 0) {
-			if (params.symYAxis)
-				continue;
-
-			idx[1] = 0;
-			if (!params.symYAxis) {
-			}
-		} else {
-			idx[1] = _volDim[1] - 1;
-		}
-
-		for (idx[0] = 1; idx[0] < _volDim[0] - 1; idx[0]++) {
-			for (idx[2] = 1; idx[2] < _volDim[2] - 1; idx[2]++) {
-				Index3D divs(1, 1, 1);
-				Vector3d grading(1, 1, 1);
-
-				if (j == 0) {
-					assert(idx[1] == 0);
-					if (!params.symYAxis) {
-						divs[1] = params.yMinDivs;
-						grading[1] = 1 / params.yMinGrading;
-					}
-				}
-				else {
-					assert(idx[1] == _volDim[1] - 1);
-					divs[1] = params.yMaxDivs;
-					grading[1] = params.yMaxGrading;
-				}
-
-				if (idx[1] == 0) {
-					if (!params.symYAxis) {
-						divs[1] = params.yMinDivs;
-						grading[1] = 1 / params.yMinGrading;
-					}
-				} else if (idx[1] == _volDim[1] - 1) {
-					divs[1] = params.yMaxDivs;
-					grading[1] = params.yMaxGrading;
-				}
-
-				auto pBlk = getBlockPtr(idx);
-				GradingOp gr(pBlk, params, divs, grading);
-				gr.createGradedCells();
-			}
-		}
-	}
-#endif
-#endif
 }
 
-void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, bool multiCore)
+void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
 		assert(!"Volume is not ready.");
@@ -664,6 +623,11 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 	}
 
 	double sharpAngleRadians = params.getSharpAngleRadians();
+
+	size_t num = meshData.size() + params.numSimpleDivs * _blocks.size() + params.numCurvatureDivs * _blocks.size();
+	pReporter->startProgress(num);
+
+	reportProgress(pReporter);
 
 	std::vector<size_t> sharpEdges;
 	{
@@ -678,6 +642,7 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 
 			sharpEdges.insert(sharpEdges.end(), tmp.begin(), tmp.end());
 			findFeatures();
+			reportProgress(pReporter);
 		}
 	}
 
@@ -1457,6 +1422,8 @@ void Volume::writePolyMesh(const std::string& dirPath, ProgressReporter* pReport
 {
 	auto path = createPolymeshDirs(dirPath);
 
+	if (pReporter)
+		pReporter->startProgress(9);
 	PolymeshTables tables(this, pReporter);
 	tables.create();
 	tables.writeFile(path);

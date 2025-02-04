@@ -93,13 +93,13 @@ public:
 
     const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
 
+    void updateHexTess();
     void updateModelTess();
 
 private:
     void clearCache();
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
-    void updateTessellation();
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);

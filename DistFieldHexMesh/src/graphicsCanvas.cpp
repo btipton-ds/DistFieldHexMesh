@@ -556,8 +556,8 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    _pDrawHexMesh->getVBOs()->_edgeVBO.clear();
-    _pDrawHexMesh->getVBOs()->_faceVBO.clear();
+    auto& VBOs = _pDrawHexMesh->getVBOs();
+    VBOs->clear();
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
@@ -787,6 +787,11 @@ inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, c
     updateView();
 }
 
+void GraphicsCanvas::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
+{
+    _pDrawHexMesh->addHexFacesToScene(pVolume, min, max, RUN_MULTI_THREAD);
+}
+
 void GraphicsCanvas::applyScaleFactor(double scaleMult, const Eigen::Vector2d& center)
 {
     Vector3d center3d(center[0], center[1], 0);
@@ -886,4 +891,3 @@ void GraphicsCanvas::changeViewElements()
     _pDrawModelMesh->changeViewElements(meshData);
     _pDrawHexMesh->changeViewElements();
 }
-

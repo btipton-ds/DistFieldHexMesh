@@ -43,29 +43,32 @@ PolymeshTables::PolymeshTables(const Volume* pVol, ProgressReporter* pReporter)
 	}
 }
 
-void PolymeshTables::reportProgress(int step) const
+void PolymeshTables::reportProgress() const
 {
 	if (_pProgReporter)
-		_pProgReporter->reportProgress(step / 9.0);
+		_pProgReporter->reportProgress();
 }
 
 void PolymeshTables::create()
 {
-	reportProgress(0);
+	if (_pProgReporter)
+		_pProgReporter->startProgress(9);
+
+	reportProgress();
 	createVertMaps();
-	reportProgress(1);
+	reportProgress();
 
 	createPolyhedraMaps();
-	reportProgress(2);
+	reportProgress();
 
 	createPolygonMaps();
-	reportProgress(3);
+	reportProgress();
 
 	createSortPolygons();
-	reportProgress(4);
+	reportProgress();
 
 	createPolygonTables();
-	reportProgress(5);
+	reportProgress();
 }
 
 void PolymeshTables::writeFile(const std::string& dirName) const
@@ -93,17 +96,15 @@ void PolymeshTables::writeFile(const std::string& dirName) const
 		return true;
 		});
 
-	double steps = 9;
-
 	// Wait for them fastest to slowest
 	f4.wait();
-	reportProgress(6);
+	reportProgress();
 	f3.wait();
-	reportProgress(7);
+	reportProgress();
 	f2.wait();
-	reportProgress(8);
+	reportProgress();
 	f1.wait();
-	reportProgress(9);
+	reportProgress();
 }
 
 void PolymeshTables::createVertMaps()

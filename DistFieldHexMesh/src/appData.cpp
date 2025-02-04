@@ -173,8 +173,6 @@ bool AppData::doImportMesh()
     }
 
     auto pCanvas = _pMainFrame->getCanvas();
-    auto pDrawModelMesh = pCanvas->getDrawModelMesh();
-    auto pVBOs = pDrawModelMesh->getVBOs();
     if (filename.find(L".stl") != -1) {
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
@@ -202,16 +200,19 @@ void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
     auto pDrawModelMesh = pCanvas->getDrawModelMesh();
-    auto pVBOs = pDrawModelMesh->getVBOs();
+    auto VBOs = pDrawModelMesh->getVBOs();
 
-    pVBOs->_edgeVBO.beginEdgeTesselation();
-    pVBOs->_faceVBO.beginFaceTesselation();
+    auto& edgeVBO = VBOs->_edgeVBO;
+    auto& faceVBO = VBOs->_faceVBO;
+
+    edgeVBO.beginEdgeTesselation();
+    faceVBO.beginFaceTesselation();
     for (auto& pair : *_pModelMeshData) {
         auto pData = pair.second;
         pData->makeOGLTess(pDrawModelMesh);
     }
-    pVBOs->_faceVBO.endFaceTesselation(false);
-    pVBOs->_edgeVBO.endEdgeTesselation();
+    faceVBO.endFaceTesselation(false);
+    edgeVBO.endEdgeTesselation();
 }
 
 void AppData::doSave()
@@ -300,7 +301,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->read(in);
         _pVolume->createAdHocBlockSearchTree();
 
-        updateTessellation();
+        updateHexTess();
     }
 
     _pMainFrame->refreshObjectTree();
@@ -443,7 +444,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->clearMesh3D();
     pCanvas->setShowMeshSelectedBlocks(true);
 
-    updateTessellation();
+    updateHexTess();
 }
 
 CBoundingBox3Dd AppData::getBoundingBox() const
@@ -670,17 +671,22 @@ void AppData::doCreateBaseVolume()
     pCanvas->clearMesh3D();
 
     Index3D::setBlockDim(1);
-    Vector3d cubePts[8];
-    CBoundingBox3Dd volBox;
-    makeModelCubePoints(cubePts, volBox);
 
-    _pVolume->buildModelBlocks(_params, cubePts, volBox, RUN_MULTI_THREAD);
+    _pMainFrame->startProgress(10);
+    auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
+        Vector3d cubePts[8];
+        CBoundingBox3Dd volBox;
+        makeModelCubePoints(cubePts, volBox);
 
-//    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
+        _pVolume->buildModelBlocks(_params, cubePts, volBox, _pMainFrame, RUN_MULTI_THREAD);
 
-    _pVolume->setLayerNums();
+        //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
-    updateTessellation();
+        _pVolume->setLayerNums();
+
+        return 2;
+    }));
+    _pMainFrame->setFuture(pFuture);
 }
 
 void AppData::doRemoveBaseVolume()
@@ -696,15 +702,15 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-        _pVolume->buildCFDHexes(*_pModelMeshData, _params, RUN_MULTI_THREAD);
+        _pVolume->buildCFDHexes(*_pModelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
 
-        updateTessellation();
+        updateHexTess();
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
 }
 
-void AppData::updateTessellation()
+void AppData::updateHexTess()
 {
     if (_pVolume) {
         const Index3D min(0, 0, 0);
@@ -712,7 +718,7 @@ void AppData::updateTessellation()
         Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
 
         auto pCanvas = _pMainFrame->getCanvas();
-        pCanvas->getDrawHexMesh()->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
+        pCanvas->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
 
         setDisplayMinMax(min, max);
 

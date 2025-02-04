@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 
 #include <defines.h>
+#include <mutex>
 #include <tm_vector3.h>
 #include <triMesh.h>
 #include <OGLMath.h>
@@ -42,13 +43,14 @@ namespace OGL
 }
 
 namespace DFHM {
-	struct VBORec {
-
+	class VBORec {
+	public:
 		VBORec(int numLayers);
 		virtual ~VBORec();
 
 		void clear();
 
+		std::mutex _vboMutex;
 		OGL::MultiVboHandler _faceVBO, _edgeVBO;
 	};
 

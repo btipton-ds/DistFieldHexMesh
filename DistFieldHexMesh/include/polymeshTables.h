@@ -76,7 +76,7 @@ private:
 	int getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const;
 	void reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
 
-	void reportProgress(int step) const;
+	void reportProgress() const;
 
 	const Volume* _pVol;
 	ProgressReporter* _pProgReporter;

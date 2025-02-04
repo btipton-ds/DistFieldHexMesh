@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <volume.h>
 #include <appData.h>
+#include <mainFrame.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -114,9 +115,10 @@ EVT_BUTTON(ID_CREATE, CreateBaseMeshDlg::OnCreate)
 EVT_BUTTON(wxID_CANCEL, CreateBaseMeshDlg::OnDone)
 END_EVENT_TABLE()
 
-CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
+CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, MainFrame* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
 	: wxDialog(parent, id, title, pos, wxSize(frameWidth, frameHeight), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
 	, _pAppData(pAppData)
+	, _pMainFrame(parent)
 {
 	auto& params = pAppData->getParams();
 	if (params.yMin == DBL_MAX) {

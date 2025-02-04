@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <memory>
+#include <mutex>
 #define GL_GLEXT_PROTOTYPES
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
@@ -117,6 +118,7 @@ public:
     void setLights();
 
     void changeViewElements();
+    void addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
 
     Vector3d NDCPointToModel(const Eigen::Vector2d& pt2d) const;
     Vector3d screenVectorToModel(const Eigen::Vector2d& v, double z) const;

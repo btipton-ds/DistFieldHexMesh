@@ -96,8 +96,8 @@ public:
 
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, bool multiCore);
-	void buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, bool multiCore);
+	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
+	void buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
 
 	void createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 
@@ -154,7 +154,7 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
-	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], bool multiCore);
+	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
 	void gradeSurroundingBlocks(const BuildCFDParams& params, bool multiCore);
 	void divideSimple(const BuildCFDParams& params, bool multiCore);
 	void divideConitional(const BuildCFDParams& params, bool multiCore);
@@ -168,9 +168,9 @@ private:
 	void findFeatures();
 	void findSharpEdgeEdges();
 
+	void reportProgress(ProgressReporter* pProgress);
+
 	friend class PolymeshTables;
-
-
 
 	template<class L>
 	void runThreadPool(const L& fLambda, bool multiCore) const;
