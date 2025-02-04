@@ -52,6 +52,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 #include <meshData.h>
+#include <appData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -1450,6 +1451,15 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		}
 	}
 #endif
+}
+
+void Volume::writePolyMesh(const std::string& dirPath, ProgressReporter* pReporter)
+{
+	auto path = createPolymeshDirs(dirPath);
+
+	PolymeshTables tables(this, pReporter);
+	tables.create();
+	tables.writeFile(path);
 }
 
 bool Volume::write(ostream& out) const

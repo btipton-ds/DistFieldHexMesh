@@ -129,7 +129,7 @@ class MainFrame;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 
-class MainFrame : public wxFrame
+class MainFrame : public wxFrame, public ProgressReporter
 {
 public:
     MainFrame(wxWindow* parent,
@@ -147,6 +147,7 @@ public:
 
     AppDataPtr getAppData();
     void refreshObjectTree();
+    void reportProgress(double fraction) override;
 
 private:
     void addMenus();

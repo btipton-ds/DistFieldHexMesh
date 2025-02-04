@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedron.h>
 #include <block.h>
 #include <polymeshTables.h>
+#include <progressReporter.h>
 
 namespace TriMesh {
 	class CMesh;
@@ -120,8 +121,7 @@ public:
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 
-	template<class PROG_LAMBDA>
-	void writePolyMesh(const std::string& dirPath, PROG_LAMBDA);
+	void writePolyMesh(const std::string& dirPath, ProgressReporter* pReporter);
 
 	bool write(std::ostream& out) const;
 	bool read(std::istream& inStream);
@@ -267,16 +267,5 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 	return _sharpEdgeIndices;
 
 }
-
-template<class PROG_LAMBDA>
-void Volume::writePolyMesh(const std::string& dirPath, PROG_LAMBDA progFunc)
-{
-	auto path = createPolymeshDirs(dirPath);
-
-	PolymeshTables tables(this);
-	tables.create(progFunc);
-	tables.writeFile(path, progFunc);
-}
-
 
 } // end namespace DFHM

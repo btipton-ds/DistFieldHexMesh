@@ -78,10 +78,8 @@ public:
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
 
-    inline VolumePtr getVolume() const
-    {
-        return _pVolume;
-    }
+    VolumePtr getVolume() const;
+    MainFrame* getMainFrame();
 
     CBoundingBox3Dd getBoundingBox() const;
     CBoundingBox3Dd getMeshBoundingBox() const;
@@ -141,5 +139,14 @@ inline const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> AppData:
     return _pModelMeshData;
 }
 
+inline VolumePtr AppData::getVolume() const
+{
+    return _pVolume;
+}
+
+inline MainFrame* AppData::getMainFrame()
+{
+    return _pMainFrame;
+}
 
 }

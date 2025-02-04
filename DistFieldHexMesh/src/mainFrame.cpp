@@ -510,21 +510,24 @@ void MainFrame::OnSaveAs(wxCommandEvent& event)
 
 }
 
+void MainFrame::reportProgress(double fraction)
+{
+    int val = (int)(PROG_MAX * fraction + 0.5);
+    if (val != _progressValue) {
+        _progressValue = val;
+        wxUpdateUIEvent evt(0);
+        QueueEvent(evt.Clone());
+    }
+
+}
+
 void MainFrame::OnWritePolymesh(wxCommandEvent& event)
 {
     wxDirDialog dlg(this, "Choose OpenFoam Project Directory");
     if (dlg.ShowModal() == wxID_OK) {
         auto dirPath = dlg.GetPath().ToStdString();
         _pBackgroundFuture = std::async(std::launch::async, [this, dirPath]()->bool { 
-            auto progressFunc = [this](double percent) {
-                int val = (int)(PROG_MAX * percent + 0.5);
-                if (val != _progressValue) {
-                    _progressValue = val;
-                    wxUpdateUIEvent evt(0);
-                    QueueEvent(evt.Clone());
-                }
-            };
-            _pAppData->getVolume()->writePolyMesh(dirPath, progressFunc);
+            _pAppData->getVolume()->writePolyMesh(dirPath, this);
 
             Sleep(500);
 

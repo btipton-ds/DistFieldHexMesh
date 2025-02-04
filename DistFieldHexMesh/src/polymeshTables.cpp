@@ -27,15 +27,83 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <polyMeshTables.h>
 #include <volume.h>
+#include <appData.h>
 
 using namespace std;
 using namespace DFHM;
 
 #define WRITE_DEBUG_FILES 1
 
-PolymeshTables::PolymeshTables(const Volume* pVol)
-	:_pVol(pVol)
+PolymeshTables::PolymeshTables(const Volume* pVol, ProgressReporter* pReporter)
+	: _pVol(pVol)
+	, _pProgReporter(pReporter)
 {
+	for (int i = 0; i < 6; i++) {
+		boundaryIndices[i] = -1;
+	}
+}
+
+void PolymeshTables::reportProgress(int step) const
+{
+	if (_pProgReporter)
+		_pProgReporter->reportProgress(step / 9.0);
+}
+
+void PolymeshTables::create()
+{
+	reportProgress(0);
+	createVertMaps();
+	reportProgress(1);
+
+	createPolyhedraMaps();
+	reportProgress(2);
+
+	createPolygonMaps();
+	reportProgress(3);
+
+	createSortPolygons();
+	reportProgress(4);
+
+	createPolygonTables();
+	reportProgress(5);
+}
+
+void PolymeshTables::writeFile(const std::string& dirName) const
+{
+
+	// These can all be done in parallel
+	auto f1 = std::async(std::launch::async, [this, dirName]()->bool {
+		writePoints(dirName);
+		return true;
+		});
+
+	auto f2 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeFaces(dirName);
+		return true;
+		});
+
+	auto f3 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeOwnerCells(dirName);
+		return true;
+		});
+
+	auto f4 = std::async(std::launch::async, [this, dirName]()->bool {
+		writeNeighborCells(dirName);
+		writeBoundaries(dirName);
+		return true;
+		});
+
+	double steps = 9;
+
+	// Wait for them fastest to slowest
+	f4.wait();
+	reportProgress(6);
+	f3.wait();
+	reportProgress(7);
+	f2.wait();
+	reportProgress(8);
+	f1.wait();
+	reportProgress(9);
 }
 
 void PolymeshTables::createVertMaps()

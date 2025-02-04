@@ -48,16 +48,15 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 class Volume;
+class ProgressReporter;
 
 using Index3DToIdxMap = FastBisectionMap<Index3DId, int32_t>;
 
 class PolymeshTables {
 public:
-	PolymeshTables(const Volume* pVol);
-	template<class PROG_LAMBDA>
-	void create(PROG_LAMBDA progFunc);
-	template<class PROG_LAMBDA>
-	void writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const;
+	PolymeshTables(const Volume* pVol, ProgressReporter* pReporter);
+	void create();
+	void writeFile(const std::string& dirName) const;
 
 private:
 	void createVertMaps();
@@ -77,7 +76,10 @@ private:
 	int getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const;
 	void reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
 
+	void reportProgress(int step) const;
+
 	const Volume* _pVol;
+	ProgressReporter* _pProgReporter;
 	int32_t numInner = -1;
 	int32_t boundaryIdx = -1;
 	int32_t boundaryIndices[6];
@@ -94,65 +96,5 @@ private:
 
 	FastBisectionMap<Index3DId, SearchRec> faceIdToSearchRecMap;
 };
-
-template<class PROG_LAMBDA>
-void PolymeshTables::create(PROG_LAMBDA progFunc)
-{
-	double steps = 9;
-
-	progFunc(0);
-	createVertMaps();
-	progFunc(1 / steps);
-
-	createPolyhedraMaps();
-	progFunc(2 / steps);
-
-	createPolygonMaps();
-	progFunc(3 / steps);
-
-	createSortPolygons();
-	progFunc(4 / steps);
-
-	createPolygonTables();
-	progFunc(5 / steps);
-}
-
-template<class PROG_LAMBDA>
-void PolymeshTables::writeFile(const std::string& dirName, PROG_LAMBDA progFunc) const
-{
-	double steps = 9;
-
-	// These can all be done in parallel
-	auto f1 = std::async(std::launch::async, [this, dirName]()->bool {
-		writePoints(dirName);
-		return true;
-	});
-
-	auto f2 = std::async(std::launch::async, [this, dirName]()->bool {
-		writeFaces(dirName);
-		return true;
-	});
-
-	auto f3 = std::async(std::launch::async, [this, dirName]()->bool {
-		writeOwnerCells(dirName);
-		return true;
-	});
-
-	auto f4 = std::async(std::launch::async, [this, dirName]()->bool {
-		writeNeighborCells(dirName);
-		writeBoundaries(dirName);
-		return true;
-	});
-
-	// Wait for them fastest to slowest
-	f4.wait();
-	progFunc(6 / steps);
-	f3.wait();
-	progFunc(7 / steps);
-	f2.wait();
-	progFunc(8 / steps);
-	f1.wait();
-	progFunc(9 / steps);
-}
 
 }
