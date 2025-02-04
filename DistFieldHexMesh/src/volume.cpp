@@ -626,9 +626,6 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 
 	double sharpAngleRadians = params.getSharpAngleRadians();
 
-	size_t num = meshData.size() + params.numSimpleDivs * _blocks.size() + params.numCurvatureDivs * _blocks.size();
-	pReporter->startProgress(num);
-
 	reportProgress(pReporter);
 
 	std::vector<size_t> sharpEdges;
@@ -652,8 +649,8 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 	{
 		Utils::Timer tmr0(Utils::Timer::TT_buildCFDHexMesh);
 
-		divideSimple(params, multiCore);
-		divideConitional(params, multiCore);
+		divideSimple(params, pReporter, multiCore);
+		divideConitional(params, pReporter, multiCore);
 
 // TODO we should be able to clear the reference topology now
 
@@ -681,7 +678,7 @@ void Volume::buildCFDHexes(std::map<std::wstring, MeshDataPtr>& meshData, const 
 
 */
 
-void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
+void Volume::divideSimple(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (params.numSimpleDivs > 0) {
 
@@ -694,13 +691,14 @@ void Volume::divideSimple(const BuildCFDParams& params, bool multiCore)
 			}, multiCore);
 
 			finishSplits(multiCore);
+			pReporter->reportProgress();
 		}
 
 //		assert(verifyTopology(multiCore));
 	}
 }
 
-void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
+void Volume::divideConitional(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	size_t numPasses = params.numConditionalPasses();
 	if (numPasses > 0) {
@@ -721,6 +719,7 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 					count++;
 				}
 			}
+			pReporter->reportProgress();
 
 			bool changed = false;
 			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
@@ -730,10 +729,12 @@ void Volume::divideConitional(const BuildCFDParams& params, bool multiCore)
 				});
 				return true;
 			}, multiCore);
+			pReporter->reportProgress();
 
 			if (changed)
 				finishSplits(multiCore);
 			//		assert(verifyTopology(multiCore));
+			pReporter->reportProgress();
 
 			if (!changed) {
 				cout << "No more splits required: " << passNum << "\n";

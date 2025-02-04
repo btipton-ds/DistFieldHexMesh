@@ -702,9 +702,15 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-        _pVolume->buildCFDHexes(*_pModelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
+        size_t numProgSteps = _pModelMeshData->size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
+        _pMainFrame->startProgress(numProgSteps);
+        auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
+            _pVolume->buildCFDHexes(*_pModelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
 
-        updateHexTess();
+            return 2;
+        }));
+        _pMainFrame->setFuture(pFuture);
+
     } catch (const char* errStr) {
         cout << errStr << "\n";
     }
