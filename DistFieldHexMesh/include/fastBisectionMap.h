@@ -36,7 +36,7 @@ namespace DFHM {
 template<class IDX, class VAL>
 struct FastBisectionMapDefComparator {
 	using PAIR = std::pair<IDX, VAL>;
-	bool operator()(const PAIR& lhs, const PAIR& rhs) const
+	inline bool operator()(const PAIR& lhs, const PAIR& rhs) const
 	{
 		return lhs.first < rhs.first;
 	}
@@ -47,6 +47,9 @@ class FastBisectionMap_with_comp {
 public:
 	using PAIR = std::pair<IDX, VAL>;
 
+	FastBisectionMap_with_comp();
+	FastBisectionMap_with_comp(const COMP& comp);
+
 	void insert(const PAIR& pair, bool sort = false);
 	VAL operator[](const IDX& id) const;
 
@@ -55,9 +58,22 @@ private:
 
 	bool isSorted() const;
 
+	COMP _comp;
 	mutable bool _sorted = true;
 	mutable std::vector<PAIR> _vals;
 };
+
+template<class IDX, class VAL, class COMP>
+FastBisectionMap_with_comp<IDX, VAL, COMP>::FastBisectionMap_with_comp()
+	: _comp(COMP())
+{
+}
+
+template<class IDX, class VAL, class COMP>
+FastBisectionMap_with_comp<IDX, VAL, COMP>::FastBisectionMap_with_comp(const COMP& comp)
+	: _comp(comp)
+{
+}
 
 template<class IDX, class VAL, class COMP>
 void FastBisectionMap_with_comp<IDX, VAL, COMP>::insert(const PAIR& newEntry, bool sort)
