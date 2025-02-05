@@ -48,8 +48,8 @@ namespace DFHM {
 /*
 TODO
 
-Fix cell intersections. They are currently reporting false postives
-Double check layer rendering
+Fix cell intersections. They are currently reporting false positives
+Double check layer counting
 Add depth peeling for transparency. It's more than just a nice to have, it's a debugging tool.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
 Add grid relaxation with vertex sliding along geometric surfaces

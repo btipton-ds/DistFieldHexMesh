@@ -283,12 +283,14 @@ template<class T>
 inline T* ObjectPool<T>::getEntry(size_t index)
 {
 	T* p = nullptr;
-	size_t segNum, segIdx;
-	if (calIndices(index, segNum, segIdx)) {
-		assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
-		p = &((*_objectSegs[segNum])[segIdx]);
+	if (index != -1) {
+		size_t segNum, segIdx;
+		if (calIndices(index, segNum, segIdx)) {
+			assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
+			p = &((*_objectSegs[segNum])[segIdx]);
+		}
+		assert(p);
 	}
-	assert(p);
 	return p;
 }
 
@@ -296,13 +298,15 @@ template<class T>
 inline const T* ObjectPool<T>::getEntry(size_t index) const
 {
 	const T* p = nullptr;
-	size_t segNum, segIdx;
-	if (calIndices(index, segNum, segIdx)) {
-		assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
-		p = &((*_objectSegs[segNum])[segIdx]);
-	}
+	if (index != -1) {
+		size_t segNum, segIdx;
+		if (calIndices(index, segNum, segIdx)) {
+			assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
+			p = &((*_objectSegs[segNum])[segIdx]);
+		}
 
-	assert(p);
+		assert(p);
+	}
 	return p;
 }
 
@@ -319,14 +323,15 @@ bool ObjectPool<T>::free(const Index3DId& globalId)
 		return false;
 
 	size_t index = _idToIndexMap[id];
+	if (index != -1) {
+		T* p = getEntry(index);
+		if (p) {
+			*p = T();
+			_idToIndexMap[id] = -1; // Clear this id so it won't be used again
+			_availableIndices.push_back(index);
 
-	T* p = getEntry(index);
-	if (p) {
-		*p = T();
-		_idToIndexMap[id] = -1; // Clear this id so it won't be used again
-		_availableIndices.push_back(index);
-
-		return true;
+			return true;
+		}
 	}
 	return false;
 }
