@@ -91,7 +91,6 @@ public:
 	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
-	bool intersectsModelPrecise() const; // Requires cell is convex and uses the actual faces
 	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
 
 	void setNeedsDivideAtCentroid();
@@ -107,7 +106,6 @@ public:
 	void setNeedToMakeReference();
 	bool setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params);
 	bool needToDivideDueToSplitFaces(const BuildCFDParams& params);
-	bool containsPointPrecise(const Vector3d& pt) const;
 	void orientFaces();
 
 	void imprintTVertices(Block* pDstBlock);
@@ -175,7 +173,6 @@ private:
 	mutable MTC::set<Index3DId> _cachedAdjCellIds;
 	mutable MTC::set<Index3DId> _cachedVertIds;
 
-	mutable bool _needsConditionalSplitTest = true;
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;
 

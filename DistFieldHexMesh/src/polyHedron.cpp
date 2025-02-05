@@ -504,25 +504,32 @@ CBoundingBox3Dd Polyhedron::getBoundingBox() const
 
 bool Polyhedron::contains(const Vector3d& pt) const
 {
+	const double tol = Tolerance::sameDistTol();
 	bool result = true;
-	Vector3d ctr = calCentroid();
+
+	auto cellCtr = calCentroidApproxFast(); // Just need a point inside
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &pt, &ctr, &result](const Polygon& face) {
+		faceFunc(faceId, [this, &tol, &pt, &cellCtr, &result](const Polygon& face) {
 			const double tol = Tolerance::sameDistTol();
-			Vector3d faceCtr = face.calCentroid();
-			Vector3d norm = face.calUnitNormal();
+			face.iterateTriangles([this, &tol, &pt, &cellCtr, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				Vector3d triPts[] = {
+					getVertexPoint(id0),
+					getVertexPoint(id1),
+					getVertexPoint(id2),
+				};
+				Planed pl(triPts[0], triPts[1], triPts[2]);
+				Vector3d v = triPts[0] - cellCtr;
 
-			Vector3d vCtr = ctr - faceCtr;
-			vCtr.normalize();
-			if (vCtr.dot(norm) > 0)
-				norm = -norm;
+				// Assure vector is pointing outwards
+				if (v.dot(pl.getNormal()) < 0)
+					pl.reverse();
 
-			Vector3d vTestPt = pt - faceCtr;
-			vTestPt.normalize();
-
-			if (norm.dot(vTestPt) > tol)
-				result = false;
+				double dist = pl.distanceToPoint(pt);
+				return dist > tol;
+			});
 		});
+		if (!result)
+			break;
 	}
 
 	return result;
@@ -676,7 +683,7 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::intersectsModel() const
 {
-	if (_intersectsModel == IS_UNKNOWN) {
+	if (true || _intersectsModel == IS_UNKNOWN) {
 		CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
 
 		auto& meshData = *getBlockPtr()->getModelMeshData();
@@ -686,219 +693,81 @@ bool Polyhedron::intersectsModel() const
 			if (pMesh->findTris(bbox, triIndices)) {
 				for (size_t triIdx : triIndices) {
 					const auto& tri = pMesh->getTri(triIdx);
+					Vector3d pts[3];
 					for (int i = 0; i < 3; i++) {
 						const auto& pt = pMesh->getVert(tri[i])._pt;
+#if 0
 						if (contains(pt)) {
 							_intersectsModel = IS_TRUE;
 							return true;
 						}
+#endif
+						pts[i] = pt;
 					}
+
+					for (const auto& faceId : _faceIds) {
+						faceFunc(faceId, [this, &pts](const Polygon& face) {
+							if (face.intersectsTri(pts)) {
+								_intersectsModel = IS_TRUE;
+							}
+						});
+
+						if (_intersectsModel == IS_TRUE)
+							return true;
+					}
+
 				}
 			}
-		}
-
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this](const Polygon& face) {
-				if (face.intersectsModel()) {
-					_intersectsModel = IS_TRUE;
-				}
-			});
-
-			if (_intersectsModel == IS_TRUE)
-				return true;
 		}
 
 		_intersectsModel = IS_FALSE;
 	}
 
-
-#if 0
-		const auto& modelData = *getBlockPtr()->getModelMeshData();
-		for (const auto& pair : modelData) {
-			auto pTriMesh = pair.second->getMesh();
-			auto sharps = getBlockPtr()->getVolume()->getSharpVertIndices();
-			for (size_t idx : sharps) {
-				if (bbox.contains(pTriMesh->getVert(idx)._pt, Tolerance::sameDistTol()))
-					return true;
-			}
-
-			_intersectsModel = IS_FALSE;
-			vector<size_t> triEntries;
-			if (pTriMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
-				for (const auto& faceId : _faceIds) {
-					faceFunc(faceId, [this, &triEntries, &pTriMesh](const Polygon& face) {
-						const double tol = Tolerance::sameDistTol();
-						const auto& vertIds = face.getVertexIds();
-						for (size_t i = 0; i < vertIds.size(); i++) {
-							size_t j = (i + 1) % vertIds.size();
-							LineSegmentd seg(getVertexPoint(vertIds[i]), getVertexPoint(vertIds[j]));
-							for (size_t triIdx : triEntries) {
-								RayHitd hit;
-								if (pTriMesh->intersectsTri(seg, triIdx, tol, hit)) {
-									_intersectsModel = IS_TRUE;
-									break;
-								}
-							}
-							if (_intersectsModel = IS_TRUE)
-								break;
-						}
-						});
-
-					if (_intersectsModel = IS_TRUE)
-						break;
-				}
-			}
-		}
-
-#endif
 	return _intersectsModel == IS_TRUE; // Don't test split cells
-}
-
-bool Polyhedron::intersectsModelPrecise() const
-{
-#if 0
-	assert(isConvex());
-
-	CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
-	const auto& pRepo = getBlockPtr()->getMeshRepo();
-	const auto& tris = pRepo->get<Vector3i>();
-	const auto& pts = pRepo->get<TriMesh::CVertex>();
-
-	for (const auto& faceId : _faceIds) {
-		bool result = false;
-		faceFunc(faceId, [this, &pRepo, &result](const Polygon& face) {
-			const double tol = Tolerance::sameDistTol();
-			const auto& vertIds = face.getVertexIds();
-			for (size_t i = 0; i < vertIds.size(); i++) {
-				size_t j = (i + 1) % vertIds.size();
-				const auto& vertId0 = vertIds[i];
-				const auto& vertId1 = vertIds[j];
-
-				Vector3d pt0 = getVertexPoint(vertId0);
-				Vector3d pt1 = getVertexPoint(vertId1);
-				LineSegmentd seg(pt0, pt1);
-				for (size_t triIdx : _triIndices) {
-					RayHitd hit;
-					if (pRepo->intersectsTri(seg, triIdx, tol, hit) || containsPointPrecise(pt0) || containsPointPrecise(pt1)) {
-						result = true;
-						break;
-					}
-				}
-				if (result)
-					break;
-			}
-			});
-
-		if (result)
-			return true;
-	}
-#endif
-	return false;
-#if 0
-	auto pMesh = getBlockPtr()->getModelMesh();
-	auto bbox = getBoundingBox();
-	vector<size_t> triEntries;
-	if (pMesh->processFoundTris(_triIndices, bbox, triEntries) > 0) {
-		for (const auto& faceId : _faceIds) {
-			bool result = false;
-			faceFunc(faceId, [this, &triEntries, &pMesh, &result](const Polygon& face) {
-				const double tol = Tolerance::sameDistTol();
-				const auto& vertIds = face.getVertexIds();
-				for (size_t i = 0; i < vertIds.size(); i++) {
-					size_t j = (i + 1) % vertIds.size();
-					const auto& vertId0 = vertIds[i];
-					const auto& vertId1 = vertIds[j];
-
-					Vector3d pt0 = getVertexPoint(vertId0);
-					Vector3d pt1 = getVertexPoint(vertId1);
-					LineSegmentd seg(pt0, pt1);
-					for (size_t triIdx : triEntries) {
-						RayHitd hit;
-						if (pMesh->intersectsTri(seg, triIdx, tol, hit)) {
-							if (containsPointPrecise(pt0) || containsPointPrecise(pt1)) {
-								result = true;
-								break;
-							}
-						}
-					}
-					if (result)
-						break;
-				}
-			});
-
-			if (result)
-				return true;
-		}
-	}
-#endif
-	return false;
-}
-
-bool Polyhedron::containsPointPrecise(const Vector3d& pt) const
-{
-	if (!isConvex()) {
-		assert(!"Cell is not convex.");
-		return false;
-	}
-	for (const auto& faceId : _faceIds) {
-		bool result = true;
-		faceFunc(faceId, [this, &pt, &result](const Polygon& face) {
-			face.iterateTriangles([this, &pt, &result](const Index3DId& vertId0, const Index3DId& vertId1, const Index3DId& vertId2)->bool {
-				auto pt0 = getVertexPoint(vertId0);
-				auto pt1 = getVertexPoint(vertId1);
-				auto pt2 = getVertexPoint(vertId2);
-				Vector3d v0 = pt0 - pt1;
-				Vector3d v1 = pt2 - pt1;
-				Vector3d n = v1.cross(v0).normalized();
-				Planed pl(pt0, n);
-				double d = pl.distanceToPoint(pt);
-				result = d < -Tolerance::sameDistTol();
-				return result;
-			});
-		});
-		if (!result)
-			return false;
-	}
-
-	return true;
 }
 
 bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 {
 	if (_sharpEdgesIntersectModel == IS_FALSE)
 		return false;
-#if 0
+
+	CBoundingBox3Dd bbox = getBoundingBox();
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
 	MTC::vector<size_t> sharpEdges;
-	auto pMesh = getBlockPtr()->getModelMesh();
-	for (size_t edgeIdx : _edgeIndices) {
-		if (pMesh->isEdgeSharp(edgeIdx, sinSharpEdgeAngle))
-			sharpEdges.push_back(edgeIdx);
-	}
-
-	if (sharpEdges.empty())
-		return false;
-
-	_sharpEdgesIntersectModel = IS_FALSE;
-	for (const auto& faceId : getFaceIds()) {
-		faceFunc(faceId, [this, &sharpEdges, &pMesh](const Polygon& face) {
-			size_t numHits = 0;
-			for (size_t edgeIdx : sharpEdges) {
-				const auto& edge = pMesh->getEdge(edgeIdx);
-				auto seg = edge.getSeg(pMesh);
-				RayHitd hit;
-				if (face.intersect(seg, hit)) {
-					numHits += 1;
-				}
+	auto& meshData = *getBlockPtr()->getModelMeshData();
+	for (auto& pair : meshData) {
+		auto& pMesh = pair.second->getMesh();
+		vector<size_t> edgeIndices;
+		if (pMesh->findEdges(bbox, edgeIndices)) {
+			for (size_t edgeIdx : edgeIndices) {
+				if (pMesh->isEdgeSharp(edgeIdx, sinSharpEdgeAngle))
+					sharpEdges.push_back(edgeIdx);
 			}
-			if (numHits > 1)
-				_sharpEdgesIntersectModel = IS_TRUE;
-		});
+		}
 
-		if (_sharpEdgesIntersectModel == IS_TRUE)
-			return true;
+		if (sharpEdges.empty())
+			return false;
+
+		_sharpEdgesIntersectModel = IS_FALSE;
+		for (const auto& faceId : getFaceIds()) {
+			faceFunc(faceId, [this, &sharpEdges, &pMesh](const Polygon& face) {
+				size_t numHits = 0;
+				for (size_t edgeIdx : sharpEdges) {
+					const auto& edge = pMesh->getEdge(edgeIdx);
+					auto seg = edge.getSeg(pMesh);
+					RayHitd hit;
+					if (face.intersect(seg, hit)) {
+						numHits += 1;
+					}
+				}
+				if (numHits > 1)
+					_sharpEdgesIntersectModel = IS_TRUE;
+				});
+
+			if (_sharpEdgesIntersectModel == IS_TRUE)
+				return true;
+		}
 	}
-#endif
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
@@ -931,19 +800,21 @@ bool Polyhedron::setNeedsCleanFaces()
 bool Polyhedron::containsSharps() const
 {
 	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
-#if 0
-	auto bbox = getBoundingBox();
-	auto pMesh = getBlockPtr()->getModelMesh();
-	for (size_t vertIdx : vertIndices) {
-		const auto& pt = pMesh->getVert(vertIdx)._pt;
-		if (bbox.contains(pt, Tolerance::sameDistTol()))
-			return true;
-	}
 
-	vector<size_t> triIndices;
-	if (pMesh->processFoundTris(_triIndices, bbox, triIndices) > 0) {
+	auto bbox = getBoundingBox();
+	const auto& meshData = *getBlockPtr()->getModelMeshData();
+	for (const auto& pair : meshData) {
+		auto pMesh = pair.second->getMesh();
+		for (size_t vertIdx : vertIndices) {
+			const auto& pt = pMesh->getVert(vertIdx)._pt;
+			if (bbox.contains(pt, Tolerance::sameDistTol()))
+				return true;
+		}
+
+		vector<size_t> triIndices;
+		if (pMesh->findTris(bbox, triIndices) > 0) {
+		}
 	}
-#endif
 	return false;
 }
 
@@ -1176,25 +1047,19 @@ bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params)
 {
-	if (!_needsConditionalSplitTest)
-		return false;
-
 	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
 
-	_needsConditionalSplitTest = false;
-
-	bool needToSplit = false;
-	if (!needToSplit && passNum < params.numIntersectionDivs) {
-		if (intersectsModel())
-			needToSplit = true;
+	if (passNum < params.numIntersectionDivs && intersectsModel()) {
+		setNeedsDivideAtCentroid();
+		return true;
 	}
 
-	if (!needToSplit && passNum < params.numSharpEdgeIntersectionDivs) {
-		if (sharpEdgesIntersectModel(params))
-			needToSplit = true;
+	if (passNum < params.numSharpEdgeIntersectionDivs && sharpEdgesIntersectModel(params)) {
+		setNeedsDivideAtCentroid();
+		return true;		
 	}
 
-	if (!needToSplit && passNum < params.numCurvatureDivs) {
+	if (passNum < params.numCurvatureDivs) {
 		double maxEdgeLength = 0;
 
 		CBoundingBox3Dd bbox = getBoundingBox();
@@ -1226,16 +1091,14 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 					maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
 				}
 			}
-			if (2 * maxEdgeLength > maxAllowedEdgeLen)
-				needToSplit = true;
+			if (2 * maxEdgeLength > maxAllowedEdgeLen) {
+				setNeedsDivideAtCentroid();
+				return true;
+			}
 		}
 	}
 
-	if (needToSplit) {
-		setNeedsDivideAtCentroid();
-	}
-
-	return needToSplit;
+	return false;
 }
 
 bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)

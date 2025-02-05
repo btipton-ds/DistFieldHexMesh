@@ -56,6 +56,7 @@ Add grid relaxation with vertex sliding along geometric surfaces
 Add cell cutting
 Add cell,face,edge squeezing
 Add distance field offsetting for boundary layers
+Switch objectPool search to use FastBisectionMap.
 
 Split normals at shared vertices. Same as sharp edge rendering, but this fixes badly interpolated curvatures which are messing up
 splitting.

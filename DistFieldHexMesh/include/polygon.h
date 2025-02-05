@@ -159,6 +159,7 @@ public:
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	bool intersectsModel() const;
+	bool intersectsTri(const Vector3d pts[3]) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;

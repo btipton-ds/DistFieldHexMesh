@@ -745,7 +745,7 @@ bool Polygon::intersectsModel() const
 							bool result = false;
 							getTriPoints([this, modelTri](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2) {
 								Vector3d meshTri[] = { pt0, pt1, pt2 };
-								if (collisionTriTri(modelTri, meshTri, Tolerance::sameDistTol())) {
+								if (intersectTriTri(modelTri, meshTri, Tolerance::sameDistTol())) {
 									_cachedIntersectsModel = IS_TRUE;
 								}
 							},
@@ -798,6 +798,23 @@ bool Polygon::intersectsModel() const
 	}
 
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
+}
+
+bool Polygon::intersectsTri(const Vector3d pts[3]) const
+{
+	bool result;
+	const double tol = Tolerance::sameDistTol();
+	iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+		Vector3d facePts[] = {
+			getVertexPoint(id0),
+			getVertexPoint(id1),
+			getVertexPoint(id2),
+		};
+
+		result = intersectTriTri(pts, facePts, tol);
+		return !result; // false exits the lambda for loop
+	});
+	return result;
 }
 
 double Polygon::distFromPlane(const Vector3d& pt) const
