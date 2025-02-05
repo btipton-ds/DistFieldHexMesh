@@ -282,23 +282,28 @@ inline bool ObjectPool<T>::calIndices(size_t index, size_t& segNum, size_t& segI
 template<class T>
 inline T* ObjectPool<T>::getEntry(size_t index)
 {
-	// TODO pass the elementId, not the index. Compute the index here to avoid confusion.
+	T* p = nullptr;
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
-		return &((*_objectSegs[segNum])[segIdx]);
+		assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
+		p = &((*_objectSegs[segNum])[segIdx]);
 	}
-	return nullptr;
+	assert(p);
+	return p;
 }
 
 template<class T>
 inline const T* ObjectPool<T>::getEntry(size_t index) const
 {
-	// TODO pass the elementId, not the index. Compute the index here to avoid confusion.
+	const T* p = nullptr;
 	size_t segNum, segIdx;
 	if (calIndices(index, segNum, segIdx)) {
-		return &((*_objectSegs[segNum])[segIdx]);
+		assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
+		p = &((*_objectSegs[segNum])[segIdx]);
 	}
-	return nullptr;
+
+	assert(p);
+	return p;
 }
 
 template<class T>
@@ -585,9 +590,11 @@ void ObjectPool<T>::iterateInOrder(F fLambda) const
 	for (size_t idx = 0; idx < num; idx++) {
 		size_t index = _idToIndexMap[idx];
 		if (index != -1) {
-			Index3DId id(blkIdx, idx);
 			auto p = getEntry(index);
-			fLambda(id, *p);
+			if (p) {
+				Index3DId id(blkIdx, idx);
+				fLambda(id, *p);
+			}
 		}
 	}
 }
@@ -601,9 +608,11 @@ void ObjectPool<T>::iterateInOrder(F fLambda)
 	for (size_t idx = 0; idx < num; idx++) {
 		size_t index = _idToIndexMap[idx];
 		if (index != -1) {
-			Index3DId id(blkIdx, idx);
 			auto p = getEntry(index);
-			fLambda(id , *p);
+			if (p) {
+				Index3DId id(blkIdx, idx);
+				fLambda(id, *p);
+			}
 		}
 	}
 }

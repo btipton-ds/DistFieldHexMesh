@@ -1406,18 +1406,20 @@ bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)
 			changed = true;
 		}
 	} else {
+		auto pBlk = getBlockPtr();
 		if (propagate) {
 			const auto& adj = getAdjacentCells();
 			for (const auto& id : adj) {
-				cellFunc(id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
-					if (adjCell.getLayerNum() == -1) {
-						adjCell.setLayerNum(thisLayerNum, false);
-						changed = true;
-					}
-				});
+				if (pBlk->polyhedronExists(id)) {
+					cellFunc(id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
+						if (adjCell.exists() && adjCell.getLayerNum() == -1) {
+							adjCell.setLayerNum(thisLayerNum, false);
+							changed = true;
+						}
+					});
+				}
 			}
 		} else {
-			auto pBlk = getBlockPtr();
 			pBlk->addToSeedFillList(_thisId);
 			_layerNum = thisLayerNum;
 			changed = true;

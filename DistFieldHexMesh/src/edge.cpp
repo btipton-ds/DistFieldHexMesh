@@ -323,12 +323,16 @@ void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
 {
 	cellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		pBlock->faceFunc(faceId, [&cellIds](const Polygon& face) {
-			const auto& adjCellIds = face.getCellIds();
-			for (const auto& cellId : adjCellIds) {
-				cellIds.insert(cellId);
-			}
-		});
+		if (pBlock->polygonExists(faceId)) {
+			pBlock->faceFunc(faceId, [&pBlock, &cellIds](const Polygon& face) {
+				const auto& adjCellIds = face.getCellIds();
+				for (const auto& cellId : adjCellIds) {
+					if (pBlock->polyhedronExists(cellId)) {
+						cellIds.insert(cellId);
+					}
+				}
+			});
+		}
 	}
 }
 

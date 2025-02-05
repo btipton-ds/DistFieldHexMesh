@@ -1487,16 +1487,18 @@ bool Block::incrementLayerNums(int i)
 	bool changed = false;
 	if (i == 0) {
 		_polyhedra.iterateInOrder([i, &changed](const Index3DId& cellId, Polyhedron& cell) {
-			if (cell.setLayerNum(i, true))
+			if (cell.exists() && cell.setLayerNum(i, true))
 				changed = true;
 		});
 	} else {
 		const auto& cellIds = _seedFillList[_seedFillReadIdx];
 		for (const auto& cellId : cellIds) {
-			cellFunc(cellId, [i, &changed](Polyhedron& cell) {
-				if (cell.setLayerNum(i, true))
-					changed = true;
-			});
+			if (polyhedronExists(cellId)) {
+				cellFunc(cellId, [i, &changed](Polyhedron& cell) {
+					if (cell.exists() && cell.setLayerNum(i, true))
+						changed = true;
+				});
+			}
 		}
 	}
 
