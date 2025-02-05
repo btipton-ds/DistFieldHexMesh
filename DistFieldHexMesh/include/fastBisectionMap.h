@@ -34,9 +34,19 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 template<class IDX, class VAL>
-class FastBisectionMap {
+struct FastBisectionMapDefComparator {
+	using PAIR = std::pair<IDX, VAL>;
+	bool operator()(const PAIR& lhs, const PAIR& rhs) const
+	{
+		return lhs.first < rhs.first;
+	}
+};
+
+template<class IDX, class VAL, class COMP>
+class FastBisectionMap_with_comp {
 public:
 	using PAIR = std::pair<IDX, VAL>;
+
 	void insert(const PAIR& pair, bool sort = false);
 	VAL operator[](const IDX& id) const;
 
@@ -49,8 +59,8 @@ private:
 	mutable std::vector<PAIR> _vals;
 };
 
-template<class IDX, class VAL>
-void FastBisectionMap<IDX, VAL>::insert(const PAIR& newEntry, bool sort)
+template<class IDX, class VAL, class COMP>
+void FastBisectionMap_with_comp<IDX, VAL, COMP>::insert(const PAIR& newEntry, bool sort)
 {
 	if (!sort) {
 		_vals.push_back(newEntry);
@@ -94,8 +104,8 @@ void FastBisectionMap<IDX, VAL>::insert(const PAIR& newEntry, bool sort)
 #endif
 }
 
-template<class IDX, class VAL>
-VAL FastBisectionMap<IDX, VAL>::operator[](const IDX& id) const
+template<class IDX, class VAL, class COMP>
+VAL FastBisectionMap_with_comp<IDX, VAL, COMP>::operator[](const IDX& id) const
 {
 	size_t idx0, idx1;
 	size_t idx;
@@ -107,8 +117,8 @@ VAL FastBisectionMap<IDX, VAL>::operator[](const IDX& id) const
 	return VAL();
 }
 
-template<class IDX, class VAL>
-void FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const
+template<class IDX, class VAL, class COMP>
+void FastBisectionMap_with_comp<IDX, VAL, COMP>::findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const
 {
 	if (_vals.empty()) {
 		idx = idx0 = idx1 = -1;
@@ -116,9 +126,7 @@ void FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx, size_t& idx
 	}
 
 	if (!_sorted) {
-		auto comp = [](const PAIR& lhs, const PAIR& rhs)->bool {
-			return lhs.first < rhs.first;
-			};
+		COMP comp;
 		std::sort(_vals.begin(), _vals.end(), comp);
 		_sorted = true;
 	}
@@ -152,8 +160,8 @@ void FastBisectionMap<IDX, VAL>::findIdx(const IDX& id, size_t& idx, size_t& idx
 	}
 }
 
-template<class IDX, class VAL>
-bool FastBisectionMap<IDX, VAL>::isSorted() const
+template<class IDX, class VAL, class COMP>
+bool FastBisectionMap_with_comp<IDX, VAL, COMP>::isSorted() const
 {
 	for (size_t i = 0; i < _vals.size() - 1; i++) {
 		if (_vals[i + 1].first < _vals[i].first)
@@ -161,5 +169,8 @@ bool FastBisectionMap<IDX, VAL>::isSorted() const
 	}
 	return true;
 }
+
+template<class IDX, class VAL>
+using FastBisectionMap = FastBisectionMap_with_comp<IDX, VAL, FastBisectionMapDefComparator<IDX, VAL>>;
 
 }
