@@ -509,24 +509,8 @@ bool Polyhedron::contains(const Vector3d& pt) const
 
 	auto cellCtr = calCentroidApproxFast(); // Just need a point inside
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &tol, &pt, &cellCtr, &result](const Polygon& face) {
-			const double tol = Tolerance::sameDistTol();
-			face.iterateTriangles([this, &tol, &pt, &cellCtr, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				Vector3d triPts[] = {
-					getVertexPoint(id0),
-					getVertexPoint(id1),
-					getVertexPoint(id2),
-				};
-				Planed pl(triPts[0], triPts[1], triPts[2]);
-				Vector3d v = triPts[0] - cellCtr;
-
-				// Assure vector is pointing outwards
-				if (v.dot(pl.getNormal()) < 0)
-					pl.reverse();
-
-				double dist = pl.distanceToPoint(pt);
-				return dist > tol;
-			});
+		faceFunc(faceId, [&pt, &cellCtr, &result](const Polygon& face) {
+			result = face.isPointInside(pt, cellCtr);
 		});
 		if (!result)
 			break;
@@ -683,7 +667,14 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::intersectsModel() const
 {
-	if (true || _intersectsModel == IS_UNKNOWN) {
+	if (_intersectsModel == IS_UNKNOWN) {
+		auto cornerVerts = getVertIds();
+		for (const auto& vertId : cornerVerts) {
+			if (contains(getVertexPoint(vertId))) {
+				_intersectsModel = IS_TRUE;
+				return true;
+			}
+		}
 		CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
 
 		auto& meshData = *getBlockPtr()->getModelMeshData();
@@ -693,17 +684,11 @@ bool Polyhedron::intersectsModel() const
 			if (pMesh->findTris(bbox, triIndices)) {
 				for (size_t triIdx : triIndices) {
 					const auto& tri = pMesh->getTri(triIdx);
-					Vector3d pts[3];
-					for (int i = 0; i < 3; i++) {
-						const auto& pt = pMesh->getVert(tri[i])._pt;
-#if 0
-						if (contains(pt)) {
-							_intersectsModel = IS_TRUE;
-							return true;
-						}
-#endif
-						pts[i] = pt;
-					}
+					Vector3d pts[] = {
+						pMesh->getVert(tri[0])._pt,
+						pMesh->getVert(tri[1])._pt,
+						pMesh->getVert(tri[2])._pt,
+					};
 
 					for (const auto& faceId : _faceIds) {
 						faceFunc(faceId, [this, &pts](const Polygon& face) {

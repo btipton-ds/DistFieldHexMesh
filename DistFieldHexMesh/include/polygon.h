@@ -176,6 +176,7 @@ public:
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
+	bool isPointInside(const Vector3d& pt, const Vector3d& insidePt) const;
 
 	Vector3d getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;
@@ -208,6 +209,7 @@ private:
 
 	void initVertices(const Volume* pVol) const;
 	bool imprintVertexInner(const Index3DId& imprintVert);
+	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
 	void clearCache() const;
