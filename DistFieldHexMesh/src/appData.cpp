@@ -674,7 +674,7 @@ void AppData::doCreateBaseVolume()
 
     Index3D::setBlockDim(1);
 
-    _pMainFrame->startProgress(12);
+    _pMainFrame->startProgress(14);
     auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
         Vector3d cubePts[8];
         CBoundingBox3Dd volBox;
@@ -685,6 +685,11 @@ void AppData::doCreateBaseVolume()
         //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
         _pVolume->setLayerNums();
+        _pMainFrame->reportProgress();
+
+        buildHexFaceTables();
+
+        _pMainFrame->reportProgress();
 
         return 2;
     }));
@@ -704,10 +709,13 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-        size_t numProgSteps = _pModelMeshData->size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
+        size_t numProgSteps = 1 + _pModelMeshData->size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
             _pVolume->buildCFDHexes(*_pModelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
+
+            buildHexFaceTables();
+            _pMainFrame->reportProgress();
 
             return 2;
         }));
