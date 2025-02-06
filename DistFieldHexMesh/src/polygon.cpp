@@ -1211,6 +1211,21 @@ bool Polygon::verifyUniqueStat(const MTC::vector<Index3DId>& vertIds)
 	return valid;
 }
 
+int64_t Polygon::getLayerNum() const
+{
+	// Get the layer number of the lowest layer numbered cell.
+	int64_t layerNum = -1;
+	for (const auto& cellId : _cellIds) {
+		cellFunc(cellId, [&layerNum](const Polyhedron& cell) {
+			int64_t cellLayerNum = cell.getLayerNum();
+			if (cellLayerNum != -1 && (layerNum == -1 || cellLayerNum < layerNum))
+				layerNum = cellLayerNum;			
+		});
+	}
+
+	return layerNum;
+}
+
 bool Polygon::verifyTopology() const
 {
 	bool valid = true;

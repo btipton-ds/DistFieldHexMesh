@@ -1146,19 +1146,8 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		}
 	}
 
-	int64_t layerNum = -1;
-	const auto& cellIds = face.getCellIds();
-	for (const auto& cellId : cellIds) {
-		cellFunc(cellId, [&layerNum](const Polyhedron& cell) {
-			int64_t cellLayerNum = cell.getLayerNum();
-			if (cellLayerNum != -1) {
-				if (layerNum == -1)
-					layerNum = cellLayerNum;
-				else if (cellLayerNum < layerNum)
-					layerNum = cellLayerNum;
-			}
-		});
-	}
+	int64_t layerNum = face.getLayerNum();
+
 	bool isBlockBoundary = face.isBlockBoundary();
 	bool isModelBoundary = isWall;
 	if (isModelBoundary) {
