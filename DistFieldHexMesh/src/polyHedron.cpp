@@ -668,14 +668,14 @@ bool Polyhedron::isConvex() const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
-		auto cornerVerts = getVertIds();
+		auto& cornerVerts = getVertIds();
 		for (const auto& vertId : cornerVerts) {
 			if (contains(getVertexPoint(vertId))) {
 				_intersectsModel = IS_TRUE;
 				return true;
 			}
 		}
-		CBoundingBox3Dd bbox = getBoundingBox(), modelBBox;
+		CBoundingBox3Dd bbox = getBoundingBox();
 
 		auto& meshData = *getBlockPtr()->getModelMeshData();
 		for (auto& pair : meshData) {
@@ -684,10 +684,10 @@ bool Polyhedron::intersectsModel() const
 			if (pMesh->findTris(bbox, triIndices)) {
 				for (size_t triIdx : triIndices) {
 					const auto& tri = pMesh->getTri(triIdx);
-					Vector3d pts[] = {
-						pMesh->getVert(tri[0])._pt,
-						pMesh->getVert(tri[1])._pt,
-						pMesh->getVert(tri[2])._pt,
+					const Vector3d* pts[] = {
+						&pMesh->getVert(tri[0])._pt,
+						&pMesh->getVert(tri[1])._pt,
+						&pMesh->getVert(tri[2])._pt,
 					};
 
 					for (const auto& faceId : _faceIds) {

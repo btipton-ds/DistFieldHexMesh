@@ -159,7 +159,7 @@ public:
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	bool intersectsModel() const;
-	bool intersectsTri(const Vector3d pts[3]) const;
+	bool intersectsTri(const Vector3d* pts[3]) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d interpolatePoint(double t, double u) const;
@@ -178,7 +178,7 @@ public:
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& insidePt) const;
 
-	Vector3d getVertexPoint(const Index3DId& id) const;
+	const Vector3d& getVertexPoint(const Index3DId& id) const;
 	size_t getCreatedDuringSplitNumber() const;
 	void setCreatedDuringSplitNumber(size_t val);
 

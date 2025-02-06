@@ -840,7 +840,7 @@ bool Block::removeFaceFromLookUp(const Index3DId& faceId)
 	return pOwner->_polygons.removeFromLookup(faceId);
 }
 
-Vector3d Block::getVertexPoint(const Index3DId& vertId) const
+const Vector3d& Block::getVertexPoint(const Index3DId& vertId) const
 {
 	auto pOwner = getOwner(vertId);
 	return pOwner->_vertices[vertId].getPoint();

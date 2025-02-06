@@ -800,15 +800,15 @@ bool Polygon::intersectsModel() const
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polygon::intersectsTri(const Vector3d pts[3]) const
+bool Polygon::intersectsTri(const Vector3d* pts[3]) const
 {
 	bool result;
 	const double tol = Tolerance::sameDistTol();
 	iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-		Vector3d facePts[] = {
-			getVertexPoint(id0),
-			getVertexPoint(id1),
-			getVertexPoint(id2),
+		const Vector3d* facePts[] = {
+			&getVertexPoint(id0),
+			&getVertexPoint(id1),
+			&getVertexPoint(id2),
 		};
 
 		result = intersectTriTri(pts, facePts, tol);
@@ -1314,7 +1314,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	return out;
 }
 
-inline Vector3d Polygon::getVertexPoint(const Index3DId& id) const
+inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 {
 	return getBlockPtr()->getVertexPoint(id);
 }
