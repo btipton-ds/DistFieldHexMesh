@@ -134,7 +134,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 			const unsigned int _idx1;
 		};
 
-		void createVertexBuffers(const Block::GlHexFacesVector& faces);
+		void createBlockMeshStorage(const Block::GlHexFacesVector& faces);
 
 		size_t getVertexIdx(const Vector3f& pt);
 		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);

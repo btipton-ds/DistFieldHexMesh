@@ -119,6 +119,8 @@ void DrawHexMesh::clearPrior()
 {
     _faceTessellations.clear();
     _edgeTessellations.clear();
+    _triIndices.clear();
+    _edgeIndices.clear();
 
     _VBOs->_edgeVBO.clear();
     _VBOs->_faceVBO.clear();
@@ -177,15 +179,14 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
     Block::GlHexMeshGroup blockMeshes;
 
-    _triIndices.clear();
-    _edgeIndices.clear();
-
-    _triIndices.resize(FT_ALL);
-    _edgeIndices.resize(FT_ALL);
+    _triIndices.resize(FT_ALL + 1);
+    _edgeIndices.resize(FT_ALL + 1);
+    _faceTessellations.resize(FT_ALL + 1);
+    _edgeTessellations.resize(FT_ALL + 1);
 
     pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
 
-    createVertexBuffers(blockMeshes[FT_ALL]);
+    createBlockMeshStorage(blockMeshes[FT_ALL]);
 
     MultiCore::runLambda([this, &blockMeshes](size_t threadNum, size_t numThreads) {
         for (size_t mode = threadNum; mode < FT_ALL; mode += numThreads) {
@@ -232,7 +233,7 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
                 }
             }
         }
-        }, multiCore);
+    }, multiCore);
 }
 
 void DrawHexMesh::copyHexFaceTablesToVBOs()
@@ -243,6 +244,16 @@ void DrawHexMesh::copyHexFaceTablesToVBOs()
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
 
+    // This stores the points and normals for all drawing
+    vector<float> triParameters;
+    triParameters.resize(_triPoints.size(), 0);
+    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(FT_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[FT_ALL]);
+    _faceTessellations[FT_ALL] = pFaceTess;
+
+    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(FT_ALL, 0, _edgePoints, _edgeIndices[FT_ALL]);
+    _edgeTessellations[FT_ALL] = pEdgeTess;
+
+    // This only stores indices which reference FT_ALL
     for (size_t mode = 0; mode < FT_ALL; mode++) {
         FaceDrawType faceType = (FaceDrawType)mode;
         if (!_triIndices[mode].empty()) {
@@ -484,14 +495,8 @@ void DrawHexMesh::postDrawFaces()
     glDisable(GL_BLEND);
 }
 
-void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
+void DrawHexMesh::createBlockMeshStorage(const Block::GlHexFacesVector& faces)
 {
-    std::vector<std::vector<unsigned int>> triIndices, edgeIndices;
-    triIndices.resize(FT_ALL + 1);
-    edgeIndices.resize(FT_ALL + 1);
-    _faceTessellations.resize(FT_ALL + 1);
-    _edgeTessellations.resize(FT_ALL + 1);
-
     size_t triIdx = 0, edgeIdx = 0;
     for (const auto& pBlockMesh : faces) {
         if (!pBlockMesh)
@@ -507,7 +512,7 @@ void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
                 Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
                 Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
                 size_t idx = getVertexIdx(ptf, normf);
-                triIndices[FT_ALL].push_back(idx);
+                _triIndices[FT_ALL].push_back(idx);
             }
         }
 
@@ -526,22 +531,14 @@ void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
 
                 GLEdge e(idx0, idx1);
                 if (_edgeMap.find(e) == _edgeMap.end()) {
-                    size_t eIdx = edgeIndices.size() / 2;
-                    edgeIndices[FT_ALL].push_back(idx0);
-                    edgeIndices[FT_ALL].push_back(idx1);
+                    size_t eIdx = _edgeIndices.size() / 2;
+                    _edgeIndices[FT_ALL].push_back(idx0);
+                    _edgeIndices[FT_ALL].push_back(idx1);
                     _edgeMap.insert(make_pair(e, eIdx));
                 }
             }
         }
     }
-
-    vector<float> triParameters;
-    triParameters.resize(_triPoints.size(), 0);
-    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(FT_ALL, 0, _triPoints, _triNormals, triParameters, triIndices[FT_ALL]);
-    _faceTessellations[FT_ALL] = pFaceTess;
-
-    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(FT_ALL, 0, _edgePoints, edgeIndices[FT_ALL]);
-    _edgeTessellations[FT_ALL] = pEdgeTess;
 
 }
 
