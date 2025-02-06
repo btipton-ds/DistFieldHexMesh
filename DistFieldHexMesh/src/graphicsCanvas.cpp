@@ -630,51 +630,30 @@ void GraphicsCanvas::render()
     const GLuint bindingPoint = 1;
     static GLuint vertUboIdx = -1;
     static GLint blockSize = -1;
-    static GLuint buffer = -1;
+    static GLuint uniformBuffer = -1;
     if (vertUboIdx == -1) {
         vertUboIdx = glGetUniformBlockIndex(_phongShader->programID(), "UniformBufferObject");
         glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); GL_ASSERT
-        glGenBuffers(1, &buffer);
+        glGenBuffers(1, &uniformBuffer);
     }
-
-#if 0 && defined(_DEBUG)
-
-    size_t cBlockSize = sizeof(GraphicsUBO);
-    const GLchar* names[] = { "modelView", "proj", "defColor", "ambient", "numLights", "lightDir" };
-    GLuint indices[6] = { 0, 0, 0, 0, 0 };
-    glGetUniformIndices(_phongShader->programID(), 6, names, indices); Shader::dumpGlErrors();
-
-    GLint offset0[6];
-    glGetActiveUniformsiv(_phongShader->programID(), 6, indices, GL_UNIFORM_OFFSET, offset0); Shader::dumpGlErrors();
-
-    GraphicsUBO testSize;
-    size_t addr0 = (size_t) &testSize;
-    GLint offset1[] = { 
-        (GLint)(((size_t)&testSize.modelView) - addr0),
-        (GLint)(((size_t)&testSize.proj) - addr0),
-        (GLint)((GLint)((size_t)&testSize.defColor) - addr0),
-        (GLint)(((size_t)&testSize.ambient) - addr0),
-        (GLint)(((size_t)&testSize.numLights) - addr0),
-        (GLint)((GLint)((size_t)&testSize.lightDir) - addr0),
-    };
-#endif
 
     glUniformBlockBinding(_phongShader->programID(), vertUboIdx, bindingPoint);
 
-    glBindBuffer(GL_UNIFORM_BUFFER, buffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, buffer);
+    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, uniformBuffer);
 
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_BACK);
     glViewport(0, 0, (GLint)GetSize().x, (GLint)GetSize().y);
 
-    drawMousePos3D(); // Available for mouse position testing
     _pDrawModelMesh->render();
     _pDrawHexMesh->render();
+
+#if  DRAW_MOUSE_POSITION
+    drawMousePos3D(); // Available for mouse position testing
+#endif //  DRAW_MOUSE_POSITION
 
     SwapBuffers();
     _phongShader->unBind();
@@ -682,7 +661,6 @@ void GraphicsCanvas::render()
 
 void GraphicsCanvas::drawMousePos3D()
 {
-#if  DRAW_MOUSE_POSITION
     float len = 0.1f;
     const Vector3f x(len, 0, 0), y(0, len, 0), z(0, 0, len);
 
@@ -706,7 +684,6 @@ void GraphicsCanvas::drawMousePos3D()
     glVertex3f(z1[0], z1[1], z1[2]);
     glEnd();
 
-#endif //  DRAW_MOUSE_POSITION
 }
 
 Vector3d GraphicsCanvas::NDCPointToModel(const Eigen::Vector2d& pt2d) const
