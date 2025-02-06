@@ -301,7 +301,8 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->read(in);
         _pVolume->createAdHocBlockSearchTree();
 
-        updateHexTess();
+        buildHexFaceTables();
+        copyHexFaceTablesToVBOs();
     }
 
     _pMainFrame->refreshObjectTree();
@@ -444,7 +445,8 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->clearMesh3D();
     pCanvas->setShowMeshSelectedBlocks(true);
 
-    updateHexTess();
+    buildHexFaceTables();
+    copyHexFaceTablesToVBOs();
 }
 
 CBoundingBox3Dd AppData::getBoundingBox() const
@@ -716,7 +718,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
     }
 }
 
-void AppData::updateHexTess()
+void AppData::buildHexFaceTables()
 {
     if (_pVolume) {
         const Index3D min(0, 0, 0);
@@ -724,10 +726,21 @@ void AppData::updateHexTess()
         Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
 
         auto pCanvas = _pMainFrame->getCanvas();
-        pCanvas->addHexFacesToScene(_pVolume, min, max, RUN_MULTI_THREAD);
+        pCanvas->buildHexFaceTables(_pVolume, min, max, RUN_MULTI_THREAD);
 
-        setDisplayMinMax(min, max);
-
-        pCanvas->changeViewElements();
     }
+}
+
+void AppData::copyHexFaceTablesToVBOs()
+{
+    const Index3D min(0, 0, 0);
+    const Index3D max(_pVolume ? _pVolume->volDim() : Index3D());
+
+    auto pCanvas = _pMainFrame->getCanvas();
+    pCanvas->copyHexFaceTablesToVBOs();
+
+    setDisplayMinMax(min, max);
+
+    pCanvas->changeViewElements();
+
 }

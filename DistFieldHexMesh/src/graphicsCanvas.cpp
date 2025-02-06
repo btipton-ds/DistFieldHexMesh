@@ -787,9 +787,14 @@ inline void GraphicsCanvas::applyRotation(double angleSpin, double anglePitch, c
     updateView();
 }
 
-void GraphicsCanvas::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
+void GraphicsCanvas::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
 {
-    _pDrawHexMesh->addHexFacesToScene(pVolume, min, max, RUN_MULTI_THREAD);
+    _pDrawHexMesh->buildHexFaceTables(pVolume, min, max, RUN_MULTI_THREAD);
+}
+
+void GraphicsCanvas::copyHexFaceTablesToVBOs()
+{
+    _pDrawHexMesh->copyHexFaceTablesToVBOs();
 }
 
 void GraphicsCanvas::applyScaleFactor(double scaleMult, const Eigen::Vector2d& center)

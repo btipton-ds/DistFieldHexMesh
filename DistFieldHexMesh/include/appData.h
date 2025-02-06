@@ -93,7 +93,8 @@ public:
 
     const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
 
-    void updateHexTess();
+    void buildHexFaceTables();
+    void copyHexFaceTablesToVBOs();
     void updateModelTess();
 
 private:

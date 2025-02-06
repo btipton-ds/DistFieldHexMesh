@@ -104,7 +104,8 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void setShowLayer(int32_t layerNumber);
 
 		void setShowSelectedBlocks(bool val);
-		void addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
+		void buildHexFaceTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
+		void copyHexFaceTablesToVBOs();
 
 	protected:
 		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
@@ -149,7 +150,6 @@ using VolumePtr = std::shared_ptr<Volume>;
 		std::map<GLEdge, size_t> _edgeMap;
 		std::vector<float> _triPoints, _triNormals, _edgePoints;
 		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
-
 		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
 

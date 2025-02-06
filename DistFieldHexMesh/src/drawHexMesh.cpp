@@ -132,9 +132,9 @@ void DrawHexMesh::clearPost()
     _triPoints.clear();
     _triNormals.clear();
     _edgePoints.clear();
+
     _triIndices.clear();
     _edgeIndices.clear();
-
 }
 
 bool DrawHexMesh::showLayersOn() const
@@ -165,7 +165,7 @@ void DrawHexMesh::setShowLayer(int32_t layerNumber)
     }
 }
 
-void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
+void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
 {
     if (!pVolume || pVolume->numPolyhedra() == 0)
         return;
@@ -176,68 +176,82 @@ void DrawHexMesh::addHexFacesToScene(const VolumePtr& pVolume, const Index3D& mi
     clearPrior();
 
     Block::GlHexMeshGroup blockMeshes;
+
+    _triIndices.clear();
+    _edgeIndices.clear();
+
+    _triIndices.resize(FT_ALL);
+    _edgeIndices.resize(FT_ALL);
+
     pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
 
+    createVertexBuffers(blockMeshes[FT_ALL]);
+
+    MultiCore::runLambda([this, &blockMeshes](size_t threadNum, size_t numThreads) {
+        for (size_t mode = threadNum; mode < FT_ALL; mode += numThreads) {
+            FaceDrawType faceType = (FaceDrawType)mode;
+            auto& thisGroup = blockMeshes[mode];
+
+            std::map<GLEdge, size_t> localEdgeMap;
+            for (const auto& pBlockMesh : thisGroup) {
+                if (pBlockMesh) {
+                    size_t numTriVerts = pBlockMesh->numTriVertices();
+                    if (numTriVerts > 0) {
+                        const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
+                        const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
+                        for (size_t i = 0; i < numTriVerts; i++) {
+                            Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
+                            Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
+                            size_t idx = getVertexIdx(ptf, normf);
+                            _triIndices[mode].push_back(idx);
+                        }
+                    }
+
+                    const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
+                    size_t numEdges = tmpEdgePoints.size() / (2 * 3);
+                    if (numEdges > 0) {
+                        for (size_t i = 0; i < numEdges; i++) {
+                            int vIdx = 2 * i;
+
+                            Vector3f ptf0((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                            size_t idx0 = getVertexIdx(ptf0);
+
+                            vIdx++;
+                            Vector3f ptf1((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
+                            size_t idx1 = getVertexIdx(ptf1);
+
+                            GLEdge e(idx0, idx1);
+                            if (localEdgeMap.find(e) == localEdgeMap.end()) {
+                                size_t eIdx = _edgeIndices.size() / 2;
+                                _edgeIndices[mode].push_back(idx0);
+                                _edgeIndices[mode].push_back(idx1);
+                                localEdgeMap.insert(make_pair(e, eIdx));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }, multiCore);
+}
+
+void DrawHexMesh::copyHexFaceTablesToVBOs()
+{
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
 
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
 
-    createVertexBuffers(blockMeshes[FT_ALL]);
-
     for (size_t mode = 0; mode < FT_ALL; mode++) {
         FaceDrawType faceType = (FaceDrawType)mode;
-        vector<unsigned int> triIndices, edgeIndices;
-        auto& thisGroup = blockMeshes[mode];
-
-        std::map<GLEdge, size_t> localEdgeMap;
-        for (const auto& pBlockMesh : thisGroup) {
-            if (pBlockMesh) {
-                size_t numTriVerts = pBlockMesh->numTriVertices();
-                if (numTriVerts > 0) {
-                    const auto& tmpTriPoints = pBlockMesh->_glTriPoints;
-                    const auto& tmpTriNormals = pBlockMesh->_glTriNormals;
-                    for (size_t i = 0; i < numTriVerts; i++) {
-                        Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
-                        Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
-                        size_t idx = getVertexIdx(ptf, normf);
-                        triIndices.push_back(idx);
-                    }
-                }
-
-                const auto& tmpEdgePoints = pBlockMesh->_glEdgePoints;
-                size_t numEdges = tmpEdgePoints.size() / (2 * 3);
-                if (numEdges > 0) {
-                    for (size_t i = 0; i < numEdges; i++) {
-                        int vIdx = 2 * i;
-
-                        Vector3f ptf0((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
-                        size_t idx0 = getVertexIdx(ptf0);
-
-                        vIdx++;
-                        Vector3f ptf1((float)tmpEdgePoints[3 * vIdx + 0], (float)tmpEdgePoints[3 * vIdx + 1], (float)tmpEdgePoints[3 * vIdx + 2]);
-                        size_t idx1 = getVertexIdx(ptf1);
-
-                        GLEdge e(idx0, idx1);
-                        if (localEdgeMap.find(e) == localEdgeMap.end()) {
-                            size_t eIdx = edgeIndices.size() / 2;
-                            edgeIndices.push_back(idx0);
-                            edgeIndices.push_back(idx1);
-                            localEdgeMap.insert(make_pair(e, eIdx));
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!triIndices.empty()) {
-            auto pFaceTess = faceVBO.setFaceTessellation(faceType, _faceTessellations[FT_ALL], triIndices);
+        if (!_triIndices[mode].empty()) {
+            auto pFaceTess = faceVBO.setFaceTessellation(faceType, _faceTessellations[FT_ALL], _triIndices[mode]);
             _faceTessellations[faceType] = pFaceTess;
         }
 
-        if (!edgeIndices.empty()) {
-            auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, _edgeTessellations[FT_ALL], edgeIndices);
+        if (!_edgeIndices[mode].empty()) {
+            auto pEdgeTess = edgeVBO.setEdgeSegTessellation(faceType, _edgeTessellations[FT_ALL], _edgeIndices[mode]);
             _edgeTessellations[faceType] = pEdgeTess;
         }
     }
@@ -472,8 +486,9 @@ void DrawHexMesh::postDrawFaces()
 
 void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
 {
-    _triIndices.resize(FT_ALL + 1);
-    _edgeIndices.resize(FT_ALL + 1);
+    std::vector<std::vector<unsigned int>> triIndices, edgeIndices;
+    triIndices.resize(FT_ALL + 1);
+    edgeIndices.resize(FT_ALL + 1);
     _faceTessellations.resize(FT_ALL + 1);
     _edgeTessellations.resize(FT_ALL + 1);
 
@@ -492,7 +507,7 @@ void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
                 Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
                 Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
                 size_t idx = getVertexIdx(ptf, normf);
-                _triIndices[FT_ALL].push_back(idx);
+                triIndices[FT_ALL].push_back(idx);
             }
         }
 
@@ -511,9 +526,9 @@ void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
 
                 GLEdge e(idx0, idx1);
                 if (_edgeMap.find(e) == _edgeMap.end()) {
-                    size_t eIdx = _edgeIndices.size() / 2;
-                    _edgeIndices[FT_ALL].push_back(idx0);
-                    _edgeIndices[FT_ALL].push_back(idx1);
+                    size_t eIdx = edgeIndices.size() / 2;
+                    edgeIndices[FT_ALL].push_back(idx0);
+                    edgeIndices[FT_ALL].push_back(idx1);
                     _edgeMap.insert(make_pair(e, eIdx));
                 }
             }
@@ -522,10 +537,10 @@ void DrawHexMesh::createVertexBuffers(const Block::GlHexFacesVector& faces)
 
     vector<float> triParameters;
     triParameters.resize(_triPoints.size(), 0);
-    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(FT_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[FT_ALL]);
+    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(FT_ALL, 0, _triPoints, _triNormals, triParameters, triIndices[FT_ALL]);
     _faceTessellations[FT_ALL] = pFaceTess;
 
-    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(FT_ALL, 0, _edgePoints, _edgeIndices[FT_ALL]);
+    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(FT_ALL, 0, _edgePoints, edgeIndices[FT_ALL]);
     _edgeTessellations[FT_ALL] = pEdgeTess;
 
 }
