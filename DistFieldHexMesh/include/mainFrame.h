@@ -48,8 +48,6 @@ namespace DFHM {
 /*
 TODO
 
-Fix cell intersections. They are currently reporting false positives
-Double check layer counting
 Add depth peeling for transparency. It's more than just a nice to have, it's a debugging tool.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
 Add grid relaxation with vertex sliding along geometric surfaces
@@ -66,6 +64,8 @@ Add read/write of a document file. This contains all the configuration specific 
 ****************************************************************************************************************************************
 ****************************************************************************************************************************************
 
+Fix cell intersections. They are currently reporting false positives
+Double check layer counting
 Done Add base cube
 Done Fix the annoying graphics!! Get clipping, pan, rotate zoom working right.
 Done Support reading multiple mesh files with settings.
