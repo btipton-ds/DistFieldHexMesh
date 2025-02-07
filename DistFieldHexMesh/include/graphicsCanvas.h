@@ -220,8 +220,15 @@ private:
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
 
 #if USE_OIT_RENDER
-    std::shared_ptr<OGL::Shader> _pDepthShaderBlendBack;
-    std::shared_ptr<OGL::Shader> _pDepthShaderFinal;
+    GLint _depth_DepthLoc = -1;
+    GLint _depth_FrontColorLoc = -1;
+    GLint _depth_BlendBackBackColorLoc = -1;
+
+    GLint _depth_FinalFrontColorLoc = -1;
+    GLint _depth_FinalBackColorLoc = -1;
+
+    std::shared_ptr<OGL::Shader> _pDepth_ShaderBlendBack;
+    std::shared_ptr<OGL::Shader> _pDepth_ShaderFinal;
 #endif
 
 protected:

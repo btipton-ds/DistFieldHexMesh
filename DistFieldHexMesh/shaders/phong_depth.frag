@@ -50,7 +50,6 @@ uniform UniformBufferObject {
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 
-uniform sampler2D uTexture;
 uniform sampler2D uDepth;
 uniform sampler2D uFrontColor;
 

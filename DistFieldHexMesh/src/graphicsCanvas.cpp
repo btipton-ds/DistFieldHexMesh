@@ -603,17 +603,28 @@ void GraphicsCanvas::loadShaders()
     _pDrawHexMesh->setShader(_pShader);
 
 #if USE_OIT_RENDER
-    _pDepthShaderBlendBack = make_shared<OGL::Shader>();
-    _pDepthShaderBlendBack->setVertexSrcFile(path + "phong_depth_quad.vert");
-    _pDepthShaderBlendBack->setFragmentSrcFile(path + "phong_depth_blendBack.frag");
+    _pDepth_ShaderBlendBack = make_shared<OGL::Shader>();
+    _pDepth_ShaderBlendBack->setVertexSrcFile(path + "phong_depth_quad.vert");
+    _pDepth_ShaderBlendBack->setFragmentSrcFile(path + "phong_depth_blendBack.frag");
 
-    _pDepthShaderBlendBack->load();
+    _pDepth_ShaderBlendBack->load();
+    _pDepth_ShaderBlendBack->bind();
 
-    _pDepthShaderFinal = make_shared<OGL::Shader>();
-    _pDepthShaderFinal->setVertexSrcFile(path + "phong_depth_quad.vert");
-    _pDepthShaderFinal->setFragmentSrcFile(path + "phong_depth_final.frag");
+    _depth_DepthLoc = glGetUniformLocation(_pShader->programID(), "uDepth");
+    _depth_FrontColorLoc = glGetUniformLocation(_pShader->programID(), "uFrontColor");
+    _depth_BlendBackBackColorLoc = glGetUniformLocation(_pDepth_ShaderBlendBack->programID(), "uBackColor");
 
-    _pDepthShaderFinal->load();
+    _pDepth_ShaderFinal = make_shared<OGL::Shader>();
+    _pDepth_ShaderFinal->setVertexSrcFile(path + "phong_depth_quad.vert");
+    _pDepth_ShaderFinal->setFragmentSrcFile(path + "phong_depth_final.frag");
+
+    _pDepth_ShaderFinal->load();
+    _pDepth_ShaderFinal->bind();
+
+    _depth_FinalFrontColorLoc = glGetUniformLocation(_pDepth_ShaderFinal->programID(), "uFrontColor");
+    _depth_FinalBackColorLoc = glGetUniformLocation(_pDepth_ShaderFinal->programID(), "uBackColor");
+
+    glUseProgram(0);
 #endif
 }
 
