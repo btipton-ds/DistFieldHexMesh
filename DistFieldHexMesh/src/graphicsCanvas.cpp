@@ -584,19 +584,37 @@ void GraphicsCanvas::loadShaders()
     SetCurrent(*_pContext);
     string path = "shaders/";
     
-    _phongShader = make_shared<OGL::Shader>();
+    _pShader = make_shared<OGL::Shader>();
 
-    _phongShader->setShaderVertexAttribName("inPosition");
-    _phongShader->setShaderNormalAttribName("inNormal");
-    _phongShader->setShaderColorAttribName("inColor");
-//    _phongShader->setShaderTexParamAttribName("inPosition");
+    _pShader->setShaderVertexAttribName("inPosition");
+    _pShader->setShaderNormalAttribName("inNormal");
+    _pShader->setShaderColorAttribName("inColor");
 
-    _phongShader->setVertexSrcFile(path + "phong.vert");
-    _phongShader->setFragmentSrcFile(path + "phong.frag");
-    _phongShader->load();
+#if USE_OIT_RENDER
+    _pShader->setVertexSrcFile(path + "phong_depth.vert");
+    _pShader->setFragmentSrcFile(path + "phong_depth.frag");
+#else
+    _pShader->setVertexSrcFile(path + "phong.vert");
+    _pShader->setFragmentSrcFile(path + "phong.frag");
+#endif
+    _pShader->load();
 
-    _pDrawModelMesh->setShader(_phongShader);
-    _pDrawHexMesh->setShader(_phongShader);
+    _pDrawModelMesh->setShader(_pShader);
+    _pDrawHexMesh->setShader(_pShader);
+
+#if USE_OIT_RENDER
+    _pDepthShaderBlendBack = make_shared<OGL::Shader>();
+    _pDepthShaderBlendBack->setVertexSrcFile(path + "phong_depth_quad.vert");
+    _pDepthShaderBlendBack->setFragmentSrcFile(path + "phong_depth_blendBack.frag");
+
+    _pDepthShaderBlendBack->load();
+
+    _pDepthShaderFinal = make_shared<OGL::Shader>();
+    _pDepthShaderFinal->setVertexSrcFile(path + "phong_depth_quad.vert");
+    _pDepthShaderFinal->setFragmentSrcFile(path + "phong_depth_final.frag");
+
+    _pDepthShaderFinal->load();
+#endif
 }
 
 Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
@@ -623,7 +641,7 @@ void GraphicsCanvas::render()
 	initialize();
 
     updateView();
-    _phongShader->bind();
+    _pShader->bind();
 
     wxPaintDC(this);
 
@@ -632,12 +650,12 @@ void GraphicsCanvas::render()
     static GLint blockSize = -1;
     static GLuint uniformBuffer = -1;
     if (vertUboIdx == -1) {
-        vertUboIdx = glGetUniformBlockIndex(_phongShader->programID(), "UniformBufferObject");
-        glGetActiveUniformBlockiv(_phongShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); GL_ASSERT
+        vertUboIdx = glGetUniformBlockIndex(_pShader->programID(), "UniformBufferObject");
+        glGetActiveUniformBlockiv(_pShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); GL_ASSERT
         glGenBuffers(1, &uniformBuffer);
     }
 
-    glUniformBlockBinding(_phongShader->programID(), vertUboIdx, bindingPoint);
+    glUniformBlockBinding(_pShader->programID(), vertUboIdx, bindingPoint);
 
     glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
@@ -656,7 +674,7 @@ void GraphicsCanvas::render()
 #endif //  DRAW_MOUSE_POSITION
 
     SwapBuffers();
-    _phongShader->unBind();
+    _pShader->unBind();
 }
 
 void GraphicsCanvas::drawMousePos3D()

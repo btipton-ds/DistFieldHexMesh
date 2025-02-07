@@ -216,8 +216,13 @@ private:
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
-    std::shared_ptr<OGL::Shader> _phongShader;
+    std::shared_ptr<OGL::Shader> _pShader;
     rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
+
+#if USE_OIT_RENDER
+    std::shared_ptr<OGL::Shader> _pDepthShaderBlendBack;
+    std::shared_ptr<OGL::Shader> _pDepthShaderFinal;
+#endif
 
 protected:
     wxDECLARE_EVENT_TABLE(); 

@@ -17,6 +17,8 @@ endif(WIN32)
 
 if(WIN32)
 set(triMeshLibDir "../../triMesh/x64/win/${CMAKE_BUILD_TYPE}")
+set (CMAKE_SHADER_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/shaders")
+message(STATUS "CMAKE_SHADER_SOURCE_DIR: ${CMAKE_SHADER_SOURCE_DIR}")
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
@@ -193,12 +195,32 @@ target_link_libraries("TestDFM"
 add_custom_command(
         TARGET DistFieldHexMesh POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${OpenGlDir}/src/phong.vert"
+                "${CMAKE_SHADER_SOURCE_DIR}/phong.vert"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.vert"
 				
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${OpenGlDir}/src/phong.frag"
+                "${CMAKE_SHADER_SOURCE_DIR}/phong.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth.vert"
+				
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_quad.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_quad.vert"
+				
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_blendBack.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_blendBack.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_final.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_final.frag"
 )
 
 if(WIN32)
