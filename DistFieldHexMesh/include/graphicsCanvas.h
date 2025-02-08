@@ -190,10 +190,22 @@ private:
     void glClearColor(const rgbaColor& color);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
+    void subRender();
+    void subRenderOIT();
     void updateView();
     void drawMousePos3D();
 
     void initialize();
+
+#if USE_OIT_RENDER
+    void initializeDepthPeeling();
+    GLuint createColorBuffer(int offset, GLint width, GLint height);
+    GLuint createDepthBuffer(int offset, GLint width, GLint height);
+    void createScreenRectPoints(GLint width, GLint height);
+    void releaseDepthPeeling();
+    void drawScreenRect(GLuint progId);
+    void checkBoundFrameBuffer() const;
+#endif
     void loadShaders();
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
@@ -217,7 +229,7 @@ private:
 
     GraphicsUBO _graphicsUBO;
     std::shared_ptr<OGL::Shader> _pShader;
-    rgbaColor _backColor = rgbaColor(0.0f, 0.0f, 0.0f);
+    rgbaColor _backColor;
 
 #if USE_OIT_RENDER
     GLint _depth_DepthLoc = -1;
@@ -229,6 +241,21 @@ private:
 
     std::shared_ptr<OGL::Shader> _pDepth_ShaderBlendBack;
     std::shared_ptr<OGL::Shader> _pDepth_ShaderFinal;
+
+    // 2 for ping-pong
+    // COLOR_ATTACHMENT0 - depth
+    // COLOR_ATTACHMENT1 - front color
+    // COLOR_ATTACHMENT2 - back color
+    GLuint _depthPeelBuffers[2] = { UINT_MAX, UINT_MAX };
+
+    // 2 for ping-pong
+    // COLOR_ATTACHMENT0 - front color
+    // COLOR_ATTACHMENT1 - back color
+    GLuint _colorBuffers[2] = { UINT_MAX, UINT_MAX };
+
+    GLuint _blendBackBuffer = UINT_MAX;
+
+    GLfloat _screenRectPts[6 * 3];
 #endif
 
 protected:

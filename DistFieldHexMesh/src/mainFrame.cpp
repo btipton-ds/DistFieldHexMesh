@@ -83,7 +83,8 @@ MainFrame::MainFrame(wxWindow* parent,
     auto sizer = new wxBoxSizer(wxHORIZONTAL);
 
     _pCanvas = new GraphicsCanvas(this, _pAppData);
-    _pCanvas->setBackColor(rgbaColor(0.0f, 0.0f, 0.1f));
+    rgbaColor backColor(0.95f, 0.95f, 1.0f, 1.0f);
+    _pCanvas->setBackColor(backColor);
 
     _pObjectTree = new ObjectTreeCtrl(this, ID_OBJ_TREE_CTRL, wxDefaultPosition, wxSize(200, 200));
 
