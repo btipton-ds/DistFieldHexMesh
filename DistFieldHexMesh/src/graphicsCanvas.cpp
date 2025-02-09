@@ -572,11 +572,6 @@ void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
     render();
 }
 
-void GraphicsCanvas::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
-{
-    ::glClearColor(red, green, blue, alpha);
-}
-
 void GraphicsCanvas::initialize() 
 {
 	if (_initialized)
@@ -594,45 +589,44 @@ void GraphicsCanvas::initialize()
 void GraphicsCanvas::initializeDepthPeeling()
 {
     if (hasVBOSupport() && _blendBackBuffer == UINT_MAX) {
+        createScreenRectPoints();
+
         GLint dims[4] = { 0 };
         glGetIntegerv(GL_VIEWPORT, dims);
         GLint width = dims[2];
         GLint height = dims[3];
 
-        createScreenRectPoints(width, height);
 
         glCreateFramebuffers(2, _depthPeelBuffers); GL_ASSERT
         glCreateFramebuffers(2, _colorBuffers); GL_ASSERT
         glCreateFramebuffers(1, &_blendBackBuffer); GL_ASSERT
 
         for (int i = 0; i < 2; i++) {
+            GLenum textureUnit0 = (i == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
+            GLenum textureUnit1 = (i == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
+            GLenum textureUnit2 = (i == 0) ? GL_TEXTURE2 : GL_TEXTURE5;
 
-            int o = i * 3;
-
-            GLuint depthTarget = createColorBuffer(o, width, height);
-            
-
-            GLuint frontColorTarget = createColorBuffer(o, width, height);
-
-            GLuint backColorTarget = createColorBuffer(o, width, height);
+            _depthTarget[i] = createDepthBufferx(textureUnit0, width, height);
+            _frontColorTarget[i] = createColorBuffer(textureUnit1, width, height);
+            _backColorTarget[i] = createColorBuffer(textureUnit2, width, height);
 
             glBindFramebuffer(GL_FRAMEBUFFER, _depthPeelBuffers[i]); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthTarget, 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, frontColorTarget, 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, backColorTarget, 0); GL_ASSERT
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _depthTarget[i], 0); GL_ASSERT
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _frontColorTarget[i], 0); GL_ASSERT
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _backColorTarget[i], 0); GL_ASSERT
 
             checkBoundFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             glBindFramebuffer(GL_FRAMEBUFFER, _colorBuffers[i]); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frontColorTarget, 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, backColorTarget, 0); GL_ASSERT
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _frontColorTarget[i], 0); GL_ASSERT
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _backColorTarget[i], 0); GL_ASSERT
 
             checkBoundFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
-        GLuint blendBackTarget = createColorBuffer(0, width, height);
+        GLuint blendBackTarget = createColorBuffer(GL_TEXTURE6, width, height);
 
         glBindFramebuffer(GL_FRAMEBUFFER, _blendBackBuffer); GL_ASSERT
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blendBackTarget, 0); GL_ASSERT
@@ -642,11 +636,11 @@ void GraphicsCanvas::initializeDepthPeeling()
     }
 }
 
-GLuint GraphicsCanvas::createColorBuffer(int offset, GLint width, GLint height)
+GLuint GraphicsCanvas::createColorBuffer(GLenum textureUnit, GLint width, GLint height)
 {
     GLuint result;
     glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT
-    glActiveTexture(GL_TEXTURE1 + offset); GL_ASSERT
+    glActiveTexture(textureUnit); GL_ASSERT
     glBindTexture(GL_TEXTURE_2D, result); GL_ASSERT
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT
@@ -657,12 +651,12 @@ GLuint GraphicsCanvas::createColorBuffer(int offset, GLint width, GLint height)
     return result;
 }
 
-GLuint GraphicsCanvas::createDepthBuffer(int offset, GLint width, GLint height)
+GLuint GraphicsCanvas::createDepthBufferx(GLenum textureUnit, GLint width, GLint height)
 {
     GLuint result;
-    glCreateTextures(GL_TEXTURE_2D, offset, &result); GL_ASSERT
+    glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT
 
-    glActiveTexture(GL_TEXTURE0 + offset); GL_ASSERT
+    glActiveTexture(textureUnit); GL_ASSERT
     glBindTexture(GL_TEXTURE_2D, result); GL_ASSERT
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT
@@ -673,16 +667,16 @@ GLuint GraphicsCanvas::createDepthBuffer(int offset, GLint width, GLint height)
     return result;
 }
 
-void GraphicsCanvas::createScreenRectPoints(GLint width, GLint height)
+void GraphicsCanvas::createScreenRectPoints()
 {
     Vector3f screenPts[] = {
-        Vector3f(0, 0, 0),
-        Vector3f(width, 0, 0),
-        Vector3f(width, height, 0),
+        Vector3f(-1, -1, 0),
+        Vector3f( 1, -1, 0),
+        Vector3f( 1,  1, 0),
 
-        Vector3f(0, 0, 0),
-        Vector3f(width, height, 0),
-        Vector3f(0, height, 0),
+        Vector3f(-1, -1, 0),
+        Vector3f( 1,  1, 0),
+        Vector3f(-1,  1, 0),
     };
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 3; j++) {
@@ -765,6 +759,7 @@ void GraphicsCanvas::loadShaders()
 
     _depth_DepthLoc = glGetUniformLocation(_pShader->programID(), "uDepth");
     _depth_FrontColorLoc = glGetUniformLocation(_pShader->programID(), "uFrontColor");
+
     _depth_BlendBackBackColorLoc = glGetUniformLocation(_pDepth_ShaderBlendBack->programID(), "uBackColor");
 
     _pDepth_ShaderFinal = make_shared<OGL::Shader>();
@@ -843,7 +838,8 @@ void GraphicsCanvas::render()
 #endif //  DRAW_MOUSE_POSITION
 
     SwapBuffers(); GL_ASSERT
-    _pShader->unBind();
+    if (_pShader->bound())
+        _pShader->unBind();
 }
 
 void GraphicsCanvas::subRender()
@@ -859,54 +855,72 @@ void GraphicsCanvas::subRenderOIT()
     const float DEPTH_CLEAR_VALUE = -99999.0f;
 
     int readId, writeId;
-    GLint offsetRead, offsetBack;
+
+    if (_pShader->bound())
+        _pShader->unBind();
+
+    if (_pDepth_ShaderBlendBack->bound())
+        _pDepth_ShaderBlendBack->unBind();
+
+    if (_pDepth_ShaderFinal->bound())
+        _pDepth_ShaderFinal->unBind();
 
     GLenum attach1[] = { GL_COLOR_ATTACHMENT0 };
     GLenum attach2[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    GLenum attach3[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     for (int pass = 0; pass < NUM_PASS; pass++) {
         readId = pass % 2;
         writeId = 1 - readId;  // ping-pong: 0 or 1
 
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthPeelBuffers[writeId]);
-        glDrawBuffers(1, attach1);
-        glClearColor(DEPTH_CLEAR_VALUE, DEPTH_CLEAR_VALUE, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        GL_ASSERT
+        // clear everything
+        glUseProgram(_pShader->programID()); GL_ASSERT
 
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _colorBuffers[writeId]);
-        glDrawBuffers(2, attach2);
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        GL_ASSERT
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _colorBuffers[writeId]); GL_ASSERT
 
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthPeelBuffers[writeId]);
-        glDrawBuffers(3, attach3);
-        glBlendEquation(GL_MAX);
-        GL_ASSERT
+        // clear depth. We're using GL_COLOR_ATTACHMENT0 for our depth buffer 
+        glDrawBuffers(1, attach1); GL_ASSERT
+        glClearColor(rgbaColor(DEPTH_CLEAR_VALUE, DEPTH_CLEAR_VALUE, 0, 0)); GL_ASSERT
+        glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
+
+        // clear color buffers 
+        glDrawBuffers(2, attach2); GL_ASSERT
+        glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT
+        glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
 
         // update texture uniform
-        offsetRead = readId * 3;
-        glUseProgram(_pShader->programID());
-        glUniform1i(_depth_DepthLoc, offsetRead);
-        glUniform1i(_depth_FrontColorLoc, offsetRead + 1);
-        GL_ASSERT
+        GLenum readDepthTexture = (readId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
+        GLenum readTexture = (readId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
+        GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
 
-        // draw geometry
+        glActiveTexture(readDepthTexture); GL_ASSERT
+        glBindTexture(GL_TEXTURE_2D, _depthTarget[readId]); GL_ASSERT
+        glUniform1i(_depth_DepthLoc, _depthTarget[readId]); GL_ASSERT
+
+        glActiveTexture(readTexture); GL_ASSERT
+        glBindTexture(GL_TEXTURE_2D, _frontColorTarget[readId]); GL_ASSERT
+        glUniform1i(_depth_FrontColorLoc, _frontColorTarget[readId]); GL_ASSERT
+
+        // draw the model
         subRender();
-        GL_ASSERT
+
+        glActiveTexture(readDepthTexture); GL_ASSERT
+        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
+        glActiveTexture(readTexture); GL_ASSERT
+        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
 
         // blend back color separately
-        offsetBack = writeId * 3;
+        glUseProgram(_pDepth_ShaderBlendBack->programID()); GL_ASSERT
+
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _blendBackBuffer);
         glDrawBuffers(1, attach1);
         glBlendEquation(GL_FUNC_ADD);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glUseProgram(_pDepth_ShaderBlendBack->programID());
-        glUniform1i(_depth_BlendBackBackColorLoc, offsetBack + 2);
+
+        glActiveTexture(writeTexture); GL_ASSERT
+        glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
+        glUniform1i(_depth_BlendBackBackColorLoc, _backColorTarget[readId]);
         GL_ASSERT
 
-        drawScreenRect(_pDepth_ShaderBlendBack->programID());
+        drawScreenRect();
         GL_ASSERT
     }
 
@@ -918,13 +932,24 @@ void GraphicsCanvas::subRenderOIT()
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    _pDepth_ShaderFinal->bind();
     glUseProgram(_pDepth_ShaderFinal->programID());
-    glUniform1i(_depth_FinalFrontColorLoc, offsetBack + 1);
-    drawScreenRect(_pDepth_ShaderFinal->programID());
+    GLenum readFrontTextureUnit = (writeId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
+    GLenum readBackTextureUnit = (writeId == 1) ? GL_TEXTURE2 : GL_TEXTURE5;
+
+    glActiveTexture(readFrontTextureUnit); GL_ASSERT
+    glBindTexture(GL_TEXTURE_2D, _frontColorTarget[readId]); GL_ASSERT
+    glUniform1i(_depth_FinalFrontColorLoc, _frontColorTarget[readId]);
+
+    glActiveTexture(readBackTextureUnit); GL_ASSERT
+    glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
+    glUniform1i(_depth_FinalBackColorLoc, _backColorTarget[readId]);
+    drawScreenRect();
     GL_ASSERT
+    _pDepth_ShaderFinal->unBind();
 }
 
-void GraphicsCanvas::drawScreenRect(GLuint progId)
+void GraphicsCanvas::drawScreenRect()
 {
     int vertSize = 3, stride = 0;
 

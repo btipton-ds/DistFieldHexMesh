@@ -188,7 +188,6 @@ private:
     Vector3d pointToLocal(const Vector3d& pointMC) const;
 
     void glClearColor(const rgbaColor& color);
-    void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
     void render();
     void subRender();
     void subRenderOIT();
@@ -199,11 +198,11 @@ private:
 
 #if USE_OIT_RENDER
     void initializeDepthPeeling();
-    GLuint createColorBuffer(int offset, GLint width, GLint height);
-    GLuint createDepthBuffer(int offset, GLint width, GLint height);
-    void createScreenRectPoints(GLint width, GLint height);
+    GLuint createColorBuffer(GLenum textureUnit, GLint width, GLint height);
+    GLuint createDepthBufferx(GLenum textureUnit, GLint width, GLint height);
+    void createScreenRectPoints();
     void releaseDepthPeeling();
-    void drawScreenRect(GLuint progId);
+    void drawScreenRect();
     void checkBoundFrameBuffer() const;
 #endif
     void loadShaders();
@@ -255,6 +254,7 @@ private:
 
     GLuint _blendBackBuffer = UINT_MAX;
 
+    GLuint _depthTarget[2], _frontColorTarget[2], _backColorTarget[2];
     GLfloat _screenRectPts[6 * 3];
 #endif
 
