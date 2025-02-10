@@ -78,6 +78,16 @@ END_EVENT_TABLE()
 
 namespace
 {
+    GLenum g_drawBuffers[] = {
+        GL_COLOR_ATTACHMENT0_EXT,
+        GL_COLOR_ATTACHMENT1_EXT,
+        GL_COLOR_ATTACHMENT2_EXT,
+        GL_COLOR_ATTACHMENT3_EXT,
+        GL_COLOR_ATTACHMENT4_EXT,
+        GL_COLOR_ATTACHMENT5_EXT,
+        GL_COLOR_ATTACHMENT6_EXT
+    };
+
     inline float toRad(float v)
     {
         return v * M_PI / 180.0f;
@@ -588,51 +598,78 @@ void GraphicsCanvas::initialize()
 #if USE_OIT_RENDER
 void GraphicsCanvas::initializeDepthPeeling()
 {
-    if (hasVBOSupport() && _blendBackBuffer == UINT_MAX) {
+    if (hasVBOSupport() && _dualPeelingSingleFboId == UINT_MAX) {
         createScreenRectPoints();
 
         GLint dims[4] = { 0 };
         glGetIntegerv(GL_VIEWPORT, dims);
         GLint width = dims[2];
         GLint height = dims[3];
+        glGenTextures(2, _dualDepthTexId);
+        glGenTextures(2, _dualFrontBlenderTexId);
+        glGenTextures(2, _dualBackTempTexId);
+        glGenFramebuffers(1, &_dualPeelingSingleFboId);
+        for (int i = 0; i < 2; i++)
+        {
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[i]);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_FLOAT_RG32_NV, width, height,
+                0, GL_RGB, GL_FLOAT, 0);
 
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[i]);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height,
+                0, GL_RGBA, GL_FLOAT, 0);
 
-        glCreateFramebuffers(2, _depthPeelBuffers); GL_ASSERT
-        glCreateFramebuffers(2, _colorBuffers); GL_ASSERT
-        glCreateFramebuffers(1, &_blendBackBuffer); GL_ASSERT
-
-        for (int i = 0; i < 2; i++) {
-            GLenum textureUnit0 = (i == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
-            GLenum textureUnit1 = (i == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
-            GLenum textureUnit2 = (i == 0) ? GL_TEXTURE2 : GL_TEXTURE5;
-
-            _depthTarget[i] = createDepthBufferx(textureUnit0, width, height);
-            _frontColorTarget[i] = createColorBuffer(textureUnit1, width, height);
-            _backColorTarget[i] = createColorBuffer(textureUnit2, width, height);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, _depthPeelBuffers[i]); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _depthTarget[i], 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _frontColorTarget[i], 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, _backColorTarget[i], 0); GL_ASSERT
-
-            checkBoundFrameBuffer();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, _colorBuffers[i]); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _frontColorTarget[i], 0); GL_ASSERT
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, _backColorTarget[i], 0); GL_ASSERT
-
-            checkBoundFrameBuffer();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[i]);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height,
+                0, GL_RGBA, GL_FLOAT, 0);
         }
 
-        GLuint blendBackTarget = createColorBuffer(GL_TEXTURE6, width, height);
+        glGenTextures(1, &_dualBackBlenderTexId);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGB, width, height,
+            0, GL_RGB, GL_FLOAT, 0);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, _blendBackBuffer); GL_ASSERT
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blendBackTarget, 0); GL_ASSERT
-        checkBoundFrameBuffer();
+        glGenFramebuffers(1, &_dualBackBlenderFboId);
+        glBindFramebuffer(GL_FRAMEBUFFER_EXT, _dualBackBlenderFboId);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER_EXT, _dualPeelingSingleFboId);
+
+        int j = 0;
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+
+        j = 1;
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT4_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT5_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT6_EXT,
+            GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
     }
 }
 
@@ -709,18 +746,32 @@ void GraphicsCanvas::checkBoundFrameBuffer() const
     }
 }
 
+void GraphicsCanvas::bindTexture(GLenum target, GLint texLoc, GLuint texid, int texunit)
+{
+    glActiveTexture(GL_TEXTURE0 + texunit);
+    glBindTexture(target, texid);
+    glUniform1i(texLoc, texunit);
+    glActiveTexture(GL_TEXTURE0);
+}
+
 void GraphicsCanvas::releaseDepthPeeling()
 {
-    if (hasVBOSupport() && _blendBackBuffer != UINT_MAX) {
-        glDeleteFramebuffers(2, _depthPeelBuffers);
-        glDeleteFramebuffers(2, _colorBuffers);
-        glDeleteFramebuffers(1, &_blendBackBuffer);
+    if (hasVBOSupport() && _dualPeelingSingleFboId != UINT_MAX) {
+        glDeleteFramebuffers(1, &_dualBackBlenderFboId);
+        glDeleteFramebuffers(1, &_dualPeelingSingleFboId);
+        glDeleteTextures(2, _dualDepthTexId);
+        glDeleteTextures(2, _dualFrontBlenderTexId);
+        glDeleteTextures(2, _dualBackTempTexId);
+        glDeleteTextures(1, &_dualBackBlenderTexId);
 
+        _dualBackBlenderFboId = UINT_MAX;
+        _dualPeelingSingleFboId = UINT_MAX;
+        _dualBackBlenderTexId = UINT_MAX;
         for (int i = 0; i < 2; i++) {
-            _depthPeelBuffers[i] = UINT_MAX;
-            _colorBuffers[i] = UINT_MAX;
+            _dualDepthTexId[i] = UINT_MAX;
+            _dualFrontBlenderTexId[i] = UINT_MAX;
+            _dualBackTempTexId[i] = UINT_MAX;
         }
-        _blendBackBuffer = UINT_MAX;
     }
 }
 
@@ -731,49 +782,49 @@ void GraphicsCanvas::loadShaders()
     SetCurrent(*_pContext);
     string path = "shaders/";
     
+#if USE_OIT_RENDER
+    _shaderDualInit = createShader(path, "dual_peeling_init");
+    _shaderDualPeel = createShader(path, "dual_peeling_peel");
+    _shaderDualBlend = createShader(path, "dual_peeling_blend");
+    _shaderDualFinal = createShader(path, "dual_peeling_final");
+
+    _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler");
+    _dualPeel_FrontBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "frontBlenderSampler");
+
+    _dualBlend_tempSamplerLoc = glGetUniformLocation(_shaderDualBlend->programID(), "tempSampler");
+
+    _depth_finalFrontColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "frontBlenderSampler");
+    _depth_finalBackColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "backBlenderSampler");
+
+    glUseProgram(0);
+#else
     _pShader = make_shared<OGL::Shader>();
 
     _pShader->setShaderVertexAttribName("inPosition");
     _pShader->setShaderNormalAttribName("inNormal");
     _pShader->setShaderColorAttribName("inColor");
 
-#if USE_OIT_RENDER
-    _pShader->setVertexSrcFile(path + "phong_depth.vert");
-    _pShader->setFragmentSrcFile(path + "phong_depth.frag");
-#else
     _pShader->setVertexSrcFile(path + "phong.vert");
     _pShader->setFragmentSrcFile(path + "phong.frag");
-#endif
+
     _pShader->load();
 
     _pDrawModelMesh->setShader(_pShader);
     _pDrawHexMesh->setShader(_pShader);
-
-#if USE_OIT_RENDER
-    _pDepth_ShaderBlendBack = make_shared<OGL::Shader>();
-    _pDepth_ShaderBlendBack->setVertexSrcFile(path + "phong_depth_quad.vert");
-    _pDepth_ShaderBlendBack->setFragmentSrcFile(path + "phong_depth_blendBack.frag");
-
-    _pDepth_ShaderBlendBack->load();
-    _pDepth_ShaderBlendBack->bind();
-
-    _depth_DepthLoc = glGetUniformLocation(_pShader->programID(), "uDepth");
-    _depth_FrontColorLoc = glGetUniformLocation(_pShader->programID(), "uFrontColor");
-
-    _depth_BlendBackBackColorLoc = glGetUniformLocation(_pDepth_ShaderBlendBack->programID(), "uBackColor");
-
-    _pDepth_ShaderFinal = make_shared<OGL::Shader>();
-    _pDepth_ShaderFinal->setVertexSrcFile(path + "phong_depth_quad.vert");
-    _pDepth_ShaderFinal->setFragmentSrcFile(path + "phong_depth_final.frag");
-
-    _pDepth_ShaderFinal->load();
-    _pDepth_ShaderFinal->bind();
-
-    _depth_FinalFrontColorLoc = glGetUniformLocation(_pDepth_ShaderFinal->programID(), "uFrontColor");
-    _depth_FinalBackColorLoc = glGetUniformLocation(_pDepth_ShaderFinal->programID(), "uBackColor");
-
-    glUseProgram(0);
 #endif
+}
+
+shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, const std::string& filename)
+{
+    shared_ptr<OGL::Shader> pResult = make_shared<OGL::Shader>();
+
+    pResult->setVertexSrcFile(path + filename + ".vert");
+    pResult->setFragmentSrcFile(path + filename + ".frag");
+
+    pResult->load();
+    pResult->bind();
+
+    return pResult;
 }
 
 Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
@@ -822,14 +873,13 @@ void GraphicsCanvas::render()
     glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, uniformBuffer);
 
-    glClearColor(_backColor);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glViewport(0, 0, width, height);
 
 #if USE_OIT_RENDER
     subRenderOIT();
 #else
+    glClearColor(_backColor);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     subRender();
 #endif
 
@@ -851,47 +901,152 @@ void GraphicsCanvas::subRender()
 #if USE_OIT_RENDER
 void GraphicsCanvas::subRenderOIT()
 {
-    const int NUM_PASS = 4;
+    const float MAX_DEPTH = 1.0f;
+    const int numPasses = 4;
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+
+    // ---------------------------------------------------------------------
+    // 1. Initialize Min-Max Depth Buffer
+    // ---------------------------------------------------------------------
+
+    glBindFramebuffer(GL_FRAMEBUFFER_EXT, _dualPeelingSingleFboId);
+
+    // Render targets 1 and 2 store the front and back colors
+    // Clear to 0.0 and use MAX blending to filter written color
+    // At most one front color and one back color can be written every pass
+    glDrawBuffers(2, &g_drawBuffers[1]);
+    glClearColor(rgbaColor(0, 0, 0, 0));
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
+    glDrawBuffer(g_drawBuffers[0]);
+    glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBlendEquation(GL_MAX_EXT);
+
+#if 0
+    // This should be doing the solid draw. May not need it.
+    _shaderDualInit->bind();
+    subRender();
+    _shaderDualInit->unBind();
+#endif
+
+    GL_ASSERT;
+
+    // ---------------------------------------------------------------------
+    // 2. Dual Depth Peeling + Blending
+    // ---------------------------------------------------------------------
+
+    // Since we cannot blend the back colors in the geometry passes,
+    // we use another render target to do the alpha blending
+    //glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _dualBackBlenderFboId);
+    glDrawBuffer(g_drawBuffers[6]);
+    glClearColor(_backColor);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    int currId = 0;
+
+    for (int pass = 1; pass < numPasses; pass++) {
+        currId = pass % 2;
+        int prevId = 1 - currId;
+        int bufId = currId * 3;
+
+        //glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _dualPeelingFboId[currId]);
+
+        glDrawBuffers(2, &g_drawBuffers[bufId + 1]);
+        glClearColor(rgbaColor(0, 0, 0, 0));
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glDrawBuffer(g_drawBuffers[bufId + 0]);
+        glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0));
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Render target 0: RG32F MAX blending
+        // Render target 1: RGBA MAX blending
+        // Render target 2: RGBA MAX blending
+        glDrawBuffers(3, &g_drawBuffers[bufId + 0]);
+        glBlendEquation(GL_MAX_EXT);
+
+        _shaderDualPeel->bind();
+        glUniform1i(_dualPeel_DepthBlenderSamplerLoc, _dualDepthTexId[prevId]);
+        glUniform1i(_dualPeel_FrontBlenderSamplerLoc, _dualFrontBlenderTexId[prevId]);
+
+//        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
+        subRender();
+        _shaderDualPeel->unBind();
+
+        GL_ASSERT;
+
+        // Full screen pass to alpha-blend the back color
+        glDrawBuffer(g_drawBuffers[6]);
+
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glBeginQuery(GL_SAMPLES_PASSED_ARB, _queryId);
+
+        _shaderDualBlend->bind();
+        glUniform1i(_dualBlend_tempSamplerLoc, _dualBackTempTexId[currId]);
+        drawScreenRect();
+        _shaderDualBlend->unBind();
+
+        GL_ASSERT;
+
+        glEndQuery(GL_SAMPLES_PASSED_ARB);
+        GLuint sample_count;
+        glGetQueryObjectuiv(_queryId, GL_QUERY_RESULT_ARB, &sample_count);
+        if (sample_count == 0) {
+            break;
+        }
+    }
+
+    glDisable(GL_BLEND);
+
+    // ---------------------------------------------------------------------
+    // 3. Final Pass
+    // ---------------------------------------------------------------------
+
+    glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+    glDrawBuffer(GL_BACK);
+
+    _shaderDualFinal->bind();
+    glUniform1i(_shaderDualFinal->programID(), _dualPeel_DepthBlenderSamplerLoc);
+    bindTexture(GL_TEXTURE, _depth_finalFrontColorSamplerLoc, _dualFrontBlenderTexId[currId], 0);
+    bindTexture(GL_TEXTURE, _depth_finalBackColorSamplerLoc, _dualBackBlenderTexId, 1);
+    drawScreenRect();
+    _shaderDualFinal->unBind();
+}
+
+void GraphicsCanvas::subRenderOITRenderModel(int readId, int writeId)
+{
+#if 0
     const float DEPTH_CLEAR_VALUE = -99999.0f;
-
-    int readId, writeId;
-
-    if (_pShader->bound())
-        _pShader->unBind();
-
-    if (_pDepth_ShaderBlendBack->bound())
-        _pDepth_ShaderBlendBack->unBind();
-
-    if (_pDepth_ShaderFinal->bound())
-        _pDepth_ShaderFinal->unBind();
-
     GLenum attach1[] = { GL_COLOR_ATTACHMENT0 };
     GLenum attach2[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    for (int pass = 0; pass < NUM_PASS; pass++) {
-        readId = pass % 2;
-        writeId = 1 - readId;  // ping-pong: 0 or 1
 
-        // clear everything
-        glUseProgram(_pShader->programID()); GL_ASSERT
+    // clear everything
+    glUseProgram(_pShader->programID()); GL_ASSERT
 
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _colorBuffers[writeId]); GL_ASSERT
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _colorBuffers[writeId]); GL_ASSERT
 
-        // clear depth. We're using GL_COLOR_ATTACHMENT0 for our depth buffer 
-        glDrawBuffers(1, attach1); GL_ASSERT
-        glClearColor(rgbaColor(DEPTH_CLEAR_VALUE, DEPTH_CLEAR_VALUE, 0, 0)); GL_ASSERT
-        glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
+    // clear depth. We're using GL_COLOR_ATTACHMENT0 for our depth buffer 
+    glDrawBuffers(1, attach1); GL_ASSERT
+    glClearColor(rgbaColor(DEPTH_CLEAR_VALUE, DEPTH_CLEAR_VALUE, 0, 0)); GL_ASSERT
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
 
-        // clear color buffers 
-        glDrawBuffers(2, attach2); GL_ASSERT
-        glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT
-        glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
+    // clear color buffers 
+    glDrawBuffers(2, attach2); GL_ASSERT
+    glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
 
-        // update texture uniform
-        GLenum readDepthTexture = (readId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
-        GLenum readTexture = (readId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
-        GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
+    // update texture uniform
+    GLenum readDepthTexture = (readId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
+    GLenum readTexture = (readId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
+    GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
 
-        glActiveTexture(readDepthTexture); GL_ASSERT
+    glActiveTexture(readDepthTexture); GL_ASSERT
         glBindTexture(GL_TEXTURE_2D, _depthTarget[readId]); GL_ASSERT
         glUniform1i(_depth_DepthLoc, _depthTarget[readId]); GL_ASSERT
 
@@ -902,38 +1057,46 @@ void GraphicsCanvas::subRenderOIT()
         // draw the model
         subRender();
 
-        glActiveTexture(readDepthTexture); GL_ASSERT
+    glActiveTexture(readDepthTexture); GL_ASSERT
         glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
         glActiveTexture(readTexture); GL_ASSERT
         glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
+#endif
+}
 
-        // blend back color separately
-        glUseProgram(_pDepth_ShaderBlendBack->programID()); GL_ASSERT
+void GraphicsCanvas::subRenderOITBlendBack(int readId, int writeId)
+{
+#if 0
+    GLenum attach1[] = { GL_COLOR_ATTACHMENT0 };
+    GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
 
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _blendBackBuffer);
-        glDrawBuffers(1, attach1);
-        glBlendEquation(GL_FUNC_ADD);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    // blend back color separately
+    glUseProgram(_pDepth_ShaderBlendBack->programID()); GL_ASSERT
 
-        glActiveTexture(writeTexture); GL_ASSERT
-        glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
-        glUniform1i(_depth_BlendBackBackColorLoc, _backColorTarget[readId]);
-        GL_ASSERT
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _blendBackBuffer);
+    glDrawBuffers(1, attach1);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-        drawScreenRect();
-        GL_ASSERT
-    }
+    glActiveTexture(writeTexture); GL_ASSERT
+    glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
+    glUniform1i(_depth_BlendBackBackColorLoc, _backColorTarget[readId]);
+    GL_ASSERT
 
-    //////////////////////////
-    // 3. Final
-    //////////////////////////
+    drawScreenRect();
+    GL_ASSERT
 
+#endif
+}
+
+void GraphicsCanvas::subRenderOITFinal(int readId, int writeId)
+{
+#if 0
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glUseProgram(_pDepth_ShaderFinal->programID());
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    _pDepth_ShaderFinal->bind();
-    glUseProgram(_pDepth_ShaderFinal->programID());
     GLenum readFrontTextureUnit = (writeId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
     GLenum readBackTextureUnit = (writeId == 1) ? GL_TEXTURE2 : GL_TEXTURE5;
 
@@ -941,12 +1104,13 @@ void GraphicsCanvas::subRenderOIT()
     glBindTexture(GL_TEXTURE_2D, _frontColorTarget[readId]); GL_ASSERT
     glUniform1i(_depth_FinalFrontColorLoc, _frontColorTarget[readId]);
 
-    glActiveTexture(readBackTextureUnit); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
-    glUniform1i(_depth_FinalBackColorLoc, _backColorTarget[readId]);
+    glActiveTexture(GL_TEXTURE6); GL_ASSERT
+    glBindTexture(GL_TEXTURE_2D, _blendBackTarget); GL_ASSERT
+    glUniform1i(_depth_FinalBackColorLoc, _blendBackTarget);
     drawScreenRect();
     GL_ASSERT
-    _pDepth_ShaderFinal->unBind();
+
+#endif
 }
 
 void GraphicsCanvas::drawScreenRect()

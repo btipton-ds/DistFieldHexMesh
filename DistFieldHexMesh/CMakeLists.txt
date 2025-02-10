@@ -203,24 +203,36 @@ add_custom_command(
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
 
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth.vert"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_blend.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_blend.vert"
 				
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth.frag"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_blend.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_blend.frag"
 
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_quad.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_quad.vert"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_final.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_final.vert"
 				
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_blendBack.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_blendBack.frag"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_final.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_final.frag"
 
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong_depth_final.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong_depth_final.frag"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_init.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_init.vert"
+				
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_init.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_init.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_peel.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_peel.vert"
+				
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_peel.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_peel.frag"
 )
 
 if(WIN32)

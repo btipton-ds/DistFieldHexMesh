@@ -190,13 +190,19 @@ private:
     void glClearColor(const rgbaColor& color);
     void render();
     void subRender();
-    void subRenderOIT();
     void updateView();
     void drawMousePos3D();
 
     void initialize();
 
+    std::shared_ptr<OGL::Shader> createShader(const std::string& path, const std::string& filename);
+
 #if USE_OIT_RENDER
+    void subRenderOIT();
+    void subRenderOITRenderModel(int readId, int writeId);
+    void subRenderOITBlendBack(int readId, int writeId);
+    void subRenderOITFinal(int readId, int writeId);
+
     void initializeDepthPeeling();
     GLuint createColorBuffer(GLenum textureUnit, GLint width, GLint height);
     GLuint createDepthBufferx(GLenum textureUnit, GLint width, GLint height);
@@ -204,6 +210,8 @@ private:
     void releaseDepthPeeling();
     void drawScreenRect();
     void checkBoundFrameBuffer() const;
+    static void bindTexture(GLenum target, GLint texLoc, GLuint texid, int texunit);
+
 #endif
     void loadShaders();
 
@@ -231,30 +239,32 @@ private:
     rgbaColor _backColor;
 
 #if USE_OIT_RENDER
-    GLint _depth_DepthLoc = -1;
-    GLint _depth_FrontColorLoc = -1;
-    GLint _depth_BlendBackBackColorLoc = -1;
+    GLint _dualPeel_DepthBlenderSamplerLoc = -1;
+    GLint _dualPeel_FrontBlenderSamplerLoc = -1;
 
-    GLint _depth_FinalFrontColorLoc = -1;
-    GLint _depth_FinalBackColorLoc = -1;
+    GLint _dualBlend_tempSamplerLoc = -1;
 
-    std::shared_ptr<OGL::Shader> _pDepth_ShaderBlendBack;
-    std::shared_ptr<OGL::Shader> _pDepth_ShaderFinal;
+    GLint _depth_finalFrontColorSamplerLoc = -1;
+    GLint _depth_finalBackColorSamplerLoc = -1;
 
-    // 2 for ping-pong
-    // COLOR_ATTACHMENT0 - depth
-    // COLOR_ATTACHMENT1 - front color
-    // COLOR_ATTACHMENT2 - back color
-    GLuint _depthPeelBuffers[2] = { UINT_MAX, UINT_MAX };
+    std::shared_ptr<OGL::Shader> _shaderDualInit;
+    std::shared_ptr<OGL::Shader> _shaderDualPeel;
+    std::shared_ptr<OGL::Shader> _shaderDualBlend;
+    std::shared_ptr<OGL::Shader> _shaderDualFinal;
 
-    // 2 for ping-pong
-    // COLOR_ATTACHMENT0 - front color
-    // COLOR_ATTACHMENT1 - back color
-    GLuint _colorBuffers[2] = { UINT_MAX, UINT_MAX };
+    GLuint _queryId = UINT_MAX;
+    GLuint _dualBackBlenderFboId;
+    GLuint _dualPeelingSingleFboId;
+    GLuint _dualDepthTexId[2];
+    GLuint _dualFrontBlenderTexId[2];
+    GLuint _dualBackTempTexId[2];
+    GLuint _dualBackBlenderTexId;
 
-    GLuint _blendBackBuffer = UINT_MAX;
-
-    GLuint _depthTarget[2], _frontColorTarget[2], _backColorTarget[2];
+    GLuint _frontFboId[2] = { UINT_MAX, UINT_MAX };
+    GLuint _frontDepthTexId[2] = { UINT_MAX, UINT_MAX };
+    GLuint _frontColorTexId[2] = { UINT_MAX, UINT_MAX };
+    GLuint _frontColorBlenderTexId = UINT_MAX;
+    GLuint _frontColorBlenderFboId = UINT_MAX;
     GLfloat _screenRectPts[6 * 3];
 #endif
 
