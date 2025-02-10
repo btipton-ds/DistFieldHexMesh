@@ -7,8 +7,8 @@
 // Copyright (c) NVIDIA Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
 
-uniform sampler frontBlenderSampler;
-uniform sampler backBlenderSampler;
+uniform sampler2D frontBlenderSampler;
+uniform sampler2D backBlenderSampler;
 
 void main(void)
 {

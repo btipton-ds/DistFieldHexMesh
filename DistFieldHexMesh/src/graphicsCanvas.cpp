@@ -616,24 +616,24 @@ void GraphicsCanvas::initializeDepthPeeling()
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_FLOAT_RG32_NV, width, height,
-                0, GL_RGB, GL_FLOAT, 0);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_FLOAT_RG32_NV, width, height, 0, GL_RGB, GL_FLOAT, 0);
+            GL_ASSERT;
 
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[i]);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height,
-                0, GL_RGBA, GL_FLOAT, 0);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, 0);
+            GL_ASSERT;
 
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[i]);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height,
-                0, GL_RGBA, GL_FLOAT, 0);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, 0);
+            GL_ASSERT;
         }
 
         glGenTextures(1, &_dualBackBlenderTexId);
@@ -642,34 +642,30 @@ void GraphicsCanvas::initializeDepthPeeling()
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGB, width, height,
-            0, GL_RGB, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, 0);
+        GL_ASSERT;
 
         glGenFramebuffers(1, &_dualBackBlenderFboId);
         glBindFramebuffer(GL_FRAMEBUFFER_EXT, _dualBackBlenderFboId);
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
+        GL_ASSERT;
 
         glBindFramebuffer(GL_FRAMEBUFFER_EXT, _dualPeelingSingleFboId);
 
         int j = 0;
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+        GL_ASSERT;
 
         j = 1;
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT4_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT5_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualDepthTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT4_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualFrontBlenderTexId[j], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT5_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualBackTempTexId[j], 0);
+        GL_ASSERT;
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT6_EXT,
-            GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT6_EXT, GL_TEXTURE_RECTANGLE_ARB, _dualBackBlenderTexId, 0);
+        GL_ASSERT;
     }
 }
 
@@ -748,10 +744,10 @@ void GraphicsCanvas::checkBoundFrameBuffer() const
 
 void GraphicsCanvas::bindTexture(GLenum target, GLint texLoc, GLuint texid, int texunit)
 {
-    glActiveTexture(GL_TEXTURE0 + texunit);
-    glBindTexture(target, texid);
-    glUniform1i(texLoc, texunit);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0 + texunit); GL_ASSERT;
+    glBindTexture(target, texid); GL_ASSERT;
+    glUniform1i(texLoc, texunit); GL_ASSERT;
+    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
 }
 
 void GraphicsCanvas::releaseDepthPeeling()
@@ -783,18 +779,23 @@ void GraphicsCanvas::loadShaders()
     string path = "shaders/";
     
 #if USE_OIT_RENDER
-    _shaderDualInit = createShader(path, "dual_peeling_init");
-    _shaderDualPeel = createShader(path, "dual_peeling_peel");
-    _shaderDualBlend = createShader(path, "dual_peeling_blend");
-    _shaderDualFinal = createShader(path, "dual_peeling_final");
+    _shaderDualInit = createShader(path, "dual_peeling_init"); GL_ASSERT;
+    _shaderDualPeel = createShader(path, "dual_peeling_peel"); GL_ASSERT;
+    _shaderDualBlend = createShader(path, "dual_peeling_blend"); GL_ASSERT;
+    _shaderDualFinal = createShader(path, "dual_peeling_final"); GL_ASSERT;
 
-    _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler");
-    _dualPeel_FrontBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "frontBlenderSampler");
+    _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler"); GL_ASSERT;
+    assert(_dualPeel_DepthBlenderSamplerLoc != -1);
+    _dualPeel_FrontBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "frontBlenderSampler"); GL_ASSERT;
+    assert(_dualPeel_FrontBlenderSamplerLoc != -1);
 
-    _dualBlend_tempSamplerLoc = glGetUniformLocation(_shaderDualBlend->programID(), "tempSampler");
+    _dualBlend_tempSamplerLoc = glGetUniformLocation(_shaderDualBlend->programID(), "tempSampler"); GL_ASSERT;
+    assert(_dualBlend_tempSamplerLoc != -1);
 
-    _depth_finalFrontColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "frontBlenderSampler");
-    _depth_finalBackColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "backBlenderSampler");
+    _depth_finalFrontColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "frontBlenderSampler"); GL_ASSERT;
+    assert(_depth_finalFrontColorSamplerLoc != -1);
+    _depth_finalBackColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "backBlenderSampler"); GL_ASSERT;
+    assert(_depth_finalFrontColorSamplerLoc != -1);
 
     glUseProgram(0);
 #else
@@ -823,6 +824,7 @@ shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, co
 
     pResult->load();
     pResult->bind();
+    pResult->unBind();
 
     return pResult;
 }
@@ -919,12 +921,14 @@ void GraphicsCanvas::subRenderOIT()
     glDrawBuffers(2, &g_drawBuffers[1]);
     glClearColor(rgbaColor(0, 0, 0, 0));
     glClear(GL_COLOR_BUFFER_BIT);
+    GL_ASSERT;
 
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
     glDrawBuffer(g_drawBuffers[0]);
     glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0));
     glClear(GL_COLOR_BUFFER_BIT);
     glBlendEquation(GL_MAX_EXT);
+    GL_ASSERT;
 
 #if 0
     // This should be doing the solid draw. May not need it.
@@ -945,6 +949,7 @@ void GraphicsCanvas::subRenderOIT()
     glDrawBuffer(g_drawBuffers[6]);
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT);
+    GL_ASSERT;
 
     int currId = 0;
 
@@ -962,6 +967,7 @@ void GraphicsCanvas::subRenderOIT()
         glDrawBuffer(g_drawBuffers[bufId + 0]);
         glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0));
         glClear(GL_COLOR_BUFFER_BIT);
+        GL_ASSERT;
 
         // Render target 0: RG32F MAX blending
         // Render target 1: RGBA MAX blending
@@ -972,6 +978,7 @@ void GraphicsCanvas::subRenderOIT()
         _shaderDualPeel->bind();
         glUniform1i(_dualPeel_DepthBlenderSamplerLoc, _dualDepthTexId[prevId]);
         glUniform1i(_dualPeel_FrontBlenderSamplerLoc, _dualFrontBlenderTexId[prevId]);
+        GL_ASSERT;
 
 //        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
         subRender();
@@ -984,6 +991,7 @@ void GraphicsCanvas::subRenderOIT()
 
         glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GL_ASSERT;
 
         glBeginQuery(GL_SAMPLES_PASSED_ARB, _queryId);
 
@@ -1000,6 +1008,7 @@ void GraphicsCanvas::subRenderOIT()
         if (sample_count == 0) {
             break;
         }
+        GL_ASSERT;
     }
 
     glDisable(GL_BLEND);
@@ -1017,6 +1026,7 @@ void GraphicsCanvas::subRenderOIT()
     bindTexture(GL_TEXTURE, _depth_finalBackColorSamplerLoc, _dualBackBlenderTexId, 1);
     drawScreenRect();
     _shaderDualFinal->unBind();
+    GL_ASSERT;
 }
 
 void GraphicsCanvas::subRenderOITRenderModel(int readId, int writeId)
