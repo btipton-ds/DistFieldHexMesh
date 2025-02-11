@@ -12,8 +12,8 @@ uniform sampler2D backBlenderSampler;
 
 void main(void)
 {
-	vec4 frontColor = textureRect(frontBlenderSampler, gl_FragCoord.xy);
-	vec3 backColor = textureRect(backBlenderSampler, gl_FragCoord.xy).rgb;
+	vec4 frontColor = texture(frontBlenderSampler, gl_FragCoord.xy);
+	vec3 backColor = texture(backBlenderSampler, gl_FragCoord.xy).rgb;
 	float alphaMultiplier = 1.0 - frontColor.w;
 
 	// front + back

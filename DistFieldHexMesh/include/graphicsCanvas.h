@@ -204,13 +204,13 @@ private:
     void subRenderOITFinal(int readId, int writeId);
 
     void initializeDepthPeeling();
-    GLuint createColorBuffer(GLenum textureUnit, GLint width, GLint height);
-    GLuint createDepthBufferx(GLenum textureUnit, GLint width, GLint height);
+    GLuint createColorBuffer(GLenum textureUnit, GLenum storageType, GLint width, GLint height);
+    GLuint createDepthBuffer(GLenum textureUnit, GLint width, GLint height);
     void createScreenRectPoints();
     void releaseDepthPeeling();
     void drawScreenRect();
     void checkBoundFrameBuffer() const;
-    static void bindTexture(GLenum target, GLint texLoc, GLuint texid, int texunit);
+    static void bindTexture(GLint texLoc, GLuint texid, int texunit);
 
 #endif
     void loadShaders();
@@ -244,8 +244,8 @@ private:
 
     GLint _dualBlend_tempSamplerLoc = -1;
 
-    GLint _depth_finalFrontColorSamplerLoc = -1;
-    GLint _depth_finalBackColorSamplerLoc = -1;
+    GLint _dualFinal_FrontColorSamplerLoc = -1;
+    GLint _dualFinal_BackColorSamplerLoc = -1;
 
     std::shared_ptr<OGL::Shader> _shaderDualInit;
     std::shared_ptr<OGL::Shader> _shaderDualPeel;
@@ -260,11 +260,6 @@ private:
     GLuint _dualBackTempTexId[2];
     GLuint _dualBackBlenderTexId;
 
-    GLuint _frontFboId[2] = { UINT_MAX, UINT_MAX };
-    GLuint _frontDepthTexId[2] = { UINT_MAX, UINT_MAX };
-    GLuint _frontColorTexId[2] = { UINT_MAX, UINT_MAX };
-    GLuint _frontColorBlenderTexId = UINT_MAX;
-    GLuint _frontColorBlenderFboId = UINT_MAX;
     GLfloat _screenRectPts[6 * 3];
 #endif
 
