@@ -55,7 +55,7 @@ namespace DFHM {
 
 		virtual size_t numBytes() const;
 
-		void setShader(std::shared_ptr<OGL::Shader>& pShader);
+		void setShader(const std::shared_ptr<OGL::Shader>& pShader);
 		const std::shared_ptr<VBORec>& getVBOs() const;
 
 		void render();

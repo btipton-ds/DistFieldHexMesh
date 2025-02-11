@@ -57,7 +57,7 @@ size_t DrawMesh::numBytes() const
     return result;
 }
 
-void DrawMesh::setShader(std::shared_ptr<OGL::Shader>& pShader)
+void DrawMesh::setShader(const shared_ptr<OGL::Shader>& pShader)
 {
     _VBOs->_faceVBO.setShader(pShader.get());
     _VBOs->_edgeVBO.setShader(pShader.get());

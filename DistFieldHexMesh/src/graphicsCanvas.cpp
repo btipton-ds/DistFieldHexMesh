@@ -757,9 +757,21 @@ void GraphicsCanvas::loadShaders()
     
 #if USE_OIT_RENDER
     _shaderDualInit = createShader(path, "dual_peeling_init"); GL_ASSERT;
+    _shaderDualInit->setShaderVertexAttribName("inPosition");
+    _shaderDualInit->setShaderNormalAttribName("inNormal");
+    _shaderDualInit->setShaderColorAttribName("inColor");
+    finishCreateShader(_shaderDualInit);
+
     _shaderDualPeel = createShader(path, "dual_peeling_peel"); GL_ASSERT;
+    _shaderDualPeel->setShaderVertexAttribName("inPosition");
+    _shaderDualPeel->setShaderNormalAttribName("inNormal");
+    _shaderDualPeel->setShaderColorAttribName("inColor");
+    finishCreateShader(_shaderDualPeel);
+
     _shaderDualBlend = createShader(path, "dual_peeling_blend"); GL_ASSERT;
+    finishCreateShader(_shaderDualBlend);
     _shaderDualFinal = createShader(path, "dual_peeling_final"); GL_ASSERT;
+    finishCreateShader(_shaderDualFinal);
 
     _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler"); GL_ASSERT;
     assert(_dualPeel_DepthBlenderSamplerLoc != -1);
@@ -802,11 +814,14 @@ shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, co
     pResult->setVertexSrcFile(path + filename + ".vert");
     pResult->setFragmentSrcFile(path + filename + ".frag");
 
-    pResult->load();
-    pResult->bind();
-    pResult->unBind();
-
     return pResult;
+}
+
+void GraphicsCanvas::finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader)
+{
+    pShader->load();
+    pShader->bind();
+    pShader->unBind();
 }
 
 Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
@@ -870,7 +885,7 @@ void GraphicsCanvas::render()
 #else
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    subRender();
+    subRender(_pShader);
 #endif
 
 #if  DRAW_MOUSE_POSITION
@@ -882,8 +897,11 @@ void GraphicsCanvas::render()
         pShader->unBind();
 }
 
-void GraphicsCanvas::subRender()
+void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 {
+    _pDrawModelMesh->setShader(pShader);
+    _pDrawHexMesh->setShader(pShader);
+
     _pDrawModelMesh->render();
     _pDrawHexMesh->render();
 }
@@ -920,13 +938,14 @@ void GraphicsCanvas::subRenderOIT()
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
     glBlendEquation(GL_MAX); GL_ASSERT;
 
-#if 0
+#if 1
     // This should be doing the solid draw. May not need it.
     _shaderDualInit->bind();
-    subRender();
+    subRender(_shaderDualInit);
     _shaderDualInit->unBind();
 #endif
 
+#if 0
     GL_ASSERT;
 
     // ---------------------------------------------------------------------
@@ -971,7 +990,7 @@ void GraphicsCanvas::subRenderOIT()
         GL_ASSERT;
 
 //        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
-        subRender();
+        subRender(_shaderDualPeel);
         _shaderDualPeel->unBind();
 
         GL_ASSERT;
@@ -1008,7 +1027,7 @@ void GraphicsCanvas::subRenderOIT()
     // ---------------------------------------------------------------------
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GL_ASSERT;
-//    glDrawBuffer(GL_COLOR_ATTACHMENT0); GL_ASSERT;
+    glDrawBuffer(GL_BACK); GL_ASSERT;
 
     _shaderDualFinal->bind(); GL_ASSERT;
     bindTexture(_dualFinal_FrontColorSamplerLoc, _dualFrontBlenderTexId[currId], 0); GL_ASSERT;
@@ -1016,6 +1035,9 @@ void GraphicsCanvas::subRenderOIT()
 
     drawScreenRect(); GL_ASSERT;
     _shaderDualFinal->unBind(); GL_ASSERT;
+
+#endif
+
 }
 
 void GraphicsCanvas::subRenderOITRenderModel(int readId, int writeId)

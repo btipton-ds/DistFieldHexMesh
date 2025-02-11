@@ -189,13 +189,14 @@ private:
 
     void glClearColor(const rgbaColor& color);
     void render();
-    void subRender();
+    void subRender(const std::shared_ptr<OGL::Shader>& pShader);
     void updateView();
     void drawMousePos3D();
 
     void initialize();
 
     std::shared_ptr<OGL::Shader> createShader(const std::string& path, const std::string& filename);
+    void finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader);
 
 #if USE_OIT_RENDER
     void subRenderOIT();
