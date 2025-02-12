@@ -65,7 +65,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+
+#if INCLUDE_DEBUG_WX_FRAME
 #include <graphicsDebugCanvas.h>
+#endif
 
 using namespace std;
 using namespace DFHM;
@@ -315,10 +318,12 @@ void GraphicsCanvas::resetView()
     setView(GraphicsCanvas::VIEW_FRONT);
 }
 
+#if INCLUDE_DEBUG_WX_FRAME
 void GraphicsCanvas::setDebugCanvas(GraphicsDebugCanvas* pCanvas)
 {
     _pDebugCanvas = pCanvas;
 }
+#endif
 
 void GraphicsCanvas::setLights()
 {
@@ -914,10 +919,12 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 #if USE_OIT_RENDER
 void GraphicsCanvas::snapShot(GLuint texId)
 {
+#if INCLUDE_DEBUG_WX_FRAME
     if (_pDebugCanvas && texId != -1) {
         _pDebugCanvas->setSourceTextureId(texId);
         _renderRunning = true;
     }
+#endif
 }
 
 void GraphicsCanvas::subRenderOIT()

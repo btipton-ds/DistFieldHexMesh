@@ -54,7 +54,9 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+#if INCLUDE_DEBUG_WX_FRAME
 class GraphicsDebugCanvas;
+#endif
 
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
@@ -170,7 +172,10 @@ public:
     void toggleShowFace(View v);
     bool showFace(View v) const;
     void resetView();
+
+#if INCLUDE_DEBUG_WX_FRAME
     void setDebugCanvas(GraphicsDebugCanvas* pCanvas);
+#endif
 
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
@@ -231,7 +236,9 @@ private:
     double _viewScale = INIT_VIEW_SCALE;
 
     AppDataPtr _pAppData;
+#if INCLUDE_DEBUG_WX_FRAME
     GraphicsDebugCanvas* _pDebugCanvas = nullptr;
+#endif
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
     CBoundingBox3Dd _viewBounds;

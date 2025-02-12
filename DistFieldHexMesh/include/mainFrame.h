@@ -77,8 +77,6 @@ class Volume;
 enum DFHM_MENU_ID
 {
     DFHM_LOWEST = wxID_HIGHEST,
-    ID_TOGGLE_DEBUG_FRAME,
-
     ID_VerifyClosed,
     ID_VerifyNormals,
     ID_AnalyzeGaps,
@@ -136,10 +134,15 @@ enum DFHM_MENU_ID
     ID_TREE_CTRL_SHOW,
 
     ID_QUERY_PROGRESS,
+#if INCLUDE_DEBUG_WX_FRAME
+    ID_TOGGLE_DEBUG_FRAME,
+#endif
 };
 
 class GraphicsCanvas;
+#if INCLUDE_DEBUG_WX_FRAME
 class GraphicsDebugCanvas;
+#endif
 class MainFrame;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
@@ -177,7 +180,9 @@ private:
     void addBoundarySubMenu(wxMenu* pParentMenu);
     void addLayersMenu(wxMenu* pParentMenu);
     void createHelpMenu();
+#if INCLUDE_DEBUG_WX_FRAME
     void createDebugMenu();
+#endif
 
     void OnOpen(wxCommandEvent& event);
     void OnImportMesh(wxCommandEvent& event);
@@ -189,7 +194,9 @@ private:
     void OnClose(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
+#if INCLUDE_DEBUG_WX_FRAME
     void OnToggleDebugFrame(wxCommandEvent& event);
+#endif
 
     void OnCut(wxCommandEvent& event);
     void OnCopy(wxCommandEvent& event);
@@ -267,7 +274,9 @@ private:
     ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;
     GraphicsCanvas* _pCanvas = nullptr;
+#if INCLUDE_DEBUG_WX_FRAME
     GraphicsDebugCanvas* _pDebugCanvas = nullptr;
+#endif
     wxWithImages::Images _images;
 };
 

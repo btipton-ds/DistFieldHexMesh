@@ -100,8 +100,10 @@ MainFrame::MainFrame(wxWindow* parent,
     rgbaColor backColor(0.95f, 0.95f, 1.0f, 1.0f);
     _pCanvas->setBackColor(backColor);
 
+#if INCLUDE_DEBUG_WX_FRAME
     _pDebugCanvas = new GraphicsDebugCanvas(this);
     _pCanvas->setDebugCanvas(_pDebugCanvas);
+#endif
 
     _pObjectTree = new ObjectTreeCtrl(this, ID_OBJ_TREE_CTRL, wxDefaultPosition, wxSize(200, 200));
 
@@ -111,8 +113,10 @@ MainFrame::MainFrame(wxWindow* parent,
     _pSizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
 
     _debugFrameIndex = _pSizer->GetItemCount();
+#if INCLUDE_DEBUG_WX_FRAME
     _pSizer->Add(_pDebugCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
     _pSizer->Hide(_debugFrameIndex);
+#endif
 
     addMenus();
     addStatusBar();
@@ -138,7 +142,9 @@ void MainFrame::addMenus()
     createEditMenu();
     createViewMenu();
     createHelpMenu();
+#if INCLUDE_DEBUG_WX_FRAME
     createDebugMenu();
+#endif
 
     SetMenuBar(_menuBar);
 }
@@ -356,6 +362,7 @@ void MainFrame::createHelpMenu()
 
 
 }
+#if INCLUDE_DEBUG_WX_FRAME
 
 void MainFrame::createDebugMenu()
 {
@@ -366,6 +373,8 @@ void MainFrame::createDebugMenu()
 
     _menuBar->Append(pMenu, "&Debug");
 }
+
+#endif
 
 void MainFrame::addStatusBar()
 {
@@ -580,12 +589,14 @@ void MainFrame::OnAbout(wxCommandEvent& event)
         "About Hello World", wxOK | wxICON_INFORMATION);
 }
 
+#if INCLUDE_DEBUG_WX_FRAME
 void MainFrame::OnToggleDebugFrame(wxCommandEvent& event)
 {
     bool isShown = _pSizer->IsShown(_debugFrameIndex);
     _pSizer->Show(_debugFrameIndex, !isShown);
     _pSizer->Layout();
 }
+#endif
 
 void MainFrame::OnCut(wxCommandEvent& event)
 {
