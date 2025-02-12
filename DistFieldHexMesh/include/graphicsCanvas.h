@@ -54,6 +54,8 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+class GraphicsDebugCanvas;
+
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
 
@@ -168,6 +170,7 @@ public:
     void toggleShowFace(View v);
     bool showFace(View v) const;
     void resetView();
+    void setDebugCanvas(GraphicsDebugCanvas* pCanvas);
 
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
@@ -211,6 +214,7 @@ private:
     void releaseDepthPeeling();
     void drawScreenRect();
     void checkBoundFrameBuffer() const;
+    void snapShot(GLuint texId);
     static void bindTexture(GLint texLoc, GLuint texid, int texunit);
 
 #endif
@@ -220,12 +224,14 @@ private:
     std::shared_ptr<wxGLContext> _pContext;
     
     bool _initialized = false;
+    bool _renderRunning = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
 #define INIT_VIEW_SCALE 10
     double _viewScale = INIT_VIEW_SCALE;
 
     AppDataPtr _pAppData;
+    GraphicsDebugCanvas* _pDebugCanvas = nullptr;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
     CBoundingBox3Dd _viewBounds;

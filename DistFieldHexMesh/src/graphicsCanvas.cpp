@@ -65,6 +65,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <graphicsDebugCanvas.h>
 
 using namespace std;
 using namespace DFHM;
@@ -199,6 +200,8 @@ size_t GraphicsCanvas::numBytes() const
 
 void GraphicsCanvas::setView(Vector3d viewVec)
 {
+    if (!_pAppData)
+        return;
     _viewBounds = _pAppData->getBoundingBox();
     _modelView.setIdentity();
     _intitialModelView.setIdentity();
@@ -310,6 +313,11 @@ void GraphicsCanvas::resetView()
     _viewScale = INIT_VIEW_SCALE;
     initProjection();
     setView(GraphicsCanvas::VIEW_FRONT);
+}
+
+void GraphicsCanvas::setDebugCanvas(GraphicsDebugCanvas* pCanvas)
+{
+    _pDebugCanvas = pCanvas;
 }
 
 void GraphicsCanvas::setLights()
@@ -436,6 +444,8 @@ void GraphicsCanvas::setShowLayer(int32_t layerNum)
 
 void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 {
+    if (!_pAppData)
+        return;
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     vector<CMeshPtr> meshes;
     for (const auto& md : *_pAppData->getMeshData()) {
@@ -579,7 +589,8 @@ void GraphicsCanvas::clearMesh3D()
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
-    render();
+    if (_renderRunning)
+        render();
 }
 
 void GraphicsCanvas::initialize() 
@@ -751,15 +762,11 @@ void GraphicsCanvas::releaseDepthPeeling()
 void GraphicsCanvas::loadShaders()
 {
     SetCurrent(*_pContext);
-    auto ctx = wglGetCurrentContext();
-    auto ctx1 = wglGetCurrentDC();
     string path = "shaders/";
     
 #if USE_OIT_RENDER
     _shaderDualInit = createShader(path, "dual_peeling_init"); GL_ASSERT;
     _shaderDualInit->setShaderVertexAttribName("inPosition");
-    _shaderDualInit->setShaderNormalAttribName("inNormal");
-    _shaderDualInit->setShaderColorAttribName("inColor");
     finishCreateShader(_shaderDualInit);
 
     _shaderDualPeel = createShader(path, "dual_peeling_peel"); GL_ASSERT;
@@ -845,9 +852,7 @@ void GraphicsCanvas::glClearColor(const rgbaColor& color)
 void GraphicsCanvas::render()
 {
     SetCurrent(*_pContext);
-    auto ctx = wglGetCurrentContext();
-    auto ctx1 = wglGetCurrentDC();
-	initialize();
+ 	initialize();
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();
 
@@ -907,10 +912,22 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 }
 
 #if USE_OIT_RENDER
+void GraphicsCanvas::snapShot(GLuint texId)
+{
+    if (_pDebugCanvas && texId != -1) {
+        _pDebugCanvas->setSourceTextureId(texId);
+        _renderRunning = true;
+    }
+}
+
 void GraphicsCanvas::subRenderOIT()
 {
     const float MAX_DEPTH = 1.0f;
     const int numPasses = 4;
+
+    auto rect = GetRect();
+    auto width = rect.GetWidth();
+    auto height = rect.GetHeight();
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -939,10 +956,11 @@ void GraphicsCanvas::subRenderOIT()
     glBlendEquation(GL_MAX); GL_ASSERT;
 
 #if 1
-    // This should be doing the solid draw. May not need it.
+    // This seems to be setting every model pixel's depth to the depth of the model pixel.
     _shaderDualInit->bind();
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
+    snapShot(_dualDepthTexId[0]);
 #endif
 
 #if 0
@@ -1140,7 +1158,7 @@ void GraphicsCanvas::drawScreenRect()
 
     glEnableClientState(GL_VERTEX_ARRAY); GL_ASSERT;
 
-    glVertexPointer(vertSize, GL_FLOAT, 0, _screenRectPts); GL_ASSERT
+    glVertexPointer(vertSize, GL_FLOAT, stride, _screenRectPts); GL_ASSERT
     glDrawArrays(GL_TRIANGLES, 0, 6); GL_ASSERT
     glDisableClientState(GL_VERTEX_ARRAY); GL_ASSERT;
 }
@@ -1357,6 +1375,8 @@ void GraphicsCanvas::updateView()
 
 void GraphicsCanvas::changeViewElements()
 {
+    if (!_pAppData)
+        return;
     const auto& meshData = *_pAppData->getMeshData();
     _pDrawModelMesh->changeViewElements(meshData);
     _pDrawHexMesh->changeViewElements();

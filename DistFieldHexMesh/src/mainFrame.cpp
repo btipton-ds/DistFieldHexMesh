@@ -48,6 +48,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <buildCFDHexesDlg.h>
 #include <createBaseMeshDlg.h>
 #include <graphicsCanvas.h>
+#include <graphicsDebugCanvas.h>
 #include <meshData.h>
 #include <volume.h>
 #include <vertex.h>
@@ -56,6 +57,18 @@ using namespace std;
 using namespace DFHM;
 
 #define PROG_MAX 300
+
+namespace
+{
+    int attribs[] = {
+        WX_GL_DEPTH_SIZE, 16,
+#if GRAPHICS_OVER_SAMPLING > 1
+        WX_GL_SAMPLES, GRAPHICS_OVER_SAMPLING * GRAPHICS_OVER_SAMPLING,
+#endif
+        0
+    };
+
+}
 
 MainFrame::MainFrame(wxWindow* parent,
     wxWindowID id,
@@ -80,21 +93,28 @@ MainFrame::MainFrame(wxWindow* parent,
 
     _pAppData = make_shared<AppData>(this);
 
-    auto sizer = new wxBoxSizer(wxHORIZONTAL);
+    _pSizer = new wxBoxSizer(wxHORIZONTAL);
+    SetSizer(_pSizer);
 
     _pCanvas = new GraphicsCanvas(this, _pAppData);
     rgbaColor backColor(0.95f, 0.95f, 1.0f, 1.0f);
     _pCanvas->setBackColor(backColor);
 
+    _pDebugCanvas = new GraphicsDebugCanvas(this);
+    _pCanvas->setDebugCanvas(_pDebugCanvas);
+
     _pObjectTree = new ObjectTreeCtrl(this, ID_OBJ_TREE_CTRL, wxDefaultPosition, wxSize(200, 200));
 
-    sizer->Add(_pObjectTree, 0, wxEXPAND | wxDOWN, FromDIP(0));
-    sizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
+    _pSizer->Add(_pObjectTree, 0, wxEXPAND | wxDOWN, FromDIP(0));
 
-    SetSizer(sizer);
+    _canvasFrameIndex = _pSizer->GetItemCount();
+    _pSizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
+
+    _debugFrameIndex = _pSizer->GetItemCount();
+    _pSizer->Add(_pDebugCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
+    _pSizer->Hide(_debugFrameIndex);
 
     addMenus();
-    addModelPanel();
     addStatusBar();
 
     wxBitmapBundle bitMap0, bitMap1;
@@ -118,6 +138,7 @@ void MainFrame::addMenus()
     createEditMenu();
     createViewMenu();
     createHelpMenu();
+    createDebugMenu();
 
     SetMenuBar(_menuBar);
 }
@@ -326,18 +347,24 @@ void MainFrame::addLayersMenu(wxMenu* pParentMenu)
 }
 void MainFrame::createHelpMenu()
 {
-    wxMenu* menuHelp = new wxMenu;
-    menuHelp->Append(wxID_ABOUT);
+    wxMenu* pMenu = new wxMenu;
+
+    pMenu->Append(wxID_ABOUT);
     Bind(wxEVT_MENU, &MainFrame::OnAbout, this, wxID_ABOUT);
 
-    _menuBar->Append(menuHelp, "&Help");
+    _menuBar->Append(pMenu, "&Help");
 
 
 }
 
-void MainFrame::addModelPanel()
+void MainFrame::createDebugMenu()
 {
+    wxMenu* pMenu = new wxMenu;
 
+    pMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
+    Bind(wxEVT_MENU, &MainFrame::OnToggleDebugFrame, this, ID_TOGGLE_DEBUG_FRAME);
+
+    _menuBar->Append(pMenu, "&Debug");
 }
 
 void MainFrame::addStatusBar()
@@ -551,6 +578,13 @@ void MainFrame::OnAbout(wxCommandEvent& event)
 {
     wxMessageBox("This is a wxWidgets Hello World example",
         "About Hello World", wxOK | wxICON_INFORMATION);
+}
+
+void MainFrame::OnToggleDebugFrame(wxCommandEvent& event)
+{
+    bool isShown = _pSizer->IsShown(_debugFrameIndex);
+    _pSizer->Show(_debugFrameIndex, !isShown);
+    _pSizer->Layout();
 }
 
 void MainFrame::OnCut(wxCommandEvent& event)

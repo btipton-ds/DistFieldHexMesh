@@ -83,6 +83,7 @@ add_executable (DistFieldHexMesh
 	"src/gradingOp.cpp"
 	"src/graphicsCanvas.cpp"
 	"src/graphicsVBORec.cpp"
+	"src/graphicsDebugCanvas.cpp"
 	"src/logger.cpp"
 	"src/main.cpp" 
 	"src/mainFrame.cpp"
@@ -110,7 +111,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-  )
+   )
 
 add_executable (TestDFM         
 	
@@ -135,8 +136,7 @@ add_executable (TestDFM
 	"src/testPoolMemory.cpp" 
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
-	"../../utilities/threads/src/local_heap.cpp"
- )
+	"../../utilities/threads/src/local_heap.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -233,6 +233,14 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_peel.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_peel.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/debug.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.vert"
+				
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SHADER_SOURCE_DIR}/debug.frag"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.frag"
 )
 
 if(WIN32)

@@ -36,58 +36,8 @@ This file is part of the VulkanQuickStart Project.
 #extension GL_ARB_separate_shader_objects : enable
 #extension ARB_draw_buffers : require
 
-uniform UniformBufferObject {
-	mat4 modelView;
-	mat4 proj;
-	vec4 defColor;
-	float ambient;
-  int useDefColor;
-  int normalShadingOn;
-  int twoSideLighting;
-  int numLights;
-	vec3 lightDir[8];
-};
-
-layout(location = 0) in vec4 fragColor;
-layout(location = 1) in vec3 fragNormal;
-
 layout(location = 0) out vec4 outColor;
 
-#define MAX_DEPTH 1.0
-
-vec4 shadeFragment()
-{
-  float C_PI = radians(180);
-  float intensity = 0.0;
-  vec4 color;
-
-  if (normalShadingOn != 0) {
-    for (int i = 0; i < numLights; i++) {
-      float dp = dot(lightDir[i], fragNormal);
-
-      if (twoSideLighting != 0)
-        dp = abs(dp);
-
-      if (dp > 0)
-        intensity += dp;
-    }
-  } else {
-    intensity = 1.0;
-  }
-  
-  intensity = min(intensity, 1.0);
-
-  intensity = ambient + (1.0 - ambient) * intensity;
-
-  float alpha = fragColor[3];
-
-  color = intensity * fragColor;
-
-  color[3] = alpha;
-
-  return color;
-}
-
 void main() {
-	outColor = shadeFragment();
+	outColor.xy = vec2(-gl_FragCoord.z, gl_FragCoord.z);
 }
