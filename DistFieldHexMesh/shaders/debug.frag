@@ -17,6 +17,7 @@ layout(location = 0) out vec4 outColor;
 void main(void)
 {
 	outColor = texture(source, gl_FragCoord.xy);
+//  outColor = vec4(0,1,0,1);
 
 	// for occlusion query
 	if (outColor.a == 0) 

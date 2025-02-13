@@ -249,6 +249,8 @@ private:
 
     void OnUpdateUI(wxUpdateUIEvent& event);
 
+    void onSizeChange(wxSizeEvent& event);
+
     void updateStatusBar();
 
     std::shared_ptr<std::future<int>> _pBackgroundFuture;
@@ -256,7 +258,12 @@ private:
     int _progressValue = 0;
     wxGauge* _progress;
     wxMenuBar* _menuBar = nullptr;
-    wxBoxSizer* _pSizer = nullptr;
+    wxSizer* _pSizer = nullptr;
+    int _debugFrameIndex = -1;
+    wxSizerItem 
+        *_pObjTreeSizer = nullptr, 
+        *_pCanvasSizer = nullptr, 
+        *_pDebugCanvasSizer = nullptr;
     wxMenu
         * _editMenu = nullptr,
         * _fileMenu = nullptr,
@@ -265,8 +272,6 @@ private:
         * _viewStandardViewsSubMenu = nullptr,
         * _layersSubMenu = nullptr;
 
-    int _canvasFrameIndex = -1;
-    int _debugFrameIndex = -1;
     size_t _numCells = 0;
     size_t _numFaces = 0;
     size_t _numBytes = 0;
@@ -278,6 +283,7 @@ private:
     GraphicsDebugCanvas* _pDebugCanvas = nullptr;
 #endif
     wxWithImages::Images _images;
+
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

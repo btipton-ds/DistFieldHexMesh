@@ -64,10 +64,10 @@ public:
 
     void setSourceTextureId(GLuint texId);
 private:
+    friend class GraphicsCanvas;
     std::shared_ptr<wxGLContext> _pContext;
 
     void initialize();
-    void doPaint(wxPaintEvent& event);
     void glClearColor(const rgbaColor& color);
     void render();
     void drawScreenRect();
@@ -80,7 +80,5 @@ private:
 
     GLfloat _screenRectPts[6 * 3];
 
-protected:
-    wxDECLARE_EVENT_TABLE();
 };
 }

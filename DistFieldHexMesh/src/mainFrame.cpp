@@ -109,7 +109,7 @@ MainFrame::MainFrame(wxWindow* parent,
 
     _pSizer->Add(_pObjectTree, 0, wxEXPAND | wxDOWN, FromDIP(0));
 
-    _canvasFrameIndex = _pSizer->GetItemCount();
+    _pSizer->GetItemCount();
     _pSizer->Add(_pCanvas, 1, wxEXPAND | wxALL, FromDIP(0));
 
     _debugFrameIndex = _pSizer->GetItemCount();

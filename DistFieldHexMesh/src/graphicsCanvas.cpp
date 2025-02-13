@@ -156,7 +156,7 @@ namespace
 
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
-    : wxGLCanvas(parent, wxID_ANY, attribs, wxPoint(200, 0), wxDefaultSize, 0, wxT("GLCanvas"))
+    : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
     , _pAppData(pAppData)
 {
     _pDrawHexMesh = make_shared<DrawHexMesh>(this);
@@ -579,8 +579,8 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 {
 #if USE_OIT_RENDER
-    releaseDepthPeeling();
     initializeDepthPeeling();
+    resizeDepthPeelingTextures();
 #endif
 
     updateProjectionAspect();
@@ -594,8 +594,14 @@ void GraphicsCanvas::clearMesh3D()
 }
 
 void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
+    wxPaintDC dc(this);
+
     if (_renderRunning)
         render();
+#if INCLUDE_DEBUG_WX_FRAME
+    if (_pDebugCanvas && _pDebugCanvas->IsShown())
+        _pDebugCanvas->render();
+#endif
 }
 
 void GraphicsCanvas::initialize() 
@@ -658,38 +664,66 @@ void GraphicsCanvas::initializeDepthPeeling()
     }
 }
 
+void GraphicsCanvas::resizeDepthPeelingTextures()
+{
+    GLint dims[4] = { 0 };
+    glGetIntegerv(GL_VIEWPORT, dims);
+    GLint width = dims[2];
+    GLint height = dims[3];
+    for (int i = 0; i < 2; i++)
+    {
+        resizeDepthBuffer(_dualDepthTexId[i], GL_TEXTURE0 + 3 * i, width, height);
+        resizeColorBuffer(_dualFrontBlenderTexId[i], GL_TEXTURE1 + 3 * i, GL_RGBA, width, height);
+        resizeColorBuffer(_dualBackTempTexId[i], GL_TEXTURE2 + 3 * i, GL_RGBA, width, height);
+    }
+    resizeColorBuffer(_dualBackBlenderTexId, GL_TEXTURE6, GL_RGB, width, height);
+}
+
 GLuint GraphicsCanvas::createColorBuffer(GLenum textureUnit, GLenum storageType, GLint width, GLint height)
 {
     GLuint result;
-    glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT
-    glActiveTexture(textureUnit); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, result); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT;
+
+    resizeColorBuffer(result, textureUnit, storageType, width, height);
+
+    return result;
+}
+
+void GraphicsCanvas::resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum storageType, GLint width, GLint height)
+{
+    glActiveTexture(textureUnit); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_2D, texId); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
     if (storageType == GL_RGBA) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_HALF_FLOAT, nullptr); GL_ASSERT;
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_HALF_FLOAT, nullptr); GL_ASSERT;
     }
-    return result;
 }
 
 GLuint GraphicsCanvas::createDepthBuffer(GLenum textureUnit, GLint width, GLint height)
 {
     GLuint result;
-    glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT
+    glCreateTextures(GL_TEXTURE_2D, 1, &result); GL_ASSERT;
 
-    glActiveTexture(textureUnit); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, result); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, nullptr); GL_ASSERT
+    resizeDepthBuffer(result, textureUnit, width, height);
 
     return result;
+}
+
+void GraphicsCanvas::resizeDepthBuffer(GLuint texId, GLenum textureUnit, GLint width, GLint height)
+{
+    glActiveTexture(textureUnit); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_2D, texId); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, nullptr); GL_ASSERT;
+
 }
 
 void GraphicsCanvas::createScreenRectPoints()
@@ -870,8 +904,6 @@ void GraphicsCanvas::render()
     pShader->bind();
 #endif
 
-    wxPaintDC(this);
-
     const GLuint bindingPoint = 1;
     static GLuint vertUboIdx = -1;
     static GLint blockSize = -1;
@@ -953,7 +985,7 @@ void GraphicsCanvas::subRenderOIT()
     glBindTexture(GL_TEXTURE_2D, _dualFrontBlenderTexId[0]); GL_ASSERT;
     glActiveTexture(GL_TEXTURE2); GL_ASSERT;
     glBindTexture(GL_TEXTURE_2D, _dualBackTempTexId[0]); GL_ASSERT;
-    glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT;
+    glClearColor(rgbaColor(0, 0, 1, 1)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
@@ -967,7 +999,8 @@ void GraphicsCanvas::subRenderOIT()
     _shaderDualInit->bind();
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
-    snapShot(_dualDepthTexId[0]);
+    snapShot(_dualFrontBlenderTexId[0]);
+
 #endif
 
 #if 0

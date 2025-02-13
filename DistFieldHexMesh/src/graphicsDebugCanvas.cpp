@@ -42,10 +42,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-BEGIN_EVENT_TABLE(GraphicsDebugCanvas, wxGLCanvas)
-EVT_PAINT(GraphicsDebugCanvas::doPaint)
-END_EVENT_TABLE()
-
 namespace
 {
     int attribs[] = {
@@ -113,36 +109,30 @@ void GraphicsDebugCanvas::glClearColor(const rgbaColor& color)
 
 }
 
-void GraphicsDebugCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
-    render();
-}
-
 void GraphicsDebugCanvas::render()
 {
-    cout << "Render debug\n";
     SetCurrent(*_pContext);
     initialize();
-
-    wxPaintDC(this);
 
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();
 
-    glClearColor(rgbaColor(0, 0, 0, 1));
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(rgbaColor(0, 0, 0, 0));
+    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     if (_sourceTexId != -1) {
         _pShader->bind();
 
         auto loc = glGetUniformLocation(_pShader->programID(), "source"); GL_ASSERT;
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, _sourceTexId);
-        glUniform1i(loc, _sourceTexId);
+        glActiveTexture(GL_TEXTURE0); GL_ASSERT;
+        glBindTexture(GL_TEXTURE_2D, _sourceTexId); GL_ASSERT;
+        glUniform1i(loc, _sourceTexId); GL_ASSERT;
 
         drawScreenRect();
 
-        _pShader->unBind();
+        _pShader->unBind(); GL_ASSERT;
     }
     SwapBuffers(); GL_ASSERT
 
