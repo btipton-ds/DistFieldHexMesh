@@ -617,6 +617,14 @@ void GraphicsCanvas::initialize()
 	return;
 }
 
+void GraphicsCanvas::getGlDims(int& width, int& height)
+{
+    GLint dims[4] = { 0 };
+    glGetIntegerv(GL_VIEWPORT, dims);
+    width = dims[2];
+    height = dims[3];
+}
+
 #if USE_OIT_RENDER
 void GraphicsCanvas::initializeDepthPeeling()
 {
@@ -626,20 +634,24 @@ void GraphicsCanvas::initializeDepthPeeling()
     if (hasContext && hasVBOSupport() && _dualPeelingSingleFboId == UINT_MAX) {
         createScreenRectPoints();
 
-        GLint dims[4] = { 0 };
-        glGetIntegerv(GL_VIEWPORT, dims);
-        GLint width = dims[2];
-        GLint height = dims[3];
+        int width, height;
+        getGlDims(width, height);
+
         glGenTextures(2, _dualDepthTexId);
         glGenTextures(2, _dualFrontBlenderTexId);
         glGenTextures(2, _dualBackTempTexId);
         glGenFramebuffers(1, &_dualPeelingSingleFboId);
-        for (int i = 0; i < 2; i++)
-        {
-            _dualDepthTexId[i] = createDepthBuffer(GL_TEXTURE0 + 3 * i, width, height);
-            _dualFrontBlenderTexId[i] = createColorBuffer(GL_TEXTURE1 + 3 * i, GL_RGBA, width, height);
-            _dualBackTempTexId[i] = createColorBuffer(GL_TEXTURE2 + 3 * i, GL_RGBA, width, height);
-        }
+
+        int idx = 0;
+        _dualDepthTexId[idx] = createDepthBuffer(GL_TEXTURE0, width, height);
+        _dualFrontBlenderTexId[idx] = createColorBuffer(GL_TEXTURE1, GL_RGBA, width, height);
+        _dualBackTempTexId[idx] = createColorBuffer(GL_TEXTURE2, GL_RGBA, width, height);
+
+        idx = 1;
+        _dualDepthTexId[idx] = createDepthBuffer(GL_TEXTURE3, width, height);
+        _dualFrontBlenderTexId[idx] = createColorBuffer(GL_TEXTURE4, GL_RGBA, width, height);
+        _dualBackTempTexId[idx] = createColorBuffer(GL_TEXTURE5, GL_RGBA, width, height);
+
         _dualBackBlenderTexId = createColorBuffer(GL_TEXTURE6, GL_RGB, width, height);
 
         glGenFramebuffers(1, &_dualBackBlenderFboId);
@@ -666,16 +678,19 @@ void GraphicsCanvas::initializeDepthPeeling()
 
 void GraphicsCanvas::resizeDepthPeelingTextures()
 {
-    GLint dims[4] = { 0 };
-    glGetIntegerv(GL_VIEWPORT, dims);
-    GLint width = dims[2];
-    GLint height = dims[3];
-    for (int i = 0; i < 2; i++)
-    {
-        resizeDepthBuffer(_dualDepthTexId[i], GL_TEXTURE0 + 3 * i, width, height);
-        resizeColorBuffer(_dualFrontBlenderTexId[i], GL_TEXTURE1 + 3 * i, GL_RGBA, width, height);
-        resizeColorBuffer(_dualBackTempTexId[i], GL_TEXTURE2 + 3 * i, GL_RGBA, width, height);
-    }
+    int width, height;
+    getGlDims(width, height);
+
+    int idx = 0;
+    resizeDepthBuffer(_dualDepthTexId[idx], GL_TEXTURE0, width, height);
+    resizeColorBuffer(_dualFrontBlenderTexId[idx], GL_TEXTURE1, GL_RGBA, width, height);
+    resizeColorBuffer(_dualBackTempTexId[idx], GL_TEXTURE2, GL_RGBA, width, height);
+
+    idx = 1;
+    resizeDepthBuffer(_dualDepthTexId[idx], GL_TEXTURE3, width, height);
+    resizeColorBuffer(_dualFrontBlenderTexId[idx], GL_TEXTURE4, GL_RGBA, width, height);
+    resizeColorBuffer(_dualBackTempTexId[idx], GL_TEXTURE5, GL_RGBA, width, height);
+
     resizeColorBuffer(_dualBackBlenderTexId, GL_TEXTURE6, GL_RGB, width, height);
 }
 
@@ -922,12 +937,13 @@ void GraphicsCanvas::render()
 
     glViewport(0, 0, width, height);
 
+    glClearColor(_backColor);
 #if USE_OIT_RENDER
+    glClear(GL_COLOR_BUFFER_BIT);
     subRenderOIT();
 #else
-    glClearColor(_backColor);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     subRender(_pShader);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 
 #if  DRAW_MOUSE_POSITION
@@ -954,7 +970,6 @@ void GraphicsCanvas::snapShot(GLuint texId)
 #if INCLUDE_DEBUG_WX_FRAME
     if (_pDebugCanvas && texId != -1) {
         _pDebugCanvas->setSourceTextureId(texId);
-        _renderRunning = true;
     }
 #endif
 }
@@ -985,11 +1000,13 @@ void GraphicsCanvas::subRenderOIT()
     glBindTexture(GL_TEXTURE_2D, _dualFrontBlenderTexId[0]); GL_ASSERT;
     glActiveTexture(GL_TEXTURE2); GL_ASSERT;
     glBindTexture(GL_TEXTURE_2D, _dualBackTempTexId[0]); GL_ASSERT;
-    glClearColor(rgbaColor(0, 0, 1, 1)); GL_ASSERT;
+    glClearColor(rgbaColor(1, 1, 1, 1)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
     glDrawBuffer(g_drawBuffers[0]); GL_ASSERT;
+    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_2D, _dualDepthTexId[0]); GL_ASSERT;
     glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
     glBlendEquation(GL_MAX); GL_ASSERT;
@@ -999,7 +1016,8 @@ void GraphicsCanvas::subRenderOIT()
     _shaderDualInit->bind();
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
-    snapShot(_dualFrontBlenderTexId[0]);
+
+//    snapShot(_dualFrontBlenderTexId[0]);
 
 #endif
 

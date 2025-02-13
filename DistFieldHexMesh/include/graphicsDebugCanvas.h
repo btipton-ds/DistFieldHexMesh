@@ -71,14 +71,20 @@ private:
     void glClearColor(const rgbaColor& color);
     void render();
     void drawScreenRect();
+    void regenDefImage();
+    static void getGlDims(int& width, int& height);
 
     std::shared_ptr<OGL::Shader> _pShader;
 
+    bool _initialized = false;
     bool _ready = false;
     GLuint _texId = -1;
     GLuint _sourceTexId = -1;
 
+    GLint _sourceLoc = -1;
+
     GLfloat _screenRectPts[6 * 3];
 
+    std::vector<unsigned char> _pixels;
 };
 }

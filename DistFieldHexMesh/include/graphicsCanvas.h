@@ -205,6 +205,7 @@ private:
 
     std::shared_ptr<OGL::Shader> createShader(const std::string& path, const std::string& filename);
     void finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader);
+    static void getGlDims(int& width, int& height);
 
 #if USE_OIT_RENDER
     void subRenderOIT();

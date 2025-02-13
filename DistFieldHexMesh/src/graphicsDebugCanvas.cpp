@@ -69,6 +69,9 @@ GraphicsDebugCanvas::~GraphicsDebugCanvas()
 
 void GraphicsDebugCanvas::initialize()
 {
+    if (_initialized)
+        return;
+
     string path = "shaders/";
 
     _pContext = make_shared<wxGLContext>(this);
@@ -80,6 +83,9 @@ void GraphicsDebugCanvas::initialize()
 
     _pShader->load();
     _pShader->bind();
+
+    _sourceLoc = glGetUniformLocation(_pShader->programID(), "source"); GL_ASSERT;
+
     _pShader->unBind();
 
     Vector3f screenPts[] = {
@@ -96,6 +102,59 @@ void GraphicsDebugCanvas::initialize()
             _screenRectPts[3 * i + j] = screenPts[i][j];
         }
     }
+
+    glCreateTextures(GL_TEXTURE_RECTANGLE, 1, &_texId);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_RECTANGLE, _texId);
+
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
+
+    regenDefImage();
+}
+
+
+
+
+void GraphicsDebugCanvas::regenDefImage()
+{
+    int width, height;
+    getGlDims(width, height);
+    size_t dim = 10, reps = 10;
+    size_t size = 4 * width * height;
+    if (size != _pixels.size()) {
+        _pixels.resize(size);
+
+        const rgbaColor colorA = rgbaColor(1, 1, 1, 1);
+        const rgbaColor colorB = rgbaColor(0, 0, 0, 1);
+        rgbaColor color;
+        size_t idx = 0;
+        for (size_t h = 0; h < width; h++) {
+            for (size_t v = 0; v < height; v++) {
+                size_t hRep = h % dim;
+                size_t vRep = v % dim;
+                if (vRep % 2 == 0) {
+                    color = (hRep % 2 == 0) ? colorA : colorB;
+                }
+                else {
+                    color = (hRep % 2 == 1) ? colorA : colorB;
+                }
+                _pixels[idx++] = color._rgba[0];
+                _pixels[idx++] = color._rgba[1];
+                _pixels[idx++] = color._rgba[2];
+                _pixels[idx++] = color._rgba[3];
+            }
+        }
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_RECTANGLE, _texId);
+
+        const GLint level = 0, border = 0;
+        glTexImage2D(GL_TEXTURE_RECTANGLE, level, GL_RGBA8, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE, _pixels.data()); GL_ASSERT;
+    }
+
 }
 
 void GraphicsDebugCanvas::glClearColor(const rgbaColor& color)
@@ -109,31 +168,40 @@ void GraphicsDebugCanvas::glClearColor(const rgbaColor& color)
 
 }
 
+void GraphicsDebugCanvas::getGlDims(int& width, int& height)
+{
+    GLint dims[4] = { 0 };
+    glGetIntegerv(GL_VIEWPORT, dims);
+    width = dims[2];
+    height = dims[3];
+}
+
+
 void GraphicsDebugCanvas::render()
 {
+    int width, height;
+    getGlDims(width, height);
+
     SetCurrent(*_pContext);
     initialize();
+    regenDefImage();
 
-    auto portRect = GetSize();
-    int width = portRect.GetWidth(), height = portRect.GetHeight();
-
-    glClearColor(rgbaColor(0, 0, 0, 0));
+    glViewport(0, 0, width, height);
+    glClearColor(rgbaColor(0, 0, 0.2f, 0));
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if (_sourceTexId != -1) {
-        _pShader->bind();
+    GLuint texId = (_sourceTexId != -1) ? _sourceTexId : _texId;
 
-        auto loc = glGetUniformLocation(_pShader->programID(), "source"); GL_ASSERT;
+    _pShader->bind();
 
-        glActiveTexture(GL_TEXTURE0); GL_ASSERT;
-        glBindTexture(GL_TEXTURE_2D, _sourceTexId); GL_ASSERT;
-        glUniform1i(loc, _sourceTexId); GL_ASSERT;
+    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_RECTANGLE, texId); GL_ASSERT;
+    glUniform1i(_sourceLoc, texId); GL_ASSERT;
 
-        drawScreenRect();
+    drawScreenRect();
 
-        _pShader->unBind(); GL_ASSERT;
-    }
+    _pShader->unBind(); GL_ASSERT;
     SwapBuffers(); GL_ASSERT
 
 }
