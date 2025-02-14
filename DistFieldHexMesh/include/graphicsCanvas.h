@@ -114,8 +114,8 @@ public:
     std::shared_ptr<DrawHexMesh> getDrawHexMesh();
     const std::shared_ptr<DrawHexMesh> getDrawHexMesh() const;
 
-
     void doPaint(wxPaintEvent& event);
+    void render();
     void setBackColor(const rgbaColor& color);
 
     void setView(Vector3d viewVec);
@@ -196,7 +196,6 @@ private:
     Vector3d pointToLocal(const Vector3d& pointMC) const;
 
     void glClearColor(const rgbaColor& color);
-    void render();
     void subRender(const std::shared_ptr<OGL::Shader>& pShader);
     void updateView();
     void drawMousePos3D();
@@ -232,7 +231,6 @@ private:
     void loadShaders();
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
-    std::shared_ptr<wxGLContext> _pContext;
     
     bool _initialized = false;
     bool _renderRunning = true;
@@ -275,6 +273,7 @@ private:
     GLuint _queryId = UINT_MAX;
     GLuint _dualBackBlenderFboId = UINT_MAX;
     GLuint _dualPeelingSingleFboId = UINT_MAX;
+
     GLuint _dualDepthTexId[2] = { UINT_MAX, UINT_MAX };
     GLuint _dualFrontBlenderTexId[2] = { UINT_MAX, UINT_MAX };
     GLuint _dualBackTempTexId[2] = { UINT_MAX, UINT_MAX };

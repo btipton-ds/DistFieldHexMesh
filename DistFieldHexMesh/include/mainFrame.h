@@ -43,6 +43,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <appData.h>
 #include <objectTreeCtrl.h>
 
+class wxGLContext;
+class wxGLCanvas;
+
 namespace DFHM {
 
 /*
@@ -150,6 +153,8 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 class MainFrame : public wxFrame, public ProgressReporter
 {
 public:
+    static const std::shared_ptr<wxGLContext>& getGLContext(wxGLCanvas* pCanvas);
+
     MainFrame(wxWindow* parent,
         wxWindowID id,
         const wxString& title,
@@ -162,6 +167,8 @@ public:
 
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();
+
+    void doPaint(wxPaintEvent& event);
 
     AppDataPtr getAppData();
     void refreshObjectTree();
@@ -284,6 +291,8 @@ private:
 #endif
     wxWithImages::Images _images;
 
+protected:
+    wxDECLARE_EVENT_TABLE();
 };
 
 inline const GraphicsCanvas* MainFrame::getCanvas() const

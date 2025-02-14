@@ -63,13 +63,14 @@ public:
     ~GraphicsDebugCanvas();
 
     void setSourceTextureId(GLuint texId);
+    void doPaint(wxPaintEvent& event);
+    void render();
+    void onSizeChange(wxSizeEvent& event);
 private:
     friend class GraphicsCanvas;
-    std::shared_ptr<wxGLContext> _pContext;
 
     void initialize();
     void glClearColor(const rgbaColor& color);
-    void render();
     void drawScreenRect();
     void regenDefImage();
     static void getGlDims(int& width, int& height);
@@ -85,6 +86,9 @@ private:
 
     GLfloat _screenRectPts[6 * 3];
 
-    std::vector<unsigned char> _pixels;
+    std::vector<GLubyte> _pixels;
+
+protected:
+    wxDECLARE_EVENT_TABLE();
 };
 }

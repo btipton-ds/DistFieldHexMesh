@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 
 #include <graphicsCanvas.h>
+#include <mainFrame.h>
 
 #ifdef WIN32
 #include <Windows.h>
@@ -162,13 +163,9 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     _pDrawHexMesh = make_shared<DrawHexMesh>(this);
     _pDrawModelMesh = make_shared<DrawModelMesh>(this);
 
-    _pContext = make_shared<wxGLContext>(this);
-
     initProjection();
     setLights();
     setView(GraphicsCanvas::VIEW_FRONT);
-
-//    Bind(wxEVT_SIZE, &GraphicsCanvas::onSizeChange, this);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -593,17 +590,6 @@ void GraphicsCanvas::clearMesh3D()
     VBOs->clear();
 }
 
-void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
-    wxPaintDC dc(this);
-
-    if (_renderRunning)
-        render();
-#if INCLUDE_DEBUG_WX_FRAME
-    if (_pDebugCanvas && _pDebugCanvas->IsShown())
-        _pDebugCanvas->render();
-#endif
-}
-
 void GraphicsCanvas::initialize() 
 {
 	if (_initialized)
@@ -787,7 +773,9 @@ void GraphicsCanvas::bindTexture(GLint texLoc, GLuint texid, int texunit)
 {
     glActiveTexture(GL_TEXTURE0 + texunit); GL_ASSERT;
     glBindTexture(GL_TEXTURE_2D, texid); GL_ASSERT;
-    glUniform1i(texLoc, texunit); GL_ASSERT;
+    if (texLoc != -1) {
+        glUniform1i(texLoc, texunit); GL_ASSERT;
+    }
 }
 
 void GraphicsCanvas::releaseDepthPeeling()
@@ -815,7 +803,7 @@ void GraphicsCanvas::releaseDepthPeeling()
 
 void GraphicsCanvas::loadShaders()
 {
-    SetCurrent(*_pContext);
+    SetCurrent(*MainFrame::getGLContext(this));
     string path = "shaders/";
     
 #if USE_OIT_RENDER
@@ -903,9 +891,17 @@ void GraphicsCanvas::glClearColor(const rgbaColor& color)
     );
 }
 
+void GraphicsCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
+    //    wxPaintDC dc(this); // Despite the documentation, wxPaintDC BREAKS many things and the destructor DOES NOT roll up the stack with multiple GlCanvases.
+    render();
+}
+
 void GraphicsCanvas::render()
 {
-    SetCurrent(*_pContext);
+//    wxPaintDC dc(this);
+    if (!IsShown())
+        return;
+    SetCurrent(*MainFrame::getGLContext(this));
  	initialize();
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();
@@ -942,8 +938,8 @@ void GraphicsCanvas::render()
     glClear(GL_COLOR_BUFFER_BIT);
     subRenderOIT();
 #else
-    subRender(_pShader);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    subRender(_pShader);
 #endif
 
 #if  DRAW_MOUSE_POSITION
@@ -996,17 +992,14 @@ void GraphicsCanvas::subRenderOIT()
     // Clear to 0.0 and use MAX blending to filter written color
     // At most one front color and one back color can be written every pass
     glDrawBuffers(2, &g_drawBuffers[1]); GL_ASSERT;
-    glActiveTexture(GL_TEXTURE1); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_2D, _dualFrontBlenderTexId[0]); GL_ASSERT;
-    glActiveTexture(GL_TEXTURE2); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_2D, _dualBackTempTexId[0]); GL_ASSERT;
+    bindTexture(-1, _dualFrontBlenderTexId[0], 1);
+    bindTexture(-1, _dualBackTempTexId[0], 2);
     glClearColor(rgbaColor(1, 1, 1, 1)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
     glDrawBuffer(g_drawBuffers[0]); GL_ASSERT;
-    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_2D, _dualDepthTexId[0]); GL_ASSERT;
+    bindTexture(-1, _dualDepthTexId[0], 0);
     glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
     glBlendEquation(GL_MAX); GL_ASSERT;
@@ -1021,7 +1014,7 @@ void GraphicsCanvas::subRenderOIT()
 
 #endif
 
-#if 0
+#if 1
     GL_ASSERT;
 
     // ---------------------------------------------------------------------
@@ -1030,7 +1023,7 @@ void GraphicsCanvas::subRenderOIT()
 
     // Since we cannot blend the back colors in the geometry passes,
     // we use another render target to do the alpha blending
-    //glBindFramebufferEXT(GL_FRAMEBUFFER, _dualBackBlenderFboId);
+    glBindFramebuffer(GL_FRAMEBUFFER, _dualBackBlenderFboId);
     glDrawBuffer(g_drawBuffers[6]);
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -1043,7 +1036,7 @@ void GraphicsCanvas::subRenderOIT()
         int prevId = 1 - currId;
         int bufId = currId * 3;
 
-        //glBindFramebufferEXT(GL_FRAMEBUFFER, _dualPeelingFboId[currId]);
+        glBindFramebuffer(GL_FRAMEBUFFER, _dualPeelingSingleFboId);
 
         glDrawBuffers(2, &g_drawBuffers[bufId + 1]);
         glClearColor(rgbaColor(0, 0, 0, 0));
@@ -1103,7 +1096,7 @@ void GraphicsCanvas::subRenderOIT()
     // ---------------------------------------------------------------------
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GL_ASSERT;
-    glDrawBuffer(GL_BACK); GL_ASSERT;
+//    glDrawBuffer(GL_BACK); GL_ASSERT;
 
     _shaderDualFinal->bind(); GL_ASSERT;
     bindTexture(_dualFinal_FrontColorSamplerLoc, _dualFrontBlenderTexId[currId], 0); GL_ASSERT;

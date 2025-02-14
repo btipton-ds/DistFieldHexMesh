@@ -19,12 +19,22 @@ layout(location = 0) out vec4 outColor;
 void main(void)
 {
 	outColor = texture(source, gl_FragCoord.xy);
-  #if 0
+#if 0
   if (gl_FragCoord.x < 0)
     outColor = vec4(1,0,0,1);
   else if(gl_FragCoord.x < 392)
     outColor = vec4(0,1,0,1);
   else
     outColor = vec4(0,0,1,1);
+#endif
+
+#if 0
+  outColor = vec4(gl_FragCoord.x / float(392), gl_FragCoord.y / float(900), 0, 1);
+#endif
+
+#if 0
+  int val = int(gl_FragCoord.x) + int(gl_FragCoord.y);
+  if (mod(val, 2) == 0)
+    discard;
 #endif
 }

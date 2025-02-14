@@ -37,10 +37,17 @@ This file is part of the DistFieldHexMesh application/library.
 #endif // WIN32
 
 #include <OGLShader.h>
+#include <mainFrame.h>
+#include <graphicsCanvas.h>
 #include <graphicsDebugCanvas.h>
 
 using namespace std;
 using namespace DFHM;
+
+BEGIN_EVENT_TABLE(GraphicsDebugCanvas, wxGLCanvas)
+EVT_PAINT(GraphicsDebugCanvas::doPaint)
+EVT_SIZE(GraphicsDebugCanvas::onSizeChange)
+END_EVENT_TABLE()
 
 namespace
 {
@@ -74,9 +81,8 @@ void GraphicsDebugCanvas::initialize()
 
     string path = "shaders/";
 
-    _pContext = make_shared<wxGLContext>(this);
-    SetCurrent(*_pContext);
-    auto p = wglGetCurrentContext();
+    SetCurrent(*MainFrame::getGLContext(this));
+
     _pShader = make_shared<OGL::Shader>();
     _pShader->setVertexSrcFile(path + "debug.vert");
     _pShader->setFragmentSrcFile(path + "debug.frag");
@@ -97,6 +103,7 @@ void GraphicsDebugCanvas::initialize()
         Vector3f(1,  1, 0),
         Vector3f(-1,  1, 0),
     };
+
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 3; j++) {
             _screenRectPts[3 * i + j] = screenPts[i][j];
@@ -107,39 +114,36 @@ void GraphicsDebugCanvas::initialize()
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_RECTANGLE, _texId);
 
-    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST); GL_ASSERT;
-    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
-    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
-    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP); GL_ASSERT;
+    glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP); GL_ASSERT;
 
     regenDefImage();
 }
-
-
-
 
 void GraphicsDebugCanvas::regenDefImage()
 {
     int width, height;
     getGlDims(width, height);
-    size_t dim = 10, reps = 10;
+    size_t dim = 60;
     size_t size = 4 * width * height;
     if (size != _pixels.size()) {
         _pixels.resize(size);
 
-        const rgbaColor colorA = rgbaColor(1, 1, 1, 1);
-        const rgbaColor colorB = rgbaColor(0, 0, 0, 1);
+        const rgbaColor colorA = rgbaColor(0.5, 0.25, 0.25, 1);
+        const rgbaColor colorB = rgbaColor(0.25, 0.5, 0.25, 1);
         rgbaColor color;
         size_t idx = 0;
-        for (size_t h = 0; h < width; h++) {
-            for (size_t v = 0; v < height; v++) {
-                size_t hRep = h % dim;
-                size_t vRep = v % dim;
-                if (vRep % 2 == 0) {
-                    color = (hRep % 2 == 0) ? colorA : colorB;
+        for (size_t v = 0; v < height; v++) {
+            size_t row = v / dim;
+            for (size_t h = 0; h < width; h++) {
+                size_t col = h / dim;
+                if (row % 2 == 0) {
+                    color = (col % 2 == 0) ? colorA : colorB;
                 }
                 else {
-                    color = (hRep % 2 == 1) ? colorA : colorB;
+                    color = (col % 2 == 1) ? colorA : colorB;
                 }
                 _pixels[idx++] = color._rgba[0];
                 _pixels[idx++] = color._rgba[1];
@@ -155,6 +159,12 @@ void GraphicsDebugCanvas::regenDefImage()
         glTexImage2D(GL_TEXTURE_RECTANGLE, level, GL_RGBA8, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE, _pixels.data()); GL_ASSERT;
     }
 
+}
+
+void GraphicsDebugCanvas::onSizeChange(wxSizeEvent& event)
+{
+    regenDefImage();
+    event.Skip();
 }
 
 void GraphicsDebugCanvas::glClearColor(const rgbaColor& color)
@@ -176,15 +186,22 @@ void GraphicsDebugCanvas::getGlDims(int& width, int& height)
     height = dims[3];
 }
 
+void GraphicsDebugCanvas::doPaint(wxPaintEvent& WXUNUSED(event)) {
+    //    wxPaintDC dc(this); // Despite the documentation, wxPaintDC BREAKS many things and the destructor DOES NOT roll up the stack with multiple GlCanvases.
+    render();
+}
 
 void GraphicsDebugCanvas::render()
 {
+//    wxPaintDC dc(this);
+    if (!IsShown())
+        return;
+
+    SetCurrent(*MainFrame::getGLContext(this));
+    initialize();
+
     int width, height;
     getGlDims(width, height);
-
-    SetCurrent(*_pContext);
-    initialize();
-    regenDefImage();
 
     glViewport(0, 0, width, height);
     glClearColor(rgbaColor(0, 0, 0.2f, 0));
@@ -196,14 +213,14 @@ void GraphicsDebugCanvas::render()
     _pShader->bind();
 
     glActiveTexture(GL_TEXTURE0); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_RECTANGLE, texId); GL_ASSERT;
-    glUniform1i(_sourceLoc, texId); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_RECTANGLE, _texId); GL_ASSERT;
+    glUniform1i(_sourceLoc, 0); GL_ASSERT;
 
     drawScreenRect();
 
     _pShader->unBind(); GL_ASSERT;
-    SwapBuffers(); GL_ASSERT
 
+    SwapBuffers(); GL_ASSERT;
 }
 
 void GraphicsDebugCanvas::setSourceTextureId(GLuint texId)

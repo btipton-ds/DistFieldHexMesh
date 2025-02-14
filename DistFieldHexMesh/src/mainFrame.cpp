@@ -58,6 +58,20 @@ using namespace DFHM;
 
 #define PROG_MAX 300
 
+BEGIN_EVENT_TABLE(MainFrame, wxFrame)
+EVT_PAINT(MainFrame::doPaint)
+END_EVENT_TABLE()
+
+const std::shared_ptr<wxGLContext>& MainFrame::getGLContext(wxGLCanvas* pCanvas)
+{
+    static std::shared_ptr<wxGLContext> pContext;
+    if (!pContext)
+        pContext = make_shared<wxGLContext>(pCanvas);
+    else
+        pContext->SetCurrent(*pCanvas);
+    return pContext;
+}
+
 namespace
 {
     int attribs[] = {
@@ -147,6 +161,14 @@ void MainFrame::addMenus()
 #endif
 
     SetMenuBar(_menuBar);
+}
+
+void MainFrame::doPaint(wxPaintEvent& WXUNUSED(event)) {
+//    wxPaintDC dc(this); // Despite the documentation, wxPaintDC BREAKS many things and the destructor DOES NOT roll up the stack with multiple GlCanvases.
+    if (_pDebugCanvas)
+        _pDebugCanvas->render();
+    _pCanvas->render();
+
 }
 
 void MainFrame::createFileMenu()
