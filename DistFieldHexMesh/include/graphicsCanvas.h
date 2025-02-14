@@ -273,7 +273,6 @@ private:
     std::shared_ptr<OGL::Shader> _shaderDualFinal;
 
     GLuint _queryId = UINT_MAX;
-    GLuint _dualBackBlenderFboId = UINT_MAX;
     GLuint _dualPeelingSingleFboId = UINT_MAX;
 
     GLuint _dualDepthTexId[2] = { UINT_MAX, UINT_MAX };

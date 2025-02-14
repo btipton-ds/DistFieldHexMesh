@@ -139,5 +139,6 @@ void main() {
     out_1 = vec4(0.5,0,0.5,1);
 	} else {
 		out_2 += color;
+    out_2 = vec4(0.5,0.5,0,1);
 	}
 }

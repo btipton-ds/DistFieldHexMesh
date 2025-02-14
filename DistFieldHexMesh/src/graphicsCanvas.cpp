@@ -639,12 +639,7 @@ void GraphicsCanvas::initializeDepthPeeling()
 
         _dualBackBlenderTexId = createColorBuffer(GL_TEXTURE6, GL_RGB, width, height);
 
-        glGenFramebuffers(1, &_dualBackBlenderFboId);
-        glBindFramebuffer(GL_FRAMEBUFFER, _dualBackBlenderFboId);
         int level = 0;
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId, level); GL_ASSERT;
-        checkBoundFrameBuffer();
-
         glBindFramebuffer(GL_FRAMEBUFFER, _dualPeelingSingleFboId);
 
         int j = 0;
@@ -781,14 +776,12 @@ void GraphicsCanvas::bindTextureRect(GLint texLoc, GLuint texid, int texunit)
 void GraphicsCanvas::releaseDepthPeeling()
 {
     if (hasVBOSupport() && _dualPeelingSingleFboId != UINT_MAX) {
-        glDeleteFramebuffers(1, &_dualBackBlenderFboId);
         glDeleteFramebuffers(1, &_dualPeelingSingleFboId);
         glDeleteTextures(2, _dualDepthTexId);
         glDeleteTextures(2, _dualFrontBlenderTexId);
         glDeleteTextures(2, _dualBackTempTexId);
         glDeleteTextures(1, &_dualBackBlenderTexId);
 
-        _dualBackBlenderFboId = UINT_MAX;
         _dualPeelingSingleFboId = UINT_MAX;
         _dualBackBlenderTexId = UINT_MAX;
         for (int i = 0; i < 2; i++) {
@@ -823,17 +816,12 @@ void GraphicsCanvas::loadShaders()
     finishCreateShader(_shaderDualFinal);
 
     _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler"); GL_ASSERT;
-    assert(_dualPeel_DepthBlenderSamplerLoc != -1);
     _dualPeel_FrontBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "frontBlenderSampler"); GL_ASSERT;
-    assert(_dualPeel_FrontBlenderSamplerLoc != -1);
 
     _dualBlend_tempSamplerLoc = glGetUniformLocation(_shaderDualBlend->programID(), "tempSampler"); GL_ASSERT;
-    assert(_dualBlend_tempSamplerLoc != -1);
 
     _dualFinal_FrontColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "frontBlenderSampler"); GL_ASSERT;
-    assert(_dualFinal_FrontColorSamplerLoc != -1);
     _dualFinal_BackColorSamplerLoc = glGetUniformLocation(_shaderDualFinal->programID(), "backBlenderSampler"); GL_ASSERT;
-    assert(_dualFinal_BackColorSamplerLoc != -1);
 
     _pDrawModelMesh->setShader(_shaderDualPeel);
     _pDrawHexMesh->setShader(_shaderDualPeel);
@@ -993,7 +981,7 @@ void GraphicsCanvas::subRenderOIT()
     // Clear to 0.0 and use MAX blending to filter written color
     // At most one front color and one back color can be written every pass
     glDrawBuffers(2, &g_drawBuffers[1]); GL_ASSERT;
-    glClearColor(rgbaColor(0, 1, 0, 0)); GL_ASSERT;
+    glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT;
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
@@ -1007,13 +995,12 @@ void GraphicsCanvas::subRenderOIT()
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
 
-    snapShot(_dualDepthTexId[0]);
-
-#if 0 // check buffers
-    writeTexture("front0", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[0]);
-    writeTexture("back0", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[0]);
-    writeTexture("depth0", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
-#endif
+    bool dump1 = false;
+    if (dump1) {// check buffers
+        writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[0]);
+        writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[0]);
+        writeTexture("_0_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
+    }
 
 #if 1
     GL_ASSERT;
@@ -1024,13 +1011,12 @@ void GraphicsCanvas::subRenderOIT()
 
     // Since we cannot blend the back colors in the geometry passes,
     // we use another render target to do the alpha blending
-    glBindFramebuffer(GL_FRAMEBUFFER, _dualBackBlenderFboId);
-    glDrawBuffer(g_drawBuffers[0]); // _dualBackBlenderFboId is bound to GL_COLOR_ATTACHMENT0, not GL_COLOR_ATTACHMENT6 
+    glDrawBuffer(g_drawBuffers[6]); // _dualBackBlenderFboId is bound to GL_COLOR_ATTACHMENT0, not GL_COLOR_ATTACHMENT6 
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
-#if 0 // Good to here
-    writeTexture("blendBackClear", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
-#endif
+    if (dump1) {// check buffers
+        writeTexture("_0_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
+    }
 
     int currId = 0;
 
@@ -1038,8 +1024,6 @@ void GraphicsCanvas::subRenderOIT()
         currId = pass % 2;
         int prevId = 1 - currId;
         int bufOffset = currId * 3;
-
-        glBindFramebuffer(GL_FRAMEBUFFER, _dualPeelingSingleFboId);
 
         glDrawBuffers(2, &g_drawBuffers[bufOffset + 1]);
         glClearColor(rgbaColor(0, 0, 0, 0));
@@ -1064,11 +1048,10 @@ void GraphicsCanvas::subRenderOIT()
 //        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
         subRender(_shaderDualPeel);
         _shaderDualPeel->unBind(); GL_ASSERT;
-        bool dump1 = false;
         if (dump1) {// check buffers
-            writeTexture("front1", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
-            writeTexture("back1", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
-            writeTexture("depth1", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
+            writeTexture("_1_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
+            writeTexture("_1_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
+            writeTexture("_1_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
         }
 
         // Full screen pass to alpha-blend the back color
@@ -1086,7 +1069,7 @@ void GraphicsCanvas::subRenderOIT()
         _shaderDualBlend->unBind(); GL_ASSERT;
 
         if (dump1) {// check buffers
-            writeTexture("blendBack1", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
+            writeTexture("_1_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
         }
 
         glEndQuery(GL_SAMPLES_PASSED_ARB);
