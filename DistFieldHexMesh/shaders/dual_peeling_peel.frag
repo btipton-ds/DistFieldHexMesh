@@ -136,6 +136,7 @@ void main() {
 	if (fragDepth == nearestDepth) {
 		out_1.xyz += color.rgb * color.a * alphaMultiplier;
 		out_1.w = 1.0 - alphaMultiplier * (1.0 - color.a);
+    out_1 = vec4(0.5,0,0.5,1);
 	} else {
 		out_2 += color;
 	}

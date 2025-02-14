@@ -225,12 +225,14 @@ private:
     void drawScreenRect();
     void checkBoundFrameBuffer() const;
     void snapShot(GLuint texId);
-    static void bindTexture(GLint texLoc, GLuint texid, int texunit);
+    static void bindTextureRect(GLint texLoc, GLuint texid, int texunit);
 
 #endif
     void loadShaders();
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
+
+    void writeTexture(const std::string& filename, GLenum target, GLuint texId);
     
     bool _initialized = false;
     bool _renderRunning = true;

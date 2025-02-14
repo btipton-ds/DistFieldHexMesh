@@ -165,9 +165,12 @@ void MainFrame::addMenus()
 
 void MainFrame::doPaint(wxPaintEvent& WXUNUSED(event)) {
 //    wxPaintDC dc(this); // Despite the documentation, wxPaintDC BREAKS many things and the destructor DOES NOT roll up the stack with multiple GlCanvases.
+    _pCanvas->render();
+
+#if INCLUDE_DEBUG_WX_FRAME
     if (_pDebugCanvas)
         _pDebugCanvas->render();
-    _pCanvas->render();
+#endif
 
 }
 
