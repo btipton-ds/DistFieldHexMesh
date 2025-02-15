@@ -233,7 +233,8 @@ private:
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
 
     void writeTexture(const std::string& filename, GLenum target, GLuint texId);
-    
+    void writeDepthTexture(const std::string& filename, GLenum target, GLuint texId);
+
     bool _initialized = false;
     bool _renderRunning = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
@@ -255,10 +256,15 @@ private:
     Eigen::Matrix4d _modelView, _projection, _intitialModelView, _initialProjection;
 
     GraphicsUBO _graphicsUBO;
+    GLuint _uboBindingPoint = 1;
+    GLuint _uboBufferId = -1;
+    GLuint _uboIdx = -1;
     std::shared_ptr<OGL::Shader> _pShader;
     rgbaColor _backColor;
 
 #if USE_OIT_RENDER
+    GLuint dualPeel_InitUboIdx = -1;
+
     GLint _dualPeel_DepthBlenderSamplerLoc = -1;
     GLint _dualPeel_FrontBlenderSamplerLoc = -1;
 

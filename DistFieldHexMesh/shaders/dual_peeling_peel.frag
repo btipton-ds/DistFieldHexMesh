@@ -110,12 +110,15 @@ void main() {
 	// Because over blending makes color increase or decrease,
 	// we cannot pass-through by default.
 	// Each pass, only one fragment writes a color greater than 0
-	out_2 = vec4(0.0);
+	out_2 = vec4(0.0); // I can't find this in the spec, but it looks like a single value is duplicated for all entries
 
 	float nearestDepth = -depthBlender.x;
 	float farthestDepth = depthBlender.y;
 	float alphaMultiplier = 1.0 - forwardTemp.w;
 
+  /*
+  Verified that fragDepth, nearestDepth and farthestDepth are all in [0,1] bounds by testing
+  */
 	if (fragDepth < nearestDepth || fragDepth > farthestDepth) {
 		// Skip this depth in the peeling algorithm
 		out_0.xy = vec2(-MAX_DEPTH);
@@ -136,9 +139,7 @@ void main() {
 	if (fragDepth == nearestDepth) {
 		out_1.xyz += color.rgb * color.a * alphaMultiplier;
 		out_1.w = 1.0 - alphaMultiplier * (1.0 - color.a);
-    out_1 = vec4(0.5,0,0.5,1);
 	} else {
 		out_2 += color;
-    out_2 = vec4(0.5,0.5,0,1);
 	}
 }

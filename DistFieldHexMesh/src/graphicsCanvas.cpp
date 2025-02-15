@@ -693,11 +693,7 @@ void GraphicsCanvas::resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum 
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
-    if (storageType == GL_RGBA) {
-        glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_HALF_FLOAT, nullptr); GL_ASSERT;
-    } else {
-        glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGB8, width, height, 0, GL_RGB, GL_HALF_FLOAT, nullptr); GL_ASSERT;
-    }
+    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
 }
 
 GLuint GraphicsCanvas::createDepthBuffer(GLenum textureUnit, GLint width, GLint height)
@@ -718,7 +714,7 @@ void GraphicsCanvas::resizeDepthBuffer(GLuint texId, GLenum textureUnit, GLint w
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
-    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, nullptr); GL_ASSERT;
+    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
 
 }
 
@@ -803,6 +799,7 @@ void GraphicsCanvas::loadShaders()
     _shaderDualInit = createShader(path, "dual_peeling_init"); GL_ASSERT;
     _shaderDualInit->setShaderVertexAttribName("inPosition");
     finishCreateShader(_shaderDualInit);
+    dualPeel_InitUboIdx = glGetUniformBlockIndex(_shaderDualInit->programID(), "UniformBufferObject");
 
     _shaderDualPeel = createShader(path, "dual_peeling_peel"); GL_ASSERT;
     _shaderDualPeel->setShaderVertexAttribName("inPosition");
@@ -814,6 +811,8 @@ void GraphicsCanvas::loadShaders()
     finishCreateShader(_shaderDualBlend);
     _shaderDualFinal = createShader(path, "dual_peeling_final"); GL_ASSERT;
     finishCreateShader(_shaderDualFinal);
+
+    _uboIdx = glGetUniformBlockIndex(_shaderDualPeel->programID(), "UniformBufferObject");
 
     _dualPeel_DepthBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "depthBlenderSampler"); GL_ASSERT;
     _dualPeel_FrontBlenderSamplerLoc = glGetUniformLocation(_shaderDualPeel->programID(), "frontBlenderSampler"); GL_ASSERT;
@@ -839,9 +838,13 @@ void GraphicsCanvas::loadShaders()
 
     _pShader->load();
 
+    _uboIdx = glGetUniformBlockIndex(_pShader->programID(), "UniformBufferObject");
+
     _pDrawModelMesh->setShader(_pShader);
     _pDrawHexMesh->setShader(_pShader);
 #endif
+
+    glGenBuffers(1, &_uboBufferId);
 }
 
 shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, const std::string& filename)
@@ -894,40 +897,34 @@ void GraphicsCanvas::render()
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();
 
-    shared_ptr<OGL::Shader> pShader;
     updateView();
 #if USE_OIT_RENDER
-    pShader = _shaderDualPeel;
-#else
-    pShader = _pShader;
-    pShader->bind();
-#endif
+    _shaderDualPeel->bind();
 
-    const GLuint bindingPoint = 1;
-    static GLuint vertUboIdx = -1;
-    static GLint blockSize = -1;
-    static GLuint uniformBuffer = -1;
-    if (vertUboIdx == -1) {
-        vertUboIdx = glGetUniformBlockIndex(pShader->programID(), "UniformBufferObject");
-        glGetActiveUniformBlockiv(pShader->programID(), vertUboIdx, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize); GL_ASSERT
-        glGenBuffers(1, &uniformBuffer);
-    }
+    glUniformBlockBinding(_shaderDualPeel->programID(), _uboIdx, _uboBindingPoint);
 
-    glUniformBlockBinding(pShader->programID(), vertUboIdx, bindingPoint);
-
-    glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, _uboBufferId);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingPoint, uniformBuffer);
+    glBindBufferBase(GL_UNIFORM_BUFFER, _uboBindingPoint, _uboBufferId);
 
-    glViewport(0, 0, width, height);
-
-    glClearColor(_backColor);
-#if USE_OIT_RENDER
-    glClear(GL_COLOR_BUFFER_BIT);
+    _shaderDualPeel->unBind();
     subRenderOIT();
 #else
+    _pShader->bind();
+
+    glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUniformBlockBinding(_pShader->programID(), _uboIdx, _uboBindingPoint);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, _uboBufferId);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, _uboBindingPoint, _uboBufferId);
+
     subRender(_pShader);
+
+    if (_pShader->bound())
+        _pShader->unBind();
 #endif
 
 #if  DRAW_MOUSE_POSITION
@@ -935,8 +932,6 @@ void GraphicsCanvas::render()
 #endif //  DRAW_MOUSE_POSITION
 
     SwapBuffers(); GL_ASSERT
-    if (pShader->bound())
-        pShader->unBind();
 }
 
 void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
@@ -961,7 +956,7 @@ void GraphicsCanvas::snapShot(GLuint texId)
 void GraphicsCanvas::subRenderOIT()
 {
     const float MAX_DEPTH = 1.0f;
-    const int numPasses = 4;
+    const int numPasses = 6;
 
     auto rect = GetRect();
     auto width = rect.GetWidth();
@@ -977,29 +972,34 @@ void GraphicsCanvas::subRenderOIT()
     // This seems to be setting every model pixel's depth to the depth of the model pixel.
     glBindFramebuffer(GL_FRAMEBUFFER, _dualPeelingSingleFboId); GL_ASSERT;
 
+    // Prime the color buffers with transparent black - nothing
     // Render targets 1 and 2 store the front and back colors
     // Clear to 0.0 and use MAX blending to filter written color
     // At most one front color and one back color can be written every pass
     glDrawBuffers(2, &g_drawBuffers[1]); GL_ASSERT;
-    glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT;
+    ::glClearColor(0, 0, 0, 0); GL_ASSERT; // Checked with a displayable color
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
+    // Prime the depth buffers using the image. This sets the min/max depths for the entire model
     // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
     glDrawBuffer(g_drawBuffers[0]); GL_ASSERT;
-    glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0)); GL_ASSERT;
+    ::glClearColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0); GL_ASSERT; // Use the global version to store the full float. Checked with a displayable color
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+
     glBlendEquation(GL_MAX); GL_ASSERT;
 
     // This draws the model to set the depth buffers
     _shaderDualInit->bind();
+    glUniformBlockBinding(_shaderDualInit->programID(), dualPeel_InitUboIdx, _uboBindingPoint);
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
 
-    bool dump1 = false;
+    static bool dump1 = false;
+    static bool dump2 = false;
     if (dump1) {// check buffers
         writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[0]);
         writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[0]);
-        writeTexture("_0_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
+        writeDepthTexture("_0_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
     }
 
 #if 1
@@ -1015,24 +1015,27 @@ void GraphicsCanvas::subRenderOIT()
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
     if (dump1) {// check buffers
-        writeTexture("_0_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
+        writeTexture("_1_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId); // Visibly checked _backColor
     }
 
     int currId = 0;
 
     for (int pass = 1; pass < numPasses; pass++) {
+        int fileNum = 1 + pass;
+        stringstream ss;
+        ss << "_" << fileNum << "_";
+        string prefix = ss.str();
         currId = pass % 2;
         int prevId = 1 - currId;
         int bufOffset = currId * 3;
 
         glDrawBuffers(2, &g_drawBuffers[bufOffset + 1]);
-        glClearColor(rgbaColor(0, 0, 0, 0));
+        ::glClearColor(0, 0, 0, 0); // Verified with displayable color
         glClear(GL_COLOR_BUFFER_BIT);
 
         glDrawBuffer(g_drawBuffers[bufOffset + 0]);
-        glClearColor(rgbaColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0));
-        glClear(GL_COLOR_BUFFER_BIT);
-        GL_ASSERT;
+        ::glClearColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0); // Verified with displayable color
+        glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
         // Render target 0: RG32F MAX blending
         // Render target 1: RGBA MAX blending
@@ -1042,16 +1045,15 @@ void GraphicsCanvas::subRenderOIT()
 
         _shaderDualPeel->bind();
         bindTextureRect(_dualPeel_DepthBlenderSamplerLoc, _dualDepthTexId[prevId], 0);
-        bindTextureRect(_dualPeel_FrontBlenderSamplerLoc, _dualFrontBlenderTexId[prevId], 1);
-        GL_ASSERT;
+        bindTextureRect(_dualPeel_FrontBlenderSamplerLoc, _dualFrontBlenderTexId[prevId], 1); GL_ASSERT;
 
 //        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
         subRender(_shaderDualPeel);
         _shaderDualPeel->unBind(); GL_ASSERT;
-        if (dump1) {// check buffers
-            writeTexture("_1_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
-            writeTexture("_1_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
-            writeTexture("_1_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
+        if (dump2) {// check buffers
+            writeTexture(prefix + "front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
+            writeTexture(prefix + "back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
+            writeDepthTexture(prefix + "depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
         }
 
         // Full screen pass to alpha-blend the back color
@@ -1065,18 +1067,18 @@ void GraphicsCanvas::subRenderOIT()
 
         _shaderDualBlend->bind();
         bindTextureRect(_dualBlend_tempSamplerLoc, _dualBackTempTexId[currId], 0);
-        drawScreenRect();
+        drawScreenRect(); // blend back isn't updating the depth buffers - almost there
         _shaderDualBlend->unBind(); GL_ASSERT;
 
-        if (dump1) {// check buffers
-            writeTexture("_1_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
+        if (dump2) {// check buffers
+            writeTexture(prefix + "blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
         }
 
         glEndQuery(GL_SAMPLES_PASSED_ARB);
         GLuint sample_count;
         glGetQueryObjectuiv(_queryId, GL_QUERY_RESULT_ARB, &sample_count);
         if (sample_count == 0) {
-            break;
+//            break;
         }
         GL_ASSERT;
     }
@@ -1442,6 +1444,7 @@ void GraphicsCanvas::writeTexture(const std::string& filename, GLenum target, GL
     size_t numElements = 0;
     int format;
     switch (storageFormat) {
+    case GL_RGBA8_EXT:
     case GL_RGBA16F:
     case GL_RGBA32F:
         numElements = 4;
@@ -1467,18 +1470,96 @@ void GraphicsCanvas::writeTexture(const std::string& filename, GLenum target, GL
     int i, j;
     FILE* fp = fopen(fn.c_str(), "wb"); /* b - binary mode */
     (void)fprintf(fp, "P6\n%d %d\n255\n", dimx, dimy);
-    for (j = 0; j < dimy; ++j)
+    for (j = dimy - 1; j >= 0; j--)
     {
         for (i = 0; i < dimx; ++i)
         {
             static unsigned char color[3];
             size_t idx = numElements * (j * dimx + i);
             int max = numElements > 3 ? 3 : numElements;
-            for (int i = 0; i < numElements; i++) {
-                color[i] = (unsigned char)(buf[idx + i] * 255);
-            }
+            color[0] = (unsigned char)(buf[idx + 0] * 255);
+            color[1] = (unsigned char)(buf[idx + 1] * 255);
+            color[2] = (unsigned char)(buf[idx + 2] * 255);
+
             (void)fwrite(color, 1, 3, fp);
         }
     }
     (void)fclose(fp);
+}
+
+void GraphicsCanvas::writeDepthTexture(const std::string& filename, GLenum target, GLuint texId)
+{
+    string path = "D:/DarkSky/Projects/DistFieldHexMesh/out/";
+
+    int dimx = 800, dimy = 800, storageFormat;
+    int miplevel = 0;
+
+    glActiveTexture(GL_TEXTURE12); GL_ASSERT;
+    glBindTexture(target, texId); GL_ASSERT;
+    glGetTexLevelParameteriv(target, miplevel, GL_TEXTURE_WIDTH, &dimx); GL_ASSERT;
+    glGetTexLevelParameteriv(target, miplevel, GL_TEXTURE_HEIGHT, &dimy); GL_ASSERT;
+    glGetTexLevelParameteriv(target, miplevel, GL_TEXTURE_INTERNAL_FORMAT, &storageFormat); GL_ASSERT;
+
+    size_t numElements = 0;
+    int format;
+    switch (storageFormat) {
+    case GL_RGBA16F:
+    case GL_RGBA32F:
+        numElements = 4;
+        format = GL_RGBA;
+        break;
+    case GL_RGB8:
+        numElements = 3;
+        format = GL_RGB;
+        break;
+    case GL_RG32F:
+        numElements = 2;
+        format = GL_RG;
+        break;
+    default:
+        assert(!"Unexpected storage format");
+        break;
+    }
+    size_t size = numElements * dimx * dimy;
+    vector<float> buf;
+    buf.resize(size);
+    glGetTexImage(target, miplevel, format, GL_FLOAT, buf.data()); GL_ASSERT;
+
+    {
+        string fn = path + filename + "_near.ppm";
+        int i, j;
+        FILE* fp = fopen(fn.c_str(), "wb"); /* b - binary mode */
+        (void)fprintf(fp, "P6\n%d %d\n255\n", dimx, dimy);
+        for (j = dimy - 1; j >= 0; j--)
+        {
+            for (i = 0; i < dimx; ++i)
+            {
+                static unsigned char color[3];
+                size_t idx = numElements * (j * dimx + i);
+                color[0] = color[1] = color[2] = (unsigned char)(fabs(buf[idx + 0]) * 255);
+
+                (void)fwrite(color, 1, 3, fp);
+            }
+        }
+        (void)fclose(fp);
+    }
+
+    {
+        string fn = path + filename + "_far.ppm";
+        int i, j;
+        FILE* fp = fopen(fn.c_str(), "wb"); /* b - binary mode */
+        (void)fprintf(fp, "P6\n%d %d\n255\n", dimx, dimy);
+        for (j = dimy - 1; j >= 0; j--)
+        {
+            for (i = 0; i < dimx; ++i)
+            {
+                static unsigned char color[3] = { 0,0,0 };
+                size_t idx = numElements * (j * dimx + i);
+                color[0] = color[1] = color[2] = (unsigned char)(fabs(buf[idx + 1]) * 255);
+
+                (void)fwrite(color, 1, 3, fp);
+            }
+        }
+        (void)fclose(fp);
+    }
 }

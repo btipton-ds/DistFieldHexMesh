@@ -36,8 +36,8 @@ This file is part of the VulkanQuickStart Project.
 #extension GL_ARB_separate_shader_objects : enable
 #extension ARB_draw_buffers : require
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 outDepth;
 
 void main() {
-	outColor.xy = vec2(-gl_FragCoord.z, gl_FragCoord.z);
+	outDepth.xy = vec2(-gl_FragCoord.z, gl_FragCoord.z);
 }
