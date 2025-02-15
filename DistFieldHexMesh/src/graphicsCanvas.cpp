@@ -994,14 +994,6 @@ void GraphicsCanvas::subRenderOIT()
     subRender(_shaderDualInit);
     _shaderDualInit->unBind();
 
-    static bool dump1 = false;
-    static bool dump2 = false;
-    if (dump1) {// check buffers
-        writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[0]);
-        writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[0]);
-        writeDepthTexture("_0_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
-    }
-
 #if 1
     GL_ASSERT;
 
@@ -1014,17 +1006,19 @@ void GraphicsCanvas::subRenderOIT()
     glDrawBuffer(g_drawBuffers[6]); // _dualBackBlenderFboId is bound to GL_COLOR_ATTACHMENT0, not GL_COLOR_ATTACHMENT6 
     glClearColor(_backColor);
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+
+    static bool dump1 = false;
+    static bool dump2 = false;
     if (dump1) {// check buffers
-        writeTexture("_1_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId); // Visibly checked _backColor
+        writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[0]);
+        writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[0]);
+        writeDepthTexture("_0_depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[0]);
+        writeTexture("_0_blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId); // Visibly checked _backColor
     }
 
     int currId = 0;
 
     for (int pass = 1; pass < numPasses; pass++) {
-        int fileNum = 1 + pass;
-        stringstream ss;
-        ss << "_" << fileNum << "_";
-        string prefix = ss.str();
         currId = pass % 2;
         int prevId = 1 - currId;
         int bufOffset = currId * 3;
@@ -1044,17 +1038,13 @@ void GraphicsCanvas::subRenderOIT()
         glBlendEquation(GL_MAX);
 
         _shaderDualPeel->bind();
+        glUniformBlockBinding(_shaderDualInit->programID(), dualPeel_InitUboIdx, _uboBindingPoint);
         bindTextureRect(_dualPeel_DepthBlenderSamplerLoc, _dualDepthTexId[prevId], 0);
         bindTextureRect(_dualPeel_FrontBlenderSamplerLoc, _dualFrontBlenderTexId[prevId], 1); GL_ASSERT;
 
 //        _shaderDualPeel.setUniform("Alpha", (float*)&_opacity, 1);
         subRender(_shaderDualPeel);
         _shaderDualPeel->unBind(); GL_ASSERT;
-        if (dump2) {// check buffers
-            writeTexture(prefix + "front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
-            writeTexture(prefix + "back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
-            writeDepthTexture(prefix + "depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
-        }
 
         // Full screen pass to alpha-blend the back color
         glDrawBuffer(g_drawBuffers[6]);
@@ -1071,6 +1061,13 @@ void GraphicsCanvas::subRenderOIT()
         _shaderDualBlend->unBind(); GL_ASSERT;
 
         if (dump2) {// check buffers
+            stringstream ss;
+            ss << "_" << pass << "_";
+            string prefix = ss.str();
+
+            writeTexture(prefix + "front", GL_TEXTURE_RECTANGLE, _dualFrontBlenderTexId[currId]);
+            writeTexture(prefix + "back", GL_TEXTURE_RECTANGLE, _dualBackTempTexId[currId]);
+            writeDepthTexture(prefix + "depth", GL_TEXTURE_RECTANGLE, _dualDepthTexId[currId]);
             writeTexture(prefix + "blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
         }
 
