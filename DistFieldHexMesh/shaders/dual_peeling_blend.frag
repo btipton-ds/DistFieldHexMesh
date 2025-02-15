@@ -7,7 +7,7 @@
 // Copyright (c) NVIDIA Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
 
-uniform sampler2D tempSampler;
+uniform sampler2DRect tempSampler;
 
 void main(void)
 {

@@ -622,6 +622,8 @@ void GraphicsCanvas::initializeDepthPeeling()
         int width, height;
         getGlDims(width, height);
 
+        glGenQueries(1, &_queryId);
+
         glGenTextures(2, _dualDepthTexId);
         glGenTextures(2, _dualFrontBlenderTexId);
         glGenTextures(2, _dualBackTempTexId);
@@ -777,6 +779,9 @@ void GraphicsCanvas::releaseDepthPeeling()
         glDeleteTextures(2, _dualFrontBlenderTexId);
         glDeleteTextures(2, _dualBackTempTexId);
         glDeleteTextures(1, &_dualBackBlenderTexId);
+
+        glDeleteQueries(1, &_queryId);
+        _queryId = UINT_MAX;
 
         _dualPeelingSingleFboId = UINT_MAX;
         _dualBackBlenderTexId = UINT_MAX;
@@ -1053,12 +1058,16 @@ void GraphicsCanvas::subRenderOIT()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         GL_ASSERT;
 
-        glBeginQuery(GL_SAMPLES_PASSED_ARB, _queryId);
+        glBeginQuery(GL_SAMPLES_PASSED, _queryId);
 
         _shaderDualBlend->bind();
         bindTextureRect(_dualBlend_tempSamplerLoc, _dualBackTempTexId[currId], 0);
         drawScreenRect(); // blend back isn't updating the depth buffers - almost there
         _shaderDualBlend->unBind(); GL_ASSERT;
+
+        glEndQuery(GL_SAMPLES_PASSED);
+        GLuint sample_count;
+        glGetQueryObjectuiv(_queryId, GL_QUERY_RESULT, &sample_count);
 
         if (dump2) {// check buffers
             stringstream ss;
@@ -1071,11 +1080,8 @@ void GraphicsCanvas::subRenderOIT()
             writeTexture(prefix + "blendBack", GL_TEXTURE_RECTANGLE, _dualBackBlenderTexId);
         }
 
-        glEndQuery(GL_SAMPLES_PASSED_ARB);
-        GLuint sample_count;
-        glGetQueryObjectuiv(_queryId, GL_QUERY_RESULT_ARB, &sample_count);
         if (sample_count == 0) {
-//            break;
+            break;
         }
         GL_ASSERT;
     }
@@ -1090,8 +1096,8 @@ void GraphicsCanvas::subRenderOIT()
 //    glDrawBuffer(GL_BACK); GL_ASSERT;
 
     _shaderDualFinal->bind(); GL_ASSERT;
-    bindTextureRect(_dualFinal_FrontColorSamplerLoc, _dualFrontBlenderTexId[currId], 0); GL_ASSERT;
-    bindTextureRect(_dualFinal_BackColorSamplerLoc, _dualBackBlenderTexId, 1); GL_ASSERT;
+    bindTextureRect(_dualFinal_FrontColorSamplerLoc, _dualFrontBlenderTexId[currId], 1);
+    bindTextureRect(_dualFinal_BackColorSamplerLoc, _dualBackBlenderTexId, 2);
 
     drawScreenRect(); GL_ASSERT;
     _shaderDualFinal->unBind(); GL_ASSERT;
