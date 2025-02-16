@@ -36,8 +36,8 @@ This file is part of the VulkanQuickStart Project.
 #extension GL_ARB_separate_shader_objects : enable
 #extension ARB_draw_buffers : require
 
-uniform sampler2D depthBlenderSampler;
-uniform sampler2D frontBlenderSampler;
+uniform sampler2DRect depthBlenderSampler;
+uniform sampler2DRect frontBlenderSampler;
 
 uniform UniformBufferObject {
 	mat4 modelView;
@@ -118,7 +118,9 @@ void main() {
 
   /*
   Verified that fragDepth, nearestDepth and farthestDepth are all in [0,1] bounds by testing
+	out_1 = shadeFragment(); verified shadFragment is working;
   */
+
 	if (fragDepth < nearestDepth || fragDepth > farthestDepth) {
 		// Skip this depth in the peeling algorithm
 		out_0.xy = vec2(-MAX_DEPTH);
