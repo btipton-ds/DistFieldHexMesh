@@ -19,14 +19,7 @@ void main(void)
 {
 	outColor = texture(backColorSampler, gl_FragCoord.xy);
   
-  float r = gl_FragCoord.x / 784.0;
-  float g = gl_FragCoord.y / 918.0;
-  
-  float k = 0.75;
-  vec3 blendedColor = k * vec3(r, g, 0) + (1-k) * outColor.rgb;
-  outColor = vec4(blendedColor, 1);
-
 	// for occlusion query
-//	if (outColor.a == 0) 
-//    discard;
+	if (outColor.a == 0) 
+    discard;
 }

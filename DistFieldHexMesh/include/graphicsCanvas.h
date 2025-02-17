@@ -210,9 +210,8 @@ private:
 
 #if USE_OIT_RENDER
     void subRenderOIT();
-    void subRenderOITRenderModel(int readId, int writeId);
-    void subRenderOITBlendBack(int readId, int writeId);
-    void subRenderOITFinal(int readId, int writeId);
+    void subRenderOITInit(bool& dump1);
+    void subRenderOITFinal(int currId, bool& dump3);
 
     void initializeDepthPeeling();
     void resizeDepthPeelingTextures();
@@ -224,7 +223,7 @@ private:
     void resizeDepthBuffer(GLuint texId, GLenum textureUnit);
 
     void createScreenRectPoints();
-    void drawScreenRect();
+    void drawScreenRect(const std::shared_ptr<OGL::Shader>& pShader);
     void checkBoundFrameBuffer() const;
     void snapShot(GLuint texId);
     static void bindTextureRect(GLint texLoc, GLuint texId, int textureUnit);
@@ -290,7 +289,7 @@ private:
     GLuint _ddp_backColorTexId[2] = { UINT_MAX, UINT_MAX };
     GLuint _ddp_blend_backColorTexId = UINT_MAX;
 
-    GLfloat _screenRectPts[6 * 3];
+    GLuint _screenVertexVboID = -1;
 #endif
 
 protected:

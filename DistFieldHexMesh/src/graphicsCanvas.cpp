@@ -83,6 +83,8 @@ END_EVENT_TABLE()
 
 namespace
 {
+    const float MAX_DEPTH = 1.0f;
+
     GLenum g_drawBuffers[] = {
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
@@ -744,11 +746,21 @@ void GraphicsCanvas::createScreenRectPoints()
         Vector3f(max, max, 0),
         Vector3f(min, max, 0),
     };
+
+    float screenRectPts[3 * 6];
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 3; j++) {
-            _screenRectPts[3 * i + j] = screenPts[i][j];
+            screenRectPts[3 * i + j] = screenPts[i][j];
         }
     }
+
+    if (_screenVertexVboID == -1) {
+        glGenBuffers(1, &_screenVertexVboID);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, _screenVertexVboID);
+    glBufferData(GL_ARRAY_BUFFER, 3 * 6 * sizeof(float), screenRectPts, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void GraphicsCanvas::checkBoundFrameBuffer() const
@@ -834,6 +846,7 @@ void GraphicsCanvas::loadShaders()
 
     /*********************************************************************************************************/
     _ddp_blend_shader = createRectShader(path, "dual_peeling_blend"); GL_ASSERT;
+    _ddp_blend_shader->setShaderVertexAttribName("inPosition");
     finishCreateShader(_ddp_blend_shader);
 
     _ddp_blend_BackColorTexLoc = glGetUniformLocation(_ddp_blend_shader->programID(), "backColorSampler"); GL_ASSERT;
@@ -990,11 +1003,17 @@ void GraphicsCanvas::render()
 
 void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 {
+    // We're messing with the draw state in these calls and breaking renderScreenRect
+    // TODO find where we're breaking it and FIX IT, then remove this hack
+    glPushAttrib(0xffffffff);
+
     _pDrawModelMesh->setShader(pShader);
     _pDrawHexMesh->setShader(pShader);
 
-    _pDrawModelMesh->render();
+    _pDrawModelMesh->render(); 
     _pDrawHexMesh->render();
+
+    glPopAttrib();
 }
 
 #if USE_OIT_RENDER
@@ -1009,8 +1028,7 @@ void GraphicsCanvas::snapShot(GLuint texId)
 
 void GraphicsCanvas::subRenderOIT()
 {
-    const float MAX_DEPTH = 1.0f;
-    const int numPasses = 5;
+    const int numPasses = 20;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -1022,52 +1040,12 @@ void GraphicsCanvas::subRenderOIT()
     // This seems to be setting every model pixel's depth to the depth of the model pixel.
     glBindFramebuffer(GL_FRAMEBUFFER, _ddp_FBO_id); GL_ASSERT;
 
-    // Prime the color buffers with transparent black - nothing
-    // Render targets 1 and 2 store the front and back colors
-    // Clear to 0.0 and use MAX blending to filter written color
-    // At most one front color and one back color can be written every pass
-    glDrawBuffers(2, &g_drawBuffers[1]); GL_ASSERT;
-    ::glClearColor(0, 0, 0, 0); GL_ASSERT; // Checked with a displayable color
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
-
-    // Prime the depth buffers using the image. This sets the min/max depths for the entire model
-    // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
-    glDrawBuffer(g_drawBuffers[0]); GL_ASSERT;
-    ::glClearColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0); GL_ASSERT; // Use the global version to store the full float. Checked with a displayable color
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
-
-    glBlendEquation(GL_MAX); GL_ASSERT;
-
-    // This draws the model to set the depth buffers
-    _ddp_init_shader->bind();
-    glUniformBlockBinding(_ddp_init_shader->programID(), _ddp_uboIdx, _uboBindingPoint);
-    subRender(_ddp_init_shader);
-    _ddp_init_shader->unBind();
-
-#if 1
-    GL_ASSERT;
-
-    // ---------------------------------------------------------------------
-    // 2. Dual Depth Peeling + Blending
-    // ---------------------------------------------------------------------
-
-    // Since we cannot blend the back colors in the geometry passes,
-    // we use another render target to do the alpha blending
-    glDrawBuffer(g_drawBuffers[6]); // According to docs this binds GL_COLOR_ATTACHMENT6 to location 0 
-    glClearColor(_backColor);
-    ::glClearColor(0,0,0,0);
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
-
     static bool dump1 = false;
     static bool dump2 = false;
     static bool dump3 = false;
-    if (dump1) {// check buffers
-        writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[0]);
-        writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[0]);
-        writeDepthTexture("_0_depth", GL_TEXTURE_RECTANGLE, _ddp_depthBufferTexId[0]);
-        writeTexture("_0_blendBack", GL_TEXTURE_RECTANGLE, _ddp_blend_backColorTexId); // Visibly checked _backColor
-    }
+    subRenderOITInit(dump1);
 
+#if 1
     int currId = 0;
 
     for (int pass = 1; pass < numPasses; pass++) {
@@ -1120,7 +1098,11 @@ void GraphicsCanvas::subRenderOIT()
         // The rectangle shader has been confirmed with _ddp_blend_final - and they are using the same source file.
         // Something is wrong with the shader.
         // Looks like it's the coordinates from the vertex shader
-        drawScreenRect();
+        // The problem is that multivbo is leaving the vertex VBO state enabled, and the screen rect shader is NOT using a VBO.
+        // This is causing screen rect to not draw the rectangle AFTER rendering a model.
+        // It took some creative clearing and dynamic redrawing to spot this because the old image was left on the screen.
+        // make screenRect verts a VBO did not fix the problem. Rect renders until we draw a model.
+        drawScreenRect(_ddp_blend_shader);
         _ddp_blend_shader->unBind(); GL_ASSERT;
 
         glEndQuery(GL_SAMPLES_PASSED);
@@ -1135,21 +1117,77 @@ void GraphicsCanvas::subRenderOIT()
         }
 
         if (sample_count == 0) {
-            //break;
+            break;
         }
         GL_ASSERT;
     }
 
     glDisable(GL_BLEND); GL_ASSERT;
+
+    // ---------------------------------------------------------------------
+    // 3. Final Pass
+    // ---------------------------------------------------------------------
+    subRenderOITFinal(currId, dump3);
+
+#endif
+
+}
+
+void GraphicsCanvas::subRenderOITInit(bool& dump1)
+{
+    // Prime the color buffers with transparent black - nothing
+     // Render targets 1 and 2 store the front and back colors
+     // Clear to 0.0 and use MAX blending to filter written color
+     // At most one front color and one back color can be written every pass
+    glDrawBuffers(2, &g_drawBuffers[1]); GL_ASSERT;
+    ::glClearColor(0, 0, 0, 0); GL_ASSERT; // Checked with a displayable color
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+
+    // Prime the depth buffers using the image. This sets the min/max depths for the entire model
+    // Render target 0 stores (-minDepth, maxDepth, alphaMultiplier)
+    glDrawBuffer(g_drawBuffers[0]); GL_ASSERT;
+    ::glClearColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0); GL_ASSERT; // Use the global version to store the full float. Checked with a displayable color
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+
+    glBlendEquation(GL_MAX); GL_ASSERT;
+
+    // This draws the model to set the depth buffers
+    _ddp_init_shader->bind();
+    glUniformBlockBinding(_ddp_init_shader->programID(), _ddp_uboIdx, _uboBindingPoint);
+    subRender(_ddp_init_shader);
+    _ddp_init_shader->unBind();
+
+    GL_ASSERT;
+
+    // ---------------------------------------------------------------------
+    // 2. Dual Depth Peeling + Blending
+    // ---------------------------------------------------------------------
+
+    // Since we cannot blend the back colors in the geometry passes,
+    // we use another render target to do the alpha blending
+    glDrawBuffer(g_drawBuffers[6]); // According to docs this binds GL_COLOR_ATTACHMENT6 to location 0 
+    glClearColor(_backColor);
+//    ::glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+
+    if (dump1) {// check buffers
+        writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[0]);
+        writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[0]);
+        writeDepthTexture("_0_depth", GL_TEXTURE_RECTANGLE, _ddp_depthBufferTexId[0]);
+        writeTexture("_0_blendBack", GL_TEXTURE_RECTANGLE, _ddp_blend_backColorTexId); // Visibly checked _backColor
+    }
+
+}
+
+void GraphicsCanvas::subRenderOITFinal(int currId, bool& dump3)
+{
+#if 0 // Tried unbinding all textures but it had no effect
     for (int i = 0; i <= 6; i++) {
         glActiveTexture(GL_TEXTURE0 + i); GL_ASSERT;
         glBindTexture(GL_TEXTURE_RECTANGLE, 0); GL_ASSERT;
         glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT;
     }
-
-    // ---------------------------------------------------------------------
-    // 3. Final Pass
-    // ---------------------------------------------------------------------
+#endif
 
     if (dump3) {// check buffers
         writeTexture("_last_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]);
@@ -1157,7 +1195,28 @@ void GraphicsCanvas::subRenderOIT()
         writeTexture("_last_blendBack", GL_TEXTURE_RECTANGLE, _ddp_blend_backColorTexId);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GL_ASSERT;
-//    glDrawBuffer(GL_BACK); GL_ASSERT; // Not needed with wxWidgets, not sure why.
+    //    glDrawBuffer(GL_BACK); GL_ASSERT; // Not needed with wxWidgets, not sure why.
+
+    static int ir = 0;
+    static int ig = 0;
+    static int ib = 0;
+    const int step = 1;
+
+    ib += step;
+    if (ib > 100) {
+        ig += step;
+        ib = 0;
+    }
+    if (ig > 100) {
+        ib = ig = 0;
+        ir += step;
+    }
+
+    if (ir > 100) {
+        ir = ig = ib = 0;
+    }
+    ::glClearColor(0.5f + ir / 200.0, 0.5f + ig / 200.0, 0.5f + ib / 200.0, 1);
+    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     _ddp_final_shader->bind(); GL_ASSERT;
     // bound texture is having no effect
@@ -1165,120 +1224,40 @@ void GraphicsCanvas::subRenderOIT()
     // gl_FragCoord is correct and blended with the result successfully
     // The dump of _ddp_frontColorTexId[currId] is showing the correct image, so it's got data
     // The data is not being fetched from the shader
-    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 0);
-    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_backColorTexId[currId], 1);
+     
+    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]); GL_ASSERT;
+    glUniform1i(_ddp_final_FrontColorTexLoc, 0); GL_ASSERT;
+
+    glActiveTexture(GL_TEXTURE1); GL_ASSERT;
+    glBindTexture(GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]); GL_ASSERT;
+    glUniform1i(_ddp_final_BackColorTexLoc, 1); GL_ASSERT;
+    
+//    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 0);
+//    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_backColorTexId[currId], 1);
 //    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_blend_backColorTexId, 1);
 
-    drawScreenRect(); GL_ASSERT;
+    drawScreenRect(_ddp_final_shader); GL_ASSERT;
     _ddp_final_shader->unBind(); GL_ASSERT;
 
-#endif
-
 }
 
-void GraphicsCanvas::subRenderOITRenderModel(int readId, int writeId)
-{
-#if 0
-    const float DEPTH_CLEAR_VALUE = -99999.0f;
-    GLenum attach1[] = { GL_COLOR_ATTACHMENT0 };
-    GLenum attach2[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-
-    // clear everything
-    glUseProgram(_pShader->programID()); GL_ASSERT
-
-    glBindFramebuffer(GL_FRAMEBUFFER, _colorBuffers[writeId]); GL_ASSERT
-
-    // clear depth. We're using GL_COLOR_ATTACHMENT0 for our depth buffer 
-    glDrawBuffers(1, attach1); GL_ASSERT
-    glClearColor(rgbaColor(DEPTH_CLEAR_VALUE, DEPTH_CLEAR_VALUE, 0, 0)); GL_ASSERT
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
-
-    // clear color buffers 
-    glDrawBuffers(2, attach2); GL_ASSERT
-    glClearColor(rgbaColor(0, 0, 0, 0)); GL_ASSERT
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT
-
-    // update texture uniform
-    GLenum readDepthTexture = (readId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
-    GLenum readTexture = (readId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
-    GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
-
-    glActiveTexture(readDepthTexture); GL_ASSERT
-        glBindTexture(GL_TEXTURE_2D, _depthTarget[readId]); GL_ASSERT
-        glUniform1i(_depth_DepthLoc, _depthTarget[readId]); GL_ASSERT
-
-        glActiveTexture(readTexture); GL_ASSERT
-        glBindTexture(GL_TEXTURE_2D, _frontColorTarget[readId]); GL_ASSERT
-        glUniform1i(_depth_FrontColorLoc, _frontColorTarget[readId]); GL_ASSERT
-
-        // draw the model
-        subRender();
-
-    glActiveTexture(readDepthTexture); GL_ASSERT
-        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
-        glActiveTexture(readTexture); GL_ASSERT
-        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT
-#endif
-}
-
-void GraphicsCanvas::subRenderOITBlendBack(int readId, int writeId)
-{
-#if 0
-    GLenum attach1[] = { GL_COLOR_ATTACHMENT0 };
-    GLenum writeTexture = (writeId == 0) ? GL_TEXTURE0 : GL_TEXTURE3;
-
-    // blend back color separately
-    glUseProgram(_pDepth_ShaderBlendBack->programID()); GL_ASSERT
-
-    glBindFramebuffer(GL_FRAMEBUFFER, _blendBackBuffer);
-    glDrawBuffers(1, attach1);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-    glActiveTexture(writeTexture); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, _backColorTarget[readId]); GL_ASSERT
-    glUniform1i(_depth_BlendBackBackColorLoc, _backColorTarget[readId]);
-    GL_ASSERT
-
-    drawScreenRect();
-    GL_ASSERT
-
-#endif
-}
-
-void GraphicsCanvas::subRenderOITFinal(int readId, int writeId)
-{
-#if 0
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glUseProgram(_pDepth_ShaderFinal->programID());
-    glClearColor(_backColor);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    GLenum readFrontTextureUnit = (writeId == 0) ? GL_TEXTURE1 : GL_TEXTURE4;
-    GLenum readBackTextureUnit = (writeId == 1) ? GL_TEXTURE2 : GL_TEXTURE5;
-
-    glActiveTexture(readFrontTextureUnit); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, _frontColorTarget[readId]); GL_ASSERT
-    glUniform1i(_depth_FinalFrontColorLoc, _frontColorTarget[readId]);
-
-    glActiveTexture(GL_TEXTURE6); GL_ASSERT
-    glBindTexture(GL_TEXTURE_2D, _blendBackTarget); GL_ASSERT
-    glUniform1i(_depth_FinalBackColorLoc, _blendBackTarget);
-    drawScreenRect();
-    GL_ASSERT
-
-#endif
-}
-
-void GraphicsCanvas::drawScreenRect()
+void GraphicsCanvas::drawScreenRect(const std::shared_ptr<OGL::Shader>& pShader)
 {
     int vertSize = 3, stride = 0;
 
     glEnableClientState(GL_VERTEX_ARRAY); GL_ASSERT;
+    glBindBuffer(GL_ARRAY_BUFFER, _screenVertexVboID);       GL_ASSERT;
+    assert(pShader->getVertexLoc() != -1);
+    glEnableVertexAttribArray(pShader->getVertexLoc()); GL_ASSERT;
+    glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0); GL_ASSERT;
+    glDrawArrays(GL_TRIANGLES, 0, 6); GL_ASSERT
 
+#if 0 // This used to work
     glVertexPointer(vertSize, GL_FLOAT, stride, _screenRectPts); GL_ASSERT
     glDrawArrays(GL_TRIANGLES, 0, 6); GL_ASSERT
     glDisableClientState(GL_VERTEX_ARRAY); GL_ASSERT;
+#endif
 }
 
 #endif
