@@ -201,10 +201,12 @@ private:
     void drawMousePos3D();
 
     void initialize();
+    void getGlDims(int& width, int& height);
 
     std::shared_ptr<OGL::Shader> createShader(const std::string& path, const std::string& filename);
+    std::shared_ptr<OGL::Shader> createRectShader(const std::string& path, const std::string& filename);
+    void dumpShaders(const std::shared_ptr<OGL::Shader>& pShader, const std::string& filename);
     void finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader);
-    static void getGlDims(int& width, int& height);
 
 #if USE_OIT_RENDER
     void subRenderOIT();
@@ -216,16 +218,16 @@ private:
     void resizeDepthPeelingTextures();
     void releaseDepthPeeling();
 
-    GLuint createColorBuffer(GLenum textureUnit, GLenum storageType, GLint width, GLint height);
-    void resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum storageType, GLint width, GLint height);
-    GLuint createDepthBuffer(GLenum textureUnit, GLint width, GLint height);
-    void resizeDepthBuffer(GLuint texId, GLenum textureUnit, GLint width, GLint height);
+    GLuint createColorBuffer(GLenum textureUnit, GLenum storageType);
+    void resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum storageType);
+    GLuint createDepthBuffer(GLenum textureUnit);
+    void resizeDepthBuffer(GLuint texId, GLenum textureUnit);
 
     void createScreenRectPoints();
     void drawScreenRect();
     void checkBoundFrameBuffer() const;
     void snapShot(GLuint texId);
-    static void bindTextureRect(GLint texLoc, GLuint texid, int shaderTextureNumber);
+    static void bindTextureRect(GLint texLoc, GLuint texId, int textureUnit);
 
 #endif
     void loadShaders();
@@ -246,6 +248,7 @@ private:
 #if INCLUDE_DEBUG_WX_FRAME
     GraphicsDebugCanvas* _pDebugCanvas = nullptr;
 #endif
+    GLuint _width, _height;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
     CBoundingBox3Dd _viewBounds;
@@ -263,6 +266,7 @@ private:
     rgbaColor _backColor;
 
 #if USE_OIT_RENDER
+
     GLuint _queryId = UINT_MAX;
     GLuint _ddp_FBO_id = UINT_MAX;
 

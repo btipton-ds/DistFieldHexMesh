@@ -36,8 +36,8 @@ This file is part of the VulkanQuickStart Project.
 #extension GL_ARB_separate_shader_objects : enable
 #extension ARB_draw_buffers : require
 
-uniform sampler2DRect depthBlenderSampler;
-uniform sampler2DRect frontBlenderSampler;
+layout(location = 0) uniform sampler2DRect depthBlenderSampler;
+layout(location = 1) uniform sampler2DRect frontBlenderSampler;
 
 uniform UniformBufferObject {
 	mat4 modelView;
@@ -96,8 +96,8 @@ vec4 shadeFragment()
 void main() {
 	// window-space depth interpolated linearly in screen space
 	float fragDepth = gl_FragCoord.z;
-	vec2 depthBlender = texture(depthBlenderSampler, gl_FragCoord.xy).xy;
-	vec4 forwardTemp = texture(frontBlenderSampler, gl_FragCoord.xy);
+	vec2 depthBlender = texture2DRect(depthBlenderSampler, gl_FragCoord.xy).xy;
+	vec4 forwardTemp = texture2DRect(frontBlenderSampler, gl_FragCoord.xy);
 
 	// Depths and 1.0-alphaMult always increase
 	// so we can use pass-through by default with MAX blending
@@ -115,11 +115,6 @@ void main() {
 	float nearestDepth = -depthBlender.x;
 	float farthestDepth = depthBlender.y;
 	float alphaMultiplier = 1.0 - forwardTemp.w;
-
-  /*
-  Verified that fragDepth, nearestDepth and farthestDepth are all in [0,1] bounds by testing
-	out_1 = shadeFragment(); verified shadFragment is working;
-  */
 
 	if (fragDepth < nearestDepth || fragDepth > farthestDepth) {
 		// Skip this depth in the peeling algorithm

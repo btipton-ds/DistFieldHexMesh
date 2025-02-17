@@ -90,7 +90,7 @@ namespace
         GL_COLOR_ATTACHMENT3,
         GL_COLOR_ATTACHMENT4,
         GL_COLOR_ATTACHMENT5,
-        GL_COLOR_ATTACHMENT6
+        GL_COLOR_ATTACHMENT6,
     };
 
     inline float toRad(float v)
@@ -575,8 +575,15 @@ void GraphicsCanvas::onMouseWheel(wxMouseEvent& event)
 
 void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 {
+    auto rect = GetRect();
+    _width = rect.width;
+    _height = rect.height;
+
+    glViewport(0, 0, _width, _height);
+
 #if USE_OIT_RENDER
-    initializeDepthPeeling();
+//    initializeDepthPeeling();
+
     resizeDepthPeelingTextures();
 #endif
 
@@ -603,14 +610,6 @@ void GraphicsCanvas::initialize()
 	return;
 }
 
-void GraphicsCanvas::getGlDims(int& width, int& height)
-{
-    GLint dims[4] = { 0 };
-    glGetIntegerv(GL_VIEWPORT, dims);
-    width = dims[2];
-    height = dims[3];
-}
-
 #if USE_OIT_RENDER
 void GraphicsCanvas::initializeDepthPeeling()
 {
@@ -619,8 +618,10 @@ void GraphicsCanvas::initializeDepthPeeling()
     if (hasContext && hasVBOSupport() && _ddp_FBO_id == UINT_MAX) {
         createScreenRectPoints();
 
-        int width, height;
-        getGlDims(width, height);
+        auto rect = GetRect();
+        _width = rect.width;
+        _height = rect.height;
+
         glGenQueries(1, &_queryId);
 
         glGenTextures(2, _ddp_depthBufferTexId);
@@ -629,16 +630,16 @@ void GraphicsCanvas::initializeDepthPeeling()
         glGenFramebuffers(1, &_ddp_FBO_id);
 
         int idx = 0;
-        _ddp_depthBufferTexId[idx] = createDepthBuffer(GL_TEXTURE0, width, height);
-        _ddp_frontColorTexId[idx] = createColorBuffer(GL_TEXTURE1, GL_RGBA, width, height);
-        _ddp_backColorTexId[idx] = createColorBuffer(GL_TEXTURE2, GL_RGBA, width, height);
+        _ddp_depthBufferTexId[idx] = createDepthBuffer(GL_TEXTURE0);
+        _ddp_frontColorTexId[idx] = createColorBuffer(GL_TEXTURE1, GL_RGBA);
+        _ddp_backColorTexId[idx] = createColorBuffer(GL_TEXTURE2, GL_RGBA);
 
         idx = 1;
-        _ddp_depthBufferTexId[idx] = createDepthBuffer(GL_TEXTURE3, width, height);
-        _ddp_frontColorTexId[idx] = createColorBuffer(GL_TEXTURE4, GL_RGBA, width, height);
-        _ddp_backColorTexId[idx] = createColorBuffer(GL_TEXTURE5, GL_RGBA, width, height);
+        _ddp_depthBufferTexId[idx] = createDepthBuffer(GL_TEXTURE3);
+        _ddp_frontColorTexId[idx] = createColorBuffer(GL_TEXTURE4, GL_RGBA);
+        _ddp_backColorTexId[idx] = createColorBuffer(GL_TEXTURE5, GL_RGBA);
 
-        _ddp_blend_backColorTexId = createColorBuffer(GL_TEXTURE6, GL_RGB, width, height);
+        _ddp_blend_backColorTexId = createColorBuffer(GL_TEXTURE6, GL_RGB);
 
         int level = 0;
         glBindFramebuffer(GL_FRAMEBUFFER, _ddp_FBO_id);
@@ -660,33 +661,37 @@ void GraphicsCanvas::initializeDepthPeeling()
 
 void GraphicsCanvas::resizeDepthPeelingTextures()
 {
-    int width, height;
-    getGlDims(width, height);
+    if (_ddp_FBO_id == UINT_MAX)
+        return;
+
+    auto rect = GetRect();
+    _width = rect.width;
+    _height = rect.height;
 
     int idx = 0;
-    resizeDepthBuffer(_ddp_depthBufferTexId[idx], GL_TEXTURE0, width, height);
-    resizeColorBuffer(_ddp_frontColorTexId[idx], GL_TEXTURE1, GL_RGBA, width, height);
-    resizeColorBuffer(_ddp_backColorTexId[idx], GL_TEXTURE2, GL_RGBA, width, height);
+    resizeDepthBuffer(_ddp_depthBufferTexId[idx], GL_TEXTURE0);
+    resizeColorBuffer(_ddp_frontColorTexId[idx], GL_TEXTURE1, GL_RGBA);
+    resizeColorBuffer(_ddp_backColorTexId[idx], GL_TEXTURE2, GL_RGBA);
 
     idx = 1;
-    resizeDepthBuffer(_ddp_depthBufferTexId[idx], GL_TEXTURE3, width, height);
-    resizeColorBuffer(_ddp_frontColorTexId[idx], GL_TEXTURE4, GL_RGBA, width, height);
-    resizeColorBuffer(_ddp_backColorTexId[idx], GL_TEXTURE5, GL_RGBA, width, height);
+    resizeDepthBuffer(_ddp_depthBufferTexId[idx], GL_TEXTURE3);
+    resizeColorBuffer(_ddp_frontColorTexId[idx], GL_TEXTURE4, GL_RGBA);
+    resizeColorBuffer(_ddp_backColorTexId[idx], GL_TEXTURE5, GL_RGBA);
 
-    resizeColorBuffer(_ddp_blend_backColorTexId, GL_TEXTURE6, GL_RGB, width, height);
+    resizeColorBuffer(_ddp_blend_backColorTexId, GL_TEXTURE6, GL_RGB);
 }
 
-GLuint GraphicsCanvas::createColorBuffer(GLenum textureUnit, GLenum storageType, GLint width, GLint height)
+GLuint GraphicsCanvas::createColorBuffer(GLenum textureUnit, GLenum storageType)
 {
     GLuint result;
     glCreateTextures(GL_TEXTURE_RECTANGLE, 1, &result); GL_ASSERT;
 
-    resizeColorBuffer(result, textureUnit, storageType, width, height);
+    resizeColorBuffer(result, textureUnit, storageType);
 
     return result;
 }
 
-void GraphicsCanvas::resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum storageType, GLint width, GLint height)
+void GraphicsCanvas::resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum storageType)
 {
     glActiveTexture(textureUnit); GL_ASSERT;
     glBindTexture(GL_TEXTURE_RECTANGLE, texId); GL_ASSERT;
@@ -694,20 +699,28 @@ void GraphicsCanvas::resizeColorBuffer(GLuint texId, GLenum textureUnit, GLenum 
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
-    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
+    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA8, _width, _height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
 }
 
-GLuint GraphicsCanvas::createDepthBuffer(GLenum textureUnit, GLint width, GLint height)
+GLuint GraphicsCanvas::createDepthBuffer(GLenum textureUnit)
 {
     GLuint result;
     glCreateTextures(GL_TEXTURE_RECTANGLE, 1, &result); GL_ASSERT;
 
-    resizeDepthBuffer(result, textureUnit, width, height);
+    resizeDepthBuffer(result, textureUnit);
 
     return result;
 }
 
-void GraphicsCanvas::resizeDepthBuffer(GLuint texId, GLenum textureUnit, GLint width, GLint height)
+void GraphicsCanvas::getGlDims(int& width, int& height)
+{
+    GLint dims[4] = { 0 };
+    glGetIntegerv(GL_VIEWPORT, dims);
+    width = dims[2];
+    height = dims[3];
+}
+
+void GraphicsCanvas::resizeDepthBuffer(GLuint texId, GLenum textureUnit)
 {
     glActiveTexture(textureUnit); GL_ASSERT;
     glBindTexture(GL_TEXTURE_RECTANGLE, texId); GL_ASSERT;
@@ -715,20 +728,21 @@ void GraphicsCanvas::resizeDepthBuffer(GLuint texId, GLenum textureUnit, GLint w
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); GL_ASSERT;
     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); GL_ASSERT;
-    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
+    glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA32F, _width, _height, 0, GL_RGBA, GL_FLOAT, nullptr); GL_ASSERT;
 
 }
 
 void GraphicsCanvas::createScreenRectPoints()
 {
+    float min = -1.0f, max = 1.0f;
     Vector3f screenPts[] = {
-        Vector3f(-1, -1, 0),
-        Vector3f( 1, -1, 0),
-        Vector3f( 1,  1, 0),
+        Vector3f(min, min, 0),
+        Vector3f(max, min, 0),
+        Vector3f(max, max, 0),
 
-        Vector3f(-1, -1, 0),
-        Vector3f( 1,  1, 0),
-        Vector3f(-1,  1, 0),
+        Vector3f(min, min, 0),
+        Vector3f(max, max, 0),
+        Vector3f(min, max, 0),
     };
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 3; j++) {
@@ -761,12 +775,13 @@ void GraphicsCanvas::checkBoundFrameBuffer() const
     }
 }
 
-void GraphicsCanvas::bindTextureRect(GLint texLoc, GLuint texid, int shaderTextureNumber)
+void GraphicsCanvas::bindTextureRect(GLint texLoc, GLuint texId, int textureUnit)
 {
-    glActiveTexture(GL_TEXTURE0 + shaderTextureNumber); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_RECTANGLE, texid); GL_ASSERT;
-    if (texLoc != -1) {
-        glUniform1i(texLoc, shaderTextureNumber); GL_ASSERT;
+    if (texLoc != -1 && textureUnit >= 0) {
+        glUniform1i(texLoc, textureUnit); GL_ASSERT;
+        glBindTextureUnit (textureUnit, texId);
+    } else {
+        assert(!"uniform location is not set");
     }
 }
 
@@ -800,32 +815,38 @@ void GraphicsCanvas::loadShaders()
     string path = "shaders/";
     
 #if USE_OIT_RENDER
+    /*********************************************************************************************************/
     _ddp_init_shader = createShader(path, "dual_peeling_init"); GL_ASSERT;
     _ddp_init_shader->setShaderVertexAttribName("inPosition");
     finishCreateShader(_ddp_init_shader);
     _ddp_uboIdx = glGetUniformBlockIndex(_ddp_init_shader->programID(), "UniformBufferObject");
 
+    /*********************************************************************************************************/
     _ddp_peel_shader = createShader(path, "dual_peeling_peel"); GL_ASSERT;
     _ddp_peel_shader->setShaderVertexAttribName("inPosition");
     _ddp_peel_shader->setShaderNormalAttribName("inNormal");
     _ddp_peel_shader->setShaderColorAttribName("inColor");
     finishCreateShader(_ddp_peel_shader);
-
-    _ddp_blend_shader = createShader(path, "dual_peeling_blend"); GL_ASSERT;
-    finishCreateShader(_ddp_blend_shader);
-    _ddp_final_shader = createShader(path, "dual_peeling_final"); GL_ASSERT;
-    finishCreateShader(_ddp_final_shader);
-
     _uboIdx = glGetUniformBlockIndex(_ddp_peel_shader->programID(), "UniformBufferObject");
 
     _ddp_peel_DepthBlenderSamplerLoc = glGetUniformLocation(_ddp_peel_shader->programID(), "depthBlenderSampler"); GL_ASSERT;
     _ddp_peel_FrontBlenderSamplerLoc = glGetUniformLocation(_ddp_peel_shader->programID(), "frontBlenderSampler"); GL_ASSERT;
 
-    _ddp_blend_BackColorTexLoc = glGetUniformLocation(_ddp_blend_shader->programID(), "tempSampler"); GL_ASSERT;
+    /*********************************************************************************************************/
+    _ddp_blend_shader = createRectShader(path, "dual_peeling_blend"); GL_ASSERT;
+    finishCreateShader(_ddp_blend_shader);
+
+    _ddp_blend_BackColorTexLoc = glGetUniformLocation(_ddp_blend_shader->programID(), "backColorSampler"); GL_ASSERT;
+
+    /*********************************************************************************************************/
+    _ddp_final_shader = createRectShader(path, "dual_peeling_final"); GL_ASSERT;
+    _ddp_final_shader->setShaderVertexAttribName("inPosition");
+    finishCreateShader(_ddp_final_shader);
 
     _ddp_final_FrontColorTexLoc = glGetUniformLocation(_ddp_final_shader->programID(), "frontBlenderSampler"); GL_ASSERT;
     _ddp_final_BackColorTexLoc = glGetUniformLocation(_ddp_final_shader->programID(), "backBlenderSampler"); GL_ASSERT;
 
+    /*********************************************************************************************************/
     _pDrawModelMesh->setShader(_ddp_peel_shader);
     _pDrawHexMesh->setShader(_ddp_peel_shader);
 
@@ -858,7 +879,36 @@ shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, co
     pResult->setVertexSrcFile(path + filename + ".vert");
     pResult->setFragmentSrcFile(path + filename + ".frag");
 
+    dumpShaders(pResult, filename);
     return pResult;
+}
+
+shared_ptr<OGL::Shader> GraphicsCanvas::createRectShader(const std::string& path, const std::string& filename)
+{
+    shared_ptr<OGL::Shader> pResult = make_shared<OGL::Shader>();
+
+    pResult->setVertexSrcFile(path + "dual_peeling_screenRect.vert");
+    pResult->setFragmentSrcFile(path + filename + ".frag");
+
+    dumpShaders(pResult, filename);
+    return pResult;
+}
+
+void GraphicsCanvas::dumpShaders(const std::shared_ptr<OGL::Shader>& pShader, const std::string& filename)
+{
+#if 0
+    auto vSrc = pShader->getVertexShaderSource();
+    cout << (filename + ".vert") << "\n";
+    cout << "*************************************************************\n";
+    cout << vSrc;
+    cout << "*************************************************************\n";
+
+    auto fSrc = pShader->getFragmentShaderSource();
+    cout << (filename + ".frag") << "\n";
+    cout << "*************************************************************\n";
+    cout << fSrc;
+    cout << "*************************************************************\n";
+#endif
 }
 
 void GraphicsCanvas::finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader)
@@ -960,11 +1010,7 @@ void GraphicsCanvas::snapShot(GLuint texId)
 void GraphicsCanvas::subRenderOIT()
 {
     const float MAX_DEPTH = 1.0f;
-    const int numPasses = 8;
-
-    auto rect = GetRect();
-    auto width = rect.GetWidth();
-    auto height = rect.GetHeight();
+    const int numPasses = 5;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -1007,12 +1053,14 @@ void GraphicsCanvas::subRenderOIT()
 
     // Since we cannot blend the back colors in the geometry passes,
     // we use another render target to do the alpha blending
-    glDrawBuffer(g_drawBuffers[6]); // _dualBackBlenderFboId is bound to GL_COLOR_ATTACHMENT0, not GL_COLOR_ATTACHMENT6 
+    glDrawBuffer(g_drawBuffers[6]); // According to docs this binds GL_COLOR_ATTACHMENT6 to location 0 
     glClearColor(_backColor);
+    ::glClearColor(0,0,0,0);
     glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
 
     static bool dump1 = false;
     static bool dump2 = false;
+    static bool dump3 = false;
     if (dump1) {// check buffers
         writeTexture("_0_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[0]);
         writeTexture("_0_back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[0]);
@@ -1035,21 +1083,15 @@ void GraphicsCanvas::subRenderOIT()
         ::glClearColor(0, 0, 0, 0); // Verified with displayable color
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawBuffer(g_drawBuffers[bufOffset + 0]);
+        glDrawBuffers(1, &g_drawBuffers[bufOffset + 0]);
         ::glClearColor(-MAX_DEPTH, -MAX_DEPTH, 0, 0); // Verified with displayable color
         glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
-
-        if (dump2) {// check buffers
-            // Verified the buffers are being cleared correctly on each pass
-            writeTexture(prefix + "front_clear", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]);
-            writeTexture(prefix + "back_clear", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]);
-            writeDepthTexture(prefix + "depth_clear", GL_TEXTURE_RECTANGLE, _ddp_depthBufferTexId[currId]);
-        }
 
         // Render target 0: RG32F MAX blending
         // Render target 1: RGBA MAX blending
         // Render target 2: RGBA MAX blending
         glDrawBuffers(3, &g_drawBuffers[bufOffset + 0]);
+        glEnable(GL_BLEND);
         glBlendEquation(GL_MAX);
 
         _ddp_peel_shader->bind();
@@ -1062,8 +1104,8 @@ void GraphicsCanvas::subRenderOIT()
         _ddp_peel_shader->unBind(); GL_ASSERT;
 
         // Full screen pass to alpha-blend the back color
-        glDrawBuffer(g_drawBuffers[6]);
-
+        glDrawBuffers(1, &g_drawBuffers[6]); // Bind to attachment 6 to texture unit 0
+        glDisable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         GL_ASSERT;
@@ -1072,7 +1114,13 @@ void GraphicsCanvas::subRenderOIT()
 
         _ddp_blend_shader->bind();
         bindTextureRect(_ddp_blend_BackColorTexLoc, _ddp_backColorTexId[currId], 0);
-        drawScreenRect(); // blend back isn't updating _ddp_blend_backColorTexId
+
+        // This is having no effect. 
+        // Clearing the buffer works. 
+        // The rectangle shader has been confirmed with _ddp_blend_final - and they are using the same source file.
+        // Something is wrong with the shader.
+        // Looks like it's the coordinates from the vertex shader
+        drawScreenRect();
         _ddp_blend_shader->unBind(); GL_ASSERT;
 
         glEndQuery(GL_SAMPLES_PASSED);
@@ -1093,17 +1141,33 @@ void GraphicsCanvas::subRenderOIT()
     }
 
     glDisable(GL_BLEND); GL_ASSERT;
+    for (int i = 0; i <= 6; i++) {
+        glActiveTexture(GL_TEXTURE0 + i); GL_ASSERT;
+        glBindTexture(GL_TEXTURE_RECTANGLE, 0); GL_ASSERT;
+        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT;
+    }
 
     // ---------------------------------------------------------------------
     // 3. Final Pass
     // ---------------------------------------------------------------------
 
+    if (dump3) {// check buffers
+        writeTexture("_last_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]);
+        writeTexture("_last_back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]);
+        writeTexture("_last_blendBack", GL_TEXTURE_RECTANGLE, _ddp_blend_backColorTexId);
+    }
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GL_ASSERT;
-//    glDrawBuffer(GL_BACK); GL_ASSERT;
+//    glDrawBuffer(GL_BACK); GL_ASSERT; // Not needed with wxWidgets, not sure why.
 
     _ddp_final_shader->bind(); GL_ASSERT;
-    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 1);
-    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_blend_backColorTexId, 2);
+    // bound texture is having no effect
+    // the entire screen rectangle is being rendered, so the vertex shader is working
+    // gl_FragCoord is correct and blended with the result successfully
+    // The dump of _ddp_frontColorTexId[currId] is showing the correct image, so it's got data
+    // The data is not being fetched from the shader
+    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 0);
+    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_backColorTexId[currId], 1);
+//    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_blend_backColorTexId, 1);
 
     drawScreenRect(); GL_ASSERT;
     _ddp_final_shader->unBind(); GL_ASSERT;
@@ -1486,9 +1550,12 @@ void GraphicsCanvas::writeTexture(const std::string& filename, GLenum target, GL
             static unsigned char color[3];
             size_t idx = numElements * (j * dimx + i);
             int max = numElements > 3 ? 3 : numElements;
-            color[0] = (unsigned char)(buf[idx + 0] * 255);
-            color[1] = (unsigned char)(buf[idx + 1] * 255);
-            color[2] = (unsigned char)(buf[idx + 2] * 255);
+            float alpha = numElements == 4 ? buf[idx + 3] : 1.0f;
+            alpha = 1;
+            float alphaConv = 1 - alpha;
+            color[0] = (unsigned char)((alphaConv + alpha * buf[idx + 0]) * 255);
+            color[1] = (unsigned char)((alphaConv + alpha * buf[idx + 1]) * 255);
+            color[2] = (unsigned char)((alphaConv + alpha * buf[idx + 2]) * 255);
 
             (void)fwrite(color, 1, 3, fp);
         }

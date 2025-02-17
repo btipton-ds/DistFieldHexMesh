@@ -203,17 +203,13 @@ add_custom_command(
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
 
         COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_blend.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_blend.vert"
+                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_screenRect.vert"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_screenRect.vert"
 				
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_blend.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_blend.frag"
 
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_final.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_final.vert"
-				
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_final.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_final.frag"
