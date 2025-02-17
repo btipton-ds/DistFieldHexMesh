@@ -208,6 +208,8 @@ private:
     void dumpShaders(const std::shared_ptr<OGL::Shader>& pShader, const std::string& filename);
     void finishCreateShader(const std::shared_ptr<OGL::Shader>& pShader);
 
+    void updateUniformBlock();
+
 #if USE_OIT_RENDER
     void subRenderOIT();
     void subRenderOITInit(bool& dump1);

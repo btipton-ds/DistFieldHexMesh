@@ -931,6 +931,13 @@ void GraphicsCanvas::finishCreateShader(const std::shared_ptr<OGL::Shader>& pSha
     pShader->unBind();
 }
 
+void GraphicsCanvas::updateUniformBlock()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, _uboBufferId);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, _uboBindingPoint, _uboBufferId);
+}
+
 Vector3d GraphicsCanvas::pointToLocal(const Vector3d& pointMC) const
 {
     Eigen::Vector4d pointMC4(pointMC[0], pointMC[1], pointMC[2], 1);
@@ -970,9 +977,7 @@ void GraphicsCanvas::render()
 
     glUniformBlockBinding(_ddp_peel_shader->programID(), _uboIdx, _uboBindingPoint);
 
-    glBindBuffer(GL_UNIFORM_BUFFER, _uboBufferId);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, _uboBindingPoint, _uboBufferId);
+    updateUniformBlock();
 
     _ddp_peel_shader->unBind();
     subRenderOIT();
@@ -984,9 +989,7 @@ void GraphicsCanvas::render()
 
     glUniformBlockBinding(_pShader->programID(), _uboIdx, _uboBindingPoint);
 
-    glBindBuffer(GL_UNIFORM_BUFFER, _uboBufferId);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(_graphicsUBO), &_graphicsUBO, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, _uboBindingPoint, _uboBufferId);
+    updateUniformBlock();
 
     subRender(_pShader);
 
@@ -1010,8 +1013,15 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     _pDrawModelMesh->setShader(pShader);
     _pDrawHexMesh->setShader(pShader);
 
-    _pDrawModelMesh->render(); 
+    bool twoSided = _graphicsUBO.twoSideLighting;
+    _graphicsUBO.twoSideLighting = true;
+    updateUniformBlock();
+
+    _pDrawModelMesh->render();
     _pDrawHexMesh->render();
+
+    _graphicsUBO.twoSideLighting = twoSided;
+    updateUniformBlock();
 
     glPopAttrib();
 }
@@ -1028,7 +1038,7 @@ void GraphicsCanvas::snapShot(GLuint texId)
 
 void GraphicsCanvas::subRenderOIT()
 {
-    const int numPasses = 20;
+    const int numPasses = 100;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -1181,62 +1191,17 @@ void GraphicsCanvas::subRenderOITInit(bool& dump1)
 
 void GraphicsCanvas::subRenderOITFinal(int currId, bool& dump3)
 {
-#if 0 // Tried unbinding all textures but it had no effect
-    for (int i = 0; i <= 6; i++) {
-        glActiveTexture(GL_TEXTURE0 + i); GL_ASSERT;
-        glBindTexture(GL_TEXTURE_RECTANGLE, 0); GL_ASSERT;
-        glBindTexture(GL_TEXTURE_2D, 0); GL_ASSERT;
-    }
-#endif
-
     if (dump3) {// check buffers
         writeTexture("_last_front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]);
         writeTexture("_last_back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]);
         writeTexture("_last_blendBack", GL_TEXTURE_RECTANGLE, _ddp_blend_backColorTexId);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0); GL_ASSERT;
-    //    glDrawBuffer(GL_BACK); GL_ASSERT; // Not needed with wxWidgets, not sure why.
-
-    static int ir = 0;
-    static int ig = 0;
-    static int ib = 0;
-    const int step = 1;
-
-    ib += step;
-    if (ib > 100) {
-        ig += step;
-        ib = 0;
-    }
-    if (ig > 100) {
-        ib = ig = 0;
-        ir += step;
-    }
-
-    if (ir > 100) {
-        ir = ig = ib = 0;
-    }
-    ::glClearColor(0.5f + ir / 200.0, 0.5f + ig / 200.0, 0.5f + ib / 200.0, 1);
-    glClear(GL_COLOR_BUFFER_BIT); GL_ASSERT;
+//    glDrawBuffer(GL_BACK); GL_ASSERT; // Not needed with wxWidgets, not sure why.
 
     _ddp_final_shader->bind(); GL_ASSERT;
-    // bound texture is having no effect
-    // the entire screen rectangle is being rendered, so the vertex shader is working
-    // gl_FragCoord is correct and blended with the result successfully
-    // The dump of _ddp_frontColorTexId[currId] is showing the correct image, so it's got data
-    // The data is not being fetched from the shader
-     
-    glActiveTexture(GL_TEXTURE0); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]); GL_ASSERT;
-    glUniform1i(_ddp_final_FrontColorTexLoc, 0); GL_ASSERT;
-
-    glActiveTexture(GL_TEXTURE1); GL_ASSERT;
-    glBindTexture(GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]); GL_ASSERT;
-    glUniform1i(_ddp_final_BackColorTexLoc, 1); GL_ASSERT;
-    
-//    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 0);
-//    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_backColorTexId[currId], 1);
-//    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_blend_backColorTexId, 1);
-
+    bindTextureRect(_ddp_final_FrontColorTexLoc, _ddp_frontColorTexId[currId], 0);
+    bindTextureRect(_ddp_final_BackColorTexLoc, _ddp_blend_backColorTexId, 1);
     drawScreenRect(_ddp_final_shader); GL_ASSERT;
     _ddp_final_shader->unBind(); GL_ASSERT;
 

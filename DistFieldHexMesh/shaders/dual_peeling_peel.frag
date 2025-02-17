@@ -70,7 +70,7 @@ vec4 shadeFragment()
     for (int i = 0; i < numLights; i++) {
       float dp = dot(lightDir[i], fragNormal);
 
-      if (twoSideLighting != 0)
+//      if (twoSideLighting != 0)
         dp = abs(dp);
 
       if (dp > 0)
