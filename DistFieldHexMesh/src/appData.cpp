@@ -115,6 +115,7 @@ bool AppData::doOpen()
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return false;     // the user canceled
 
+    clear(true);
 
     // proceed loading the file chosen by the user;
     // this can be done with e.g. wxWidgets input streams:
@@ -662,15 +663,29 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     _pVolume->setVolDim(_params.volDivs, true);
 }
 
+void AppData::clear(bool includeModelData)
+{
+    auto pCanvas = _pMainFrame->getCanvas();
+    pCanvas->clearMesh3D();
+
+    _pVolume = nullptr;
+
+    clearCache();
+
+    if (includeModelData) {
+        pCanvas->clearModel();
+        _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
+        _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
+    }
+}
+
 void AppData::doCreateBaseVolume()
 {
-    _pVolume = nullptr;
+    clear(false);
     _pVolume = make_shared<Volume>(_params.volDivs);
     _pVolume->setAppData(shared_from_this());
 
     _pVolume->setVolCornerPts(_params.getVolBounds());
-    auto pCanvas = _pMainFrame->getCanvas();
-    pCanvas->clearMesh3D();
 
     Index3D::setBlockDim(1);
 

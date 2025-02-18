@@ -50,7 +50,7 @@ namespace DFHM {
 
 /*
 TODO
-Split faces are not fusing and getting false "wall" face reports
+Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Memory reporting is far out of line with reported memory allocations.
 Fix crash on opening file when file is loaded
 Fix crash when splitting long triangles more than once.

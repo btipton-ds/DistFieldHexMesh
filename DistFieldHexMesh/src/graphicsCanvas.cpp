@@ -599,6 +599,12 @@ void GraphicsCanvas::clearMesh3D()
     VBOs->clear();
 }
 
+void GraphicsCanvas::clearModel()
+{
+    auto& VBOs = _pDrawModelMesh->getVBOs();
+    VBOs->clear();
+}
+
 void GraphicsCanvas::initialize() 
 {
 	if (_initialized)

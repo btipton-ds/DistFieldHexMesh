@@ -98,6 +98,7 @@ public:
     void updateModelTess();
 
 private:
+    void clear(bool includeModelData);
     void clearCache();
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
@@ -118,8 +119,6 @@ private:
         _sharpPointTess;
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
-    std::vector<double> _binSizes;
-    std::vector<std::vector<int>> _bins;
 
     BuildCFDParams _params;
     std::wstring _dhfmFilename;

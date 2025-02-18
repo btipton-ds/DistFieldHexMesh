@@ -100,8 +100,10 @@ public:
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
+    void reset();
 
     void clearMesh3D();
+    void clearModel();
 
     size_t numBytes() const;
 
