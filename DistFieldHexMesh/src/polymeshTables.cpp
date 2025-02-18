@@ -140,9 +140,12 @@ void PolymeshTables::createPolygonMaps()
 	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
 			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
-				size_t idx = faceIdxIdMap.size();
-				faceIdxIdMap.push_back(id);
-				faceIdIdxMap.insert(make_pair(id, (int32_t)idx), false);
+				const auto& splitIds = face.getSplitFaceProductIds();
+				if (splitIds.empty()) {
+					size_t idx = faceIdxIdMap.size();
+					faceIdxIdMap.push_back(id);
+					faceIdIdxMap.insert(make_pair(id, (int32_t)idx), false);
+				}
 			});
 		}
 	}

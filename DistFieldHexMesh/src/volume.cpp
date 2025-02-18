@@ -1446,9 +1446,9 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 #endif
 }
 
-void Volume::writePolyMesh(const std::string& dirPath, ProgressReporter* pReporter)
+void Volume::polymeshWrite(const std::string& dirPath, ProgressReporter* pReporter)
 {
-	auto path = createPolymeshDirs(dirPath);
+	auto path = polymeshCreateDirs(dirPath);
 
 	if (pReporter)
 		pReporter->startProgress(9);
@@ -1562,7 +1562,7 @@ const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
 	return pBlk->_polyhedra[id];
 }
 
-std::string Volume::createPolymeshDirs(const string& pathIn)
+std::string Volume::polymeshCreateDirs(const string& pathIn)
 {
 	string path(pathIn);
 

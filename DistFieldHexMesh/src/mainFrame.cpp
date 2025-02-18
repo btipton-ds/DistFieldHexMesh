@@ -588,7 +588,7 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
     if (dlg.ShowModal() == wxID_OK) {
         auto dirPath = dlg.GetPath().ToStdString();
         _pBackgroundFuture = make_shared<future<int>> (std::async(std::launch::async, [this, dirPath]()->int {
-            _pAppData->getVolume()->writePolyMesh(dirPath, this);
+            _pAppData->getVolume()->polymeshWrite(dirPath, this);
 
             Sleep(500);
 

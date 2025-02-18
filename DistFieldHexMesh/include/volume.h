@@ -121,7 +121,7 @@ public:
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 	void writeObj(std::ostream& out, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
 
-	void writePolyMesh(const std::string& dirPath, ProgressReporter* pReporter);
+	void polymeshWrite(const std::string& dirPath, ProgressReporter* pReporter);
 
 	bool write(std::ostream& out) const;
 	bool read(std::istream& inStream);
@@ -148,7 +148,7 @@ private:
 	bool blockExists(const Index3D& blockIdx) const;
 	BlockPtr createBlock(const Index3D& blockIdx, bool forReading);
 	BlockPtr createBlock(size_t linearIdx);
-	std::string createPolymeshDirs(const std::string& dirName);
+	std::string polymeshCreateDirs(const std::string& dirName);
 
 	const Vertex& getVertex(const Index3DId& id) const;
 	const Polygon& getPolygon(const Index3DId& id) const;

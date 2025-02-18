@@ -407,8 +407,7 @@ void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 				size_t idx1 = (idx0 + 1) % pts.size();
 				triFunc(ctr, pts[idx0], pts[idx1]);
 			}
-		}
-		else {
+		} else {
 			for (size_t i = 1; i < pts.size() - 1; i++) {
 				size_t idx0 = 0;
 				size_t idx1 = i;
@@ -421,12 +420,6 @@ void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 			size_t idx0 = i;
 			size_t idx1 = (idx0 + 1) % pts.size();
 			edgeFunc(pts[idx0], pts[idx1]);
-		}
-	} else {
-		for (const auto& faceId : _splitIds) {
-			faceFunc(faceId, [this, &triFunc, &edgeFunc](const Polygon& subFace) {
-				subFace.getTriPoints(triFunc, edgeFunc);
-			});
 		}
 	}
 }
