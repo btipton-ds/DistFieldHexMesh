@@ -49,12 +49,14 @@ class wxGLCanvas;
 namespace DFHM {
 
 /*
+****************************************************************************************************************************************
 TODO
+****************************************************************************************************************************************
+
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Memory reporting is far out of line with reported memory allocations.
-Fix crash on opening file when file is loaded
-Fix crash when splitting long triangles more than once.
 
+Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
 Add grid relaxation with vertex sliding along geometric surfaces
 Add cell cutting
@@ -68,8 +70,11 @@ splitting.
 Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
 
 ****************************************************************************************************************************************
+Already done
 ****************************************************************************************************************************************
 
+Fix crash when splitting long triangles more than once. --- This was just an assert on a particular case where the mesh didn't close correctly.
+Fix crash on opening file when file is loaded
 Fix failure to split cells with too many split faces.
 Added Dual Depth Peeling
 Fix cell intersections. They are currently reporting false positives
