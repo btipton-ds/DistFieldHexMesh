@@ -1013,11 +1013,12 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     _pDrawModelMesh->setShader(pShader);
     _pDrawHexMesh->setShader(pShader);
 
+    _pDrawModelMesh->render();
+
     bool twoSided = _graphicsUBO.twoSideLighting;
     _graphicsUBO.twoSideLighting = true;
     updateUniformBlock();
 
-    _pDrawModelMesh->render();
     _pDrawHexMesh->render();
 
     _graphicsUBO.twoSideLighting = twoSided;
@@ -1038,7 +1039,7 @@ void GraphicsCanvas::snapShot(GLuint texId)
 
 void GraphicsCanvas::subRenderOIT()
 {
-    const int numPasses = 100;
+    const int numPasses = 30;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -1053,16 +1054,20 @@ void GraphicsCanvas::subRenderOIT()
     static bool dump1 = false;
     static bool dump2 = false;
     static bool dump3 = false;
+
+#define REPORT_PASS_COUNT 0
+#if REPORT_PASS_COUNT
+    const static size_t sampleRingBufSize = 120;
+    static size_t sampleRingIndex = 0;
+    static size_t sampleRingBuf[sampleRingBufSize] = {};
+#endif
+
     subRenderOITInit(dump1);
 
-#if 1
-    int currId = 0;
+    int currId = 0, pass;
+    GLuint sample_count;
 
-    for (int pass = 1; pass < numPasses; pass++) {
-        stringstream ss;
-        ss << "_" << pass << "_";
-        string prefix = ss.str();
-
+    for (pass = 1; pass < numPasses; pass++) {
         currId = pass % 2;
         int prevId = 1 - currId;
         int bufOffset = currId * 3;
@@ -1087,7 +1092,6 @@ void GraphicsCanvas::subRenderOIT()
         bindTextureRect(_ddp_peel_DepthBlenderSamplerLoc, _ddp_depthBufferTexId[prevId], 0);
         bindTextureRect(_ddp_peel_FrontBlenderSamplerLoc, _ddp_frontColorTexId[prevId], 1); GL_ASSERT;
 
-//        _ddp_peel_shader.setUniform("Alpha", (float*)&_opacity, 1);
         subRender(_ddp_peel_shader);
         _ddp_peel_shader->unBind(); GL_ASSERT;
 
@@ -1116,10 +1120,13 @@ void GraphicsCanvas::subRenderOIT()
         _ddp_blend_shader->unBind(); GL_ASSERT;
 
         glEndQuery(GL_SAMPLES_PASSED);
-        GLuint sample_count;
         glGetQueryObjectuiv(_queryId, GL_QUERY_RESULT, &sample_count);
 
-        if (dump2) {// check buffers
+        if (dump2) { // check buffers
+            stringstream ss;
+            ss << "_" << pass << "_";
+            string prefix = ss.str();
+
             writeTexture(prefix + "front", GL_TEXTURE_RECTANGLE, _ddp_frontColorTexId[currId]);
             writeTexture(prefix + "back", GL_TEXTURE_RECTANGLE, _ddp_backColorTexId[currId]);
             writeDepthTexture(prefix + "depth", GL_TEXTURE_RECTANGLE, _ddp_depthBufferTexId[currId]);
@@ -1139,8 +1146,21 @@ void GraphicsCanvas::subRenderOIT()
     // ---------------------------------------------------------------------
     subRenderOITFinal(currId, dump3);
 
-#endif
+#define REPORT_PASS_COUNT 0
+#if REPORT_PASS_COUNT
+    sampleRingBuf[sampleRingIndex++] = pass;
+    sampleRingIndex = sampleRingIndex % sampleRingBufSize;
 
+    static size_t count = 0;
+    if (count++ > 1000) {
+        size_t sum = 0;
+        for (size_t i = 0; i < sampleRingBufSize; i++) {
+            sum += sampleRingBuf[i];
+        }
+        double avgPasses = sum / (double)sampleRingBufSize;
+        cout << "Average DDP passes: " << avgPasses << "\n";
+    }
+#endif
 }
 
 void GraphicsCanvas::subRenderOITInit(bool& dump1)

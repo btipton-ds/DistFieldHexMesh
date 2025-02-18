@@ -409,6 +409,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     bool blend = false;
     const auto& alpha = _options.alpha;
+    const auto alphaWall = alpha * 0.5f;
     const float den = 255.0f;
 
     switch (key) {
@@ -438,32 +439,32 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     case DS_MESH_BACK:
         blend = true;
-        UBO.defColor = p4f(1.0f, satVal, satVal, alpha);
+        UBO.defColor = p4f(1.0f, satVal, satVal, alphaWall);
         break;
 
     case DS_MESH_FRONT:
         blend = true;
-        UBO.defColor = p4f(satVal, 1.0f, satVal, alpha);
+        UBO.defColor = p4f(satVal, 1.0f, satVal, alphaWall);
         break;
 
     case DS_MESH_BOTTOM:
         blend = true;
-        UBO.defColor = p4f(satVal, satVal, 1.0f, alpha);
+        UBO.defColor = p4f(satVal, satVal, 1.0f, alphaWall);
         break;
 
     case DS_MESH_TOP:
         blend = true;
-        UBO.defColor = p4f(satVal, 1.0f, 1.0f, alpha);
+        UBO.defColor = p4f(satVal, 1.0f, 1.0f, alphaWall);
         break;
 
     case DS_MESH_LEFT:
         blend = true;
-        UBO.defColor = p4f(1.0f, satVal, 1.0f, alpha);
+        UBO.defColor = p4f(1.0f, satVal, 1.0f, alphaWall);
         break;
 
     case DS_MESH_RIGHT:
         blend = true;
-        UBO.defColor = p4f(1.0f, 1.0f, satVal, alpha);
+        UBO.defColor = p4f(1.0f, 1.0f, satVal, alphaWall);
         break;
     }
 

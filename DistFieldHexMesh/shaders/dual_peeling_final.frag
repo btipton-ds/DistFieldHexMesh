@@ -24,6 +24,6 @@ void main(void)
 	float alphaComp = 1.0 - alpha;
   outColor = frontColor;
 	// front + back
-	outColor = vec4(frontColor.rgb * alpha + backColor * alphaComp, 1);
+	outColor = vec4(frontColor.rgb + backColor * alphaComp, 1);
 
 }
