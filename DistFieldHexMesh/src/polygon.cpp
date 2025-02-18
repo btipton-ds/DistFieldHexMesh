@@ -156,13 +156,22 @@ bool Polygon::cellsOwnThis() const
 
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
-	size_t result = -1;
-	auto iter = _cellIds.find(cellId);
-	assert(iter != _cellIds.end());
-	if (iter != _cellIds.end()) {
-		cellFunc(*iter, [&result](const Polyhedron& cell) {
-			result = cell.getSplitLevel();
-		});
+	size_t result = 0;
+	if (_splitIds.empty()) {
+		auto iter = _cellIds.find(cellId);
+		assert(iter != _cellIds.end());
+		if (iter != _cellIds.end()) {
+			cellFunc(*iter, [&result](const Polyhedron& cell) {
+				result = cell.getSplitLevel();
+			});
+		}
+	} else {
+		result = 1;
+		for (const auto& subFaceId : _splitIds) {
+			faceFunc(subFaceId, [&result, &cellId](const Polygon& subFace) {
+				result += subFace.getSplitLevel(cellId);
+			});
+		}
 	}
 
 	return result;
@@ -1335,4 +1344,33 @@ inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 }
 
 
-LAMBDA_CLIENT_IMPLS(Polygon)
+//LAMBDA_CLIENT_IMPLS(Polygon)
+void Polygon::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polygon::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+}

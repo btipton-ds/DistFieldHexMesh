@@ -1028,15 +1028,6 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 }
 
 #if USE_OIT_RENDER
-void GraphicsCanvas::snapShot(GLuint texId)
-{
-#if INCLUDE_DEBUG_WX_FRAME
-    if (_pDebugCanvas && texId != -1) {
-        _pDebugCanvas->setSourceTextureId(texId);
-    }
-#endif
-}
-
 void GraphicsCanvas::subRenderOIT()
 {
     const int numPasses = 30;

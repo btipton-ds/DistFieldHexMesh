@@ -80,6 +80,7 @@ Volume::Volume(const Volume& src)
 	, _hasSharpVertPlane(src._hasSharpVertPlane)
 	, _sharpVertPlane(src._sharpVertPlane)
 	, _threadPool(MultiCore::getNumCores())
+	, _numSplits(src._numSplits)
 {
 
 }
@@ -706,30 +707,53 @@ void Volume::divideConitional(const BuildCFDParams& params, ProgressReporter* pR
 		double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
 		double sinEdgeAngle = sin(sharpAngleRadians);
 
+		bool didSplit = false;
+		int count = 0;
+		while ((didSplit || _numSplits > 0) && count < 3) {
+			didSplit = false;
+			runThreadPool_IJK([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+				if (pBlk->doPresplits(params)) {
+					_numSplits++;
+					didSplit = true;
+				}
+				return true;
+			}, multiCore);
+			count++;
+		}
+
 		for (size_t passNum = 0; passNum < numPasses; passNum++) {
-			if (passNum > 0) {
-				bool didSplit = true;
+			if (passNum > 0 || _numSplits > 0) {
+				bool didSplit = false;
 				int count = 0;
 				while (didSplit && count < 3) {
 					didSplit = false;
 					runThreadPool_IJK([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-						if (pBlk->doPresplits(params))
+						if (pBlk->doPresplits(params)) {
 							didSplit = true;
+						}
 						return true;
 					}, multiCore);
 					count++;
+
 				}
+				if (didSplit)
+					_numSplits++;
 			}
 			pReporter->reportProgress();
 
 			bool changed = false;
 			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder([&changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.setNeedToSplitConditional(passNum, params))
+				pBlk->iteratePolyhedraInOrder([this, &changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
+					if (cell.setNeedToSplitConditional(passNum, params)) {
 						changed = true;
+					}
 				});
 				return true;
 			}, multiCore);
+
+			if (changed)
+				_numSplits++;
+
 			pReporter->reportProgress();
 
 			if (changed)

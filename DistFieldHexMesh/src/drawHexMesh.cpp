@@ -163,7 +163,7 @@ bool DrawHexMesh::showLayer(int32_t layerNumber) const
 void DrawHexMesh::setShowLayer(int32_t layerNumber)
 {
     for (int i = 0; i < 10; i++) {
-        _options.layers[i] = (i <= layerNumber);
+        _options.layers[i] = (i == layerNumber) || (i == layerNumber - 1);
     }
 }
 

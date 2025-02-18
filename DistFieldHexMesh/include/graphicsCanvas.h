@@ -227,7 +227,6 @@ private:
     void createScreenRectPoints();
     void drawScreenRect(const std::shared_ptr<OGL::Shader>& pShader);
     void checkBoundFrameBuffer() const;
-    void snapShot(GLuint texId);
     static void bindTextureRect(GLint texLoc, GLuint texId, int textureUnit);
 
 #endif

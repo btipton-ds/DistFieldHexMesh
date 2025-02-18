@@ -1602,26 +1602,37 @@ void Block::pack()
 
 //LAMBDA_BLOCK_IMPLS
 void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
-	auto p = getOwner(id); func(p->_vertices[id]);
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
 } 
 
 void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
-	auto p = getOwner(id); func(p->_vertices[id]);
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
 } 
 
 void Block::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
-	auto p = getOwner(id); func(p->_polygons[id]);
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
 } 
 
 void Block::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
-	auto p = getOwner(id); func(p->_polygons[id]);
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
 } 
 
 void Block::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
-	auto p = getOwner(id); func(p->_polyhedra[id]);
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
 } 
 
 void Block::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
-	auto p = getOwner(id); func(p->_polyhedra[id]);
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
 }
-

@@ -1088,12 +1088,39 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 
 bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 {
-	if (_faceIds.size() > params.maxCellFaces) {
-		setNeedsDivideAtCentroid();
-		return true;
-	}
+	size_t numFaces = 0;
+	size_t maxFaceSplitLevels = 0;
+	MTC::set<Index3DId> faceIds, newIds = _faceIds;
+	while (!newIds.empty()) {
+		size_t splitLevels = 0;
+		auto temp = newIds;
+		newIds.clear();
+		for (const auto& id : temp) {
+			MTC::set<Index3DId> subIds;
+			faceFunc(id, [this, &subIds](const Polygon& face) {
+				subIds = face.getSplitFaceProductIds();
+			});
 
-	return false;
+			if (subIds.empty()) {
+				if (!faceIds.contains(id)) {
+					newIds.insert(id);
+				}
+			} else {
+				splitLevels++;
+				for (const auto& subId : subIds) {
+					if (!faceIds.contains(subId)) {
+						newIds.insert(subId);
+					}
+				}
+			}
+		}
+
+		if (splitLevels > maxFaceSplitLevels)
+			maxFaceSplitLevels = splitLevels;
+
+		faceIds.insert(newIds.begin(), newIds.end());
+	}
+	return (maxFaceSplitLevels > 1) || (faceIds.size() > params.maxCellFaces);
 }
 
 bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const
@@ -1495,4 +1522,33 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 return out;
 }
 
-LAMBDA_CLIENT_IMPLS(Polyhedron)
+//LAMBDA_CLIENT_IMPLS(Polyhedron)
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+}

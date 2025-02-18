@@ -351,9 +351,9 @@ void MainFrame::addBoundarySubMenu(wxMenu* pParentMenu)
 _layersSubMenu->Append(ID_SHOW_MESH_LAYER_##NUM, "Show layer " STRINGIFY(NUM), "Show layer " STRINGIFY(NUM), true); \
 Bind(wxEVT_MENU, &MainFrame::OnShowLayer##NUM, this, ID_SHOW_MESH_LAYER_##NUM)
 
-#define IMPL_LAYER2(NUM) \
-_layersSubMenu->Append(ID_SHOW_MESH_LAYER_##NUM, "Show layers 0-" STRINGIFY(NUM), "Show layers 0-" STRINGIFY(NUM), true); \
-Bind(wxEVT_MENU, &MainFrame::OnShowLayer##NUM, this, ID_SHOW_MESH_LAYER_##NUM)
+#define IMPL_LAYER2(NUM0, NUM1) \
+_layersSubMenu->Append(ID_SHOW_MESH_LAYER_##NUM1, "Show layers " STRINGIFY(NUM0) "-" STRINGIFY(NUM1), "Show layers " STRINGIFY(NUM0) "-" STRINGIFY(NUM1), true); \
+Bind(wxEVT_MENU, &MainFrame::OnShowLayer##NUM1, this, ID_SHOW_MESH_LAYER_##NUM1)
 
 void MainFrame::addLayersMenu(wxMenu* pParentMenu)
 {
@@ -363,16 +363,15 @@ void MainFrame::addLayersMenu(wxMenu* pParentMenu)
     Bind(wxEVT_MENU, &MainFrame::OnShowLayersOff, this, ID_SHOW_MESH_LAYERS_OFF);
 
     IMPL_LAYER1(0);
-    IMPL_LAYER2(1);
-    IMPL_LAYER2(2);
-    IMPL_LAYER2(3);
-    IMPL_LAYER2(4);
-    IMPL_LAYER2(5);
-    IMPL_LAYER2(6);
-    IMPL_LAYER2(7);
-    IMPL_LAYER2(8);
-    _layersSubMenu->Append(ID_SHOW_MESH_LAYER_9, "Show layers 0-" "9", "Show layers 0-" "9", true); 
-    Bind(wxEVT_MENU, &MainFrame::OnShowLayer9, this, ID_SHOW_MESH_LAYER_9);
+    IMPL_LAYER2(0, 1);
+    IMPL_LAYER2(1, 2);
+    IMPL_LAYER2(2, 3);
+    IMPL_LAYER2(3, 4);
+    IMPL_LAYER2(4, 5);
+    IMPL_LAYER2(5, 6);
+    IMPL_LAYER2(6, 7);
+    IMPL_LAYER2(7, 8);
+    IMPL_LAYER2(8, 9);
 
     pParentMenu->AppendSubMenu(_layersSubMenu, "Show Layers", "Boundary layer drawing");
 }

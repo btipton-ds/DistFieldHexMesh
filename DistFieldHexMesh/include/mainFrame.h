@@ -50,8 +50,11 @@ namespace DFHM {
 
 /*
 TODO
+Split faces are not fusing and getting false "wall" face reports
+Memory reporting is far out of line with reported memory allocations.
+Fix crash on opening file when file is loaded
+Fix crash when splitting long triangles more than once.
 
-Add depth peeling for transparency. It's more than just a nice to have, it's a debugging tool.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
 Add grid relaxation with vertex sliding along geometric surfaces
 Add cell cutting
@@ -67,6 +70,8 @@ Add read/write of a document file. This contains all the configuration specific 
 ****************************************************************************************************************************************
 ****************************************************************************************************************************************
 
+Fix failure to split cells with too many split faces.
+Added Dual Depth Peeling
 Fix cell intersections. They are currently reporting false positives
 Double check layer counting
 Done Add base cube
