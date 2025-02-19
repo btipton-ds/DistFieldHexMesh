@@ -132,7 +132,6 @@ public:
 	size_t numBytes() const;
 
 	const std::vector<Vector3d>& getCornerPts() const;
-	const TriMesh::CMeshRepoPtr& getMeshRepo() const;
 
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
@@ -288,7 +287,6 @@ private:
 	Index3D _blockIdx;
 
 	Volume* _pVol;
-	TriMesh::CMeshRepoPtr _pRepo;
 
 	CBoundingBox3Dd
 		_boundBox,      // The precise bounding box for this box
@@ -320,11 +318,6 @@ private:
 inline size_t Block::GlPoints::getId() const
 {
 	return _id;
-}
-
-inline const TriMesh::CMeshRepoPtr& Block::getMeshRepo() const
-{
-	return _pRepo;
 }
 
 inline const UnalignedBBoxd& Block::getUnalignedBBox() const

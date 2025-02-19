@@ -72,7 +72,6 @@ AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
     _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
-    _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
 
     clearCache();
 }
@@ -94,7 +93,6 @@ size_t AppData::numBytes() const
     if (_pVolume)
         result += _pVolume->numBytes();
 
-    result += _pModelMeshRepo->numBytes();
     result += _pModelMeshData->size() * sizeof (pair<wstring, MeshDataPtr>);
     for (const auto& pair : *_pModelMeshData) {
         result += sizeof(pair.first);
@@ -285,7 +283,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
-            auto pData = make_shared<MeshData>(this, _pModelMeshRepo);
+            auto pData = make_shared<MeshData>(this);
             pData->read(in);
             _pModelMeshData->insert(make_pair(pData->getName(), pData));
         }
@@ -675,7 +673,6 @@ void AppData::clear(bool includeModelData)
     if (includeModelData) {
         pCanvas->clearModel();
         _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
-        _pModelMeshRepo = make_shared<TriMesh::CMeshRepo>();
     }
 }
 

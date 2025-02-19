@@ -36,9 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshRepoPtr& pRepo)
+MeshData::MeshData(const AppData* pAppData)
 : _pAppData(pAppData)
-, _pRepo(pRepo)
 {
 }
 
@@ -46,7 +45,6 @@ MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& pMesh, cons
 	: _pAppData(pAppData)
 	, _name(name)
 	, _pMesh(pMesh)
-	, _pRepo(pMesh->getRepo())
 {
 }
 
@@ -68,7 +66,6 @@ size_t MeshData::numBytes() const
 {
 	size_t result = sizeof(MeshData);
 	result += sizeof(_name) + _name.length() * sizeof(wchar_t);
-	result += _pRepo->numBytes();
 	result += _pMesh->numBytes();
 
 
@@ -125,7 +122,7 @@ void MeshData::read(std::istream& in)
 	buf[numChars] = (wchar_t)0;
 	_name = wstring(buf);
 
-	_pMesh = make_shared<CMesh>(_pRepo);
+	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
 }
 
@@ -300,7 +297,7 @@ CMeshPtr MeshData::getSharpVertMesh() const
 	vector<size_t> sVerts;
 	Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
 	if (!sVerts.empty()) {
-		CMeshPtr pMesh = make_shared<CMesh>(bBox, _pRepo);
+		CMeshPtr pMesh = make_shared<CMesh>(bBox);
 		for (size_t vertIdx : sVerts) {
 			auto pt = _pMesh->getVert(vertIdx)._pt;
 			addPointMarker(pMesh, pt, radius);

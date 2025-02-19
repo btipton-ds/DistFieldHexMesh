@@ -109,7 +109,6 @@ private:
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    TriMesh::CMeshRepoPtr _pModelMeshRepo;
     std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
     VolumePtr _pVolume;
     const OGL::IndicesPtr 

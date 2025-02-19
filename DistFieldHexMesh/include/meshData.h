@@ -54,7 +54,7 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData(const AppData* pAppData, const TriMesh::CMeshRepoPtr& pRepo = nullptr);
+		MeshData(const AppData* pAppData);
 		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
@@ -104,7 +104,6 @@ namespace DFHM {
 
 		const AppData* _pAppData;
 		std::wstring _name;
-		TriMesh::CMeshRepoPtr _pRepo;
 		TriMesh::CMeshPtr _pMesh;
 
 		OGL::IndicesPtr 
