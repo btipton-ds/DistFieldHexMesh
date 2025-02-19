@@ -37,17 +37,18 @@ using namespace std;
 using namespace DFHM;
 
 Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
-	: _faceIds(faceIds)
-	, _reversed(vert1 < vert0)
+	: _reversed(vert1 < vert0)
 {
+	_faceIds.insert(faceIds.begin(), faceIds.end());
+		
 	_vertexIds[0] = vert0;
 	_vertexIds[1] = vert1;
 }
 
 Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
-	: _faceIds(faceIds)
-	, _reversed(src._reversed)
+	: _reversed(src._reversed)
 {
+	_faceIds.insert(faceIds.begin(), faceIds.end());
 	_vertexIds[0] = src._vertexIds[0];
 	_vertexIds[1] = src._vertexIds[1];
 }
@@ -222,10 +223,10 @@ bool Edge::isConnectedTo(const Edge& other) const
 
 double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCellId) const
 {
-	assert(_faceIds.size() == 2);
-	auto fIter = _faceIds.begin();
-	const auto& faceId0 = *fIter++;
-	const auto& faceId1 = *fIter++;
+	if (_faceIds.size() != 2)
+		return 0;
+	const auto& faceId0 = _faceIds[0];
+	const auto& faceId1 = _faceIds[1];
 	Vector3d normal0, normal1;
 	pBlock->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
 		normal0 = face.calOrientedUnitNormal(refCellId);
@@ -256,9 +257,8 @@ bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
 	if (_faceIds.size() != 2)
 		return false;
 
-	auto iter = _faceIds.begin();
-	const auto& id0 = *iter++;
-	const auto& id1 = *iter;
+	const auto& id0 = _faceIds[0];
+	const auto& id1 = _faceIds[1];
 
 	pBlock->faceFunc(id0, [pBlock, &id1, &refCellId, &result](const Polygon& face0) {
 		face0.iterateOrientedEdges([pBlock, &id1, &refCellId, &result](const auto& edge0)->bool {
@@ -314,7 +314,7 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-void Edge::getFaceIds(MTC::set<Index3DId>& faceIds) const
+void Edge::getFaceIds(FastBisectionSet<Index3DId>& faceIds) const
 {
 	faceIds = _faceIds;
 }
@@ -322,11 +322,11 @@ void Edge::getFaceIds(MTC::set<Index3DId>& faceIds) const
 void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
 {
 	cellIds.clear();
-	for (const auto& faceId : _faceIds) {
+	for (const auto& faceId : _faceIds.asVector()) {
 		if (pBlock->polygonExists(faceId)) {
 			pBlock->faceFunc(faceId, [&pBlock, &cellIds](const Polygon& face) {
 				const auto& adjCellIds = face.getCellIds();
-				for (const auto& cellId : adjCellIds) {
+				for (const auto& cellId : adjCellIds.asVector()) {
 					if (pBlock->polyhedronExists(cellId)) {
 						cellIds.insert(cellId);
 					}
@@ -346,7 +346,7 @@ void Edge::write(std::ostream& out) const
 
 	size_t num = _faceIds.size();
 	out.write((char*)&num, sizeof(size_t));
-	for (const auto& id : _faceIds)
+	for (const auto& id : _faceIds.asVector())
 		id.write(out);
 }
 
@@ -374,7 +374,7 @@ ostream& DFHM::operator << (ostream& out, const Edge& edge)
 		Logger::Indent indent;
 
 		out << Logger::Pad() << "faceIds(" << edge.getFaceIds().size() << "): {";
-		for (const auto& faceId : edge.getFaceIds()) {
+		for (const auto& faceId : edge.getFaceIds().asVector()) {
 			out << "f" << faceId << " ";
 		}
 		out << "}\n";

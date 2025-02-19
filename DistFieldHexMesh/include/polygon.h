@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
+#include <fastBisectionSet.h>
 #include <vertex.h>
 #include <edge.h>
 
@@ -86,7 +87,7 @@ public:
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
-	static void createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
+	static void createEdgesStat(const MTC::vector<Index3DId>& verts, FastBisectionSet<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
@@ -117,7 +118,7 @@ public:
 	void setReversed(const Index3DId& cellId, bool reversed); // Orientation is relative to cellId
 	void flipReversed(const Index3DId& cellId); // Orientation is relative to cellId
 	size_t numCells() const;
-	const MTC::set<Index3DId>& getCellIds() const;
+	const FastBisectionSet<Index3DId>& getCellIds() const;
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
@@ -146,7 +147,8 @@ public:
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
-	const MTC::set<Edge>& getEdges() const;
+	void updateAllCaches();
+	const FastBisectionSet<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 
@@ -166,7 +168,7 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	const MTC::set<Index3DId>& getSplitFaceProductIds() const;
+	const FastBisectionSet<Index3DId>& getSplitFaceProductIds() const;
 
 	bool cellsOwnThis() const;
 	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
@@ -216,10 +218,10 @@ private:
 	void clearCache() const;
 
 	size_t _createdDuringSplitNumber = 0;
-	MTC::set<Index3DId> _splitIds;	// Entities referencing this one
+	FastBisectionSet<Index3DId> _splitIds;	// Entities referencing this one
 
 	MTC::vector<Index3DId> _vertexIds;
-	MTC::set<Index3DId> _cellIds;
+	FastBisectionSet<Index3DId> _cellIds;
 
 	mutable bool _sortCacheVaild = false;
 	mutable bool _cachedEdgesVaild = false;
@@ -229,7 +231,7 @@ private:
 	mutable Trinary _isConvex = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable MTC::vector<Index3DId> _sortedIds;
-	mutable MTC::set<Edge> _cachedEdges;
+	mutable FastBisectionSet<Edge> _cachedEdges;
 	mutable double _cachedArea;
 	mutable Vector3d _cachedCentroid, _cachedNormal;
 };
@@ -241,7 +243,7 @@ inline bool Polygon::verifyUnique() const
 
 inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 {
-	for (const auto& id : _cellIds) {
+	for (const auto& id : _cellIds.asVector()) {
 		if (id == cellId) {
 			id.setUserFlag(UF_FACE_REVERSED, reversed);
 			break;
@@ -251,7 +253,7 @@ inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 
 inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is relative to cellId
 {
-	for (const auto& id : _cellIds) {
+	for (const auto& id : _cellIds.asVector()) {
 		if (id == cellId) {
 			bool reversed = id.isUserFlagSet(UF_FACE_REVERSED);
 			id.setUserFlag(UF_FACE_REVERSED, !reversed);
@@ -262,7 +264,7 @@ inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is rel
 
 inline bool Polygon::isReversed(const Index3DId& cellId) const
 {
-	for (const auto& id : _cellIds) {
+	for (const auto& id : _cellIds.asVector()) {
 		if (id == cellId) {
 			return id.isUserFlagSet(UF_FACE_REVERSED);
 		}
@@ -276,7 +278,7 @@ inline size_t Polygon::numCells() const
 	return _cellIds.size();
 }
 
-inline const MTC::set<Index3DId>& Polygon::getCellIds() const
+inline const FastBisectionSet<Index3DId>& Polygon::getCellIds() const
 {
 	return _cellIds;
 }
@@ -314,7 +316,7 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	return result;
 }
 
-inline const MTC::set<Index3DId>& Polygon::getSplitFaceProductIds() const
+inline const FastBisectionSet<Index3DId>& Polygon::getSplitFaceProductIds() const
 {
 	return _splitIds;
 }

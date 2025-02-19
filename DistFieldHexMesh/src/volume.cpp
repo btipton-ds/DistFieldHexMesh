@@ -871,6 +871,12 @@ void Volume::setLayerNums()
 	for (int i = 0; i < 10; i++) {
 		bool changed = false;
 		runThreadPool_IJK([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
+				face.updateAllCaches();
+			});
+			return true;
+		}, RUN_MULTI_THREAD);
+		runThreadPool_IJK([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->incrementLayerNums(i))
 				changed = true;
 			return true;

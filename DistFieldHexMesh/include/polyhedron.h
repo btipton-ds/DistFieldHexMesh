@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_set.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
+#include <fastBisectionSet.h>
 
 template<class T>
 class Plane;
@@ -61,17 +62,17 @@ public:
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
-	const MTC::set<Index3DId>& getFaceIds() const;
+	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	size_t getNumFaces() const;
-	const MTC::set<Index3DId>& getVertIds() const;
-	const MTC::set<Edge>& getEdges(bool includeAdjacentCellFaces) const;
+	const FastBisectionSet<Index3DId>& getVertIds() const;
+	const FastBisectionSet<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
-	const MTC::set<Index3DId>& getAdjacentCells() const;
+	const FastBisectionSet<Index3DId>& getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
-	void getVertEdges(const Index3DId& vertId, MTC::set<Edge>& edges, bool includeAdjacentCells) const;
+	void getVertEdges(const Index3DId& vertId, FastBisectionSet<Edge>& edges, bool includeAdjacentCells) const;
 	// Gets the faces for a vertex which belong to this polyhedron
-	MTC::set<Index3DId> getVertFaces(const Index3DId& vertId) const;
+	FastBisectionSet<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
@@ -161,17 +162,17 @@ private:
 		The original face is marked as split, no longer really exists, and points to it's replacements.
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
-	MTC::set<Index3DId> _faceIds;
+	FastBisectionSet<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1;
 
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
 
-	mutable MTC::set<Edge> _cachedEdges0, _cachedEdges1;
+	mutable FastBisectionSet<Edge> _cachedEdges0, _cachedEdges1;
 
-	mutable MTC::set<Index3DId> _cachedAdjCellIds;
-	mutable MTC::set<Index3DId> _cachedVertIds;
+	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;
+	mutable FastBisectionSet<Index3DId> _cachedVertIds;
 
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;
@@ -183,7 +184,7 @@ private:
 	mutable double _cachedMinGap = -1;
 };
 
-inline const MTC::set<Index3DId>& Polyhedron::getFaceIds() const
+inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
 }
@@ -195,7 +196,7 @@ inline size_t Polyhedron::getNumFaces() const
 
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 {
-	return _faceIds.count(faceId) != 0;
+	return _faceIds.contains(faceId) != 0;
 }
 
 inline size_t Polyhedron::getSplitLevel() const

@@ -54,6 +54,7 @@ TODO
 ****************************************************************************************************************************************
 
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
+DDP is getting the alpha of the front layer wrong. Test this by turning on only left, back and front boundaries. When faces over lap, the front transparency is WRONG.
 Memory reporting is far out of line with reported memory allocations.
 
 Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.

@@ -257,11 +257,11 @@ void PolymeshTables::createPolygonTables()
 
 }
 
-int PolymeshTables::getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const
+int PolymeshTables::getFaceNeighbourIdx(const FastBisectionSet<Index3DId>& cellIds) const
 {
 	if (cellIds.size() == 2) {
 		int maxCellIdx = -1;
-		for (const auto& cellId : cellIds) {
+		for (const auto& cellId : cellIds.asVector()) {
 			int cellIdx = cellIdIdxMap[cellId];
 			if (cellIdx > maxCellIdx)
 				maxCellIdx = cellIdx;
@@ -272,10 +272,10 @@ int PolymeshTables::getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) cons
 	return -1;
 }
 
-int PolymeshTables::getFaceOwnerIdx(const MTC::set<Index3DId>& cellIds) const
+int PolymeshTables::getFaceOwnerIdx(const FastBisectionSet<Index3DId>& cellIds) const
 {
 	int32_t minCellIdx = INT_MAX;
-	for (const auto& cellId : cellIds) {
+	for (const auto& cellId : cellIds.asVector()) {
 		int cellIdx = cellIdIdxMap[cellId];
 		if (cellIdx < minCellIdx)
 			minCellIdx = cellIdx;
@@ -329,7 +329,7 @@ void PolymeshTables::writePoints(const string& dirName) const
 	fclose(fOut);
 }
 
-void PolymeshTables::reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, vector<int32_t>& faceVertIds)
+void PolymeshTables::reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cellIds, vector<int32_t>& faceVertIds)
 {
 	bool needToReverse = false;
 	Vector3d faceCtr;
@@ -354,7 +354,7 @@ void PolymeshTables::reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, vec
 
 	Vector3d cellCtr;
 	if (cellIds.size() == 1) {
-		const Index3DId cellId = *cellIds.begin();
+		const Index3DId cellId = cellIds[0];
 		const auto& cell = _pVol->getPolyhedron(cellId);
 		cellCtr = cell.calCentroidApproxFast();
 		Vector3d v = (faceCtr - cellCtr).normalized();
@@ -363,7 +363,7 @@ void PolymeshTables::reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, vec
 	} else {
 		assert(cellIds.size() == 2);
 		int maxCellIdx = -1;
-		for (const auto& cellId : cellIds) {
+		for (const auto& cellId : cellIds.asVector()) {
 			int cellIdx = cellIdIdxMap[cellId];
 			if (maxCellIdx < cellIdx) {
 				maxCellIdx = cellIdx;

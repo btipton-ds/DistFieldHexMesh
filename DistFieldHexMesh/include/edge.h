@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <objectPool.h>
 #include <iostream>
+#include <fastBisectionSet.h>
 
 template<class T>
 class Plane;
@@ -66,8 +67,8 @@ public:
 	bool containsVertex(const Index3DId& vertexId) const;
 	bool vertexLiesOnEdge(const Block* pBlock, const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const;
-	const MTC::set<Index3DId>& getFaceIds() const;
-	void getFaceIds(MTC::set<Index3DId>& faceIds) const;
+	const FastBisectionSet<Index3DId>& getFaceIds() const;
+	void getFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
 	void getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
@@ -105,7 +106,7 @@ public:
 
 private:
 	Index3DId _vertexIds[2];
-	MTC::set<Index3DId> _faceIds;
+	FastBisectionSet<Index3DId> _faceIds;
 	bool _reversed = false;
 	mutable const Block* _pBlock;
 };
@@ -120,7 +121,7 @@ inline const Block* Edge::getBlockPtr() const
 	return _pBlock;
 }
 
-inline const MTC::set<Index3DId>& Edge::getFaceIds() const
+inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 {
 	return _faceIds;
 }

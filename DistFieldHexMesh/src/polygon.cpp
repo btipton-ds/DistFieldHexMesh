@@ -129,7 +129,7 @@ void Polygon::clearCache() const
 	_sortedIds.clear();
 
 	// Clear our owner cells' caches
-	for (const auto& cellId : _cellIds) {
+	for (const auto& cellId : _cellIds.asVector()) {
 		cellFunc(cellId, [](const Polyhedron& cell) {
 			cell.clearCache();
 		});
@@ -138,7 +138,7 @@ void Polygon::clearCache() const
 
 bool Polygon::cellsOwnThis() const
 {
-	for (const auto& cellId : _cellIds) {
+	for (const auto& cellId : _cellIds.asVector()) {
 		if (!getBlockPtr()->polyhedronExists(cellId))
 			return false;
 		bool result = true;
@@ -158,16 +158,14 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
 	size_t result = 0;
 	if (_splitIds.empty()) {
-		auto iter = _cellIds.find(cellId);
-		assert(iter != _cellIds.end());
-		if (iter != _cellIds.end()) {
-			cellFunc(*iter, [&result](const Polyhedron& cell) {
+		if (_cellIds.contains(cellId)) {
+			cellFunc(cellId, [&result](const Polyhedron& cell) {
 				result = cell.getSplitLevel();
 			});
 		}
 	} else {
 		result = 1;
-		for (const auto& subFaceId : _splitIds) {
+		for (const auto& subFaceId : _splitIds.asVector()) {
 			faceFunc(subFaceId, [&result, &cellId](const Polygon& subFace) {
 				result += subFace.getSplitLevel(cellId);
 			});
@@ -180,16 +178,15 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 {
 	assert(_splitIds.size() <= 1);
-	for (const auto& id : _splitIds) {
+	for (const auto& id : _splitIds.asVector()) {
 		getBlockPtr()->freePolygon(id);
 	}
 
-	_splitIds.clear();
-	_splitIds.insert(faceIds.begin(), faceIds.end());
+	_splitIds = faceIds;
 
-	for (const auto& id : _splitIds) {
+	for (const auto& id : _splitIds.asVector()) {
 		faceFunc(id, [this](Polygon& subFace) {
-			for (const auto& cellId : _cellIds) {
+			for (const auto& cellId : _cellIds.asVector()) {
 				subFace.addCellId(cellId);
 			}
 		});
@@ -201,7 +198,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
 	if (_cellIds.size() == 2) {
-		for (const auto& id : _cellIds) {
+		for (const auto& id : _cellIds.asVector()) {
 			if (id != thisCellId) {
 				result = id;
 				break;
@@ -219,9 +216,9 @@ void Polygon::write(ostream& out) const
 
 	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::writeObj(out, _splitIds);
+	IoUtil::writeObj(out, _splitIds.asVector());
 	IoUtil::writeObj(out, _vertexIds);
-	IoUtil::writeObj(out, _cellIds);
+	IoUtil::writeObj(out, _cellIds.asVector());
 
 }
 
@@ -232,19 +229,24 @@ void Polygon::read(istream& in)
 
 	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
+	vector<Index3DId> tmp;
 	if (version == 0) {
-		IoUtil::read(in, _splitIds);
+		IoUtil::read(in, tmp);
+		_splitIds = tmp;
 		MTC::map<Edge, Index3DId> deprecated;
 		IoUtil::read(in, deprecated);
 
 		IoUtil::read(in, _vertexIds);
-		IoUtil::read(in, _cellIds);
+		IoUtil::read(in, tmp);
+		_cellIds = tmp;
 
 	} else {
 		// readObj handles version changes on Index3DId
-		IoUtil::readObj(in, _splitIds);
+		IoUtil::readObj(in, tmp);
+		_splitIds = tmp;
 		IoUtil::readObj(in, _vertexIds);
-		IoUtil::readObj(in, _cellIds);
+		IoUtil::readObj(in, tmp);
+		_cellIds = tmp;
 	}
 }
 
@@ -296,16 +298,19 @@ bool Polygon::operator < (const Polygon& rhs) const
 bool Polygon::isBlockBoundary() const
 {
 	if (_cellIds.size() == 2) {
-		auto iter0 = _cellIds.begin();
-		auto iter1 = iter0++;
-		Index3DId id0 = *iter0;
-		Index3DId id1 = *iter1;
+		Index3DId id0 = _cellIds[0];
+		Index3DId id1 = _cellIds[1];
 		return (id0.blockIdx() != id1.blockIdx());
 	}
 	return false;
 }
 
-const MTC::set<Edge>& Polygon::getEdges() const
+void Polygon::updateAllCaches()
+{
+	getEdges();
+}
+
+const FastBisectionSet<Edge>& Polygon::getEdges() const
 {
 	if (!_cachedEdgesVaild) {
 		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
@@ -475,7 +480,7 @@ bool Polygon::isCoplanar(const Edge& edge) const
 	return true;
 }
 
-void Polygon::createEdgesStat(const MTC::vector<Index3DId>& verts, MTC::set<Edge>& edgeSet, const Index3DId& polygonId)
+void Polygon::createEdgesStat(const MTC::vector<Index3DId>& verts, FastBisectionSet<Edge>& edgeSet, const Index3DId& polygonId)
 {
 	for (size_t i = 0; i < verts.size(); i++) {
 		size_t j = (i + 1) % verts.size();
@@ -737,7 +742,7 @@ bool Polygon::intersectsModel() const
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
 
-		for (auto& cellId : _cellIds) {
+		for (auto& cellId : _cellIds.asVector()) {
 			cellFunc(cellId, [this](const Polyhedron& cell) {
 				auto& meshData = *getBlockPtr()->getModelMeshData();
 				for (auto& pair : meshData) {
@@ -879,7 +884,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 void Polygon::removeCellId(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
-	for (const auto& subFaceId : _splitIds) {
+	for (const auto& subFaceId : _splitIds.asVector()) {
 		faceFunc(subFaceId, [&cellId](Polygon& subFaceId) {
 			subFaceId.removeCellId(cellId);
 		});
@@ -888,8 +893,8 @@ void Polygon::removeCellId(const Index3DId& cellId)
 
 void Polygon::removeDeadCellIds()
 {
-	set<Index3DId> tmp;
-	for (const auto& cellId : _cellIds) {
+	FastBisectionSet<Index3DId> tmp;
+	for (const auto& cellId : _cellIds.asVector()) {
 		if (getBlockPtr()->polyhedronExists(cellId))
 			tmp.insert(cellId);
 	}
@@ -915,7 +920,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 	_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
-		for (const auto& cellId1 : _cellIds) {
+		for (const auto& cellId1 : _cellIds.asVector()) {
 			assert(getBlockPtr()->polyhedronExists(cellId1));
 			cellFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(_thisId));
@@ -997,7 +1002,7 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 	}
 
 	if (_splitIds.size() == 1) {
-		faceFunc(*_splitIds.begin(), [&result, &imprintVert](Polygon& subFace) {
+		faceFunc(_splitIds[0], [&result, &imprintVert](Polygon& subFace) {
 			subFace.imprintVertexInner(imprintVert);
 		});
 	} else {
@@ -1105,7 +1110,7 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& insidePt) const
 		result = isPointInsideInner(pt, insidePt);
 	}
 	else {
-		for (const auto& subFaceId : _splitIds) {
+		for (const auto& subFaceId : _splitIds.asVector()) {
 			faceFunc(subFaceId, [this, &pt, &insidePt, &result](const Polygon& subFace) {
 				result = subFace.isPointInside(pt, insidePt);
 			});
@@ -1224,7 +1229,7 @@ int64_t Polygon::getLayerNum() const
 {
 	// Get the layer number of the lowest layer numbered cell.
 	int64_t layerNum = -1;
-	for (const auto& cellId : _cellIds) {
+	for (const auto& cellId : _cellIds.asVector()) {
 		cellFunc(cellId, [&layerNum](const Polyhedron& cell) {
 			int64_t cellLayerNum = cell.getLayerNum();
 			if (cellLayerNum != -1 && (layerNum == -1 || cellLayerNum < layerNum))
@@ -1246,15 +1251,15 @@ bool Polygon::verifyTopology() const
 
 	if (valid) {
 		const auto& edges = getEdges();
-		for (const auto& edge : edges) {
+		for (const auto& edge : edges.asVector()) {
 			auto faceIds = edge.getFaceIds();
-			if (valid && faceIds.count(_thisId) == 0) // edge does not link back to this face
+			if (valid && !faceIds.contains(_thisId)) // edge does not link back to this face
 				valid = false;
 		}
 	}
 
 	if (valid) {
-		for (const auto& cellId : _cellIds) {
+		for (const auto& cellId : _cellIds.asVector()) {
 			if (valid && !getBlockPtr()->polyhedronExists(cellId))
 				valid = false;
 
@@ -1317,7 +1322,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		out << "}\n";
 
 		out << Logger::Pad() << "cellIds: (" << face._cellIds.size() << "): {";
-		for (const auto& cellId : face._cellIds) {
+		for (const auto& cellId : face._cellIds.asVector()) {
 			auto sl = face.getSplitLevel(cellId);
 			out << "c" << cellId << ".split: " << sl << " ";
 		}
@@ -1325,7 +1330,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 
 		if (!face._splitIds.empty()) {
 			out << Logger::Pad() << "splitFaceIds: (" << face._splitIds.size() << "): {";
-			for (const auto& faceId : face._splitIds) {
+			for (const auto& faceId : face._splitIds.asVector()) {
 				out << "f" << faceId << " ";
 			}
 			out << "}\n";

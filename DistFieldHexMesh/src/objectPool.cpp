@@ -150,6 +150,26 @@ bool ObjectPoolOwnerUser::verifyIndices(const Index3D& idx) const
 	return _thisId.blockIdx() == idx;
 }
 
+void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, FastBisectionSet<Index3DId>& vals)
+{
+	FastBisectionSet<Index3DId> tmp(vals);
+	vals.clear();
+
+	Index3D dstIdx;
+	auto pBlk = getOurBlockPtr();
+	auto pVol = pBlk->getVolume();
+
+	for (auto& v : tmp.asVector()) {
+		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		if (idRemap[srcIdx] != -1) {
+			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+			vals.insert(Index3DId(dstIdx, v.elementId()));
+		}
+		else
+			vals.insert(v);
+	}
+}
+
 void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::set<Index3DId>& vals)
 {
 	MTC::set<Index3DId> tmp(vals);

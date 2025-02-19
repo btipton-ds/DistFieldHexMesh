@@ -49,6 +49,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <polyhedron.h>
 #include <vertexSpatialTree.h>
+#include <fastBisectionSet.h>
 
 #if USE_MULTI_THREAD_CONTAINERS
 #include <local_heap.h>
@@ -241,7 +242,7 @@ private:
 	struct LocalData
 	{
 		// This data can only be constructed after a heap is initialized
-		MTC::set<Index3DId> _needToSplit, _cantSplitYet;
+		FastBisectionSet<Index3DId> _needToSplit, _cantSplitYet;
 	};
 
 	using SearchTree = VertSearchTreeIndex3DId_4;
@@ -271,10 +272,10 @@ private:
 
 	void imprintTJointVertices();
 
-	MTC::set<Index3DId>& getNeedToSplit();
-	const MTC::set<Index3DId>& getNeedToSplit() const;
-	MTC::set<Index3DId>& getCantSplitYet();
-	const MTC::set<Index3DId>& getCantSplitYet() const;
+	FastBisectionSet<Index3DId>& getNeedToSplit();
+	const FastBisectionSet<Index3DId>& getNeedToSplit() const;
+	FastBisectionSet<Index3DId>& getCantSplitYet();
+	const FastBisectionSet<Index3DId>& getCantSplitYet() const;
 
 	std::string getObjFilePath() const;
 
@@ -410,22 +411,22 @@ inline void Block::iteratePolyhedraInOrder(F fLambda)
 	_polyhedra.iterateInOrder(fLambda);
 }
 
-inline MTC::set<Index3DId>& Block::getNeedToSplit()
+inline FastBisectionSet<Index3DId>& Block::getNeedToSplit()
 {
 	return _pLocalData->_needToSplit;
 }
 
-inline const MTC::set<Index3DId>& Block::getNeedToSplit() const
+inline const FastBisectionSet<Index3DId>& Block::getNeedToSplit() const
 {
 	return _pLocalData->_needToSplit;
 }
 
-inline MTC::set<Index3DId>& Block::getCantSplitYet()
+inline FastBisectionSet<Index3DId>& Block::getCantSplitYet()
 {
 	return _pLocalData->_cantSplitYet;
 }
 
-inline const MTC::set<Index3DId>& Block::getCantSplitYet() const
+inline const FastBisectionSet<Index3DId>& Block::getCantSplitYet() const
 {
 	return _pLocalData->_cantSplitYet;
 }

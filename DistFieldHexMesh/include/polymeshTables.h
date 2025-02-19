@@ -44,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <future>
 #include <index3D.h>
 #include <fastBisectionMap.h>
+#include <fastBisectionSet.h>
 
 namespace DFHM {
 
@@ -72,9 +73,9 @@ private:
 	void writeBoundaries(const std::string& dirName) const;
 	void writeFOAMHeader(FILE* fOut, const std::string& fileType, const std::string& foamClass, const std::string& object) const;
 
-	int getFaceOwnerIdx(const MTC::set<Index3DId>& cellIds) const;
-	int getFaceNeighbourIdx(const MTC::set<Index3DId>& cellIds) const;
-	void reverseFaceIfNeeded(const MTC::set<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
+	int getFaceOwnerIdx(const FastBisectionSet<Index3DId>& cellIds) const;
+	int getFaceNeighbourIdx(const FastBisectionSet<Index3DId>& cellIds) const;
+	void reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cellIds, std::vector<int32_t>& faceVertIds);
 
 	void reportProgress() const;
 

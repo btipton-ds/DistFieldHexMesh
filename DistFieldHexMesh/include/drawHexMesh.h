@@ -148,7 +148,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
 		std::map<GLEdge, size_t> _edgeMap;
-		std::vector<float> _triPoints, _triNormals, _edgePoints;
+		std::vector<float> _triPoints, _triNormals, _edgePoints; // Appears to not being cleared
 		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
 		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};

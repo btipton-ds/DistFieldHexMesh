@@ -629,7 +629,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	auto& newCell = _polyhedra[cellId];
 	const auto& cellFaceIds = newCell.getFaceIds();
 
-	for (const auto& faceId : cellFaceIds) {
+	for (const auto& faceId : cellFaceIds.asVector()) {
 		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
 			cellFace.addCellId(cellId);
 		});
@@ -1096,9 +1096,9 @@ bool Block::splitRequiredPolyhedra()
 	if (getNeedToSplit().empty())
 		return didSplit;
 
-	auto tmp = getNeedToSplit();
+	auto splitCopy = getNeedToSplit();
 	getNeedToSplit().clear();
-	for (const auto& cellId : tmp) {
+	for (const auto& cellId : splitCopy.asVector()) {
 		if (polyhedronExists(cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
 			if (splitter.splitIfNeeded())
@@ -1419,7 +1419,7 @@ void Block::updateSplitStack()
 	auto tmpCantSplit = getCantSplitYet();
 
 	getCantSplitYet().clear();
-	for (const auto& cellId : tmpCantSplit) {
+	for (const auto& cellId : tmpCantSplit.asVector()) {
 		assert(cellId.blockIdx() == _blockIdx);
 		MTC::set<Index3DId> temp;
 		auto pOwner = getOwner(cellId);

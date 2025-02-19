@@ -174,6 +174,9 @@ void FastBisectionMap_with_comp<IDX, VAL, COMP>::findIdx(const IDX& id, size_t& 
 		}
 		idx = nextIdx;
 	}
+
+	if (_vals[idx].first != id)
+		idx = -1;
 }
 
 template<class IDX, class VAL, class COMP>

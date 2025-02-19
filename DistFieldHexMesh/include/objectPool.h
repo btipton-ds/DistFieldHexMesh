@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_ioUtil.h>
 #include <index3D.h>
 #include <pool_map.h>
+#include <fastBisectionSet.h>
 #include <patient_lock_guard.h>
 
 namespace DFHM {
@@ -100,6 +101,7 @@ public:
 protected:
 	bool isOwnerBeingDestroyed() const;
 
+	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, FastBisectionSet<Index3DId>& vals);
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::set<Index3DId>& vals);
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::vector<Index3DId>& vals);
 	template<class T>
