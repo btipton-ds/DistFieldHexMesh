@@ -61,7 +61,7 @@ public:
 	void insert(const ITER& iterBegin, const ITER& iterEnd, bool sort = false)
 	{
 		for (auto iter = iterBegin; iter != iterEnd; iter++)
-			insert(*iter);
+			insert(*iter, sort);
 	}
 
 	size_t find(const VAL& id) const;

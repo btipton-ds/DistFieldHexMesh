@@ -868,25 +868,28 @@ void Volume::setLayerNums()
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	for (int i = 0; i < 10; i++) {
+	int steps = 1;
+	for (int i = 0; i < steps; i++) {
 		bool changed = false;
-		runThreadPool_IJK([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
 				face.updateAllCaches();
 			});
 			return true;
 		}, RUN_MULTI_THREAD);
+
 		runThreadPool_IJK([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->incrementLayerNums(i))
 				changed = true;
 			return true;
 		}, RUN_MULTI_THREAD);
 
-		runThreadPool_IJK([i](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			pBlk->swapSeedBuffers();
-			return true;
-		}, RUN_MULTI_THREAD);
-
+		if (i < steps - 1) {
+			runThreadPool_IJK([i](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+				pBlk->swapSeedBuffers();
+				return true;
+			}, RUN_MULTI_THREAD);
+		}
 		if (!changed)
 			break;
 	}
