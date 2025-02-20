@@ -1094,7 +1094,6 @@ void GraphicsCanvas::subRenderOIT()
 
         // Full screen pass to alpha-blend the back color
         glDrawBuffers(1, &g_drawBuffers[6]); // Bind to attachment 6 to texture unit 0
-        glDisable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         GL_ASSERT;

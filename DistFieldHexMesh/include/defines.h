@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD 1
 #define USE_OIT_RENDER 1
+#define USE_CELL_SEARCH_TREE 1
 #define INCLUDE_DEBUG_WX_FRAME 0
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)

@@ -1277,18 +1277,27 @@ void Polyhedron::clearLayerNum()
 
 void Polyhedron::setTriIndices(size_t i, const TriMesh::CMeshPtr& pMesh)
 {
-	auto volBbox = getBlockPtr()->getVolume()->getModelBBox();
+	_pTriSearchTree = nullptr;
 	auto bbox = getBoundingBox();
-	bbox.growPercent(0.05);
-	_pTriSearchTree = make_shared<CSpatialSearch<double, TriMeshIndex>>(volBbox);
+
 	std::vector<TriMesh::CMesh::SearchEntry> triEntries;
-	if (pMesh->findTris(bbox, triEntries)) { // TODO the intersects option is not intersecting correctly
+	if (pMesh->findTris(bbox, triEntries)) {
+		CBoundingBox3Dd cellBBox(bbox);
+		for (const auto& entry : triEntries) {
+			cellBBox.merge(entry.getBBox());
+		}
+		cellBBox.growPercent(0.05);
+
+		_pTriSearchTree = make_shared<CSpatialSearch<double, TriMeshIndex>>(cellBBox);
 		for (const auto& entry : triEntries) {
 			TriMeshIndex newEntry(i, entry.getIndex());
 			const auto& eBBox = entry.getBBox();
-			_pTriSearchTree->add(eBBox, newEntry);
+			bool added = _pTriSearchTree->add(eBBox, newEntry);
+			assert(added);
 		}
 	}
+
+	assert(!_pTriSearchTree || (triEntries.size() == _pTriSearchTree->numInTree()));
 }
 
 bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)

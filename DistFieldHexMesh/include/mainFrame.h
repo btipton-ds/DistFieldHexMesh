@@ -53,9 +53,10 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
+Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
-DDP is getting the alpha of the front layer wrong. Test this by turning on only left, back and front boundaries. When faces over lap, the front transparency is WRONG.
 Memory reporting is far out of line with reported memory allocations.
+Restore graphics multisampling for OIT
 
 Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
@@ -74,6 +75,8 @@ Add read/write of a document file. This contains all the configuration specific 
 Already done
 ****************************************************************************************************************************************
 
+DDP is getting the alpha of the front layer wrong. Test this by turning on only left, back and front boundaries. When faces over lap, the front transparency is WRONG.
+    It was actually a the back layer not blending because blending was disabled - fixed.
 Fix crash when splitting long triangles more than once. --- This was just an assert on a particular case where the mesh didn't close correctly.
 Fix crash on opening file when file is loaded
 Fix failure to split cells with too many split faces.
