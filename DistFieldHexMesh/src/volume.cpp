@@ -1553,10 +1553,7 @@ bool Volume::read(istream& in)
 	const auto& meshData = _pAppData->getMeshData();
 	runThreadPool([&meshData](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk) {
 		pBlk->iteratePolyhedraInOrder([&meshData](const auto& cellId, Polyhedron& cell)->bool {
-			for (size_t i = 0; i < meshData.size(); i++) {
-				const auto& pMesh = meshData[i]->getMesh();
-				cell.setTriIndices(i, pMesh);
-			}
+			cell.addMeshToTriIndices(meshData);
 			return true;
 		});
 	}, RUN_MULTI_THREAD);

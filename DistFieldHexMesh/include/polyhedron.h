@@ -122,7 +122,8 @@ public:
 	int32_t getLayerNum() const;
 	void clearLayerNum();
 	bool setLayerNum(int i, bool propagate);
-	void setTriIndices(size_t i, const TriMesh::CMeshPtr& pMesh);
+	void addMeshToTriIndices(const std::vector<MeshDataPtr>& meshData);
+	void setTriIndices(const Polyhedron& srcCell);
 
 	size_t getNumSplitFaces() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
@@ -166,14 +167,13 @@ private:
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
 	FastBisectionSet<Index3DId> _faceIds;
-	using SearchTree = CSpatialSearch<double, TriMeshIndex>;
-	std::shared_ptr<SearchTree> _pTriSearchTree; // stores only the triangles that intersect this cell.
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1;
 
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
 
+	mutable std::vector<TriMeshIndex> _triIndices; // stores only the triangles that intersect this cell.
 	mutable FastBisectionSet<Edge> _cachedEdges0, _cachedEdges1;
 
 	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;

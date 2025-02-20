@@ -164,7 +164,9 @@ bool PolyhedronSplitter::splitAtParamInner(Polyhedron& cell, const Vector3d& tuv
 					};
 
 					Index3DId newCellId = _pBlock->addHexCell(subCorners);
-					int dbgBreak = 1;
+					_pBlock->cellFunc(newCellId, [cell](Polyhedron& newCell) {
+						newCell.setTriIndices(cell);
+					});
 				}
 			}
 		}

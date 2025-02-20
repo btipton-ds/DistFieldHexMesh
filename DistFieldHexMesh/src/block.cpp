@@ -636,10 +636,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	}
 	newCell.orientFaces();
 	const auto& meshData = getModelMeshData();
-	for (size_t i = 0; i < meshData.size(); i++) {
-		const auto& pMesh = meshData[i]->getMesh();
-		newCell.setTriIndices(i, pMesh);
-	}
+	newCell.addMeshToTriIndices(meshData);
 
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());

@@ -673,14 +673,39 @@ bool Polyhedron::isConvex() const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
-		auto& cornerVerts = getVertIds();
-		for (const auto& vertId : cornerVerts.asVector()) {
-			if (contains(getVertexPoint(vertId))) {
-				_intersectsModel = IS_TRUE;
-				return true;
+		CBoundingBox3Dd bbox = getBoundingBox();
+#if USE_CELL_SEARCH_TREE
+		if (_triIndices.empty()) {
+			_intersectsModel = IS_FALSE;
+		} else {
+			const auto& modelMesh = getBlockPtr()->getModelMeshData();
+			for (const auto& triIdx : _triIndices) {
+				const auto& pData = modelMesh[triIdx.getMeshIdx()];
+				const auto& pMesh = pData->getMesh();
+				const auto& tri = pMesh->getTri(triIdx.getTriIdx());
+				const Vector3d* pts[] = {
+					&pMesh->getVert(tri[0])._pt,
+					&pMesh->getVert(tri[1])._pt,
+					&pMesh->getVert(tri[2])._pt,
+				};
+
+				for (const auto& faceId : _faceIds.asVector()) {
+					faceFunc(faceId, [this, &pts](const Polygon& face) {
+						if (face.intersectsTri(pts)) {
+							_intersectsModel = IS_TRUE;
+						}
+					});
+
+					if (_intersectsModel == IS_TRUE)
+						return true;
+				}
+
 			}
 		}
-		CBoundingBox3Dd bbox = getBoundingBox();
+		_triIndices.clear();
+		_intersectsModel = IS_FALSE;
+	}
+#else
 
 		auto& meshData = getBlockPtr()->getModelMeshData();
 		for (const auto& pData : meshData) {
@@ -712,6 +737,7 @@ bool Polyhedron::intersectsModel() const
 
 		_intersectsModel = IS_FALSE;
 	}
+#endif
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
@@ -1275,29 +1301,32 @@ void Polyhedron::clearLayerNum()
 	_layerNum = -1;
 }
 
-void Polyhedron::setTriIndices(size_t i, const TriMesh::CMeshPtr& pMesh)
+void Polyhedron::addMeshToTriIndices(const vector<MeshDataPtr>& meshData)
 {
-	_pTriSearchTree = nullptr;
 	auto bbox = getBoundingBox();
-
-	std::vector<TriMesh::CMesh::SearchEntry> triEntries;
-	if (pMesh->findTris(bbox, triEntries)) {
-		CBoundingBox3Dd cellBBox(bbox);
-		for (const auto& entry : triEntries) {
-			cellBBox.merge(entry.getBBox());
-		}
-		cellBBox.growPercent(0.05);
-
-		_pTriSearchTree = make_shared<CSpatialSearch<double, TriMeshIndex>>(cellBBox);
-		for (const auto& entry : triEntries) {
-			TriMeshIndex newEntry(i, entry.getIndex());
-			const auto& eBBox = entry.getBBox();
-			bool added = _pTriSearchTree->add(eBBox, newEntry);
-			assert(added);
+	for (size_t i = 0; i < meshData.size(); i++) {
+		const auto& pMesh = meshData[i]->getMesh();
+		std::vector<size_t> triIndices;
+		if (pMesh->findTris(bbox, triIndices)) {
+			for (const auto& triIdx : triIndices) {
+				_triIndices.push_back(TriMeshIndex(i, triIdx));
+			}
 		}
 	}
+}
 
-	assert(!_pTriSearchTree || (triEntries.size() == _pTriSearchTree->numInTree()));
+void Polyhedron::setTriIndices(const Polyhedron& srcCell)
+{
+	const auto tol = Tolerance::sameDistTol();
+	auto bbox = getBoundingBox();
+	const auto& meshData = getBlockPtr()->getModelMeshData();
+	for (const auto& triMeshIdx : srcCell._triIndices) {
+		const auto& pMesh = meshData[triMeshIdx.getMeshIdx()]->getMesh();
+		const auto& triBbox = pMesh->getTriBBox(triMeshIdx.getTriIdx());
+		if (bbox.intersectsOrContains(triBbox, tol)) {
+			_triIndices.push_back(triMeshIdx);
+		}
+	}
 }
 
 bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)
