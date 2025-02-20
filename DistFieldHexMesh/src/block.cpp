@@ -176,7 +176,7 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> Block::getModelMeshData() const
+const std::vector<MeshDataPtr>& Block::getModelMeshData() const
 {
 	auto& pAppData = _pVol->getAppData();
 	return pAppData->getMeshData();
@@ -635,6 +635,11 @@ Index3DId Block::addCell(const Polyhedron& cell)
 		});
 	}
 	newCell.orientFaces();
+	const auto& meshData = getModelMeshData();
+	for (size_t i = 0; i < meshData.size(); i++) {
+		const auto& pMesh = meshData[i]->getMesh();
+		newCell.setTriIndices(i, pMesh);
+	}
 
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());

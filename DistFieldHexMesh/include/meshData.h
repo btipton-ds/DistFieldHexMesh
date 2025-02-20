@@ -44,6 +44,23 @@ namespace OGL
 }
 
 namespace DFHM {
+
+	class TriMeshIndex {
+	public:
+		TriMeshIndex(size_t meshIdx = -1, size_t triIdx = -1);
+		TriMeshIndex(const TriMeshIndex& src) = default;
+
+		size_t getMeshIdx() const;
+		size_t getTriIdx() const;
+
+		bool operator < (const TriMeshIndex& rhs) const;
+		bool operator == (const TriMeshIndex& rhs) const;
+
+	private:
+		size_t _meshIdx = -1;
+		size_t _triIdx = -1;
+	};
+
 	class DrawModelMesh;
 	struct BuildCFDParams;
 
@@ -153,6 +170,37 @@ namespace DFHM {
 	inline const OGL::IndicesPtr MeshData::getNormalTess() const
 	{
 		return _normalTess;
+	}
+
+	inline TriMeshIndex::TriMeshIndex(size_t meshIdx, size_t triIdx)
+		: _meshIdx(meshIdx)
+		, _triIdx(triIdx)
+	{
+	}
+
+	inline size_t TriMeshIndex::getMeshIdx() const
+	{
+		return _meshIdx;
+	}
+
+	inline size_t TriMeshIndex::getTriIdx() const
+	{
+		return _triIdx;
+	}
+
+	inline bool TriMeshIndex::operator < (const TriMeshIndex& rhs) const
+	{
+		if (_meshIdx < rhs._meshIdx)
+			return true;
+		else if (_meshIdx > rhs._meshIdx)
+			return false;
+
+		return _triIdx < rhs._triIdx;
+	}
+
+	inline bool TriMeshIndex::operator == (const TriMeshIndex& rhs) const
+	{
+		return _meshIdx == rhs._meshIdx && _triIdx == rhs._triIdx;
 	}
 
 }

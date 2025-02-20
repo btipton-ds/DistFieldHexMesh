@@ -91,7 +91,8 @@ public:
 
     std::wstring getCacheDirName() const;
 
-    const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getMeshData() const;
+    const std::vector<MeshDataPtr>& getMeshData() const;
+    MeshDataPtr getMeshData(const std::wstring& name) const;
 
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
@@ -109,7 +110,7 @@ private:
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    std::shared_ptr<std::map<std::wstring, MeshDataPtr>> _pModelMeshData;
+    std::vector<MeshDataPtr> _modelMeshData;
     VolumePtr _pVolume;
     const OGL::IndicesPtr 
         _modelFaceTess, 
@@ -133,9 +134,9 @@ inline const BuildCFDParams& AppData::getParams() const
     return _params;
 }
 
-inline const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> AppData::getMeshData() const
+inline const std::vector<MeshDataPtr>& AppData::getMeshData() const
 {
-    return _pModelMeshData;
+    return _modelMeshData;
 }
 
 inline VolumePtr AppData::getVolume() const

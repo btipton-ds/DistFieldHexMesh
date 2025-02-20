@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <tm_lineSegment.hpp>
 #include <tm_ioUtil.h>
+#include <tm_spatialSearch.hpp>
 #include <pool_vector.h>
 #include <pool_map.h>
 #include <pool_set.h>
@@ -681,12 +682,12 @@ bool Polyhedron::intersectsModel() const
 		}
 		CBoundingBox3Dd bbox = getBoundingBox();
 
-		auto& meshData = *getBlockPtr()->getModelMeshData();
-		for (auto& pair : meshData) {
-			auto& pMesh = pair.second->getMesh();
+		auto& meshData = getBlockPtr()->getModelMeshData();
+		for (const auto& pData : meshData) {
+			const auto& pMesh = pData->getMesh();
 			vector<size_t> triIndices;
 			if (pMesh->findTris(bbox, triIndices)) {
-				for (size_t triIdx : triIndices) {
+				for (const auto& triIdx : triIndices) {
 					const auto& tri = pMesh->getTri(triIdx);
 					const Vector3d* pts[] = {
 						&pMesh->getVert(tri[0])._pt,
@@ -699,7 +700,7 @@ bool Polyhedron::intersectsModel() const
 							if (face.intersectsTri(pts)) {
 								_intersectsModel = IS_TRUE;
 							}
-						});
+							});
 
 						if (_intersectsModel == IS_TRUE)
 							return true;
@@ -723,9 +724,9 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 	CBoundingBox3Dd bbox = getBoundingBox();
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
 	MTC::vector<size_t> sharpEdges;
-	auto& meshData = *getBlockPtr()->getModelMeshData();
-	for (auto& pair : meshData) {
-		auto& pMesh = pair.second->getMesh();
+	auto& meshData = getBlockPtr()->getModelMeshData();
+	for (auto& pData : meshData) {
+		auto& pMesh = pData->getMesh();
 		vector<size_t> edgeIndices;
 		if (pMesh->findEdges(bbox, edgeIndices)) {
 			for (size_t edgeIdx : edgeIndices) {
@@ -791,9 +792,9 @@ bool Polyhedron::containsSharps() const
 	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
 
 	auto bbox = getBoundingBox();
-	const auto& meshData = *getBlockPtr()->getModelMeshData();
-	for (const auto& pair : meshData) {
-		auto pMesh = pair.second->getMesh();
+	const auto& meshData = getBlockPtr()->getModelMeshData();
+	for (const auto& pData : meshData) {
+		auto pMesh = pData->getMesh();
 		for (size_t vertIdx : vertIndices) {
 			const auto& pt = pMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt, Tolerance::sameDistTol()))
@@ -1172,13 +1173,13 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		return 0;
 
 	_needsCurvatureCheck = false;
-	const auto& meshData = *getBlockPtr()->getModelMeshData();
+	const auto& meshData = getBlockPtr()->getModelMeshData();
 
 	if (meshData.empty())
 		return 0;
 
-	for (const auto& pair : meshData) {
-		auto pTriMesh = pair.second->getMesh();
+	for (const auto& pData : meshData) {
+		auto pTriMesh = pData->getMesh();
 
 		const auto& blkIdx = _thisId.blockIdx();
 		if (blkIdx[0] == 0 && blkIdx[1] == 0) {
@@ -1272,6 +1273,22 @@ double Polyhedron::getShortestEdge() const
 void Polyhedron::clearLayerNum()
 {
 	_layerNum = -1;
+}
+
+void Polyhedron::setTriIndices(size_t i, const TriMesh::CMeshPtr& pMesh)
+{
+	auto volBbox = getBlockPtr()->getVolume()->getModelBBox();
+	auto bbox = getBoundingBox();
+	bbox.growPercent(0.05);
+	_pTriSearchTree = make_shared<CSpatialSearch<double, TriMeshIndex>>(volBbox);
+	std::vector<TriMesh::CMesh::SearchEntry> triEntries;
+	if (pMesh->findTris(bbox, triEntries)) { // TODO the intersects option is not intersecting correctly
+		for (const auto& entry : triEntries) {
+			TriMeshIndex newEntry(i, entry.getIndex());
+			const auto& eBBox = entry.getBBox();
+			_pTriSearchTree->add(eBBox, newEntry);
+		}
+	}
 }
 
 bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)

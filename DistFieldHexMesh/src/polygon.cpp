@@ -744,9 +744,9 @@ bool Polygon::intersectsModel() const
 
 		for (auto& cellId : _cellIds.asVector()) {
 			cellFunc(cellId, [this](const Polyhedron& cell) {
-				auto& meshData = *getBlockPtr()->getModelMeshData();
-				for (auto& pair : meshData) {
-					auto& pMesh = pair.second->getMesh();
+				auto& meshData = getBlockPtr()->getModelMeshData();
+				for (auto& pData : meshData) {
+					auto& pMesh = pData->getMesh();
 					vector<size_t> triIndices;
 					if (pMesh->findTris(cell.getBoundingBox(), triIndices)) {
 						for (const auto& i : triIndices) {

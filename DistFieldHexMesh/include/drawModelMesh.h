@@ -56,7 +56,7 @@ namespace DFHM {
 		DrawModelMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawModelMesh();
 
-		void changeViewElements(const std::map<std::wstring, MeshDataPtr>& meshData);
+		void changeViewElements(const std::vector<MeshDataPtr>& meshData);
 
 		bool showSharpEdges() const;
 		bool toggleShowSharpEdges();

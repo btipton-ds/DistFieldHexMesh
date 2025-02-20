@@ -71,8 +71,6 @@ namespace
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
-    _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
-
     clearCache();
 }
 
@@ -84,7 +82,7 @@ void AppData::preDestroy()
 {
     // Clear these to avoid infinite loop on shared_ptr destruction. Ugly, but gets around hang on exit.
     _pVolume = nullptr;
-    _pModelMeshData = nullptr;
+    _modelMeshData.clear();
 }
 
 size_t AppData::numBytes() const
@@ -93,11 +91,11 @@ size_t AppData::numBytes() const
     if (_pVolume)
         result += _pVolume->numBytes();
 
-    result += _pModelMeshData->size() * sizeof (pair<wstring, MeshDataPtr>);
-    for (const auto& pair : *_pModelMeshData) {
-        result += sizeof(pair.first);
-        result += pair.first.length() * sizeof(wchar_t);
-        result += pair.second->numBytes();
+    result += _modelMeshData.size() * sizeof (pair<wstring, MeshDataPtr>);
+    for (const auto& pMeshData : _modelMeshData) {
+        result += sizeof(std::wstring);
+        result += pMeshData->getName().length() * sizeof(wchar_t);
+        result += pMeshData->getMesh()->numBytes();
     }
 
     if (_pVolume)
@@ -177,7 +175,7 @@ bool AppData::doImportMesh()
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name);
-        _pModelMeshData->insert(make_pair(pMeshData->getName(), pMeshData));
+        _modelMeshData.push_back(pMeshData);
 
         updateModelTess();
         return true;
@@ -206,8 +204,7 @@ void AppData::updateModelTess()
 
     edgeVBO.beginEdgeTesselation();
     faceVBO.beginFaceTesselation();
-    for (auto& pair : *_pModelMeshData) {
-        auto pData = pair.second;
+    for (auto& pData : _modelMeshData) {
         pData->makeOGLTess(pDrawModelMesh);
     }
     faceVBO.endFaceTesselation(false);
@@ -242,15 +239,10 @@ void AppData::writeDHFM() const
 
     _params.write(out);
 
-    size_t numMeshes = _pModelMeshData->size();
-    for (const auto& pair : *_pModelMeshData) {
-        const auto& pData = pair.second;
-    }
-
+    size_t numMeshes = _modelMeshData.size();
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    for (const auto& pair : *_pModelMeshData) {
-        const auto& pData = pair.second;
+    for (const auto& pData : _modelMeshData) {
         pData->write(out);
     }
 
@@ -279,13 +271,13 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
             }
         }
 
-        size_t numMeshes = _pModelMeshData->size();
+        size_t numMeshes = _modelMeshData.size();
         in.read((char*)&numMeshes, sizeof(numMeshes));
 
         for (size_t i = 0; i < numMeshes; i++) {
             auto pData = make_shared<MeshData>(this);
             pData->read(in);
-            _pModelMeshData->insert(make_pair(pData->getName(), pData));
+            _modelMeshData.push_back(pData);
         }
 
         updateModelTess();
@@ -321,16 +313,15 @@ void AppData::doVerifyClosed(const CMeshPtr& pMesh)
 void AppData::doVerifyNormals(const CMeshPtr& pMesh)
 {
     size_t numMisMatched = 0;
-    size_t meshId = pMesh->getId();
     size_t numEdges = pMesh->numEdges();
     for (size_t i = 0; i < numEdges; i++) {
         const auto& edge = pMesh->getEdge(i);
-        if (edge.numFaces(meshId) == 2) {
+        if (edge.numFaces() == 2) {
             size_t ptIdx0 = edge._vertIndex[0];
             size_t ptIdx1 = edge._vertIndex[1];
 
-            const Index3D& faceIndices0 = pMesh->getTri(edge.getTriIdx(meshId, 0));
-            const Index3D& faceIndices1 = pMesh->getTri(edge.getTriIdx(meshId, 1));
+            const Index3D& faceIndices0 = pMesh->getTri(edge.getTriIdx(0));
+            const Index3D& faceIndices1 = pMesh->getTri(edge.getTriIdx(1));
 
             bool face0Pos = false, face1Pos = false;
             for (int i = 0; i < 3; i++) {
@@ -451,8 +442,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pair : *_pModelMeshData) {
-        const auto& pData = pair.second;
+    for (const auto& pData : _modelMeshData) {
         result.merge(pData->getMesh()->getBBox());
     }
 
@@ -470,8 +460,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 CBoundingBox3Dd AppData::getMeshBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pair : *_pModelMeshData) {
-        const auto pData = pair.second;
+    for (const auto& pData : _modelMeshData) {
         if (pData->isActive())
             result.merge(pData->getMesh()->getBBox());
     }
@@ -556,8 +545,8 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 
     CBoundingBox3Dd bboxOriented;
 
-    for (const auto& pair : *_pModelMeshData) {
-        const auto pMesh = pair.second->getMesh();
+    for (const auto& pData : _modelMeshData) {
+        const auto pMesh = pData->getMesh();
         for (size_t i = 0; i < pMesh->numVertices(); i++) {
             const Vector3d& pt = pMesh->getVert(i)._pt;
             Eigen::Vector4d pt4(pt[0], pt[1], pt[2], 1);
@@ -661,6 +650,15 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     _pVolume->setVolDim(_params.volDivs, true);
 }
 
+MeshDataPtr AppData::getMeshData(const std::wstring& name) const
+{
+    for (const auto& pData : _modelMeshData) {
+        if (pData->getName() == name)
+            return pData;
+    }
+    return nullptr;
+}
+
 void AppData::clear(bool includeModelData)
 {
     auto pCanvas = _pMainFrame->getCanvas();
@@ -672,7 +670,7 @@ void AppData::clear(bool includeModelData)
 
     if (includeModelData) {
         pCanvas->clearModel();
-        _pModelMeshData = make_shared<map<wstring, MeshDataPtr>>();
+        _modelMeshData.clear();
     }
 }
 
@@ -721,10 +719,10 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
 
         dlg.getParams(_params);
 
-        size_t numProgSteps = 1 + _pModelMeshData->size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
+        size_t numProgSteps = 1 + _modelMeshData.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
-            _pVolume->buildCFDHexes(*_pModelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
+            _pVolume->buildCFDHexes(_modelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
 
             buildHexFaceTables();
             _pMainFrame->reportProgress();

@@ -60,7 +60,7 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-void DrawModelMesh::changeViewElements(const map<wstring, MeshDataPtr>& meshData)
+void DrawModelMesh::changeViewElements(const vector<MeshDataPtr>& meshData)
 {
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;
@@ -68,8 +68,7 @@ void DrawModelMesh::changeViewElements(const map<wstring, MeshDataPtr>& meshData
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-    for (auto& pair : meshData) {
-        auto pData = pair.second;
+    for (auto& pData : meshData) {
 
         if (_options.showFaces) {
             faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());

@@ -452,8 +452,8 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         return;
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
     vector<CMeshPtr> meshes;
-    for (const auto& md : *_pAppData->getMeshData()) {
-        auto pMeshData = md.second;
+    const auto& meshData = _pAppData->getMeshData();
+    for (const auto& pMeshData : meshData) {
         if (pMeshData->isActive()) {
             auto pMesh = pMeshData->getMesh();
             if (pMesh)
@@ -1456,7 +1456,7 @@ void GraphicsCanvas::changeViewElements()
 {
     if (!_pAppData)
         return;
-    const auto& meshData = *_pAppData->getMeshData();
+    const auto& meshData = _pAppData->getMeshData();
     _pDrawModelMesh->changeViewElements(meshData);
     _pDrawHexMesh->changeViewElements();
 }

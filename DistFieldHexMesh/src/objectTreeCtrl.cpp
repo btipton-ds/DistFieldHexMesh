@@ -58,10 +58,9 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& meshObjs = pAppData->getMeshData();
-	auto iter = meshObjs->find(name);
-	if (iter != meshObjs->end()) {
-		const auto& pData = iter->second;
+	MeshDataPtr pData = pAppData->getMeshData(name);
+
+	if (pData) {
 		wxMenu* contextMenu = new wxMenu;
 
 		contextMenu->Append(ID_TREE_CTRL_SHOW, "Show", "", true);
@@ -99,16 +98,18 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData()->find(name)->second;
-	pData->setActive(!pData->isActive());
-	_pMainFrame->getCanvas()->changeViewElements();
+	const auto& pData = pAppData->getMeshData(name);
+	if (pData) {
+		pData->setActive(!pData->isActive());
+		_pMainFrame->getCanvas()->changeViewElements();
+	}
 }
 
 void ObjectTreeCtrl::OnMeshStats(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData()->find(name)->second;
+	const auto& pData = pAppData->getMeshData(name);
 	pAppData->doVerifyClosed(pData->getMesh());
 }
 
@@ -116,7 +117,7 @@ void ObjectTreeCtrl::OnVerifyNormals(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData()->find(name)->second;
+	const auto& pData = pAppData->getMeshData(name);
 	pAppData->doVerifyNormals(pData->getMesh());
 }
 
@@ -124,7 +125,7 @@ void ObjectTreeCtrl::OnAnalyzeGaps(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData()->find(name)->second;
+	const auto& pData = pAppData->getMeshData(name);
 	pAppData->doAnalyzeGaps(pData->getMesh());
 }
 
@@ -132,7 +133,7 @@ void ObjectTreeCtrl::OnFindMinGap(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData()->find(name)->second;
+	const auto& pData = pAppData->getMeshData(name);
 	pAppData->doFindMinGap(pData->getMesh());
 }
 
@@ -140,7 +141,7 @@ void ObjectTreeCtrl::OnSplitLongTris(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	auto& pData = pAppData->getMeshData()->find(name)->second;
+	auto pData = pAppData->getMeshData(name);
 	const auto& pCanvas = _pMainFrame->getCanvas();
 
 	if (pData) {

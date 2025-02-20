@@ -143,7 +143,7 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	const std::shared_ptr<const std::map<std::wstring, MeshDataPtr>> getModelMeshData() const;
+	const std::vector<MeshDataPtr>& getModelMeshData() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId idOfPoint(const Vector3d& pt) const;

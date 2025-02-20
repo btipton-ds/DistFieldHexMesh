@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <iostream>
+#include <memory>
 #include <triMesh.h>
 #include <tm_boundingBox.h>
 #include <index3D.h>
@@ -36,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectPool.h>
 #include <lambdaMacros.h>
 #include <fastBisectionSet.h>
+#include <meshData.h>
 
 template<class T>
 class Plane;
@@ -120,6 +122,7 @@ public:
 	int32_t getLayerNum() const;
 	void clearLayerNum();
 	bool setLayerNum(int i, bool propagate);
+	void setTriIndices(size_t i, const TriMesh::CMeshPtr& pMesh);
 
 	size_t getNumSplitFaces() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
@@ -163,6 +166,8 @@ private:
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
 	FastBisectionSet<Index3DId> _faceIds;
+	using SearchTree = CSpatialSearch<double, TriMeshIndex>;
+	std::shared_ptr<SearchTree> _pTriSearchTree; // stores only the triangles that intersect this cell.
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1;
 

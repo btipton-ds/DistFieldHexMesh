@@ -43,7 +43,7 @@ using namespace DFHM;
 thread_local const CLASS_NAME* ObjectPool<CLASS_NAME>::_tl_pCompareObj = nullptr
 
 DECL_THREAD_LOCAL(Vertex);
-DECL_THREAD_LOCAL(Polygon);
+DECL_THREAD_LOCAL(::DFHM::Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
 
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)

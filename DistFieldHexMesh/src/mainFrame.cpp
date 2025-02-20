@@ -423,10 +423,10 @@ void MainFrame::OnInternalIdle()
 
     _pCanvas->Refresh();
 
-    const auto& pMeshData = _pAppData->getMeshData();
+    const auto& meshData = _pAppData->getMeshData();
     const auto& pVolume = _pAppData->getVolume();
 
-    bool hasModel = (pMeshData && !pMeshData->empty());
+    bool hasModel = (!meshData.empty());
     bool hasMesh = (pVolume && pVolume->numPolyhedra() > 0);
 
     if (_editMenu) {
@@ -529,15 +529,13 @@ void MainFrame::refreshObjectTree()
     _pObjectTree->SetImages(_images);
     auto solidsItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Solids", -1, 0);
     auto surfacesItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Surfaces", -1, 0);
-    for (const auto& pair : *meshObjects) {
+    for (const auto& pData : meshObjects) {
         wxDataViewItem item;
-        const auto pMesh = pair.second->getMesh();
+        const auto pMesh = pData->getMesh();
         if (pMesh->isClosed())
-            item = _pObjectTree->AppendItem(solidsItem, pair.second->getName());
+            item = _pObjectTree->AppendItem(solidsItem, pData->getName());
         else
-            item = _pObjectTree->AppendItem(surfacesItem, pair.second->getName());
-
-
+            item = _pObjectTree->AppendItem(surfacesItem, pData->getName());
     }
     _pObjectTree->Expand(solidsItem);
     _pObjectTree->Expand(surfacesItem);
