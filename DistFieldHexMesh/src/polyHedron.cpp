@@ -699,10 +699,8 @@ bool Polyhedron::intersectsModel() const
 					if (_intersectsModel == IS_TRUE)
 						return true;
 				}
-
 			}
 		}
-		_triIndices.clear();
 		_intersectsModel = IS_FALSE;
 	}
 #else
