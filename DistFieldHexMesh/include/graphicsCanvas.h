@@ -212,7 +212,6 @@ private:
 
     void updateUniformBlock();
 
-#if USE_OIT_RENDER
     void subRenderOIT();
     void subRenderOITInit(bool& dump1);
     void subRenderOITFinal(int currId, bool& dump3);
@@ -231,7 +230,6 @@ private:
     void checkBoundFrameBuffer() const;
     static void bindTextureRect(GLint texLoc, GLuint texId, int textureUnit);
 
-#endif
     void loadShaders();
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
@@ -264,10 +262,7 @@ private:
     GLuint _uboBindingPoint = 1;
     GLuint _uboBufferId = -1;
     GLuint _uboIdx = -1;
-    std::shared_ptr<OGL::Shader> _pShader;
     rgbaColor _backColor;
-
-#if USE_OIT_RENDER
 
     GLuint _queryId = UINT_MAX;
     GLuint _ddp_FBO_id = UINT_MAX;
@@ -293,7 +288,6 @@ private:
     GLuint _ddp_blend_backColorTexId = UINT_MAX;
 
     GLuint _screenVertexVboID = -1;
-#endif
 
 protected:
     wxDECLARE_EVENT_TABLE(); 

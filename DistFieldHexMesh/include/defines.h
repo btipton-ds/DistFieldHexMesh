@@ -37,16 +37,11 @@ This file is part of the DistFieldHexMesh application/library.
 #include <math.h>
 
 #define RUN_MULTI_THREAD 1
-#define USE_OIT_RENDER 1
 #define USE_CELL_SEARCH_TREE 1
 #define INCLUDE_DEBUG_WX_FRAME 0
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
-#if USE_OIT_RENDER
 #define GRAPHICS_OVER_SAMPLING 1
-#else
-#define GRAPHICS_OVER_SAMPLING 4
-#endif
 
 #define OBJECT_TREE_WIDTH 200
 #define VERIFY_REDUCED_FINDER 0

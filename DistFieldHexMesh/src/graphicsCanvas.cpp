@@ -181,9 +181,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
 GraphicsCanvas::~GraphicsCanvas()
 {
-#if USE_OIT_RENDER
     releaseDepthPeeling();
-#endif
 }
 
 size_t GraphicsCanvas::numBytes() const
@@ -583,11 +581,9 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
     glViewport(0, 0, _width, _height);
 
-#if USE_OIT_RENDER
 //    initializeDepthPeeling();
 
     resizeDepthPeelingTextures();
-#endif
 
     updateProjectionAspect();
     event.Skip();
@@ -611,14 +607,11 @@ void GraphicsCanvas::initialize()
 		return;
 
 	loadShaders();
-#if USE_OIT_RENDER
     initializeDepthPeeling();
-#endif
     _initialized = true;
 	return;
 }
 
-#if USE_OIT_RENDER
 void GraphicsCanvas::initializeDepthPeeling()
 {
     SetCurrent(*MainFrame::getGLContext(this));
@@ -825,14 +818,11 @@ void GraphicsCanvas::releaseDepthPeeling()
     }
 }
 
-#endif
-
 void GraphicsCanvas::loadShaders()
 {
     SetCurrent(*MainFrame::getGLContext(this));
     string path = "shaders/";
     
-#if USE_OIT_RENDER
     /*********************************************************************************************************/
     _ddp_init_shader = createShader(path, "dual_peeling_init"); GL_ASSERT;
     _ddp_init_shader->setShaderVertexAttribName("inPosition");
@@ -870,23 +860,6 @@ void GraphicsCanvas::loadShaders()
     _pDrawHexMesh->setShader(_ddp_peel_shader);
 
     glUseProgram(0);
-#else
-    _pShader = make_shared<OGL::Shader>();
-
-    _pShader->setShaderVertexAttribName("inPosition");
-    _pShader->setShaderNormalAttribName("inNormal");
-    _pShader->setShaderColorAttribName("inColor");
-
-    _pShader->setVertexSrcFile(path + "phong.vert");
-    _pShader->setFragmentSrcFile(path + "phong.frag");
-
-    _pShader->load();
-
-    _uboIdx = glGetUniformBlockIndex(_pShader->programID(), "UniformBufferObject");
-
-    _pDrawModelMesh->setShader(_pShader);
-    _pDrawHexMesh->setShader(_pShader);
-#endif
 
     glGenBuffers(1, &_uboBufferId);
 }
@@ -978,7 +951,7 @@ void GraphicsCanvas::render()
     int width = portRect.GetWidth(), height = portRect.GetHeight();
 
     updateView();
-#if USE_OIT_RENDER
+
     _ddp_peel_shader->bind();
 
     glUniformBlockBinding(_ddp_peel_shader->programID(), _uboIdx, _uboBindingPoint);
@@ -987,21 +960,6 @@ void GraphicsCanvas::render()
 
     _ddp_peel_shader->unBind();
     subRenderOIT();
-#else
-    _pShader->bind();
-
-    glClearColor(_backColor);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glUniformBlockBinding(_pShader->programID(), _uboIdx, _uboBindingPoint);
-
-    updateUniformBlock();
-
-    subRender(_pShader);
-
-    if (_pShader->bound())
-        _pShader->unBind();
-#endif
 
 #if  DRAW_MOUSE_POSITION
     drawMousePos3D(); // Available for mouse position testing
@@ -1033,7 +991,6 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     glPopAttrib();
 }
 
-#if USE_OIT_RENDER
 void GraphicsCanvas::subRenderOIT()
 {
     const int numPasses = 30;
@@ -1240,8 +1197,6 @@ void GraphicsCanvas::drawScreenRect(const std::shared_ptr<OGL::Shader>& pShader)
     glDisableClientState(GL_VERTEX_ARRAY); GL_ASSERT;
 #endif
 }
-
-#endif
 
 void GraphicsCanvas::drawMousePos3D()
 {
