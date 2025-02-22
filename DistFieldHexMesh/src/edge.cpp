@@ -45,6 +45,14 @@ Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3
 	_vertexIds[1] = vert1;
 }
 
+Edge::Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds)
+	: _reversed(src._reversed)
+	, _faceIds(faceIds)
+{
+	_vertexIds[0] = src._vertexIds[0];
+	_vertexIds[1] = src._vertexIds[1];
+}
+
 Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	: _reversed(src._reversed)
 {
@@ -248,7 +256,9 @@ double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCe
 
 bool Edge::isConvex(const Block* pBlock, const Index3DId& refCellId) const
 {
-	return calDihedralAngleRadians(pBlock, refCellId) >= -Tolerance::angleTol();
+	const auto angle = calDihedralAngleRadians(pBlock, refCellId);
+	const auto tol = Tolerance::angleTol();
+	return angle >= -tol;
 }
 
 bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const

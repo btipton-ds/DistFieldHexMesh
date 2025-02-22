@@ -78,7 +78,9 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
-	void clearAdjCellIdCache() const;
+	void clearTopolCache() const;
+	void updateAllTopolCaches() const;
+
 	bool contains(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsFace(const Index3DId& faceId) const;
@@ -121,7 +123,7 @@ public:
 	void setSplitLevel(size_t val);
 	int32_t getLayerNum() const;
 	void clearLayerNum();
-	bool setLayerNum(int i, bool propagate);
+	void setLayerNum(int32_t val);
 	void addMeshToTriIndices(const std::vector<MeshDataPtr>& meshData);
 	void setTriIndices(const Polyhedron& srcCell);
 
@@ -150,6 +152,8 @@ private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 
+	void updateCachedVerts() const;
+
 	MTC::set<Edge> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(MTC::set<Edge>& edges, MTC::vector<Edge>& orderedEdges) const;
@@ -174,10 +178,10 @@ private:
 	bool _exists = true;
 
 	mutable std::vector<TriMeshIndex> _triIndices; // stores only the triangles that intersect this cell.
-	mutable FastBisectionSet<Edge> _cachedEdges0, _cachedEdges1;
 
-	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;
 	mutable FastBisectionSet<Index3DId> _cachedVertIds;
+	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;
+	mutable FastBisectionSet<Edge> _cachedEdges, _cachedEdgesAdj;
 
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;

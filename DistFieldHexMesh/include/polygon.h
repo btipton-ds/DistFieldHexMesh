@@ -147,6 +147,7 @@ public:
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
+	void clearCache() const;
 	void updateAllCaches();
 	const FastBisectionSet<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
@@ -215,7 +216,7 @@ private:
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
 	void addToSplitFaceProductIds(const Index3DId& id) const;
-	void clearCache() const;
+	void updateAllTopolCaches() const;
 
 	size_t _createdDuringSplitNumber = 0;
 	FastBisectionSet<Index3DId> _splitIds;	// Entities referencing this one
@@ -224,7 +225,6 @@ private:
 	FastBisectionSet<Index3DId> _cellIds;
 
 	mutable bool _sortCacheVaild = false;
-	mutable bool _cachedEdgesVaild = false;
 	mutable bool _cachedCentroidValid = false;
 	mutable bool _cachedNormalValid = false;
 

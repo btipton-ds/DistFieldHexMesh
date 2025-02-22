@@ -114,7 +114,7 @@ public:
 	const UnalignedBBoxd& getUnalignedBBox() const;
 
 	void clear();
-	void clearAdjCellIdCache() const;
+	void clearTopolCache() const;
 
 	size_t blockDim() const;
 
@@ -166,7 +166,6 @@ public:
 	Index3DId addCell(const MTC::vector<Index3DId>& faceIds);
 	Index3DId addHexCell(const std::vector<Vector3d>& cellPts);
 	Index3DId addHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
-	void addToSeedFillList(const Index3DId& cellId);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;
@@ -187,8 +186,8 @@ public:
 	bool hasPendingSplits() const;
 
 	void resetLayerNums();
-	bool incrementLayerNums(int i);
-	void swapSeedBuffers();
+	void markIncrementLayerNums(int i);
+	void setIncrementLayerNums(int i);
 
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
@@ -304,12 +303,11 @@ private:
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	std::shared_ptr<LocalData> _pLocalData;
 
+	std::vector<Index3DId> _tempCellIds;
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 
-	int _seedFillReadIdx = 0;
-	std::vector<Index3DId> _seedFillList[2];
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

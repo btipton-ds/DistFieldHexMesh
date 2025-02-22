@@ -52,6 +52,7 @@ public:
 	Edge() = default;
 	Edge(const Edge& src) = default;
 	Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds = MTC::set<Index3DId>());
+	Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds);
 	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
 
 	void setBlockPtr(const Block* pBlock) const;

@@ -129,10 +129,10 @@ void Block::clear()
 	_polyhedra.clear();
 }
 
-void Block::clearAdjCellIdCache() const
+void Block::clearTopolCache() const
 {
 	_polyhedra.iterateInOrder([](const Index3DId& cellId, const Polyhedron& cell) {
-		cell.clearAdjCellIdCache();
+		cell.clearTopolCache();
 	});
 }
 
@@ -640,7 +640,7 @@ Index3DId Block::addCell(const Polyhedron& cell)
 
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());
-	assert(newCell.isConvex());
+//	assert(newCell.isConvex());
 	assert(newCell.calVolume() > 0);
 #endif
 
@@ -738,16 +738,6 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
-}
-
-void Block::addToSeedFillList(const Index3DId& cellId)
-{
-	auto pOwner = getOwner(cellId);
-	if (pOwner == this) {
-		int writeIdx = 1 - _seedFillReadIdx;
-		_seedFillList[writeIdx].push_back(cellId);
-	} else
-		pOwner->addToSeedFillList(cellId);
 }
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
@@ -1464,46 +1454,43 @@ bool Block::hasPendingSplits() const
 
 void Block::resetLayerNums()
 {
-	int writeIdx = 1 - _seedFillReadIdx;
-	_seedFillList[writeIdx].clear();
-
 	_polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
 		cell.clearLayerNum();
-		cell.clearAdjCellIdCache();
+		cell.clearTopolCache();
 	});
 }
 
-bool Block::incrementLayerNums(int i)
+void Block::markIncrementLayerNums(int i)
 {
-	bool changed = false;
-	if (i == 0) {
-		_polyhedra.iterateInOrder([i, &changed](const Index3DId& cellId, Polyhedron& cell) {
-			if (cell.exists() && cell.setLayerNum(i, true))
-				changed = true;
-		});
-	} else {
-		const auto& cellIds = _seedFillList[_seedFillReadIdx];
-		for (const auto& cellId : cellIds) {
-			if (polyhedronExists(cellId)) {
-				cellFunc(cellId, [i, &changed](Polyhedron& cell) {
-					if (cell.exists() && cell.setLayerNum(i, true))
-						changed = true;
+	_tempCellIds.clear();
+	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
+		if (cell.getLayerNum() == -1) {
+			const auto& adjIds = cell.getAdjacentCells();
+			bool found = false;
+			for (const auto& adjId : adjIds.asVector()) {
+				cellFunc(adjId, [i, &found](const Polyhedron& adjCell) {
+					if (adjCell.getLayerNum() == i)
+						found = true;
 				});
+				if (found)
+					break;
 			}
-		}
-	}
 
-	return changed;
+			if (found)
+				_tempCellIds.push_back(cellId);
+		}
+	});
 }
 
-void Block::swapSeedBuffers()
+void Block::setIncrementLayerNums(int i)
 {
-	// Ping pong buffers, write becomes read, read becomes write, clear write
+	for (const auto& id : _tempCellIds) {
+		cellFunc(id, [i](Polyhedron& cell) {
+			cell.setLayerNum(i + 1);
+		});
+	}
 
-	// Don't do this until all blocks are done incrementing layers
-	int writeIdx = _seedFillReadIdx;
-	_seedFillReadIdx = 1 - _seedFillReadIdx;
-	_seedFillList[writeIdx].clear();
+	_tempCellIds.clear();
 }
 
 void Block::freePolygon(const Index3DId& id)

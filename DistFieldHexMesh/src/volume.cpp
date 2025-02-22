@@ -620,6 +620,36 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReport
 	reportProgress(pReporter);
 }
 
+void Volume::updateAllCaches(bool clearAll)
+{
+	if (clearAll) {
+		runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
+				face.clearCache();
+			});
+
+			pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
+				cell.clearTopolCache();
+			});
+			return true;
+		}, RUN_MULTI_THREAD);
+	}
+
+	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
+			face.updateAllCaches();
+		});
+		return true;
+	}, RUN_MULTI_THREAD);
+
+	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
+			cell.updateAllTopolCaches();
+		});
+		return true;
+	}, RUN_MULTI_THREAD);
+}
+
 void Volume::buildCFDHexes(std::vector<MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
@@ -630,6 +660,8 @@ void Volume::buildCFDHexes(std::vector<MeshDataPtr>& meshData, const BuildCFDPar
 	double sharpAngleRadians = params.getSharpAngleRadians();
 
 	reportProgress(pReporter);
+
+	updateAllCaches(false);
 
 	std::vector<size_t> sharpEdges;
 	{
@@ -865,41 +897,40 @@ void Volume::dumpOpenCells(bool multiCore) const
 
 void Volume::setLayerNums()
 {
+	updateAllCaches(true);
+
 	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->resetLayerNums();
+		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
+			if (cell.intersectsModel()) {
+				cell.clearLayerNum();
+			};
+		});
 		return true;
 	}, RUN_MULTI_THREAD);
 
+	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
+			if (cell.intersectsModel()) {
+				cell.setLayerNum(0);
+			};
+		});
+		return true;
+	}, RUN_MULTI_THREAD);
+
+#if 1
 	int steps = 1;
 	for (int i = 0; i < steps; i++) {
-		bool changed = false;
-		runThreadPool([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
-				face.updateAllCaches();
-			});
+		runThreadPool([i](size_t threadNum, size_t linearIdx, BlockPtr& pBlk)->bool {
+			pBlk->markIncrementLayerNums(i);
 			return true;
 		}, RUN_MULTI_THREAD);
 
-		runThreadPool_IJK([i, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			if (pBlk->incrementLayerNums(i))
-				changed = true;
+		runThreadPool([i](size_t threadNum, size_t linearIdx, BlockPtr& pBlk)->bool {
+			pBlk->setIncrementLayerNums(i);
 			return true;
 		}, RUN_MULTI_THREAD);
-
-		if (i < steps - 1) {
-			runThreadPool_IJK([i](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-				pBlk->swapSeedBuffers();
-				return true;
-			}, RUN_MULTI_THREAD);
-		}
-		if (!changed)
-			break;
 	}
-
-	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->clearAdjCellIdCache();
-		return true;
-	}, RUN_MULTI_THREAD);
+#endif
 }
 
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)
@@ -971,7 +1002,7 @@ void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool 
 				std::swap(_blocks[linIdxDst], _blocks[linIdxSrc]);
 			}
 		}
-	}, false && multiCore); // This isn't running multi threaded
+	}, false /*multiCore*/); // This isn't running multi threaded
 
 	MultiCore::runLambda([this, &idRemap, &srcDims](size_t threadNum, size_t numThreads) {
 		for (size_t i = threadNum; i < _blocks.size(); i += numThreads) {
@@ -1550,6 +1581,8 @@ bool Volume::read(istream& in)
 
 	}
 
+	updateAllCaches(false);
+
 	const auto& meshData = _pAppData->getMeshData();
 	runThreadPool([&meshData](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk) {
 		pBlk->iteratePolyhedraInOrder([&meshData](const auto& cellId, Polyhedron& cell)->bool {
@@ -1704,8 +1737,6 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
 			fLambda(threadNum, linearIdx, pBlk);
-		} else {
-			fLambda(threadNum, linearIdx, nullptr);
 		}
 	}, multiCore);
 }
@@ -1721,9 +1752,6 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
 			fLambda(threadNum, linearIdx, pBlk);
-		}
-		else {
-			fLambda(threadNum, linearIdx, nullptr);
 		}
 	}, multiCore);
 }
@@ -1885,7 +1913,7 @@ void Volume::runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bo
 					else {
 						fLambda(params, threadNum, nullptr);
 					}
-					}, multiCore);
+				}, multiCore);
 			}
 		}
 	}

@@ -54,9 +54,11 @@ TODO
 ****************************************************************************************************************************************
 
 Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
+Restore graphics multisampling for OIT
+Removed individual search trees per mesh and replace with a single search tree for all meshes
+    Then redo gap sampling, ignore sharp verts and edges inside solids
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Memory reporting is far out of line with reported memory allocations.
-Restore graphics multisampling for OIT
 
 Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
 Add bi/quad/oct/wedge splitting in addition to oct splitting.

@@ -83,6 +83,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _faceIds(src._faceIds)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
+	, _layerNum(src._layerNum)
 {
 }
 
@@ -114,6 +115,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_faceIds = rhs._faceIds;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_cachedIsClosed = rhs._cachedIsClosed;
+	_layerNum = rhs._layerNum;
 
 	return *this;
 }
@@ -251,122 +253,182 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 
 const FastBisectionSet<Index3DId>& Polyhedron::getVertIds() const
 {
-	if (_cachedVertIds.empty()) {
-		for (const auto& faceId : _faceIds.asVector()) {
-			faceFunc(faceId, [this](const Polygon& refFace) {
-				const auto vertexIds = refFace.getVertexIds();
-				_cachedVertIds.insert(vertexIds.begin(), vertexIds.end());
-			});
-		}
-	}
+	updateAllTopolCaches();
 
 	return _cachedVertIds;
 }
 
 const FastBisectionSet<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
-	if (includeAdjacentCellFaces) {
-		if (!_cachedEdges1.empty())
-			return _cachedEdges1;
-	} else if (!_cachedEdges0.empty())
-		return _cachedEdges0;
+	updateAllTopolCaches();
+	if (includeAdjacentCellFaces)
+		return _cachedEdgesAdj;
+	else
+		return _cachedEdges;
+}
 
-	MTC::map<Edge, MTC::set<Index3DId>> edgeToFaceMap;
-	MTC::set<Index3DId> adjCellIds;
+void Polyhedron::updateAllTopolCaches() const
+{
+	if (!_cachedVertIds.empty() && !_cachedAdjCellIds.empty() && !_cachedEdges.empty() && !_cachedEdgesAdj.empty())
+		return;
+
+	clearTopolCache(); // Clear all in case not all are empty
+	updateCachedVerts();
+
+	map<Edge, FastBisectionSet<Index3DId>> edgeToFaceIdMap;
+	FastBisectionSet<Index3DId> testedFaceIds;
+	FastBisectionSet<Edge> connectedEdges0;
 	for (const auto& faceId : _faceIds.asVector()) {
-		faceFunc(faceId, [this, &edgeToFaceMap, &faceId, &adjCellIds, includeAdjacentCellFaces](const Polygon& face) {
-			if (includeAdjacentCellFaces) {
-				auto temp = face.getCellIds();
-				for (const auto& v : temp.asVector())
-					adjCellIds.insert(v);
+		testedFaceIds.insert(faceId);
+		faceFunc(faceId, [this, &testedFaceIds, &edgeToFaceIdMap](const Polygon& face) {
+			const auto& adjCellIds = face.getCellIds();
+			for (const auto& cellId : adjCellIds.asVector()) {
+				if (cellId != getId())
+					_cachedAdjCellIds.insert(cellId);
 			}
+
 			const auto& edges = face.getEdges();
 			for (const auto& edge : edges.asVector()) {
-				auto iter = edgeToFaceMap.find(edge);
-				if (iter == edgeToFaceMap.end()) {
-					MTC::set<Index3DId> data;
-					iter = edgeToFaceMap.insert(MTC::make_pair(edge, data)).first;
+				auto iter = edgeToFaceIdMap.find(edge);
+				if (iter == edgeToFaceIdMap.end()) {
+					iter = edgeToFaceIdMap.insert(make_pair(edge, FastBisectionSet<Index3DId>())).first;
 				}
-				iter->second.insert(faceId);
+				iter->second.insert(face.getId());
 			}
 		});
 	}
 
-	if (includeAdjacentCellFaces) {
-		adjCellIds.erase(_thisId);
-		for (const auto& adjCellId : adjCellIds) {
+	FastBisectionSet <Index3DId> addedCellIds;
+	do {
+		addedCellIds.clear();
+		for (const auto& cellId : _cachedAdjCellIds.asVector()) {
 			FastBisectionSet<Index3DId> faceIds;
-			cellFunc(adjCellId, [&faceIds](const Polyhedron& cell) {
+			cellFunc(cellId, [&faceIds](const Polyhedron& cell) {
 				faceIds = cell.getFaceIds();
 			});
+
 			for (const auto& faceId : faceIds.asVector()) {
-				faceFunc(faceId, [this, &edgeToFaceMap, &faceId](const Polygon& face) {
+				if (testedFaceIds.contains(faceId))
+					continue;
+
+				testedFaceIds.insert(faceId);
+
+				const MTC::vector<Index3DId>* pVertIds;
+				FastBisectionSet<Index3DId> adjFaceCellIds;
+
+				faceFunc(faceId, [this, &pVertIds, &adjFaceCellIds, &edgeToFaceIdMap](const Polygon& face) {
+					pVertIds = &face.getVertexIds();
+					const auto& cellIds = &face.getCellIds();
 					const auto& edges = face.getEdges();
-					for (const auto& edge : edges.asVector()) {
-						auto iter = edgeToFaceMap.find(edge);
-						if (iter != edgeToFaceMap.end()) {
-							iter->second.insert(faceId);
-						}
-					}
-				});
-			}
-		}
-
-	}
-
-	for (const auto& pair : edgeToFaceMap) {
-		if (includeAdjacentCellFaces) {
-			_cachedEdges1.insert(Edge(pair.first, pair.second));
-		} else {
-			_cachedEdges0.insert(Edge(pair.first, pair.second));
-		}
-	}
-	
-
-	if (includeAdjacentCellFaces) {
-		return _cachedEdges1;
-	} else {
-		return _cachedEdges0;
-	}
-}
-
-const FastBisectionSet<Index3DId>& Polyhedron::getAdjacentCells() const
-{
-	if (_cachedAdjCellIds.empty()) { // All cells have adjacent cells. If this is empty, it hasn't been set
-		auto edges = getEdges(true);
-		for (const auto& faceId : _faceIds.asVector()) {
-			faceFunc(faceId, [this, &edges](const Polygon& face) {
-				const auto& cellIds1 = face.getCellIds();
-				for (const auto& cellId : cellIds1.asVector()) {
-					FastBisectionSet<Edge> adjEdges;
-					cellFunc(cellId, [this, &adjEdges](const Polyhedron& adjCell) {
-						adjEdges = adjCell.getEdges(true);
-						});
-					const auto& vertIds = getVertIds();
-					for (const auto& edge : adjEdges.asVector()) {
-						for (const auto& vertId : vertIds.asVector()) {
-							if (edge.containsVertex(vertId)) {
-								edges.insert(edge);
+					for (const auto& cellId : cellIds->asVector()) {
+						if (cellId != getId() && !_cachedAdjCellIds.contains(cellId)) {
+							adjFaceCellIds.insert(cellId);
+							for (const auto& edge : edges.asVector()) {
+								auto iter = edgeToFaceIdMap.find(edge);
+								if (iter != edgeToFaceIdMap.end()) {
+									iter->second.insert(face.getId());
+								}
 							}
 						}
 					}
-				}
-			});
-		}
+				});
 
-		auto pBlk = getBlockPtr();
-		for (const Edge& edge : edges.asVector()) {
-			set<Index3DId> adjCellIds;
-			edge.getCellIds(pBlk, adjCellIds);
-			for (const auto& adjCellId : adjCellIds) {
-				if (isVertexConnectedToCell(adjCellId))
-					_cachedAdjCellIds.insert(adjCellId);
+				if (!adjFaceCellIds.empty()) {
+					bool faceConntectToSeedCell = false;
+					for (const auto& vertId : *pVertIds) {
+						if (_cachedVertIds.contains(vertId)) {
+							faceConntectToSeedCell = true;
+							break;
+						}
+					}
+					if (faceConntectToSeedCell) {
+						const auto& v = adjFaceCellIds.asVector();
+						addedCellIds.insert(v.begin(), v.end());
+					}
+				}
 			}
 		}
+		const auto& addedVec = addedCellIds.asVector();
+		_cachedAdjCellIds.insert(addedVec.begin(), addedVec.end());
+	} while (!addedCellIds.empty());
 
-		_cachedAdjCellIds.erase(_thisId);
+	for (const auto& pair : edgeToFaceIdMap) {
+		const auto& edge = pair.first;
+		const auto& faceIds = pair.second;
+
+		set<Index3DId> localFaceIds;
+		for (const auto& faceId : faceIds.asVector()) {
+			if (_faceIds.contains(faceId))
+				localFaceIds.insert(faceId);
+		}
+
+		_cachedEdges.insert(Edge(edge, localFaceIds));
+		_cachedEdgesAdj.insert(Edge(edge, faceIds));
 	}
 
+#if VALIDATION_ON && defined(_DEBUG)
+	for (const auto& id : _cachedAdjCellIds.asVector()) {
+		FastBisectionSet<Index3DId> faceIds;
+		cellFunc(id, [&faceIds](const Polyhedron& cell) {
+			faceIds = cell.getFaceIds();
+		});
+
+		bool found = false;
+		for (const auto& faceId : faceIds.asVector()) {
+			faceFunc(faceId, [this, &found](const Polygon& face) {
+				const auto& cellVerts = getVertIds();
+				const auto& vertIds = face.getVertexIds();
+				for (const auto& vertId : vertIds) {
+					if (cellVerts.contains(vertId)) {
+						found = true;
+						break;
+					}
+					if (found)
+						break;
+				}
+			});
+			if (found)
+				break;
+		}
+		assert(found);
+	}
+
+	assert(_cachedEdges.size() == 12);
+	for (const auto& edge : _cachedEdges.asVector()) {
+		assert(edge.getFaceIds().size() == 2);
+	}
+
+	assert(_cachedEdgesAdj.size() == 12);
+	for (const auto& edge : _cachedEdgesAdj.asVector()) {
+		assert(edge.getFaceIds().size() >= 2);
+	}
+
+	static size_t maxCells = 0;
+	if (_cachedAdjCellIds.size() > maxCells) {
+		maxCells = _cachedAdjCellIds.size();
+		cout << "Max Cells: " << maxCells << "\n";
+	}
+#endif
+
+}
+
+void Polyhedron::updateCachedVerts() const
+{
+	MTC::set<Index3DId> vertSet;
+	for (const auto& faceId : _faceIds.asVector()) {
+		faceFunc(faceId, [&vertSet](const Polygon& face) {
+			const auto& vertIds = face.getVertexIds();
+			for (const auto& vertId : vertIds)
+				vertSet.insert(vertId);
+			});
+	}
+	_cachedVertIds.insert(vertSet.begin(), vertSet.end());
+}
+
+
+const FastBisectionSet<Index3DId>& Polyhedron::getAdjacentCells() const
+{
+	updateAllTopolCaches();
 	return _cachedAdjCellIds;
 }
 
@@ -1327,38 +1389,9 @@ void Polyhedron::setTriIndices(const Polyhedron& srcCell)
 	}
 }
 
-bool Polyhedron::setLayerNum(int thisLayerNum, bool propagate)
+void Polyhedron::setLayerNum(int32_t val)
 {
-	bool changed = false;
-	if (thisLayerNum == 0) {
-		if (_layerNum == -1 && intersectsModel()) {
-			auto pBlk = getBlockPtr();
-			pBlk->addToSeedFillList(_thisId);
-			_layerNum = thisLayerNum;
-			changed = true;
-		}
-	} else {
-		auto pBlk = getBlockPtr();
-		if (propagate) {
-			const auto& adj = getAdjacentCells();
-			for (const auto& id : adj.asVector()) {
-				if (pBlk->polyhedronExists(id)) {
-					cellFunc(id, [this, thisLayerNum, &changed](Polyhedron& adjCell) {
-						if (adjCell.exists() && adjCell.getLayerNum() == -1) {
-							adjCell.setLayerNum(thisLayerNum, false);
-							changed = true;
-						}
-					});
-				}
-			}
-		} else {
-			pBlk->addToSeedFillList(_thisId);
-			_layerNum = thisLayerNum;
-			changed = true;
-		}
-	}
-
-	return changed;
+	_layerNum = val;
 }
 
 MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
@@ -1515,16 +1548,15 @@ void Polyhedron::clearCache() const
 
 	_cachedMinGap = -1;
 
-	_cachedEdges0.clear();
-	_cachedEdges1.clear();
-	_cachedVertIds.clear();
-
-	clearAdjCellIdCache();
+	clearTopolCache();
 }
 
-void Polyhedron::clearAdjCellIdCache() const
+void Polyhedron::clearTopolCache() const
 {
+	_cachedVertIds.clear();
 	_cachedAdjCellIds.clear();
+	_cachedEdges.clear();
+	_cachedEdgesAdj.clear();
 }
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)

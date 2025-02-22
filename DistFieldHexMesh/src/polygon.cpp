@@ -80,7 +80,6 @@ Polygon::Polygon(const Polygon& src)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _cachedIntersectsModel(src._cachedIntersectsModel)
-	, _cachedEdgesVaild(src._cachedEdgesVaild)
 	, _cachedEdges(src._cachedEdges)
 	// Don't copy the caches
 {
@@ -95,7 +94,6 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
-	_cachedEdgesVaild = rhs._cachedEdgesVaild;
 	_cachedEdges = rhs._cachedEdges;
 
 	return *this;
@@ -120,20 +118,12 @@ void Polygon::addVertex(const Index3DId& vertId)
 void Polygon::clearCache() const
 {
 	_sortCacheVaild = false;
-	_cachedEdgesVaild = false;
 	_cachedCentroidValid = false;
 	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedEdges.clear();
 	_sortedIds.clear();
-
-	// Clear our owner cells' caches
-	for (const auto& cellId : _cellIds.asVector()) {
-		cellFunc(cellId, [](const Polyhedron& cell) {
-			cell.clearCache();
-		});
-	}
 }
 
 bool Polygon::cellsOwnThis() const
@@ -262,6 +252,13 @@ bool Polygon::load(istream& in, size_t idSelf)
 	return true;
 }
 
+void Polygon::updateAllTopolCaches() const
+{
+	if (_cachedEdges.empty()) {
+		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
+	}
+}
+
 void Polygon::initVertices(const Volume* pVol) const
 {
 }
@@ -312,23 +309,8 @@ void Polygon::updateAllCaches()
 
 const FastBisectionSet<Edge>& Polygon::getEdges() const
 {
-	if (!_cachedEdgesVaild) {
-		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
-		_cachedEdgesVaild = true;
-	}
-#if 0 && defined(_DEBUG)
-	{
-		set<Edge> test;
-		createEdgesStat(_vertexIds, test, _thisId);
-		assert(_cachedEdges.size() == test.size());
-		for (const auto& e : test) {
-			assert(_cachedEdges.contains(e));
-		}
-		for (const auto& e : _cachedEdges) {
-			assert(test.contains(e));
-		}
-	}
-#endif // _DEBUG
+	updateAllTopolCaches();
+	createEdgesStat(_vertexIds, _cachedEdges, _thisId);
 
 	return _cachedEdges;
 }

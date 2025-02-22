@@ -56,12 +56,12 @@ public:
 	FastBisectionSet_with_comp& operator = (const std::vector<VAL>& rhs);
 	FastBisectionSet_with_comp& operator = (const std::set<VAL>& rhs);
 
-	void insert(const VAL& VAL, bool sort = false);
+	void insert(const VAL& VAL);
 	template<class ITER>
-	void insert(const ITER& iterBegin, const ITER& iterEnd, bool sort = false)
+	void insert(const ITER& iterBegin, const ITER& iterEnd)
 	{
 		for (auto iter = iterBegin; iter != iterEnd; iter++)
-			insert(*iter, sort);
+			insert(*iter);
 	}
 
 	size_t find(const VAL& id) const;
@@ -112,6 +112,9 @@ inline bool FastBisectionSet_with_comp<VAL, COMP>::empty() const
 template<class VAL, class COMP>
 bool FastBisectionSet_with_comp<VAL, COMP>::contains(const VAL& id) const
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	size_t idx0, idx1;
 	size_t idx;
 	findIdx(id, idx, idx0, idx1);
@@ -127,6 +130,9 @@ inline const std::vector<VAL>& FastBisectionSet_with_comp<VAL, COMP>::asVector()
 		_vals.shrink_to_fit();
 		_sorted = true;
 	}
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	return _vals;
 }
 
@@ -157,20 +163,19 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 }
 
 template<class VAL, class COMP>
-void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry, bool sort)
+void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry)
 {
-	if (!sort) {
-		_vals.push_back(newEntry);
-		_sorted = false;
-		return;
-	}
 	size_t idx0, idx1;
 	size_t idx;
 	findIdx(newEntry, idx, idx0, idx1);
-	if (idx < _vals.size()) {
-		if (_vals[idx] == newEntry)
-			return;
+	if (idx < _vals.size() && _vals[idx] == newEntry)
+		return;
 
+	if (_vals.empty()) {
+		_vals.push_back(newEntry);
+	} else if (newEntry < _vals.front()) {
+		_vals.insert(_vals.begin(), newEntry);
+	} else if (idx0 < _vals.size()) {
 		bool inserted = false;
 		for (size_t i = idx0; i < idx1 && i + 1 < _vals.size(); i++) {
 			if (i == 0 && newEntry < _vals[i]) {
@@ -196,14 +201,17 @@ void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry, bool sor
 		_vals.push_back(newEntry);
 	}
 
-#ifdef _DEBUG
-	assert(!_sorted || isSorted());
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
 #endif
 }
 
 template<class VAL, class COMP>
 size_t FastBisectionSet_with_comp<VAL, COMP>::find(const VAL& id) const
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	size_t idx0, idx1;
 	size_t idx;
 	findIdx(id, idx, idx0, idx1);
@@ -213,6 +221,9 @@ size_t FastBisectionSet_with_comp<VAL, COMP>::find(const VAL& id) const
 template<class VAL, class COMP>
 inline void FastBisectionSet_with_comp<VAL, COMP>::erase(const VAL& id)
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	size_t idx = find(id);
 	if (idx < _vals.size()) {
 		_vals.erase(_vals.begin() + idx);
@@ -222,12 +233,18 @@ inline void FastBisectionSet_with_comp<VAL, COMP>::erase(const VAL& id)
 template<class VAL, class COMP>
 inline const VAL& FastBisectionSet_with_comp<VAL, COMP>::operator[](const size_t& idx) const
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	return _vals[idx];
 }
 
 template<class VAL, class COMP>
 void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	if (_vals.empty()) {
 		idx = idx0 = idx1 = -1;
 		return;
@@ -273,12 +290,16 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 }
 
 template<class VAL, class COMP>
-bool FastBisectionSet_with_comp<VAL, COMP>::isSorted() const
+inline bool FastBisectionSet_with_comp<VAL, COMP>::isSorted() const
 {
+#if FAST_BISECTION_VALIDATION_ENABLED
+	if (_vals.empty())
+		return true;
 	for (size_t i = 0; i < _vals.size() - 1; i++) {
 		if (_vals[i + 1] < _vals[i])
 			return false;
 	}
+#endif
 	return true;
 }
 

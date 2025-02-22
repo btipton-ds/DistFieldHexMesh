@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD 1
 #define USE_CELL_SEARCH_TREE 1
+#define FAST_BISECTION_VALIDATION_ENABLED 0
 #define INCLUDE_DEBUG_WX_FRAME 0
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
@@ -51,7 +52,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define LOGGING_VERBOSE_ENABLED (1 && LOGGING_ENABLED)
 #define DUMP_BAD_CELL_OBJS 1
 #define DUMP_OPEN_CELL_OBJS 1
-#define VALIDATION_ON 0
+#define VALIDATION_ON 1
 
 #define USE_MULTI_THREAD_CONTAINERS 0 
 #if USE_MULTI_THREAD_CONTAINERS
