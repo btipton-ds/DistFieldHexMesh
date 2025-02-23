@@ -27,7 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <memory>
 #include <splitParams.h>
-#include <buildCFDHexesDlg.h>
+#include <divideHexMeshDlg.h>
 #include <wx/string.h>
 #include <wx/wfstream.h>
 #include <filesystem>
@@ -62,8 +62,8 @@ namespace
 	};
 }
 
-BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
-	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Make Block"))
+DivideHexMeshDlg::DivideHexMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
+	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Divide Mesh"))
 {
 
 #ifdef WIN32
@@ -153,7 +153,7 @@ BuildCFDHexesDlg::BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	_cancelButton = new wxButton(this, wxID_OK, _T("OK"), wxPoint(col1, baseRowPixels + rowNum * rowHeight));
 }
 
-bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, size_t& value) const
+bool DivideHexMeshDlg::getValue(wxTextCtrl* item, size_t& value) const
 {
 	try {
 		wxString wstr = item->GetValue();
@@ -166,7 +166,7 @@ bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, size_t& value) const
 	return false;
 }
 
-bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, double& value) const
+bool DivideHexMeshDlg::getValue(wxTextCtrl* item, double& value) const
 {
 	try {
 		wxString wstr = item->GetValue();
@@ -179,7 +179,7 @@ bool BuildCFDHexesDlg::getValue(wxTextCtrl* item, double& value) const
 	return false;
 }
 
-void BuildCFDHexesDlg::getParams(BuildCFDParams& params) const
+void DivideHexMeshDlg::getParams(BuildCFDParams& params) const
 {
 	params.uniformRatio = _uniformRatioCheckBox->GetValue();
 	params.splitAtSharpVerts = _splitSharpVertsCheckBox->GetValue();

@@ -226,7 +226,7 @@ private:
     void OnCopy(wxCommandEvent& event);
     void OnPaste(wxCommandEvent& event);
     void OnCreateBaseMesh(wxCommandEvent& event);
-    void OnBuildCFDHexes(wxCommandEvent& event);
+    void OnDivideCFDHexes(wxCommandEvent& event);
 
     void OnShowModelSharpEdges(wxCommandEvent& event);
     void OnShowModelSharpVerts(wxCommandEvent& event);

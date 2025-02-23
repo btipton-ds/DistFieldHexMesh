@@ -46,7 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
 #include <createBaseMeshDlg.h>
-#include <buildCFDHexesDlg.h>
+#include <divideHexMeshDlg.h>
 
 #include <splitParams.h>
 #include <meshData.h>
@@ -711,7 +711,7 @@ void AppData::doRemoveBaseVolume()
     _pVolume = nullptr;
 }
 
-void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
+void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 {
     try {
         auto pCanvas = _pMainFrame->getCanvas();
@@ -722,7 +722,7 @@ void AppData::doBuildCFDHexes(const BuildCFDHexesDlg& dlg)
         size_t numProgSteps = 1 + _modelMeshData.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
-            _pVolume->buildCFDHexes(_modelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
+            _pVolume->divideHexMesh(_modelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
 
             buildHexFaceTables();
             _pMainFrame->reportProgress();

@@ -39,10 +39,10 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 	struct BuildCFDParams;
 
-	class BuildCFDHexesDlg : public wxDialog {
+	class DivideHexMeshDlg : public wxDialog {
 	public:
 
-		BuildCFDHexesDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
+		DivideHexMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
 			const wxPoint& pos = wxDefaultPosition);
 
 		void getParams(BuildCFDParams& params) const;

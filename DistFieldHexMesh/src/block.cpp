@@ -874,7 +874,7 @@ bool Block::doPresplits(const BuildCFDParams& params)
 {
 	bool result = false;
 	_polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.needToDivideDueToSplitFaces(params)) {
+		if (cell.hasTooManySplits(params)) {
 			result = true;
 			MTC::set<Index3DId> blockers;
 			if (cell.canSplit(blockers)) {

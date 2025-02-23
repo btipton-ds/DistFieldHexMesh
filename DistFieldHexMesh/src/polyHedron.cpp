@@ -1183,7 +1183,7 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 	return false;
 }
 
-bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
+bool Polyhedron::hasTooManySplits(const BuildCFDParams& params)
 {
 	size_t numSplitFaces = 0;
 	for (const auto& id : _faceIds.asVector()) {

@@ -72,9 +72,9 @@ add_executable (DistFieldHexMesh
     "src/appData.cpp"
 	
 	"src/block.cpp"	
-	"src/buildCFDHexesDlg.cpp"
 	"src/createBaseMeshDlg.cpp"
     "src/edge.cpp"
+	"src/divideHexMeshDlg.cpp"
 	"src/drawMesh.cpp"
 	"src/drawHexMesh.cpp" 
 	"src/drawModelMesh.cpp"

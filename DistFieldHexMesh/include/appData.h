@@ -47,7 +47,7 @@ class GraphicsCanvas;
 class MainFrame;
 class MakeBlockDlg;
 class SelectBlocksDlg;
-class BuildCFDHexesDlg;
+class DivideHexMeshDlg;
 class CreateBaseMeshDlg;
 
 class MeshData;
@@ -74,7 +74,7 @@ public:
     void doFindMinGap(const CMeshPtr& pMesh) const;
     void doCreateBaseVolume();
     void doRemoveBaseVolume();
-    void doBuildCFDHexes(const BuildCFDHexesDlg& dlg);
+    void doDivideHexMesh(const DivideHexMeshDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
 

@@ -45,7 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mainFrame.h>
 #include <makeBlockDlg.h>
 #include <selectBlocksDlg.h>
-#include <buildCFDHexesDlg.h>
+#include <divideHexMeshDlg.h>
 #include <createBaseMeshDlg.h>
 #include <graphicsCanvas.h>
 #include <graphicsDebugCanvas.h>
@@ -227,8 +227,8 @@ void MainFrame::createEditMenu()
     _editMenu->Append(ID_CREATE_BASE_MESH, "Create Base Mesh...");
     Bind(wxEVT_MENU, &MainFrame::OnCreateBaseMesh, this, ID_CREATE_BASE_MESH);
 
-    _editMenu->Append(ID_BuildCFDHexes, "Build CFD Hexes...");
-    Bind(wxEVT_MENU, &MainFrame::OnBuildCFDHexes, this, ID_BuildCFDHexes);
+    _editMenu->Append(ID_BuildCFDHexes, "Divide Mesh...");
+    Bind(wxEVT_MENU, &MainFrame::OnDivideCFDHexes, this, ID_BuildCFDHexes);
 
     _menuBar->Append(_editMenu, "&Edit");
 
@@ -641,12 +641,12 @@ void MainFrame::OnCreateBaseMesh(wxCommandEvent& event)
     pDlg->Show();
 }
 
-void MainFrame::OnBuildCFDHexes(wxCommandEvent& event)
+void MainFrame::OnDivideCFDHexes(wxCommandEvent& event)
 {
     BuildCFDParams& params = _pAppData->getParams();
-    BuildCFDHexesDlg dlg(params, this, 1, wxString("Make Block"), wxPoint(40, 40));
+    DivideHexMeshDlg dlg(params, this, 1, wxString("Make Block"), wxPoint(40, 40));
     if (dlg.ShowModal() == wxID_OK) {
-        _pAppData->doBuildCFDHexes(dlg);
+        _pAppData->doDivideHexMesh(dlg);
     }
 }
 

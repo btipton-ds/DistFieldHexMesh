@@ -650,7 +650,7 @@ void Volume::updateAllCaches(bool clearAll)
 	}, RUN_MULTI_THREAD);
 }
 
-void Volume::buildCFDHexes(std::vector<MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
 		assert(!"Volume is not ready.");
