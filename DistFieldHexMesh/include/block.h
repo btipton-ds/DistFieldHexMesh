@@ -220,7 +220,6 @@ public:
 	template<class F>
 	void iteratePolyhedraInOrder(F fLambda);
 
-
 	LAMBDA_BLOCK_DECLS
 
 private:

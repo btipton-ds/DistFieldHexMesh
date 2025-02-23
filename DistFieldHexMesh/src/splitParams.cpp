@@ -104,8 +104,13 @@ void BuildCFDParams::read(std::istream& in)
 	in.read((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
 	in.read((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
 	in.read((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
-	in.read((char*)&maxCellFaces, sizeof(maxCellFaces));
-
+	if (version < 4) {
+		size_t deprecated;
+		in.read((char*)&deprecated, sizeof(deprecated));
+		maxSplitFaces = 2; // Default
+	} else {
+		in.read((char*)&maxSplitFaces, sizeof(maxSplitFaces));
+	}
 	in.read((char*)&baseBoxOffset, sizeof(baseBoxOffset));
 	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
 	in.read((char*)&yRotationDeg, sizeof(yRotationDeg));
@@ -167,7 +172,7 @@ void BuildCFDParams::read(std::istream& in)
 
 void BuildCFDParams::write(std::ostream& out) const
 {
-	size_t version = 3;
+	size_t version = 4;
 	out.write((char*)&version, sizeof(size_t));
 
 	out.write((char*)&uniformRatio, sizeof(uniformRatio));
@@ -184,7 +189,7 @@ void BuildCFDParams::write(std::ostream& out) const
 	out.write((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
 	out.write((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
 	out.write((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
-	out.write((char*)&maxCellFaces, sizeof(maxCellFaces));
+	out.write((char*)&maxSplitFaces, sizeof(maxSplitFaces));
 
 	out.write((char*)&baseBoxOffset, sizeof(baseBoxOffset));
 	out.write((char*)&xRotationDeg, sizeof(xRotationDeg));

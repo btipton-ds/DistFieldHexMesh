@@ -59,7 +59,7 @@ struct BuildCFDParams {
 	size_t numCurvatureDivs = 0;
 	size_t divsPerCurvatureRadius = 2;
 	size_t divsPerGapCurvatureRadius = 4;
-	size_t maxCellFaces = 12;
+	size_t maxSplitFaces = 2;
 
 	Index3DBaseType xMinDivs = 5;
 	Index3DBaseType xMaxDivs = 5;

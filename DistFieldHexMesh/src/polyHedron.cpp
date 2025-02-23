@@ -1185,39 +1185,16 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 
 bool Polyhedron::needToDivideDueToSplitFaces(const BuildCFDParams& params)
 {
-	size_t numFaces = 0;
-	size_t maxFaceSplitLevels = 0;
-	FastBisectionSet<Index3DId> faceIds, newIds = _faceIds;
-	while (!newIds.empty()) {
-		size_t splitLevels = 0;
-		auto temp = newIds;
-		newIds.clear();
-		for (const auto& id : temp.asVector()) {
-			FastBisectionSet<Index3DId> subIds;
-			faceFunc(id, [this, &subIds](const Polygon& face) {
-				subIds = face.getSplitFaceProductIds();
-			});
-
-			if (subIds.empty()) {
-				if (!faceIds.contains(id)) {
-					newIds.insert(id);
-				}
-			} else {
-				splitLevels++;
-				for (const auto& subId : subIds.asVector()) {
-					if (!faceIds.contains(subId)) {
-						newIds.insert(subId);
-					}
-				}
-			}
-		}
-
-		if (splitLevels > maxFaceSplitLevels)
-			maxFaceSplitLevels = splitLevels;
-
-		faceIds.insert(newIds.asVector().begin(), newIds.asVector().end());
+	size_t numSplitFaces = 0;
+	for (const auto& id : _faceIds.asVector()) {
+		faceFunc(id, [this, &numSplitFaces](const Polygon& face) {
+			const auto& subIds = face.getSplitFaceProductIds();
+			if (!subIds.empty())
+				numSplitFaces += 1;
+		});
 	}
-	return (maxFaceSplitLevels > 1) || (faceIds.size() > params.maxCellFaces);
+
+	return numSplitFaces > params.maxSplitFaces;
 }
 
 bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const
