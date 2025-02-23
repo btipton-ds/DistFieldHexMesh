@@ -563,55 +563,6 @@ CBoundingBox3Dd Block::getBBox() const
 	return _corners.getBBox();
 }
 
-Index3DId Block::addFace(const MTC::vector<Index3DId>& vertIndices)
-{
-#if 0 && defined(_DEBUG)
-	if (!Polygon::verifyVertsConvexStat(this, vertIndices)) {
-		return Index3DId();
-}
-#endif // _DEBUG
-
-	Polygon newFace(vertIndices);
-
-#if 0 && defined(_DEBUG)
-	const auto& edges = newFace.getEdges();
-	for (const auto& edge : edges) {
-		assert(edge.onPrincipalAxis(this));
-	}
-#endif // _DEBUG
-
-	Index3D ownerBlockIdx = determineOwnerBlockIdx(vertIndices);
-	assert(ownerBlockIdx.isValid());
-	auto* pOwner = getOwner(ownerBlockIdx);
-	assert(pOwner);
-	Index3DId faceId = pOwner->addFace(newFace);
-
-	return faceId;
-}
-
-Index3DId Block::addFace(const MTC::vector<Vector3d>& pts)
-{
-	MTC::vector<Index3DId> vertIds;
-	for (const auto& pt : pts) {
-		auto vertId = addVertex(pt);
-		vertIds.push_back(vertId);
-	}
-	if (!Polygon::verifyUniqueStat(vertIds))
-		return Index3DId();
-	return addFace(vertIds);
-}
-
-Index3DId Block::addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId>& verts)
-{
-	Index3D ownerBlockIdx = determineOwnerBlockIdx(verts);
-	assert(ownerBlockIdx.isValid());
-	auto* pOwner = getOwner(ownerBlockIdx);
-	assert(pOwner);
-	auto faceId = pOwner->addFace(verts);
-
-	return faceId;
-}
-
 Index3DId Block::findFace(const Polygon& face) const
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);
@@ -676,16 +627,16 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[4], vertIds[7], vertIds[3] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[1], vertIds[2], vertIds[6], vertIds[5] })));
 
 	// add front and back
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[1], vertIds[5], vertIds[4] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[2], vertIds[3], vertIds[7], vertIds[6] })));
 
 	// add bottom and top
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[3], vertIds[2], vertIds[1] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[4], vertIds[5], vertIds[6], vertIds[7] })));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 
@@ -724,16 +675,16 @@ Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockD
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[4], vertIds[7], vertIds[3] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[1], vertIds[2], vertIds[6], vertIds[5] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[4], vertIds[7], vertIds[3] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[1], vertIds[2], vertIds[6], vertIds[5] })));
 
 	// add front and back
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[1], vertIds[5], vertIds[4] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[2], vertIds[3], vertIds[7], vertIds[6] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[1], vertIds[5], vertIds[4] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[2], vertIds[3], vertIds[7], vertIds[6] })));
 
 	// add bottom and top
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[0], vertIds[3], vertIds[2], vertIds[1] }));
-	faceIds.push_back(addFace(subBlockIdx, { vertIds[4], vertIds[5], vertIds[6], vertIds[7] }));
+	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[3], vertIds[2], vertIds[1] })));
+	faceIds.push_back(addFace(Polygon({ vertIds[4], vertIds[5], vertIds[6], vertIds[7] })));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 

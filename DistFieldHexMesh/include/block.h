@@ -154,9 +154,7 @@ public:
 
 	CBoundingBox3Dd getBBox() const;
 
-	Index3DId addFace(const MTC::vector<Index3DId>& vertIndices);
 	Index3DId addFace(const Polygon& face);
-	Index3DId addFace(const MTC::vector<Vector3d>& pts);
 	Index3DId findFace(const Polygon& face) const;
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
@@ -258,7 +256,6 @@ private:
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
 	Index3DId addFace(Block* pOwner, const MTC::vector<Index3DId>& vertIds);
-	Index3DId addFace(const Index3D& subBlockIdx, const MTC::vector<Index3DId>& vertIds);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;

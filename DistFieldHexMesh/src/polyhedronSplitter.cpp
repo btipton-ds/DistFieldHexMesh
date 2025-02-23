@@ -193,14 +193,15 @@ void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::ve
 					double u0 = (j == 0) ? 0 : u;
 					double u1 = (j == 0) ? u : 1;
 
-					vector<Vector3d> subFacePts = {
-						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0),
-						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0),
-						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1),
-						BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1),
+					vector<Index3DId> subFaceVertIds = {
+						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0)),
+						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0)),
+						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1)),
+						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1)),
 					};
 
-					auto newFaceId = _pBlock->addFace(subFacePts);
+					Polygon face(subFaceVertIds);
+					auto newFaceId = _pBlock->addFace(face);
 					splitIds.push_back(newFaceId);
 				}
 				
