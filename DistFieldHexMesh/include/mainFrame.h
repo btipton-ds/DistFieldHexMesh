@@ -54,6 +54,7 @@ TODO
 ****************************************************************************************************************************************
 
 Generating polyhedra with more than the maximum number of faces!
+    This is improved, but there is a problem splitting partially split cells resulting in bad cells.
 Restore graphics multisampling for OIT
 Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids

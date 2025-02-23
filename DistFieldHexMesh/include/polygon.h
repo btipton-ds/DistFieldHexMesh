@@ -112,8 +112,6 @@ public:
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
-	void removeDeadCellIds();
-	void unlinkFromCell(const Index3DId& cellId);
 	bool isReversed(const Index3DId& cellId) const; // Orientation is relative to cellId
 	void setReversed(const Index3DId& cellId, bool reversed); // Orientation is relative to cellId
 	void flipReversed(const Index3DId& cellId); // Orientation is relative to cellId
@@ -163,11 +161,9 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
-	bool intersectsModel() const;
 	bool intersectsTri(const Vector3d* pts[3]) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
-	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	const FastBisectionSet<Index3DId>& getSplitIds() const;
@@ -216,7 +212,6 @@ private:
 	bool imprintVertexInner(const Index3DId& imprintVert);
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
-	void addToSplitFaceProductIds(const Index3DId& id) const;
 	void updateAllTopolCaches() const;
 
 	size_t _createdDuringSplitNumber = 0;

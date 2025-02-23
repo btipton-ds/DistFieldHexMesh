@@ -708,19 +708,6 @@ double Polygon::calVertexAngle(size_t idx1) const
 	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);
 }
 
-Vector3d Polygon::interpolatePoint(double t, double u) const
-{
-	assert(_vertexIds.size() == 4);
-	Vector3d pts[] = {
-		getVertexPoint(_vertexIds[0]),
-		getVertexPoint(_vertexIds[1]),
-		getVertexPoint(_vertexIds[2]),
-		getVertexPoint(_vertexIds[3]),
-	};
-
-	return BI_LERP(pts[0], pts[1], pts[2], pts[3], t, u);
-}
-
 Vector3d Polygon::calCentroid() const
 {
 	double area;
@@ -732,83 +719,6 @@ Vector3d Polygon::calCentroid() const
 Vector3d Polygon::calCentroidApproxFast() const
 {
 	return calCentroidApproxFastStat(getBlockPtr(), _vertexIds);
-}
-
-bool Polygon::intersectsModel() const
-{
-	if (_cachedIntersectsModel == IS_UNKNOWN) {
-		_cachedIntersectsModel = IS_FALSE;
-
-		for (auto& cellId : _cellIds.asVector()) {
-			cellFunc(cellId, [this](const Polyhedron& cell) {
-				auto& meshData = getBlockPtr()->getModelMeshData();
-				for (auto& pData : meshData) {
-					auto& pMesh = pData->getMesh();
-					vector<size_t> triIndices;
-					if (pMesh->findTris(cell.getBoundingBox(), triIndices)) {
-						for (const auto& i : triIndices) {
-							const auto& triIdx = pMesh->getTri(i);
-							Vector3d modelTri[] = {
-								pMesh->getVert(triIdx[0])._pt,
-								pMesh->getVert(triIdx[1])._pt,
-								pMesh->getVert(triIdx[2])._pt
-							};
-							bool result = false;
-							getTriPoints([this, modelTri](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2) {
-								Vector3d meshTri[] = { pt0, pt1, pt2 };
-								if (intersectTriTri(modelTri, meshTri, Tolerance::sameDistTol())) {
-									_cachedIntersectsModel = IS_TRUE;
-								}
-							},
-								[](const Vector3d& pt0, const Vector3d& pt1) {
-							});
-
-							if (_cachedIntersectsModel == IS_TRUE)
-								break;
-						}
-					}
-				}
-			});
-		}
-#if 0
-			const auto& meshData = *getBlockPtr()->getModelMeshData();
-			for (const auto& pair : meshData) {
-				auto pMesh = pair.second->getMesh();;
-				CBoundingBox3Dd bbox;
-				for (const auto& vertId : _vertexIds) {
-					bbox.merge(getVertexPoint(vertId));
-				}
-
-				std::vector<size_t> triIndices;
-				if (pMesh->processFoundTris(cellTris, bbox, triIndices)) {
-					const auto& edges = getEdges();
-
-					for (const auto& triIdx : triIndices) {
-						const auto& tri = pMesh->getTri(triIdx);
-						const Vector3d* pts[3] = {
-							pts[0] = &(pMesh->getVert(tri[0])._pt),
-							pts[1] = &(pMesh->getVert(tri[1])._pt),
-							pts[2] = &(pMesh->getVert(tri[2])._pt),
-						};
-
-						for (const auto& edge : edges) {
-							auto seg = edge.getSegment(getBlockPtr());
-							RayHitd hit;
-							if (seg.intersectTri(pts, hit, Tolerance::sameDistTol())) {
-								_cachedIntersectsModel = IS_TRUE;
-								break;
-							}
-						}
-						if (_cachedIntersectsModel == IS_TRUE)
-							break;
-					}
-				}
-			}
-		}
-#endif
-	}
-
-	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
 bool Polygon::intersectsTri(const Vector3d* pts[3]) const
@@ -888,23 +798,6 @@ void Polygon::removeCellId(const Index3DId& cellId)
 	}
 }
 
-void Polygon::removeDeadCellIds()
-{
-	FastBisectionSet<Index3DId> tmp;
-	for (const auto& cellId : _cellIds.asVector()) {
-		if (getBlockPtr()->polyhedronExists(cellId))
-			tmp.insert(cellId);
-	}
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (_cellIds.size() != tmp.size()) {
-		int dbgBreak = 1;
-	}
-#endif
-
-	_cellIds = tmp;
-}
-
 void Polygon::addCellId(const Index3DId& cellId)
 {
 #if DEBUG_BREAKS && defined(_DEBUG)
@@ -926,17 +819,6 @@ void Polygon::addCellId(const Index3DId& cellId)
 		assert(_cellIds.size() <= 2);
 	}
 #endif
-}
-
-void Polygon::unlinkFromCell(const Index3DId& cellId)
-{
-	_cellIds.erase(cellId);
-}
-
-void Polygon::addToSplitFaceProductIds(const Index3DId& id) const
-{
-	Polygon* refSelf = const_cast<Polygon*>(this);
-	refSelf->_splitIds.insert(id);
 }
 
 void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
