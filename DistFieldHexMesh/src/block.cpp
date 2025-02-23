@@ -598,21 +598,6 @@ Index3DId Block::addCell(const Polyhedron& cell)
 	return cellId;
 }
 
-Index3DId Block::addCell(const MTC::set<Index3DId>& faceIds)
-{
-	return addCell(Polyhedron(faceIds));
-}
-
-Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
-{
-	MTC::set<Index3DId> faceSet;
-	faceSet.insert(faceIds.begin(), faceIds.end());
-	Polyhedron hex(faceSet);
-	Index3DId cellId = _polyhedra.findOrAdd(hex);
-
-	return cellId;
-}
-
 Index3DId Block::addHexCell(const std::vector<Index3DId>& cornerVertIds)
 {
 	assert(cornerVertIds.size() == 8);
