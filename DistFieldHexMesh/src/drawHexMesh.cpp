@@ -423,11 +423,29 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         UBO.defColor = p4f(210 / den, 180 / den, 140 / den, alpha);
         break;
     case DS_MESH_LAYER_0:
+        blend = true;
+        UBO.defColor = p4f(0.75f, 1, 1, alpha);
+        break;
     case DS_MESH_LAYER_1:
+        blend = true;
+        UBO.defColor = p4f(1, 0.75f, 1, alpha);
+        break;
     case DS_MESH_LAYER_2:
+        blend = true;
+        UBO.defColor = p4f(1, 1, 0.75f, alpha);
+        break;
     case DS_MESH_LAYER_3:
+        blend = true;
+        UBO.defColor = p4f(1, 0.75f, 0.75f, alpha);
+        break;
     case DS_MESH_LAYER_4:
+        blend = true;
+        UBO.defColor = p4f(0.75f, 1, 0.75f, alpha);
+        break;
     case DS_MESH_LAYER_5:
+        blend = true;
+        UBO.defColor = p4f(0.75f, 0.75f, 1, alpha);
+        break;
     case DS_MESH_LAYER_6:
     case DS_MESH_LAYER_7:
     case DS_MESH_LAYER_8:

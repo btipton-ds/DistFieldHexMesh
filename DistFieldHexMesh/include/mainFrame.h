@@ -53,9 +53,9 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
+Generating polyhedra with more than the maximum number of faces!
 Restore graphics multisampling for OIT
-Removed individual search trees per mesh and replace with a single search tree for all meshes
+Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Memory reporting is far out of line with reported memory allocations.
@@ -77,6 +77,7 @@ Add read/write of a document file. This contains all the configuration specific 
 Already done
 ****************************************************************************************************************************************
 
+Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
 DDP is getting the alpha of the front layer wrong. Test this by turning on only left, back and front boundaries. When faces over lap, the front transparency is WRONG.
     It was actually a the back layer not blending because blending was disabled - fixed.
 Fix crash when splitting long triangles more than once. --- This was just an assert on a particular case where the mesh didn't close correctly.

@@ -1462,35 +1462,23 @@ void Block::resetLayerNums()
 
 void Block::markIncrementLayerNums(int i)
 {
-	_tempCellIds.clear();
 	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
-		if (cell.getLayerNum() == -1) {
+		if (cell.getLayerNum() == i) {
 			const auto& adjIds = cell.getAdjacentCells();
-			bool found = false;
 			for (const auto& adjId : adjIds.asVector()) {
-				cellFunc(adjId, [i, &found](const Polyhedron& adjCell) {
-					if (adjCell.getLayerNum() == i)
-						found = true;
+				cellFunc(adjId, [i](Polyhedron& adjCell) {
+					adjCell.setLayerNumOnNextPass(adjCell.getLayerNum());
 				});
-				if (found)
-					break;
 			}
-
-			if (found)
-				_tempCellIds.push_back(cellId);
 		}
 	});
 }
 
 void Block::setIncrementLayerNums(int i)
 {
-	for (const auto& id : _tempCellIds) {
-		cellFunc(id, [i](Polyhedron& cell) {
-			cell.setLayerNum(i + 1);
-		});
-	}
-
-	_tempCellIds.clear();
+	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
+		cell.setLayerNum(i + 1, false);
+	});
 }
 
 void Block::freePolygon(const Index3DId& id)

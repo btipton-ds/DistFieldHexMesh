@@ -52,7 +52,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define LOGGING_VERBOSE_ENABLED (1 && LOGGING_ENABLED)
 #define DUMP_BAD_CELL_OBJS 1
 #define DUMP_OPEN_CELL_OBJS 1
-#define VALIDATION_ON 1
+#define VALIDATION_ON 0
 
 #define USE_MULTI_THREAD_CONTAINERS 0 
 #if USE_MULTI_THREAD_CONTAINERS

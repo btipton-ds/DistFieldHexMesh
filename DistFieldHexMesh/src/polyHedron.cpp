@@ -113,9 +113,11 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 	clearCache();
 	_faceIds = rhs._faceIds;
-	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
-	_cachedIsClosed = rhs._cachedIsClosed;
+	_splitLevel = rhs._splitLevel;
 	_layerNum = rhs._layerNum;
+	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
+	_exists = rhs._exists;
+	_triIndices = rhs._triIndices;
 
 	return *this;
 }
@@ -366,7 +368,17 @@ void Polyhedron::updateAllTopolCaches() const
 		_cachedEdgesAdj.insert(Edge(edge, faceIds));
 	}
 
-#if VALIDATION_ON && defined(_DEBUG)
+#if (1 || VALIDATION_ON) && defined(_DEBUG)
+	static size_t maxCells = 0;
+	static size_t minCells = 1000;
+	if (_cachedAdjCellIds.size() > maxCells || _cachedAdjCellIds.size() < minCells) {
+		if (_cachedAdjCellIds.size() > maxCells)
+			maxCells = _cachedAdjCellIds.size();
+		if (_cachedAdjCellIds.size() < minCells)
+			minCells = _cachedAdjCellIds.size();
+		cout << "Min Cells: " << minCells << ", Max Cells: " << maxCells << "\n";
+	}
+
 	for (const auto& id : _cachedAdjCellIds.asVector()) {
 		FastBisectionSet<Index3DId> faceIds;
 		cellFunc(id, [&faceIds](const Polyhedron& cell) {
@@ -376,10 +388,9 @@ void Polyhedron::updateAllTopolCaches() const
 		bool found = false;
 		for (const auto& faceId : faceIds.asVector()) {
 			faceFunc(faceId, [this, &found](const Polygon& face) {
-				const auto& cellVerts = getVertIds();
 				const auto& vertIds = face.getVertexIds();
 				for (const auto& vertId : vertIds) {
-					if (cellVerts.contains(vertId)) {
+					if (_cachedVertIds.contains(vertId)) {
 						found = true;
 						break;
 					}
@@ -403,11 +414,6 @@ void Polyhedron::updateAllTopolCaches() const
 		assert(edge.getFaceIds().size() >= 2);
 	}
 
-	static size_t maxCells = 0;
-	if (_cachedAdjCellIds.size() > maxCells) {
-		maxCells = _cachedAdjCellIds.size();
-		cout << "Max Cells: " << maxCells << "\n";
-	}
 #endif
 
 }
@@ -1389,10 +1395,18 @@ void Polyhedron::setTriIndices(const Polyhedron& srcCell)
 	}
 }
 
-void Polyhedron::setLayerNum(int32_t val)
+void Polyhedron::setLayerNum(int32_t val, bool force)
 {
-	_layerNum = val;
+	if (_layerNum == -2 || force)
+		_layerNum = val;
 }
+
+void Polyhedron::setLayerNumOnNextPass(int32_t val)
+{
+	if (_layerNum == -1)
+		_layerNum = -2;
+}
+
 
 MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {
@@ -1544,6 +1558,7 @@ void Polyhedron::clearCache() const
 	_isOriented = false;
 
 	_intersectsModel = IS_UNKNOWN; // Cached value
+	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
 
 	_cachedMinGap = -1;

@@ -897,13 +897,11 @@ void Volume::dumpOpenCells(bool multiCore) const
 
 void Volume::setLayerNums()
 {
-	updateAllCaches(true);
+	updateAllCaches(false);
 
 	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
-			if (cell.intersectsModel()) {
-				cell.clearLayerNum();
-			};
+			cell.clearLayerNum();
 		});
 		return true;
 	}, RUN_MULTI_THREAD);
@@ -911,14 +909,13 @@ void Volume::setLayerNums()
 	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
-				cell.setLayerNum(0);
+				cell.setLayerNum(0, true);
 			};
 		});
 		return true;
 	}, RUN_MULTI_THREAD);
 
-#if 1
-	int steps = 1;
+	int steps = 5;
 	for (int i = 0; i < steps; i++) {
 		runThreadPool([i](size_t threadNum, size_t linearIdx, BlockPtr& pBlk)->bool {
 			pBlk->markIncrementLayerNums(i);
@@ -930,7 +927,6 @@ void Volume::setLayerNums()
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
-#endif
 }
 
 void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)

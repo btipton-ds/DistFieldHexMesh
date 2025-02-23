@@ -123,7 +123,8 @@ public:
 	void setSplitLevel(size_t val);
 	int32_t getLayerNum() const;
 	void clearLayerNum();
-	void setLayerNum(int32_t val);
+	void setLayerNum(int32_t val, bool force);
+	void setLayerNumOnNextPass(int32_t val);
 	void addMeshToTriIndices(const std::vector<MeshDataPtr>& meshData);
 	void setTriIndices(const Polyhedron& srcCell);
 
@@ -172,7 +173,7 @@ private:
 	*/
 	FastBisectionSet<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
-	int32_t _layerNum = -1;
+	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
 
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
@@ -186,7 +187,7 @@ private:
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;
 
-	mutable Trinary _cachedIsClosed = Trinary::IS_UNKNOWN;
+	mutable Trinary _cachedIsClosed = IS_UNKNOWN;
 	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
