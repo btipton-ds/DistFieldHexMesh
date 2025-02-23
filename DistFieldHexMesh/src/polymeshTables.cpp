@@ -140,7 +140,7 @@ void PolymeshTables::createPolygonMaps()
 	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
 			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
-				const auto& splitIds = face.getSplitFaceProductIds();
+				const auto& splitIds = face.getSplitIds();
 				if (splitIds.empty()) {
 					size_t idx = faceIdxIdMap.size();
 					faceIdxIdMap.push_back(id);

@@ -184,6 +184,21 @@ void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 
 }
 
+size_t Polygon::numFaceIds(bool includeSplits) const
+{
+	if (!includeSplits || _splitIds.empty())
+		return 1;
+
+	size_t result = 0;
+	for (const auto& id : _splitIds.asVector()) {
+		faceFunc(id, [this, &result](const Polygon& splitFace) {
+			result += splitFace.numFaceIds(true);
+		});
+	}
+
+	return result;
+}
+
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;

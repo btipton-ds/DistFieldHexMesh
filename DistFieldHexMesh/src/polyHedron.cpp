@@ -853,6 +853,22 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
+void Polyhedron::addToFaceCountHisogram(std::map<size_t, size_t>& histo) const
+{
+	size_t numFaces = 0;
+
+	for (const auto& faceId : _faceIds.asVector()) {
+		faceFunc(faceId, [this, &numFaces](const Polygon& face) {
+			numFaces += face.numFaceIds(true);
+		});
+	}
+
+	auto iter = histo.find(numFaces);
+	if (iter == histo.end())
+		iter = histo.insert(make_pair(numFaces, 0)).first;
+	iter->second++;
+}
+
 Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
 {
 	return getOurBlockPtr()->getVertexPoint(vertId);
@@ -1188,7 +1204,7 @@ bool Polyhedron::hasTooManySplits(const BuildCFDParams& params)
 	size_t numSplitFaces = 0;
 	for (const auto& id : _faceIds.asVector()) {
 		faceFunc(id, [this, &numSplitFaces](const Polygon& face) {
-			const auto& subIds = face.getSplitFaceProductIds();
+			const auto& subIds = face.getSplitIds();
 			if (!subIds.empty())
 				numSplitFaces += 1;
 		});

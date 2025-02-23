@@ -697,6 +697,37 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const BuildCFDPar
 
 #endif
 	setLayerNums();
+
+	dumpCellHistogram();
+}
+
+void Volume::dumpCellHistogram() const
+{
+	map<size_t, size_t> faceCountHistogram;
+	vector<map<size_t, size_t>> faceCountHistograms;
+	faceCountHistograms.resize(MultiCore::getNumCores());
+	runThreadPool([&faceCountHistograms](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder([&threadNum, &faceCountHistograms](const Index3DId& cellId, const Polyhedron& cell) {
+			cell.addToFaceCountHisogram(faceCountHistograms[threadNum]);
+			});
+		return true;
+	}, RUN_MULTI_THREAD);
+
+	size_t total = 0;
+	for (const auto& histo : faceCountHistograms) {
+		for (const auto& pair : histo) {
+			auto iter = faceCountHistogram.find(pair.first);
+			if (iter == faceCountHistogram.end())
+				iter = faceCountHistogram.insert(make_pair(pair.first, 0)).first;
+			iter->second += pair.second;
+			total += pair.second;
+		}
+	}
+
+	cout << "Total cells: " << total << "\n";
+	for (const auto& pair : faceCountHistogram) {
+		cout << "numFaces: " << pair.first << " - count: " << pair.second << "\n";
+	}
 }
 
 /*

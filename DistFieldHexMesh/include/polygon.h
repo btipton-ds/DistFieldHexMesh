@@ -152,6 +152,7 @@ public:
 	const FastBisectionSet<Edge>& getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
+	size_t numFaceIds(bool includeSplits) const;
 
 	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
@@ -169,7 +170,7 @@ public:
 	Vector3d interpolatePoint(double t, double u) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	const FastBisectionSet<Index3DId>& getSplitFaceProductIds() const;
+	const FastBisectionSet<Index3DId>& getSplitIds() const;
 
 	bool cellsOwnThis() const;
 	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
@@ -316,7 +317,7 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	return result;
 }
 
-inline const FastBisectionSet<Index3DId>& Polygon::getSplitFaceProductIds() const
+inline const FastBisectionSet<Index3DId>& Polygon::getSplitIds() const
 {
 	return _splitIds;
 }

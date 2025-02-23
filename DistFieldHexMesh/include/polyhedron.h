@@ -97,6 +97,7 @@ public:
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
 	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
+	void addToFaceCountHisogram(std::map<size_t, size_t>& histo) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
