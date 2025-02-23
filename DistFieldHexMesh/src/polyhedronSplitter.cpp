@@ -79,6 +79,11 @@ bool PolyhedronSplitter::splitAtParam(const Vector3d& tuv)
 	return result;
 }
 
+Index3DId PolyhedronSplitter::vertId(const Vector3d& pt)
+{
+	return _pBlock->getVertexIdOfPoint(pt);
+}
+
 bool PolyhedronSplitter::splitAtParamInner(Polyhedron& cell, const Vector3d& tuv)
 {
 
@@ -151,16 +156,16 @@ bool PolyhedronSplitter::splitAtParamInner(Polyhedron& cell, const Vector3d& tuv
 					double v0 = (k == 0) ? 0 : tuv[2];
 					double v1 = (k == 0) ? tuv[2] : 1;
 
-					MTC::vector<Vector3d> subCorners = {
-						TRI_LERP(corners, t0, u0, v0),
-						TRI_LERP(corners, t1, u0, v0),
-						TRI_LERP(corners, t1, u1, v0),
-						TRI_LERP(corners, t0, u1, v0),
+					MTC::vector<Index3DId> subCorners = {
+						vertId(TRI_LERP(corners, t0, u0, v0)),
+						vertId(TRI_LERP(corners, t1, u0, v0)),
+						vertId(TRI_LERP(corners, t1, u1, v0)),
+						vertId(TRI_LERP(corners, t0, u1, v0)),
 
-						TRI_LERP(corners, t0, u0, v1),
-						TRI_LERP(corners, t1, u0, v1),
-						TRI_LERP(corners, t1, u1, v1),
-						TRI_LERP(corners, t0, u1, v1),
+						vertId(TRI_LERP(corners, t0, u0, v1)),
+						vertId(TRI_LERP(corners, t1, u0, v1)),
+						vertId(TRI_LERP(corners, t1, u1, v1)),
+						vertId(TRI_LERP(corners, t0, u1, v1)),
 					};
 
 					Index3DId newCellId = _pBlock->addHexCell(subCorners);
@@ -194,10 +199,10 @@ void PolyhedronSplitter::splitFaceAtParam(const Index3DId& faceId, const std::ve
 					double u1 = (j == 0) ? u : 1;
 
 					vector<Index3DId> subFaceVertIds = {
-						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0)),
-						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0)),
-						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1)),
-						_pBlock->getVertexIdOfPoint(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1)),
+						vertId(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u0)),
+						vertId(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u0)),
+						vertId(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t1, u1)),
+						vertId(BI_LERP<double>(facePts[0], facePts[1], facePts[2], facePts[3], t0, u1)),
 					};
 
 					Polygon face(subFaceVertIds);

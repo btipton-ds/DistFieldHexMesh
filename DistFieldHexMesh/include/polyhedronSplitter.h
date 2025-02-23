@@ -55,6 +55,7 @@ public:
 private:
 	bool splitAtParamInner(Polyhedron& cell, const Vector3d& tuv);
 	void splitFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
+	Index3DId vertId(const Vector3d& pt);
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;

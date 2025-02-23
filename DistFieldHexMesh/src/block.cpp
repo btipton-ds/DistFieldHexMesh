@@ -485,7 +485,7 @@ void Block::createBlockCells()
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
-				addHexCell(_corners, _blockDim, idx, false);
+				createGradedHexCell(_corners, _blockDim, idx, false);
 			}
 		}
 	}
@@ -495,7 +495,7 @@ void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3
 {
 
 	auto blockCornerPts = getCornerPts();	
-	auto polyId = addHexCell(blockCornerPts, _blockDim, subBlockIdx, false);
+	auto polyId = createGradedHexCell(blockCornerPts, _blockDim, subBlockIdx, false);
 }
 
 const vector<Vector3d>& Block::getCornerPts() const
@@ -613,37 +613,31 @@ Index3DId Block::addCell(const MTC::vector<Index3DId>& faceIds)
 	return cellId;
 }
 
-Index3DId Block::addHexCell(const std::vector<Vector3d>& cellPts)
+Index3DId Block::addHexCell(const std::vector<Index3DId>& cornerVertIds)
 {
-	assert(cellPts.size() == 8);
-	MTC::vector<Index3DId> vertIds;
-	vertIds.resize(8);
-	for (size_t i = 0; i < cellPts.size(); i++) {
-		vertIds[i] = getVertexIdOfPoint(cellPts[i]);
-	}
-
+	assert(cornerVertIds.size() == 8);
 	Index3DId subBlockIdx;
 	MTC::vector<Index3DId> faceIds;
 	faceIds.reserve(6);
 
 	// add left and right
-	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[4], vertIds[7], vertIds[3] })));
-	faceIds.push_back(addFace(Polygon({ vertIds[1], vertIds[2], vertIds[6], vertIds[5] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[0], cornerVertIds[4], cornerVertIds[7], cornerVertIds[3] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[1], cornerVertIds[2], cornerVertIds[6], cornerVertIds[5] })));
 
 	// add front and back
-	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[1], vertIds[5], vertIds[4] })));
-	faceIds.push_back(addFace(Polygon({ vertIds[2], vertIds[3], vertIds[7], vertIds[6] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[0], cornerVertIds[1], cornerVertIds[5], cornerVertIds[4] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[2], cornerVertIds[3], cornerVertIds[7], cornerVertIds[6] })));
 
 	// add bottom and top
-	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[3], vertIds[2], vertIds[1] })));
-	faceIds.push_back(addFace(Polygon({ vertIds[4], vertIds[5], vertIds[6], vertIds[7] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[0], cornerVertIds[3], cornerVertIds[2], cornerVertIds[1] })));
+	faceIds.push_back(addFace(Polygon({ cornerVertIds[4], cornerVertIds[5], cornerVertIds[6], cornerVertIds[7] })));
 
 	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
 
-Index3DId Block::addHexCell(const std::vector<Vector3d>& blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
+Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size_t blockDim, const Index3D& subBlockIdx, bool intersectingOnly)
 {
 	auto vertIds = getSubBlockCornerVertIds(blockPts, blockDim, subBlockIdx);
 

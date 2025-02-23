@@ -162,8 +162,8 @@ public:
 	Index3DId addCell(const Polyhedron& cell);
 	Index3DId addCell(const MTC::set<Index3DId>& faceIds);
 	Index3DId addCell(const MTC::vector<Index3DId>& faceIds);
-	Index3DId addHexCell(const std::vector<Vector3d>& cellPts);
-	Index3DId addHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
+	Index3DId addHexCell(const std::vector<Index3DId>& cornerVertIds);
+	Index3DId createGradedHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 
 	bool vertexExists(const Index3DId& id) const;
 	bool polygonExists(const Index3DId& id) const;

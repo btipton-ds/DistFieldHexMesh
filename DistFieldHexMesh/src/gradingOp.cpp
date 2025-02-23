@@ -186,17 +186,17 @@ void GradingOp::createGradedCells() const {
                 }
 #endif
 
-                vector<Vector3d> gPts;
-                gPts.resize(8);
-                gPts[0] = TRI_LERP(cPts, t0, u0, v0);
-                gPts[1] = TRI_LERP(cPts, t1, u0, v0);
-                gPts[2] = TRI_LERP(cPts, t1, u1, v0);
-                gPts[3] = TRI_LERP(cPts, t0, u1, v0);
-                gPts[4] = TRI_LERP(cPts, t0, u0, v1);
-                gPts[5] = TRI_LERP(cPts, t1, u0, v1);
-                gPts[6] = TRI_LERP(cPts, t1, u1, v1);
-                gPts[7] = TRI_LERP(cPts, t0, u1, v1);
-                _pBlk->addHexCell(gPts);
+                vector<Index3DId> cornerVertIds;
+                cornerVertIds.resize(8);
+                cornerVertIds[0] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u0, v0));
+                cornerVertIds[1] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t1, u0, v0));
+                cornerVertIds[2] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t1, u1, v0));
+                cornerVertIds[3] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u1, v0));
+                cornerVertIds[4] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u0, v1));
+                cornerVertIds[5] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t1, u0, v1));
+                cornerVertIds[6] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t1, u1, v1));
+                cornerVertIds[7] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u1, v1));
+                _pBlk->addHexCell(cornerVertIds);
 
                 v0 = v1;
             }
