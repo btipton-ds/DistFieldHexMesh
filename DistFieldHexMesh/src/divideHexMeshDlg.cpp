@@ -121,8 +121,8 @@ DivideHexMeshDlg::DivideHexMeshDlg(BuildCFDParams& params, wxWindow* parent, wxW
 	_sharpAngleBox = new wxTextCtrl(this, SHARP_ANGLE_DEGREES_ID, std::to_string(params.sharpAngle_degrees), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_maxCellFacesPrompt = new wxStaticText(this, 0, _T("Max split per cell"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_maxCellFacesBox = new wxTextCtrl(this, MAX_SPLIT_FACES_ID, std::to_string(params.maxSplitFaces), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_maxCellFacesPrompt = new wxStaticText(this, 0, _T("Max faces per cell"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_maxCellFacesBox = new wxTextCtrl(this, MAX_SPLIT_FACES_ID, std::to_string(params.maxCellFaces), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_numSimpleDivsPrompt = new wxStaticText(this, 0, _T("# simple divs"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -189,7 +189,7 @@ void DivideHexMeshDlg::getParams(BuildCFDParams& params) const
 	getValue(_numCurvatureDivsBox, params.numCurvatureDivs);
 	getValue(_divsPerCurvatureBox, params.divsPerCurvatureRadius);
 	getValue(_divsPerGapCurvatureBox, params.divsPerGapCurvatureRadius);
-	getValue(_maxCellFacesBox, params.maxSplitFaces);
+	getValue(_maxCellFacesBox, params.maxCellFaces);
 	getValue(_maxGapSizeBox, params.maxGapSize);
 	getValue(_maxCurvatureRadiusBox, params.maxCurvatureRadius_meters);
 	getValue(_sharpAngleBox, params.sharpAngle_degrees);

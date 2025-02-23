@@ -257,7 +257,7 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
 
-	bool doPresplits(const BuildCFDParams& params);
+	bool fixTooManyFaceSplits(const BuildCFDParams& params);
 	void dumpOpenCells() const;
 
 	bool splitRequiredPolyhedra();

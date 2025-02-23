@@ -870,7 +870,7 @@ bool Block::load()
 	return true;
 }
 
-bool Block::doPresplits(const BuildCFDParams& params)
+bool Block::fixTooManyFaceSplits(const BuildCFDParams& params)
 {
 	bool result = false;
 	_polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {

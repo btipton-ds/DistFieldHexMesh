@@ -709,7 +709,7 @@ void Volume::dumpCellHistogram() const
 	runThreadPool([&faceCountHistograms](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&threadNum, &faceCountHistograms](const Index3DId& cellId, const Polyhedron& cell) {
 			cell.addToFaceCountHisogram(faceCountHistograms[threadNum]);
-			});
+		});
 		return true;
 	}, RUN_MULTI_THREAD);
 
@@ -774,36 +774,7 @@ void Volume::divideConitional(const BuildCFDParams& params, ProgressReporter* pR
 
 		bool didSplit = false;
 		int count = 0;
-		while ((didSplit || _numSplits > 0) && count < 3) {
-			didSplit = false;
-			runThreadPool_IJK([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-				if (pBlk->doPresplits(params)) {
-					_numSplits++;
-					didSplit = true;
-				}
-				return true;
-			}, multiCore);
-			count++;
-		}
-
 		for (size_t passNum = 0; passNum < numPasses; passNum++) {
-			if (passNum > 0 || _numSplits > 0) {
-				bool didSplit = false;
-				int count = 0;
-				while (didSplit && count < 3) {
-					didSplit = false;
-					runThreadPool_IJK([this, &params, &didSplit, sinEdgeAngle](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-						if (pBlk->doPresplits(params)) {
-							didSplit = true;
-						}
-						return true;
-					}, multiCore);
-					count++;
-
-				}
-				if (didSplit)
-					_numSplits++;
-			}
 			pReporter->reportProgress();
 
 			bool changed = false;
@@ -867,23 +838,30 @@ void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
 
 void Volume::finishSplits(bool multiCore)
 {
-	bool done = false;
+	bool changed = false;
 	int i = 0;
-	while (!done) {
-		done = true;
-		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			pBlk->splitRequiredPolyhedra();
+	do {
+		changed = false;
+		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra())
+				changed = true;
+			return true;
+			}, multiCore);
+
+		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			if (pBlk->fixTooManyFaceSplits(_pAppData->getParams()))
+				changed = true;
 			return true;
 		}, multiCore);
 
-		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack();
 			return true;
 		}, multiCore);
 
-		runThreadPool_IJK([this, &done](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			if (pBlk->hasPendingSplits()) {
-				done = false;
+				changed = true;
 				return false; // We need to split 1, so we need to split all. Exit early
 			}
 			return true;
@@ -892,8 +870,9 @@ void Volume::finishSplits(bool multiCore)
 		i++;
 		if (i > 20)
 			break;
-	}
-//	imprintTJointVertices(multiCore);
+	} while (changed);
+
+	//	imprintTJointVertices(multiCore);
 	cout << "FinishSplits " << i << "\n";
 }
 

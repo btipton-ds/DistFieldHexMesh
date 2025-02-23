@@ -368,7 +368,7 @@ void Polyhedron::updateAllTopolCaches() const
 		_cachedEdgesAdj.insert(Edge(edge, faceIds));
 	}
 
-#if (1 || VALIDATION_ON) && defined(_DEBUG)
+#if (0 || VALIDATION_ON) && defined(_DEBUG)
 	static size_t maxCells = 0;
 	static size_t minCells = 1000;
 	if (_cachedAdjCellIds.size() > maxCells || _cachedAdjCellIds.size() < minCells) {
@@ -1201,16 +1201,17 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 
 bool Polyhedron::hasTooManySplits(const BuildCFDParams& params)
 {
-	size_t numSplitFaces = 0;
-	for (const auto& id : _faceIds.asVector()) {
-		faceFunc(id, [this, &numSplitFaces](const Polygon& face) {
-			const auto& subIds = face.getSplitIds();
-			if (!subIds.empty())
-				numSplitFaces += 1;
+	size_t numFaces = 0;
+
+	for (const auto& faceId : _faceIds.asVector()) {
+		faceFunc(faceId, [this, &numFaces](const Polygon& face) {
+			numFaces += face.numFaceIds(true);
 		});
 	}
 
-	return numSplitFaces > params.maxSplitFaces;
+	if (numFaces > params.maxCellFaces)
+		return true;
+	return false;
 }
 
 bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const
