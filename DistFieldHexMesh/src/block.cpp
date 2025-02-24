@@ -1018,12 +1018,12 @@ bool Block::splitRequiredPolyhedra()
 	if (getNeedToSplit().empty())
 		return didSplit;
 
-	auto splitCopy = getNeedToSplit();
+	auto needToSplitCopy = getNeedToSplit();
 	getNeedToSplit().clear();
-	for (const auto& cellId : splitCopy.asVector()) {
+	for (const auto& cellId : needToSplitCopy.asVector()) {
 		if (polyhedronExists(cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
-			if (splitter.splitIfNeeded())
+			if (splitter.splitAtParamCenter())
 				didSplit = true;
 			else
 				assert(!"splitFailed");

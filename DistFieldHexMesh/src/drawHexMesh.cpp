@@ -58,7 +58,7 @@ DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
 {
     switch (ft) {
     case FT_WALL:
-        return DS_MESH_WALL;
+        return DS_MESH_ERROR_WALL;
     case FT_INNER:
         return DS_MESH_INNER;
     case FT_BOTTOM:
@@ -355,7 +355,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
             break;
-        case DS_MESH_WALL:
+        case DS_MESH_ERROR_WALL:
             UBO.defColor = p3f(0.25f, 0.5f, 0.250f);
             break;
 
@@ -414,9 +414,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     switch (key) {
     default:
-    case DS_MESH_WALL:
+    case DS_MESH_ERROR_WALL:
         blend = true;
-        UBO.defColor = p4f(0.5f, 1.f, 0.5f, alpha);
+        UBO.defColor = p4f(1.0f, 0, 0, 1.0f);
         break;
     case DS_MESH_ALL:
         blend = true;
