@@ -643,10 +643,12 @@ void MainFrame::OnCreateBaseMesh(wxCommandEvent& event)
 
 void MainFrame::OnDivideCFDHexes(wxCommandEvent& event)
 {
-    BuildCFDParams& params = _pAppData->getParams();
+    SplittingParams& params = _pAppData->getParams();
     DivideHexMeshDlg dlg(params, this, 1, wxString("Make Block"), wxPoint(40, 40));
     if (dlg.ShowModal() == wxID_OK) {
+        _updateUIEnabled = false;
         _pAppData->doDivideHexMesh(dlg);
+        _updateUIEnabled = true;
     }
 }
 
@@ -931,7 +933,7 @@ void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
 {
     if (_progress && _pBackgroundFuture && _pBackgroundFuture->valid()) {
         _progress->SetValue(_progressValue);
-        if (_pBackgroundFuture->wait_for(0.1ms) == future_status::ready) {
+        if (_pBackgroundFuture->wait_for(50ms) == future_status::ready) {
             int result = _pBackgroundFuture->get(); // clear it
             _pBackgroundFuture = nullptr;
             _progressValue = 0;
@@ -955,7 +957,7 @@ void MainFrame::updateStatusBar()
     double t = clock() / (double)CLOCKS_PER_SEC;
     static auto lastTime = t - 10;
 
-    if (t - lastTime > 5) {
+    if (t - lastTime > 5 && _updateUIEnabled) {
         lastTime = t;
         t = clock() / (double)CLOCKS_PER_SEC;
         _numCells = _numFaces = _numBytes = 0;

@@ -62,7 +62,7 @@ namespace DFHM {
 	};
 
 	class DrawModelMesh;
-	struct BuildCFDParams;
+	struct SplittingParams;
 
 	class AppData;
 
@@ -82,7 +82,7 @@ namespace DFHM {
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
 
-		void splitLongTris(const BuildCFDParams& params, double maxLength);
+		void splitLongTris(const SplittingParams& params, double maxLength);
 
 		void write(std::ostream& out) const;
 		void read(std::istream& in);

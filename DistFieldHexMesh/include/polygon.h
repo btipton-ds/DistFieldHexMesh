@@ -54,7 +54,7 @@ namespace DFHM {
 
 class Edge;
 class Block;
-struct BuildCFDParams;
+struct SplittingParams;
 
 struct VertEdgePair {
 	inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
@@ -127,12 +127,16 @@ public:
 	bool isWall() const;
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
-	bool containsPoint(const Vector3d& pt) const;
 	bool usesEdge(const Edge& edge) const;
 	bool usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
 	bool isPointOnEdge(const Vector3d& pt) const;
-	bool contains(const Edge& edge, bool& isUsed) const;
+	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
+	bool containsEdge(const Edge& edge, bool& isUsed) const;
+	bool containsFace(const Index3DId& faceId, size_t& level) const;
+	bool isTooComplex(const SplittingParams& params) const;
+	size_t numSplitLevels() const;
+
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	template<class TRI_FUNC, class EDGE_FUNC>
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
@@ -151,9 +155,11 @@ public:
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 	size_t numFaceIds(bool includeSplits) const;
+	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 
 	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
+	double calVertexError(const std::vector<Vector3d>& testPts) const;
 	double distanceToPoint(const Vector3d& pt) const;
 	Planed calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;

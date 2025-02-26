@@ -105,7 +105,6 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::scoped_set_local_heap st(&_heap);
 #endif
-	_pLocalData = make_shared<LocalData>();
 }
 
 Block::~Block()
@@ -118,7 +117,7 @@ void Block::clear()
 	MultiCore::scoped_set_local_heap st(&_heap);
 #endif
 
-	_pLocalData = make_shared<LocalData>();
+	_needToSplit.clear();
 
 	_baseIdxVerts = 0;
 	_baseIdxPolygons = 0;
@@ -127,6 +126,11 @@ void Block::clear()
 	_vertices.clear();
 	_polygons.clear();
 	_polyhedra.clear();
+}
+
+const SplittingParams& Block::getSplitParams() const
+{
+	return _pVol->getAppData()->getParams();
 }
 
 void Block::clearTopolCache() const
@@ -316,6 +320,7 @@ size_t Block::numPolyhedra() const
 size_t Block::numBytes() const
 {
 	size_t result = 0;
+	// TODO, need a mutex or semaphore because another thread is writing these
 	result += _vertices.numBytes();
 	result += _polygons.numBytes();
 	result += _polyhedra.numBytes();
@@ -682,7 +687,8 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 #endif // _DEBUG
 
-	return _pVol->getBlockPtr(blockIdx);
+
+	return blockIdx.isValid() ? _pVol->getBlockPtr(blockIdx) : nullptr;
 }
 
 Block* Block::getOwner(const Index3D& blockIdx)
@@ -696,7 +702,7 @@ Block* Block::getOwner(const Index3D& blockIdx)
 
 #endif // _DEBUG
 
-	return _pVol->getBlockPtr(blockIdx);
+	return blockIdx.isValid() ? _pVol->getBlockPtr(blockIdx) : nullptr;
 }
 
 Index3DId Block::idOfPoint(const Vector3d& pt) const
@@ -870,26 +876,6 @@ bool Block::load()
 	return true;
 }
 
-bool Block::fixTooManyFaceSplits(const BuildCFDParams& params)
-{
-	bool result = false;
-	_polyhedra.iterateInOrder([this, &params, &result](const Index3DId& id, Polyhedron& cell) {
-		if (cell.hasTooManySplits(params)) {
-			result = true;
-			MTC::set<Index3DId> blockers;
-			if (cell.canSplit(blockers)) {
-				Vector3d tuv(0.5, 0.5, 0.5);
-				PolyhedronSplitter cellSplitter(this, id);
-				vector<Index3DId> newCellIds;
-				cellSplitter.splitAtParam(tuv);
-			} else {
-				cell.setNeedsDivideAtCentroid();
-			}
-		}
-	});
-	return result;
-}
-
 std::string Block::getObjFilePath() const
 {
 	string path;
@@ -1015,11 +1001,11 @@ void Block::dumpOpenCells() const
 bool Block::splitRequiredPolyhedra()
 {
 	bool didSplit = false;
-	if (getNeedToSplit().empty())
+	if (_needToSplit.empty())
 		return didSplit;
 
-	auto needToSplitCopy = getNeedToSplit();
-	getNeedToSplit().clear();
+	auto needToSplitCopy = _needToSplit;
+	_needToSplit.clear();
 	for (const auto& cellId : needToSplitCopy.asVector()) {
 		if (polyhedronExists(cellId)) {
 			PolyhedronSplitter splitter(this, cellId);
@@ -1291,95 +1277,31 @@ Polyhedron& Block::getPolyhedron(const Index3DId& id)
 	return pOwner->_polyhedra[id];
 }
 
-void Block::addToSplitStack0(const Index3DId& cellId)
+void Block::addToSplitStack(const Index3DId& cellId)
 {
-	set<Index3DId> blockingIds;
-
-	assert(polyhedronExists(cellId));
-	assert(cellId.blockIdx() == _blockIdx);
-
-	MTC::set<Index3DId> temp;
-	auto& cell = _polyhedra[cellId];
-	if (cell.canSplit(temp)) {
-		getNeedToSplit().insert(cellId);
-		getCantSplitYet().erase(cellId);
-	}
-	else {
-		getCantSplitYet().insert(cellId);
-		blockingIds.insert(temp.begin(), temp.end());
-	}
-	
-
-	while (!blockingIds.empty()) {
-		set<Index3DId> blockingIds2;
-		for (const auto& cellId : blockingIds) {
-			if (!polyhedronExists(cellId))
-				continue;
-			auto pOwner = getOwner(cellId);
-			MTC::set<Index3DId> temp;
-			auto& cell = pOwner->_polyhedra[cellId];
-			if (cell.canSplit(temp)) {
-				pOwner->getNeedToSplit().insert(cellId);
-				pOwner->getCantSplitYet().erase(cellId);
-			}
-			else {
-				pOwner->getCantSplitYet().insert(cellId);
-				blockingIds2.insert(temp.begin(), temp.end());
-			}
-		}
-		blockingIds = blockingIds2;
-	}
+	auto pOwner = getOwner(cellId);
+	if (pOwner && pOwner->_polyhedra.exists(cellId))
+		pOwner->_needToSplit.insert(cellId);
 }
 
 void Block::updateSplitStack()
 {
-	if (getCantSplitYet().empty())
-		return;
-
 	MTC::set<Index3DId> blockingIds;
-
-	auto tmpCantSplit = getCantSplitYet();
-
-	getCantSplitYet().clear();
-	for (const auto& cellId : tmpCantSplit.asVector()) {
-		assert(cellId.blockIdx() == _blockIdx);
-		MTC::set<Index3DId> temp;
+	const auto& params = getSplitParams();
+	for (const auto& cellId : _touchedCellIds) {
 		auto pOwner = getOwner(cellId);
-		if (pOwner->_polyhedra.exists(cellId)) {
-			auto& cell = _polyhedra[cellId];
-			if (cell.canSplit(temp)) {
-				pOwner->getNeedToSplit().insert(cellId);
-			} else {
-				pOwner->getCantSplitYet().insert(cellId);
-				blockingIds.insert(temp.begin(), temp.end());
-			}
+		if (pOwner && pOwner->_polyhedra.exists(cellId)) {
+			auto& cell = pOwner->_polyhedra[cellId];
+			if (cell.hasTooManySplits(params))
+				pOwner->_needToSplit.insert(cellId);
 		}
 	}
-
-	while (!blockingIds.empty()) {
-		MTC::set<Index3DId> blockingIds2;
-		for (const auto& cellId : blockingIds) {
-			auto pOwner = getOwner(cellId);
-			if (pOwner->_polyhedra.exists(cellId)) {
-				MTC::set<Index3DId> temp;
-				auto& cell = pOwner->_polyhedra[cellId];
-				if (cell.canSplit(temp)) {
-					pOwner->getNeedToSplit().insert(cellId);
-					pOwner->getCantSplitYet().erase(cellId);
-				} else {
-					pOwner->getCantSplitYet().insert(cellId);
-					blockingIds2.insert(temp.begin(), temp.end());
-				}
-			}
-		}
-		blockingIds = blockingIds2;
-	}
-
+	_touchedCellIds.clear();
 }
 
 bool Block::hasPendingSplits() const
 {
-	return !getCantSplitYet().empty() || !getNeedToSplit().empty();
+	return !_touchedCellIds.empty() || !_needToSplit.empty();
 }
 
 void Block::resetLayerNums()

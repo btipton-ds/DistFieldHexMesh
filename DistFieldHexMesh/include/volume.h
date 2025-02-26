@@ -49,7 +49,7 @@ namespace TriMesh {
 
 namespace DFHM {
 
-struct BuildCFDParams;
+struct SplittingParams;
 
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
@@ -96,8 +96,8 @@ public:
 
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
-	void buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
-	void divideHexMesh(std::vector<MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
+	void buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
+	void divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 
 	void createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 
@@ -113,7 +113,7 @@ public:
 	void setLayerNums();
 	void updateAllCaches(bool clearAll);
 
-	void insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore);
+	void insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore);
 
 	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
@@ -155,12 +155,12 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
-	void buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
-	void gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
-	void divideSimple(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
-	void divideConitional(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore);
-	void cutWithTriMesh(const BuildCFDParams& params, bool multiCore);
-	void doPreSplits(const BuildCFDParams& params, bool multiCore);
+	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
+	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
+	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
+	void divideConitional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
+	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
+	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(bool multiCore);
 	void imprintTJointVertices(bool multiCore);
@@ -184,13 +184,13 @@ private:
 	void runThreadPool_IJK(const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_IJ(const SplittingParams& params, const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_JK(const SplittingParams& params, const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_IK(const BuildCFDParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_IK(const SplittingParams& params, const L& fLambda, bool multiCore);
 
 	int _numSplits = 0;
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);

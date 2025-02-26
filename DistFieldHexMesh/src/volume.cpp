@@ -435,7 +435,7 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
-void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
+void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	_modelBundingBox.clear();
 	_modelBundingBox.merge(volBox);
@@ -467,7 +467,7 @@ void Volume::buildModelBlocks(const BuildCFDParams& params, const Vector3d pts[8
 	gradeSurroundingBlocks(params, pReporter, multiCore);
 }
 
-void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore)
+void Volume::buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore)
 {
 	if (!params.symXAxis)
 		insertBlocks(params, CFT_BACK, multiCore);
@@ -494,11 +494,11 @@ void Volume::buildSurroundingBlocks(const BuildCFDParams& params, const Vector3d
 	reportProgress(pReporter);
 }
 
-void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	Index3D idx;
 
-	runThreadPool_IJ(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJ(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -544,7 +544,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReport
 	}, multiCore);
 	reportProgress(pReporter);
 
-	runThreadPool_JK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_JK(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -580,7 +580,7 @@ void Volume::gradeSurroundingBlocks(const BuildCFDParams& params, ProgressReport
 	}, multiCore);
 	reportProgress(pReporter);
 
-	runThreadPool_IK(params, [this](const BuildCFDParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IK(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -650,7 +650,7 @@ void Volume::updateAllCaches(bool clearAll)
 	}, RUN_MULTI_THREAD);
 }
 
-void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
 		assert(!"Volume is not ready.");
@@ -711,7 +711,7 @@ void Volume::dumpCellHistogram() const
 			cell.addToFaceCountHisogram(faceCountHistograms[threadNum]);
 		});
 		return true;
-	}, RUN_MULTI_THREAD);
+	}, false && RUN_MULTI_THREAD);
 
 	size_t total = 0;
 	for (const auto& histo : faceCountHistograms) {
@@ -745,7 +745,7 @@ void Volume::dumpCellHistogram() const
 
 */
 
-void Volume::divideSimple(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (params.numSimpleDivs > 0) {
 
@@ -765,7 +765,7 @@ void Volume::divideSimple(const BuildCFDParams& params, ProgressReporter* pRepor
 	}
 }
 
-void Volume::divideConitional(const BuildCFDParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideConitional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	size_t numPasses = params.numConditionalPasses();
 	if (numPasses > 0) {
@@ -805,7 +805,7 @@ void Volume::divideConitional(const BuildCFDParams& params, ProgressReporter* pR
 	}
 }
 
-void Volume::cutWithTriMesh(const BuildCFDParams& params, bool multiCore)
+void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
@@ -849,12 +849,6 @@ void Volume::finishSplits(bool multiCore)
 			}, multiCore);
 
 		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-			if (pBlk->fixTooManyFaceSplits(_pAppData->getParams()))
-				changed = true;
-			return true;
-		}, multiCore);
-
-		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack();
 			return true;
 		}, multiCore);
@@ -868,7 +862,7 @@ void Volume::finishSplits(bool multiCore)
 		}, multiCore);
 
 		i++;
-		if (i > 20)
+		if (i > 1000)
 			break;
 	} while (changed);
 
@@ -939,7 +933,7 @@ void Volume::setLayerNums()
 	}
 }
 
-void Volume::insertBlocks(const BuildCFDParams& params, CubeFaceType face, bool multiCore)
+void Volume::insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore)
 {
 	Index3D idxSrc, idxDst;
 	vector<size_t> idRemap; 
@@ -1346,14 +1340,15 @@ void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool
 
 void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
 {
-#if 0
-	map<Index3DId, set<Index3DId>> cellToFaceIdsMap;
+	map<Index3DId, FastBisectionSet<Index3DId>> cellToFaceIdsMap;
 	vector<size_t> modelTriIndices;
 	for (const auto& cellId : cellIds) {
 		auto pBlk = getBlockPtr(cellId);
-		pBlk->cellFunc(cellId, [&cellToFaceIdsMap, &modelTriIndices, &pMesh, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
-			const auto& ids = cell.getFaceIds();
+		pBlk->cellFunc(cellId, [&cellToFaceIdsMap, &modelTriIndices, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
+
+			const auto& ids = cell.getNestedFaceIds();
 			cellToFaceIdsMap.insert(std::make_pair(cell.getId(), ids));
+#if 0
 			if (includeModel) {
 				auto tmp = cell.getTriIndices();
 				auto bbox = cell.getBoundingBox();
@@ -1362,6 +1357,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 						modelTriIndices.push_back(triIdx);
 				}
 			}
+#endif
 		});
 	}
 
@@ -1369,6 +1365,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	set<TriMesh::CEdge> modelEdgeSet;
 	VertSearchTree_size_t_8 pointToIdxMap(_modelBundingBox);
 
+#if 0
 	if (!modelTriIndices.empty()) {
 		const double sinSharp = sin(SHARP_EDGE_ANGLE_RADIANS);
 		for (auto triIdx : modelTriIndices) {
@@ -1408,6 +1405,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			}
 		}
 	}
+#endif
 
 	for (const auto& pair : cellToFaceIdsMap) {
 		for (const auto& faceId : pair.second) {
@@ -1461,6 +1459,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		}
 	}
 
+#if 0
 	if (includeModel) {
 		if (useEdges) {
 			out << "#Model Edges " << modelEdgeSet.size() << "\n";
@@ -1813,7 +1812,7 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 }
 
 template<class L>
-void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_IJ(const SplittingParams& params, const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -1869,7 +1868,7 @@ void Volume::runThreadPool_IJ(const BuildCFDParams& params, const L& fLambda, bo
 }
 
 template<class L>
-void Volume::runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_JK(const SplittingParams& params, const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -1926,7 +1925,7 @@ void Volume::runThreadPool_JK(const BuildCFDParams& params, const L& fLambda, bo
 }
 
 template<class L>
-void Volume::runThreadPool_IK(const BuildCFDParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_IK(const SplittingParams& params, const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;

@@ -44,7 +44,7 @@ class Plane;
 
 namespace DFHM {
 
-struct BuildCFDParams;
+struct SplittingParams;
 class Block;
 class Edge;
 
@@ -65,7 +65,9 @@ public:
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
-	size_t getNumFaces() const;
+	size_t getNumNestedFaces() const;
+	FastBisectionSet<Index3DId> getNestedFaceIds() const;
+	size_t getNumFaces(bool includeSubFaces) const;
 	const FastBisectionSet<Index3DId>& getVertIds() const;
 	const FastBisectionSet<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
@@ -96,8 +98,9 @@ public:
 	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
-	bool sharpEdgesIntersectModel(const BuildCFDParams& params) const;
+	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 	void addToFaceCountHisogram(std::map<size_t, size_t>& histo) const;
+	bool isTooComplex(const SplittingParams& params) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -109,15 +112,15 @@ public:
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
-	bool setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params);
-	bool hasTooManySplits(const BuildCFDParams& params);
+	bool setNeedToSplitConditional(size_t passNum, const SplittingParams& params);
+	bool hasTooManySplits(const SplittingParams& params) const;
 	void orientFaces();
 
 	void imprintTVertices(Block* pDstBlock);
 	void attachFaces();
 	void detachFaces();
-	bool canSplit(MTC::set<Index3DId>& blockingCellIds) const;
 	double getShortestEdge() const;
+	size_t getFaceSplitLevel(const Index3DId& faceId) const;
 
 	size_t getSplitLevel() const;
 	void setSplitLevel(size_t val);
@@ -130,7 +133,7 @@ public:
 
 	size_t getNumSplitFaces() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
-	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const;
+	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -140,10 +143,13 @@ public:
 	void dumpFaces() const;
 
 	bool lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayHitd>& hits, MTC::vector<Index3DId>& faceIds) const;
-	bool hasTooManySplits() const;
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
+	inline void setParentId(const Index3DId& id)
+	{
+		_parentIds.push_back(id);
+	}
 #if 0
 	void faceMatchFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const;
 	void cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const;
@@ -159,7 +165,7 @@ private:
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertEdges(MTC::set<Edge>& edges, MTC::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
-	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const;
+	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const;
 	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
@@ -171,6 +177,7 @@ private:
 		The original face is marked as split, no longer really exists, and points to it's replacements.
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
+	std::vector<Index3DId> _parentIds;
 	FastBisectionSet<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
@@ -197,11 +204,6 @@ private:
 inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
-}
-
-inline size_t Polyhedron::getNumFaces() const
-{
-	return _faceIds.size();
 }
 
 inline bool Polyhedron::containsFace(const Index3DId& faceId) const

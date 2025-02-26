@@ -55,20 +55,21 @@ public:
 private:
 	static void calHexCellFaceTU(int i, const Vector3d& tuv, double& t, double& u);
 	bool splitAtParamInner(Polyhedron& cell, const Vector3d& tuv);
-	void splitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
+	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
 	void createHexCellData(const Polyhedron& cell);
 	void splitHexCell(Polyhedron& cell, const Vector3d& tuv);
+	void addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& cubePts, double tol);
+	Index3DId findSourceFaceId(const Polyhedron& cell, const std::vector<Vector3d>& facePts, double tol) const;
+	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
 
 	Block* _pBlock;
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
-	FastBisectionSet<Index3DId> _initialFaceIds;
+	FastBisectionSet<Index3DId> _newCellIds;
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
-	MTC::vector<Polygon> _cellFaces;
-	std::map<Polygon, Index3DId> _cellFaceIds;
 };
 
 

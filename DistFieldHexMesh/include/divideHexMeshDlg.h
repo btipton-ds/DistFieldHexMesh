@@ -37,15 +37,15 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 namespace DFHM {
-	struct BuildCFDParams;
+	struct SplittingParams;
 
 	class DivideHexMeshDlg : public wxDialog {
 	public:
 
-		DivideHexMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
+		DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wxWindowID id, const wxString& title,
 			const wxPoint& pos = wxDefaultPosition);
 
-		void getParams(BuildCFDParams& params) const;
+		void getParams(SplittingParams& params) const;
 
 	private:
 		bool getValue(wxTextCtrl* item, size_t& curValue) const;

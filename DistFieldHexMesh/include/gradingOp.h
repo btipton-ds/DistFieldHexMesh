@@ -36,11 +36,14 @@ namespace DFHM {
 
 class Block;
 class Volume;
-struct BuildCFDParams;
+struct SplittingParams;
 
 class GradingOp {
 public:
-	GradingOp(Block* pBlk, const BuildCFDParams& params, const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
+	static const std::vector<std::vector<size_t>>& getCubeFaceIndices();
+	static void getCubeFacePoints(const std::vector<Vector3d>& cornerPts, std::vector<std::vector<Vector3d>>& facePts);
+
+	GradingOp(Block* pBlk, const SplittingParams& params, const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
 	void calGradingFactors(int axis, double& scale, double& growFactor) const;
 
 	const Index3D& getDivs() const;
@@ -57,7 +60,7 @@ private:
 	void createGradedCellOnCorner(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
 
 	Block* _pBlk;
-	const BuildCFDParams& _params;
+	const SplittingParams& _params;
 	Index3D _divs;
 	Vector3d _grading;
 

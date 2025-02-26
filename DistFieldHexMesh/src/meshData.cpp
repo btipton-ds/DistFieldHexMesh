@@ -80,7 +80,7 @@ size_t MeshData::numBytes() const
 	return result;
 }
 
-void MeshData::splitLongTris(const BuildCFDParams& params, double maxLength)
+void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 {
 	if (!isMeshCashed())
 		cacheMesh();

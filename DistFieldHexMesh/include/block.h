@@ -63,7 +63,7 @@ using CMeshPtr = TriMesh::CMeshPtr;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 
-struct BuildCFDParams;
+struct SplittingParams;
 class Volume;
 class Edge;
 class Polygon;
@@ -108,6 +108,8 @@ public:
 
 	Volume* getVolume() override;
 	const Volume* getVolume() const override;
+	const SplittingParams& getSplitParams() const;
+
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
 	Block* getOwner(const Index3D& blockIdx) override;
@@ -177,7 +179,7 @@ public:
 	const MultiCore::local_heap* getHeapPtr() const;
 #endif
 
-	void addToSplitStack0(const Index3DId& cellIds);
+	void addToSplitStack(const Index3DId& cellIds);
 	void updateSplitStack();
 	bool hasPendingSplits() const;
 
@@ -227,15 +229,10 @@ private:
 	friend class Volume;
 	friend class TestBlock;
 	friend class MultiLockGuard;
+	friend class PolyhedronSplitter;
 
 	enum class AxisIndex {
 		X, Y, Z
-	};
-
-	struct LocalData
-	{
-		// This data can only be constructed after a heap is initialized
-		FastBisectionSet<Index3DId> _needToSplit, _cantSplitYet;
 	};
 
 	using SearchTree = VertSearchTreeIndex3DId_4;
@@ -257,17 +254,16 @@ private:
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
 
-	bool fixTooManyFaceSplits(const BuildCFDParams& params);
 	void dumpOpenCells() const;
 
 	bool splitRequiredPolyhedra();
 
 	void imprintTJointVertices();
 
-	FastBisectionSet<Index3DId>& getNeedToSplit();
-	const FastBisectionSet<Index3DId>& getNeedToSplit() const;
-	FastBisectionSet<Index3DId>& getCantSplitYet();
-	const FastBisectionSet<Index3DId>& getCantSplitYet() const;
+	void addToNeedToSplit(const Index3DId& id);
+	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
+
+	void addToTouchedCellList(const Index3DId& cellIds);
 
 	std::string getObjFilePath() const;
 
@@ -295,7 +291,7 @@ private:
 	std::string _filename;
 
 	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
-	std::shared_ptr<LocalData> _pLocalData;
+	FastBisectionSet<Index3DId> _needToSplit, _touchedCellIds;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
@@ -395,24 +391,27 @@ inline void Block::iteratePolyhedraInOrder(F fLambda)
 	_polyhedra.iterateInOrder(fLambda);
 }
 
-inline FastBisectionSet<Index3DId>& Block::getNeedToSplit()
+inline void Block::addToNeedToSplit(const Index3DId& id)
 {
-	return _pLocalData->_needToSplit;
+	auto pOwner = getOwner(id);
+	if (pOwner)
+		pOwner->_needToSplit.insert(id);
 }
 
-inline const FastBisectionSet<Index3DId>& Block::getNeedToSplit() const
+inline void Block::addToNeedToSplit(const FastBisectionSet<Index3DId>& ids)
 {
-	return _pLocalData->_needToSplit;
+	for (const auto& id : ids) {
+		auto pOwner = getOwner(id);
+		if (pOwner)
+			pOwner->_needToSplit.insert(id);
+	}
 }
 
-inline FastBisectionSet<Index3DId>& Block::getCantSplitYet()
+inline void Block::addToTouchedCellList(const Index3DId& id)
 {
-	return _pLocalData->_cantSplitYet;
-}
-
-inline const FastBisectionSet<Index3DId>& Block::getCantSplitYet() const
-{
-	return _pLocalData->_cantSplitYet;
+	auto pOwner = getOwner(id);
+	if (pOwner)
+		pOwner->_touchedCellIds.insert(id);
 }
 
 

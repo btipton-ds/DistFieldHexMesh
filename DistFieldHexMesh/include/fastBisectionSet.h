@@ -44,6 +44,7 @@ struct FastBisectionSetDefComparator {
 template<class VAL, class COMP>
 class FastBisectionSet_with_comp {
 public:
+
 	FastBisectionSet_with_comp();
 	FastBisectionSet_with_comp(const COMP& comp);
 
@@ -67,8 +68,10 @@ public:
 	size_t find(const VAL& id) const;
 	void erase(const VAL& VAL);
 	const VAL& operator[](const size_t& idx) const;
-
-
+#if 1
+	std::vector<VAL>::const_iterator begin() const;
+	std::vector<VAL>::const_iterator end() const;
+#endif
 private:
 	void findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const;
 
@@ -302,6 +305,19 @@ inline bool FastBisectionSet_with_comp<VAL, COMP>::isSorted() const
 #endif
 	return true;
 }
+#if 1
+template<class VAL, class COMP>
+inline std::vector<VAL>::const_iterator FastBisectionSet_with_comp<VAL, COMP>::begin() const
+{
+	return _vals.begin();
+}
+
+template<class VAL, class COMP>
+inline std::vector<VAL>::const_iterator FastBisectionSet_with_comp<VAL, COMP>::end() const
+{
+	return _vals.end();
+}
+#endif
 
 template<class VAL>
 using FastBisectionSet = FastBisectionSet_with_comp<VAL, FastBisectionSetDefComparator<VAL>>;

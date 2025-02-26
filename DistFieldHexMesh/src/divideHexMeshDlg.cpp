@@ -62,7 +62,7 @@ namespace
 	};
 }
 
-DivideHexMeshDlg::DivideHexMeshDlg(BuildCFDParams& params, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
+DivideHexMeshDlg::DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos)
 	: wxDialog(parent, id, title, pos, wxSize(400, 460), wxDEFAULT_DIALOG_STYLE, wxString("Divide Mesh"))
 {
 
@@ -179,7 +179,7 @@ bool DivideHexMeshDlg::getValue(wxTextCtrl* item, double& value) const
 	return false;
 }
 
-void DivideHexMeshDlg::getParams(BuildCFDParams& params) const
+void DivideHexMeshDlg::getParams(SplittingParams& params) const
 {
 	params.uniformRatio = _uniformRatioCheckBox->GetValue();
 	params.splitAtSharpVerts = _splitSharpVertsCheckBox->GetValue();

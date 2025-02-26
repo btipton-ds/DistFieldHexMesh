@@ -35,7 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
-struct BuildCFDParams {
+struct SplittingParams {
 	size_t numConditionalPasses() const;
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
@@ -59,6 +59,7 @@ struct BuildCFDParams {
 	size_t numCurvatureDivs = 0;
 	size_t divsPerCurvatureRadius = 2;
 	size_t divsPerGapCurvatureRadius = 4;
+	size_t maxSplitFacesPerCell = 2;
 	size_t maxCellFaces = 12;
 
 	Index3DBaseType xMinDivs = 5;

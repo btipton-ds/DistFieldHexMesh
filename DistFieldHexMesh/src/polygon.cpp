@@ -147,6 +147,11 @@ bool Polygon::cellsOwnThis() const
 size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 {
 	size_t result = 0;
+#if 1
+	cellFunc(cellId, [this, &result](const Polyhedron& cell) {
+		result = cell.getFaceSplitLevel(getId());
+	});
+#else
 	if (_splitIds.empty()) {
 		if (_cellIds.contains(cellId)) {
 			cellFunc(cellId, [&result](const Polyhedron& cell) {
@@ -161,7 +166,7 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 			});
 		}
 	}
-
+#endif
 	return result;
 }
 
@@ -186,14 +191,33 @@ void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 
 size_t Polygon::numFaceIds(bool includeSplits) const
 {
-	if (!includeSplits || _splitIds.empty())
-		return 1;
-
 	size_t result = 0;
-	for (const auto& id : _splitIds.asVector()) {
-		faceFunc(id, [this, &result](const Polygon& splitFace) {
-			result += splitFace.numFaceIds(true);
-		});
+	if (_splitIds.empty() || !includeSplits) {
+		result += 1;
+	} else {
+		for (const auto& id : _splitIds.asVector()) {
+			faceFunc(id, [this, &includeSplits, &result](const Polygon& splitFace) {
+				auto num = splitFace.numFaceIds(includeSplits);
+				result += num;
+			});
+		}
+	}
+
+	return result;
+}
+
+FastBisectionSet<Index3DId> Polygon::getNestedFaceIds() const
+{
+	FastBisectionSet<Index3DId> result;
+	if (_splitIds.empty()) {
+		result.insert(getId());
+	} else {
+		for (const auto& id : _splitIds.asVector()) {
+			faceFunc(id, [this, &result](const Polygon& splitFace) {
+				auto ids = splitFace.getNestedFaceIds();
+				result.insert(ids.begin(), ids.end());
+			});
+		}
 	}
 
 	return result;
@@ -357,6 +381,25 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 	return distFromPlane(pt) < Tolerance::sameDistTol();
 }
 
+bool Polygon::isTooComplex(const SplittingParams& params) const
+{
+	return numSplitLevels() > 1;
+}
+
+size_t Polygon::numSplitLevels() const
+{
+	size_t result = 0;
+	for (const auto& id : _splitIds) {
+		faceFunc(id, [&result](const Polygon& face) {
+			auto s = face.numSplitLevels() + 1;
+			if (s > result)
+				result = s;
+		});
+	}
+
+	return result;
+}
+
 bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const
 {
 	piercePoints.clear();
@@ -400,7 +443,7 @@ bool Polygon::usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
 	return false;
 }
 
-bool Polygon::contains(const Edge& edge, bool& isUsed) const
+bool Polygon::containsEdge(const Edge& edge, bool& isUsed) const
 {
 	isUsed = false;
 	if (!isCoplanar(edge))
@@ -440,6 +483,28 @@ bool Polygon::contains(const Edge& edge, bool& isUsed) const
 	}
 
 	return intersects;
+}
+
+// This tests if this face is or contains another face
+bool Polygon::containsFace(const Index3DId& faceId, size_t& level) const
+{
+	level += 1;
+
+	if (faceId == getId()) 
+		return true;
+
+	bool found = false;
+	for (const auto& id : _splitIds) {
+		faceFunc(id, [this, &faceId, &found, &level](const Polygon& face) {
+			if (containsFace(faceId, level)) {
+				found = true;
+			}
+		});
+
+		if (found)
+			break;
+	}
+	return found;
 }
 
 bool Polygon::containsVertex(const Index3DId& vertId) const
@@ -686,6 +751,31 @@ double Polygon::getShortestEdge() const
 	return minDist;
 }
 
+double Polygon::calVertexError(const std::vector<Vector3d>& testPts) const
+{
+	if (testPts.size() != _vertexIds.size())
+		return DBL_MAX;
+
+	double avgErr = 0;
+	for (const auto& faceVertId : _vertexIds) {
+		const auto& facePt = getVertexPoint(faceVertId);
+		double minErr = DBL_MAX;
+		for (const auto& testPt : testPts) {
+			double err = (testPt - facePt).norm();
+			if (err < minErr) {
+				minErr = err;
+				if (minErr < Tolerance::sameDistTol())
+					break;
+			}
+		}
+		avgErr += minErr;
+	}
+
+	avgErr /= _vertexIds.size();
+
+	return avgErr;
+}
+
 double Polygon::distanceToPoint(const Vector3d& pt) const
 {
 	Vector3d ctr = calCentroid();
@@ -805,20 +895,27 @@ void Polygon::addCellId(const Index3DId& cellId)
 		int dbgBreak = 1;
 	}
 #endif
-
-	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
-	_cellIds.insert(cellId);
+	if (_splitIds.size() <= 1) {
+		_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
+		_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
-	if (_cellIds.size() > 2) {
-		for (const auto& cellId1 : _cellIds.asVector()) {
-			assert(getBlockPtr()->polyhedronExists(cellId1));
-			cellFunc(cellId1, [this](const Polyhedron& cell) {
-				assert(cell.containsFace(_thisId));
+		if (_cellIds.size() > 2) {
+			for (const auto& cellId1 : _cellIds.asVector()) {
+				assert(getBlockPtr()->polyhedronExists(cellId1));
+				cellFunc(cellId1, [this](const Polyhedron& cell) {
+					assert(cell.containsFace(_thisId));
+					});
+			}
+			assert(_cellIds.size() <= 2);
+		}
+#endif
+	} else {
+		for (const auto& splitId : _splitIds) {
+			faceFunc(splitId, [&cellId](Polygon& face) {
+				face.addCellId(cellId);
 			});
 		}
-		assert(_cellIds.size() <= 2);
 	}
-#endif
 }
 
 void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
@@ -921,7 +1018,7 @@ bool Polygon::imprintVertexInner(const Index3DId& imprintVert)
 
 bool Polygon::isSplit() const
 {
-	return _splitIds.size() > 1;
+	return _splitIds.size() == _vertexIds.size();
 }
 
 bool Polygon::isPlanar() const

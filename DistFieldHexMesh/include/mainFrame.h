@@ -278,6 +278,7 @@ private:
 
     void updateStatusBar();
 
+    bool _updateUIEnabled = true;
     std::shared_ptr<std::future<int>> _pBackgroundFuture;
     wxStatusBar* _statusBar;
     int _progressValue = 0;

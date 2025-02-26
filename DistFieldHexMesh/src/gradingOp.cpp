@@ -39,7 +39,40 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-GradingOp::GradingOp(Block* pBlk, const BuildCFDParams& params, const Index3D& _divs, const Vector3d& grading)
+const vector<vector<size_t>>& GradingOp::getCubeFaceIndices()
+{
+    static vector<vector<size_t>> facePts = {
+        { 0, 4, 7, 3 },
+        { 1, 2, 6, 5 },
+
+        // add front and back
+        { 0, 1, 5, 4 },
+        { 2, 3, 7, 6 },
+
+        // add bottom and top
+        { 0, 3, 2, 1 },
+        { 4, 5, 6, 7 },
+    };
+
+    return facePts;
+}
+
+void GradingOp::getCubeFacePoints(const std::vector<Vector3d>& cornerPts, std::vector<std::vector<Vector3d>>& facePts)
+{
+    const auto& cubeFaceIndices = getCubeFaceIndices();
+    facePts.clear();
+    facePts.resize(6);
+    for (size_t i = 0; i < 6; i++) {
+        const auto& rowIndices = cubeFaceIndices[i];
+        auto& rowPts = facePts[i];
+        rowPts.resize(rowIndices.size());
+        for (size_t j = 0; j < rowIndices.size(); j++) {
+            rowPts[j] = cornerPts[rowIndices[j]];
+        }
+    }
+}
+
+GradingOp::GradingOp(Block* pBlk, const SplittingParams& params, const Index3D& _divs, const Vector3d& grading)
     : _pBlk(pBlk)
     , _params(params)
     , _divs(_divs)

@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace DFHM;
 
-size_t BuildCFDParams::numConditionalPasses() const
+size_t SplittingParams::numConditionalPasses() const
 {
 	size_t result = 0;
 
@@ -48,22 +48,22 @@ size_t BuildCFDParams::numConditionalPasses() const
 	return result;
 }
 
-double BuildCFDParams::getSharpAngleRadians() const
+double SplittingParams::getSharpAngleRadians() const
 {
 	return sharpAngle_degrees / 180.0 * M_PI;
 }
 
-double BuildCFDParams::getSharpAngleDegrees() const
+double SplittingParams::getSharpAngleDegrees() const
 {
 	return sharpAngle_degrees;
 }
 
-double BuildCFDParams::getSinSharpAngle() const
+double SplittingParams::getSinSharpAngle() const
 {
 	return sin(getSharpAngleRadians());
 }
 
-std::vector<Vector3d> BuildCFDParams::getVolBounds() const
+std::vector<Vector3d> SplittingParams::getVolBounds() const
 {
 	std::vector<Vector3d> result = {
 		Vector3d(xMin, yMin, zMin),
@@ -80,7 +80,7 @@ std::vector<Vector3d> BuildCFDParams::getVolBounds() const
 	return result;
 }
 
-void BuildCFDParams::read(std::istream& in)
+void SplittingParams::read(std::istream& in)
 {
 	size_t version;
 	in.read((char*)&version, sizeof(size_t));
@@ -164,7 +164,7 @@ void BuildCFDParams::read(std::istream& in)
 	}
 }
 
-void BuildCFDParams::write(std::ostream& out) const
+void SplittingParams::write(std::ostream& out) const
 {
 	size_t version = 3;
 	out.write((char*)&version, sizeof(size_t));

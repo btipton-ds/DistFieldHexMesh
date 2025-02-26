@@ -171,7 +171,7 @@ MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 	return result;
 }
 
-bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const BuildCFDParams& params) const
+bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const
 {
 	const double sinEdgeAngle = sin(params.getSharpAngleRadians());
 
@@ -259,6 +259,50 @@ const FastBisectionSet<Index3DId>& Polyhedron::getVertIds() const
 
 	return _cachedVertIds;
 }
+
+size_t Polyhedron::getNumNestedFaces() const
+{
+	size_t result = 0;
+
+	for (const auto& faceId : _faceIds.asVector()) {
+		faceFunc(faceId, [this, &result](const Polygon& face) {
+			auto temp = face.numFaceIds(true);
+			result += temp;
+		});
+	}
+	return result;
+
+}
+
+FastBisectionSet<Index3DId> Polyhedron::getNestedFaceIds() const
+{
+	FastBisectionSet<Index3DId> result;
+
+	for (const auto& faceId : _faceIds.asVector()) {
+		faceFunc(faceId, [this, &result](const Polygon& face) {
+			auto temp = face.getNestedFaceIds();
+			result.insert(temp.begin(), temp.end());
+		});
+	}
+	return result;
+}
+
+size_t Polyhedron::getNumFaces(bool includeSubFaces) const
+{
+	if (includeSubFaces) {
+		size_t numFaces = 0;
+
+		for (const auto& faceId : _faceIds.asVector()) {
+			faceFunc(faceId, [this, &numFaces](const Polygon& face) {
+				numFaces += face.numFaceIds(true);
+			});
+		}
+		return numFaces;
+	} else {
+		return _faceIds.size();
+	}
+}
+
 
 const FastBisectionSet<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
@@ -808,7 +852,7 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
+bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 {
 	if (_sharpEdgesIntersectModel == IS_FALSE)
 		return false;
@@ -855,18 +899,45 @@ bool Polyhedron::sharpEdgesIntersectModel(const BuildCFDParams& params) const
 
 void Polyhedron::addToFaceCountHisogram(std::map<size_t, size_t>& histo) const
 {
-	size_t numFaces = 0;
+	size_t numFaces = getNumFaces(true);
 
-	for (const auto& faceId : _faceIds.asVector()) {
-		faceFunc(faceId, [this, &numFaces](const Polygon& face) {
-			numFaces += face.numFaceIds(true);
-		});
+	switch (numFaces) {
+		case 6:
+		case 9:
+		case 12:
+			break;
+		default: {
+			cout << "Split history of bad cell with " << numFaces << " faces:\n";
+			for (const auto& id : _parentIds) {
+				cout << "  " << id << "\n";
+			}
+			cout << "  " << getId() << "\n";
+
+			break;
+		}
 	}
-
 	auto iter = histo.find(numFaces);
 	if (iter == histo.end())
 		iter = histo.insert(make_pair(numFaces, 0)).first;
 	iter->second++;
+}
+
+bool Polyhedron::isTooComplex(const SplittingParams& params) const
+{
+	bool result = false;
+	size_t numSplits = 0;
+	for (const auto& id : _faceIds) {
+		faceFunc(id, [&params, &numSplits, &result](const Polygon& face) {
+			if (face.isTooComplex(params))
+				result = true;
+			if (!face.getSplitIds().empty())
+				numSplits += 1;
+		});
+		if (result)
+			break;
+	}
+
+	return result || numSplits > params.maxSplitFacesPerCell;
 }
 
 Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1082,7 +1153,7 @@ void Polyhedron::detachFaces()
 
 void Polyhedron::addToSplitStack()
 {
-	getOurBlockPtr()->addToSplitStack0(_thisId);
+	getOurBlockPtr()->addToSplitStack(_thisId);
 }
 
 #ifdef _DEBUG
@@ -1110,40 +1181,7 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 #endif
 
-bool Polyhedron::canSplit(MTC::set<Index3DId>& blockingCellIds) const
-{
-	// You can't cache this because it depends on the state of the neighbors
-	// If this cell cannot be split due to a neighbor, then the neighbor is split - now, this cell can be split; even though this cell didn't change.
-	blockingCellIds.clear();
-	for (const auto& faceId : _faceIds.asVector()) {
-		Index3DId adjCellId;
-		size_t faceSplitLevel;
-		faceFunc(faceId, [this, &adjCellId, &faceSplitLevel](const Polygon& face) {
-			for (const auto& id : face.getCellIds().asVector()) {
-				if (id != _thisId) {
-					adjCellId = id;
-					faceSplitLevel = face.getSplitLevel(adjCellId);
-				}
-			}
-		});
-
-		if (adjCellId.isValid()) {
-			if (faceSplitLevel > 0) {
-				blockingCellIds.insert(adjCellId);
-			} else {
-				cellFunc(adjCellId, [this, &blockingCellIds](const Polyhedron& adjCell) {
-					if (adjCell.getSplitLevel() < _splitLevel) {
-						blockingCellIds.insert(adjCell.getId());
-					}
-				});
-			}
-		}
-	}
-
-	return blockingCellIds.empty();
-}
-
-bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams& params)
+bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
 	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
 
@@ -1199,17 +1237,30 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const BuildCFDParams&
 	return false;
 }
 
-bool Polyhedron::hasTooManySplits(const BuildCFDParams& params)
+bool Polyhedron::hasTooManySplits(const SplittingParams& params) const
 {
-	size_t numFaces = 0;
+	Index3DId testId(6, 4, 5, 0);
+	if (testId == getId()) {
+		int dbgBreak = 1;
+		getBlockPtr()->dumpPolyhedraObj({getId()}, false, false, false);
+	}
+	size_t numFaces = 0, numSplitFaces = 0;
+	bool tooManyFaceSplitLevels = false;
 
 	for (const auto& faceId : _faceIds.asVector()) {
-		faceFunc(faceId, [this, &numFaces](const Polygon& face) {
-			numFaces += face.numFaceIds(true);
+		faceFunc(faceId, [this, &numSplitFaces, &tooManyFaceSplitLevels](const Polygon& face) {
+			if (face.numSplitLevels() > 1)
+				tooManyFaceSplitLevels = true;
+			auto n = face.numFaceIds(true);
+			if (n > 1)
+				numSplitFaces += 1;
 		});
+		if (tooManyFaceSplitLevels)
+			return true;
 	}
 
-	if (numFaces > params.maxCellFaces)
+	numFaces = getNumNestedFaces();
+	if (numFaces > params.maxCellFaces || numSplitFaces > 2)
 		return true;
 	return false;
 }
@@ -1253,7 +1304,7 @@ bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orde
 	return true;
 }
 
-double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const BuildCFDParams& params) const
+double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const
 {
 	if (!_needsCurvatureCheck)
 		return 0;
@@ -1354,6 +1405,22 @@ double Polyhedron::getShortestEdge() const
 	}
 
 	return minDist;
+}
+
+size_t Polyhedron::getFaceSplitLevel(const Index3DId& faceId) const
+{
+	size_t level = -1;
+	bool found = false;
+	for (const auto& testFaceId : _faceIds) {
+		faceFunc(testFaceId, [&found , &level](const Polygon& face) {
+			if (face.containsFace(face.getId(), level))
+				found = true;
+		});
+		if (found)
+			break;
+	}
+
+	return level;
 }
 
 void Polyhedron::clearLayerNum()
@@ -1497,22 +1564,6 @@ bool Polyhedron::lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayH
 	return !faceIds.empty() && hits.size() == faceIds.size();
 }
 
-bool Polyhedron::hasTooManySplits() const
-{
-	bool result = false;
-
-	for (const auto& faceId : _faceIds.asVector()) {
-		faceFunc(faceId, [this, &result](const Polygon& face) {
-			if (face.getSplitLevel(_thisId) > 1)
-				result = true;
-		});
-		if (result)
-			break;
-	}
-
-	return result;
-}
-
 bool Polyhedron::verifyTopology() const
 {
 	bool valid = true;
@@ -1534,7 +1585,7 @@ bool Polyhedron::verifyTopology() const
 		valid = false;
 	}
 	
-	if (valid && hasTooManySplits())
+	if (valid && hasTooManySplits(getBlockPtr()->getSplitParams()))
 		valid = false;
 
 #if DUMP_BAD_CELL_OBJS

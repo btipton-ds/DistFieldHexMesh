@@ -86,8 +86,8 @@ public:
     void getDisplayMinMax(Index3D& min, Index3D& max) const;
     void setDisplayMinMax(const Index3D& min, const Index3D& max);
 
-    BuildCFDParams& getParams();
-    const BuildCFDParams& getParams() const;
+    SplittingParams& getParams();
+    const SplittingParams& getParams() const;
 
     std::wstring getCacheDirName() const;
 
@@ -120,16 +120,16 @@ private:
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
 
-    BuildCFDParams _params;
+    SplittingParams _params;
     std::wstring _dhfmFilename;
 };
 
-inline BuildCFDParams& AppData::getParams()
+inline SplittingParams& AppData::getParams()
 {
     return _params;
 }
 
-inline const BuildCFDParams& AppData::getParams() const
+inline const SplittingParams& AppData::getParams() const
 {
     return _params;
 }
