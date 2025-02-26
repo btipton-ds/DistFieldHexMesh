@@ -45,7 +45,7 @@ class Polyhedron;
 
 class PolyhedronSplitter {
 public:
-	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId);
+	PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
 
 	bool splitAtParamCenter();
 	// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
@@ -66,6 +66,7 @@ private:
 	Block* _pBlock;
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
+	std::vector<Index3DId>& _localTouched;
 	FastBisectionSet<Index3DId> _newCellIds;
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;

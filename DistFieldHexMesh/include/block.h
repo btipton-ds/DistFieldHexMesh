@@ -258,8 +258,6 @@ private:
 
 	bool splitRequiredPolyhedra();
 
-	void imprintTJointVertices();
-
 	void addToNeedToSplit(const Index3DId& id);
 	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
 

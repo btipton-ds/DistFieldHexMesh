@@ -1006,9 +1006,11 @@ bool Block::splitRequiredPolyhedra()
 
 	auto needToSplitCopy = _needToSplit;
 	_needToSplit.clear();
+
+	vector<Index3DId> localTouched;
 	for (const auto& cellId : needToSplitCopy.asVector()) {
 		if (polyhedronExists(cellId)) {
-			PolyhedronSplitter splitter(this, cellId);
+			PolyhedronSplitter splitter(this, cellId, localTouched);
 			if (splitter.splitAtParamCenter())
 				didSplit = true;
 			else
@@ -1017,25 +1019,26 @@ bool Block::splitRequiredPolyhedra()
 		}
 	}
 
-	return didSplit;
-}
-
-void Block::imprintTJointVertices()
-{
-	_polyhedra.iterateInOrder([this](const Index3DId& cellId, Polyhedron& cell) {
-		if (!cell.isClosed()) {
-
-			if (Index3DId(3, 1, 0, 0) == cellId) {
-				int dbgBreak = 1;
+	const auto& params = getSplitParams();
+	while (!localTouched.empty()) {
+		auto temp = localTouched;
+		localTouched.clear();
+		for (const auto& cellId : temp) {
+			if (_polyhedra.exists(cellId)) {
+				auto& cell = _polyhedra[cellId];
+				if (cell.hasTooManySplits(params)) {
+					PolyhedronSplitter splitter(this, cellId, localTouched);
+					if (splitter.splitAtParamCenter())
+						didSplit = true;
+					else
+						assert(!"splitFailed");
+					assert(!polyhedronExists(cellId));
+				}
 			}
 
-			cell.imprintTVertices(this);
-			if (!cell.isClosed()) {
-				dumpPolyhedraObj({ cellId }, false, false, false);
-				assert(cell.isClosed());
-			}
 		}
-	});
+	}
+	return didSplit;
 }
 
 bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
@@ -1355,7 +1358,7 @@ void Block::freePolyhedron(const Index3DId& id)
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 		auto& polyhedra = pOwner->_polyhedra;
-		polyhedra.free(id);
+		polyhedra.free(id); // This frees all unused polygons
 	}
 }
 

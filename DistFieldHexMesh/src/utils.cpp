@@ -229,7 +229,7 @@ void Utils::Timer::dumpAll()
 		}
 
 		if (s_times[i]._count > 0)
-			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._time / s_times[i]._count) << " call/s\n";
+			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._count / s_times[i]._time) << " call/s\n";
 		else
 			std::cout << str << ": " << s_times[i]._time << "s\n";
 	}

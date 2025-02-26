@@ -52,9 +52,10 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId)
+PolyhedronSplitter::PolyhedronSplitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
+	, _localTouched(localTouched)
 {
 }
 
@@ -262,7 +263,10 @@ void PolyhedronSplitter::conditionalSplitQuadFaceAtParam(const Index3DId& faceId
 		if (!oldFace.isSplit()) {
 			const auto& id = oldFace.getId();
 			const auto& adjCellId = oldFace.getAdjacentCellId(_polyhedronId);
-			_pBlock->addToTouchedCellList(adjCellId);
+			if (_pBlock->getBlockIdx() == adjCellId)
+				_localTouched.push_back(adjCellId);
+			else
+				_pBlock->addToTouchedCellList(adjCellId);
 
 			MTC::vector<Index3DId> splitIds;
 			for (int i = 0; i < 2; i++) {

@@ -821,8 +821,9 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 	changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+			vector<Index3DId> localTouched;
 			if (cell.intersectsModel()) {
-				PolyhedronSplitter ps(pBlk.get(), cellId);
+				PolyhedronSplitter ps(pBlk.get(), cellId, localTouched);
 #if 0
 				if (ps.cutWithModelMesh(params))
 					changed = true;
@@ -862,31 +863,11 @@ void Volume::finishSplits(bool multiCore)
 		}, multiCore);
 
 		i++;
-		if (i > 1000)
+		if (i > 20) {
+			cout << "Exited before finishing splits: " << i << "\n";
 			break;
-	} while (changed);
-
-	//	imprintTJointVertices(multiCore);
-	cout << "FinishSplits " << i << "\n";
-}
-
-void Volume::imprintTJointVertices(bool multiCore)
-{
-	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		pBlk->imprintTJointVertices();
-		return true;
-	}, multiCore);
-#ifdef _DEBUG
-	bool allCellsClosed = true;
-	runThreadPool([this, &allCellsClosed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
-		if (!pBlk->allCellsClosed()) {
-			allCellsClosed = false;
-			return false;
 		}
-		return true;
-	}, multiCore);
-	assert(allCellsClosed);
-#endif
+	} while (changed);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

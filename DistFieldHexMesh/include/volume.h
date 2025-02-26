@@ -163,7 +163,6 @@ private:
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(bool multiCore);
-	void imprintTJointVertices(bool multiCore);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 
