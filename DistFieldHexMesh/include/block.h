@@ -229,7 +229,7 @@ private:
 	friend class Volume;
 	friend class TestBlock;
 	friend class MultiLockGuard;
-	friend class PolyhedronSplitter;
+	friend class Splitter;
 
 	enum class AxisIndex {
 		X, Y, Z

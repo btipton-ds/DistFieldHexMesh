@@ -46,7 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <splitParams.h>
 #include <vertex.h>
-#include <polyhedronSplitter.h>
+#include <splitter.h>
 #include <vertexSpatialTree.h>
 #include <tolerances.h>
 #include <utils.h>
@@ -823,7 +823,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			vector<Index3DId> localTouched;
 			if (cell.intersectsModel()) {
-				PolyhedronSplitter ps(pBlk.get(), cellId, localTouched);
+				Splitter ps(pBlk.get(), cellId, localTouched);
 #if 0
 				if (ps.cutWithModelMesh(params))
 					changed = true;

@@ -211,7 +211,7 @@ private:
 	friend class Block;
 	friend class Polyhedron;
 	friend class PolygonSplitter;
-	friend class PolyhedronSplitter;
+	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	void initVertices(const Volume* pVol) const;

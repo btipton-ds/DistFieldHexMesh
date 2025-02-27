@@ -43,7 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <polyhedronSplitter.h>
+#include <splitter.h>
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
@@ -1010,7 +1010,7 @@ bool Block::splitRequiredPolyhedra()
 	vector<Index3DId> localTouched;
 	for (const auto& cellId : needToSplitCopy.asVector()) {
 		if (polyhedronExists(cellId)) {
-			PolyhedronSplitter splitter(this, cellId, localTouched);
+			Splitter splitter(this, cellId, localTouched);
 			if (splitter.splitAtParamCenter())
 				didSplit = true;
 			else
@@ -1027,7 +1027,7 @@ bool Block::splitRequiredPolyhedra()
 			if (_polyhedra.exists(cellId)) {
 				auto& cell = _polyhedra[cellId];
 				if (cell.hasTooManySplits(params)) {
-					PolyhedronSplitter splitter(this, cellId, localTouched);
+					Splitter splitter(this, cellId, localTouched);
 					if (splitter.splitAtParamCenter())
 						didSplit = true;
 					else
