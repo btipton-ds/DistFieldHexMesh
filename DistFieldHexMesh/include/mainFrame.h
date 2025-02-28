@@ -53,7 +53,6 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Restore graphics multisampling for OIT
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Layer counting is still off
 
@@ -71,6 +70,11 @@ Switch objectPool search to use FastBisectionMap.
 
 Split normals at shared vertices. Same as sharp edge rendering, but this fixes badly interpolated curvatures which are messing up
 splitting.
+
+*******************************************************************************************
+Future - too hard and time consuming for now
+Restore graphics multisampling for OIT - There's a mutlsampling facility for anti aliasing, but it requires changing all the buffer code. 
+    I spent a day on it and it was just a big can of worms. Higher priorities right now.
 
 Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
 

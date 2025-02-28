@@ -199,7 +199,7 @@ void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
 	//    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
 	_pMesh->buildCentroids();
 	_pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
-	_pMesh->calGaps();
+//	_pMesh->calGaps();
 
 	CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
 	_faceTess = createFaceTessellation(_pMesh, pDrawModelMesh);

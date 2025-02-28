@@ -84,6 +84,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
+	, _triIndices(src._triIndices)
 {
 }
 
@@ -897,7 +898,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
-void Polyhedron::addToFaceCountHisogram(std::map<size_t, size_t>& histo) const
+void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 {
 	size_t numFaces = getNumFaces(true);
 

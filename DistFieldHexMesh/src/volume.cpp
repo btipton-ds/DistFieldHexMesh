@@ -698,7 +698,7 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 #endif
 	setLayerNums();
 
-	dumpCellHistogram();
+//	dumpCellHistogram();
 }
 
 void Volume::dumpCellHistogram() const
@@ -708,7 +708,7 @@ void Volume::dumpCellHistogram() const
 	faceCountHistograms.resize(MultiCore::getNumCores());
 	runThreadPool([&faceCountHistograms](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&threadNum, &faceCountHistograms](const Index3DId& cellId, const Polyhedron& cell) {
-			cell.addToFaceCountHisogram(faceCountHistograms[threadNum]);
+			cell.addToFaceCountHistogram(faceCountHistograms[threadNum]);
 		});
 		return true;
 	}, false && RUN_MULTI_THREAD);

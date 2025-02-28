@@ -161,7 +161,7 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	Index3DId addCell(const Polyhedron& cell);
+	Index3DId addCell(const Polyhedron& cell, const Index3DId& parentCellId);
 	Index3DId addHexCell(const std::vector<Index3DId>& cornerVertIds);
 	Index3DId createGradedHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx, bool intersectingOnly);
 

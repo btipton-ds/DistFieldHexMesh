@@ -183,13 +183,15 @@ void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& c
 		}
 		cellFaceIds.insert(id);
 	}
-	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds));
+	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), cell.getId());
 
 	_pBlock->cellFunc(newCellId, [this, cell](Polyhedron& newCell) {
 		assert(newCell.getNumFaces(true) <= _pBlock->getSplitParams().maxCellFaces);
 		newCell.setParentId(cell.getId());
 		newCell.setSplitLevel(cell.getSplitLevel());
+#if USE_CELL_SEARCH_TREE
 		newCell.setTriIndices(cell);
+#endif
 	});
 		
 

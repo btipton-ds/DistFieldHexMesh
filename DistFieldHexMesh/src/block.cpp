@@ -579,7 +579,7 @@ Index3DId Block::findFace(const Polygon& face) const
 	return faceId;
 }
 
-Index3DId Block::addCell(const Polyhedron& cell)
+Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	auto& newCell = _polyhedra[cellId];
@@ -591,8 +591,15 @@ Index3DId Block::addCell(const Polyhedron& cell)
 		});
 	}
 	newCell.orientFaces();
+#if !USE_CELL_SEARCH_TREE
 	const auto& meshData = getModelMeshData();
 	newCell.addMeshToTriIndices(meshData);
+#else
+	if (!parentCellId.isValid()) {
+		const auto& meshData = getModelMeshData();
+		newCell.addMeshToTriIndices(meshData);
+	}
+#endif
 
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());
@@ -622,7 +629,7 @@ Index3DId Block::addHexCell(const std::vector<Index3DId>& cornerVertIds)
 	faceIds.push_back(addFace(Polygon({ cornerVertIds[0], cornerVertIds[3], cornerVertIds[2], cornerVertIds[1] })));
 	faceIds.push_back(addFace(Polygon({ cornerVertIds[4], cornerVertIds[5], cornerVertIds[6], cornerVertIds[7] })));
 
-	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
+	const Index3DId polyhedronId = addCell(Polyhedron(faceIds), Index3DId());
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -670,7 +677,7 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 	faceIds.push_back(addFace(Polygon({ vertIds[0], vertIds[3], vertIds[2], vertIds[1] })));
 	faceIds.push_back(addFace(Polygon({ vertIds[4], vertIds[5], vertIds[6], vertIds[7] })));
 
-	const Index3DId polyhedronId = addCell(Polyhedron(faceIds));
+	const Index3DId polyhedronId = addCell(Polyhedron(faceIds), Index3DId());
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
