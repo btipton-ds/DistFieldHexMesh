@@ -54,6 +54,7 @@ namespace DFHM {
 
 class Edge;
 class Block;
+class TriMeshIndex;
 struct SplittingParams;
 
 struct VertEdgePair {
@@ -167,7 +168,7 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
-	bool intersectsTri(const Vector3d* pts[3]) const;
+	bool intersectsModel(const std::vector<TriMeshIndex>& tris) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;

@@ -791,27 +791,15 @@ bool Polyhedron::intersectsModel() const
 		if (_triIndices.empty()) {
 			_intersectsModel = IS_FALSE;
 		} else {
-			const auto& modelMesh = getBlockPtr()->getModelMeshData();
-			for (const auto& triIdx : _triIndices) {
-				const auto& pData = modelMesh[triIdx.getMeshIdx()];
-				const auto& pMesh = pData->getMesh();
-				const auto& tri = pMesh->getTri(triIdx.getTriIdx());
-				const Vector3d* pts[] = {
-					&pMesh->getVert(tri[0])._pt,
-					&pMesh->getVert(tri[1])._pt,
-					&pMesh->getVert(tri[2])._pt,
-				};
+			for (const auto& faceId : _faceIds) {
+				faceFunc(faceId, [this](const Polygon& face) {
+					if (face.intersectsModel(_triIndices)) {
+						_intersectsModel = IS_TRUE;
+					}
+				});
 
-				for (const auto& faceId : _faceIds.asVector()) {
-					faceFunc(faceId, [this, &pts](const Polygon& face) {
-						if (face.intersectsTri(pts)) {
-							_intersectsModel = IS_TRUE;
-						}
-					});
-
-					if (_intersectsModel == IS_TRUE)
-						return true;
-				}
+				if (_intersectsModel == IS_TRUE)
+					return true;
 			}
 		}
 		_intersectsModel = IS_FALSE;
