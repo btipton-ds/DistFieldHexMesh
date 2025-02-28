@@ -53,12 +53,12 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Generating polyhedra with more than the maximum number of faces!
-    This is improved, but there is a problem splitting partially split cells resulting in bad cells.
 Restore graphics multisampling for OIT
+Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
+Layer counting is still off
+
 Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids
-Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Memory reporting is far out of line with reported memory allocations.
 
 Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
@@ -78,6 +78,8 @@ Add read/write of a document file. This contains all the configuration specific 
 Already done
 ****************************************************************************************************************************************
 
+Generating polyhedra with more than the maximum number of faces!
+    This is improved, but there is a problem splitting partially split cells resulting in bad cells.
 Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
 DDP is getting the alpha of the front layer wrong. Test this by turning on only left, back and front boundaries. When faces over lap, the front transparency is WRONG.
     It was actually a the back layer not blending because blending was disabled - fixed.
