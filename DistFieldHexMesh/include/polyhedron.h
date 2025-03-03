@@ -116,7 +116,6 @@ public:
 	bool hasTooManySplits(const SplittingParams& params) const;
 	void orientFaces();
 
-	void imprintTVertices(Block* pDstBlock);
 	void attachFaces();
 	void detachFaces();
 	double getShortestEdge() const;

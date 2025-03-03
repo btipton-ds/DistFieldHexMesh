@@ -351,7 +351,6 @@ void PolymeshTables::reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cell
 	assert(fabs(dp) < 1.0e-6);
 #endif // _DEBUG
 
-
 	Vector3d cellCtr;
 	if (cellIds.size() == 1) {
 		const Index3DId cellId = cellIds[0];
