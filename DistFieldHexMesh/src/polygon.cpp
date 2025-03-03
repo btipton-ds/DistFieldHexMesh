@@ -128,7 +128,7 @@ void Polygon::clearCache() const
 
 bool Polygon::cellsOwnThis() const
 {
-	for (const auto& cellId : _cellIds.asVector()) {
+	for (const auto& cellId : _cellIds) {
 		if (!getBlockPtr()->polyhedronExists(cellId))
 			return false;
 		bool result = true;
@@ -160,7 +160,7 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 		}
 	} else {
 		result = 1;
-		for (const auto& subFaceId : _splitIds.asVector()) {
+		for (const auto& subFaceId : _splitIds) {
 			faceFunc(subFaceId, [&result, &cellId](const Polygon& subFace) {
 				result += subFace.getSplitLevel(cellId);
 			});
@@ -173,15 +173,15 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 {
 	assert(_splitIds.size() <= 1);
-	for (const auto& id : _splitIds.asVector()) {
+	for (const auto& id : _splitIds) {
 		getBlockPtr()->freePolygon(id);
 	}
 
 	_splitIds = faceIds;
 
-	for (const auto& id : _splitIds.asVector()) {
+	for (const auto& id : _splitIds) {
 		faceFunc(id, [this](Polygon& subFace) {
-			for (const auto& cellId : _cellIds.asVector()) {
+			for (const auto& cellId : _cellIds) {
 				subFace.addCellId(cellId);
 			}
 		});
@@ -195,7 +195,7 @@ size_t Polygon::numFaceIds(bool includeSplits) const
 	if (_splitIds.empty() || !includeSplits) {
 		result += 1;
 	} else {
-		for (const auto& id : _splitIds.asVector()) {
+		for (const auto& id : _splitIds) {
 			faceFunc(id, [this, &includeSplits, &result](const Polygon& splitFace) {
 				auto num = splitFace.numFaceIds(includeSplits);
 				result += num;
@@ -212,7 +212,7 @@ FastBisectionSet<Index3DId> Polygon::getNestedFaceIds() const
 	if (_splitIds.empty()) {
 		result.insert(getId());
 	} else {
-		for (const auto& id : _splitIds.asVector()) {
+		for (const auto& id : _splitIds) {
 			faceFunc(id, [this, &result](const Polygon& splitFace) {
 				auto ids = splitFace.getNestedFaceIds();
 				result.insert(ids.begin(), ids.end());
@@ -227,7 +227,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
 	if (_cellIds.size() == 2) {
-		for (const auto& id : _cellIds.asVector()) {
+		for (const auto& id : _cellIds) {
 			if (id != thisCellId) {
 				result = id;
 				break;
@@ -902,7 +902,7 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 void Polygon::removeCellId(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
-	for (const auto& subFaceId : _splitIds.asVector()) {
+	for (const auto& subFaceId : _splitIds) {
 		faceFunc(subFaceId, [&cellId](Polygon& subFaceId) {
 			subFaceId.removeCellId(cellId);
 		});
@@ -921,7 +921,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 		_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
 		if (_cellIds.size() > 2) {
-			for (const auto& cellId1 : _cellIds.asVector()) {
+			for (const auto& cellId1 : _cellIds) {
 				assert(getBlockPtr()->polyhedronExists(cellId1));
 				cellFunc(cellId1, [this](const Polyhedron& cell) {
 					assert(cell.containsFace(_thisId));
@@ -1107,7 +1107,7 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& insidePt) const
 		result = isPointInsideInner(pt, insidePt);
 	}
 	else {
-		for (const auto& subFaceId : _splitIds.asVector()) {
+		for (const auto& subFaceId : _splitIds) {
 			faceFunc(subFaceId, [this, &pt, &insidePt, &result](const Polygon& subFace) {
 				result = subFace.isPointInside(pt, insidePt);
 			});
@@ -1226,7 +1226,7 @@ int64_t Polygon::getLayerNum() const
 {
 	// Get the layer number of the lowest layer numbered cell.
 	int64_t layerNum = -1;
-	for (const auto& cellId : _cellIds.asVector()) {
+	for (const auto& cellId : _cellIds) {
 		cellFunc(cellId, [&layerNum](const Polyhedron& cell) {
 			int64_t cellLayerNum = cell.getLayerNum();
 			if (cellLayerNum != -1 && (layerNum == -1 || cellLayerNum < layerNum))
@@ -1248,7 +1248,7 @@ bool Polygon::verifyTopology() const
 
 	if (valid) {
 		const auto& edges = getEdges();
-		for (const auto& edge : edges.asVector()) {
+		for (const auto& edge : edges) {
 			auto faceIds = edge.getFaceIds();
 			if (valid && !faceIds.contains(_thisId)) // edge does not link back to this face
 				valid = false;
@@ -1256,7 +1256,7 @@ bool Polygon::verifyTopology() const
 	}
 
 	if (valid) {
-		for (const auto& cellId : _cellIds.asVector()) {
+		for (const auto& cellId : _cellIds) {
 			if (valid && !getBlockPtr()->polyhedronExists(cellId))
 				valid = false;
 
@@ -1319,7 +1319,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		out << "}\n";
 
 		out << Logger::Pad() << "cellIds: (" << face._cellIds.size() << "): {";
-		for (const auto& cellId : face._cellIds.asVector()) {
+		for (const auto& cellId : face._cellIds) {
 			auto sl = face.getSplitLevel(cellId);
 			out << "c" << cellId << ".split: " << sl << " ";
 		}
@@ -1327,7 +1327,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 
 		if (!face._splitIds.empty()) {
 			out << Logger::Pad() << "splitFaceIds: (" << face._splitIds.size() << "): {";
-			for (const auto& faceId : face._splitIds.asVector()) {
+			for (const auto& faceId : face._splitIds) {
 				out << "f" << faceId << " ";
 			}
 			out << "}\n";

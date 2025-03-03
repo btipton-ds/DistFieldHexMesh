@@ -586,7 +586,7 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 	auto& newCell = _polyhedra[cellId];
 	const auto& cellFaceIds = newCell.getFaceIds();
 
-	for (const auto& faceId : cellFaceIds.asVector()) {
+	for (const auto& faceId : cellFaceIds) {
 		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
 			cellFace.addCellId(cellId);
 		});
@@ -977,7 +977,7 @@ bool Block::splitRequiredPolyhedra()
 	_needToSplit.clear();
 
 	vector<Index3DId> localTouched;
-	for (const auto& cellId : needToSplitCopy.asVector()) {
+	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter splitter(this, cellId, localTouched);
 			if (splitter.splitAtParamCenter())
@@ -1289,7 +1289,7 @@ void Block::markIncrementLayerNums(int i)
 	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
 		if (cell.getLayerNum() == i) {
 			const auto& adjIds = cell.getAdjacentCells();
-			for (const auto& adjId : adjIds.asVector()) {
+			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
 					adjCell.setLayerNumOnNextPass(adjCell.getLayerNum());
 				});

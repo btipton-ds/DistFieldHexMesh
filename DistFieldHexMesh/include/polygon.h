@@ -246,7 +246,7 @@ inline bool Polygon::verifyUnique() const
 
 inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 {
-	for (const auto& id : _cellIds.asVector()) {
+	for (const auto& id : _cellIds) {
 		if (id == cellId) {
 			id.setUserFlag(UF_FACE_REVERSED, reversed);
 			break;
@@ -256,7 +256,7 @@ inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 
 inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is relative to cellId
 {
-	for (const auto& id : _cellIds.asVector()) {
+	for (const auto& id : _cellIds) {
 		if (id == cellId) {
 			bool reversed = id.isUserFlagSet(UF_FACE_REVERSED);
 			id.setUserFlag(UF_FACE_REVERSED, !reversed);
@@ -267,7 +267,7 @@ inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is rel
 
 inline bool Polygon::isReversed(const Index3DId& cellId) const
 {
-	for (const auto& id : _cellIds.asVector()) {
+	for (const auto& id : _cellIds) {
 		if (id == cellId) {
 			return id.isUserFlagSet(UF_FACE_REVERSED);
 		}

@@ -261,7 +261,7 @@ int PolymeshTables::getFaceNeighbourIdx(const FastBisectionSet<Index3DId>& cellI
 {
 	if (cellIds.size() == 2) {
 		int maxCellIdx = -1;
-		for (const auto& cellId : cellIds.asVector()) {
+		for (const auto& cellId : cellIds) {
 			int cellIdx = cellIdIdxMap[cellId];
 			if (cellIdx > maxCellIdx)
 				maxCellIdx = cellIdx;
@@ -275,7 +275,7 @@ int PolymeshTables::getFaceNeighbourIdx(const FastBisectionSet<Index3DId>& cellI
 int PolymeshTables::getFaceOwnerIdx(const FastBisectionSet<Index3DId>& cellIds) const
 {
 	int32_t minCellIdx = INT_MAX;
-	for (const auto& cellId : cellIds.asVector()) {
+	for (const auto& cellId : cellIds) {
 		int cellIdx = cellIdIdxMap[cellId];
 		if (cellIdx < minCellIdx)
 			minCellIdx = cellIdx;
@@ -363,7 +363,7 @@ void PolymeshTables::reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cell
 	} else {
 		assert(cellIds.size() == 2);
 		int maxCellIdx = -1;
-		for (const auto& cellId : cellIds.asVector()) {
+		for (const auto& cellId : cellIds) {
 			int cellIdx = cellIdIdxMap[cellId];
 			if (maxCellIdx < cellIdx) {
 				maxCellIdx = cellIdx;

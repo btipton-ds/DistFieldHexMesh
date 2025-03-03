@@ -332,11 +332,11 @@ void Edge::getFaceIds(FastBisectionSet<Index3DId>& faceIds) const
 void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
 {
 	cellIds.clear();
-	for (const auto& faceId : _faceIds.asVector()) {
+	for (const auto& faceId : _faceIds) {
 		if (pBlock->polygonExists(faceId)) {
 			pBlock->faceFunc(faceId, [&pBlock, &cellIds](const Polygon& face) {
 				const auto& adjCellIds = face.getCellIds();
-				for (const auto& cellId : adjCellIds.asVector()) {
+				for (const auto& cellId : adjCellIds) {
 					if (pBlock->polyhedronExists(cellId)) {
 						cellIds.insert(cellId);
 					}
@@ -356,7 +356,7 @@ void Edge::write(std::ostream& out) const
 
 	size_t num = _faceIds.size();
 	out.write((char*)&num, sizeof(size_t));
-	for (const auto& id : _faceIds.asVector())
+	for (const auto& id : _faceIds)
 		id.write(out);
 }
 
@@ -384,7 +384,7 @@ ostream& DFHM::operator << (ostream& out, const Edge& edge)
 		Logger::Indent indent;
 
 		out << Logger::Pad() << "faceIds(" << edge.getFaceIds().size() << "): {";
-		for (const auto& faceId : edge.getFaceIds().asVector()) {
+		for (const auto& faceId : edge.getFaceIds()) {
 			out << "f" << faceId << " ";
 		}
 		out << "}\n";

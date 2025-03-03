@@ -159,7 +159,7 @@ void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3
 	auto pBlk = getOurBlockPtr();
 	auto pVol = pBlk->getVolume();
 
-	for (auto& v : tmp.asVector()) {
+	for (auto& v : tmp) {
 		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
 		if (idRemap[srcIdx] != -1) {
 			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
