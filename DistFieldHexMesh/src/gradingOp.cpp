@@ -39,25 +39,26 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-const vector<vector<size_t>>& GradingOp::getCubeFaceIndices()
+const MTC::vector<MTC::vector<size_t>>& GradingOp::getCubeFaceIndices()
 {
     static vector<vector<size_t>> facePts = {
-        { 0, 4, 7, 3 },
-        { 1, 2, 6, 5 },
-
-        // add front and back
-        { 0, 1, 5, 4 },
-        { 2, 3, 7, 6 },
-
         // add bottom and top
         { 0, 3, 2, 1 },
         { 4, 5, 6, 7 },
+
+        // add front and back
+        { 0, 4, 7, 3 },
+        { 1, 2, 6, 5 },
+
+        // add left and right
+        { 0, 1, 5, 4 },
+        { 2, 3, 7, 6 },
     };
 
     return facePts;
 }
 
-void GradingOp::getCubeFacePoints(const std::vector<Vector3d>& cornerPts, std::vector<std::vector<Vector3d>>& facePts)
+void GradingOp::getCubeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts)
 {
     const auto& cubeFaceIndices = getCubeFaceIndices();
     facePts.clear();
@@ -68,6 +69,21 @@ void GradingOp::getCubeFacePoints(const std::vector<Vector3d>& cornerPts, std::v
         rowPts.resize(rowIndices.size());
         for (size_t j = 0; j < rowIndices.size(); j++) {
             rowPts[j] = cornerPts[rowIndices[j]];
+        }
+    }
+}
+
+void GradingOp::getCubeFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MTC::vector<MTC::vector<Index3DId>>& faceVerts)
+{
+    const auto& cubeFaceIndices = getCubeFaceIndices();
+    faceVerts.clear();
+    faceVerts.resize(6);
+    for (size_t i = 0; i < 6; i++) {
+        const auto& rowIndices = cubeFaceIndices[i];
+        auto& rowVerts = faceVerts[i];
+        rowVerts.resize(rowIndices.size());
+        for (size_t j = 0; j < rowIndices.size(); j++) {
+            rowVerts[j] = cornerVerts[rowIndices[j]];
         }
     }
 }

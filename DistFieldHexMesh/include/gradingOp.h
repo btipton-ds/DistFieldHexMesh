@@ -40,8 +40,9 @@ struct SplittingParams;
 
 class GradingOp {
 public:
-	static const std::vector<std::vector<size_t>>& getCubeFaceIndices();
-	static void getCubeFacePoints(const std::vector<Vector3d>& cornerPts, std::vector<std::vector<Vector3d>>& facePts);
+	static const MTC::vector<MTC::vector<size_t>>&getCubeFaceIndices();
+	static void getCubeFacePoints(const MTC::vector<Vector3d>&cornerPts, MTC::vector<MTC::vector<Vector3d>>&facePts);
+	static void getCubeFaceVertIds(const MTC::vector<Index3DId>&cornerVerts, MTC::vector<MTC::vector<Index3DId>>&faceVerts);
 
 	GradingOp(Block* pBlk, const SplittingParams& params, const Index3D& divs = Index3D(0, 0, 0), const Vector3d& grading = Vector3d(1, 1, 1));
 	void calGradingFactors(int axis, double& scale, double& growFactor) const;
