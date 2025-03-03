@@ -68,7 +68,7 @@ public:
 	size_t getNumNestedFaces() const;
 	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 	size_t getNumFaces(bool includeSubFaces) const;
-	const FastBisectionSet<Index3DId>& getVertIds() const;
+	const MTC::vector<Index3DId>& getVertIds() const;
 	const FastBisectionSet<Edge>& getEdges(bool includeAdjacentCellFaces) const;
 
 	const FastBisectionSet<Index3DId>& getAdjacentCells() const;
@@ -87,7 +87,6 @@ public:
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsFace(const Index3DId& faceId) const;
 	bool isVertexConnectedToCell(const Index3DId& cellId) const;
-	bool isVertexConnectedToFace(const Index3DId& faceId) const;
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	double calVolume() const;
@@ -186,7 +185,7 @@ private:
 
 	mutable std::vector<TriMeshIndex> _triIndices; // stores only the triangles that intersect this cell.
 
-	mutable FastBisectionSet<Index3DId> _cachedVertIds;
+	mutable MTC::vector<Index3DId> _cachedVertIds;
 	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;
 	mutable FastBisectionSet<Edge> _cachedEdges, _cachedEdgesAdj;
 

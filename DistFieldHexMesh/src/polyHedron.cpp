@@ -254,7 +254,7 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 	clearCache();
 }
 
-const FastBisectionSet<Index3DId>& Polyhedron::getVertIds() const
+const MTC::vector<Index3DId>& Polyhedron::getVertIds() const
 {
 	updateAllTopolCaches();
 
@@ -383,10 +383,14 @@ void Polyhedron::updateAllTopolCaches() const
 				if (!adjFaceCellIds.empty()) {
 					bool faceConntectToSeedCell = false;
 					for (const auto& vertId : *pVertIds) {
-						if (_cachedVertIds.contains(vertId)) {
-							faceConntectToSeedCell = true;
-							break;
+						for (const auto& id : _cachedVertIds) {
+							if (id == vertId) {
+								faceConntectToSeedCell = true;
+								break;
+							}
 						}
+						if (faceConntectToSeedCell)
+							break;
 					}
 					if (faceConntectToSeedCell) {
 						const auto& v = adjFaceCellIds;
@@ -465,15 +469,24 @@ void Polyhedron::updateAllTopolCaches() const
 
 void Polyhedron::updateCachedVerts() const
 {
-	MTC::set<Index3DId> vertSet;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&vertSet](const Polygon& face) {
-			const auto& vertIds = face.getVertexIds();
-			for (const auto& vertId : vertIds)
-				vertSet.insert(vertId);
+	if (_cachedVertIds.empty()) {
+		if (_faceIds.size() == 6) {
+			faceFunc(_faceIds[0], [this](const Polygon& face) {
+				const auto& vertIds = face.getVertexIds();
+				_cachedVertIds.push_back(vertIds[0]);
+				_cachedVertIds.push_back(vertIds[3]);
+				_cachedVertIds.push_back(vertIds[2]);
+				_cachedVertIds.push_back(vertIds[1]);
 			});
+			faceFunc(_faceIds[1], [this](const Polygon& face) {
+				const auto& vertIds = face.getVertexIds();
+				_cachedVertIds.push_back(vertIds[0]);
+				_cachedVertIds.push_back(vertIds[1]);
+				_cachedVertIds.push_back(vertIds[2]);
+				_cachedVertIds.push_back(vertIds[3]);
+			});
+		}
 	}
-	_cachedVertIds.insert(vertSet.begin(), vertSet.end());
 }
 
 
@@ -640,17 +653,21 @@ bool Polyhedron::contains(const Vector3d& pt) const
 bool Polyhedron::containsVertex(const Index3DId& vertId) const
 {
 	const auto& ourVerts = getVertIds();
-	return ourVerts.contains(vertId);
+	for (const auto& id : ourVerts) {
+		if (id == vertId)
+			return true;
+	}
+
+	return false;
 }
 
 bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 {
 	bool result = false;
-	cellFunc(cellId, [this, &result](const Polyhedron& cell) {
+	cellFunc(cellId, [this, &result](const Polyhedron& otherCell) {
 		const auto& ourVerts = getVertIds();
-		const auto& otherVerts = cell.getVertIds();
-		for (const auto& otherId : otherVerts) {
-			if (ourVerts.contains(otherId)) {
+		for (const auto& id : ourVerts) {
+			if (otherCell.containsVertex(id)) {
 				result = true;
 				break;
 			}
@@ -658,22 +675,6 @@ bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 	});
 
 	return result;
-}
-
-bool Polyhedron::isVertexConnectedToFace(const Index3DId& faceId) const
-{
-	bool result = false;
-	faceFunc(faceId, [this, &result](const Polygon& face) {
-		const auto& ourVerts = getVertIds();
-		const auto& otherVerts = face.getVertexIds();
-		for (const auto& otherId : otherVerts) {
-			if (ourVerts.contains(otherId)) {
-				result = true;
-			}
-		}
-	});
-
-	return false;
 }
 
 Vector3d Polyhedron::calCentroid() const
