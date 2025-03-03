@@ -115,6 +115,20 @@ void Polygon::addVertex(const Index3DId& vertId)
 	clearCache();
 }
 
+size_t Polygon::getNestedVertexIds(MTC::set<Index3DId>& vertIds) const
+{
+	if (_splitIds.empty()) {
+		vertIds.insert(_vertexIds.begin(), _vertexIds.end());
+	} else {
+		for (const auto& subId : _splitIds) {
+			faceFunc(subId, [&vertIds](const Polygon& subFace) {
+				subFace.getNestedVertexIds(vertIds);
+			});
+		}
+	}
+	return vertIds.size();
+}
+
 void Polygon::clearCache() const
 {
 	_sortCacheVaild = false;
@@ -514,6 +528,39 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 			return true;
 	}
 	return false;
+}
+
+bool Polygon::containsVertexNested(const Index3DId& vertId) const
+{
+	if (_splitIds.empty()) {
+		return containsVertex(vertId);
+	} else {
+		bool result = false;
+		for (const auto& subId : _splitIds) {
+			faceFunc(subId, [&vertId, &result](const Polygon& subFace) {
+				if (subFace.containsVertexNested(vertId))
+					result = true;
+			});
+			if (result)
+				return true;
+		}
+	}
+}
+
+void Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const
+{
+	if (_splitIds.empty()) {
+		for (const auto& id : _cellIds) {
+			if (id != testId)
+				cellIds.insert(id);
+		}
+	} else {
+		for (const auto& subId : _splitIds) {
+			faceFunc(subId, [&testId, &cellIds](const Polygon& subFace) {
+				subFace.getNestedCellIds(testId, cellIds);
+			});
+		}
+	}
 }
 
 bool Polygon::isCoplanar(const Vector3d& pt) const

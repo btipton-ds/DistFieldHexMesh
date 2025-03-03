@@ -118,6 +118,7 @@ public:
 	void flipReversed(const Index3DId& cellId); // Orientation is relative to cellId
 	size_t numCells() const;
 	const FastBisectionSet<Index3DId>& getCellIds() const;
+	void getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const;
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
@@ -133,6 +134,7 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
+	bool containsVertexNested(const Index3DId& vertId) const;
 	bool containsEdge(const Edge& edge, bool& isUsed) const;
 	bool containsFace(const Index3DId& faceId, size_t& level) const;
 	bool isTooComplex(const SplittingParams& params) const;
@@ -150,6 +152,7 @@ public:
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
+	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
 	void clearCache() const;
 	void updateAllCaches();
 	const FastBisectionSet<Edge>& getEdges() const;

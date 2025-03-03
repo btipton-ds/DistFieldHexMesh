@@ -316,11 +316,9 @@ const FastBisectionSet<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces
 
 void Polyhedron::updateAllTopolCaches() const
 {
-	if (!_cachedVertIds.empty() && !_cachedAdjCellIds.empty() && !_cachedEdges.empty() && !_cachedEdgesAdj.empty())
-		return;
-
-	clearTopolCache(); // Clear all in case not all are empty
 	updateCachedVerts();
+	if (!_cachedAdjCellIds.empty() && !_cachedEdges.empty() && !_cachedEdgesAdj.empty())
+		return;
 
 	map<Edge, FastBisectionSet<Index3DId>> edgeToFaceIdMap;
 	FastBisectionSet<Index3DId> testedFaceIds;
