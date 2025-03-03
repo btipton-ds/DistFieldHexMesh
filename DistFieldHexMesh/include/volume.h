@@ -183,13 +183,13 @@ private:
 	void runThreadPool_IJK(const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_IJ(const SplittingParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_IJ(const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_JK(const SplittingParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_JK(const L& fLambda, bool multiCore);
 
 	template<class L>
-	void runThreadPool_IK(const SplittingParams& params, const L& fLambda, bool multiCore);
+	void runThreadPool_IK(const L& fLambda, bool multiCore);
 
 	int _numSplits = 0;
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);

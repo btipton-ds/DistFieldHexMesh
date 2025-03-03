@@ -406,7 +406,7 @@ void Volume::addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup
 void Volume::clear()
 {
 	// Clear contents to remove cross block pointers
-	runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (pBlk)
 			pBlk->clear();
 		return true;
@@ -456,7 +456,7 @@ void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[
 
 	buildSurroundingBlocks(params, pts, pReporter, multiCore);
 
-	runThreadPool_IJK([this, pReporter](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, pReporter](size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (inModelBounds(pBlk->getBlockIdx())) {
 			pBlk->createBlockCells();
 		}
@@ -498,7 +498,7 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 {
 	Index3D idx;
 
-	runThreadPool_IJ(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJ([this, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -544,7 +544,8 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 	}, multiCore);
 	reportProgress(pReporter);
 
-	runThreadPool_JK(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_JK([this, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
+		const auto& params = _pAppData->getParams();
 		if (!pBlk)
 			return true;
 
@@ -580,7 +581,7 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 	}, multiCore);
 	reportProgress(pReporter);
 
-	runThreadPool_IK(params, [this](const SplittingParams& params, size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IK([this, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (!pBlk)
 			return true;
 
@@ -623,7 +624,7 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 void Volume::updateAllCaches(bool clearAll)
 {
 	if (clearAll) {
-		runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
 				face.clearCache();
 			});
@@ -635,14 +636,14 @@ void Volume::updateAllCaches(bool clearAll)
 		}, RUN_MULTI_THREAD);
 	}
 
-	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
 			face.updateAllCaches();
 		});
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			cell.updateAllTopolCaches();
 		});
@@ -706,7 +707,7 @@ void Volume::dumpCellHistogram() const
 	map<size_t, size_t> faceCountHistogram;
 	vector<map<size_t, size_t>> faceCountHistograms;
 	faceCountHistograms.resize(MultiCore::getNumCores());
-	runThreadPool([&faceCountHistograms](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([&faceCountHistograms](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&threadNum, &faceCountHistograms](const Index3DId& cellId, const Polyhedron& cell) {
 			cell.addToFaceCountHistogram(faceCountHistograms[threadNum]);
 		});
@@ -750,7 +751,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 	if (params.numSimpleDivs > 0) {
 
 		for (size_t i = 0; i < params.numSimpleDivs; i++) {
-			runThreadPool_IJK([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 					cell.setNeedsDivideAtCentroid();
 				});
@@ -778,7 +779,7 @@ void Volume::divideConitional(const SplittingParams& params, ProgressReporter* p
 			pReporter->reportProgress();
 
 			bool changed = false;
-			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 				pBlk->iteratePolyhedraInOrder([this, &changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
 					if (cell.setNeedToSplitConditional(passNum, params)) {
 						changed = true;
@@ -808,7 +809,7 @@ void Volume::divideConitional(const SplittingParams& params, ProgressReporter* p
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
-	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			if (cell.containsSharps()) {
 				if (cell.setNeedsCleanFaces())
@@ -819,7 +820,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 	}, multiCore);
 
 	changed = false;
-	runThreadPool_IJK([this, &changed, &params](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			vector<Index3DId> localTouched;
 			if (cell.intersectsModel()) {
@@ -843,18 +844,18 @@ void Volume::finishSplits(bool multiCore)
 	int i = 0;
 	do {
 		changed = false;
-		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->splitRequiredPolyhedra())
 				changed = true;
 			return true;
 			}, multiCore);
 
-		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack();
 			return true;
 		}, multiCore);
 
-		runThreadPool_IJK([this, &changed](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->hasPendingSplits()) {
 				changed = true;
 				return false; // We need to split 1, so we need to split all. Exit early
@@ -873,7 +874,7 @@ void Volume::finishSplits(bool multiCore)
 void Volume::dumpOpenCells(bool multiCore) const
 {
 #if DUMP_OPEN_CELL_OBJS
-	runThreadPool([this](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([this](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->dumpOpenCells();
 		return true;
 	}, multiCore);
@@ -884,14 +885,14 @@ void Volume::setLayerNums()
 {
 	updateAllCaches(false);
 
-	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			cell.clearLayerNum();
 		});
 		return true;
 	}, RUN_MULTI_THREAD);
 
-	runThreadPool([](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				cell.setLayerNum(0, true);
@@ -902,12 +903,12 @@ void Volume::setLayerNums()
 
 	int steps = 5;
 	for (int i = 0; i < steps; i++) {
-		runThreadPool([i](size_t threadNum, size_t linearIdx, BlockPtr& pBlk)->bool {
+		runThreadPool([i](size_t threadNum, BlockPtr& pBlk)->bool {
 			pBlk->markIncrementLayerNums(i);
 			return true;
 		}, RUN_MULTI_THREAD);
 
-		runThreadPool([i](size_t threadNum, size_t linearIdx, BlockPtr& pBlk)->bool {
+		runThreadPool([i](size_t threadNum, BlockPtr& pBlk)->bool {
 			pBlk->setIncrementLayerNums(i);
 			return true;
 		}, RUN_MULTI_THREAD);
@@ -1230,7 +1231,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 		triMeshes[ft].resize(numThreads);
 	}
 
-	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, size_t linearIdx, const BlockPtr& blockPtr)->bool {
+	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, const BlockPtr& blockPtr)->bool {
 		if (blockPtr) {
 #if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
@@ -1570,7 +1571,7 @@ bool Volume::read(istream& in)
 	updateAllCaches(false);
 
 	const auto& meshData = _pAppData->getMeshData();
-	runThreadPool([&meshData](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk) {
+	runThreadPool([&meshData](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iteratePolyhedraInOrder([&meshData](const auto& cellId, Polyhedron& cell)->bool {
 			cell.addMeshToTriIndices(meshData);
 			return true;
@@ -1640,7 +1641,7 @@ bool Volume::verifyTopology(bool multiCore) const
 {
 	bool result = true;
 
-	runThreadPool([this, &result](size_t threadNum, size_t linearIdx, const BlockPtr& pBlk)->bool {
+	runThreadPool([this, &result](size_t threadNum, const BlockPtr& pBlk)->bool {
 		if (pBlk)
 			if (!pBlk->verifyTopology()) {
 				result = false;
@@ -1722,7 +1723,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 #if USE_MULTI_THREAD_CONTAINERS
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-			fLambda(threadNum, linearIdx, pBlk);
+			fLambda(threadNum, pBlk);
 		}
 	}, multiCore);
 }
@@ -1737,7 +1738,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 #if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-			fLambda(threadNum, linearIdx, pBlk);
+			fLambda(threadNum, pBlk);
 		}
 	}, multiCore);
 }
@@ -1781,9 +1782,9 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 #if USE_MULTI_THREAD_CONTAINERS
 							MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-							fLambda(threadNum, linearIdx, pBlk);
+							fLambda(threadNum, pBlk);
 						} else {
-							fLambda(threadNum, linearIdx, nullptr);
+							fLambda(threadNum, nullptr);
 						}
 					}, multiCore);
 				}
@@ -1793,9 +1794,10 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 }
 
 template<class L>
-void Volume::runThreadPool_IJ(const SplittingParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 
 	if (_blocks.empty())
@@ -1830,16 +1832,14 @@ void Volume::runThreadPool_IJ(const SplittingParams& params, const L& fLambda, b
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &blocksToProcess](size_t threadNum, size_t idx) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
 						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-						fLambda(params, threadNum, pBlk);
-					} else {
-						fLambda(params, threadNum, nullptr);
+						fLambda(threadNum, pBlk);
 					}
 				}, multiCore);
 			}
@@ -1849,9 +1849,10 @@ void Volume::runThreadPool_IJ(const SplittingParams& params, const L& fLambda, b
 }
 
 template<class L>
-void Volume::runThreadPool_JK(const SplittingParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 
 	if (_blocks.empty())
@@ -1887,17 +1888,14 @@ void Volume::runThreadPool_JK(const SplittingParams& params, const L& fLambda, b
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &blocksToProcess](size_t threadNum, size_t idx) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
 						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-						fLambda(params, threadNum, pBlk);
-					}
-					else {
-						fLambda(params, threadNum, nullptr);
+						fLambda(threadNum, pBlk);
 					}
 				}, multiCore);
 			}
@@ -1906,9 +1904,10 @@ void Volume::runThreadPool_JK(const SplittingParams& params, const L& fLambda, b
 }
 
 template<class L>
-void Volume::runThreadPool_IK(const SplittingParams& params, const L& fLambda, bool multiCore)
+void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 {
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 
 	if (_blocks.empty())
@@ -1944,17 +1943,14 @@ void Volume::runThreadPool_IK(const SplittingParams& params, const L& fLambda, b
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &params, &blocksToProcess](size_t threadNum, size_t idx) {
+				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
 						MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
-						fLambda(params, threadNum, pBlk);
-					}
-					else {
-						fLambda(params, threadNum, nullptr);
+						fLambda(threadNum, pBlk);
 					}
 					}, multiCore);
 			}
