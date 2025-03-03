@@ -106,9 +106,63 @@ bool DrawHexMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO,
 {
     if (enabled) {
         DFHM::DrawStates drawState = faceTypeToDrawState(ft);
+        DFHM::DrawStates drawState2;
+        FaceDrawType ft2;
+        bool useDrawState2 = false;
+        switch (ft) {
+        default:
+            break;
+        case FT_MESH_LAYER_1:
+            drawState2 = DS_MESH_LAYER_0_OPAQUE;
+            ft2 = FT_MESH_LAYER_0;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_2:
+            drawState2 = DS_MESH_LAYER_1_OPAQUE;
+            ft2 = FT_MESH_LAYER_1;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_3:
+            drawState2 = DS_MESH_LAYER_2_OPAQUE;
+            ft2 = FT_MESH_LAYER_2;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_4:
+            drawState2 = DS_MESH_LAYER_3_OPAQUE;
+            ft2 = FT_MESH_LAYER_3;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_5:
+            drawState2 = DS_MESH_LAYER_4_OPAQUE;
+            ft2 = FT_MESH_LAYER_4;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_6:
+            drawState2 = DS_MESH_LAYER_5_OPAQUE;
+            ft2 = FT_MESH_LAYER_5;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_7:
+            drawState2 = DS_MESH_LAYER_6_OPAQUE;
+            ft2 = FT_MESH_LAYER_6;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_8:
+            drawState2 = DS_MESH_LAYER_7_OPAQUE;
+            ft2 = FT_MESH_LAYER_7;
+            useDrawState2 = true;
+            break;
+        case FT_MESH_LAYER_9:
+            drawState2 = DS_MESH_LAYER_8_OPAQUE;
+            ft2 = FT_MESH_LAYER_8;
+            useDrawState2 = true;
+            break;            
+        }
 
         if (ft < tessellations.size() && tessellations[ft] && !tessellations[ft]->m_elementIndices.empty()) {
             VBO.includeElementIndices(drawState, tessellations[ft]);
+            if (useDrawState2)
+                VBO.includeElementIndices(drawState2, tessellations[ft2]);
             return true;
         }
     }
@@ -343,14 +397,23 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
             UBO.defColor = p3f(1.0f, 1.0f, 1.0f);
             break;
         case DS_MESH_LAYER_0:
+        case DS_MESH_LAYER_0_OPAQUE:
         case DS_MESH_LAYER_1:
+        case DS_MESH_LAYER_1_OPAQUE:
         case DS_MESH_LAYER_2:
+        case DS_MESH_LAYER_2_OPAQUE:
         case DS_MESH_LAYER_3:
+        case DS_MESH_LAYER_3_OPAQUE:
         case DS_MESH_LAYER_4:
+        case DS_MESH_LAYER_4_OPAQUE:
         case DS_MESH_LAYER_5:
+        case DS_MESH_LAYER_5_OPAQUE:
         case DS_MESH_LAYER_6:
+        case DS_MESH_LAYER_6_OPAQUE:
         case DS_MESH_LAYER_7:
+        case DS_MESH_LAYER_7_OPAQUE:
         case DS_MESH_LAYER_8:
+        case DS_MESH_LAYER_8_OPAQUE:
         case DS_MESH_LAYER_9:
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
@@ -408,7 +471,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     UBO.twoSideLighting = 1;
 
     bool blend = false;
-    const auto& alpha = _options.alpha;
+    float alpha = _options.alpha;
+    float alpha2 = 0.8f;
     const auto alphaWall = alpha * 0.5f;
     const float den = 255.0f;
 
@@ -422,26 +486,38 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         blend = true;
         UBO.defColor = p4f(210 / den, 180 / den, 140 / den, alpha);
         break;
+    case DS_MESH_LAYER_0_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_0:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 1, alpha);
         break;
+    case DS_MESH_LAYER_1_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_1:
         blend = true;
         UBO.defColor = p4f(1, 0.75f, 1, alpha);
         break;
+    case DS_MESH_LAYER_2_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_2:
         blend = true;
         UBO.defColor = p4f(1, 1, 0.75f, alpha);
         break;
+    case DS_MESH_LAYER_3_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_3:
         blend = true;
         UBO.defColor = p4f(1, 0.75f, 0.75f, alpha);
         break;
+    case DS_MESH_LAYER_4_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_4:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 0.75f, alpha);
         break;
+    case DS_MESH_LAYER_5_OPAQUE:
+        alpha = alpha2;
     case DS_MESH_LAYER_5:
         blend = true;
         UBO.defColor = p4f(0.75f, 0.75f, 1, alpha);
