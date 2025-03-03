@@ -53,11 +53,12 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Layer counting is still off
 
 Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids
+Add offset/fat triangle intersections to triMesh. Allow setting a distance offset for each triangle vertex and conical frustum intersection for each edge.
+That will allow tapered offset boundary layers.
 Memory reporting is far out of line with reported memory allocations.
 
 Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
@@ -73,7 +74,7 @@ splitting.
 
 *******************************************************************************************
 Future - too hard and time consuming for now
-Restore graphics multisampling for OIT - There's a mutlsampling facility for anti aliasing, but it requires changing all the buffer code. 
+Restore graphics multisampling for OIT - There's a mutlsampling facility for anti aliasing, but it requires changing all the buffer code.
     I spent a day on it and it was just a big can of worms. Higher priorities right now.
 
 Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
@@ -82,6 +83,7 @@ Add read/write of a document file. This contains all the configuration specific 
 Already done
 ****************************************************************************************************************************************
 
+Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Generating polyhedra with more than the maximum number of faces!
     This is improved, but there is a problem splitting partially split cells resulting in bad cells.
 Layer counting is INCREDIBLY slow at high levels - rewrite it ASAP.
@@ -98,7 +100,7 @@ Done Fix the annoying graphics!! Get clipping, pan, rotate zoom working right.
 Done Support reading multiple mesh files with settings.
 Done Add triangle splitting to localize curvatures
 */
-    
+
 class Volume;
 
 enum DFHM_MENU_ID
