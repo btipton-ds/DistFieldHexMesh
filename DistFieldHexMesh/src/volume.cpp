@@ -1717,7 +1717,6 @@ template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 {
 	_threadPool.run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx){
-		Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
@@ -1732,7 +1731,6 @@ template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 {
 	_threadPool.run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx) {
-		Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS			
