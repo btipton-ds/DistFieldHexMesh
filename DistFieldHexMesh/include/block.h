@@ -116,7 +116,6 @@ public:
 	const UnalignedBBoxd& getUnalignedBBox() const;
 
 	void clear();
-	void clearTopolCache() const;
 
 	size_t blockDim() const;
 
@@ -171,6 +170,8 @@ public:
 	bool polyhedronExists(const Index3DId& id) const;
 	bool allCellsClosed() const;
 
+	Edge* getEdge(const Edge& e);
+	const Edge* getEdge(const Edge& e) const;
 	Polygon& getPolygon(const Index3DId& id);
 	Polyhedron& getPolyhedron(const Index3DId& id);
 
@@ -288,10 +289,10 @@ private:
 
 	std::string _filename;
 
-	size_t _baseIdxVerts = 0, _baseIdxPolygons = 0, _baseIdxPolyhedra = 0;
 	FastBisectionSet<Index3DId> _needToSplit, _touchedCellIds;
 
 	ObjectPool<Vertex> _vertices;
+	ObjectPool<Edge> _edges;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 

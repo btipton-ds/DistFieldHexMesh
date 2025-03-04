@@ -88,6 +88,16 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 {
 }
 
+Index3DId Polyhedron::getId() const
+{
+	return _thisId;
+}
+
+void Polyhedron::setId(const Index3DId& id)
+{
+	_thisId = id;
+}
+
 void Polyhedron::clear()
 {
 	ObjectPoolOwnerUser::clear();
@@ -191,7 +201,7 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 
 void Polyhedron::write(std::ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	IoUtil::writeObj(out, _faceIds.asVector());
@@ -207,18 +217,13 @@ void Polyhedron::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	std::set<Index3DId> tmpSet;
-	if (version < 2)
-		IoUtil::read(in, tmpSet);
-	else
-		IoUtil::readObj(in, tmpSet);
+	IoUtil::readObj(in, tmpSet);
 	_faceIds = tmpSet;
 
 	in.read((char*)&_splitLevel, sizeof(size_t));
 
-	if (version >= 1) {
-		in.read((char*)&_splitLevel, sizeof(_splitLevel));
-		in.read((char*)&_layerNum, sizeof(_layerNum));
-	}
+	in.read((char*)&_splitLevel, sizeof(_splitLevel));
+	in.read((char*)&_layerNum, sizeof(_layerNum));
 }
 
 bool Polyhedron::unload(ostream& out)
@@ -239,8 +244,7 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 
 void Polyhedron::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	ObjectPoolOwnerUser::remapId(idRemap, srcDims);
-
+	remap(idRemap, srcDims, _thisId);
 	remap(idRemap, srcDims, _faceIds);
 }
 
@@ -254,11 +258,10 @@ void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
 	clearCache();
 }
 
-const MTC::vector<Index3DId>& Polyhedron::getVertIds() const
+MTC::vector<Index3DId> Polyhedron::getVertIds() const
 {
-	updateAllTopolCaches();
-
-	return _cachedVertIds;
+	MTC::vector<Index3DId> result;
+	return result;
 }
 
 size_t Polyhedron::getNumNestedFaces() const
@@ -305,17 +308,15 @@ size_t Polyhedron::getNumFaces(bool includeSubFaces) const
 }
 
 
-const FastBisectionSet<Edge>& Polyhedron::getEdges(bool includeAdjacentCellFaces) const
+FastBisectionSet<Edge> Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 {
-	updateAllTopolCaches();
-	if (includeAdjacentCellFaces)
-		return _cachedEdgesAdj;
-	else
-		return _cachedEdges;
+	FastBisectionSet<Edge> result;
+	return result;
 }
 
 void Polyhedron::updateAllTopolCaches() const
 {
+#if 0
 	updateCachedVerts();
 	if (!_cachedAdjCellIds.empty() && !_cachedEdges.empty() && !_cachedEdgesAdj.empty())
 		return;
@@ -462,11 +463,12 @@ void Polyhedron::updateAllTopolCaches() const
 	}
 
 #endif
-
+#endif
 }
 
 void Polyhedron::updateCachedVerts() const
 {
+#if 0
 	if (_cachedVertIds.empty()) {
 		if (_faceIds.size() == 6) {
 			faceFunc(_faceIds[0], [this](const Polygon& face) {
@@ -485,13 +487,14 @@ void Polyhedron::updateCachedVerts() const
 			});
 		}
 	}
+#endif
 }
 
 
-const FastBisectionSet<Index3DId>& Polyhedron::getAdjacentCells() const
+FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
 {
-	updateAllTopolCaches();
-	return _cachedAdjCellIds;
+	FastBisectionSet<Index3DId> result;
+	return result;
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
@@ -1515,16 +1518,6 @@ void Polyhedron::clearCache() const
 	_cachedIsClosed = IS_UNKNOWN;
 
 	_cachedMinGap = -1;
-
-	clearTopolCache();
-}
-
-void Polyhedron::clearTopolCache() const
-{
-	_cachedVertIds.clear();
-	_cachedAdjCellIds.clear();
-	_cachedEdges.clear();
-	_cachedEdgesAdj.clear();
 }
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)

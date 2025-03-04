@@ -76,6 +76,7 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool 
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
 	, _vertices(this, true, 8*8)
+	, _edges(this, true, 8 * 8)
 	, _polygons(this, true, 8*6)
 	, _polyhedra(this, false, 8)
 #if USE_MULTI_THREAD_CONTAINERS			
@@ -120,11 +121,8 @@ void Block::clear()
 
 	_needToSplit.clear();
 
-	_baseIdxVerts = 0;
-	_baseIdxPolygons = 0;
-	_baseIdxPolyhedra = 0;
-
 	_vertices.clear();
+	_edges.clear();
 	_polygons.clear();
 	_polyhedra.clear();
 }
@@ -132,13 +130,6 @@ void Block::clear()
 const SplittingParams& Block::getSplitParams() const
 {
 	return _pVol->getAppData()->getParams();
-}
-
-void Block::clearTopolCache() const
-{
-	_polyhedra.iterateInOrder([](const Index3DId& cellId, const Polyhedron& cell) {
-		cell.clearTopolCache();
-	});
 }
 
 const Index3D& Block::getBlockIdx() const
@@ -191,8 +182,9 @@ void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D&
 {
 	size_t srcIdx = Volume::calLinearBlockIndex(_blockIdx, srcDims);
 	Index3D dstIdx;
-	if (idRemap[srcIdx] != -1) {
-		dstIdx = _pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
+	size_t remapedIdx = idRemap[srcIdx];
+	if (remapedIdx != -1) {
+		dstIdx = _pVol->calBlockIndexFromLinearIndex(remapedIdx);
 		_blockIdx = dstIdx;
 	}
 
@@ -465,7 +457,7 @@ bool Block::verifyIndices(const Index3D& idx) const
 	auto pOwner = _pVol->getBlockPtr(idx);
 	if (pOwner != this)
 		return false;
-
+#if 0
 	bool result = true;
 	_vertices.iterateInOrder([&idx, &result](const Index3DId& id, const Vertex& vert) {
 		if (!vert.verifyIndices(idx))
@@ -481,7 +473,7 @@ bool Block::verifyIndices(const Index3D& idx) const
 		if (!cell.verifyIndices(idx))
 			result = false;
 	});
-
+#endif
 	return true;
 }
 
@@ -591,7 +583,7 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 			cellFace.addCellId(cellId);
 		});
 	}
-	newCell.orientFaces();
+//	newCell.orientFaces();
 #if !USE_CELL_SEARCH_TREE
 	const auto& meshData = getModelMeshData();
 	newCell.addMeshToTriIndices(meshData);
@@ -710,7 +702,6 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 Index3DId Block::addFace(const Polygon& face)
 {
-	face.initVertices(getVolume());
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_polygons.findOrAdd(face);
@@ -745,7 +736,7 @@ const Vector3d& Block::getVertexPoint(const Index3DId& vertId) const
 
 bool Block::write(ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	_blockIdx.write(out);
@@ -755,11 +746,9 @@ bool Block::write(ostream& out) const
 	out.write((char*)&_blockDim, sizeof(_blockDim));
 	vector<Vector3<double>> t = _corners;
 	IoUtil::writeVector3(out, t);
-	out.write((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
-	out.write((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
-	out.write((char*)&_baseIdxPolyhedra, sizeof(_baseIdxPolyhedra));
 
 	_vertices.write(out);
+	_edges.write(out);
 	_polygons.write(out);
 	_polyhedra.write(out);
 
@@ -781,25 +770,10 @@ bool Block::read(istream& in)
 	IoUtil::readVector3(in, t);
 	_corners = t;
 
-	in.read((char*)&_baseIdxVerts, sizeof(_baseIdxVerts));
-	in.read((char*)&_baseIdxPolygons, sizeof(_baseIdxPolygons));
-	in.read((char*)&_baseIdxPolyhedra, sizeof(_baseIdxPolyhedra));
-
 	_vertices.read(in);
+	_edges.read(in);
 	_polygons.read(in);
 	_polyhedra.read(in);
-	if (version < 2) {
-		ObjectPool<Polygon> tmpPolygons(this, true);
-		ObjectPool<Polyhedron> tmpPolyhedra(this, false);
-		tmpPolygons.read(in);
-		tmpPolyhedra.read(in);
-	}
-
-	if (version == 0) {
-		vector<size_t> deprecatedIndices;
-		IoUtil::read(in, deprecatedIndices);
-		IoUtil::read(in, deprecatedIndices);
-	}
 
 	return true;
 }
@@ -1237,6 +1211,24 @@ bool Block::polyhedronExists(const Index3DId& id) const
 	return pOwner && pOwner->_polyhedra.exists(id);
 }
 
+Edge* Block::getEdge(const Edge& e)
+{
+	auto pOwner = getOwner(e.getVertex(0));
+	Index3DId id = pOwner->_edges.findId(e);
+	if (pOwner->_edges.exists(id))
+		return &pOwner->_edges[id];
+	return nullptr;
+}
+
+const Edge* Block::getEdge(const Edge& e) const
+{
+	auto pOwner = getOwner(e.getVertex(0));
+	Index3DId id = pOwner->_edges.findId(e);
+	if (pOwner->_edges.exists(id))
+		return &pOwner->_edges[id];
+	return nullptr;
+}
+
 DFHM::Polygon& Block::getPolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
@@ -1280,7 +1272,6 @@ void Block::resetLayerNums()
 {
 	_polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
 		cell.clearLayerNum();
-		cell.clearTopolCache();
 	});
 }
 

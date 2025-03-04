@@ -46,7 +46,7 @@ namespace DFHM {
 class Block;
 class Polyhedron;
 
-class Edge {
+class Edge : public ObjectPoolOwnerUser {
 public:
 
 	Edge() = default;
@@ -62,6 +62,9 @@ public:
 	bool operator < (const Edge& rhs) const;
 	bool operator == (const Edge& rhs) const;
 	bool operator != (const Edge& rhs) const;
+
+	Index3DId getId() const override;
+	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	const Index3DId& getVertex(size_t idx) const;
 	const Index3DId* getVertexIds() const;
@@ -104,6 +107,9 @@ public:
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
+
+protected:
+	void setId(const Index3DId& id) override;
 
 private:
 	Index3DId _vertexIds[2];

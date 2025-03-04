@@ -40,14 +40,10 @@ using Index3DBaseType = unsigned short; // This is large enough for 65536 x 6553
 // Base class with protected constructors prevents accidental swapping of Index3D and Index3DId
 class Index3DBase
 {
-protected:
-	Index3DBase();
-	Index3DBase(const Index3DBase& src) = default;
-	Index3DBase(const Vector3<Index3DBaseType>& src);
-	Index3DBase(size_t i, size_t j, size_t k);
-	Index3DBase(const Vector3i& src);
-
 public:
+	bool isUserFlagSet(uint32_t bit) const;
+	void setUserFlag(uint32_t bit, bool val) const;
+
 	static void setBlockDim(size_t val);
 	static size_t getBlockDim();
 
@@ -83,11 +79,23 @@ public:
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
+protected:
+	Index3DBase();
+	Index3DBase(const Index3DBase& src) = default;
+	Index3DBase(const Vector3<Index3DBaseType>& src);
+	Index3DBase(size_t i, size_t j, size_t k);
+	Index3DBase(const Vector3i& src);
+
 private:
+	static size_t getMask();
+	size_t compVal() const;
 	static Index3DBaseType s_blockDim;
 	union {
-		Index3DBaseType _vals[4];
-		size_t _iVal = -1;
+		struct {
+			Index3DBaseType _vals[3];
+			mutable Index3DBaseType _flags;
+		};
+		size_t _iVal;
 	};
 };
 
@@ -106,6 +114,7 @@ inline Index3DBase::Index3DBase(size_t i, size_t j, size_t k)
 	_vals[0] = (Index3DBaseType)i;
 	_vals[1] = (Index3DBaseType)j;
 	_vals[2] = (Index3DBaseType)k;
+	_flags = 0;
 }
 
 inline Index3DBase::Index3DBase(const Vector3i& src)
@@ -113,6 +122,7 @@ inline Index3DBase::Index3DBase(const Vector3i& src)
 	_vals[0] = (Index3DBaseType)src[0];
 	_vals[1] = (Index3DBaseType)src[1];
 	_vals[2] = (Index3DBaseType)src[2];
+	_flags = 0;
 }
 
 inline bool Index3DBase::isValid() const
@@ -153,9 +163,19 @@ void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
 	}
 }
 
+inline size_t Index3DBase::getMask()
+{
+	return 0x0000ffffffffffff;
+}
+
+inline size_t Index3DBase::compVal() const
+{
+	return _iVal & getMask();
+}
+
 inline bool Index3DBase::operator < (const Index3DBase& rhs) const
 {
-	return _iVal < rhs._iVal;
+	return compVal() < rhs.compVal();
 }
 
 inline const Index3DBaseType& Index3DBase::operator[](int idx) const
@@ -196,10 +216,7 @@ inline Index3D::Index3D(const Vector3i& src)
 template<class T>
 inline bool Index3DBase::operator == (const T& rhs) const
 {
-	return 
-		_vals[0] == rhs._vals[0] && 
-		_vals[1] == rhs._vals[1] && 
-		_vals[2] == rhs._vals[2];
+	return compVal() == rhs.compVal();
 }
 
 template<class T>
@@ -223,19 +240,12 @@ public:
 	bool isValid() const;
 	size_t elementId() const;
 	Index3D blockIdx() const;
-	bool isUserFlagSet(uint32_t bit) const;
-	void setUserFlag(uint32_t bit, bool val) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
 private:
 	size_t _elementId = -1;
-
-	// These attributes are mutable, because this structures is used as a sort key
-	// This allows changing attributes without corrupting the sort.
-	mutable size_t _splitLevel_deprecated = -1;
-	mutable uint32_t _userFlags = 0;
 };
 
 inline Index3DId::Index3DId(const Index3DBase& src, size_t elementId)

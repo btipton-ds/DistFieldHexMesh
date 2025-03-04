@@ -61,6 +61,22 @@ Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	_vertexIds[1] = src._vertexIds[1];
 }
 
+Index3DId Edge::getId() const
+{
+	return _vertexIds[0];
+}
+
+void Edge::setId(const Index3DId& id)
+{
+	// Drop it
+}
+
+void Edge::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
+{
+	remap(idRemap, srcDims, _vertexIds[0]);
+	remap(idRemap, srcDims, _vertexIds[1]);
+}
+
 bool Edge::isValid() const
 {
 	return _vertexIds[0].isValid() && _vertexIds[1].isValid();

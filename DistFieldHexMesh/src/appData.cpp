@@ -234,7 +234,7 @@ void AppData::writeDHFM() const
 {
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
-    uint8_t version = 4;
+    uint8_t version = 0;
     out.write((char*)&version, sizeof(version));
 
     _params.write(out);
@@ -260,28 +260,24 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
 
     uint8_t version;
     in.read((char*)&version, sizeof(version));
-    if (version == 0) {
-    } else if (version == 1) {
-    } else if (version >= 2) {
-        if (version >= 3) {
-            _params.read(in);
-            if (version < 4) {
-                bool hasBaseMesh;
-                in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
-            }
+    if (version >= 3) {
+        _params.read(in);
+        if (version < 4) {
+            bool hasBaseMesh;
+            in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
         }
-
-        size_t numMeshes = _modelMeshData.size();
-        in.read((char*)&numMeshes, sizeof(numMeshes));
-
-        for (size_t i = 0; i < numMeshes; i++) {
-            auto pData = make_shared<MeshData>(this);
-            pData->read(in);
-            _modelMeshData.push_back(pData);
-        }
-
-        updateModelTess();
     }
+
+    size_t numMeshes = _modelMeshData.size();
+    in.read((char*)&numMeshes, sizeof(numMeshes));
+
+    for (size_t i = 0; i < numMeshes; i++) {
+        auto pData = make_shared<MeshData>(this);
+        pData->read(in);
+        _modelMeshData.push_back(pData);
+    }
+
+    updateModelTess();
 
     bool hasVolume;
     in.read((char*)&hasVolume, sizeof(hasVolume));

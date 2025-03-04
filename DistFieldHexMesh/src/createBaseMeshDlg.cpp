@@ -126,14 +126,14 @@ CreateBaseMeshDlg::CreateBaseMeshDlg(AppDataPtr& pAppData, MainFrame* parent, wx
 		const auto& min = bbox.getMin();
 		const auto& max = bbox.getMax();
 
-		params.xMin = min[0];
-		params.xMax = max[0];
+		params.xMin = min[0] - 50;
+		params.xMax = max[0] + 50;
 
-		params.yMin = min[1];
-		params.yMax = max[1];
+		params.yMin = min[1] - 50;
+		params.yMax = max[1] + 50;
 
-		params.zMin = min[2];
-		params.zMax = max[2];
+		params.zMin = min[2] - 50;
+		params.zMax = max[2] + 50;
 	}
 
 	if (params.symXAxis && params.xMin < 0)

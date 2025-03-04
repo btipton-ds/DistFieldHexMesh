@@ -111,7 +111,6 @@ public:
 	const std::vector<Vector3d>& getModelCornerPts() const;
 
 	void setLayerNums();
-	void updateAllCaches(bool clearAll);
 
 	void insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore);
 

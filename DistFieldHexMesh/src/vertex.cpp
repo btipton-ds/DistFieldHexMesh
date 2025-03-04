@@ -42,6 +42,17 @@ Vertex::Vertex(const Vertex& src)
 {
 }
 
+void Vertex::setId(const Index3DId& id)
+{
+	_thisId = id;
+}
+
+void Vertex::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
+{
+	remap(idRemap, srcDims, _thisId);
+	remap(idRemap, srcDims, _connectedVertices);
+}
+
 Vertex& Vertex::operator = (const Vertex& rhs)
 {
 	ObjectPoolOwnerUser::operator= (rhs);
@@ -51,14 +62,59 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	return *this;
 }
 
+MTC::set<Edge> Vertex::getEdges() const
+{
+	MTC::set<Edge> result;
+
+	for (const auto& otherId : _connectedVertices) {
+		Edge e(_thisId, otherId);
+		auto pEdge = getBlockPtr()->getEdge(e);
+		assert(pEdge);
+		if (pEdge) {
+			result.insert(*pEdge);
+		}
+	}
+
+	return result;
+}
+
+MTC::set<Index3DId> Vertex::getFaceIds() const
+{
+	MTC::set<Index3DId> result;
+	MTC::set<Edge> edges = getEdges();
+
+	for (const auto& edge : edges) {
+		auto faceIds = edge.getFaceIds();
+		result.insert(faceIds.begin(), faceIds.end());
+	}
+
+	return result;
+}
+
+MTC::set<Index3DId> Vertex::getCellIds() const
+{
+	MTC::set<Index3DId> result;
+	MTC::set<Index3DId> faceIds = getFaceIds();
+
+	for (const auto& faceId : faceIds) {
+		getOurBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
+			const auto& cellIds = face.getCellIds();
+			result.insert(cellIds.begin(), cellIds.end());
+		});
+	}
+
+	return result;
+}
+
 void Vertex::write(std::ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	writeVector3(out, _pt);
 
 	out.write((char*)&_lockType, sizeof(_lockType));
+	IoUtil::writeObj(out, _connectedVertices.asVector());
 }
 
 void Vertex::read(std::istream& in)
@@ -67,14 +123,11 @@ void Vertex::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	readVector3(in, _pt);
-	if (version < 2) {
-		FixedPt deprecatedPt;
-		readVector3(in, deprecatedPt);
-	}
 
-	if (version >= 1) {
-		in.read((char*)&_lockType, sizeof(_lockType));
-	}
+	in.read((char*)&_lockType, sizeof(_lockType));
+	std::vector<Index3DId> tmp;
+	IoUtil::readObj(in, tmp);
+	_connectedVertices = tmp;
 }
 
 CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)

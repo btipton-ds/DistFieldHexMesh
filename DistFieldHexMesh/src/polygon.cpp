@@ -73,36 +73,76 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 {
 }
 
+void Polygon::connectToplogy() {
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		size_t k = (j + 1) % _vertexIds.size();
+		vertexFunc(_vertexIds[j], [this, i, k](Vertex& vert) {
+			vert.addConnectedVertexId(_vertexIds[i]);
+			vert.addConnectedVertexId(_vertexIds[k]);
+		});
+	}
+}
+
+void Polygon::disconnectTopology() {
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		size_t k = (j + 1) % _vertexIds.size();
+		vertexFunc(_vertexIds[j], [this, i, k](Vertex& vert) {
+			vert.removeConnectedVertexId(_vertexIds[i]);
+			vert.removeConnectedVertexId(_vertexIds[k]);
+		});
+	}
+}
+
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
 	, _createdDuringSplitNumber(src._createdDuringSplitNumber)
 	, _splitIds(src._splitIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
+	, _isConvex(src._isConvex)
 	, _cachedIntersectsModel(src._cachedIntersectsModel)
-	, _cachedEdges(src._cachedEdges)
-	// Don't copy the caches
+	, _sortedIds(src._sortedIds)
+	, _cachedArea(src._cachedArea)
+	, _cachedCentroid(src._cachedCentroid)
+	, _cachedNormal(src._cachedNormal)
 {
 }
 
 DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
+	disconnectTopology();
+
 	ObjectPoolOwnerUser::operator=(rhs);
 	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
 	_splitIds = rhs._splitIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
-	_cachedEdges = rhs._cachedEdges;
 
 	return *this;
 }
 
+void Polygon::postAddToPoolActions()
+{
+	connectToplogy();
+}
+
+Index3DId Polygon::getId() const
+{
+	return _thisId;
+}
+
+void Polygon::setId(const Index3DId& id)
+{
+	_thisId = id;
+}
+
 void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
-	ObjectPoolOwnerUser::remapId(idRemap, srcDims);
-
+	remap(idRemap, srcDims, _thisId);
 	remap(idRemap, srcDims, _splitIds);
 
 	remap(idRemap, srcDims, _vertexIds);
@@ -131,12 +171,11 @@ size_t Polygon::getNestedVertexIds(MTC::set<Index3DId>& vertIds) const
 
 void Polygon::clearCache() const
 {
-	_sortCacheVaild = false;
+	_sortedIdsVaild = false;
 	_cachedCentroidValid = false;
 	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
-	_cachedEdges.clear();
 	_sortedIds.clear();
 }
 
@@ -254,7 +293,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 
 void Polygon::write(ostream& out) const
 {
-	uint8_t version = 1;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
@@ -273,24 +312,12 @@ void Polygon::read(istream& in)
 	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
 	vector<Index3DId> tmp;
-	if (version == 0) {
-		IoUtil::read(in, tmp);
-		_splitIds = tmp;
-		MTC::map<Edge, Index3DId> deprecated;
-		IoUtil::read(in, deprecated);
+	IoUtil::readObj(in, tmp);
+	_splitIds = tmp;
+	IoUtil::readObj(in, _vertexIds);
+	IoUtil::readObj(in, tmp);
+	_cellIds = tmp;
 
-		IoUtil::read(in, _vertexIds);
-		IoUtil::read(in, tmp);
-		_cellIds = tmp;
-
-	} else {
-		// readObj handles version changes on Index3DId
-		IoUtil::readObj(in, tmp);
-		_splitIds = tmp;
-		IoUtil::readObj(in, _vertexIds);
-		IoUtil::readObj(in, tmp);
-		_cellIds = tmp;
-	}
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -305,21 +332,10 @@ bool Polygon::load(istream& in, size_t idSelf)
 	return true;
 }
 
-void Polygon::updateAllTopolCaches() const
-{
-	if (_cachedEdges.empty()) {
-		createEdgesStat(_vertexIds, _cachedEdges, _thisId);
-	}
-}
-
-void Polygon::initVertices(const Volume* pVol) const
-{
-}
-
 void Polygon::sortIds() const
 {
-	if (true || !_sortCacheVaild) {
-		_sortCacheVaild = true;
+	if (!_sortedIdsVaild) {
+		_sortedIdsVaild = true;
 		_sortedIds = _vertexIds;
 		sort(_sortedIds.begin(), _sortedIds.end());
 	}
@@ -355,17 +371,10 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-void Polygon::updateAllCaches()
+MTC::vector<Edge> Polygon::getEdges() const
 {
-	getEdges();
-}
-
-const FastBisectionSet<Edge>& Polygon::getEdges() const
-{
-	updateAllTopolCaches();
-	createEdgesStat(_vertexIds, _cachedEdges, _thisId);
-
-	return _cachedEdges;
+	MTC::vector<Edge> result;
+	return result;
 }
 
 bool Polygon::containsPoint(const Vector3d& pt) const
@@ -545,6 +554,7 @@ bool Polygon::containsVertexNested(const Index3DId& vertId) const
 				return true;
 		}
 	}
+	return false;
 }
 
 void Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const
@@ -1047,7 +1057,9 @@ bool Polygon::imprintVertex(const Index3DId& imprintVert)
 
 	if (_splitIds.size() == 1) {
 		faceFunc(_splitIds[0], [&result, &imprintVert](Polygon& subFace) {
+			subFace.disconnectTopology();
 			subFace.imprintVertexInner(imprintVert);
+			subFace.connectToplogy();
 		});
 	} else {
 		assert(!"Should never imprint a vertex on split faces, it's redundant");

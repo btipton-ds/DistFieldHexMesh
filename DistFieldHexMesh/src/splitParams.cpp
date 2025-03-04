@@ -92,11 +92,6 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&symYAxis, sizeof(symYAxis));
 	in.read((char*)&symZAxis, sizeof(symZAxis));
 
-	if (version <= 2) {
-		size_t dummy;
-		in.read((char*)&dummy, sizeof(dummy));
-		in.read((char*)&dummy, sizeof(dummy));
-	}
 	in.read((char*)&numSimpleDivs, sizeof(numSimpleDivs));
 	in.read((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
 	in.read((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
@@ -109,13 +104,6 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
 	in.read((char*)&yRotationDeg, sizeof(yRotationDeg));
 	in.read((char*)&zRotationDeg, sizeof(zRotationDeg));
-	if (version == 0) {
-		double x, y, z;
-		in.read((char*)&x, sizeof(x));
-		in.read((char*)&y, sizeof(y));
-		in.read((char*)&z, sizeof(z));
-		dims = Vector3d(x, y, z);
-	}
 	in.read((char*)&xMin, sizeof(xMin));
 	in.read((char*)&xMax, sizeof(xMax));
 	in.read((char*)&yMin, sizeof(yMin));
@@ -128,40 +116,22 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
 
-	if (version > 0) {
-		if (version < 2) {
-			size_t tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			xMinDivs = (Index3DBaseType)tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			xMaxDivs = (Index3DBaseType)tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			yMinDivs = (Index3DBaseType)tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			yMaxDivs = (Index3DBaseType)tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			zMinDivs = (Index3DBaseType)tmp;
-			in.read((char*)&tmp, sizeof(tmp));
-			zMaxDivs = (Index3DBaseType)tmp;
-		} else {
-			in.read((char*)&xMinDivs, sizeof(xMinDivs));
-			in.read((char*)&xMaxDivs, sizeof(xMaxDivs));
-			in.read((char*)&yMinDivs, sizeof(yMinDivs));
-			in.read((char*)&yMaxDivs, sizeof(yMaxDivs));
-			in.read((char*)&zMinDivs, sizeof(zMinDivs));
-			in.read((char*)&zMaxDivs, sizeof(zMaxDivs));
-		}
+	in.read((char*)&xMinDivs, sizeof(xMinDivs));
+	in.read((char*)&xMaxDivs, sizeof(xMaxDivs));
+	in.read((char*)&yMinDivs, sizeof(yMinDivs));
+	in.read((char*)&yMaxDivs, sizeof(yMaxDivs));
+	in.read((char*)&zMinDivs, sizeof(zMinDivs));
+	in.read((char*)&zMaxDivs, sizeof(zMaxDivs));
 
-		in.read((char*)&xMinGrading, sizeof(double));
-		in.read((char*)&xMaxGrading, sizeof(double));
-		in.read((char*)&yMinGrading, sizeof(double));
-		in.read((char*)&yMaxGrading, sizeof(double));
-		in.read((char*)&zMinGrading, sizeof(double));
-		in.read((char*)&zMaxGrading, sizeof(double));
+	in.read((char*)&xMinGrading, sizeof(double));
+	in.read((char*)&xMaxGrading, sizeof(double));
+	in.read((char*)&yMinGrading, sizeof(double));
+	in.read((char*)&yMaxGrading, sizeof(double));
+	in.read((char*)&zMinGrading, sizeof(double));
+	in.read((char*)&zMaxGrading, sizeof(double));
 
-		in.read((char*)dims.data(), 3 * sizeof(double));
-		volDivs.read(in);
-	}
+	in.read((char*)dims.data(), 3 * sizeof(double));
+	volDivs.read(in);
 }
 
 void SplittingParams::write(std::ostream& out) const

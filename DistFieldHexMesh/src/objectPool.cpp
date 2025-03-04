@@ -43,18 +43,17 @@ using namespace DFHM;
 thread_local const CLASS_NAME* ObjectPool<CLASS_NAME>::_tl_pCompareObj = nullptr
 
 DECL_THREAD_LOCAL(Vertex);
+DECL_THREAD_LOCAL(Edge);
 DECL_THREAD_LOCAL(::DFHM::Polygon);
 DECL_THREAD_LOCAL(Polyhedron);
 
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)
 	: _pPoolOwner(src._pPoolOwner)
-	, _thisId(src._thisId)
 {
 }
 
-ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id)
+ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner)
 	: _pPoolOwner(const_cast<ObjectPoolOwner*> (poolOwner))
-	, _thisId(poolOwner->getBlockIdx(), id)
 {
 }
 
@@ -71,7 +70,6 @@ ObjectPoolOwnerUser& ObjectPoolOwnerUser::operator = (const ObjectPoolOwnerUser&
 {
 	clear();
 	_pPoolOwner = rhs._pPoolOwner;
-	_thisId = rhs._thisId;
 
 	return *this;
 }
@@ -93,61 +91,46 @@ Block* ObjectPoolOwnerUser::getOurBlockPtr()
 
 const Block* ObjectPoolOwnerUser::getBlockPtr() const
 {
-	auto pBlock =  dynamic_cast<const Block*>(_pPoolOwner);
-	return pBlock->getOwner(_thisId);
+	return getOwnerBlockPtr(getId());
 }
 
 Block* ObjectPoolOwnerUser::getBlockPtr()
 {
-	auto pOwner = dynamic_cast<Block*>(_pPoolOwner);
-	if (pOwner)
-		return pOwner->getVolume()->getBlockPtr(_thisId);
-	return nullptr;
+	return getOwnerBlockPtr(getId());
 }
 
 const Block* ObjectPoolOwnerUser::getOwnerBlockPtr(const Index3D& idx) const
 {
-	auto p = getBlockPtr();
-	if (p)
-		return p->getOwner(idx);
-	return nullptr;
+	return _pPoolOwner->getOwner(idx);
 }
 
 Block* ObjectPoolOwnerUser::getOwnerBlockPtr(const Index3D& idx)
 {
-	auto p = getBlockPtr();
-	if (p)
-		return p->getOwner(idx);
-	return nullptr;
+	return _pPoolOwner->getOwner(idx);
 }
 
-void ObjectPoolOwnerUser::setId(const ObjectPoolOwner* poolOwner, size_t id)
+void ObjectPoolOwnerUser::postAddToPoolActions()
+{
+	// NOP by default
+}
+
+void ObjectPoolOwnerUser::setOwner(const ObjectPoolOwner* poolOwner, const Index3DId& id)
 {
 	_pPoolOwner = const_cast<ObjectPoolOwner*> (poolOwner);
-	_thisId = Index3DId(poolOwner->getBlockIdx(), id);
+	setId(id);
 }
 
-const Index3DId& ObjectPoolOwnerUser::getId() const
+void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, Index3DId& val)
 {
-	return _thisId;
-}
-
-void ObjectPoolOwnerUser::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
-{
+	Index3D dstIdx;
 	auto pBlk = getOurBlockPtr();
 	auto pVol = pBlk->getVolume();
-	size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
-	Index3D dstIdx;
+
+	size_t srcIdx = Volume::calLinearBlockIndex(_pPoolOwner->getBlockIdx(), srcDims);
 	if (idRemap[srcIdx] != -1) {
 		dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
-		size_t elementId = _thisId.elementId();
-		_thisId = Index3DId(dstIdx, elementId);
+		val = Index3DId(dstIdx, val.elementId());
 	}
-}
-
-bool ObjectPoolOwnerUser::verifyIndices(const Index3D& idx) const
-{
-	return _thisId.blockIdx() == idx;
 }
 
 void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, FastBisectionSet<Index3DId>& vals)
@@ -160,7 +143,7 @@ void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3
 	auto pVol = pBlk->getVolume();
 
 	for (auto& v : tmp) {
-		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		size_t srcIdx = Volume::calLinearBlockIndex(_pPoolOwner->getBlockIdx(), srcDims);
 		if (idRemap[srcIdx] != -1) {
 			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
 			vals.insert(Index3DId(dstIdx, v.elementId()));
@@ -180,7 +163,7 @@ void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3
 	auto pVol = pBlk->getVolume();
 
 	for (auto& v : tmp) {
-		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		size_t srcIdx = Volume::calLinearBlockIndex(_pPoolOwner->getBlockIdx(), srcDims);
 		if (idRemap[srcIdx] != -1) {
 			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
 			vals.insert(Index3DId(dstIdx, v.elementId()));
@@ -197,7 +180,7 @@ void ObjectPoolOwnerUser::remap(const std::vector<size_t>& idRemap, const Index3
 
 	for (size_t i = 0; i < vals.size(); i++) {
 		const auto& v = vals[i];
-		size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+		size_t srcIdx = Volume::calLinearBlockIndex(_pPoolOwner->getBlockIdx(), srcDims);
 		if (idRemap[srcIdx] != -1) {
 			dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
 			vals[i] = Index3DId(dstIdx, vals[i].elementId());

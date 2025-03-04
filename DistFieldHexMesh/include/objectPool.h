@@ -76,13 +76,14 @@ class ObjectPoolOwnerUser {
 public:
 	ObjectPoolOwnerUser() = default;
 	ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src);
-	ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner, size_t id = -1);
+	ObjectPoolOwnerUser(const ObjectPoolOwner* poolOwner);
 	virtual ~ObjectPoolOwnerUser();
 	virtual void clear();
 
 	ObjectPoolOwnerUser& operator = (const ObjectPoolOwnerUser& rhs);
 
 	void setPoolOwner(ObjectPoolOwner* pPoolOwner);
+
 	const Block* getOurBlockPtr() const;
 	Block* getOurBlockPtr();
 
@@ -92,22 +93,23 @@ public:
 	const Block* getOwnerBlockPtr(const Index3D& idx) const;
 	Block* getOwnerBlockPtr(const Index3D& idx);
 
-	void setId(const ObjectPoolOwner* poolOwner, size_t id);
-	const Index3DId& getId() const;
+	void setOwner(const ObjectPoolOwner* poolOwner, const Index3DId& id);
 
-	virtual void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims);
-	virtual bool verifyIndices(const Index3D& idx) const;
+	virtual Index3DId getId() const = 0;
+	virtual void postAddToPoolActions();
+	virtual void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) = 0;
 
 protected:
+	virtual void setId(const Index3DId& id) = 0;
+
 	bool isOwnerBeingDestroyed() const;
 
+	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, Index3DId& val);
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, FastBisectionSet<Index3DId>& vals);
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::set<Index3DId>& vals);
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::vector<Index3DId>& vals);
 	template<class T>
 	void remap(const std::vector<size_t>& idRemap, const Index3D& srcDims, MTC::map<T, Index3DId>& vals);
-
-	Index3DId _thisId;
 
 private:
 	template<class T>
@@ -519,10 +521,13 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 		_idToIndexMap.push_back(index);
 	}
 
-	assert(getEntry(_idToIndexMap[result]));
-	getEntry(_idToIndexMap[result])->setId(_pPoolOwner, result);
+	auto pNewEntry = getEntry(_idToIndexMap[result]);
+	assert(pNewEntry);
+	Index3DId newId(_pPoolOwner->getBlockIdx(), result);
+	pNewEntry->setOwner(_pPoolOwner, newId);
+	pNewEntry->postAddToPoolActions();
 
-	return Index3DId(_pPoolOwner->getBlockIdx(), result);
+	return newId;
 }
 
 template<class T>

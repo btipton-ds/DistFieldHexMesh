@@ -61,6 +61,7 @@ public:
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 
+	Index3DId getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
@@ -68,10 +69,10 @@ public:
 	size_t getNumNestedFaces() const;
 	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 	size_t getNumFaces(bool includeSubFaces) const;
-	const MTC::vector<Index3DId>& getVertIds() const;
-	const FastBisectionSet<Edge>& getEdges(bool includeAdjacentCellFaces) const;
+	MTC::vector<Index3DId> getVertIds() const;
+	FastBisectionSet<Edge> getEdges(bool includeAdjacentCellFaces) const;
 
-	const FastBisectionSet<Index3DId>& getAdjacentCells() const;
+	FastBisectionSet<Index3DId> getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	void getVertEdges(const Index3DId& vertId, FastBisectionSet<Edge>& edges, bool includeAdjacentCells) const;
@@ -80,7 +81,6 @@ public:
 
 	CBoundingBox3Dd getBoundingBox() const;
 	void clearCache() const;
-	void clearTopolCache() const;
 	void updateAllTopolCaches() const;
 
 	bool contains(const Vector3d& pt) const;
@@ -153,6 +153,10 @@ public:
 	void cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const;
 #endif
 	LAMBDA_CLIENT_DECLS
+
+protected:
+	void setId(const Index3DId& id) override;
+
 private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
@@ -169,7 +173,8 @@ private:
 	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 
-	/* 
+	Index3DId _thisId;
+	/*
 		The faceIds are invariant.
 		If a face is split, it's id stays in the list, but the face itself records it's been split and into which faces
 		The original face is marked as split, no longer really exists, and points to it's replacements.
@@ -184,10 +189,6 @@ private:
 	bool _exists = true;
 
 	mutable std::vector<TriMeshIndex> _triIndices; // stores only the triangles that intersect this cell.
-
-	mutable MTC::vector<Index3DId> _cachedVertIds;
-	mutable FastBisectionSet<Index3DId> _cachedAdjCellIds;
-	mutable FastBisectionSet<Edge> _cachedEdges, _cachedEdgesAdj;
 
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;

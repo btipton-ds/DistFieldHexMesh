@@ -62,16 +62,16 @@ struct SplittingParams {
 	size_t maxSplitFacesPerCell = 2;
 	size_t maxCellFaces = 12;
 
-	Index3DBaseType xMinDivs = 5;
-	Index3DBaseType xMaxDivs = 5;
-	Index3DBaseType yMinDivs = 5;
-	Index3DBaseType yMaxDivs = 5;
-	Index3DBaseType zMinDivs = 5;
-	Index3DBaseType zMaxDivs = 5;
+	Index3DBaseType xMinDivs = 2;
+	Index3DBaseType xMaxDivs = 2;
+	Index3DBaseType yMinDivs = 2;
+	Index3DBaseType yMaxDivs = 2;
+	Index3DBaseType zMinDivs = 2;
+	Index3DBaseType zMaxDivs = 2;
 
-	double baseBoxOffset = 1;
+	double baseBoxOffset = 2;
 	double xRotationDeg = 0;
-	double yRotationDeg = 0;
+	double yRotationDeg = 45;
 	double zRotationDeg = 0;
 	double xMin = DBL_MAX, xMax = 1;
 	double yMin = DBL_MAX, yMax = 1;
@@ -82,14 +82,14 @@ struct SplittingParams {
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
 
-	double xMinGrading = 2;
-	double xMaxGrading = 2;
-	double yMinGrading = 2;
-	double yMaxGrading = 2;
-	double zMinGrading = 2;
-	double zMaxGrading = 2;
+	double xMinGrading = 5;
+	double xMaxGrading = 5;
+	double yMinGrading = 5;
+	double yMaxGrading = 5;
+	double zMinGrading = 5;
+	double zMaxGrading = 5;
 
-	Vector3d dims = Vector3d(1, 1, 1);
+	Vector3d dims = Vector3d(2, 1, 1);
 	Index3D volDivs = Index3D(1, 1, 1);
 };
 

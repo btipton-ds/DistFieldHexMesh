@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_boundingBox.h>
 #include <index3D.h>
 #include <objectPool.h>
+#include <fastBisectionSet.h>
 
 #define USE_FIXED_PT 0
 
@@ -65,21 +66,36 @@ public:
 	const bool operator == (const Vertex& rhs) const;
 	const bool operator != (const Vertex& rhs) const;
 
+	Index3DId getId() const override;
+	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
+
+	void addConnectedVertexId(const Index3DId& vertId);
+	void removeConnectedVertexId(const Index3DId& vertId);
+	const FastBisectionSet<Index3DId>& getConnectedVertexIds() const;
+	MTC::set<Edge> getEdges() const;
+	MTC::set<Index3DId> getFaceIds() const;
+	MTC::set<Index3DId> getCellIds() const;
+
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
+
+protected:
+	void setId(const Index3DId& id) override;
 
 private:
 	static int64_t scaleToSearch();
 	static int64_t scaleToSearch(double v);
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
 
-	/*
-	NOTE - In a single threaded architecture, it saves time to keep edges and faceIds stored with the vertex.
-	In this multi-threaded architecture, it leads to deadlocks, more mutexes and slows things down.
-	Do NOT add any reference links on the vertex unless the architecture changes.
-	*/
 	Vector3d _pt;
+	Index3DId _thisId;
+	FastBisectionSet<Index3DId> _connectedVertices;
 };
+
+inline Index3DId Vertex::getId() const
+{
+	return _thisId;
+}
 
 inline CBoundingBox3Dd Vertex::getBBox() const
 {
@@ -109,6 +125,21 @@ inline void Vertex::setLockType(VertexLockType val)
 inline VertexLockType Vertex::getLockType() const
 {
 	return _lockType;
+}
+
+inline void Vertex::addConnectedVertexId(const Index3DId& vertId)
+{
+	_connectedVertices.insert(vertId);
+}
+
+inline void Vertex::removeConnectedVertexId(const Index3DId& vertId)
+{
+	_connectedVertices.erase(vertId);
+}
+
+inline const FastBisectionSet<Index3DId>& Vertex::getConnectedVertexIds() const
+{
+	return _connectedVertices;
 }
 
 std::ostream& operator << (std::ostream& out, const Vertex& vert);

@@ -621,36 +621,6 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 	reportProgress(pReporter);
 }
 
-void Volume::updateAllCaches(bool clearAll)
-{
-	if (clearAll) {
-		runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
-			pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
-				face.clearCache();
-			});
-
-			pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
-				cell.clearTopolCache();
-			});
-			return true;
-		}, RUN_MULTI_THREAD);
-	}
-
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolygonsInOrder([](const auto& cellId, Polygon& face) {
-			face.updateAllCaches();
-		});
-		return true;
-	}, RUN_MULTI_THREAD);
-
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
-			cell.updateAllTopolCaches();
-		});
-		return true;
-	}, RUN_MULTI_THREAD);
-}
-
 void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
@@ -661,8 +631,6 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 	double sharpAngleRadians = params.getSharpAngleRadians();
 
 	reportProgress(pReporter);
-
-	updateAllCaches(false);
 
 	std::vector<size_t> sharpEdges;
 	{
@@ -883,8 +851,6 @@ void Volume::dumpOpenCells(bool multiCore) const
 
 void Volume::setLayerNums()
 {
-	updateAllCaches(false);
-
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			cell.clearLayerNum();
@@ -1488,7 +1454,7 @@ void Volume::polymeshWrite(const std::string& dirPath, ProgressReporter* pReport
 
 bool Volume::write(ostream& out) const
 {
-	uint8_t version = 4;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	_volDim.write(out);
@@ -1522,19 +1488,9 @@ bool Volume::read(istream& in)
 	uint8_t version = -1;
 	in.read((char*)&version, sizeof(version));
 
-	if (version < 3) {
-		double oldAngle;
-		in.read((char*)&oldAngle, sizeof(oldAngle));
-	}
 	_volDim.read(in);
-	if (version < 1) {
-		Vector3d tmpV;
-		readVector3(in, tmpV);
-		readVector3(in, tmpV);
-	} else if (version >= 2) {
-		_modelDim.read(in);
-		_modelDimOrigin.read(in);
-	}
+	_modelDim.read(in);
+	_modelDimOrigin.read(in);
 
 	_modelBundingBox.read(in);
 
@@ -1542,11 +1498,9 @@ bool Volume::read(istream& in)
 	IoUtil::readVector3(in, cPts);
 	_modelCornerPts = cPts;
 
-	if (version >= 4) {
-		vector<Vector3d> volPts;
-		IoUtil::readVector3(in, volPts);
-		_volCornerPts = volPts;
-	}
+	vector<Vector3d> volPts;
+	IoUtil::readVector3(in, volPts);
+	_volCornerPts = volPts;
 
 	size_t num;
 	in.read((char*)&num, sizeof(num));
@@ -1567,8 +1521,6 @@ bool Volume::read(istream& in)
 		}
 
 	}
-
-	updateAllCaches(false);
 
 	const auto& meshData = _pAppData->getMeshData();
 	runThreadPool([&meshData](size_t threadNum, const BlockPtr& pBlk) {

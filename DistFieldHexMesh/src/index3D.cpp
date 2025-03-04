@@ -35,10 +35,12 @@ Index3DBaseType Index3DBase::s_blockDim = 8;
 
 Index3DBase::Index3DBase()
 {
-	_vals[0] = -1;
-	_vals[1] = -1;
-	_vals[2] = -1;
-	_vals[3] = -1;
+//	assert(sizeof(Index3DBase) == 8);
+	_vals[0] = 0xffff;
+	_vals[1] = 0xffff;
+	_vals[2] = 0xffff;
+	_flags = 0;
+//	assert(_iVal == getMask());
 }
 
 Index3DBase& Index3DBase::operator += (const Index3DBase& rhs)
@@ -123,27 +125,26 @@ ostream& DFHM::operator << (ostream& out, const Index3D& idx)
 	return out;
 }
 
-bool Index3DId::isUserFlagSet(uint32_t bit) const
+bool Index3DBase::isUserFlagSet(uint32_t bit) const
 {
-	return (_userFlags & bit) == bit;
+	return (_flags & bit) == bit;
 }
 
-void Index3DId::setUserFlag(uint32_t bit, bool val) const
+void Index3DBase::setUserFlag(uint32_t bit, bool val) const
 {
 	if (val)
-		_userFlags = _userFlags | bit;
+		_flags = _flags | bit;
 	else
-		_userFlags = _userFlags & ~bit;
+		_flags = _flags & ~bit;
 }
 
 void Index3DId::write(std::ostream& out) const
 {
 	Index3DBase::write(out);
 
-	uint8_t version = 1;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 	out.write((char*)&_elementId, sizeof(_elementId));
-	out.write((char*)&_userFlags, sizeof(_userFlags));
 }
 
 void Index3DId::read(std::istream& in)
@@ -152,9 +153,4 @@ void Index3DId::read(std::istream& in)
 	uint8_t version = 0;
 	in.read((char*)&version, sizeof(version));
 	in.read((char*)&_elementId, sizeof(_elementId));
-	if (version == 0) {
-		size_t deprecated;
-		in.read((char*)&deprecated, sizeof(deprecated));
-	}
-	in.read((char*)&_userFlags, sizeof(_userFlags));
 }

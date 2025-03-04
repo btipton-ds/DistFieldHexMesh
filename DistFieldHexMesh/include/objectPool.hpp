@@ -43,7 +43,7 @@ namespace DFHM {
 		for (const auto& pair : vals) {
 			const T& key = pair.first;
 			const Index3DId& oldIdx = pair.second;
-			size_t srcIdx = Volume::calLinearBlockIndex(_thisId, srcDims);
+			size_t srcIdx = Volume::calLinearBlockIndex(getId(), srcDims);
 			if (idRemap[srcIdx] != -1) {
 				dstIdx = pVol->calBlockIndexFromLinearIndex(idRemap[srcIdx]);
 				vals[key] = Index3DId(dstIdx, oldIdx.elementId());

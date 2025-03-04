@@ -92,7 +92,7 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 
 void MeshData::write(std::ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
 	out.write((char*)&_active, sizeof(_active));
@@ -110,10 +110,6 @@ void MeshData::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	in.read((char*)&_active, sizeof(_active));
-	if (version == 1) {
-		bool deprecatedReference;
-		in.read((char*)&deprecatedReference, sizeof(deprecatedReference));
-	}
 
 	size_t numChars;
 	in.read((char*)&numChars, sizeof(numChars));

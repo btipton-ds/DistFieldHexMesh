@@ -107,9 +107,13 @@ public:
 
 	Polygon& operator = (const Polygon& rhs);
 
+	void postAddToPoolActions() override;
+	Index3DId getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addVertex(const Index3DId& vertId);
+	void connectToplogy();
+	void disconnectTopology();
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
@@ -154,8 +158,7 @@ public:
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
 	void clearCache() const;
-	void updateAllCaches();
-	const FastBisectionSet<Edge>& getEdges() const;
+	MTC::vector<Edge> getEdges() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 	size_t numFaceIds(bool includeSplits) const;
@@ -211,6 +214,9 @@ public:
 
 	LAMBDA_CLIENT_DECLS
 
+protected:
+	void setId(const Index3DId& id) override;
+
 private:
 	friend class Block;
 	friend class Polyhedron;
@@ -218,27 +224,25 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
-	void initVertices(const Volume* pVol) const;
 	bool imprintVertexInner(const Index3DId& imprintVert);
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
-	void updateAllTopolCaches() const;
 
+	Index3DId _thisId;
 	size_t _createdDuringSplitNumber = 0;
 	FastBisectionSet<Index3DId> _splitIds;	// Entities referencing this one
 
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
 
-	mutable bool _sortCacheVaild = false;
+	mutable bool _sortedIdsVaild = false;
 	mutable bool _cachedCentroidValid = false;
 	mutable bool _cachedNormalValid = false;
 
 	mutable Trinary _isConvex = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable MTC::vector<Index3DId> _sortedIds;
-	mutable FastBisectionSet<Edge> _cachedEdges;
-	mutable double _cachedArea;
+	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid, _cachedNormal;
 };
 
@@ -249,7 +253,7 @@ inline bool Polygon::verifyUnique() const
 
 inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
 {
-	for (const auto& id : _cellIds) {
+	for (auto& id : _cellIds) {
 		if (id == cellId) {
 			id.setUserFlag(UF_FACE_REVERSED, reversed);
 			break;
