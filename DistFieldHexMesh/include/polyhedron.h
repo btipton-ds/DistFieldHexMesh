@@ -96,7 +96,8 @@ public:
 	size_t classify(MTC::vector<Vector3d>& corners) const;
 	void classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const;
 	bool isConvex() const;
-	bool intersectsModel() const;		 // Uses bounding box
+	bool intersectsModel() const;
+	bool intersectsModel(const Planed& plane, bool above) const;
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 	void addToFaceCountHistogram(std::map<size_t, size_t>& histo) const;
 	bool isTooComplex(const SplittingParams& params) const;

@@ -47,10 +47,7 @@ class Splitter {
 public:
 	Splitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
 
-	bool splitAtParamCenter();
-	// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
-	// match with the neighbor cells's faces.
-	bool splitAtParam(const Vector3d& tuv);
+	bool splitAtCenter();
 
 private:
 	static void calHexCellFaceTU(int i, const Vector3d& tuv, double& t, double& u);

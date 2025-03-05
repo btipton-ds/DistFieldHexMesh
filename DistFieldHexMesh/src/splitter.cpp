@@ -60,22 +60,17 @@ Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DI
 {
 }
 
-bool Splitter::splitAtParamCenter()
-{
-	bool result = false;
-	Vector3d tuv(0.5, 0.5, 0.5);
-	result = splitAtParam(tuv);
-
-	return result;
-}
-
-bool Splitter::splitAtParam(const Vector3d& tuv)
+bool Splitter::splitAtCenter()
 {
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 
 	bool result = false;
-	cellFunc(_polyhedronId, [this, &tuv, &result](Polyhedron& cell) {
+
+	cellFunc(_polyhedronId, [this, &result](Polyhedron& cell) {
+		// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
+		// match with the neighbor cells's faces.
+		Vector3d tuv(0.5, 0.5, 0.5);
 #if 0 && defined(_DEBUG)
 		// Now split the cell
 		Index3DId testId(6, 4, 5, 0);
@@ -105,9 +100,8 @@ void Splitter::splitHexCell(Polyhedron& cell, const Vector3d& tuv)
 {
 	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
 	createHexCellData(cell);
-	if (_numSplitFaces > 0) {
-		int dbgBreak = 1;
-	}
+
+
 
 	for (const auto& facePts : _cellFacePoints) {
 		// This aligns the disordered faceIds with their cube face points
@@ -181,12 +175,10 @@ void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& c
 	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), cell.getId());
 
 	cellFunc(newCellId, [this, cell](Polyhedron& newCell) {
-		assert(newCell.getNumFaces(true) <= __params.maxCellFaces);
+		assert(newCell.getNumFaces(true) <= _params.maxCellFaces);
 		newCell.setParentId(cell.getId());
 		newCell.setSplitLevel(cell.getSplitLevel());
-#if USE_CELL_SEARCH_TREE
 		newCell.setTriIndices(cell);
-#endif
 	});
 		
 

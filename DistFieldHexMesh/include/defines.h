@@ -37,7 +37,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <math.h>
 
 #define RUN_MULTI_THREAD 1
-#define USE_CELL_SEARCH_TREE 1
 #define FAST_BISECTION_VALIDATION_ENABLED 0
 #define INCLUDE_DEBUG_WX_FRAME 0
 #define SHARP_EDGE_ANGLE_DEGREES 15

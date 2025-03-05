@@ -637,15 +637,10 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 		});
 	}
 //	newCell.orientFaces();
-#if !USE_CELL_SEARCH_TREE
-	const auto& meshData = getModelMeshData();
-	newCell.addMeshToTriIndices(meshData);
-#else
 	if (!parentCellId.isValid()) {
 		const auto& meshData = getModelMeshData();
 		newCell.addMeshToTriIndices(meshData);
 	}
-#endif
 
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());
@@ -1015,7 +1010,7 @@ bool Block::splitRequiredPolyhedra()
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter splitter(this, cellId, localTouched);
-			if (splitter.splitAtParamCenter())
+			if (splitter.splitAtCenter())
 				didSplit = true;
 			else
 				assert(!"splitFailed");
@@ -1032,7 +1027,7 @@ bool Block::splitRequiredPolyhedra()
 				auto& cell = _polyhedra[cellId];
 				if (cell.isTooComplex(params)) {
 					Splitter splitter(this, cellId, localTouched);
-					if (splitter.splitAtParamCenter())
+					if (splitter.splitAtCenter())
 						didSplit = true;
 					else
 						assert(!"splitFailed");

@@ -838,11 +838,7 @@ bool Polyhedron::isConvex() const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
-		CBoundingBox3Dd bbox = getBoundingBox();
-#if USE_CELL_SEARCH_TREE
-		if (_triIndices.empty()) {
-			_intersectsModel = IS_FALSE;
-		} else {
+		if (!_triIndices.empty()) {
 			for (const auto& faceId : _faceIds) {
 				faceFunc(faceId, [this](const Polygon& face) {
 					if (face.intersectsModel(_triIndices)) {
@@ -856,41 +852,26 @@ bool Polyhedron::intersectsModel() const
 		}
 		_intersectsModel = IS_FALSE;
 	}
-#else
-
-		auto& meshData = getBlockPtr()->getModelMeshData();
-		for (const auto& pData : meshData) {
-			const auto& pMesh = pData->getMesh();
-			vector<size_t> triIndices;
-			if (pMesh->findTris(bbox, triIndices)) {
-				for (const auto& triIdx : triIndices) {
-					const auto& tri = pMesh->getTri(triIdx);
-					const Vector3d* pts[] = {
-						&pMesh->getVert(tri[0])._pt,
-						&pMesh->getVert(tri[1])._pt,
-						&pMesh->getVert(tri[2])._pt,
-					};
-
-					for (const auto& faceId : _faceIds) {
-						faceFunc(faceId, [this, &pts](const Polygon& face) {
-							if (face.intersectsTri(pts)) {
-								_intersectsModel = IS_TRUE;
-							}
-							});
-
-						if (_intersectsModel == IS_TRUE)
-							return true;
-					}
-
-				}
-			}
-		}
-
-		_intersectsModel = IS_FALSE;
-	}
-#endif
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
+}
+
+bool Polyhedron::intersectsModel(const Planed& plane, bool above) const
+{
+	bool result = false;
+	if (!_triIndices.empty()) {
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [this, &result](const Polygon& face) {
+				if (face.intersectsModel(_triIndices)) {
+					result = true;
+				}
+			});
+
+			if (result)
+				break;
+		}
+	}
+	return result;
 }
 
 bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
