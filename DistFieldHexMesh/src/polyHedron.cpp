@@ -833,8 +833,6 @@ bool Polyhedron::isConvex() const
 			break;
 	}
 	return result;
-
-	return true;
 }
 
 bool Polyhedron::intersectsModel() const
