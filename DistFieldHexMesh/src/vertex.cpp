@@ -134,7 +134,7 @@ void Vertex::read(std::istream& in)
 	readVector3(in, _pt);
 
 	in.read((char*)&_lockType, sizeof(_lockType));
-	IoUtil::read(in, _connectedVertices);
+	IoUtil::readObj(in, _connectedVertices);
 }
 
 CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)

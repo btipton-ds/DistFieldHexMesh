@@ -389,7 +389,7 @@ void Edge::read(std::istream& in)
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);
 
-	IoUtil::read(in, _faceIds);
+	IoUtil::readObj(in, _faceIds);
 }
 
 ostream& DFHM::operator << (ostream& out, const Edge& edge)

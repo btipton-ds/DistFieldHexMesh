@@ -260,13 +260,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
 
     uint8_t version;
     in.read((char*)&version, sizeof(version));
-    if (version >= 3) {
-        _params.read(in);
-        if (version < 4) {
-            bool hasBaseMesh;
-            in.read((char*)&hasBaseMesh, sizeof(hasBaseMesh));
-        }
-    }
+    _params.read(in);
 
     size_t numMeshes = _modelMeshData.size();
     in.read((char*)&numMeshes, sizeof(numMeshes));
