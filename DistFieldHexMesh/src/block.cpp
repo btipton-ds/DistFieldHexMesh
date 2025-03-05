@@ -480,6 +480,11 @@ bool Block::verifyIndices(const Index3D& idx) const
 void Block::createBlockCells()
 {
 	Index3D idx;
+	cout << "Enter createBlockCells" << getBlockIdx() << "\n";
+	cout.flush();
+	if (getBlockIdx() == Index3D(3, 0, 3)) {
+		int dbgBreak = 1;
+	}
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
@@ -487,6 +492,7 @@ void Block::createBlockCells()
 			}
 		}
 	}
+	cout << "Exit createBlockCells\n";
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -570,6 +576,44 @@ Index3DId Block::findFace(const Polygon& face) const
 	auto faceId = pOwner->_polygons.findId(face);
 
 	return faceId;
+}
+
+Edge* Block::addEdge(const Index3DId& vert0, const Index3DId& vert1)
+{
+	Edge edge(vert0, vert1);
+	auto pOwner = getOwner(edge);
+	auto& edges = pOwner->_edges;
+	auto id = edges.findOrAdd(edge);
+	auto pEdge = edges.getByElementIndex(id.elementId());
+	assert(pEdge);
+	if (pEdge && pEdge != &edge)
+		return const_cast<Edge*>(pEdge);
+	return nullptr;
+}
+
+const Edge* Block::findEdge(const Index3DId& vert0, const Index3DId& vert1) const
+{
+	Edge edge(vert0, vert1);
+	auto pOwner = getOwner(edge);
+	auto& edges = pOwner->_edges;
+	auto id = edges.findId(edge);
+	return edges.getByElementIndex(id.elementId());
+}
+
+void Block::addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1)
+{
+	Edge edge(vert0, vert1);
+	auto pOwner = getOwner(edge);
+	pOwner->_edges.findOrAdd(edge);
+}
+
+bool Block::removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1)
+{
+	Edge edge(vert0, vert1);
+	auto pOwner = getOwner(edge);
+	auto& edges = pOwner->_edges;
+	auto id = edges.findId(edge);
+	return edges.removeFromLookup(id);
 }
 
 Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
@@ -666,6 +710,16 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	return blockIdx.isValid() ? _pVol->getBlockPtr(blockIdx) : nullptr;
 }
 
+const Block* Block::getOwner(const Edge& edge) const
+{
+	return getOwner(edge.getVertex(0));
+}
+
+Block* Block::getOwner(const Edge& edge)
+{
+	return getOwner(edge.getVertex(0));
+}
+
 Index3DId Block::idOfPoint(const Vector3d& pt) const
 {
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
@@ -674,6 +728,7 @@ Index3DId Block::idOfPoint(const Vector3d& pt) const
 		assert(!"failed to find blockIdx");
 	}
 	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
 	Index3DId result = pOwner->_vertices.findId(pt);
 
 	return result;
@@ -688,14 +743,11 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
 	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
 	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
 
-	Vertex vert(pt);
-	vert.setPoolOwner(pOwner);
-	result = pOwner->_vertices.findOrAdd(vert, currentId);
+	result = pOwner->_vertices.findOrAdd(Vertex(pt), currentId);
 
-#ifdef _DEBUG
 	assert(idOfPoint(pt) == result);
-#endif // _DEBUG
 
 	return result;
 }
@@ -1392,39 +1444,4 @@ void Block::pack()
 #endif
 }
 
-//LAMBDA_BLOCK_IMPLS
-void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
-	auto p = getOwner(id); 
-	if (p->_vertices.exists(id)) 
-		func(p->_vertices[id]);
-} 
-
-void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
-	auto p = getOwner(id); 
-	if (p->_vertices.exists(id)) 
-		func(p->_vertices[id]);
-} 
-
-void Block::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
-	auto p = getOwner(id); 
-	if (p->_polygons.exists(id)) 
-		func(p->_polygons[id]);
-} 
-
-void Block::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
-	auto p = getOwner(id); 
-	if (p->_polygons.exists(id)) 
-		func(p->_polygons[id]);
-} 
-
-void Block::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
-	auto p = getOwner(id); 
-	if (p->_polyhedra.exists(id)) 
-		func(p->_polyhedra[id]);
-} 
-
-void Block::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
-	auto p = getOwner(id); 
-	if (p->_polyhedra.exists(id)) 
-		func(p->_polyhedra[id]);
-}
+LAMBDA_BLOCK_IMPLS

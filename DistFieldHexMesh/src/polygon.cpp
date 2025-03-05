@@ -81,6 +81,11 @@ void Polygon::connectToplogy() {
 			vert.addConnectedVertexId(_vertexIds[i]);
 			vert.addConnectedVertexId(_vertexIds[k]);
 		});
+
+		auto pEdge = getBlockPtr()->addEdge(_vertexIds[i], _vertexIds[j]);
+		assert(pEdge);
+		if (pEdge)
+			pEdge->addFaceId(getId());
 	}
 }
 
@@ -92,6 +97,11 @@ void Polygon::disconnectTopology() {
 			vert.removeConnectedVertexId(_vertexIds[i]);
 			vert.removeConnectedVertexId(_vertexIds[k]);
 		});
+
+		auto pEdge = const_cast<Edge*>(getBlockPtr()->findEdge(_vertexIds[i], _vertexIds[j]));
+		assert(pEdge);
+		if (pEdge)
+			pEdge->removeFaceId(getId());
 	}
 }
 
@@ -298,9 +308,9 @@ void Polygon::write(ostream& out) const
 
 	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	IoUtil::writeObj(out, _splitIds.asVector());
+	IoUtil::writeObj(out, _splitIds);
 	IoUtil::writeObj(out, _vertexIds);
-	IoUtil::writeObj(out, _cellIds.asVector());
+	IoUtil::writeObj(out, _cellIds);
 
 }
 
@@ -311,13 +321,9 @@ void Polygon::read(istream& in)
 
 	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
 
-	vector<Index3DId> tmp;
-	IoUtil::readObj(in, tmp);
-	_splitIds = tmp;
+	IoUtil::readObj(in, _splitIds);
 	IoUtil::readObj(in, _vertexIds);
-	IoUtil::readObj(in, tmp);
-	_cellIds = tmp;
-
+	IoUtil::readObj(in, _cellIds);
 }
 
 bool Polygon::unload(ostream& out, size_t idSelf)
@@ -374,6 +380,15 @@ bool Polygon::isBlockBoundary() const
 MTC::vector<Edge> Polygon::getEdges() const
 {
 	MTC::vector<Edge> result;
+
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		Edge e(_vertexIds[i], _vertexIds[j]);
+		auto pEdge = getOurBlockPtr()->getEdge(e);
+		assert(pEdge);
+		result.push_back(*pEdge);
+	}
+
 	return result;
 }
 
@@ -485,11 +500,11 @@ bool Polygon::containsEdge(const Edge& edge, bool& isUsed) const
 			return true;
 
 		Vector3d faceNorm = calUnitNormal();
-		Vector3d v = edge.calUnitDir(getBlockPtr());
+		Vector3d v = edge.calUnitDir();
 		Vector3d iNorm = v.cross(faceNorm).normalized();
 		Planed iPlane(pt0, iNorm);
 		iterateEdges([this, &iPlane, &intersects](const Edge& ie) {
-			auto seg = ie.getSegment(getBlockPtr());
+			auto seg = ie.getSegment();
 			RayHitd hit;
 			if (iPlane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
 				intersects = true;
@@ -499,7 +514,7 @@ bool Polygon::containsEdge(const Edge& edge, bool& isUsed) const
 
 	} else {
 		iterateEdges([this, &pt0, &pt1, &intersects](const Edge& ie) {
-			if (ie.pointLiesOnEdge(getBlockPtr(), pt0) || ie.pointLiesOnEdge(getBlockPtr(), pt1))
+			if (ie.pointLiesOnEdge(pt0) || ie.pointLiesOnEdge(pt1))
 				intersects = true;
 			return !intersects;
 		});
@@ -597,18 +612,6 @@ bool Polygon::isCoplanar(const Edge& edge) const
 		return false;
 
 	return true;
-}
-
-void Polygon::createEdgesStat(const MTC::vector<Index3DId>& verts, FastBisectionSet<Edge>& edgeSet, const Index3DId& polygonId)
-{
-	for (size_t i = 0; i < verts.size(); i++) {
-		size_t j = (i + 1) % verts.size();
-		// If the edges is aready in the set, we get the existing one, not the new one?
-		set<Index3DId> faceSet;
-		if (polygonId.isValid())
-			faceSet.insert(polygonId);
-		edgeSet.insert(Edge(verts[i], verts[j], faceSet));
-	}
 }
 
 Vector3d Polygon::calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
@@ -792,20 +795,6 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3
 	}
 
 	return nanf("");
-}
-
-double Polygon::getShortestEdge() const
-{
-	double minDist = DBL_MAX;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getVertexPoint(_vertexIds[1]);
-		double l = (pt1 - pt0).norm();
-		if (l < minDist)
-			minDist = l;
-	}
-	return minDist;
 }
 
 double Polygon::calVertexError(const std::vector<Vector3d>& testPts) const
@@ -1014,7 +1003,7 @@ void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<I
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto seg = edge.getSegment(getBlockPtr());
+		auto seg = edge.getSegment();
 		for (const auto& vertId : onFaceVerts) {
 			Vector3d pt = getVertexPoint(vertId);
 			double t;
@@ -1032,7 +1021,7 @@ size_t Polygon::getImprintIndex(const Vector3d& imprintPoint) const
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto seg = edge.getSegment(getBlockPtr());
+		auto seg = edge.getSegment();
 		double t;
 		if (seg.contains(imprintPoint, t, Tolerance::sameDistTol())) {
 			return i;
@@ -1080,7 +1069,7 @@ bool Polygon::imprintVertexInner(const Index3DId& imprintVert)
 		if (!imprinted) {
 			size_t j = (i + 1) % tmp.size();
 			Edge edge(tmp[i], tmp[j]);
-			auto seg = edge.getSegment(getBlockPtr());
+			auto seg = edge.getSegment();
 			Vector3d pt = getVertexPoint(imprintVert);
 			double t;
 			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
@@ -1139,7 +1128,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto edgeSeg = edge.getSegment(getBlockPtr());
+		auto edgeSeg = edge.getSegment();
 		RayHitd hit;
 		if (pl.intersectLineSegment(edgeSeg, hit, Tolerance::sameDistTol())) {
 			intersectionPoints.insert(hit.hitPt);
@@ -1207,8 +1196,8 @@ bool Polygon::isPointOnEdge(const Vector3d& pt) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Edge e(_vertexIds[i], _vertexIds[j]);
-		auto seg = e.getSegment(getBlockPtr());
+		auto* pEdge = getBlockPtr()->getEdge(Edge(_vertexIds[i], _vertexIds[j]));
+		auto seg = pEdge->getSegment();
 		double t;
 		if (seg.contains(pt, t, Tolerance::sameDistTol()))
 			return true;
@@ -1405,33 +1394,5 @@ inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 }
 
 
-//LAMBDA_CLIENT_IMPLS(Polygon)
-void Polygon::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
+LAMBDA_CLIENT_IMPLS(Polygon)
 
-void Polygon::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Polygon::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
-} 
-
-void Polygon::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
-} 
-
-void Polygon::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
-} 
-
-void Polygon::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
-}

@@ -27,17 +27,18 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_math.h>
 #include <tm_lineSegment.h>
+#include <tolerances.h>
+#include <logger.h>
+#include <io_utils.h>
 #include <edge.h>
 #include <block.h>
 #include <volume.h>
-#include <tolerances.h>
-#include <logger.h>
 
 using namespace std;
 using namespace DFHM;
 
 Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
-	: _reversed(vert1 < vert0)
+	: ObjectPoolOwnerUser()
 {
 	_faceIds.insert(faceIds.begin(), faceIds.end());
 		
@@ -46,7 +47,7 @@ Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3
 }
 
 Edge::Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds)
-	: _reversed(src._reversed)
+	: ObjectPoolOwnerUser(src)
 	, _faceIds(faceIds)
 {
 	_vertexIds[0] = src._vertexIds[0];
@@ -54,7 +55,7 @@ Edge::Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds)
 }
 
 Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
-	: _reversed(src._reversed)
+	: ObjectPoolOwnerUser(src)
 {
 	_faceIds.insert(faceIds.begin(), faceIds.end());
 	_vertexIds[0] = src._vertexIds[0];
@@ -95,8 +96,8 @@ bool Edge::operator != (const Edge& rhs) const
 bool Edge::operator < (const Edge& rhs) const
 {
 	for (int i = 0; i < 2; i++) {
-		const auto& v = _reversed ? _vertexIds[1 - i] : _vertexIds[i];
-		const auto& rhsV = rhs._reversed ? rhs._vertexIds[1 - i] : rhs._vertexIds[i];
+		const auto& v = _vertexIds[i];
+		const auto& rhsV = rhs._vertexIds[i];
 
 		if (v < rhsV)
 			return true;
@@ -106,39 +107,39 @@ bool Edge::operator < (const Edge& rhs) const
 	return false;
 }
 
-double Edge::sameParamTol(const Block* pBlock) const
+double Edge::sameParamTol() const
 {
-	return Tolerance::sameDistTol() / getLength(pBlock);
+	return Tolerance::sameDistTol() / getLength();
 }
 
-double Edge::getLength(const Block* pBlock) const
+double Edge::getLength() const
 {
-	LineSegmentd seg(pBlock->getVertexPoint(_vertexIds[0]), pBlock->getVertexPoint(_vertexIds[1]));
+	LineSegmentd seg(getBlockPtr()->getVertexPoint(_vertexIds[0]), getBlockPtr()->getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
-Vector3d Edge::calCenter(const Block* pBlock) const
+Vector3d Edge::calCenter() const
 {
-	return calPointAt(pBlock, 0.5);
+	return calPointAt(0.5);
 }
 
-Vector3d Edge::calUnitDir(const Block* pBlock) const
+Vector3d Edge::calUnitDir() const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 	return v;
 }
 
-Vector3d Edge::calCoedgeUnitDir(const Block* pBlock, const Index3DId& faceId, const Index3DId& cellId) const
+Vector3d Edge::calCoedgeUnitDir(const Index3DId& faceId, const Index3DId& cellId) const
 {
 	Vector3d result;
 	bool found = false;
-	pBlock->faceFunc(faceId, [this, pBlock, &cellId, &result, &found](const Polygon& face) {
-		face.iterateOrientedEdges([this, pBlock, &cellId, &result, &found](const Edge& edge)->bool {
+	getBlockPtr()->faceFunc(faceId, [this, &cellId, &result, &found](const Polygon& face) {
+		face.iterateOrientedEdges([this, &cellId, &result, &found](const Edge& edge)->bool {
 			if (edge == *this) {
-				result = edge.calUnitDir(pBlock);
+				result = edge.calUnitDir();
 				found = true;
 			}
 			return !found; // continue the loop
@@ -149,20 +150,20 @@ Vector3d Edge::calCoedgeUnitDir(const Block* pBlock, const Index3DId& faceId, co
 	return result;
 }
 
-Vector3d Edge::calPointAt(const Block* pBlock, double t) const
+Vector3d Edge::calPointAt(double t) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	
 	Vector3d result = pt0 + t * (pt1 - pt0);
 
 	return result;
 }
 
-double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const
+double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	double len = v.norm();
 	v.normalize();
@@ -174,10 +175,10 @@ double Edge::paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) 
 	return t;
 }
 
-Vector3d Edge::projectPt(const Block* pBlock, const Vector3d& pt) const
+Vector3d Edge::projectPt(const Vector3d& pt) const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -188,10 +189,10 @@ Vector3d Edge::projectPt(const Block* pBlock, const Vector3d& pt) const
 	return result;
 }
 
-bool Edge::onPrincipalAxis(const Block* pBlock) const
+bool Edge::onPrincipalAxis() const
 {
 	const double tol = Tolerance::paramTol();
-	Vector3d dir = calUnitDir(pBlock);
+	Vector3d dir = calUnitDir();
 	bool result = false;
 	for (int i = 0; i < 3; i++) {
 		Vector3d axis(0, 0, 0);
@@ -202,26 +203,26 @@ bool Edge::onPrincipalAxis(const Block* pBlock) const
 	return false;
 }
 
-bool Edge::isColinearWith(const Block* pBlock, const Edge& other) const
+bool Edge::isColinearWith(const Edge& other) const
 {
-	LineSegment seg(getSegment(pBlock));
-	Vector3d pt0 = pBlock->getVertexPoint(other._vertexIds[0]);
+	LineSegment seg(getSegment());
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(other._vertexIds[0]);
 
 	if (seg.distanceToPoint(pt0) > Tolerance::sameDistTol())
 		return false;
 
-	Vector3d pt1 = pBlock->getVertexPoint(other._vertexIds[1]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(other._vertexIds[1]);
 	if (seg.distanceToPoint(pt1) > Tolerance::sameDistTol())
 		return false;
 
 	return true;
 }
 
-bool Edge::isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const
+bool Edge::isColinearWith(const Index3DId& vert, double& param) const
 {
-	Vector3d pt = pBlock->getVertexPoint(vert);
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt = getBlockPtr()->getVertexPoint(vert);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 
 	Vector3d v = pt1 - pt0;
 	double len = v.norm();
@@ -245,22 +246,22 @@ bool Edge::isConnectedTo(const Edge& other) const
 	return false;
 }
 
-double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCellId) const
+double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 {
 	if (_faceIds.size() != 2)
 		return 0;
 	const auto& faceId0 = _faceIds[0];
 	const auto& faceId1 = _faceIds[1];
 	Vector3d normal0, normal1;
-	pBlock->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
+	getBlockPtr()->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
 		normal0 = face.calOrientedUnitNormal(refCellId);
 	});
-	pBlock->faceFunc(faceId1, [&normal1, &refCellId](const Polygon& face) {
+	getBlockPtr()->faceFunc(faceId1, [&normal1, &refCellId](const Polygon& face) {
 		normal1 = face.calOrientedUnitNormal(refCellId);
 	});
 
 	const auto& zAxis = normal0;
-	Vector3d yAxis = calCoedgeUnitDir(pBlock, faceId0, refCellId);
+	Vector3d yAxis = calCoedgeUnitDir(faceId0, refCellId);
 	Vector3d xAxis = yAxis.cross(zAxis); // xAxis points from plane0 center to the edge
 
 	double cosTheta = -normal1.dot(zAxis);
@@ -270,14 +271,14 @@ double Edge::calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCe
 	return angle;
 }
 
-bool Edge::isConvex(const Block* pBlock, const Index3DId& refCellId) const
+bool Edge::isConvex(const Index3DId& refCellId) const
 {
-	const auto angle = calDihedralAngleRadians(pBlock, refCellId);
+	const auto angle = calDihedralAngleRadians(refCellId);
 	const auto tol = Tolerance::angleTol();
 	return angle >= -tol;
 }
 
-bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
+bool Edge::isOriented(const Index3DId& refCellId) const
 {
 	bool result = true;
 	if (_faceIds.size() != 2)
@@ -286,9 +287,9 @@ bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
 	const auto& id0 = _faceIds[0];
 	const auto& id1 = _faceIds[1];
 
-	pBlock->faceFunc(id0, [pBlock, &id1, &refCellId, &result](const Polygon& face0) {
-		face0.iterateOrientedEdges([pBlock, &id1, &refCellId, &result](const auto& edge0)->bool {
-			pBlock->faceFunc(id1, [&refCellId, &edge0, &result](const Polygon& face1) {
+	getBlockPtr()->faceFunc(id0, [this, &id1, &refCellId, &result](const Polygon& face0) {
+		face0.iterateOrientedEdges([this, &id1, &refCellId, &result](const auto& edge0)->bool {
+			getBlockPtr()->faceFunc(id1, [&refCellId, &edge0, &result](const Polygon& face1) {
 				face1.iterateOrientedEdges([&edge0, &result](const auto& edge1)->bool {
 					if (edge0._vertexIds[0] == edge1._vertexIds[0] && edge0._vertexIds[1] == edge1._vertexIds[1]) {
 						result = false;
@@ -303,10 +304,10 @@ bool Edge::isOriented(const Block* pBlock, const Index3DId& refCellId) const
 	return result;
 }
 
-LineSegmentd Edge::getSegment(const Block* pBlock) const
+LineSegmentd Edge::getSegment() const
 {
-	Vector3d pt0 = pBlock->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = pBlock->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
 	LineSegmentd result(pt0, pt1);
 	return result;
 }
@@ -316,16 +317,16 @@ bool Edge::containsVertex(const Index3DId& vertexId) const
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
 
-bool Edge::vertexLiesOnEdge(const Block* pBlock, const Index3DId& vertexId) const
+bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
 {
-	const auto& pt = pBlock->getVertexPoint(vertexId);
-	return pointLiesOnEdge(pBlock, pt);
+	const auto& pt = getBlockPtr()->getVertexPoint(vertexId);
+	return pointLiesOnEdge(pt);
 }
 
-bool Edge::pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const
+bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 {
 	const double tol = Tolerance::sameDistTol();
-	auto seg = getSegment(pBlock);
+	auto seg = getSegment();
 	double t;
 	return seg.contains(pt, t, tol);
 
@@ -345,15 +346,15 @@ void Edge::getFaceIds(FastBisectionSet<Index3DId>& faceIds) const
 	faceIds = _faceIds;
 }
 
-void Edge::getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const
+void Edge::getCellIds(MTC::set<Index3DId>& cellIds) const
 {
 	cellIds.clear();
 	for (const auto& faceId : _faceIds) {
-		if (pBlock->polygonExists(faceId)) {
-			pBlock->faceFunc(faceId, [&pBlock, &cellIds](const Polygon& face) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			getBlockPtr()->faceFunc(faceId, [this, &cellIds](const Polygon& face) {
 				const auto& adjCellIds = face.getCellIds();
 				for (const auto& cellId : adjCellIds) {
-					if (pBlock->polyhedronExists(cellId)) {
+					if (getBlockPtr()->polyhedronExists(cellId)) {
 						cellIds.insert(cellId);
 					}
 				}
@@ -370,10 +371,7 @@ void Edge::write(std::ostream& out) const
 	_vertexIds[0].write(out);
 	_vertexIds[1].write(out);
 
-	size_t num = _faceIds.size();
-	out.write((char*)&num, sizeof(size_t));
-	for (const auto& id : _faceIds)
-		id.write(out);
+	IoUtil::writeObj(out, _faceIds);
 }
 
 void Edge::read(std::istream& in)
@@ -384,13 +382,7 @@ void Edge::read(std::istream& in)
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);
 
-	size_t num = _faceIds.size();
-	in.read((char*)&num, sizeof(size_t));
-	for (size_t i = 0; i < num; i++) {
-		Index3DId id;
-		id.read(in);
-		_faceIds.insert(id);
-	}
+	IoUtil::read(in, _faceIds);
 }
 
 ostream& DFHM::operator << (ostream& out, const Edge& edge)

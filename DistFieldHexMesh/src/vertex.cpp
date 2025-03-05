@@ -26,11 +26,12 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <tolerances.h>
+#include <fixedPoint.h>
+#include <io_utils.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
 #include <block.h>
-#include <fixedPoint.h>
 
 using namespace std;
 using namespace DFHM;
@@ -97,7 +98,7 @@ MTC::set<Index3DId> Vertex::getCellIds() const
 	MTC::set<Index3DId> faceIds = getFaceIds();
 
 	for (const auto& faceId : faceIds) {
-		getOurBlockPtr()->faceFunc(faceId, [&result](const Polygon& face) {
+		faceFunc(faceId, [&result](const Polygon& face) {
 			const auto& cellIds = face.getCellIds();
 			result.insert(cellIds.begin(), cellIds.end());
 		});
@@ -114,7 +115,7 @@ void Vertex::write(std::ostream& out) const
 	writeVector3(out, _pt);
 
 	out.write((char*)&_lockType, sizeof(_lockType));
-	IoUtil::writeObj(out, _connectedVertices.asVector());
+	IoUtil::writeObj(out, _connectedVertices);
 }
 
 void Vertex::read(std::istream& in)
@@ -125,9 +126,7 @@ void Vertex::read(std::istream& in)
 	readVector3(in, _pt);
 
 	in.read((char*)&_lockType, sizeof(_lockType));
-	std::vector<Index3DId> tmp;
-	IoUtil::readObj(in, tmp);
-	_connectedVertices = tmp;
+	IoUtil::read(in, _connectedVertices);
 }
 
 CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
@@ -194,3 +193,5 @@ ostream& DFHM::operator << (ostream& out, const Vertex& vert)
 	out << "Vertex " << vert.getId();
 	return out;
 }
+
+LAMBDA_CLIENT_IMPLS(Vertex)

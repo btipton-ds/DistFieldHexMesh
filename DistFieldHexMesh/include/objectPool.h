@@ -542,7 +542,6 @@ const T* ObjectPool<T>::getByElementIndex(size_t id) const
 	return nullptr;
 }
 
-
 template<class T>
 const T* ObjectPool<T>::get(const Index3DId& id) const
 {

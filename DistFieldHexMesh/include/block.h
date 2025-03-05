@@ -113,6 +113,8 @@ public:
 	const Index3D& getBlockIdx() const override;
 	const Block* getOwner(const Index3D& blockIdx) const override;
 	Block* getOwner(const Index3D& blockIdx) override;
+	const Block* getOwner(const Edge& edge) const;
+	Block* getOwner(const Edge& edge);
 	const UnalignedBBoxd& getUnalignedBBox() const;
 
 	void clear();
@@ -159,6 +161,11 @@ public:
 	Index3DId findFace(const Polygon& face) const;
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
+
+	Edge* addEdge(const Index3DId& vert0, const Index3DId& vert1);
+	const Edge* findEdge(const Index3DId& vert0, const Index3DId& vert1) const;
+	void addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1);
+	bool removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1);
 
 	Index3DId addCell(const Polyhedron& cell, const Index3DId& parentCellId);
 	Index3DId addHexCell(const MTC::vector<Index3DId>& cornerVertIds);

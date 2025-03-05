@@ -55,9 +55,6 @@ public:
 	Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds);
 	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
 
-	void setBlockPtr(const Block* pBlock) const;
-	const Block* getBlockPtr() const;
-
 	bool isValid() const;
 	bool operator < (const Edge& rhs) const;
 	bool operator == (const Edge& rhs) const;
@@ -66,29 +63,32 @@ public:
 	Index3DId getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
+	void addFaceId(const Index3DId& faceId);
+	void removeFaceId(const Index3DId& faceId);
+
 	const Index3DId& getVertex(size_t idx) const;
 	const Index3DId* getVertexIds() const;
 	bool containsVertex(const Index3DId& vertexId) const;
-	bool vertexLiesOnEdge(const Block* pBlock, const Index3DId& vertexId) const;
-	bool pointLiesOnEdge(const Block* pBlock, const Vector3d& pt) const;
+	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
+	bool pointLiesOnEdge(const Vector3d& pt) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	void getFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
-	void getCellIds(const Block* pBlock, MTC::set<Index3DId>& cellIds) const;
+	void getCellIds(MTC::set<Index3DId>& cellIds) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
-	double sameParamTol(const Block* pBlock) const;
-	double getLength(const Block* pBlock) const;
-	Vector3d calCenter(const Block* pBlock) const;
-	Vector3d calUnitDir(const Block* pBlock) const;
-	Vector3d calCoedgeUnitDir(const Block* pBlock, const Index3DId& faceId, const Index3DId& cellId) const;
-	Vector3d calPointAt(const Block* pBlock, double t) const;
-	double paramOfPt(const Block* pBlock, const Vector3d& pt, bool& inBounds) const;
-	Vector3d projectPt(const Block* pBlock, const Vector3d& pt) const;
-	bool onPrincipalAxis(const Block* pBlock) const;
-	bool isColinearWith(const Block* pBlock, const Edge& other) const;
-	bool isColinearWith(const Block* pBlock, const Index3DId& vert, double& param) const;
+	double sameParamTol() const;
+	double getLength() const;
+	Vector3d calCenter() const;
+	Vector3d calUnitDir() const;
+	Vector3d calCoedgeUnitDir(const Index3DId& faceId, const Index3DId& cellId) const;
+	Vector3d calPointAt(double t) const;
+	double paramOfPt(const Vector3d& pt, bool& inBounds) const;
+	Vector3d projectPt(const Vector3d& pt) const;
+	bool onPrincipalAxis() const;
+	bool isColinearWith(const Edge& other) const;
+	bool isColinearWith(const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
-	LineSegmentd getSegment(const Block* pBlock) const;
+	LineSegmentd getSegment() const;
 
 	/*
 	The dihedral angle is defined so that 
@@ -101,9 +101,9 @@ public:
 
 		This corresponds to a lofting definition of a negative surface having concave regions.
 	*/
-	double calDihedralAngleRadians(const Block* pBlock, const Index3DId& refCellId) const;
-	bool isConvex(const Block* pBlock, const Index3DId& refCellId) const;
-	bool isOriented(const Block* pBlock, const Index3DId& refCellId) const;
+	double calDihedralAngleRadians(const Index3DId& refCellId) const;
+	bool isConvex(const Index3DId& refCellId) const;
+	bool isOriented(const Index3DId& refCellId) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -114,19 +114,7 @@ protected:
 private:
 	Index3DId _vertexIds[2];
 	FastBisectionSet<Index3DId> _faceIds;
-	bool _reversed = false;
-	mutable const Block* _pBlock;
 };
-
-inline void Edge::setBlockPtr(const Block* pBlock) const
-{
-	_pBlock = pBlock;
-}
-
-inline const Block* Edge::getBlockPtr() const
-{
-	return _pBlock;
-}
 
 inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 {
@@ -141,6 +129,16 @@ inline const Index3DId& Edge::getVertex(size_t idx) const
 inline const Index3DId* Edge::getVertexIds() const
 {
 	return _vertexIds;
+}
+
+inline void Edge::addFaceId(const Index3DId& faceId)
+{
+	_faceIds.insert(faceId);
+}
+
+inline void Edge::removeFaceId(const Index3DId& faceId)
+{
+	_faceIds.erase(faceId);
 }
 
 std::ostream& operator << (std::ostream& out, const Edge& edge);

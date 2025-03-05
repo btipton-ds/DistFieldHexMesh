@@ -88,7 +88,6 @@ public:
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
-	static void createEdgesStat(const MTC::vector<Index3DId>& verts, FastBisectionSet<Edge>& edgeSet, const Index3DId& polygonId = Index3DId());
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
@@ -164,7 +163,6 @@ public:
 	size_t numFaceIds(bool includeSplits) const;
 	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 
-	double getShortestEdge() const;
 	double calVertexAngle(size_t index) const;
 	double calVertexError(const std::vector<Vector3d>& testPts) const;
 	double distanceToPoint(const Vector3d& pt) const;

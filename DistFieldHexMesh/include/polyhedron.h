@@ -69,7 +69,7 @@ public:
 	size_t getNumNestedFaces() const;
 	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 	size_t getNumFaces(bool includeSubFaces) const;
-	MTC::vector<Index3DId> getVertIds() const;
+	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	FastBisectionSet<Edge> getEdges(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
@@ -117,7 +117,6 @@ public:
 
 	void attachFaces();
 	void detachFaces();
-	double getShortestEdge() const;
 	size_t getFaceSplitLevel(const Index3DId& faceId) const;
 
 	size_t getSplitLevel() const;

@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <objectPool.h>
 #include <fastBisectionSet.h>
+#include <lambdaMacros.h>
 
 #define USE_FIXED_PT 0
 
@@ -39,6 +40,8 @@ namespace DFHM {
 
 class Block;
 class Edge;
+class Polygon;
+class Polyhedron;
 
 class Vertex : public ObjectPoolOwnerUser {
 public:
@@ -79,6 +82,7 @@ public:
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
+	LAMBDA_CLIENT_DECLS
 protected:
 	void setId(const Index3DId& id) override;
 

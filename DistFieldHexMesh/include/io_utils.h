@@ -28,7 +28,11 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <iostream>
+#include <tm_ioUtil.h>
 #include <pool_vector.h>
+#include <pool_set.h>
+#include <pool_map.h>
+#include <fastBisectionSet.h>
 
 namespace IoUtil
 {
@@ -71,6 +75,50 @@ namespace IoUtil
 		for (size_t i = 0; i < num; i++) {
 			T val;
 			in.read((char*)&val, sizeof(val));
+			vals.insert(val);
+		}
+	}
+
+	template<class T>
+	void write(std::ostream& out, const DFHM::FastBisectionSet<T>& vals)
+	{
+		size_t num = vals.size();
+		out.write((char*)&num, sizeof(num));
+		for (auto& val : vals)
+			out.write((char*)&val, sizeof(val));
+	}
+
+	template<class T>
+	void read(std::istream& in, DFHM::FastBisectionSet<T>& vals)
+	{
+		vals.clear();
+		size_t num;
+		in.read((char*)&num, sizeof(num));
+		for (size_t i = 0; i < num; i++) {
+			T val;
+			in.read((char*)&val, sizeof(val));
+			vals.insert(val);
+		}
+	}
+
+	template<class T>
+	void writeObj(std::ostream& out, const DFHM::FastBisectionSet<T>& vals)
+	{
+		size_t num = vals.size();
+		out.write((char*)&num, sizeof(num));
+		for (auto& val : vals)
+			val.write(out);
+	}
+
+	template<class T>
+	void readObj(std::istream& in, DFHM::FastBisectionSet<T>& vals)
+	{
+		vals.clear();
+		size_t num;
+		in.read((char*)&num, sizeof(num));
+		for (size_t i = 0; i < num; i++) {
+			T val;
+			val.read(in);
 			vals.insert(val);
 		}
 	}
