@@ -56,6 +56,7 @@ Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DI
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _localTouched(localTouched)
+	, _params(pBlock->getSplitParams())
 {
 }
 
@@ -74,8 +75,22 @@ bool Splitter::splitAtParam(const Vector3d& tuv)
 		return false;
 
 	bool result = false;
-	_pBlock->cellFunc(_polyhedronId, [this, &tuv, &result](Polyhedron& cell) {
-		result = splitAtParamInner(cell, tuv);
+	cellFunc(_polyhedronId, [this, &tuv, &result](Polyhedron& cell) {
+#if 0 && defined(_DEBUG)
+		// Now split the cell
+		Index3DId testId(6, 4, 5, 0);
+		if (testId == _polyhedronId) {
+			int dbgBreak = 1;
+			_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false);
+		}
+#endif
+
+		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+
+		if (cell.classify(_cornerPts) == 8) {
+			splitHexCell(cell, tuv);
+			result = true;
+		}
 	});
 
 	return result;
@@ -84,26 +99,6 @@ bool Splitter::splitAtParam(const Vector3d& tuv)
 Index3DId Splitter::vertId(const Vector3d& pt)
 {
 	return _pBlock->getVertexIdOfPoint(pt);
-}
-
-bool Splitter::splitAtParamInner(Polyhedron& cell, const Vector3d& tuv)
-{
-#if 0 && defined(_DEBUG)
-	// Now split the cell
-	Index3DId testId(6, 4, 5, 0);
-	if (testId == _polyhedronId) {
-		int dbgBreak = 1;
-		_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false);
-	}
-#endif
-
-	Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
-
-	if (cell.classify(_cornerPts) == 8) {
-		splitHexCell(cell, tuv);
-	}
-	
-	return true;
 }
 
 void Splitter::splitHexCell(Polyhedron& cell, const Vector3d& tuv)
@@ -185,8 +180,8 @@ void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& c
 	}
 	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), cell.getId());
 
-	_pBlock->cellFunc(newCellId, [this, cell](Polyhedron& newCell) {
-		assert(newCell.getNumFaces(true) <= _pBlock->getSplitParams().maxCellFaces);
+	cellFunc(newCellId, [this, cell](Polyhedron& newCell) {
+		assert(newCell.getNumFaces(true) <= __params.maxCellFaces);
 		newCell.setParentId(cell.getId());
 		newCell.setSplitLevel(cell.getSplitLevel());
 #if USE_CELL_SEARCH_TREE
@@ -214,7 +209,7 @@ Index3DId Splitter::findSourceFaceId(const Polyhedron& cell, const std::vector<V
 
 void Splitter::findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const
 {
-	_pBlock->faceFunc(faceId, [this, &minErr, &facePts, &result, tol](const Polygon& face) {
+	faceFunc(faceId, [this, &minErr, &facePts, &result, tol](const Polygon& face) {
 		// Check if the unsplit face is the best match
 		auto err = face.calVertexError(facePts);
 		if (err < minErr) {
@@ -261,7 +256,7 @@ void Splitter::createHexCellData(const Polyhedron& cell)
 
 void Splitter::conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u)
 {
-	_pBlock->faceFunc(faceId, [this, &facePts, t, u](Polygon& oldFace) {
+	faceFunc(faceId, [this, &facePts, t, u](Polygon& oldFace) {
 		if (!oldFace.isSplit()) {
 			const auto& id = oldFace.getId();
 			const auto& adjCellId = oldFace.getAdjacentCellId(_polyhedronId);
@@ -319,3 +314,43 @@ void Splitter::calHexCellFaceTU(int i, const Vector3d& tuv, double& t, double& u
 	}
 }
 
+//LAMBDA_CLIENT_IMPLS(Splitter)
+void Splitter::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Splitter::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Splitter::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Splitter::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Splitter::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Splitter::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Splitter::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+} 
+
+void Splitter::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+}

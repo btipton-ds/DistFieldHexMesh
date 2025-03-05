@@ -54,7 +54,10 @@ public:
 
 private:
 	static void calHexCellFaceTU(int i, const Vector3d& tuv, double& t, double& u);
-	bool splitAtParamInner(Polyhedron& cell, const Vector3d& tuv);
+
+	Block* getBlockPtr();
+	const Block* getBlockPtr() const;
+
 	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
 	void createHexCellData(const Polyhedron& cell);
@@ -63,7 +66,10 @@ private:
 	Index3DId findSourceFaceId(const Polyhedron& cell, const std::vector<Vector3d>& facePts, double tol) const;
 	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
 
+	LAMBDA_CLIENT_DECLS;
+
 	Block* _pBlock;
+	const SplittingParams& _params;
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
 	std::vector<Index3DId>& _localTouched;
@@ -73,5 +79,14 @@ private:
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 };
 
+inline Block* Splitter::getBlockPtr()
+{
+	return _pBlock;
+}
+
+inline const Block* Splitter::getBlockPtr() const
+{
+	return _pBlock;
+}
 
 }
