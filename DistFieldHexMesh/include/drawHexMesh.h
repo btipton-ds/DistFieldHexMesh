@@ -74,6 +74,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 
 			float alpha = 0.20f;
+			float alpha2 = 0.6f;
 	};
 
 

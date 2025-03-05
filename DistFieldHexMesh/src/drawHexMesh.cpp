@@ -472,7 +472,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     bool blend = false;
     float alpha = _options.alpha;
-    float alpha2 = 0.8f;
+    float alpha2 = _options.alpha2;
     const auto alphaWall = alpha * 0.5f;
     const float den = 255.0f;
 
