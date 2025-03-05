@@ -144,6 +144,7 @@ public:
 	Index3DId findOrAdd(const T& obj, const Index3DId& id = Index3DId());
 
 	const T* getByElementIndex(size_t id) const;
+	T* getByElementIndex(size_t id);
 
 	const T* get(const Index3DId& id) const;
 	T* get(const Index3DId& id);
@@ -535,6 +536,18 @@ const T* ObjectPool<T>::getByElementIndex(size_t id) const
 {
 	if (id == -1)
 		return _tl_pCompareObj;
+	else if (id < _idToIndexMap.size()) {
+		size_t index = _idToIndexMap[id];
+		return getEntry(index);
+	}
+	return nullptr;
+}
+
+template<class T>
+T* ObjectPool<T>::getByElementIndex(size_t id)
+{
+	if (id == -1)
+		return const_cast<T*>(_tl_pCompareObj);
 	else if (id < _idToIndexMap.size()) {
 		size_t index = _idToIndexMap[id];
 		return getEntry(index);

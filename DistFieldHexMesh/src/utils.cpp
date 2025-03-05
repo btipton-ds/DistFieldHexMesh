@@ -37,13 +37,13 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace DFHM;
 
-void removeVertFromAvail(MTC::map<Index3DId, MTC::set<Edge>>& vertToEdgeMap, const Index3DId& vertId)
+void removeVertFromAvail(MTC::map<Index3DId, MTC::set<EdgeKey>>& vertToEdgeMap, const Index3DId& vertId)
 {
 	auto iter = vertToEdgeMap.find(vertId);
 	vertToEdgeMap.erase(iter);
 }
 
-void removeEdgeFromAvail(MTC::map<Index3DId, MTC::set<Edge>>& vertToEdgeMap, const Edge& edge)
+void removeEdgeFromAvail(MTC::map<Index3DId, MTC::set<EdgeKey>>& vertToEdgeMap, const Edge& edge)
 {
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[0]);
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[1]);
@@ -88,27 +88,27 @@ bool VertLoopCompare(const VertLoopPtr& pLhs, const VertLoopPtr& pRhs) {
 
 }
 
-void Utils::formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegments, MTC::set<Edge> availEdges, MTC::vector<MTC::vector<Edge>>& loops)
+void Utils::formEdgeLoops(const Block* pBlock, const MTC::set<EdgeKey> sharedSegments, MTC::set<EdgeKey> availEdges, MTC::vector<MTC::vector<EdgeKey>>& loops)
 {
-	for (const auto& edge : sharedSegments) {
-		availEdges.insert(edge);
+	for (const auto& edgeKey : sharedSegments) {
+		availEdges.insert(edgeKey);
 	}
 
-	MTC::map<Index3DId, MTC::set<Edge>> vertToEdgeMap;
-	for (const auto& edge : availEdges) {
-		const auto vertIds = edge.getVertexIds();
+	MTC::map<Index3DId, MTC::set<EdgeKey>> vertToEdgeMap;
+	for (const auto& edgeKey : availEdges) {
+		const auto vertIds = edgeKey.getVertexIds();
 
 		auto iter = vertToEdgeMap.find(vertIds[0]);
 		if (iter == vertToEdgeMap.end()) {
-			iter = vertToEdgeMap.insert(make_pair(vertIds[0], MTC::set<Edge>())).first;
+			iter = vertToEdgeMap.insert(make_pair(vertIds[0], MTC::set<EdgeKey>())).first;
 		}
-		iter->second.insert(edge);
+		iter->second.insert(edgeKey);
 
 		iter = vertToEdgeMap.find(vertIds[1]);
 		if (iter == vertToEdgeMap.end()) {
-			iter = vertToEdgeMap.insert(make_pair(vertIds[1], MTC::set<Edge>())).first;
+			iter = vertToEdgeMap.insert(make_pair(vertIds[1], MTC::set<EdgeKey>())).first;
 		}
-		iter->second.insert(edge);
+		iter->second.insert(edgeKey);
 	}
 
 	MTC::vector<VertLoopPtr> vertLoops;
@@ -131,8 +131,8 @@ void Utils::formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegmen
 			auto vertIter = vertToEdgeMap.find(lastVertId);
 			if (vertIter != vertToEdgeMap.end()) {
 				auto& edgeSet = vertIter->second;
-				for (const auto& edge : edgeSet) {
-					const auto otherVertId = edge.getOtherVert(lastVertId);
+				for (const auto& edgeKey : edgeSet) {
+					const auto otherVertId = edgeKey.getOtherVert(lastVertId);
 					if (otherVertId != prevVertId) {
 						VertLoopPtr pNewLoop = std::make_shared<VertLoop>(*pVertLoop);
 						pNewLoop->add(otherVertId);

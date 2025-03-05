@@ -162,8 +162,8 @@ public:
 	void addFaceToLookup(const Index3DId& faceId);
 	bool removeFaceFromLookUp(const Index3DId& faceId);
 
-	Edge* addEdge(const Index3DId& vert0, const Index3DId& vert1);
-	const Edge* findEdge(const Index3DId& vert0, const Index3DId& vert1) const;
+	EdgeKey addEdge(const Index3DId& vert0, const Index3DId& vert1);
+	EdgeKey addEdge(const EdgeKey& edgeKey);
 	void addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1);
 	bool removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1);
 
@@ -213,7 +213,7 @@ public:
 	void dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const MTC::vector<Vector3d>& pts = MTC::vector<Vector3d>()) const;
 	void dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
 	void dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
-	void dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const;
+	void dumpEdgeObj(std::string& fileName, const MTC::set<EdgeKey>& edges) const;
 
 	template<class F>
 	void iterateVerticesInOrder(F fLambda) const;
@@ -251,6 +251,9 @@ private:
 	void setIsOutput(bool val);
 	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
+
+	const Edge* getEdge(const EdgeKey& edgeKey) const;
+	Edge* getEdge(const EdgeKey& edgeKey);
 
 	MTC::vector<Index3DId> getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
 

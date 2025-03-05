@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 class Block;
+class EdgeKey;
 class Edge;
 class Polygon;
 class Polyhedron;
@@ -75,9 +76,9 @@ public:
 	void addConnectedVertexId(const Index3DId& vertId);
 	void removeConnectedVertexId(const Index3DId& vertId);
 	const FastBisectionSet<Index3DId>& getConnectedVertexIds() const;
-	MTC::set<Edge> getEdges() const;
-	MTC::set<Index3DId> getFaceIds() const;
-	MTC::set<Index3DId> getCellIds() const;
+	MTC::set<EdgeKey> getEdges() const;
+	MTC::set<Index3DId> getFaceIds(bool activeOnly) const;
+	MTC::set<Index3DId> getCellIds(bool activeOnly) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

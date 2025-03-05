@@ -41,11 +41,39 @@ void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj
 		func(p->MEMBER_NAME[id]); \
 }
 
-#define LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, MEMBER_NAME, CONST, CLASS2) \
+#define LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, CONST, CLASS2) \
 void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
 	CONST auto p = getBlockPtr(); \
 	p->NAME##Func(id, func); \
+}
+
+
+
+
+
+#define LAMBDA_FUNC_EDGE_DECL(NAME, CONST) \
+void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST;
+
+#define LAMBDA_CLIENT_FUNC_EDGE_DECL(NAME, CONST) \
+void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST;
+
+#define LAMBDA_FUNC_EDGE_IMPL(NAME, CONST) \
+void Block::NAME##Func(const EdgeKey& key, const function<void(CONST Edge& obj)>& func) CONST \
+{ \
+	auto p = getOwner(key.getVertex(0)); \
+	if (p) { \
+		auto pEdge = p->getEdge(key);\
+		if (pEdge) \
+			func(*pEdge); \
+	}\
+}
+
+#define LAMBDA_CLIENT_FUNC_EDGE_IMPL(CLASS, NAME, CONST) \
+void CLASS::NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST \
+{ \
+	CONST auto p = getBlockPtr(); \
+	p->NAME##Func(key, func); \
 }
 
 /****************************************************************************************************/
@@ -56,7 +84,9 @@ LAMBDA_FUNC_DECL(vertex, , Vertex) \
 LAMBDA_FUNC_DECL(face, const, Polygon) \
 LAMBDA_FUNC_DECL(face, , Polygon) \
 LAMBDA_FUNC_DECL(cell, const, Polyhedron) \
-LAMBDA_FUNC_DECL(cell, , Polyhedron) 
+LAMBDA_FUNC_DECL(cell, , Polyhedron) \
+LAMBDA_FUNC_EDGE_DECL(edge, const) \
+LAMBDA_FUNC_EDGE_DECL(edge, )
 
 #define LAMBDA_CLIENT_DECLS \
 LAMBDA_CLIENT_FUNC_DECL(vertex, const, Vertex) \
@@ -64,7 +94,9 @@ LAMBDA_CLIENT_FUNC_DECL(vertex, , Vertex) \
 LAMBDA_CLIENT_FUNC_DECL(face, const, Polygon) \
 LAMBDA_CLIENT_FUNC_DECL(face, , Polygon) \
 LAMBDA_CLIENT_FUNC_DECL(cell, const, Polyhedron) \
-LAMBDA_CLIENT_FUNC_DECL(cell, , Polyhedron) 
+LAMBDA_CLIENT_FUNC_DECL(cell, , Polyhedron) \
+LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, const) \
+LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, )
 
 #define LAMBDA_BLOCK_IMPLS \
 LAMBDA_FUNC_IMPL(vertex, _vertices, const, Vertex) \
@@ -72,13 +104,17 @@ LAMBDA_FUNC_IMPL(vertex, _vertices, , Vertex) \
 LAMBDA_FUNC_IMPL(face, _polygons, const, Polygon) \
 LAMBDA_FUNC_IMPL(face, _polygons, , Polygon) \
 LAMBDA_FUNC_IMPL(cell, _polyhedra, const, Polyhedron) \
-LAMBDA_FUNC_IMPL(cell, _polyhedra, , Polyhedron) 
+LAMBDA_FUNC_IMPL(cell, _polyhedra, , Polyhedron) \
+LAMBDA_FUNC_EDGE_IMPL(edge, const) \
+LAMBDA_FUNC_EDGE_IMPL(edge, )
 
 #define LAMBDA_CLIENT_IMPLS(CLASS) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, _vertices, const, Vertex) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, _vertices, , Vertex) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, _polygons, const, Polygon) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, _polygons, , Polygon) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, _polyhedra, const, Polyhedron) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, _polyhedra, , Polyhedron) 
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, const, Vertex) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, , Vertex) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, const, Polygon) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, , Polygon) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, const, Polyhedron) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, , Polyhedron) \
+LAMBDA_CLIENT_FUNC_EDGE_IMPL(CLASS, edge, const) \
+LAMBDA_CLIENT_FUNC_EDGE_IMPL(CLASS, edge, ) 
 

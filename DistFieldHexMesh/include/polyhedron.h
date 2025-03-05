@@ -70,12 +70,12 @@ public:
 	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 	size_t getNumFaces(bool includeSubFaces) const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
-	FastBisectionSet<Edge> getEdges(bool includeAdjacentCellFaces) const;
+	FastBisectionSet<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
-	void getVertEdges(const Index3DId& vertId, FastBisectionSet<Edge>& edges, bool includeAdjacentCells) const;
+	void getVertEdges(const Index3DId& vertId, FastBisectionSet<EdgeKey>& edges, bool includeAdjacentCells) const;
 	// Gets the faces for a vertex which belong to this polyhedron
 	FastBisectionSet<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
@@ -94,7 +94,7 @@ public:
 	bool isOriented() const;
 	bool exists() const;
 	size_t classify(MTC::vector<Vector3d>& corners) const;
-	void classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const;
+	void classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const;
 	bool isConvex() const;
 	bool intersectsModel() const;		 // Uses bounding box
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
@@ -162,9 +162,8 @@ private:
 
 	void updateCachedVerts() const;
 
-	MTC::set<Edge> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
+	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
-	bool orderVertEdges(MTC::set<Edge>& edges, MTC::vector<Edge>& orderedEdges) const;
 	void copyToOut() const;
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const;
 	double minGap() const;

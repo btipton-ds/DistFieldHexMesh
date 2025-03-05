@@ -480,11 +480,6 @@ bool Block::verifyIndices(const Index3D& idx) const
 void Block::createBlockCells()
 {
 	Index3D idx;
-	cout << "Enter createBlockCells" << getBlockIdx() << "\n";
-	cout.flush();
-	if (getBlockIdx() == Index3D(3, 0, 3)) {
-		int dbgBreak = 1;
-	}
 	for (idx[0] = 0; idx[0] < _blockDim; idx[0]++) {
 		for (idx[1] = 0; idx[1] < _blockDim; idx[1]++) {
 			for (idx[2] = 0; idx[2] < _blockDim; idx[2]++) {
@@ -492,7 +487,6 @@ void Block::createBlockCells()
 			}
 		}
 	}
-	cout << "Exit createBlockCells\n";
 }
 
 void Block::createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx)
@@ -578,22 +572,37 @@ Index3DId Block::findFace(const Polygon& face) const
 	return faceId;
 }
 
-Edge* Block::addEdge(const Index3DId& vert0, const Index3DId& vert1)
+EdgeKey Block::addEdge(const Index3DId& vert0, const Index3DId& vert1)
 {
-	Edge edge(vert0, vert1);
+	return addEdge(EdgeKey(vert0, vert1));
+}
+
+EdgeKey Block::addEdge(const EdgeKey& edgeKey)
+{
+	Edge edge(edgeKey);
 	auto pOwner = getOwner(edge);
 	auto& edges = pOwner->_edges;
 	auto id = edges.findOrAdd(edge);
 	auto pEdge = edges.getByElementIndex(id.elementId());
 	assert(pEdge);
 	if (pEdge && pEdge != &edge)
-		return const_cast<Edge*>(pEdge);
-	return nullptr;
+		return *pEdge;
+	return EdgeKey();
+
 }
 
-const Edge* Block::findEdge(const Index3DId& vert0, const Index3DId& vert1) const
+const Edge* Block::getEdge(const EdgeKey& edgeKey) const
 {
-	Edge edge(vert0, vert1);
+	Edge edge(edgeKey);
+	auto pOwner = getOwner(edge);
+	auto& edges = pOwner->_edges;
+	auto id = edges.findId(edge);
+	return edges.getByElementIndex(id.elementId());
+}
+
+Edge* Block::getEdge(const EdgeKey& edgeKey)
+{
+	Edge edge(edgeKey);
 	auto pOwner = getOwner(edge);
 	auto& edges = pOwner->_edges;
 	auto id = edges.findId(edge);
@@ -942,7 +951,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 	}
 }
 
-void Block::dumpEdgeObj(std::string& fileName, const MTC::set<Edge>& edges) const
+void Block::dumpEdgeObj(std::string& fileName, const MTC::set<EdgeKey>& edges) const
 {
 	string path = getObjFilePath();
 	string filename = path + fileName + ".obj";
@@ -1444,4 +1453,54 @@ void Block::pack()
 #endif
 }
 
-LAMBDA_BLOCK_IMPLS
+//LAMBDA_BLOCK_IMPLS
+void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+} 
+
+void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+} 
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+	auto p = getOwner(key.getVertex(0)); 
+	if (p) {
+		auto pEdge = p->getEdge(key); 
+		if (pEdge) 
+			func(*pEdge);
+	}
+} 
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+	auto p = getOwner(key.getVertex(0)); if (p) {
+		auto pEdge = p->getEdge(key); if (pEdge) func(*pEdge);
+	}
+}

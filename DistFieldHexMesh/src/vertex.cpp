@@ -63,39 +63,47 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	return *this;
 }
 
-MTC::set<Edge> Vertex::getEdges() const
+MTC::set<EdgeKey> Vertex::getEdges() const
 {
-	MTC::set<Edge> result;
+	MTC::set<EdgeKey> result;
 
 	for (const auto& otherId : _connectedVertices) {
-		Edge e(_thisId, otherId);
-		auto pEdge = getBlockPtr()->getEdge(e);
-		assert(pEdge);
-		if (pEdge) {
-			result.insert(*pEdge);
-		}
+		EdgeKey edgeKey(getId(), otherId);
+		result.insert(edgeKey);
 	}
 
 	return result;
 }
 
-MTC::set<Index3DId> Vertex::getFaceIds() const
+MTC::set<Index3DId> Vertex::getFaceIds(bool activeOnly) const
 {
 	MTC::set<Index3DId> result;
-	MTC::set<Edge> edges = getEdges();
 
-	for (const auto& edge : edges) {
-		auto faceIds = edge.getFaceIds();
-		result.insert(faceIds.begin(), faceIds.end());
+	for (const auto& otherId : _connectedVertices) {
+		EdgeKey edgeKey(getId(), otherId);
+		edgeFunc(edgeKey, [this, activeOnly, &result](const Edge& edge) {
+			auto faceIds = edge.getFaceIds();
+			if (activeOnly) {
+				for (const auto& faceId : faceIds) {
+					faceFunc(faceId, [&result](const Polygon& face) {
+						if (!face.getCellIds().empty()) {
+							result.insert(face.getId());
+						}
+					});
+				}
+			} else {
+				result.insert(faceIds.begin(), faceIds.end());
+			}
+		});
 	}
 
 	return result;
 }
 
-MTC::set<Index3DId> Vertex::getCellIds() const
+MTC::set<Index3DId> Vertex::getCellIds(bool activeOnly) const
 {
 	MTC::set<Index3DId> result;
-	MTC::set<Index3DId> faceIds = getFaceIds();
+	MTC::set<Index3DId> faceIds = getFaceIds(activeOnly);
 
 	for (const auto& faceId : faceIds) {
 		faceFunc(faceId, [&result](const Polygon& face) {
@@ -194,4 +202,43 @@ ostream& DFHM::operator << (ostream& out, const Vertex& vert)
 	return out;
 }
 
-LAMBDA_CLIENT_IMPLS(Vertex)
+//LAMBDA_CLIENT_IMPLS(Vertex)
+void Vertex::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Vertex::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Vertex::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Vertex::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Vertex::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Vertex::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Vertex::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+} 
+
+void Vertex::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+}

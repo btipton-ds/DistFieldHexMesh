@@ -36,7 +36,7 @@ namespace DFHM {
 
 namespace Utils {
 
-void formEdgeLoops(const Block* pBlock, const MTC::set<Edge> sharedSegments, MTC::set<Edge> availEdges, MTC::vector<MTC::vector<Edge>>& loops);
+void formEdgeLoops(const Block* pBlock, const MTC::set<EdgeKey> sharedSegments, MTC::set<EdgeKey> availEdges, MTC::vector<MTC::vector<EdgeKey>>& loops);
 
 class Timer
 {

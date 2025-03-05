@@ -37,13 +37,23 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+EdgeKey::EdgeKey(const Index3DId& vert0, const Index3DId& vert1)
+{
+	_vertexIds[0] = (vert0 < vert1) ? vert0 : vert1;
+	_vertexIds[1] = (vert0 < vert1) ? vert1 : vert0;
+}
+
+Edge::Edge(const EdgeKey& src)
+	: EdgeKey(src)
+	, ObjectPoolOwnerUser()
+{
+}
+
 Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
-	: ObjectPoolOwnerUser()
+	: EdgeKey(vert0, vert1)
+	, ObjectPoolOwnerUser()
 {
 	_faceIds.insert(faceIds.begin(), faceIds.end());
-		
-	_vertexIds[0] = vert0;
-	_vertexIds[1] = vert1;
 }
 
 Edge::Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds)
@@ -78,22 +88,22 @@ void Edge::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 	remap(idRemap, srcDims, _vertexIds[1]);
 }
 
-bool Edge::isValid() const
+bool EdgeKey::isValid() const
 {
 	return _vertexIds[0].isValid() && _vertexIds[1].isValid();
 }
 
-bool Edge::operator == (const Edge& rhs) const
+bool EdgeKey::operator == (const EdgeKey& rhs) const
 {
 	return !operator < (rhs) && !rhs.operator<(*this);
 }
 
-bool Edge::operator != (const Edge& rhs) const
+bool EdgeKey::operator != (const EdgeKey& rhs) const
 {
 	return !operator == (rhs);
 }
 
-bool Edge::operator < (const Edge& rhs) const
+bool EdgeKey::operator < (const EdgeKey& rhs) const
 {
 	for (int i = 0; i < 2; i++) {
 		const auto& v = _vertexIds[i];
@@ -312,7 +322,7 @@ LineSegmentd Edge::getSegment() const
 	return result;
 }
 
-bool Edge::containsVertex(const Index3DId& vertexId) const
+bool EdgeKey::containsVertex(const Index3DId& vertexId) const
 {
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
@@ -332,7 +342,7 @@ bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 
 }
 
-Index3DId Edge::getOtherVert(const Index3DId& vert) const
+Index3DId EdgeKey::getOtherVert(const Index3DId& vert) const
 {
 	if (vert == _vertexIds[0])
 		return _vertexIds[1];
@@ -341,26 +351,23 @@ Index3DId Edge::getOtherVert(const Index3DId& vert) const
 	return Index3DId();
 }
 
-void Edge::getFaceIds(FastBisectionSet<Index3DId>& faceIds) const
+MTC::set<Index3DId> Edge::getCellIds() const
 {
-	faceIds = _faceIds;
-}
-
-void Edge::getCellIds(MTC::set<Index3DId>& cellIds) const
-{
-	cellIds.clear();
+	MTC::set<Index3DId> result;
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
-			getBlockPtr()->faceFunc(faceId, [this, &cellIds](const Polygon& face) {
+			getBlockPtr()->faceFunc(faceId, [this, &result](const Polygon& face) {
 				const auto& adjCellIds = face.getCellIds();
 				for (const auto& cellId : adjCellIds) {
 					if (getBlockPtr()->polyhedronExists(cellId)) {
-						cellIds.insert(cellId);
+						result.insert(cellId);
 					}
 				}
 			});
 		}
 	}
+
+	return result;
 }
 
 void Edge::write(std::ostream& out) const
@@ -399,4 +406,44 @@ ostream& DFHM::operator << (ostream& out, const Edge& edge)
 	}
 
 	return out;
+}
+
+//LAMBDA_CLIENT_IMPLS(Edge)
+void Edge::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+void Edge::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Edge::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Edge::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Edge::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Edge::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Edge::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+} 
+
+void Edge::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
 }

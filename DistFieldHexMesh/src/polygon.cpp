@@ -82,10 +82,12 @@ void Polygon::connectToplogy() {
 			vert.addConnectedVertexId(_vertexIds[k]);
 		});
 
-		auto pEdge = getBlockPtr()->addEdge(_vertexIds[i], _vertexIds[j]);
-		assert(pEdge);
-		if (pEdge)
-			pEdge->addFaceId(getId());
+		EdgeKey edgeKey(_vertexIds[i], _vertexIds[j]);
+		auto newEdgeKey = getBlockPtr()->addEdge(edgeKey);
+		assert(newEdgeKey == edgeKey);
+		edgeFunc(newEdgeKey, [this](Edge& edge) {
+			edge.addFaceId(getId());
+		});
 	}
 }
 
@@ -98,10 +100,10 @@ void Polygon::disconnectTopology() {
 			vert.removeConnectedVertexId(_vertexIds[k]);
 		});
 
-		auto pEdge = const_cast<Edge*>(getBlockPtr()->findEdge(_vertexIds[i], _vertexIds[j]));
-		assert(pEdge);
-		if (pEdge)
-			pEdge->removeFaceId(getId());
+		EdgeKey edgeKey(_vertexIds[i], _vertexIds[j]);
+		edgeFunc(edgeKey, [this](Edge& edge) {
+			edge.removeFaceId(getId());
+		});
 	}
 }
 
@@ -196,7 +198,7 @@ bool Polygon::cellsOwnThis() const
 			return false;
 		bool result = true;
 		cellFunc(cellId, [this, &result](const Polyhedron& cell) {
-			if (!cell.containsFace(_thisId))
+			if (!cell.containsFace(getId()))
 				result = false;
 		});
 
@@ -377,9 +379,9 @@ bool Polygon::isBlockBoundary() const
 	return false;
 }
 
-MTC::vector<Edge> Polygon::getEdges() const
+MTC::vector<EdgeKey> Polygon::getEdgeKeys() const
 {
-	MTC::vector<Edge> result;
+	MTC::vector<EdgeKey> result;
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -970,7 +972,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 			for (const auto& cellId1 : _cellIds) {
 				assert(getBlockPtr()->polyhedronExists(cellId1));
 				cellFunc(cellId1, [this](const Polyhedron& cell) {
-					assert(cell.containsFace(_thisId));
+					assert(cell.containsFace(getId()));
 					});
 			}
 			assert(_cellIds.size() <= 2);
@@ -1208,8 +1210,8 @@ bool Polygon::isPointOnEdge(const Vector3d& pt) const
 namespace
 {
 
-bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vector3d>& vertModelNormalMap, MTC::map<Index3DId, MTC::vector<Edge>>& vertEdgeMap, 
-	MTC::vector<Edge>& edges)
+bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vector3d>& vertModelNormalMap, MTC::map<Index3DId, MTC::vector<EdgeKey>>& vertEdgeMap, 
+	MTC::vector<EdgeKey>& edges)
 {
 	bool addedToList = false;
 	for (size_t i = edges.size() - 1; i != -1; i--) {
@@ -1295,11 +1297,13 @@ bool Polygon::verifyTopology() const
 		valid = false;
 
 	if (valid) {
-		const auto& edges = getEdges();
-		for (const auto& edge : edges) {
-			auto faceIds = edge.getFaceIds();
-			if (valid && !faceIds.contains(_thisId)) // edge does not link back to this face
-				valid = false;
+		const auto& edgeKeys = getEdgeKeys();
+		for (const auto& edgeKey : edgeKeys) {
+			edgeFunc(edgeKey, [this, &valid](const Edge& edge) {
+				auto& faceIds = edge.getFaceIds();
+				if (valid && !faceIds.contains(getId())) // edge does not link back to this face
+					valid = false;
+			});
 		}
 	}
 
@@ -1309,7 +1313,7 @@ bool Polygon::verifyTopology() const
 				valid = false;
 
 			cellFunc(cellId, [this, &valid](const Polyhedron& cell) {
-				if (valid && !cell.containsFace(_thisId)) {
+				if (valid && !cell.containsFace(getId())) {
 					valid = false;
 				}
 				});
@@ -1394,5 +1398,43 @@ inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 }
 
 
-LAMBDA_CLIENT_IMPLS(Polygon)
+//LAMBDA_CLIENT_IMPLS(Polygon)
+void Polygon::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
 
+void Polygon::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polygon::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polygon::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polygon::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+} 
+
+void Polygon::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+}

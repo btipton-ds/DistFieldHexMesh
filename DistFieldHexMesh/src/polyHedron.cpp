@@ -316,9 +316,9 @@ size_t Polyhedron::getNumFaces(bool includeSubFaces) const
 }
 
 
-FastBisectionSet<Edge> Polyhedron::getEdges(bool includeAdjacentCellFaces) const
+FastBisectionSet<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
 {
-	FastBisectionSet<Edge> result;
+	FastBisectionSet<EdgeKey> result;
 	if (includeAdjacentCellFaces) {
 		MTC::set<Index3DId> vertIds;
 		getVertIds(vertIds);
@@ -331,8 +331,8 @@ FastBisectionSet<Edge> Polyhedron::getEdges(bool includeAdjacentCellFaces) const
 	} else {
 		for (const auto& faceId : _faceIds) {
 			faceFunc(faceId, [&result](const Polygon& face) {
-				auto edges = face.getEdges();
-				result.insert(edges.begin(), edges.end());
+				auto edgeKeys = face.getEdgeKeys();
+				result.insert(edgeKeys.begin(), edgeKeys.end());
 			});
 		}
 	}
@@ -349,7 +349,7 @@ void Polyhedron::updateAllTopolCaches() const
 
 	map<Edge, FastBisectionSet<Index3DId>> edgeToFaceIdMap;
 	FastBisectionSet<Index3DId> testedFaceIds;
-	FastBisectionSet<Edge> connectedEdges0;
+	FastBisectionSet<EdgeKey> connectedEdges0;
 	for (const auto& faceId : _faceIds) {
 		testedFaceIds.insert(faceId);
 		faceFunc(faceId, [this, &testedFaceIds, &edgeToFaceIdMap](const Polygon& face) {
@@ -525,7 +525,7 @@ FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
 		vertexFunc(vertId, [&result](const Vertex& vertex) {
-			auto cellIds = vertex.getCellIds();
+			auto cellIds = vertex.getCellIds(true);
 			result.insert(cellIds.begin(), cellIds.end());
 		});
 	}
@@ -534,14 +534,14 @@ FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
-void Polyhedron::getVertEdges(const Index3DId& vertId, FastBisectionSet<Edge>& result, bool includeAdjacentCells) const
+void Polyhedron::getVertEdges(const Index3DId& vertId, FastBisectionSet<EdgeKey>& result, bool includeAdjacentCells) const
 {
-	auto cellEdgeSet = getEdges(includeAdjacentCells);
+	auto cellEdgeSet = getEdgeKeys(includeAdjacentCells);
 	if (includeAdjacentCells) {
 		auto adjCells = getAdjacentCells();
 		for (const auto& adjCellId : adjCells) {
 			cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
-				const auto& tmp = adjCell.getEdges(true);
+				const auto& tmp = adjCell.getEdgeKeys(true);
 				cellEdgeSet.insert(tmp.begin(), tmp.end());
 			});
 		}
@@ -558,11 +558,14 @@ FastBisectionSet<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) co
 {
 	FastBisectionSet<Index3DId> result;
 
-	FastBisectionSet<Edge> vertEdges;
-	getVertEdges(vertId, vertEdges, false);
+	FastBisectionSet<EdgeKey> vertEdgeKeys;
+	getVertEdges(vertId, vertEdgeKeys, false);
 
-	for (const Edge& edge : vertEdges) {
-		edge.getFaceIds(result);
+	for (const Edge& edgeKey : vertEdgeKeys) {
+		edgeFunc(edgeKey, [&result](const Edge& edge) {
+			auto& tmp = edge.getFaceIds();
+			result.insert(tmp.begin(), tmp.end());
+		});
 	}
 
 	return result;
@@ -596,7 +599,7 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 
 	if (numQuads == 6 && numTris == 0) {
 		// May be hexahedral
-		auto edges = getEdges(false);
+		auto edges = getEdgeKeys(false);
 		for (size_t i = 0; i < baseFaceVerts.size(); i++) {
 			size_t j = (i + 1) % baseFaceVerts.size();
 			edges.erase(Edge(baseFaceVerts[i], baseFaceVerts[j]));
@@ -785,22 +788,28 @@ double Polyhedron::calVolume() const
 
 bool Polyhedron::isOriented() const
 {
-	const auto& edges = getEdges(false);
-	for (const auto& edge : edges) {
-		if (!edge.isOriented(getId()))
-			return false;
+	bool result = true;
+	const auto& edgeKeys = getEdgeKeys(false);
+	for (const auto& edgeKey : edgeKeys) {
+		edgeFunc(edgeKey, [this, &result](const Edge& edge) {
+			if (!edge.isOriented(getId()))
+				result = false;
+		});
 	}
-	return true;
+
+	return result;
 }
 
-void Polyhedron::classifyEdges(MTC::set<Edge>& convexEdges, MTC::set<Edge>& concaveEdges) const
+void Polyhedron::classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const
 {
-	const auto& edges = getEdges(false);
-	for (const auto& edge : edges) {
-		if (edge.isConvex(getId()))
-			convexEdges.insert(edge);
-		else
-			concaveEdges.insert(edge);
+	const auto& edgeKeys = getEdgeKeys(false);
+	for (const auto& edgeKey : edgeKeys) {
+		edgeFunc(edgeKey, [this, &convexEdges, &concaveEdges](const Edge& edge) {
+			if (edge.isConvex(getId()))
+				convexEdges.insert(edge);
+			else
+				concaveEdges.insert(edge);
+		});
 	}
 }
 
@@ -811,12 +820,19 @@ bool Polyhedron::isConvex() const
 		return false;
 	}
 
-	const auto& edges = getEdges(false);
-	for (const auto& edge : edges) {
-		if (!edge.isConvex(getId())) {
-			return false;
-		}
+	bool result = true;
+	const auto& edgeKeys = getEdgeKeys(false);
+	for (const auto& edgeKey : edgeKeys) {
+		edgeFunc(edgeKey, [this, &result](const Edge& edge) {
+			if (!edge.isConvex(getId())) {
+				result = false;
+			}
+		});
+
+		if (!result)
+			break;
 	}
+	return result;
 
 	return true;
 }
@@ -1146,16 +1162,18 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		double maxEdgeLength = 0;
 
 		CBoundingBox3Dd bbox = getBoundingBox();
-		FastBisectionSet<Edge> edges;
-		cellFunc(_thisId, [&edges](const Polyhedron& cell) {
-			edges = cell.getEdges(false);
+		FastBisectionSet<EdgeKey> edgeKeys;
+		cellFunc(_thisId, [&edgeKeys](const Polyhedron& cell) {
+			edgeKeys = cell.getEdgeKeys(false);
 		});
 
-		for (const auto& edge : edges) {
-			auto seg = edge.getSegment();
-			double l = seg.calLength();
-			if (l > maxEdgeLength)
-				maxEdgeLength = l;
+		for (const auto& edgeKey : edgeKeys) {
+			edgeFunc(edgeKey, [&maxEdgeLength](const Edge& edge) {
+				auto seg = edge.getSegment();
+				double l = seg.calLength();
+				if (l > maxEdgeLength)
+					maxEdgeLength = l;
+			});
 		}
 
 		double refRadius = calReferenceSurfaceRadius(bbox, params);
@@ -1210,45 +1228,6 @@ bool Polyhedron::hasTooManySplits(const SplittingParams& params) const
 	if (numFaces > params.maxCellFaces || numSplitFaces > 2)
 		return true;
 	return false;
-}
-
-bool Polyhedron::orderVertEdges(MTC::set<Edge>& edgesIn, MTC::vector<Edge>& orderedEdges) const
-{
-	orderedEdges.clear();
-	MTC::set<Edge> edges(edgesIn);
-	while (!edges.empty()) {
-		Edge lastEdge;
-		if (orderedEdges.empty()) {
-			lastEdge = *edges.begin();
-			orderedEdges.push_back(lastEdge);
-			edges.erase(lastEdge);
-		} else {
-			lastEdge = orderedEdges.back();
-		}
-
-		const auto& edgeFaces = lastEdge.getFaceIds();
-		assert(edgeFaces.size() == 2);
-
-		bool found = false;
-		for (const auto& otherEdge : edges) {
-			const auto& otherEdgeFaces = otherEdge.getFaceIds();
-
-			for (const auto& faceId : otherEdgeFaces) {
-				if (edgeFaces.contains(faceId)) {
-					found = true;
-					orderedEdges.push_back(otherEdge);
-					edges.erase(otherEdge);
-					break;
-				}
-			}
-			if (found)
-				break;
-		}
-		if (!found)
-			return false;
-	}
-
-	return true;
 }
 
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const
@@ -1402,11 +1381,11 @@ void Polyhedron::setLayerNumOnNextPass(int32_t val)
 }
 
 
-MTC::set<Edge> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
+MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {
 	// This function takes vertices and looks for faces which contain exactly 2 of the available verts.
 	// The edge may already exist.
-	MTC::set<Edge> edgeSet;
+	MTC::set<EdgeKey> edgeSet;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &edgeSet, &vertIds](const Polygon& face) {
 			MTC::set<Index3DId> vertsInFace;
@@ -1472,12 +1451,16 @@ bool Polyhedron::isClosed() const
 {
 	if (_cachedIsClosed == Trinary::IS_UNKNOWN) {
 		_cachedIsClosed = Trinary::IS_TRUE;
-		const auto& edges = getEdges(false);
-		for (const auto& edge : edges) {
-			if (edge.getFaceIds().size() != 2) {
-				_cachedIsClosed = Trinary::IS_FALSE;
+		const auto& edgeKeys = getEdgeKeys(false);
+		for (const auto& edgeKey : edgeKeys) {
+			edgeFunc(edgeKey, [this](const Edge& edge) {
+				if (edge.getFaceIds().size() != 2) {
+					_cachedIsClosed = Trinary::IS_FALSE;
+				}
+			});
+
+			if (_cachedIsClosed == Trinary::IS_FALSE)
 				break;
-			}
 		}
 	}
 	return _cachedIsClosed == Trinary::IS_TRUE;
@@ -1546,11 +1529,16 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 {
 	auto pBlk = cell.getBlockPtr();
 
-	const auto& edges = cell.getEdges(false);
+	const auto& edgeKeys = cell.getEdgeKeys(false);
 	bool closed = true;
-	for (const auto& edge : edges) {
-		if (edge.getFaceIds().size() != 2)
-			closed = false;
+	for (const auto& edgeKey : edgeKeys) {
+		cell.edgeFunc(edgeKey, [&closed](const Edge& edge) {
+			if (edge.getFaceIds().size() != 2)
+				closed = false;
+		});
+
+		if (!closed)
+			break;
 	}
 
 #if LOGGING_VERBOSE_ENABLED
@@ -1569,10 +1557,10 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 		out << Logger::Pad() << "}\n";
 
 		if (!closed) {
-			out << Logger::Pad() << "edges(" << edges.size() << "): {\n";
-			for (const auto& edge : edges) {
+			out << Logger::Pad() << "edges(" << edgeKeys.size() << "): {\n";
+			for (const auto& edgeKey : edgeKeys) {
 				Logger::Indent indent;
-				out << Logger::Pad() << edge << "\n";
+				out << Logger::Pad() << edgeKey << "\n";
 			}
 			out << Logger::Pad() << "}\n";
 		}
@@ -1593,4 +1581,43 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 return out;
 }
 
-LAMBDA_CLIENT_IMPLS(Polyhedron)
+//LAMBDA_CLIENT_IMPLS(Polyhedron)
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->vertexFunc(id, func);
+} 
+
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->faceFunc(id, func);
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->cellFunc(id, func);
+} 
+
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+} 
+
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	p->edgeFunc(key, func);
+}

@@ -157,7 +157,7 @@ public:
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
 	void clearCache() const;
-	MTC::vector<Edge> getEdges() const;
+	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 	size_t numFaceIds(bool includeSplits) const;

@@ -29,11 +29,12 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <vector>
 #include <set>
+#include <iostream>
+#include <fastBisectionSet.h>
 #include <pool_set.h>
 #include <index3D.h>
 #include <objectPool.h>
-#include <iostream>
-#include <fastBisectionSet.h>
+#include <lambdaMacros.h>
 
 template<class T>
 class Plane;
@@ -44,21 +45,39 @@ using LineSegmentd = LineSegment<double>;
 namespace DFHM {
 
 class Block;
+class Vertex;
+class Polygon;
 class Polyhedron;
 
-class Edge : public ObjectPoolOwnerUser {
+class EdgeKey {
+public:
+	EdgeKey() = default;
+	EdgeKey(const EdgeKey& src) = default;
+	EdgeKey(const Index3DId& vert0, const Index3DId& vert1);
+
+	bool isValid() const;
+	bool operator < (const EdgeKey& rhs) const;
+	bool operator == (const EdgeKey& rhs) const;
+	bool operator != (const EdgeKey& rhs) const;
+
+	const Index3DId& getVertex(size_t idx) const;
+	const Index3DId* getVertexIds() const;
+	bool containsVertex(const Index3DId& vertexId) const;
+	Index3DId getOtherVert(const Index3DId& vert) const;
+
+protected:
+	Index3DId _vertexIds[2];
+};
+
+class Edge : public EdgeKey, public ObjectPoolOwnerUser {
 public:
 
 	Edge() = default;
 	Edge(const Edge& src) = default;
+	Edge(const EdgeKey& src);
 	Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds = MTC::set<Index3DId>());
 	Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds);
 	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
-
-	bool isValid() const;
-	bool operator < (const Edge& rhs) const;
-	bool operator == (const Edge& rhs) const;
-	bool operator != (const Edge& rhs) const;
 
 	Index3DId getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
@@ -66,15 +85,10 @@ public:
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
 
-	const Index3DId& getVertex(size_t idx) const;
-	const Index3DId* getVertexIds() const;
-	bool containsVertex(const Index3DId& vertexId) const;
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
-	void getFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
-	void getCellIds(MTC::set<Index3DId>& cellIds) const;
-	Index3DId getOtherVert(const Index3DId& vert) const;
+	MTC::set<Index3DId> getCellIds() const;
 
 	double sameParamTol() const;
 	double getLength() const;
@@ -108,11 +122,12 @@ public:
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
+	LAMBDA_CLIENT_DECLS
+
 protected:
 	void setId(const Index3DId& id) override;
 
 private:
-	Index3DId _vertexIds[2];
 	FastBisectionSet<Index3DId> _faceIds;
 };
 
@@ -121,12 +136,12 @@ inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 	return _faceIds;
 }
 
-inline const Index3DId& Edge::getVertex(size_t idx) const
+inline const Index3DId& EdgeKey::getVertex(size_t idx) const
 {
 	return _vertexIds[idx];
 }
 
-inline const Index3DId* Edge::getVertexIds() const
+inline const Index3DId* EdgeKey::getVertexIds() const
 {
 	return _vertexIds;
 }
