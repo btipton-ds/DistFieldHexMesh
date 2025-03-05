@@ -1202,34 +1202,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 	return false;
 }
 
-bool Polyhedron::hasTooManySplits(const SplittingParams& params) const
-{
-	Index3DId testId(6, 4, 5, 0);
-	if (testId == getId()) {
-		int dbgBreak = 1;
-		getBlockPtr()->dumpPolyhedraObj({getId()}, false, false, false);
-	}
-	size_t numFaces = 0, numSplitFaces = 0;
-	bool tooManyFaceSplitLevels = false;
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &numSplitFaces, &tooManyFaceSplitLevels](const Polygon& face) {
-			if (face.numSplitLevels() > 1)
-				tooManyFaceSplitLevels = true;
-			auto n = face.numFaceIds(true);
-			if (n > 1)
-				numSplitFaces += 1;
-		});
-		if (tooManyFaceSplitLevels)
-			return true;
-	}
-
-	numFaces = getNumNestedFaces();
-	if (numFaces > params.maxCellFaces || numSplitFaces > 2)
-		return true;
-	return false;
-}
-
 double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const
 {
 	if (!_needsCurvatureCheck)
@@ -1482,12 +1454,13 @@ bool Polyhedron::lineSegmentIntersects(const LineSegmentd& seg, MTC::vector<RayH
 
 bool Polyhedron::verifyTopology() const
 {
+	const auto& params = getBlockPtr()->getSplitParams();
 	bool valid = true;
 
 	for (const auto& faceId : _faceIds) {
 		if (valid && polygonExists(faceId)) {
 			faceFunc(faceId, [this, &valid](const Polygon& face) {
-				if (valid && !face.usedByCell(_thisId)) {
+				if (valid && !face.usedByCell(getId())) {
 					valid = false;
 				}
 				if (valid && !face.verifyTopology())
@@ -1501,12 +1474,12 @@ bool Polyhedron::verifyTopology() const
 		valid = false;
 	}
 	
-	if (valid && hasTooManySplits(getBlockPtr()->getSplitParams()))
+	if (valid && isTooComplex(params))
 		valid = false;
 
 #if DUMP_BAD_CELL_OBJS
 	if (!valid) {
-		getBlockPtr()->dumpPolyhedraObj({ _thisId }, false, false, false);
+		getBlockPtr()->dumpPolyhedraObj({ getId() }, false, false, false);
 	}
 #endif
 

@@ -52,8 +52,8 @@ struct SplittingParams {
 	bool symYAxis = true;
 	bool symZAxis = false;
 
-	size_t numSimpleDivs = 1;
-	size_t numIntersectionDivs = 0;
+	size_t numSimpleDivs = 0;
+	size_t numIntersectionDivs = 1;
 	size_t numSharpVertDivs = 0;
 	size_t numSharpEdgeIntersectionDivs = 0;
 	size_t numCurvatureDivs = 0;

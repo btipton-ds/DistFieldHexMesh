@@ -53,8 +53,6 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Layer counting is still off
-
 Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids
 Add offset/fat triangle intersections to triMesh. Allow setting a distance offset for each triangle vertex and conical frustum intersection for each edge.
@@ -72,16 +70,18 @@ Switch objectPool search to use FastBisectionMap.
 Split normals at shared vertices. Same as sharp edge rendering, but this fixes badly interpolated curvatures which are messing up
 splitting.
 
+Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
+
 *******************************************************************************************
 Future - too hard and time consuming for now
 Restore graphics multisampling for OIT - There's a mutlsampling facility for anti aliasing, but it requires changing all the buffer code.
     I spent a day on it and it was just a big can of worms. Higher priorities right now.
 
-Add read/write of a document file. This contains all the configuration specific settings. Use OpenFoam dictionary format.
-
 ****************************************************************************************************************************************
 Already done
 ****************************************************************************************************************************************
+
+Layer counting is still off
 
 Split faces are intermittently not fusing at high division levels and getting false "wall" face reports
 Generating polyhedra with more than the maximum number of faces!

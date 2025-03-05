@@ -1030,7 +1030,7 @@ bool Block::splitRequiredPolyhedra()
 		for (const auto& cellId : temp) {
 			if (_polyhedra.exists(cellId)) {
 				auto& cell = _polyhedra[cellId];
-				if (cell.hasTooManySplits(params)) {
+				if (cell.isTooComplex(params)) {
 					Splitter splitter(this, cellId, localTouched);
 					if (splitter.splitAtParamCenter())
 						didSplit = true;
@@ -1317,7 +1317,7 @@ void Block::updateSplitStack()
 		auto pOwner = getOwner(cellId);
 		if (pOwner && pOwner->_polyhedra.exists(cellId)) {
 			auto& cell = pOwner->_polyhedra[cellId];
-			if (cell.hasTooManySplits(params))
+			if (cell.isTooComplex(params))
 				pOwner->_needToSplit.insert(cellId);
 		}
 	}

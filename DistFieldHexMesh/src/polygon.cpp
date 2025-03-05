@@ -385,10 +385,7 @@ MTC::vector<EdgeKey> Polygon::getEdgeKeys() const
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Edge e(_vertexIds[i], _vertexIds[j]);
-		auto pEdge = getOurBlockPtr()->getEdge(e);
-		assert(pEdge);
-		result.push_back(*pEdge);
+		result.push_back(Edge(_vertexIds[i], _vertexIds[j]));
 	}
 
 	return result;
@@ -423,7 +420,8 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 
 bool Polygon::isTooComplex(const SplittingParams& params) const
 {
-	return numSplitLevels() > 1;
+	auto num = numSplitLevels();
+	return num > 1;
 }
 
 size_t Polygon::numSplitLevels() const
