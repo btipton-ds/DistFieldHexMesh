@@ -629,6 +629,8 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	auto& newCell = _polyhedra[cellId];
+	newCell.setParentId(parentCellId);
+
 	const auto& cellFaceIds = newCell.getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
@@ -637,9 +639,12 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 		});
 	}
 //	newCell.orientFaces();
-	if (!parentCellId.isValid()) {
+	if (!parentCellId.isValid() || !polyhedronExists(parentCellId)) {
 		const auto& meshData = getModelMeshData();
 		newCell.addMeshToTriIndices(meshData);
+	} else {
+		const auto& parentCell = getPolyhedron(parentCellId);
+		newCell.setTriIndices(parentCell);
 	}
 
 #if VALIDATION_ON && defined(_DEBUG)

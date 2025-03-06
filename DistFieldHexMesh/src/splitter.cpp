@@ -133,7 +133,7 @@ void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
 
 	for (const auto& facePts : _cellFacePoints) {
 		// This aligns the disordered faceIds with their cube face points
-		const auto& faceId = findSourceFaceId(parentCell, facePts, tol);
+		const auto& faceId = findSourceFaceId(parentCell.getId(), facePts, tol);
 		assert(faceId.isValid());
 
 		conditionalSplitQuadFaceAtParam(faceId, facePts, 0.5, 0.5);
@@ -170,7 +170,7 @@ void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
 					TRI_LERP(_cornerPts, t0, u1, v1),
 				};
 
-				addHexCell(parentCell, subCorners, tol);
+				addHexCell(parentCell.getId(), subCorners, tol);
 			}
 		}
 	}
@@ -179,7 +179,7 @@ void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
 	_pBlock->freePolyhedron(_polyhedronId);
 }
 
-void Splitter::addHexCell(const Polyhedron& parentCell, const std::vector<Vector3d>& cubePts, double tol)
+void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol)
 {
 	assert(cubePts.size() == 8);
 	std::vector<std::vector<Vector3d>> facePtList;
@@ -189,7 +189,7 @@ void Splitter::addHexCell(const Polyhedron& parentCell, const std::vector<Vector
 	MTC::set<Index3DId> cellFaceIds;
 	for (const auto& facePts : facePtList) {
 		assert(facePts.size() == 4);
-		Index3DId id = findSourceFaceId(parentCell, facePts, tol);
+		Index3DId id = findSourceFaceId(parentId, facePts, tol);
 		if (!id.isValid()) {
 			// This should only happen for new interior faces
 			vector<Index3DId> faceVertIds;
@@ -200,21 +200,21 @@ void Splitter::addHexCell(const Polyhedron& parentCell, const std::vector<Vector
 		}
 		cellFaceIds.insert(id);
 	}
-	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), parentCell.getId());
+	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), parentId);
 
-	cellFunc(newCellId, [this, parentCell](Polyhedron& newCell) {
+	cellFunc(newCellId, [this](Polyhedron& newCell) {
 		assert(newCell.getNumFaces(true) <= _params.maxCellFaces);
-		newCell.setParentId(parentCell.getId());
-		newCell.setSplitLevel(parentCell.getSplitLevel());
-		newCell.setTriIndices(parentCell);
 	});
 		
 
 }
 
-Index3DId Splitter::findSourceFaceId(const Polyhedron& parentCell, const std::vector<Vector3d>& facePts, double tol) const
+Index3DId Splitter::findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const
 {
-	const auto& faceIds = parentCell.getFaceIds();
+	FastBisectionSet<Index3DId> faceIds;
+	cellFunc(parentId, [&faceIds](const Polyhedron& parentCell) {
+		faceIds = parentCell.getFaceIds();
+	});
 	double minErr = DBL_MAX;
 	Index3DId result;
 	for (const auto& faceId : faceIds) {
