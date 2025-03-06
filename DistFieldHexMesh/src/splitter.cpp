@@ -81,11 +81,11 @@ bool Splitter::splitAtCenter()
 		return false;
 
 	bool result = false;
+	CellType cellType = CT_UNKNOWN;
 
-	cellFunc(_polyhedronId, [this, &result](Polyhedron& cell) {
+	cellFunc(_polyhedronId, [this, &cellType](Polyhedron& cell) {
 		// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
 		// match with the neighbor cells's faces.
-		Vector3d tuv(0.5, 0.5, 0.5);
 #if 0 && defined(_DEBUG)
 		// Now split the cell
 		Index3DId testId(6, 4, 5, 0);
@@ -98,11 +98,19 @@ bool Splitter::splitAtCenter()
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 		if (cell.classify(_cornerPts) == 8) {
-			splitHexCell(cell, tuv);
-			result = true;
+			cellType = CT_HEX;
 		}
 	});
 
+	Vector3d tuv(0.5, 0.5, 0.5);
+	switch (cellType) {
+	case CT_HEX:
+		splitHexCell(tuv);
+		result = true;
+		break;
+	default:
+		result = false;
+	}
 	return result;
 }
 
@@ -111,12 +119,17 @@ Index3DId Splitter::vertId(const Vector3d& pt)
 	return _pBlock->getVertexIdOfPoint(pt);
 }
 
-void Splitter::splitHexCell(Polyhedron& cell, const Vector3d& tuv)
+void Splitter::splitHexCell(const Vector3d& tuv)
+{
+	cellFunc(_polyhedronId, [this, &tuv](Polyhedron& cell) {
+		splitHexCell8(cell, tuv);
+	});
+}
+
+void Splitter::splitHexCell8(Polyhedron& cell, const Vector3d& tuv)
 {
 	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
 	createHexCellData(cell);
-
-
 
 	for (const auto& facePts : _cellFacePoints) {
 		// This aligns the disordered faceIds with their cube face points
