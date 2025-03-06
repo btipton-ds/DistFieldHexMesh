@@ -66,11 +66,11 @@ private:
 
 	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
-	void createHexCellData(const Polyhedron& cell);
+	void createHexCellData(const Polyhedron& parentCell);
 	void splitHexCell(const Vector3d& tuv);
-	void splitHexCell8(Polyhedron& cell, const Vector3d& tuv);
-	void addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& cubePts, double tol);
-	Index3DId findSourceFaceId(const Polyhedron& cell, const std::vector<Vector3d>& facePts, double tol) const;
+	void splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv);
+	void addHexCell(const Polyhedron& parentCell, const std::vector<Vector3d>& cubePts, double tol);
+	Index3DId findSourceFaceId(const Polyhedron& parentCell, const std::vector<Vector3d>& facePts, double tol) const;
 	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
 
 	LAMBDA_CLIENT_DECLS;

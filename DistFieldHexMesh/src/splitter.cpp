@@ -83,11 +83,11 @@ bool Splitter::splitAtCenter()
 	bool result = false;
 	CellType cellType = CT_UNKNOWN;
 
-	cellFunc(_polyhedronId, [this, &cellType](Polyhedron& cell) {
-		// DO NOT USE the cell centroid! It is at a different location than the parametric center. That results in faces which do 
+	cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
+		// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
 		// match with the neighbor cells's faces.
 #if 0 && defined(_DEBUG)
-		// Now split the cell
+		// Now split the parentCell
 		Index3DId testId(6, 4, 5, 0);
 		if (testId == _polyhedronId) {
 			int dbgBreak = 1;
@@ -97,7 +97,7 @@ bool Splitter::splitAtCenter()
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
-		if (cell.classify(_cornerPts) == 8) {
+		if (parentCell.classify(_cornerPts) == 8) {
 			cellType = CT_HEX;
 		}
 	});
@@ -121,32 +121,32 @@ Index3DId Splitter::vertId(const Vector3d& pt)
 
 void Splitter::splitHexCell(const Vector3d& tuv)
 {
-	cellFunc(_polyhedronId, [this, &tuv](Polyhedron& cell) {
-		splitHexCell8(cell, tuv);
+	cellFunc(_polyhedronId, [this, &tuv](Polyhedron& parentCell) {
+		splitHexCell8(parentCell, tuv);
 	});
 }
 
-void Splitter::splitHexCell8(Polyhedron& cell, const Vector3d& tuv)
+void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
 {
 	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
-	createHexCellData(cell);
+	createHexCellData(parentCell);
 
 	for (const auto& facePts : _cellFacePoints) {
 		// This aligns the disordered faceIds with their cube face points
-		const auto& faceId = findSourceFaceId(cell, facePts, tol);
+		const auto& faceId = findSourceFaceId(parentCell, facePts, tol);
 		assert(faceId.isValid());
 
 		conditionalSplitQuadFaceAtParam(faceId, facePts, 0.5, 0.5);
 	}
 #if _DEBUG
-	for (const auto& faceId : cell.getFaceIds()) {
+	for (const auto& faceId : parentCell.getFaceIds()) {
 		_pBlock->faceFunc(faceId, [](const Polygon& face) {
 			assert(face.isSplit());
 		});
 	}
 #endif
 
-	cell.detachFaces(); // This cell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+	parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = (i == 0) ? 0 : tuv[0];
@@ -170,16 +170,16 @@ void Splitter::splitHexCell8(Polyhedron& cell, const Vector3d& tuv)
 					TRI_LERP(_cornerPts, t0, u1, v1),
 				};
 
-				addHexCell(cell, subCorners, tol);
+				addHexCell(parentCell, subCorners, tol);
 			}
 		}
 	}
 
-	// It's been completely split, so this cell can be removed
+	// It's been completely split, so this parentCell can be removed
 	_pBlock->freePolyhedron(_polyhedronId);
 }
 
-void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& cubePts, double tol)
+void Splitter::addHexCell(const Polyhedron& parentCell, const std::vector<Vector3d>& cubePts, double tol)
 {
 	assert(cubePts.size() == 8);
 	std::vector<std::vector<Vector3d>> facePtList;
@@ -189,7 +189,7 @@ void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& c
 	MTC::set<Index3DId> cellFaceIds;
 	for (const auto& facePts : facePtList) {
 		assert(facePts.size() == 4);
-		Index3DId id = findSourceFaceId(cell, facePts, tol);
+		Index3DId id = findSourceFaceId(parentCell, facePts, tol);
 		if (!id.isValid()) {
 			// This should only happen for new interior faces
 			vector<Index3DId> faceVertIds;
@@ -200,21 +200,21 @@ void Splitter::addHexCell(const Polyhedron& cell, const std::vector<Vector3d>& c
 		}
 		cellFaceIds.insert(id);
 	}
-	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), cell.getId());
+	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds), parentCell.getId());
 
-	cellFunc(newCellId, [this, cell](Polyhedron& newCell) {
+	cellFunc(newCellId, [this, parentCell](Polyhedron& newCell) {
 		assert(newCell.getNumFaces(true) <= _params.maxCellFaces);
-		newCell.setParentId(cell.getId());
-		newCell.setSplitLevel(cell.getSplitLevel());
-		newCell.setTriIndices(cell);
+		newCell.setParentId(parentCell.getId());
+		newCell.setSplitLevel(parentCell.getSplitLevel());
+		newCell.setTriIndices(parentCell);
 	});
 		
 
 }
 
-Index3DId Splitter::findSourceFaceId(const Polyhedron& cell, const std::vector<Vector3d>& facePts, double tol) const
+Index3DId Splitter::findSourceFaceId(const Polyhedron& parentCell, const std::vector<Vector3d>& facePts, double tol) const
 {
-	const auto& faceIds = cell.getFaceIds();
+	const auto& faceIds = parentCell.getFaceIds();
 	double minErr = DBL_MAX;
 	Index3DId result;
 	for (const auto& faceId : faceIds) {
@@ -249,7 +249,7 @@ void Splitter::findSourceFaceId_inner(const Index3DId& faceId, const std::vector
 
 }
 
-void Splitter::createHexCellData(const Polyhedron& cell)
+void Splitter::createHexCellData(const Polyhedron& parentCell)
 {
 	_cellFacePoints;
 	GradingOp::getCubeFacePoints(_cornerPts, _cellFacePoints);
@@ -265,9 +265,9 @@ void Splitter::createHexCellData(const Polyhedron& cell)
 	}
 
 	_numSplitFaces = 0;
-	const auto& faceIds = cell.getFaceIds();
+	const auto& faceIds = parentCell.getFaceIds();
 	for (const auto& faceId : faceIds) {
-		cell.faceFunc(faceId, [this](const Polygon& face) {
+		parentCell.faceFunc(faceId, [this](const Polygon& face) {
 			if (face.getSplitIds().size() > 1)
 				_numSplitFaces++;
 		});
