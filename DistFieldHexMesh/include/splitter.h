@@ -36,16 +36,20 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <pool_set.h>
 #include <pool_vector.h>
+#include <volume.h>
 
 namespace DFHM {
 
 class Block;
 class Polygon;
 class Polyhedron;
+class Volume;
+using VolumePtr = std::shared_ptr<Volume>;
 
 class Splitter {
 public:
 	Splitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
+	~Splitter();
 
 	bool splitAtCenter();
 
@@ -74,6 +78,8 @@ private:
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
+
+	VolumePtr _pScratchVol;
 };
 
 inline Block* Splitter::getBlockPtr()

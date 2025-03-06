@@ -62,11 +62,13 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 
 class Volume {
 public:
+	static void findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices);
+
 	Volume(const Index3D& dims = Index3D(0, 0, 0));
 	Volume(const Volume& src);
 	~Volume();
 
-	static void findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices);
+	void clearEntries();
 
 	void startOperation();
 	void endOperation();
@@ -96,6 +98,7 @@ public:
 
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
+	void buildSingleBlockVol(const Volume* srcVol);
 	void buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
 	void divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 
@@ -207,7 +210,7 @@ private:
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
 
-	MultiCore::ThreadPool _threadPool;
+	mutable std::shared_ptr<MultiCore::ThreadPool> _pThreadPool;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

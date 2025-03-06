@@ -65,6 +65,7 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 
 struct SplittingParams;
 class Volume;
+using VolumePtr = std::shared_ptr<Volume>;
 class Edge;
 class Polygon;
 class Polyhedron;
@@ -276,6 +277,8 @@ private:
 
 	std::string getObjFilePath() const;
 
+	VolumePtr getScratchVolume();
+
 #ifdef _DEBUG
 	bool isPolygonInUse(const Index3DId& faceId) const;
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
@@ -306,6 +309,7 @@ private:
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 
+	VolumePtr _pScratchVolume;
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

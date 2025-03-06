@@ -176,7 +176,6 @@ public:
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	bool intersectsModel(const std::vector<TriMeshIndex>& tris) const;
-	bool intersectsModelTri(const std::vector<MeshDataPtr>& modelMesh, const TriMeshIndex& triIdx) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;

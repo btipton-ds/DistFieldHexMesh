@@ -856,24 +856,6 @@ bool Polyhedron::intersectsModel() const
 	return _intersectsModel == IS_TRUE; // Don't test split cells
 }
 
-bool Polyhedron::intersectsModel(const Planed& plane, bool above) const
-{
-	bool result = false;
-	if (!_triIndices.empty()) {
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this, &result](const Polygon& face) {
-				if (face.intersectsModel(_triIndices)) {
-					result = true;
-				}
-			});
-
-			if (result)
-				break;
-		}
-	}
-	return result;
-}
-
 bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 {
 	if (_sharpEdgesIntersectModel == IS_FALSE)

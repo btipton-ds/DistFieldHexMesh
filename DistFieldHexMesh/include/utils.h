@@ -42,11 +42,12 @@ class Timer
 {
 public:
 	enum TimerTag{
+		TT_readVolume,
 		TT_analyzeModelMesh,
 		TT_splitAtPointInner,
 		TT_needToSplitIntersection,
 		TT_needToSplitConditional,
-		TT_buildCFDHexMesh,
+		TT_divideHexMesh,
 		TT_UpdateTessellation,
 		TT_lastTag,
 	};
@@ -56,8 +57,11 @@ public:
 	Timer(size_t key);
 	~Timer();
 
+	void recordEntry();
+
 private:
 	size_t _key;
+	bool _recorded = false;
 	long long _startCount;
 };
 

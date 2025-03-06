@@ -859,45 +859,36 @@ Vector3d Polygon::calCentroidApproxFast() const
 
 bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
 {
+	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
 		const auto& modelMesh = getBlockPtr()->getModelMeshData();
 		for (const auto& triIdx : triIndices) {
-			if (intersectsModelTri(modelMesh, triIdx)) {
-				_cachedIntersectsModel = IS_TRUE;
-				break;
-			}
+			const auto& pData = modelMesh[triIdx.getMeshIdx()];
+			const auto& pMesh = pData->getMesh();
+			const auto& tri = pMesh->getTri(triIdx.getTriIdx());
+			const Vector3d* pts[] = {
+				&pMesh->getVert(tri[0])._pt,
+				&pMesh->getVert(tri[1])._pt,
+				&pMesh->getVert(tri[2])._pt,
+			};
+			iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				const Vector3d* facePts[] = {
+					&getVertexPoint(id0),
+					&getVertexPoint(id1),
+					&getVertexPoint(id2),
+				};
+
+				if (intersectTriTri(pts, facePts, tol)) {
+					_cachedIntersectsModel = IS_TRUE;
+				}
+
+				return _cachedIntersectsModel != IS_TRUE; // false exits the lambda for loop
+			});
 		}
 	}
 
 	return _cachedIntersectsModel == IS_TRUE;
-}
-
-bool Polygon::intersectsModelTri(const std::vector<MeshDataPtr>& modelMesh, const TriMeshIndex& triIdx) const
-{
-	const double tol = Tolerance::sameDistTol();
-	bool result = false;
-	const auto& pData = modelMesh[triIdx.getMeshIdx()];
-	const auto& pMesh = pData->getMesh();
-	const auto& tri = pMesh->getTri(triIdx.getTriIdx());
-	const Vector3d* pts[] = {
-		&pMesh->getVert(tri[0])._pt,
-		&pMesh->getVert(tri[1])._pt,
-		&pMesh->getVert(tri[2])._pt,
-	};
-
-	iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-		const Vector3d* facePts[] = {
-			&getVertexPoint(id0),
-			&getVertexPoint(id1),
-			&getVertexPoint(id2),
-		};
-
-		result = intersectTriTri(pts, facePts, tol);
-		return !result; // false exits the lambda for loop
-	});
-
-	return result;
 }
 
 double Polygon::distFromPlane(const Vector3d& pt) const

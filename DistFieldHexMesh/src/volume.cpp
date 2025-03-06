@@ -61,7 +61,6 @@ Volume::Volume(const Index3D& dims)
 	: _volDim(dims)
 	, _modelDim(dims)
 	, _modelDimOrigin(0, 0, 0)
-	, _threadPool(MultiCore::getNumCores())
 {
 }
 
@@ -79,10 +78,8 @@ Volume::Volume(const Volume& src)
 	, _sharpVertIndices(src._sharpVertIndices)
 	, _hasSharpVertPlane(src._hasSharpVertPlane)
 	, _sharpVertPlane(src._sharpVertPlane)
-	, _threadPool(MultiCore::getNumCores())
 	, _numSplits(src._numSplits)
 {
-
 }
 
 Volume::~Volume()
@@ -90,6 +87,15 @@ Volume::~Volume()
 	clear();
 }
 
+void Volume::clearEntries()
+{
+	for (const auto& pBlk : _blocks) {
+		pBlk->_vertices.clear();
+		pBlk->_edges.clear();
+		pBlk->_polygons.clear();
+		pBlk->_polyhedra.clear();
+	}
+}
 void Volume::startOperation()
 {
 }
@@ -435,6 +441,22 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
+void Volume::buildSingleBlockVol(const Volume* pSrcVol)
+{
+	_modelBundingBox.clear();
+	_modelBundingBox.merge(pSrcVol->getVolumeBBox());
+	_modelCornerPts = pSrcVol->_modelCornerPts;
+	for (int i = 0; i < 8; i++) {
+		_modelBundingBox.merge(_modelCornerPts[i]);
+	}
+	_volDim = Index3D(1, 1, 1);
+	_modelDim = _volDim;
+	_modelDimOrigin = Index3D(0, 0, 0);
+	_blocks.resize(1);
+	_blocks[0] = createBlock(0);
+	_pAppData = pSrcVol->_pAppData;
+}
+
 void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	_modelBundingBox.clear();
@@ -631,10 +653,10 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 	double sharpAngleRadians = params.getSharpAngleRadians();
 
 	reportProgress(pReporter);
+	Utils::Timer tmr(Utils::Timer::TT_divideHexMesh);
 
 	std::vector<size_t> sharpEdges;
 	{
-		Utils::Timer tmr0(Utils::Timer::TT_analyzeModelMesh);
 
 		for (auto& pData : meshData) {
 			const auto& pMesh = pData->getMesh();
@@ -651,7 +673,6 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 
 #if 1
 	{
-		Utils::Timer tmr0(Utils::Timer::TT_buildCFDHexMesh);
 
 		divideSimple(params, pReporter, multiCore);
 		divideConitional(params, pReporter, multiCore);
@@ -661,13 +682,14 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 //		cutWithTriMesh(params, false && multiCore);
 	}
 
-	Utils::Timer::dumpAll();
 //	assert(verifyTopology(multiCore));
 
 #endif
 	setLayerNums();
 
-//	dumpCellHistogram();
+	tmr.recordEntry();
+	Utils::Timer::dumpAll();
+	//	dumpCellHistogram();
 }
 
 void Volume::dumpCellHistogram() const
@@ -1483,6 +1505,8 @@ bool Volume::write(ostream& out) const
 
 bool Volume::read(istream& in)
 {
+	Utils::Timer tmr(Utils::Timer::TT_readVolume);
+
 	clear();
 
 	uint8_t version = -1;
@@ -1529,6 +1553,9 @@ bool Volume::read(istream& in)
 			return true;
 		});
 	}, RUN_MULTI_THREAD);
+
+	tmr.recordEntry();
+	tmr.dumpAll();
 	return true;
 }
 
@@ -1668,7 +1695,10 @@ bool Volume::verifyUniquePolygons(bool multiCore) const
 template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 {
-	_threadPool.run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx){
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
+	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx){
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
@@ -1682,7 +1712,10 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 {
-	_threadPool.run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx) {
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
+	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx) {
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS			
@@ -1696,6 +1729,9 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 {
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
 
@@ -1724,7 +1760,7 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
 				if (!blocksToProcess.empty()) {
-					_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+					_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 						size_t linearIdx = blocksToProcess[idx];
 						Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 						auto& pBlk = _blocks[linearIdx];
@@ -1746,6 +1782,9 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 {
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
@@ -1782,7 +1821,7 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
@@ -1801,6 +1840,9 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 {
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
@@ -1838,7 +1880,7 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
@@ -1856,6 +1898,9 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 {
+	if (!_pThreadPool)
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
@@ -1893,7 +1938,7 @@ void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_threadPool.run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {

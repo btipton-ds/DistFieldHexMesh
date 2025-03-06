@@ -211,7 +211,7 @@ inline bool QueryPerformanceCounter(LARGE_INTEGER *value)
 
 void Utils::Timer::dumpAll()
 {
-	for (size_t i = TT_splitAtPointInner; i < TT_lastTag; i++) {
+	for (size_t i = TT_readVolume; i < TT_lastTag; i++) {
 		std::string str;
 		switch (i) {
 			case TT_analyzeModelMesh:
@@ -222,15 +222,17 @@ void Utils::Timer::dumpAll()
 				str = "needToSplitConditional"; break;
 			case TT_needToSplitIntersection:
 				str = "needToSplitIntersection"; break;
-			case TT_buildCFDHexMesh:
-				str = "buildCFDHexMesh"; break;
+			case TT_divideHexMesh:
+				str = "divideHexMesh"; break;
 			case TT_UpdateTessellation:
 				str = "updateTessellation"; break;
+			case TT_readVolume:
+				str = "readVolume"; break;
 		}
 
 		if (s_times[i]._count > 0)
 			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._count / s_times[i]._time) << " call/s\n";
-		else
+		else if (s_times[i]._time > 0)
 			std::cout << str << ": " << s_times[i]._time << "s\n";
 	}
 }
@@ -245,6 +247,15 @@ Utils::Timer::Timer(size_t key)
 
 Utils::Timer::~Timer()
 {
+	recordEntry();
+}
+
+void Utils::Timer::recordEntry()
+{
+	if (_recorded)
+		return;
+
+	_recorded = true;
 	LARGE_INTEGER endCount;
 	QueryPerformanceCounter(&endCount);
 	double deltaT = (endCount.QuadPart - _startCount) / (double)(s_freq.QuadPart);

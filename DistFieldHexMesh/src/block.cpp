@@ -888,6 +888,14 @@ std::string Block::getObjFilePath() const
 	return path;
 }
 
+VolumePtr Block::getScratchVolume() {
+	if (!_pScratchVolume) {
+		_pScratchVolume = make_shared<Volume>();
+		_pScratchVolume->buildSingleBlockVol(_pVol);
+	}
+	return _pScratchVolume;
+}
+
 void Block::dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const MTC::vector<Vector3d>& pts) const
 {
 	string path = getObjFilePath();

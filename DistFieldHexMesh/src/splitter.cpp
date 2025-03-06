@@ -39,7 +39,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyhedron.h>
 #include <splitter.h>
 #include <block.h>
-#include <volume.h>
 #include <tolerances.h>
 #include <utils.h>
 #include <gradingOp.h>
@@ -58,6 +57,13 @@ Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DI
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
 {
+	_pScratchVol = _pBlock->getScratchVolume();
+}
+
+Splitter::~Splitter()
+{
+	if (_pScratchVol)
+		_pScratchVol->clearEntries();
 }
 
 bool Splitter::splitAtCenter()
