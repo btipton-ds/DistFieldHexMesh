@@ -69,7 +69,7 @@ Volume::Volume(const Volume& src)
 	, _modelDim(src._modelDim)
 	, _modelDimOrigin(src._modelDimOrigin)
 	, _pAppData(src._pAppData)
-	, _modelBundingBox(src._modelBundingBox)
+	, _modelBoundingBox(src._modelBoundingBox)
 	, _modelCornerPts(src._modelCornerPts)
 	, _volCornerPts(src._volCornerPts)
 	, _blocks(src._blocks)
@@ -85,6 +85,15 @@ Volume::Volume(const Volume& src)
 Volume::~Volume()
 {
 	clear();
+	_pThreadPool = nullptr;
+}
+
+VolumePtr Volume::createScratchVolume() const
+{
+	auto p = make_shared<Volume>(Index3D(1, 1, 1));
+	p->initScratch(this);
+
+	return p;
 }
 
 void Volume::clearEntries()
@@ -95,6 +104,7 @@ void Volume::clearEntries()
 		pBlk->_polygons.clear();
 		pBlk->_polyhedra.clear();
 	}
+	_adHocBlockTree.clear();
 }
 void Volume::startOperation()
 {
@@ -412,12 +422,18 @@ void Volume::addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup
 void Volume::clear()
 {
 	// Clear contents to remove cross block pointers
-	runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
-		if (pBlk)
-			pBlk->clear();
-		return true;
-	}, RUN_MULTI_THREAD);
+	if (_pThreadPool) {
+		// This can create a thread pool when we don't need it. Messes with program exit.
+		runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk)
+				pBlk->clear();
+			return true;
+		}, RUN_MULTI_THREAD);
 
+	} else {
+		for (auto& pBlk : _blocks)
+			pBlk->clear();
+	}
 	// Now it's safe to destroy the heaps
 	_blocks.clear();
 }
@@ -441,12 +457,25 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
+void Volume::initScratch(const Volume* pVol)
+{
+	_pAppData = pVol->_pAppData;
+	_modelDim = pVol->_modelDim;
+	_modelDimOrigin = pVol->_modelDimOrigin;
+	_modelBoundingBox = pVol->_modelBoundingBox;
+	_modelCornerPts = pVol->_modelCornerPts;
+	_volCornerPts = pVol->_volCornerPts;
+
+	_blocks.resize(1);
+	_blocks[0] = createBlock(0);
+}
+
 void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
-	_modelBundingBox.clear();
-	_modelBundingBox.merge(volBox);
+	_modelBoundingBox.clear();
+	_modelBoundingBox.merge(volBox);
 	for (int i = 0; i < 8; i++) {
-		_modelBundingBox.merge(pts[i]);
+		_modelBoundingBox.merge(pts[i]);
 		_modelCornerPts[i] = pts[i];
 	}
 	
@@ -660,6 +689,9 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 
 		divideSimple(params, pReporter, multiCore);
 		divideConitional(params, pReporter, multiCore);
+		MultiCore::runLambda([](size_t treadNum, size_t numThreads) {
+			Splitter::clearThreadLocal();
+		}, multiCore);
 
 // TODO we should be able to clear the reference topology now
 
@@ -1185,7 +1217,7 @@ void Volume::createAdHocBlockSearchTree()
 
 void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
 {
-	CBoundingBox3Dd bbox = _modelBundingBox;
+	CBoundingBox3Dd bbox = _modelBoundingBox;
 	bbox.merge(pBlock->_boundBox);
 
 	std::vector<Planed> planes;
@@ -1317,7 +1349,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 	vector<Vector3d> pts;
 	set<TriMesh::CEdge> modelEdgeSet;
-	VertSearchTree_size_t_8 pointToIdxMap(_modelBundingBox);
+	VertSearchTree_size_t_8 pointToIdxMap(_modelBoundingBox);
 
 #if 0
 	if (!modelTriIndices.empty()) {
@@ -1467,7 +1499,7 @@ bool Volume::write(ostream& out) const
 	_modelDim.write(out);
 	_modelDimOrigin.write(out);
 
-	_modelBundingBox.write(out);
+	_modelBoundingBox.write(out);
 
 	const vector<Vector3d>& cPts = _modelCornerPts;
 	IoUtil::writeVector3(out, cPts);
@@ -1500,7 +1532,7 @@ bool Volume::read(istream& in)
 	_modelDim.read(in);
 	_modelDimOrigin.read(in);
 
-	_modelBundingBox.read(in);
+	_modelBoundingBox.read(in);
 
 	vector<Vector3d> cPts;
 	IoUtil::readVector3(in, cPts);
@@ -1591,12 +1623,12 @@ void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 
-	vals.push_back(Planed(_modelBundingBox.getMin(), -zAxis)); // bottomPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), zAxis));  // topPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), yAxis));  // leftPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), -yAxis)); // rightPlane
-	vals.push_back(Planed(_modelBundingBox.getMin(), -xAxis)); // backPlane
-	vals.push_back(Planed(_modelBundingBox.getMax(), xAxis));  // frontPlane
+	vals.push_back(Planed(_modelBoundingBox.getMin(), -zAxis)); // bottomPlane
+	vals.push_back(Planed(_modelBoundingBox.getMax(), zAxis));  // topPlane
+	vals.push_back(Planed(_modelBoundingBox.getMax(), yAxis));  // leftPlane
+	vals.push_back(Planed(_modelBoundingBox.getMin(), -yAxis)); // rightPlane
+	vals.push_back(Planed(_modelBoundingBox.getMin(), -xAxis)); // backPlane
+	vals.push_back(Planed(_modelBoundingBox.getMax(), xAxis));  // frontPlane
 
 }
 

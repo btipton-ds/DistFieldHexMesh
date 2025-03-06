@@ -51,16 +51,28 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+thread_local VolumePtr Splitter::_pScratchVol;
+
+void Splitter::clearThreadLocal()
+{
+	_pScratchVol = nullptr;
+}
+
 Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
 {
+	if (!_pScratchVol)
+		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
+	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 }
 
 Splitter::~Splitter()
 {
+	if (_pScratchVol)
+		_pScratchVol->clearEntries();
 }
 
 bool Splitter::splitAtCenter()

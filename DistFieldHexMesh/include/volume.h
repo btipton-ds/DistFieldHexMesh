@@ -68,6 +68,7 @@ public:
 	Volume(const Volume& src);
 	~Volume();
 
+	VolumePtr createScratchVolume() const;
 	void clearEntries();
 
 	void startOperation();
@@ -156,6 +157,7 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
+	void initScratch(const Volume* pVol);
 	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
 	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
@@ -196,7 +198,7 @@ private:
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 
 	AppDataPtr _pAppData;
-	CMesh::BoundingBox _modelBundingBox;
+	CMesh::BoundingBox _modelBoundingBox;
 
 	UnalignedBBoxd _modelCornerPts, _volCornerPts;
 	std::vector<BlockPtr> _blocks;
@@ -226,13 +228,21 @@ inline const AppDataPtr& Volume::getAppData() const
 
 inline const Block* Volume::getBlockPtr(const Index3D& blockIdx) const
 {
-	auto idx = calLinearBlockIndex(blockIdx);
+	size_t idx = -1;
+	if (_blocks.size() == 1)
+		idx = 0;
+	else
+		idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
 }
 
 inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 {
-	auto idx = calLinearBlockIndex(blockIdx);
+	size_t idx = -1;
+	if (_blocks.size() == 1)
+		idx = 0;
+	else
+		idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
 }
 

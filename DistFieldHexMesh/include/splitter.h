@@ -41,11 +41,14 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 class Block;
+class Volume;
+using VolumePtr = std::shared_ptr<Volume>;
 class Polygon;
 class Polyhedron;
 
 class Splitter {
 public:
+	static void clearThreadLocal();
 	Splitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
 	~Splitter();
 
@@ -68,6 +71,7 @@ private:
 	LAMBDA_CLIENT_DECLS;
 
 	Block* _pBlock;
+	Block* _pScratchBlock;
 	const SplittingParams& _params;
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
@@ -76,6 +80,9 @@ private:
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
+
+
+	thread_local static VolumePtr _pScratchVol;
 };
 
 inline Block* Splitter::getBlockPtr()
