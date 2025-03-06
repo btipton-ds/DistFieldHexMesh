@@ -308,8 +308,6 @@ private:
 	ObjectPool<Edge> _edges;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
-
-	VolumePtr _pScratchVolume;
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

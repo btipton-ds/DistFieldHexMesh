@@ -43,8 +43,6 @@ namespace DFHM {
 class Block;
 class Polygon;
 class Polyhedron;
-class Volume;
-using VolumePtr = std::shared_ptr<Volume>;
 
 class Splitter {
 public:
@@ -78,8 +76,6 @@ private:
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
-
-	VolumePtr _pScratchVol;
 };
 
 inline Block* Splitter::getBlockPtr()

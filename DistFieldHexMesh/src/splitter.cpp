@@ -57,13 +57,10 @@ Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DI
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
 {
-	_pScratchVol = _pBlock->getScratchVolume();
 }
 
 Splitter::~Splitter()
 {
-	if (_pScratchVol)
-		_pScratchVol->clearEntries();
 }
 
 bool Splitter::splitAtCenter()

@@ -441,22 +441,6 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
-void Volume::buildSingleBlockVol(const Volume* pSrcVol)
-{
-	_modelBundingBox.clear();
-	_modelBundingBox.merge(pSrcVol->getVolumeBBox());
-	_modelCornerPts = pSrcVol->_modelCornerPts;
-	for (int i = 0; i < 8; i++) {
-		_modelBundingBox.merge(_modelCornerPts[i]);
-	}
-	_volDim = Index3D(1, 1, 1);
-	_modelDim = _volDim;
-	_modelDimOrigin = Index3D(0, 0, 0);
-	_blocks.resize(1);
-	_blocks[0] = createBlock(0);
-	_pAppData = pSrcVol->_pAppData;
-}
-
 void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	_modelBundingBox.clear();
