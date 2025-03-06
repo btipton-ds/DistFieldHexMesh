@@ -68,7 +68,7 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	void createHexCellData(const Polyhedron& parentCell);
 	void splitHexCell(const Vector3d& tuv);
-	void splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv);
+	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
 	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);
 	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const;
 	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;

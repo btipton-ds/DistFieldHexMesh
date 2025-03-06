@@ -121,32 +121,32 @@ Index3DId Splitter::vertId(const Vector3d& pt)
 
 void Splitter::splitHexCell(const Vector3d& tuv)
 {
-	cellFunc(_polyhedronId, [this, &tuv](Polyhedron& parentCell) {
-		splitHexCell8(parentCell, tuv);
-	});
+	splitHexCell8(_polyhedronId, tuv);
 }
 
-void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
+void Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 {
 	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
-	createHexCellData(parentCell);
+	cellFunc(parentId, [this, &tuv, &tol](Polyhedron& parentCell) {
+		createHexCellData(parentCell);
 
-	for (const auto& facePts : _cellFacePoints) {
-		// This aligns the disordered faceIds with their cube face points
-		const auto& faceId = findSourceFaceId(parentCell.getId(), facePts, tol);
-		assert(faceId.isValid());
+		for (const auto& facePts : _cellFacePoints) {
+			// This aligns the disordered faceIds with their cube face points
+			const auto& faceId = findSourceFaceId(parentCell.getId(), facePts, tol);
+			assert(faceId.isValid());
 
-		conditionalSplitQuadFaceAtParam(faceId, facePts, 0.5, 0.5);
-	}
+			conditionalSplitQuadFaceAtParam(faceId, facePts, 0.5, 0.5);
+		}
 #if _DEBUG
-	for (const auto& faceId : parentCell.getFaceIds()) {
-		_pBlock->faceFunc(faceId, [](const Polygon& face) {
-			assert(face.isSplit());
-		});
-	}
+		for (const auto& faceId : parentCell.getFaceIds()) {
+			_pBlock->faceFunc(faceId, [](const Polygon& face) {
+				assert(face.isSplit());
+				});
+		}
 #endif
 
-	parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+		parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+	});
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = (i == 0) ? 0 : tuv[0];
@@ -170,7 +170,7 @@ void Splitter::splitHexCell8(Polyhedron& parentCell, const Vector3d& tuv)
 					TRI_LERP(_cornerPts, t0, u1, v1),
 				};
 
-				addHexCell(parentCell.getId(), subCorners, tol);
+				addHexCell(parentId, subCorners, tol);
 			}
 		}
 	}
