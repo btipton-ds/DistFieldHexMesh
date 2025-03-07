@@ -69,6 +69,8 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 	void splitHexCell(const Vector3d& tuv);
 	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
+	Index3DId createScratchCell(bool includeSplits);
+	Index3DId createScratchFace(const Index3DId& srcFaceId, bool includeSplits);
 	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);
 	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const;
 	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
@@ -76,9 +78,10 @@ private:
 	LAMBDA_CLIENT_DECLS;
 
 	Block* _pBlock;
+	Block* _pSrcBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
-	Index3DId _polyhedronId, _scratchCellId;
+	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
 	std::vector<Index3DId>& _localTouched;
 	FastBisectionSet<Index3DId> _newCellIds;

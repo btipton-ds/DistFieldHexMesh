@@ -150,7 +150,6 @@ public:
 	const std::vector<MeshDataPtr>& getModelMeshData() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
-	Index3DId idOfPoint(const Vector3d& pt) const;
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 	void setVertexLockType(const Index3DId& vertId, VertexLockType val);
@@ -284,7 +283,6 @@ private:
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
 
-	bool _hadConditionalSplits = true;
 	Index3D _blockIdx;
 
 	Volume* _pVol;

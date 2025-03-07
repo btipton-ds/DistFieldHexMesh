@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMeshPatch.h>
 #include <pool_vector.h>
 #include <pool_set.h>
+#include <utils.h>
 #include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
@@ -60,6 +61,7 @@ void Splitter::clearThreadLocal()
 
 Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
+	, _pSrcBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
@@ -121,6 +123,14 @@ Index3DId Splitter::vertId(const Vector3d& pt)
 
 void Splitter::splitHexCell(const Vector3d& tuv)
 {
+	{
+		Utils::ScopedRestore restore(_pBlock);
+		const auto& scratchCellId = createScratchCell(false);
+		_pBlock = _pScratchBlock;
+		splitHexCell8(scratchCellId, tuv);
+
+		_pScratchBlock->clear();
+	}
 	splitHexCell8(_polyhedronId, tuv);
 }
 
@@ -177,6 +187,62 @@ void Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 
 	// It's been completely split, so this parentCell can be removed
 	_pBlock->freePolyhedron(_polyhedronId);
+}
+
+Index3DId Splitter::createScratchCell(bool includeSplits)
+{
+	Utils::ScopedRestore restore(_pBlock);
+	_pBlock = _pSrcBlock;
+
+	FastBisectionSet<Index3DId> srcFaceIds;
+	cellFunc(_polyhedronId, [&srcFaceIds](const Polyhedron& srcCell) {
+		srcFaceIds = srcCell.getFaceIds();
+	});
+
+	MTC::set<Index3DId> newFaceIds;
+	for (const auto& srcFaceId : srcFaceIds) {
+		const auto& newFaceId = createScratchFace(srcFaceId, includeSplits);
+		newFaceIds.insert(newFaceId);
+	}
+
+	auto scratchCellId = _pScratchBlock->addCell(Polyhedron(newFaceIds), Index3DId());
+
+	return scratchCellId;
+}
+
+Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId, bool includeSplits)
+{
+	Utils::ScopedRestore restore(_pBlock);
+	_pBlock = _pSrcBlock;
+	Index3DId newFaceId;
+	faceFunc(srcFaceId, [this, includeSplits, &newFaceId](const Polygon& srcFace) {
+		const auto& srcVertIds = srcFace.getVertexIds();
+		MTC::vector<Index3DId> newVertIds;
+		for (const auto& srcVertId : srcVertIds) {
+			const auto& pt = _pBlock->getVertexPoint(srcVertId);
+			const auto& newVertId = _pScratchBlock->getVertexIdOfPoint(pt);
+			newVertIds.push_back(newVertId);
+		}
+
+		newFaceId = _pScratchBlock->addFace(Polygon(newVertIds));
+
+		if (includeSplits) {
+			const auto& srcSplitIds = srcFace.getSplitIds();
+			faceFunc(newFaceId, [this, includeSplits, &srcSplitIds](Polygon& newFace) {
+				MTC::vector<Index3DId> newSplitIds;
+				for (const auto& srcSplitId : srcSplitIds) {
+					const auto& newSplitId = createScratchFace(srcSplitId, includeSplits);
+					newSplitIds.push_back(newSplitId);
+				}
+
+				if (!newSplitIds.empty()) {
+					newFace.setSplitFaceIds(newSplitIds);
+				}
+			});
+		}
+	});
+
+	return newFaceId;
 }
 
 void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol)

@@ -265,6 +265,9 @@ BlockPtr& Volume::getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]
 
 Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 {
+	if (_blocks.size() <= 1)
+		return (Index3D(0, 0, 0)); // Special case for single block, sractch volume.
+
 	const double tol = 1.0e-13;
 	const int64_t numSubDivisions = 2 * 1024;
 

@@ -729,23 +729,9 @@ Block* Block::getOwner(const Edge& edge)
 	return getOwner(edge.getVertex(0));
 }
 
-Index3DId Block::idOfPoint(const Vector3d& pt) const
-{
-	// NOTE: Be careful to keep the difference between the _pVertTree indices and the _vertices indices clear. Failure causes NPEs
-	auto ownerBlockIdx = determineOwnerBlockIdx(pt);
-	if (!ownerBlockIdx.isValid()) {
-		assert(!"failed to find blockIdx");
-	}
-	auto* pOwner = getOwner(ownerBlockIdx);
-	assert(pOwner);
-	Index3DId result = pOwner->_vertices.findId(pt);
-
-	return result;
-}
-
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 {
-	Index3DId result = idOfPoint(pt);
+	Index3DId result = getVertexIdOfPoint(pt);
 	if (result.isValid())
 		return result;
 
@@ -756,7 +742,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 	result = pOwner->_vertices.findOrAdd(Vertex(pt), currentId);
 
-	assert(idOfPoint(pt) == result);
+	assert(getVertexIdOfPoint(pt) == result);
 
 	return result;
 }

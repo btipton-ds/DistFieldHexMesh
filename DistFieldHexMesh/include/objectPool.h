@@ -257,6 +257,7 @@ template<class T>
 void ObjectPool<T>::clear()
 {
 	_idToIndexMap.clear();
+	_availableIndices.clear();
 	_objToIdMap.clear();
 	_objectSegs.clear();
 }
