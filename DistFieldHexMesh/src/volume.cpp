@@ -709,6 +709,8 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 	tmr.recordEntry();
 	Utils::Timer::dumpAll();
 	//	dumpCellHistogram();
+
+	Splitter::dumpSplitStats();
 }
 
 void Volume::dumpCellHistogram() const

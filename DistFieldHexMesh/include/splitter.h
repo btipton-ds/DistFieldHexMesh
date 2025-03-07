@@ -48,6 +48,7 @@ class Polyhedron;
 
 class Splitter {
 public:
+	static void dumpSplitStats();
 	static void clearThreadLocal();
 	Splitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
 	~Splitter();
@@ -69,6 +70,8 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 	void splitHexCell(const Vector3d& tuv);
 	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
+	void splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
+	void splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	Index3DId createScratchCell(bool includeSplits);
 	Index3DId createScratchFace(const Index3DId& srcFaceId, bool includeSplits);
 	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);

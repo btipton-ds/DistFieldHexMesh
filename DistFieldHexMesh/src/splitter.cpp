@@ -54,6 +54,18 @@ using namespace DFHM;
 
 thread_local VolumePtr Splitter::_pScratchVol;
 
+namespace
+{
+	static std::atomic<size_t> numSplits2 = 0;
+	static std::atomic<size_t> numSplits4 = 0;
+}
+
+void Splitter::dumpSplitStats()
+{
+	cout << "Num Splits 2: " << numSplits2 << "\n";
+	cout << "Num Splits 4: " << numSplits4 << "\n";
+}
+
 void Splitter::clearThreadLocal()
 {
 	_pScratchVol = nullptr;
@@ -123,15 +135,48 @@ Index3DId Splitter::vertId(const Vector3d& pt)
 
 void Splitter::splitHexCell(const Vector3d& tuv)
 {
+	int intersects[] = { 0,0,0 };
+	for (int i = 0; i < 3; i++)
 	{
 		Utils::ScopedRestore restore(_pBlock);
 		const auto& scratchCellId = createScratchCell(false);
 		_pBlock = _pScratchBlock;
-		splitHexCell8(scratchCellId, tuv);
+		splitHexCell2(scratchCellId, tuv, i);
+		_pScratchBlock->iteratePolyhedraInOrder([&intersects, i](const Index3DId& cellId, const Polyhedron& cell) {
+			if (cell.intersectsModel())
+				intersects[i]++;
+			});
 
 		_pScratchBlock->clear();
 	}
-	splitHexCell8(_polyhedronId, tuv);
+
+	if (intersects[0] == 0) {
+		if (intersects[1] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 0);
+		} else if (intersects[2] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 0);
+		} else {
+			splitHexCell2(_polyhedronId, tuv, 0);
+		}
+	} else if (intersects[1] == 0) {
+		if (intersects[0] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 1);
+		} else if (intersects[2] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 1);
+		} else {
+			splitHexCell2(_polyhedronId, tuv, 1);
+		}
+	} else if (intersects[2] == 0) {
+		if (intersects[0] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 2);
+		} else if (intersects[1] == 0) {
+			splitHexCell4(_polyhedronId, tuv, 2);
+		} else {
+			splitHexCell2(_polyhedronId, tuv, 2);
+		}
+	} else {
+		splitHexCell8(_polyhedronId, tuv);
+	}
 }
 
 void Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
@@ -187,6 +232,70 @@ void Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 
 	// It's been completely split, so this parentCell can be removed
 	_pBlock->freePolyhedron(_polyhedronId);
+}
+
+void Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis)
+{
+#if 0
+	splitHexCell8(parentId, tuv);
+#else
+	numSplits2++;
+	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
+	cellFunc(parentId, [this, &tuv, &tol](Polyhedron& parentCell) {
+		createHexCellData(parentCell);
+
+		for (const auto& facePts : _cellFacePoints) {
+			// This aligns the disordered faceIds with their cube face points
+			const auto& faceId = findSourceFaceId(parentCell.getId(), facePts, tol);
+			assert(faceId.isValid());
+
+			conditionalSplitQuadFaceAtParam(faceId, facePts, 0.5, 0.5);
+		}
+
+		parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
+		});
+
+	for (int i = 0; i < 2; i++) {
+		double t0 = 0, t1 = 1;
+		double u0 = 0, u1 = 1;
+		double v0 = 0, v1 = 1;
+
+		switch (axis) {
+		case 0:
+			t0 = (i == 0) ? 0 : tuv[0];
+			t1 = (i == 0) ? tuv[0] : 1;
+			break;
+		case 1:
+			u0 = (i == 0) ? 0 : tuv[0];
+			u1 = (i == 0) ? tuv[0] : 1;
+			break;
+		case 2:
+			v0 = (i == 0) ? 0 : tuv[0];
+			v1 = (i == 0) ? tuv[0] : 1;
+			break;
+		}
+		MTC::vector<Vector3d> subCorners = {
+			TRI_LERP(_cornerPts, t0, u0, v0),
+			TRI_LERP(_cornerPts, t1, u0, v0),
+			TRI_LERP(_cornerPts, t1, u1, v0),
+			TRI_LERP(_cornerPts, t0, u1, v0),
+
+			TRI_LERP(_cornerPts, t0, u0, v1),
+			TRI_LERP(_cornerPts, t1, u0, v1),
+			TRI_LERP(_cornerPts, t1, u1, v1),
+			TRI_LERP(_cornerPts, t0, u1, v1),
+		};
+
+		addHexCell(parentId, subCorners, tol);
+	}
+#endif
+	// It's been completely split, so this parentCell can be removed
+	_pBlock->freePolyhedron(_polyhedronId);
+}
+
+void Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis)
+{
+	splitHexCell8(parentId, tuv);
 }
 
 Index3DId Splitter::createScratchCell(bool includeSplits)
