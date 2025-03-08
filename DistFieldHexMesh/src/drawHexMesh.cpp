@@ -46,7 +46,7 @@ DrawHexMesh::DrawHexMesh(GraphicsCanvas* pCanvas)
     : DrawMesh(pCanvas, 50)
 {
     for (int i = 0; i < 10; i++)
-        _options.layers[i] = false;
+        _options.layers[i] = i == 0;
 }
 
 DrawHexMesh::~DrawHexMesh()

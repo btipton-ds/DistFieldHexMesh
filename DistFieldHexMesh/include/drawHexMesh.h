@@ -63,12 +63,12 @@ using VolumePtr = std::shared_ptr<Volume>;
 			showErrorWalls = true,
 			showAll = false,
 
-			showBack = true,
-			showFront = true,
-			showBottom = true,
-			showTop = true,
-			showLeft = true,
-			showRight = true,
+			showBack = false,
+			showFront = false,
+			showBottom = false,
+			showTop = false,
+			showLeft = false,
+			showRight = false,
 			showSelectedBlocks = false,
 			layers[10];
 
