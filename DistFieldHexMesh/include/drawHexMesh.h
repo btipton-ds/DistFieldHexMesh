@@ -60,7 +60,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		bool
 			showEdges = true,
 			showFaces = true,
-			showWalls = false,
+			showErrorWalls = true,
 			showAll = false,
 
 			showBack = true,
@@ -89,7 +89,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 		DECL_OPTS(Edges)
 		DECL_OPTS(Faces)
-		DECL_OPTS(Walls)
+		DECL_OPTS(ErrorWalls)
 		DECL_OPTS(All)
 		DECL_OPTS(Intersecting)
 
@@ -166,7 +166,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 	IMPL_OPTS(Edges)
 	IMPL_OPTS(Faces)
-	IMPL_OPTS(Walls)
+	IMPL_OPTS(ErrorWalls)
 	IMPL_OPTS(All)
 
 	IMPL_OPTS(Back)

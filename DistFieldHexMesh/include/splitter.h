@@ -65,9 +65,12 @@ private:
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
+	void reset();
 	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
 	void createHexCellData(const Polyhedron& parentCell);
+	void fixNewCellFaceSplits();
+	void fixCellFaceSplits(const Index3DId& cellId);
 	void splitHexCell(const Vector3d& tuv);
 	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
 	void splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
@@ -87,7 +90,7 @@ private:
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
 	std::vector<Index3DId>& _localTouched;
-	FastBisectionSet<Index3DId> _newCellIds;
+	MTC::set<Index3DId> _newCellIds;
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;

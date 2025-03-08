@@ -61,7 +61,7 @@ enum CubeFaceType {
 };
 
 enum FaceDrawType {
-	FT_WALL,
+	FT_ERROR_WALL,
 	FT_INNER,
 
 	FT_BOTTOM,

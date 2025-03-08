@@ -1235,7 +1235,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 {
 	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
 	triMeshes.resize(FT_ALL + 1);
-	for (int j = FT_WALL; j <= FT_ALL; j++) {
+	for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
 		FaceDrawType ft = (FaceDrawType)j;
 		triMeshes[ft].resize(numThreads);
 	}
@@ -1249,7 +1249,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 
-				for (int j = FT_WALL; j <= FT_ALL; j++) {
+				for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
 					FaceDrawType ft = (FaceDrawType)j;
 					makeFaceTriMesh(ft, triMeshes[ft][threadNum], blockPtr);
 				}
@@ -1259,7 +1259,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 	}, multiCore);
 
 	for (size_t i = 0; i < numThreads; i++) {
-		for (int j = FT_WALL; j <= FT_ALL; j++) {
+		for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
 			FaceDrawType ft = (FaceDrawType)j;
 #if 0
 			if (triMeshes[ft][i])

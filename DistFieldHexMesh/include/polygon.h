@@ -130,13 +130,13 @@ public:
 	size_t getSplitLevel(const Index3DId& cellId) const;
 	bool isCoplanar(const Vector3d& pt) const;
 	bool isCoplanar(const Planed& pl) const;
-	bool isCoplanar(const Edge& edge) const;
+	bool isCoplanar(const EdgeKey& edgeKey) const;
 	bool isConvex()const;
 	bool isWall() const;
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
-	bool usesEdge(const Edge& edge) const;
-	bool usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const;
+	bool usesEdge(const Edge& EdgeKey) const;
+	bool usesEdge(const Edge& EdgeKey, size_t& idx0, size_t& idx1) const;
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
@@ -184,7 +184,11 @@ public:
 
 	bool cellsOwnThis() const;
 	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
+	void imprintConnected();
 	bool imprintVertex(const Index3DId& imprintVert);
+	bool imprintEdges(const MTC::vector<EdgeKey>& edgeKeys);
+	void imprintOtherEdgesOnThis();
+	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
 	size_t getImprintIndex(const Vector3d& imprintPoint) const;
 	size_t getImprintIndex(const Index3DId& imprintVert) const;
 	bool isSplit() const;

@@ -57,7 +57,7 @@ DrawHexMesh::~DrawHexMesh()
 DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
 {
     switch (ft) {
-    case FT_WALL:
+    case FT_ERROR_WALL:
         return DS_MESH_ERROR_WALL;
     case FT_INNER:
         return DS_MESH_INNER;
@@ -335,7 +335,7 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
     bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, FT_ALL, tess); 
     if (!blocksAdded) {            
         blocksAdded |= includeElementIndices(_options.showAll, VBO, FT_ALL, tess);
-        blocksAdded |= includeElementIndices(_options.showWalls, VBO, FT_WALL, tess);
+        blocksAdded |= includeElementIndices(_options.showErrorWalls, VBO, FT_ERROR_WALL, tess);
         blocksAdded |= includeElementIndices(_options.showBack, VBO, FT_BACK, tess); 
         blocksAdded |= includeElementIndices(_options.showFront, VBO, FT_FRONT, tess); 
         blocksAdded |= includeElementIndices(_options.showLeft, VBO, FT_LEFT, tess); 

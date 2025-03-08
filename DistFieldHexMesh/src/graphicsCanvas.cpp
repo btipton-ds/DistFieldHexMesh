@@ -424,7 +424,7 @@ bool GraphicsCanvas::toggleShowMeshFaces()
 
 bool GraphicsCanvas::toggleShowMeshWalls()
 {
-    bool result = _pDrawHexMesh->toggleShowWalls();
+    bool result = _pDrawHexMesh->toggleShowErrorWalls();
     changeViewElements();
 
     return result;

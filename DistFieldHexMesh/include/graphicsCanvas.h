@@ -371,7 +371,7 @@ inline bool GraphicsCanvas::showMeshAll() const
 
 inline bool GraphicsCanvas::showMeshWalls() const
 {
-    return _pDrawHexMesh->showWalls();
+    return _pDrawHexMesh->showErrorWalls();
 }
 
 inline bool GraphicsCanvas::showLayersOn() const

@@ -457,20 +457,20 @@ bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vect
 	return !piercePoints.empty();
 }
 
-bool Polygon::usesEdge(const Edge& edge) const
+bool Polygon::usesEdge(const Edge& edgeKey) const
 {
 	size_t idx0, idx1;
-	return usesEdge(edge, idx0, idx1);
+	return usesEdge(edgeKey, idx0, idx1);
 }
 
-bool Polygon::usesEdge(const Edge& edge, size_t& idx0, size_t& idx1) const
+bool Polygon::usesEdge(const Edge& edgeKey, size_t& idx0, size_t& idx1) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
 		Edge testEdge(vertId0, vertId1);
-		if (testEdge == edge) {
+		if (testEdge == edgeKey) {
 			idx0 = i;
 			idx1 = j;
 			return true;
@@ -600,14 +600,14 @@ bool Polygon::isCoplanar(const Planed& pl) const
 	return ourPlane.isCoincident(pl, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol());
 }
 
-bool Polygon::isCoplanar(const Edge& edge) const
+bool Polygon::isCoplanar(const EdgeKey& edgeKey) const
 {
 	Planed pl = calPlane();
-	const auto pt0 = getVertexPoint(edge.getVertex(0));
+	const auto pt0 = getVertexPoint(edgeKey.getVertex(0));
 	if (!pl.isCoincident(pt0, Tolerance::sameDistTol()))
 		return false;
 
-	const auto pt1 = getVertexPoint(edge.getVertex(1));
+	const auto pt1 = getVertexPoint(edgeKey.getVertex(1));
 	if (!pl.isCoincident(pt1, Tolerance::sameDistTol()))
 		return false;
 
@@ -1030,6 +1030,57 @@ size_t Polygon::getImprintIndex(const Index3DId& imprintVert) const
 {
 	Vector3d pt = getVertexPoint(imprintVert);
 	return getImprintIndex(pt);
+}
+
+size_t Polygon::getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds)
+{
+	for (const auto& edgeKey : ourEdgeKeys) {
+		edgeFunc(edgeKey, [this, &faceIds](const Edge& edge) {
+			auto& tmp = edge.getFaceIds();
+			faceIds.insert(tmp.begin(), tmp.end());
+		});
+	}
+
+	faceIds.erase(getId());
+	return faceIds.size();
+}
+
+void Polygon::imprintConnected()
+{
+	const MTC::vector<EdgeKey>& edgeKeys = getEdgeKeys();
+	MTC::set<Index3DId> faceIds;
+	if (getPossibleOverlappingFaceIds(edgeKeys, faceIds) == 0)
+		return;
+
+	imprintOtherEdgesOnThis();
+
+
+	for (const auto& faceId : faceIds) {
+		faceFunc(faceId, [&edgeKeys](Polygon& adjFace) {
+			adjFace.imprintEdges(edgeKeys);
+		});
+	}
+}
+
+void Polygon::imprintOtherEdgesOnThis()
+{
+
+}
+
+bool Polygon::imprintEdges(const MTC::vector<EdgeKey>& edgeKeys)
+{
+	MTC::set<EdgeKey> possibleEdgeKeys;
+	for (const auto& edgeKey : edgeKeys) {
+		if (!usesEdge(edgeKey) && isCoplanar(edgeKey))
+			possibleEdgeKeys.insert(edgeKey);
+		
+	}
+
+	if (possibleEdgeKeys.empty())
+		return false;
+
+
+	return false;
 }
 
 bool Polygon::imprintVertex(const Index3DId& imprintVert)

@@ -1073,7 +1073,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_INNER:
 			result = isInner;
 			break;
-		case FT_WALL:
+		case FT_ERROR_WALL:
 			result = isWall;
 			break;
 
