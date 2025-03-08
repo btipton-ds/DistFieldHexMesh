@@ -68,9 +68,11 @@ private:
 	void reset();
 	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
+	const Vector3d& vertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 	void fixNewCellFaceSplits();
-	void fixCellFaceSplits(const Index3DId& cellId);
+	void splitFaceWithEdge(const Index3DId& oldFaceIds, const EdgeKey& newEdgeKey);
+	void splitFaceWithEdgeInner(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey, MTC::vector<Index3DId>& newSplitIds);
 	void splitHexCell(const Vector3d& tuv);
 	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
 	void splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
@@ -80,6 +82,7 @@ private:
 	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);
 	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const;
 	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
+	void addPartingFace(const MTC::vector<Vector3d>& corners, const MTC::vector<size_t>& indices);
 
 	LAMBDA_CLIENT_DECLS;
 
@@ -90,7 +93,7 @@ private:
 	Index3DId _polyhedronId;
 	size_t _numSplitFaces = 0;
 	std::vector<Index3DId>& _localTouched;
-	MTC::set<Index3DId> _newCellIds;
+	MTC::set<Index3DId> _partingFaceIds;
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;

@@ -63,7 +63,7 @@ namespace
 
 void Splitter::reset()
 {
-	_newCellIds.clear();
+	_partingFaceIds.clear();
 	_pScratchBlock->clear();
 }
 
@@ -123,6 +123,7 @@ bool Splitter::splitAtCenter()
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
+		parentCell.detachFaces();
 		if (parentCell.classify(_cornerPts) == 8) {
 			cellType = CT_HEX;
 		}
@@ -147,21 +148,121 @@ bool Splitter::splitAtCenter()
 	return result;
 }
 
-Index3DId Splitter::vertId(const Vector3d& pt)
+inline Index3DId Splitter::vertId(const Vector3d& pt)
 {
 	return _pBlock->getVertexIdOfPoint(pt);
 }
 
+inline const Vector3d& Splitter::vertexPoint(const  Index3DId& id) const
+{
+	return _pBlock->getVertexPoint(id);
+}
+
 void Splitter::fixNewCellFaceSplits()
 {
-	for (const auto& cellId : _newCellIds) {
-		fixCellFaceSplits(cellId);
+	if (_partingFaceIds.empty())
+		return;
+
+	MTC::set<EdgeKey> newEdgeKeys;
+	for (const auto& partingFaceId : _partingFaceIds) {
+		faceFunc(partingFaceId, [&newEdgeKeys](const Polygon& face) {
+			auto t = face.getEdgeKeys();
+			newEdgeKeys.insert(t.begin(), t.end());
+		});
+	}
+	cellFunc(_polyhedronId, [this, &newEdgeKeys](const Polyhedron& cell) {
+		const auto& oldFaceIds = cell.getFaceIds();
+		for (const auto& oldFaceId : oldFaceIds) {
+			if (_partingFaceIds.contains(oldFaceId))
+				return;
+			for (const auto& newEdgeKey : newEdgeKeys) {
+				splitFaceWithEdge(oldFaceId, newEdgeKey);
+			}
+		}
+	});
+
+	_partingFaceIds.clear();
+}
+
+void Splitter::splitFaceWithEdge(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey)
+{
+	MTC::vector<Index3DId> newSplitIds;
+	splitFaceWithEdgeInner(oldFaceId, newEdgeKey, newSplitIds);
+	if (!newSplitIds.empty()) {
+		faceFunc(oldFaceId, [&newSplitIds](Polygon& face) {
+			face.setSplitFaceIds(newSplitIds);
+		});
 	}
 }
 
-void Splitter::fixCellFaceSplits(const Index3DId& cellId)
+void Splitter::splitFaceWithEdgeInner(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey, MTC::vector<Index3DId>& newSplitIds)
 {
+	faceFunc(oldFaceId, [this, &newEdgeKey, &newSplitIds](const Polygon& oldFace) {
+		const auto& splitIds = oldFace.getSplitIds();
+		if (splitIds.empty()) {
+			const double tol = Tolerance::sameDistTol();
+			if (oldFace.usesEdge(newEdgeKey) || !oldFace.isCoplanar(newEdgeKey))
+				return;
 
+			Vector3d pt0, pt1;
+			edgeFunc(newEdgeKey, [this, &pt0, &pt1](const Edge& newEdge) {
+				pt0 = vertexPoint(newEdge.getVertex(0));
+				pt1 = vertexPoint(newEdge.getVertex(1));
+			});
+
+			Vector3d v0 = oldFace.calUnitNormal();
+			Vector3d v1 = pt1 - pt0;
+			Vector3d n = v1.cross(v0);
+			Planed pl(pt0, n);
+			RayHitd hit;
+
+			const auto& vertIds = oldFace.getVertexIds();
+
+			vector<Index3DId> newVertIds;
+			vector<size_t> insertIndices;
+			for (size_t i = 0; i < vertIds.size(); i++) {
+				size_t j = (i + 1) % vertIds.size();
+				newVertIds.push_back(vertIds[i]);
+
+				Vector3d fpt0 = vertexPoint(vertIds[i]);
+				Vector3d fpt1 = vertexPoint(vertIds[j]);
+				LineSegmentd seg(fpt0, fpt1);
+				if (pl.intersectLineSegment(seg, hit, tol)) {
+					double t = hit.dist / seg.calLength();
+					auto id = _pBlock->addVertex(hit.hitPt);
+					insertIndices.push_back(newVertIds.size());
+					newVertIds.push_back(id);
+				}
+			}
+
+			assert(insertIndices.size() == 2);
+
+			MTC::vector<Index3DId> faceVerts0, faceVerts1;
+
+			size_t idx = insertIndices[0];
+			while (idx != insertIndices[1]) {
+				faceVerts0.push_back(newVertIds[idx]);
+				idx = (idx + 1) % newVertIds.size();
+			}
+			faceVerts0.push_back(newVertIds[idx]);
+
+			while (idx != insertIndices[0]) {
+				faceVerts1.push_back(newVertIds[idx]);
+				idx = (idx + 1) % newVertIds.size();
+			}
+			faceVerts1.push_back(newVertIds[idx]);
+
+			newSplitIds.push_back(_pBlock->addFace(Polygon(faceVerts0)));
+			newSplitIds.push_back(_pBlock->addFace(Polygon(faceVerts1)));
+
+			int dbgBreak = 1;
+		} else {
+			for (const auto& splitId : splitIds) {
+				splitFaceWithEdgeInner(splitId, newEdgeKey, newSplitIds);
+			}
+			int dbgBreak = 1;
+		}
+	});
 }
 
 void Splitter::splitHexCell(const Vector3d& tuv)
@@ -306,8 +407,34 @@ void Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int
 		};
 
 		addHexCell(parentId, subCorners, tol);
+
+		if (i == 0) {
+			switch (axis) {
+			case 0:
+				addPartingFace(subCorners, { 1, 2, 6, 5 });
+				break;
+			case 1:
+				addPartingFace(subCorners, { 3, 2, 6, 7 });
+				break;
+			case 2:
+				addPartingFace(subCorners, { 4, 5, 6, 7 });
+				break;
+			}
+		}
 	}
 #endif
+}
+
+void Splitter::addPartingFace(const MTC::vector<Vector3d>& corners, const MTC::vector<size_t>& indices)
+{
+	MTC::vector<Index3DId> faceIds;
+	for (size_t idx : indices)
+		faceIds.push_back(vertId(corners[idx]));
+
+	const auto& id = _pBlock->findFace(Polygon(faceIds));
+	assert(id.isValid());
+	_partingFaceIds.insert(id);
+
 }
 
 void Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis)
@@ -356,6 +483,8 @@ void Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int
 			};
 
 			addHexCell(parentId, subCorners, tol);
+
+
 		}
 	}
 #endif
@@ -443,8 +572,6 @@ void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Vector3d>
 	cellFunc(newCellId, [this](Polyhedron& newCell) {
 		assert(newCell.getNumFaces(true) <= _params.maxCellFaces);
 	});
-		
-	_newCellIds.insert(newCellId);
 }
 
 Index3DId Splitter::findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const

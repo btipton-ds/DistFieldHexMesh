@@ -237,6 +237,8 @@ size_t Polygon::getSplitLevel(const Index3DId& cellId) const
 
 void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 {
+	if (faceIds.empty())
+		return;
 	assert(_splitIds.size() <= 1);
 	for (const auto& id : _splitIds) {
 		getBlockPtr()->freePolygon(id);
