@@ -715,6 +715,8 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 
 void Volume::dumpCellHistogram() const
 {
+#if USE_CELL_HISTOGRAM
+
 	map<size_t, size_t> faceCountHistogram;
 	vector<map<size_t, size_t>> faceCountHistograms;
 	faceCountHistograms.resize(MultiCore::getNumCores());
@@ -740,6 +742,7 @@ void Volume::dumpCellHistogram() const
 	for (const auto& pair : faceCountHistogram) {
 		cout << "numFaces: " << pair.first << " - count: " << pair.second << "\n";
 	}
+#endif
 }
 
 /*

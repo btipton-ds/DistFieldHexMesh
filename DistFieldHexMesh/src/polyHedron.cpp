@@ -898,6 +898,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
+#if USE_CELL_HISTOGRAM
 void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 {
 	size_t numFaces = getNumFaces(true);
@@ -922,6 +923,7 @@ void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 		iter = histo.insert(make_pair(numFaces, 0)).first;
 	iter->second++;
 }
+#endif
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {

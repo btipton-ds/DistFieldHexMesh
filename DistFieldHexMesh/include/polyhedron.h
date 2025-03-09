@@ -98,7 +98,9 @@ public:
 	bool isConvex() const;
 	bool intersectsModel() const;
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
+#if USE_CELL_HISTOGRAM
 	void addToFaceCountHistogram(std::map<size_t, size_t>& histo) const;
+#endif
 	bool isTooComplex(const SplittingParams& params) const;
 
 	void setNeedsDivideAtCentroid();
@@ -142,13 +144,11 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
+#if USE_CELL_HISTOGRAM
 	inline void setParentId(const Index3DId& id)
 	{
 		_parentIds.push_back(id);
 	}
-#if 0
-	void faceMatchFunc(const Index3DId& id, std::function<void(const Polygon& obj)> func) const;
-	void cellMatchFunc(const Index3DId& id, std::function<void(const Polyhedron& obj)> func) const;
 #endif
 	LAMBDA_CLIENT_DECLS
 
@@ -177,7 +177,9 @@ private:
 		The original face is marked as split, no longer really exists, and points to it's replacements.
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
+#if USE_CELL_HISTOGRAM
 	std::vector<Index3DId> _parentIds;
+#endif
 	FastBisectionSet<Index3DId> _faceIds;
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass

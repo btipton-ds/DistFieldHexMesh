@@ -629,8 +629,9 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 {
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	auto& newCell = _polyhedra[cellId];
+#if USE_CELL_HISTOGRAM
 	newCell.setParentId(parentCellId);
-
+#endif
 	const auto& cellFaceIds = newCell.getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
