@@ -1337,7 +1337,8 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		auto pBlk = getBlockPtr(cellId);
 		pBlk->cellFunc(cellId, [&cellToFaceIdsMap, &modelTriIndices, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 
-			const auto& ids = cell.getNestedFaceIds();
+			FastBisectionSet<Index3DId> ids;
+			cell.getNestedFaceIds(ids);
 			cellToFaceIdsMap.insert(std::make_pair(cell.getId(), ids));
 #if 0
 			if (includeModel) {

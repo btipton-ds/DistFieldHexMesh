@@ -286,17 +286,14 @@ size_t Polyhedron::getNumNestedFaces() const
 
 }
 
-FastBisectionSet<Index3DId> Polyhedron::getNestedFaceIds() const
+size_t Polyhedron::getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const
 {
-	FastBisectionSet<Index3DId> result;
-
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &result](const Polygon& face) {
-			auto temp = face.getNestedFaceIds();
-			result.insert(temp.begin(), temp.end());
+		faceFunc(faceId, [this, &faceIds](const Polygon& face) {
+			face.getNestedFaceIds(faceIds);
 		});
 	}
-	return result;
+	return faceIds.size();
 }
 
 size_t Polyhedron::getNumFaces(bool includeSubFaces) const
@@ -1258,7 +1255,7 @@ size_t Polyhedron::getFaceSplitLevel(const Index3DId& faceId) const
 	bool found = false;
 	for (const auto& testFaceId : _faceIds) {
 		faceFunc(testFaceId, [&found , &level](const Polygon& face) {
-			if (face.containsFace(face.getId(), level))
+			if (face.containsFaceNested(face.getId(), level))
 				found = true;
 		});
 		if (found)

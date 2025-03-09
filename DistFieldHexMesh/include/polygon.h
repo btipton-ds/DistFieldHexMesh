@@ -124,7 +124,10 @@ public:
 	void flipReversed(const Index3DId& cellId); // Orientation is relative to cellId
 	size_t numCells() const;
 	const FastBisectionSet<Index3DId>& getCellIds() const;
-	void getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const;
+
+	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
+	size_t getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
+	size_t getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const;
 
 	bool usedByCell(const Index3DId& cellId) const;
 	size_t getSplitLevel(const Index3DId& cellId) const;
@@ -141,8 +144,7 @@ public:
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsVertexNested(const Index3DId& vertId) const;
-	bool containsEdge(const Edge& edge, bool& isUsed) const;
-	bool containsFace(const Index3DId& faceId, size_t& level) const;
+	bool containsFaceNested(const Index3DId& faceId, size_t& level) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	size_t numSplitLevels() const;
 
@@ -158,13 +160,11 @@ public:
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
-	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
 	void clearCache() const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
 	size_t numFaceIds(bool includeSplits) const;
-	FastBisectionSet<Index3DId> getNestedFaceIds() const;
 
 	double calVertexAngle(size_t index) const;
 	double calVertexError(const std::vector<Vector3d>& testPts) const;

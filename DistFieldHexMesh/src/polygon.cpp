@@ -247,17 +247,16 @@ void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 		_splitIds.clear();
 	}
 
-	if (_splitIds.empty()) {
-		_splitIds = faceIds;
+	_splitIds = faceIds;
 
-		for (const auto& id : _splitIds) {
-			faceFunc(id, [this](Polygon& subFace) {
-				for (const auto& cellId : _cellIds) {
-					subFace.addCellId(cellId);
-				}
-			});
-		}
+	for (const auto& id : _splitIds) {
+		faceFunc(id, [this](Polygon& subFace) {
+			for (const auto& cellId : _cellIds) {
+				subFace.addCellId(cellId);
+			}
+		});
 	}
+
 }
 
 size_t Polygon::numFaceIds(bool includeSplits) const
@@ -277,21 +276,19 @@ size_t Polygon::numFaceIds(bool includeSplits) const
 	return result;
 }
 
-FastBisectionSet<Index3DId> Polygon::getNestedFaceIds() const
+size_t Polygon::getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const
 {
-	FastBisectionSet<Index3DId> result;
 	if (_splitIds.empty()) {
-		result.insert(getId());
+		faceIds.insert(getId());
 	} else {
 		for (const auto& id : _splitIds) {
-			faceFunc(id, [this, &result](const Polygon& splitFace) {
-				auto ids = splitFace.getNestedFaceIds();
-				result.insert(ids.begin(), ids.end());
+			faceFunc(id, [this, &faceIds](const Polygon& splitFace) {
+				splitFace.getNestedFaceIds(faceIds);
 			});
 		}
 	}
 
-	return result;
+	return faceIds.size();
 }
 
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
@@ -487,50 +484,8 @@ bool Polygon::usesEdge(const Edge& edgeKey, size_t& idx0, size_t& idx1) const
 	return false;
 }
 
-bool Polygon::containsEdge(const Edge& edge, bool& isUsed) const
-{
-	isUsed = false;
-	if (!isCoplanar(edge))
-		return false;
-
-	if (usesEdge(edge)) {
-		isUsed = true;
-		return true;
-	}
-
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(edge.getVertex(0));
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(edge.getVertex(1));
-	bool intersects = false;
-	if (isConvex()) {
-		if (containsPoint(pt0) || containsPoint(pt1))
-			return true;
-
-		Vector3d faceNorm = calUnitNormal();
-		Vector3d v = edge.calUnitDir();
-		Vector3d iNorm = v.cross(faceNorm).normalized();
-		Planed iPlane(pt0, iNorm);
-		iterateEdges([this, &iPlane, &intersects](const Edge& ie) {
-			auto seg = ie.getSegment();
-			RayHitd hit;
-			if (iPlane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
-				intersects = true;
-			}
-			return !intersects;
-		});
-
-	} else {
-		iterateEdges([this, &pt0, &pt1, &intersects](const Edge& ie) {
-			if (ie.pointLiesOnEdge(pt0) || ie.pointLiesOnEdge(pt1))
-				intersects = true;
-			return !intersects;
-		});
-	}
-
-	return intersects;
-}
-
 // This tests if this face is or contains another face
-bool Polygon::containsFace(const Index3DId& faceId, size_t& level) const
+bool Polygon::containsFaceNested(const Index3DId& faceId, size_t& level) const
 {
 	level += 1;
 
@@ -540,7 +495,7 @@ bool Polygon::containsFace(const Index3DId& faceId, size_t& level) const
 	bool found = false;
 	for (const auto& id : _splitIds) {
 		faceFunc(id, [this, &faceId, &found, &level](const Polygon& face) {
-			if (containsFace(faceId, level)) {
+			if (containsFaceNested(faceId, level)) {
 				found = true;
 			}
 		});
@@ -578,7 +533,7 @@ bool Polygon::containsVertexNested(const Index3DId& vertId) const
 	return false;
 }
 
-void Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const
+size_t Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const
 {
 	if (_splitIds.empty()) {
 		for (const auto& id : _cellIds) {
@@ -592,6 +547,8 @@ void Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3D
 			});
 		}
 	}
+
+	return cellIds.size();
 }
 
 bool Polygon::isCoplanar(const Vector3d& pt) const

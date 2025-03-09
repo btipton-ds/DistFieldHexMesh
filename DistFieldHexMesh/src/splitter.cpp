@@ -162,60 +162,91 @@ void Splitter::fixNewCellFaceSplits()
 	if (_partingFaceIds.empty())
 		return;
 
-	MTC::set<EdgeKey> newEdgeKeys;
+	// Parting faces are all new. They only divide the current cell.
+	// Their edges are a different matter. They can imprint vertices into other edges, or split other faces.
+	// Some parting faces must be split to agree with existing faces and edges - for example overlapping 2 
+	//	splits on the xAxis with 2 splits on the yAxis to create a quad split.
+	// First split the new parting faces so they're clean
 	for (const auto& partingFaceId : _partingFaceIds) {
-		faceFunc(partingFaceId, [&newEdgeKeys](const Polygon& face) {
-			auto t = face.getEdgeKeys();
-			newEdgeKeys.insert(t.begin(), t.end());
-		});
-	}
-	cellFunc(_polyhedronId, [this, &newEdgeKeys](const Polyhedron& cell) {
-		const auto& oldFaceIds = cell.getFaceIds();
-		for (const auto& oldFaceId : oldFaceIds) {
-			if (_partingFaceIds.contains(oldFaceId))
-				return;
-			for (const auto& newEdgeKey : newEdgeKeys) {
-				splitFaceWithEdge(oldFaceId, newEdgeKey);
-			}
+		for (const auto& faceVerts : _cellFaceVertIds) {
+			auto srcFaceId = _pBlock->findFace(Polygon(faceVerts));
+			splitFaceWithOtherFace(partingFaceId, srcFaceId);
 		}
-	});
+	}
 
 	_partingFaceIds.clear();
 }
 
-void Splitter::splitFaceWithEdge(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey)
+void Splitter::splitFaceWithOtherFace(const Index3DId& targetId, const Index3DId& sourceId)
 {
-	MTC::vector<Index3DId> newSplitIds;
-	splitFaceWithEdgeInner(oldFaceId, newEdgeKey, newSplitIds);
-	if (!newSplitIds.empty()) {
-		faceFunc(oldFaceId, [&newSplitIds](Polygon& face) {
-			face.setSplitFaceIds(newSplitIds);
+	auto& targetFace = _pBlock->getPolygon(targetId);
+	assert(targetFace.getSplitIds().empty());
+	Planed targetPlane = targetFace.calPlane();
+
+	FastBisectionSet<Index3DId> subFaceIds;
+	faceFunc(sourceId, [&subFaceIds](const Polygon& subFace) {
+		subFace.getNestedFaceIds(subFaceIds);
+	});
+
+	MTC::set<EdgeKey> edgeKeys;
+	for (const auto& subFaceId : subFaceIds) {
+		faceFunc(subFaceId, [this, &targetFace, &targetPlane, &edgeKeys](const Polygon& subFace) {
+			auto subFaceEdgeKeys = subFace.getEdgeKeys();
+			for (const auto& subFaceEdgeKey : subFaceEdgeKeys) {
+
+				// Ignore duplicates
+				if (edgeKeys.contains(subFaceEdgeKey))
+					continue;
+
+				// Ignore edges which already exist
+				if (targetFace.usesEdge(subFaceEdgeKey))
+					continue;
+
+				// Ignore edges when both vertices are not coplanar
+				const auto& pt0 = vertexPoint(subFaceEdgeKey.getVertex(0));
+				if (!targetPlane.isCoincident(pt0, Tolerance::sameDistTol())) {
+					continue;
+				}
+				const auto& pt1 = vertexPoint(subFaceEdgeKey.getVertex(1));
+				if (!targetPlane.isCoincident(pt1, Tolerance::sameDistTol()))
+					continue;
+
+				edgeKeys.insert(subFaceEdgeKey);				
+			}
 		});
 	}
+
+	if (!edgeKeys.empty())
+		splitFaceWithEdges(targetId, edgeKeys);
 }
 
-void Splitter::splitFaceWithEdgeInner(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey, MTC::vector<Index3DId>& newSplitIds)
+void Splitter::splitFaceWithEdges(const Index3DId& targetId, const MTC::set<EdgeKey>& edgeKeys)
 {
-	faceFunc(oldFaceId, [this, &newEdgeKey, &newSplitIds](const Polygon& oldFace) {
-		const auto& splitIds = oldFace.getSplitIds();
-		if (splitIds.empty()) {
-			const double tol = Tolerance::sameDistTol();
-			if (oldFace.usesEdge(newEdgeKey) || !oldFace.isCoplanar(newEdgeKey))
+	faceFunc(targetId, [this, &edgeKeys](Polygon& targetFace) {
+		const double tol = Tolerance::sameDistTol();
+		MTC::vector<Index3DId> splitIds;
+		assert(targetFace.getSplitIds().empty());
+
+		for (const auto& newEdgeKey : edgeKeys) {
+			assert(targetFace.getSplitIds().empty());
+			if (targetFace.usesEdge(newEdgeKey))
 				return;
+
+			assert(targetFace.isCoplanar(newEdgeKey)); // This supposed to be assured by the preselector
 
 			Vector3d pt0, pt1;
 			edgeFunc(newEdgeKey, [this, &pt0, &pt1](const Edge& newEdge) {
 				pt0 = vertexPoint(newEdge.getVertex(0));
 				pt1 = vertexPoint(newEdge.getVertex(1));
-			});
+				});
 
-			Vector3d v0 = oldFace.calUnitNormal();
+			Vector3d v0 = targetFace.calUnitNormal();
 			Vector3d v1 = pt1 - pt0;
 			Vector3d n = v1.cross(v0);
 			Planed pl(pt0, n);
 			RayHitd hit;
 
-			const auto& vertIds = oldFace.getVertexIds();
+			const auto& vertIds = targetFace.getVertexIds();
 
 			vector<Index3DId> newVertIds;
 			vector<size_t> insertIndices;
@@ -253,21 +284,23 @@ void Splitter::splitFaceWithEdgeInner(const Index3DId& oldFaceId, const EdgeKey&
 				auto id0 = _pBlock->findFace(Polygon(faceVerts0));
 				if (!id0.isValid()) {
 					id0 = _pBlock->addFace(Polygon(faceVerts0));
-					assert(id0.isValid() && id0 != oldFace.getId());
-					newSplitIds.push_back(id0);
+					assert(id0.isValid() && id0 != targetFace.getId());
+					splitIds.push_back(id0);
 				}
 
 				auto id1 = _pBlock->findFace(Polygon(faceVerts1));
 				if (!id1.isValid()) {
 					id1 = _pBlock->addFace(Polygon(faceVerts1));
-					assert(id1.isValid() && id1 != oldFace.getId());
-					newSplitIds.push_back(id1);
+					assert(id1.isValid() && id1 != targetFace.getId());
+					splitIds.push_back(id1);
 				}
 			}
-			int dbgBreak = 1;
-		} else {
-			int dbgBreak = 1;
 		}
+
+		if (splitIds.empty()) {
+			targetFace.setSplitFaceIds(splitIds);
+		}
+		int dbgBreak = 1;		
 	});
 }
 
@@ -290,6 +323,11 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 			});
 		reset();
 	}
+
+	cellFunc(_polyhedronId, [this](const Polyhedron& cell) {
+		createHexCellData(cell);
+	});
+
 
 	if (intersects[0] == 0) {
 		assert((intersects[1] == 0) && (intersects[2] == 0));
@@ -343,8 +381,6 @@ bool Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 		return false;
 
 	cellFunc(parentId, [this, &canSplit, &tuv, &tol](Polyhedron& parentCell) {
-		createHexCellData(parentCell);
-
 		for (const auto& facePts : _cellFacePoints) {
 			// This aligns the disordered faceIds with their cube face points
 			const auto& faceId = findSourceFaceId(parentCell.getId(), facePts, tol);
@@ -569,14 +605,14 @@ Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId, bool includeSp
 		if (includeSplits) {
 			const auto& srcSplitIds = srcFace.getSplitIds();
 			faceFunc(newFaceId, [this, includeSplits, &srcSplitIds](Polygon& newFace) {
-				MTC::vector<Index3DId> newSplitIds;
+				MTC::vector<Index3DId> splitIds;
 				for (const auto& srcSplitId : srcSplitIds) {
 					const auto& newSplitId = createScratchFace(srcSplitId, includeSplits);
-					newSplitIds.push_back(newSplitId);
+					splitIds.push_back(newSplitId);
 				}
 
-				if (!newSplitIds.empty()) {
-					newFace.setSplitFaceIds(newSplitIds);
+				if (!splitIds.empty()) {
+					newFace.setSplitFaceIds(splitIds);
 				}
 			});
 		}
