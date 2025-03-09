@@ -239,21 +239,25 @@ void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
 {
 	if (faceIds.empty())
 		return;
-	assert(_splitIds.size() <= 1);
-	for (const auto& id : _splitIds) {
-		getBlockPtr()->freePolygon(id);
+
+	if (_splitIds.size() == 1) {
+		for (const auto& id : _splitIds) {
+			getBlockPtr()->freePolygon(id);
+		}
+		_splitIds.clear();
 	}
 
-	_splitIds = faceIds;
+	if (_splitIds.empty()) {
+		_splitIds = faceIds;
 
-	for (const auto& id : _splitIds) {
-		faceFunc(id, [this](Polygon& subFace) {
-			for (const auto& cellId : _cellIds) {
-				subFace.addCellId(cellId);
-			}
-		});
+		for (const auto& id : _splitIds) {
+			faceFunc(id, [this](Polygon& subFace) {
+				for (const auto& cellId : _cellIds) {
+					subFace.addCellId(cellId);
+				}
+			});
+		}
 	}
-
 }
 
 size_t Polygon::numFaceIds(bool includeSplits) const

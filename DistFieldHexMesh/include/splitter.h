@@ -73,10 +73,10 @@ private:
 	void fixNewCellFaceSplits();
 	void splitFaceWithEdge(const Index3DId& oldFaceIds, const EdgeKey& newEdgeKey);
 	void splitFaceWithEdgeInner(const Index3DId& oldFaceId, const EdgeKey& newEdgeKey, MTC::vector<Index3DId>& newSplitIds);
-	void splitHexCell(const Vector3d& tuv);
-	void splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
-	void splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
-	void splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
+	bool splitHexCell(const Vector3d& tuv);
+	bool splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
+	bool splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
+	bool splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	Index3DId createScratchCell(bool includeSplits);
 	Index3DId createScratchFace(const Index3DId& srcFaceId, bool includeSplits);
 	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);

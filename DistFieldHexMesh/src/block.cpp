@@ -1001,11 +1001,10 @@ bool Block::splitRequiredPolyhedra()
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter splitter(this, cellId, localTouched);
-			if (splitter.splitAtCenter())
+			if (splitter.splitAtCenter()) {
 				didSplit = true;
-			else
-				assert(!"splitFailed");
-			assert(!polyhedronExists(cellId));
+				assert(!polyhedronExists(cellId));
+			}
 		}
 	}
 
