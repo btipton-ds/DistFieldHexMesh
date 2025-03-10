@@ -122,10 +122,17 @@ bool Splitter::splitAtCenter()
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
-		parentCell.detachFaces();
-		if (parentCell.classify(_cornerPts) == 8) {
-			cellType = CT_HEX;
+		createHexCellData(parentCell);
+
+
+		switch (_cornerPts.size()) {
+			case 8:
+				cellType = CT_HEX;
+				break;
+			default:
+				break;
 		}
+		parentCell.detachFaces();
 	});
 
 	Vector3d tuv(0.5, 0.5, 0.5);
@@ -173,11 +180,6 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 			});
 		reset();
 	}
-
-	cellFunc(_polyhedronId, [this](const Polyhedron& cell) {
-		createHexCellData(cell);
-	});
-
 
 	if (intersects[0] == 0) {
 		assert((intersects[1] == 0) && (intersects[2] == 0));
@@ -363,7 +365,11 @@ Index3DId Splitter::createScratchCell()
 		newFaceIds.insert(newFaceId);
 	}
 
-	auto scratchCellId = _pScratchBlock->addCell(Polyhedron(newFaceIds, _cornerVertIds), Index3DId());
+	MTC::vector<Index3DId> cornerVertIds;
+	cornerVertIds.reserve(_cornerPts.size());
+	for (const auto& pt : _cornerPts)
+		cornerVertIds.push_back(vertId(pt));
+	auto scratchCellId = _pScratchBlock->addCell(Polyhedron(newFaceIds, cornerVertIds), Index3DId());
 
 	return scratchCellId;
 }
@@ -399,11 +405,9 @@ void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId
 	MTC::set<Index3DId> cellFaceIds;
 	for (const auto& faceVerts : faceVertList) {
 		assert(faceVerts.size() == 4);
-		Index3DId id = findSourceFaceId(parentId, faceVerts, tol);
-		if (!id.isValid()) {
-			id = _pBlock->addFace(Polygon(faceVerts));
-		}
-		cellFaceIds.insert(id);
+		MTC::set<Index3DId> newFaceIds;
+		createFace(parentId, faceVerts, newFaceIds, tol);
+		cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
 	}
 	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 
@@ -412,44 +416,39 @@ void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId
 	});
 }
 
-Index3DId Splitter::findSourceFaceId(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, double tol) const
+void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
+	Index3DId result;
+
 	FastBisectionSet<Index3DId> faceIds;
 	cellFunc(parentId, [&faceIds](const Polyhedron& parentCell) {
 		faceIds = parentCell.getFaceIds();
 	});
-	double minErr = DBL_MAX;
-	Index3DId result;
+
 	for (const auto& faceId : faceIds) {
-		findSourceFaceId_inner(faceId, faceVertIds, minErr, result, tol);
-		if (minErr < tol)
-			break;
+		faceFunc(faceId, [this, &faceVertIds, &newFaceIds](Polygon& face) {
+			Planed oldFacePlane = face.calPlane();
+			const auto& oldFaceVertIds = face.getVertexIds();
+	
+			for (const auto& id : oldFaceVertIds) {
+				const auto& pt = vertexPoint(id);
+				if (!oldFacePlane.isCoincident(pt, Tolerance::sameDistTol()))
+					return; // go to the next face
+			}
+			// The new face is coplanar with and existing face
+			// Need to build the new face(s) to fit the old face
+			face.recreateToMatch(faceVertIds, newFaceIds);
+		});
 	}
-	if (minErr < tol)
-		return result;
-	return Index3DId();
-}
-
-void Splitter::findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Index3DId>& faceVertIds, double& minErr, Index3DId& result, double tol) const
-{
-	faceFunc(faceId, [this, &minErr, &faceVertIds, &result, tol](const Polygon& face) {
-		// Check if the unsplit face is the best match
-		auto err = face.calVertexError(faceVertIds);
-		if (err < minErr) {
-			minErr = err;
-			result = face.getId();
-			if (minErr < tol)
-				return;
-		}
-
-	});
-
 }
 
 void Splitter::createHexCellData(const Polyhedron& parentCell)
 {
-	GradingOp::getCubeFacePoints(_cornerPts, _cellFacePoints);
-	_cornerVertIds = parentCell.getCanonicalVertIds();
+	auto& cornerVertIds = parentCell.getCanonicalVertIds();
+	_cornerPts.reserve(cornerVertIds.size());
+	for (const auto& id : cornerVertIds)
+		_cornerPts.push_back(vertexPoint(id));
+	GradingOp::getCubeFaceVertIds(cornerVertIds, _cellFaceVertIds);
 
 	_cellFaceVertIds.resize(_cellFacePoints.size());
 	for (size_t i = 0; i < _cellFacePoints.size(); i++) {

@@ -75,8 +75,7 @@ private:
 	Index3DId createScratchCell();
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
-	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, double tol) const;
-	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Index3DId>& faceVertIds, double& minErr, Index3DId& result, double tol) const;
+	void createFace(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
@@ -88,7 +87,6 @@ private:
 
 	std::vector<Index3DId>& _localTouched;
 	MTC::vector<Vector3d> _cornerPts;
-	MTC::vector<Index3DId> _cornerVertIds;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 

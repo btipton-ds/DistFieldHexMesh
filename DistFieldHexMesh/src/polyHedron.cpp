@@ -85,6 +85,7 @@ Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<
 Polyhedron::Polyhedron(const Polyhedron& src)
 	: ObjectPoolOwnerUser(src)
 	, _faceIds(src._faceIds)
+	, _canonicalVertices(src._canonicalVertices)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
@@ -128,6 +129,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 	clearCache();
 	_faceIds = rhs._faceIds;
+	_canonicalVertices = rhs._canonicalVertices;
 	_splitLevel = rhs._splitLevel;
 	_layerNum = rhs._layerNum;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;

@@ -73,6 +73,18 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 {
 }
 
+void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds)
+{
+	Polygon newPoly(newVertIds);
+	Index3DId id = getBlockPtr()->findFace(newPoly);
+	if (id == getId()) {
+		newFaceIds.insert(id);
+	} else {
+		id = getBlockPtr()->addFace(newPoly);
+		newFaceIds.insert(id);
+	}
+}
+
 void Polygon::connectToplogy() {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();

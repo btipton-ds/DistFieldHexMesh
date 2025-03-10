@@ -114,6 +114,7 @@ public:
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addVertex(const Index3DId& vertId);
+	void recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds);
 	void connectToplogy();
 	void disconnectTopology();
 

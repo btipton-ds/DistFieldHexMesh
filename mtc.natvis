@@ -30,11 +30,11 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 </Type>
 
  <Type Name="DFHM::Index3D">
-    <DisplayString>[{_vals[0]},{_vals[1]},{_vals[2]}]</DisplayString>
+    <DisplayString>[{(unsigned int)_vals[0]},{(unsigned int)_vals[1]},{(unsigned int)_vals[2]}]</DisplayString>
 </Type>
 
  <Type Name="DFHM::Index3DId">
-    <DisplayString>[{_vals[0]},{_vals[1]},{_vals[2]}]: {_elementId}</DisplayString>
+    <DisplayString>[{(unsigned int)_vals[0]},{(unsigned int)_vals[1]},{(unsigned int)_vals[2]}]: {_elementId}</DisplayString>
 </Type>
 
 <Type Name="DFHM::FastBisectionSet_with_comp&lt;*&gt;">

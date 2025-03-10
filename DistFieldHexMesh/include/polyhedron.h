@@ -51,10 +51,10 @@ class Edge;
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
-	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds);
-	explicit Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds);
-	Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds);
-	explicit Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds);
+	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds = MultiCore::vector<Index3DId>());
+	explicit Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds = std::vector<Index3DId>());
+	Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds = MultiCore::vector<Index3DId>());
+	explicit Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds = std::vector<Index3DId>());
 	Polyhedron(const Polyhedron& src);
 
 	void clear() override;
@@ -176,7 +176,11 @@ private:
 	std::vector<Index3DId> _parentIds;
 #endif
 	FastBisectionSet<Index3DId> _faceIds;
-	MTC::vector<Index3DId> _canonicalVertices; // The vertices that define the polyhedron 4 = tet, 5 = pyramid, 6 = triangular prism, 8 = hexahedron, 12 = hexagonal cylinder 
+
+	// _canonicalVertices are the vertices that define the polyhedron 4 = tet, 5 = pyramid, 6 = triangular prism, 8 = hexahedron, 12 = hexagonal cylinder
+	// If it's empty, the cell is not canonical
+	MTC::vector<Index3DId> _canonicalVertices; 
+
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
 
