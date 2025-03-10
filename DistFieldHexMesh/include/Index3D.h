@@ -34,9 +34,8 @@ namespace DFHM {
 
 class Volume;
 
-using Index3DBaseType = uint16_t; // This is large enough for 65536 x 65536 x 65536 block
-using Index3DLongType = uint64_t; // This is large enough for 65536 x 65536 x 65536 block
-#define Index3DBaseType_MAX USHRT_MAX
+using Index3DBaseType = uint8_t; // This is large enough for 256 x 256 x 256 block
+using Index3DLongType = uint32_t;
 
 // Base class with protected constructors prevents accidental swapping of Index3D and Index3DId
 class Index3DBase
@@ -89,6 +88,7 @@ protected:
 
 private:
 	static Index3DLongType getMask();
+	static Index3DBaseType getMaxBaseType();
 	Index3DLongType compVal() const;
 	static Index3DBaseType s_blockDim;
 	union {
@@ -128,7 +128,7 @@ inline Index3DBase::Index3DBase(const Vector3i& src)
 
 inline bool Index3DBase::isValid() const
 {
-	const Index3DBaseType t = 0xffff;
+	const Index3DBaseType t = getMaxBaseType();
 	return _vals[0] != t && _vals[1] != t && _vals[2] != t;
 }
 
@@ -164,12 +164,17 @@ void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
 	}
 }
 
-inline size_t Index3DBase::getMask()
+inline Index3DLongType Index3DBase::getMask()
 {
-	return 0x0000ffffffffffff;
+	return 0x00ffffff;
 }
 
-inline size_t Index3DBase::compVal() const
+inline Index3DBaseType Index3DBase::getMaxBaseType()
+{
+	return 0xff;
+}
+
+inline Index3DLongType Index3DBase::compVal() const
 {
 	return _iVal & getMask();
 }

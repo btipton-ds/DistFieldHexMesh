@@ -226,6 +226,21 @@ CreateBaseMeshDlg::~CreateBaseMeshDlg()
 {
 }
 
+bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, Index3DBaseType& value) const
+{
+	try {
+		wxString wstr = item->GetValue();
+		if (wstr.length() > 0) {
+			value = (Index3DBaseType)stoi(wstr.c_str().AsChar());
+			return true;
+		}
+	}
+	catch (const invalid_argument&) {
+	}
+
+	return false;
+}
+
 bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, unsigned short& value) const
 {
 	try {
