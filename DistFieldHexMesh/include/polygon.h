@@ -125,12 +125,7 @@ public:
 	size_t numCells() const;
 	const FastBisectionSet<Index3DId>& getCellIds() const;
 
-	size_t getNestedVertexIds(MTC::set<Index3DId>& vertIds) const;
-	size_t getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
-	size_t getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const;
-
 	bool usedByCell(const Index3DId& cellId) const;
-	size_t getSplitLevel(const Index3DId& cellId) const;
 	bool isCoplanar(const Vector3d& pt) const;
 	bool isCoplanar(const Planed& pl) const;
 	bool isCoplanar(const EdgeKey& edgeKey) const;
@@ -143,10 +138,6 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
-	bool containsVertexNested(const Index3DId& vertId) const;
-	bool containsFaceNested(const Index3DId& faceId, size_t& level) const;
-	bool isTooComplex(const SplittingParams& params) const;
-	size_t numSplitLevels() const;
 
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	template<class TRI_FUNC, class EDGE_FUNC>
@@ -163,11 +154,9 @@ public:
 	void clearCache() const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
-	void setSplitFaceIds(const MTC::vector<Index3DId>& faceIds);
-	size_t numFaceIds(bool includeSplits) const;
 
 	double calVertexAngle(size_t index) const;
-	double calVertexError(const std::vector<Vector3d>& testPts) const;
+	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
 	double distanceToPoint(const Vector3d& pt) const;
 	Planed calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;
@@ -180,8 +169,6 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	const FastBisectionSet<Index3DId>& getSplitIds() const;
-
 	bool cellsOwnThis() const;
 	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
 	void imprintConnected();
@@ -191,15 +178,12 @@ public:
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
 	size_t getImprintIndex(const Vector3d& imprintPoint) const;
 	size_t getImprintIndex(const Index3DId& imprintVert) const;
-	bool isSplit() const;
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& insidePt) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
-	size_t getCreatedDuringSplitNumber() const;
-	void setCreatedDuringSplitNumber(size_t val);
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -229,13 +213,10 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
-	bool imprintVertexInner(const Index3DId& imprintVert);
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
 
 	Index3DId _thisId;
-	size_t _createdDuringSplitNumber = 0;
-	FastBisectionSet<Index3DId> _splitIds;	// Entities referencing this one
 
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
@@ -331,21 +312,6 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	return result;
 }
 
-inline const FastBisectionSet<Index3DId>& Polygon::getSplitIds() const
-{
-	return _splitIds;
-}
-
-inline size_t Polygon::getCreatedDuringSplitNumber() const
-{
-	return _createdDuringSplitNumber;
-}
-
-inline void Polygon::setCreatedDuringSplitNumber(size_t val)
-{
-	_createdDuringSplitNumber = val;
-}
-
 template<class F>
 void Polygon::iterateEdges(F fLambda) const
 {
@@ -412,32 +378,30 @@ void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 template<class TRI_FUNC, class EDGE_FUNC>
 void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 {
-	if (_splitIds.empty()) {
-		std::vector<Vector3d> pts;
-		pts.resize(_vertexIds.size());
-		for (size_t i = 0; i < _vertexIds.size(); i++)
-			pts[i] = getVertexPoint(_vertexIds[i]);
+	std::vector<Vector3d> pts;
+	pts.resize(_vertexIds.size());
+	for (size_t i = 0; i < _vertexIds.size(); i++)
+		pts[i] = getVertexPoint(_vertexIds[i]);
 
-		if (pts.size() > 4) {
-			Vector3d ctr = calCentroid();
-			for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-				size_t idx1 = (idx0 + 1) % pts.size();
-				triFunc(ctr, pts[idx0], pts[idx1]);
-			}
-		} else {
-			for (size_t i = 1; i < pts.size() - 1; i++) {
-				size_t idx0 = 0;
-				size_t idx1 = i;
-				size_t idx2 = i + 1;
-				triFunc(pts[idx0], pts[idx1], pts[idx2]);
-			}
-		}
-
-		for (size_t i = 0; i < pts.size(); i++) {
-			size_t idx0 = i;
+	if (pts.size() > 4) {
+		Vector3d ctr = calCentroid();
+		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
 			size_t idx1 = (idx0 + 1) % pts.size();
-			edgeFunc(pts[idx0], pts[idx1]);
+			triFunc(ctr, pts[idx0], pts[idx1]);
 		}
+	} else {
+		for (size_t i = 1; i < pts.size() - 1; i++) {
+			size_t idx0 = 0;
+			size_t idx1 = i;
+			size_t idx2 = i + 1;
+			triFunc(pts[idx0], pts[idx1], pts[idx2]);
+		}
+	}
+
+	for (size_t i = 0; i < pts.size(); i++) {
+		size_t idx0 = i;
+		size_t idx1 = (idx0 + 1) % pts.size();
+		edgeFunc(pts[idx0], pts[idx1]);
 	}
 }
 

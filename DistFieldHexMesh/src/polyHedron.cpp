@@ -55,27 +55,31 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-Polyhedron::Polyhedron(const MultiCore::set<Index3DId>& faceIds)
+Polyhedron::Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds)
 {
 	for (const auto& id : faceIds)
 		_faceIds.insert(id);
+	_canonicalVertices = cornerVertIds;
 }
 
-Polyhedron::Polyhedron(const std::set<Index3DId>& faceIds)
+Polyhedron::Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds)
 {
 	for (const auto& id : faceIds)
 		_faceIds.insert(id);
+	_canonicalVertices = cornerVertIds;
 }
 
-Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds)
+Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds)
 {
 	_faceIds = faceIds;
+	_canonicalVertices = cornerVertIds;
 }
 
 
-Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds)
+Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds)
 {
 	_faceIds = faceIds;
+	_canonicalVertices = cornerVertIds;
 }
 
 Polyhedron::Polyhedron(const Polyhedron& src)
@@ -151,20 +155,6 @@ void Polyhedron::dumpFaces() const
 	}
 }
 
-size_t Polyhedron::getNumSplitFaces() const
-{
-	size_t n = 0;
-	for (const auto& faceId : _faceIds) {
-		if (polygonExists(faceId)) {
-			faceFunc(faceId, [&n](const Polygon& face) {
-				if (face.isSplit())
-					n++;
-			});
-		}
-	}
-	return n;
-}
-
 MTC::vector<size_t> Polyhedron::getSharpVertIndices() const
 {
 	MTC::vector<size_t> result;
@@ -205,6 +195,8 @@ void Polyhedron::write(std::ostream& out) const
 	out.write((char*)&version, sizeof(version));
 
 	IoUtil::writeObj(out, _faceIds);
+	IoUtil::writeObj(out, _canonicalVertices);
+
 	out.write((char*)&_splitLevel, sizeof(size_t));
 
 	out.write((char*)&_splitLevel, sizeof(_splitLevel));
@@ -217,6 +209,7 @@ void Polyhedron::read(std::istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	IoUtil::readObj(in, _faceIds);
+	IoUtil::readObj(in, _canonicalVertices);
 	in.read((char*)&_splitLevel, sizeof(size_t));
 
 	in.read((char*)&_splitLevel, sizeof(_splitLevel));
@@ -259,57 +252,17 @@ size_t Polyhedron::getVertIds(MTC::set<Index3DId>& result) const
 {
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &result](const Polygon& face) {
-			MTC::set<Index3DId> faceVertIds;
-			face.getNestedVertexIds(faceVertIds);
-			for (const auto& id : faceVertIds) {
-				if (!result.contains(id)) {
-					result.insert(id);
-				}
-			}
+			const auto& v = face.getVertexIds();
+			result.insert(v.begin(), v.end());
 		});
 	}
 
 	return result.size();
 }
 
-size_t Polyhedron::getNumNestedFaces() const
+size_t Polyhedron::getNumFaces() const
 {
-	size_t result = 0;
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &result](const Polygon& face) {
-			auto temp = face.numFaceIds(true);
-			result += temp;
-		});
-	}
-	return result;
-
-}
-
-size_t Polyhedron::getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const
-{
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &faceIds](const Polygon& face) {
-			face.getNestedFaceIds(faceIds);
-		});
-	}
-	return faceIds.size();
-}
-
-size_t Polyhedron::getNumFaces(bool includeSubFaces) const
-{
-	if (includeSubFaces) {
-		size_t numFaces = 0;
-
-		for (const auto& faceId : _faceIds) {
-			faceFunc(faceId, [this, &numFaces](const Polygon& face) {
-				numFaces += face.numFaceIds(true);
-			});
-		}
-		return numFaces;
-	} else {
-		return _faceIds.size();
-	}
+	return _faceIds.size();
 }
 
 
@@ -927,20 +880,7 @@ void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	bool result = false;
-	size_t numSplits = 0;
-	for (const auto& id : _faceIds) {
-		faceFunc(id, [&params, &numSplits, &result](const Polygon& face) {
-			if (face.isTooComplex(params))
-				result = true;
-			if (!face.getSplitIds().empty())
-				numSplits += 1;
-		});
-		if (result)
-			break;
-	}
-
-	return result || numSplits > params.maxSplitFacesPerCell;
+	return _faceIds.size() > params.maxCellFaces;
 }
 
 Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1249,22 +1189,6 @@ double Polyhedron::minGap() const
 inline bool Polyhedron::polygonExists(const Index3DId& id) const
 {
 	return getBlockPtr()->polygonExists(id);
-}
-
-size_t Polyhedron::getFaceSplitLevel(const Index3DId& faceId) const
-{
-	size_t level = -1;
-	bool found = false;
-	for (const auto& testFaceId : _faceIds) {
-		faceFunc(testFaceId, [&found , &level](const Polygon& face) {
-			if (face.containsFaceNested(face.getId(), level))
-				found = true;
-		});
-		if (found)
-			break;
-	}
-
-	return level;
 }
 
 void Polyhedron::clearLayerNum()

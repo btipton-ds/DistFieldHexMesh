@@ -51,10 +51,10 @@ class Edge;
 class Polyhedron : public ObjectPoolOwnerUser {
 public:
 	Polyhedron() = default;
-	Polyhedron(const MultiCore::set<Index3DId>& faceIds);
-	explicit Polyhedron(const std::set<Index3DId>& faceIds);
-	Polyhedron(const MultiCore::vector<Index3DId>& faceIds);
-	explicit Polyhedron(const std::vector<Index3DId>& faceIds);
+	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds);
+	explicit Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds);
+	Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds);
+	explicit Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds);
 	Polyhedron(const Polyhedron& src);
 
 	void clear() override;
@@ -66,10 +66,9 @@ public:
 
 	void addFace(const Index3DId& faceId, size_t splitLevel);
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
-	size_t getNumNestedFaces() const;
-	size_t getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const;
-	size_t getNumFaces(bool includeSubFaces) const;
+	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
+	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
 	FastBisectionSet<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
@@ -118,10 +117,7 @@ public:
 
 	void attachFaces();
 	void detachFaces();
-	size_t getFaceSplitLevel(const Index3DId& faceId) const;
 
-	size_t getSplitLevel() const;
-	void setSplitLevel(size_t val);
 	int32_t getLayerNum() const;
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);
@@ -129,7 +125,6 @@ public:
 	void addMeshToTriIndices(const std::vector<MeshDataPtr>& meshData);
 	void setTriIndices(const Polyhedron& srcCell);
 
-	size_t getNumSplitFaces() const;
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
 
@@ -181,6 +176,7 @@ private:
 	std::vector<Index3DId> _parentIds;
 #endif
 	FastBisectionSet<Index3DId> _faceIds;
+	MTC::vector<Index3DId> _canonicalVertices; // The vertices that define the polyhedron 4 = tet, 5 = pyramid, 6 = triangular prism, 8 = hexahedron, 12 = hexagonal cylinder 
 	size_t _splitLevel = 0;
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
 
@@ -199,6 +195,11 @@ private:
 	mutable double _cachedMinGap = -1;
 };
 
+inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const
+{
+	return _canonicalVertices;
+}
+
 inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
@@ -209,19 +210,9 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 	return _faceIds.contains(faceId) != 0;
 }
 
-inline size_t Polyhedron::getSplitLevel() const
-{
-	return _splitLevel;
-}
-
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
-}
-
-inline void Polyhedron::setSplitLevel(size_t val)
-{
-	_splitLevel = val;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

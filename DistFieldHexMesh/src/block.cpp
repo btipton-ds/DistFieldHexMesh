@@ -668,7 +668,7 @@ Index3DId Block::addHexCell(const MTC::vector<Index3DId>& cornerVertIds)
 		faceIds.push_back(addFace(Polygon(vertIds)));
 	}
 
-	const Index3DId polyhedronId = addCell(Polyhedron(faceIds), Index3DId());
+	const Index3DId polyhedronId = addCell(Polyhedron(faceIds, cornerVertIds), Index3DId());
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }
@@ -685,7 +685,7 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 		faceIds.push_back(addFace(Polygon(faceVertIds)));
 	}
 
-	const Index3DId polyhedronId = addCell(Polyhedron(faceIds), Index3DId());
+	const Index3DId polyhedronId = addCell(Polyhedron(faceIds, vertIds), Index3DId());
 
 	return polyhedronId; // SubBlocks are never shared across blocks, so we can drop the block index
 }

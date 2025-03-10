@@ -60,30 +60,23 @@ private:
 		CT_HEX,
 		CT_UNKNOWN,
 	};
-	static void calHexCellFaceTU(int i, const Vector3d& tuv, double& t, double& u);
 
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
 	void reset();
-	void conditionalSplitQuadFaceAtParam(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double t, double u);
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& vertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
-	void fixNewCellFaceSplits();
 	bool splitHexCell(const Vector3d& tuv);
 	bool splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
 	bool splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	bool splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
-	Index3DId createScratchCell(bool includeSplits);
-	Index3DId createScratchFace(const Index3DId& srcFaceId, bool includeSplits);
-	void addHexCell(const Index3DId& parentId, const std::vector<Vector3d>& cubePts, double tol);
-	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Vector3d>& facePts, double tol) const;
-	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Vector3d>& facePts, double& minErr, Index3DId& result, double tol) const;
-	void addPartingFace(const MTC::vector<Vector3d>& corners, const MTC::vector<size_t>& indices);
-
-	void splitFaceWithOtherFace(const Index3DId& targetId, const Index3DId& sourceId);
-	void splitFaceWithEdges(const Index3DId& targetId, const MTC::set<EdgeKey>& edgeKeys);
+	Index3DId createScratchCell();
+	Index3DId createScratchFace(const Index3DId& srcFaceId);
+	void addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
+	Index3DId findSourceFaceId(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, double tol) const;
+	void findSourceFaceId_inner(const Index3DId& faceId, const std::vector<Index3DId>& faceVertIds, double& minErr, Index3DId& result, double tol) const;
 
 	LAMBDA_CLIENT_DECLS;
 
@@ -92,10 +85,10 @@ private:
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
 	Index3DId _polyhedronId;
-	size_t _numSplitFaces = 0;
+
 	std::vector<Index3DId>& _localTouched;
-	MTC::set<Index3DId> _partingFaceIds;
 	MTC::vector<Vector3d> _cornerPts;
+	MTC::vector<Index3DId> _cornerVertIds;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 

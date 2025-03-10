@@ -109,8 +109,6 @@ void Polygon::disconnectTopology() {
 
 Polygon::Polygon(const Polygon& src)
 	: ObjectPoolOwnerUser(src)
-	, _createdDuringSplitNumber(src._createdDuringSplitNumber)
-	, _splitIds(src._splitIds)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _isConvex(src._isConvex)
@@ -128,8 +126,6 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	disconnectTopology();
 
 	ObjectPoolOwnerUser::operator=(rhs);
-	_createdDuringSplitNumber = rhs._createdDuringSplitNumber;
-	_splitIds = rhs._splitIds;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
@@ -155,7 +151,6 @@ void Polygon::setId(const Index3DId& id)
 void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
 	remap(idRemap, srcDims, _thisId);
-	remap(idRemap, srcDims, _splitIds);
 
 	remap(idRemap, srcDims, _vertexIds);
 	remap(idRemap, srcDims, _cellIds);
@@ -165,20 +160,6 @@ void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
 	clearCache();
-}
-
-size_t Polygon::getNestedVertexIds(MTC::set<Index3DId>& vertIds) const
-{
-	if (_splitIds.empty()) {
-		vertIds.insert(_vertexIds.begin(), _vertexIds.end());
-	} else {
-		for (const auto& subId : _splitIds) {
-			faceFunc(subId, [&vertIds](const Polygon& subFace) {
-				subFace.getNestedVertexIds(vertIds);
-			});
-		}
-	}
-	return vertIds.size();
 }
 
 void Polygon::clearCache() const
@@ -209,88 +190,6 @@ bool Polygon::cellsOwnThis() const
 	return true;
 }
 
-size_t Polygon::getSplitLevel(const Index3DId& cellId) const
-{
-	size_t result = 0;
-#if 1
-	cellFunc(cellId, [this, &result](const Polyhedron& cell) {
-		result = cell.getFaceSplitLevel(getId());
-	});
-#else
-	if (_splitIds.empty()) {
-		if (_cellIds.contains(cellId)) {
-			cellFunc(cellId, [&result](const Polyhedron& cell) {
-				result = cell.getSplitLevel();
-			});
-		}
-	} else {
-		result = 1;
-		for (const auto& subFaceId : _splitIds) {
-			faceFunc(subFaceId, [&result, &cellId](const Polygon& subFace) {
-				result += subFace.getSplitLevel(cellId);
-			});
-		}
-	}
-#endif
-	return result;
-}
-
-void Polygon::setSplitFaceIds(const MTC::vector<Index3DId>& faceIds)
-{
-	if (faceIds.empty())
-		return;
-
-	if (_splitIds.size() == 1) {
-		for (const auto& id : _splitIds) {
-			getBlockPtr()->freePolygon(id);
-		}
-		_splitIds.clear();
-	}
-
-	_splitIds = faceIds;
-
-	for (const auto& id : _splitIds) {
-		faceFunc(id, [this](Polygon& subFace) {
-			for (const auto& cellId : _cellIds) {
-				subFace.addCellId(cellId);
-			}
-		});
-	}
-
-}
-
-size_t Polygon::numFaceIds(bool includeSplits) const
-{
-	size_t result = 0;
-	if (_splitIds.empty() || !includeSplits) {
-		result += 1;
-	} else {
-		for (const auto& id : _splitIds) {
-			faceFunc(id, [this, &includeSplits, &result](const Polygon& splitFace) {
-				auto num = splitFace.numFaceIds(includeSplits);
-				result += num;
-			});
-		}
-	}
-
-	return result;
-}
-
-size_t Polygon::getNestedFaceIds(FastBisectionSet<Index3DId>& faceIds) const
-{
-	if (_splitIds.empty()) {
-		faceIds.insert(getId());
-	} else {
-		for (const auto& id : _splitIds) {
-			faceFunc(id, [this, &faceIds](const Polygon& splitFace) {
-				splitFace.getNestedFaceIds(faceIds);
-			});
-		}
-	}
-
-	return faceIds.size();
-}
-
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
@@ -311,9 +210,6 @@ void Polygon::write(ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
-	out.write((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
-
-	IoUtil::writeObj(out, _splitIds);
 	IoUtil::writeObj(out, _vertexIds);
 	IoUtil::writeObj(out, _cellIds);
 
@@ -324,9 +220,6 @@ void Polygon::read(istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
 
-	in.read((char*)&_createdDuringSplitNumber, sizeof(_createdDuringSplitNumber));
-
-	IoUtil::readObj(in, _splitIds);
 	IoUtil::readObj(in, _vertexIds);
 	IoUtil::readObj(in, _cellIds);
 }
@@ -421,26 +314,6 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 	return distFromPlane(pt) < Tolerance::sameDistTol();
 }
 
-bool Polygon::isTooComplex(const SplittingParams& params) const
-{
-	auto num = numSplitLevels();
-	return num > 1;
-}
-
-size_t Polygon::numSplitLevels() const
-{
-	size_t result = 0;
-	for (const auto& id : _splitIds) {
-		faceFunc(id, [&result](const Polygon& face) {
-			auto s = face.numSplitLevels() + 1;
-			if (s > result)
-				result = s;
-		});
-	}
-
-	return result;
-}
-
 bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const
 {
 	piercePoints.clear();
@@ -484,28 +357,6 @@ bool Polygon::usesEdge(const Edge& edgeKey, size_t& idx0, size_t& idx1) const
 	return false;
 }
 
-// This tests if this face is or contains another face
-bool Polygon::containsFaceNested(const Index3DId& faceId, size_t& level) const
-{
-	level += 1;
-
-	if (faceId == getId()) 
-		return true;
-
-	bool found = false;
-	for (const auto& id : _splitIds) {
-		faceFunc(id, [this, &faceId, &found, &level](const Polygon& face) {
-			if (containsFaceNested(faceId, level)) {
-				found = true;
-			}
-		});
-
-		if (found)
-			break;
-	}
-	return found;
-}
-
 bool Polygon::containsVertex(const Index3DId& vertId) const
 {
 	for (const auto& id : _vertexIds) {
@@ -513,42 +364,6 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 			return true;
 	}
 	return false;
-}
-
-bool Polygon::containsVertexNested(const Index3DId& vertId) const
-{
-	if (_splitIds.empty()) {
-		return containsVertex(vertId);
-	} else {
-		bool result = false;
-		for (const auto& subId : _splitIds) {
-			faceFunc(subId, [&vertId, &result](const Polygon& subFace) {
-				if (subFace.containsVertexNested(vertId))
-					result = true;
-			});
-			if (result)
-				return true;
-		}
-	}
-	return false;
-}
-
-size_t Polygon::getNestedCellIds(const Index3DId& testId, FastBisectionSet<Index3DId>& cellIds) const
-{
-	if (_splitIds.empty()) {
-		for (const auto& id : _cellIds) {
-			if (id != testId)
-				cellIds.insert(id);
-		}
-	} else {
-		for (const auto& subId : _splitIds) {
-			faceFunc(subId, [&testId, &cellIds](const Polygon& subFace) {
-				subFace.getNestedCellIds(testId, cellIds);
-			});
-		}
-	}
-
-	return cellIds.size();
 }
 
 bool Polygon::isCoplanar(const Vector3d& pt) const
@@ -760,16 +575,17 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3
 	return nanf("");
 }
 
-double Polygon::calVertexError(const std::vector<Vector3d>& testPts) const
+double Polygon::calVertexError(const vector<Index3DId>& testVertIds) const
 {
-	if (testPts.size() != _vertexIds.size())
+	if (testVertIds.size() != _vertexIds.size())
 		return DBL_MAX;
 
 	double avgErr = 0;
 	for (const auto& faceVertId : _vertexIds) {
 		const auto& facePt = getVertexPoint(faceVertId);
 		double minErr = DBL_MAX;
-		for (const auto& testPt : testPts) {
+		for (const auto& testId : testVertIds) {
+			const auto& testPt = getVertexPoint(testId);
 			double err = (testPt - facePt).norm();
 			if (err < minErr) {
 				minErr = err;
@@ -907,11 +723,6 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 void Polygon::removeCellId(const Index3DId& cellId)
 {
 	_cellIds.erase(cellId);
-	for (const auto& subFaceId : _splitIds) {
-		faceFunc(subFaceId, [&cellId](Polygon& subFaceId) {
-			subFaceId.removeCellId(cellId);
-		});
-	}
 }
 
 void Polygon::addCellId(const Index3DId& cellId)
@@ -921,27 +732,19 @@ void Polygon::addCellId(const Index3DId& cellId)
 		int dbgBreak = 1;
 	}
 #endif
-	if (_splitIds.size() <= 1) {
-		_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
-		_cellIds.insert(cellId);
+	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
+	_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
-		if (_cellIds.size() > 2) {
-			for (const auto& cellId1 : _cellIds) {
-				assert(getBlockPtr()->polyhedronExists(cellId1));
-				cellFunc(cellId1, [this](const Polyhedron& cell) {
-					assert(cell.containsFace(getId()));
-					});
-			}
-			assert(_cellIds.size() <= 2);
+	if (_cellIds.size() > 2) {
+		for (const auto& cellId1 : _cellIds) {
+			assert(getBlockPtr()->polyhedronExists(cellId1));
+			cellFunc(cellId1, [this](const Polyhedron& cell) {
+				assert(cell.containsFace(getId()));
+				});
 		}
-#endif
-	} else {
-		for (const auto& splitId : _splitIds) {
-			faceFunc(splitId, [&cellId](Polygon& face) {
-				face.addCellId(cellId);
-			});
-		}
+		assert(_cellIds.size() <= 2);
 	}
+#endif
 }
 
 void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
@@ -1048,27 +851,6 @@ bool Polygon::imprintEdges(const MTC::vector<EdgeKey>& edgeKeys)
 
 bool Polygon::imprintVertex(const Index3DId& imprintVert)
 {
-	bool result = false;
-	if (_splitIds.empty()) {
-		Index3DId subFaceId = getBlockPtr()->addFace(_vertexIds);
-		_splitIds.insert(subFaceId);
-	}
-
-	if (_splitIds.size() == 1) {
-		faceFunc(_splitIds[0], [&result, &imprintVert](Polygon& subFace) {
-			subFace.disconnectTopology();
-			subFace.imprintVertexInner(imprintVert);
-			subFace.connectToplogy();
-		});
-	} else {
-		assert(!"Should never imprint a vertex on split faces, it's redundant");
-	}
-
-	return result;
-}
-
-bool Polygon::imprintVertexInner(const Index3DId& imprintVert)
-{
 	auto tmp = _vertexIds;
 	_vertexIds.clear();
 	_vertexIds.reserve(tmp.size() + 1);
@@ -1093,11 +875,6 @@ bool Polygon::imprintVertexInner(const Index3DId& imprintVert)
 		clearCache();
 
 	return imprinted;
-}
-
-bool Polygon::isSplit() const
-{
-	return _splitIds.size() == _vertexIds.size();
 }
 
 bool Polygon::isPlanar() const
@@ -1161,18 +938,7 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& insidePt) const
 {
 	bool result;
-	if (_splitIds.empty()) {
-		result = isPointInsideInner(pt, insidePt);
-	}
-	else {
-		for (const auto& subFaceId : _splitIds) {
-			faceFunc(subFaceId, [this, &pt, &insidePt, &result](const Polygon& subFace) {
-				result = subFace.isPointInside(pt, insidePt);
-			});
-			if (!result)
-				break;
-		}
-	}
+	result = isPointInsideInner(pt, insidePt);
 
 	return result;
 }
@@ -1379,19 +1145,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 		out << "}\n";
 
 		out << Logger::Pad() << "cellIds: (" << face._cellIds.size() << "): {";
-		for (const auto& cellId : face._cellIds) {
-			auto sl = face.getSplitLevel(cellId);
-			out << "c" << cellId << ".split: " << sl << " ";
-		}
 		out << "}\n";
-
-		if (!face._splitIds.empty()) {
-			out << Logger::Pad() << "splitFaceIds: (" << face._splitIds.size() << "): {";
-			for (const auto& faceId : face._splitIds) {
-				out << "f" << faceId << " ";
-			}
-			out << "}\n";
-		}
 	}
 #else
 	out << "Face: f" << face.getId() << "\n";
