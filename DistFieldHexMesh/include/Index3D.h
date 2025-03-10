@@ -34,18 +34,19 @@ namespace DFHM {
 
 class Volume;
 
-using Index3DBaseType = unsigned short; // This is large enough for 65536 x 65536 x 65536 block
+using Index3DBaseType = uint16_t; // This is large enough for 65536 x 65536 x 65536 block
+using Index3DLongType = uint64_t; // This is large enough for 65536 x 65536 x 65536 block
 #define Index3DBaseType_MAX USHRT_MAX
 
 // Base class with protected constructors prevents accidental swapping of Index3D and Index3DId
 class Index3DBase
 {
 public:
-	bool isUserFlagSet(uint32_t bit) const;
-	void setUserFlag(uint32_t bit, bool val) const;
+	bool isUserFlagSet(Index3DBaseType bit) const;
+	void setUserFlag(Index3DBaseType bit, bool val) const;
 
-	static void setBlockDim(size_t val);
-	static size_t getBlockDim();
+	static void setBlockDim(Index3DBaseType val);
+	static Index3DBaseType getBlockDim();
 
 	bool operator < (const Index3DBase& rhs) const;
 
@@ -87,24 +88,24 @@ protected:
 	Index3DBase(const Vector3i& src);
 
 private:
-	static size_t getMask();
-	size_t compVal() const;
+	static Index3DLongType getMask();
+	Index3DLongType compVal() const;
 	static Index3DBaseType s_blockDim;
 	union {
 		struct {
 			Index3DBaseType _vals[3];
 			mutable Index3DBaseType _flags;
 		};
-		size_t _iVal;
+		Index3DLongType _iVal;
 	};
 };
 
-inline void Index3DBase::setBlockDim(size_t val)
+inline void Index3DBase::setBlockDim(Index3DBaseType val)
 {
-	s_blockDim = (Index3DBaseType)val;
+	s_blockDim = val;
 }
 
-inline size_t Index3DBase::getBlockDim()
+inline Index3DBaseType Index3DBase::getBlockDim()
 {
 	return s_blockDim;
 }

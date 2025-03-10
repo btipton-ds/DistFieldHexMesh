@@ -27,11 +27,13 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <Index3D.h>
+
 namespace DFHM {
 
 class TestBlock {
 public:
-	bool testAll(size_t bd = 8);
+	bool testAll(Index3DBaseType bd = 8);
 	bool testBlock00();
 	bool testBlock01();
 	bool testBlock02();

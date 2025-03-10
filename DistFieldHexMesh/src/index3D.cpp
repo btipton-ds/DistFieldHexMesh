@@ -125,12 +125,12 @@ ostream& DFHM::operator << (ostream& out, const Index3D& idx)
 	return out;
 }
 
-bool Index3DBase::isUserFlagSet(uint32_t bit) const
+bool Index3DBase::isUserFlagSet(Index3DBaseType bit) const
 {
 	return (_flags & bit) == bit;
 }
 
-void Index3DBase::setUserFlag(uint32_t bit, bool val) const
+void Index3DBase::setUserFlag(Index3DBaseType bit, bool val) const
 {
 	if (val)
 		_flags = _flags | bit;

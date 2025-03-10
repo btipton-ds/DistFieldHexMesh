@@ -38,7 +38,7 @@ using namespace std;
 using namespace TriMesh;
 using namespace DFHM;
 
-bool TestBlock::testAll(size_t bd)
+bool TestBlock::testAll(Index3DBaseType bd)
 {
 	Index3D::setBlockDim(bd);
 
