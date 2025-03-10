@@ -90,7 +90,6 @@ private:
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 
-
 	thread_local static VolumePtr _pScratchVol;
 };
 

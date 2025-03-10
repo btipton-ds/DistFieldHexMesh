@@ -407,6 +407,12 @@ void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId
 		assert(faceVerts.size() == 4);
 		MTC::set<Index3DId> newFaceIds;
 		createFace(parentId, faceVerts, newFaceIds, tol);
+#ifdef _DEBUG
+		for (const auto& id : newFaceIds) {
+			assert(id.isValid());
+		}
+#endif // _DEBUG
+
 		cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
 	}
 	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);

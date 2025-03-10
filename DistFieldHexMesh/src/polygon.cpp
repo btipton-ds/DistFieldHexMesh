@@ -73,14 +73,51 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 {
 }
 
+
 void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds)
 {
+	// This is one of the most important functions in cell splitting.
+	// NewVertIds describes and "ideal" new face, but that face may not fit with its neighbor faces.
+	// This function restructures the new and old faces to match each other.
+#ifdef _DEBUG
+	for (const auto& id : newVertIds) {
+		assert(id.isValid());
+	}
+#endif // _DEBUG
+
 	Polygon newPoly(newVertIds);
 	Index3DId id = getBlockPtr()->findFace(newPoly);
 	if (id == getId()) {
+		// There is already a cell which matches exactly, use it.
+		newFaceIds.insert(id);
+	} else if (_cellIds.empty()) {
+		// The old face is not attached to another cell. It's going to be deleted when the owner cell is deleted so skip it.
+		id = getBlockPtr()->addFace(newPoly);
+		assert(id.isValid());
 		newFaceIds.insert(id);
 	} else {
+		vector<pair<size_t, size_t>> matchingIndices;
+		for (size_t i = 0; i < newVertIds.size(); i++) {
+			for (size_t j = 0; j < _vertexIds.size(); j++) {
+				if (newVertIds[i] == _vertexIds[j]) {
+					matchingIndices.push_back(make_pair(i, j));
+				}
+			}
+		}
+
+		if (matchingIndices.empty()) {
+			// No vertex matches on a coincident face of a coplanar face of the cell being split.
+			// This is odd.
+		} else {
+
+			vector<Vector3d> facePts;
+			for (const auto& id : _vertexIds)
+				facePts.push_back(getVertexPoint(id));
+			Vector3d ctr = BI_LERP(facePts, 0.5, 0.5); // The parametric center of this face
+			Index3DId ctrId = getBlockPtr()->getVertexIdOfPoint(ctr);
+		}
 		id = getBlockPtr()->addFace(newPoly);
+		assert(id.isValid());
 		newFaceIds.insert(id);
 	}
 }
