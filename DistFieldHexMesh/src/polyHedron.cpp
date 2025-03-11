@@ -93,7 +93,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 {
 }
 
-Index3DId Polyhedron::getId() const
+const Index3DId& Polyhedron::getId() const
 {
 	return _thisId;
 }
@@ -120,6 +120,7 @@ void Polyhedron::clear()
 	_faceIds.clear();
 
 	for (const auto& faceId : deadFaceIds) {
+		cout << "Freeing face: " << faceId << "\n";
 		getBlockPtr()->freePolygon(faceId);
 	}
 }
@@ -238,13 +239,24 @@ void Polyhedron::remapId(const std::vector<size_t>& idRemap, const Index3D& srcD
 {
 	remap(idRemap, srcDims, _thisId);
 	remap(idRemap, srcDims, _faceIds);
+	remap(idRemap, srcDims, _canonicalVertices);
 }
 
-void Polyhedron::addFace(const Index3DId& faceId, size_t splitLevel)
+void Polyhedron::addFace(const Index3DId& faceId)
 {
 	_faceIds.insert(faceId);
-	faceFunc(faceId, [this, splitLevel](Polygon& face) {
-		face.addCellId(_thisId);
+	faceFunc(faceId, [this](Polygon& face) {
+		face.addCellId(getId());
+	});
+
+	clearCache();
+}
+
+void Polyhedron::removeFace(const Index3DId& faceId)
+{
+	_faceIds.erase(faceId);
+	faceFunc(faceId, [this](Polygon& face) {
+		face.removeCellId(getId());
 	});
 
 	clearCache();
@@ -1312,9 +1324,15 @@ bool Polyhedron::isClosed() const
 		const auto& edgeKeys = getEdgeKeys(false);
 		for (const auto& edgeKey : edgeKeys) {
 			edgeFunc(edgeKey, [this](const Edge& edge) {
-				if (edge.getFaceIds().size() != 2) {
-					_cachedIsClosed = Trinary::IS_FALSE;
+				size_t count = 0;
+				const auto& faceIds = edge.getFaceIds();
+				for (const auto& id : faceIds) {
+					if (_faceIds.contains(id)) {
+						count++;
+					}
 				}
+				if (count < 2)
+					_cachedIsClosed = Trinary::IS_FALSE;
 			});
 
 			if (_cachedIsClosed == Trinary::IS_FALSE)

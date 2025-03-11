@@ -43,6 +43,11 @@ Vertex::Vertex(const Vertex& src)
 {
 }
 
+const Index3DId& Vertex::getId() const
+{
+	return _thisId;
+}
+
 void Vertex::setId(const Index3DId& id)
 {
 	_thisId = id;

@@ -79,7 +79,7 @@ public:
 	Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds);
 	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
 
-	Index3DId getId() const override;
+	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addFaceId(const Index3DId& faceId);

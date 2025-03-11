@@ -72,7 +72,7 @@ Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 	_vertexIds[1] = src._vertexIds[1];
 }
 
-Index3DId Edge::getId() const
+const Index3DId& Edge::getId() const
 {
 	return _vertexIds[0];
 }

@@ -110,7 +110,7 @@ public:
 	Polygon& operator = (const Polygon& rhs);
 
 	void postAddToPoolActions() override;
-	Index3DId getId() const override;
+	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addVertex(const Index3DId& vertId);
@@ -149,6 +149,7 @@ public:
 	bool verifyTopology() const;
 
 	bool operator < (const Polygon& rhs) const;
+	bool operator == (const Polygon& rhs) const;
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;

@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <pool_set.h>
 #include <pool_vector.h>
+#include <tolerances.h>
 #include <volume.h>
 
 namespace DFHM {
@@ -74,16 +75,22 @@ private:
 	bool splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	Index3DId createScratchCell();
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
-	void addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
-	void createFace(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
+	Index3DId addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
+	void createFace(const Index3DId& parentId, const std::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
+	bool _testRun = false;
 	Block* _pBlock;
 	Block* _pSrcBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
 	Index3DId _polyhedronId;
+
+	const double _distTol = Tolerance::sameDistTol();
+	const double _distTolSr = _distTol * _distTol;
+	const double _paramTol = Tolerance::paramTol();
+	const double _paramTolSqr = _paramTol * _paramTol;
 
 	std::vector<Index3DId>& _localTouched;
 	MTC::vector<Vector3d> _cornerPts;

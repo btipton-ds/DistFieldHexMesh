@@ -95,7 +95,7 @@ public:
 
 	void setOwner(const ObjectPoolOwner* poolOwner, const Index3DId& id);
 
-	virtual Index3DId getId() const = 0;
+	virtual const Index3DId& getId() const = 0;
 	virtual void postAddToPoolActions();
 	virtual void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) = 0;
 

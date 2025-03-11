@@ -73,9 +73,10 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 {
 }
 
-
 void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds)
 {
+	const double tol = Tolerance::paramTol();
+	const double tolSqr = tol * tol;
 	// This is one of the most important functions in cell splitting.
 	// NewVertIds describes and "ideal" new face, but that face may not fit with its neighbor faces.
 	// This function restructures the new and old faces to match each other.
@@ -83,39 +84,110 @@ void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set
 	for (const auto& id : newVertIds) {
 		assert(id.isValid());
 	}
+
+	Vector3d pt0 = getVertexPoint(newVertIds[0]);
+	Vector3d pt1 = getVertexPoint(newVertIds[1]);
+	Vector3d pt2 = getVertexPoint(newVertIds[2]);
+	Vector3d v0 = pt0 - pt1;
+	Vector3d v1 = pt2 - pt1;
+	Vector3d newNorm = v1.cross(v0).normalized();
+	Vector3d norm = calUnitNormal();
+	Vector3d cp = norm.cross(newNorm);
+	assert(cp.squaredNorm() < tolSqr);
+	getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitOld.obj", { _vertexIds });
+	getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitNew.obj", { newVertIds });
+	int dbgBreak = 1;
 #endif // _DEBUG
 
 	Polygon newPoly(newVertIds);
 	Index3DId id = getBlockPtr()->findFace(newPoly);
-	if (id == getId()) {
+	if (id.isValid()) {
+		faceFunc(id, [](const Polygon& face) {
+			assert(face.getCellIds().size() < 2);
+		});
 		// There is already a cell which matches exactly, use it.
 		newFaceIds.insert(id);
 	} else if (_cellIds.empty()) {
 		// The old face is not attached to another cell. It's going to be deleted when the owner cell is deleted so skip it.
 		id = getBlockPtr()->addFace(newPoly);
 		assert(id.isValid());
+		faceFunc(id, [](const Polygon& face) {
+			assert(face.getCellIds().size() < 2);
+		});
 		newFaceIds.insert(id);
 	} else {
-		vector<pair<size_t, size_t>> matchingIndices;
-		for (size_t i = 0; i < newVertIds.size(); i++) {
-			for (size_t j = 0; j < _vertexIds.size(); j++) {
-				if (newVertIds[i] == _vertexIds[j]) {
-					matchingIndices.push_back(make_pair(i, j));
+		vector<size_t> insertionIndices;
+		vector<Index3DId> newVertsToInsert;
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			LineSegmentd seg(getVertexPoint(_vertexIds[i]), getVertexPoint(_vertexIds[j]));
+			for (size_t k = 0; k < newVertIds.size(); k++) {
+				const auto& newVertId = newVertIds[k];
+				if (find(_vertexIds.begin(), _vertexIds.end(), newVertId) == _vertexIds.end()) {
+					const auto& pt = getVertexPoint(newVertId);
+					double t;
+					if (seg.contains(pt, t, Tolerance::sameDistTol())) {
+						newVertsToInsert.push_back(newVertId);
+						insertionIndices.push_back(i);
+						break;
+					}
 				}
 			}
 		}
 
-		if (matchingIndices.empty()) {
-			// No vertex matches on a coincident face of a coplanar face of the cell being split.
-			// This is odd.
-		} else {
+		if (insertionIndices.size() == 2) {
+			assert(newVertsToInsert.size() == 2);
+			MTC::vector<Index3DId> verts0, verts1;
 
-			vector<Vector3d> facePts;
-			for (const auto& id : _vertexIds)
-				facePts.push_back(getVertexPoint(id));
-			Vector3d ctr = BI_LERP(facePts, 0.5, 0.5); // The parametric center of this face
-			Index3DId ctrId = getBlockPtr()->getVertexIdOfPoint(ctr);
+			verts0.push_back(newVertsToInsert[0]);
+			size_t idx = insertionIndices[0];
+			do {
+				idx = (idx + 1) % _vertexIds.size();
+				verts0.push_back(_vertexIds[idx]);
+			} while (idx != insertionIndices[1]);
+			verts0.push_back(newVertsToInsert[1]);
+
+			verts1.push_back(newVertsToInsert[1]);
+			do {
+				idx = (idx + 1) % _vertexIds.size();
+				verts1.push_back(_vertexIds[idx]);
+			} while (idx != insertionIndices[0]);
+			verts1.push_back(newVertsToInsert[0]);
+
+			assert(_cellIds.size() == 1);
+			const auto& cellId = *_cellIds.begin();
+
+			auto faceId0 = getBlockPtr()->addFace(Polygon(verts0));
+			assert(faceId0.isValid());
+			cout << "Created face: " << faceId0 << "\n";
+			faceFunc(faceId0, [&newPoly, &cellId, &newFaceIds](Polygon& face) {
+				assert(face.getCellIds().size() < 2);
+				if (face == newPoly)
+					newFaceIds.insert(face.getId());
+			});
+
+			auto faceId1 = getBlockPtr()->addFace(Polygon(verts1));
+			assert(faceId1.isValid());
+			cout << "Created face: " << faceId1 << "\n";
+			faceFunc(faceId1, [&newPoly, &cellId, &newFaceIds](Polygon& face) {
+				assert(face.getCellIds().size() < 2);
+
+				if (face == newPoly)
+					newFaceIds.insert(face.getId());
+			});
+			cellFunc(cellId, [this, &faceId0, &faceId1](Polyhedron& cell) {
+				cell.removeFace(getId());
+				cell.addFace(faceId0);
+				cell.addFace(faceId1);
+			});
+
+			return;
+		} else {
+//			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitOld.obj", { _vertexIds });
+//			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitNew.obj", { newVertIds });
+			int dbgBreak = 1;
 		}
+
 		id = getBlockPtr()->addFace(newPoly);
 		assert(id.isValid());
 		newFaceIds.insert(id);
@@ -187,7 +259,7 @@ void Polygon::postAddToPoolActions()
 	connectToplogy();
 }
 
-Index3DId Polygon::getId() const
+const Index3DId& Polygon::getId() const
 {
 	return _thisId;
 }
@@ -312,6 +384,11 @@ bool Polygon::operator < (const Polygon& rhs) const
 			return false;
 	}
 	return false;
+}
+
+bool Polygon::operator == (const Polygon& rhs) const
+{
+	return !operator <(rhs) && !rhs.operator<(*this);
 }
 
 bool Polygon::isBlockBoundary() const
@@ -781,7 +858,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 		int dbgBreak = 1;
 	}
 #endif
-	_cellIds.erase(cellId); // Erase to clear split level and replace with the new one
+
 	_cellIds.insert(cellId);
 #if 1 && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
@@ -789,9 +866,20 @@ void Polygon::addCellId(const Index3DId& cellId)
 			assert(getBlockPtr()->polyhedronExists(cellId1));
 			cellFunc(cellId1, [this](const Polyhedron& cell) {
 				assert(cell.containsFace(getId()));
-				});
+			});
 		}
-		assert(_cellIds.size() <= 2);
+		if (_cellIds.size() > 2) {
+			int i = 0;
+			auto iter = _cellIds.begin();
+			for (size_t i = 0; i < _cellIds.size(); i++) {
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/tooManyCellIds_cell_" << i << ".obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str().c_str(), {*iter}, false, false, false);
+				iter++;
+			}
+			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/tooManyCellIds_face.obj", { _vertexIds });
+			assert(!"Too many cell ids");
+		}
 	}
 #endif
 }

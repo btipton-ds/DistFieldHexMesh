@@ -61,10 +61,11 @@ public:
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 
-	Index3DId getId() const override;
+	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
-	void addFace(const Index3DId& faceId, size_t splitLevel);
+	void addFace(const Index3DId& faceId);
+	void removeFace(const Index3DId& faceId);
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;

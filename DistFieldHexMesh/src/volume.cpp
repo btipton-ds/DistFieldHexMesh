@@ -136,7 +136,7 @@ const Index3D& Volume::modelDim() const
 	return _modelDim;
 }
 
-void Volume::setVolCornerPts(const std::vector<Vector3d>& pts)
+void Volume::setVolCornerPts(const vector<Vector3d>& pts)
 {
 	_volCornerPts = pts;
 }
@@ -207,7 +207,7 @@ void Volume::reportProgress(ProgressReporter* pProgress)
 		pProgress->reportProgress();
 }
 
-void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, std::vector<size_t>& vertIndices)
+void Volume::findSharpVertices(const TriMesh::CMeshPtr& pMesh, double sharpAngleRadians, vector<size_t>& vertIndices)
 {
 	const double sinSharpAngle = sin(sharpAngleRadians);
 
@@ -313,7 +313,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 		}
 	}
 
-	std::vector<BlockPtr> foundBlocks;
+	vector<BlockPtr> foundBlocks;
 	CBoundingBox3Dd ptBox(point);
 	ptBox.grow(0.0001); // 1/10 mm
 	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
@@ -366,7 +366,7 @@ BlockPtr Volume::createBlock(size_t linearIdx)
 		tuv[1][i] = (blockIdx[i] + 1) / (double)_modelDim[i];
 	}
 	const vector<Vector3d>& cPts = _modelCornerPts;
-	std::vector<Vector3d> pts({
+	vector<Vector3d> pts({
 		TRI_LERP(cPts, tuv[0][0], tuv[0][1], tuv[0][2]),
 		TRI_LERP(cPts, tuv[1][0], tuv[0][1], tuv[0][2]),
 		TRI_LERP(cPts, tuv[1][0], tuv[1][1], tuv[0][2]),
@@ -659,7 +659,7 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 	reportProgress(pReporter);
 }
 
-void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideHexMesh(vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
 		assert(!"Volume is not ready.");
@@ -671,7 +671,7 @@ void Volume::divideHexMesh(std::vector<MeshDataPtr>& meshData, const SplittingPa
 	reportProgress(pReporter);
 	Utils::Timer tmr(Utils::Timer::TT_divideHexMesh);
 
-	std::vector<size_t> sharpEdges;
+	vector<size_t> sharpEdges;
 	{
 
 		for (auto& pData : meshData) {
@@ -993,7 +993,7 @@ void Volume::insertBlocks(const SplittingParams& params, CubeFaceType face, bool
 
 			if (linIdxDst != linIdxSrc) {
 				assert(!_blocks[linIdxDst]);
-				std::swap(_blocks[linIdxDst], _blocks[linIdxSrc]);
+				swap(_blocks[linIdxDst], _blocks[linIdxSrc]);
 			}
 		}
 	}, false /*multiCore*/); // This isn't running multi threaded
@@ -1228,7 +1228,7 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys,
 	CBoundingBox3Dd bbox = _modelBoundingBox;
 	bbox.merge(pBlock->_boundBox);
 
-	std::vector<Planed> planes;
+	vector<Planed> planes;
 	getModelBoundaryPlanes(planes);
 
 	pBlock->createHexTriMesh(faceType, planes, polys);
@@ -1326,13 +1326,13 @@ namespace {
 	}
 }
 
-void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts) const
+void Volume::writeObj(const string& path, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& pts) const
 {
 	ofstream out(path, ios_base::trunc);
 	writeObj(out, cellIds, includeModel, useEdges, sharpOnly, pts);
 }
 
-void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& extraPoints) const
+void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const vector<Vector3d>& extraPoints) const
 {
 	map<Index3DId, FastBisectionSet<Index3DId>> cellToFaceIdsMap;
 	vector<size_t> modelTriIndices;
@@ -1341,7 +1341,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		pBlk->cellFunc(cellId, [&cellToFaceIdsMap, &modelTriIndices, includeModel, useEdges, sharpOnly](const Polyhedron& cell) {
 
 			const auto& ids = cell.getFaceIds();
-			cellToFaceIdsMap.insert(std::make_pair(cell.getId(), ids));
+			cellToFaceIdsMap.insert(make_pair(cell.getId(), ids));
 #if 0
 			if (includeModel) {
 				auto tmp = cell.getTriIndices();
@@ -1419,6 +1419,10 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		}
 	}
 
+	for (const auto& cellId : cellIds) {
+		out << "#CellId " << cellId << "\n";
+	}
+
 	out << "#Vertices " << pts.size() << "\n";
 	for (const auto& pt : pts) {
 		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
@@ -1449,7 +1453,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 						out << (vertIdx + 1) << " ";
 				}
 				out << "\n";
-			});
+				});
 		}
 	}
 
@@ -1468,7 +1472,8 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 				}
 				out << "\n";
 			}
-		} else {
+		}
+		else {
 			out << "#Model Faces " << modelTriIndices.size() << "\n";
 			for (auto triIdx : modelTriIndices) {
 				const auto& tri = _pModelTriMesh->getTri(triIdx);
@@ -1487,7 +1492,52 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 #endif
 }
 
-void Volume::polymeshWrite(const std::string& dirPath, ProgressReporter* pReporter)
+void Volume::writeObj(const string& path, const vector<vector<Index3DId>>& vertFaceIds) const
+{
+	ofstream out(path, ios_base::trunc);
+	writeObj(out, vertFaceIds);
+
+}
+
+void Volume::writeObj(ostream& out, const vector<vector<Index3DId>>& vertFaceIds) const
+{
+	vector<Vector3d> pts;
+	set<TriMesh::CEdge> modelEdgeSet;
+	VertSearchTree_size_t_8 pointToIdxMap(_modelBoundingBox);
+
+	vector<vector<size_t>> faceIndices;
+	for (const auto& vertIds : vertFaceIds) {
+		vector<size_t> indices;
+		for (const auto& vertId : vertIds) {
+			const auto& pt = getVertex(vertId).getPoint();
+			size_t idx;
+			if (!pointToIdxMap.find(pt, idx)) {
+				idx = pts.size();
+				pts.push_back(pt);
+				pointToIdxMap.add(pt, idx);
+			}
+			indices.push_back(idx);
+		}
+		faceIndices.push_back(indices);
+	}
+
+	out << "#Vertices " << pts.size() << "\n";
+	for (const auto& pt : pts) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	out << "#Faces " << faceIndices.size() << "\n";
+	for (const auto& indices : faceIndices) {
+		out << "f ";
+		for (const auto& i : indices) {
+			out << (i + 1) << " ";
+		}
+		out << "\n";
+	}
+
+}
+
+void Volume::polymeshWrite(const string& dirPath, ProgressReporter* pReporter)
 {
 	auto path = polymeshCreateDirs(dirPath);
 
@@ -1604,7 +1654,7 @@ const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
 	return pBlk->_polyhedra[id];
 }
 
-std::string Volume::polymeshCreateDirs(const string& pathIn)
+string Volume::polymeshCreateDirs(const string& pathIn)
 {
 	string path(pathIn);
 
@@ -1627,7 +1677,7 @@ std::string Volume::polymeshCreateDirs(const string& pathIn)
 	return path;
 }
 
-void Volume::getModelBoundaryPlanes(std::vector<Planed>& vals) const
+void Volume::getModelBoundaryPlanes(vector<Planed>& vals) const
 {
 	Vector3d xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 

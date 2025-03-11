@@ -109,7 +109,7 @@ void Index3DBase::read(std::istream& in)
 ostream& DFHM::operator << (ostream& out, const Index3DId& id)
 {
 	if (id.isValid())
-		out << "[(" << id[0] << " " << id[1] << " " << id[2] << "): " << id.elementId() << "]";
+		out << "[(" << (int)id[0] << " " << (int)id[1] << " " << (int)id[2] << "): " << id.elementId() << "]";
 	else
 		out << "[(***): *]";
 	return out;
@@ -118,7 +118,7 @@ ostream& DFHM::operator << (ostream& out, const Index3DId& id)
 ostream& DFHM::operator << (ostream& out, const Index3D& idx)
 {
 	if (idx.isValid())
-		out << "(" << idx[0] << " " << idx[1] << " " << idx[2] << ")";
+		out << "(" << (int)idx[0] << " " << (int)idx[1] << " " << (int)idx[2] << ")";
 	else
 		out << "(***)";
 

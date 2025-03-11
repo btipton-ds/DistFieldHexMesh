@@ -70,7 +70,7 @@ public:
 	const bool operator == (const Vertex& rhs) const;
 	const bool operator != (const Vertex& rhs) const;
 
-	Index3DId getId() const override;
+	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addConnectedVertexId(const Index3DId& vertId);
@@ -96,11 +96,6 @@ private:
 	Index3DId _thisId;
 	FastBisectionSet<Index3DId> _connectedVertices;
 };
-
-inline Index3DId Vertex::getId() const
-{
-	return _thisId;
-}
 
 inline CBoundingBox3Dd Vertex::getBBox() const
 {

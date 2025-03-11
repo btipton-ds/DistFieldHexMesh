@@ -105,6 +105,8 @@ bool Splitter::splitAtCenter()
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 
+	getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
+
 	bool result = false;
 	CellType cellType = CT_UNKNOWN;
 
@@ -122,8 +124,8 @@ bool Splitter::splitAtCenter()
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
+		parentCell.detachFaces();
 		createHexCellData(parentCell);
-
 
 		switch (_cornerPts.size()) {
 			case 8:
@@ -132,7 +134,6 @@ bool Splitter::splitAtCenter()
 			default:
 				break;
 		}
-		parentCell.detachFaces();
 	});
 
 	Vector3d tuv(0.5, 0.5, 0.5);
@@ -146,6 +147,10 @@ bool Splitter::splitAtCenter()
 
 	if (result) {
 		// It's been completely split, so this parentCell can be removed
+		if (!_testRun) {
+			cout << "Freeing cell: " << _polyhedronId << "\n";
+		}
+
 		_pBlock->freePolyhedron(_polyhedronId);
 	}
 	return result;
@@ -167,12 +172,15 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 #if 0
 	wasSplit = splitHexCell8(_polyhedronId, tuv);
 #else
+
 	int intersects[] = { 0, 0, 0 };
 	for (int i = 0; i < 3; i++)
 	{
-		Utils::ScopedRestore restore(_pBlock);
-		const auto& scratchCellId = createScratchCell();
+		Utils::ScopedRestore restore0(_pBlock);
 		_pBlock = _pScratchBlock;
+		Utils::ScopedRestore restore1(_testRun);
+		_testRun = true;
+		const auto& scratchCellId = createScratchCell();
 		splitHexCell2(scratchCellId, tuv, i);
 		_pScratchBlock->iteratePolyhedraInOrder([&scratchCellId , &intersects, i](const Index3DId& cellId, const Polyhedron& cell) {
 			if (cell.getId() != scratchCellId && cell.intersectsModel())
@@ -187,7 +195,7 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 //		wasSplit =splitHexCell8(_polyhedronId, tuv);
 	} else if (((intersects[0] == 2) && (intersects[1] == 2) && (intersects[2] == 2)) ||
 		       ((intersects[0] == 1) && (intersects[1] == 1) && (intersects[2] == 1))) {
-		wasSplit = splitHexCell8(_polyhedronId, tuv);
+//		wasSplit = splitHexCell8(_polyhedronId, tuv);
 
 	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 2)) {
 		numSplits2++;
@@ -201,13 +209,13 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 
 	} else if ((intersects[0] == 2) && (intersects[1] == 1) && (intersects[2] == 1)) {
 		numSplits4++;
-		wasSplit = splitHexCell4(_polyhedronId, tuv, 0);
+//		wasSplit = splitHexCell4(_polyhedronId, tuv, 0);
 	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 1)) {
 		numSplits4++;
-		wasSplit = splitHexCell4(_polyhedronId, tuv, 1);
+//		wasSplit = splitHexCell4(_polyhedronId, tuv, 1);
 	} else if ((intersects[0] == 1) && (intersects[1] == 1) && (intersects[2] == 2)) {
 		numSplits4++;
-		wasSplit = splitHexCell4(_polyhedronId, tuv, 2);
+//		wasSplit = splitHexCell4(_polyhedronId, tuv, 2);
 	} else {
 		assert(!"Should never get here");
 	}
@@ -217,7 +225,7 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 
 bool Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 {
-	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
+	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
 
 	cellFunc(parentId, [this, &tuv, &tol](Polyhedron& parentCell) {
 		parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
@@ -258,7 +266,14 @@ bool Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int
 #if 0
 	splitHexCell8(parentId, tuv);
 #else
-	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
+	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
+
+#ifdef _DEBUG
+	Index3DId testId(6, 0, 3, 0);
+	if (parentId == testId) {
+		int dbgBreak = 1;
+	}
+#endif
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = 0, t1 = 1;
@@ -271,27 +286,35 @@ bool Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int
 			t1 = (i == 0) ? tuv[0] : 1;
 			break;
 		case 1:
-			u0 = (i == 0) ? 0 : tuv[0];
-			u1 = (i == 0) ? tuv[0] : 1;
+			u0 = (i == 0) ? 0 : tuv[1];
+			u1 = (i == 0) ? tuv[1] : 1;
 			break;
 		case 2:
-			v0 = (i == 0) ? 0 : tuv[0];
-			v1 = (i == 0) ? tuv[0] : 1;
+			v0 = (i == 0) ? 0 : tuv[2];
+			v1 = (i == 0) ? tuv[2] : 1;
 			break;
 		}
-		MTC::vector<Index3DId> subCorners = {
-			vertId(TRI_LERP(_cornerPts, t0, u0, v0)),
-			vertId(TRI_LERP(_cornerPts, t1, u0, v0)),
-			vertId(TRI_LERP(_cornerPts, t1, u1, v0)),
-			vertId(TRI_LERP(_cornerPts, t0, u1, v0)),
 
-			vertId(TRI_LERP(_cornerPts, t0, u0, v1)),
-			vertId(TRI_LERP(_cornerPts, t1, u0, v1)),
-			vertId(TRI_LERP(_cornerPts, t1, u1, v1)),
-			vertId(TRI_LERP(_cornerPts, t0, u1, v1)),
+		MTC::vector<Vector3d> subPts = {
+			TRI_LERP(_cornerPts, t0, u0, v0),
+			TRI_LERP(_cornerPts, t1, u0, v0),
+			TRI_LERP(_cornerPts, t1, u1, v0),
+			TRI_LERP(_cornerPts, t0, u1, v0),
+
+			TRI_LERP(_cornerPts, t0, u0, v1),
+			TRI_LERP(_cornerPts, t1, u0, v1),
+			TRI_LERP(_cornerPts, t1, u1, v1),
+			TRI_LERP(_cornerPts, t0, u1, v1),
 		};
+		MTC::vector<Index3DId> subCorners;
+		for (const auto& pt : subPts)
+			subCorners.push_back(vertId(pt));
 
-		addHexCell(parentId, subCorners, tol);
+		auto newId = addHexCell(parentId, subCorners, tol);
+
+		stringstream ss;
+		ss << "D:/DarkSky/Projects/output/objs/new_cell_" << i << ".obj";
+		getBlockPtr()->getVolume()->writeObj(ss.str().c_str(), { newId }, false, false, false);
 	}
 #endif
 	return true;
@@ -302,7 +325,7 @@ bool Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int
 #if 0
 	splitHexCell8(parentId, tuv);
 #else
-	const double tol = 10 * Tolerance::sameDistTol(); // Sloppier than "exact" match. We just need a "good" match
+	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
 
 	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < 2; j++) {
@@ -395,55 +418,95 @@ Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId)
 	return newFaceId;
 }
 
-void Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol)
+Index3DId Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol)
 {
 	assert(cubeVerts.size() == 8);
 	std::vector<std::vector<Index3DId>> faceVertList;
 	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
 	assert(faceVertList.size() == 6);
-
+#ifdef _DEBUG
+	Index3DId testId(6, 0, 3, 0);
+	if (parentId == testId) {
+		int dbgBreak = 1;
+	}
+#endif
 	MTC::set<Index3DId> cellFaceIds;
 	for (const auto& faceVerts : faceVertList) {
 		assert(faceVerts.size() == 4);
 		MTC::set<Index3DId> newFaceIds;
-		createFace(parentId, faceVerts, newFaceIds, tol);
+		if (_testRun) {
+			// Skip the expensive splitting operations
+			auto id = getBlockPtr()->addFace(Polygon(faceVerts));
+			faceFunc(id, [](const Polygon& face) {
+				assert(face.getCellIds().size() < 2);
+			});
+			cellFaceIds.insert(id);
+		} else {
+			// Use createFace to do the complex face slitting
+			createFace(parentId, faceVerts, newFaceIds, tol);
+			if (newFaceIds.empty()) {
+				auto id = getBlockPtr()->addFace(Polygon(faceVerts));
+				faceFunc(id, [](const Polygon& face) {
+					assert(face.getCellIds().size() < 2);
+				});
+				cellFaceIds.insert(id);
+			} else {
 #ifdef _DEBUG
-		for (const auto& id : newFaceIds) {
-			assert(id.isValid());
-		}
+				for (const auto& id : newFaceIds) {
+					assert(id.isValid());
+					faceFunc(id, [](const Polygon& face) {
+						assert(face.getCellIds().size() < 2);
+					});
+				}
 #endif // _DEBUG
-
-		cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
+				cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
+			}
+		}
 	}
-	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 
+	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 	cellFunc(newCellId, [this](Polyhedron& newCell) {
-		assert(newCell.getNumFaces() <= _params.maxCellFaces);
+		if (!newCell.isClosed()) {
+			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/open_cell.obj", { newCell.getId() }, false, false, false);
+			assert(!"New cell is not closed.");
+			const auto& faceIds = newCell.getFaceIds();
+			for (const auto& faceId : faceIds) {
+				faceFunc(faceId, [this](const Polygon& face) {
+					const auto& cellIds = face.getCellIds();
+					assert(!cellIds.contains(_polyhedronId));
+				});
+			}
+		}
 	});
+
+	return newCellId;
 }
 
-void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId>& faceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
+void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
 	Index3DId result;
 
-	FastBisectionSet<Index3DId> faceIds;
-	cellFunc(parentId, [&faceIds](const Polyhedron& parentCell) {
-		faceIds = parentCell.getFaceIds();
+	FastBisectionSet<Index3DId> oldFaceIds;
+	cellFunc(parentId, [&oldFaceIds](const Polyhedron& parentCell) {
+		oldFaceIds = parentCell.getFaceIds();
 	});
 
-	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [this, &faceVertIds, &newFaceIds](Polygon& face) {
-			Planed oldFacePlane = face.calPlane();
-			const auto& oldFaceVertIds = face.getVertexIds();
-	
-			for (const auto& id : oldFaceVertIds) {
-				const auto& pt = vertexPoint(id);
-				if (!oldFacePlane.isCoincident(pt, Tolerance::sameDistTol()))
-					return; // go to the next face
-			}
+	Vector3d newFaceNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFaceVertIds);
+	Vector3d newFaceOrigin = getBlockPtr()->getVertexPoint(newFaceVertIds[0]);
+	Planed newFacePlane(newFaceOrigin, newFaceNorm);
+
+	for (const auto& oldFaceId : oldFaceIds) {
+		faceFunc(oldFaceId, [this, &newFacePlane, &newFaceVertIds, &newFaceIds](Polygon& oldFace) {
+			Planed oldFacePlane = oldFace.calPlane();
+			if (!oldFacePlane.isCoincident(newFacePlane.getOrgin(), _distTol))
+				return;
+			Vector3d cp = oldFacePlane.getNormal().cross(newFacePlane.getNormal());
+			if (cp.squaredNorm() > _paramTolSqr)
+				return;
+
 			// The new face is coplanar with and existing face
 			// Need to build the new face(s) to fit the old face
-			face.recreateToMatch(faceVertIds, newFaceIds);
+			oldFace.recreateToMatch(newFaceVertIds, newFaceIds);
 		});
 	}
 }
