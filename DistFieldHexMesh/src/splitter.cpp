@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <polyhedron.h>
 #include <splitter.h>
+#include <splitter2D.h>
 #include <block.h>
 #include <tolerances.h>
 #include <utils.h>
@@ -146,11 +147,6 @@ bool Splitter::splitAtCenter()
 	}
 
 	if (result) {
-		// It's been completely split, so this parentCell can be removed
-		if (!_testRun) {
-			cout << "Freeing cell: " << _polyhedronId << "\n";
-		}
-
 		_pBlock->freePolyhedron(_polyhedronId);
 	}
 	return result;
@@ -504,9 +500,27 @@ void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId
 			if (cp.squaredNorm() > _paramTolSqr)
 				return;
 
+			const auto& oldVertIds = oldFace.getVertexIds();
+			Splitter2D sp2d(oldFacePlane);
+
+			for (size_t i = 0; i < oldVertIds.size(); i++) {
+				size_t j = (i + 1) % oldVertIds.size();
+				const auto& pt0 = vertexPoint(oldVertIds[i]);
+				const auto& pt1 = vertexPoint(oldVertIds[j]);
+				sp2d.add3DEdge(pt0, pt1);
+			}
+
+			for (size_t i = 0; i < newFaceVertIds.size(); i++) {
+				size_t j = (i + 1) % newFaceVertIds.size();
+				const auto& pt0 = vertexPoint(newFaceVertIds[i]);
+				const auto& pt1 = vertexPoint(newFaceVertIds[j]);
+				sp2d.add3DEdge(pt0, pt1);
+			}
+
+			int dbgBreak = 1;
 			// The new face is coplanar with and existing face
 			// Need to build the new face(s) to fit the old face
-			oldFace.recreateToMatch(newFaceVertIds, newFaceIds);
+			// oldFace.recreateToMatch(newFaceVertIds, newFaceIds);
 		});
 	}
 }

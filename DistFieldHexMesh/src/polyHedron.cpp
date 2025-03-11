@@ -753,7 +753,7 @@ double Polyhedron::calVolume() const
 bool Polyhedron::isOriented() const
 {
 	bool result = true;
-	const auto& edgeKeys = getEdgeKeys(false);
+	auto edgeKeys = getEdgeKeys(false);
 	for (const auto& edgeKey : edgeKeys) {
 		edgeFunc(edgeKey, [this, &result](const Edge& edge) {
 			if (!edge.isOriented(getId()))
@@ -766,7 +766,7 @@ bool Polyhedron::isOriented() const
 
 void Polyhedron::classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const
 {
-	const auto& edgeKeys = getEdgeKeys(false);
+	auto edgeKeys = getEdgeKeys(false);
 	for (const auto& edgeKey : edgeKeys) {
 		edgeFunc(edgeKey, [this, &convexEdges, &concaveEdges](const Edge& edge) {
 			if (edge.isConvex(getId()))
@@ -1321,7 +1321,7 @@ bool Polyhedron::isClosed() const
 {
 	if (_cachedIsClosed == Trinary::IS_UNKNOWN) {
 		_cachedIsClosed = Trinary::IS_TRUE;
-		const auto& edgeKeys = getEdgeKeys(false);
+		auto edgeKeys = getEdgeKeys(false);
 		for (const auto& edgeKey : edgeKeys) {
 			edgeFunc(edgeKey, [this](const Edge& edge) {
 				size_t count = 0;
@@ -1406,7 +1406,7 @@ ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)
 {
 	auto pBlk = cell.getBlockPtr();
 
-	const auto& edgeKeys = cell.getEdgeKeys(false);
+	auto edgeKeys = cell.getEdgeKeys(false);
 	bool closed = true;
 	for (const auto& edgeKey : edgeKeys) {
 		cell.edgeFunc(edgeKey, [&closed](const Edge& edge) {

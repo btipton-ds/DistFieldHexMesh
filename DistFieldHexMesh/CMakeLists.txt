@@ -111,7 +111,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-   )
+    "src/splitter2D.cpp")
 
 add_executable (TestDFM         
 	
@@ -136,7 +136,7 @@ add_executable (TestDFM
 	"src/testPoolMemory.cpp" 
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
-	"../../utilities/threads/src/local_heap.cpp")
+	"../../utilities/threads/src/local_heap.cpp" "src/splitter2D.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

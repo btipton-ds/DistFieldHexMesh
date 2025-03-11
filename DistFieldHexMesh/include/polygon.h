@@ -115,8 +115,8 @@ public:
 
 	void addVertex(const Index3DId& vertId);
 	void recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds);
-	void connectToplogy();
-	void disconnectTopology();
+	void connectVertEdgeTopology();
+	void disconnectVertEdgeTopology();
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
@@ -172,14 +172,8 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	bool cellsOwnThis() const;
-	void needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const;
-	void imprintConnected();
 	bool imprintVertex(const Index3DId& imprintVert);
-	bool imprintEdges(const MTC::vector<EdgeKey>& edgeKeys);
-	void imprintOtherEdgesOnThis();
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
-	size_t getImprintIndex(const Vector3d& imprintPoint) const;
-	size_t getImprintIndex(const Index3DId& imprintVert) const;
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
@@ -217,6 +211,8 @@ private:
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
+	void recreateToMatch1(const Index3DId& newVertToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds);
+	void recreateToMatch2(const MTC::vector<Index3DId>& newVertsToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds);
 
 	Index3DId _thisId;
 

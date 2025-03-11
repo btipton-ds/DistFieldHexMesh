@@ -81,6 +81,12 @@ void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set
 	// NewVertIds describes and "ideal" new face, but that face may not fit with its neighbor faces.
 	// This function restructures the new and old faces to match each other.
 #ifdef _DEBUG
+	for (const auto& cellId : _cellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			assert(cell.isClosed());
+		});
+	}
+
 	for (const auto& id : newVertIds) {
 		assert(id.isValid());
 	}
@@ -134,67 +140,109 @@ void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set
 				}
 			}
 		}
-
-		if (insertionIndices.size() == 2) {
-			assert(newVertsToInsert.size() == 2);
-			MTC::vector<Index3DId> verts0, verts1;
-
-			verts0.push_back(newVertsToInsert[0]);
-			size_t idx = insertionIndices[0];
-			do {
-				idx = (idx + 1) % _vertexIds.size();
-				verts0.push_back(_vertexIds[idx]);
-			} while (idx != insertionIndices[1]);
-			verts0.push_back(newVertsToInsert[1]);
-
-			verts1.push_back(newVertsToInsert[1]);
-			do {
-				idx = (idx + 1) % _vertexIds.size();
-				verts1.push_back(_vertexIds[idx]);
-			} while (idx != insertionIndices[0]);
-			verts1.push_back(newVertsToInsert[0]);
-
-			assert(_cellIds.size() == 1);
-			const auto& cellId = *_cellIds.begin();
-
-			auto faceId0 = getBlockPtr()->addFace(Polygon(verts0));
-			assert(faceId0.isValid());
-			cout << "Created face: " << faceId0 << "\n";
-			faceFunc(faceId0, [&newPoly, &cellId, &newFaceIds](Polygon& face) {
-				assert(face.getCellIds().size() < 2);
-				if (face == newPoly)
-					newFaceIds.insert(face.getId());
-			});
-
-			auto faceId1 = getBlockPtr()->addFace(Polygon(verts1));
-			assert(faceId1.isValid());
-			cout << "Created face: " << faceId1 << "\n";
-			faceFunc(faceId1, [&newPoly, &cellId, &newFaceIds](Polygon& face) {
-				assert(face.getCellIds().size() < 2);
-
-				if (face == newPoly)
-					newFaceIds.insert(face.getId());
-			});
-			cellFunc(cellId, [this, &faceId0, &faceId1](Polyhedron& cell) {
-				cell.removeFace(getId());
-				cell.addFace(faceId0);
-				cell.addFace(faceId1);
-			});
-
-			return;
+		if (insertionIndices.size() == 1) {
+			recreateToMatch1(newVertsToInsert[0], insertionIndices, newPoly, newFaceIds);
+		} else if (insertionIndices.size() == 2) {
+			recreateToMatch2(newVertsToInsert, insertionIndices, newPoly, newFaceIds);
 		} else {
 //			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitOld.obj", { _vertexIds });
 //			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/faceSplitNew.obj", { newVertIds });
-			int dbgBreak = 1;
+			id = getBlockPtr()->addFace(newPoly);
+			assert(id.isValid());
+			newFaceIds.insert(id);
 		}
 
-		id = getBlockPtr()->addFace(newPoly);
-		assert(id.isValid());
-		newFaceIds.insert(id);
 	}
 }
 
-void Polygon::connectToplogy() {
+void Polygon::recreateToMatch1(const Index3DId& newVertToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds)
+{
+	auto edgeKeyVecs = getEdgeKeys();
+	set<EdgeKey> edgeKeys, disconnectedEdgeKeys;
+	edgeKeys.insert(edgeKeyVecs.begin(), edgeKeyVecs.end());
+	for (const auto& edgeKey : edgeKeys) {
+		const auto& newVertIds = newPoly.getVertexIds();
+		for (size_t i = 0; i < newVertIds.size(); i++) {
+			size_t j = (i + 1) % newVertIds.size();
+			EdgeKey e(newVertIds[i], newVertIds[j]);
+			if (!edgeKeys.contains(e)) {
+				disconnectedEdgeKeys.insert(e);
+			}
+		}
+	}
+	int dbgBreak = 1;
+}
+
+void Polygon::recreateToMatch2(const MTC::vector<Index3DId>& newVertsToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds)
+{
+	assert(newVertsToInsert.size() == 2);
+	MTC::vector<Index3DId> verts0, verts1;
+
+	verts0.push_back(newVertsToInsert[0]);
+	size_t idx = insertionIndices[0];
+	do {
+		idx = (idx + 1) % _vertexIds.size();
+		verts0.push_back(_vertexIds[idx]);
+	} while (idx != insertionIndices[1]);
+	verts0.push_back(newVertsToInsert[1]);
+
+	verts1.push_back(newVertsToInsert[1]);
+	do {
+		idx = (idx + 1) % _vertexIds.size();
+		verts1.push_back(_vertexIds[idx]);
+	} while (idx != insertionIndices[0]);
+	verts1.push_back(newVertsToInsert[0]);
+
+	set<Index3DId> adjFaceIds;
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		edgeFunc(EdgeKey(_vertexIds[i], _vertexIds[j]), [this, &adjFaceIds](const Edge& edge) {
+			const auto& t = edge.getFaceIds();
+			for (const auto& faceId : t) {
+				if (getId() != faceId)
+					adjFaceIds.insert(faceId);
+			}
+		});
+	}
+	disconnectVertEdgeTopology();
+	for (const auto& faceId : adjFaceIds) {
+		faceFunc(faceId, [newVertsToInsert](Polygon& face) {
+			for (const auto& vertId : newVertsToInsert) {
+				face.imprintVertex(vertId);
+			}
+		});
+	}
+
+	auto faceId0 = getBlockPtr()->addFace(Polygon(verts0));
+	assert(faceId0.isValid());
+	faceFunc(faceId0, [&newPoly, &newFaceIds](Polygon& face) {
+		assert(face.getCellIds().size() < 2);
+		if (face == newPoly)
+			newFaceIds.insert(face.getId());
+		});
+
+	auto faceId1 = getBlockPtr()->addFace(Polygon(verts1));
+	assert(faceId1.isValid());
+	faceFunc(faceId1, [&newPoly, &newFaceIds](Polygon& face) {
+		assert(face.getCellIds().size() < 2);
+
+		if (face == newPoly)
+			newFaceIds.insert(face.getId());
+	});
+
+	auto tmp = _cellIds;
+	for (const auto& cellId : tmp) {
+		cellFunc(cellId, [this, &faceId0, &faceId1](Polyhedron& cell) {
+			assert(cell.isClosed());
+			cell.removeFace(getId());
+			cell.addFace(faceId0);
+			cell.addFace(faceId1);
+			assert(cell.isClosed());
+		});
+	}
+}
+
+void Polygon::connectVertEdgeTopology() {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		size_t k = (j + 1) % _vertexIds.size();
@@ -212,7 +260,7 @@ void Polygon::connectToplogy() {
 	}
 }
 
-void Polygon::disconnectTopology() {
+void Polygon::disconnectVertEdgeTopology() {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		size_t k = (j + 1) % _vertexIds.size();
@@ -244,19 +292,20 @@ Polygon::Polygon(const Polygon& src)
 DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
-	disconnectTopology();
+	disconnectVertEdgeTopology();
 
 	ObjectPoolOwnerUser::operator=(rhs);
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
 
+	connectVertEdgeTopology();
 	return *this;
 }
 
 void Polygon::postAddToPoolActions()
 {
-	connectToplogy();
+	connectVertEdgeTopology();
 }
 
 const Index3DId& Polygon::getId() const
@@ -884,57 +933,6 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-void Polygon::needToImprintVertices(const MTC::set<Index3DId>& verts, MTC::set<Index3DId>& imprintVerts) const
-{
-
-	MTC::vector<Index3DId> onFaceVerts;
-	MTC::set<Index3DId> vertSet;
-	vertSet.insert(_vertexIds.begin(), _vertexIds.end());
-	for (const auto& vertId : verts) {
-		if (!vertSet.contains(vertId)) { // ignore vertices already in the face
-			Vector3d pt = getVertexPoint(vertId);
-			if (distanceToPoint(pt) < SAME_DIST_TOL) {
-				onFaceVerts.push_back(vertId);
-			}
-		}
-	}
-
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto seg = edge.getSegment();
-		for (const auto& vertId : onFaceVerts) {
-			Vector3d pt = getVertexPoint(vertId);
-			double t;
-			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
-				imprintVerts.insert(vertId);
-				break;
-			}
-		}
-	}
-}
-
-size_t Polygon::getImprintIndex(const Vector3d& imprintPoint) const
-{
-	cout << "Searching for imprint point " << imprintPoint << "\n";
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto seg = edge.getSegment();
-		double t;
-		if (seg.contains(imprintPoint, t, Tolerance::sameDistTol())) {
-			return i;
-		}
-	}
-	return -1;
-}
-
-size_t Polygon::getImprintIndex(const Index3DId& imprintVert) const
-{
-	Vector3d pt = getVertexPoint(imprintVert);
-	return getImprintIndex(pt);
-}
-
 size_t Polygon::getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds)
 {
 	for (const auto& edgeKey : ourEdgeKeys) {
@@ -948,68 +946,37 @@ size_t Polygon::getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdg
 	return faceIds.size();
 }
 
-void Polygon::imprintConnected()
-{
-	const MTC::vector<EdgeKey>& edgeKeys = getEdgeKeys();
-	MTC::set<Index3DId> faceIds;
-	if (getPossibleOverlappingFaceIds(edgeKeys, faceIds) == 0)
-		return;
-
-	imprintOtherEdgesOnThis();
-
-
-	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [&edgeKeys](Polygon& adjFace) {
-			adjFace.imprintEdges(edgeKeys);
-		});
-	}
-}
-
-void Polygon::imprintOtherEdgesOnThis()
-{
-
-}
-
-bool Polygon::imprintEdges(const MTC::vector<EdgeKey>& edgeKeys)
-{
-	MTC::set<EdgeKey> possibleEdgeKeys;
-	for (const auto& edgeKey : edgeKeys) {
-		if (!usesEdge(edgeKey) && isCoplanar(edgeKey))
-			possibleEdgeKeys.insert(edgeKey);
-		
-	}
-
-	if (possibleEdgeKeys.empty())
-		return false;
-
-
-	return false;
-}
-
 bool Polygon::imprintVertex(const Index3DId& imprintVert)
 {
-	auto tmp = _vertexIds;
-	_vertexIds.clear();
-	_vertexIds.reserve(tmp.size() + 1);
+	if (containsVertex(imprintVert)) {
+		return false;
+	}
+	MTC::vector<Index3DId> tmp;
+	tmp.reserve(tmp.size() + 1);
 	bool imprinted = false;
-	for (size_t i = 0; i < tmp.size(); i++) {
-		_vertexIds.push_back(tmp[i]);
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		tmp.push_back(_vertexIds[i]);
 
 		if (!imprinted) {
-			size_t j = (i + 1) % tmp.size();
-			Edge edge(tmp[i], tmp[j]);
-			auto seg = edge.getSegment();
-			Vector3d pt = getVertexPoint(imprintVert);
-			double t;
-			if (seg.contains(pt, t, Tolerance::sameDistTol())) {
-				_vertexIds.push_back(imprintVert);
-				imprinted = true;
-			}
+			size_t j = (i + 1) % _vertexIds.size();
+			edgeFunc(EdgeKey(_vertexIds[i], _vertexIds[j]), [this, &tmp, &imprintVert, &imprinted](Edge& edge) {
+				auto seg = edge.getSegment();
+				Vector3d pt = getVertexPoint(imprintVert);
+				double t;
+				if (seg.contains(pt, t, Tolerance::sameDistTol())) {
+					tmp.push_back(imprintVert);
+					imprinted = true;
+				}
+			});
 		}
 	}
 
-	if (imprinted)
+	if (imprinted) {
+		disconnectVertEdgeTopology();
 		clearCache();
+		_vertexIds = tmp;
+		connectVertEdgeTopology();
+	}
 
 	return imprinted;
 }
@@ -1208,7 +1175,7 @@ bool Polygon::verifyTopology() const
 		valid = false;
 
 	if (valid) {
-		const auto& edgeKeys = getEdgeKeys();
+		auto edgeKeys = getEdgeKeys();
 		for (const auto& edgeKey : edgeKeys) {
 			edgeFunc(edgeKey, [this, &valid](const Edge& edge) {
 				auto& faceIds = edge.getFaceIds();

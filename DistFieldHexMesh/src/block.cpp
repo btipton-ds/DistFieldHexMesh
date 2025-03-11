@@ -754,6 +754,7 @@ Index3DId Block::addFace(const Polygon& face)
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_polygons.findOrAdd(face);
 	auto& newFace = pOwner->_polygons[result];
+	newFace.connectVertEdgeTopology();
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(5, 1, 3, 10) == result) {
