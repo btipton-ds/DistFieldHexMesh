@@ -57,9 +57,9 @@ thread_local VolumePtr Splitter::_pScratchVol;
 
 namespace
 {
-	static std::atomic<size_t> numSplits2 = 0;
-	static std::atomic<size_t> numSplits4 = 0;
-	static std::atomic<size_t> numSplitsComplex8 = 0;
+	static atomic<size_t> numSplits2 = 0;
+	static atomic<size_t> numSplits4 = 0;
+	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
 void Splitter::reset()
@@ -414,10 +414,10 @@ Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId)
 	return newFaceId;
 }
 
-Index3DId Splitter::addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol)
+Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId>& cubeVerts, double tol)
 {
 	assert(cubeVerts.size() == 8);
-	std::vector<std::vector<Index3DId>> faceVertList;
+	vector<vector<Index3DId>> faceVertList;
 	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
 	assert(faceVertList.size() == 6);
 #ifdef _DEBUG
@@ -478,7 +478,7 @@ Index3DId Splitter::addHexCell(const Index3DId& parentId, const std::vector<Inde
 	return newCellId;
 }
 
-void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
+void Splitter::createFace(const Index3DId& parentId, const vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
 	Index3DId result;
 
@@ -501,22 +501,30 @@ void Splitter::createFace(const Index3DId& parentId, const std::vector<Index3DId
 				return;
 
 			const auto& oldVertIds = oldFace.getVertexIds();
-			Splitter2D sp2d(oldFacePlane);
+			Splitter2D splitter2d(oldFacePlane);
 
+			vector<Vector3d> oldBoundaryPoints, newBoundaryPoints;
 			for (size_t i = 0; i < oldVertIds.size(); i++) {
 				size_t j = (i + 1) % oldVertIds.size();
 				const auto& pt0 = vertexPoint(oldVertIds[i]);
 				const auto& pt1 = vertexPoint(oldVertIds[j]);
-				sp2d.add3DEdge(pt0, pt1);
+				splitter2d.add3DEdge(pt0, pt1);
+
+				oldBoundaryPoints.push_back(pt0);
 			}
 
 			for (size_t i = 0; i < newFaceVertIds.size(); i++) {
 				size_t j = (i + 1) % newFaceVertIds.size();
 				const auto& pt0 = vertexPoint(newFaceVertIds[i]);
 				const auto& pt1 = vertexPoint(newFaceVertIds[j]);
-				sp2d.add3DEdge(pt0, pt1);
+				splitter2d.add3DEdge(pt0, pt1);
+
+				newBoundaryPoints.push_back(pt0);
 			}
 
+			vector<vector<Vector3d>> oldFacePoints, newFacePoints;
+			splitter2d.getFacePoints(oldBoundaryPoints, oldFacePoints); // These face points describe the replacement faces for the oldFace
+			splitter2d.getFacePoints(newBoundaryPoints, newFacePoints);  // These face points describe the replacement faces for the newFace
 			int dbgBreak = 1;
 			// The new face is coplanar with and existing face
 			// Need to build the new face(s) to fit the old face
@@ -546,42 +554,42 @@ void Splitter::createHexCellData(const Polyhedron& parentCell)
 }
 
 //LAMBDA_CLIENT_IMPLS(Splitter)
-void Splitter::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+void Splitter::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+void Splitter::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void Splitter::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+void Splitter::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void Splitter::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+void Splitter::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+void Splitter::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Splitter::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+void Splitter::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }

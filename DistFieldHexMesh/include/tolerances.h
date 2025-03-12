@@ -36,6 +36,11 @@ namespace Tolerance
 		return 1.0e-9; // meters
 	}
 
+	inline double sameDistTolSqr()
+	{
+		return sameDistTol() * sameDistTol(); // meters
+	}
+
 	inline double planeCoincidentDistTol()
 	{
 		return 1.0e-7; // meters
@@ -48,6 +53,10 @@ namespace Tolerance
 
 	inline double paramTol() {
 		return 1.0e-12;
+	}
+
+	inline double paramTolSqr() {
+		return paramTol() * paramTol();
 	}
 
 	inline double looseParamTol() {
