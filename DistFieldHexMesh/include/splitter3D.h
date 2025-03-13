@@ -51,7 +51,7 @@ class Splitter3D {
 public:
 	static void dumpSplitStats();
 	static void clearThreadLocal();
-	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
+	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched);
 	~Splitter3D();
 
 	bool splitAtCenter();
@@ -75,8 +75,8 @@ private:
 	Index3DId createScratchCell();
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
-	Index3DId addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
-	void createFace(const Index3DId& parentId, const std::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
+	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
+	void createFace(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
@@ -92,8 +92,8 @@ private:
 	const double _paramTol = Tolerance::paramTol();
 	const double _paramTolSqr = _paramTol * _paramTol;
 
-	std::vector<Index3DId>& _localTouched;
-	MTC::vector<Vector3d> _cornerPts;
+	MTC::vector<Index3DId>& _localTouched;
+	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 

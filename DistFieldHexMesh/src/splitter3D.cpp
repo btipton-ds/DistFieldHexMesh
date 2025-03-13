@@ -83,7 +83,7 @@ void Splitter3D::clearThreadLocal()
 	_pScratchVol = nullptr;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _pSrcBlock(pBlock)
 	, _polyhedronId(polyhedronId)
@@ -422,12 +422,12 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 	return newFaceId;
 }
 
-Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const vector<Index3DId>& cubeVerts, double tol)
+Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol)
 {
 	Index3DId newCellId;
 
 	assert(cubeVerts.size() == 8);
-	vector<vector<Index3DId>> faceVertList;
+	MTC::vector<MTC::vector<Index3DId>> faceVertList;
 	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
 	assert(faceVertList.size() == 6);
 #ifdef _DEBUG
@@ -476,7 +476,7 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const vector<Index3D
 	return newCellId;
 }
 
-void Splitter3D::createFace(const Index3DId& parentId, const vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
+void Splitter3D::createFace(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
 	Index3DId result;
 

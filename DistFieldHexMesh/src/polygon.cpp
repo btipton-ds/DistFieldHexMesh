@@ -122,8 +122,8 @@ void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set
 		});
 		newFaceIds.insert(id);
 	} else {
-		vector<size_t> insertionIndices;
-		vector<Index3DId> newVertsToInsert;
+		MTC::vector<size_t> insertionIndices;
+		MTC::vector<Index3DId> newVertsToInsert;
 		for (size_t i = 0; i < _vertexIds.size(); i++) {
 			size_t j = (i + 1) % _vertexIds.size();
 			LineSegmentd seg(getVertexPoint(_vertexIds[i]), getVertexPoint(_vertexIds[j]));

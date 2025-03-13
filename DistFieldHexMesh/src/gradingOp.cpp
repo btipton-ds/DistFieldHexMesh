@@ -41,7 +41,7 @@ using namespace DFHM;
 
 const MTC::vector<MTC::vector<size_t>>& GradingOp::getCubeFaceIndices()
 {
-    static vector<vector<size_t>> facePts = {
+    static MTC::vector<MTC::vector<size_t>> facePts = {
         // add bottom and top
         { 0, 3, 2, 1 },
         { 4, 5, 6, 7 },
@@ -235,7 +235,7 @@ void GradingOp::createGradedCells() const {
                 }
 #endif
 
-                vector<Index3DId> cornerVertIds;
+                MTC::vector<Index3DId> cornerVertIds;
                 cornerVertIds.resize(8);
                 cornerVertIds[0] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u0, v0));
                 cornerVertIds[1] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t1, u0, v0));

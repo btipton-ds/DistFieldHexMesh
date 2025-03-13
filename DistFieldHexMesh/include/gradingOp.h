@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <tm_vector3.h>
+#include <pool_vector.h>
 #include <index3D.h>
 #include <enums.h>
 

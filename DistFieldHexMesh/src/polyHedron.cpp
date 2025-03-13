@@ -66,7 +66,8 @@ Polyhedron::Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Ind
 {
 	for (const auto& id : faceIds)
 		_faceIds.insert(id);
-	_canonicalVertices = cornerVertIds;
+	_canonicalVertices.clear();
+	_canonicalVertices.insert(_canonicalVertices.end(), cornerVertIds.begin(), cornerVertIds.end());
 }
 
 Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds)
@@ -79,7 +80,8 @@ Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiC
 Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds)
 {
 	_faceIds = faceIds;
-	_canonicalVertices = cornerVertIds;
+	_canonicalVertices.clear();
+	_canonicalVertices.insert(_canonicalVertices.end(), cornerVertIds.begin(), cornerVertIds.end());
 }
 
 Polyhedron::Polyhedron(const Polyhedron& src)
@@ -969,7 +971,8 @@ void Polyhedron::orientFaces()
 		});
 	}
 
-	MTC::set<Index3DId> orientedIds, unorientedIds(_faceIds.begin(), _faceIds.end());
+	MTC::set<Index3DId> orientedIds, unorientedIds;
+	unorientedIds.insert(_faceIds.begin(), _faceIds.end());
 	orientedIds.insert(*unorientedIds.begin());
 	unorientedIds.erase(*orientedIds.begin());
 	while (!unorientedIds.empty()) {
