@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <vector>
+#include <string>
 #include <algorithm>
 #include <fstream>
 #include <defines.h>
@@ -153,7 +154,7 @@ Index3D Block::calSubBlockIndexFromLinear(size_t linearIdx) const
 
 	result[0] = (Index3DBaseType)temp;
 	if (calLinearSubBlockIndex(result) != linearIdx) {
-		throw runtime_error("calSubBlockIndexFromLinear failed.");
+		throw runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calSubBlockIndexFromLinear failed."));
 	}
 	return result;
 }
@@ -561,7 +562,7 @@ CBoundingBox3Dd Block::getBBox() const
 	return _corners.getBBox();
 }
 
-Index3DId Block::findFace(const Polygon& face) const
+Index3DId Block::findPolygon(const Polygon& face) const
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);
 	assert(ownerBlockIdx.isValid());
@@ -572,18 +573,13 @@ Index3DId Block::findFace(const Polygon& face) const
 	return faceId;
 }
 
-EdgeKey Block::addEdge(const Index3DId& vert0, const Index3DId& vert1)
-{
-	return addEdge(EdgeKey(vert0, vert1));
-}
-
 EdgeKey Block::addEdge(const EdgeKey& edgeKey)
 {
 	Edge edge(edgeKey);
 	auto pOwner = getOwner(edge);
 	auto& edges = pOwner->_edges;
 	auto id = edges.findOrAdd(edge);
-	auto pEdge = edges.getByElementIndex(id.elementId());
+	auto pEdge = edges.getObjPtrByElementIndex(id.elementId());
 	assert(pEdge);
 	if (pEdge && pEdge != &edge)
 		return *pEdge;
@@ -597,7 +593,7 @@ const Edge* Block::getEdge(const EdgeKey& edgeKey) const
 	auto pOwner = getOwner(edge);
 	auto& edges = pOwner->_edges;
 	auto id = edges.findId(edge);
-	return edges.getByElementIndex(id.elementId());
+	return edges.getObjPtrByElementIndex(id.elementId());
 }
 
 Edge* Block::getEdge(const EdgeKey& edgeKey)
@@ -606,7 +602,7 @@ Edge* Block::getEdge(const EdgeKey& edgeKey)
 	auto pOwner = getOwner(edge);
 	auto& edges = pOwner->_edges;
 	auto id = edges.findId(edge);
-	return edges.getByElementIndex(id.elementId());
+	return edges.getObjPtrByElementIndex(id.elementId());
 }
 
 void Block::addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1)
@@ -754,7 +750,6 @@ Index3DId Block::addFace(const Polygon& face)
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_polygons.findOrAdd(face);
 	auto& newFace = pOwner->_polygons[result];
-	newFace.connectVertEdgeTopology();
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(5, 1, 3, 10) == result) {
@@ -763,18 +758,6 @@ Index3DId Block::addFace(const Polygon& face)
 #endif
 
 	return result;
-}
-
-void Block::addFaceToLookup(const Index3DId& faceId)
-{
-	auto pOwner = getOwner(faceId);
-	pOwner->_polygons.addToLookup(faceId);
-}
-
-bool Block::removeFaceFromLookUp(const Index3DId& faceId)
-{
-	auto* pOwner = getOwner(faceId);
-	return pOwner->_polygons.removeFromLookup(faceId);
 }
 
 const Vector3d& Block::getVertexPoint(const Index3DId& vertId) const

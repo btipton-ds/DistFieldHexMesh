@@ -132,19 +132,18 @@ public:
 	void testReset();
 	bool free(const Index3DId& id); // Permanently delete it
 	bool removeFromLookup(const Index3DId& id);
-	void addToLookup(const Index3DId& id);
+	void addToLookup(const T& obj, const Index3DId& id);
 
 	void resize(size_t size);
 	size_t numBytes() const;
 
-	size_t getRawIndex(const Index3DId& id) const;
 	Index3DId findId(const T& obj) const;
 	bool exists(const Index3DId& id) const;
 
 	Index3DId findOrAdd(const T& obj, const Index3DId& id = Index3DId());
 
-	const T* getByElementIndex(size_t id) const;
-	T* getByElementIndex(size_t id);
+	const T* getObjPtrByElementIndex(size_t id) const;
+	T* getObjPtrByElementIndex(size_t id);
 
 	const T* get(const Index3DId& id) const;
 	T* get(const Index3DId& id);
@@ -171,6 +170,26 @@ public:
 	void read(std::istream& in);
 
 private:
+	/*
+	ObjIndex is a shallow wrapper around size_t to reduce confusion of the two indices.
+	This forces the compiler to assist in making sure the indices to get swapped accidentally.
+	There is no ObjIndex(size_t src) constructor to prevent automatic promotion from size_t to ObjIndex when passed as a parameter.
+	This makes it extremely difficult to accidentally pass a size_t where an ObjIndex is required.
+	*/
+	class ObjIndex {
+	public:
+		ObjIndex() = default;
+		ObjIndex(const ObjIndex& src);
+
+		operator size_t() const;
+
+		ObjIndex& operator = (size_t rhs);
+		ObjIndex& operator = (const ObjIndex& rhs);
+	private:
+		size_t _idx = -1;
+	};
+
+
 	struct CompareFunctor
 	{
 		inline CompareFunctor(const ObjectPool& owner)
@@ -178,39 +197,45 @@ private:
 		{
 		}
 
-		inline bool operator () (size_t lhs, size_t rhs) const
+		inline bool operator () (const ObjIndex& lhObjIdx, const ObjIndex& rhObjIdx) const
 		{
-			const T* pLHS = _owner.getByElementIndex(lhs);
-			const T* pRHS = _owner.getByElementIndex(rhs);
+			const T* pLHS = _owner.getEntryFromObjIndex(lhObjIdx);
+			const T* pRHS = _owner.getEntryFromObjIndex(rhObjIdx);
 			if (pLHS && pRHS)
 				return *pLHS < *pRHS;
-			throw std::runtime_error("comparing deleted object(s)");
+
+			throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" comparing deleted object(s)"));
 		}
 
 		const ObjectPool& _owner;
 	};
 
 	Index3DId add(const T& obj, const Index3DId& id = Index3DId());
-	size_t storeAndReturnIndex(const T& obj);
-	bool calIndices(size_t index, size_t& segNum, size_t& segIdx) const;
-	T* getEntry(size_t index);
-	const T* getEntry(size_t index) const;
+	size_t findElementIndexObj(const T& obj) const;
+	ObjIndex storeAndReturnObjIndex(const T& obj);
+	bool calObjSegIndices(const ObjIndex& objIdx, size_t& segNum, size_t& segIdx) const;
+
+	T* getEntryFromObjIndex(const ObjIndex& objIdx);
+	const T* getEntryFromObjIndex(const ObjIndex& objIdx) const;
+
+	T* getEntryFromElementIndex(size_t elementIndex);
+	const T* getEntryFromElementIndex(size_t elementIndex) const;
 
 	bool _supportsReverseLookup;
 	ObjectPoolOwner* _pPoolOwner;
 	const size_t _objectSegmentSize; // May want to tune this so the first segment only holds 1 cell since most blocks only contain one cell. We're allocating a lot of unused memory in sparse blocks
-	std::vector<size_t> 
-		_idToIndexMap,
-		_availableIndices;
+	std::vector<ObjIndex> 
+		_elementIndexToObjIndexMap,
+		_availableObjIndices;
 
 	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
-	std::vector<ObjectSegPtr> _objectSegs;
+	std::vector<ObjectSegPtr> _objSegmentPtrs;
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
 	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices and polygons.
-	std::map<size_t, size_t, CompareFunctor> _objToIdMap;	// TODO, may want to change this to a sorted array with bisection lookup for space savings
+	std::map<ObjIndex, size_t, CompareFunctor> _objToElementIndexMap;	// TODO, may want to change this to a sorted array with bisection lookup for space savings
 															// Attempted this on 2/5/25 and gave up after several hours using FastBisectionMap. It's trickier than it looks.
-															// Probably due to _objToIdMap.find not reporting missing entries properly.
+															// Probably due to _objToElementIndexMap.find not reporting missing entries properly.
 															// Can't use a simple array because of accumulated dead ids at the head.
 	thread_local static const T* _tl_pCompareObj;
 };
@@ -218,7 +243,7 @@ private:
 template<class T>
 ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLookup, size_t objectSegmentSize)
 	: _pPoolOwner(pPoolOwner)
-	, _objToIdMap(CompareFunctor(*this))
+	, _objToElementIndexMap(CompareFunctor(*this))
 	, _objectSegmentSize(objectSegmentSize)
 	, _supportsReverseLookup(supportsReverseLookup)
 {
@@ -228,17 +253,17 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLooku
 template<class T>
 ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	: _pPoolOwner(pPoolOwner)
-	, _objToIdMap(CompareFunctor(*this))
+	, _objToElementIndexMap(CompareFunctor(*this))
 	, _objectSegmentSize(src._objectSegmentSize)
 	, _supportsReverseLookup(src._supportsReverseLookup)
-	, _idToIndexMap(src._idToIndexMap)
-	, _availableIndices(src._availableIndices)
+	, _elementIndexToObjIndexMap(src._elementIndexToObjIndexMap)
+	, _availableObjIndices(src._availableObjIndices)
 {
-	_objectSegs.reserve(src._objectSegs.size());
-	for (size_t i = 0; i < src._objectSegs.size(); i++) {
-		const auto& pSrcVec = src._objectSegs[i];
+	_objSegmentPtrs.reserve(src._objSegmentPtrs.size());
+	for (size_t i = 0; i < src._objSegmentPtrs.size(); i++) {
+		const auto& pSrcVec = src._objSegmentPtrs[i];
 		const auto& srcVec = *pSrcVec;
-		_objectSegs.push_back(std::make_shared<std::vector<T>>(srcVec));
+		_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>(srcVec));
 	}
 	iterateInOrder([this](const Index3DId& id, T& obj) {
 		obj._pPoolOwner = _pPoolOwner;
@@ -248,18 +273,18 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 template<class T>
 ObjectPool<T>::~ObjectPool()
 {
-	for (size_t i = 0; i < _objectSegs.size(); i++) {
-		_objectSegs[i] = nullptr;
+	for (size_t i = 0; i < _objSegmentPtrs.size(); i++) {
+		_objSegmentPtrs[i] = nullptr;
 	}
 }
 
 template<class T>
 void ObjectPool<T>::clear()
 {
-	_idToIndexMap.clear();
-	_availableIndices.clear();
-	_objToIdMap.clear();
-	_objectSegs.clear();
+	_elementIndexToObjIndexMap.clear();
+	_availableObjIndices.clear();
+	_objToElementIndexMap.clear();
+	_objSegmentPtrs.clear();
 }
 
 template<class T>
@@ -280,22 +305,44 @@ void ObjectPool<T>::testReset()
 }
 
 template<class T>
-inline bool ObjectPool<T>::calIndices(size_t index, size_t& segNum, size_t& segIdx) const
+inline bool ObjectPool<T>::calObjSegIndices(const ObjIndex& objIdx, size_t& segNum, size_t& segIdx) const
 {
-	segNum = index / _objectSegmentSize;
-	segIdx = index % _objectSegmentSize;
-	return segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size();
+	segNum = objIdx / _objectSegmentSize;
+	segIdx = objIdx % _objectSegmentSize;
+	return segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size();
 }
 
 template<class T>
-inline T* ObjectPool<T>::getEntry(size_t index)
+T* ObjectPool<T>::getEntryFromElementIndex(size_t elementIndex)
 {
 	T* p = nullptr;
-	if (index != -1) {
+	if (elementIndex < _elementIndexToObjIndexMap.size()) {
+		const ObjIndex& objIndex = _elementIndexToObjIndexMap[elementIndex];
+		return getEntryFromObjIndex(objIndex);
+	}
+	return p;
+}
+
+template<class T>
+const T* ObjectPool<T>::getEntryFromElementIndex(size_t elementIndex) const
+{
+	T* p = nullptr;
+	if (elementIndex < _elementIndexToObjIndexMap.size()) {
+		const ObjIndex& objIndex = _elementIndexToObjIndexMap[elementIndex];
+		return getEntryFromObjIndex(objIndex);
+	}
+	return p;
+}
+
+template<class T>
+inline T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx)
+{
+	T* p = nullptr;
+	if (objIdx != -1) {
 		size_t segNum, segIdx;
-		if (calIndices(index, segNum, segIdx)) {
-			assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
-			p = &((*_objectSegs[segNum])[segIdx]);
+		if (calObjSegIndices(objIdx, segNum, segIdx)) {
+			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+			p = &((*_objSegmentPtrs[segNum])[segIdx]);
 		}
 		assert(p);
 	}
@@ -303,14 +350,16 @@ inline T* ObjectPool<T>::getEntry(size_t index)
 }
 
 template<class T>
-inline const T* ObjectPool<T>::getEntry(size_t index) const
+inline const T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx) const
 {
 	const T* p = nullptr;
-	if (index != -1) {
+	if (objIdx == -1)
+		return _tl_pCompareObj;
+	else {
 		size_t segNum, segIdx;
-		if (calIndices(index, segNum, segIdx)) {
-			assert(segNum < _objectSegs.size() && segIdx < _objectSegs[segNum]->size());
-			p = &((*_objectSegs[segNum])[segIdx]);
+		if (calObjSegIndices(objIdx, segNum, segIdx)) {
+			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+			p = &((*_objSegmentPtrs[segNum])[segIdx]);
 		}
 
 		assert(p);
@@ -324,22 +373,16 @@ bool ObjectPool<T>::free(const Index3DId& globalId)
 	if (!exists(globalId))
 		return false;
 
-	removeFromLookup(globalId);
+	T* p = getEntryFromElementIndex(globalId.elementId());
+	if (p) {
+		removeFromLookup(globalId);
 
-	size_t id = globalId.elementId();
-	if (id >= _idToIndexMap.size())
-		return false;
+		*p = {};
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[globalId.elementId()];
+		_elementIndexToObjIndexMap[globalId.elementId()] = -1; // Clear this id so it won't be used again
+		_availableObjIndices.push_back(objIdx);
 
-	size_t index = _idToIndexMap[id];
-	if (index != -1) {
-		T* p = getEntry(index);
-		if (p) {
-			*p = T();
-			_idToIndexMap[id] = -1; // Clear this id so it won't be used again
-			_availableIndices.push_back(index);
-
-			return true;
-		}
+		return true;
 	}
 	return false;
 }
@@ -348,10 +391,10 @@ template<class T>
 inline bool ObjectPool<T>::removeFromLookup(const Index3DId& id)
 {
 	if (_supportsReverseLookup) {
-		auto iter = _objToIdMap.find(id.elementId());
-		if (iter != _objToIdMap.end()) {
-			_objToIdMap.erase(iter);
-			return true;
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
+		const auto p = getEntryFromObjIndex(objIdx);
+		if (p) {
+			_objToElementIndexMap.erase(objIdx);
 		}
 	}
 
@@ -359,10 +402,12 @@ inline bool ObjectPool<T>::removeFromLookup(const Index3DId& id)
 }
 
 template<class T>
-inline void ObjectPool<T>::addToLookup(const Index3DId& id)
+inline void ObjectPool<T>::addToLookup(const T& obj, const Index3DId& id)
 {
 	if (_supportsReverseLookup) {
-		_objToIdMap.insert(std::make_pair(id.elementId(), id.elementId()));
+		assert(id.elementId() < _elementIndexToObjIndexMap.size());
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
+		_objToElementIndexMap.insert(std::make_pair(objIdx, id.elementId()));
 	}
 
 }
@@ -370,24 +415,24 @@ inline void ObjectPool<T>::addToLookup(const Index3DId& id)
 template<class T>
 void ObjectPool<T>::resize(size_t size)
 {
-	if (size > _idToIndexMap.size()) {
-		_idToIndexMap.resize(size);
+	if (size > _elementIndexToObjIndexMap.size()) {
+		_elementIndexToObjIndexMap.resize(size);
 		size_t numSegs = size / _objectSegmentSize + 1;
-		_objectSegs.resize(numSegs);
+		_objSegmentPtrs.resize(numSegs);
 		for (size_t id = 0; id < size; id++) {
-			_idToIndexMap[id] = _objectSegs.size();
+			_elementIndexToObjIndexMap[id] = _objSegmentPtrs.size();
 		}
 		size_t remaining = size;
 		for (size_t i = 0; i < numSegs; i++) {
 			// Reserve the segment size so the array won't resize during use
-			_objectSegs[i] = std::make_shared<std::vector<T>>();
-			_objectSegs[i]->reserve(_objectSegmentSize);
+			_objSegmentPtrs[i] = std::make_shared<std::vector<T>>();
+			_objSegmentPtrs[i]->reserve(_objectSegmentSize);
 			if (size > _objectSegmentSize) {
-				_objectSegs[i]->resize(_objectSegmentSize);
+				_objSegmentPtrs[i]->resize(_objectSegmentSize);
 				size -= _objectSegmentSize;
 			}
 			else {
-				_objectSegs[i]->resize(size);
+				_objSegmentPtrs[i]->resize(size);
 				size = 0;
 			}
 		}
@@ -398,32 +443,36 @@ template<class T>
 size_t ObjectPool<T>::numBytes() const
 {
 	size_t result = sizeof(ObjectPool<T>);
-	result += _idToIndexMap.size() * sizeof(size_t);
-	result += _availableIndices.size() * sizeof(size_t);
-	for (const auto& pSeg : _objectSegs) {
+	result += _elementIndexToObjIndexMap.size() * sizeof(size_t);
+	result += _availableObjIndices.size() * sizeof(size_t);
+	for (const auto& pSeg : _objSegmentPtrs) {
 
 		result += pSeg->size() * sizeof(T);
 	}
 
-	result += _objToIdMap.size() * sizeof(std::pair<size_t, size_t>);
+	result += _objToElementIndexMap.size() * sizeof(std::pair<size_t, size_t>);
 
 	return result;
 }
 
 template<class T>
-inline size_t ObjectPool<T>::getRawIndex(const Index3DId& id) const
+size_t ObjectPool<T>::findElementIndexObj(const T& obj) const 
 {
-	return _idToIndexMap[id.elementId()];
+	if (_supportsReverseLookup) {
+		_tl_pCompareObj = &obj;
+		auto iter = _objToElementIndexMap.find(ObjIndex());
+		if (iter != _objToElementIndexMap.end())
+			return iter->second;
+	}
+	return -1;
 }
 
 template<class T>
 Index3DId ObjectPool<T>::findId(const T& obj) const
 {
-	if (_supportsReverseLookup) {
-		_tl_pCompareObj = &obj;
-		auto iter = _objToIdMap.find(-1);
-		if (iter != _objToIdMap.end())
-			return Index3DId(_pPoolOwner->getBlockIdx(), iter->second);
+	size_t elementIdx = findElementIndexObj(obj);
+	if (elementIdx < _elementIndexToObjIndexMap.size()) {
+		return Index3DId(_pPoolOwner->getBlockIdx(), elementIdx);
 	}
 	return Index3DId();
 }
@@ -431,7 +480,7 @@ Index3DId ObjectPool<T>::findId(const T& obj) const
 template<class T>
 inline bool ObjectPool<T>::exists(const Index3DId& id) const
 {
-	bool result(id.elementId() < _idToIndexMap.size() && _idToIndexMap[id.elementId()] != -1);
+	bool result(id.elementId() < _elementIndexToObjIndexMap.size() && _elementIndexToObjIndexMap[id.elementId()] != -1);
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (!result) {
@@ -453,38 +502,40 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 	}
 	Index3DId result = add(obj, currentId);
 
-	addToLookup(result);
+	addToLookup(obj, result);
 
 	return result;
 }
 
 template<class T>
-size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
+ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 {
-	size_t index = -1, segNum = -1, segIdx = -1;
-	if (_availableIndices.empty()) {
-		if (_objectSegs.empty() || _objectSegs.back()->size() >= _objectSegmentSize) {
-			_objectSegs.push_back(std::make_shared<std::vector<T>>());
-		}
-		segNum = _objectSegs.size() - 1;
+	size_t segNum = -1, segIdx = -1;
+	ObjIndex objIdx;
 
-		auto& segData = *_objectSegs.back();
+	if (_availableObjIndices.empty()) {
+		if (_objSegmentPtrs.empty() || _objSegmentPtrs.back()->size() >= _objectSegmentSize) {
+			_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>());
+		}
+		segNum = _objSegmentPtrs.size() - 1;
+
+		auto& segData = *_objSegmentPtrs.back();
 		if (segData.capacity() == 0)
 			segData.reserve(_objectSegmentSize);
 
 		segIdx = segData.size();
 		segData.push_back(obj);
 		segData.back().setPoolOwner(_pPoolOwner);
-		index = segNum * _objectSegmentSize + segIdx;
+		objIdx = segNum * _objectSegmentSize + segIdx;
 	} else {
-		index = _availableIndices.back();
-		_availableIndices.pop_back();
+		objIdx = _availableObjIndices.back();
+		_availableObjIndices.pop_back();
 
-		calIndices(index, segNum, segIdx);
-		if (segNum >= _objectSegs.size()) {
-			_objectSegs.push_back(std::make_shared<std::vector<T>>());
+		calObjSegIndices(objIdx, segNum, segIdx);
+		if (segNum >= _objSegmentPtrs.size()) {
+			_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>());
 		}
-		auto& segData = *_objectSegs[segNum];
+		auto& segData = *_objSegmentPtrs[segNum];
 		if (segData.capacity() == 0)
 			segData.reserve(_objectSegmentSize);
 
@@ -496,13 +547,14 @@ size_t ObjectPool<T>::storeAndReturnIndex(const T& obj)
 		// Set the stored copy's owner to our pool owner
 		segData[segIdx].setPoolOwner(_pPoolOwner);
 	}
-	return index;
+	return objIdx;
 }
 
 template<class T>
 Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 {
-	size_t result = -1, index = -1, segNum = -1, segIdx = -1;
+	size_t result = -1, segNum = -1, segIdx = -1;
+	ObjIndex objIdx;
 	if (currentId.isValid()) {
 #if DEBUG_BREAKS && defined(_DEBUG)
 		Index3DId dbgId(0, 7, 5, 1);
@@ -512,18 +564,18 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 #endif
 		// This has never been used or tested. Probably obsolete and needs to be replaced.
 		result = currentId.elementId();
-		index = storeAndReturnIndex(obj);
+		objIdx = storeAndReturnObjIndex(obj);
 
-		if (result >= _idToIndexMap.size())
-			_idToIndexMap.resize(result + 1, -1);
-		_idToIndexMap[result] = index;
+		if (result >= _elementIndexToObjIndexMap.size())
+			_elementIndexToObjIndexMap.resize(result + 1);
+		_elementIndexToObjIndexMap[result] = objIdx;
 	} else {
-		result = _idToIndexMap.size();
-		index = storeAndReturnIndex(obj);
-		_idToIndexMap.push_back(index);
+		result = _elementIndexToObjIndexMap.size();
+		objIdx = storeAndReturnObjIndex(obj);
+		_elementIndexToObjIndexMap.push_back(objIdx);
 	}
 
-	auto pNewEntry = getEntry(_idToIndexMap[result]);
+	auto pNewEntry = getEntryFromObjIndex(_elementIndexToObjIndexMap[result]);
 	assert(pNewEntry);
 	Index3DId newId(_pPoolOwner->getBlockIdx(), result);
 	pNewEntry->setOwner(_pPoolOwner, newId);
@@ -533,39 +585,32 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 }
 
 template<class T>
-const T* ObjectPool<T>::getByElementIndex(size_t id) const
+const T* ObjectPool<T>::getObjPtrByElementIndex(size_t id) const
 {
-	if (id == -1)
-		return _tl_pCompareObj;
-	else if (id < _idToIndexMap.size()) {
-		size_t index = _idToIndexMap[id];
-		return getEntry(index);
+	if (id < _elementIndexToObjIndexMap.size()) {
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id];
+		return getEntryFromObjIndex(objIdx);
 	}
 	return nullptr;
 }
 
 template<class T>
-T* ObjectPool<T>::getByElementIndex(size_t id)
+T* ObjectPool<T>::getObjPtrByElementIndex(size_t id)
 {
-	if (id == -1)
-		return const_cast<T*>(_tl_pCompareObj);
-	else if (id < _idToIndexMap.size()) {
-		size_t index = _idToIndexMap[id];
-		return getEntry(index);
+	if (id < _elementIndexToObjIndexMap.size()) {
+		const auto& objIdx = _elementIndexToObjIndexMap[id];
+		return getEntryFromObjIndex(objIdx);
 	}
 	return nullptr;
 }
 
 template<class T>
-const T* ObjectPool<T>::get(const Index3DId& id) const
+inline const T* ObjectPool<T>::get(const Index3DId& id) const
 {
 	if (!id.isValid())
-		return _tl_pCompareObj;
-	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
-		size_t index = _idToIndexMap[id.elementId()];
-		return getEntry(index);
-	}
-	return nullptr;
+		return (T*)_tl_pCompareObj;
+	else
+		return getEntryFromElementIndex(id.elementId());
 }
 
 template<class T>
@@ -573,11 +618,8 @@ T* ObjectPool<T>::get(const Index3DId& id)
 {
 	if (!id.isValid())
 		return (T*)_tl_pCompareObj;
-	else if ((id.blockIdx() == _pPoolOwner->getBlockIdx()) && id.elementId() < _idToIndexMap.size()) {
-		size_t index = _idToIndexMap[id.elementId()];
-		return getEntry(index);
-	}
-	return nullptr;
+	else
+		return getEntryFromElementIndex(id.elementId());
 }
 
 template<class T>
@@ -598,14 +640,14 @@ template<class T>
 const T& ObjectPool<T>::operator[](const Index3DId& id) const
 {
 	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
-	return *getEntry(_idToIndexMap[id.elementId()]);
+	return *getEntryFromObjIndex(_elementIndexToObjIndexMap[id.elementId()]);
 }
 
 template<class T>
 T& ObjectPool<T>::operator[](const Index3DId& id)
 {
 	assert(id.blockIdx() == _pPoolOwner->getBlockIdx());
-	return *getEntry(_idToIndexMap[id.elementId()]);
+	return *getEntryFromObjIndex(_elementIndexToObjIndexMap[id.elementId()]);
 }
 
 template<class T>
@@ -613,11 +655,11 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	size_t num = _idToIndexMap.size(); // _idToIndexMap can't decrease in size
+	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
 	for (size_t idx = 0; idx < num; idx++) {
-		size_t index = _idToIndexMap[idx];
-		if (index != -1) {
-			auto p = getEntry(index);
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[idx];
+		if (objIdx != -1) {
+			auto p = getEntryFromObjIndex(objIdx);
 			if (p) {
 				Index3DId id(blkIdx, idx);
 				fLambda(id, *p);
@@ -631,11 +673,11 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	size_t num = _idToIndexMap.size(); // _idToIndexMap can't decrease in size
+	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
 	for (size_t idx = 0; idx < num; idx++) {
-		size_t index = _idToIndexMap[idx];
-		if (index != -1) {
-			auto p = getEntry(index);
+		auto objIdx = _elementIndexToObjIndexMap[idx];
+		if (objIdx != -1) {
+			auto p = getEntryFromObjIndex(objIdx);
 			if (p) {
 				Index3DId id(blkIdx, idx);
 				fLambda(id, *p);
@@ -660,17 +702,17 @@ template<class T>
 size_t ObjectPool<T>::getNumAllocated() const
 {
 	size_t size = 0;
-	for (const auto& p : _objectSegs) {
+	for (const auto& p : _objSegmentPtrs) {
 		if (p)
 			size += p->size();
 	}
-	return size - _availableIndices.size();
+	return size - _availableObjIndices.size();
 }
 
 template<class T>
 size_t ObjectPool<T>::getNumAvailable() const
 {
-	return _availableIndices.size();
+	return _availableObjIndices.size();
 }
 
 template<class T>
@@ -719,13 +761,33 @@ void ObjectPool<T>::read(std::istream& in)
 		assert(result == currentId);
 		auto& obj = operator[](currentId);
 		obj.read(in);
+		addToLookup(obj, currentId);
 	}
+}
 
-	if (_supportsReverseLookup) {
-		iterateInOrder([this](const Index3DId& id, const T& obj) {
-			addToLookup(id);
-		});
-	}
+template<class T>
+inline ObjectPool<T>::ObjIndex::ObjIndex(const ObjIndex& src)
+	:_idx (src._idx)
+{
+}
+
+template<class T>
+inline ObjectPool<T>::ObjIndex::operator size_t() const
+{
+	return _idx;
+}
+
+template<class T>
+inline ObjectPool<T>::ObjIndex& ObjectPool<T>::ObjIndex::operator = (size_t rhs)
+{
+	_idx = rhs;
+	return *this;
+}
+
+template<class T>
+inline ObjectPool<T>::ObjIndex& ObjectPool<T>::ObjIndex::operator = (const ObjIndex& rhs) {
+	_idx = rhs._idx;
+	return *this;
 }
 
 }

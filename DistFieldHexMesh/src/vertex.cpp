@@ -62,8 +62,10 @@ void Vertex::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 Vertex& Vertex::operator = (const Vertex& rhs)
 {
 	ObjectPoolOwnerUser::operator= (rhs);
+	_thisId = rhs._thisId;
 	_pt = rhs._pt;
 	_lockType = rhs._lockType;
+	_connectedVertices = rhs._connectedVertices;
 
 	return *this;
 }

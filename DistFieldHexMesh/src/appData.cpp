@@ -721,8 +721,8 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         }));
         _pMainFrame->setFuture(pFuture);
 
-    } catch (const char* errStr) {
-        cout << errStr << "\n";
+    } catch (const std::runtime_error& err) {
+        cout << "Exception thrown: " << err.what() << "\n";
     }
 }
 

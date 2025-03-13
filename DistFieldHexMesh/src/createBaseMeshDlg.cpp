@@ -234,8 +234,7 @@ bool CreateBaseMeshDlg::getValue(wxTextCtrl* item, Index3DBaseType& value) const
 			value = (Index3DBaseType)stoi(wstr.c_str().AsChar());
 			return true;
 		}
-	}
-	catch (const invalid_argument&) {
+	} catch (const invalid_argument&) {
 	}
 
 	return false;

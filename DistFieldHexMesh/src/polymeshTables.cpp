@@ -320,8 +320,8 @@ void PolymeshTables::writePoints(const string& dirName) const
 			}
 		}
 #endif
-	}
-	catch (...) {
+	} catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 	fclose(fOut);
 }
@@ -457,8 +457,8 @@ void PolymeshTables::writeFaces(const string& dirName) const
 			}
 		}
 #endif
-	}
-	catch (...) {
+	}	catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 
 	fclose(fOut);
@@ -494,8 +494,8 @@ void PolymeshTables::writeOwnerCells(const std::string& dirName) const
 			}
 		}
 #endif
-	}
-	catch (...) {
+	} catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 
 	fclose(fOut);
@@ -530,8 +530,8 @@ void PolymeshTables::writeNeighborCells(const std::string& dirName) const
 			}
 		}
 #endif
-	}
-	catch (...) {
+	} catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 
 	fclose(fOut);
@@ -589,8 +589,8 @@ void PolymeshTables::writeBoundaries(const std::string& dirName) const
 
 		fprintf(fOut, ")\n");
 		fprintf(fOut, "//**********************************************************************************//\n");
-	}
-	catch (...) {
+	} catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 
 	fclose(fOut);

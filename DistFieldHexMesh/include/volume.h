@@ -127,6 +127,9 @@ public:
 	void writeObj(const std::string& path, const std::vector<std::vector<Index3DId>>& vertFaceIds) const;
 	void writeObj(std::ostream& out, const std::vector<std::vector<Index3DId>>& vertFaceIds) const;
 
+	void writeObj(const std::string& path, const std::vector<std::vector<Vector3d>>& ptsVec, bool faces) const;
+	void writeObj(std::ostream& out, const std::vector<std::vector<Vector3d>>& ptsVec, bool faces) const;
+
 	void polymeshWrite(const std::string& dirPath, ProgressReporter* pReporter);
 
 	bool write(std::ostream& out) const;

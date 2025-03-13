@@ -129,6 +129,20 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	ObjectPoolOwnerUser::operator=(rhs);
 	clearCache();
+	auto tmp = _faceIds;
+	for (const auto& faceId : tmp) {
+		if (getBlockPtr()->polygonExists(faceId)) {
+			bool isDetached = false;
+			faceFunc(faceId, [this, &isDetached](Polygon& face) {
+				face.removeCellId(getId());
+				isDetached = face.getCellIds().empty();
+			});
+			if (isDetached)
+				getBlockPtr()->freePolygon(faceId);
+		}
+	}
+
+	_thisId = rhs._thisId;
 	_faceIds = rhs._faceIds;
 	_canonicalVertices = rhs._canonicalVertices;
 	_splitLevel = rhs._splitLevel;

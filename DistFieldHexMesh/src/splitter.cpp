@@ -103,51 +103,57 @@ Splitter::~Splitter()
 
 bool Splitter::splitAtCenter()
 {
+	bool result = false;
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
+	try {
 
-	getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
-
-	bool result = false;
-	CellType cellType = CT_UNKNOWN;
-
-	cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
-		// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
-		// match with the neighbor cells's faces.
 #if 0 && defined(_DEBUG)
-		// Now split the parentCell
-		Index3DId testId(6, 4, 5, 0);
-		if (testId == _polyhedronId) {
-			int dbgBreak = 1;
-			_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false);
-		}
+		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
 #endif
 
-		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+		CellType cellType = CT_UNKNOWN;
 
-		parentCell.detachFaces();
-		createHexCellData(parentCell);
+		cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
+			// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
+			// match with the neighbor cells's faces.
+#if 0 && defined(_DEBUG)
+		// Now split the parentCell
+			Index3DId testId(6, 4, 5, 0);
+			if (testId == _polyhedronId) {
+				int dbgBreak = 1;
+				_pBlock->dumpPolyhedraObj({ _polyhedronId }, false, false, false);
+			}
+#endif
 
-		switch (_cornerPts.size()) {
+			Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+
+			parentCell.detachFaces();
+			createHexCellData(parentCell);
+
+			switch (_cornerPts.size()) {
 			case 8:
 				cellType = CT_HEX;
 				break;
 			default:
 				break;
+			}
+			});
+
+		Vector3d tuv(0.5, 0.5, 0.5);
+		switch (cellType) {
+		case CT_HEX:
+			result = splitHexCell(tuv);
+			break;
+		default:
+			result = false;
 		}
-	});
 
-	Vector3d tuv(0.5, 0.5, 0.5);
-	switch (cellType) {
-	case CT_HEX:
-		result = splitHexCell(tuv);
-		break;
-	default:
-		result = false;
-	}
-
-	if (result) {
-		_pBlock->freePolyhedron(_polyhedronId);
+		if (result) {
+			_pBlock->freePolyhedron(_polyhedronId);
+		}
+	} catch (const std::runtime_error& err) {
+		cout << "Exception thrown: " << err.what() << "\n";
 	}
 	return result;
 }
@@ -308,9 +314,11 @@ bool Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int
 
 		auto newId = addHexCell(parentId, subCorners, tol);
 
+#if 0 && defined(_DEBUG)
 		stringstream ss;
 		ss << "D:/DarkSky/Projects/output/objs/new_cell_" << i << ".obj";
 		getBlockPtr()->getVolume()->writeObj(ss.str().c_str(), { newId }, false, false, false);
+#endif
 	}
 #endif
 	return true;
@@ -416,12 +424,14 @@ Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId)
 
 Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId>& cubeVerts, double tol)
 {
+	Index3DId newCellId;
+
 	assert(cubeVerts.size() == 8);
 	vector<vector<Index3DId>> faceVertList;
 	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
 	assert(faceVertList.size() == 6);
 #ifdef _DEBUG
-	Index3DId testId(6, 0, 3, 0);
+	Index3DId testId(1, 2, 4, 0);
 	if (parentId == testId) {
 		int dbgBreak = 1;
 	}
@@ -435,24 +445,26 @@ Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId
 			auto id = getBlockPtr()->addFace(Polygon(faceVerts));
 			faceFunc(id, [](const Polygon& face) {
 				assert(face.getCellIds().size() < 2);
-			});
+				});
 			cellFaceIds.insert(id);
-		} else {
+		}
+		else {
 			// Use createFace to do the complex face slitting
 			createFace(parentId, faceVerts, newFaceIds, tol);
 			if (newFaceIds.empty()) {
 				auto id = getBlockPtr()->addFace(Polygon(faceVerts));
 				faceFunc(id, [](const Polygon& face) {
 					assert(face.getCellIds().size() < 2);
-				});
+					});
 				cellFaceIds.insert(id);
-			} else {
+			}
+			else {
 #ifdef _DEBUG
 				for (const auto& id : newFaceIds) {
 					assert(id.isValid());
 					faceFunc(id, [](const Polygon& face) {
 						assert(face.getCellIds().size() < 2);
-					});
+						});
 				}
 #endif // _DEBUG
 				cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
@@ -460,21 +472,7 @@ Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId
 		}
 	}
 
-	Index3DId newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
-	cellFunc(newCellId, [this](Polyhedron& newCell) {
-		if (!newCell.isClosed()) {
-			getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/open_cell.obj", { newCell.getId() }, false, false, false);
-			assert(!"New cell is not closed.");
-			const auto& faceIds = newCell.getFaceIds();
-			for (const auto& faceId : faceIds) {
-				faceFunc(faceId, [this](const Polygon& face) {
-					const auto& cellIds = face.getCellIds();
-					assert(!cellIds.contains(_polyhedronId));
-				});
-			}
-		}
-	});
-
+	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 	return newCellId;
 }
 
@@ -485,51 +483,140 @@ void Splitter::createFace(const Index3DId& parentId, const vector<Index3DId>& ne
 	FastBisectionSet<Index3DId> oldFaceIds;
 	cellFunc(parentId, [&oldFaceIds](const Polyhedron& parentCell) {
 		oldFaceIds = parentCell.getFaceIds();
-	});
+		});
 
 	Vector3d newFaceNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFaceVertIds);
 	Vector3d newFaceOrigin = getBlockPtr()->getVertexPoint(newFaceVertIds[0]);
 	Planed newFacePlane(newFaceOrigin, newFaceNorm);
 
 	for (const auto& oldFaceId : oldFaceIds) {
-		faceFunc(oldFaceId, [this, &newFacePlane, &newFaceVertIds, &newFaceIds](Polygon& oldFace) {
-			Planed oldFacePlane = oldFace.calPlane();
+#if 0 && defined(_DEBUG)
+#define DUMP_EDGES 1
+			Index3DId testId(2, 0, 3, 0);
+			if (oldFaceId == testId) {
+				int dbgBreak = 1;
+			}
+#endif // _DEBUG
+
+			Planed oldFacePlane;
+			faceFunc(oldFaceId, [this, &oldFacePlane](Polygon& oldFace) {
+				oldFacePlane = oldFace.calPlane();
+				});
+
 			if (!oldFacePlane.isCoincident(newFacePlane.getOrgin(), _distTol))
-				return;
+				continue;
 			Vector3d cp = oldFacePlane.getNormal().cross(newFacePlane.getNormal());
 			if (cp.squaredNorm() > _paramTolSqr)
-				return;
+				continue;
 
-			const auto& oldVertIds = oldFace.getVertexIds();
 			Splitter2D splitter2d(oldFacePlane);
-
 			vector<Vector3d> oldBoundaryPoints, newBoundaryPoints;
-			for (size_t i = 0; i < oldVertIds.size(); i++) {
-				size_t j = (i + 1) % oldVertIds.size();
-				const auto& pt0 = vertexPoint(oldVertIds[i]);
-				const auto& pt1 = vertexPoint(oldVertIds[j]);
-				splitter2d.add3DEdge(pt0, pt1);
+			faceFunc(oldFaceId, [this, &splitter2d, &newFaceVertIds, &oldBoundaryPoints, &newBoundaryPoints](Polygon& oldFace) {
 
-				oldBoundaryPoints.push_back(pt0);
+				const auto& oldVertIds = oldFace.getVertexIds();
+
+				for (size_t i = 0; i < oldVertIds.size(); i++) {
+					size_t j = (i + 1) % oldVertIds.size();
+					const auto& pt0 = vertexPoint(oldVertIds[i]);
+					const auto& pt1 = vertexPoint(oldVertIds[j]);
+					splitter2d.add3DEdge(pt0, pt1);
+
+					oldBoundaryPoints.push_back(pt0);
+				}
+
+				for (size_t i = 0; i < newFaceVertIds.size(); i++) {
+					size_t j = (i + 1) % newFaceVertIds.size();
+					const auto& pt0 = vertexPoint(newFaceVertIds[i]);
+					const auto& pt1 = vertexPoint(newFaceVertIds[j]);
+					splitter2d.add3DEdge(pt0, pt1);
+
+					newBoundaryPoints.push_back(pt0);
+				}
+				});
+
+#ifdef DUMP_EDGES
+			if (oldFaceId == testId) {
+				vector<vector<Vector3d>> edgePts;
+				splitter2d.getEdgePts(edgePts);
+				getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitEdges.obj", edgePts, false);
+				int dbgBreak = 1;
 			}
-
-			for (size_t i = 0; i < newFaceVertIds.size(); i++) {
-				size_t j = (i + 1) % newFaceVertIds.size();
-				const auto& pt0 = vertexPoint(newFaceVertIds[i]);
-				const auto& pt1 = vertexPoint(newFaceVertIds[j]);
-				splitter2d.add3DEdge(pt0, pt1);
-
-				newBoundaryPoints.push_back(pt0);
-			}
-
+#endif // _DEBUG
 			vector<vector<Vector3d>> oldFacePoints, newFacePoints;
 			splitter2d.getFacePoints(oldBoundaryPoints, oldFacePoints); // These face points describe the replacement faces for the oldFace
 			splitter2d.getFacePoints(newBoundaryPoints, newFacePoints);  // These face points describe the replacement faces for the newFace
+
+#if 0
+			for (size_t i = 0; i < oldFacePoints.size(); i++) {
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/oldFacePoints_" << i << ".obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { oldFacePoints[i] });
+			}
+			for (size_t i = 0; i < newFacePoints.size(); i++) {
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/newFacePoints_" << i << ".obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { newFacePoints[i] });
+			}
+#endif
+
+			replaceExistingFaces(oldFaceId, oldFacePoints);
+
+			for (const auto& facePts : newFacePoints) {
+				MTC::vector<Index3DId> vertIds;
+				for (const auto& pt : facePts)
+					vertIds.push_back(vertId(pt));
+				auto newFaceId = getBlockPtr()->addFace(Polygon(vertIds));
+				newFaceIds.insert(newFaceId);
+			}
 			int dbgBreak = 1;
-			// The new face is coplanar with and existing face
-			// Need to build the new face(s) to fit the old face
-			// oldFace.recreateToMatch(newFaceVertIds, newFaceIds);
+	}
+}
+
+void Splitter::replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints)
+{
+	if (!getBlockPtr()->polygonExists(existingFaceId))
+		return; // This is a normal condition. The first pass should have created most of the faces for us.
+
+#if 1 && defined(_DEBUG)
+	Index3DId testId(6, 0, 3, 0);
+	if (existingFaceId == testId) {
+		int dbgBreak = 1;
+	}
+#endif // _DEBUG
+	FastBisectionSet<Index3DId> cellIds;
+	MTC::vector<EdgeKey> edgeKeys;
+	faceFunc(existingFaceId, [&cellIds, &edgeKeys](const Polygon& existingFace) {
+		cellIds = existingFace.getCellIds();
+		edgeKeys = existingFace.getEdgeKeys();
 		});
+
+	getBlockPtr()->freePolygon(existingFaceId);
+
+	if (cellIds.empty())
+		return;
+
+	for (const auto& pts : newFacePoints) {
+		MTC::vector<Index3DId> vertIds;
+		for (const auto& pt : pts)
+			vertIds.push_back(vertId(pt));
+		auto faceId = getBlockPtr()->addFace(Polygon(vertIds));
+		for (const auto& cellId : cellIds) {
+			cellFunc(cellId, [&faceId](Polyhedron& cell) {
+				cell.addFace(faceId);
+				});
+		}
+		for (const auto& edgeKey : edgeKeys) {
+			FastBisectionSet<Index3DId> adjFaceIds;
+			edgeFunc(edgeKey, [&adjFaceIds](const Edge& edge) {
+				adjFaceIds = edge.getFaceIds();
+				});
+			for (const auto& adjFaceId : adjFaceIds) {
+				faceFunc(adjFaceId, [&vertIds](Polygon& adjFace) {
+					for (const auto& vertId : vertIds)
+						adjFace.imprintVertex(vertId);
+					});
+			}
+		}
 	}
 }
 

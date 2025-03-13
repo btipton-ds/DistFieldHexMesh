@@ -55,7 +55,6 @@ public:
 	~Splitter();
 
 	bool splitAtCenter();
-
 private:
 	enum CellType {
 		CT_HEX,
@@ -75,6 +74,7 @@ private:
 	bool splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	Index3DId createScratchCell();
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
+	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const std::vector<Index3DId>& cubeVerts, double tol);
 	void createFace(const Index3DId& parentId, const std::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 

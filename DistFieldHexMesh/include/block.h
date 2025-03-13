@@ -158,12 +158,8 @@ public:
 	CBoundingBox3Dd getBBox() const;
 
 	Index3DId addFace(const Polygon& face);
-	Index3DId findFace(const Polygon& face) const;
-	void addFaceToLookup(const Index3DId& faceId);
-	bool removeFaceFromLookUp(const Index3DId& faceId);
-
-	EdgeKey addEdge(const Index3DId& vert0, const Index3DId& vert1);
 	EdgeKey addEdge(const EdgeKey& edgeKey);
+
 	void addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1);
 	bool removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1);
 
@@ -179,6 +175,7 @@ public:
 
 	Edge* getEdge(const Edge& e);
 	const Edge* getEdge(const Edge& e) const;
+	Index3DId findPolygon(const Polygon& face) const;
 	Polygon& getPolygon(const Index3DId& id);
 	Polyhedron& getPolyhedron(const Index3DId& id);
 

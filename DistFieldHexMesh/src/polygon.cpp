@@ -106,7 +106,7 @@ void Polygon::recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set
 #endif // _DEBUG
 
 	Polygon newPoly(newVertIds);
-	Index3DId id = getBlockPtr()->findFace(newPoly);
+	Index3DId id = getBlockPtr()->findPolygon(newPoly);
 	if (id.isValid()) {
 		faceFunc(id, [](const Polygon& face) {
 			assert(face.getCellIds().size() < 2);
@@ -293,13 +293,20 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
 	disconnectVertEdgeTopology();
+	auto tmp = _cellIds;
+	for (const auto& cellId : tmp) {
+		cellFunc(cellId, [this](Polyhedron& cell) {
+			cell.removeFace(getId());
+		});
+	}
 
 	ObjectPoolOwnerUser::operator=(rhs);
+	_thisId = rhs._thisId;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
 
-	connectVertEdgeTopology();
+	// DO NOT call connectVertEdgeTopology() here!!! The polygon is not in position yet
 	return *this;
 }
 
@@ -340,6 +347,9 @@ void Polygon::clearCache() const
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_sortedIds.clear();
+	_cachedArea = -1;
+	_cachedCentroid = {};
+	_cachedNormal = {};
 }
 
 bool Polygon::cellsOwnThis() const

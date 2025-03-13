@@ -47,6 +47,7 @@ class Polyhedron;
 class Vertex : public ObjectPoolOwnerUser {
 public:
 	static CBoundingBox3Dd calBBox(const Vector3d& pt);
+	static int64_t scaleToSearch();
 	static Vector3<int64_t> scaleToSearch(const Vector3d& pt);
 
 	Vertex() = default;
@@ -88,7 +89,6 @@ protected:
 	void setId(const Index3DId& id) override;
 
 private:
-	static int64_t scaleToSearch();
 	static int64_t scaleToSearch(double v);
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
 

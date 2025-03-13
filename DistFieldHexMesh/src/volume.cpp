@@ -157,7 +157,7 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx, const Index3D& vo
 	result[0] = (Index3DBaseType)temp;
 
 	if (calLinearBlockIndex(result, volDim) != linearIdx) {
-		throw runtime_error("calBlockIndexFromLinearIndex failed");
+		throw runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calBlockIndexFromLinearIndex failed"));
 	}
 
 	return result;
@@ -1496,7 +1496,6 @@ void Volume::writeObj(const string& path, const vector<vector<Index3DId>>& vertF
 {
 	ofstream out(path, ios_base::trunc);
 	writeObj(out, vertFaceIds);
-
 }
 
 void Volume::writeObj(ostream& out, const vector<vector<Index3DId>>& vertFaceIds) const
@@ -1535,6 +1534,50 @@ void Volume::writeObj(ostream& out, const vector<vector<Index3DId>>& vertFaceIds
 		out << "\n";
 	}
 
+}
+
+void Volume::writeObj(const std::string& path, const std::vector<std::vector<Vector3d>>& ptsVec, bool faces) const
+{
+	ofstream out(path, ios_base::trunc);
+	writeObj(out, ptsVec, faces);
+}
+
+void Volume::writeObj(std::ostream& out, const std::vector<std::vector<Vector3d>>& ptsVec, bool faces) const
+{
+	vector<Vector3d> pts;
+	VertSearchTree_size_t_8 pointToIdxMap(_modelBoundingBox);
+
+	vector<vector<size_t>> faceIndices;
+	for (const auto& tmpPts : ptsVec) {
+		vector<size_t> indices;
+		for (const auto& pt : tmpPts) {
+			size_t idx;
+			if (!pointToIdxMap.find(pt, idx)) {
+				idx = pts.size();
+				pts.push_back(pt);
+				pointToIdxMap.add(pt, idx);
+			}
+			indices.push_back(idx);
+		}
+		faceIndices.push_back(indices);
+	}
+
+	out << "#Vertices " << pts.size() << "\n";
+	for (const auto& pt : pts) {
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	out << "#Faces " << faceIndices.size() << "\n";
+	for (const auto& indices : faceIndices) {
+		if (faces)
+			out << "f ";
+		else
+			out << "l ";
+		for (const auto& i : indices) {
+			out << (i + 1) << " ";
+		}
+		out << "\n";
+	}
 }
 
 void Volume::polymeshWrite(const string& dirPath, ProgressReporter* pReporter)
