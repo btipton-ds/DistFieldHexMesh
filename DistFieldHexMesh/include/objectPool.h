@@ -307,8 +307,10 @@ void ObjectPool<T>::testReset()
 template<class T>
 inline bool ObjectPool<T>::calObjSegIndices(const ObjIndex& objIdx, size_t& segNum, size_t& segIdx) const
 {
-	segNum = objIdx / _objectSegmentSize;
-	segIdx = objIdx % _objectSegmentSize;
+	size_t idx = objIdx;
+	assert(idx != -1);
+	segNum = idx / _objectSegmentSize;
+	segIdx = idx % _objectSegmentSize;
 	return segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size();
 }
 
@@ -378,8 +380,8 @@ bool ObjectPool<T>::free(const Index3DId& globalId)
 		removeFromLookup(globalId);
 
 		*p = {};
-		const ObjIndex& objIdx = _elementIndexToObjIndexMap[globalId.elementId()];
-		_elementIndexToObjIndexMap[globalId.elementId()] = -1; // Clear this id so it won't be used again
+		const ObjIndex objIdx = _elementIndexToObjIndexMap[globalId.elementId()];
+		_elementIndexToObjIndexMap[globalId.elementId()] = ObjIndex(); // Clear this id so it won't be used again
 		_availableObjIndices.push_back(objIdx);
 
 		return true;
