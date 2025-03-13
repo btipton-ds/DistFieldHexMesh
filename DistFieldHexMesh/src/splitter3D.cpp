@@ -38,7 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <polygon.h>
 #include <polyhedron.h>
-#include <splitter.h>
+#include <splitter3D.h>
 #include <splitter2D.h>
 #include <block.h>
 #include <tolerances.h>
@@ -53,7 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-thread_local VolumePtr Splitter::_pScratchVol;
+thread_local VolumePtr Splitter3D::_pScratchVol;
 
 namespace
 {
@@ -62,12 +62,12 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-void Splitter::reset()
+void Splitter3D::reset()
 {
 	_pScratchBlock->clear();
 }
 
-void Splitter::dumpSplitStats()
+void Splitter3D::dumpSplitStats()
 {
 	cout << "Num splits 2: " << numSplits2 << "\n";
 	cout << "Num splits 4: " << numSplits4 << "\n";
@@ -78,12 +78,12 @@ void Splitter::dumpSplitStats()
 	numSplitsComplex8 = 0;
 }
 
-void Splitter::clearThreadLocal()
+void Splitter3D::clearThreadLocal()
 {
 	_pScratchVol = nullptr;
 }
 
-Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _pSrcBlock(pBlock)
 	, _polyhedronId(polyhedronId)
@@ -95,13 +95,13 @@ Splitter::Splitter(Block* pBlock, const Index3DId& polyhedronId, vector<Index3DI
 	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 }
 
-Splitter::~Splitter()
+Splitter3D::~Splitter3D()
 {
 	if (_pScratchVol)
 		_pScratchVol->clearEntries();
 }
 
-bool Splitter::splitAtCenter()
+bool Splitter3D::splitAtCenter()
 {
 	bool result = false;
 	if (!_pBlock->polyhedronExists(_polyhedronId))
@@ -158,17 +158,17 @@ bool Splitter::splitAtCenter()
 	return result;
 }
 
-inline Index3DId Splitter::vertId(const Vector3d& pt)
+inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 {
 	return _pBlock->getVertexIdOfPoint(pt);
 }
 
-inline const Vector3d& Splitter::vertexPoint(const  Index3DId& id) const
+inline const Vector3d& Splitter3D::vertexPoint(const  Index3DId& id) const
 {
 	return _pBlock->getVertexPoint(id);
 }
 
-bool Splitter::splitHexCell(const Vector3d& tuv)
+bool Splitter3D::splitHexCell(const Vector3d& tuv)
 {
 	bool wasSplit = false;
 #if 0
@@ -225,7 +225,7 @@ bool Splitter::splitHexCell(const Vector3d& tuv)
 	return wasSplit;
 }
 
-bool Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
+bool Splitter3D::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 {
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
 
@@ -263,7 +263,7 @@ bool Splitter::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 	return true;
 }
 
-bool Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis)
+bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis)
 {
 #if 0
 	splitHexCell8(parentId, tuv);
@@ -324,7 +324,7 @@ bool Splitter::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int
 	return true;
 }
 
-bool Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis)
+bool Splitter3D::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis)
 {
 #if 0
 	splitHexCell8(parentId, tuv);
@@ -376,7 +376,7 @@ bool Splitter::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int
 	return true;
 }
 
-Index3DId Splitter::createScratchCell()
+Index3DId Splitter3D::createScratchCell()
 {
 	Utils::ScopedRestore restore(_pBlock);
 	_pBlock = _pSrcBlock;
@@ -401,7 +401,7 @@ Index3DId Splitter::createScratchCell()
 	return scratchCellId;
 }
 
-Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId)
+Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 {
 	Utils::ScopedRestore restore(_pBlock);
 	_pBlock = _pSrcBlock;
@@ -422,7 +422,7 @@ Index3DId Splitter::createScratchFace(const Index3DId& srcFaceId)
 	return newFaceId;
 }
 
-Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId>& cubeVerts, double tol)
+Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const vector<Index3DId>& cubeVerts, double tol)
 {
 	Index3DId newCellId;
 
@@ -476,7 +476,7 @@ Index3DId Splitter::addHexCell(const Index3DId& parentId, const vector<Index3DId
 	return newCellId;
 }
 
-void Splitter::createFace(const Index3DId& parentId, const vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
+void Splitter3D::createFace(const Index3DId& parentId, const vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
 	Index3DId result;
 
@@ -572,7 +572,7 @@ void Splitter::createFace(const Index3DId& parentId, const vector<Index3DId>& ne
 	}
 }
 
-void Splitter::replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints)
+void Splitter3D::replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints)
 {
 	if (!getBlockPtr()->polygonExists(existingFaceId))
 		return; // This is a normal condition. The first pass should have created most of the faces for us.
@@ -620,7 +620,7 @@ void Splitter::replaceExistingFaces(const Index3DId& existingFaceId, const std::
 	}
 }
 
-void Splitter::createHexCellData(const Polyhedron& parentCell)
+void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 {
 	auto& cornerVertIds = parentCell.getCanonicalVertIds();
 	_cornerPts.reserve(cornerVertIds.size());
@@ -640,43 +640,43 @@ void Splitter::createHexCellData(const Polyhedron& parentCell)
 
 }
 
-//LAMBDA_CLIENT_IMPLS(Splitter)
-void Splitter::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+//LAMBDA_CLIENT_IMPLS(Splitter3D)
+void Splitter3D::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+void Splitter3D::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+void Splitter3D::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+void Splitter3D::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+void Splitter3D::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+void Splitter3D::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Splitter::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }

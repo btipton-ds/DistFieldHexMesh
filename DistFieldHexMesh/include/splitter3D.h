@@ -47,12 +47,12 @@ using VolumePtr = std::shared_ptr<Volume>;
 class Polygon;
 class Polyhedron;
 
-class Splitter {
+class Splitter3D {
 public:
 	static void dumpSplitStats();
 	static void clearThreadLocal();
-	Splitter(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
-	~Splitter();
+	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, std::vector<Index3DId>& localTouched);
+	~Splitter3D();
 
 	bool splitAtCenter();
 private:
@@ -100,12 +100,12 @@ private:
 	thread_local static VolumePtr _pScratchVol;
 };
 
-inline Block* Splitter::getBlockPtr()
+inline Block* Splitter3D::getBlockPtr()
 {
 	return _pBlock;
 }
 
-inline const Block* Splitter::getBlockPtr() const
+inline const Block* Splitter3D::getBlockPtr() const
 {
 	return _pBlock;
 }

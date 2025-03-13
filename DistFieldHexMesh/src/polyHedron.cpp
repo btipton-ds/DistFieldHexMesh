@@ -47,7 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <volume.h>
 #include <logger.h>
-#include <splitter.h>
+#include <splitter3D.h>
 #include <tolerances.h>
 #include <utils.h>
 #include <meshData.h>

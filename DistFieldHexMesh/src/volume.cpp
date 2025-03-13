@@ -46,7 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <splitParams.h>
 #include <vertex.h>
-#include <splitter.h>
+#include <splitter3D.h>
 #include <vertexSpatialTree.h>
 #include <tolerances.h>
 #include <utils.h>
@@ -695,7 +695,7 @@ void Volume::divideHexMesh(vector<MeshDataPtr>& meshData, const SplittingParams&
 		divideSimple(params, pReporter, multiCore);
 		divideConitional(params, pReporter, multiCore);
 		MultiCore::runLambda([](size_t treadNum, size_t numThreads) {
-			Splitter::clearThreadLocal();
+			Splitter3D::clearThreadLocal();
 		}, multiCore);
 
 // TODO we should be able to clear the reference topology now
@@ -712,7 +712,7 @@ void Volume::divideHexMesh(vector<MeshDataPtr>& meshData, const SplittingParams&
 	Utils::Timer::dumpAll();
 	//	dumpCellHistogram();
 
-	Splitter::dumpSplitStats();
+	Splitter3D::dumpSplitStats();
 }
 
 void Volume::dumpCellHistogram() const
@@ -840,8 +840,8 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			vector<Index3DId> localTouched;
 			if (cell.intersectsModel()) {
-				Splitter ps(pBlk.get(), cellId, localTouched);
 #if 0
+				Splitter3D ps(pBlk.get(), cellId, localTouched);
 				if (ps.cutWithModelMesh(params))
 					changed = true;
 #endif
