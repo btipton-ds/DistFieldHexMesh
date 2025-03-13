@@ -154,7 +154,9 @@ Index3D Block::calSubBlockIndexFromLinear(size_t linearIdx) const
 
 	result[0] = (Index3DBaseType)temp;
 	if (calLinearSubBlockIndex(result) != linearIdx) {
-		throw runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calSubBlockIndexFromLinear failed."));
+		assert(!"calSubBlockIndexFromLinear failed.");
+		std::string msg = std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calSubBlockIndexFromLinear failed.");
+		throw runtime_error(msg);
 	}
 	return result;
 }

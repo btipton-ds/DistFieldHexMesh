@@ -204,7 +204,9 @@ private:
 			if (pLHS && pRHS)
 				return *pLHS < *pRHS;
 
-			throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" comparing deleted object(s)"));
+			assert(!"comparing deleted object(s)");
+			std::string msg = std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" comparing deleted object(s)");
+			throw std::runtime_error(msg);
 		}
 
 		const ObjectPool& _owner;

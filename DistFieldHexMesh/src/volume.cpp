@@ -157,7 +157,9 @@ Index3D Volume::calBlockIndexFromLinearIndex(size_t linearIdx, const Index3D& vo
 	result[0] = (Index3DBaseType)temp;
 
 	if (calLinearBlockIndex(result, volDim) != linearIdx) {
-		throw runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calBlockIndexFromLinearIndex failed"));
+		assert(!"calSubBlockIndexFromLinear failed.");
+		std::string msg = std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" calSubBlockIndexFromLinear failed.");
+		throw runtime_error(msg);
 	}
 
 	return result;

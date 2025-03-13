@@ -345,10 +345,15 @@ template<class F>
 void Polygon::iterateTriangles(F fLambda) const
 {
 	const auto& verts = _vertexIds;
-	size_t i = 0;
-	for (size_t j = 1; j < verts.size() - 1; j++) {
-		size_t k = j + 1;
-		if (!fLambda(verts[i], verts[j], verts[k]))
+	Vector3d ctr(0, 0, 0);
+	for (size_t i = 0; i < verts.size(); i++) {
+		ctr += getVertexPoint(verts[i]);
+	}
+	ctr /= verts.size();
+
+	for (size_t i = 0; i < verts.size(); i++) {
+		size_t j = (i + 1) % verts.size();
+		if (!fLambda(ctr, verts[i], verts[j]))
 			break;
 	}
 }
