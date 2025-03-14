@@ -209,25 +209,22 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
-	void premodify();
-	void postmodify();
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
-	void sortIds() const;
+	void sortIds(const Block* pBlock) const;
 
 	Index3DId _thisId;
 
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
 
-	mutable bool _sortedIdsVaild = false;
 	mutable bool _cachedCentroidValid = false;
 	mutable bool _cachedNormalValid = false;
 
 	mutable Trinary _isConvex = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
-	mutable MTC::vector<Index3DId> _sortedIds;
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid, _cachedNormal;
+	mutable MTC::vector<Index3DId> _sortedIds;
 };
 
 inline bool Polygon::verifyUnique() const

@@ -176,7 +176,6 @@ void Polygon::addVertex(const Index3DId& vertId)
 
 void Polygon::clearCache() const
 {
-	_sortedIdsVaild = false;
 	_cachedCentroidValid = false;
 	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
@@ -251,11 +250,32 @@ bool Polygon::load(istream& in, size_t idSelf)
 	return true;
 }
 
-void Polygon::sortIds() const
+namespace {
+	inline bool isColinear(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
+	{
+		Vector3d v0 = pt1 - pt0;
+		Vector3d v1 = pt2 - pt1;
+		v0.normalize();
+		v1.normalize();
+		double cpSqr = v1.cross(v0).squaredNorm();
+		return cpSqr < Tolerance::paramTolSqr();
+	}
+}
+
+void Polygon::sortIds(const Block* pBlock) const
 {
-	if (!_sortedIdsVaild) {
-		_sortedIdsVaild = true;
-		_sortedIds = _vertexIds;
+	if (_sortedIds.empty()) {
+		for (size_t j = 0; j < _vertexIds.size(); j++) {
+			size_t i = (j + _vertexIds.size() - 1) % _vertexIds.size();
+			size_t k = (j + 1) % _vertexIds.size();
+			const auto& pt0 = pBlock->getVertexPoint(_vertexIds[i]);
+			const auto& pt1 = pBlock->getVertexPoint(_vertexIds[j]);
+			const auto& pt2 = pBlock->getVertexPoint(_vertexIds[k]);
+			if (!isColinear(pt0, pt1, pt2)) {
+				_sortedIds.push_back(_vertexIds[j]);
+			}
+		}
+
 		sort(_sortedIds.begin(), _sortedIds.end());
 	}
 }
@@ -263,8 +283,10 @@ void Polygon::sortIds() const
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
-	sortIds();
-	rhs.sortIds();
+	const Block* pBlock = getOurBlockPtr() ? getOurBlockPtr() : rhs.getOurBlockPtr();
+	assert(pBlock);
+	sortIds(pBlock);
+	rhs.sortIds(pBlock);
 
 	if (_sortedIds.size() < rhs._sortedIds.size())
 		return true;
@@ -804,19 +826,6 @@ bool Polygon::imprintVertices(const std::set<Index3DId>& imprintVerts)
 	return imprintVertices(ids);
 }
 
-void Polygon::premodify()
-{
-	disconnectVertEdgeTopology();
-	getBlockPtr()->removePolygonFromLookup(*this);	// Imprinting vertices changes face search, remove it before we change it
-	clearCache();
-}
-
-void Polygon::postmodify()
-{
-	getBlockPtr()->addPolygonToLookup(*this);		// Now that we have new vertices, reinsert it.
-	connectVertEdgeTopology();
-}
-
 bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 {
 	const double tol = Tolerance::sameDistTol();
@@ -845,11 +854,12 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 	}
 
 	if (tmp.size() > _vertexIds.size()) {
-		premodify();
+		disconnectVertEdgeTopology();
+		clearCache();
 
 		_vertexIds = tmp;
 
-		postmodify();
+		connectVertEdgeTopology();
 		return true;
 	}
 

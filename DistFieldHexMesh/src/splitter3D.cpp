@@ -177,7 +177,7 @@ void Splitter3D::connectVertEdgeTopology()
 		});
 	}
 
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 	bool valid = true;
 	for (const auto& cellId : _adjacentCellIds) {
 		cellFunc(cellId, [pVol, &valid](Polyhedron& cell) {

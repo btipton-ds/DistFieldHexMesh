@@ -1650,6 +1650,7 @@ bool Volume::read(istream& in)
 	if (num > 0) {
 		_blocks.resize(num);
 
+		// Read all the blocks
 		for (size_t i = 0; i < _blocks.size(); i++) {
 			bool isNull;
 			in.read((char*)&isNull, sizeof(isNull));
@@ -1660,9 +1661,16 @@ bool Volume::read(istream& in)
 			auto pBlock = createBlock(blockIdx, true);
 			_blocks[i] = pBlock;
 			pBlock->_pVol = this;
+
+			// Disable creation of search trees until after everything is loaded
+			pBlock->setSupportsReverseLookup(false);
 			pBlock->read(in);
 		}
 
+		// Now create the search trees
+		for (size_t i = 0; i < _blocks.size(); i++) {
+			_blocks[i]->setSupportsReverseLookup(true);
+		}
 	}
 
 	const auto& meshData = _pAppData->getMeshData();

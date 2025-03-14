@@ -572,6 +572,17 @@ void Block::addPolygonToLookup(const DFHM::Polygon& face)
 	assert(pOwner);
 	assert(pOwner->_polygons.exists(face.getId()));
 	pOwner->_polygons.addToLookup(face);
+#ifdef _DEBUG
+	// The copy in storage must ALWAYS be the most complex copy with imprinted vertices.
+	// Replacing a simple face, with a complex face assures edge and vertex fusing
+	// If a complex face is replaced with a simpler one, it breaks fusing
+	const Polygon* pFace = pOwner->_polygons.get(face);
+	if (pFace->getVertexIds().size() >= face.getVertexIds().size())
+	{
+		assert(!"Trying to replace a complex face with a simpler one is not allowed. Delete the old one first, then add the new one if this is requred.");
+	}
+#endif // _DEBUG
+
 }
 
 void Block::removePolygonFromLookup(const DFHM::Polygon& face)
@@ -810,6 +821,11 @@ bool Block::write(ostream& out) const
 	_polyhedra.write(out);
 
 	return true;
+}
+
+void Block::setSupportsReverseLookup(bool val)
+{
+	_polygons.setSupportsReverseLookup(val);
 }
 
 bool Block::read(istream& in)

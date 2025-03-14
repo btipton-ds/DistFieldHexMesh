@@ -167,6 +167,7 @@ public:
 	size_t getNumUnloaded() const;
 
 	void write(std::ostream& out) const;
+	void setSupportsReverseLookup(bool val);
 	void read(std::istream& in);
 
 private:
@@ -736,7 +737,6 @@ void ObjectPool<T>::write(std::ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
-	out.write((char*)&_supportsReverseLookup, sizeof(_supportsReverseLookup));
 	out.write((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
 
 	size_t numObjs = 0;
@@ -752,12 +752,23 @@ void ObjectPool<T>::write(std::ostream& out) const
 }
 
 template<class T>
+void ObjectPool<T>::setSupportsReverseLookup(bool val)
+{
+	_supportsReverseLookup = val;
+	_objToElementIndexMap.clear();
+	if (_supportsReverseLookup) {
+		iterateInOrder([this](const Index3DId& id, T& obj) {
+			addToLookup(obj);
+		});
+	}
+}
+
+template<class T>
 void ObjectPool<T>::read(std::istream& in)
 {
 	uint8_t version = -1;
 	in.read((char*)&version, sizeof(version));
 
-	in.read((char*)&_supportsReverseLookup, sizeof(_supportsReverseLookup));
 	in.read((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
 
 	size_t numObjs = -1;

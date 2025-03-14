@@ -204,6 +204,7 @@ public:
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool write(std::ostream& outStream) const;
+	void setSupportsReverseLookup(bool val);
 	bool read(std::istream& inStream);
 
 	bool isAutoTopologyEnabled() const;
