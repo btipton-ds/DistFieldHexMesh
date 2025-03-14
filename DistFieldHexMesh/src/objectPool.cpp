@@ -247,13 +247,13 @@ string ObjectPoolOwner::getLoggerNumericCode() const
 string ObjectPoolOwner::getLoggerNumericCode(const Index3D& idx)
 {
 	stringstream ss;
-	ss << idx[0] << "_" << idx[1] << "_" << idx[2];
+	ss << ((int)idx[0]) << "_" << ((int)idx[1]) << "_" << ((int)idx[2]);
 	return ss.str();
 }
 
 string ObjectPoolOwner::getLoggerNumericCode(const Index3DId& id)
 {
 	stringstream ss;
-	ss << id[0] << "_" << id[1] << "_" << id[2] << "_" << id.elementId();
+	ss << ((int)id[0]) << "_" << ((int)id[1]) << "_" << ((int)id[2]) << "_" << id.elementId();
 	return ss.str();
 }

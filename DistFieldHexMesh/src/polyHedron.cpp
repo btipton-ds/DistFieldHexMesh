@@ -1026,22 +1026,36 @@ void Polyhedron::orientFaces()
 void Polyhedron::attachFaces()
 {
 	for (const auto& faceId : _faceIds) {
-		if (polygonExists(faceId)) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.addCellId(getId());
-			});
-		}
+		faceFunc(faceId, [this](Polygon& face) {
+			face.addCellId(getId());
+		});
 	}
 }
 
 void Polyhedron::detachFaces()
 {
 	for (const auto& faceId : _faceIds) {
-		if (polygonExists(faceId)) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.removeCellId(getId());
-			});
-		}
+		faceFunc(faceId, [this](Polygon& face) {
+			face.removeCellId(getId());
+		});
+	}
+}
+
+void Polyhedron::connectVertEdgeTopology()
+{
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](Polygon& face) {
+			face.connectVertEdgeTopology();
+		});
+	}
+}
+
+void Polyhedron::disconnectVertEdgeTopology()
+{
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this](Polygon& face) {
+			face.disconnectVertEdgeTopology();
+		});
 	}
 }
 

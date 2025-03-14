@@ -119,6 +119,9 @@ public:
 	void attachFaces();
 	void detachFaces();
 
+	void connectVertEdgeTopology();
+	void disconnectVertEdgeTopology();
+
 	int32_t getLayerNum() const;
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);

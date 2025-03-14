@@ -61,10 +61,21 @@ private:
 		CT_UNKNOWN,
 	};
 
+	struct ScopedDisconnect {
+		ScopedDisconnect(Splitter3D& splitter);
+		~ScopedDisconnect();
+		Splitter3D& _splitter;
+	};
+
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
 	void reset();
+
+	void disconnectVertEdgeTopology();
+	void connectVertEdgeTopology();
+	void imprintEverything();
+
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& vertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
@@ -81,6 +92,7 @@ private:
 	LAMBDA_CLIENT_DECLS;
 
 	bool _testRun = false;
+	bool _priorAutoConnectTopology = true;
 	Block* _pBlock;
 	Block* _pSrcBlock;
 	Block* _pScratchBlock;
@@ -96,6 +108,7 @@ private:
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
+	FastBisectionSet<Index3DId> _adjacentCellIds, _newCellIds;
 
 	thread_local static VolumePtr _pScratchVol;
 };

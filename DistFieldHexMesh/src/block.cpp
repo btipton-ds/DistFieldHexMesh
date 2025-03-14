@@ -564,6 +564,29 @@ CBoundingBox3Dd Block::getBBox() const
 	return _corners.getBBox();
 }
 
+void Block::addPolygonToLookup(const DFHM::Polygon& face)
+{
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);
+	assert(ownerBlockIdx.isValid());
+	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
+	assert(pOwner->_polygons.exists(face.getId()));
+	pOwner->_polygons.addToLookup(face, face.getId());
+}
+
+void Block::removePolygonFromLookup(const DFHM::Polygon& face)
+{
+	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);
+	assert(ownerBlockIdx.isValid());
+	auto* pOwner = getOwner(ownerBlockIdx);
+	assert(pOwner);
+	auto faceId = pOwner->_polygons.findId(face);
+	if (faceId.isValid()) {
+		assert(faceId == face.getId());
+		pOwner->_polygons.removeFromLookup(faceId);
+	}
+}
+
 Index3DId Block::findPolygon(const Polygon& face) const
 {
 	Index3D ownerBlockIdx = determineOwnerBlockIdx(face);

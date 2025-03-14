@@ -114,7 +114,6 @@ public:
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addVertex(const Index3DId& vertId);
-	void recreateToMatch(const std::vector<Index3DId>& newVertIds, MTC::set<Index3DId>& newFaceIds);
 	void connectVertEdgeTopology();
 	void disconnectVertEdgeTopology();
 
@@ -172,7 +171,8 @@ public:
 	Vector3d projectPoint(const Vector3d& pt) const;
 
 	bool cellsOwnThis() const;
-	bool imprintVertex(const Index3DId& imprintVert);
+	bool imprintVertices(const std::vector<Index3DId>& imprintVerts);
+	bool imprintVertices(const std::set<Index3DId>& imprintVerts);
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
@@ -209,10 +209,10 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
+	void premodify();
+	void postmodify();
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
 	void sortIds() const;
-	void recreateToMatch1(const Index3DId& newVertToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds);
-	void recreateToMatch2(const MTC::vector<Index3DId>& newVertsToInsert, const MTC::vector<size_t>& insertionIndices, const Polygon& newPoly, MTC::set<Index3DId>& newFaceIds);
 
 	Index3DId _thisId;
 

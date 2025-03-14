@@ -682,6 +682,7 @@ void AppData::doCreateBaseVolume()
 
         _pVolume->buildModelBlocks(_params, cubePts, volBox, _pMainFrame, RUN_MULTI_THREAD);
 
+        assert(_pVolume->verifyTopology(true));
         //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
         _pVolume->setLayerNums();

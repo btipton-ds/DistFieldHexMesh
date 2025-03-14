@@ -175,6 +175,9 @@ public:
 
 	Edge* getEdge(const Edge& e);
 	const Edge* getEdge(const Edge& e) const;
+
+	void addPolygonToLookup(const DFHM::Polygon& face);
+	void removePolygonFromLookup(const DFHM::Polygon& face);
 	Index3DId findPolygon(const Polygon& face) const;
 	Polygon& getPolygon(const Index3DId& id);
 	Polyhedron& getPolyhedron(const Index3DId& id);
@@ -202,6 +205,9 @@ public:
 	void pack();
 	bool write(std::ostream& outStream) const;
 	bool read(std::istream& inStream);
+
+	bool isAutoTopologyEnabled() const;
+	void setAutoTopologyEnabled(bool val);
 
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
@@ -280,6 +286,7 @@ private:
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
 
+	bool _autoTopologyEnabled = true;
 	Index3D _blockIdx;
 
 	Volume* _pVol;
@@ -420,5 +427,14 @@ inline void Block::addToTouchedCellList(const Index3DId& id)
 		pOwner->_touchedCellIds.insert(id);
 }
 
+inline bool Block::isAutoTopologyEnabled() const
+{
+	return _autoTopologyEnabled;
+}
+
+inline void Block::setAutoTopologyEnabled(bool val)
+{
+	_autoTopologyEnabled = val;
+}
 
 }

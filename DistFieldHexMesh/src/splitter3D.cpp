@@ -62,9 +62,193 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
+Splitter3D::ScopedDisconnect::ScopedDisconnect(Splitter3D& splitter)
+	: _splitter(splitter)
+{
+	splitter.disconnectVertEdgeTopology();
+}
+
+Splitter3D::ScopedDisconnect::~ScopedDisconnect()
+{
+	_splitter.imprintEverything();
+	_splitter.connectVertEdgeTopology();
+}
+
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
+	: _pBlock(pBlock)
+	, _pSrcBlock(pBlock)
+	, _polyhedronId(polyhedronId)
+	, _localTouched(localTouched)
+	, _params(pBlock->getSplitParams())
+{
+	if (!_pScratchVol)
+		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
+	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
+
+	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
+		assert(cell.verifyTopology());
+	});
+}
+
+Splitter3D::~Splitter3D()
+{
+	if (_pScratchVol)
+		_pScratchVol->clearEntries();
+}
+
 void Splitter3D::reset()
 {
 	_pScratchBlock->clear();
+}
+
+void Splitter3D::disconnectVertEdgeTopology()
+{
+	auto pVol = getBlockPtr()->getVolume();
+#if 1 && defined(_DEBUG)
+	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
+		assert(cell.verifyTopology());
+	});
+
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			assert(cell.verifyTopology());
+		});
+	}
+#endif
+
+	_priorAutoConnectTopology = getBlockPtr()->isAutoTopologyEnabled();
+	cellFunc(_polyhedronId, [this, pVol](Polyhedron& cell) {
+		_adjacentCellIds = cell.getAdjacentCells();
+
+		const auto& id = cell.getId();
+		stringstream ss;
+		ss << "D:/DarkSky/Projects/output/objs/origCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
+		pVol->writeObj(ss.str(), { cell.getId() }, false, false, false);
+
+		cell.detachFaces();
+		cell.disconnectVertEdgeTopology();
+	});
+
+	set<Index3D> blockIds;
+	for (const auto& cellId : _adjacentCellIds) {
+		blockIds.insert(cellId);
+	}
+
+	for (const auto& id : blockIds) {
+		pVol->getBlockPtr(id)->setAutoTopologyEnabled(false);
+	}
+}
+
+void Splitter3D::connectVertEdgeTopology()
+{
+	set<Index3D> blockIds;
+	for (const auto& cellId : _adjacentCellIds) {
+		blockIds.insert(cellId);
+	}
+
+	auto pVol = getBlockPtr()->getVolume();
+	for (const auto& id : blockIds) {
+		pVol->getBlockPtr(id)->setAutoTopologyEnabled(_priorAutoConnectTopology);
+	}
+	
+	for (const auto& cellId : _newCellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			cell.detachFaces();
+		});
+	}
+
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			cell.detachFaces();
+		});
+	}
+
+	for (const auto& cellId : _newCellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			cell.attachFaces();
+			cell.connectVertEdgeTopology();
+		});
+	}
+
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [](Polyhedron& cell) {
+			cell.attachFaces();
+			cell.connectVertEdgeTopology();
+		});
+	}
+
+#if 1 && defined(_DEBUG)
+	bool valid = true;
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [pVol, &valid](Polyhedron& cell) {
+			if (!cell.verifyTopology()) {
+				valid = false;
+			}
+		});
+	}
+
+	for (const auto& cellId : _newCellIds) {
+		assert(getBlockPtr()->polyhedronExists(cellId));
+		cellFunc(cellId, [pVol, &valid](Polyhedron& cell) {
+			if (!cell.verifyTopology()) {
+				valid = false;
+			}
+		});
+	}
+
+	if (!valid) {
+		for (const auto& cellId : _adjacentCellIds) {
+			cellFunc(cellId, [this, pVol, &valid](Polyhedron& cell) {
+				if (!cell.verifyTopology()) {
+					stringstream ss;
+					ss << "D:/DarkSky/Projects/output/objs/badAdjCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
+					pVol->writeObj(ss.str(), { cell.getId() }, false, false, false);
+				}
+			});
+		}
+
+		for (const auto& cellId : _newCellIds) {
+			assert(getBlockPtr()->polyhedronExists(cellId));
+			cellFunc(cellId, [this, pVol, &valid](Polyhedron& cell) {
+				if (!cell.verifyTopology()) {
+					const auto& id = cell.getId();
+					stringstream ss;
+					ss << "D:/DarkSky/Projects/output/objs/badNewCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
+					pVol->writeObj(ss.str(), { cell.getId() }, false, false, false);
+				}
+			});
+		}
+		assert(!"Invalid cells");
+	}
+#endif
+}
+
+void Splitter3D::imprintEverything()
+{
+	size_t numImprints = 0;
+	set<Index3DId> allVertIds;
+	for (const auto& cellId : _newCellIds) {
+		cellFunc(cellId, [this, &allVertIds](const Polyhedron& cell) {
+			for (const auto& faceId : cell.getFaceIds()) {
+				faceFunc(faceId, [&allVertIds](const Polygon& face) {
+					const auto& temp = face.getVertexIds();
+					allVertIds.insert(temp.begin(), temp.end());
+				});
+			}
+		});
+	}
+
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [this, &allVertIds, &numImprints](Polyhedron& cell) {
+			for (const auto& faceId : cell.getFaceIds()) {
+				faceFunc(faceId, [&allVertIds, &numImprints](Polygon& face) {
+					if (face.imprintVertices(allVertIds)) {
+						numImprints++;
+					}
+				});
+			}
+		});
+	}
 }
 
 void Splitter3D::dumpSplitStats()
@@ -83,24 +267,6 @@ void Splitter3D::clearThreadLocal()
 	_pScratchVol = nullptr;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
-	: _pBlock(pBlock)
-	, _pSrcBlock(pBlock)
-	, _polyhedronId(polyhedronId)
-	, _localTouched(localTouched)
-	, _params(pBlock->getSplitParams())
-{
-	if (!_pScratchVol)
-		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
-	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
-}
-
-Splitter3D::~Splitter3D()
-{
-	if (_pScratchVol)
-		_pScratchVol->clearEntries();
-}
-
 bool Splitter3D::splitAtCenter()
 {
 	bool result = false;
@@ -115,6 +281,7 @@ bool Splitter3D::splitAtCenter()
 		CellType cellType = CT_UNKNOWN;
 
 		cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
+			assert(parentCell.verifyTopology());
 			// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
 			// match with the neighbor cells's faces.
 #if 0 && defined(_DEBUG)
@@ -128,7 +295,6 @@ bool Splitter3D::splitAtCenter()
 
 			Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
-			parentCell.detachFaces();
 			createHexCellData(parentCell);
 
 			switch (_cornerPts.size()) {
@@ -138,7 +304,7 @@ bool Splitter3D::splitAtCenter()
 			default:
 				break;
 			}
-			});
+		});
 
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
@@ -200,12 +366,15 @@ bool Splitter3D::splitHexCell(const Vector3d& tuv)
 //		wasSplit = splitHexCell8(_polyhedronId, tuv);
 
 	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 2)) {
+		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 0);
 	} else if ((intersects[0] == 2) && (intersects[1] == 1) && (intersects[2] == 2)) {
+		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 1);
 	} else if ((intersects[0] == 2) && (intersects[1] == 2) && (intersects[2] == 1)) {
+		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 2);
 
@@ -228,10 +397,6 @@ bool Splitter3D::splitHexCell(const Vector3d& tuv)
 bool Splitter3D::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 {
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
-
-	cellFunc(parentId, [this, &tuv, &tol](Polyhedron& parentCell) {
-		parentCell.detachFaces(); // This parentCell is about to be deleted, so detach it from all faces using it BEFORE we start attaching new ones
-	});
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = (i == 0) ? 0 : tuv[0];
@@ -405,6 +570,10 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 {
 	Utils::ScopedRestore restore(_pBlock);
 	_pBlock = _pSrcBlock;
+
+	bool priorVal = getBlockPtr()->isAutoTopologyEnabled();
+	getBlockPtr()->setAutoTopologyEnabled(false);
+
 	Index3DId newFaceId;
 	faceFunc(srcFaceId, [this, &newFaceId](const Polygon& srcFace) {
 		const auto& srcVertIds = srcFace.getVertexIds();
@@ -418,6 +587,8 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 		newFaceId = _pScratchBlock->addFace(Polygon(newVertIds));
 
 	});
+
+	getBlockPtr()->setAutoTopologyEnabled(true);
 
 	return newFaceId;
 }
@@ -473,6 +644,8 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 	}
 
 	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
+	_newCellIds.insert(newCellId);
+
 	return newCellId;
 }
 
@@ -550,12 +723,12 @@ void Splitter3D::createFace(const Index3DId& parentId, const MTC::vector<Index3D
 			for (size_t i = 0; i < oldFacePoints.size(); i++) {
 				stringstream ss;
 				ss << "D:/DarkSky/Projects/output/objs/oldFacePoints_" << i << ".obj";
-				getBlockPtr()->getVolume()->writeObj(ss.str(), { oldFacePoints[i] });
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { oldFacePoints[i] }, false);
 			}
 			for (size_t i = 0; i < newFacePoints.size(); i++) {
 				stringstream ss;
 				ss << "D:/DarkSky/Projects/output/objs/newFacePoints_" << i << ".obj";
-				getBlockPtr()->getVolume()->writeObj(ss.str(), { newFacePoints[i] });
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { newFacePoints[i] }, false);
 			}
 #endif
 
@@ -596,26 +769,14 @@ void Splitter3D::replaceExistingFaces(const Index3DId& existingFaceId, const std
 		return;
 
 	for (const auto& pts : newFacePoints) {
-		MTC::vector<Index3DId> vertIds;
+		vector<Index3DId> vertIds;
 		for (const auto& pt : pts)
 			vertIds.push_back(vertId(pt));
 		auto faceId = getBlockPtr()->addFace(Polygon(vertIds));
 		for (const auto& cellId : cellIds) {
 			cellFunc(cellId, [&faceId](Polyhedron& cell) {
 				cell.addFace(faceId);
-				});
-		}
-		for (const auto& edgeKey : edgeKeys) {
-			FastBisectionSet<Index3DId> adjFaceIds;
-			edgeFunc(edgeKey, [&adjFaceIds](const Edge& edge) {
-				adjFaceIds = edge.getFaceIds();
-				});
-			for (const auto& adjFaceId : adjFaceIds) {
-				faceFunc(adjFaceId, [&vertIds](Polygon& adjFace) {
-					for (const auto& vertId : vertIds)
-						adjFace.imprintVertex(vertId);
-					});
-			}
+			});
 		}
 	}
 }
