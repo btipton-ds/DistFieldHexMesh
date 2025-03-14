@@ -850,7 +850,6 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 		_vertexIds = tmp;
 
 		postmodify();
-		assert(getBlockPtr()->findPolygon(*this) == getId()); // make sure we can find ourself
 		return true;
 	}
 

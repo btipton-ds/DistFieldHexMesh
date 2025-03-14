@@ -238,6 +238,18 @@ void Splitter3D::imprintEverything()
 		});
 	}
 
+	for (const auto& cellId : _newCellIds) {
+		cellFunc(cellId, [this, &allVertIds, &numImprints](Polyhedron& cell) {
+			for (const auto& faceId : cell.getFaceIds()) {
+				faceFunc(faceId, [&allVertIds, &numImprints](Polygon& face) {
+					if (face.imprintVertices(allVertIds)) {
+						numImprints++;
+					}
+				});
+			}
+		});
+	}
+
 	for (const auto& cellId : _adjacentCellIds) {
 		cellFunc(cellId, [this, &allVertIds, &numImprints](Polyhedron& cell) {
 			for (const auto& faceId : cell.getFaceIds()) {
@@ -761,8 +773,13 @@ void Splitter3D::replaceExistingFaces(const Index3DId& existingFaceId, const std
 	faceFunc(existingFaceId, [&cellIds, &edgeKeys](const Polygon& existingFace) {
 		cellIds = existingFace.getCellIds();
 		edgeKeys = existingFace.getEdgeKeys();
-		});
+	});
 
+	for (const auto& cellId : cellIds) {
+		cellFunc(cellId, [&existingFaceId](Polyhedron& cell) {
+			cell.removeFace(existingFaceId);
+		});
+	}
 	getBlockPtr()->freePolygon(existingFaceId);
 
 	if (cellIds.empty())

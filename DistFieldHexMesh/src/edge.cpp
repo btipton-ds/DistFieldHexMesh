@@ -74,12 +74,12 @@ Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
 
 const Index3DId& Edge::getId() const
 {
-	return _vertexIds[0];
+	return _thisId;
 }
 
 void Edge::setId(const Index3DId& id)
 {
-	// Drop it
+	_thisId = id;
 }
 
 void Edge::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
@@ -375,6 +375,7 @@ void Edge::write(std::ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(uint8_t));
 
+	_thisId.write(out);
 	_vertexIds[0].write(out);
 	_vertexIds[1].write(out);
 
@@ -386,6 +387,7 @@ void Edge::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(uint8_t));
 
+	_thisId.read(in);
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);
 

@@ -128,6 +128,7 @@ protected:
 	void setId(const Index3DId& id) override;
 
 private:
+	Index3DId _thisId;
 	FastBisectionSet<Index3DId> _faceIds;
 };
 

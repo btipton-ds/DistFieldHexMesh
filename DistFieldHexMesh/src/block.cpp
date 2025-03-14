@@ -571,7 +571,7 @@ void Block::addPolygonToLookup(const DFHM::Polygon& face)
 	auto* pOwner = getOwner(ownerBlockIdx);
 	assert(pOwner);
 	assert(pOwner->_polygons.exists(face.getId()));
-	pOwner->_polygons.addToLookup(face, face.getId());
+	pOwner->_polygons.addToLookup(face);
 }
 
 void Block::removePolygonFromLookup(const DFHM::Polygon& face)

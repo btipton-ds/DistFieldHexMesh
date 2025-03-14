@@ -132,7 +132,7 @@ public:
 	void testReset();
 	bool free(const Index3DId& id); // Permanently delete it
 	bool removeFromLookup(const Index3DId& id);
-	void addToLookup(const T& obj, const Index3DId& id);
+	void addToLookup(const T& obj);
 
 	void resize(size_t size);
 	size_t numBytes() const;
@@ -212,7 +212,7 @@ private:
 		const ObjectPool& _owner;
 	};
 
-	Index3DId add(const T& obj, const Index3DId& id = Index3DId());
+	T* add(const T& obj, const Index3DId& id = Index3DId());
 	size_t findElementIndexObj(const T& obj) const;
 	ObjIndex storeAndReturnObjIndex(const T& obj);
 	bool calObjSegIndices(const ObjIndex& objIdx, size_t& segNum, size_t& segIdx) const;
@@ -397,8 +397,10 @@ inline bool ObjectPool<T>::removeFromLookup(const Index3DId& id)
 	if (_supportsReverseLookup) {
 		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
 		const auto p = getEntryFromObjIndex(objIdx);
+		assert(p);
 		if (p) {
 			_objToElementIndexMap.erase(objIdx);
+			assert(!findId(*p).isValid());
 		}
 	}
 
@@ -406,12 +408,15 @@ inline bool ObjectPool<T>::removeFromLookup(const Index3DId& id)
 }
 
 template<class T>
-inline void ObjectPool<T>::addToLookup(const T& obj, const Index3DId& id)
+inline void ObjectPool<T>::addToLookup(const T& obj)
 {
 	if (_supportsReverseLookup) {
+		auto id = obj.getId();
 		assert(id.elementId() < _elementIndexToObjIndexMap.size());
 		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
 		_objToElementIndexMap.insert(std::make_pair(objIdx, id.elementId()));
+		auto testId = findId(obj);
+		assert(testId == id); // make sure we can find ourself
 	}
 
 }
@@ -504,11 +509,11 @@ Index3DId ObjectPool<T>::findOrAdd(const T& obj, const Index3DId& currentId)
 		if (id.isValid())
 			return id;
 	}
-	Index3DId result = add(obj, currentId);
+	T* pObj = add(obj, currentId);
 
-	addToLookup(obj, result);
+	addToLookup(*pObj);
 
-	return result;
+	return pObj->getId();
 }
 
 template<class T>
@@ -555,7 +560,7 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 }
 
 template<class T>
-Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
+T* ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 {
 	size_t result = -1, segNum = -1, segIdx = -1;
 	ObjIndex objIdx;
@@ -585,7 +590,7 @@ Index3DId ObjectPool<T>::add(const T& obj, const Index3DId& currentId)
 	pNewEntry->setOwner(_pPoolOwner, newId);
 	pNewEntry->postAddToPoolActions();
 
-	return newId;
+	return pNewEntry;
 }
 
 template<class T>
@@ -761,11 +766,10 @@ void ObjectPool<T>::read(std::istream& in)
 	for (size_t i = 0; i < numObjs; i++) {
 		Index3DId currentId;
 		currentId.read(in);
-		Index3DId result = add(T(), currentId);
-		assert(result == currentId);
-		auto& obj = operator[](currentId);
-		obj.read(in);
-		addToLookup(obj, currentId);
+		T* pObj = add(T(), currentId);
+		assert(pObj->getId() == currentId);
+		pObj->read(in);
+		addToLookup(*pObj);
 	}
 }
 
