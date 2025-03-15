@@ -152,7 +152,7 @@ public:
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
-	void clearCache() const;
+	void clearCache(bool clearSortIds = true) const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 

@@ -174,16 +174,18 @@ void Polygon::addVertex(const Index3DId& vertId)
 	clearCache();
 }
 
-void Polygon::clearCache() const
+void Polygon::clearCache(bool clearSortIds) const
 {
 	_cachedCentroidValid = false;
 	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
-	_sortedIds.clear();
 	_cachedArea = -1;
 	_cachedCentroid = {};
 	_cachedNormal = {};
+
+	if (clearSortIds)
+		_sortedIds.clear();
 }
 
 bool Polygon::cellsOwnThis() const
@@ -855,7 +857,7 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 
 	if (tmp.size() > _vertexIds.size()) {
 		disconnectVertEdgeTopology();
-		clearCache();
+		clearCache(false);
 
 		_vertexIds = tmp;
 
