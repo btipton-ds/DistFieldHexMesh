@@ -124,9 +124,12 @@ size_t Splitter2D::getAllFacePoints(vector<vector<Vertex2Dd>>& facePoints)
 {
 	map<size_t, set<size_t>> pointToPointMap;
 
+#if 0 && defined(_DEBUG)
 	for (const auto& pt : _pts) {
 		cout << "[" << pt[0] << ", " << pt[1] << "]\n";
 	}
+#endif // _DEBUG
+
 	for (const auto& edge : _edges) {
 		for (int i = 0; i < 2; i++) {
 			size_t ptIdx = edge[i];

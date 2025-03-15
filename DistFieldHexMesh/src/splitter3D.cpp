@@ -98,11 +98,33 @@ Splitter3D::~Splitter3D()
 {
 	if (_pScratchVol)
 		_pScratchVol->clearEntries();
+
+#ifdef _DEBUG
+	for (const auto& cellId : _newCellIds) {
+		cellFunc(cellId, [this](const Polyhedron& cell) {
+			bool isValid = cell.verifyTopology();
+			if (!isValid) {
+				assert(!"Invald new cell.");
+			}
+		});
+	}
+
+	for (const auto& cellId : _adjacentCellIds) {
+		cellFunc(cellId, [this](const Polyhedron& cell) {
+			bool isValid = cell.verifyTopology();
+			if (!isValid) {
+				assert(!"Invald adj cell.");
+			}
+		});
+	}
+#endif // _DEBUG
+
 }
 
 void Splitter3D::reset()
 {
 	_pScratchBlock->clear();
+	_newCellIds.clear();
 }
 
 void Splitter3D::disconnectVertEdgeTopology()
@@ -560,7 +582,7 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
 	assert(faceVertList.size() == 6);
 #ifdef _DEBUG
-	Index3DId testId(1, 2, 4, 0);
+	Index3DId testId(6, 0, 4, 0);
 	if (parentId == testId) {
 		int dbgBreak = 1;
 	}
@@ -609,6 +631,11 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 		}
 	}
 
+#if 1 && defined(_DEBUG)
+	if (testId == _polyhedronId && !_testRun) {
+		int dbgBreak = 1;
+	}
+#endif
 	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 	_newCellIds.insert(newCellId);
 
