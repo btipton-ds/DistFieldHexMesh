@@ -210,7 +210,7 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
-	void sortIds(const Block* pBlock) const;
+	void sortIds() const;
 
 	Index3DId _thisId;
 

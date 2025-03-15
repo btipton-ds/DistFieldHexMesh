@@ -240,7 +240,7 @@ private:
 															// Attempted this on 2/5/25 and gave up after several hours using FastBisectionMap. It's trickier than it looks.
 															// Probably due to _objToElementIndexMap.find not reporting missing entries properly.
 															// Can't use a simple array because of accumulated dead ids at the head.
-	thread_local static const T* _tl_pCompareObj;
+	thread_local static T* _tl_pCompareObj;
 };
 
 template<class T>
@@ -468,13 +468,21 @@ size_t ObjectPool<T>::numBytes() const
 template<class T>
 size_t ObjectPool<T>::findElementIndexObj(const T& obj) const 
 {
+	size_t result = -1;
 	if (_supportsReverseLookup) {
-		_tl_pCompareObj = &obj;
+		_tl_pCompareObj = (T*) &obj;
+
+		auto pPriorOwner = _tl_pCompareObj->_pPoolOwner;
+		_tl_pCompareObj->_pPoolOwner = _pPoolOwner;
+
 		auto iter = _objToElementIndexMap.find(ObjIndex());
-		if (iter != _objToElementIndexMap.end())
-			return iter->second;
+		if (iter != _objToElementIndexMap.end()) {
+			result = iter->second;
+		}
+
+		_tl_pCompareObj->_pPoolOwner = pPriorOwner;
 	}
-	return -1;
+	return result;
 }
 
 template<class T>

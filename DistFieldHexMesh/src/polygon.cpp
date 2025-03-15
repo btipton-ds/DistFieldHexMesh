@@ -264,15 +264,15 @@ namespace {
 	}
 }
 
-void Polygon::sortIds(const Block* pBlock) const
+void Polygon::sortIds() const
 {
 	if (_sortedIds.empty()) {
 		for (size_t j = 0; j < _vertexIds.size(); j++) {
 			size_t i = (j + _vertexIds.size() - 1) % _vertexIds.size();
 			size_t k = (j + 1) % _vertexIds.size();
-			const auto& pt0 = pBlock->getVertexPoint(_vertexIds[i]);
-			const auto& pt1 = pBlock->getVertexPoint(_vertexIds[j]);
-			const auto& pt2 = pBlock->getVertexPoint(_vertexIds[k]);
+			const auto& pt0 = getVertexPoint(_vertexIds[i]);
+			const auto& pt1 = getVertexPoint(_vertexIds[j]);
+			const auto& pt2 = getVertexPoint(_vertexIds[k]);
 			if (!isColinear(pt0, pt1, pt2)) {
 				_sortedIds.push_back(_vertexIds[j]);
 			}
@@ -285,10 +285,8 @@ void Polygon::sortIds(const Block* pBlock) const
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
-	const Block* pBlock = getOurBlockPtr() ? getOurBlockPtr() : rhs.getOurBlockPtr();
-	assert(pBlock);
-	sortIds(pBlock);
-	rhs.sortIds(pBlock);
+	sortIds();
+	rhs.sortIds();
 
 	if (_sortedIds.size() < rhs._sortedIds.size())
 		return true;
@@ -1147,7 +1145,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 
 inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 {
-	return getBlockPtr()->getVertexPoint(id);
+	return getOurBlockPtr()->getVertexPoint(id);
 }
 
 
