@@ -85,11 +85,13 @@ Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector
 		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
 	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 
+#ifdef _DEBUG
 	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
 		if (!cell.verifyTopology()) {
 			assert(!"Bad topology");
 		}
 	});
+#endif // _DEBUG
 }
 
 Splitter3D::~Splitter3D()
@@ -235,11 +237,11 @@ bool Splitter3D::splitAtCenter()
 		CellType cellType = CT_UNKNOWN;
 
 		cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
-			assert(parentCell.verifyTopology());
 			// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
 			// match with the neighbor cells's faces.
+			// Now split the parentCell
 #if 0 && defined(_DEBUG)
-		// Now split the parentCell
+			assert(parentCell.verifyTopology());
 			Index3DId testId(6, 4, 5, 0);
 			if (testId == _polyhedronId) {
 				int dbgBreak = 1;
@@ -575,10 +577,10 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 			if (testId == newFaceId) {
 				int dbgBreak = 1;
 			}
-#endif
 			faceFunc(newFaceId, [](const Polygon& face) {
 				assert(face.getCellIds().size() < 2);
-				});
+			});
+#endif
 			cellFaceIds.insert(newFaceId);
 		}
 		else {
@@ -586,9 +588,11 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 			createFace(parentId, faceVerts, newFaceIds, tol);
 			if (newFaceIds.empty()) {
 				auto id = getBlockPtr()->addFace(Polygon(faceVerts));
+#ifdef _DEBUG
 				faceFunc(id, [](const Polygon& face) {
 					assert(face.getCellIds().size() < 2);
-					});
+				});
+#endif
 				cellFaceIds.insert(id);
 			}
 			else {

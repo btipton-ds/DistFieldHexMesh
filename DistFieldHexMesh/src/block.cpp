@@ -734,8 +734,12 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
-	assert(threadIdx.withinRange(blockIdx));
-	assert(threadIdx.withinRange(_blockIdx));
+	if (threadIdx.isValid()) {
+		assert(threadIdx.withinRange(blockIdx));
+		assert(threadIdx.withinRange(_blockIdx));
+	} else {
+		assert(_blockIdx.withinRange(blockIdx));
+	}
 #endif // _DEBUG
 
 
@@ -748,8 +752,12 @@ Block* Block::getOwner(const Index3D& blockIdx)
 	// Test that block indices are within 1 index of the thread index
 	Index3D threadIdx = getThreadBlockIdx();
 
-	assert(threadIdx.withinRange(blockIdx));
-	assert(threadIdx.withinRange(_blockIdx));
+	if (threadIdx.isValid()) {
+		assert(threadIdx.withinRange(blockIdx));
+		assert(threadIdx.withinRange(_blockIdx));
+	} else {
+		assert(_blockIdx.withinRange(blockIdx));
+	}
 #endif // _DEBUG
 
 	return blockIdx.isValid() ? _pVol->getBlockPtr(blockIdx) : nullptr;
