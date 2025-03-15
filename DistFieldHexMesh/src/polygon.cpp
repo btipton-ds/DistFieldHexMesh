@@ -832,9 +832,12 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 	MTC::vector<Index3DId> tmp;
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
 		tmp.push_back(_vertexIds[i]);
 		for (const auto& imprintVert : imprintVerts) {
-			size_t j = (i + 1) % _vertexIds.size();
+			if (!getId().withinRange(imprintVert))
+				continue;
+			
 			bool imprinted = false;
 			edgeFunc(EdgeKey(_vertexIds[i], _vertexIds[j]), [this, &tmp, &imprintVert, &imprinted, &tol](Edge& edge) {
 				auto seg = edge.getSegment();

@@ -63,8 +63,12 @@ public:
 	Index3DBaseType& operator[](int idx);
 
 	bool isValid() const;
+	bool isInBounds(const Index3DBase& threadIdx, const Index3DBase& blockIdx, int range);
 	bool isInBounds(size_t bound) const;
 	void clampInBounds(size_t bound);
+
+	// This checks if each entry is within +/- range of the this index. Used to verify thread safety between blocks.
+	bool withinRange(const Index3DBase& blockIdx, int range = 1) const;
 
 	size_t getLinearIdx(const Volume* vol) const;
 

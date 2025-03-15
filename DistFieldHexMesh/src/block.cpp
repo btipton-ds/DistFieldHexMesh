@@ -659,6 +659,12 @@ bool Block::removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1)
 
 Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 {
+#ifdef _DEBUG
+	for (const auto& faceId : cell.getFaceIds()) {
+		assert(getBlockIdx().withinRange(faceId));
+	}
+#endif // _DEBUG
+
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	auto& newCell = _polyhedra[cellId];
 #if USE_CELL_HISTOGRAM
@@ -724,14 +730,12 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-#if 0 && RUN_MULTI_THREAD && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
-	int bounds = 1;
-	assert(inBounds(threadIdx, blockIdx, bounds));
-	assert(inBounds(threadIdx, _blockIdx, bounds));
-
+	assert(threadIdx.withinRange(blockIdx));
+	assert(threadIdx.withinRange(_blockIdx));
 #endif // _DEBUG
 
 
@@ -740,13 +744,12 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
-#if 0 && RUN_MULTI_THREAD && defined(_DEBUG)
-	// Test that block indices are within 1 index of the tread index
+#if 1 && defined(_DEBUG)
+	// Test that block indices are within 1 index of the thread index
 	Index3D threadIdx = getThreadBlockIdx();
 
-	assert(inBounds(threadIdx, blockIdx, 1));
-	assert(inBounds(threadIdx, _blockIdx, 1));
-
+	assert(threadIdx.withinRange(blockIdx));
+	assert(threadIdx.withinRange(_blockIdx));
 #endif // _DEBUG
 
 	return blockIdx.isValid() ? _pVol->getBlockPtr(blockIdx) : nullptr;

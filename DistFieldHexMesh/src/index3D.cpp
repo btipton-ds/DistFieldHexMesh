@@ -76,6 +76,17 @@ Index3DBase Index3DBase::operator - (const Index3DBase& rhs) const
 	return temp;
 }
 
+bool Index3DBase::withinRange(const Index3DBase& blockIdx, int range) const
+{
+	for (int i = 0; i < 3; i++) {
+		int v0 = _vals[i];
+		int v1 = blockIdx[i];
+		if (abs(v1 - v0) > range)
+			return false;
+	}
+	return true;
+}
+
 void Index3DBase::clampInBounds(size_t bound)
 {
 	for (size_t i = 0; i < 3; i++) {
