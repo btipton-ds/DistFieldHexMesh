@@ -327,6 +327,31 @@ bool EdgeKey::containsVertex(const Index3DId& vertexId) const
 	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
 }
 
+bool Edge::containsFace(const Index3DId& faceId) const
+{
+	return _faceIds.contains(faceId);
+}
+
+bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
+{
+	set<Index3DId> splitFaceIds;
+	auto faceIds = _faceIds;
+	for (const auto& faceId : faceIds) {
+		faceFunc(faceId, [this, &allVertIds, &splitFaceIds](Polygon& face) {
+			if (face.imprintVertices(allVertIds))
+				splitFaceIds.insert(face.getId());
+		});
+	}
+
+	if (splitFaceIds.empty())
+		return false;
+
+	assert(splitFaceIds.size() == _faceIds.size());
+	getBlockPtr()->removeEdgeFromLookUp(_vertexIds[0], _vertexIds[1]);
+
+	return true;
+}
+
 bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
 {
 	const auto& pt = getBlockPtr()->getVertexPoint(vertexId);
@@ -392,6 +417,31 @@ void Edge::read(std::istream& in)
 	_vertexIds[1].read(in);
 
 	IoUtil::readObj(in, _faceIds);
+}
+
+bool Edge::verifyTopology() const
+{
+	bool result = false;
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &result](const Polygon& face) {
+			if (face.containsEdge(*this))
+				result = true;
+		});
+		if (result)
+			break;
+	}
+
+	vertexFunc(_vertexIds[0], [this, &result](const Vertex& otherVert) {
+		if (!otherVert.isConnectedTo(_vertexIds[1]))
+			result = false;
+	});
+
+	vertexFunc(_vertexIds[1], [this, &result](const Vertex& otherVert) {
+		if (!otherVert.isConnectedTo(_vertexIds[0]))
+			result = false;
+	});
+
+	return result;
 }
 
 ostream& DFHM::operator << (ostream& out, const Edge& edge)

@@ -100,22 +100,31 @@ Splitter3D::~Splitter3D()
 		_pScratchVol->clearEntries();
 
 #ifdef _DEBUG
+	bool hasErrors = false;
 	for (const auto& cellId : _newCellIds) {
-		cellFunc(cellId, [this](const Polyhedron& cell) {
+		cellFunc(cellId, [this, &hasErrors](const Polyhedron& cell) {
 			bool isValid = cell.verifyTopology();
 			if (!isValid) {
-				assert(!"Invald new cell.");
+				hasErrors = true;
+				cout << "Invalid new cell: " << cell.getId() << "," << cell.getNumFaces() << "\n";
 			}
 		});
 	}
 
 	for (const auto& cellId : _adjacentCellIds) {
-		cellFunc(cellId, [this](const Polyhedron& cell) {
+		cellFunc(cellId, [this, &hasErrors](const Polyhedron& cell) {
 			bool isValid = cell.verifyTopology();
 			if (!isValid) {
-				assert(!"Invald adj cell.");
+				hasErrors = true;
+				cout << "Invalid adj cell: " << cell.getId() << "," << cell.getNumFaces() << "\n";
 			}
 		});
+	}
+	if (hasErrors) {
+		cout << "\n";
+		cout << "_polyhedronId" << _polyhedronId << "\n";
+		cout << "********************************************************************\n";
+		cout << "********************************************************************\n";
 	}
 #endif // _DEBUG
 
@@ -142,7 +151,6 @@ void Splitter3D::disconnectVertEdgeTopology()
 	}
 #endif
 
-	_priorAutoConnectTopology = getBlockPtr()->isAutoTopologyEnabled();
 	cellFunc(_polyhedronId, [this, pVol](Polyhedron& cell) {
 		_adjacentCellIds = cell.getAdjacentCells();
 		cell.detachFaces();
@@ -153,10 +161,6 @@ void Splitter3D::disconnectVertEdgeTopology()
 	for (const auto& cellId : _adjacentCellIds) {
 		blockIds.insert(cellId);
 	}
-
-	for (const auto& id : blockIds) {
-		pVol->getBlockPtr(id)->setAutoTopologyEnabled(false);
-	}
 }
 
 void Splitter3D::connectVertEdgeTopology()
@@ -166,11 +170,6 @@ void Splitter3D::connectVertEdgeTopology()
 		blockIds.insert(cellId);
 	}
 
-	auto pVol = getBlockPtr()->getVolume();
-	for (const auto& id : blockIds) {
-		pVol->getBlockPtr(id)->setAutoTopologyEnabled(_priorAutoConnectTopology);
-	}
-	
 	for (const auto& cellId : _newCellIds) {
 		cellFunc(cellId, [](Polyhedron& cell) {
 			cell.attachFaces();
@@ -206,9 +205,12 @@ void Splitter3D::imprintEverything()
 			for (const auto& faceId : cell.getFaceIds()) {
 				if (!_polyhedronId.withinRange(faceId))
 					continue;
-				faceFunc(faceId, [&allVertIds, &numImprints](Polygon& face) {
-					if (face.imprintVertices(allVertIds)) {
-						numImprints++;
+				faceFunc(faceId, [this, &allVertIds, &numImprints](Polygon& face) {
+					auto edgeKeys = face.getEdgeKeys();
+					for (const auto& edgeKey : edgeKeys) {
+						edgeFunc(edgeKey, [&allVertIds](Edge& edge) {
+							edge.imprintVertices(allVertIds);
+						});
 					}
 				});
 			}
@@ -220,11 +222,14 @@ void Splitter3D::imprintEverything()
 			for (const auto& faceId : cell.getFaceIds()) {
 				if (!_polyhedronId.withinRange(faceId))
 					continue;
-				faceFunc(faceId, [&allVertIds, &numImprints](Polygon& face) {
-					if (face.imprintVertices(allVertIds)) {
-						numImprints++;
+				faceFunc(faceId, [this, &allVertIds, &numImprints](Polygon& face) {
+					auto edgeKeys = face.getEdgeKeys();
+					for (const auto& edgeKey : edgeKeys) {
+						edgeFunc(edgeKey, [&allVertIds](Edge& edge) {
+							edge.imprintVertices(allVertIds);
+						});
 					}
-				});
+					});
 			}
 		});
 	}
@@ -552,9 +557,6 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 	Utils::ScopedRestore restore(_pBlock);
 	_pBlock = _pSrcBlock;
 
-	bool priorVal = getBlockPtr()->isAutoTopologyEnabled();
-	getBlockPtr()->setAutoTopologyEnabled(false);
-
 	Index3DId newFaceId;
 	faceFunc(srcFaceId, [this, &newFaceId](const Polygon& srcFace) {
 		const auto& srcVertIds = srcFace.getVertexIds();
@@ -567,8 +569,6 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 
 		newFaceId = _pScratchBlock->addFace(Polygon(newVertIds));
 	});
-
-	getBlockPtr()->setAutoTopologyEnabled(true);
 
 	return newFaceId;
 }
@@ -604,10 +604,9 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 			});
 #endif
 			cellFaceIds.insert(newFaceId);
-		}
-		else {
+		} else {
 			// Use createFace to do the complex face slitting
-			createFace(parentId, faceVerts, newFaceIds, tol);
+			createFaces(parentId, faceVerts, newFaceIds, tol);
 			if (newFaceIds.empty()) {
 				auto id = getBlockPtr()->addFace(Polygon(faceVerts));
 #ifdef _DEBUG
@@ -623,7 +622,7 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 					assert(id.isValid());
 					faceFunc(id, [](const Polygon& face) {
 						assert(face.getCellIds().size() < 2);
-						});
+					});
 				}
 #endif // _DEBUG
 				cellFaceIds.insert(newFaceIds.begin(), newFaceIds.end());
@@ -631,25 +630,36 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 		}
 	}
 
+	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 #if 1 && defined(_DEBUG)
 	if (testId == _polyhedronId && !_testRun) {
+		getBlockPtr()->dumpPolyhedraObj({ 
+			_polyhedronId,
+			Index3DId(6, 0, 4, 1), 
+			Index3DId(6, 0, 3, 1),
+			Index3DId(6, 0, 3, 2),
+			}, false, false, false);
 		int dbgBreak = 1;
 	}
 #endif
-	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 	_newCellIds.insert(newCellId);
 
 	return newCellId;
 }
 
-void Splitter3D::createFace(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
+void Splitter3D::createFaces(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol)
 {
 	Index3DId result;
 
+	auto existingFaceId = getBlockPtr()->findPolygon(Polygon(newFaceVertIds));
+	if (existingFaceId.isValid()) {
+		newFaceIds.insert(existingFaceId);
+		return;
+	}
 	FastBisectionSet<Index3DId> oldFaceIds;
 	cellFunc(parentId, [&oldFaceIds](const Polyhedron& parentCell) {
 		oldFaceIds = parentCell.getFaceIds();
-		});
+	});
 
 	Vector3d newFaceNorm = Polygon::calUnitNormalStat(getBlockPtr(), newFaceVertIds);
 	Vector3d newFaceOrigin = getBlockPtr()->getVertexPoint(newFaceVertIds[0]);

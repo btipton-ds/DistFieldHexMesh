@@ -71,6 +71,8 @@ public:
 	const bool operator == (const Vertex& rhs) const;
 	const bool operator != (const Vertex& rhs) const;
 
+	bool isConnectedTo(const Index3DId& vertId) const;
+
 	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
@@ -83,6 +85,8 @@ public:
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
+
+	bool verifyTopology() const;
 
 	LAMBDA_CLIENT_DECLS
 protected:
@@ -141,6 +145,12 @@ inline const FastBisectionSet<Index3DId>& Vertex::getConnectedVertexIds() const
 {
 	return _connectedVertices;
 }
+
+inline bool Vertex::isConnectedTo(const Index3DId& vertId) const
+{
+	return _connectedVertices.contains(vertId);
+}
+
 
 std::ostream& operator << (std::ostream& out, const Vertex& vert);
 

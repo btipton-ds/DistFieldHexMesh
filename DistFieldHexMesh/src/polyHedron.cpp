@@ -884,7 +884,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 #if USE_CELL_HISTOGRAM
 void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 {
-	size_t numFaces = getNumFaces(true);
+	size_t numFaces = getNumFaces();
 
 	switch (numFaces) {
 		case 6:
@@ -1400,9 +1400,8 @@ bool Polyhedron::verifyTopology() const
 				}
 				if (valid && !face.verifyTopology())
 					valid = false;
-				});
-		} else
-			valid = false;
+			});
+		}
 	}
 
 	if (valid && !isClosed()) {

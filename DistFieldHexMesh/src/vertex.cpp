@@ -144,6 +144,21 @@ void Vertex::read(std::istream& in)
 	IoUtil::readObj(in, _connectedVertices);
 }
 
+bool Vertex::verifyTopology() const
+{
+	bool result = true;
+	for (const auto& id : _connectedVertices) {
+		vertexFunc(id, [this, &result](const Vertex& vert) {
+			if (!vert.isConnectedTo(getId())) {
+				result = false;
+			}
+		});
+		if (!result)
+			break;
+	}
+	return result;
+}
+
 CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
 {
 	CBoundingBox3Dd result(pt, pt);

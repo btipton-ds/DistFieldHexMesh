@@ -138,6 +138,7 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
+	bool containsEdge(const Edge& edge) const;
 
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	template<class TRI_FUNC, class EDGE_FUNC>

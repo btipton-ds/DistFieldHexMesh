@@ -148,6 +148,10 @@ public:
 	{
 		_parentIds.push_back(id);
 	}
+	const std::vector<Index3DId>& getParentIds() const
+	{
+		return _parentIds;
+	}
 #endif
 	LAMBDA_CLIENT_DECLS
 

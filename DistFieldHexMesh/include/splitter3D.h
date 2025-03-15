@@ -87,12 +87,11 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-	void createFace(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
+	void createFaces(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
 	bool _testRun = false;
-	bool _priorAutoConnectTopology = true;
 	Block* _pBlock;
 	Block* _pSrcBlock;
 	Block* _pScratchBlock;

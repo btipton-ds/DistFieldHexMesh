@@ -207,9 +207,6 @@ public:
 	void setSupportsReverseLookup(bool val);
 	bool read(std::istream& inStream);
 
-	bool isAutoTopologyEnabled() const;
-	void setAutoTopologyEnabled(bool val);
-
 	bool isUnloaded() const;
 	bool unload(std::string& filename);
 	bool load();
@@ -287,7 +284,6 @@ private:
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
 
-	bool _autoTopologyEnabled = true;
 	Index3D _blockIdx;
 
 	Volume* _pVol;
@@ -426,16 +422,6 @@ inline void Block::addToTouchedCellList(const Index3DId& id)
 	auto pOwner = getOwner(id);
 	if (pOwner)
 		pOwner->_touchedCellIds.insert(id);
-}
-
-inline bool Block::isAutoTopologyEnabled() const
-{
-	return _autoTopologyEnabled;
-}
-
-inline void Block::setAutoTopologyEnabled(bool val)
-{
-	_autoTopologyEnabled = val;
 }
 
 }

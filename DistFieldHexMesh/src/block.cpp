@@ -326,6 +326,21 @@ size_t Block::numBytes() const
 bool Block::verifyTopology() const
 {
 	bool result = true;
+	_vertices.iterateInOrder([&result](const Index3DId& id, const Vertex& vert) {
+		if (!vert.verifyTopology())
+			result = false;
+	});
+
+	_edges.iterateInOrder([&result](const Index3DId& id, const Edge& edge) {
+		if (!edge.verifyTopology())
+			result = false;
+	});
+
+	_polygons.iterateInOrder([&result](const Index3DId& id, const Polygon& face) {
+		if (!face.verifyTopology())
+			result = false;
+	});
+
 	MTC::vector<Index3DId> badCellIds;
 	_polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
 		if (!cell.verifyTopology()) {
@@ -334,7 +349,7 @@ bool Block::verifyTopology() const
 		}
 	});
 
-	if (!result) {
+	if (!badCellIds.empty()) {
 		dumpPolyhedraObj(badCellIds, false, false, false);
 	}
 
@@ -921,7 +936,7 @@ void Block::dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool include
 	string path = getObjFilePath();
 	for (const auto& cellId : cellIds) {
 		stringstream ss;
-		ss << path << "cell_" << getLoggerNumericCode() << "_" << cellId.elementId() << ".obj";
+		ss << path << "cell_" << getLoggerNumericCode(cellId) << ".obj";
 		_pVol->writeObj(ss.str(), { cellId }, includeModel, useEdges, sharpOnly, pts);
 	}
 }

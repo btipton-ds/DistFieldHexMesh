@@ -1423,6 +1423,16 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 
 	for (const auto& cellId : cellIds) {
 		out << "#CellId " << cellId << "\n";
+		getBlockPtr(cellId)->cellFunc(cellId, [this, &out](const Polyhedron& cell) {
+			const auto& parentIds = cell.getParentIds();
+			if (!parentIds.empty()) {
+				out << "  parentIds:";
+				for (const auto& parentId : parentIds) {
+					out << " " << parentId;
+				}
+				out << "\n";
+			}
+		});
 	}
 
 	out << "#Vertices " << pts.size() << "\n";
@@ -1683,6 +1693,8 @@ bool Volume::read(istream& in)
 
 	tmr.recordEntry();
 	tmr.dumpAll();
+
+	assert(verifyTopology(true));
 	return true;
 }
 

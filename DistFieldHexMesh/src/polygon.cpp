@@ -74,7 +74,7 @@ Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 }
 
 void Polygon::connectVertEdgeTopology() {
-	if (!getId().isValid() || !getBlockPtr()->isAutoTopologyEnabled())
+	if (!getId().isValid())
 		return;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -94,7 +94,7 @@ void Polygon::connectVertEdgeTopology() {
 }
 
 void Polygon::disconnectVertEdgeTopology() {
-	if (!getId().isValid() || !getBlockPtr()->isAutoTopologyEnabled())
+	if (!getId().isValid())
 		return;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -403,6 +403,16 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 {
 	for (const auto& id : _vertexIds) {
 		if (id == vertId)
+			return true;
+	}
+	return false;
+}
+
+bool Polygon::containsEdge(const Edge& edge) const
+{
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		if (Edge(_vertexIds[i], _vertexIds[j]) == edge)
 			return true;
 	}
 	return false;
@@ -765,16 +775,11 @@ Vector3d Polygon::projectPoint(const Vector3d& pt) const
 
 void Polygon::removeCellId(const Index3DId& cellId)
 {
-	if (!getBlockPtr()->isAutoTopologyEnabled())
-		return;
 	_cellIds.erase(cellId);
 }
 
 void Polygon::addCellId(const Index3DId& cellId)
 {
-	if (!getBlockPtr()->isAutoTopologyEnabled())
-		return;
-
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(4, 6, 1, 0) == cellId) {
 		int dbgBreak = 1;
@@ -1066,6 +1071,8 @@ bool Polygon::verifyTopology() const
 		auto edgeKeys = getEdgeKeys();
 		for (const auto& edgeKey : edgeKeys) {
 			edgeFunc(edgeKey, [this, &valid](const Edge& edge) {
+				if (!edge.containsFace(getId()))
+					valid = false;
 				auto& faceIds = edge.getFaceIds();
 				if (valid && !faceIds.contains(getId())) // edge does not link back to this face
 					valid = false;

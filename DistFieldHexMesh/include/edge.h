@@ -85,6 +85,8 @@ public:
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
 
+	bool imprintVertices(const std::set<Index3DId>& allVertIds);
+
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
@@ -102,6 +104,7 @@ public:
 	bool isColinearWith(const Edge& other) const;
 	bool isColinearWith(const Index3DId& vert, double& param) const;
 	bool isConnectedTo(const Edge& other) const;
+	bool containsFace(const Index3DId& faceId) const;
 	LineSegmentd getSegment() const;
 
 	/*
@@ -121,6 +124,8 @@ public:
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
+
+	bool verifyTopology() const;
 
 	LAMBDA_CLIENT_DECLS
 
