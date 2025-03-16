@@ -39,53 +39,9 @@ using namespace DFHM;
 
 EdgeKey::EdgeKey(const Index3DId& vert0, const Index3DId& vert1)
 {
-	_vertexIds[0] = (vert0 < vert1) ? vert0 : vert1;
-	_vertexIds[1] = (vert0 < vert1) ? vert1 : vert0;
-}
-
-Edge::Edge(const EdgeKey& src)
-	: EdgeKey(src)
-	, ObjectPoolOwnerUser()
-{
-}
-
-Edge::Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds)
-	: EdgeKey(vert0, vert1)
-	, ObjectPoolOwnerUser()
-{
-	_faceIds.insert(faceIds.begin(), faceIds.end());
-}
-
-Edge::Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds)
-	: ObjectPoolOwnerUser(src)
-	, _faceIds(faceIds)
-{
-	_vertexIds[0] = src._vertexIds[0];
-	_vertexIds[1] = src._vertexIds[1];
-}
-
-Edge::Edge(const Edge& src, const MTC::set<Index3DId>& faceIds)
-	: ObjectPoolOwnerUser(src)
-{
-	_faceIds.insert(faceIds.begin(), faceIds.end());
-	_vertexIds[0] = src._vertexIds[0];
-	_vertexIds[1] = src._vertexIds[1];
-}
-
-const Index3DId& Edge::getId() const
-{
-	return _thisId;
-}
-
-void Edge::setId(const Index3DId& id)
-{
-	_thisId = id;
-}
-
-void Edge::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
-{
-	remap(idRemap, srcDims, _vertexIds[0]);
-	remap(idRemap, srcDims, _vertexIds[1]);
+	_vertexIds[0] = vert0;
+	_vertexIds[1] = vert1;
+	_reversed = vert1 < vert0;
 }
 
 bool EdgeKey::isValid() const
@@ -105,9 +61,10 @@ bool EdgeKey::operator != (const EdgeKey& rhs) const
 
 bool EdgeKey::operator < (const EdgeKey& rhs) const
 {
+	
 	for (int i = 0; i < 2; i++) {
-		const auto& v = _vertexIds[i];
-		const auto& rhsV = rhs._vertexIds[i];
+		auto& v = getSortedVertexId(i);
+		auto& rhsV = rhs.getSortedVertexId(i);
 
 		if (v < rhsV)
 			return true;
@@ -115,6 +72,33 @@ bool EdgeKey::operator < (const EdgeKey& rhs) const
 			return false;
 	}
 	return false;
+}
+
+Edge::Edge(const EdgeKey& src, const Block* pBlock)
+	: EdgeKey(src)
+	, _pBlock(const_cast<Block*>(pBlock))
+{
+	initFaceIds();
+}
+
+void Edge::initFaceIds()
+{
+	_faceIds.clear();
+
+	vertexFunc(_vertexIds[0], [this](const Vertex& vert0) {
+		auto& face0Ids = vert0.getFaceIds();
+
+		vertexFunc(_vertexIds[1], [this, &face0Ids](const Vertex& vert1) {
+			auto& face1Ids = vert1.getFaceIds();
+
+			for (const auto& id0 : face0Ids) {
+				if (face1Ids.contains(id0))
+					_faceIds.insert(id0);
+			}
+		});
+	});
+
+
 }
 
 double Edge::sameParamTol() const
@@ -334,20 +318,29 @@ bool Edge::containsFace(const Index3DId& faceId) const
 
 bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 {
-	set<Index3DId> splitFaceIds;
-	auto faceIds = _faceIds;
-	for (const auto& faceId : faceIds) {
-		faceFunc(faceId, [this, &allVertIds, &splitFaceIds](Polygon& face) {
-			if (face.imprintVertices(allVertIds))
-				splitFaceIds.insert(face.getId());
-		});
+	const double tol = Tolerance::paramTol();
+	assert(verifyTopology());
+
+	auto seg = getSegment();
+	set<Index3DId> vertsInBounds;
+	for (const auto& id : allVertIds) {
+		if (_vertexIds[0].withinRange(id) && _vertexIds[1].withinRange(id)) {
+			const auto& pt = getBlockPtr()->getVertexPoint(id);
+			double t;
+			if (seg.contains(pt, t, tol) && tol < t && t < 1 - tol) {
+				vertsInBounds.insert(id);
+			}
+		}
 	}
 
-	if (splitFaceIds.empty())
+	if (vertsInBounds.empty())
 		return false;
 
-	assert(splitFaceIds.size() == _faceIds.size());
-	getBlockPtr()->removeEdgeFromLookUp(_vertexIds[0], _vertexIds[1]);
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &vertsInBounds](Polygon& face) {
+			face.imprintVertices(vertsInBounds);
+		});
+	}
 
 	return true;
 }
@@ -400,7 +393,6 @@ void Edge::write(std::ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(uint8_t));
 
-	_thisId.write(out);
 	_vertexIds[0].write(out);
 	_vertexIds[1].write(out);
 
@@ -412,7 +404,6 @@ void Edge::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(uint8_t));
 
-	_thisId.read(in);
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);
 
@@ -421,41 +412,20 @@ void Edge::read(std::istream& in)
 
 bool Edge::verifyTopology() const
 {
-	bool result = false;
+	bool result = true;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &result](const Polygon& face) {
-			if (face.containsEdge(*this))
-				result = true;
+			if (!face.containsEdge(*this))
+				result = false;
 		});
-		if (result)
-			break;
 	}
-
-	vertexFunc(_vertexIds[0], [this, &result](const Vertex& otherVert) {
-		if (!otherVert.isConnectedTo(_vertexIds[1]))
-			result = false;
-	});
-
-	vertexFunc(_vertexIds[1], [this, &result](const Vertex& otherVert) {
-		if (!otherVert.isConnectedTo(_vertexIds[0]))
-			result = false;
-	});
 
 	return result;
 }
 
-ostream& DFHM::operator << (ostream& out, const Edge& edge)
+ostream& DFHM::operator << (ostream& out, const EdgeKey& edge)
 {
 	out << "Edge: e(v" << edge.getVertexIds()[0] << " v" << edge.getVertexIds()[1] << ")\n";
-	{
-		Logger::Indent indent;
-
-		out << Logger::Pad() << "faceIds(" << edge.getFaceIds().size() << "): {";
-		for (const auto& faceId : edge.getFaceIds()) {
-			out << "f" << faceId << " ";
-		}
-		out << "}\n";
-	}
 
 	return out;
 }

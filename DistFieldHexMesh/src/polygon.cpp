@@ -78,17 +78,8 @@ void Polygon::connectVertEdgeTopology() {
 		return;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		size_t k = (j + 1) % _vertexIds.size();
-		vertexFunc(_vertexIds[j], [this, i, k](Vertex& vert) {
-			vert.addConnectedVertexId(_vertexIds[i]);
-			vert.addConnectedVertexId(_vertexIds[k]);
-		});
-
-		EdgeKey edgeKey(_vertexIds[i], _vertexIds[j]);
-		auto newEdgeKey = getBlockPtr()->addEdge(edgeKey);
-		assert(newEdgeKey == edgeKey);
-		edgeFunc(newEdgeKey, [this](Edge& edge) {
-			edge.addFaceId(getId());
+		vertexFunc(_vertexIds[i], [this](Vertex& vert) {
+			vert.addFaceId(getId());
 		});
 	}
 }
@@ -98,15 +89,8 @@ void Polygon::disconnectVertEdgeTopology() {
 		return;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		size_t k = (j + 1) % _vertexIds.size();
-		vertexFunc(_vertexIds[j], [this, i, k](Vertex& vert) {
-			vert.removeConnectedVertexId(_vertexIds[i]);
-			vert.removeConnectedVertexId(_vertexIds[k]);
-		});
-
-		EdgeKey edgeKey(_vertexIds[i], _vertexIds[j]);
-		edgeFunc(edgeKey, [this](Edge& edge) {
-			edge.removeFaceId(getId());
+		vertexFunc(_vertexIds[i], [this](Vertex& vert) {
+			vert.removeFaceId(getId());
 		});
 	}
 }
@@ -323,7 +307,7 @@ MTC::vector<EdgeKey> Polygon::getEdgeKeys() const
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		result.push_back(Edge(_vertexIds[i], _vertexIds[j]));
+		result.push_back(EdgeKey(_vertexIds[i], _vertexIds[j]));
 	}
 
 	return result;
@@ -387,7 +371,7 @@ bool Polygon::usesEdge(const Edge& edgeKey, size_t& idx0, size_t& idx1) const
 		size_t j = (i + 1) % _vertexIds.size();
 		const auto& vertId0 = _vertexIds[i];
 		const auto& vertId1 = _vertexIds[j];
-		Edge testEdge(vertId0, vertId1);
+		EdgeKey testEdge(vertId0, vertId1);
 		if (testEdge == edgeKey) {
 			idx0 = i;
 			idx1 = j;
@@ -412,7 +396,7 @@ bool Polygon::containsEdge(const Edge& edge) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		if (Edge(_vertexIds[i], _vertexIds[j]) == edge)
+		if (EdgeKey(_vertexIds[i], _vertexIds[j]) == edge)
 			return true;
 	}
 	return false;
@@ -433,11 +417,11 @@ bool Polygon::isCoplanar(const Planed& pl) const
 bool Polygon::isCoplanar(const EdgeKey& edgeKey) const
 {
 	Planed pl = calPlane();
-	const auto pt0 = getVertexPoint(edgeKey.getVertex(0));
+	const auto pt0 = getVertexPoint(edgeKey.getVertexId(0));
 	if (!pl.isCoincident(pt0, Tolerance::sameDistTol()))
 		return false;
 
-	const auto pt1 = getVertexPoint(edgeKey.getVertex(1));
+	const auto pt1 = getVertexPoint(edgeKey.getVertexId(1));
 	if (!pl.isCoincident(pt1, Tolerance::sameDistTol()))
 		return false;
 
@@ -911,8 +895,10 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	MTC::set<Vector3d> intersectionPoints;
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		Edge edge(_vertexIds[i], _vertexIds[j]);
-		auto edgeSeg = edge.getSegment();
+		const Vector3d& pt0 = getVertexPoint(_vertexIds[i]);
+		const Vector3d& pt1 = getVertexPoint(_vertexIds[j]);
+
+		LineSegmentd edgeSeg(pt0, pt1);;
 		RayHitd hit;
 		if (pl.intersectLineSegment(edgeSeg, hit, Tolerance::sameDistTol())) {
 			intersectionPoints.insert(hit.hitPt);
@@ -969,8 +955,10 @@ bool Polygon::isPointOnEdge(const Vector3d& pt) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		auto* pEdge = getBlockPtr()->getEdge(Edge(_vertexIds[i], _vertexIds[j]));
-		auto seg = pEdge->getSegment();
+		const Vector3d& pt0 = getVertexPoint(_vertexIds[i]);
+		const Vector3d& pt1 = getVertexPoint(_vertexIds[j]);
+
+		LineSegmentd seg(pt0, pt1);;
 		double t;
 		if (seg.contains(pt, t, Tolerance::sameDistTol()))
 			return true;
@@ -991,12 +979,12 @@ bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vec
 		firstId = verts.front();
 		lastId = verts.back();
 
-		if (lastId == edge.getVertex(0) || lastId == edge.getVertex(1)) {
+		if (lastId == edge.getVertexId(0) || lastId == edge.getVertexId(1)) {
 			addedToList = true;
 			nextId = edge.getOtherVert(lastId);
 			verts.push_back(nextId);
 			edges.pop_back();
-		} else if (firstId == edge.getVertex(0) || firstId == edge.getVertex(1)) {
+		} else if (firstId == edge.getVertexId(0) || firstId == edge.getVertexId(1)) {
 			addedToList = true;
 			nextId = edge.getOtherVert(firstId);
 			verts.push_back(nextId);

@@ -100,7 +100,6 @@ void Volume::clearEntries()
 {
 	for (const auto& pBlk : _blocks) {
 		pBlk->_vertices.clear();
-		pBlk->_edges.clear();
 		pBlk->_polygons.clear();
 		pBlk->_polyhedra.clear();
 	}
@@ -1605,6 +1604,7 @@ void Volume::polymeshWrite(const string& dirPath, ProgressReporter* pReporter)
 
 bool Volume::write(ostream& out) const
 {
+	assert(verifyTopology(true));
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
@@ -1694,7 +1694,6 @@ bool Volume::read(istream& in)
 	tmr.recordEntry();
 	tmr.dumpAll();
 
-	assert(verifyTopology(true));
 	return true;
 }
 

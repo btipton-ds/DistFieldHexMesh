@@ -53,10 +53,21 @@ void Vertex::setId(const Index3DId& id)
 	_thisId = id;
 }
 
+MTC::set<Index3DId> Vertex::getConnectedVertexIds() const
+{
+	MTC::set<Index3DId> result;
+	auto edges = getEdges();
+	for (const auto& ek : edges) {
+		result.insert(ek.getOtherVert(getId()));
+	}
+
+	return result;
+}
+
 void Vertex::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
 	remap(idRemap, srcDims, _thisId);
-	remap(idRemap, srcDims, _connectedVertices);
+	remap(idRemap, srcDims, _faceIds);
 }
 
 Vertex& Vertex::operator = (const Vertex& rhs)
@@ -65,7 +76,7 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	_thisId = rhs._thisId;
 	_pt = rhs._pt;
 	_lockType = rhs._lockType;
-	_connectedVertices = rhs._connectedVertices;
+	_faceIds = rhs._faceIds;
 
 	return *this;
 }
@@ -74,43 +85,25 @@ MTC::set<EdgeKey> Vertex::getEdges() const
 {
 	MTC::set<EdgeKey> result;
 
-	for (const auto& otherId : _connectedVertices) {
-		EdgeKey edgeKey(getId(), otherId);
-		result.insert(edgeKey);
-	}
-
-	return result;
-}
-
-MTC::set<Index3DId> Vertex::getFaceIds(bool activeOnly) const
-{
-	MTC::set<Index3DId> result;
-
-	for (const auto& otherId : _connectedVertices) {
-		EdgeKey edgeKey(getId(), otherId);
-		edgeFunc(edgeKey, [this, activeOnly, &result](const Edge& edge) {
-			auto faceIds = edge.getFaceIds();
-			if (activeOnly) {
-				for (const auto& faceId : faceIds) {
-					faceFunc(faceId, [&result](const Polygon& face) {
-						if (!face.getCellIds().empty()) {
-							result.insert(face.getId());
-						}
-					});
-				}
-			} else {
-				result.insert(faceIds.begin(), faceIds.end());
-			}
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&result](const Polygon& face) {
+			auto edges = face.getEdgeKeys();
+			result.insert(edges.begin(), edges.end());
 		});
 	}
 
 	return result;
 }
 
-MTC::set<Index3DId> Vertex::getCellIds(bool activeOnly) const
+const FastBisectionSet<Index3DId>& Vertex::getFaceIds() const
+{
+	return _faceIds;
+}
+
+MTC::set<Index3DId> Vertex::getCellIds() const
 {
 	MTC::set<Index3DId> result;
-	MTC::set<Index3DId> faceIds = getFaceIds(activeOnly);
+	auto& faceIds = getFaceIds();
 
 	for (const auto& faceId : faceIds) {
 		faceFunc(faceId, [&result](const Polygon& face) {
@@ -130,7 +123,7 @@ void Vertex::write(std::ostream& out) const
 	writeVector3(out, _pt);
 
 	out.write((char*)&_lockType, sizeof(_lockType));
-	IoUtil::writeObj(out, _connectedVertices);
+	IoUtil::writeObj(out, _faceIds);
 }
 
 void Vertex::read(std::istream& in)
@@ -141,15 +134,15 @@ void Vertex::read(std::istream& in)
 	readVector3(in, _pt);
 
 	in.read((char*)&_lockType, sizeof(_lockType));
-	IoUtil::readObj(in, _connectedVertices);
+	IoUtil::readObj(in, _faceIds);
 }
 
 bool Vertex::verifyTopology() const
 {
 	bool result = true;
-	for (const auto& id : _connectedVertices) {
-		vertexFunc(id, [this, &result](const Vertex& vert) {
-			if (!vert.isConnectedTo(getId())) {
+	for (const auto& id : _faceIds) {
+		faceFunc(id, [this, &result](const Polygon& face) {
+			if (!face.containsVertex(getId())) {
 				result = false;
 			}
 		});

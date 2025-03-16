@@ -71,17 +71,17 @@ public:
 	const bool operator == (const Vertex& rhs) const;
 	const bool operator != (const Vertex& rhs) const;
 
-	bool isConnectedTo(const Index3DId& vertId) const;
+	bool isConnectedToVertex(const Index3DId& vertId) const;
 
 	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
-	void addConnectedVertexId(const Index3DId& vertId);
-	void removeConnectedVertexId(const Index3DId& vertId);
-	const FastBisectionSet<Index3DId>& getConnectedVertexIds() const;
+	void addFaceId(const Index3DId& faceId);
+	void removeFaceId(const Index3DId& faceId);
+	MTC::set<Index3DId> getConnectedVertexIds() const;
 	MTC::set<EdgeKey> getEdges() const;
-	MTC::set<Index3DId> getFaceIds(bool activeOnly) const;
-	MTC::set<Index3DId> getCellIds(bool activeOnly) const;
+	const FastBisectionSet<Index3DId>& getFaceIds() const;
+	MTC::set<Index3DId> getCellIds() const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -94,11 +94,11 @@ protected:
 
 private:
 	static int64_t scaleToSearch(double v);
-	VertexLockType _lockType = VertexLockType::VLT_NONE;
-
-	Vector3d _pt;
 	Index3DId _thisId;
-	FastBisectionSet<Index3DId> _connectedVertices;
+
+	VertexLockType _lockType = VertexLockType::VLT_NONE;
+	Vector3d _pt;
+	FastBisectionSet<Index3DId> _faceIds; // Need to switch to connected faces. Vertices are not determistic connections, except within a polygon.
 };
 
 inline CBoundingBox3Dd Vertex::getBBox() const
@@ -131,24 +131,20 @@ inline VertexLockType Vertex::getLockType() const
 	return _lockType;
 }
 
-inline void Vertex::addConnectedVertexId(const Index3DId& vertId)
+inline void Vertex::addFaceId(const Index3DId& faceId)
 {
-	_connectedVertices.insert(vertId);
+	_faceIds.insert(faceId);
 }
 
-inline void Vertex::removeConnectedVertexId(const Index3DId& vertId)
+inline void Vertex::removeFaceId(const Index3DId& faceId)
 {
-	_connectedVertices.erase(vertId);
+	_faceIds.erase(faceId);
 }
 
-inline const FastBisectionSet<Index3DId>& Vertex::getConnectedVertexIds() const
+inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 {
-	return _connectedVertices;
-}
-
-inline bool Vertex::isConnectedTo(const Index3DId& vertId) const
-{
-	return _connectedVertices.contains(vertId);
+	auto conVerts = getConnectedVertexIds();
+	return conVerts.contains(vertId);
 }
 
 

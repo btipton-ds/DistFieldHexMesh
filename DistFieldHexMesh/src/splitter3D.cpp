@@ -65,13 +65,13 @@ namespace
 Splitter3D::ScopedDisconnect::ScopedDisconnect(Splitter3D& splitter)
 	: _splitter(splitter)
 {
-	splitter.disconnectVertEdgeTopology();
+//	splitter.disconnectVertEdgeTopology();
 }
 
 Splitter3D::ScopedDisconnect::~ScopedDisconnect()
 {
 	_splitter.imprintEverything();
-	_splitter.connectVertEdgeTopology();
+//	_splitter.connectVertEdgeTopology();
 }
 
 Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
@@ -81,17 +81,20 @@ Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
 {
+	assert(_pBlock->verifyTopology());
+
 	if (!_pScratchVol)
 		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
 	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 
-#ifdef _DEBUG
 	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
+#ifdef _DEBUG
 		if (!cell.verifyTopology()) {
 			assert(!"Bad topology");
 		}
-	});
 #endif // _DEBUG
+		_adjacentCellIds = cell.getAdjacentCells();
+	});
 }
 
 Splitter3D::~Splitter3D()
@@ -128,6 +131,11 @@ Splitter3D::~Splitter3D()
 	}
 #endif // _DEBUG
 
+#if !RUN_MULTI_THREAD // testing all blocks when multithreaded will defintely have race conditions
+	auto pVol = _pBlock->getVolume();
+	assert(pVol->verifyTopology(false));
+#endif // !!RUN_MULTI_THREAD
+
 }
 
 void Splitter3D::reset()
@@ -138,7 +146,6 @@ void Splitter3D::reset()
 
 void Splitter3D::disconnectVertEdgeTopology()
 {
-	auto pVol = getBlockPtr()->getVolume();
 #if 1 && defined(_DEBUG)
 	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
 		assert(cell.verifyTopology());
@@ -151,8 +158,7 @@ void Splitter3D::disconnectVertEdgeTopology()
 	}
 #endif
 
-	cellFunc(_polyhedronId, [this, pVol](Polyhedron& cell) {
-		_adjacentCellIds = cell.getAdjacentCells();
+	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
 		cell.detachFaces();
 		cell.disconnectVertEdgeTopology();
 	});
@@ -339,7 +345,6 @@ bool Splitter3D::splitHexCell(const Vector3d& tuv)
 			});
 		reset();
 	}
-
 	if (intersects[0] == 0) {
 		assert((intersects[1] == 0) && (intersects[2] == 0));
 		numSplitsComplex8++;
@@ -417,6 +422,10 @@ bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, i
 #if 0
 	splitHexCell8(parentId, tuv);
 #else
+	getBlockPtr()->cellFunc(parentId, [](Polyhedron& cell) {
+		cell.detachFaces();
+	});
+
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
 	_newCellIds.clear();
 
@@ -567,7 +576,7 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 			newVertIds.push_back(newVertId);
 		}
 
-		newFaceId = _pScratchBlock->addFace(Polygon(newVertIds));
+		newFaceId = _pScratchBlock->addPolygon(Polygon(newVertIds));
 	});
 
 	return newFaceId;
@@ -593,7 +602,7 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 		MTC::set<Index3DId> newFaceIds;
 		if (_testRun) {
 			// Skip the expensive splitting operations
-			auto newFaceId = getBlockPtr()->addFace(Polygon(faceVerts));
+			auto newFaceId = getBlockPtr()->addPolygon(Polygon(faceVerts));
 #ifdef _DEBUG
 			Index3DId testId(0, 0, 0, 10);
 			if (testId == newFaceId) {
@@ -608,7 +617,7 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 			// Use createFace to do the complex face slitting
 			createFaces(parentId, faceVerts, newFaceIds, tol);
 			if (newFaceIds.empty()) {
-				auto id = getBlockPtr()->addFace(Polygon(faceVerts));
+				auto id = getBlockPtr()->addPolygon(Polygon(faceVerts));
 #ifdef _DEBUG
 				faceFunc(id, [](const Polygon& face) {
 					assert(face.getCellIds().size() < 2);
@@ -745,7 +754,7 @@ void Splitter3D::createFaces(const Index3DId& parentId, const MTC::vector<Index3
 					vertIds.push_back(id);
 				}
 
-				auto newFaceId = getBlockPtr()->addFace(Polygon(vertIds));
+				auto newFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
 				assert(getBlockPtr()->getBlockIdx().withinRange(newFaceId));
 #ifdef _DEBUG
 				Index3DId testId(0, 0, 0, 10);
@@ -791,7 +800,7 @@ void Splitter3D::replaceExistingFaces(const Index3DId& existingFaceId, const std
 		vector<Index3DId> vertIds;
 		for (const auto& pt : pts)
 			vertIds.push_back(vertId(pt));
-		auto newFaceId = getBlockPtr()->addFace(Polygon(vertIds));
+		auto newFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
 		assert(getBlockPtr()->getBlockIdx().withinRange(newFaceId));
 #ifdef _DEBUG
 		Index3DId testId(0, 0, 0, 10);

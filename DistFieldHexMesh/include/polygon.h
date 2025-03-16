@@ -333,8 +333,11 @@ void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 		if (reversed)
 			std::swap(ii, jj);
 
-		Edge e(verts[ii], verts[jj]);
-		if (!fLambda(e))
+		bool result;
+		edgeFunc(EdgeKey(verts[ii], verts[jj]), [&fLambda, &result](const Edge e) {
+			result = fLambda(e);
+		});
+		if (!result)
 			break;
 	}
 }
@@ -343,6 +346,8 @@ template<class F>
 void Polygon::iterateTriangles(F fLambda) const
 {
 	const auto& verts = _vertexIds;
+
+	// TODO use non-colinear vertices instead of the center. It will cut the number triangles in half and avoid cacluating the center.
 	Vector3d ctr(0, 0, 0);
 	for (size_t i = 0; i < verts.size(); i++) {
 		ctr += getVertexPoint(verts[i]);

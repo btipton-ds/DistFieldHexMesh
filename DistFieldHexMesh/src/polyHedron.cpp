@@ -505,7 +505,7 @@ FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
 		vertexFunc(vertId, [&result](const Vertex& vertex) {
-			auto cellIds = vertex.getCellIds(true);
+			auto cellIds = vertex.getCellIds();
 			result.insert(cellIds.begin(), cellIds.end());
 		});
 	}
@@ -541,7 +541,7 @@ FastBisectionSet<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) co
 	FastBisectionSet<EdgeKey> vertEdgeKeys;
 	getVertEdges(vertId, vertEdgeKeys, false);
 
-	for (const Edge& edgeKey : vertEdgeKeys) {
+	for (const auto& edgeKey : vertEdgeKeys) {
 		edgeFunc(edgeKey, [&result](const Edge& edge) {
 			auto& tmp = edge.getFaceIds();
 			result.insert(tmp.begin(), tmp.end());
@@ -582,7 +582,7 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 		auto edges = getEdgeKeys(false);
 		for (size_t i = 0; i < baseFaceVerts.size(); i++) {
 			size_t j = (i + 1) % baseFaceVerts.size();
-			edges.erase(Edge(baseFaceVerts[i], baseFaceVerts[j]));
+			edges.erase(EdgeKey(baseFaceVerts[i], baseFaceVerts[j]));
 		}
 		for (size_t i = 0; i < baseFaceVerts.size(); i++) {
 			for (const auto& e : edges) {
@@ -984,7 +984,7 @@ void Polyhedron::orientFaces()
 						faceFunc(unoriented, [&](Polygon& unorientedFace) {
 							unorientedFace.iterateOrientedEdges([&](const Edge& edgeB) {
 								if (edgeA == edgeB) {
-									if (edgeA.getVertex(0) == edgeB.getVertex(0)) { // face is reversed
+									if (edgeA.getVertexId(0) == edgeB.getVertexId(0)) { // face is reversed
 										unorientedFace.flipReversed(getId());
 									}
 									orientedIds.insert(unoriented);
@@ -1298,7 +1298,7 @@ MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertI
 				auto iter = vertsInFace.begin();
 				const Index3DId& vertId0 = *iter++;
 				const Index3DId& vertId1 = *iter;
-				Edge newEdge(vertId0, vertId1);
+				EdgeKey newEdge(vertId0, vertId1);
 
 				edgeSet.insert(newEdge);
 			}
@@ -1314,7 +1314,7 @@ bool Polyhedron::orderVertIds(MTC::vector<Index3DId>& vertIds) const
 	MTC::vector<Index3DId> result;
 	auto newEdgeSet = createEdgesFromVerts(vertIds);
 
-	const Edge& e = *newEdgeSet.begin();
+	const auto& e = *newEdgeSet.begin();
 	result.push_back(e.getVertexIds()[0]);
 	result.push_back(e.getVertexIds()[1]);
 
@@ -1324,7 +1324,7 @@ bool Polyhedron::orderVertIds(MTC::vector<Index3DId>& vertIds) const
 		found = false;
 		const auto& lastVert = result.back();
 		for (auto iter = newEdgeSet.begin(); iter != newEdgeSet.end(); iter++) {
-			const Edge& e = *iter;
+			const auto& e = *iter;
 			const auto& otherVert = e.getOtherVert(lastVert);
 			if (otherVert.isValid()) {
 				result.push_back(otherVert);

@@ -43,7 +43,7 @@ void removeVertFromAvail(MTC::map<Index3DId, MTC::set<EdgeKey>>& vertToEdgeMap, 
 	vertToEdgeMap.erase(iter);
 }
 
-void removeEdgeFromAvail(MTC::map<Index3DId, MTC::set<EdgeKey>>& vertToEdgeMap, const Edge& edge)
+void removeEdgeFromAvail(MTC::map<Index3DId, MTC::set<EdgeKey>>& vertToEdgeMap, const EdgeKey& edge)
 {
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[0]);
 	removeVertFromAvail(vertToEdgeMap, edge.getVertexIds()[1]);

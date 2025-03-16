@@ -61,11 +61,10 @@ void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& 
 #define LAMBDA_FUNC_EDGE_IMPL(NAME, CONST) \
 void Block::NAME##Func(const EdgeKey& key, const function<void(CONST Edge& obj)>& func) CONST \
 { \
-	auto p = getOwner(key.getVertex(0)); \
+	auto p = getOwner(key.getVertexId(0)); \
 	if (p) { \
-		auto pEdge = p->getEdge(key);\
-		if (pEdge) \
-			func(*pEdge); \
+		Edge edge(key, p); \
+		func(edge); \
 	}\
 }
 

@@ -157,12 +157,6 @@ public:
 
 	CBoundingBox3Dd getBBox() const;
 
-	Index3DId addFace(const Polygon& face);
-	EdgeKey addEdge(const EdgeKey& edgeKey);
-
-	void addEdgeToLookup(const Index3DId& vert0, const Index3DId& vert1);
-	bool removeEdgeFromLookUp(const Index3DId& vert0, const Index3DId& vert1);
-
 	Index3DId addCell(const Polyhedron& cell, const Index3DId& parentCellId);
 	Index3DId addHexCell(const MTC::vector<Index3DId>& cornerVertIds);
 	Index3DId createGradedHexCell(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
@@ -173,9 +167,7 @@ public:
 	bool polyhedronExists(const Index3DId& id) const;
 	bool allCellsClosed() const;
 
-	Edge* getEdge(const Edge& e);
-	const Edge* getEdge(const Edge& e) const;
-
+	Index3DId addPolygon(const Polygon& face);
 	void addPolygonToLookup(const DFHM::Polygon& face);
 	void removePolygonFromLookup(const DFHM::Polygon& face);
 	Index3DId findPolygon(const Polygon& face) const;
@@ -253,15 +245,10 @@ private:
 	void getAdjacentBlockIndices(MTC::set<Index3D>& indices) const;
 	Index3D determineOwnerBlockIdxFromRatios(const Vector3d& ratios) const;
 
-	const Edge* getEdge(const EdgeKey& edgeKey) const;
-	Edge* getEdge(const EdgeKey& edgeKey);
-
 	MTC::vector<Index3DId> getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
 
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
-
-	Index3DId addFace(Block* pOwner, const MTC::vector<Index3DId>& vertIds);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
 	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
@@ -304,7 +291,6 @@ private:
 	FastBisectionSet<Index3DId> _needToSplit, _touchedCellIds;
 
 	ObjectPool<Vertex> _vertices;
-	ObjectPool<Edge> _edges;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
 #if USE_MULTI_THREAD_CONTAINERS

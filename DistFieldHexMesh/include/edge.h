@@ -33,7 +33,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <fastBisectionSet.h>
 #include <pool_set.h>
 #include <index3D.h>
-#include <objectPool.h>
 #include <lambdaMacros.h>
 
 template<class T>
@@ -60,27 +59,25 @@ public:
 	bool operator == (const EdgeKey& rhs) const;
 	bool operator != (const EdgeKey& rhs) const;
 
-	const Index3DId& getVertex(size_t idx) const;
+	const Index3DId& getVertexId(size_t idx) const;
 	const Index3DId* getVertexIds() const;
-	bool containsVertex(const Index3DId& vertexId) const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
+	bool containsVertex(const Index3DId& vertexId) const;
+
 protected:
+	bool _reversed; // Ordered verts are required for coEdge support. Sorted verts are required for searching. This flag is required to support both.
 	Index3DId _vertexIds[2];
+
+private:
+	const Index3DId& getSortedVertexId(size_t idx) const;
 };
 
-class Edge : public EdgeKey, public ObjectPoolOwnerUser {
+class Edge : public EdgeKey {
 public:
 
-	Edge() = default;
 	Edge(const Edge& src) = default;
-	Edge(const EdgeKey& src);
-	Edge(const Index3DId& vert0, const Index3DId& vert1, const MTC::set<Index3DId>& faceIds = MTC::set<Index3DId>());
-	Edge(const Edge& src, const FastBisectionSet<Index3DId>& faceIds);
-	Edge(const Edge& src, const MTC::set<Index3DId>& faceIds);
-
-	const Index3DId& getId() const override;
-	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
+	Edge(const EdgeKey& src, const Block* pBlock);
 
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
@@ -129,11 +126,13 @@ public:
 
 	LAMBDA_CLIENT_DECLS
 
-protected:
-	void setId(const Index3DId& id) override;
-
 private:
-	Index3DId _thisId;
+	Block* getBlockPtr();
+	const Block* getBlockPtr() const;
+
+	void initFaceIds();
+
+	Block* _pBlock = nullptr;
 	FastBisectionSet<Index3DId> _faceIds;
 };
 
@@ -142,9 +141,14 @@ inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 	return _faceIds;
 }
 
-inline const Index3DId& EdgeKey::getVertex(size_t idx) const
+inline const Index3DId& EdgeKey::getVertexId(size_t idx) const
 {
 	return _vertexIds[idx];
+}
+
+inline const Index3DId& EdgeKey::getSortedVertexId(size_t idx) const
+{
+	return _vertexIds[_reversed ? 1 - idx : idx];
 }
 
 inline const Index3DId* EdgeKey::getVertexIds() const
@@ -162,6 +166,16 @@ inline void Edge::removeFaceId(const Index3DId& faceId)
 	_faceIds.erase(faceId);
 }
 
-std::ostream& operator << (std::ostream& out, const Edge& edge);
+inline Block* Edge::getBlockPtr()
+{
+	return _pBlock;
+}
+
+inline const Block* Edge::getBlockPtr() const
+{
+	return _pBlock;
+}
+
+std::ostream& operator << (std::ostream& out, const EdgeKey& edge);
 
 }
