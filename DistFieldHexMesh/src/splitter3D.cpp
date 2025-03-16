@@ -134,6 +134,9 @@ void Splitter3D::reset()
 
 void Splitter3D::imprintEverything()
 {
+	if (_testRun)
+		return;
+
 	size_t numImprints = 0;
 	set<Index3DId> allVertIds;
 	for (const auto& cellId : _newCellIds) {
@@ -172,9 +175,11 @@ void Splitter3D::imprintEverything()
 				faceFunc(faceId, [this, &allVertIds, &numImprints](Polygon& face) {
 					auto edgeKeys = face.getEdgeKeys();
 					for (const auto& edgeKey : edgeKeys) {
-						edgeFunc(edgeKey, [&allVertIds](Edge& edge) {
-							edge.imprintVertices(allVertIds);
-						});
+						if (_polyhedronId.withinRange(edgeKey.getVertexId(0)) && _polyhedronId.withinRange(edgeKey.getVertexId(1))) {
+							edgeFunc(edgeKey, [&allVertIds](Edge& edge) {
+								edge.imprintVertices(allVertIds);
+							});
+						}
 					}
 					});
 			}

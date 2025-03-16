@@ -74,7 +74,7 @@ bool PolygonSearchKey::operator < (const PolygonSearchKey& rhs) const
 {
 	if (_ids.size() < rhs._ids.size())
 		return true;
-	else if (_ids.size() < rhs._ids.size())
+	else if (_ids.size() > rhs._ids.size())
 		return false;
 
 	for (size_t i = 0; i < _ids.size(); i++) {
