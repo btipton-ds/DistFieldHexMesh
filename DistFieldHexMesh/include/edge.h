@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_set.h>
 #include <index3D.h>
 #include <lambdaMacros.h>
+#include <edgeKey.h>
 
 template<class T>
 class Plane;
@@ -47,31 +48,6 @@ class Block;
 class Vertex;
 class Polygon;
 class Polyhedron;
-
-class EdgeKey {
-public:
-	EdgeKey() = default;
-	EdgeKey(const EdgeKey& src) = default;
-	EdgeKey(const Index3DId& vert0, const Index3DId& vert1);
-
-	bool isValid() const;
-	bool operator < (const EdgeKey& rhs) const;
-	bool operator == (const EdgeKey& rhs) const;
-	bool operator != (const EdgeKey& rhs) const;
-
-	const Index3DId& getVertexId(size_t idx) const;
-	const Index3DId* getVertexIds() const;
-	Index3DId getOtherVert(const Index3DId& vert) const;
-
-	bool containsVertex(const Index3DId& vertexId) const;
-
-protected:
-	bool _reversed; // Ordered verts are required for coEdge support. Sorted verts are required for searching. This flag is required to support both.
-	Index3DId _vertexIds[2];
-
-private:
-	const Index3DId& getSortedVertexId(size_t idx) const;
-};
 
 class Edge : public EdgeKey {
 public:
@@ -139,21 +115,6 @@ private:
 inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 {
 	return _faceIds;
-}
-
-inline const Index3DId& EdgeKey::getVertexId(size_t idx) const
-{
-	return _vertexIds[idx];
-}
-
-inline const Index3DId& EdgeKey::getSortedVertexId(size_t idx) const
-{
-	return _vertexIds[_reversed ? 1 - idx : idx];
-}
-
-inline const Index3DId* EdgeKey::getVertexIds() const
-{
-	return _vertexIds;
 }
 
 inline void Edge::addFaceId(const Index3DId& faceId)

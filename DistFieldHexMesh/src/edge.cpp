@@ -37,43 +37,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-EdgeKey::EdgeKey(const Index3DId& vert0, const Index3DId& vert1)
-{
-	_vertexIds[0] = vert0;
-	_vertexIds[1] = vert1;
-	_reversed = vert1 < vert0;
-}
-
-bool EdgeKey::isValid() const
-{
-	return _vertexIds[0].isValid() && _vertexIds[1].isValid();
-}
-
-bool EdgeKey::operator == (const EdgeKey& rhs) const
-{
-	return !operator < (rhs) && !rhs.operator<(*this);
-}
-
-bool EdgeKey::operator != (const EdgeKey& rhs) const
-{
-	return !operator == (rhs);
-}
-
-bool EdgeKey::operator < (const EdgeKey& rhs) const
-{
-	
-	for (int i = 0; i < 2; i++) {
-		auto& v = getSortedVertexId(i);
-		auto& rhsV = rhs.getSortedVertexId(i);
-
-		if (v < rhsV)
-			return true;
-		else if (rhsV < v)
-			return false;
-	}
-	return false;
-}
-
 Edge::Edge(const EdgeKey& src, const Block* pBlock)
 	: EdgeKey(src)
 	, _pBlock(const_cast<Block*>(pBlock))
@@ -306,11 +269,6 @@ LineSegmentd Edge::getSegment() const
 	return result;
 }
 
-bool EdgeKey::containsVertex(const Index3DId& vertexId) const
-{
-	return _vertexIds[0] == vertexId || _vertexIds[1] == vertexId;
-}
-
 bool Edge::containsFace(const Index3DId& faceId) const
 {
 	return _faceIds.contains(faceId);
@@ -358,15 +316,6 @@ bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 	double t;
 	return seg.contains(pt, t, tol);
 
-}
-
-Index3DId EdgeKey::getOtherVert(const Index3DId& vert) const
-{
-	if (vert == _vertexIds[0])
-		return _vertexIds[1];
-	else if (vert == _vertexIds[1])
-		return _vertexIds[0];
-	return Index3DId();
 }
 
 MTC::set<Index3DId> Edge::getCellIds() const

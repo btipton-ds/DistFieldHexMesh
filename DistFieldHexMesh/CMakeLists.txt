@@ -74,6 +74,7 @@ add_executable (DistFieldHexMesh
 	"src/block.cpp"	
 	"src/createBaseMeshDlg.cpp"
     "src/edge.cpp"
+	"src/edgeKey.cpp"
 	"src/divideHexMeshDlg.cpp"
 	"src/drawMesh.cpp"
 	"src/drawHexMesh.cpp" 
@@ -93,6 +94,7 @@ add_executable (DistFieldHexMesh
 	"src/objectTreeCtrl.cpp"
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"
+    "src/splitter2D.cpp" 
 	"src/splitter3D.cpp"
 	"src/polymeshTables.cpp"
 	"src/selectBlocksDlg.cpp"
@@ -103,7 +105,7 @@ add_executable (DistFieldHexMesh
 	"src/vertexSpatialTree.cpp"
 	"src/vertex.cpp"
 	"src/volume.cpp"
-	"../../utilities/threads/src/MultiCoreUtil.cpp"
+ 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
 	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
@@ -111,12 +113,13 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-    "src/splitter2D.cpp")
+)
 
 add_executable (TestDFM         
 	
 	"src/block.cpp"	
  	"src/edge.cpp" 
+	"src/edgeKey.cpp"
 	"src/gradingOp.cpp"
     "src/index3D.cpp"
 	"src/logger.cpp"
@@ -124,6 +127,7 @@ add_executable (TestDFM
 	"src/polygon.cpp"
 	"src/polyHedron.cpp"	
 	"src/splitter3D.cpp" 
+	"src/splitter2D.cpp"
 	"src/polymeshTables.cpp"
 	"src/splitParams.cpp"
 	"src/unalignedBBox.cpp"
@@ -136,7 +140,7 @@ add_executable (TestDFM
 	"src/testPoolMemory.cpp" 
 	"src/testMultiCore.cpp"
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
-	"../../utilities/threads/src/local_heap.cpp" "src/splitter2D.cpp")
+	"../../utilities/threads/src/local_heap.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")

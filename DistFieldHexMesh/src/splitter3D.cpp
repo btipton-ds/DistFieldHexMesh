@@ -62,18 +62,6 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-Splitter3D::ScopedDisconnect::ScopedDisconnect(Splitter3D& splitter)
-	: _splitter(splitter)
-{
-//	splitter.disconnectVertEdgeTopology();
-}
-
-Splitter3D::ScopedDisconnect::~ScopedDisconnect()
-{
-	_splitter.imprintEverything();
-//	_splitter.connectVertEdgeTopology();
-}
-
 Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _pSrcBlock(pBlock)
@@ -142,53 +130,6 @@ void Splitter3D::reset()
 {
 	_pScratchBlock->clear();
 	_newCellIds.clear();
-}
-
-void Splitter3D::disconnectVertEdgeTopology()
-{
-#if 1 && defined(_DEBUG)
-	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
-		assert(cell.verifyTopology());
-	});
-
-	for (const auto& cellId : _adjacentCellIds) {
-		cellFunc(cellId, [](Polyhedron& cell) {
-			assert(cell.verifyTopology());
-		});
-	}
-#endif
-
-	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
-		cell.detachFaces();
-		cell.disconnectVertEdgeTopology();
-	});
-
-	set<Index3D> blockIds;
-	for (const auto& cellId : _adjacentCellIds) {
-		blockIds.insert(cellId);
-	}
-}
-
-void Splitter3D::connectVertEdgeTopology()
-{
-	set<Index3D> blockIds;
-	for (const auto& cellId : _adjacentCellIds) {
-		blockIds.insert(cellId);
-	}
-
-	for (const auto& cellId : _newCellIds) {
-		cellFunc(cellId, [](Polyhedron& cell) {
-			cell.attachFaces();
-			cell.connectVertEdgeTopology();
-		});
-	}
-
-	for (const auto& cellId : _adjacentCellIds) {
-		cellFunc(cellId, [](Polyhedron& cell) {
-			cell.attachFaces();
-			cell.connectVertEdgeTopology();
-		});
-	}
 }
 
 void Splitter3D::imprintEverything()
@@ -326,9 +267,6 @@ inline const Vector3d& Splitter3D::vertexPoint(const  Index3DId& id) const
 bool Splitter3D::splitHexCell(const Vector3d& tuv)
 {
 	bool wasSplit = false;
-#if 0
-	wasSplit = splitHexCell8(_polyhedronId, tuv);
-#else
 
 	int intersects[] = { 0, 0, 0 };
 	for (int i = 0; i < 3; i++)
@@ -354,15 +292,12 @@ bool Splitter3D::splitHexCell(const Vector3d& tuv)
 //		wasSplit = splitHexCell8(_polyhedronId, tuv);
 
 	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 2)) {
-		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 0);
 	} else if ((intersects[0] == 2) && (intersects[1] == 1) && (intersects[2] == 2)) {
-		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 1);
 	} else if ((intersects[0] == 2) && (intersects[1] == 2) && (intersects[2] == 1)) {
-		ScopedDisconnect sc(*this);
 		numSplits2++;
 		wasSplit = splitHexCell2(_polyhedronId, tuv, 2);
 
@@ -378,7 +313,7 @@ bool Splitter3D::splitHexCell(const Vector3d& tuv)
 	} else {
 		assert(!"Should never get here");
 	}
-#endif
+
 	return wasSplit;
 }
 
@@ -419,9 +354,6 @@ bool Splitter3D::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
 
 bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis)
 {
-#if 0
-	splitHexCell8(parentId, tuv);
-#else
 	getBlockPtr()->cellFunc(parentId, [](Polyhedron& cell) {
 		cell.detachFaces();
 	});
@@ -479,7 +411,8 @@ bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, i
 		getBlockPtr()->getVolume()->writeObj(ss.str().c_str(), { newId }, false, false, false);
 #endif
 	}
-#endif
+
+	imprintEverything();
 	return true;
 }
 

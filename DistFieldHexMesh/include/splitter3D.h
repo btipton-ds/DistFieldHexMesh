@@ -61,19 +61,11 @@ private:
 		CT_UNKNOWN,
 	};
 
-	struct ScopedDisconnect {
-		ScopedDisconnect(Splitter3D& splitter);
-		~ScopedDisconnect();
-		Splitter3D& _splitter;
-	};
-
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
 	void reset();
 
-	void disconnectVertEdgeTopology();
-	void connectVertEdgeTopology();
 	void imprintEverything();
 
 	Index3DId vertId(const Vector3d& pt);
@@ -108,6 +100,7 @@ private:
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 	FastBisectionSet<Index3DId> _adjacentCellIds, _newCellIds;
+	std::map<Polygon, std::set<Polygon>> _oldFaceToNewFaceMap;
 
 	thread_local static VolumePtr _pScratchVol;
 };

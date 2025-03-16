@@ -56,6 +56,9 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+
+/*********************************************************************************************************/
+
 Polygon::Polygon(const std::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
