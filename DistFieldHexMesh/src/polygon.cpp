@@ -59,20 +59,26 @@ using namespace DFHM;
 
 /*********************************************************************************************************/
 
-Polygon::Polygon(const std::vector<Index3DId>& verts)
-	: _vertexIds(verts)
-{
-}
-
-#if USE_MULTI_THREAD_CONTAINERS
 Polygon::Polygon(const MTC::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
 }
-#endif
 
 Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)
+{
+}
+
+Polygon::Polygon(const Polygon& src)
+	: ObjectPoolOwnerUser(src)
+	, PolygonSearchKey(src)
+	, _vertexIds(src._vertexIds)
+	, _cellIds(src._cellIds)
+	, _isConvex(src._isConvex)
+	, _cachedIntersectsModel(src._cachedIntersectsModel)
+	, _cachedArea(src._cachedArea)
+	, _cachedCentroid(src._cachedCentroid)
+	, _cachedNormal(src._cachedNormal)
 {
 }
 
@@ -98,19 +104,6 @@ void Polygon::disconnectVertEdgeTopology() {
 	}
 }
 
-Polygon::Polygon(const Polygon& src)
-	: ObjectPoolOwnerUser(src)
-	, _vertexIds(src._vertexIds)
-	, _cellIds(src._cellIds)
-	, _isConvex(src._isConvex)
-	, _cachedIntersectsModel(src._cachedIntersectsModel)
-	, _sortedIds(src._sortedIds)
-	, _cachedArea(src._cachedArea)
-	, _cachedCentroid(src._cachedCentroid)
-	, _cachedNormal(src._cachedNormal)
-{
-}
-
 DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
 	clearCache();
@@ -123,6 +116,7 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	}
 
 	ObjectPoolOwnerUser::operator=(rhs);
+	PolygonSearchKey::operator<(rhs);
 	_thisId = rhs._thisId;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
@@ -172,7 +166,7 @@ void Polygon::clearCache(bool clearSortIds) const
 	_cachedNormal = {};
 
 	if (clearSortIds)
-		_sortedIds.clear();
+		PolygonSearchKey::clear();
 }
 
 bool Polygon::cellsOwnThis() const
@@ -239,54 +233,25 @@ bool Polygon::load(istream& in, size_t idSelf)
 	return true;
 }
 
-namespace {
-	inline bool isColinear(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
-	{
-		Vector3d v0 = pt1 - pt0;
-		Vector3d v1 = pt2 - pt1;
-		v0.normalize();
-		v1.normalize();
-		double cpSqr = v1.cross(v0).squaredNorm();
-		return cpSqr < Tolerance::paramTolSqr();
-	}
+const PolygonSearchKey& Polygon::getSearchKey() const
+{
+	sortIds();
+	return *this;
 }
 
 void Polygon::sortIds() const
 {
-	if (_sortedIds.empty()) {
-		for (size_t j = 0; j < _vertexIds.size(); j++) {
-			size_t i = (j + _vertexIds.size() - 1) % _vertexIds.size();
-			size_t k = (j + 1) % _vertexIds.size();
-			const auto& pt0 = getVertexPoint(_vertexIds[i]);
-			const auto& pt1 = getVertexPoint(_vertexIds[j]);
-			const auto& pt2 = getVertexPoint(_vertexIds[k]);
-			if (!isColinear(pt0, pt1, pt2)) {
-				_sortedIds.push_back(_vertexIds[j]);
-			}
-		}
-
-		sort(_sortedIds.begin(), _sortedIds.end());
-	}
+	const Block* pBlock = nullptr;
+	if (getId().isValid())
+		pBlock = getBlockPtr();
+	PolygonSearchKey::set(pBlock, _vertexIds);
 }
-
 
 bool Polygon::operator < (const Polygon& rhs) const
 {
 	sortIds();
 	rhs.sortIds();
-
-	if (_sortedIds.size() < rhs._sortedIds.size())
-		return true;
-	else if (_sortedIds.size() > rhs._sortedIds.size())
-		return false;
-
-	for (size_t i = 0; i < _sortedIds.size(); i++) {
-		if (_sortedIds[i] < rhs._sortedIds[i])
-			return true;
-		else if (rhs._sortedIds[i] < _sortedIds[i])
-			return false;
-	}
-	return false;
+	return PolygonSearchKey::operator < (rhs);
 }
 
 bool Polygon::operator == (const Polygon& rhs) const

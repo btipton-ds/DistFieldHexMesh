@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
 #include <memory>
 #include <vector>
 #include <set>
@@ -42,6 +43,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <fastBisectionSet.h>
 #include <vertex.h>
 #include <edge.h>
+#include <polygonSearchKey.h>
 
 template<class T>
 class Plane;
@@ -60,33 +62,13 @@ class Block;
 class TriMeshIndex;
 struct SplittingParams;
 
-struct VertEdgePair {
-	inline VertEdgePair(const Index3DId& vertId, const Edge& edge)
-		: _vertId(vertId)
-		, _edge(edge)
-	{
-	}
-
-	bool operator < (const VertEdgePair& rhs) const
-	{
-		if (_edge < rhs._edge)
-			return true;
-		else if (rhs._edge < _edge)
-			return false;
-
-		return _vertId < rhs._vertId;
-	}
-
-	Index3DId _vertId;
-	Edge _edge;
-};
-
 // A polygon is owned by a single block, but it's vertices may belong to more than one block.
 // Once a polygon is split, it is kept for reference but is otherwise dead.
 // If an edge is split, the polygon must also be split.
 // If a polygon has been split, it can be split again but DOES NOT become reference.
 
-class Polygon : public ObjectPoolOwnerUser {
+
+class Polygon : public PolygonSearchKey, public ObjectPoolOwnerUser {
 public:
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
@@ -100,10 +82,7 @@ public:
 	static void dumpPolygonPoints(std::ostream& out, const MTC::vector<Vector3d>& pts);
 
 	Polygon() = default;
-	Polygon(const std::vector<Index3DId>& verts);
-#if USE_MULTI_THREAD_CONTAINERS
-	explicit Polygon(const MTC::vector<Index3DId>& verts);
-#endif
+	Polygon(const MTC::vector<Index3DId>& verts);
 	Polygon(const std::initializer_list<Index3DId>& verts);
 	Polygon(const Polygon& src);
 
@@ -144,6 +123,8 @@ public:
 	template<class TRI_FUNC, class EDGE_FUNC>
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
 	int64_t getLayerNum() const;
+
+	const PolygonSearchKey& getSearchKey() const;
 
 	bool verifyUnique() const;
 	bool verifyTopology() const;
@@ -225,7 +206,6 @@ private:
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid, _cachedNormal;
-	mutable MTC::vector<Index3DId> _sortedIds;
 };
 
 inline bool Polygon::verifyUnique() const
