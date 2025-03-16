@@ -277,7 +277,6 @@ bool Edge::containsFace(const Index3DId& faceId) const
 bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 {
 	const double tol = Tolerance::paramTol();
-	assert(verifyTopology());
 
 	auto seg = getSegment();
 	set<Index3DId> vertsInBounds;

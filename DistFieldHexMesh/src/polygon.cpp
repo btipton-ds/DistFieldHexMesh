@@ -385,11 +385,11 @@ bool Polygon::isCoplanar(const Planed& pl) const
 bool Polygon::isCoplanar(const EdgeKey& edgeKey) const
 {
 	Planed pl = calPlane();
-	const auto pt0 = getVertexPoint(edgeKey.getVertexId(0));
+	const auto pt0 = getVertexPoint(edgeKey[0]);
 	if (!pl.isCoincident(pt0, Tolerance::sameDistTol()))
 		return false;
 
-	const auto pt1 = getVertexPoint(edgeKey.getVertexId(1));
+	const auto pt1 = getVertexPoint(edgeKey[1]);
 	if (!pl.isCoincident(pt1, Tolerance::sameDistTol()))
 		return false;
 
@@ -947,12 +947,12 @@ bool addPairToVerts(MTC::vector<Index3DId>& verts, const MTC::map<Index3DId, Vec
 		firstId = verts.front();
 		lastId = verts.back();
 
-		if (lastId == edge.getVertexId(0) || lastId == edge.getVertexId(1)) {
+		if (lastId == edge[0] || lastId == edge[1]) {
 			addedToList = true;
 			nextId = edge.getOtherVert(lastId);
 			verts.push_back(nextId);
 			edges.pop_back();
-		} else if (firstId == edge.getVertexId(0) || firstId == edge.getVertexId(1)) {
+		} else if (firstId == edge[0] || firstId == edge[1]) {
 			addedToList = true;
 			nextId = edge.getOtherVert(firstId);
 			verts.push_back(nextId);

@@ -48,7 +48,7 @@ public:
 	bool operator == (const EdgeKey& rhs) const;
 	bool operator != (const EdgeKey& rhs) const;
 
-	const Index3DId& getVertexId(size_t idx) const;
+	const Index3DId& operator[](size_t idx) const;
 	const Index3DId* getVertexIds() const;
 	Index3DId getOtherVert(const Index3DId& vert) const;
 
@@ -62,7 +62,7 @@ private:
 	const Index3DId& getSortedVertexId(size_t idx) const;
 };
 
-inline const Index3DId& EdgeKey::getVertexId(size_t idx) const
+inline const Index3DId& EdgeKey::operator[](size_t idx) const
 {
 	return _vertexIds[idx];
 }

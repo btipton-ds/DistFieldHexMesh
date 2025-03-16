@@ -984,7 +984,7 @@ void Polyhedron::orientFaces()
 						faceFunc(unoriented, [&](Polygon& unorientedFace) {
 							unorientedFace.iterateOrientedEdges([&](const Edge& edgeB) {
 								if (edgeA == edgeB) {
-									if (edgeA.getVertexId(0) == edgeB.getVertexId(0)) { // face is reversed
+									if (edgeA[0] == edgeB[0]) { // face is reversed
 										unorientedFace.flipReversed(getId());
 									}
 									orientedIds.insert(unoriented);

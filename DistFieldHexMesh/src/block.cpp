@@ -725,12 +725,12 @@ Block* Block::getOwner(const Index3D& blockIdx)
 
 const Block* Block::getOwner(const Edge& edge) const
 {
-	return getOwner(edge.getVertexId(0));
+	return getOwner(edge[0]);
 }
 
 Block* Block::getOwner(const Edge& edge)
 {
-	return getOwner(edge.getVertexId(0));
+	return getOwner(edge[0]);
 }
 
 Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
@@ -1416,4 +1416,63 @@ void Block::pack()
 }
 
 //LAMBDA_BLOCK_IMPLS
-LAMBDA_BLOCK_IMPLS
+void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+} 
+
+void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+} 
+
+void Block::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+} 
+
+void Block::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+} 
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+	auto& idx = getBlockIdx(); 
+	const Block* p; 
+	if (idx.withinRange(key[0])) 
+		p = getOwner(key[0]); 
+	else if (idx.withinRange(key[1])) 
+		p = getOwner(key[1]); 
+	if (p) {
+		Edge edge(key, p); func(edge);
+	}
+} 
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+	auto& idx = getBlockIdx();  
+	Block* p; 
+	if (idx.withinRange(key[0])) 
+		p = getOwner(key[0]); 
+	else if (idx.withinRange(key[1])) 
+		p = getOwner(key[1]); 
+	if (p) {
+		Edge edge(key, p); 
+		func(edge);
+	}
+}

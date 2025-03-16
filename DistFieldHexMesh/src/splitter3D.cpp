@@ -175,7 +175,7 @@ void Splitter3D::imprintEverything()
 				faceFunc(faceId, [this, &allVertIds, &numImprints](Polygon& face) {
 					auto edgeKeys = face.getEdgeKeys();
 					for (const auto& edgeKey : edgeKeys) {
-						if (_polyhedronId.withinRange(edgeKey.getVertexId(0)) && _polyhedronId.withinRange(edgeKey.getVertexId(1))) {
+						if (_polyhedronId.withinRange(edgeKey[0]) && _polyhedronId.withinRange(edgeKey[1])) {
 							edgeFunc(edgeKey, [&allVertIds](Edge& edge) {
 								edge.imprintVertices(allVertIds);
 							});
