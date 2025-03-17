@@ -25,6 +25,17 @@ This file is part of the DistFieldHexMesh application/library.
 	Robert R Tipton - Author
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
+
+	
+	
+	
+	
+	
+This uses the OpenFoam numbering system defined at - https://www.openfoam.com/documentation/user-guide/4-mesh-generation-and-conversion/4.1-mesh-description
+	
+	
+	
+	
 */
 
 #include <set>
@@ -71,10 +82,9 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& vertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
+	void collectAllPolyhedronFaces(size_t index);
 	bool splitHexCell(const Vector3d& tuv);
-	bool splitHexCell8(const Index3DId& parentId, const Vector3d& tuv);
-	bool splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis);
-	bool splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis);
+	bool splitHexCell2_0(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createScratchCell();
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
@@ -100,7 +110,7 @@ private:
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
 	FastBisectionSet<Index3DId> _adjacentCellIds, _newCellIds;
-	std::map<Polygon, std::set<Polygon>> _oldFaceToNewFaceMap;
+	std::vector<std::set<Index3DId>> _oldFaceToNewFaceMap;
 
 	thread_local static VolumePtr _pScratchVol;
 };

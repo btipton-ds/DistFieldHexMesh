@@ -269,95 +269,103 @@ inline const Vector3d& Splitter3D::vertexPoint(const  Index3DId& id) const
 	return _pBlock->getVertexPoint(id);
 }
 
+namespace
+{
+inline void clearCell(bool isect[8], const vector<int>& entries)
+{
+	for (int i : entries)
+		isect[i] = false;
+}
+}
+
 bool Splitter3D::splitHexCell(const Vector3d& tuv)
 {
 	bool wasSplit = false;
 
-	int intersects[] = { 0, 0, 0 };
-	for (int i = 0; i < 3; i++)
+	// Split the cell with a plane on each axis
+	// intersects[] keeps track of intersections in the 8 possible subcells
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+	bool isect[] = { 
+		true, true, true, true,
+		true, true, true, true,
+	};
+
+	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
 	{
 		Utils::ScopedRestore restore0(_pBlock);
 		_pBlock = _pScratchBlock;
 		Utils::ScopedRestore restore1(_testRun);
 		_testRun = true;
 		const auto& scratchCellId = createScratchCell();
-		splitHexCell2(scratchCellId, tuv, i);
-		_pScratchBlock->iteratePolyhedraInOrder([&scratchCellId , &intersects, i](const Index3DId& cellId, const Polyhedron& cell) {
-			if (cell.getId() != scratchCellId && cell.intersectsModel())
-				intersects[i]++;
+		MTC::vector<Index3DId> newCellIds;
+		splitHexCell2_0(scratchCellId, tuv, splitAxis, newCellIds);
+		for (size_t j = 0; j < 2; j++) {
+			cellFunc(newCellIds[j], [&isect, splitAxis, j](const Polyhedron& cell) {
+				if (!cell.intersectsModel()) {
+					switch (splitAxis) {
+					case 0:
+						if (j == 0) 
+							clearCell(isect, { 0, 2, 4, 6 }); // front 4 empty
+						else
+							clearCell(isect, { 1, 3, 5, 7 }); // back 4 empty
+						break;
+					case 1:
+						if (j == 0)
+							clearCell(isect, { 0, 1, 4, 5 }); // right 4 empty
+						else
+							clearCell(isect, { 2, 3, 6, 7 }); // left 4 empty
+						break;
+					case 2:
+						if (j == 0)
+							clearCell(isect, { 0, 1, 2, 3 }); // bottom 4 empty
+						else
+							clearCell(isect, { 4, 5, 6, 7 }); // top 4 empty
+						break;
+					}
+				}
 			});
+		}
 		reset();
 	}
-	if (intersects[0] == 0) {
-		assert((intersects[1] == 0) && (intersects[2] == 0));
-		numSplitsComplex8++;
-//		wasSplit =splitHexCell8(_polyhedronId, tuv);
-	} else if (((intersects[0] == 2) && (intersects[1] == 2) && (intersects[2] == 2)) ||
-		       ((intersects[0] == 1) && (intersects[1] == 1) && (intersects[2] == 1))) {
-//		wasSplit = splitHexCell8(_polyhedronId, tuv);
 
-	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 2)) {
-		numSplits2++;
-		wasSplit = splitHexCell2(_polyhedronId, tuv, 0);
-	} else if ((intersects[0] == 2) && (intersects[1] == 1) && (intersects[2] == 2)) {
-		numSplits2++;
-		wasSplit = splitHexCell2(_polyhedronId, tuv, 1);
-	} else if ((intersects[0] == 2) && (intersects[1] == 2) && (intersects[2] == 1)) {
-		numSplits2++;
-		wasSplit = splitHexCell2(_polyhedronId, tuv, 2);
+	int dbgBreak = 1;
 
-	} else if ((intersects[0] == 2) && (intersects[1] == 1) && (intersects[2] == 1)) {
-		numSplits4++;
-//		wasSplit = splitHexCell4(_polyhedronId, tuv, 0);
-	} else if ((intersects[0] == 1) && (intersects[1] == 2) && (intersects[2] == 1)) {
-		numSplits4++;
-//		wasSplit = splitHexCell4(_polyhedronId, tuv, 1);
-	} else if ((intersects[0] == 1) && (intersects[1] == 1) && (intersects[2] == 2)) {
-		numSplits4++;
-//		wasSplit = splitHexCell4(_polyhedronId, tuv, 2);
-	} else {
-		assert(!"Should never get here");
+	for (int splitAxis = 0; splitAxis < 3; splitAxis++) {
+		bool doSplit = false;
+		switch (splitAxis) {
+		case 0:
+			if ((!isect[0] && !isect[2] && !isect[4] && !isect[6]) ||
+				(!isect[1] && !isect[3] && !isect[5] && !isect[7])) {
+				doSplit = true;
+			}
+			break;
+		case 1:
+			if ((!isect[0] && !isect[1] && !isect[4] && !isect[5]) ||
+				(!isect[2] && !isect[3] && !isect[6] && !isect[7])) {
+				doSplit = true;
+			}
+			break;
+		case 2:
+			if ((!isect[0] && !isect[1] && !isect[2] && !isect[3]) ||
+				(!isect[4] && !isect[5] && !isect[6] && !isect[7])) {
+				doSplit = true;
+			}
+			break;
+		}
+
+		if (doSplit) {
+			MTC::vector<Index3DId> newCellIds;
+			splitHexCell2_0(_polyhedronId, tuv, splitAxis, newCellIds);
+			wasSplit = true;
+			break;
+		}
 	}
 
 	return wasSplit;
 }
 
-bool Splitter3D::splitHexCell8(const Index3DId& parentId, const Vector3d& tuv)
-{
-	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
-	_newCellIds.clear();
-
-	for (int i = 0; i < 2; i++) {
-		double t0 = (i == 0) ? 0 : tuv[0];
-		double t1 = (i == 0) ? tuv[0] : 1;
-		for (int j = 0; j < 2; j++) {
-			double u0 = (j == 0) ? 0 : tuv[1];
-			double u1 = (j == 0) ? tuv[1] : 1;
-			for (int k = 0; k < 2; k++) {
-				double v0 = (k == 0) ? 0 : tuv[2];
-				double v1 = (k == 0) ? tuv[2] : 1;
-
-				MTC::vector<Index3DId> subCorners = {
-					vertId(TRI_LERP(_cornerPts, t0, u0, v0)),
-					vertId(TRI_LERP(_cornerPts, t1, u0, v0)),
-					vertId(TRI_LERP(_cornerPts, t1, u1, v0)),
-					vertId(TRI_LERP(_cornerPts, t0, u1, v0)),
-
-					vertId(TRI_LERP(_cornerPts, t0, u0, v1)),
-					vertId(TRI_LERP(_cornerPts, t1, u0, v1)),
-					vertId(TRI_LERP(_cornerPts, t1, u1, v1)),
-					vertId(TRI_LERP(_cornerPts, t0, u1, v1)),
-				};
-
-				addHexCell(parentId, subCorners, tol);
-			}
-		}
-	}
-
-	return true;
-}
-
-bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, int axis)
+bool Splitter3D::splitHexCell2_0(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells)
 {
 	getBlockPtr()->cellFunc(parentId, [](Polyhedron& cell) {
 		cell.detachFaces();
@@ -409,6 +417,7 @@ bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, i
 			subCorners.push_back(vertId(pt));
 
 		auto newId = addHexCell(parentId, subCorners, tol);
+		newCells.push_back(newId);
 
 #if 0 && defined(_DEBUG)
 		stringstream ss;
@@ -418,59 +427,6 @@ bool Splitter3D::splitHexCell2(const Index3DId& parentId, const Vector3d& tuv, i
 	}
 
 	imprintEverything();
-	return true;
-}
-
-bool Splitter3D::splitHexCell4(const Index3DId& parentId, const Vector3d& tuv, int axis)
-{
-#if 0
-	splitHexCell8(parentId, tuv);
-#else
-	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
-	_newCellIds.clear();
-
-	for (int i = 0; i < 2; i++) {
-		for (int j = 0; j < 2; j++) {
-			double t0 = 0, t1 = 1;
-			double u0 = 0, u1 = 1;
-			double v0 = 0, v1 = 1;
-
-			switch (axis) {
-			case 0:
-				u0 = (i == 0) ? 0 : tuv[1];
-				u1 = (i == 0) ? tuv[1] : 1;
-				v0 = (j == 0) ? 0 : tuv[2];
-				v1 = (j == 0) ? tuv[2] : 1;
-				break;
-			case 1:
-				t0 = (i == 0) ? 0 : tuv[0];
-				t1 = (i == 0) ? tuv[0] : 1;
-				v0 = (j == 0) ? 0 : tuv[1];
-				v1 = (j == 0) ? tuv[1] : 1;
-				break;
-			case 2:
-				t0 = (i == 0) ? 0 : tuv[0];
-				t1 = (i == 0) ? tuv[0] : 1;
-				u0 = (j == 0) ? 0 : tuv[1];
-				u1 = (j == 0) ? tuv[1] : 1;
-				break;
-			}
-			MTC::vector<Index3DId> subCorners = {
-				vertId(TRI_LERP(_cornerPts, t0, u0, v0)),
-				vertId(TRI_LERP(_cornerPts, t1, u0, v0)),
-				vertId(TRI_LERP(_cornerPts, t1, u1, v0)),
-				vertId(TRI_LERP(_cornerPts, t0, u1, v0)),
-
-				vertId(TRI_LERP(_cornerPts, t0, u0, v1)),
-				vertId(TRI_LERP(_cornerPts, t1, u0, v1)),
-				vertId(TRI_LERP(_cornerPts, t1, u1, v1)),
-				vertId(TRI_LERP(_cornerPts, t0, u1, v1)),
-			};
-
-			addHexCell(parentId, subCorners, tol);
-		}
-	}
-#endif
 	return true;
 }
 
@@ -762,16 +718,47 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 		_cornerPts.push_back(vertexPoint(id));
 	GradingOp::getCubeFaceVertIds(cornerVertIds, _cellFaceVertIds);
 
-	_cellFaceVertIds.resize(_cellFacePoints.size());
-	for (size_t i = 0; i < _cellFacePoints.size(); i++) {
-		const auto& facePts = _cellFacePoints[i];
-		auto& faceVerts = _cellFaceVertIds[i];
-		faceVerts.resize(facePts.size());
-		for (size_t j = 0; j < facePts.size(); j++) {
-			faceVerts[j] = vertId(facePts[j]);
+	_cellFacePoints.resize(_cellFaceVertIds.size());
+	for (size_t i = 0; i < _cellFaceVertIds.size(); i++) {
+		const auto& faceVerts = _cellFaceVertIds[i];
+		auto& facePts = _cellFacePoints[i];
+		facePts.resize(faceVerts.size());
+		for (size_t j = 0; j < faceVerts.size(); j++) {
+			facePts[j] = vertexPoint(faceVerts[j]);
 		}
 	}
 
+	_oldFaceToNewFaceMap.clear();
+	_oldFaceToNewFaceMap.resize(6);
+	for (int i = 0; i < 6; i++)
+		collectAllPolyhedronFaces(i);
+
+	int dbgBreak = 1;
+}
+
+void Splitter3D::collectAllPolyhedronFaces(size_t index)
+{
+	const auto& facePts(_cellFacePoints[index]);
+	assert(facePts.size() >= 3);
+
+	Vector3d v0 = facePts[0] - facePts[1];
+	Vector3d v1 = facePts[2] - facePts[1];
+	Vector3d n = v1.cross(v0);
+	Planed polyPlane(facePts[0], n);
+
+	auto& faceSet = _oldFaceToNewFaceMap[index];
+	cellFunc(_polyhedronId, [this, &polyPlane, &faceSet](const Polyhedron& cell) {
+		assert(cell.isClosed());
+		const auto& faceIds = cell.getFaceIds();
+		for (const auto& faceId : faceIds) {
+			faceFunc(faceId, [&polyPlane, &faceSet](const Polygon& face) {
+				if (face.isCoplanar(polyPlane))
+					faceSet.insert(face.getId());
+			});
+		}
+	});
+
+	assert(!faceSet.empty());
 }
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)

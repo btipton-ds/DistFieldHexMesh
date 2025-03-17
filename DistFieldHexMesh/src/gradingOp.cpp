@@ -42,17 +42,17 @@ using namespace DFHM;
 const MTC::vector<MTC::vector<size_t>>& GradingOp::getCubeFaceIndices()
 {
     static MTC::vector<MTC::vector<size_t>> facePts = {
-        // add bottom and top
-        { 0, 3, 2, 1 },
-        { 4, 5, 6, 7 },
-
         // add front and back
-        { 0, 4, 7, 3 },
-        { 1, 2, 6, 5 },
+        { 0, 4, 7, 3 }, // OpenFoam face 0
+        { 1, 2, 6, 5 }, // OpenFoam face 1
 
         // add left and right
-        { 0, 1, 5, 4 },
-        { 2, 3, 7, 6 },
+        { 0, 1, 5, 4 }, // OpenFoam face 2
+        { 2, 3, 7, 6 }, // OpenFoam face 3
+
+        // add bottom and top
+        { 0, 3, 2, 1 }, // OpenFoam face 4
+        { 4, 5, 6, 7 }, // OpenFoam face 5
     };
 
     return facePts;
