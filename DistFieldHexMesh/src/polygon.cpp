@@ -1122,7 +1122,7 @@ bool Polygon::verifyTopology() const
 			if (numCells() != 1)
 				return false;
 		} else {
-#if 1
+#if 0
 			if (numCells() != 2)
 				return false;
 #endif

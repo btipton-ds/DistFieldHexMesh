@@ -884,17 +884,17 @@ void Block::dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool include
 	}
 }
 
-void Block::dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId) const
+void Block::dumpPolygonObj(const std::string& filename, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId) const
 {
 	MTC::vector<Index3DId> vecIds;
 	vecIds.insert(vecIds.end(), faceIds.begin(), faceIds.end());
-	dumpPolygonObj(fileName, vecIds, cellId);
+	dumpPolygonObj(filename, vecIds, cellId);
 }
 
-void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId) const
+void Block::dumpPolygonObj(const std::string& filename, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId) const
 {
 	string path = getObjFilePath();
-	string filename = path + fileName + ".obj";
+	string fullFilename = path + filename + ".obj";
 
 	vector<Vector3d> points;
 	map<Index3DId, size_t> vertIdToPtMap;
@@ -913,7 +913,7 @@ void Block::dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& 
 		});
 	}
 
-	ofstream out(filename);
+	ofstream out(fullFilename);
 	for (const auto& pt : points) {
 		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
 	}

@@ -267,31 +267,46 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 			auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
 
 			FastBisectionSet<Index3DId> allCellFaceIds;
-			cellFunc(parentId, [&splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
+			cellFunc(parentId, [this, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
 				cell.imprintFaceEdges(splittingFaceId);
+#if 1
+				stringstream ss;
+				ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId) << ".obj";
+				MTC::vector<Index3DId> ids;
+				ids.push_back(splittingFaceId);
+				getBlockPtr()->dumpPolygonObj(ss.str(), ids);
+				getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
+#endif
 				allCellFaceIds = cell.getFaceIds();
-			});
-			
-			MTC::vector<MTC::vector<Vector3d>> subCells;
-			makeSubCellHexPoints(parentId, tuv, splitAxis, subCells);
-#if 0
-			getBlockPtr()->cellFunc(parentId, [](Polyhedron& cell) {
 				cell.detachFaces();
 			});
 
+#if 1
+			Planed splittingPlane;
+			faceFunc(splittingFaceId, [&splittingPlane](const Polygon& face) {
+				splittingPlane = face.calPlane();
+			});
+
+			MTC::vector<MTC::vector<Vector3d>> subCells;
+			makeSubCellHexPoints(parentId, tuv, splitAxis, subCells);
+
 			for (const auto& cornerPts : subCells) {
-				MTC::vector<MTC::vector<Vector3d>> cubeFacePts;
-				GradingOp::getCubeFacePoints(cornerPts, cubeFacePts);
+				Vector3d cellCtr(0, 0, 0);
+				for (const auto& pt : cornerPts)
+					cellCtr += pt;
+				cellCtr /= cornerPts.size();
+
+				double sign = splittingPlane.distanceToPoint(cellCtr, false);
+				sign = sign / fabs(sign);
 
 				MTC::set<Index3DId> cellFaces;
 				cellFaces.insert(splittingFaceId);
 				for (const auto& faceId : allCellFaceIds) {
-					faceFunc(faceId, [this, &parentId, &cubeFacePts, &cellFaces](Polygon& face) {
-						for (const auto& boundingFacePts : cubeFacePts) {
-							if (faceInsideBoundary(face, boundingFacePts)) {
-								cellFaces.insert(face.getId());
-							}
-						}
+					faceFunc(faceId, [this, sign, &splittingPlane, &cellFaces](Polygon& face) {
+						auto ctr = face.calCentroid();
+						double dist = splittingPlane.distanceToPoint(ctr, false);
+						if (sign * dist > 0)
+							cellFaces.insert(face.getId());
 					});
 				}
 

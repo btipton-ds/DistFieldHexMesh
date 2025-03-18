@@ -1062,30 +1062,35 @@ void Polyhedron::disconnectVertEdgeTopology()
 
 void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 {
-
 	faceFunc(newFaceId, [this](Polygon& newFace) {
 		newFace.imprintFaces(_faceIds);
-	});
+		});
 
 	MTC::vector<EdgeKey> newEdgeKeys;
 	MTC::vector<Index3DId> vertIds;
 	faceFunc(newFaceId, [&newEdgeKeys, &vertIds](const Polygon& face) {
 		newEdgeKeys = face.getEdgeKeys();
 		vertIds = face.getVertexIds();
-	});
+		});
 
 	auto tmp = _faceIds; // Make a copy because this will change as we work
 
 	for (const auto& faceId : tmp) {
+		assert(getBlockPtr()->polygonExists(faceId));
 		faceFunc(faceId, [this, &vertIds](Polygon& face) {
 			auto edgeKeys = face.getEdgeKeys();
 			for (const auto& ek : edgeKeys) {
 				edgeFunc(ek, [vertIds](Edge& edge) {
 					edge.imprintVertices(vertIds);
-				});
+					});
 			}
-		});
+			});
+	}
 
+	assert(isClosed());
+
+	for (const auto& faceId : tmp) {
+		assert(getBlockPtr()->polygonExists(faceId));
 		MTC::vector<MTC::vector<Vector3d>> splitFacePoints;
 		FastBisectionSet<Index3DId> cellIds;
 		faceFunc(faceId, [this, &newEdgeKeys, &splitFacePoints, &cellIds](Polygon& face) {
@@ -1099,8 +1104,6 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 				return true;
 			});
 
-			// Imprint full edges
-			bool didImprint = false;
 			for (const auto& ek : newEdgeKeys) {
 				const auto& pt0 = getVertexPoint(ek[0]);
 				const auto& pt1 = getVertexPoint(ek[1]);
@@ -1108,33 +1111,13 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 				bool cp1 = face.isCoplanar(pt1);
 				if (cp0 && cp1) {
 					sp.add3DEdge(pt0, pt1);
-					didImprint = true;
 				}
 			}
-
-			if (!didImprint) {
-				// Imprint single vertices
-				for (const auto& ek : newEdgeKeys) {
-					const auto& pt0 = getVertexPoint(ek[0]);
-					const auto& pt1 = getVertexPoint(ek[1]);
-					bool cp0 = face.isCoplanar(pt0);
-					bool cp1 = face.isCoplanar(pt1);
-					if (cp0) {
-						sp.imprint3DPoint(pt0);
-						didImprint = true;
-					} else if (cp1) {
-						sp.imprint3DPoint(pt1);
-						didImprint = true;
-					}
-				}
-			}
-
 			sp.getFacePoints(splitFacePoints);
-
 		});
 
 		if (splitFacePoints.size() < 2)
-			return;
+			continue;
 
 		set<Index3DId> newFaceIds;
 		for (const auto& facePts : splitFacePoints) {
@@ -1147,8 +1130,8 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 		}
 
 		for (const auto& cellId : cellIds) {
-			cellFunc(cellId, [this, &newFaceIds](Polyhedron& cell) {
-				cell.removeFace(getId()); // remove the old face
+			cellFunc(cellId, [this, &faceId, &newFaceIds](Polyhedron& cell) {
+				cell.removeFace(faceId);
 				for (const auto& newFaceId : newFaceIds) {
 					cell.addFace(newFaceId);
 				}
@@ -1156,6 +1139,8 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 				assert(cell.isClosed());
 			});
 		}
+
+		getBlockPtr()->freePolygon(faceId);
 	}
 }
 

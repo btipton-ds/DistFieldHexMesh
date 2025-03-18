@@ -203,9 +203,10 @@ public:
 	bool unload(std::string& filename);
 	bool load();
 
+	std::string getObjFilePath() const;
 	void dumpPolyhedraObj(const MTC::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const MTC::vector<Vector3d>& pts = MTC::vector<Vector3d>()) const;
-	void dumpPolygonObj(std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
-	void dumpPolygonObj(std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
+	void dumpPolygonObj(const std::string& fileName, const MTC::set<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
+	void dumpPolygonObj(const std::string& fileName, const MTC::vector<Index3DId>& faceIds, const Index3DId& cellId = Index3DId()) const;
 	void dumpEdgeObj(std::string& fileName, const MTC::set<EdgeKey>& edges) const;
 
 	template<class F>
@@ -261,8 +262,6 @@ private:
 	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
 
 	void addToTouchedCellList(const Index3DId& cellIds);
-
-	std::string getObjFilePath() const;
 
 	VolumePtr getScratchVolume();
 
