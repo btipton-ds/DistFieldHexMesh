@@ -180,11 +180,29 @@ inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 
 namespace
 {
-inline void clearCell(bool isect[8], const vector<int>& entries)
+
+	inline void clearCell(bool isect[8], const vector<int>& entries)
 {
 	for (int i : entries)
 		isect[i] = false;
 }
+
+inline bool cellsNotSet(bool isect[8], const vector<int>& entries)
+{
+	bool result = true;
+	for (int i : entries)
+		result = result && !isect[i];
+	return result;
+}
+
+inline bool allCellsSet(bool isect[8])
+{
+	bool result = true;
+	for (int i = 0; i < 8; i++)
+		result = result && isect[i];
+	return result;
+}
+
 }
 
 bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv)
@@ -244,24 +262,27 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 		bool doSplit = false;
 		switch (splitAxis) {
 		case 0:
-			if ((!isect[0] && !isect[2] && !isect[4] && !isect[6]) ||
-				(!isect[1] && !isect[3] && !isect[5] && !isect[7])) {
+			if (cellsNotSet(isect, { 0, 2, 4, 6 }) ||
+				cellsNotSet(isect, { 1, 3, 5, 7 })) {
 				doSplit = true;
 			}
 			break;
 		case 1:
-			if ((!isect[0] && !isect[1] && !isect[4] && !isect[5]) ||
-				(!isect[2] && !isect[3] && !isect[6] && !isect[7])) {
+			if (cellsNotSet(isect, { 0, 1, 4, 5 }) ||
+				cellsNotSet(isect, { 2, 3, 4, 7 })) {
 				doSplit = true;
 			}
 			break;
 		case 2:
-			if ((!isect[0] && !isect[1] && !isect[2] && !isect[3]) ||
-				(!isect[4] && !isect[5] && !isect[6] && !isect[7])) {
+			if (cellsNotSet(isect, { 0, 1, 2, 3 }) ||
+				cellsNotSet(isect, { 4, 5, 6, 7 })) {
 				doSplit = true;
 			}
 			break;
 		}
+
+		if (!doSplit)
+			doSplit = allCellsSet(isect);
 
 		if (doSplit) {
 #if 1 && _DEBUG
