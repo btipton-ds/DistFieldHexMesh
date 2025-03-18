@@ -87,7 +87,6 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-	void createFaces(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
 	void splitFaceWithEdge(const Index3DId& faceId, const EdgeKey& edge, std::set<Index3DId>& faceIds);
 	void makeSubCellHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
 	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
@@ -110,8 +109,6 @@ private:
 	MTC::vector<Index3DId>& _localTouched;
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
-	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
-	FastBisectionSet<Index3DId> _adjacentCellIds;
 
 	thread_local static VolumePtr _pScratchVol;
 };
