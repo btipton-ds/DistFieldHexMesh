@@ -71,10 +71,13 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
+	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8]);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
+	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxis);
+	void splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createSplittingHexFace(const Index3DId& parentId, const Vector3d& tuv, int axis);
-	Index3DId createScratchCell();
+	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);

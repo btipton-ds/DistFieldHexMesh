@@ -205,26 +205,15 @@ inline bool allCellsSet(bool isect[8])
 
 }
 
-bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv)
+void Splitter3D::performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8])
 {
-	bool wasSplit = false;
-
-	// Split the cell with a plane on each axis
-	// intersects[] keeps track of intersections in the 8 possible subcells
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-	bool isect[] = { 
-		true, true, true, true,
-		true, true, true, true,
-	};
-
 	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
 	{
 		Utils::ScopedRestore restore0(_pBlock);
 		_pBlock = _pScratchBlock;
 		Utils::ScopedRestore restore1(_testRun);
 		_testRun = true;
-		const auto& scratchCellId = createScratchCell();
+		const auto& scratchCellId = createScratchCell(parentId);
 		MTC::vector<Index3DId> newCellIds;
 		makeTestHexCells_2_hexes(scratchCellId, tuv, splitAxis, newCellIds);
 		for (size_t j = 0; j < 2; j++) {
@@ -232,7 +221,7 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 				if (!cell.intersectsModel()) {
 					switch (splitAxis) {
 					case 0:
-						if (j == 0) 
+						if (j == 0)
 							clearCell(isect, { 0, 2, 4, 6 }); // front 4 empty
 						else
 							clearCell(isect, { 1, 3, 5, 7 }); // back 4 empty
@@ -251,10 +240,26 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 						break;
 					}
 				}
-			});
+				});
 		}
 		reset();
 	}
+}
+
+bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv)
+{
+	bool wasSplit = false;
+
+	// Split the cell with a plane on each axis
+	// intersects[] keeps track of intersections in the 8 possible subcells
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+	bool isect[] = { 
+		true, true, true, true,
+		true, true, true, true,
+	};
+
+	performTestHexSplits(parentId, tuv, isect);
 
 	int dbgBreak = 1;
 
@@ -281,47 +286,64 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 			break;
 		}
 
-		if (!doSplit)
+#if 1
+		if (!doSplit) {
+			// TODO Do curvature split testing here
 			doSplit = allCellsSet(isect);
-
+		}
+#endif
 		if (doSplit) {
-#if 1 && _DEBUG
-			Index3DId testId(12, 0, 3, 0);
-			if (testId == parentId) {
-				int dbgBreak = 1;
+			MTC::vector<Index3DId> newCellIds;
+			splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
+			for (const auto& cellId : newCellIds) {
+				splitHexCell_4_possible(cellId, tuv, splitAxis);
 			}
-#endif
-			auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
-
-			FastBisectionSet<Index3DId> allCellFaceIds;
-			cellFunc(parentId, [this, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
-				cell.imprintFaceEdges(splittingFaceId);
-#if 0
-				stringstream ss;
-				ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId) << ".obj";
-				MTC::vector<Index3DId> ids;
-				ids.push_back(splittingFaceId);
-				getBlockPtr()->dumpPolygonObj(ss.str(), ids);
-				getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
-#endif
-				allCellFaceIds = cell.getFaceIds();
-				cell.detachFaces();
-				});
-
-			MTC::vector<MTC::vector<Vector3d>> subCells;
-			makeSubCellHexPoints(parentId, tuv, splitAxis, subCells);
-
-			for (int i = 0; i < 2; i++) {
-				Index3DId cellId = makeCellFromFaces(splittingFaceId, subCells.back(), allCellFaceIds, i == 1);
-			}
-
-			getBlockPtr()->freePolyhedron(_polyhedronId);
-
 			break;
 		}
 	}
 
 	return wasSplit;
+}
+
+void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxis)
+{
+}
+
+void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
+{
+#if 0 && _DEBUG
+	Index3DId testId(12, 0, 3, 0);
+	if (testId == parentId) {
+		int dbgBreak = 1;
+	}
+#endif
+	auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
+
+	FastBisectionSet<Index3DId> allCellFaceIds;
+	cellFunc(parentId, [this, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
+		cell.imprintFaceEdges(splittingFaceId);
+#if 0
+		stringstream ss;
+		ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId) << ".obj";
+		MTC::vector<Index3DId> ids;
+		ids.push_back(splittingFaceId);
+		getBlockPtr()->dumpPolygonObj(ss.str(), ids);
+		getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
+#endif
+		allCellFaceIds = cell.getFaceIds();
+		cell.detachFaces();
+		});
+
+	MTC::vector<MTC::vector<Vector3d>> subCells;
+	makeSubCellHexPoints(parentId, tuv, splitAxis, subCells);
+
+	for (int i = 0; i < 2; i++) {
+		Index3DId cellId = makeCellFromFaces(splittingFaceId, subCells.back(), allCellFaceIds, i == 1);
+		newCellIds.push_back(cellId);
+	}
+
+	getBlockPtr()->freePolyhedron(parentId);
+
 }
 
 Index3DId Splitter3D::makeCellFromFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
@@ -531,13 +553,13 @@ Index3DId Splitter3D::createSplittingHexFace(const Index3DId& parentId, const Ve
 	return newFaceId;
 }
 
-Index3DId Splitter3D::createScratchCell()
+Index3DId Splitter3D::createScratchCell(const Index3DId& parentId)
 {
 	Utils::ScopedRestore restore(_pBlock);
 	_pBlock = _pSrcBlock;
 
 	FastBisectionSet<Index3DId> srcFaceIds;
-	cellFunc(_polyhedronId, [&srcFaceIds](const Polyhedron& srcCell) {
+	cellFunc(parentId, [&srcFaceIds](const Polyhedron& srcCell) {
 		srcFaceIds = srcCell.getFaceIds();
 	});
 
