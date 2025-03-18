@@ -80,7 +80,6 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& vertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
-	void collectAllPolyhedronFaces(size_t index);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
 	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createSplittingHexFace(const Index3DId& parentId, const Vector3d& tuv, int axis);
@@ -89,7 +88,6 @@ private:
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 	void createFaces(const Index3DId& parentId, const MTC::vector<Index3DId>& newFaceVertIds, MTC::set<Index3DId>& newFaceIds, double tol);
-	void splitPolyhedronFaces(size_t i, const EdgeKey& edge);
 	void splitFaceWithEdge(const Index3DId& faceId, const EdgeKey& edge, std::set<Index3DId>& faceIds);
 	void makeSubCellHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
 	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
@@ -113,8 +111,7 @@ private:
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 	MTC::vector<MTC::vector<Index3DId>> _cellFaceVertIds;
-	FastBisectionSet<Index3DId> _adjacentCellIds, _newCellIds;
-	std::vector<std::set<Index3DId>> _oldFaceToNewFaceMap;
+	FastBisectionSet<Index3DId> _adjacentCellIds;
 
 	thread_local static VolumePtr _pScratchVol;
 };

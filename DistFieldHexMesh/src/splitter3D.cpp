@@ -91,15 +91,6 @@ Splitter3D::~Splitter3D()
 
 #ifdef _DEBUG
 	bool hasErrors = false;
-	for (const auto& cellId : _newCellIds) {
-		cellFunc(cellId, [this, &hasErrors](const Polyhedron& cell) {
-			bool isValid = cell.verifyTopology();
-			if (!isValid) {
-				hasErrors = true;
-				cout << "Invalid new cell: " << cell.getId() << "," << cell.getNumFaces() << "\n";
-			}
-		});
-	}
 
 	for (const auto& cellId : _adjacentCellIds) {
 		cellFunc(cellId, [this, &hasErrors](const Polyhedron& cell) {
@@ -128,15 +119,6 @@ Splitter3D::~Splitter3D()
 void Splitter3D::reset()
 {
 	_pScratchBlock->clear();
-	_newCellIds.clear();
-}
-
-void Splitter3D::splitPolyhedronFaces(size_t i, const EdgeKey& edge)
-{
-	auto tmp = _oldFaceToNewFaceMap[i];
-	for (const auto& faceId : tmp) {
-		splitFaceWithEdge(faceId, edge, _oldFaceToNewFaceMap[i]);
-	}
 }
 
 void Splitter3D::splitFaceWithEdge(const Index3DId& faceId, const EdgeKey& edgeKey, std::set<Index3DId>& faceIds)
@@ -484,7 +466,6 @@ void Splitter3D::makeSubCellHexPoints(const Index3DId& parentId, const Vector3d&
 void Splitter3D::makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells)
 {
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
-	_newCellIds.clear();
 
 #ifdef _DEBUG
 	Index3DId testId(6, 0, 3, 0);
@@ -681,7 +662,6 @@ Index3DId Splitter3D::addHexCell(const Index3DId& parentId, const MTC::vector<In
 		int dbgBreak = 1;
 	}
 #endif
-	_newCellIds.insert(newCellId);
 
 	return newCellId;
 }
@@ -864,42 +844,7 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 		}
 	}
 
-	_oldFaceToNewFaceMap.clear();
-	_oldFaceToNewFaceMap.resize(6);
-	for (int i = 0; i < 6; i++)
-		collectAllPolyhedronFaces(i);
-
-	for (const auto& subFaceIds : _oldFaceToNewFaceMap) {
-		for (const auto& faceId : subFaceIds) {
-			assert(getBlockPtr()->polygonExists(faceId));
-		}
-	}
 	int dbgBreak = 1;
-}
-
-void Splitter3D::collectAllPolyhedronFaces(size_t index)
-{
-	const auto& facePts(_cellFacePoints[index]);
-	assert(facePts.size() >= 3);
-
-	Vector3d v0 = facePts[0] - facePts[1];
-	Vector3d v1 = facePts[2] - facePts[1];
-	Vector3d n = v1.cross(v0);
-	Planed polyPlane(facePts[0], n);
-
-	auto& faceSet = _oldFaceToNewFaceMap[index];
-	cellFunc(_polyhedronId, [this, &polyPlane, &faceSet](const Polyhedron& cell) {
-		assert(cell.isClosed());
-		const auto& faceIds = cell.getFaceIds();
-		for (const auto& faceId : faceIds) {
-			faceFunc(faceId, [&polyPlane, &faceSet](const Polygon& face) {
-				if (face.isCoplanar(polyPlane))
-					faceSet.insert(face.getId());
-			});
-		}
-	});
-
-	assert(!faceSet.empty());
 }
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)
