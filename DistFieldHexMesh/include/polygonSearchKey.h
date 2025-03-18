@@ -37,6 +37,8 @@ class Block;
 
 class PolygonSearchKey {
 public:
+	static MTC::vector<Index3DId> makeNonColinearVertexIds(const Block* pBlock, const MTC::vector<Index3DId>& vertexIds);
+
 	PolygonSearchKey() = default;
 	PolygonSearchKey(const PolygonSearchKey& src) = default;
 	PolygonSearchKey(const Block* pBlock, const MTC::vector<Index3DId>& ids);

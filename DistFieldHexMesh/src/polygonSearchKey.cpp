@@ -45,25 +45,31 @@ namespace {
 	}
 }
 
+MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* pBlock, const MTC::vector<Index3DId>& vertexIds)
+{
+	MTC::vector<Index3DId> tmp;
+	if (pBlock) {
+		for (size_t j = 0; j < vertexIds.size(); j++) {
+			size_t i = (j + vertexIds.size() - 1) % vertexIds.size();
+			size_t k = (j + 1) % vertexIds.size();
+			const auto& pt0 = pBlock->getVertexPoint(vertexIds[i]);
+			const auto& pt1 = pBlock->getVertexPoint(vertexIds[j]);
+			const auto& pt2 = pBlock->getVertexPoint(vertexIds[k]);
+			if (!isColinear(pt0, pt1, pt2)) {
+				tmp.push_back(vertexIds[j]);
+			}
+		}
+	} else {
+		tmp = vertexIds;
+	}
+
+	return tmp;
+}
+
 void PolygonSearchKey::set(const Block* pBlock, const MTC::vector<Index3DId>& ids) const
 {
 	if (PolygonSearchKey::empty()) {
-		if (pBlock) {
-			MTC::vector<Index3DId> tmp;
-			for (size_t j = 0; j < ids.size(); j++) {
-				size_t i = (j + ids.size() - 1) % ids.size();
-				size_t k = (j + 1) % ids.size();
-				const auto& pt0 = pBlock->getVertexPoint(ids[i]);
-				const auto& pt1 = pBlock->getVertexPoint(ids[j]);
-				const auto& pt2 = pBlock->getVertexPoint(ids[k]);
-				if (!isColinear(pt0, pt1, pt2)) {
-					tmp.push_back(ids[j]);
-				}
-			}
-			_ids = tmp;
-		} else {
-			_ids = ids;
-		}
+		_ids = makeNonColinearVertexIds(pBlock, ids);
 
 		std::sort(_ids.begin(), _ids.end());
 	}

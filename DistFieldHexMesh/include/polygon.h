@@ -132,6 +132,7 @@ public:
 	bool operator == (const Polygon& rhs) const;
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
+	const MTC::vector<Index3DId> getNonColinearVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	void clearCache(bool clearSortIds = true) const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
@@ -348,18 +349,12 @@ void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 template<class F>
 void Polygon::iterateTriangles(F fLambda) const
 {
-	const auto& verts = _vertexIds;
+	const auto verts = getNonColinearVertexIds();
 
-	// TODO use non-colinear vertices instead of the center. It will cut the number triangles in half and avoid cacluating the center.
-	Vector3d ctr(0, 0, 0);
-	for (size_t i = 0; i < verts.size(); i++) {
-		ctr += getVertexPoint(verts[i]);
-	}
-	ctr /= verts.size();
-
-	for (size_t i = 0; i < verts.size(); i++) {
-		size_t j = (i + 1) % verts.size();
-		if (!fLambda(ctr, verts[i], verts[j]))
+	size_t i = 0;
+	for (size_t j = 1; j < verts.size() - 1; j++) {
+		size_t k = (j + 1) % verts.size();
+		if (!fLambda(verts[i], verts[j], verts[k]))
 			break;
 	}
 }
@@ -367,7 +362,7 @@ void Polygon::iterateTriangles(F fLambda) const
 template<class F>
 void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 {
-	const auto& verts = _vertexIds;
+	const auto& verts = getNonColinearVertexIds();
 
 	const size_t i = 0;
 	for (size_t j = 1; j < verts.size() - 1; j++) {

@@ -704,10 +704,10 @@ Vector3d Polyhedron::calCentroid() const
 	double vol = 0;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &vol, &ctr](const Polygon& face) {
-			face.iterateTriangles([this, &vol, &ctr](const Vector3d& pt0, const Index3DId& idx1, const Index3DId& idx2)->bool {
+			face.iterateTriangles([this, &vol, &ctr](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
 				const Vector3d axis(1, 0, 0);
 				auto pBlk = getBlockPtr();
-				const auto& a = pt0;
+				const auto& a = pBlk->getVertexPoint(idx0);
 				const auto& b = pBlk->getVertexPoint(idx1);
 				const auto& c = pBlk->getVertexPoint(idx2);
 

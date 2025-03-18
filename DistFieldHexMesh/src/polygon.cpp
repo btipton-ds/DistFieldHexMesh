@@ -155,6 +155,13 @@ void Polygon::addVertex(const Index3DId& vertId)
 	clearCache();
 }
 
+const MTC::vector<Index3DId> Polygon::getNonColinearVertexIds() const
+{
+	MTC::vector<Index3DId> result = PolygonSearchKey::makeNonColinearVertexIds(getOurBlockPtr(), _vertexIds);
+
+	return result;
+}
+
 void Polygon::clearCache(bool clearSortIds) const
 {
 	_cachedCentroidValid = false;
@@ -638,9 +645,9 @@ bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
 				&pMesh->getVert(tri[2])._pt,
 			};
 
-			iterateTriangles([this, &pts, tol](const Vector3d& pt0, const Index3DId& id1, const Index3DId& id2)->bool {
+			iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 				const Vector3d* facePts[] = {
-					&pt0,
+					&getVertexPoint(id0),
 					&getVertexPoint(id1),
 					&getVertexPoint(id2),
 				};
@@ -946,9 +953,9 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) c
 {
 	bool above;
 	const double tol = Tolerance::sameDistTol();
-	iterateTriangles([this, &tol, &pt, &insidePt, &above](const Vector3d& pt0, const Index3DId& id1, const Index3DId& id2)->bool {
+	iterateTriangles([this, &tol, &pt, &insidePt, &above](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 		Vector3d triPts[] = {
-			pt0,
+			getVertexPoint(id0),
 			getVertexPoint(id1),
 			getVertexPoint(id2),
 		};

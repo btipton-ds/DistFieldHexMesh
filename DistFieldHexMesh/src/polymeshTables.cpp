@@ -234,7 +234,7 @@ void PolymeshTables::createPolygonTables()
 
 	for (size_t i = 0; i < faceIdxIdMap.size(); i++) {
 		const auto& face = _pVol->getPolygon(faceIdxIdMap[i]);
-		const auto& verts = face.getVertexIds();
+		const auto verts = face.getNonColinearVertexIds();
 		vector<int32_t> faceVertIndices;
 		for (const auto& vId : verts) {
 			int32_t vIdx = vertIdIdxMap[vId];
