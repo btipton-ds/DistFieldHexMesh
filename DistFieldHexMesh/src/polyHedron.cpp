@@ -1129,18 +1129,20 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 			newFaceIds.insert(newFaceId);
 		}
 
-		for (const auto& cellId : cellIds) {
-			cellFunc(cellId, [this, &faceId, &newFaceIds](Polyhedron& cell) {
-				cell.removeFace(faceId);
-				for (const auto& newFaceId : newFaceIds) {
-					cell.addFace(newFaceId);
-				}
+		if (!newFaceIds.empty()) {
+			for (const auto& cellId : cellIds) {
+				cellFunc(cellId, [this, &faceId, &newFaceIds](Polyhedron& cell) {
+					cell.removeFace(faceId);
+					for (const auto& newFaceId : newFaceIds) {
+						cell.addFace(newFaceId);
+					}
 
-				assert(cell.isClosed());
-			});
+					assert(cell.isClosed());
+					});
+			}
+
+			getBlockPtr()->freePolygon(faceId);
 		}
-
-		getBlockPtr()->freePolygon(faceId);
 	}
 }
 

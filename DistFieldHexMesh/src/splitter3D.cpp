@@ -264,12 +264,18 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 		}
 
 		if (doSplit) {
+#if 1 && _DEBUG
+			Index3DId testId(12, 0, 3, 0);
+			if (testId == parentId) {
+				int dbgBreak = 1;
+			}
+#endif
 			auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
 
 			FastBisectionSet<Index3DId> allCellFaceIds;
 			cellFunc(parentId, [this, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
 				cell.imprintFaceEdges(splittingFaceId);
-#if 1
+#if 0
 				stringstream ss;
 				ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId) << ".obj";
 				MTC::vector<Index3DId> ids;
@@ -279,63 +285,74 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 #endif
 				allCellFaceIds = cell.getFaceIds();
 				cell.detachFaces();
-			});
-
-#if 1
-			Planed splittingPlane;
-			faceFunc(splittingFaceId, [&splittingPlane](const Polygon& face) {
-				splittingPlane = face.calPlane();
-			});
+				});
 
 			MTC::vector<MTC::vector<Vector3d>> subCells;
 			makeSubCellHexPoints(parentId, tuv, splitAxis, subCells);
 
-			for (const auto& cornerPts : subCells) {
-				Vector3d cellCtr(0, 0, 0);
-				for (const auto& pt : cornerPts)
-					cellCtr += pt;
-				cellCtr /= cornerPts.size();
-
-				double sign = splittingPlane.distanceToPoint(cellCtr, false);
-				sign = sign / fabs(sign);
-
-				MTC::set<Index3DId> cellFaces;
-				cellFaces.insert(splittingFaceId);
-				for (const auto& faceId : allCellFaceIds) {
-					faceFunc(faceId, [this, sign, &splittingPlane, &cellFaces](Polygon& face) {
-						auto ctr = face.calCentroid();
-						double dist = splittingPlane.distanceToPoint(ctr, false);
-						if (sign * dist > 0)
-							cellFaces.insert(face.getId());
-					});
-				}
-
-				MTC::vector<Index3DId> cornerVertIds;
-				for (const auto& pt : cornerPts)
-					cornerVertIds.push_back(vertId(pt));
-
-				Polyhedron newCell(cellFaces, cornerVertIds);
-				auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
-
-				cellFunc(newCellId, [this, &subCells](const Polyhedron& cell) {
-					if (!cell.isClosed()) {
-						stringstream ss;
-						ss << "D:/DarkSky/Projects/output/objs/unclosedCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post.obj";
-						getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
-						assert(!"Cell not closed");
-					}
-					int dbgBreak = 1;
-				});
-
-				getBlockPtr()->freePolyhedron(_polyhedronId);
-
+			for (int i = 0; i < 2; i++) {
+				Index3DId cellId = makeCellFromFaces(splittingFaceId, subCells.back(), allCellFaceIds, i == 1);
 			}
-#endif
+
+			getBlockPtr()->freePolyhedron(_polyhedronId);
+
 			break;
 		}
 	}
 
 	return wasSplit;
+}
+
+Index3DId Splitter3D::makeCellFromFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
+{
+	MTC::set<Index3DId> cellFaces;
+
+	if (useAllFaces) {
+		cellFaces.insert(allCellFaceIds.begin(), allCellFaceIds.end());
+	} else {
+		Vector3d cellCtr(0, 0, 0);
+		for (const auto& pt : cornerPts)
+			cellCtr += pt;
+		cellCtr /= cornerPts.size();
+
+		Planed splittingPlane;
+		faceFunc(splittingFaceId, [&splittingPlane](const Polygon& face) {
+			splittingPlane = face.calPlane();
+		});
+
+		for (const auto& faceId : allCellFaceIds) {
+			faceFunc(faceId, [this, &splittingPlane, &cellFaces](Polygon& face) {
+				auto ctr = face.calCentroid();
+				double dist = splittingPlane.distanceToPoint(ctr, false);
+				if (dist > 0)
+					cellFaces.insert(face.getId());
+			});
+		}
+
+		for (const auto& faceId : cellFaces)
+			allCellFaceIds.erase(faceId);
+	}
+
+	cellFaces.insert(splittingFaceId);
+
+	MTC::vector<Index3DId> cornerVertIds;
+	for (const auto& pt : cornerPts)
+		cornerVertIds.push_back(vertId(pt));
+
+	Polyhedron newCell(cellFaces, cornerVertIds);
+	auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
+
+#if 0 && defined(_DEBUG)
+	cellFunc(newCellId, [this](const Polyhedron& cell) {
+		if (!cell.isClosed()) {
+			stringstream ss;
+			ss << "D:/DarkSky/Projects/output/objs/unclosedCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post.obj";
+			getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+			assert(!"Cell not closed");
+		}
+	});
+#endif
+	return newCellId;
 }
 
 bool Splitter3D::faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const

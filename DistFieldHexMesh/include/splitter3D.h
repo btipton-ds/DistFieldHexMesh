@@ -26,16 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 
-	
-	
-	
-	
-	
-This uses the OpenFoam numbering system defined at - https://www.openfoam.com/documentation/user-guide/4-mesh-generation-and-conversion/4.1-mesh-description
-	
-	
-	
-	
+	This uses the OpenFoam numbering system defined at - https://www.openfoam.com/documentation/user-guide/4-mesh-generation-and-conversion/4.1-mesh-description
 */
 
 #include <set>
@@ -90,6 +81,7 @@ private:
 	void makeSubCellHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
 	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
 	Planed makePlane(const MTC::vector<Vector3d>& boundingPts) const;
+	Index3DId makeCellFromFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
 	LAMBDA_CLIENT_DECLS;
 
