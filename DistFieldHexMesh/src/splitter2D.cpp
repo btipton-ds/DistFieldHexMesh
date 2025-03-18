@@ -85,6 +85,38 @@ void Splitter2D::cleanMap(map<size_t, set<size_t>>& map, size_t indexToRemove)
 		map.erase(idx);
 }
 
+bool Splitter2D::contains3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
+{
+	auto pt0 = project(pt3D0);
+	auto pt1 = project(pt3D1);
+
+	std::vector<std::vector<Vertex2Dd>> facePoints;
+	getAllFacePoints(facePoints);
+	for (const auto& bounds : facePoints) {
+		if (insideBoundary(bounds, pt0) && insideBoundary(bounds, pt1))
+			return true;
+	}
+	return false;
+}
+
+size_t Splitter2D::getFacePoints(std::vector<std::vector<Vector3d>>& facePoints)
+{
+	if (_allFacePoints.empty()) {
+		getAllFacePoints(_allFacePoints);
+	}
+
+	for (const auto& testFacePoints2D : _allFacePoints) {
+		vector<Vector3d> pts;
+		for (const auto& pt2d : testFacePoints2D) {
+			auto pt = pt3D(pt2d);
+			pts.push_back(pt);
+		}
+		facePoints.push_back(pts);
+	}
+
+	return facePoints.size();
+}
+
 size_t Splitter2D::getFacePoints(const vector<Vector3d>& boundaryFacePts, vector<vector<Vector3d>>& facePoints)
 {
 	if (_allFacePoints.empty()) {

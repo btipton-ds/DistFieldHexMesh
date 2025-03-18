@@ -69,6 +69,9 @@ public:
 
 	Splitter2D(const Planed& plane);
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
+	bool contains3DEdge(const Vector3d& pt0, const Vector3d& pt1);
+
+	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
 	size_t getFacePoints(const std::vector<Vector3d>& boundaryFacePts, std::vector<std::vector<Vector3d>>& facePoints);
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 

@@ -117,7 +117,7 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool containsPoint(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
-	bool containsEdge(const Edge& edge) const;
+	bool containsEdge(const EdgeKey& edge) const;
 
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	template<class TRI_FUNC, class EDGE_FUNC>
@@ -171,6 +171,8 @@ public:
 
 	template<class F>
 	void iterateEdges(F fLambda) const;
+	template<class F>
+	void iterateEdges(F fLambda);
 	template<class F>
 	void iterateOrientedEdges(F fLambda, const Index3DId& cellId) const;
 
@@ -291,11 +293,31 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 template<class F>
 void Polygon::iterateEdges(F fLambda) const
 {
-	const auto& verts = _vertexIds;
-	for (size_t i = 0; i < verts.size(); i++) {
-		size_t j = (i + 1) % verts.size();
-		Edge e(verts[i], verts[j]);
-		if (!fLambda(e))
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+		bool result;
+		edgeFunc(ek, [&result, &fLambda](const Edge& edge) {
+			result = fLambda(edge);
+		});
+
+		if (!result)
+			break;
+	}
+}
+
+template<class F>
+void Polygon::iterateEdges(F fLambda)
+{
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+		bool result;
+		edgeFunc(ek, [&result, &fLambda](Edge& edge) {
+			result = fLambda(edge);
+		});
+
+		if (!result)
 			break;
 	}
 }

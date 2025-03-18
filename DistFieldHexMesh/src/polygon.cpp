@@ -360,7 +360,7 @@ bool Polygon::containsVertex(const Index3DId& vertId) const
 	return false;
 }
 
-bool Polygon::containsEdge(const Edge& edge) const
+bool Polygon::containsEdge(const EdgeKey& edge) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
