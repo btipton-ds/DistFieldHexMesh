@@ -78,7 +78,7 @@ private:
 	void reset();
 
 	Index3DId vertId(const Vector3d& pt);
-	const Vector3d& vertexPoint(const  Index3DId& id) const;
+	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
 	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
@@ -87,7 +87,6 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-	void splitFaceWithEdge(const Index3DId& faceId, const EdgeKey& edge, std::set<Index3DId>& faceIds);
 	void makeSubCellHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
 	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
 	Planed makePlane(const MTC::vector<Vector3d>& boundingPts) const;

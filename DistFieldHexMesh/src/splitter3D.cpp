@@ -100,54 +100,6 @@ void Splitter3D::reset()
 	_pScratchBlock->clear();
 }
 
-void Splitter3D::splitFaceWithEdge(const Index3DId& faceId, const EdgeKey& edgeKey, std::set<Index3DId>& faceIds)
-{
-	faceFunc(faceId, [this, &edgeKey, &faceIds](const Polygon& face) {
-		if (face.isCoplanar(edgeKey) && !face.containsEdge(edgeKey)) {
-			const auto cellIds = face.getCellIds();
-			Splitter2D splitter2(face.calPlane());
-			face.iterateEdges([this, &cellIds, &splitter2](const Edge& oldEdge)->bool {
-				splitter2.add3DEdge(vertexPoint(oldEdge[0]), vertexPoint(oldEdge[1]));
-				return true;
-			});
-			splitter2.add3DEdge(vertexPoint(edgeKey[0]), vertexPoint(edgeKey[1]));
-
-			std::vector<std::vector<Vector3d>> facePoints;
-			if (splitter2.getFacePoints(facePoints) > 1) {
-				//Remove the old face from all it's cells
-				for (const auto& cellId : cellIds) {
-					cellFunc(cellId, [&face](Polyhedron& cell) {
-						cell.removeFace(face.getId());
-					});
-				}
-
-				// Remove the old face from the list
-				faceIds.erase(face.getId());
-
-				for (const auto& pts : facePoints) {
-					MTC::vector<Index3DId> vertIds;
-					for (const auto& pt : pts)
-						vertIds.push_back(vertId(pt));
-					auto newFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
-					assert(newFaceId.isValid());
-
-					// Add the new face to the list
-					faceIds.insert(newFaceId);
-
-					// Add the new face to the old cells, except the cell we're splitting
-					for (const auto& cellId : cellIds) {
-						if (cellId != _polyhedronId) {
-							cellFunc(cellId, [&newFaceId](Polyhedron& cell) {
-								cell.addFace(newFaceId);
-							});
-						}
-					}
-				}
-			}
-		}
-	});
-}
-
 void Splitter3D::dumpSplitStats()
 {
 	cout << "Num splits 2: " << numSplits2 << "\n";
@@ -221,7 +173,7 @@ inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 	return _pBlock->getVertexIdOfPoint(pt);
 }
 
-inline const Vector3d& Splitter3D::vertexPoint(const  Index3DId& id) const
+inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 {
 	return _pBlock->getVertexPoint(id);
 }
@@ -387,8 +339,8 @@ bool Splitter3D::faceInsideBoundary(const Polygon& face, const MTC::vector<Vecto
 	auto& vertIds = face.getVertexIds();
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		size_t j = (i + 1) % vertIds.size();
-		const auto& pt0 = vertexPoint(vertIds[i]);
-		const auto& pt1 = vertexPoint(vertIds[j]);
+		const auto& pt0 = getVertexPoint(vertIds[i]);
+		const auto& pt1 = getVertexPoint(vertIds[j]);
 		if (!sp.contains3DEdge(pt0, pt1))
 			return false;
 	}
@@ -675,7 +627,7 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 	auto& cornerVertIds = parentCell.getCanonicalVertIds();
 	_cornerPts.reserve(cornerVertIds.size());
 	for (const auto& id : cornerVertIds)
-		_cornerPts.push_back(vertexPoint(id));
+		_cornerPts.push_back(getVertexPoint(id));
 
 	int dbgBreak = 1;
 }
