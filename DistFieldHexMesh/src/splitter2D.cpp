@@ -35,15 +35,17 @@ using namespace DFHM;
 
 class LineSegment2d {
 public:
-	LineSegment2d(const Vertex2Dd& pt0 = Vertex2Dd(0, 0), const Vertex2Dd& pt1 = Vertex2Dd(0, 0));
+	LineSegment2d(const Vector2d& pt0 = Vector2d(0, 0), const Vector2d& pt1 = Vector2d(0, 0));
 	LineSegment2d(const LineSegment2d& rhs) = default;
+
+	bool project(const Vector2d& pt, double& t) const;
 	bool intersect(const LineSegment2d& other, double& t) const;
-	const Vertex2Dd& operator[](size_t idx) const;
-	Vertex2Dd& operator[](size_t idx);
-	Vertex2Dd eval(double t);
+	const Vector2d& operator[](size_t idx) const;
+	Vector2d& operator[](size_t idx);
+	Vector2d eval(double t);
 
 private:
-	vector<Vertex2Dd> _vals;
+	vector<Vector2d> _vals;
 };
 
 Splitter2D::Splitter2D(const Planed& plane)
@@ -72,6 +74,30 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	}
 }
 
+void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
+{
+	Vector2d pt = project(pt3D0);
+	auto iter = _ptToIndexMap.find(pt);
+	if (iter != _ptToIndexMap.end())
+		return;
+	for (const auto& e : _edges) {
+		const auto& pt0 = _pts[e[0]];
+		const auto& pt1 = _pts[e[1]];
+		LineSegment2d seg(pt0, pt1);
+		double t;
+		if (seg.project(pt, t)) {
+			size_t idx0 = e[0];
+			size_t idx1 = addPoint(pt);
+			size_t idx2 = e[1];
+			_edges.erase(e);
+			_edges.insert(Edge2D(idx0, idx1));
+			_edges.insert(Edge2D(idx1, idx2));
+			break;
+		}
+	}
+	auto idx = addPoint(pt);
+}
+
 void Splitter2D::cleanMap(map<size_t, set<size_t>>& map, size_t indexToRemove)
 {
 	set<size_t> dead;
@@ -90,7 +116,7 @@ bool Splitter2D::contains3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	auto pt0 = project(pt3D0);
 	auto pt1 = project(pt3D1);
 
-	std::vector<std::vector<Vertex2Dd>> facePoints;
+	std::vector<std::vector<Vector2d>> facePoints;
 	getAllFacePoints(facePoints);
 	for (const auto& bounds : facePoints) {
 		if (insideBoundary(bounds, pt0) && insideBoundary(bounds, pt1))
@@ -123,7 +149,7 @@ size_t Splitter2D::getFacePoints(const vector<Vector3d>& boundaryFacePts, vector
 		getAllFacePoints(_allFacePoints);
 	}
 
-	vector<Vertex2Dd> boundaryFacePts2D;
+	vector<Vector2d> boundaryFacePts2D;
 	for (const auto& pt : boundaryFacePts)
 		boundaryFacePts2D.push_back(project(pt));
 
@@ -152,7 +178,7 @@ void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 	}
 }
 
-size_t Splitter2D::getAllFacePoints(vector<vector<Vertex2Dd>>& facePoints)
+size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
 {
 	map<size_t, set<size_t>> pointToPointMap;
 
@@ -173,23 +199,47 @@ size_t Splitter2D::getAllFacePoints(vector<vector<Vertex2Dd>>& facePoints)
 		}
 	}
 
-	vector<vector<Vertex2Dd>> faceIndices;
-
-	while (!pointToPointMap.empty()) {
-		vector<size_t> faceIndices;
-		createPolygon(pointToPointMap, faceIndices);
-
-		vector<Vertex2Dd> pts;
-		for (size_t idx : faceIndices) {
-			pts.push_back(_pts[idx]);
+	set<size_t> deadEntries;
+	for (const auto& pair : pointToPointMap) {
+		if (pair.second.size() == 1) {
+			deadEntries.insert(pair.first);
 		}
-		facePoints.push_back(pts);
 	}
+
+	for (size_t idx0 : deadEntries) {
+		auto iter0 = pointToPointMap.find(idx0);
+		if (iter0 != pointToPointMap.end()) {
+			for (const size_t idx1 : iter0->second) {
+				auto iter1 = pointToPointMap.find(idx1);
+				if (iter1 != pointToPointMap.end()) {
+					iter1->second.erase(idx0);
+				}
+			}
+		}
+
+		pointToPointMap.erase(idx0);
+	}
+
+	vector<vector<Vector2d>> faceIndices;
+
+	bool done;
+	do {
+		done = true;
+		vector<size_t> faceIndices;
+		if (createPolygon(pointToPointMap, faceIndices) > 2) {
+			done = false;
+			vector<Vector2d> pts;
+			for (size_t idx : faceIndices) {
+				pts.push_back(_pts[idx]);
+			}
+			facePoints.push_back(pts);
+		}
+	} while (!done);
 
 	return facePoints.size();
 }
 
-bool Splitter2D::insideBoundary(const vector<Vertex2Dd>& boundaryPts, const vector<Vertex2Dd>& testFacePts) const
+bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const vector<Vector2d>& testFacePts) const
 {
 	for (const auto& testPt : testFacePts) {
 		if (!insideBoundary(boundaryPts, testPt))
@@ -197,11 +247,11 @@ bool Splitter2D::insideBoundary(const vector<Vertex2Dd>& boundaryPts, const vect
 	}
 	return true;
 }
-bool Splitter2D::insideBoundary(const vector<Vertex2Dd>& boundaryPts, const Vertex2Dd& testPt) const
+bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const Vector2d& testPt) const
 {
 	// Check if the point is an exact match for a boundary pt
 	for (const auto& boundaryPt : boundaryPts) {
-		Vertex2Dd v = testPt - boundaryPt;
+		Vector2d v = testPt - boundaryPt;
 		if (v.squaredNorm() < Tolerance::sameDistTolSqr())
 			return true;
 	}
@@ -209,10 +259,10 @@ bool Splitter2D::insideBoundary(const vector<Vertex2Dd>& boundaryPts, const Vert
 	// Check if the point lies on the positive side of all edges
 	for (size_t i = 0; i < boundaryPts.size(); i++) {
 		size_t j = (i + 1) % boundaryPts.size();
-		Vertex2Dd xAxis = boundaryPts[j] - boundaryPts[i];
+		Vector2d xAxis = boundaryPts[j] - boundaryPts[i];
 		xAxis.normalize();
-		Vertex2Dd yAxis(-xAxis[1], xAxis[0]);
-		Vertex2Dd v = testPt - boundaryPts[i];
+		Vector2d yAxis(-xAxis[1], xAxis[0]);
+		Vector2d v = testPt - boundaryPts[i];
 		double dist = v.dot(yAxis);
 		if (dist < -Tolerance::sameDistTol())
 			return false;
@@ -237,15 +287,15 @@ bool Splitter2D::isColinear(size_t idx0, size_t idx1, size_t idx2) const
 	const auto& pt1 = _pts[idx1];
 	const auto& pt2 = _pts[idx2];
 
-	Vertex2Dd v0 = (pt1 - pt0).normalized();
-	Vertex2Dd v1 = pt2 - pt0;
+	Vector2d v0 = (pt1 - pt0).normalized();
+	Vector2d v1 = pt2 - pt0;
 	double dp = v1.dot(v0);
 	v1 = v1 - v0 * dp;
 	double distSqr = v1.squaredNorm();
 	return distSqr < Tolerance::sameDistTolSqr();
 }
 
-Vertex2Dd Splitter2D::calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const
+Vector2d Splitter2D::calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const
 {
 /*
 If the vectors form a straight line, the turning vector is [1,0]
@@ -257,15 +307,15 @@ The maximum result[1] is the sharpest left turn, assuming result[0] > 0
 	const auto& pt1 = _pts[idx1];
 	const auto& pt2 = _pts[idx2];
 
-	Vertex2Dd xAxis = (pt1 - pt0).normalized();
-	Vertex2Dd yAxis(-xAxis[1], xAxis[0]);
-	Vertex2Dd v1 = (pt2 - pt1).normalized();
-	Vertex2Dd result(v1.dot(xAxis), v1.dot(yAxis));
+	Vector2d xAxis = (pt1 - pt0).normalized();
+	Vector2d yAxis(-xAxis[1], xAxis[0]);
+	Vector2d v1 = (pt2 - pt1).normalized();
+	Vector2d result(v1.dot(xAxis), v1.dot(yAxis));
 	result.normalize();
 	return result;
 }
 
-inline Vector3d Splitter2D::pt3D(const Vertex2Dd& pt2d) const
+inline Vector3d Splitter2D::pt3D(const Vector2d& pt2d) const
 {
 	Vector3d pt3d(_plane.getOrgin() + _xAxis * pt2d[0] + _yAxis * pt2d[1]);
 	return pt3d;
@@ -276,7 +326,7 @@ inline Vector3d Splitter2D::pt3D(size_t idx) const
 	return pt3D(_pts[idx]);
 }
 
-void Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& faceVerts) const
+size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& faceVerts) const
 {
 	// Start the loop
 	for (const auto& pair : map) {
@@ -308,6 +358,9 @@ void Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& fa
 
 	size_t lastIdx, curIdx, nextIdx;
 	do {
+		if (faceVerts.size() <= 2) {
+			break;
+		}
 		lastIdx = faceVerts[faceVerts.size() - 2];
 		curIdx = faceVerts[faceVerts.size() - 1];
 
@@ -317,7 +370,7 @@ void Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& fa
 			const auto& connected = iter->second;
 			for (const size_t idx : connected) {
 				if (idx != lastIdx) {
-					Vertex2Dd turningVector = calTurningUnitVector(lastIdx, curIdx, idx);
+					Vector2d turningVector = calTurningUnitVector(lastIdx, curIdx, idx);
 					if (turningVector[0] > -Tolerance::paramTol() && turningVector[1] > maxPositiveTurn) {
 						maxPositiveTurn = turningVector[1];
 						nextIdx = idx;
@@ -328,26 +381,31 @@ void Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& fa
 			faceVerts.push_back(nextIdx);
 		}
 	} while (faceVerts.front() != faceVerts.back());
-	faceVerts.pop_back();
 
-	vector<size_t> deadEntries;
-	for (size_t idx : faceVerts) {
-		auto iter = map.find(idx);
-		if (iter != map.end() && iter->second.size() == 2) {
-			deadEntries.push_back(idx);
+	if (!faceVerts.empty()) {
+		faceVerts.pop_back();
+
+		vector<size_t> deadEntries;
+		for (size_t idx : faceVerts) {
+			auto iter = map.find(idx);
+			if (iter != map.end() && iter->second.size() == 2) {
+				deadEntries.push_back(idx);
+			}
+		}
+
+		for (size_t idx : deadEntries) {
+			map.erase(idx);
+		}
+
+		for (auto& pair : map) {
+			auto& connected = pair.second;
+			for (size_t i : deadEntries) {
+				connected.erase(i);
+			}
 		}
 	}
 
-	for (size_t idx : deadEntries) {
-		map.erase(idx);
-	}
-
-	for (auto& pair : map) {
-		auto& connected = pair.second;
-		for (size_t i : deadEntries) {
-			connected.erase(i);
-		}
-	}
+	return faceVerts.size();
 }
 
 void Splitter2D::splitExisting(const Edge2D& e0)
@@ -370,9 +428,9 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
 	double t;
 	if (seg0.intersect(seg1, t)) {
-		Vertex2Dd pt0 = seg0[0];
-		Vertex2Dd pt1 = seg0.eval(t);
-		Vertex2Dd pt2 = seg0[1];
+		Vector2d pt0 = seg0[0];
+		Vector2d pt1 = seg0.eval(t);
+		Vector2d pt2 = seg0[1];
 
 		size_t idx0 = addPoint(pt0);
 		size_t idx1 = addPoint(pt1);
@@ -384,22 +442,22 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	return !result.empty();
 }
 
-Vertex2Dd Splitter2D::project(const Vector3d& pt) const
+Vector2d Splitter2D::project(const Vector3d& pt) const
 {
 	Vector3d v = pt - _plane.getOrgin();
 	double x = v.dot(_xAxis);
 	double y = v.dot(_yAxis);
-	Vertex2Dd result(x, y);
+	Vector2d result(x, y);
 
 	return result;
 }
 
-inline const Vertex2Dd& Splitter2D::getPoint(size_t idx) const
+inline const Vector2d& Splitter2D::getPoint(size_t idx) const
 {
 	return _pts[idx];
 }
 
-size_t Splitter2D::addPoint(const Vertex2Dd& pt)
+size_t Splitter2D::addPoint(const Vector2d& pt)
 {
 	auto iter = _ptToIndexMap.find(pt);
 	if (iter == _ptToIndexMap.end()) {
@@ -410,35 +468,35 @@ size_t Splitter2D::addPoint(const Vertex2Dd& pt)
 	return iter->second;
 }
 
-Vertex2Dd::Vertex2Dd(double x, double y)
+Vector2d::Vector2d(double x, double y)
 	: Eigen::Vector2d(x, y)
 {
 }
 
-Vertex2Dd::Vertex2Dd(const Eigen::Vector2d& rhs)
+Vector2d::Vector2d(const Eigen::Vector2d& rhs)
 	: Eigen::Vector2d(rhs)
 {
 }
 
-Vertex2Dd Vertex2Dd::operator -(const Vertex2Dd& rhs) const
+Vector2d Vector2d::operator -(const Vector2d& rhs) const
 {
 	auto x = Eigen::Vector2d::operator-(rhs);
-	return Vertex2Dd(x);
+	return Vector2d(x);
 }
 
-Vertex2Dd Vertex2Dd::operator +(const Vertex2Dd& rhs) const
+Vector2d Vector2d::operator +(const Vector2d& rhs) const
 {
 	auto x = Eigen::Vector2d::operator+(rhs);
-	return Vertex2Dd(x);
+	return Vector2d(x);
 }
 
-Vertex2Dd Vertex2Dd::operator *(double rhs) const
+Vector2d Vector2d::operator *(double rhs) const
 {
 	auto x = Eigen::Vector2d::operator*(rhs);
-	return Vertex2Dd(x);
+	return Vector2d(x);
 }
 
-bool Vertex2Dd::operator < (const Vertex2Dd& rhs) const
+bool Vector2d::operator < (const Vector2d& rhs) const
 {
 	int64_t scale = Vertex::scaleToSearch();
 	Eigen::Matrix<int64_t, 2, 1> pt0((int64_t)((scale * (*this)[0]) + 0.5) , (int64_t)((scale * (*this)[1]) + 0.5));
@@ -480,9 +538,25 @@ inline size_t Edge2D::otherIdx(size_t i) const
 	return _indices[1 - i];
 }
 
-inline LineSegment2d::LineSegment2d(const Vertex2Dd& pt0, const Vertex2Dd& pt1)
+inline LineSegment2d::LineSegment2d(const Vector2d& pt0, const Vector2d& pt1)
 {
 	_vals = { pt0, pt1 };
+}
+
+bool LineSegment2d::project(const Vector2d& pt, double& t) const
+{
+	const double tolSqr = Tolerance::sameDistTolSqr();
+
+	Vector2d dir = (_vals[1] - _vals[0]);
+	auto len = dir.norm();
+	dir /= len;
+
+	Vector2d v = pt - _vals[0];
+	auto dp = v.dot(dir);
+	t = dp / len;
+	v = v - dir * dp;
+	auto errSqr = v.squaredNorm();
+	return errSqr < tolSqr;
 }
 
 bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
@@ -490,15 +564,15 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 	const double tol = Tolerance::paramTol();
 	const double MIN_COS_ANGLE = 1.0e-8;
 
-	Vertex2Dd xAxis = _vals[1] - _vals[0];
+	Vector2d xAxis = _vals[1] - _vals[0];
 	double len0 = xAxis.norm();
 	if (len0 < tol)
 		return  false;
 	xAxis /= len0;
 
-	Vertex2Dd yAxis(-xAxis[1], xAxis[0]);
+	Vector2d yAxis(-xAxis[1], xAxis[0]);
 
-	Vertex2Dd dir = other[1] - other[0];
+	Vector2d dir = other[1] - other[0];
 	double len1 = dir.norm();
 	if (len1 < tol)
 		return false;
@@ -507,7 +581,7 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 	auto dp = dir.dot(yAxis);
 	if (fabs(dp) < MIN_COS_ANGLE) {
 		for (int i = 0; i < 2; i++) {
-			Vertex2Dd v = other[i] - _vals[0];
+			Vector2d v = other[i] - _vals[0];
 			if (fabs(v.dot(yAxis)) < tol) {
 				double l = v.dot(xAxis);
 				t = l / len0;
@@ -518,24 +592,24 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 		return false; // dir is perpendicular to yAxis, so parallel to xAxis
 	}
 
-	Vertex2Dd v = other[0] - _vals[0];
+	Vector2d v = other[0] - _vals[0];
 
 	auto h = v.dot(yAxis);
 	auto dist0 = -h / dp;
-	Vertex2Dd hitPt = other[0] +  dir * dist0;
+	Vector2d hitPt = other[0] +  dir * dist0;
 
 	v = hitPt - _vals[0];
 	auto dist1 = v.norm();
 	t = dist1 / len0;
 
 #if 1 // Verification code
-	Vertex2Dd vTest = hitPt - _vals[0];
+	Vector2d vTest = hitPt - _vals[0];
 	double testDist = vTest.dot(yAxis);
 	if (fabs(testDist) > tol) {
 		assert(!"Point not on seg0");
 	}
 
-	Vertex2Dd vx = hitPt - other[0];
+	Vector2d vx = hitPt - other[0];
 	vx = vx - dir * vx.dot(dir);
 	if (vx.norm() > tol) {
 		assert(!"Point not on seg1");
@@ -546,17 +620,17 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 	return tol < t && t < 1 - tol;
 }
 
-inline const Vertex2Dd& LineSegment2d::operator[](size_t idx) const
+inline const Vector2d& LineSegment2d::operator[](size_t idx) const
 {
 	return _vals[idx];
 }
 
-inline Vertex2Dd& LineSegment2d::operator[](size_t idx)
+inline Vector2d& LineSegment2d::operator[](size_t idx)
 {
 	return _vals[idx];
 }
 
-Vertex2Dd LineSegment2d::eval(double t)
+Vector2d LineSegment2d::eval(double t)
 {
 	const double tol = Tolerance::paramTol();
 	assert(t >= -tol && t <= 1 + tol);
@@ -564,8 +638,8 @@ Vertex2Dd LineSegment2d::eval(double t)
 		t = 0;
 	else if (t > 1)
 		t = 1;
-	Vertex2Dd v = _vals[1] - _vals[0];
-	Vertex2Dd x = _vals[0] + v * t;
+	Vector2d v = _vals[1] - _vals[0];
+	Vector2d x = _vals[0] + v * t;
 	return x;
 }
 

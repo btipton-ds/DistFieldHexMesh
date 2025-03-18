@@ -122,6 +122,8 @@ public:
 	void connectVertEdgeTopology();
 	void disconnectVertEdgeTopology();
 
+	void imprintFaceEdges(const Index3DId& faceId);
+
 	int32_t getLayerNum() const;
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);

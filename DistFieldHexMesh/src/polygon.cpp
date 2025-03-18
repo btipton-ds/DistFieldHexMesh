@@ -169,24 +169,6 @@ void Polygon::clearCache(bool clearSortIds) const
 		PolygonSearchKey::clear();
 }
 
-bool Polygon::cellsOwnThis() const
-{
-	for (const auto& cellId : _cellIds) {
-		if (!getBlockPtr()->polyhedronExists(cellId))
-			return false;
-		bool result = true;
-		cellFunc(cellId, [this, &result](const Polyhedron& cell) {
-			if (!cell.containsFace(getId()))
-				result = false;
-		});
-
-		if (!result)
-			return false;
-	}
-
-	return true;
-}
-
 Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 {
 	Index3DId result;
@@ -776,6 +758,72 @@ size_t Polygon::getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdg
 	return faceIds.size();
 }
 
+bool Polygon::imprintFace(const Index3DId& faceId)
+{
+	bool result = false;
+
+	MTC::vector<EdgeKey> otherEdgeKeys;
+	faceFunc(faceId, [&otherEdgeKeys](const Polygon& face) {
+		otherEdgeKeys = face.getEdgeKeys();
+	});
+
+	for (const auto& otherEk : otherEdgeKeys) {
+		result = imprintEdge(otherEk) && result;
+	}
+
+	return result;
+}
+
+bool Polygon::imprintEdge(const EdgeKey& edgeKey)
+{
+	if (containsEdge(edgeKey))
+		return false; // we've already go that edge.
+
+	MTC::vector<Index3DId> verts = { edgeKey[0], edgeKey[1] };
+	if (imprintVertices(verts))
+		return true;
+
+	LineSegmentd otherSeg;
+	edgeFunc(edgeKey, [&otherSeg](const Edge& edge) {
+		otherSeg = edge.getSegment();
+	});
+
+	RayHitd hit;
+
+	bool result = false;
+	if (intersect(otherSeg, hit)) { 
+		// The other line segment intersects this face. It's possible the intersection point splits an edge
+		iterateEdges([this, hit, &result](Edge& edge)->bool {
+			const double distTol = Tolerance::sameDistTol();
+			const double tol = Tolerance::paramTol();
+
+			const auto ourSeg = edge.getSegment();
+			double t;
+			double dist = ourSeg.distanceToPoint(hit.hitPt, t);
+			if (dist < distTol && tol < t && t < 1 - tol) {
+				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
+				MTC::vector<Index3DId> vertIds;
+				vertIds.push_back(vertId);
+				edge.imprintVertices(vertIds);
+				result = true;
+			}
+			return !result;
+		});
+	}
+
+	return result;
+}
+
+bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
+{
+	bool result = false;
+	for (const auto& id : faceIds) {
+		result = imprintFace(id) && result;
+	}
+
+	return result;
+}
+
 bool Polygon::imprintVertices(const std::set<Index3DId>& imprintVerts)
 {
 	vector<Index3DId> ids;
@@ -1074,8 +1122,10 @@ bool Polygon::verifyTopology() const
 			if (numCells() != 1)
 				return false;
 		} else {
+#if 1
 			if (numCells() != 2)
 				return false;
+#endif
 		}
 	}
 

@@ -67,7 +67,6 @@ struct SplittingParams;
 // If an edge is split, the polygon must also be split.
 // If a polygon has been split, it can be split again but DOES NOT become reference.
 
-
 class Polygon : public PolygonSearchKey, public ObjectPoolOwnerUser {
 public:
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
@@ -152,7 +151,9 @@ public:
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
-	bool cellsOwnThis() const;
+	bool imprintFace(const Index3DId& faceId);
+	bool imprintFaces(const FastBisectionSet<Index3DId>& faceIds);
+	bool imprintEdge(const EdgeKey& edgeKey);
 	bool imprintVertices(const std::vector<Index3DId>& imprintVerts);
 	bool imprintVertices(const std::set<Index3DId>& imprintVerts);
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);

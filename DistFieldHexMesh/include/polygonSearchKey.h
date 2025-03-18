@@ -44,6 +44,7 @@ public:
 	void set(const Block* pBlock, const MTC::vector<Index3DId>& ids) const;
 	bool empty() const;
 	bool operator < (const PolygonSearchKey& rhs) const;
+	bool operator == (const PolygonSearchKey& rhs) const;
 	void clear() const;
 
 private:
@@ -62,6 +63,11 @@ inline bool PolygonSearchKey::empty() const
 
 inline void PolygonSearchKey::clear() const {
 	_ids.clear();
+}
+
+inline bool PolygonSearchKey::operator == (const PolygonSearchKey& rhs) const
+{
+	return !operator < (rhs) && !rhs.operator<(*this);
 }
 
 }

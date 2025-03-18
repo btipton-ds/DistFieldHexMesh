@@ -41,17 +41,17 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
-class Vertex2Dd : public Eigen::Vector2d
+class Vector2d : public Eigen::Vector2d
 {
 public:
-	Vertex2Dd() = default;
-	Vertex2Dd(const Vertex2Dd& src) = default;
-	Vertex2Dd(const Eigen::Vector2d& src);
-	Vertex2Dd(double x, double y);
-	bool operator < (const Vertex2Dd& rhs) const;
-	Vertex2Dd operator -(const Vertex2Dd& rhs) const;
-	Vertex2Dd operator +(const Vertex2Dd& rhs) const;
-	Vertex2Dd operator *(double rhs) const;
+	Vector2d() = default;
+	Vector2d(const Vector2d& src) = default;
+	Vector2d(const Eigen::Vector2d& src);
+	Vector2d(double x, double y);
+	bool operator < (const Vector2d& rhs) const;
+	Vector2d operator -(const Vector2d& rhs) const;
+	Vector2d operator +(const Vector2d& rhs) const;
+	Vector2d operator *(double rhs) const;
 };
 
 class Edge2D {
@@ -69,6 +69,7 @@ public:
 
 	Splitter2D(const Planed& plane);
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
+	void imprint3DPoint(const Vector3d& pt0);
 	bool contains3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
@@ -77,26 +78,26 @@ public:
 
 private:
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
-	size_t getAllFacePoints(std::vector<std::vector<Vertex2Dd>>& facePoints);
-	bool insideBoundary(const std::vector<Vertex2Dd>& boundaryPts, const std::vector<Vertex2Dd>& testFacePts) const;
-	bool insideBoundary(const std::vector<Vertex2Dd>& boundaryPts, const Vertex2Dd& testPt) const;
-	void createPolygon(std::map<size_t, std::set<size_t>>& map, std::vector<size_t>& faceVerts) const;
+	size_t getAllFacePoints(std::vector<std::vector<Vector2d>>& facePoints);
+	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
+	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
+	size_t createPolygon(std::map<size_t, std::set<size_t>>& map, std::vector<size_t>& faceVerts) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
-	Vertex2Dd calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
-	Vector3d pt3D(const Vertex2Dd& pt2d) const;
+	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
+	Vector3d pt3D(const Vector2d& pt2d) const;
 	Vector3d pt3D(size_t idx) const;
 
-	Vertex2Dd project(const Vector3d& pt) const;
-	size_t addPoint(const Vertex2Dd& pt);
-	const Vertex2Dd& getPoint(size_t idx) const;
+	Vector2d project(const Vector3d& pt) const;
+	size_t addPoint(const Vector2d& pt);
+	const Vector2d& getPoint(size_t idx) const;
 	void splitExisting(const Edge2D& edge);
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
 
-	std::vector<Vertex2Dd> _pts;
-	std::map<Vertex2Dd, size_t> _ptToIndexMap;
+	std::vector<Vector2d> _pts;
+	std::map<Vector2d, size_t> _ptToIndexMap;
 	std::set<Edge2D> _edges;
-	std::vector<std::vector<Vertex2Dd>> _allFacePoints;
+	std::vector<std::vector<Vector2d>> _allFacePoints;
 
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;

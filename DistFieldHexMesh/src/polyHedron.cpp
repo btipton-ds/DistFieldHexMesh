@@ -51,6 +51,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 #include <meshData.h>
+#include <splitter2D.h>
 
 using namespace std;
 using namespace DFHM;
@@ -1056,6 +1057,105 @@ void Polyhedron::disconnectVertEdgeTopology()
 		faceFunc(faceId, [this](Polygon& face) {
 			face.disconnectVertEdgeTopology();
 		});
+	}
+}
+
+void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
+{
+
+	faceFunc(newFaceId, [this](Polygon& newFace) {
+		newFace.imprintFaces(_faceIds);
+	});
+
+	MTC::vector<EdgeKey> newEdgeKeys;
+	MTC::vector<Index3DId> vertIds;
+	faceFunc(newFaceId, [&newEdgeKeys, &vertIds](const Polygon& face) {
+		newEdgeKeys = face.getEdgeKeys();
+		vertIds = face.getVertexIds();
+	});
+
+	auto tmp = _faceIds; // Make a copy because this will change as we work
+
+	for (const auto& faceId : tmp) {
+		faceFunc(faceId, [this, &vertIds](Polygon& face) {
+			auto edgeKeys = face.getEdgeKeys();
+			for (const auto& ek : edgeKeys) {
+				edgeFunc(ek, [vertIds](Edge& edge) {
+					edge.imprintVertices(vertIds);
+				});
+			}
+		});
+
+		MTC::vector<MTC::vector<Vector3d>> splitFacePoints;
+		FastBisectionSet<Index3DId> cellIds;
+		faceFunc(faceId, [this, &newEdgeKeys, &splitFacePoints, &cellIds](Polygon& face) {
+			Splitter2D sp(face.calPlane());
+
+			cellIds = face.getCellIds();
+			face.iterateEdges([this, &sp](const Edge& edge)->bool {
+				const auto& pt0 = getVertexPoint(edge[0]);
+				const auto& pt1 = getVertexPoint(edge[1]);
+				sp.add3DEdge(pt0, pt1);
+				return true;
+			});
+
+			// Imprint full edges
+			bool didImprint = false;
+			for (const auto& ek : newEdgeKeys) {
+				const auto& pt0 = getVertexPoint(ek[0]);
+				const auto& pt1 = getVertexPoint(ek[1]);
+				bool cp0 = face.isCoplanar(pt0);
+				bool cp1 = face.isCoplanar(pt1);
+				if (cp0 && cp1) {
+					sp.add3DEdge(pt0, pt1);
+					didImprint = true;
+				}
+			}
+
+			if (!didImprint) {
+				// Imprint single vertices
+				for (const auto& ek : newEdgeKeys) {
+					const auto& pt0 = getVertexPoint(ek[0]);
+					const auto& pt1 = getVertexPoint(ek[1]);
+					bool cp0 = face.isCoplanar(pt0);
+					bool cp1 = face.isCoplanar(pt1);
+					if (cp0) {
+						sp.imprint3DPoint(pt0);
+						didImprint = true;
+					} else if (cp1) {
+						sp.imprint3DPoint(pt1);
+						didImprint = true;
+					}
+				}
+			}
+
+			sp.getFacePoints(splitFacePoints);
+
+		});
+
+		if (splitFacePoints.size() < 2)
+			return;
+
+		set<Index3DId> newFaceIds;
+		for (const auto& facePts : splitFacePoints) {
+			MTC::vector<Index3DId> vertIds;
+			for (const auto& pt : facePts) {
+				vertIds.push_back(getBlockPtr()->addVertex(pt));
+			}
+			auto newFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
+			newFaceIds.insert(newFaceId);
+		}
+
+		for (const auto& cellId : cellIds) {
+			cellFunc(cellId, [this, &newFaceIds](Polyhedron& cell) {
+				cell.removeFace(getId()); // remove the old face
+				for (const auto& newFaceId : newFaceIds) {
+					cell.addFace(newFaceId);
+				}
+
+				assert(cell.isClosed());
+			});
+		}
 	}
 }
 

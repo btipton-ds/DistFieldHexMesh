@@ -293,13 +293,14 @@ bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 	if (vertsInBounds.empty())
 		return false;
 
+	bool result = false;
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &vertsInBounds](Polygon& face) {
-			face.imprintVertices(vertsInBounds);
+		faceFunc(faceId, [this, &vertsInBounds, &result](Polygon& face) {
+			result = face.imprintVertices(vertsInBounds);
 		});
 	}
 
-	return true;
+	return result;
 }
 
 bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
