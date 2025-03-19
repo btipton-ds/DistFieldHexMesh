@@ -264,7 +264,7 @@ void Splitter3D::performTestHexSplits(const Index3DId& parentId, const Vector3d&
 	}
 }
 
-int Splitter3D::getSplitAxis8(const Index3DId& parentId, const Vector3d& tuv)
+int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	// Split the cell with a plane on each axis
 	// intersects[] keeps track of intersections in the 8 possible subcells
@@ -272,7 +272,7 @@ int Splitter3D::getSplitAxis8(const Index3DId& parentId, const Vector3d& tuv)
 	// When finished, only subcells with intersections are marked true
 	bool isect[8];
 
-	performTestHexSplits(parentId, tuv, isect, 0);
+	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
 
 	int splitAxis;
 	bool doSplit = false;
@@ -315,7 +315,7 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 {
 	bool wasSplit = false;
 
-	int splitAxis = getSplitAxis8(parentId, tuv);
+	int splitAxis = getSplitAxis(parentId, tuv, 0);
 	if (splitAxis < 3) {
 		MTC::vector<Index3DId> newCellIds;
 		splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
@@ -334,14 +334,6 @@ void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector
 	bool isect[8];
 
 	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
-
-	int ignoreAxis;
-	for (ignoreAxis = 0; ignoreAxis < 3; ignoreAxis++) {
-		int mask = 1 << ignoreAxis;
-		bool ignore = ignoreAxisBits & mask;
-		if (ignore)
-			break;
-	}
 
 	for (int splitAxis = 0; splitAxis < 3; splitAxis++) {
 		bool doSplit = false;
