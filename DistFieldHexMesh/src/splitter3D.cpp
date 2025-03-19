@@ -209,11 +209,14 @@ void Splitter3D::performTestHexSplits(const Index3DId& parentId, const Vector3d&
 {
 	for (int i = 0; i < 8; i++)
 		isect[i] = true;
-	bool useAxis0 = ignoreAxisBits & 1;
-	bool useAxis1 = ignoreAxisBits & 2;
-	bool useAxis2 = ignoreAxisBits & 4;
+
 	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
 	{
+		int mask = 1 << splitAxis;
+		bool ignore = ignoreAxisBits & mask;
+		if (ignore)
+			continue;
+
 		Utils::ScopedRestore restore0(_pBlock);
 		_pBlock = _pScratchBlock;
 		Utils::ScopedRestore restore1(_testRun);
@@ -260,8 +263,8 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
 	bool isect[8];
-	int ignoreAxisBits = 1 | 2 | 4;
-	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
+
+	performTestHexSplits(parentId, tuv, isect, 0);
 
 	int dbgBreak = 1;
 
