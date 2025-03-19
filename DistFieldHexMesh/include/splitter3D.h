@@ -74,7 +74,7 @@ private:
 	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
 	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void splitHexCell_2(const Index3DId& parentId, const Index3DId& splittingFaceId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	void splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createSplittingHexFace(const Index3DId& parentId, const Vector3d& tuv, int axis);
 	void createSplittingHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Vector3d>& quadPts);
@@ -82,7 +82,7 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
 	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-	void makeSubCellHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
+	void makeHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells);
 	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
 	Planed makePlane(const MTC::vector<Vector3d>& boundingPts) const;
 	Index3DId makeCellFromFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
