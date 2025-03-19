@@ -362,10 +362,9 @@ void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, 
 		int dbgBreak = 1;
 	}
 #endif
-//	auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
 	MTC::vector<MTC::vector<Vector3d>> subCells;
 	MTC::vector<Vector3d> splittingFacePts;
-	makeHexPoints(parentId, tuv, splitAxis, subCells, splittingFacePts);
+	makeHexCellPoints(parentId, tuv, splitAxis, subCells, splittingFacePts);
 	MTC::vector<Index3DId> splittingFaceVertIds;
 	for (const auto& pt : splittingFacePts)
 		splittingFaceVertIds.push_back(vertId(pt));
@@ -392,10 +391,10 @@ void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, 
 		cell.imprintFaceEdges(splittingFaceId);
 		allCellFaceIds = cell.getFaceIds();
 		cell.detachFaces();
-		});
+	});
 
 	for (int i = 0; i < 2; i++) {
-		Index3DId cellId = makeCellFromFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
+		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
 #if 1 && defined(_DEBUG)
 		cellFunc(cellId, [this, &splittingFaceId](const Polyhedron& cell) {
 			if (!cell.isClosed()) {
@@ -412,13 +411,12 @@ void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, 
 
 }
 
-Index3DId Splitter3D::makeCellFromFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
+Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
 {
 	MTC::set<Index3DId> cellFaces;
 
-	if (useAllFaces) {
-		cellFaces.insert(allCellFaceIds.begin(), allCellFaceIds.end());
-	} else {
+	if (!useAllFaces) {
+		// This is the first of two passes. It must be on the first cell of the two produced by makeHexPoints
 		Vector3d cellCtr(0, 0, 0);
 		for (const auto& pt : cornerPts)
 			cellCtr += pt;
@@ -428,9 +426,9 @@ Index3DId Splitter3D::makeCellFromFaces(const Index3DId& splittingFaceId, const 
 		faceFunc(splittingFaceId, [&splittingPlane](const Polygon& face) {
 			splittingPlane = face.calPlane();
 		});
-		auto dist = splittingPlane.distanceToPoint(cellCtr, false);
-		if (dist < 0)
-			splittingPlane.reverse();
+
+		// makeHexPoints should assure that the face normal points into the first cell
+		assert(splittingPlane.distanceToPoint(cellCtr, false) > 0);
 
 		for (const auto& faceId : allCellFaceIds) {
 			faceFunc(faceId, [this, &splittingPlane, &cellFaces](Polygon& face) {
@@ -443,6 +441,8 @@ Index3DId Splitter3D::makeCellFromFaces(const Index3DId& splittingFaceId, const 
 
 		for (const auto& faceId : cellFaces)
 			allCellFaceIds.erase(faceId);
+	} else {
+		cellFaces.insert(allCellFaceIds.begin(), allCellFaceIds.end());
 	}
 
 	cellFaces.insert(splittingFaceId);
@@ -501,7 +501,7 @@ Planed Splitter3D::makePlane(const MTC::vector<Vector3d>& boundingPts) const
 	return result;
 }
 
-void Splitter3D::makeHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts)
+void Splitter3D::makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts)
 {
 	MTC::vector<Vector3d> cornerPts;
 	if (!_testRun) {
@@ -562,28 +562,13 @@ void Splitter3D::makeHexPoints(const Index3DId& parentId, const Vector3d& tuv, i
 		if (i == 0) {
 			switch (axis) {
 			case 0:
-				partingFacePts = {
-					subPts[1],
-					subPts[2],
-					subPts[6],
-					subPts[5],
-				};
+				partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
 				break;
 			case 1:
-				partingFacePts = {
-					subPts[2],
-					subPts[3],
-					subPts[7],
-					subPts[6],
-				};
+				partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
 				break;
 			case 2:
-				partingFacePts = {
-					subPts[4],
-					subPts[5],
-					subPts[6],
-					subPts[7],
-				};
+				partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
 				break;
 			}
 		}
@@ -601,8 +586,8 @@ void Splitter3D::makeTestHexCells_2_hexes(const Index3DId& parentId, const Vecto
 	}
 #endif
 	MTC::vector<MTC::vector<Vector3d>> subCells;
-	MTC::vector<Vector3d> pfp_discarded;
-	makeHexPoints(parentId, tuv, axis, subCells, pfp_discarded);
+	MTC::vector<Vector3d> discarded;
+	makeHexCellPoints(parentId, tuv, axis, subCells, discarded);
 	for (int i = 0; i < 2; i++) {
 		const auto& subPts = subCells[i];
 
