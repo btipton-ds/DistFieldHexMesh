@@ -195,6 +195,14 @@ inline bool cellsNotSet(bool isect[8], const vector<int>& entries)
 	return result;
 }
 
+inline bool cellsSet(bool isect[8], const vector<int>& entries)
+{
+	bool result = true;
+	for (int i : entries)
+		result = result && isect[i];
+	return result;
+}
+
 inline bool allCellsSet(bool isect[8])
 {
 	bool result = true;
@@ -279,7 +287,7 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 			break;
 		case 1:
 			if (cellsNotSet(isect, { 0, 1, 4, 5 }) ||
-				cellsNotSet(isect, { 2, 3, 4, 7 })) {
+				cellsNotSet(isect, { 2, 3, 6, 7 })) {
 				doSplit = true;
 			}
 			break;
@@ -299,10 +307,11 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 #endif
 		if (doSplit) {
 			MTC::vector<Index3DId> newCellIds;
-			splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
+			auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
+			splitHexCell_2(parentId, splittingFaceId, tuv, splitAxis, newCellIds);
 			for (const auto& cellId : newCellIds) {
 				int ignoreAxisBits = 1 << splitAxis;
-				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
+//				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
 			}
 			break;
 		}
@@ -316,29 +325,145 @@ void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector
 	bool isect[8];
 
 	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
+
+	int ignoreAxis;
+	for (ignoreAxis = 0; ignoreAxis < 3; ignoreAxis++) {
+		int mask = 1 << ignoreAxis;
+		bool ignore = ignoreAxisBits & mask;
+		if (ignore)
+			break;
+	}
+
+	for (int splitAxis = 0; splitAxis < 3; splitAxis++) {
+		bool doSplit = false;
+		switch (ignoreAxis) {
+		case 0:
+			if (cellsNotSet(isect, { 0, 2, 4, 6 })) {
+				continue;
+			}
+			else if (cellsSet(isect, { 0, 2, 4, 6 })) {
+				// TODO Do curvature split testing here
+				doSplit = true;
+			}
+			else {
+				switch (splitAxis) {
+				case 0:
+					continue;
+				case 1:
+					if (cellsNotSet(isect, { 0, 4 }) ||
+						cellsNotSet(isect, { 2, 6 })) {
+						doSplit = true;
+					}
+					break;
+				case 2:
+					if (cellsNotSet(isect, { 0, 2 }) ||
+						cellsNotSet(isect, { 4, 6 })) {
+						doSplit = true;
+					}
+					break;
+				}
+			}
+			break;
+		case 1:
+			if (cellsNotSet(isect, { 0, 1, 4, 5 })) {
+				continue;
+			}
+			else if (cellsSet(isect, { 0, 1, 4, 5 })) {
+				// TODO Do curvature split testing here
+				doSplit = true;
+			}
+			else {
+				switch (splitAxis) {
+				case 0:
+					if (cellsNotSet(isect, { 0, 4 }) ||
+						cellsNotSet(isect, { 1, 5 })) {
+						doSplit = true;
+					}
+					break;
+				case 1:
+					continue;
+				case 2:
+					if (cellsNotSet(isect, { 0, 1 }) ||
+						cellsNotSet(isect, { 4, 5 })) {
+						doSplit = true;
+					}
+					break;
+				}
+			}
+			break;
+		case 2:
+			if (cellsNotSet(isect, { 0, 1, 2, 3 })) {
+				continue;
+			}
+			else if (cellsSet(isect, { 0, 1, 2, 3 })) {
+				// TODO Do curvature split testing here
+				doSplit = true;
+			}
+			else {
+				switch (splitAxis) {
+				case 0:
+					if (cellsNotSet(isect, { 0, 2 }) ||
+						cellsNotSet(isect, { 1, 3 })) {
+						doSplit = true;
+					}
+					break;
+				case 1:
+					if (cellsNotSet(isect, { 0, 1 }) ||
+						cellsNotSet(isect, { 2, 3 })) {
+						doSplit = true;
+					}
+					break;
+				case 2:
+					continue;
+				}
+				break;
+			}
+		}
+
+		if (doSplit) {
+			MTC::vector<Index3DId> newCellIds;
+			auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
+			splitHexCell_2(parentId, splittingFaceId, tuv, splitAxis, newCellIds);
+#if 0
+			for (const auto& cellId : newCellIds) {
+				int ignoreAxisBits = 1 << splitAxis;
+				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
+			}
+#endif
+			break;
+		}
+	}
 }
 
-void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
+
+void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Index3DId& splittingFaceId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
-#if 0 && _DEBUG
-	Index3DId testId(12, 0, 3, 0);
+	Index3DId testId(2, 0, 3, 3);
+#if 1 && _DEBUG
 	if (testId == parentId) {
 		int dbgBreak = 1;
 	}
 #endif
-	auto splittingFaceId = createSplittingHexFace(parentId, tuv, splitAxis);
 
 	FastBisectionSet<Index3DId> allCellFaceIds;
-	cellFunc(parentId, [this, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
-		cell.imprintFaceEdges(splittingFaceId);
-#if 0
-		stringstream ss;
-		ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId) << ".obj";
-		MTC::vector<Index3DId> ids;
-		ids.push_back(splittingFaceId);
-		getBlockPtr()->dumpPolygonObj(ss.str(), ids);
-		getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
+	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
+#if 1 && _DEBUG
+		if (testId == parentId) {
+			{
+				stringstream ss;
+				ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId);
+				MTC::vector<Index3DId> ids;
+				ids.push_back(splittingFaceId);
+				getBlockPtr()->dumpPolygonObj(ss.str(), ids);
+			}
+			{
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_pre.obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+			}
+		}
 #endif
+		cell.imprintFaceEdges(splittingFaceId);
 		allCellFaceIds = cell.getFaceIds();
 		cell.detachFaces();
 		});
@@ -348,6 +473,15 @@ void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, 
 
 	for (int i = 0; i < 2; i++) {
 		Index3DId cellId = makeCellFromFaces(splittingFaceId, subCells.back(), allCellFaceIds, i == 1);
+#if 1 && defined(_DEBUG)
+		cellFunc(cellId, [this, &splittingFaceId](const Polyhedron& cell) {
+			if (!cell.isClosed()) {
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post.obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+			}
+		});
+#endif
 		newCellIds.push_back(cellId);
 	}
 
@@ -508,6 +642,37 @@ void Splitter3D::makeTestHexCells_2_hexes(const Index3DId& parentId, const Vecto
 	}
 }
 
+void Splitter3D::createSplittingHexPoints(const Vector3d& tuv, int axis, MTC::vector<Vector3d>& quadPts)
+{
+	switch (axis) {
+	case 0:
+		quadPts = {
+			TRI_LERP(_cornerPts, tuv[0], 0., 0.),
+			TRI_LERP(_cornerPts, tuv[0], 1., 0.),
+			TRI_LERP(_cornerPts, tuv[0], 1., 1.),
+			TRI_LERP(_cornerPts, tuv[0], 0., 1.),
+		};
+		break;
+	case 1:
+		quadPts = {
+			TRI_LERP(_cornerPts, 0., tuv[1], 0.),
+			TRI_LERP(_cornerPts, 1., tuv[1], 0.),
+			TRI_LERP(_cornerPts, 1., tuv[1], 1.),
+			TRI_LERP(_cornerPts, 0., tuv[1], 1.),
+		};
+		break;
+	case 2:
+		quadPts = {
+			TRI_LERP(_cornerPts, 0., 0., tuv[1]),
+			TRI_LERP(_cornerPts, 1., 0., tuv[1]),
+			TRI_LERP(_cornerPts, 1., 1., tuv[1]),
+			TRI_LERP(_cornerPts, 0., 1., tuv[1]),
+		};
+		break;
+	}
+
+}
+
 Index3DId Splitter3D::createSplittingHexFace(const Index3DId& parentId, const Vector3d& tuv, int axis)
 {
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
@@ -520,32 +685,7 @@ Index3DId Splitter3D::createSplittingHexFace(const Index3DId& parentId, const Ve
 #endif
 
 	MTC::vector<Vector3d> facePts;
-	switch (axis) {
-	case 0:
-		facePts = {
-			TRI_LERP(_cornerPts, tuv[0], 0., 0.),
-			TRI_LERP(_cornerPts, tuv[0], 1., 0.),
-			TRI_LERP(_cornerPts, tuv[0], 1., 1.),
-			TRI_LERP(_cornerPts, tuv[0], 0., 1.),
-		};
-		break;
-	case 1:
-		facePts = {
-			TRI_LERP(_cornerPts, 0., tuv[1], 0.),
-			TRI_LERP(_cornerPts, 1., tuv[1], 0.),
-			TRI_LERP(_cornerPts, 1., tuv[1], 1.),
-			TRI_LERP(_cornerPts, 0., tuv[1], 1.),
-		};
-		break;
-	case 2:
-		facePts = {
-			TRI_LERP(_cornerPts, 0., 0., tuv[1]),
-			TRI_LERP(_cornerPts, 1., 0., tuv[1]),
-			TRI_LERP(_cornerPts, 1., 1., tuv[1]),
-			TRI_LERP(_cornerPts, 0., 1., tuv[1]),
-		};
-		break;
-	}
+	createSplittingHexPoints(tuv, axis, facePts);
 
 	MTC::vector<Index3DId> faceVerts;
 	for (const auto& pt : facePts)
