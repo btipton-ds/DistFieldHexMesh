@@ -205,8 +205,13 @@ inline bool allCellsSet(bool isect[8])
 
 }
 
-void Splitter3D::performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8])
+void Splitter3D::performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
 {
+	for (int i = 0; i < 8; i++)
+		isect[i] = true;
+	bool useAxis0 = ignoreAxisBits & 1;
+	bool useAxis1 = ignoreAxisBits & 2;
+	bool useAxis2 = ignoreAxisBits & 4;
 	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
 	{
 		Utils::ScopedRestore restore0(_pBlock);
@@ -254,12 +259,9 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 	// intersects[] keeps track of intersections in the 8 possible subcells
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
-	bool isect[] = { 
-		true, true, true, true,
-		true, true, true, true,
-	};
-
-	performTestHexSplits(parentId, tuv, isect);
+	bool isect[8];
+	int ignoreAxisBits = 1 | 2 | 4;
+	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
 
 	int dbgBreak = 1;
 
@@ -296,7 +298,8 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 			MTC::vector<Index3DId> newCellIds;
 			splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
 			for (const auto& cellId : newCellIds) {
-				splitHexCell_4_possible(cellId, tuv, splitAxis);
+				int ignoreAxisBits = 1 << splitAxis;
+				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
 			}
 			break;
 		}
@@ -305,8 +308,11 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 	return wasSplit;
 }
 
-void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxis)
+void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
+	bool isect[8];
+
+	performTestHexSplits(parentId, tuv, isect, ignoreAxisBits);
 }
 
 void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)

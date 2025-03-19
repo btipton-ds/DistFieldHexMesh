@@ -71,9 +71,9 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
-	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8]);
+	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
-	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxis);
+	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createSplittingHexFace(const Index3DId& parentId, const Vector3d& tuv, int axis);
