@@ -203,12 +203,14 @@ inline bool cellsSet(bool isect[8], const vector<int>& entries)
 	return result;
 }
 
-inline bool allCellsSet(bool isect[8])
+inline bool allCellsSet(bool isect[8], int numRequired)
 {
-	bool result = true;
-	for (int i = 0; i < 8; i++)
-		result = result && isect[i];
-	return result;
+	int numSet = 0;
+	for (int i = 0; i < 8; i++) {
+		if (isect[i])
+			numSet++;
+	}
+	return numSet >= numRequired;
 }
 
 }
@@ -274,10 +276,9 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 
 	performTestHexSplits(parentId, tuv, isect, 0);
 
-	int dbgBreak = 1;
-
-	for (int splitAxis = 0; splitAxis < 3; splitAxis++) {
-		bool doSplit = false;
+	int splitAxis;
+	bool doSplit = false;
+	for (splitAxis = 0; splitAxis < 3; splitAxis++) {
 		switch (splitAxis) {
 		case 0:
 			if (cellsNotSet(isect, { 0, 2, 4, 6 }) ||
@@ -298,24 +299,27 @@ bool Splitter3D::splitHexCell_8_possible(const Index3DId& parentId, const Vector
 			}
 			break;
 		}
-
 #if 1
 		if (!doSplit) {
 			// TODO Do curvature split testing here
-			doSplit = allCellsSet(isect);
+			if (allCellsSet(isect, 8))
+				doSplit = true;
 		}
 #endif
-		if (doSplit) {
-			MTC::vector<Index3DId> newCellIds;
-			splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
-			for (const auto& cellId : newCellIds) {
-				int ignoreAxisBits = 1 << splitAxis;
-				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
-			}
+		if (doSplit)
 			break;
-		}
 	}
 
+	if (splitAxis < 3) {
+		MTC::vector<Index3DId> newCellIds;
+		splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
+		for (const auto& cellId : newCellIds) {
+			int ignoreAxisBits = 1 << splitAxis;
+			splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
+		}
+		wasSplit = true;
+	}
+	
 	return wasSplit;
 }
 
@@ -362,17 +366,19 @@ void Splitter3D::splitHexCell_4_possible(const Index3DId& parentId, const Vector
 		if (doSplit) {
 			MTC::vector<Index3DId> newCellIds;
 			splitHexCell_2(parentId, tuv, splitAxis, newCellIds);
-#if 0
 			for (const auto& cellId : newCellIds) {
 				int ignoreAxisBits = 1 << splitAxis;
-				splitHexCell_4_possible(cellId, tuv, ignoreAxisBits);
+				splitHexCell_2_possible(cellId, tuv, ignoreAxisBits);
 			}
-#endif
 			break;
 		}
 	}
 }
 
+void Splitter3D::splitHexCell_2_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
+{
+
+}
 
 void Splitter3D::splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
