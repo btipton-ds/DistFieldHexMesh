@@ -642,31 +642,38 @@ void Splitter3D::makeTestHexCells_2_hexes(const Index3DId& parentId, const Vecto
 	}
 }
 
-void Splitter3D::createSplittingHexPoints(const Vector3d& tuv, int axis, MTC::vector<Vector3d>& quadPts)
+void Splitter3D::createSplittingHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Vector3d>& quadPts)
 {
+	MTC::vector<Vector3d> cornerPts;
+	cellFunc(parentId, [this, &cornerPts](const Polyhedron& cell) {
+		auto& cornerVerts = cell.getCanonicalVertIds();
+		for (const auto& id : cornerVerts)
+			cornerPts.push_back(getVertexPoint(id));
+	});
+
 	switch (axis) {
 	case 0:
 		quadPts = {
-			TRI_LERP(_cornerPts, tuv[0], 0., 0.),
-			TRI_LERP(_cornerPts, tuv[0], 1., 0.),
-			TRI_LERP(_cornerPts, tuv[0], 1., 1.),
-			TRI_LERP(_cornerPts, tuv[0], 0., 1.),
+			TRI_LERP(cornerPts, tuv[0], 0., 0.),
+			TRI_LERP(cornerPts, tuv[0], 1., 0.),
+			TRI_LERP(cornerPts, tuv[0], 1., 1.),
+			TRI_LERP(cornerPts, tuv[0], 0., 1.),
 		};
 		break;
 	case 1:
 		quadPts = {
-			TRI_LERP(_cornerPts, 0., tuv[1], 0.),
-			TRI_LERP(_cornerPts, 1., tuv[1], 0.),
-			TRI_LERP(_cornerPts, 1., tuv[1], 1.),
-			TRI_LERP(_cornerPts, 0., tuv[1], 1.),
+			TRI_LERP(cornerPts, 0., tuv[1], 0.),
+			TRI_LERP(cornerPts, 1., tuv[1], 0.),
+			TRI_LERP(cornerPts, 1., tuv[1], 1.),
+			TRI_LERP(cornerPts, 0., tuv[1], 1.),
 		};
 		break;
 	case 2:
 		quadPts = {
-			TRI_LERP(_cornerPts, 0., 0., tuv[1]),
-			TRI_LERP(_cornerPts, 1., 0., tuv[1]),
-			TRI_LERP(_cornerPts, 1., 1., tuv[1]),
-			TRI_LERP(_cornerPts, 0., 1., tuv[1]),
+			TRI_LERP(cornerPts, 0., 0., tuv[1]),
+			TRI_LERP(cornerPts, 1., 0., tuv[1]),
+			TRI_LERP(cornerPts, 1., 1., tuv[1]),
+			TRI_LERP(cornerPts, 0., 1., tuv[1]),
 		};
 		break;
 	}
@@ -685,7 +692,7 @@ Index3DId Splitter3D::createSplittingHexFace(const Index3DId& parentId, const Ve
 #endif
 
 	MTC::vector<Vector3d> facePts;
-	createSplittingHexPoints(tuv, axis, facePts);
+	createSplittingHexPoints(parentId, tuv, axis, facePts);
 
 	MTC::vector<Index3DId> faceVerts;
 	for (const auto& pt : facePts)
