@@ -72,7 +72,7 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
-	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int numCells, int ignoreAxisBits);
+	int getSplitAxis8(const Index3DId& parentId, const Vector3d& tuv);
 	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
 	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void splitHexCell_2_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
