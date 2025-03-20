@@ -102,6 +102,7 @@ public:
 	void addToFaceCountHistogram(std::map<size_t, size_t>& histo) const;
 #endif
 	bool isTooComplex(const SplittingParams& params) const;
+	bool isTooComplex(const SplittingParams& params, MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -172,7 +173,7 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const;
 	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
-	bool intersect(LineSegmentd& seg, RayHitd& hit) const;
+	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	Vector3d getVertexPoint(const Index3DId& vertId) const;
 
 	Index3DId _thisId;

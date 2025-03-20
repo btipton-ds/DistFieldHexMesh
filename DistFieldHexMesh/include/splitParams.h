@@ -59,7 +59,7 @@ struct SplittingParams {
 	size_t numCurvatureDivs = 0;
 	size_t divsPerCurvatureRadius = 2;
 	size_t divsPerGapCurvatureRadius = 4;
-	size_t maxSplitFacesPerCell = 2;
+	size_t maxCoplanarFaces = 4;
 	size_t maxCellFaces = 12;
 
 	Index3DBaseType xMinDivs = 2;

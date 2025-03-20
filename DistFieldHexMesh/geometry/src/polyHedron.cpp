@@ -911,7 +911,22 @@ void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	return _faceIds.size() > params.maxCellFaces;
+	MTC::vector<MTC::set<Index3DId>> discarded;
+	return isTooComplex(params, discarded);
+}
+
+bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const
+{
+	if (_faceIds.size() > params.maxCellFaces)
+		return true;
+
+	createPlanarFaceSet(planarFaceSet);
+	for (const auto& fc : planarFaceSet) {
+		if (fc.size() > params.maxCoplanarFaces)
+			return true;
+	}
+
+	return false;
 }
 
 Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1323,6 +1338,38 @@ inline bool Polyhedron::polygonExists(const Index3DId& id) const
 	return getBlockPtr()->polygonExists(id);
 }
 
+void Polyhedron::createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const
+{
+	planarFaceSet.clear();
+	for (const auto& faceId : _faceIds) {
+		Planed thisPlane;
+		faceFunc(faceId, [&thisPlane](const Polygon& face) {
+			thisPlane = face.calPlane();
+		});
+
+		bool added = false;
+		for (auto& faceSet : planarFaceSet) {
+			for (const auto& testFaceId : faceSet) {
+				bool isCoplanar;
+				faceFunc(testFaceId, [&thisPlane, &isCoplanar](const Polygon& testFace) {
+					isCoplanar = testFace.isCoplanar(thisPlane);
+				});
+				if (isCoplanar) {
+					faceSet.insert(faceId);
+					added = true;
+					break;
+				}
+			}
+			if (added)
+				break;
+		}
+		if (!added) {
+			planarFaceSet.push_back(MTC::set<Index3DId>());
+			planarFaceSet.back().insert(faceId);
+		}
+	}
+}
+
 void Polyhedron::clearLayerNum()
 {
 	_layerNum = -1;
@@ -1495,7 +1542,8 @@ bool Polyhedron::verifyTopology() const
 		valid = false;
 	}
 	
-	if (valid && isTooComplex(params))
+	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
+	if (valid && isTooComplex(params, planarFaceSet))
 		valid = false;
 
 #if DUMP_BAD_CELL_OBJS

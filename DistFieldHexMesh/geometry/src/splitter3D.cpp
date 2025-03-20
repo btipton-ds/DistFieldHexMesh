@@ -165,7 +165,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	// isect[] keeps track of intersections in the 8 possible subcells
 	bool isect[8];
 
-	performScratchHexIntersectionSplits(parentId, tuv, isect, ignoreAxisBits);
+	doScratchHexIntersectionSplitTests(parentId, tuv, isect, ignoreAxisBits);
 	int splitAxis = getSplitAxis(parentId, tuv, isect, ignoreAxisBits, numPossibleSplits);
 
 	if (allCellsClear(isect)) {
@@ -256,7 +256,17 @@ void Splitter3D::clearHexSplitBits(bool isect[8], int splitAxis, size_t j)
 	}
 }
 
-void Splitter3D::performScratchHexIntersectionSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
+void Splitter3D::doHexComplexitySplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
+{
+	cellFunc(parentId, [this](const Polyhedron& cell) {
+		MTC::vector<MTC::set<Index3DId>> planarFaceSet;
+		if (!cell.isTooComplex(_params, planarFaceSet)) {
+			return;
+		}
+	});
+}
+
+void Splitter3D::doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
 {
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
