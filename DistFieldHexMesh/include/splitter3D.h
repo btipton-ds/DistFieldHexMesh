@@ -71,22 +71,18 @@ private:
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
-	void performTestHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
+
 	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	bool splitHexCell_8_possible(const Index3DId& parentId, const Vector3d& tuv);
-	void splitHexCell_4_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void splitHexCell_2_possible(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void splitHexCell_2(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
+	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
-	void makeTestHexCells_2_hexes(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
-	void createSplittingHexPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Vector3d>& quadPts);
+
+	void performScratchHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
+	void makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
-	void replaceExistingFaces(const Index3DId& existingFaceId, const std::vector<std::vector<Vector3d>>& newFacePoints);
-	Index3DId addHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-	bool faceInsideBoundary(const Polygon& face, const MTC::vector<Vector3d>& boundingPts) const;
-	Planed makePlane(const MTC::vector<Vector3d>& boundingPts) const;
+	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
@@ -103,6 +99,7 @@ private:
 	const double _paramTolSqr = _paramTol * _paramTol;
 
 	MTC::vector<Index3DId>& _localTouched;
+	MTC::vector<Index3DId> _cornerVertIds;
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
 
