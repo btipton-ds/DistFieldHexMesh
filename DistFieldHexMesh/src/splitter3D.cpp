@@ -64,7 +64,6 @@ namespace
 
 Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
-	, _pSrcBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
@@ -218,15 +217,13 @@ void Splitter3D::performScratchHexSplits(const Index3DId& parentId, const Vector
 		if (ignore)
 			continue;
 
-		Utils::ScopedRestore restore0(_pBlock);
-		_pBlock = _pScratchBlock;
 		Utils::ScopedRestore restore1(_testRun);
 		_testRun = true;
 		const auto scratchCellId = createScratchCell(parentId);
 		MTC::vector<Index3DId> newCellIds;
 		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
 		for (size_t j = 0; j < 2; j++) {
-			cellFunc(newCellIds[j], [&isect, splitAxis, j](const Polyhedron& cell) {
+			_pScratchBlock->cellFunc(newCellIds[j], [&isect, splitAxis, j](const Polyhedron& cell) {
 				if (!cell.intersectsModel()) {
 					switch (splitAxis) {
 					case 0:
@@ -395,7 +392,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 			splittingPlane = face.calPlane();
 		});
 
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 		Vector3d cellCtr(0, 0, 0);
 		for (const auto& pt : cornerPts)
 			cellCtr += pt;
@@ -523,7 +520,7 @@ void Splitter3D::makeScratchHexCells(const Index3DId& parentId, const Vector3d& 
 
 		MTC::vector<Index3DId> subCorners;
 		for (const auto& pt : subPts)
-			subCorners.push_back(vertId(pt));
+			subCorners.push_back(_pScratchBlock->getVertexIdOfPoint(pt));
 
 		auto newId = makeScratchHexCell(parentId, subCorners, tol);
 		newCells.push_back(newId);
@@ -532,9 +529,6 @@ void Splitter3D::makeScratchHexCells(const Index3DId& parentId, const Vector3d& 
 
 Index3DId Splitter3D::createScratchCell(const Index3DId& parentId)
 {
-	Utils::ScopedRestore restore(_pBlock);
-	_pBlock = _pSrcBlock;
-
 	FastBisectionSet<Index3DId> srcFaceIds;
 	cellFunc(parentId, [&srcFaceIds](const Polyhedron& srcCell) {
 		srcFaceIds = srcCell.getFaceIds();
@@ -553,9 +547,6 @@ Index3DId Splitter3D::createScratchCell(const Index3DId& parentId)
 
 Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 {
-	Utils::ScopedRestore restore(_pBlock);
-	_pBlock = _pSrcBlock;
-
 	Index3DId newFaceId;
 	faceFunc(srcFaceId, [this, &newFaceId](const Polygon& srcFace) {
 		const auto& srcVertIds = srcFace.getVertexIds();
@@ -592,13 +583,13 @@ Index3DId Splitter3D::makeScratchHexCell(const Index3DId& parentId, const MTC::v
 		MTC::set<Index3DId> newFaceIds;
 		assert(_testRun);
 		// Skip the expensive splitting operations
-		auto newFaceId = getBlockPtr()->addPolygon(Polygon(faceVerts));
+		auto newFaceId = _pScratchBlock->addPolygon(Polygon(faceVerts));
 #ifdef _DEBUG
 		Index3DId testId(0, 0, 0, 10);
 		if (testId == newFaceId) {
 			int dbgBreak = 1;
 		}
-		faceFunc(newFaceId, [](const Polygon& face) {
+		_pScratchBlock->faceFunc(newFaceId, [](const Polygon& face) {
 			assert(face.getCellIds().size() < 2);
 		});
 #endif
@@ -606,18 +597,7 @@ Index3DId Splitter3D::makeScratchHexCell(const Index3DId& parentId, const MTC::v
 
 	}
 
-	newCellId = _pBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
-#if 1 && defined(_DEBUG)
-	if (testId == _polyhedronId && !_testRun) {
-		getBlockPtr()->dumpPolyhedraObj({ 
-			_polyhedronId,
-			Index3DId(6, 0, 4, 1), 
-			Index3DId(6, 0, 3, 1),
-			Index3DId(6, 0, 3, 2),
-			}, false, false, false);
-		int dbgBreak = 1;
-	}
-#endif
+	newCellId = _pScratchBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
 
 	return newCellId;
 }
