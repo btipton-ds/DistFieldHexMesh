@@ -53,7 +53,7 @@ class Splitter3D {
 public:
 	static void dumpSplitStats();
 	static void clearThreadLocal();
-	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched);
+	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, MTC::vector<Index3DId>& localTouched);
 	~Splitter3D();
 
 	bool splitAtCenter();
@@ -88,6 +88,8 @@ private:
 	LAMBDA_CLIENT_DECLS;
 
 	bool _testRun = false;
+	size_t _splitLevel;
+
 	Block* _pBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;

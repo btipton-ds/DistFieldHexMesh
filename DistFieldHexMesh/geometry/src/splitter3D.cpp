@@ -62,9 +62,10 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, MTC::vector<Index3DId>& localTouched)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, MTC::vector<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
+	, _splitLevel(level)
 	, _localTouched(localTouched)
 	, _params(pBlock->getSplitParams())
 {

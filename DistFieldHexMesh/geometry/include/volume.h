@@ -171,7 +171,7 @@ private:
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
-	void finishSplits(bool multiCore);
+	void finishSplits(size_t splittingPass, bool multiCore);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 

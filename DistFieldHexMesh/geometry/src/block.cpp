@@ -983,7 +983,7 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::splitRequiredPolyhedra()
+bool Block::splitRequiredPolyhedra(size_t splittingPass)
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
@@ -995,7 +995,7 @@ bool Block::splitRequiredPolyhedra()
 	MTC::vector<Index3DId> localTouched;
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, localTouched);
+			Splitter3D splitter(this, cellId, splittingPass, localTouched);
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
@@ -1011,7 +1011,7 @@ bool Block::splitRequiredPolyhedra()
 			if (_polyhedra.exists(cellId)) {
 				auto& cell = _polyhedra[cellId];
 				if (cell.isTooComplex(params)) {
-					Splitter3D splitter(this, cellId, localTouched);
+					Splitter3D splitter(this, cellId, splittingPass, localTouched);
 					if (splitter.splitAtCenter())
 						didSplit = true;
 					else
