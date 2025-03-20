@@ -123,7 +123,7 @@ public:
 	void connectVertEdgeTopology();
 	void disconnectVertEdgeTopology();
 
-	void imprintFaceEdges(const Index3DId& faceId);
+	void imprintFaceEdges(const Index3DId& faceId, FastBisectionSet<Index3DId>& touchedCellIds);
 
 	int32_t getLayerNum() const;
 	void clearLayerNum();

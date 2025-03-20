@@ -1075,7 +1075,7 @@ void Polyhedron::disconnectVertEdgeTopology()
 	}
 }
 
-void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
+void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId, FastBisectionSet<Index3DId>& touchedCellIds)
 {
 	faceFunc(newFaceId, [this](Polygon& newFace) {
 		newFace.imprintFaces(_faceIds);
@@ -1146,6 +1146,10 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 
 		if (!newFaceIds.empty()) {
 			for (const auto& cellId : cellIds) {
+				if (cellId != getId())
+					touchedCellIds.insert(cellId);
+
+				// This also changes our faces cellIds to point to this
 				cellFunc(cellId, [this, &faceId, &newFaceIds](Polyhedron& cell) {
 					cell.removeFace(faceId);
 					for (const auto& newFaceId : newFaceIds) {
@@ -1153,7 +1157,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId)
 					}
 
 					assert(cell.isClosed());
-					});
+				});
 			}
 
 			getBlockPtr()->freePolygon(faceId);

@@ -992,7 +992,7 @@ bool Block::splitRequiredPolyhedra(size_t splittingPass)
 	auto needToSplitCopy = _needToSplit;
 	_needToSplit.clear();
 
-	MTC::vector<Index3DId> localTouched;
+	FastBisectionSet<Index3DId> localTouched;
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splittingPass, localTouched);

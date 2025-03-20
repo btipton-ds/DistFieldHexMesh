@@ -53,7 +53,7 @@ class Splitter3D {
 public:
 	static void dumpSplitStats();
 	static void clearThreadLocal();
-	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, MTC::vector<Index3DId>& localTouched);
+	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, FastBisectionSet<Index3DId>& localTouched);
 	~Splitter3D();
 
 	bool splitAtCenter();
@@ -86,6 +86,7 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
+	void addToSplitStack(const Index3DId& cellId);
 
 	static void clearCell(bool isect[8], const std::vector<int>& entries);
 	static bool cellsNotSet(bool isect[8], const std::vector<int>& entries);
@@ -108,7 +109,7 @@ private:
 	const double _paramTol = Tolerance::paramTol();
 	const double _paramTolSqr = _paramTol * _paramTol;
 
-	MTC::vector<Index3DId>& _localTouched;
+	FastBisectionSet<Index3DId>& _localTouched;
 	MTC::vector<Index3DId> _cornerVertIds;
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;

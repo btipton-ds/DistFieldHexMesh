@@ -62,7 +62,7 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, MTC::vector<Index3DId>& localTouched)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, FastBisectionSet<Index3DId>& localTouched)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _splitLevel(level)
@@ -389,7 +389,11 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 			}
 		}
 #endif
-		cell.imprintFaceEdges(splittingFaceId);
+		FastBisectionSet <Index3DId> touched;
+		cell.imprintFaceEdges(splittingFaceId, touched);
+		for (const auto& id : touched) {
+			addToSplitStack(id);
+		}
 		allCellFaceIds = cell.getFaceIds();
 		cell.detachFaces();
 	});
@@ -641,6 +645,16 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 		_cornerPts.push_back(getVertexPoint(id));
 
 	int dbgBreak = 1;
+}
+
+void Splitter3D::addToSplitStack(const Index3DId& cellId)
+{
+#if 0
+	if (cellId.blockIdx() == getBlockPtr()->getBlockIdx())
+		_localTouched.insert(cellId);
+	else
+		getBlockPtr()->addToSplitStack(cellId);
+#endif
 }
 
 inline void Splitter3D::clearCell(bool isect[8], const vector<int>& entries)
