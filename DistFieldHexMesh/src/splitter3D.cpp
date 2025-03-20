@@ -417,25 +417,32 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 
 	if (!useAllFaces) {
 		// This is the first of two passes. It must be on the first cell of the two produced by makeHexPoints
-		Vector3d cellCtr(0, 0, 0);
-		for (const auto& pt : cornerPts)
-			cellCtr += pt;
-		cellCtr /= cornerPts.size();
-
 		Planed splittingPlane;
 		faceFunc(splittingFaceId, [&splittingPlane](const Polygon& face) {
 			splittingPlane = face.calPlane();
 		});
 
+#if 1 && defined(_DEBUG)
+		Vector3d cellCtr(0, 0, 0);
+		for (const auto& pt : cornerPts)
+			cellCtr += pt;
+		cellCtr /= cornerPts.size();
+
 		// makeHexPoints should assure that the face normal points into the first cell
 		assert(splittingPlane.distanceToPoint(cellCtr, false) > 0);
+#endif
 
 		for (const auto& faceId : allCellFaceIds) {
 			faceFunc(faceId, [this, &splittingPlane, &cellFaces](Polygon& face) {
-				auto ctr = face.calCentroid();
-				double dist = splittingPlane.distanceToPoint(ctr, false);
-				if (dist > 0)
-					cellFaces.insert(face.getId());
+				const auto& vertIds = face.getVertexIds();
+				for (const auto& vertId : vertIds) {
+					auto& pt = getVertexPoint(vertId);
+					double dist = splittingPlane.distanceToPoint(pt, false);
+					if (dist > Tolerance::sameDistTol()) {
+						cellFaces.insert(face.getId());
+						break;
+					}
+				}
 			});
 		}
 
