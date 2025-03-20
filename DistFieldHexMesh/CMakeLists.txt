@@ -27,6 +27,7 @@ include_directories(
 	"include"
 	"geometry/include/"
 	"graphics/include/"
+	"test/include/"
 	"UI/include/"
 	"../../ThirdParty/eigen/"
 	"../../triMesh/stlReader/include/"
@@ -47,6 +48,7 @@ include_directories(
 	"usr/include/GL/"
 	"geometry/include/"
 	"graphics/include/"
+	"test/include/"
 	"UI/include/"
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
@@ -133,10 +135,6 @@ add_executable (TestDFM
 	"src/polymeshTables.cpp"
 	"src/splitParams.cpp"
 	"src/utils.cpp"
- 	"src/testBlock.cpp" 
-	"src/testMain.cpp"
-	"src/testPoolMemory.cpp" 
-	"src/testMultiCore.cpp"
 
 	"geometry/src/block.cpp"	
  	"geometry/src/edge.cpp" 
@@ -152,6 +150,11 @@ add_executable (TestDFM
 	"geometry/src/vertexSpatialTree.cpp"
 	"geometry/src/vertex.cpp"
 	"geometry/src/volume.cpp"
+
+ 	"test/src/testBlock.cpp" 
+	"test/src/testMain.cpp"
+	"test/src/testPoolMemory.cpp" 
+	"test/src/testMultiCore.cpp"
 
 	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp")
