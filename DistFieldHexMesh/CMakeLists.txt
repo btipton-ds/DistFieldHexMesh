@@ -26,6 +26,8 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_T
 include_directories(
 	"include"
 	"geometry/include/"
+	"graphics/include/"
+	"UI/include/"
 	"../../ThirdParty/eigen/"
 	"../../triMesh/stlReader/include/"
 	"../../triMesh/triMesh/include/"
@@ -43,6 +45,9 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD
 include_directories(
 	"include"
 	"usr/include/GL/"
+	"geometry/include/"
+	"graphics/include/"
+	"UI/include/"
 	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
@@ -70,24 +75,11 @@ endif()
 add_executable (DistFieldHexMesh         
 	${OpenGlPlatformDecl}
 	"src/app.cpp"
-    "src/appData.cpp"	
-	"src/createBaseMeshDlg.cpp"
-	"src/divideHexMeshDlg.cpp"
-	"src/drawMesh.cpp"
-	"src/drawHexMesh.cpp" 
-	"src/drawModelMesh.cpp"
+    "src/appData.cpp"
     "src/index3D.cpp"
-	"src/graphicsCanvas.cpp"
-	"src/graphicsVBORec.cpp"
-	"src/graphicsDebugCanvas.cpp"
 	"src/logger.cpp"
 	"src/main.cpp" 
-	"src/mainFrame.cpp"
-	"src/makeBlockDlg.cpp"
-	"src/objectTreeCtrl.cpp"
 	"src/polymeshTables.cpp"
-	"src/selectBlocksDlg.cpp"
-	"src/splitLongTrisDlg.cpp"
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 
@@ -107,6 +99,22 @@ add_executable (DistFieldHexMesh
 	"geometry/src/vertexSpatialTree.cpp"
 	"geometry/src/vertex.cpp"
 	"geometry/src/volume.cpp"
+
+	"graphics/src/drawMesh.cpp"
+	"graphics/src/drawHexMesh.cpp" 
+	"graphics/src/drawModelMesh.cpp"
+
+	"UI/src/createBaseMeshDlg.cpp"
+	"UI/src/divideHexMeshDlg.cpp"
+	"UI/src/graphicsCanvas.cpp"
+	"UI/src/graphicsVBORec.cpp"
+	"UI/src/graphicsDebugCanvas.cpp"
+	"UI/src/mainFrame.cpp"
+	"UI/src/makeBlockDlg.cpp"
+	"UI/src/objectTreeCtrl.cpp"
+	"UI/src/selectBlocksDlg.cpp"
+	"UI/src/splitLongTrisDlg.cpp"
+
  	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
 
