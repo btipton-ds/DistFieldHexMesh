@@ -992,10 +992,9 @@ bool Block::splitRequiredPolyhedra(size_t splittingPass)
 	auto needToSplitCopy = _needToSplit;
 	_needToSplit.clear();
 
-	FastBisectionSet<Index3DId> localTouched;
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splittingPass, localTouched);
+			Splitter3D splitter(this, cellId, splittingPass);
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
@@ -1003,25 +1002,6 @@ bool Block::splitRequiredPolyhedra(size_t splittingPass)
 		}
 	}
 
-	const auto& params = getSplitParams();
-	while (!localTouched.empty()) {
-		auto temp = localTouched;
-		localTouched.clear();
-		for (const auto& cellId : temp) {
-			if (_polyhedra.exists(cellId)) {
-				auto& cell = _polyhedra[cellId];
-				if (cell.isTooComplex(params)) {
-					Splitter3D splitter(this, cellId, splittingPass, localTouched);
-					if (splitter.splitAtCenter())
-						didSplit = true;
-					else
-						assert(!"splitFailed");
-					assert(!polyhedronExists(cellId));
-				}
-			}
-
-		}
-	}
 	return didSplit;
 }
 

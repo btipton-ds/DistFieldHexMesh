@@ -53,7 +53,7 @@ class Splitter3D {
 public:
 	static void dumpSplitStats();
 	static void clearThreadLocal();
-	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level, FastBisectionSet<Index3DId>& localTouched);
+	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level);
 	~Splitter3D();
 
 	bool splitAtCenter();
@@ -79,16 +79,15 @@ private:
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
-	void doHexComplexitySplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
+	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
 	void makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
-	void addToSplitStack(const Index3DId& cellId);
-
 	static void clearCell(bool isect[8], const std::vector<int>& entries);
+	static void clearCellAll(bool isect[8]);
 	static bool cellsNotSet(bool isect[8], const std::vector<int>& entries);
 	static bool cellsSet(bool isect[8], const std::vector<int>& entries);
 	static bool allCellsSet(bool isect[8], int numRequired);
@@ -109,7 +108,6 @@ private:
 	const double _paramTol = Tolerance::paramTol();
 	const double _paramTolSqr = _paramTol * _paramTol;
 
-	FastBisectionSet<Index3DId>& _localTouched;
 	MTC::vector<Index3DId> _cornerVertIds;
 	std::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;

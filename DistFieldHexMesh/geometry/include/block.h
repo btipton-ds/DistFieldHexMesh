@@ -69,6 +69,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 class Edge;
 class Polygon;
 class Polyhedron;
+class Splitter3D;
 
 class Block : public ObjectPoolOwner {
 public:
@@ -231,7 +232,7 @@ private:
 	friend class Volume;
 	friend class TestBlock;
 	friend class MultiLockGuard;
-	friend class Splitter;
+	friend class Splitter3D;
 
 	enum class AxisIndex {
 		X, Y, Z
