@@ -161,8 +161,11 @@ bool Splitter3D::splitAtCenter()
 bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits)
 {
 	bool wasSplit = false;
+
+	// isect[] keeps track of intersections in the 8 possible subcells
 	bool isect[8];
 
+	performScratchHexIntersectionSplits(parentId, tuv, isect, ignoreAxisBits);
 	int splitAxis = getSplitAxis(parentId, tuv, isect, ignoreAxisBits, numPossibleSplits);
 
 	if (allCellsClear(isect)) {
@@ -253,8 +256,12 @@ void Splitter3D::clearHexSplitBits(bool isect[8], int splitAxis, size_t j)
 	}
 }
 
-void Splitter3D::performScratchHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
+void Splitter3D::performScratchHexIntersectionSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
 {
+	// Split the cell with a plane on each axis
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+
 	for (int i = 0; i < 8; i++)
 		isect[i] = true;
 
@@ -286,13 +293,6 @@ void Splitter3D::performScratchHexSplits(const Index3DId& parentId, const Vector
 
 int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits, int numPossibleSplits)
 {
-	// Split the cell with a plane on each axis
-	// intersects[] keeps track of intersections in the 8 possible subcells
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-
-	performScratchHexSplits(parentId, tuv, isect, ignoreAxisBits);
-
 	int splitAxis;
 	bool doSplit = false;
 	for (splitAxis = 0; splitAxis < 3; splitAxis++) {
