@@ -72,7 +72,8 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
+	void clearHexSplitBits(bool isect[8], int splitAxis, size_t j);
+	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
