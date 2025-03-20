@@ -158,6 +158,66 @@ bool Splitter3D::splitAtCenter()
 	}
 	return result;
 }
+bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits)
+{
+	bool wasSplit = false;
+	bool isect[8];
+
+	int splitAxis = getSplitAxis(parentId, tuv, isect, ignoreAxisBits, numPossibleSplits);
+
+	if (allCellsClear(isect)) {
+		// This is for empty cells that need to be split due to complexity
+		int dbgBreak = 1;
+	} else if (splitAxis != -1) {
+#if 0
+		string axisStr;
+		switch (splitAxis) {
+		case 0:
+			axisStr = "xAxis";
+			break;
+		case 1:
+			axisStr = "yAxis";
+			break;
+		case 2:
+			axisStr = "zAxis";
+			break;
+		}
+
+		switch (numPossibleSplits) {
+		case 8:
+			cout << "\n\n";
+			cout << "Split " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		case 4:
+			cout << "        " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		case 2:
+			cout << "          " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		default:
+			cout << "Error********\n";
+			break;
+		}
+#endif
+		MTC::vector<Index3DId> newCellIds;
+		bisectHexCell(parentId, tuv, splitAxis, newCellIds);
+		if (numPossibleSplits == 8) {
+			int axisBit = 1 << splitAxis;
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 4);
+			}
+		}
+		else if (numPossibleSplits == 4) {
+			int axisBit = 1 << splitAxis;
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 2);
+			}
+		}
+		wasSplit = true;
+	}
+
+	return wasSplit;
+}
 
 inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 {
@@ -224,13 +284,12 @@ void Splitter3D::performScratchHexSplits(const Index3DId& parentId, const Vector
 	}
 }
 
-int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits)
+int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits, int numPossibleSplits)
 {
 	// Split the cell with a plane on each axis
 	// intersects[] keeps track of intersections in the 8 possible subcells
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
-	bool isect[8];
 
 	performScratchHexSplits(parentId, tuv, isect, ignoreAxisBits);
 
@@ -284,61 +343,6 @@ int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int
 		return splitAxis;
 
 	return -1;
-}
-
-bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits)
-{
-	bool wasSplit = false;
-
-	int splitAxis = getSplitAxis(parentId, tuv, ignoreAxisBits, numPossibleSplits);
-	if (splitAxis != -1) {
-#if 0
-		string axisStr;
-		switch (splitAxis) {
-		case 0:
-			axisStr = "xAxis";
-			break;
-		case 1:
-			axisStr = "yAxis";
-			break;
-		case 2:
-			axisStr = "zAxis";
-			break;
-		}
-
-		switch (numPossibleSplits) {
-		case 8:
-			cout << "\n\n";
-			cout << "Split " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		case 4:
-			cout << "        " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		case 2:
-			cout << "          " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		default:
-			cout << "Error********\n";
-			break;
-		}
-#endif
-		MTC::vector<Index3DId> newCellIds;
-		bisectHexCell(parentId, tuv, splitAxis, newCellIds);
-		if (numPossibleSplits == 8) {
-			int axisBit = 1 << splitAxis;
-			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 4);
-			}
-		} else if (numPossibleSplits == 4) {
-			int axisBit = 1 << splitAxis;
-			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 2);
-			}
-		}
-		wasSplit = true;
-	}
-	
-	return wasSplit;
 }
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
@@ -661,6 +665,15 @@ inline bool Splitter3D::allCellsSet(bool isect[8], int numRequired)
 	return numSet >= numRequired;
 }
 
+bool Splitter3D::allCellsClear(bool isect[8])
+{
+	int numSet = 0;
+	for (int i = 0; i < 8; i++) {
+		if (isect[i])
+			numSet++;
+	}
+	return numSet == 0;
+}
 
 
 
