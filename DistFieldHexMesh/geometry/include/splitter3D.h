@@ -85,6 +85,12 @@ private:
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
+
+	static void clearCell(bool isect[8], const std::vector<int>& entries);
+	static bool cellsNotSet(bool isect[8], const std::vector<int>& entries);
+	static bool cellsSet(bool isect[8], const std::vector<int>& entries);
+	static bool allCellsSet(bool isect[8], int numRequired);
+
 	LAMBDA_CLIENT_DECLS;
 
 	bool _testRun = false;

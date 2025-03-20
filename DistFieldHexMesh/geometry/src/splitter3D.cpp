@@ -169,43 +169,6 @@ inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 	return _pBlock->getVertexPoint(id);
 }
 
-namespace
-{
-
-	inline void clearCell(bool isect[8], const vector<int>& entries)
-{
-	for (int i : entries)
-		isect[i] = false;
-}
-
-inline bool cellsNotSet(bool isect[8], const vector<int>& entries)
-{
-	bool result = true;
-	for (int i : entries)
-		result = result && !isect[i];
-	return result;
-}
-
-inline bool cellsSet(bool isect[8], const vector<int>& entries)
-{
-	bool result = true;
-	for (int i : entries)
-		result = result && isect[i];
-	return result;
-}
-
-inline bool allCellsSet(bool isect[8], int numRequired)
-{
-	int numSet = 0;
-	for (int i = 0; i < 8; i++) {
-		if (isect[i])
-			numSet++;
-	}
-	return numSet >= numRequired;
-}
-
-}
-
 void Splitter3D::clearHexSplitBits(bool isect[8], int splitAxis, size_t j)
 {
 	switch (splitAxis) {
@@ -229,7 +192,6 @@ void Splitter3D::clearHexSplitBits(bool isect[8], int splitAxis, size_t j)
 		break;
 	}
 }
-
 
 void Splitter3D::performScratchHexSplits(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
 {
@@ -666,6 +628,41 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 
 	int dbgBreak = 1;
 }
+
+inline void Splitter3D::clearCell(bool isect[8], const vector<int>& entries)
+{
+	for (int i : entries)
+		isect[i] = false;
+}
+
+inline bool Splitter3D::cellsNotSet(bool isect[8], const vector<int>& entries)
+{
+	bool result = true;
+	for (int i : entries)
+		result = result && !isect[i];
+	return result;
+}
+
+inline bool Splitter3D::cellsSet(bool isect[8], const vector<int>& entries)
+{
+	bool result = true;
+	for (int i : entries)
+		result = result && isect[i];
+	return result;
+}
+
+inline bool Splitter3D::allCellsSet(bool isect[8], int numRequired)
+{
+	int numSet = 0;
+	for (int i = 0; i < 8; i++) {
+		if (isect[i])
+			numSet++;
+	}
+	return numSet >= numRequired;
+}
+
+
+
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)
 void Splitter3D::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
