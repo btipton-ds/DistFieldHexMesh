@@ -63,7 +63,7 @@ Polyhedron::Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore
 	_canonicalVertices = cornerVertIds;
 }
 
-Polyhedron::Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds)
+Polyhedron::Polyhedron(const set<Index3DId>& faceIds, const vector<Index3DId>& cornerVertIds)
 {
 	for (const auto& id : faceIds)
 		_faceIds.insert(id);
@@ -78,7 +78,7 @@ Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiC
 }
 
 
-Polyhedron::Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds)
+Polyhedron::Polyhedron(const vector<Index3DId>& faceIds, const vector<Index3DId>& cornerVertIds)
 {
 	_faceIds = faceIds;
 	_canonicalVertices.clear();
@@ -209,7 +209,7 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 	return !result.empty();
 }
 
-void Polyhedron::write(std::ostream& out) const
+void Polyhedron::write(ostream& out) const
 {
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
@@ -223,7 +223,7 @@ void Polyhedron::write(std::ostream& out) const
 	out.write((char*)&_layerNum, sizeof(_layerNum));
 }
 
-void Polyhedron::read(std::istream& in)
+void Polyhedron::read(istream& in)
 {
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
@@ -252,7 +252,7 @@ bool Polyhedron::operator < (const Polyhedron& rhs) const
 	return false;
 }
 
-void Polyhedron::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
+void Polyhedron::remapId(const vector<size_t>& idRemap, const Index3D& srcDims)
 {
 	remap(idRemap, srcDims, _thisId);
 	remap(idRemap, srcDims, _faceIds);
@@ -615,8 +615,8 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 		norm = v1.cross(v0).normalized();
 		v = (cellCtr - faceCtr0).normalized();
 		if (v.dot(norm) < 0) {
-			std::swap(pts[1], pts[3]);
-			std::swap(oppPts[1], oppPts[3]);
+			swap(pts[1], pts[3]);
+			swap(oppPts[1], oppPts[3]);
 		}
 
 		v0 = oppPts[1] - oppPts[0];
@@ -767,6 +767,71 @@ double Polyhedron::calVolume() const
 	return vol;
 }
 
+double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
+{
+	Splitter2D sp(polyPoints);
+
+	vector<vector<Vector3d>> tris;
+	const auto& modelMesh = getBlockPtr()->getModelMeshData();
+	double height = -DBL_MAX;
+	Vector2d maxPt;
+	for (size_t i = 0; i < _triIndices.size(); i++) {
+		const auto& multiTriIdx = _triIndices[i];
+		const auto& pData = modelMesh[multiTriIdx.getMeshIdx()];
+		const auto& pMesh = pData->getMesh();
+		auto& triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
+		Vector3d pts[] = {
+			pMesh->getVert(triIdx[0])._pt,
+			pMesh->getVert(triIdx[1])._pt,
+			pMesh->getVert(triIdx[2])._pt,
+		};
+		vector<Vector3d> tmp = { pts[0], pts[1], pts[2], };
+		tris.push_back(tmp);
+		sp.add3DTriEdge(pts);
+	}
+
+#if 1 && defined(_DEBUG)
+	{
+		std::vector<std::vector<Vector3d>> edgePts;
+		sp.getEdgePts(edgePts);
+		if (!edgePts.empty()) {
+			auto pVol = getBlockPtr()->getVolume();
+			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
+			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges.obj", edgePts, false);
+			pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", {getId()}, false, false, false);
+		}
+	}
+#endif
+	vector<vector<Vector2d>> polylines;
+	if (sp.getPolylines(polylines) > 0) {
+		int dbgBreak = 1;
+	}
+
+	return 0;
+}
+
+bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const
+{
+	double minCurv = 1 / params.maxCurvatureRadius_meters;
+
+	const auto& modelMesh = getBlockPtr()->getModelMeshData();
+	for (const auto& multiTriIdx : _triIndices) {
+		const auto& pData = modelMesh[multiTriIdx.getMeshIdx()];
+		const auto& pMesh = pData->getMesh();
+		auto curv = pMesh->triCurvature(multiTriIdx.getTriIdx());
+		if (curv > minCurv) {
+			auto triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
+			for (int i = 0; i < 3; i++) {
+				auto& pt = pMesh->getVert(triIdx[i])._pt;
+				if (pointInside(pt)) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 bool Polyhedron::isOriented() const
 {
 	bool result = true;
@@ -816,6 +881,28 @@ bool Polyhedron::isConvex() const
 	return result;
 }
 
+bool Polyhedron::pointInside(const Vector3d& pt) const
+{
+	bool inside = true;
+	auto ctr = calCentroidApproxFast();
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&ctr, &pt, &inside](const Polygon& face) {
+			auto pl = face.calPlane();
+			Vector3d v = ctr - pl.getOrgin();
+			auto dp = v.dot(pl.getNormal());
+			if (dp > 0)
+				pl.reverse(); // Vector points out of the cell
+			double dist = pl.distanceToPoint(pt, false);
+			if (dist > Tolerance::paramTol())
+				inside = false;
+		});
+		if (!inside)
+			break;
+	}
+
+	return inside;
+}
+
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
@@ -829,6 +916,20 @@ bool Polyhedron::intersectsModel() const
 
 				if (_intersectsModel == IS_TRUE)
 					return true;
+			}
+		}
+
+		auto& meshData = getBlockPtr()->getModelMeshData();
+		for (const auto& multiTriIdx : _triIndices) {
+			auto pMesh = meshData[multiTriIdx.getMeshIdx()]->getMesh();
+			auto triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
+			for (int i = 0; i < 3; i++) {
+				auto& pt = pMesh->getVert(triIdx[i])._pt;
+				if (pointInside(pt)) {
+					cout << "Polyhedron::intersectsModel found point inside cell found intersection\n";
+					_intersectsModel = IS_TRUE;
+					return true;
+				}
 			}
 		}
 		_intersectsModel = IS_FALSE;
@@ -883,7 +984,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 }
 
 #if USE_CELL_HISTOGRAM
-void Polyhedron::addToFaceCountHistogram(std::map<size_t, size_t>& histo) const
+void Polyhedron::addToFaceCountHistogram(map<size_t, size_t>& histo) const
 {
 	size_t numFaces = getNumFaces();
 
@@ -1384,7 +1485,7 @@ void Polyhedron::addMeshToTriIndices(const vector<MeshDataPtr>& meshData)
 	auto bbox = getBoundingBox();
 	for (size_t i = 0; i < meshData.size(); i++) {
 		const auto& pMesh = meshData[i]->getMesh();
-		std::vector<size_t> triIndices;
+		vector<size_t> triIndices;
 		if (pMesh->findTris(bbox, triIndices)) {
 			for (const auto& triIdx : triIndices) {
 				_triIndices.push_back(TriMeshIndex(i, triIdx));
@@ -1628,42 +1729,42 @@ return out;
 }
 
 //LAMBDA_CLIENT_IMPLS(Polyhedron)
-void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+void Polyhedron::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+void Polyhedron::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void Polyhedron::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+void Polyhedron::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void Polyhedron::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+void Polyhedron::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+void Polyhedron::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+void Polyhedron::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }

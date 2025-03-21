@@ -60,11 +60,12 @@ bool TestMultiCore::test0(size_t numCores)
 		std::vector<std::vector<size_t>> vv;
 		vv.resize(tp.getNumThreads());
 		for (size_t i = 0; i < tp.getNumThreads(); i++) {
-			tp.run(512, [i, &vv](size_t threadNum, size_t idx) {
+			tp.run(512, [i, &vv](size_t threadNum, size_t idx)->bool {
 				auto& v = vv[threadNum];
 				for (size_t i = 0; i < idx + 5; i++) {
 					v.push_back(i);
 				}
+				return true;
 			}, true);
 		}
 	}
@@ -83,8 +84,9 @@ bool TestMultiCore::testSpeed(size_t numCores)
 	size_t size = 1025 * 1024 * 1024;
 	vector<size_t> v;
 	v.resize(tp.getNumThreads());
-	tp.run(size, [&v](size_t threadNum, size_t idx) {
+	tp.run(size, [&v](size_t threadNum, size_t idx)->bool {
 		v[threadNum]++;
+		return true;
 	}, true);
 
 	QueryPerformanceCounter(&endCount);

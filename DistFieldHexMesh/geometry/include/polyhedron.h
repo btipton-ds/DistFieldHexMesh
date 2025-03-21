@@ -90,12 +90,15 @@ public:
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	double calVolume() const;
+	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
+	bool containsHighCurvatureTris(const SplittingParams& params) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
 	size_t classify(MTC::vector<Vector3d>& corners) const;
 	void classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const;
 	bool isConvex() const;
+	bool pointInside(const Vector3d& pt) const;
 	bool intersectsModel() const;
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 #if USE_CELL_HISTOGRAM

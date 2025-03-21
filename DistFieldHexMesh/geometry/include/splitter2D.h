@@ -68,7 +68,10 @@ class Splitter2D {
 public:
 
 	Splitter2D(const Planed& plane);
+	Splitter2D(const MTC::vector<Vector3d>& polyPoints);
+
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
+	void add3DTriEdge(const Vector3d pts[3]);
 	void imprint3DPoint(const Vector3d& pt0);
 	bool contains3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 
@@ -76,27 +79,32 @@ public:
 	size_t getFacePoints(const std::vector<Vector3d>& boundaryFacePts, std::vector<std::vector<Vector3d>>& facePoints);
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 
+	size_t getPolylines(std::vector<std::vector<Vector2d>>& polylines) const;
+
 private:
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
+
+	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
 	size_t getAllFacePoints(std::vector<std::vector<Vector2d>>& facePoints);
+	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
 	size_t createPolygon(std::map<size_t, std::set<size_t>>& map, std::vector<size_t>& faceVerts) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
+	Vector2d project(const Vector3d& pt) const;
 	Vector3d pt3D(const Vector2d& pt2d) const;
 	Vector3d pt3D(size_t idx) const;
 
-	Vector2d project(const Vector3d& pt) const;
 	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;
 	void splitExisting(const Edge2D& edge);
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
 
-	std::vector<Vector2d> _pts;
+	std::vector<Vector2d> _pts, _boundaryPts;
 	std::map<Vector2d, size_t> _ptToIndexMap;
-	std::set<Edge2D> _edges;
+	std::set<Edge2D> _edges, _boundaryEdges;
 	std::vector<std::vector<Vector2d>> _allFacePoints;
 
 	Vector3d _xAxis, _yAxis;

@@ -76,11 +76,12 @@ private:
 	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits, int numPossibleSplits);
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
-	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
+	void makeHexCellPoints(const Block* pBlock, const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
 	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
+	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
 	void makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);

@@ -55,10 +55,54 @@ Splitter2D::Splitter2D(const Planed& plane)
 	_yAxis = _plane.getNormal().cross(_xAxis);
 }
 
-void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
+Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 {
-	size_t idx0 = addPoint(project(pt3D0));
-	size_t idx1 = addPoint(project(pt3D1));
+	auto origin = polyPoints[0];
+
+	_xAxis = polyPoints[1] - polyPoints[0];
+
+	_xAxis.normalize();
+	Vector3d v = polyPoints[2] - polyPoints[0];
+	Vector3d n = _xAxis.cross(v);
+	_plane = Planed(origin, n);
+	_plane.setXRef(_xAxis);
+	_yAxis = _plane.getNormal().cross(_xAxis);
+
+#ifdef _DEBUG
+	Vector2d ctr(0, 0);
+#endif
+	for (size_t i = 0; i < polyPoints.size(); i++) {
+		size_t j = (i + 1) % polyPoints.size();
+		auto p0 = project(polyPoints[i]);
+		auto p1 = project(polyPoints[j]);
+		addEdge(p0, p1);
+
+		size_t idx0 = addPoint(p0);
+		size_t idx1 = addPoint(p1);
+
+#ifdef _DEBUG
+		ctr += p0;
+#endif
+		_boundaryPts.push_back(p0);
+		_boundaryEdges.insert(Edge2D(idx0, idx1));
+	}
+
+#ifdef _DEBUG
+	ctr = ctr * (1.0 / _boundaryPts.size());
+	assert(insideBoundary(ctr));
+	Vector2d v2 = _boundaryPts[0] - ctr;
+	Vector2d testPt = ctr + v2 * 1.01;
+	assert(!insideBoundary(testPt));
+#endif // _DEBUG
+}
+
+void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1)
+{
+	size_t idx0 = addPoint(pt0);
+	size_t idx1 = addPoint(pt1);
+	if (idx0 == idx1)
+		return;
+
 	Edge2D e(idx0, idx1);
 	splitExisting(e);
 
@@ -68,9 +112,44 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	}
 
 	if (subs.empty()) {
-		_edges.insert(e);
+		if (e[0] != e[1])
+			_edges.insert(e);
 	} else {
-		_edges.insert(subs.begin(), subs.end());
+		for (auto& s : subs) {
+			if (s[0] != s[1])
+				_edges.insert(s);
+		}
+	}
+}
+
+void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
+{
+	addEdge(project(pt3D0), project(pt3D1));
+
+}
+
+void Splitter2D::add3DTriEdge(const Vector3d pts[3])
+{
+	vector<size_t> iPts;
+	for (int i = 0; i < 3; i++) {
+		int j = (i + 1) % 3;
+		LineSegmentd seg(pts[i], pts[j]);
+		RayHitd hit;
+		if (_plane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+			assert(_plane.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
+			assert(seg.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
+			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
+			auto pt = project(hit.hitPt);
+			if (insideBoundary(pt)) {
+				size_t idx = addPoint(pt);
+				iPts.push_back(idx);
+			}
+		}
+	}
+
+	if (iPts.size() == 2) {
+		if (iPts[0] != iPts[1])
+			_edges.insert(Edge2D(iPts[0], iPts[1]));
 	}
 }
 
@@ -169,6 +248,9 @@ size_t Splitter2D::getFacePoints(const vector<Vector3d>& boundaryFacePts, vector
 void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 {
 	for (const auto& e : _edges) {
+		if (_boundaryEdges.contains(e))
+			continue;
+
 		vector<Vector3d> pts;
 		for (int i = 0; i < 2; i++) {
 			Vector3d pt(pt3D(e[i]));
@@ -176,6 +258,27 @@ void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 		}
 		edgePts.push_back(pts);
 	}
+}
+
+size_t Splitter2D::getPolylines(std::vector<std::vector<Vector2d>>& polylines) const
+{
+	map<size_t, set<size_t>> ptMap;
+	for (const auto& e : _edges) {
+		if (_boundaryEdges.contains(e))
+			continue;
+
+		auto iter = ptMap.find(e[0]);
+		if (iter == ptMap.end())
+			iter = ptMap.insert(make_pair(e[0], set<size_t>())).first;
+		iter->second.insert(e[1]);
+
+		iter = ptMap.find(e[1]);
+		if (iter == ptMap.end())
+			iter = ptMap.insert(make_pair(e[1], set<size_t>())).first;
+		iter->second.insert(e[0]);
+	}
+
+	return polylines.size();
 }
 
 size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
@@ -239,6 +342,11 @@ size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
 	return facePoints.size();
 }
 
+bool Splitter2D::insideBoundary(const Vector2d& testPt) const
+{
+	return insideBoundary(_boundaryPts, testPt);
+}
+
 bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const vector<Vector2d>& testFacePts) const
 {
 	for (const auto& testPt : testFacePts) {
@@ -249,22 +357,18 @@ bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const vecto
 }
 bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const Vector2d& testPt) const
 {
-	// Check if the point is an exact match for a boundary pt
-	for (const auto& boundaryPt : boundaryPts) {
-		Vector2d v = testPt - boundaryPt;
-		if (v.squaredNorm() < Tolerance::sameDistTolSqr())
-			return true;
-	}
-
 	// Check if the point lies on the positive side of all edges
 	for (size_t i = 0; i < boundaryPts.size(); i++) {
+		Vector2d v = testPt - boundaryPts[i];
+		if (v.squaredNorm() < Tolerance::sameDistTolSqr())
+			return true;
+
 		size_t j = (i + 1) % boundaryPts.size();
 		Vector2d xAxis = boundaryPts[j] - boundaryPts[i];
 		xAxis.normalize();
 		Vector2d yAxis(-xAxis[1], xAxis[0]);
-		Vector2d v = testPt - boundaryPts[i];
 		double dist = v.dot(yAxis);
-		if (dist < -Tolerance::sameDistTol())
+		if (dist < Tolerance::sameDistTol())
 			return false;
 	}
 	return true;
@@ -415,7 +519,8 @@ void Splitter2D::splitExisting(const Edge2D& e0)
 		if (split(e1, e0, subs)) {
 			_edges.erase(e1);
 			for (const auto& s : subs) {
-				_edges.insert(s);
+				if (s[0] != s[1])
+					_edges.insert(s);
 			}
 			break;
 		}
@@ -435,8 +540,11 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 		size_t idx0 = addPoint(pt0);
 		size_t idx1 = addPoint(pt1);
 		size_t idx2 = addPoint(pt2);
-		result.insert(Edge2D(idx0, idx1));
-		result.insert(Edge2D(idx1, idx2));
+
+		if (idx0 != idx1)
+			result.insert(Edge2D(idx0, idx1));
+		if (idx1 != idx2)
+			result.insert(Edge2D(idx1, idx2));
 	}
 
 	return !result.empty();
@@ -602,22 +710,24 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 	auto dist1 = v.norm();
 	t = dist1 / len0;
 
+	bool inBounds = tol < t && t < 1 - tol;
 #if 1 // Verification code
-	Vector2d vTest = hitPt - _vals[0];
-	double testDist = vTest.dot(yAxis);
-	if (fabs(testDist) > tol) {
-		assert(!"Point not on seg0");
-	}
+	if (inBounds) {
+		Vector2d vTest = hitPt - _vals[0];
+		double testDist = vTest.dot(yAxis);
+		if (fabs(testDist) > tol) {
+			assert(!"Point not on seg0");
+		}
 
-	Vector2d vx = hitPt - other[0];
-	vx = vx - dir * vx.dot(dir);
-	if (vx.norm() > tol) {
-		assert(!"Point not on seg1");
+		Vector2d vx = hitPt - other[0];
+		vx = vx - dir * vx.dot(dir);
+		if (vx.norm() > tol) {
+			assert(!"Point not on seg1");
+		}
 	}
-
 #endif
 	
-	return tol < t && t < 1 - tol;
+	return inBounds;
 }
 
 inline const Vector2d& LineSegment2d::operator[](size_t idx) const

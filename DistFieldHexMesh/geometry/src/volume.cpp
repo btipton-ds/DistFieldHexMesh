@@ -1836,7 +1836,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 	if (!_pThreadPool)
 		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
 
-	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx){
+	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS
@@ -1844,6 +1844,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 #endif
 			fLambda(threadNum, pBlk);
 		}
+		return true;
 	}, multiCore);
 }
 
@@ -1853,7 +1854,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 	if (!_pThreadPool)
 		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
 
-	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx) {
+	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS			
@@ -1861,6 +1862,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 #endif
 			fLambda(threadNum, pBlk);
 		}
+		return true;
 	}, multiCore);
 }
 
@@ -1898,7 +1900,7 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 //				sort(blocksToProcess.begin(), blocksToProcess.end());
 				// Process those blocks in undetermined order
 				if (!blocksToProcess.empty()) {
-					_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+					_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx)->bool {
 						size_t linearIdx = blocksToProcess[idx];
 						Index3D blkIdx = calBlockIndexFromLinearIndex(linearIdx);
 						auto& pBlk = _blocks[linearIdx];
@@ -1910,6 +1912,7 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 						} else {
 							fLambda(threadNum, nullptr);
 						}
+						return true;
 					}, multiCore);
 				}
 			}
@@ -1959,7 +1962,7 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx)->bool {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
@@ -1968,6 +1971,7 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 #endif
 						fLambda(threadNum, pBlk);
 					}
+					return true;
 				}, multiCore);
 			}
 		}
@@ -2018,7 +2022,7 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx)->bool {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
@@ -2027,6 +2031,7 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 #endif
 						fLambda(threadNum, pBlk);
 					}
+					return true;
 				}, multiCore);
 			}
 		}
@@ -2076,7 +2081,7 @@ void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 			//				sort(blocksToProcess.begin(), blocksToProcess.end());
 							// Process those blocks in undetermined order
 			if (!blocksToProcess.empty()) {
-				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx) {
+				_pThreadPool->run(blocksToProcess.size(), [this, fLambda, &blocksToProcess](size_t threadNum, size_t idx)->bool {
 					size_t linearIdx = blocksToProcess[idx];
 					auto& pBlk = _blocks[linearIdx];
 					if (pBlk) {
@@ -2085,7 +2090,8 @@ void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 #endif
 						fLambda(threadNum, pBlk);
 					}
-					}, multiCore);
+					return true;
+				}, multiCore);
 			}
 		}
 	}
