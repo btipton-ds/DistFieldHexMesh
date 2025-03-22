@@ -103,6 +103,7 @@ private:
 	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
 	void buildPolyline(std::map<size_t, std::set<size_t>>& ptMap, const Edge2D& e, Polyline& pl) const;
 	bool extendPolyline(std::map<size_t, std::set<size_t>>& ptMap, Polyline& pl) const;
+	void removeColinearVertsFromPolyline(Polyline& pl) const;
 
 	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;

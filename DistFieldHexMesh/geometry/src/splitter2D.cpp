@@ -132,6 +132,7 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 {
 	vector<size_t> iPts;
+	int numInBounds = 0;
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
 		LineSegmentd seg(pts[i], pts[j]);
@@ -141,14 +142,15 @@ void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 			assert(seg.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
 			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
 			auto pt = project(hit.hitPt);
+			size_t idx = addPoint(pt);
+			iPts.push_back(idx);
 			if (insideBoundary(pt)) {
-				size_t idx = addPoint(pt);
-				iPts.push_back(idx);
+				numInBounds++;
 			}
 		}
 	}
 
-	if (iPts.size() == 2) {
+	if (iPts.size() == 2 && numInBounds > 1) {
 		if (iPts[0] != iPts[1])
 			_edges.insert(Edge2D(iPts[0], iPts[1]));
 	}
@@ -388,6 +390,7 @@ size_t Splitter2D::getPolylines(vector<vector<Vector2d>>& polylines) const
 						ptMap.erase(e[1]);
 				}
 
+				removeColinearVertsFromPolyline(pl);
 				vector<Vector2d> pts;
 				for (iter0 = pl.begin(); iter0 != pl.end(); iter0++) {
 					pts.push_back(_pts[*iter0]);
@@ -444,6 +447,32 @@ bool Splitter2D::extendPolyline(std::map<size_t, std::set<size_t>>& ptMap, Polyl
 	}
 
 	return false;
+}
+
+void Splitter2D::removeColinearVertsFromPolyline(Polyline& pl) const
+{
+	const double tol = Tolerance::looseParamTol();
+	list<size_t> tmp = pl;
+	pl.clear();
+	size_t i = -1, j = -1, k = 0;
+	for (auto iter = tmp.begin(); iter != tmp.end(); iter++) {
+		if (i < tmp.size() && j < tmp.size()) {
+			auto& pt0 = _pts[i];
+			auto& pt1 = _pts[j];
+			auto& pt2 = _pts[k];
+			Vector2d v0 = (pt1 - pt0).normalized();
+			Vector2d v1 = (pt2 - pt1).normalized();
+			auto cp = fabs(v1[0] * v0[1] - v1[1] * v0[0]); // v1.cross(v0).norm();
+			if (cp > tol)
+				pl.push_back(*iter);
+		} else
+			pl.push_back(*iter);
+
+		i = j;
+		j = k;
+		k = *iter;
+	}
+
 }
 
 size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
@@ -526,14 +555,14 @@ bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const Vecto
 	for (size_t i = 0; i < boundaryPts.size(); i++) {
 		Vector2d v = testPt - boundaryPts[i];
 		if (v.squaredNorm() < Tolerance::sameDistTolSqr())
-			return true;
+			return true; // Points coincident
 
 		size_t j = (i + 1) % boundaryPts.size();
 		Vector2d xAxis = boundaryPts[j] - boundaryPts[i];
 		xAxis.normalize();
 		Vector2d yAxis(-xAxis[1], xAxis[0]);
 		double dist = v.dot(yAxis);
-		if (dist < Tolerance::sameDistTol())
+		if (dist < -Tolerance::sameDistTol())
 			return false;
 	}
 	return true;
