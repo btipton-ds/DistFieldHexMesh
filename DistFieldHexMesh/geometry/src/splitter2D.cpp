@@ -43,7 +43,7 @@ public:
 	bool intersect(const LineSegment2d& other, double& t) const;
 	const Vector2d& operator[](size_t idx) const;
 	Vector2d& operator[](size_t idx);
-	Vector2d eval(double t);
+	Vector2d interpolate(double t);
 
 private:
 	vector<Vector2d> _vals;
@@ -58,9 +58,9 @@ Splitter2D::Splitter2D(const Planed& plane)
 
 Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 {
-	auto origin = polyPoints[0];
+	auto origin = BI_LERP(polyPoints, 0.5, 0.5);
 
-	_xAxis = polyPoints[1] - polyPoints[0];
+	_xAxis = BI_LERP(polyPoints, 1.0, 0.5) - BI_LERP(polyPoints, 0.0, 0.5);
 
 	_xAxis.normalize();
 	Vector3d v = polyPoints[2] - polyPoints[0];
@@ -131,7 +131,7 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 
 void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 {
-	vector<size_t> iPts;
+	set<size_t> iPts;
 	int numInBounds = 0;
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
@@ -143,16 +143,17 @@ void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
 			auto pt = project(hit.hitPt);
 			size_t idx = addPoint(pt);
-			iPts.push_back(idx);
-			if (insideBoundary(pt)) {
-				numInBounds++;
-			}
+			iPts.insert(idx);
 		}
 	}
 
-	if (iPts.size() == 2 && numInBounds > 1) {
-		if (iPts[0] != iPts[1])
-			_edges.insert(Edge2D(iPts[0], iPts[1]));
+	if (iPts.size() == 2) {
+		auto it = iPts.begin();
+		size_t idx0 = *it++;
+		size_t idx1 = *it;
+		if (idx0 != idx1 && (insideBoundary(_pts[idx0]) || insideBoundary(_pts[idx1]))) {
+			_edges.insert(Edge2D(idx0, idx1));
+		}
 	}
 }
 
@@ -401,6 +402,73 @@ size_t Splitter2D::getPolylines(vector<vector<Vector2d>>& polylines) const
 	}
 
 	return polylines.size();
+}
+
+size_t Splitter2D::getCurvatures(std::vector<std::vector<double>>& curvatures) const
+{
+	curvatures.clear();
+	vector<vector<Vector2d>> polylines;
+	getPolylines(polylines);
+
+	for (const auto& pl : polylines) {
+		std::vector<double> cvec;
+		for (size_t j = 0; j < pl.size(); j++) {
+			if (j == 0 || j == pl.size() - 2) {
+				cvec.push_back(0);
+				continue;
+			}
+			size_t i = (j + pl.size() - 1) % pl.size();
+			size_t k = (j + 1) % pl.size();
+			const Vector2d& pt0 = pl[i];
+			const Vector2d& pt1 = pl[1];
+			const Vector2d& pt2 = pl[2];
+
+			Vector2d v0 = (pt1 - pt0);
+			auto v1 = (pt2 - pt1);
+			auto l0 = v0.norm();
+			auto l1 = v1.norm();
+			if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
+				cvec.push_back(0);
+				continue;
+			}
+
+			v0 /= l0;
+			v1 /= l1;
+			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
+			if (cp > 0.7071 || cp < Tolerance::paramTol()) {
+				cvec.push_back(0);
+				continue; // Skip sharps and colinear points
+			}
+
+			v0 = Vector2d(-v0[1], v0[0]);
+			v1 = Vector2d(-v1[1], v1[0]);
+
+			auto mid0 = (pt0 + pt1) * 0.5;
+			auto mid1 = (pt1 + pt2) * 0.5;
+			LineSegment2d seg0(mid0, v0);
+			LineSegment2d seg1(mid1, v1);
+			double t;
+			if (!seg0.intersect(seg1, t)) {
+				cvec.push_back(0);
+				continue; // Skip sharps and colinear points
+			}
+			Vector2d pt = seg0.interpolate(t);
+			auto radius = (pt0 - pt).norm();
+			if (radius < Tolerance::paramTol()) {
+				cvec.push_back(0);
+				continue; // Skip sharps and colinear points
+			}
+			cvec.push_back(1 / radius);
+		}
+	
+		curvatures.push_back(cvec);
+	}
+	return curvatures.size();
+}
+
+size_t Splitter2D::getGaps(std::vector<double>& curvatures) const
+{
+	return 0;
 }
 
 void Splitter2D::buildPolyline(std::map<size_t, std::set<size_t>>& ptMap, const Edge2D& e, Polyline& pl) const
@@ -729,7 +797,7 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	if (seg0.intersect(seg1, t) ) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt0 = seg0[0];
-		Vector2d pt1 = seg0.eval(t);
+		Vector2d pt1 = seg0.interpolate(t);
 		Vector2d pt2 = seg0[1];
 
 		Vector2d v0 = pt1 - pt0;
@@ -939,7 +1007,7 @@ inline Vector2d& LineSegment2d::operator[](size_t idx)
 	return _vals[idx];
 }
 
-Vector2d LineSegment2d::eval(double t)
+Vector2d LineSegment2d::interpolate(double t)
 {
 	const double tol = Tolerance::paramTol();
 	assert(t >= -tol && t <= 1 + tol);

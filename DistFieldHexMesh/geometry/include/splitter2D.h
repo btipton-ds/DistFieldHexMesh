@@ -82,6 +82,9 @@ public:
 	size_t getPolylines(std::vector<std::vector<Vector3d>>& polylines) const;
 	size_t getPolylines(std::vector<std::vector<Vector2d>>& polylines) const;
 
+	size_t getCurvatures(std::vector<std::vector<double>>& curvatures) const;
+	size_t getGaps(std::vector<double>& curvatures) const;
+
 private:
 	struct Polyline;
 

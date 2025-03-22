@@ -790,10 +790,30 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 		sp.add3DTriEdge(pts);
 	}
 
+	double maxCurvature = 0, avgCurvature = 0;
 	vector<vector<Vector3d>> polylines;
+	vector<vector<double>> curvatures;
+	size_t nPl = sp.getPolylines(polylines);
+	size_t nC = sp.getCurvatures(curvatures);
+	if (nPl > 0) {
+		assert(nPl == nC);
+		size_t count = 0;
+		for (size_t i = 0; i < curvatures.size(); i++) {
+			auto& pl = polylines[i];
+			auto& plc = curvatures[i];
+			assert(pl.size() == plc.size());
+			for (size_t j = 0; j < plc.size(); j++) {
+				auto c = plc[j];
+				if (c > maxCurvature)
+					maxCurvature = c;
+				avgCurvature += c;
+				count++;
+			}
+		}
+		avgCurvature /= count;
 
-	if (sp.getPolylines(polylines) > 0) {
 #if 1 && defined(_DEBUG)
+
 		auto pVol = getBlockPtr()->getVolume();
 		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
 		for (size_t i = 0; i < polylines.size(); i++) {
@@ -801,16 +821,17 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 			for (size_t j = 0; j < polylines[i].size() - 1; j++) {
 				vector<Vector3d> seg;
 				seg.push_back(polylines[i][j]);
-				seg.push_back(polylines[i][j+1]);
+				seg.push_back(polylines[i][j + 1]);
 				segs.push_back(seg);
 			}
 			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
 		}
-#endif
-	int dbgBreak = 1;
-	}
+		int dbgBreak = 1;
 
-	return 0;
+	}
+#endif
+
+	return maxCurvature;
 }
 
 bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const

@@ -400,19 +400,37 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 				int orthAxis1 = (splitAxis + 2) % 3;;
 
 				MTC::vector<MTC::vector<Vector3d>> discarded;
-				MTC::vector<Vector3d> splitFacePts, facePts0, facePts1;
-				makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
+				MTC::vector<Vector3d> facePts0, facePts1;
 				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis0, discarded, facePts0);
 				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis1, discarded, facePts1);
 
-				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
-				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
-				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
-				pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", { cell.getId() }, false, false, false);
-
 				double maxCurv0 = cell.calMaxCurvature2D(facePts0, 0);
 				double maxCurv1 = cell.calMaxCurvature2D(facePts1, 1);
-				int dbgBreak = 1;
+				double maxCurv = (maxCurv0 > maxCurv1) ? maxCurv0 : maxCurv1;
+
+				if (maxCurv > 0) {
+					MTC::vector<Vector3d> splitFacePts;
+					makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
+#if 1 && defined(_DEBUG)
+					makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
+					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
+					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
+					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
+					pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", { cell.getId() }, false, false, false);
+#endif
+
+					double radius = 1 / maxCurv;
+
+					double avgSpan = 0;
+					for (size_t i = 0; i < splitFacePts.size(); i++) {
+						size_t j = (i + 1) / splitFacePts.size();
+						avgSpan += (splitFacePts[j] - splitFacePts[i]).norm();
+					}
+					avgSpan /= splitFacePts.size();
+					double R0 = (radius + pow(avgSpan, 2)) / (4 * radius);
+					int dbgBreak = 1;
+
+				}
 			}
 
 		});
