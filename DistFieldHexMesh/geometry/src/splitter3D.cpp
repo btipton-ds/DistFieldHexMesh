@@ -393,32 +393,29 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 			continue;
 		}
 
-		Utils::ScopedRestore restore1(_testRun);
-		_testRun = true;
-		const auto scratchCellId = createScratchCell(parentId);
-		MTC::vector<Index3DId> newCellIds;
-		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
-		for (size_t j = 0; j < 2; j++) {
-			_pScratchBlock->cellFunc(newCellIds[j], [this, &tuv, &isect, splitAxis, j](const Polyhedron& cell) {
-				if (cell.intersectsModel()) {
-					int orthAxis0 = (splitAxis + 1) % 3;
-					int orthAxis1 = (splitAxis + 2) % 3;;
+		cellFunc(parentId, [this, &tuv, &isect, splitAxis](const Polyhedron& cell) {
+			if (cell.intersectsModel()) {
+				auto pVol = getBlockPtr()->getVolume();
+				int orthAxis0 = (splitAxis + 1) % 3;
+				int orthAxis1 = (splitAxis + 2) % 3;;
 
-					MTC::vector<MTC::vector<Vector3d>> discarded;
-					MTC::vector<Vector3d> facePts0, facePts1;
-					makeHexCellPoints(_pScratchBlock, cell.getId(), tuv, orthAxis0, discarded, facePts0);
-					makeHexCellPoints(_pScratchBlock, cell.getId(), tuv, orthAxis1, discarded, facePts1);
+				MTC::vector<MTC::vector<Vector3d>> discarded;
+				MTC::vector<Vector3d> splitFacePts, facePts0, facePts1;
+				makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
+				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis0, discarded, facePts0);
+				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis1, discarded, facePts1);
 
+				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
+				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
+				pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
+				pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", { cell.getId() }, false, false, false);
 
-					double maxCurv0 = cell.calMaxCurvature2D(facePts0);
-					double maxCurv1 = cell.calMaxCurvature2D(facePts1);
-				} else if (cell.containsHighCurvatureTris(_params)) {
-					clearHexSplitBits(isect, splitAxis, j);
-				}
+				double maxCurv0 = cell.calMaxCurvature2D(facePts0, 0);
+				double maxCurv1 = cell.calMaxCurvature2D(facePts1, 1);
+				int dbgBreak = 1;
+			}
 
-			});
-		}
-		reset();
+		});
 	}
 }
 

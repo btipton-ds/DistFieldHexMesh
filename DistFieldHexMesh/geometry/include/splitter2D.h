@@ -79,9 +79,12 @@ public:
 	size_t getFacePoints(const std::vector<Vector3d>& boundaryFacePts, std::vector<std::vector<Vector3d>>& facePoints);
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 
+	size_t getPolylines(std::vector<std::vector<Vector3d>>& polylines) const;
 	size_t getPolylines(std::vector<std::vector<Vector2d>>& polylines) const;
 
 private:
+	struct Polyline;
+
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
@@ -96,6 +99,10 @@ private:
 	Vector2d project(const Vector3d& pt) const;
 	Vector3d pt3D(const Vector2d& pt2d) const;
 	Vector3d pt3D(size_t idx) const;
+
+	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
+	void buildPolyline(std::map<size_t, std::set<size_t>>& ptMap, const Edge2D& e, Polyline& pl) const;
+	bool extendPolyline(std::map<size_t, std::set<size_t>>& ptMap, Polyline& pl) const;
 
 	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;

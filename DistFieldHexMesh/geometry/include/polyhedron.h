@@ -90,7 +90,7 @@ public:
 	Vector3d calCentroid() const;
 	Vector3d calCentroidApproxFast() const;
 	double calVolume() const;
-	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
+	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints, int axis) const;
 	bool containsHighCurvatureTris(const SplittingParams& params) const;
 	bool isClosed() const;
 	bool isOriented() const;

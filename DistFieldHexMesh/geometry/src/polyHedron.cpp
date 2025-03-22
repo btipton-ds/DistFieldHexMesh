@@ -767,7 +767,7 @@ double Polyhedron::calVolume() const
 	return vol;
 }
 
-double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
+double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, int axis) const
 {
 	Splitter2D sp(polyPoints);
 
@@ -790,21 +790,24 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 		sp.add3DTriEdge(pts);
 	}
 
-#if 1 && defined(_DEBUG)
-	{
-		std::vector<std::vector<Vector3d>> edgePts;
-		sp.getEdgePts(edgePts);
-		if (!edgePts.empty()) {
-			auto pVol = getBlockPtr()->getVolume();
-			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
-			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges.obj", edgePts, false);
-			pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", {getId()}, false, false, false);
-		}
-	}
-#endif
-	vector<vector<Vector2d>> polylines;
+	vector<vector<Vector3d>> polylines;
+
 	if (sp.getPolylines(polylines) > 0) {
-		int dbgBreak = 1;
+#if 1 && defined(_DEBUG)
+		auto pVol = getBlockPtr()->getVolume();
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
+		for (size_t i = 0; i < polylines.size(); i++) {
+			vector<vector<Vector3d>> segs;
+			for (size_t j = 0; j < polylines[i].size() - 1; j++) {
+				vector<Vector3d> seg;
+				seg.push_back(polylines[i][j]);
+				seg.push_back(polylines[i][j+1]);
+				segs.push_back(seg);
+			}
+			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
+		}
+#endif
+	int dbgBreak = 1;
 	}
 
 	return 0;

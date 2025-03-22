@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <list>
 #include <splitter2D.h>
 #include <tm_lineSegment.hpp>
 #include <tolerances.h>
@@ -195,7 +196,7 @@ bool Splitter2D::contains3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	auto pt0 = project(pt3D0);
 	auto pt1 = project(pt3D1);
 
-	std::vector<std::vector<Vector2d>> facePoints;
+	vector<vector<Vector2d>> facePoints;
 	getAllFacePoints(facePoints);
 	for (const auto& bounds : facePoints) {
 		if (insideBoundary(bounds, pt0) && insideBoundary(bounds, pt1))
@@ -204,7 +205,7 @@ bool Splitter2D::contains3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	return false;
 }
 
-size_t Splitter2D::getFacePoints(std::vector<std::vector<Vector3d>>& facePoints)
+size_t Splitter2D::getFacePoints(vector<vector<Vector3d>>& facePoints)
 {
 	if (_allFacePoints.empty()) {
 		getAllFacePoints(_allFacePoints);
@@ -260,25 +261,189 @@ void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 	}
 }
 
-size_t Splitter2D::getPolylines(std::vector<std::vector<Vector2d>>& polylines) const
+struct Splitter2D::Polyline : public list<size_t> {
+	inline size_t firstIdx() const
+	{
+		if (empty())
+			return -1;
+		return *begin();
+	}
+
+	inline size_t lastIdx() const
+	{
+		if (empty())
+			return -1;
+		return *rbegin();
+	}
+
+	inline bool addEdge(const Edge2D& e) {
+		if (empty()) {
+			push_back(e[0]);
+			push_back(e[1]);
+			_usedIndices.insert(e[0]);
+			_usedIndices.insert(e[1]);
+			return true;
+		}
+
+		for (int i = 0; i < 2; i++) {
+			int j = 1 - i;
+			size_t idx0 = e[i];
+			size_t idx1 = e[j];
+			if (!_usedIndices.contains(idx1)) {
+				if (idx0 == back()) {
+					push_back(idx1);
+					_usedIndices.insert(idx1);
+					return true;
+				} else if (idx0 == front()) {
+					push_front(idx1);
+					_usedIndices.insert(idx1);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	set<size_t> _usedIndices;
+};
+
+size_t Splitter2D::getPolylines(vector<vector<Vector3d>>& polylines) const
 {
-	map<size_t, set<size_t>> ptMap;
-	for (const auto& e : _edges) {
-		if (_boundaryEdges.contains(e))
-			continue;
-
-		auto iter = ptMap.find(e[0]);
-		if (iter == ptMap.end())
-			iter = ptMap.insert(make_pair(e[0], set<size_t>())).first;
-		iter->second.insert(e[1]);
-
-		iter = ptMap.find(e[1]);
-		if (iter == ptMap.end())
-			iter = ptMap.insert(make_pair(e[1], set<size_t>())).first;
-		iter->second.insert(e[0]);
+	vector<vector<Vector2d>> polylines2D;
+	getPolylines(polylines2D);
+	for (const auto& pl2 : polylines2D) {
+		vector<Vector3d> pl3;
+		for (const auto& pt2 : pl2) {
+			pl3.push_back(pt3D(pt2));
+		}
+		polylines.push_back(pl3);
 	}
 
 	return polylines.size();
+}
+
+size_t Splitter2D::findMinConnectedIndex(const map<size_t, set<size_t>>& ptMap)
+{
+	size_t result = -1;
+	size_t min = SIZE_MAX;
+	for (const auto& pair : ptMap) {
+		if (pair.second.size() < min) {
+			assert(!pair.second.empty());
+			min = pair.second.size();
+			result = pair.first;
+		}
+	}
+	return result;
+}
+
+size_t Splitter2D::getPolylines(vector<vector<Vector2d>>& polylines) const
+{
+	if (_edges.size() > _boundaryEdges.size()) {
+		vector<Polyline> plVec;
+
+		set<Edge2D> tmp(_edges);
+		for (const auto& e : _boundaryEdges) {
+			tmp.erase(e);
+		}
+
+		map<size_t, set<size_t>> ptMap;
+		for (const auto& e : tmp) {
+			auto iter = ptMap.find(e[0]);
+			if (iter == ptMap.end())
+				iter = ptMap.insert(make_pair(e[0], set<size_t>())).first;
+			iter->second.insert(e[1]);
+
+			iter = ptMap.find(e[1]);
+			if (iter == ptMap.end())
+				iter = ptMap.insert(make_pair(e[1], set<size_t>())).first;
+			iter->second.insert(e[0]);
+		}
+
+		Edge2D seedEdge;
+		while (!tmp.empty()) {
+			seedEdge = *tmp.begin();
+
+			Polyline pl;
+			buildPolyline(ptMap, seedEdge, pl);
+			if (!pl.empty()) {
+				plVec.push_back(pl);
+				auto iter0 = pl.begin();
+				auto iter1 = iter0;
+				iter1++;
+
+				while (iter1 != pl.end()) {
+					Edge2D e(*iter0++, *iter1++);
+					tmp.erase(e);
+
+					auto iter = ptMap.find(e[0]);
+					if (iter != ptMap.end())
+						iter->second.erase(e[1]);
+					if (iter->second.empty())
+						ptMap.erase(e[0]);
+
+					iter = ptMap.find(e[1]);
+					if (iter != ptMap.end())
+						iter->second.erase(e[0]);
+					if (iter->second.empty())
+						ptMap.erase(e[1]);
+				}
+
+				vector<Vector2d> pts;
+				for (iter0 = pl.begin(); iter0 != pl.end(); iter0++) {
+					pts.push_back(_pts[*iter0]);
+				}
+				polylines.push_back(pts);
+			}
+		};
+	}
+
+	return polylines.size();
+}
+
+void Splitter2D::buildPolyline(std::map<size_t, std::set<size_t>>& ptMap, const Edge2D& e, Polyline& pl) const
+{
+	pl.addEdge(e);
+	while (extendPolyline(ptMap, pl));
+
+}
+
+bool Splitter2D::extendPolyline(std::map<size_t, std::set<size_t>>& ptMap, Polyline& pl) const
+{
+	size_t lastIdx = pl.lastIdx();
+	auto iter = ptMap.find(lastIdx);
+	if (iter != ptMap.end()) {
+		const auto& s = iter->second;
+		if (s.size() <= 2) {
+			set<size_t> options;
+			for (size_t idx : s) {
+				if (!pl._usedIndices.contains(idx))
+					options.insert(idx);
+			}
+			if (options.size() == 1) {
+				if (pl.addEdge(Edge2D(lastIdx, *options.begin())))
+					return true;
+			}
+		}
+	}
+
+	lastIdx = pl.firstIdx();
+	iter = ptMap.find(lastIdx);
+	if (iter != ptMap.end()) {
+		const auto& s = iter->second;
+		if (s.size() <= 2) {
+			set<size_t> options;
+			for (size_t idx : s) {
+				if (!pl._usedIndices.contains(idx))
+					options.insert(idx);
+			}
+			if (options.size() == 1) {
+				if (pl.addEdge(Edge2D(lastIdx, *options.begin())))
+					return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
@@ -532,19 +697,24 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
 	double t;
-	if (seg0.intersect(seg1, t)) {
+	if (seg0.intersect(seg1, t) ) {
+		const double tol = Tolerance::sameDistTol();
 		Vector2d pt0 = seg0[0];
 		Vector2d pt1 = seg0.eval(t);
 		Vector2d pt2 = seg0[1];
 
-		size_t idx0 = addPoint(pt0);
-		size_t idx1 = addPoint(pt1);
-		size_t idx2 = addPoint(pt2);
+		Vector2d v0 = pt1 - pt0;
+		Vector2d v1 = pt2 - pt1;
+		if (v0.norm() > tol && v1.norm() > tol) {
+			size_t idx0 = addPoint(pt0);
+			size_t idx1 = addPoint(pt1);
+			size_t idx2 = addPoint(pt2);
 
-		if (idx0 != idx1)
+			assert(idx0 != idx1);
+			assert(idx1 != idx2);
 			result.insert(Edge2D(idx0, idx1));
-		if (idx1 != idx2)
 			result.insert(Edge2D(idx1, idx2));
+		}
 	}
 
 	return !result.empty();
