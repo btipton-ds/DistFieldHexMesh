@@ -220,6 +220,14 @@ size_t Splitter2D::getFacePoints(vector<vector<Vector3d>>& facePoints)
 			auto pt = pt3D(pt2d);
 			pts.push_back(pt);
 		}
+
+		Vector3d v0 = (pts[1] - pts[0]).normalized();
+		Vector3d v1 = (pts[2] - pts[1]).normalized();
+		Vector3d n = v1.cross(v0);
+		if (n.dot(_plane.getNormal()) < 0) {
+			reverse(pts.begin(), pts.end());
+		}
+
 		facePoints.push_back(pts);
 	}
 
@@ -692,10 +700,95 @@ inline Vector3d Splitter2D::pt3D(size_t idx) const
 	return pt3D(_pts[idx]);
 }
 
-size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& faceVerts) const
+namespace
+{
+	struct PolylineNode {
+		PolylineNode* _pPrior = nullptr;
+		size_t _idx;
+	};
+
+	void extendPl(map<size_t, set<size_t>>& m, PolylineNode& n, vector<vector<size_t>>& results) {
+		set<size_t> used;
+		auto* pPrior = &n;
+		while (pPrior) {
+			used.insert(pPrior->_idx);
+			pPrior = pPrior->_pPrior;
+		}
+
+		auto iter = m.find(n._idx);
+		if (iter != m.end()) {
+			bool extended = false;
+			for (size_t nextIdx : iter->second) {
+				if (!used.contains(nextIdx)) {
+					PolylineNode n2;
+					n2._pPrior = &n;
+					n2._idx = nextIdx;
+					extendPl(m, n2, results);
+					extended = true;
+				}
+			}
+			if (!extended) {
+				// NextIdx is already in the list, so we can't use it again.
+				vector<size_t> r;
+				r.push_back(n._idx);
+				auto p = n._pPrior;
+				while (p) {
+					r.push_back(p->_idx);
+					p = p->_pPrior;
+				}
+	
+				size_t maxSize = 0;
+				vector<size_t> tooLong;
+				for (size_t i = 0; i < results.size(); i++) {
+					if (results[i].size() > r.size()) {
+						tooLong.push_back(i);
+					} else if (results[i].size() > maxSize)
+						maxSize = results[i].size();
+				}
+
+				for (size_t idx = tooLong.size() - 1; idx != -1; idx--)
+					results.erase(results.begin() + idx);
+
+				if (results.empty() || r.size() <= maxSize)
+					results.push_back(r);
+			}
+		}
+	}
+
+	void removeIndices(map<size_t, set<size_t>>& m, vector<size_t>& indices)
+	{
+		for (size_t idx : indices) {
+			auto iter = m.find(idx);
+			for (size_t idx2 : indices) {
+				iter->second.erase(idx2);
+			}
+		}
+
+		for (size_t idx : indices) {
+			auto iter = m.find(idx);
+			if (iter->second.empty())
+				m.erase(idx);
+		}
+
+		// There may be missing edges in the map due to the removal
+		// This restores the connections for edges in indices which were removed
+		// from the map.
+		for (size_t i = 0; i < indices.size(); i++) {
+			size_t j = (i + 1) % indices.size();
+			auto iterI = m.find(indices[i]);
+			auto iterJ = m.find(indices[j]);
+			if (iterI != m.end() && iterJ != m.end()) {
+				iterI->second.insert(indices[j]);
+				iterJ->second.insert(indices[i]);
+			}
+		}
+	}
+}
+
+size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& faceVerts) const
 {
 	// Start the loop
-	for (const auto& pair : map) {
+	for (const auto& pair : m) {
 		if (pair.second.size() == 2) {
 			auto iter = pair.second.begin();
 			size_t idx0 = *iter++;
@@ -721,7 +814,37 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& 
 			}
 		}
 	}
+#if 1
+	if (m.empty())
+		return 0;
 
+	PolylineNode n;
+	n._idx = m.begin()->first;
+	vector<vector<size_t>> tmp, indices;
+	extendPl(m, n, tmp);
+	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
+		return lhs.size() < rhs.size();
+	});
+
+	for (const auto& poly : tmp) {
+		vector<size_t> verifiedPoly;
+		for (size_t idx : poly) {
+			auto iter = m.find(idx);
+			if (iter != m.end()) {
+				verifiedPoly.push_back(iter->first);
+			}
+		}
+		if (verifiedPoly.size() == poly.size()) {
+			indices.push_back(verifiedPoly);
+		}
+	}
+
+	if (indices.size() >= 1) {
+		assert(indices.front().size() <= 8);
+		faceVerts = indices.front();
+		removeIndices(m, faceVerts);
+	}
+#else
 	size_t lastIdx, curIdx, nextIdx;
 	do {
 		if (faceVerts.size() <= 2) {
@@ -770,7 +893,7 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& map, vector<size_t>& 
 			}
 		}
 	}
-
+#endif
 	return faceVerts.size();
 }
 

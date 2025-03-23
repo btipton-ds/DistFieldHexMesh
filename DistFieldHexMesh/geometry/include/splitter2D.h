@@ -85,6 +85,17 @@ public:
 	size_t getCurvatures(std::vector<std::vector<double>>& curvatures) const;
 	size_t getGaps(std::vector<double>& curvatures) const;
 
+	inline const std::set<Edge2D> getEdges() const
+	{
+		return _edges;
+	}
+
+	inline const std::vector<Vector2d> getPoints() const
+	{
+		return _pts;
+	}
+
+	Vector3d pt3D(const Vector2d& pt2d) const;
 private:
 	struct Polyline;
 
@@ -100,7 +111,6 @@ private:
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d project(const Vector3d& pt) const;
-	Vector3d pt3D(const Vector2d& pt2d) const;
 	Vector3d pt3D(size_t idx) const;
 
 	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
