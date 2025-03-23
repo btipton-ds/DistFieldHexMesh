@@ -831,13 +831,6 @@ bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
 	return result;
 }
 
-bool Polygon::imprintVertices(const std::set<Index3DId>& imprintVerts)
-{
-	vector<Index3DId> ids;
-	ids.insert(ids.end(), imprintVerts.begin(), imprintVerts.end());
-	return imprintVertices(ids);
-}
-
 bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 {
 	const double tol = Tolerance::sameDistTol();

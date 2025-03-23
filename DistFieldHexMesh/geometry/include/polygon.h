@@ -156,7 +156,6 @@ public:
 	bool imprintFaces(const FastBisectionSet<Index3DId>& faceIds);
 	bool imprintEdge(const EdgeKey& edgeKey);
 	bool imprintVertices(const std::vector<Index3DId>& imprintVerts);
-	bool imprintVertices(const std::set<Index3DId>& imprintVerts);
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;

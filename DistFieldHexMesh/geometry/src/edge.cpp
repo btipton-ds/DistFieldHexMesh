@@ -279,19 +279,23 @@ bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 	const double tol = Tolerance::paramTol();
 
 	auto seg = getSegment();
-	set<Index3DId> vertsInBounds;
+	set<Index3DId> vertsInBoundsSet;
 	for (const auto& id : allVertIds) {
 		if (_vertexIds[0].withinRange(id) && _vertexIds[1].withinRange(id)) {
 			const auto& pt = getBlockPtr()->getVertexPoint(id);
 			double t;
 			if (seg.contains(pt, t, tol) && tol < t && t < 1 - tol) {
-				vertsInBounds.insert(id);
+				vertsInBoundsSet.insert(id);
 			}
 		}
 	}
 
-	if (vertsInBounds.empty())
+	if (vertsInBoundsSet.empty())
 		return false;
+
+	MTC::vector<Index3DId> vertsInBounds;
+	for (const auto& id : vertsInBoundsSet)
+		vertsInBounds.push_back(id);
 
 	bool result = false;
 	for (const auto& faceId : _faceIds) {
