@@ -786,8 +786,8 @@ bool Polygon::imprintEdge(const EdgeKey& edgeKey)
 	if (containsEdge(edgeKey))
 		return false; // we've already go that edge.
 
-	MTC::vector<Index3DId> verts = { edgeKey[0], edgeKey[1] };
-	if (imprintVertices(verts))
+	MTC::vector<Vector3d> pts = { getBlockPtr()->getVertexPoint(edgeKey[0]), getBlockPtr()->getVertexPoint(edgeKey[1]) };
+	if (imprintPoints(pts))
 		return true;
 
 	LineSegmentd otherSeg;
@@ -831,7 +831,7 @@ bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
 	return result;
 }
 
-bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
+bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 {
 	const double tol = Tolerance::sameDistTol();
 	MTC::vector<Index3DId> tmp;
@@ -839,7 +839,8 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		tmp.push_back(_vertexIds[i]);
-		for (const auto& imprintVert : imprintVerts) {
+		for (const auto& imprPt : imprPts) {
+			auto imprintVert = getBlockPtr()->getVertexIdOfPoint(imprPt);
 			if (!getId().withinRange(imprintVert))
 				continue;
 			

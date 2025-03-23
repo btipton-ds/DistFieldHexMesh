@@ -293,14 +293,14 @@ bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 	if (vertsInBoundsSet.empty())
 		return false;
 
-	MTC::vector<Index3DId> vertsInBounds;
+	MTC::vector<Vector3d> vertsInBounds;
 	for (const auto& id : vertsInBoundsSet)
-		vertsInBounds.push_back(id);
+		vertsInBounds.push_back(getBlockPtr()->getVertexPoint(id));
 
 	bool result = false;
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &vertsInBounds, &result](Polygon& face) {
-			result = face.imprintVertices(vertsInBounds);
+			result = face.imprintPoints(vertsInBounds);
 		});
 	}
 
