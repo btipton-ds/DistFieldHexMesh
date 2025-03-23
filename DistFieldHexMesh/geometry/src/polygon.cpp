@@ -787,6 +787,16 @@ bool Polygon::imprintEdge(const EdgeKey& edgeKey)
 		return false; // we've already go that edge.
 
 	MTC::vector<Vector3d> pts = { getBlockPtr()->getVertexPoint(edgeKey[0]), getBlockPtr()->getVertexPoint(edgeKey[1]) };
+
+	// Include non planar intersections where other edges intersect the face plane.
+	edgeFunc(edgeKey, [this, &pts](const Edge& edge) {
+		auto seg = edge.getSegment();
+		RayHitd hp;
+		if (intersect(seg, hp)) {
+			pts.push_back(hp.hitPt);
+		}
+	});
+
 	if (imprintPoints(pts))
 		return true;
 
