@@ -753,6 +753,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 Index3DId Block::addPolygon(const Polygon& face)
 {
+	assert(Polygon::verifyVertsConvexStat(this, face.getVertexIds()));
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Index3DId result = pOwner->_polygons.findOrAdd(face);

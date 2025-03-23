@@ -62,11 +62,13 @@ using namespace DFHM;
 Polygon::Polygon(const MTC::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+	assert(verifyUnique());
 }
 
 Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+	assert(verifyUnique());
 }
 
 Polygon::Polygon(const Polygon& src)
@@ -80,6 +82,7 @@ Polygon::Polygon(const Polygon& src)
 	, _cachedCentroid(src._cachedCentroid)
 	, _cachedNormal(src._cachedNormal)
 {
+	assert(verifyUnique());
 }
 
 void Polygon::connectVertEdgeTopology() {
@@ -118,6 +121,7 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 	PolygonSearchKey::operator<(rhs);
 	_thisId = rhs._thisId;
+	assert(rhs.verifyUnique());
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
@@ -152,6 +156,7 @@ void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
+	assert(verifyUnique());
 	clearCache();
 }
 
@@ -876,6 +881,7 @@ bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 		disconnectVertEdgeTopology();
 		clearCache(false);
 
+		assert(verifyUniqueStat(tmp));
 		_vertexIds = tmp;
 
 		connectVertEdgeTopology();
