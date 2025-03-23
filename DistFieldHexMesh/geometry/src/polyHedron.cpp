@@ -827,9 +827,8 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
 		}
 		int dbgBreak = 1;
-
-	}
 #endif
+	}
 
 	return maxCurvature;
 }

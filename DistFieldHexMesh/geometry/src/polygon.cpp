@@ -62,11 +62,13 @@ using namespace DFHM;
 Polygon::Polygon(const MTC::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+	assert(verifyUnique());
 }
 
 Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+	assert(verifyUnique());
 }
 
 Polygon::Polygon(const Polygon& src)
@@ -80,6 +82,7 @@ Polygon::Polygon(const Polygon& src)
 	, _cachedCentroid(src._cachedCentroid)
 	, _cachedNormal(src._cachedNormal)
 {
+	assert(verifyUnique());
 }
 
 void Polygon::connectVertEdgeTopology() {
@@ -118,6 +121,7 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 	PolygonSearchKey::operator<(rhs);
 	_thisId = rhs._thisId;
+	assert(rhs.verifyUnique());
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
@@ -152,6 +156,7 @@ void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
+	assert(verifyUnique());
 	clearCache();
 }
 
@@ -786,8 +791,18 @@ bool Polygon::imprintEdge(const EdgeKey& edgeKey)
 	if (containsEdge(edgeKey))
 		return false; // we've already go that edge.
 
-	MTC::vector<Index3DId> verts = { edgeKey[0], edgeKey[1] };
-	if (imprintVertices(verts))
+	MTC::vector<Vector3d> pts = { getBlockPtr()->getVertexPoint(edgeKey[0]), getBlockPtr()->getVertexPoint(edgeKey[1]) };
+
+	// Include non planar intersections where other edges intersect the face plane.
+	edgeFunc(edgeKey, [this, &pts](const Edge& edge) {
+		auto seg = edge.getSegment();
+		RayHitd hp;
+		if (intersect(seg, hp)) {
+			pts.push_back(hp.hitPt);
+		}
+	});
+
+	if (imprintPoints(pts))
 		return true;
 
 	LineSegmentd otherSeg;
@@ -831,14 +846,7 @@ bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
 	return result;
 }
 
-bool Polygon::imprintVertices(const std::set<Index3DId>& imprintVerts)
-{
-	vector<Index3DId> ids;
-	ids.insert(ids.end(), imprintVerts.begin(), imprintVerts.end());
-	return imprintVertices(ids);
-}
-
-bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
+bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 {
 	const double tol = Tolerance::sameDistTol();
 	MTC::vector<Index3DId> tmp;
@@ -846,7 +854,8 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		tmp.push_back(_vertexIds[i]);
-		for (const auto& imprintVert : imprintVerts) {
+		for (const auto& imprPt : imprPts) {
+			auto imprintVert = getBlockPtr()->getVertexIdOfPoint(imprPt);
 			if (!getId().withinRange(imprintVert))
 				continue;
 			
@@ -872,6 +881,7 @@ bool Polygon::imprintVertices(const std::vector<Index3DId>& imprintVerts)
 		disconnectVertEdgeTopology();
 		clearCache(false);
 
+		assert(verifyUniqueStat(tmp));
 		_vertexIds = tmp;
 
 		connectVertEdgeTopology();

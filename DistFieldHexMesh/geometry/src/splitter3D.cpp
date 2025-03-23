@@ -688,6 +688,11 @@ void Splitter3D::makeScratchHexCells(const Index3DId& parentId, const Vector3d& 
 	MTC::vector<MTC::vector<Vector3d>> subCells;
 	MTC::vector<Vector3d> discarded;
 	makeHexCellPoints(_pScratchBlock, parentId, tuv, axis, subCells, discarded);
+
+	_pScratchBlock->cellFunc(parentId, [](Polyhedron& cell) {
+		cell.detachFaces();
+	});
+
 	for (int i = 0; i < 2; i++) {
 		const auto& subPts = subCells[i];
 
