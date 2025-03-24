@@ -1199,15 +1199,21 @@ void Polyhedron::disconnectVertEdgeTopology()
 	}
 }
 
-void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId, FastBisectionSet<Index3DId>& touchedCellIds)
+void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionSet<Index3DId>& touchedCellIds)
 {
-	faceFunc(newFaceId, [this](Polygon& newFace) {
+	Index3DId testId(10, 2, 3, 7);
+#if 1 && (_DEBUG)
+	if (testId == imprintFaceId) {
+		int dbgBreak = 1;
+	}
+#endif
+	faceFunc(imprintFaceId, [this](Polygon& newFace) {
 		newFace.imprintFaces(_faceIds);
 		});
 
 	MTC::vector<EdgeKey> newEdgeKeys;
 	MTC::vector<Index3DId> vertIds;
-	faceFunc(newFaceId, [&newEdgeKeys, &vertIds](const Polygon& face) {
+	faceFunc(imprintFaceId, [&newEdgeKeys, &vertIds](const Polygon& face) {
 		newEdgeKeys = face.getEdgeKeys();
 		vertIds = face.getVertexIds();
 		});
@@ -1255,6 +1261,15 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId, FastBisectionSet<I
 			sp.getFacePoints(splitFacePoints);
 		});
 
+		{
+			static mutex mut;
+			std::lock_guard lg(mut);
+			auto pVol = getBlockPtr()->getVolume();
+			size_t cBIdx = pVol->calLinearBlockIndex(getId()) * 1000 + getId().elementId();
+			size_t fBIdx = pVol->calLinearBlockIndex(faceId) * 1000 + faceId.elementId();
+			cout << cBIdx << "," << fBIdx << ",n," << splitFacePoints.size() << ",cf:" << getId() << "-" << faceId << "\n";
+		}
+
 		if (splitFacePoints.size() < 2)
 			continue;
 
@@ -1264,8 +1279,8 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId, FastBisectionSet<I
 			for (const auto& pt : facePts) {
 				vertIds.push_back(getBlockPtr()->addVertex(pt));
 			}
-			auto newFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
-			newFaceIds.insert(newFaceId);
+			auto imprintFaceId = getBlockPtr()->addPolygon(Polygon(vertIds));
+			newFaceIds.insert(imprintFaceId);
 		}
 
 		if (!newFaceIds.empty()) {
@@ -1276,11 +1291,16 @@ void Polyhedron::imprintFaceEdges(const Index3DId& newFaceId, FastBisectionSet<I
 				// This also changes our faces cellIds to point to this
 				cellFunc(cellId, [this, &faceId, &newFaceIds](Polyhedron& cell) {
 					cell.removeFace(faceId);
-					for (const auto& newFaceId : newFaceIds) {
-						cell.addFace(newFaceId);
+					for (const auto& imprintFaceId : newFaceIds) {
+						cell.addFace(imprintFaceId);
 					}
 
-					assert(cell.isClosed());
+					if (!cell.isClosed()) {
+						stringstream ss;
+						ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
+						getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+						assert(!"imprintFaceEdges open cell");
+					}
 				});
 			}
 

@@ -787,34 +787,7 @@ namespace
 
 size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& faceVerts) const
 {
-	// Start the loop
-	for (const auto& pair : m) {
-		if (pair.second.size() == 2) {
-			auto iter = pair.second.begin();
-			size_t idx0 = *iter++;
-			size_t idx1 = pair.first;
-			size_t idx2 = *iter;
-
-			if (!isColinear(idx0, idx1, idx2)) {
-				Vector3d n = calNormal(idx0, idx1, idx2);
-				const auto& planeNorm = _plane.getNormal();
-				if (n.dot(planeNorm) < 0) {
-					// Start reversed
-					faceVerts.push_back(idx2);
-					faceVerts.push_back(idx1);
-					faceVerts.push_back(idx0);
-				}
-				else {
-					// Start normal
-					faceVerts.push_back(idx0);
-					faceVerts.push_back(idx1);
-					faceVerts.push_back(idx2);
-				}
-				break;
-			}
-		}
-	}
-#if 1
+#if 0
 	if (m.empty())
 		return 0;
 
@@ -845,6 +818,34 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& fa
 		removeIndices(m, faceVerts);
 	}
 #else
+	// Start the loop
+	for (const auto& pair : m) {
+		if (pair.second.size() == 2) {
+			auto iter = pair.second.begin();
+			size_t idx0 = *iter++;
+			size_t idx1 = pair.first;
+			size_t idx2 = *iter;
+
+			if (!isColinear(idx0, idx1, idx2)) {
+				Vector3d n = calNormal(idx0, idx1, idx2);
+				const auto& planeNorm = _plane.getNormal();
+				if (n.dot(planeNorm) < 0) {
+					// Start reversed
+					faceVerts.push_back(idx2);
+					faceVerts.push_back(idx1);
+					faceVerts.push_back(idx0);
+				}
+				else {
+					// Start normal
+					faceVerts.push_back(idx0);
+					faceVerts.push_back(idx1);
+					faceVerts.push_back(idx2);
+				}
+				break;
+			}
+		}
+	}
+
 	size_t lastIdx, curIdx, nextIdx;
 	do {
 		if (faceVerts.size() <= 2) {
@@ -853,8 +854,8 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& fa
 		lastIdx = faceVerts[faceVerts.size() - 2];
 		curIdx = faceVerts[faceVerts.size() - 1];
 
-		auto iter = map.find(faceVerts.back());
-		if (iter != map.end()) {
+		auto iter = m.find(faceVerts.back());
+		if (iter != m.end()) {
 			double maxPositiveTurn = -DBL_MAX;
 			const auto& connected = iter->second;
 			for (const size_t idx : connected) {
@@ -876,17 +877,17 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& fa
 
 		vector<size_t> deadEntries;
 		for (size_t idx : faceVerts) {
-			auto iter = map.find(idx);
-			if (iter != map.end() && iter->second.size() == 2) {
+			auto iter = m.find(idx);
+			if (iter != m.end() && iter->second.size() == 2) {
 				deadEntries.push_back(idx);
 			}
 		}
 
 		for (size_t idx : deadEntries) {
-			map.erase(idx);
+			m.erase(idx);
 		}
 
-		for (auto& pair : map) {
+		for (auto& pair : m) {
 			auto& connected = pair.second;
 			for (size_t i : deadEntries) {
 				connected.erase(i);
