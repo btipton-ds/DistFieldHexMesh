@@ -80,7 +80,6 @@ public:
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 	void add3DTriEdge(const Vector3d pts[3]);
 	void imprint3DPoint(const Vector3d& pt0);
-	bool contains3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
@@ -109,11 +108,9 @@ private:
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
-	size_t getAllFacePoints(std::vector<std::vector<Vector2d>>& facePoints);
 	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
-	size_t createPolygon(std::map<size_t, std::set<size_t>>& map, std::vector<size_t>& faceVerts) const;
 	size_t createSpurs(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
 	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;

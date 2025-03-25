@@ -193,20 +193,6 @@ void Splitter2D::cleanMap(map<size_t, set<size_t>>& map, size_t indexToRemove)
 		map.erase(idx);
 }
 
-bool Splitter2D::contains3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
-{
-	auto pt0 = project(pt3D0);
-	auto pt1 = project(pt3D1);
-
-	vector<vector<Vector2d>> facePoints;
-	getAllFacePoints(facePoints);
-	for (const auto& bounds : facePoints) {
-		if (insideBoundary(bounds, pt0) && insideBoundary(bounds, pt1))
-			return true;
-	}
-	return false;
-}
-
 size_t Splitter2D::getFacePoints(vector<vector<Vector3d>>& facePoints)
 {
 	vector<vector<Vector3d>> discard;
@@ -456,67 +442,6 @@ void Splitter2D::removeColinearVertsFromVertexLoop(Polyline& pl) const
 
 }
 
-size_t Splitter2D::getAllFacePoints(vector<vector<Vector2d>>& facePoints)
-{
-	map<size_t, set<size_t>> pointToPointMap;
-
-#if 0 && defined(_DEBUG)
-	for (const auto& pt : _pts) {
-		cout << "[" << pt[0] << ", " << pt[1] << "]\n";
-	}
-#endif // _DEBUG
-
-	for (const auto& edge : _edges) {
-		for (int i = 0; i < 2; i++) {
-			size_t ptIdx = edge[i];
-			size_t otherPtIdx = edge[1 - i];
-			auto iter = pointToPointMap.find(ptIdx);
-			if (iter == pointToPointMap.end())
-				iter = pointToPointMap.insert(make_pair(ptIdx, set<size_t>())).first;
-			iter->second.insert(otherPtIdx);
-		}
-	}
-
-	set<size_t> deadEntries;
-	for (const auto& pair : pointToPointMap) {
-		if (pair.second.size() == 1) {
-			deadEntries.insert(pair.first);
-		}
-	}
-
-	for (size_t idx0 : deadEntries) {
-		auto iter0 = pointToPointMap.find(idx0);
-		if (iter0 != pointToPointMap.end()) {
-			for (const size_t idx1 : iter0->second) {
-				auto iter1 = pointToPointMap.find(idx1);
-				if (iter1 != pointToPointMap.end()) {
-					iter1->second.erase(idx0);
-				}
-			}
-		}
-
-		pointToPointMap.erase(idx0);
-	}
-
-	vector<vector<Vector2d>> faceIndices;
-
-	bool done;
-	do {
-		done = true;
-		vector<size_t> faceIndices;
-		if (createPolygon(pointToPointMap, faceIndices) > 2) {
-			done = false;
-			vector<Vector2d> pts;
-			for (size_t idx : faceIndices) {
-				pts.push_back(_pts[idx]);
-			}
-			facePoints.push_back(pts);
-		}
-	} while (!done);
-
-	return facePoints.size();
-}
-
 bool Splitter2D::insideBoundary(const Vector2d& testPt) const
 {
 	return insideBoundary(_boundaryPts, testPt);
@@ -613,6 +538,7 @@ struct Splitter2D::PolylineNode {
 	static void removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices);
 
 	size_t getIndices(vector<size_t>& indices) const;
+	size_t getIndices(set<size_t>& indices) const;
 	void extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results);
 };
 
@@ -651,13 +577,21 @@ size_t Splitter2D::PolylineNode::getIndices(vector<size_t>& indices) const
 	return indices.size();
 }
 
-void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
-	set<size_t> used;
+size_t Splitter2D::PolylineNode::getIndices(set<size_t>& indices) const
+{
+	indices.clear();
 	auto* pPrior = this;
 	while (pPrior) {
-		used.insert(pPrior->_idx);
+		indices.insert(pPrior->_idx);
 		pPrior = pPrior->_pPrior;
 	}
+
+	return indices.size();
+}
+
+void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
+	set<size_t> used;
+	getIndices(used);
 
 	auto iter = m.find(_idx);
 	if (iter != m.end()) {
@@ -823,119 +757,6 @@ size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, vector<Polyline>& po
 	}
 
 	return polylines.size();
-}
-
-size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& faceVerts) const
-{
-#if 0
-	if (m.empty())
-		return 0;
-
-	PolylineNode n;
-	n._idx = m.begin()->first;
-	vector<vector<size_t>> tmp, indices;
-	extend(m, n, tmp);
-	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
-		return lhs.size() < rhs.size();
-	});
-
-	for (const auto& poly : tmp) {
-		vector<size_t> verifiedPoly;
-		for (size_t idx : poly) {
-			auto iter = m.find(idx);
-			if (iter != m.end()) {
-				verifiedPoly.push_back(iter->first);
-			}
-		}
-		if (verifiedPoly.size() == poly.size()) {
-			indices.push_back(verifiedPoly);
-		}
-	}
-
-	if (indices.size() >= 1) {
-		assert(indices.front().size() <= 8);
-		faceVerts = indices.front();
-		removeIndices(m, faceVerts);
-	}
-#else
-	// Start the loop
-	for (const auto& pair : m) {
-		if (pair.second.size() == 2) {
-			auto iter = pair.second.begin();
-			size_t idx0 = *iter++;
-			size_t idx1 = pair.first;
-			size_t idx2 = *iter;
-
-			if (!isColinear(idx0, idx1, idx2)) {
-				Vector3d n = calNormal(idx0, idx1, idx2);
-				const auto& planeNorm = _plane.getNormal();
-				if (n.dot(planeNorm) < 0) {
-					// Start reversed
-					faceVerts.push_back(idx2);
-					faceVerts.push_back(idx1);
-					faceVerts.push_back(idx0);
-				}
-				else {
-					// Start normal
-					faceVerts.push_back(idx0);
-					faceVerts.push_back(idx1);
-					faceVerts.push_back(idx2);
-				}
-				break;
-			}
-		}
-	}
-
-	size_t lastIdx, curIdx, nextIdx;
-	do {
-		if (faceVerts.size() <= 2) {
-			break;
-		}
-		lastIdx = faceVerts[faceVerts.size() - 2];
-		curIdx = faceVerts[faceVerts.size() - 1];
-
-		auto iter = m.find(faceVerts.back());
-		if (iter != m.end()) {
-			double maxPositiveTurn = -DBL_MAX;
-			const auto& connected = iter->second;
-			for (const size_t idx : connected) {
-				if (idx != lastIdx) {
-					Vector2d turningVector = calTurningUnitVector(lastIdx, curIdx, idx);
-					if (turningVector[0] > -Tolerance::paramTol() && turningVector[1] > maxPositiveTurn) {
-						maxPositiveTurn = turningVector[1];
-						nextIdx = idx;
-					}
-				}
-			}
-
-			faceVerts.push_back(nextIdx);
-		}
-	} while (faceVerts.front() != faceVerts.back());
-
-	if (!faceVerts.empty()) {
-		faceVerts.pop_back();
-
-		vector<size_t> deadEntries;
-		for (size_t idx : faceVerts) {
-			auto iter = m.find(idx);
-			if (iter != m.end() && iter->second.size() == 2) {
-				deadEntries.push_back(idx);
-			}
-		}
-
-		for (size_t idx : deadEntries) {
-			m.erase(idx);
-		}
-
-		for (auto& pair : m) {
-			auto& connected = pair.second;
-			for (size_t i : deadEntries) {
-				connected.erase(i);
-			}
-		}
-	}
-#endif
-	return faceVerts.size();
 }
 
 void Splitter2D::splitExisting(const Edge2D& e0)
