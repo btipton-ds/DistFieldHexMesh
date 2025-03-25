@@ -1254,7 +1254,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 				}
 			}
 
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 			if (Index3DId(3, 0, 3, 4) == face.getId() && Index3DId(2, 0, 3, 3) == imprintFaceId) {
 				auto pVol = getBlockPtr()->getVolume();
 				MTC::vector<Vector3d> pts;

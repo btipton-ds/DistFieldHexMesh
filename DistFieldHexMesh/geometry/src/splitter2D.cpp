@@ -606,17 +606,6 @@ inline Vector3d Splitter2D::pt3D(size_t idx) const
 	return pt3D(_pts[idx]);
 }
 
-struct Splitter2D::PolylineNode {
-	PolylineNode* _pPrior = nullptr;
-	size_t _idx = -1;
-
-	static bool sameLoop(const vector<size_t>& A, const vector<size_t>& B);
-
-	size_t getIndices(vector<size_t>& indices) const;
-	size_t getIndices(set<size_t>& indices) const;
-	void extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results);
-};
-
 bool Splitter2D::PolylineNode::sameLoop(const vector<size_t>& A, const vector<size_t>& B)
 {
 	// test if r is the same as this loop, but in a different orientation
