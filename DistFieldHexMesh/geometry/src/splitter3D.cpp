@@ -495,8 +495,8 @@ int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, boo
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
-	Index3DId testId(11, 1, 3, 3);
-#if 0 && defined(_DEBUG)
+	Index3DId testId(2, 0, 3, 0);
+#if 1 && defined(_DEBUG)
 	if (testId == parentId) {
 		int dbgBreak = 1;
 	}
@@ -520,7 +520,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	FastBisectionSet<Index3DId> allCellFaceIds;
 	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 		if (testId == parentId) {
 			{
 				stringstream ss;
@@ -575,7 +575,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 			splittingPlane = face.calPlane();
 		});
 
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 		Vector3d cellCtr(0, 0, 0);
 		for (const auto& pt : cornerPts)
 			cellCtr += pt;

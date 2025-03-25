@@ -1255,7 +1255,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 			}
 
 #if 1 && defined(_DEBUG)
-			if (Index3DId(2, 2, 5, 21) == imprintFaceId && Index3DId(2, 2, 5, 19) == face.getId()) {
+			if (Index3DId(3, 0, 3, 4) == face.getId() && Index3DId(2, 0, 3, 3) == imprintFaceId) {
 				auto pVol = getBlockPtr()->getVolume();
 				MTC::vector<Vector3d> pts;
 				auto& vertIds = face.getVertexIds();
@@ -1278,6 +1278,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 			sp.getFacePoints(splitFacePoints);
 		});
 
+#if 0
 		{
 			static mutex mut;
 			std::lock_guard lg(mut);
@@ -1286,6 +1287,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 			size_t fBIdx = pVol->calLinearBlockIndex(faceId) * 1000 + faceId.elementId();
 			cout << cBIdx << "," << fBIdx << ",n," << splitFacePoints.size() << ",cf:" << getId() << "-" << faceId << "\n";
 		}
+#endif
 
 		if (splitFacePoints.size() < 2)
 			continue;
