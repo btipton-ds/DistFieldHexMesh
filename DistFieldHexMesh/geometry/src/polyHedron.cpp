@@ -769,6 +769,8 @@ double Polyhedron::calVolume() const
 
 double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, int axis) const
 {
+	double maxCurvature = 0, avgCurvature = 0;
+#if 0
 	Splitter2D sp(polyPoints);
 
 	vector<vector<Vector3d>> tris;
@@ -789,8 +791,6 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 		tris.push_back(tmp);
 		sp.add3DTriEdge(pts);
 	}
-
-	double maxCurvature = 0, avgCurvature = 0;
 	vector<vector<Vector3d>> polylines;
 	vector<vector<double>> curvatures;
 	size_t nPl = sp.getPolylines(polylines);
@@ -829,6 +829,7 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 		int dbgBreak = 1;
 #endif
 	}
+#endif
 
 	return maxCurvature;
 }
@@ -1201,12 +1202,6 @@ void Polyhedron::disconnectVertEdgeTopology()
 
 void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionSet<Index3DId>& touchedCellIds)
 {
-	Index3DId testId(10, 2, 3, 7);
-#if 1 && (_DEBUG)
-	if (testId == imprintFaceId) {
-		int dbgBreak = 1;
-	}
-#endif
 	faceFunc(imprintFaceId, [this](Polygon& newFace) {
 		newFace.imprintFaces(_faceIds);
 		});
@@ -1227,7 +1222,7 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 			for (const auto& ek : edgeKeys) {
 				edgeFunc(ek, [vertIds](Edge& edge) {
 					edge.imprintVertices(vertIds);
-					});
+				});
 			}
 			});
 	}
@@ -1238,9 +1233,9 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 		assert(getBlockPtr()->polygonExists(faceId));
 		MTC::vector<MTC::vector<Vector3d>> splitFacePoints;
 		FastBisectionSet<Index3DId> cellIds;
-		faceFunc(faceId, [this, &newEdgeKeys, &splitFacePoints, &cellIds](Polygon& face) {
-			Splitter2D sp(face.calPlane());
 
+		faceFunc(faceId, [this, &newEdgeKeys, &splitFacePoints, &cellIds, &imprintFaceId](Polygon& face) {
+			Splitter2D sp(face.calPlane());
 			cellIds = face.getCellIds();
 			face.iterateEdges([this, &sp](const Edge& edge)->bool {
 				const auto& pt0 = getVertexPoint(edge[0]);
@@ -1258,6 +1253,11 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 					sp.add3DEdge(pt0, pt1);
 				}
 			}
+#if 1 && (_DEBUG)
+			if (Index3DId(5, 0, 3, 10) == imprintFaceId && Index3DId(5, 0, 4, 3) == face.getId()) {
+				int dbgBreak = 1;
+			}
+#endif
 			sp.getFacePoints(splitFacePoints);
 		});
 

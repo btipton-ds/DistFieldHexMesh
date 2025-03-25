@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <vector>
+#include <list>
 #include <map>
 #include <set>
 #include <tm_vector3.h>
@@ -66,6 +67,12 @@ private:
 
 class Splitter2D {
 public:
+	struct Polyline : public std::list<size_t> {
+		size_t firstIdx() const;
+		size_t lastIdx() const;
+
+		bool _isClosed = false;
+	};
 
 	Splitter2D(const Planed& plane);
 	Splitter2D(const MTC::vector<Vector3d>& polyPoints);
@@ -76,11 +83,10 @@ public:
 	bool contains3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
-	size_t getFacePoints(const std::vector<Vector3d>& boundaryFacePts, std::vector<std::vector<Vector3d>>& facePoints);
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 
-	size_t getPolylines(std::vector<std::vector<Vector3d>>& polylines) const;
-	size_t getPolylines(std::vector<std::vector<Vector2d>>& polylines) const;
+	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
+	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	size_t getCurvatures(std::vector<std::vector<double>>& curvatures) const;
 	size_t getGaps(std::vector<double>& curvatures) const;
@@ -107,6 +113,8 @@ private:
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
 	size_t createPolygon(std::map<size_t, std::set<size_t>>& map, std::vector<size_t>& faceVerts) const;
+	size_t createSpurs(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
+	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
@@ -114,9 +122,11 @@ private:
 	Vector3d pt3D(size_t idx) const;
 
 	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
-	void buildPolyline(std::map<size_t, std::set<size_t>>& ptMap, const Edge2D& e, Polyline& pl) const;
-	bool extendPolyline(std::map<size_t, std::set<size_t>>& ptMap, Polyline& pl) const;
-	void removeColinearVertsFromPolyline(Polyline& pl) const;
+	size_t getPolylines(std::vector<Polyline>& polylines) const;
+	void removeColinearVertsFromVertexLoop(Polyline& pl) const;
+	void createPointPointMap(std::map<size_t, std::set<size_t>>& ptMap) const;
+	size_t getLoopSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
+	size_t getSpurSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
 
 	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;
@@ -126,7 +136,6 @@ private:
 	std::vector<Vector2d> _pts, _boundaryPts;
 	std::map<Vector2d, size_t> _ptToIndexMap;
 	std::set<Edge2D> _edges, _boundaryEdges;
-	std::vector<std::vector<Vector2d>> _allFacePoints;
 
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;

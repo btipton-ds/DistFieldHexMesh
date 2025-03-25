@@ -495,7 +495,7 @@ int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, boo
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
-	Index3DId testId(10, 2, 3, 0);
+	Index3DId testId(5, 0, 3, 1);
 #if 1 && _DEBUG
 	if (testId == parentId) {
 		int dbgBreak = 1;
@@ -537,6 +537,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 		}
 #endif
 		FastBisectionSet<Index3DId> touched;
+		// This is not producing the 4 way split that was expected
 		cell.imprintFaceEdges(splittingFaceId, touched);
 		for (const auto& id : touched)
 			getBlockPtr()->addToTouchedCellList(id);
@@ -585,7 +586,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 #endif
 
 		for (const auto& faceId : allCellFaceIds) {
-			faceFunc(faceId, [this, &splittingPlane, &cellFaces](Polygon& face) {
+			faceFunc(faceId, [this, &splittingPlane, &cellFaces](const Polygon& face) {
 				const auto& vertIds = face.getVertexIds();
 				for (const auto& vertId : vertIds) {
 					auto& pt = getVertexPoint(vertId);
@@ -613,12 +614,27 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 	Polyhedron newCell(cellFaces, cornerVertIds);
 	auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
 
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 	cellFunc(newCellId, [this](const Polyhedron& cell) {
 		if (!cell.isClosed()) {
 			stringstream ss;
 			ss << "D:/DarkSky/Projects/output/objs/unclosedCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post.obj";
 			getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+
+			// Dump each face to it's own file
+			for (auto& id : cell.getFaceIds()) {
+				MTC::vector<Vector3d> pts;
+				faceFunc(id, [this, &pts](const Polygon& face) {
+					for (auto& id : face.getVertexIds()) {
+						auto& pt = getBlockPtr()->getVertexPoint(id);
+						pts.push_back(pt);
+					}
+				});
+				stringstream ss;
+				ss << "D:/DarkSky/Projects/output/objs/unclosedCell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_face_" << getBlockPtr()->getLoggerNumericCode(id) << "_post.obj";
+				getBlockPtr()->getVolume()->writeObj(ss.str(), { pts }, true);
+
+			}
 			assert(!"Cell not closed");
 		}
 	});
