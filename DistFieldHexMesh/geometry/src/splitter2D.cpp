@@ -251,7 +251,7 @@ size_t Splitter2D::findMinConnectedIndex(const map<size_t, set<size_t>>& ptMap)
 	return result;
 }
 
-void Splitter2D::createPointPointMap(map<size_t, set<size_t>>& ptMap) const
+void Splitter2D::createPointPointMap(map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	set<Edge2D> tmp(_edges);
 
@@ -260,15 +260,25 @@ void Splitter2D::createPointPointMap(map<size_t, set<size_t>>& ptMap) const
 	}
 
 	for (const auto& e : tmp) {
-		auto iter = ptMap.find(e[0]);
-		if (iter == ptMap.end())
-			iter = ptMap.insert(make_pair(e[0], set<size_t>())).first;
-		iter->second.insert(e[1]);
+		auto iter0 = ptMap.find(e[0]);
+		if (iter0 == ptMap.end())
+			iter0 = ptMap.insert(make_pair(e[0], set<size_t>())).first;
+		iter0->second.insert(e[1]);
 
-		iter = ptMap.find(e[1]);
-		if (iter == ptMap.end())
-			iter = ptMap.insert(make_pair(e[1], set<size_t>())).first;
-		iter->second.insert(e[0]);
+		auto iter1 = ptMap.find(e[1]);
+		if (iter1 == ptMap.end())
+			iter1 = ptMap.insert(make_pair(e[1], set<size_t>())).first;
+		iter1->second.insert(e[0]);
+	}
+
+	for (const auto& e : tmp) {
+		auto iter0 = ptMap.find(e[0]);
+		auto iter1 = ptMap.find(e[1]);
+
+		size_t numUsages = 1;
+		if (iter0 != ptMap.end() && iter1 != ptMap.end() && iter0->second.size() > 2 && iter1->second.size() > 2)
+			numUsages = 2;
+		edgeUsage.insert(make_pair(e, numUsages));
 	}
 }
 
@@ -325,21 +335,21 @@ void Splitter2D::getLoops(vector<vector<Vector2d>>& polylines, vector<vector<Vec
 size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 {
 	map<size_t, set<size_t>> ptMap;
-	createPointPointMap(ptMap);
+	map<Edge2D, size_t> edgeUsage;
+	createPointPointMap(ptMap, edgeUsage);
 	if (ptMap.empty())
 		return 0;
 	
-
 	vector<Polyline> pls;
 
 	// First remove spur polylines. Spurs are strings for points which terminate at a dead end.
-	while (createSpurs(ptMap, pls) > 0) {
+	while (createSpurs(ptMap, edgeUsage, pls) > 0) {
 		polylines.insert(polylines.end(), pls.begin(), pls.end());
 		pls.clear();
 	}
 
 	// Now there's nothing left but loops
-	while (createLoops(ptMap, pls) > 0) {
+	while (createLoops(ptMap, edgeUsage, pls) > 0) {
 		polylines.insert(polylines.end(), pls.begin(), pls.end());
 		pls.clear();
 	}
@@ -535,7 +545,6 @@ struct Splitter2D::PolylineNode {
 	size_t _idx = -1;
 
 	static bool sameLoop(const vector<size_t>& A, const vector<size_t>& B);
-	static void removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices);
 
 	size_t getIndices(vector<size_t>& indices) const;
 	size_t getIndices(set<size_t>& indices) const;
@@ -635,44 +644,7 @@ void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminat
 	}
 }
 
-void Splitter2D::PolylineNode::removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices)
-{
-	if (m.empty())
-		return;
-
-	for (size_t idx : indices) {
-		auto iter = m.find(idx);
-		if (iter == m.end())
-			continue;
-		for (size_t idx2 : indices) {
-			iter->second.erase(idx2);
-		}
-	}
-
-	for (size_t idx : indices) {
-		auto iter = m.find(idx);
-		if (iter == m.end())
-			continue;
-		if (iter->second.empty())
-			m.erase(idx);
-	}
-
-	// There may be missing edges in the map due to the removal
-	// This restores the connections for edges in indices which were removed
-	// from the map.
-	for (size_t i = 0; i < indices.size(); i++) {
-		size_t j = (i + 1) % indices.size();
-		auto iterI = m.find(indices[i]);
-		auto iterJ = m.find(indices[j]);
-		if (iterI != m.end() && iterJ != m.end()) {
-			iterI->second.insert(indices[j]);
-			iterJ->second.insert(indices[i]);
-		}
-	}
-}
-
-
-size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, vector<Polyline>& polylines) const
+size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, std::map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
 {
 	polylines.clear();
 
@@ -710,14 +682,15 @@ size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, vector<Polyline>& po
 			pl._isClosed = iter->second.contains(pl.firstIdx());
 			assert(!pl._isClosed);
 		}
+
+		pl.removeFromMaps(m, edgeUsage);
 		polylines.push_back(pl);
-		PolylineNode::removeIndices(m, indices);
 	}
 
 	return polylines.size();
 }
 
-size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, vector<Polyline>& polylines) const
+size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, std::map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
 {
 	polylines.clear();
 	PolylineNode n;
@@ -752,8 +725,9 @@ size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, vector<Polyline>& po
 			pl._isClosed = iter->second.contains(pl.firstIdx());
 			assert(pl._isClosed);
 		}
+
+		pl.removeFromMaps(m, edgeUsage);
 		polylines.push_back(pl);
-		PolylineNode::removeIndices(m, indices);
 	}
 
 	return polylines.size();
@@ -1017,4 +991,44 @@ size_t Splitter2D::Polyline::lastIdx() const
 	if (empty())
 		return -1;
 	return *rbegin();
+}
+
+size_t Splitter2D::Polyline::createVector(vector<size_t>& vec) const
+{
+	vec.clear();
+	for (auto iter = begin(); iter != end(); iter++)
+		vec.push_back(*iter);
+
+	return vec.size();
+}
+
+void Splitter2D::Polyline::removeFromMaps(map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
+{
+	vector<size_t> indices;
+	createVector(indices);
+	size_t num = _isClosed ? indices.size() : indices.size() - 1;
+	for (size_t i = 0; i < num; i++) {
+		size_t j = (i + 1) % indices.size();
+		Edge2D e(indices[i], indices[j]);
+		auto iter = edgeUsage.find(e);
+		assert(iter != edgeUsage.end());
+
+		iter->second--;
+		if (iter->second == 0) {
+			// Edge is no longer in use
+			auto iter0 = ptMap.find(e[0]);
+			if (iter0 != ptMap.end())
+				iter0->second.erase(e[1]);
+			if (iter0->second.empty())
+				ptMap.erase(e[0]);
+
+			auto iter1 = ptMap.find(e[1]);
+			if (iter1 != ptMap.end())
+				iter1->second.erase(e[0]);
+			if (iter1->second.empty())
+				ptMap.erase(e[1]);
+
+			edgeUsage.erase(e);
+		}
+	}
 }

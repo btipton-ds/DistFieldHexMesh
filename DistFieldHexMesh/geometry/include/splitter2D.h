@@ -71,6 +71,9 @@ public:
 		size_t firstIdx() const;
 		size_t lastIdx() const;
 
+		size_t createVector(std::vector<size_t>& vec) const;
+		void removeFromMaps(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
+
 		bool _isClosed = false;
 	};
 
@@ -111,8 +114,8 @@ private:
 	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
-	size_t createSpurs(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
-	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::vector<Polyline>& polylines) const;
+	size_t createSpurs(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
+	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
@@ -122,7 +125,7 @@ private:
 	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
 	size_t getPolylines(std::vector<Polyline>& polylines) const;
 	void removeColinearVertsFromVertexLoop(Polyline& pl) const;
-	void createPointPointMap(std::map<size_t, std::set<size_t>>& ptMap) const;
+	void createPointPointMap(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
 	size_t getLoopSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
 	size_t getSpurSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
 
