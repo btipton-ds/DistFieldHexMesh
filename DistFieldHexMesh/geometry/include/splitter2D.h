@@ -115,11 +115,11 @@ private:
 		size_t getIndices(std::vector<size_t>& indices) const;
 		size_t getIndices(std::set<size_t>& indices) const;
 		void extend(std::map<size_t, std::set<size_t>>& m, bool terminateAtBranch, std::vector<std::vector<size_t>>& results);
+		bool contains(size_t idx) const;
 
 	private:
 		PolylineNode* _pPrior = nullptr;
 		size_t _idx = -1;
-		std::set<size_t> _used;
 	};
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);

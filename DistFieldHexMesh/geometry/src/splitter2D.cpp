@@ -637,7 +637,6 @@ inline size_t Splitter2D::PolylineNode::getIdx() const
 inline void Splitter2D::PolylineNode::setIdx(size_t val)
 {
 	_idx = val;
-	_used.insert(_idx);
 }
 
 size_t Splitter2D::PolylineNode::getIndices(vector<size_t>& indices) const
@@ -675,9 +674,10 @@ void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminat
 			results.push_back(r);
 			return;
 		} else {
+			set<size_t> available;
 			for (size_t nextIdx : iter->second) {
-				if (!_used.contains(nextIdx)) {
-					PolylineNode n2(*this);
+				if (!contains(nextIdx)) {
+					PolylineNode n2;
 					n2._pPrior = this;
 					n2.setIdx(nextIdx);
 					n2.extend(m, terminateAtBranch, results);
@@ -706,6 +706,17 @@ void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminat
 			}
 		}
 	}
+}
+
+bool Splitter2D::PolylineNode::contains(size_t idx) const
+{
+	auto p = this;
+	while (p) {
+		if (p->_idx == idx)
+			return true;
+		p = p->_pPrior;
+	}
+	return false;
 }
 
 size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, std::map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
