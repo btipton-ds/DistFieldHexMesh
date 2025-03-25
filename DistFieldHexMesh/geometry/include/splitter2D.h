@@ -106,15 +106,20 @@ public:
 	Vector3d pt3D(const Vector2d& pt2d) const;
 
 private:
-	struct PolylineNode {
-		PolylineNode* _pPrior = nullptr;
-		size_t _idx = -1;
-
+	class PolylineNode {
+	public:
 		static bool sameLoop(const std::vector<size_t>& A, const std::vector<size_t>& B);
 
+		size_t getIdx() const;
+		void setIdx(size_t val);
 		size_t getIndices(std::vector<size_t>& indices) const;
 		size_t getIndices(std::set<size_t>& indices) const;
 		void extend(std::map<size_t, std::set<size_t>>& m, bool terminateAtBranch, std::vector<std::vector<size_t>>& results);
+
+	private:
+		PolylineNode* _pPrior = nullptr;
+		size_t _idx = -1;
+		std::set<size_t> _used;
 	};
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
