@@ -1054,7 +1054,7 @@ bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::se
 	return false;
 }
 
-Vector3d Polyhedron::getVertexPoint(const Index3DId& vertId) const
+const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
 {
 	return getOurBlockPtr()->getVertexPoint(vertId);
 }
@@ -1253,10 +1253,27 @@ void Polyhedron::imprintFaceEdges(const Index3DId& imprintFaceId, FastBisectionS
 					sp.add3DEdge(pt0, pt1);
 				}
 			}
-#if 1 && (_DEBUG)
-			if (Index3DId(5, 0, 3, 10) == imprintFaceId && Index3DId(5, 0, 4, 3) == face.getId()) {
+
+#if 1 && defined(_DEBUG)
+			if (Index3DId(2, 2, 5, 21) == imprintFaceId && Index3DId(2, 2, 5, 19) == face.getId()) {
+				auto pVol = getBlockPtr()->getVolume();
+				MTC::vector<Vector3d> pts;
+				auto& vertIds = face.getVertexIds();
+				for (auto& id : vertIds) {
+					auto& pt = getVertexPoint(id);
+					pts.push_back(pt);
+				}
+
+				stringstream ss0;
+				ss0 << "D:/DarkSky/Projects/output/objs/faceToBeSplit_" << getBlockPtr()->getLoggerNumericCode(face.getId()) << ".obj";
+				pVol->writeObj(ss0.str(), {pts}, true);
+
+				stringstream ss1;
+				ss1 << "D:/DarkSky/Projects/output/objs/splitter2d_" << getBlockPtr()->getLoggerNumericCode(face.getId()) << "_";
+				sp.writeObj(ss1.str());
 				int dbgBreak = 1;
 			}
+
 #endif
 			sp.getFacePoints(splitFacePoints);
 		});

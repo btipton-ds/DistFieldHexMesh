@@ -92,17 +92,20 @@ public:
 	size_t getCurvatures(std::vector<std::vector<double>>& curvatures) const;
 	size_t getGaps(std::vector<double>& curvatures) const;
 
-	inline const std::set<Edge2D> getEdges() const
+	void writeObj(const std::string& filenameRoot) const;
+
+	inline const std::set<Edge2D>& getEdges() const
 	{
 		return _edges;
 	}
 
-	inline const std::vector<Vector2d> getPoints() const
+	inline const std::vector<Vector2d>& getPoints() const
 	{
 		return _pts;
 	}
 
 	Vector3d pt3D(const Vector2d& pt2d) const;
+
 private:
 	struct Polyline;
 	struct PolylineNode;
@@ -110,15 +113,17 @@ private:
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
+	void addEdge(const Edge2D& edge);
 	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
+
 	size_t createSpurs(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
-	Vector2d project(const Vector3d& pt) const;
+	bool project(const Vector3d& pt, Vector2d& result) const;
 	Vector3d pt3D(size_t idx) const;
 
 	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
@@ -132,6 +137,7 @@ private:
 	const Vector2d& getPoint(size_t idx) const;
 	void splitExisting(const Edge2D& edge);
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
+	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
 	std::vector<Vector2d> _pts, _boundaryPts;
 	std::map<Vector2d, size_t> _ptToIndexMap;

@@ -177,7 +177,7 @@ private:
 	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const;
 	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
-	Vector3d getVertexPoint(const Index3DId& vertId) const;
+	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
 	Index3DId _thisId;
 	/*

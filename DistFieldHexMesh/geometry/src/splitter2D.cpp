@@ -25,6 +25,8 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
+#include <fstream>
 #include <splitter2D.h>
 #include <tm_lineSegment.hpp>
 #include <tolerances.h>
@@ -73,18 +75,20 @@ Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 #endif
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
-		auto p0 = project(polyPoints[i]);
-		auto p1 = project(polyPoints[j]);
-		addEdge(p0, p1);
-
-		size_t idx0 = addPoint(p0);
-		size_t idx1 = addPoint(p1);
+		Vector2d p0, p1;
+		if (project(polyPoints[i], p0) && project(polyPoints[j], p1)) {
+			size_t idx0 = addPoint(p0);
+			size_t idx1 = addPoint(p1);
+			Edge2D e(idx0, idx1);
+			addEdge(e);
 
 #ifdef _DEBUG
-		ctr += p0;
+			ctr += p0;
 #endif
-		_boundaryPts.push_back(p0);
-		_boundaryEdges.insert(Edge2D(idx0, idx1));
+			_boundaryPts.push_back(p0);
+			_boundaryEdges.insert(e);
+		}
+
 	}
 
 #ifdef _DEBUG
@@ -96,25 +100,26 @@ Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 #endif // _DEBUG
 }
 
-void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1)
+void Splitter2D::addEdge(const Edge2D& edge)
 {
-	size_t idx0 = addPoint(pt0);
-	size_t idx1 = addPoint(pt1);
-	if (idx0 == idx1)
+	if (edge[0] == edge[1])
 		return;
 
-	Edge2D e(idx0, idx1);
-	splitExisting(e);
+	splitExisting(edge);
 
 	set<Edge2D> subs;
+	splitWithAllPoints(edge, subs);
+#if 0
 	for (const auto& e1 : _edges) {
-		split(e, e1, subs);
+		split(edge, e1, subs);
 	}
+#endif
 
 	if (subs.empty()) {
-		if (e[0] != e[1])
-			_edges.insert(e);
-	} else {
+		if (edge[0] != edge[1])
+			_edges.insert(edge);
+	}
+	else {
 		for (auto& s : subs) {
 			if (s[0] != s[1])
 				_edges.insert(s);
@@ -122,10 +127,19 @@ void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1)
 	}
 }
 
+void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1)
+{
+	size_t idx0 = addPoint(pt0);
+	size_t idx1 = addPoint(pt1);
+	addEdge(Edge2D(idx0, idx1));
+}
+
 void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 {
-	addEdge(project(pt3D0), project(pt3D1));
-
+	Vector2d p0, p1;
+	if (project(pt3D0, p0) && project(pt3D1, p1)) {
+		addEdge(p0, p1);
+	}
 }
 
 void Splitter2D::add3DTriEdge(const Vector3d pts[3])
@@ -140,9 +154,11 @@ void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 			assert(_plane.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
 			assert(seg.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
 			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
-			auto pt = project(hit.hitPt);
-			size_t idx = addPoint(pt);
-			iPts.insert(idx);
+			Vector2d pt;
+			if (project(hit.hitPt, pt)) {
+				size_t idx = addPoint(pt);
+				iPts.insert(idx);
+			}
 		}
 	}
 
@@ -158,7 +174,10 @@ void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 
 void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
 {
-	Vector2d pt = project(pt3D0);
+	Vector2d pt;
+	if (!project(pt3D0, pt))
+		return;
+
 	auto iter = _ptToIndexMap.find(pt);
 	if (iter != _ptToIndexMap.end())
 		return;
@@ -351,6 +370,9 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 
 	// Now there's nothing left but loops
 	while (createLoops(ptMap, edgeUsage, pls) > 0) {
+		// We're getting spurs that duplicate spurs which were already created.
+		// Need to check for spurs every time a loop is removed in case it leaves and orphan edge.
+		// The duplicate remover should deal with it.
 		polylines.insert(polylines.end(), pls.begin(), pls.end());
 		pls.clear();
 	}
@@ -425,6 +447,29 @@ size_t Splitter2D::getCurvatures(vector<vector<double>>& curvatures) const
 size_t Splitter2D::getGaps(vector<double>& curvatures) const
 {
 	return 0;
+}
+
+void Splitter2D::writeObj(const std::string& filenameRoot) const
+{
+	size_t i = 0;
+	for (auto iter = _edges.begin(); iter != _edges.end(); iter++) {
+		string str = filenameRoot + to_string(i++) + ".obj";
+		ofstream out(str);
+
+		out << "#Vertices " << _pts.size() << "\n";
+		for (const auto& pt : _pts) {
+			auto pt2 = pt3D(pt);
+			out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
+		}
+
+		out << "#Edges " << _edges.size() << "\n";
+		out << "l ";
+		auto& edge = *iter;
+		for (int i = 0; i < 2; i++) {
+			out << (edge[i] + 1) << " ";
+		}
+		out << "\n";
+	}
 }
 
 void Splitter2D::removeColinearVertsFromVertexLoop(Polyline& pl) const
@@ -777,14 +822,49 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	return !result.empty();
 }
 
-Vector2d Splitter2D::project(const Vector3d& pt) const
+bool Splitter2D::splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& subSegs)
 {
-	Vector3d v = pt - _plane.getOrgin();
-	double x = v.dot(_xAxis);
-	double y = v.dot(_yAxis);
-	Vector2d result(x, y);
+	const double tol = Tolerance::paramTol();
+	vector<Vector2d> pts;
+	LineSegment2d seg(_pts[e0[0]], _pts[e0[1]]);
+	for (auto& pt : _pts) {
+		double t;
+		if (seg.project(pt, t) && tol < t && t < 1 - tol) {
+			if (pts.empty())
+				pts.push_back(_pts[e0[0]]);
+			pts.push_back(seg.interpolate(t));
+		}
+	}
 
-	return result;
+	if (pts.empty())
+		return false;
+	else {
+		pts.push_back(_pts[e0[1]]);
+		for (size_t i = 0; i < pts.size() - 1; i++) {
+			size_t j = i + 1;
+
+			size_t idx0 = addPoint(pts[i]);
+			size_t idx1 = addPoint(pts[j]);
+			Edge2D e(idx0, idx1);
+			subSegs.insert(e);
+		}
+	}
+
+	return true;
+}
+
+bool Splitter2D::project(const Vector3d& pt, Vector2d& result) const
+{
+	auto dist = _plane.distanceToPoint(pt);
+	if (dist < Tolerance::sameDistTol()) {
+		Vector3d v = pt - _plane.getOrgin();
+		double x = v.dot(_xAxis);
+		double y = v.dot(_yAxis);
+		result = Vector2d(x, y);
+		return true;
+	}
+
+	return false;
 }
 
 inline const Vector2d& Splitter2D::getPoint(size_t idx) const
@@ -1012,7 +1092,8 @@ void Splitter2D::Polyline::removeFromMaps(map<size_t, set<size_t>>& ptMap, map<E
 		size_t j = (i + 1) % indices.size();
 		Edge2D e(indices[i], indices[j]);
 		auto iter = edgeUsage.find(e);
-		assert(iter != edgeUsage.end());
+		if (iter == edgeUsage.end())
+			continue;
 
 		iter->second--;
 		if (iter->second == 0) {
