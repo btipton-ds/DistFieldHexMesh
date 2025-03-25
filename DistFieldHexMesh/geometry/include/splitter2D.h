@@ -104,6 +104,7 @@ public:
 	Vector3d pt3D(const Vector2d& pt2d) const;
 private:
 	struct Polyline;
+	struct PolylineNode;
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 

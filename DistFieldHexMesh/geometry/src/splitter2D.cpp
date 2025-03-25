@@ -605,134 +605,138 @@ inline Vector3d Splitter2D::pt3D(size_t idx) const
 	return pt3D(_pts[idx]);
 }
 
-namespace
+struct Splitter2D::PolylineNode {
+	PolylineNode* _pPrior = nullptr;
+	size_t _idx = -1;
+
+	static bool sameLoop(const vector<size_t>& A, const vector<size_t>& B);
+	static void removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices);
+
+	size_t getIndices(vector<size_t>& indices) const;
+	void extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results);
+};
+
+bool Splitter2D::PolylineNode::sameLoop(const vector<size_t>& A, const vector<size_t>& B)
 {
-	struct PolylineNode {
-		PolylineNode* _pPrior = nullptr;
-		size_t _idx = -1;
-	};
+	// test if r is the same as this loop, but in a different orientation
+	if (A.size() != B.size())
+		return false;
 
-	bool sameLoop(const vector<size_t>& A, const vector<size_t>& B)
-	{
-		// test if r is the same as this loop, but in a different orientation
-		if (A.size() != B.size())
-			return false;
+	set<size_t> a, b;
+	a.insert(A.begin(), A.end());
+	b.insert(B.begin(), B.end());
 
-		set<size_t> a, b;
-		a.insert(A.begin(), A.end());
-		b.insert(B.begin(), B.end());
-
-		bool match = true;
-		auto iterA = a.begin();
-		auto iterB = b.begin();
-		while (iterA != a.end() && iterB != b.end()) {
-			if (*iterA++ != *iterB++) {
-				match = false;
-				break;
-			}
-		}
-
-		return (iterA == a.end() && iterB == b.end() && match);
-	}
-
-	void extendPl(map<size_t, set<size_t>>& m, PolylineNode& n, bool terminateAtBranch, vector<vector<size_t>>& results) {
-		set<size_t> used;
-		auto* pPrior = &n;
-		while (pPrior) {
-			used.insert(pPrior->_idx);
-			pPrior = pPrior->_pPrior;
-		}
-
-		auto iter = m.find(n._idx);
-		if (iter != m.end()) {
-			bool extended = false;
-			if (terminateAtBranch && iter->second.size() > 2) {
-				vector<size_t> r;
-				r.push_back(n._idx);
-				auto p = n._pPrior;
-				while (p) {
-					r.push_back(p->_idx);
-					p = p->_pPrior;
-				}
-				results.push_back(r);
-				return;
-			} else {
-				for (size_t nextIdx : iter->second) {
-					if (!used.contains(nextIdx)) {
-						PolylineNode n2;
-						n2._pPrior = &n;
-						n2._idx = nextIdx;
-						extendPl(m, n2, terminateAtBranch, results);
-						extended = true;
-					}
-				}
-			}
-			if (!extended) {
-				// NextIdx is already in the list, so we can't use it again.
-				vector<size_t> r;
-				r.push_back(n._idx);
-				auto p = n._pPrior;
-				while (p) {
-					r.push_back(p->_idx);
-					p = p->_pPrior;
-				}
-	
-
-				size_t maxLen = 0;
-				for (size_t idx = results.size() - 1; idx != -1; idx--) {
-					if (results[idx].size() > maxLen)
-						maxLen = results[idx].size();
-					if (results[idx].size() > r.size()) {
-						results.erase(results.begin() + idx);
-					} else if (sameLoop(results[idx], r)) {
-						r.clear(); // We already have this loop
-						break;
-					}
-				}
-
-				if (!r.empty() && (results.empty() || r.size() <= maxLen)) {
-					results.push_back(r);
-				}
-			}
+	bool match = true;
+	auto iterA = a.begin();
+	auto iterB = b.begin();
+	while (iterA != a.end() && iterB != b.end()) {
+		if (*iterA++ != *iterB++) {
+			match = false;
+			break;
 		}
 	}
 
-	void removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices)
-	{
-		if (m.empty())
+	return (iterA == a.end() && iterB == b.end() && match);
+}
+
+size_t Splitter2D::PolylineNode::getIndices(vector<size_t>& indices) const
+{
+	indices.clear();
+	auto* pPrior = this;
+	while (pPrior) {
+		indices.push_back(pPrior->_idx);
+		pPrior = pPrior->_pPrior;
+	}
+
+	return indices.size();
+}
+
+void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
+	set<size_t> used;
+	auto* pPrior = this;
+	while (pPrior) {
+		used.insert(pPrior->_idx);
+		pPrior = pPrior->_pPrior;
+	}
+
+	auto iter = m.find(_idx);
+	if (iter != m.end()) {
+		bool extended = false;
+		if (terminateAtBranch && iter->second.size() > 2) {
+			vector<size_t> r;
+			getIndices(r);
+			results.push_back(r);
 			return;
-
-		for (size_t idx : indices) {
-			auto iter = m.find(idx);
-			if (iter == m.end())
-				continue;
-			for (size_t idx2 : indices) {
-				iter->second.erase(idx2);
+		} else {
+			for (size_t nextIdx : iter->second) {
+				if (!used.contains(nextIdx)) {
+					PolylineNode n2;
+					n2._pPrior = this;
+					n2._idx = nextIdx;
+					n2.extend(m, terminateAtBranch, results);
+					extended = true;
+				}
 			}
 		}
+		if (!extended) {
+			// NextIdx is already in the list, so we can't use it again.
+			vector<size_t> r;
+			getIndices(r);
+			size_t maxLen = 0;
+			for (size_t idx = results.size() - 1; idx != -1; idx--) {
+				if (results[idx].size() > maxLen)
+					maxLen = results[idx].size();
+				if (results[idx].size() > r.size()) {
+					results.erase(results.begin() + idx);
+				} else if (sameLoop(results[idx], r)) {
+					r.clear(); // We already have this loop
+					break;
+				}
+			}
 
-		for (size_t idx : indices) {
-			auto iter = m.find(idx);
-			if (iter == m.end())
-				continue;
-			if (iter->second.empty())
-				m.erase(idx);
-		}
-
-		// There may be missing edges in the map due to the removal
-		// This restores the connections for edges in indices which were removed
-		// from the map.
-		for (size_t i = 0; i < indices.size(); i++) {
-			size_t j = (i + 1) % indices.size();
-			auto iterI = m.find(indices[i]);
-			auto iterJ = m.find(indices[j]);
-			if (iterI != m.end() && iterJ != m.end()) {
-				iterI->second.insert(indices[j]);
-				iterJ->second.insert(indices[i]);
+			if (!r.empty() && (results.empty() || r.size() <= maxLen)) {
+				results.push_back(r);
 			}
 		}
 	}
 }
+
+void Splitter2D::PolylineNode::removeIndices(map<size_t, set<size_t>>& m, const vector<size_t>& indices)
+{
+	if (m.empty())
+		return;
+
+	for (size_t idx : indices) {
+		auto iter = m.find(idx);
+		if (iter == m.end())
+			continue;
+		for (size_t idx2 : indices) {
+			iter->second.erase(idx2);
+		}
+	}
+
+	for (size_t idx : indices) {
+		auto iter = m.find(idx);
+		if (iter == m.end())
+			continue;
+		if (iter->second.empty())
+			m.erase(idx);
+	}
+
+	// There may be missing edges in the map due to the removal
+	// This restores the connections for edges in indices which were removed
+	// from the map.
+	for (size_t i = 0; i < indices.size(); i++) {
+		size_t j = (i + 1) % indices.size();
+		auto iterI = m.find(indices[i]);
+		auto iterJ = m.find(indices[j]);
+		if (iterI != m.end() && iterJ != m.end()) {
+			iterI->second.insert(indices[j]);
+			iterJ->second.insert(indices[i]);
+		}
+	}
+}
+
 
 size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, vector<Polyline>& polylines) const
 {
@@ -744,7 +748,7 @@ size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, vector<Polyline>& po
 		return 0;
 
 	vector<vector<size_t>> tmp, allPolylineIndices;
-	extendPl(m, n, true, tmp);
+	n.extend(m, true, tmp);
 	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
 		return lhs.size() < rhs.size();
 	});
@@ -773,7 +777,7 @@ size_t Splitter2D::createSpurs(map<size_t, set<size_t>>& m, vector<Polyline>& po
 			assert(!pl._isClosed);
 		}
 		polylines.push_back(pl);
-		removeIndices(m, indices);
+		PolylineNode::removeIndices(m, indices);
 	}
 
 	return polylines.size();
@@ -788,7 +792,7 @@ size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, vector<Polyline>& po
 		return 0;
 
 	vector<vector<size_t>> tmp, allPolylineIndices;
-	extendPl(m, n, false, tmp);
+	n. extend(m, false, tmp);
 	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
 		return lhs.size() < rhs.size();
 		});
@@ -815,7 +819,7 @@ size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, vector<Polyline>& po
 			assert(pl._isClosed);
 		}
 		polylines.push_back(pl);
-		removeIndices(m, indices);
+		PolylineNode::removeIndices(m, indices);
 	}
 
 	return polylines.size();
@@ -830,7 +834,7 @@ size_t Splitter2D::createPolygon(map<size_t, set<size_t>>& m, vector<size_t>& fa
 	PolylineNode n;
 	n._idx = m.begin()->first;
 	vector<vector<size_t>> tmp, indices;
-	extendPl(m, n, tmp);
+	extend(m, n, tmp);
 	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
 		return lhs.size() < rhs.size();
 	});
