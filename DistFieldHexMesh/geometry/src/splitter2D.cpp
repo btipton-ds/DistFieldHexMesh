@@ -287,6 +287,7 @@ size_t Splitter2D::getLoopSeedIndex(const map<size_t, set<size_t>>& ptMap) const
 	size_t maxConnections = 0, idx0 = -1;
 	for (auto& pair : ptMap) {
 		if (pair.second.size() > maxConnections) {
+			maxConnections = pair.second.size();
 			idx0 = pair.first;
 		}
 	}

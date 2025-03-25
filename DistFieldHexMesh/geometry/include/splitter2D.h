@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 /*
 This file is part of the DistFieldHexMesh application/library.
