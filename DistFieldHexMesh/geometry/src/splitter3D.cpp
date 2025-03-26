@@ -163,6 +163,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	bool wasSplit = false;
 
 	if (numPossibleSplits == 8) {
+#if 0
 		// Highest priority, split the cell if it's too complex.
 		int bestAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 		if (bestAxis != -1) {
@@ -175,18 +176,17 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 			return true;
 		}
+#endif
 	}
 
-	// isect[] keeps track of intersections in the 8 possible subcells
-	bool isect[8];
-	clearCellAll(isect);
-
+	int splitAxis = -1;
 	if (_splitLevel < _params.numIntersectionDivs)
-		doScratchHexIntersectionSplitTests(parentId, tuv, isect, ignoreAxisBits);
+		splitAxis = doScratchHexIntersectionSplitTests(parentId, tuv, ignoreAxisBits);
+#if 0
 	else if (_splitLevel < _params.numCurvatureDivs)
-		doScratchHexCurvatureSplitTests(parentId, tuv, isect, ignoreAxisBits);
+		doScratchHexCurvatureSplitTests(parentId, tuv, ignoreAxisBits);
+#endif
 
-	int splitAxis = getSplitAxis(parentId, tuv, isect, ignoreAxisBits, numPossibleSplits);
 	if (splitAxis != -1) {
 #if 0
 		string axisStr;
@@ -343,41 +343,50 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 	return bestAxis;
 }
 
-void Splitter3D::doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
+int Splitter3D::doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
-	for (int i = 0; i < 8; i++)
-		isect[i] = true;
-
+	bool hasIntersect = false;
+	int firstSplitAxis = -1;
 	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
 	{
 		int axisBit = 1 << splitAxis;
 		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
 		if (ignore) {
-			clearHexSplitBits(isect, splitAxis, 0);
-			clearHexSplitBits(isect, splitAxis, 1);
 			continue;
 		}
+
+		if (firstSplitAxis == -1)
+			firstSplitAxis = splitAxis;
 
 		Utils::ScopedRestore restore1(_testRun);
 		_testRun = true;
 		const auto scratchCellId = createScratchCell(parentId);
 		MTC::vector<Index3DId> newCellIds;
 		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
+		int numIntersect = 0;
 		for (size_t j = 0; j < 2; j++) {
-			_pScratchBlock->cellFunc(newCellIds[j], [this, &isect, splitAxis, j](const Polyhedron& cell) {
-				if (!cell.intersectsModel()) {
-					clearHexSplitBits(isect, splitAxis, j);
+			_pScratchBlock->cellFunc(newCellIds[j], [this, &hasIntersect, &numIntersect, j](const Polyhedron& cell) {
+				if (cell.intersectsModel()) {
+					hasIntersect = true;
+					numIntersect++;
 				}
 			});
 		}
 		reset();
+		if (numIntersect == 1)
+			return splitAxis;
 	}
+
+	if (hasIntersect) {
+		return firstSplitAxis;
+	}
+	return -1;
 }
 
-void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits)
+void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
@@ -388,12 +397,10 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 		int axisBit = 1 << splitAxis;
 		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
 		if (ignore) {
-			clearHexSplitBits(isect, splitAxis, 0);
-			clearHexSplitBits(isect, splitAxis, 1);
 			continue;
 		}
 
-		cellFunc(parentId, [this, &tuv, &isect, splitAxis](const Polyhedron& cell) {
+		cellFunc(parentId, [this, &tuv, splitAxis](const Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				auto pVol = getBlockPtr()->getVolume();
 				int orthAxis0 = (splitAxis + 1) % 3;
@@ -508,6 +515,10 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 	for (const auto& pt : splittingFacePts)
 		splittingFaceVertIds.push_back(vertId(pt));
 	auto splittingFaceId = getBlockPtr()->addPolygon(Polygon(splittingFaceVertIds));
+	faceFunc(splittingFaceId, [splitAxis](const Polygon & face) {
+		auto n = face.calUnitNormal();
+		int dbgBreak = 1;
+	});
 
 	FastBisectionSet<Index3DId> faceIds;
 	cellFunc(parentId, [&faceIds](const Polyhedron& cell) {

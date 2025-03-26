@@ -80,8 +80,8 @@ private:
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
 	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
-	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits);
+	int doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
+	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
