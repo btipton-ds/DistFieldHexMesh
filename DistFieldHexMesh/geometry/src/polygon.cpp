@@ -170,13 +170,11 @@ const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 
 void Polygon::clearCache(bool clearSortIds) const
 {
-	_cachedCentroidValid = false;
-	_cachedNormalValid = false;
 	_isConvex = IS_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedArea = -1;
-	_cachedCentroid = {};
-	_cachedNormal = {};
+	_cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_nonColinearVertexIds.clear();
 
 	if (clearSortIds)
@@ -495,11 +493,10 @@ void Polygon::dumpPolygonPoints(ostream& out, const MTC::vector<Vector3d>& pts)
 
 Vector3d Polygon::calUnitNormal() const
 {
-	if (_cachedNormalValid)
+	if (_cachedNormal[0] != DBL_MAX)
 		return _cachedNormal;
 
 	_cachedNormal = calUnitNormalStat(getBlockPtr(), _vertexIds);
-	_cachedNormalValid = true;
 	return _cachedNormal;
 }
 
@@ -679,7 +676,7 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 {
-	if (_cachedCentroidValid) {
+	if (_cachedArea > 0 && _cachedCentroid[0] != DBL_MAX) {
 		area = _cachedArea;
 		centroid = _cachedCentroid;
 		return;
@@ -708,7 +705,6 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 
 	_cachedArea = area;
 	_cachedCentroid = centroid;
-	_cachedCentroidValid = true;
 }
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const

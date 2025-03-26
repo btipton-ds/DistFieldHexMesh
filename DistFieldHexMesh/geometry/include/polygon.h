@@ -202,13 +202,11 @@ private:
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
 
-	mutable bool _cachedCentroidValid = false;
-	mutable bool _cachedNormalValid = false;
-
 	mutable Trinary _isConvex = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable double _cachedArea = -1;
-	mutable Vector3d _cachedCentroid, _cachedNormal;
+	mutable Vector3d _cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	mutable Vector3d _cachedNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable MTC::vector<Index3DId> _nonColinearVertexIds;
 };
 
