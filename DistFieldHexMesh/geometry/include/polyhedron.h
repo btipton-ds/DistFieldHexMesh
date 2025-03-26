@@ -70,6 +70,8 @@ public:
 	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
+	const std::vector<TriMeshIndex>& getModelTriIndices() const;
+	void setModelTriIndices(const std::vector<TriMeshIndex>& indices);
 	FastBisectionSet<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
@@ -217,6 +219,16 @@ private:
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const
 {
 	return _canonicalVertices;
+}
+
+inline const std::vector<TriMeshIndex>& Polyhedron::getModelTriIndices() const
+{
+	return _triIndices;
+}
+
+inline void Polyhedron::setModelTriIndices(const std::vector<TriMeshIndex>& indices)
+{
+	_triIndices = indices;
 }
 
 inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const

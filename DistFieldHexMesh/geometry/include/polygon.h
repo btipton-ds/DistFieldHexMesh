@@ -143,9 +143,9 @@ public:
 	double distanceToPoint(const Vector3d& pt) const;
 	Planed calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;
-	Vector3d calUnitNormal() const;
+	const Vector3d& calUnitNormal() const;
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
-	Vector3d calCentroid() const;
+	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	bool intersectsModel(const std::vector<TriMeshIndex>& tris) const;
 	double distFromPlane(const Vector3d& pt) const;
@@ -386,7 +386,7 @@ void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 		pts[i] = getVertexPoint(_vertexIds[i]);
 
 	if (pts.size() > 4) {
-		Vector3d ctr = calCentroid();
+		auto& ctr = calCentroid();
 		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
 			size_t idx1 = (idx0 + 1) % pts.size();
 			triFunc(ctr, pts[idx0], pts[idx1]);

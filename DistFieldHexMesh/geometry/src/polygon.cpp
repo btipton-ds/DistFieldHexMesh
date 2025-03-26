@@ -367,7 +367,7 @@ bool Polygon::containsEdge(const EdgeKey& edge) const
 bool Polygon::isCoplanar(const Vector3d& pt) const
 {
 	Planed pl = calPlane();
-	return (fabs(pl.distanceToPoint(pt)) < Tolerance::sameDistTol());
+	return pl.distanceToPoint(pt) < Tolerance::sameDistTol();
 }
 
 bool Polygon::isCoplanar(const Planed& pl) const
@@ -491,12 +491,10 @@ void Polygon::dumpPolygonPoints(ostream& out, const MTC::vector<Vector3d>& pts)
 	out << "\n";
 }
 
-Vector3d Polygon::calUnitNormal() const
+const Vector3d& Polygon::calUnitNormal() const
 {
-	if (_cachedNormal[0] != DBL_MAX)
-		return _cachedNormal;
-
-	_cachedNormal = calUnitNormalStat(getBlockPtr(), _vertexIds);
+	if (_cachedNormal[0] == DBL_MAX)
+		_cachedNormal = calUnitNormalStat(getBlockPtr(), _vertexIds);
 	return _cachedNormal;
 }
 
@@ -518,8 +516,8 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 
 Planed Polygon::calPlane() const
 {
-	Vector3d origin = calCentroid(); // Use every point to get more preceision
-	Vector3d normal = calUnitNormal();
+	auto& origin = calCentroid(); // Use every point to get more preceision
+	auto& normal = calUnitNormal();
 	Planed result(origin, normal);
 
 #if 0 && defined(_DEBUG)
@@ -600,7 +598,7 @@ double Polygon::calVertexError(const vector<Index3DId>& testVertIds) const
 
 double Polygon::distanceToPoint(const Vector3d& pt) const
 {
-	Vector3d ctr = calCentroid();
+	auto& ctr = calCentroid();
 	for (size_t i = 0; i < _vertexIds.size() - 1; i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
@@ -620,12 +618,13 @@ double Polygon::calVertexAngle(size_t idx1) const
 	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);
 }
 
-Vector3d Polygon::calCentroid() const
+const Vector3d& Polygon::calCentroid() const
 {
-	double area;
-	Vector3d ctr;
-	calAreaAndCentroid(area, ctr);
-	return ctr;
+	if (_cachedCentroid[0] == DBL_MAX) {
+		double area;
+		calAreaAndCentroid(area, _cachedCentroid);
+	}
+	return _cachedCentroid;
 }
 
 Vector3d Polygon::calCentroidApprox() const
@@ -670,7 +669,7 @@ bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
 
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
-	Plane pl(getVertexPoint(_vertexIds[0]), calUnitNormal());
+	auto pl = calPlane();
 	return pl.distanceToPoint(pt);
 }
 
@@ -683,11 +682,12 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 	}
 	area = 0;
 	centroid = Vector3d(0, 0, 0);
-	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
-	for (size_t j = 1; j < _vertexIds.size() - 1; j++) {
+	auto& nonColinVerts = getNonColinearVertexIds();
+	Vector3d pt0 = getVertexPoint(nonColinVerts[0]);
+	for (size_t j = 1; j < nonColinVerts.size() - 1; j++) {
 		size_t k = j + 1;
-		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
-		Vector3d pt2 = getVertexPoint(_vertexIds[k]);
+		Vector3d pt1 = getVertexPoint(nonColinVerts[j]);
+		Vector3d pt2 = getVertexPoint(nonColinVerts[k]);
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
 
@@ -895,11 +895,11 @@ bool Polygon::isPlanar() const
 	if (_vertexIds.size() == 3)
 		return true;
 
-	Vector3d ctr = calCentroid();
-	Vector3d norm = calUnitNormal();
+	auto& ctr = calCentroid();
+	auto& norm = calUnitNormal();
 	Planed pl(ctr, norm);
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		Vector3d pt = getVertexPoint(_vertexIds[i]);
+		auto& pt = getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())
 			return false;
 	}
