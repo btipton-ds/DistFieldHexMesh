@@ -95,11 +95,6 @@ MTC::set<EdgeKey> Vertex::getEdges() const
 	return result;
 }
 
-const FastBisectionSet<Index3DId>& Vertex::getFaceIds() const
-{
-	return _faceIds;
-}
-
 MTC::set<Index3DId> Vertex::getCellIds() const
 {
 	MTC::set<Index3DId> result;
@@ -193,22 +188,6 @@ const bool Vertex::operator < (const Vertex& rhs) const
 
 	Vector3<int64_t> iPt(scaleToSearch(_pt)), iRhsPt(scaleToSearch(rhs._pt));
 	return iPt < iRhsPt;
-}
-
-const bool Vertex::operator > (const Vertex& rhs) const
-{
-	return rhs < *this;
-}
-
-const bool Vertex::operator == (const Vertex& rhs) const
-{
-	Vector3<int64_t> iPt(scaleToSearch(_pt)), iRhsPt(scaleToSearch(rhs._pt));
-	return !iPt.operator<(iRhsPt) && !iRhsPt.operator<(iPt);
-}
-
-const bool Vertex::operator != (const Vertex& rhs) const
-{
-	return !operator==(rhs);
 }
 
 ostream& DFHM::operator << (ostream& out, const Vertex& vert)

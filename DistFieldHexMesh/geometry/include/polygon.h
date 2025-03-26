@@ -73,7 +73,7 @@ public:
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
-	static Vector3d calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
+	static Vector3d calCentroidApproxStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
 	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
@@ -132,7 +132,7 @@ public:
 	bool operator == (const Polygon& rhs) const;
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
-	const MTC::vector<Index3DId> getNonColinearVertexIds() const;
+	const MTC::vector<Index3DId>& getNonColinearVertexIds() const;
 	MTC::vector<Index3DId> getOrientedVertexIds(const Index3DId& cellId) const;
 	void clearCache(bool clearSortIds = true) const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
@@ -146,7 +146,7 @@ public:
 	Vector3d calUnitNormal() const;
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	Vector3d calCentroid() const;
-	Vector3d calCentroidApproxFast() const;
+	Vector3d calCentroidApprox() const;
 	bool intersectsModel(const std::vector<TriMeshIndex>& tris) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
@@ -209,6 +209,7 @@ private:
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid, _cachedNormal;
+	mutable MTC::vector<Index3DId> _nonColinearVertexIds;
 };
 
 inline bool Polygon::verifyUnique() const

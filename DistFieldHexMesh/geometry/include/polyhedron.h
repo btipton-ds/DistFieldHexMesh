@@ -83,12 +83,11 @@ public:
 	void clearCache() const;
 	void updateAllTopolCaches() const;
 
-	bool contains(const Vector3d& pt) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsFace(const Index3DId& faceId) const;
 	bool isVertexConnectedToCell(const Index3DId& cellId) const;
-	Vector3d calCentroid() const;
-	Vector3d calCentroidApproxFast() const;
+	const Vector3d& calCentroid() const;
+	Vector3d calCentroidApprox() const;
 	double calVolume() const;
 	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints, int axis) const;
 	bool containsHighCurvatureTris(const SplittingParams& params) const;
@@ -211,6 +210,8 @@ private:
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;
+
+	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

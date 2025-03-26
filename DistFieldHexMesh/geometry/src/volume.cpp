@@ -1420,6 +1420,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 		}
 	}
 
+#if USE_CELL_HISTOGRAM
 	for (const auto& cellId : cellIds) {
 		out << "#CellId " << cellId << "\n";
 		getBlockPtr(cellId)->cellFunc(cellId, [this, &out](const Polyhedron& cell) {
@@ -1433,6 +1434,7 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			}
 		});
 	}
+#endif
 
 	out << "#Vertices " << pts.size() << "\n";
 	for (const auto& pt : pts) {

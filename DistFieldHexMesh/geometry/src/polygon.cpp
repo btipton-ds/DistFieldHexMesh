@@ -160,11 +160,12 @@ void Polygon::addVertex(const Index3DId& vertId)
 	clearCache();
 }
 
-const MTC::vector<Index3DId> Polygon::getNonColinearVertexIds() const
+const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 {
-	MTC::vector<Index3DId> result = PolygonSearchKey::makeNonColinearVertexIds(getOurBlockPtr(), _vertexIds);
+	if (_nonColinearVertexIds.empty())
+		_nonColinearVertexIds = PolygonSearchKey::makeNonColinearVertexIds(getOurBlockPtr(), _vertexIds);
 
-	return result;
+	return _nonColinearVertexIds;
 }
 
 void Polygon::clearCache(bool clearSortIds) const
@@ -176,6 +177,7 @@ void Polygon::clearCache(bool clearSortIds) const
 	_cachedArea = -1;
 	_cachedCentroid = {};
 	_cachedNormal = {};
+	_nonColinearVertexIds.clear();
 
 	if (clearSortIds)
 		PolygonSearchKey::clear();
@@ -390,7 +392,7 @@ bool Polygon::isCoplanar(const EdgeKey& edgeKey) const
 	return true;
 }
 
-Vector3d Polygon::calCentroidApproxFastStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
+Vector3d Polygon::calCentroidApproxStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
 {
 	Vector3d ctr(0, 0, 0);
 	if (vertIds.empty())
@@ -405,7 +407,7 @@ Vector3d Polygon::calCentroidApproxFastStat(const Block* pBlock, const MTC::vect
 
 void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis)
 {
-	origin = calCentroidApproxFastStat(pBlock, vertIds);
+	origin = calCentroidApproxStat(pBlock, vertIds);
 	zAxis = Polygon::calUnitNormalStat(pBlock, vertIds);
 	xAxis = Vector3d(1, 0, 0);
 	if (fabs(xAxis.dot(zAxis)) > 0.7071) {
@@ -505,10 +507,10 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 {
 	auto pBlk = getBlockPtr();
 	Vector3d result = calUnitNormal();
-	auto faceApproxCtr = calCentroidApproxFastStat(pBlk, _vertexIds);
+	auto faceApproxCtr = calCentroidApproxStat(pBlk, _vertexIds);
 	Vector3d cellApproxCtr;
 	cellFunc(cellId, [&cellApproxCtr](const Polyhedron& cell) {
-		cellApproxCtr = cell.calCentroidApproxFast();
+		cellApproxCtr = cell.calCentroidApprox();
 	});
 	Vector3d v = faceApproxCtr - cellApproxCtr;
 	if (v.dot(result) < 0)
@@ -629,9 +631,9 @@ Vector3d Polygon::calCentroid() const
 	return ctr;
 }
 
-Vector3d Polygon::calCentroidApproxFast() const
+Vector3d Polygon::calCentroidApprox() const
 {
-	return calCentroidApproxFastStat(getBlockPtr(), _vertexIds);
+	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
 }
 
 bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
@@ -856,9 +858,10 @@ bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 		tmp.push_back(_vertexIds[i]);
 		for (const auto& imprPt : imprPts) {
 			auto imprintVert = getBlockPtr()->getVertexIdOfPoint(imprPt);
+#if VALIDATION_ON
 			if (!getId().withinRange(imprintVert))
 				continue;
-			
+#endif	
 			bool imprinted = false;
 			edgeFunc(EdgeKey(_vertexIds[i], _vertexIds[j]), [this, &tmp, &imprintVert, &imprinted, &tol](Edge& edge) {
 				auto seg = edge.getSegment();

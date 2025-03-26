@@ -223,6 +223,20 @@ inline Index3D::Index3D(const Vector3i& src)
 {
 }
 
+inline bool Index3DBase::withinRange(const Index3DBase& blockIdx, int range) const
+{
+#if VALIDATION_ON
+	for (int i = 0; i < 3; i++) {
+		int v0 = _vals[i];
+		int v1 = blockIdx[i];
+		if (abs(v1 - v0) > range)
+			return false;
+	}
+#endif
+
+	return true;
+}
+
 template<class T>
 inline bool Index3DBase::operator == (const T& rhs) const
 {

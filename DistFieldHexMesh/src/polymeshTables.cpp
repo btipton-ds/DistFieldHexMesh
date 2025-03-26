@@ -352,7 +352,7 @@ void PolymeshTables::reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cell
 	if (cellIds.size() == 1) {
 		const Index3DId cellId = cellIds[0];
 		const auto& cell = _pVol->getPolyhedron(cellId);
-		cellCtr = cell.calCentroidApproxFast();
+		cellCtr = cell.calCentroidApprox();
 		Vector3d v = (faceCtr - cellCtr).normalized();
 		if (v.dot(n) < 0)
 			needToReverse = true;
@@ -366,7 +366,7 @@ void PolymeshTables::reverseFaceIfNeeded(const FastBisectionSet<Index3DId>& cell
 			}
 		}
 		const auto& cell = _pVol->getPolyhedron(cellIdxIdMap[maxCellIdx]);
-		cellCtr = cell.calCentroidApproxFast();
+		cellCtr = cell.calCentroidApprox();
 
 		Vector3d v = (faceCtr - cellCtr).normalized();
 		if (v.dot(n) > 0)

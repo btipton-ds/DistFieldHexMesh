@@ -646,6 +646,11 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 		newCell.setTriIndices(parentCell);
 	}
 
+#ifdef _DEBUG
+	auto ctr = newCell.calCentroid();
+	assert(newCell.pointInside(ctr));
+#endif // _DEBUG
+
 #if VALIDATION_ON && defined(_DEBUG)
 	assert(newCell.isOriented());
 //	assert(newCell.isConvex());

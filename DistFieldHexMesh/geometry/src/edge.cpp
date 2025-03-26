@@ -49,10 +49,10 @@ void Edge::initFaceIds()
 	_faceIds.clear();
 
 	vertexFunc(_vertexIds[0], [this](const Vertex& vert0) {
-		auto face0Ids = vert0.getFaceIds();
+		auto& face0Ids = vert0.getFaceIds();
 
 		vertexFunc(_vertexIds[1], [this, &face0Ids](const Vertex& vert1) {
-			auto face1Ids = vert1.getFaceIds();
+			auto& face1Ids = vert1.getFaceIds();
 
 			for (const auto& id0 : face0Ids) {
 				if (face1Ids.contains(id0))
@@ -281,12 +281,15 @@ bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
 	auto seg = getSegment();
 	set<Index3DId> vertsInBoundsSet;
 	for (const auto& id : allVertIds) {
-		if (_vertexIds[0].withinRange(id) && _vertexIds[1].withinRange(id)) {
-			const auto& pt = getBlockPtr()->getVertexPoint(id);
-			double t;
-			if (seg.contains(pt, t, tol) && tol < t && t < 1 - tol) {
-				vertsInBoundsSet.insert(id);
-			}
+#if VALIDATION_ON
+		if (!_vertexIds[0].withinRange(id) || !_vertexIds[1].withinRange(id))
+			continue;
+#endif
+
+		const auto& pt = getBlockPtr()->getVertexPoint(id);
+		double t;
+		if (seg.contains(pt, t, tol) && tol < t && t < 1 - tol) {
+			vertsInBoundsSet.insert(id);
 		}
 	}
 

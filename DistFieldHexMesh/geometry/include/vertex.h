@@ -147,6 +147,26 @@ inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 	return conVerts.contains(vertId);
 }
 
+inline const FastBisectionSet<Index3DId>& Vertex::getFaceIds() const
+{
+	return _faceIds;
+}
+
+inline const bool Vertex::operator > (const Vertex& rhs) const
+{
+	return rhs < *this;
+}
+
+inline const bool Vertex::operator == (const Vertex& rhs) const
+{
+	Vector3<int64_t> iPt(scaleToSearch(_pt)), iRhsPt(scaleToSearch(rhs._pt));
+	return !iPt.operator<(iRhsPt) && !iRhsPt.operator<(iPt);
+}
+
+inline const bool Vertex::operator != (const Vertex& rhs) const
+{
+	return !operator==(rhs);
+}
 
 std::ostream& operator << (std::ostream& out, const Vertex& vert);
 

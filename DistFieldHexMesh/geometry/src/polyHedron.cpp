@@ -561,7 +561,7 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 {
 	corners.clear();
 
-	Vector3d cellCtr = calCentroidApproxFast();
+	Vector3d cellCtr = calCentroidApprox();
 
 	int numQuads = 0, numTris = 0;
 	MTC::vector<Index3DId> baseFaceVerts, oppFaceVerts;
@@ -655,23 +655,6 @@ CBoundingBox3Dd Polyhedron::getBoundingBox() const
 	return bbox;
 }
 
-bool Polyhedron::contains(const Vector3d& pt) const
-{
-	const double tol = Tolerance::sameDistTol();
-	bool result = true;
-
-	auto cellCtr = calCentroidApproxFast(); // Just need a point inside
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&pt, &cellCtr, &result](const Polygon& face) {
-			result = face.isPointInside(pt, cellCtr);
-		});
-		if (!result)
-			break;
-	}
-
-	return result;
-}
-
 bool Polyhedron::containsVertex(const Index3DId& vertId) const
 {
 	MTC::set<Index3DId> vertIds;
@@ -697,54 +680,61 @@ bool Polyhedron::isVertexConnectedToCell(const Index3DId& cellId) const
 	return result;
 }
 
-Vector3d Polyhedron::calCentroid() const
+const Vector3d& Polyhedron::calCentroid() const
 {
-	// Use the  curl algorithm over all triangles
-	Vector3d ctr(0, 0, 0);
-	double vol = 0;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &vol, &ctr](const Polygon& face) {
-			face.iterateTriangles([this, &vol, &ctr](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
-				const Vector3d axis(1, 0, 0);
-				auto pBlk = getBlockPtr();
-				const auto& a = pBlk->getVertexPoint(idx0);
-				const auto& b = pBlk->getVertexPoint(idx1);
-				const auto& c = pBlk->getVertexPoint(idx2);
+	if (_cachedCtr[0] == DBL_MAX) {
+		const auto& approxCtr = calCentroidApprox();
+		// Use the  curl algorithm over all triangles
+		_cachedCtr = Vector3d(0, 0, 0);
+		double vol = 0;
+		for (const auto& faceId : _faceIds) {
+			faceFunc(faceId, [this, &vol, &approxCtr](const Polygon& face) {
+				face.iterateTriangles([this, &vol, &approxCtr](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
+					const Vector3d axis(1, 0, 0);
+					auto pBlk = getBlockPtr();
+					const auto& a = pBlk->getVertexPoint(idx0);
+					const auto& b = pBlk->getVertexPoint(idx1);
+					const auto& c = pBlk->getVertexPoint(idx2);
 
-				Vector3d triCtr = (a + b + c) / 3.0;
-				Vector3d norm = (b - a).cross(c - a);
-				double triArea = norm.norm() / 2;
-				Vector3d unitNorm = norm.normalized();
+					auto v = approxCtr - a;
 
-				double dp = axis.dot(unitNorm);
-				double projArea = triArea * dp;
-				vol += projArea * triCtr.dot(axis);
-				for (int i = 0; i < 3; i++) {
-					double ab = a[i] + b[i];
-					double bc = b[i] + c[i];
-					double ca = c[i] + a[i];
+					Vector3d triCtr = (a + b + c) / 3.0;
+					Vector3d norm = (b - a).cross(c - a);
+					if (v.dot(norm) > 0)
+						norm = -norm;
 
-					ctr[i] += norm[i] * (ab * ab + bc * bc + ca * ca);
-				}
-				return true;
+					double triArea = norm.norm() / 2;
+					Vector3d unitNorm = norm.normalized();
+
+					double dp = axis.dot(unitNorm);
+					double projArea = triArea * dp;
+					vol += projArea * triCtr.dot(axis);
+					for (int i = 0; i < 3; i++) {
+						double ab = a[i] + b[i];
+						double bc = b[i] + c[i];
+						double ca = c[i] + a[i];
+
+						_cachedCtr[i] += norm[i] * (ab * ab + bc * bc + ca * ca);
+					}
+					return true;
+				});
 			});
-		});
+		}
+		_cachedCtr *= 1 / (vol * 48.0);
 	}
-	ctr *= 1 / (vol * 48.0);
-	return ctr;
+	return _cachedCtr;
 }
 
-Vector3d Polyhedron::calCentroidApproxFast() const
+Vector3d Polyhedron::calCentroidApprox() const
 {
-	MTC::set<Index3DId> vertIds;
-	getVertIds(vertIds);
 	Vector3d ctr(0, 0, 0);
-	for (const auto& id : vertIds) {
+
+	for (const auto& id : _canonicalVertices) {
 		ctr += getBlockPtr()->getVertexPoint(id);
 	}
 
-	ctr /= vertIds.size();
-
+	ctr /= _canonicalVertices.size();
+	
 	return ctr;
 }
 
@@ -908,14 +898,14 @@ bool Polyhedron::isConvex() const
 bool Polyhedron::pointInside(const Vector3d& pt) const
 {
 	bool inside = true;
-	auto ctr = calCentroidApproxFast();
+	auto ctr = calCentroidApprox();
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&ctr, &pt, &inside](const Polygon& face) {
 			auto pl = face.calPlane();
-			Vector3d v = ctr - pl.getOrgin();
-			auto dp = v.dot(pl.getNormal());
-			if (dp > 0)
+			auto ctrDist = pl.distanceToPoint(ctr, false);
+			if (ctrDist > 0)
 				pl.reverse(); // Vector points out of the cell
+
 			double dist = pl.distanceToPoint(pt, false);
 			if (dist > Tolerance::paramTol())
 				inside = false;
@@ -943,6 +933,9 @@ bool Polyhedron::intersectsModel() const
 			}
 		}
 
+#if 0
+		// Verified this does catch triangles completely contained in the cell.
+		// But, in practice it's an expensive test that catches no additional intersections
 		auto& meshData = getBlockPtr()->getModelMeshData();
 		for (const auto& multiTriIdx : _triIndices) {
 			auto pMesh = meshData[multiTriIdx.getMeshIdx()]->getMesh();
@@ -950,12 +943,13 @@ bool Polyhedron::intersectsModel() const
 			for (int i = 0; i < 3; i++) {
 				auto& pt = pMesh->getVert(triIdx[i])._pt;
 				if (pointInside(pt)) {
-					cout << "Polyhedron::intersectsModel found point inside cell found intersection\n";
+					cout << "Polyhedron::intersectsModel pointInside hit\n";
 					_intersectsModel = IS_TRUE;
 					return true;
 				}
 			}
 		}
+#endif
 		_intersectsModel = IS_FALSE;
 	}
 
@@ -1730,6 +1724,7 @@ void Polyhedron::clearCache() const
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
+	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 
 	_cachedMinGap = -1;
 }
