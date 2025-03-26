@@ -163,7 +163,6 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	bool wasSplit = false;
 
 	if (numPossibleSplits == 8) {
-#if 0
 		// Highest priority, split the cell if it's too complex.
 		int bestAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 		if (bestAxis != -1) {
@@ -171,13 +170,13 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 			bisectHexCell(parentId, tuv, bestAxis, newCellIds);
 			for (const auto& cellId : newCellIds) {
 				// Now we split the pair of simplified cells
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, 8);
+				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, -8);
 			}
 
 			return true;
 		}
-#endif
-	}
+	} else if (numPossibleSplits < 0)
+		numPossibleSplits = 8;
 
 	int splitAxis = -1;
 	if (_splitLevel < _params.numIntersectionDivs)
@@ -248,30 +247,6 @@ inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 	return _pBlock->getVertexPoint(id);
 }
 
-void Splitter3D::clearHexSplitBits(bool isect[8], int splitAxis, size_t j)
-{
-	switch (splitAxis) {
-	case 0:
-		if (j == 0)
-			clearCell(isect, { 0, 2, 4, 6 }); // front 4 empty
-		else
-			clearCell(isect, { 1, 3, 5, 7 }); // back 4 empty
-		break;
-	case 1:
-		if (j == 0)
-			clearCell(isect, { 0, 1, 4, 5 }); // right 4 empty
-		else
-			clearCell(isect, { 2, 3, 6, 7 }); // left 4 empty
-		break;
-	case 2:
-		if (j == 0)
-			clearCell(isect, { 0, 1, 2, 3 }); // bottom 4 empty
-		else
-			clearCell(isect, { 4, 5, 6, 7 }); // top 4 empty
-		break;
-	}
-}
-
 int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	FastBisectionSet<Index3DId> faceIds;
@@ -284,11 +259,6 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 
 	if (!isTooComplex)
 		return - 1;
-#if 0
-	stringstream ss;
-	ss << "D:/DarkSky/Projects/output/objs/complex_cell_" << getBlockPtr()->getLoggerNumericCode(parentId) << ".obj";
-	getBlockPtr()->getVolume()->writeObj(ss.str(), {parentId}, false, false, false);
-#endif
 
 	int minimumOfMaxFaces = INT_MAX;
 	int bestAxis = -1;
@@ -444,60 +414,9 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 	}
 }
 
-int Splitter3D::getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits, int numPossibleSplits)
+bool Splitter3D::conditionalComplexHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, MTC::set<Index3DId>& newCellsToSplit)
 {
-	int splitAxis = -1;
-	if (allCellsClear(isect))
-		return splitAxis;
-
-	bool doSplit = false;
-	for (splitAxis = 0; splitAxis < 3; splitAxis++) {
-		doSplit = false;
-
-		int axisBit = 1 << splitAxis;
-		if ((axisBit & ignoreAxisBits) == axisBit)
-			continue;
-
-		switch (splitAxis) {
-		case 0:
-			if (cellsNotSet(isect, { 0, 2, 4, 6 }) ||
-				cellsNotSet(isect, { 1, 3, 5, 7 })) {
-				doSplit = true;
-			}
-			break;
-		case 1:
-			if (cellsNotSet(isect, { 0, 1, 4, 5 }) ||
-				cellsNotSet(isect, { 2, 3, 6, 7 })) {
-				doSplit = true;
-			}
-			break;
-		case 2:
-			if (cellsNotSet(isect, { 0, 1, 2, 3 }) ||
-				cellsNotSet(isect, { 4, 5, 6, 7 })) {
-				doSplit = true;
-			}
-			break;
-		}
-		if (doSplit)
-			break;
-	}
-
-	if (!doSplit) {
-		if (allCellsSet(isect, numPossibleSplits)) {
-			for (splitAxis = 0; splitAxis < 3; splitAxis++) {
-				int axisBit = 1 << splitAxis;
-				if ((axisBit & ignoreAxisBits) == axisBit)
-					continue;
-				break;
-			}
-			doSplit = true;
-		}
-	}
-
-	if (doSplit)
-		return splitAxis;
-
-	return -1;
+	return false;
 }
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
@@ -811,56 +730,6 @@ void Splitter3D::createHexCellData(const Polyhedron& parentCell)
 
 	int dbgBreak = 1;
 }
-
-inline void Splitter3D::clearCell(bool isect[8], const vector<int>& entries)
-{
-	for (int i : entries)
-		isect[i] = false;
-}
-
-inline void Splitter3D::clearCellAll(bool isect[8])
-{
-	for (int i = 0; i < 8; i++)
-		isect[i] = false;
-}
-
-inline bool Splitter3D::cellsNotSet(bool isect[8], const vector<int>& entries)
-{
-	bool result = true;
-	for (int i : entries)
-		result = result && !isect[i];
-	return result;
-}
-
-inline bool Splitter3D::cellsSet(bool isect[8], const vector<int>& entries)
-{
-	bool result = true;
-	for (int i : entries)
-		result = result && isect[i];
-	return result;
-}
-
-inline bool Splitter3D::allCellsSet(bool isect[8], int numRequired)
-{
-	int numSet = 0;
-	for (int i = 0; i < 8; i++) {
-		if (isect[i])
-			numSet++;
-	}
-	return numSet >= numRequired;
-}
-
-bool Splitter3D::allCellsClear(bool isect[8])
-{
-	int numSet = 0;
-	for (int i = 0; i < 8; i++) {
-		if (isect[i])
-			numSet++;
-	}
-	return numSet == 0;
-}
-
-
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)
 void Splitter3D::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {

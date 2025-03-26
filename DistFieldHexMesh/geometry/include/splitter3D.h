@@ -72,9 +72,8 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	void clearHexSplitBits(bool isect[8], int splitAxis, size_t j);
-	int getSplitAxis(const Index3DId& parentId, const Vector3d& tuv, bool isect[8], int ignoreAxisBits, int numPossibleSplits);
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
+	bool conditionalComplexHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, MTC::set<Index3DId>& newCellsToSplit);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeHexCellPoints(const Block* pBlock, const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
@@ -86,13 +85,6 @@ private:
 	Index3DId createScratchCell(const Index3DId& parentId);
 	Index3DId createScratchFace(const Index3DId& srcFaceId);
 	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
-
-	static void clearCell(bool isect[8], const std::vector<int>& entries);
-	static void clearCellAll(bool isect[8]);
-	static bool cellsNotSet(bool isect[8], const std::vector<int>& entries);
-	static bool cellsSet(bool isect[8], const std::vector<int>& entries);
-	static bool allCellsSet(bool isect[8], int numRequired);
-	static bool allCellsClear(bool isect[8]);
 
 	LAMBDA_CLIENT_DECLS;
 
