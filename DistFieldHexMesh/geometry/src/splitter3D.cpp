@@ -162,24 +162,8 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 {
 	bool wasSplit = false;
 
-	if (numPossibleSplits == 8) {
-		// Highest priority, split the cell if it's too complex.
-		int bestAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
-		if (bestAxis != -1) {
-			MTC::vector<Index3DId> newCellIds;
-			bisectHexCell(parentId, tuv, bestAxis, newCellIds);
-			for (const auto& cellId : newCellIds) {
-				// Now we split the pair of simplified cells
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, -8);
-			}
-
-			return true;
-		}
-	} else if (numPossibleSplits < 0)
-		numPossibleSplits = 8;
-
-	int splitAxis = -1;
-	if (_splitLevel < _params.numIntersectionDivs)
+	int splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
 		splitAxis = doScratchHexIntersectionSplitTests(parentId, tuv, ignoreAxisBits);
 #if 0
 	else if (_splitLevel < _params.numCurvatureDivs)
@@ -253,12 +237,11 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 	bool isTooComplex = false;
 	cellFunc(parentId, [this, &isTooComplex, &faceIds](const Polyhedron& cell) {
 		isTooComplex = cell.isTooComplex(_params);
-		if (isTooComplex)
-			faceIds = cell.getFaceIds();
+		faceIds = cell.getFaceIds();
 	});
 
 	if (!isTooComplex)
-		return - 1;
+		return -1;
 
 	int minimumOfMaxFaces = INT_MAX;
 	int bestAxis = -1;
