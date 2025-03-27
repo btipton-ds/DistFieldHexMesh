@@ -162,7 +162,9 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 {
 	bool wasSplit = false;
 
-	int splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+	int splitAxis = findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
+	if (splitAxis == -1)
+		splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
 		splitAxis = doScratchHexIntersectionSplitTests(parentId, tuv, ignoreAxisBits);
 #if 0
@@ -229,6 +231,60 @@ inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 {
 	return _pBlock->getVertexPoint(id);
+}
+
+int Splitter3D::findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
+{
+	// Split the cell with a plane on each axis
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+	return -1;
+
+	double angle;
+	cellFunc(parentId, [&angle](const Polyhedron& cell) {
+		angle = cell.averageNonOrthogonality();
+	});
+
+	if (angle < _params.maxOrthoAngleRadians)
+		return -1;
+
+	int minNonOrtho = INT_MAX;
+	int bestAxis = -1;
+	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
+	{
+		int axisBit = 1 << splitAxis;
+		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
+		if (ignore) {
+			continue;
+		}
+
+		Utils::ScopedRestore restore1(_testRun);
+		_testRun = true;
+		const auto scratchCellId = createScratchCell(parentId);
+		MTC::vector<Index3DId> newCellIds;
+		// Need to do the actual split of the scratch cell with correct number of faces to do these tests.
+
+
+		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
+		int numNonOrtho = 0;
+		for (size_t j = 0; j < 2; j++) {
+			_pScratchBlock->cellFunc(newCellIds[j], [this, &numNonOrtho, j](const Polyhedron& cell) {
+				double angle = cell.averageNonOrthogonality();
+				if (angle > _params.maxOrthoAngleRadians)
+					numNonOrtho++;
+			});
+
+		}
+		reset();
+		if (numNonOrtho == 0)
+			return splitAxis;
+		if (numNonOrtho < minNonOrtho) {
+			minNonOrtho = numNonOrtho;
+			bestAxis = splitAxis;
+		}
+	}
+
+	return bestAxis;
 }
 
 int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)

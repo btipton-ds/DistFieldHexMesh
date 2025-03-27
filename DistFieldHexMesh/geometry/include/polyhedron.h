@@ -108,6 +108,7 @@ public:
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	bool isTooComplex(const SplittingParams& params, MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
+	double averageNonOrthogonality() const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;

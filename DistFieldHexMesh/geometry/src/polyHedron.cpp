@@ -1048,6 +1048,28 @@ bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::se
 	return false;
 }
 
+double Polyhedron::averageNonOrthogonality() const
+{
+	double result = 0;
+	auto& cellCtr = calCentroid();
+	for (auto& id : _faceIds) {
+		faceFunc(id, [&cellCtr, &result](const Polygon& face) {
+			auto& faceCtr = face.calCentroid();
+			auto& faceNorm = face.calUnitNormal();
+			Vector3d v = (cellCtr - faceCtr).normalized();
+			double dp = fabs(v.dot(faceNorm));
+			if (dp > 1.0)
+				dp = 1.0;
+			double angle = acos(dp);
+			result += angle;
+		});
+	}
+
+	result /= _faceIds.size();
+
+	return result;
+}
+
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
 {
 	return getOurBlockPtr()->getVertexPoint(vertId);

@@ -79,6 +79,7 @@ private:
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, const std::vector<TriMeshIndex>& modelTriIndices, 
 		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
+	int findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	int doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
