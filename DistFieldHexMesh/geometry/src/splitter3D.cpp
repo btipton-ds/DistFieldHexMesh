@@ -162,11 +162,11 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 {
 	bool wasSplit = false;
 
-	int splitAxis = findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
+	int splitAxis = -1; // findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1)
-		splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+		splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
-		splitAxis = doScratchHexIntersectionSplitTests(parentId, tuv, ignoreAxisBits);
+		splitAxis = findBestHexIntersectionSplitAxis(parentId, tuv, ignoreAxisBits);
 #if 0
 	else if (_splitLevel < _params.numCurvatureDivs)
 		doScratchHexCurvatureSplitTests(parentId, tuv, ignoreAxisBits);
@@ -260,12 +260,12 @@ int Splitter3D::findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, con
 
 		Utils::ScopedRestore restore1(_testRun);
 		_testRun = true;
-		const auto scratchCellId = createScratchCell(parentId);
+		const auto scratchCellId = makeScratchCell(parentId);
 		MTC::vector<Index3DId> newCellIds;
 		// Need to do the actual split of the scratch cell with correct number of faces to do these tests.
 
 
-		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
+		makeScratchHexCells_deprecated(scratchCellId, tuv, splitAxis, newCellIds);
 		int numNonOrtho = 0;
 		for (size_t j = 0; j < 2; j++) {
 			_pScratchBlock->cellFunc(newCellIds[j], [this, &numNonOrtho, j](const Polyhedron& cell) {
@@ -311,7 +311,7 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 
 		MTC::vector<MTC::vector<Vector3d>> discarded;
 		MTC::vector<Vector3d> partingFacePts;
-		makeHexCellPoints(_pBlock, parentId, tuv, splitAxis, discarded, partingFacePts);
+		makeHexCellPoints(parentId, tuv, splitAxis, discarded, partingFacePts);
 		Vector3d v0 = partingFacePts[0] - partingFacePts[1];
 		Vector3d v1 = partingFacePts[2] - partingFacePts[1];
 		Vector3d n = v1.cross(v0);
@@ -352,7 +352,7 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 	return bestAxis;
 }
 
-int Splitter3D::doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
+int Splitter3D::findBestHexIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
@@ -370,11 +370,16 @@ int Splitter3D::doScratchHexIntersectionSplitTests(const Index3DId& parentId, co
 		if (firstSplitAxis == -1)
 			firstSplitAxis = splitAxis;
 
+		auto scratchCellId = makeScratchCell(parentId);
+
 		Utils::ScopedRestore restore1(_testRun);
+		Utils::ScopedRestore restore2(_pBlock);
+
 		_testRun = true;
-		const auto scratchCellId = createScratchCell(parentId);
+		_pBlock = _pScratchBlock;
+
 		MTC::vector<Index3DId> newCellIds;
-		makeScratchHexCells(scratchCellId, tuv, splitAxis, newCellIds);
+		bisectHexCell(scratchCellId, tuv, splitAxis, newCellIds);
 		int numIntersect = 0;
 		for (size_t j = 0; j < 2; j++) {
 			_pScratchBlock->cellFunc(newCellIds[j], [this, &hasIntersect, &numIntersect, j](const Polyhedron& cell) {
@@ -417,8 +422,8 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 
 				MTC::vector<MTC::vector<Vector3d>> discarded;
 				MTC::vector<Vector3d> facePts0, facePts1;
-				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis0, discarded, facePts0);
-				makeHexCellPoints(_pBlock, cell.getId(), tuv, orthAxis1, discarded, facePts1);
+				makeHexCellPoints(cell.getId(), tuv, orthAxis0, discarded, facePts0);
+				makeHexCellPoints(cell.getId(), tuv, orthAxis1, discarded, facePts1);
 
 				double maxCurv0 = cell.calMaxCurvature2D(facePts0, 0);
 				double maxCurv1 = cell.calMaxCurvature2D(facePts1, 1);
@@ -426,9 +431,8 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 
 				if (maxCurv > 0) {
 					MTC::vector<Vector3d> splitFacePts;
-					makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
+					makeHexCellPoints(cell.getId(), tuv, splitAxis, discarded, splitFacePts);
 #if 1 && defined(_DEBUG)
-					makeHexCellPoints(_pBlock, cell.getId(), tuv, splitAxis, discarded, splitFacePts);
 					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
 					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
 					pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
@@ -460,19 +464,30 @@ bool Splitter3D::conditionalComplexHexSplit(const Index3DId& parentId, const Vec
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
-	Index3DId testId(2, 0, 3, 0);
-#if 0 && defined(_DEBUG)
+	Index3DId testId(0, 0, 0, 0);
+#if 1 && defined(_DEBUG)
 	if (testId == parentId) {
 		int dbgBreak = 1;
 	}
 #endif
 	MTC::vector<MTC::vector<Vector3d>> subCells;
 	MTC::vector<Vector3d> splittingFacePts;
-	makeHexCellPoints(_pBlock, parentId, tuv, splitAxis, subCells, splittingFacePts);
+	makeHexCellPoints(parentId, tuv, splitAxis, subCells, splittingFacePts);
 	MTC::vector<Index3DId> splittingFaceVertIds;
 	for (const auto& pt : splittingFacePts)
 		splittingFaceVertIds.push_back(vertId(pt));
 	auto splittingFaceId = getBlockPtr()->addPolygon(Polygon(splittingFaceVertIds));
+
+#if 1 && defined(_DEBUG)
+	if (testId == parentId) {
+		stringstream ss;
+		ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId);
+		MTC::vector<Index3DId> ids;
+		ids.push_back(splittingFaceId);
+		getBlockPtr()->dumpPolygonObj(ss.str(), ids);
+	}
+#endif
+
 	faceFunc(splittingFaceId, [splitAxis](const Polygon & face) {
 		auto n = face.calUnitNormal();
 		int dbgBreak = 1;
@@ -491,25 +506,25 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	FastBisectionSet<Index3DId> allCellFaceIds;
 	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 		if (testId == parentId) {
-			{
-				stringstream ss;
-				ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId);
-				MTC::vector<Index3DId> ids;
-				ids.push_back(splittingFaceId);
-				getBlockPtr()->dumpPolygonObj(ss.str(), ids);
-			}
-			{
-				stringstream ss;
-				ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_pre.obj";
-				getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
-			}
+			stringstream ss;
+			ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_pre.obj";
+			getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
 		}
 #endif
 		FastBisectionSet<Index3DId> touched;
 		// This is not producing the 4 way split that was expected
 		cell.imprintFaceEdges(splittingFaceId, touched);
+#if 1 && defined(_DEBUG)
+		if (testId == parentId) {
+			stringstream ss;
+			ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_postImprint.obj";
+			getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+		}
+#endif
+
+
 		for (const auto& id : touched)
 			getBlockPtr()->addToTouchedCellList(id);
 
@@ -519,11 +534,11 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	for (int i = 0; i < 2; i++) {
 		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], modelTriIndices, allCellFaceIds, i == 1);
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 		cellFunc(cellId, [this, &splittingFaceId](const Polyhedron& cell) {
 			if (!cell.isClosed()) {
 				stringstream ss;
-				ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post.obj";
+				ss << "D:/DarkSky/Projects/output/objs/cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_post_create.obj";
 				getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
 			}
 		});
@@ -615,21 +630,17 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 	return newCellId;
 }
 
-void Splitter3D::makeHexCellPoints(const Block* pBlock, const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts)
+void Splitter3D::makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts)
 {
-	MTC::vector<Vector3d> cornerPts;
-	if (!_testRun) {
-		pBlock->cellFunc(parentId, [this, pBlock, &cornerPts](const Polyhedron& cell) {
-			set<Index3DId> cvSet;
-			auto& cornerVertIds = cell.getCanonicalVertIds();
-			for (const auto& id : cornerVertIds) {
-				cornerPts.push_back(pBlock->getVertexPoint(id));
-				cvSet.insert(id);
-			}
+	MTC::vector<Vector3d> cp;
+	cellFunc(parentId, [this, &cp](const Polyhedron& cell) {
+		set<Index3DId> cvSet;
+		auto& cornerVertIds = cell.getCanonicalVertIds();
+		for (const auto& id : cornerVertIds) {
+			cp.push_back(getVertexPoint(id));
+			cvSet.insert(id);
+		}
 		});
-	}
-
-	const auto& cp = (_testRun) ? _cornerPts : cornerPts;
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = 0, t1 = 1;
@@ -679,13 +690,13 @@ void Splitter3D::makeHexCellPoints(const Block* pBlock, const Index3DId& parentI
 	}
 }
 
-void Splitter3D::makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells)
+void Splitter3D::makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells)
 {
 	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
 
 	MTC::vector<MTC::vector<Vector3d>> subCells;
 	MTC::vector<Vector3d> discarded;
-	makeHexCellPoints(_pScratchBlock, parentId, tuv, axis, subCells, discarded);
+	makeHexCellPoints(parentId, tuv, axis, subCells, discarded);
 
 	_pScratchBlock->cellFunc(parentId, [](Polyhedron& cell) {
 		cell.detachFaces();
@@ -698,34 +709,51 @@ void Splitter3D::makeScratchHexCells(const Index3DId& parentId, const Vector3d& 
 		for (const auto& pt : subPts)
 			subCorners.push_back(_pScratchBlock->getVertexIdOfPoint(pt));
 
-		auto newId = makeScratchHexCell(parentId, subCorners, tol);
+		auto newId = makeScratchHexCell_deprecated(parentId, subCorners, tol);
 		newCells.push_back(newId);
 	}
 }
 
-Index3DId Splitter3D::createScratchCell(const Index3DId& parentId)
+Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 {
+	MTC::vector<Index3DId> srcCanonicalVertIds;
 	FastBisectionSet<Index3DId> srcFaceIds;
 	vector<TriMeshIndex> modelTriIndices;
-	cellFunc(parentId, [&srcFaceIds, &modelTriIndices](const Polyhedron& srcCell) {
+	cellFunc(parentId, [&srcFaceIds, &modelTriIndices, &srcCanonicalVertIds](const Polyhedron& srcCell) {
 		srcFaceIds = srcCell.getFaceIds();
 		modelTriIndices = srcCell.getModelTriIndices();
+		srcCanonicalVertIds = srcCell.getCanonicalVertIds();
 	});
+
+	MTC::vector<Index3DId> newCanonicalVertIds;
+	for (const auto& srcVertId : srcCanonicalVertIds) {
+		auto& pt = _pBlock->getVertexPoint(srcVertId);
+		auto newVertId = _pScratchBlock->addVertex(pt);
+		newCanonicalVertIds.push_back(newVertId);
+	}
 
 	MTC::set<Index3DId> newFaceIds;
 	for (const auto& srcFaceId : srcFaceIds) {
-		const auto& newFaceId = createScratchFace(srcFaceId);
+		const auto& newFaceId = makeScratchFace(srcFaceId);
 		newFaceIds.insert(newFaceId);
 	}
 
-	Polyhedron newCell(newFaceIds, _cornerVertIds);
+	Polyhedron newCell(newFaceIds, newCanonicalVertIds);
 	newCell.setModelTriIndices(modelTriIndices);
 	auto scratchCellId = _pScratchBlock->addCell(newCell, Index3DId());
+
+#ifdef _DEBUG
+	_pScratchBlock->cellFunc(scratchCellId, [](const Polyhedron& cell) {
+		if (!cell.isClosed()) {
+			assert(!"Scratch cell is not closed.");
+		}
+	});
+#endif // _DEBUG
 
 	return scratchCellId;
 }
 
-Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
+Index3DId Splitter3D::makeScratchFace(const Index3DId& srcFaceId)
 {
 	Index3DId newFaceId;
 	faceFunc(srcFaceId, [this, &newFaceId](const Polygon& srcFace) {
@@ -743,7 +771,7 @@ Index3DId Splitter3D::createScratchFace(const Index3DId& srcFaceId)
 	return newFaceId;
 }
 
-Index3DId Splitter3D::makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol)
+Index3DId Splitter3D::makeScratchHexCell_deprecated(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol)
 {
 	Index3DId newCellId;
 

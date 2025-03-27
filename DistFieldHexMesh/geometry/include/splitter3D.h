@@ -75,18 +75,18 @@ private:
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	bool conditionalComplexHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, MTC::set<Index3DId>& newCellsToSplit);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
-	void makeHexCellPoints(const Block* pBlock, const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
+	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, const std::vector<TriMeshIndex>& modelTriIndices, 
 		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 
 	int findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	int doScratchHexIntersectionSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
+	int findBestHexIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void makeScratchHexCells(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
-	Index3DId createScratchCell(const Index3DId& parentId);
-	Index3DId createScratchFace(const Index3DId& srcFaceId);
-	Index3DId makeScratchHexCell(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
+	void makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
+	Index3DId makeScratchCell(const Index3DId& parentId);
+	Index3DId makeScratchFace(const Index3DId& srcFaceId);
+	Index3DId makeScratchHexCell_deprecated(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
