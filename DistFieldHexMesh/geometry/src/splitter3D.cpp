@@ -164,7 +164,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	int splitAxis = -1; // findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1)
-		splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+		splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
 		splitAxis = findBestHexIntersectionSplitAxis(parentId, tuv, ignoreAxisBits);
 #if 0
@@ -289,6 +289,57 @@ int Splitter3D::findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, con
 
 int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
+# if 1
+	// Split the cell with a plane on each axis
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+	int bestSplitAxis = -1;
+
+	bool isTooComplex;
+	cellFunc(parentId, [this, &isTooComplex](const Polyhedron& cell) {
+		isTooComplex = cell.isTooComplex(_params);
+	});
+
+	if (!isTooComplex)
+		return bestSplitAxis;
+
+	size_t minFaces = INT_MAX;
+	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
+	{
+		int axisBit = 1 << splitAxis;
+		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
+		if (ignore) {
+			continue;
+		}
+
+		auto scratchCellId = makeScratchCell(parentId);
+
+		Utils::ScopedRestore restore1(_testRun);
+		Utils::ScopedRestore restore2(_pBlock);
+
+		_testRun = true;
+		_pBlock = _pScratchBlock;
+
+		MTC::vector<Index3DId> newCellIds;
+		bisectHexCell(scratchCellId, tuv, splitAxis, newCellIds);
+		int numFaces = 0;
+		for (size_t j = 0; j < 2; j++) {
+			_pScratchBlock->cellFunc(newCellIds[j], [this, &numFaces](const Polyhedron& cell) {
+				if (cell.intersectsModel()) {
+					numFaces++;
+				}
+			});
+		}
+		reset();
+
+		if (numFaces < minFaces) {
+			minFaces = numFaces;
+			bestSplitAxis = splitAxis;
+		}
+	}
+
+	return bestSplitAxis;
+#else
 	FastBisectionSet<Index3DId> faceIds;
 	bool isTooComplex = false;
 	cellFunc(parentId, [this, &isTooComplex, &faceIds](const Polyhedron& cell) {
@@ -350,6 +401,7 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 	}
 
 	return bestAxis;
+#endif
 }
 
 int Splitter3D::findBestHexIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)

@@ -920,6 +920,31 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
+		auto bbox = getBoundingBox();
+		auto& meshData = getBlockPtr()->getModelMeshData();
+		for (size_t i = 0; i < meshData.size(); i++) {
+			auto& pData = meshData[i];
+			auto pMesh = pData->getMesh();
+			vector<size_t> indices;
+			if (pMesh->findTris(bbox, indices)) {
+				vector<TriMeshIndex> triIndices;
+				for (size_t j : indices)
+					triIndices.push_back(TriMeshIndex(i, j));
+
+				for (const auto& faceId : _faceIds) {
+					faceFunc(faceId, [this, &triIndices](const Polygon& face) {
+						if (face.intersectsModel(triIndices)) {
+							_intersectsModel = IS_TRUE;
+						}
+					});
+
+					if (_intersectsModel == IS_TRUE)
+						return true;
+				}
+
+			}
+		}
+#if 0
 		if (!_triIndices.empty()) {
 			for (const auto& faceId : _faceIds) {
 				faceFunc(faceId, [this](const Polygon& face) {
@@ -932,7 +957,7 @@ bool Polyhedron::intersectsModel() const
 					return true;
 			}
 		}
-
+#endif
 #if 0
 		// Verified this does catch triangles completely contained in the cell.
 		// But, in practice it's an expensive test that catches no additional intersections
