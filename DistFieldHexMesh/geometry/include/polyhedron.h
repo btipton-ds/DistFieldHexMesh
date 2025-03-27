@@ -70,8 +70,6 @@ public:
 	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
-	const std::vector<TriMeshIndex>& getModelTriIndices() const;
-	void setModelTriIndices(const std::vector<TriMeshIndex>& indices);
 	FastBisectionSet<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
@@ -135,8 +133,6 @@ public:
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);
 	void setLayerNumOnNextPass(int32_t val);
-	void addMeshToTriIndices(const std::vector<MeshDataPtr>& meshData);
-	void setTriIndices(const Polyhedron& srcCell);
 
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
@@ -203,8 +199,6 @@ private:
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
 
-	mutable std::vector<TriMeshIndex> _triIndices; // stores only the triangles that intersect this cell.
-
 	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;
 
@@ -220,16 +214,6 @@ private:
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const
 {
 	return _canonicalVertices;
-}
-
-inline const std::vector<TriMeshIndex>& Polyhedron::getModelTriIndices() const
-{
-	return _triIndices;
-}
-
-inline void Polyhedron::setModelTriIndices(const std::vector<TriMeshIndex>& indices)
-{
-	_triIndices = indices;
 }
 
 inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const

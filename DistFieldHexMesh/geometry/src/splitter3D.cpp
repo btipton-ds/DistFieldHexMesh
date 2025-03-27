@@ -164,7 +164,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	int splitAxis = -1; // findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1)
-		splitAxis = findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+		splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
 	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
 		splitAxis = findBestHexIntersectionSplitAxis(parentId, tuv, ignoreAxisBits);
 #if 0
@@ -546,10 +546,8 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 	});
 
 	FastBisectionSet<Index3DId> faceIds;
-	vector< TriMeshIndex> modelTriIndices;
-	cellFunc(parentId, [&faceIds, &modelTriIndices](const Polyhedron& cell) {
+	cellFunc(parentId, [&faceIds](const Polyhedron& cell) {
 		faceIds = cell.getFaceIds();
-		modelTriIndices = cell.getModelTriIndices();
 	});
 
 	faceFunc(splittingFaceId, [&faceIds](Polygon& splittingFace) {
@@ -585,7 +583,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 	});
 
 	for (int i = 0; i < 2; i++) {
-		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], modelTriIndices, allCellFaceIds, i == 1);
+		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
 #if 1 && defined(_DEBUG)
 		cellFunc(cellId, [this, &splittingFaceId](const Polyhedron& cell) {
 			if (!cell.isClosed()) {
@@ -602,7 +600,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 }
 
-Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, const std::vector<TriMeshIndex>& modelTriIndices, 
+Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 	FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
 {
 	MTC::set<Index3DId> cellFaces;
@@ -651,7 +649,6 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 		cornerVertIds.push_back(vertId(pt));
 
 	Polyhedron newCell(cellFaces, cornerVertIds);
-	newCell.setModelTriIndices(modelTriIndices);
 	auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
 
 #if 1 && defined(_DEBUG)
@@ -770,10 +767,8 @@ Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 {
 	MTC::vector<Index3DId> srcCanonicalVertIds;
 	FastBisectionSet<Index3DId> srcFaceIds;
-	vector<TriMeshIndex> modelTriIndices;
-	cellFunc(parentId, [&srcFaceIds, &modelTriIndices, &srcCanonicalVertIds](const Polyhedron& srcCell) {
+	cellFunc(parentId, [&srcFaceIds, &srcCanonicalVertIds](const Polyhedron& srcCell) {
 		srcFaceIds = srcCell.getFaceIds();
-		modelTriIndices = srcCell.getModelTriIndices();
 		srcCanonicalVertIds = srcCell.getCanonicalVertIds();
 	});
 
@@ -791,7 +786,6 @@ Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 	}
 
 	Polyhedron newCell(newFaceIds, newCanonicalVertIds);
-	newCell.setModelTriIndices(modelTriIndices);
 	auto scratchCellId = _pScratchBlock->addCell(newCell, Index3DId());
 
 #ifdef _DEBUG

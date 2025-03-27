@@ -92,7 +92,6 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
-	, _triIndices(src._triIndices)
 {
 }
 
@@ -152,7 +151,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_layerNum = rhs._layerNum;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_exists = rhs._exists;
-	_triIndices = rhs._triIndices;
 
 	return *this;
 }
@@ -828,17 +826,22 @@ bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const
 {
 	double minCurv = 1 / params.maxCurvatureRadius_meters;
 
+	auto bBox = getBoundingBox();
 	const auto& modelMesh = getBlockPtr()->getModelMeshData();
-	for (const auto& multiTriIdx : _triIndices) {
-		const auto& pData = modelMesh[multiTriIdx.getMeshIdx()];
-		const auto& pMesh = pData->getMesh();
-		auto curv = pMesh->triCurvature(multiTriIdx.getTriIdx());
-		if (curv > minCurv) {
-			auto triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
-			for (int i = 0; i < 3; i++) {
-				auto& pt = pMesh->getVert(triIdx[i])._pt;
-				if (pointInside(pt)) {
-					return true;
+	for (auto& pData : modelMesh) {
+		auto pMesh = pData->getMesh();
+		vector<size_t> triIndices;
+		if (pMesh->findTris(bBox, triIndices)) {
+			for (size_t idx : triIndices) {
+				auto curv = pMesh->triCurvature(idx);
+				if (curv > minCurv) {
+					auto triIdx = pMesh->getTri(idx);
+					for (int i = 0; i < 3; i++) {
+						auto& pt = pMesh->getVert(triIdx[i])._pt;
+						if (pointInside(pt)) {
+							return true;
+						}
+					}
 				}
 			}
 		}
@@ -944,37 +947,6 @@ bool Polyhedron::intersectsModel() const
 
 			}
 		}
-#if 0
-		if (!_triIndices.empty()) {
-			for (const auto& faceId : _faceIds) {
-				faceFunc(faceId, [this](const Polygon& face) {
-					if (face.intersectsModel(_triIndices)) {
-						_intersectsModel = IS_TRUE;
-					}
-				});
-
-				if (_intersectsModel == IS_TRUE)
-					return true;
-			}
-		}
-#endif
-#if 0
-		// Verified this does catch triangles completely contained in the cell.
-		// But, in practice it's an expensive test that catches no additional intersections
-		auto& meshData = getBlockPtr()->getModelMeshData();
-		for (const auto& multiTriIdx : _triIndices) {
-			auto pMesh = meshData[multiTriIdx.getMeshIdx()]->getMesh();
-			auto triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
-			for (int i = 0; i < 3; i++) {
-				auto& pt = pMesh->getVert(triIdx[i])._pt;
-				if (pointInside(pt)) {
-					cout << "Polyhedron::intersectsModel pointInside hit\n";
-					_intersectsModel = IS_TRUE;
-					return true;
-				}
-			}
-		}
-#endif
 		_intersectsModel = IS_FALSE;
 	}
 
@@ -1581,34 +1553,6 @@ void Polyhedron::createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFac
 void Polyhedron::clearLayerNum()
 {
 	_layerNum = -1;
-}
-
-void Polyhedron::addMeshToTriIndices(const vector<MeshDataPtr>& meshData)
-{
-	auto bbox = getBoundingBox();
-	for (size_t i = 0; i < meshData.size(); i++) {
-		const auto& pMesh = meshData[i]->getMesh();
-		vector<size_t> triIndices;
-		if (pMesh->findTris(bbox, triIndices)) {
-			for (const auto& triIdx : triIndices) {
-				_triIndices.push_back(TriMeshIndex(i, triIdx));
-			}
-		}
-	}
-}
-
-void Polyhedron::setTriIndices(const Polyhedron& srcCell)
-{
-	const auto tol = Tolerance::sameDistTol();
-	auto bbox = getBoundingBox();
-	const auto& meshData = getBlockPtr()->getModelMeshData();
-	for (const auto& triMeshIdx : srcCell._triIndices) {
-		const auto& pMesh = meshData[triMeshIdx.getMeshIdx()]->getMesh();
-		const auto& triBbox = pMesh->getTriBBox(triMeshIdx.getTriIdx());
-		if (bbox.intersectsOrContains(triBbox, tol)) {
-			_triIndices.push_back(triMeshIdx);
-		}
-	}
 }
 
 void Polyhedron::setLayerNum(int32_t val, bool force)

@@ -1685,14 +1685,6 @@ bool Volume::read(istream& in)
 		}
 	}
 
-	const auto& meshData = _pAppData->getMeshData();
-	runThreadPool([&meshData](size_t threadNum, const BlockPtr& pBlk) {
-		pBlk->iteratePolyhedraInOrder([&meshData](const auto& cellId, Polyhedron& cell)->bool {
-			cell.addMeshToTriIndices(meshData);
-			return true;
-		});
-	}, RUN_MULTI_THREAD);
-
 	tmr.recordEntry();
 	tmr.dumpAll();
 

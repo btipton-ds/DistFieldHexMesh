@@ -638,15 +638,6 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 		});
 	}
 //	newCell.orientFaces();
-	if (newCell._triIndices.empty()) {
-		if (!parentCellId.isValid() || !polyhedronExists(parentCellId)) {
-			const auto& meshData = getModelMeshData();
-			newCell.addMeshToTriIndices(meshData);
-		} else {
-			const auto& parentCell = getPolyhedron(parentCellId);
-			newCell.setTriIndices(parentCell);
-		}
-	}
 
 #if VALIDATION_ON && defined(_DEBUG)
 	auto& ctr = newCell.calCentroid();
