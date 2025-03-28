@@ -1257,6 +1257,11 @@ void Block::updateSplitStack()
 			auto& cell = pOwner->_polyhedra[cellId];
 			if (cell.isTooComplex(params))
 				pOwner->_needToSplit.insert(cellId);
+			else {
+				double maxNonOrtho = cell.maxNonOrthogonality();
+				if (maxNonOrtho > params.maxOrthoAngleRadians)
+					pOwner->_needToSplit.insert(cellId);
+			}
 		}
 	}
 	_touchedCellIds.clear();
