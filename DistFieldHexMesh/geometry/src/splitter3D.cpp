@@ -164,17 +164,21 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	bool intersectsModel;
 	bool tooManyFaces;
-	cellFunc(parentId, [this, &intersectsModel, &tooManyFaces](const Polyhedron& cell) {
+	bool nonOrthogonal;
+	cellFunc(parentId, [this, &intersectsModel, &tooManyFaces, &nonOrthogonal](const Polyhedron& cell) {
 		intersectsModel = cell.intersectsModel();
-		auto numFaces = cell.getFaceIds().size();
-		tooManyFaces = numFaces > _params.maxCellFaces;
+		tooManyFaces = cell.getFaceIds().size() > _params.maxCellFaces;
+		nonOrthogonal = cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians;
 	});
-
-	int minIntersections = INT_MAX;
-	int bestIntersectionSplitAxis = -1;
 
 	size_t minFinalFaces = INT_MAX;
 	int bestTooManyFacesSplitAxis = -1;
+
+	size_t minFinalOrthoCells = INT_MAX;
+	int bestTooManyOrthoSplitAxis = -1;
+
+	int minIntersections = INT_MAX;
+	int bestIntersectionSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -205,6 +209,20 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 			}
 		}
 
+		if (nonOrthogonal) {
+			size_t totalFaces = 0;
+			for (auto& cellId : newCellIds) {
+				cellFunc(cellId, [this, &totalFaces](const Polyhedron& cell) {
+					if (cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians)
+						totalFaces++;
+				});
+			}
+			if (totalFaces < minFinalOrthoCells) {
+				minFinalOrthoCells = totalFaces;
+				bestTooManyOrthoSplitAxis = axis;
+			}
+		}
+
 		if (intersectsModel && _splitLevel < _params.numIntersectionDivs) {
 			int numIntersections = 0;
 			for (auto& cellId : newCellIds) {
@@ -227,7 +245,10 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	}
 
 	int splitAxis = -1;
-	if (bestTooManyFacesSplitAxis != -1)
+
+	if (bestTooManyOrthoSplitAxis != -1)
+		splitAxis = bestTooManyOrthoSplitAxis;
+	else if (bestTooManyFacesSplitAxis != -1)
 		splitAxis = bestTooManyFacesSplitAxis;
 	else if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis;
@@ -291,177 +312,6 @@ inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 inline const Vector3d& Splitter3D::getVertexPoint(const  Index3DId& id) const
 {
 	return _pBlock->getVertexPoint(id);
-}
-
-int Splitter3D::findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
-{
-	// Split the cell with a plane on each axis
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-	return -1;
-
-	double angle;
-	cellFunc(parentId, [&angle](const Polyhedron& cell) {
-		angle = cell.averageNonOrthogonality();
-	});
-
-	if (angle < _params.maxOrthoAngleRadians)
-		return -1;
-
-	int minNonOrtho = INT_MAX;
-	int bestAxis = -1;
-	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
-	{
-		int axisBit = 1 << splitAxis;
-		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-		if (ignore) {
-			continue;
-		}
-
-		Utils::ScopedRestore restore1(_testRun);
-		_testRun = true;
-		const auto scratchCellId = makeScratchCell(parentId);
-		MTC::vector<Index3DId> newCellIds;
-		// Need to do the actual split of the scratch cell with correct number of faces to do these tests.
-
-
-		makeScratchHexCells_deprecated(scratchCellId, tuv, splitAxis, newCellIds);
-		int numNonOrtho = 0;
-		for (size_t j = 0; j < 2; j++) {
-			_pScratchBlock->cellFunc(newCellIds[j], [this, &numNonOrtho, j](const Polyhedron& cell) {
-				double angle = cell.averageNonOrthogonality();
-				if (angle > _params.maxOrthoAngleRadians)
-					numNonOrtho++;
-			});
-
-		}
-		reset();
-		if (numNonOrtho == 0)
-			return splitAxis;
-		if (numNonOrtho < minNonOrtho) {
-			minNonOrtho = numNonOrtho;
-			bestAxis = splitAxis;
-		}
-	}
-
-	return bestAxis;
-}
-
-int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
-{
-# if 1
-	// Split the cell with a plane on each axis
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-	int bestSplitAxis = -1;
-
-	bool isTooComplex;
-	cellFunc(parentId, [this, &isTooComplex](const Polyhedron& cell) {
-		isTooComplex = cell.isTooComplex(_params);
-	});
-
-	if (!isTooComplex)
-		return bestSplitAxis;
-
-	size_t minFaces = INT_MAX;
-	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
-	{
-		int axisBit = 1 << splitAxis;
-		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-		if (ignore) {
-			continue;
-		}
-
-		auto scratchCellId = makeScratchCell(parentId);
-
-		Utils::ScopedRestore restore1(_testRun);
-		Utils::ScopedRestore restore2(_pBlock);
-
-		_testRun = true;
-		_pBlock = _pScratchBlock;
-
-		MTC::vector<Index3DId> newCellIds;
-		bisectHexCell(scratchCellId, tuv, splitAxis, newCellIds);
-		int numFaces = 0;
-		for (size_t j = 0; j < 2; j++) {
-			_pScratchBlock->cellFunc(newCellIds[j], [this, &numFaces](const Polyhedron& cell) {
-				if (cell.intersectsModel()) {
-					numFaces++;
-				}
-			});
-		}
-		reset();
-
-		if (numFaces < minFaces) {
-			minFaces = numFaces;
-			bestSplitAxis = splitAxis;
-		}
-	}
-
-	return bestSplitAxis;
-#else
-	FastBisectionSet<Index3DId> faceIds;
-	bool isTooComplex = false;
-	cellFunc(parentId, [this, &isTooComplex, &faceIds](const Polyhedron& cell) {
-		isTooComplex = cell.isTooComplex(_params);
-		faceIds = cell.getFaceIds();
-	});
-
-	if (!isTooComplex)
-		return -1;
-
-	int minimumOfMaxFaces = INT_MAX;
-	int bestAxis = -1;
-	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
-	{
-		int axisBit = 1 << splitAxis;
-		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-		if (ignore) {
-			continue;
-		}
-
-		MTC::vector<MTC::vector<Vector3d>> discarded;
-		MTC::vector<Vector3d> partingFacePts;
-		makeHexCellPoints(parentId, tuv, splitAxis, discarded, partingFacePts);
-		Vector3d v0 = partingFacePts[0] - partingFacePts[1];
-		Vector3d v1 = partingFacePts[2] - partingFacePts[1];
-		Vector3d n = v1.cross(v0);
-		Planed splittingPlane(partingFacePts[0], n);
-
-		int numFacesAbove = 0, numFacesBelow = 0, numCrossingFace = 0;
-		for (const auto& faceId : faceIds) {
-			int numVertsAbove = 0, numVertsBelow = 0;
-			faceFunc(faceId, [this, &splittingPlane, &numVertsAbove, &numVertsBelow](const Polygon& face) {
-				auto& vertIds = face.getVertexIds();
-				for (const auto& vertId : vertIds) {
-					const auto& pt = getVertexPoint(vertId);
-					auto dist = splittingPlane.distanceToPoint(pt, false);
-					if (dist > Tolerance::sameDistTol())
-						numVertsAbove++;
-					else if (dist < -Tolerance::sameDistTol())
-						numVertsBelow++;
-				}
-			});
-
-			if (numVertsAbove > 0 && numVertsBelow > 0) {
-				numFacesAbove++;
-				numFacesBelow++;
-			}
-			if (numVertsAbove > 0 && numVertsBelow == 0)
-				numFacesAbove++;
-			else if (numVertsBelow > 0 && numVertsAbove == 0)
-				numFacesBelow++;
-		}
-
-		int maxFaces = numFacesAbove > numFacesBelow ? numFacesAbove : numFacesBelow;
-		if (maxFaces < minimumOfMaxFaces) {
-			minimumOfMaxFaces = maxFaces;
-			bestAxis = splitAxis;
-		}
-	}
-
-	return bestAxis;
-#endif
 }
 
 void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)

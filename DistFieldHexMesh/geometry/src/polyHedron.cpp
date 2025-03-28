@@ -1038,7 +1038,7 @@ bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::se
 	return false;
 }
 
-double Polyhedron::averageNonOrthogonality() const
+double Polyhedron::maxNonOrthogonality() const
 {
 	double result = 0;
 	auto& cellCtr = calCentroid();
@@ -1051,11 +1051,10 @@ double Polyhedron::averageNonOrthogonality() const
 			if (dp > 1.0)
 				dp = 1.0;
 			double angle = acos(dp);
-			result += angle;
+			if (angle > result)
+				result = angle;
 		});
 	}
-
-	result /= _faceIds.size();
 
 	return result;
 }
