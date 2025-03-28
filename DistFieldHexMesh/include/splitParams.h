@@ -81,7 +81,7 @@ struct SplittingParams {
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
-	double maxOrthoAngleRadians = 60.0 / 180.0 * M_PI;
+	double maxOrthoAngleRadians = 65.0 / 180.0 * M_PI;
 
 	double xMinGrading = 5;
 	double xMaxGrading = 5;

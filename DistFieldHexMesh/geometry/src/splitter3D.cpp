@@ -465,6 +465,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 	FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
 {
+	// Failing on skewed cells. Need to use a full topological assembly, not the current normal based one.
 	MTC::set<Index3DId> cellFaces;
 
 	if (!useAllFaces) {
