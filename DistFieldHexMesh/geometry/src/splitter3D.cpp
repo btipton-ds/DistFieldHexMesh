@@ -163,13 +163,19 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	bool wasSplit = false;
 
 	bool intersectsModel;
-	cellFunc(parentId, [&intersectsModel](const Polyhedron& cell) {
+	bool tooManyFaces;
+	cellFunc(parentId, [this, &intersectsModel, &tooManyFaces](const Polyhedron& cell) {
 		intersectsModel = cell.intersectsModel();
+		auto numFaces = cell.getFaceIds().size();
+		tooManyFaces = numFaces > _params.maxCellFaces;
 	});
 
-	int splitAxis = -1;
 	int minIntersections = INT_MAX;
 	int bestIntersectionSplitAxis = -1;
+
+	size_t minFinalFaces = INT_MAX;
+	int bestTooManyFacesSplitAxis = -1;
+
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
 		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
@@ -186,8 +192,19 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(scratchCellId, tuv, axis, newCellIds);
 
-		if (splitAxis == -1)
-			splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+		if (tooManyFaces) {
+			size_t totalFaces = 0;
+			for (auto& cellId : newCellIds) {
+				cellFunc(cellId, [&totalFaces](const Polyhedron& cell) {
+					totalFaces += cell.getFaceIds().size();
+				});
+			}
+			if (totalFaces < minFinalFaces) {
+				minFinalFaces = totalFaces;
+				bestTooManyFacesSplitAxis = axis;
+			}
+		}
+
 		if (intersectsModel && _splitLevel < _params.numIntersectionDivs) {
 			int numIntersections = 0;
 			for (auto& cellId : newCellIds) {
@@ -209,7 +226,10 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		reset();
 	}
 
-	if (bestIntersectionSplitAxis != -1)
+	int splitAxis = -1;
+	if (bestTooManyFacesSplitAxis != -1)
+		splitAxis = bestTooManyFacesSplitAxis;
+	else if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis;
 
 	if (splitAxis != -1) {
