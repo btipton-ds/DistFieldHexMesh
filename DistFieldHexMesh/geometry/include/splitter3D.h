@@ -81,7 +81,6 @@ private:
 
 	int findBestHexOrthoganalitySplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	int findBestHexComplexSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	int findBestHexIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId makeScratchCell(const Index3DId& parentId);

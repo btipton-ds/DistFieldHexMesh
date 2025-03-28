@@ -162,15 +162,55 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 {
 	bool wasSplit = false;
 
-	int splitAxis = -1; // findBestHexOrthoganalitySplitAxis(parentId, tuv, ignoreAxisBits);
-	if (splitAxis == -1)
-		splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
-	if (splitAxis == -1 && _splitLevel < _params.numIntersectionDivs)
-		splitAxis = findBestHexIntersectionSplitAxis(parentId, tuv, ignoreAxisBits);
+	bool intersectsModel;
+	cellFunc(parentId, [&intersectsModel](const Polyhedron& cell) {
+		intersectsModel = cell.intersectsModel();
+	});
+
+	int splitAxis = -1;
+	int minIntersections = INT_MAX;
+	int bestIntersectionSplitAxis = -1;
+	for (int axis = 0; axis < 3; axis++) {
+		int axisBit = 1 << axis;
+		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
+		if (ignore)
+			continue;
+
+		auto scratchCellId = makeScratchCell(parentId);
+
+		Utils::ScopedRestore restore1(_testRun);
+		Utils::ScopedRestore restore2(_pBlock);
+		_testRun = true;
+		_pBlock = _pScratchBlock;
+
+		MTC::vector<Index3DId> newCellIds;
+		bisectHexCell(scratchCellId, tuv, axis, newCellIds);
+
+		if (splitAxis == -1)
+			splitAxis = -1; // findBestHexComplexSplitAxis(parentId, tuv, ignoreAxisBits);
+		if (intersectsModel && _splitLevel < _params.numIntersectionDivs) {
+			int numIntersections = 0;
+			for (auto& cellId : newCellIds) {
+				cellFunc(cellId, [&numIntersections](const Polyhedron& cell) {
+					if (cell.intersectsModel()) {
+						numIntersections++;
+					}
+				});
+			}
+			if (numIntersections < minIntersections) {
+				minIntersections = numIntersections;
+				bestIntersectionSplitAxis = axis;
+			}
+		}
 #if 0
-	else if (_splitLevel < _params.numCurvatureDivs)
-		doScratchHexCurvatureSplitTests(parentId, tuv, ignoreAxisBits);
+		else if (_splitLevel < _params.numCurvatureDivs)
+			doScratchHexCurvatureSplitTests(parentId, tuv, ignoreAxisBits);
 #endif
+		reset();
+	}
+
+	if (bestIntersectionSplitAxis != -1)
+		splitAxis = bestIntersectionSplitAxis;
 
 	if (splitAxis != -1) {
 #if 0
@@ -402,54 +442,6 @@ int Splitter3D::findBestHexComplexSplitAxis(const Index3DId& parentId, const Vec
 
 	return bestAxis;
 #endif
-}
-
-int Splitter3D::findBestHexIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
-{
-	// Split the cell with a plane on each axis
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-	bool hasIntersect = false;
-	int firstSplitAxis = -1;
-	for (int splitAxis = 0; splitAxis < 3; splitAxis++)
-	{
-		int axisBit = 1 << splitAxis;
-		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-		if (ignore) {
-			continue;
-		}
-
-		if (firstSplitAxis == -1)
-			firstSplitAxis = splitAxis;
-
-		auto scratchCellId = makeScratchCell(parentId);
-
-		Utils::ScopedRestore restore1(_testRun);
-		Utils::ScopedRestore restore2(_pBlock);
-
-		_testRun = true;
-		_pBlock = _pScratchBlock;
-
-		MTC::vector<Index3DId> newCellIds;
-		bisectHexCell(scratchCellId, tuv, splitAxis, newCellIds);
-		int numIntersect = 0;
-		for (size_t j = 0; j < 2; j++) {
-			_pScratchBlock->cellFunc(newCellIds[j], [this, &hasIntersect, &numIntersect, j](const Polyhedron& cell) {
-				if (cell.intersectsModel()) {
-					hasIntersect = true;
-					numIntersect++;
-				}
-			});
-		}
-		reset();
-		if (numIntersect == 1)
-			return splitAxis;
-	}
-
-	if (hasIntersect) {
-		return firstSplitAxis;
-	}
-	return -1;
 }
 
 void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
