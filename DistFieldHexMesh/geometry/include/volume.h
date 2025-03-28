@@ -179,6 +179,7 @@ private:
 	void findSharpEdgeEdges();
 
 	void reportProgress(ProgressReporter* pProgress);
+	int numThreads() const;
 
 	friend class PolymeshTables;
 

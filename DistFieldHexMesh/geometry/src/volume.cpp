@@ -1237,11 +1237,11 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys,
 
 void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
-	size_t numThreads = multiCore ? MultiCore::getNumCores() : 1;
+	size_t nThreads = multiCore ? numThreads() : 1;
 	triMeshes.resize(FT_ALL + 1);
 	for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
 		FaceDrawType ft = (FaceDrawType)j;
-		triMeshes[ft].resize(numThreads);
+		triMeshes[ft].resize(nThreads);
 	}
 
 	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, const BlockPtr& blockPtr)->bool {
@@ -1262,7 +1262,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 		return true;
 	}, multiCore);
 
-	for (size_t i = 0; i < numThreads; i++) {
+	for (size_t i = 0; i < nThreads; i++) {
 		for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
 			FaceDrawType ft = (FaceDrawType)j;
 #if 0
@@ -1824,11 +1824,19 @@ bool Volume::verifyUniquePolygons(bool multiCore) const
 	return true;
 }
 
+int Volume::numThreads() const
+{
+	const double multithreadFactor = 2.0;
+	int numThreads = (int)(multithreadFactor * MultiCore::getNumCores() + 0.5);
+	return numThreads;
+}
+
 template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 {
-	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+	if (!_pThreadPool) {
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
+	}
 
 	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
@@ -1846,7 +1854,7 @@ template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 {
 	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
 
 	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
@@ -1864,7 +1872,7 @@ template<class L>
 void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 {
 	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
 
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
@@ -1918,7 +1926,7 @@ template<class L>
 void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 {
 	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
 
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
@@ -1977,7 +1985,7 @@ template<class L>
 void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 {
 	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
 
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
@@ -2036,7 +2044,7 @@ template<class L>
 void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 {
 	if (!_pThreadPool)
-		_pThreadPool = make_shared<MultiCore::ThreadPool>(MultiCore::getNumCores());
+		_pThreadPool = make_shared<MultiCore::ThreadPool>(numThreads());
 
 	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
