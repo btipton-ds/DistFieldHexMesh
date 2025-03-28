@@ -60,6 +60,8 @@ namespace DFHM {
 using CMesh = TriMesh::CMesh;
 using CMeshPtr = TriMesh::CMeshPtr;
 
+class Model;
+
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 
@@ -148,7 +150,7 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	const std::vector<MeshDataPtr>& getModelMeshData() const;
+	const Model& getModelMeshData() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());

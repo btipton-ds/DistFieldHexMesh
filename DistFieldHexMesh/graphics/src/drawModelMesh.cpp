@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLShader.h>
 #include <graphicsCanvas.h>
 #include <meshData.h>
+#include <model.h>
 
 using namespace std;
 using namespace DFHM;
@@ -60,7 +61,7 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-void DrawModelMesh::changeViewElements(const vector<MeshDataPtr>& meshData)
+void DrawModelMesh::changeViewElements(const Model& meshData)
 {
     auto& faceVBO = _VBOs->_faceVBO;
     auto& edgeVBO = _VBOs->_edgeVBO;

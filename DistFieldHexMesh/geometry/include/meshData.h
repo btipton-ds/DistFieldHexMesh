@@ -45,22 +45,6 @@ namespace OGL
 
 namespace DFHM {
 
-	class TriMeshIndex {
-	public:
-		TriMeshIndex(size_t meshIdx = -1, size_t triIdx = -1);
-		TriMeshIndex(const TriMeshIndex& src) = default;
-
-		size_t getMeshIdx() const;
-		size_t getTriIdx() const;
-
-		bool operator < (const TriMeshIndex& rhs) const;
-		bool operator == (const TriMeshIndex& rhs) const;
-
-	private:
-		size_t _meshIdx = -1;
-		size_t _triIdx = -1;
-	};
-
 	class DrawModelMesh;
 	struct SplittingParams;
 
@@ -71,8 +55,8 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData(const AppData* pAppData);
-		MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
+		MeshData();
+		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
 		void clear();
@@ -87,9 +71,6 @@ namespace DFHM {
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
 
-		void makeOGLTess(std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-		void changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw);
-
 		bool isActive() const;
 		void setActive(bool val);
 
@@ -100,12 +81,7 @@ namespace DFHM {
 		const OGL::IndicesPtr getNormalTess() const;
 
 	private:
-
-		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		const OGL::IndicesPtr createFaceTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
-
-		// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-		void setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+		friend class AppData;
 
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
@@ -119,7 +95,6 @@ namespace DFHM {
 
 		bool _active = true;
 
-		const AppData* _pAppData;
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
 
@@ -170,37 +145,6 @@ namespace DFHM {
 	inline const OGL::IndicesPtr MeshData::getNormalTess() const
 	{
 		return _normalTess;
-	}
-
-	inline TriMeshIndex::TriMeshIndex(size_t meshIdx, size_t triIdx)
-		: _meshIdx(meshIdx)
-		, _triIdx(triIdx)
-	{
-	}
-
-	inline size_t TriMeshIndex::getMeshIdx() const
-	{
-		return _meshIdx;
-	}
-
-	inline size_t TriMeshIndex::getTriIdx() const
-	{
-		return _triIdx;
-	}
-
-	inline bool TriMeshIndex::operator < (const TriMeshIndex& rhs) const
-	{
-		if (_meshIdx < rhs._meshIdx)
-			return true;
-		else if (_meshIdx > rhs._meshIdx)
-			return false;
-
-		return _triIdx < rhs._triIdx;
-	}
-
-	inline bool TriMeshIndex::operator == (const TriMeshIndex& rhs) const
-	{
-		return _meshIdx == rhs._meshIdx && _triIdx == rhs._triIdx;
 	}
 
 }

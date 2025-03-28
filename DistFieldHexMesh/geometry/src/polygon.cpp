@@ -48,7 +48,9 @@ This file is part of the DistFieldHexMesh application/library.
 #include <io_utils.h>
 #include <tolerances.h>
 #include <splitParams.h>
+#include <triMeshIndex.h>
 #include <meshData.h>
+#include <model.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
@@ -637,15 +639,13 @@ bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
-		const auto& modelMesh = getBlockPtr()->getModelMeshData();
+		const auto& model = getBlockPtr()->getModelMeshData();
 		for (const auto& triIdx : triIndices) {
-			const auto& pData = modelMesh[triIdx.getMeshIdx()];
-			const auto& pMesh = pData->getMesh();
-			const auto& tri = pMesh->getTri(triIdx.getTriIdx());
+			const auto tri = model.getTri(triIdx);
 			const Vector3d* pts[] = {
-				&pMesh->getVert(tri[0])._pt,
-				&pMesh->getVert(tri[1])._pt,
-				&pMesh->getVert(tri[2])._pt,
+				&model.getVert(tri[0])._pt,
+				&model.getVert(tri[1])._pt,
+				&model.getVert(tri[2])._pt,
 			};
 
 			iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {

@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <OGLMultiVboHandler.h>
 #include <splitParams.h>
+#include <model.h>
 #include <volume.h>
 
 namespace DFHM {
@@ -91,8 +92,9 @@ public:
 
     std::wstring getCacheDirName() const;
 
-    const std::vector<MeshDataPtr>& getMeshData() const;
-    MeshDataPtr getMeshData(const std::wstring& name) const;
+    const Model& getMeshData() const;
+    MeshDataConstPtr getMeshData(const std::wstring& name) const;
+    MeshDataPtr getMeshData(const std::wstring& name);
 
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
@@ -104,13 +106,22 @@ private:
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
+
+    void makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+    void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
+
+    // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
+    const OGL::IndicesPtr createFaceTessellation(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
+    void setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
-    std::vector<MeshDataPtr> _modelMeshData;
+    Model _model;
+
     VolumePtr _pVolume;
     const OGL::IndicesPtr 
         _modelFaceTess, 
@@ -134,9 +145,9 @@ inline const SplittingParams& AppData::getParams() const
     return _params;
 }
 
-inline const std::vector<MeshDataPtr>& AppData::getMeshData() const
+inline const Model& AppData::getMeshData() const
 {
-    return _modelMeshData;
+    return _model;
 }
 
 inline VolumePtr AppData::getVolume() const

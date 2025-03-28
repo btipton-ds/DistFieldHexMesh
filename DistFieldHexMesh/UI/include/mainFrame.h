@@ -56,9 +56,6 @@ TODO
 Complex spliting to support the new states
 2D face curvature splitting using model triangles intersecting mesh faces.
 
-Remove individual search trees per mesh and replace with a single search tree for all meshes
-    Then redo gap sampling, ignore sharp verts and edges inside solids
-
 Conditional intersection splitting 1 hex into 2 wedges
 Splitting of wedges
 
@@ -89,6 +86,9 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 ****************************************************************************************************************************************
 Already done
 ****************************************************************************************************************************************
+
+Remove individual search trees per mesh and replace with a single search tree for all meshes
+    Then redo gap sampling, ignore sharp verts and edges inside solids
 
 Layer counting is still off
 

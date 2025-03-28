@@ -91,6 +91,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/fixedPoint.cpp"
 	"geometry/src/gradingOp.cpp"
 	"geometry/src/meshData.cpp"
+	"geometry/src/model.cpp"
 	"geometry/src/objectPool.cpp" 
 	"geometry/src/polygon.cpp"
 	"geometry/src/polygonSearchKey.cpp"
@@ -105,11 +106,11 @@ add_executable (DistFieldHexMesh
 	"graphics/src/drawMesh.cpp"
 	"graphics/src/drawHexMesh.cpp" 
 	"graphics/src/drawModelMesh.cpp"
+	"graphics/src/graphicsVBORec.cpp"
 
 	"UI/src/createBaseMeshDlg.cpp"
 	"UI/src/divideHexMeshDlg.cpp"
 	"UI/src/graphicsCanvas.cpp"
-	"UI/src/graphicsVBORec.cpp"
 	"UI/src/graphicsDebugCanvas.cpp"
 	"UI/src/mainFrame.cpp"
 	"UI/src/makeBlockDlg.cpp"
@@ -128,36 +129,6 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/rgbaColor.cpp"
 )
 
-add_executable (TestDFM         
-	
-    "src/index3D.cpp"
-	"src/logger.cpp"
-	"src/polymeshTables.cpp"
-	"src/splitParams.cpp"
-	"src/utils.cpp"
-
-	"geometry/src/block.cpp"	
- 	"geometry/src/edge.cpp" 
-	"geometry/src/edgeKey.cpp"
-	"geometry/src/gradingOp.cpp"
-	"geometry/src/objectPool.cpp" 
-	"geometry/src/polygon.cpp"
-	"geometry/src/polygonSearchKey.cpp"
-	"geometry/src/polyHedron.cpp"	
-	"geometry/src/splitter3D.cpp" 
-	"geometry/src/splitter2D.cpp"
-	"geometry/src/unalignedBBox.cpp"
-	"geometry/src/vertexSpatialTree.cpp"
-	"geometry/src/vertex.cpp"
-	"geometry/src/volume.cpp"
-
- 	"test/src/testBlock.cpp" 
-	"test/src/testMain.cpp"
-	"test/src/testPoolMemory.cpp" 
-	"test/src/testMultiCore.cpp"
-
-	"../../utilities/threads/src/MultiCoreUtil.cpp"
-	"../../utilities/threads/src/local_heap.cpp")
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -207,6 +178,40 @@ target_link_libraries("DistFieldHexMesh"
 	PUBLIC wx_gtk3u_gl-3.2
 )
 endif(WIN32)
+
+add_executable (TestDFM         
+    "src/index3D.cpp"
+	"src/logger.cpp"
+	"src/polymeshTables.cpp"
+	"src/splitParams.cpp"
+	"src/utils.cpp"
+
+	"geometry/src/block.cpp"	
+    "geometry/src/edge.cpp"
+	"geometry/src/edgeKey.cpp"
+	"geometry/src/fixedPoint.cpp"
+	"geometry/src/gradingOp.cpp"
+	"geometry/src/meshData.cpp"
+	"geometry/src/model.cpp"
+	"geometry/src/objectPool.cpp" 
+	"geometry/src/polygon.cpp"
+	"geometry/src/polygonSearchKey.cpp"
+	"geometry/src/polyHedron.cpp"
+    "geometry/src/splitter2D.cpp" 
+	"geometry/src/splitter3D.cpp"
+	"geometry/src/unalignedBBox.cpp"
+	"geometry/src/vertexSpatialTree.cpp"
+	"geometry/src/vertex.cpp"
+	"geometry/src/volume.cpp"
+
+ 	"../../utilities/threads/src/MultiCoreUtil.cpp"
+	"../../utilities/threads/src/local_heap.cpp"
+
+ 	"test/src/testBlock.cpp" 
+	"test/src/testMain.cpp"
+	"test/src/testPoolMemory.cpp" 
+	"test/src/testMultiCore.cpp"
+)
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh

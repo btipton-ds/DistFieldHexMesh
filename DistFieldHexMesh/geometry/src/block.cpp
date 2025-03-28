@@ -173,7 +173,7 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-const std::vector<MeshDataPtr>& Block::getModelMeshData() const
+const Model& Block::getModelMeshData() const
 {
 	auto& pAppData = _pVol->getAppData();
 	return pAppData->getMeshData();

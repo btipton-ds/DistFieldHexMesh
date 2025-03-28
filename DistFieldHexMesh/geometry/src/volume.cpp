@@ -660,7 +660,7 @@ void Volume::gradeSurroundingBlocks(const SplittingParams& params, ProgressRepor
 	reportProgress(pReporter);
 }
 
-void Volume::divideHexMesh(vector<MeshDataPtr>& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideHexMesh(const Model& model, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	if (_blocks.empty() || _blocks.size() != _volDim[0] * _volDim[1] * _volDim[2]) {
 		assert(!"Volume is not ready.");
@@ -675,7 +675,7 @@ void Volume::divideHexMesh(vector<MeshDataPtr>& meshData, const SplittingParams&
 	vector<size_t> sharpEdges;
 	{
 
-		for (auto& pData : meshData) {
+		for (auto& pData : model) {
 			const auto& pMesh = pData->getMesh();
 			pMesh->buildCentroids(true);
 			pMesh->buildNormals(true);

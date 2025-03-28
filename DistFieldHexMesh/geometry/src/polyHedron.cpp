@@ -51,6 +51,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 #include <meshData.h>
+#include <model.h>
+#include <triMeshIndex.h>
 #include <splitter2D.h>
 
 using namespace std;
@@ -828,24 +830,22 @@ bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const
 
 	auto bBox = getBoundingBox();
 	const auto& modelMesh = getBlockPtr()->getModelMeshData();
-	for (auto& pData : modelMesh) {
-		auto pMesh = pData->getMesh();
-		vector<size_t> triIndices;
-		if (pMesh->findTris(bBox, triIndices)) {
-			for (size_t idx : triIndices) {
-				auto curv = pMesh->triCurvature(idx);
-				if (curv > minCurv) {
-					auto triIdx = pMesh->getTri(idx);
-					for (int i = 0; i < 3; i++) {
-						auto& pt = pMesh->getVert(triIdx[i])._pt;
-						if (pointInside(pt)) {
-							return true;
-						}
+	vector<TriMeshIndex> triIndices;
+	if (modelMesh.findTris(bBox, triIndices)) {
+		for (const auto& idx : triIndices) {
+			auto curv = modelMesh.triCurvature(idx);
+			if (curv > minCurv) {
+				auto triIdx = modelMesh.getTri(idx);
+				for (int i = 0; i < 3; i++) {
+					auto& pt = modelMesh.getVert(triIdx[i])._pt;
+					if (pointInside(pt)) {
+						return true;
 					}
 				}
 			}
 		}
 	}
+
 	return false;
 }
 
@@ -925,28 +925,21 @@ bool Polyhedron::intersectsModel() const
 	if (_intersectsModel == IS_UNKNOWN) {
 		auto bbox = getBoundingBox();
 		auto& meshData = getBlockPtr()->getModelMeshData();
-		for (size_t i = 0; i < meshData.size(); i++) {
-			auto& pData = meshData[i];
-			auto pMesh = pData->getMesh();
-			vector<size_t> indices;
-			if (pMesh->findTris(bbox, indices)) {
-				vector<TriMeshIndex> triIndices;
-				for (size_t j : indices)
-					triIndices.push_back(TriMeshIndex(i, j));
-
-				for (const auto& faceId : _faceIds) {
-					faceFunc(faceId, [this, &triIndices](const Polygon& face) {
-						if (face.intersectsModel(triIndices)) {
-							_intersectsModel = IS_TRUE;
-						}
+		vector<TriMeshIndex> triIndices;
+		if (meshData.findTris(bbox, triIndices)) {
+			for (const auto& faceId : _faceIds) {
+				faceFunc(faceId, [this, &triIndices](const Polygon& face) {
+					if (face.intersectsModel(triIndices)) {
+						_intersectsModel = IS_TRUE;
+					}
 					});
 
-					if (_intersectsModel == IS_TRUE)
-						return true;
-				}
-
+				if (_intersectsModel == IS_TRUE)
+					return true;
 			}
+
 		}
+
 		_intersectsModel = IS_FALSE;
 	}
 
@@ -1436,9 +1429,6 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 
 	_needsCurvatureCheck = false;
 	const auto& meshData = getBlockPtr()->getModelMeshData();
-
-	if (meshData.empty())
-		return 0;
 
 	for (const auto& pData : meshData) {
 		auto pTriMesh = pData->getMesh();

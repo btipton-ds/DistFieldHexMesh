@@ -38,6 +38,7 @@ namespace OGL
 }
 
 namespace DFHM {
+	class Model;
 	class MeshData;
 	using MeshDataPtr = std::shared_ptr<MeshData>;
 
@@ -56,7 +57,7 @@ namespace DFHM {
 		DrawModelMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawModelMesh();
 
-		void changeViewElements(const std::vector<MeshDataPtr>& meshData);
+		void changeViewElements(const Model& meshData);
 
 		bool showSharpEdges() const;
 		bool toggleShowSharpEdges();

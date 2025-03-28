@@ -41,7 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <appData.h>
 #include <tm_math.h>
-#include <triMesh.h>
+#include <triMesh.hpp>
 #include <readWriteStl.h>
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
@@ -82,7 +82,7 @@ void AppData::preDestroy()
 {
     // Clear these to avoid infinite loop on shared_ptr destruction. Ugly, but gets around hang on exit.
     _pVolume = nullptr;
-    _modelMeshData.clear();
+    _model.clear();
 }
 
 size_t AppData::numBytes() const
@@ -91,12 +91,7 @@ size_t AppData::numBytes() const
     if (_pVolume)
         result += _pVolume->numBytes();
 
-    result += _modelMeshData.size() * sizeof (pair<wstring, MeshDataPtr>);
-    for (const auto& pMeshData : _modelMeshData) {
-        result += sizeof(std::wstring);
-        result += pMeshData->getName().length() * sizeof(wchar_t);
-        result += pMeshData->getMesh()->numBytes();
-    }
+    result += _model.numBytes();
 
     if (_pVolume)
         result += _pVolume->numBytes();
@@ -174,8 +169,8 @@ bool AppData::doImportMesh()
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
-        MeshDataPtr pMeshData = make_shared<MeshData>(this, pMesh, name);
-        _modelMeshData.push_back(pMeshData);
+        MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name);
+        _model.add(pMeshData);
 
         updateModelTess();
         return true;
@@ -204,8 +199,8 @@ void AppData::updateModelTess()
 
     edgeVBO.beginEdgeTesselation();
     faceVBO.beginFaceTesselation();
-    for (auto& pData : _modelMeshData) {
-        pData->makeOGLTess(pDrawModelMesh);
+    for (auto& pData : _model) {
+        makeOGLTess(pData, _params, pDrawModelMesh);
     }
     faceVBO.endFaceTesselation(false);
     edgeVBO.endEdgeTesselation();
@@ -239,10 +234,10 @@ void AppData::writeDHFM() const
 
     _params.write(out);
 
-    size_t numMeshes = _modelMeshData.size();
+    size_t numMeshes = _model.size();
     out.write((char*)&numMeshes, sizeof(numMeshes));
 
-    for (const auto& pData : _modelMeshData) {
+    for (const auto& pData : _model) {
         pData->write(out);
     }
 
@@ -262,13 +257,21 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     in.read((char*)&version, sizeof(version));
     _params.read(in);
 
-    size_t numMeshes = _modelMeshData.size();
+    size_t numMeshes = _model.size();
     in.read((char*)&numMeshes, sizeof(numMeshes));
 
+    vector<MeshDataPtr> meshes;
+    CBoundingBox3Dd bbox;
     for (size_t i = 0; i < numMeshes; i++) {
-        auto pData = make_shared<MeshData>(this);
+        auto pData = make_shared<MeshData>();
         pData->read(in);
-        _modelMeshData.push_back(pData);
+        meshes.push_back(pData);
+        bbox.merge(pData->getMesh()->getBBox());
+    }
+
+    _model.setBounds(bbox);
+    for (auto& pData : meshes) {
+        _model.add(pData);
     }
 
     updateModelTess();
@@ -432,7 +435,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pData : _modelMeshData) {
+    for (const auto& pData : _model) {
         result.merge(pData->getMesh()->getBBox());
     }
 
@@ -450,7 +453,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 CBoundingBox3Dd AppData::getMeshBoundingBox() const
 {
     CBoundingBox3Dd result;
-    for (const auto& pData : _modelMeshData) {
+    for (const auto& pData : _model) {
         if (pData->isActive())
             result.merge(pData->getMesh()->getBBox());
     }
@@ -535,7 +538,7 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 
     CBoundingBox3Dd bboxOriented;
 
-    for (const auto& pData : _modelMeshData) {
+    for (const auto& pData : _model) {
         const auto pMesh = pData->getMesh();
         for (size_t i = 0; i < pMesh->numVertices(); i++) {
             const Vector3d& pt = pMesh->getVert(i)._pt;
@@ -640,9 +643,121 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     _pVolume->setVolDim(_params.volDivs, true);
 }
 
-MeshDataPtr AppData::getMeshData(const std::wstring& name) const
+void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
-    for (const auto& pData : _modelMeshData) {
+    auto pMesh = pData->getMesh();
+    //    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
+    pMesh->buildCentroids();
+    pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
+    //	_pMesh->calGaps();
+
+    pData->_faceTess = createFaceTessellation(pData, pDrawModelMesh);
+#if 0
+    CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
+    if (pSharpVertMesh)
+        pData->_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
+#endif
+
+    setEdgeSegTessellation(pData, _params, pDrawModelMesh);
+
+}
+
+void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw)
+{
+    if (!pData->isActive())
+        return;
+
+    auto& VBOs = pDraw->getVBOs();
+    auto& faceVBO = VBOs->_faceVBO;
+    auto& edgeVBO = VBOs->_edgeVBO;
+
+    if (pDraw->showFaces()) {
+        faceVBO.includeElementIndices(DS_MESH_FACES, pData->getFaceTess());
+    }
+    if (pDraw->showEdges()) {
+        edgeVBO.includeElementIndices(DS_MESH_EDGES, pData->getAllEdgeTess());
+    }
+}
+
+const OGL::IndicesPtr AppData::createFaceTessellation(const MeshDataPtr& pData, shared_ptr<DrawModelMesh>& pDrawModelMesh)
+{
+    auto pMesh = pData->getMesh();
+    const auto& points = pMesh->getGlTriPoints();
+    const auto& normals = pMesh->getGlTriNormals(false);
+    const auto& parameters = pMesh->getGlTriParams();
+    const auto& vertIndices = pMesh->getGlTriIndices();
+
+    auto colorFunc = [](double curvature, float rgb[3])->bool {
+        rgbaColor c = curvatureToColor(curvature);
+        for (int i = 0; i < 3; i++)
+            rgb[i] = c._rgba[i] / 255.0f;
+        return true;
+        };
+
+    const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
+    auto meshId = pMesh->getId();
+    auto changeNumber = pMesh->getChangeNumber();
+
+    auto& VBOs = pDrawModelMesh->getVBOs();
+    auto& faceVBO = VBOs->_faceVBO;
+    return faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
+}
+
+void AppData::setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
+{
+    const auto sinSharpAngle = params.getSinSharpAngle();
+
+    vector<float> points, colors;
+    vector<unsigned int> indices, sharpIndices, smoothIndices;
+    auto colorFunc = [](float curvature, float rgb[3])->bool {
+        rgbaColor c;
+        if (curvature < 0)
+            c = rgbaColor(1, 0, 0);
+        else if (curvature < 1.0e-6)
+            c = rgbaColor(0, 0, 0);
+        else
+            c = curvatureToColor(curvature);
+        for (int i = 0; i < 3; i++)
+            rgb[i] = c._rgba[i] / 255.0f;
+        return true;
+        };
+
+    auto pMesh = pData->getMesh();
+    bool includeSmooth = true;
+    pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+    indices = smoothIndices;
+    indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
+
+    auto& VBOs = pDrawModelMesh->getVBOs();
+
+    auto meshId = pMesh->getId();
+    auto changeNumber = pMesh->getChangeNumber();
+    auto& edgeVBO = VBOs->_edgeVBO;
+    pData->_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
+    pData->_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
+    pData->_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
+
+    vector<float> normPts;
+    vector<unsigned int> normIndices;
+    pData->getEdgeData(normPts, normIndices);
+
+    if (!normPts.empty()) {
+        pData->_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
+    }
+}
+
+MeshDataConstPtr AppData::getMeshData(const std::wstring& name) const
+{
+    for (const auto& pData : _model) {
+        if (pData->getName() == name)
+            return pData;
+    }
+    return nullptr;
+}
+
+MeshDataPtr AppData::getMeshData(const std::wstring& name)
+{
+    for (const auto& pData : _model) {
         if (pData->getName() == name)
             return pData;
     }
@@ -660,7 +775,7 @@ void AppData::clear(bool includeModelData)
 
     if (includeModelData) {
         pCanvas->clearModel();
-        _modelMeshData.clear();
+        _model.clear();
     }
 }
 
@@ -710,10 +825,10 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
         dlg.getParams(_params);
 
-        size_t numProgSteps = 1 + _modelMeshData.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
+        size_t numProgSteps = 1 + _model.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
-            _pVolume->divideHexMesh(_modelMeshData, _params, _pMainFrame, RUN_MULTI_THREAD);
+            _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
 
             buildHexFaceTables();
             _pMainFrame->reportProgress();

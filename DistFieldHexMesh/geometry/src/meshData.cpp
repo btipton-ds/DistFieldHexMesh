@@ -24,6 +24,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
+
 #include <triMesh.hpp>
 #include <appData.h>
 #include <OGLShader.h>
@@ -36,14 +37,12 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const AppData* pAppData)
-: _pAppData(pAppData)
+MeshData::MeshData()
 {
 }
 
-MeshData::MeshData(const AppData* pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
-	: _pAppData(pAppData)
-	, _name(name)
+MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
+	: _name(name)
 	, _pMesh(pMesh)
 {
 }
@@ -120,106 +119,6 @@ void MeshData::read(std::istream& in)
 
 	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
-}
-
-// vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-const OGL::IndicesPtr MeshData::createFaceTessellation(const TriMesh::CMeshPtr& pMesh, shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-	const auto& points = pMesh->getGlTriPoints();
-	const auto& normals = pMesh->getGlTriNormals(false);
-	const auto& parameters = pMesh->getGlTriParams();
-	const auto& vertIndices = pMesh->getGlTriIndices();
-
-	auto colorFunc = [](double curvature, float rgb[3])->bool {
-		rgbaColor c = curvatureToColor(curvature);
-		for (int i = 0; i < 3; i++)
-			rgb[i] = c._rgba[i] / 255.0f;
-		return true;
-		};
-
-	const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
-	auto meshId = pMesh->getId();
-	auto changeNumber = pMesh->getChangeNumber();
-
-	auto& VBOs = pDrawModelMesh->getVBOs();
-	auto& faceVBO = VBOs->_faceVBO;
-	return faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
-}
-
-void MeshData::setEdgeSegTessellation(const TriMesh::CMeshPtr& pMesh, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-	const auto& params = _pAppData->getParams();
-	const auto sinSharpAngle = params.getSinSharpAngle();
-
-	vector<float> points, colors;
-	vector<unsigned int> indices, sharpIndices, smoothIndices;
-	auto colorFunc = [](float curvature, float rgb[3])->bool {
-		rgbaColor c;
-		if (curvature < 0)
-			c = rgbaColor(1, 0, 0);
-		else if (curvature < 1.0e-6)
-			c = rgbaColor(0, 0, 0);
-		else
-			c = curvatureToColor(curvature);
-		for (int i = 0; i < 3; i++)
-			rgb[i] = c._rgba[i] / 255.0f;
-		return true;
-		};
-
-	bool includeSmooth = true;
-	pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
-	indices = smoothIndices;
-	indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
-
-	auto& VBOs = pDrawModelMesh->getVBOs();
-
-	auto meshId = pMesh->getId();
-	auto changeNumber = pMesh->getChangeNumber();
-	auto& edgeVBO = VBOs->_edgeVBO;
-	_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
-	_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
-	_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
-
-	vector<float> normPts;
-	vector<unsigned int> normIndices;
-	getEdgeData(normPts, normIndices);
-
-	if (!normPts.empty()) {
-		_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
-
-	}
-}
-
-void MeshData::makeOGLTess(shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-	//    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
-	_pMesh->buildCentroids();
-	_pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
-//	_pMesh->calGaps();
-
-	CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
-	_faceTess = createFaceTessellation(_pMesh, pDrawModelMesh);
-	if (pSharpVertMesh)
-		_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
-
-	setEdgeSegTessellation(_pMesh, pDrawModelMesh);
-}
-
-void MeshData::changeViewElements(std::shared_ptr<DrawModelMesh>& pDraw)
-{
-	if (!isActive())
-		return;
-
-	auto& VBOs = pDraw->getVBOs();
-	auto& faceVBO = VBOs->_faceVBO;
-	auto& edgeVBO = VBOs->_edgeVBO;
-
-	if (pDraw->showFaces()) {
-		faceVBO.includeElementIndices(DS_MESH_FACES, getFaceTess());
-	}
-	if (pDraw->showEdges()) {
-		edgeVBO.includeElementIndices(DS_MESH_EDGES, getAllEdgeTess());
-	}
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
@@ -307,15 +206,13 @@ CMeshPtr MeshData::getSharpVertMesh() const
 
 wstring MeshData::getCacheFilename() const
 {
-	auto tmpDir = _pAppData->getCacheDirName();
-	wstring filename = tmpDir + L"/" + _name + L".dfhm_tmp_mesh";
-	return filename;
+	return L"";
 }
 
 bool MeshData::isMeshCashed() const
 {
 	auto filename = getCacheFilename();
-	return wxFileExists(filename);
+	return false;// wxFileExists(filename);
 }
 
 void MeshData::cacheMesh() {

@@ -58,7 +58,7 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	MeshDataPtr pData = pAppData->getMeshData(name);
+	auto pData = pAppData->getMeshData(name);
 
 	if (pData) {
 		wxMenu* contextMenu = new wxMenu;
@@ -98,7 +98,7 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 {
 	auto name = getCurrentItemName();
 	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData(name);
+	const auto pData = pAppData->getMeshData(name);
 	if (pData) {
 		pData->setActive(!pData->isActive());
 		_pMainFrame->getCanvas()->changeViewElements();
@@ -145,10 +145,11 @@ void ObjectTreeCtrl::OnSplitLongTris(wxCommandEvent& event)
 	const auto& pCanvas = _pMainFrame->getCanvas();
 
 	if (pData) {
+		auto dirName = pAppData->getCacheDirName();
 		SplitLongTrisDlg dlg(this, 1, wxString("Split long tris"), wxPoint(40, 40));
 		if (dlg.ShowModal() == wxID_OK) {
 			double maxLen = dlg.getMaxLength();
-			pData->splitLongTris(pAppData->getParams(), maxLen);
+//			pData->splitLongTris(dirName, pAppData->getParams(), maxLen);
 			pAppData->updateModelTess();
 			pCanvas->changeViewElements();
 		}
