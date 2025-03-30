@@ -1012,7 +1012,7 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 	t = dist1 / len0;
 
 	bool inBounds = tol < t && t < 1 - tol;
-#if 1 // Verification code
+#if VALIDATION_ON && defined(_DEBUG) // Verification code
 	if (inBounds) {
 		Vector2d vTest = hitPt - _vals[0];
 		double testDist = vTest.dot(yAxis);

@@ -41,7 +41,8 @@ Edge::Edge(const EdgeKey& src, const Block* pBlock)
 	: EdgeKey(src)
 	, _pBlock(const_cast<Block*>(pBlock))
 {
-	initFaceIds();
+	if (_pBlock)
+		initFaceIds();
 }
 
 void Edge::initFaceIds()

@@ -73,11 +73,14 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
-	bool conditionalComplexHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, MTC::set<Index3DId>& newCellsToSplit);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
+	void addFaceToLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
+	void removeFacefromLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
+	Index3DId findConnectedFaceId(const std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
+	void verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const Index3DId& splittingFaceId) const;
 
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
