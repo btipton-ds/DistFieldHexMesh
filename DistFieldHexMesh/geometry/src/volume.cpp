@@ -282,7 +282,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 
 	Vector3<double> tuv;
 	bool inBounds = TRI_LERP_INV(point, modelCorners, tuv, tol);
-#if 0 && defined(_DEBUG)
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (fabs(tuv[0]) < 1.0e-8 && fabs(tuv[2]) < 1.0e-8) {
 		int dbgBreak = 1;
 	}
@@ -1213,15 +1213,6 @@ void Volume::createAdHocBlockSearchTree()
 		auto tstIdx = determineOwnerBlockIdx(ctr); // This uses the newly added tree entry
 		assert(tstIdx == blkIdx);
 	}
-
-#if 0 && defined(_DEBUG)
-	for (size_t linIdx = 0; linIdx < _blocks.size(); linIdx++) {
-		const auto& pBlk = _blocks[linIdx];
-		if (!pBlk->verifyDeterminOwnerBlockIndex()) {
-			assert(!"verifyDeterminOwnerBlockIndex failed");
-		}
-	}
-#endif
 }
 
 void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
@@ -1359,48 +1350,6 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 	vector<Vector3d> pts;
 	set<TriMesh::CEdge> modelEdgeSet;
 	VertSearchTree_size_t_8 pointToIdxMap(_modelBoundingBox);
-
-#if 0
-	if (!modelTriIndices.empty()) {
-		const double sinSharp = sin(SHARP_EDGE_ANGLE_RADIANS);
-		for (auto triIdx : modelTriIndices) {
-			const auto& tri = _pModelTriMesh->getTri(triIdx);
-			if (useEdges) {
-				for (int i = 0; i < 3; i++) {
-					int j = (i + 1) % 3;
-					TriMesh::CEdge edge(tri[i], tri[j]);
-					if (!modelEdgeSet.contains(edge)) {
-						size_t edgeIdx = _pModelTriMesh->findEdge(edge);
-						if (!sharpOnly || _pModelTriMesh->isEdgeSharp(edgeIdx, sinSharp)) {
-							modelEdgeSet.insert(edge);
-							for (int k = 0; k < 2; k++) {
-								size_t modVertIdx = edge._vertIndex[k];
-								const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-								size_t vertIdx;
-								if (!pointToIdxMap.find(pt, vertIdx)) {
-									vertIdx = pts.size();
-									pts.push_back(pt);
-									pointToIdxMap.add(pt, vertIdx);
-								}
-							}
-						}
-					}
-				}
-			} else {
-				for (int i = 0; i < 3; i++) {
-					size_t modVertIdx = tri[i];
-					const auto& pt = _pModelTriMesh->getVert(modVertIdx)._pt;
-					size_t vertIdx;
-					if (!pointToIdxMap.find(pt, vertIdx)) {
-						vertIdx = pts.size();
-						pts.push_back(pt);
-						pointToIdxMap.add(pt, vertIdx);
-					}
-				}
-			}
-		}
-	}
-#endif
 
 	for (const auto& pair : cellToFaceIdsMap) {
 		for (const auto& faceId : pair.second) {

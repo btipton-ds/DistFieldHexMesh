@@ -79,12 +79,18 @@ Polygon::Polygon(const Polygon& src)
 	, _vertexIds(src._vertexIds)
 	, _cellIds(src._cellIds)
 	, _isConvex(src._isConvex)
-	, _cachedIntersectsModel(src._cachedIntersectsModel)
-	, _cachedArea(src._cachedArea)
-	, _cachedCentroid(src._cachedCentroid)
-	, _cachedNormal(src._cachedNormal)
 {
 	assert(verifyUnique());
+}
+
+Polygon::Polygon(const Block* pBlock, const Polygon& src)
+	: ObjectPoolOwnerUser(src)
+	, PolygonSearchKey(pBlock, src._vertexIds)
+	, _vertexIds(src._vertexIds)
+	, _cellIds(src._cellIds)
+	, _isConvex(src._isConvex)
+{
+
 }
 
 void Polygon::connectVertEdgeTopology() {
@@ -227,32 +233,6 @@ bool Polygon::load(istream& in, size_t idSelf)
 {
 
 	return true;
-}
-
-const PolygonSearchKey& Polygon::getSearchKey() const
-{
-	sortIds();
-	return *this;
-}
-
-void Polygon::sortIds() const
-{
-	const Block* pBlock = nullptr;
-	if (getId().isValid())
-		pBlock = getBlockPtr();
-	PolygonSearchKey::set(pBlock, _vertexIds);
-}
-
-bool Polygon::operator < (const Polygon& rhs) const
-{
-	sortIds();
-	rhs.sortIds();
-	return PolygonSearchKey::operator < (rhs);
-}
-
-bool Polygon::operator == (const Polygon& rhs) const
-{
-	return !operator <(rhs) && !rhs.operator<(*this);
 }
 
 bool Polygon::isBlockBoundary() const
@@ -742,6 +722,14 @@ void Polygon::addCellId(const Index3DId& cellId)
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(4, 6, 1, 0) == cellId) {
 		int dbgBreak = 1;
+	}
+	std::vector<Planed> boundaryPlanes;
+	getOurBlockPtr()->getVolume()->getModelBoundaryPlanes(boundaryPlanes);
+	auto pl = calPlane();
+	for (auto& bpl : boundaryPlanes) {
+		if (bpl.isCoincident(pl, Tolerance::sameDistTol(), Tolerance::planeCoincidentCrossProductTol())) {
+			assert(_cellIds.empty());
+		}
 	}
 #endif
 

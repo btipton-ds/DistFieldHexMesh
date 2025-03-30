@@ -48,32 +48,30 @@ namespace {
 MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* pBlock, const MTC::vector<Index3DId>& vertexIds)
 {
 	MTC::vector<Index3DId> tmp;
+	assert(pBlock);
+	vector<bool> colin;
+	vector<const Vector3d*> pts;
+	colin.resize(vertexIds.size());
+	pts.resize(vertexIds.size());
 
-	if (pBlock) {
-		vector<bool> colin;
-		vector<const Vector3d*> pts;
-		colin.resize(vertexIds.size());
-		pts.resize(vertexIds.size());
+	for (size_t i = 0; i < vertexIds.size(); i++)
+		pts[i] = &pBlock->getVertexPoint(vertexIds[i]);
 
-		for (size_t i = 0; i < vertexIds.size(); i++)
-			pts[i] = &pBlock->getVertexPoint(vertexIds[i]);
-
-		for (size_t j = 0; j < vertexIds.size(); j++) {
-			size_t i = (j + vertexIds.size() - 1) % vertexIds.size();
-			size_t k = (j + 1) % vertexIds.size();
-			colin[j] = isColinear(*pts[i], *pts[j], *pts[k]);
-		}
-		for (size_t i = 0; i < colin.size(); i++) {
-			if (!colin[i])
-				tmp.push_back(vertexIds[i]);
-		}
-	} else {
-		tmp = vertexIds;
+	for (size_t j = 0; j < vertexIds.size(); j++) {
+		size_t i = (j + vertexIds.size() - 1) % vertexIds.size();
+		size_t k = (j + 1) % vertexIds.size();
+		colin[j] = isColinear(*pts[i], *pts[j], *pts[k]);
+	}
+	for (size_t i = 0; i < colin.size(); i++) {
+		if (!colin[i])
+			tmp.push_back(vertexIds[i]);
 	}
 
 	if (tmp.size() != vertexIds.size()) {
 		int dbgBreak = 1;
 	}
+
+	assert(tmp.size() == 4);
 	return tmp;
 }
 
@@ -86,7 +84,6 @@ void PolygonSearchKey::set(const Block* pBlock, const MTC::vector<Index3DId>& id
 	}
 }
 
-
 bool PolygonSearchKey::operator < (const PolygonSearchKey& rhs) const
 {
 	if (_ids.size() < rhs._ids.size())
@@ -94,11 +91,15 @@ bool PolygonSearchKey::operator < (const PolygonSearchKey& rhs) const
 	else if (_ids.size() > rhs._ids.size())
 		return false;
 
+	auto pLhs = _ids.data();
+	auto pRhs = rhs._ids.data();
 	for (size_t i = 0; i < _ids.size(); i++) {
-		if (_ids[i] < rhs._ids[i])
+		if (*pLhs < *pRhs)
 			return true;
-		else if (rhs._ids[i] < _ids[i])
+		else if (*pRhs < *pLhs)
 			return false;
+		pLhs++;
+		pRhs++;
 	}
 
 	return false;

@@ -36,7 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_defines.h>
 #include <math.h>
 
-#define RUN_MULTI_THREAD 0
+#define RUN_MULTI_THREAD 1
 #define USE_CELL_HISTOGRAM 0
 #define FAST_BISECTION_VALIDATION_ENABLED 0
 #define INCLUDE_DEBUG_WX_FRAME 0
@@ -47,7 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define OBJECT_TREE_WIDTH 200
 #define VERIFY_REDUCED_FINDER 0
 #define LOGGING_ENABLED 1
-#define DEBUG_BREAKS 0
+#define DEBUG_BREAKS 1
 #define CAN_FREE_TESTS_ENABLED 0
 #define LOGGING_VERBOSE_ENABLED (1 && LOGGING_ENABLED)
 #define DUMP_BAD_CELL_OBJS 1

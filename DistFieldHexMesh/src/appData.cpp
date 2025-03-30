@@ -387,7 +387,7 @@ void AppData::doFindMinGap(const CMeshPtr& pMesh) const
                 Vector3d ctr(x, y, 0);
                 Rayd ray(ctr, zAxis);
 
-#if DEBUG_BREAKS && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
                 vector<RayHit> hits;
                 if (_pMesh->rayCast(ray, hits)) {
                     int dbgBreak = 1;

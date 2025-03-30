@@ -84,6 +84,7 @@ public:
 	Polygon(const MTC::vector<Index3DId>& verts);
 	Polygon(const std::initializer_list<Index3DId>& verts);
 	Polygon(const Polygon& src);
+	Polygon(const Block* pBlock, const Polygon& src);
 
 	Polygon& operator = (const Polygon& rhs);
 
@@ -123,13 +124,8 @@ public:
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
 	int64_t getLayerNum() const;
 
-	const PolygonSearchKey& getSearchKey() const;
-
 	bool verifyUnique() const;
 	bool verifyTopology() const;
-
-	bool operator < (const Polygon& rhs) const;
-	bool operator == (const Polygon& rhs) const;
 
 	const MTC::vector<Index3DId>& getVertexIds() const;
 	const MTC::vector<Index3DId>& getNonColinearVertexIds() const;
@@ -195,7 +191,6 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
-	void sortIds() const;
 
 	Index3DId _thisId;
 

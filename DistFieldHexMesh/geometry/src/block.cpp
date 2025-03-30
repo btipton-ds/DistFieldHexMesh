@@ -762,7 +762,13 @@ Index3DId Block::addPolygon(const Polygon& face)
 	assert(Polygon::verifyVertsConvexStat(this, face.getVertexIds()));
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
-	Index3DId result = pOwner->_polygons.findOrAdd(face);
+	Polygon connectedFace(pOwner, face);
+	auto existingId = pOwner->_polygons.findId(connectedFace);
+	if (existingId.isValid()) {
+		auto& tp = pOwner->_polygons[existingId];
+		int dbgBreak = 1;
+	}
+	Index3DId result = pOwner->_polygons.findOrAdd(connectedFace);
 	auto& newFace = pOwner->_polygons[result];
 
 #if DEBUG_BREAKS && defined(_DEBUG)

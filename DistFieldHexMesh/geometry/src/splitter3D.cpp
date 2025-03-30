@@ -378,7 +378,7 @@ void Splitter3D::doScratchHexCurvatureSplitTests(const Index3DId& parentId, cons
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
 	Index3DId testId(2, 4, 7, 0);
-#if 0 && defined(_DEBUG)
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (testId == parentId) {
 		int dbgBreak = 1;
 	}
@@ -391,7 +391,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 		splittingFaceVertIds.push_back(vertId(pt));
 	auto splittingFaceId = getBlockPtr()->addPolygon(Polygon(splittingFaceVertIds));
 
-#if 0 && defined(_DEBUG)
+#if DEBUG_BREAKS && defined(_DEBUG)
 	if (testId == _polyhedronId) {
 		stringstream ss;
 		ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId);
@@ -693,7 +693,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 	Polyhedron newCell(cellFaces, cornerVertIds);
 	auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
 
-#if 0 && defined(_DEBUG)
+#if DEBUG_BREAKS && defined(_DEBUG)
 	cellFunc(newCellId, [this](const Polyhedron& cell) {
 		if (!cell.isClosed()) {
 			stringstream ss;
