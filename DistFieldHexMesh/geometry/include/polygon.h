@@ -293,117 +293,156 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 template<class F>
 void Polygon::iterateEdges(F fLambda) const
 {
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
-		bool result;
-		edgeFunc(ek, [&result, &fLambda](const Edge& edge) {
-			result = fLambda(edge);
-		});
+	try {
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+			bool result;
+			edgeFunc(ek, [&result, &fLambda](const Edge& edge) {
+				result = fLambda(edge);
+				});
 
-		if (!result)
-			break;
+			if (!result)
+				break;
+		}
+	} catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 
 template<class F>
 void Polygon::iterateEdges(F fLambda)
 {
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
-		bool result;
-		edgeFunc(ek, [&result, &fLambda](Edge& edge) {
-			result = fLambda(edge);
-		});
+	try {
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			size_t j = (i + 1) % _vertexIds.size();
+			EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+			bool result;
+			edgeFunc(ek, [&result, &fLambda](Edge& edge) {
+				result = fLambda(edge);
+				});
 
-		if (!result)
-			break;
+			if (!result)
+				break;
+		}
+	}
+	catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 
 template<class F>
 void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 {
-	const auto& verts = _vertexIds;
+	try {
+		const auto& verts = _vertexIds;
 
-	bool reversed = isReversed(cellId);
-	for (size_t i = 0; i < verts.size(); i++) {
-		const size_t j = (i + 1) % verts.size();
-		size_t ii = i;
-		size_t jj = j;
-		if (reversed)
-			std::swap(ii, jj);
+		bool reversed = isReversed(cellId);
+		for (size_t i = 0; i < verts.size(); i++) {
+			const size_t j = (i + 1) % verts.size();
+			size_t ii = i;
+			size_t jj = j;
+			if (reversed)
+				std::swap(ii, jj);
 
-		bool result;
-		edgeFunc(EdgeKey(verts[ii], verts[jj]), [&fLambda, &result](const Edge e) {
-			result = fLambda(e);
-		});
-		if (!result)
-			break;
+			bool result;
+			edgeFunc(EdgeKey(verts[ii], verts[jj]), [&fLambda, &result](const Edge e) {
+				result = fLambda(e);
+				});
+			if (!result)
+				break;
+		}
+	}
+	catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 
 template<class F>
 void Polygon::iterateTriangles(F fLambda) const
 {
-	const auto verts = getNonColinearVertexIds();
+	try {
+		const auto& verts = getNonColinearVertexIds();
+		if (verts.size() < 3) {
+			throw (std::runtime_error("Less than three vertices"));
+		}
 
-	size_t i = 0;
-	for (size_t j = 1; j < verts.size() - 1; j++) {
-		size_t k = (j + 1) % verts.size();
-		if (!fLambda(verts[i], verts[j], verts[k]))
-			break;
+		size_t i = 0;
+		for (size_t j = 1; j < verts.size() - 1; j++) {
+			size_t k = (j + 1) % verts.size();
+			if (!fLambda(verts[i], verts[j], verts[k]))
+				break;
+		}
+	}
+	catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 
 template<class F>
 void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 {
-	const auto& verts = getNonColinearVertexIds();
+	try {
+		const auto& verts = getNonColinearVertexIds();
 
-	const size_t i = 0;
-	for (size_t j = 1; j < verts.size() - 1; j++) {
-		const size_t k = j + 1;
+		const size_t i = 0;
+		for (size_t j = 1; j < verts.size() - 1; j++) {
+			const size_t k = j + 1;
 
-		size_t ii = i;
-		size_t jj = j;
-		size_t kk = k;
-		if (isReversed(cellId))
-			std::swap(ii, kk);
+			size_t ii = i;
+			size_t jj = j;
+			size_t kk = k;
+			if (isReversed(cellId))
+				std::swap(ii, kk);
 
-		if (!fLambda(verts[ii], verts[jj], verts[kk]))
-			break;
+			if (!fLambda(verts[ii], verts[jj], verts[kk]))
+				break;
+		}
+	}
+	catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 
 template<class TRI_FUNC, class EDGE_FUNC>
 void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 {
-	std::vector<Vector3d> pts;
-	pts.resize(_vertexIds.size());
-	for (size_t i = 0; i < _vertexIds.size(); i++)
-		pts[i] = getVertexPoint(_vertexIds[i]);
+	try {
+		std::vector<Vector3d> pts;
+		pts.resize(_vertexIds.size());
+		for (size_t i = 0; i < _vertexIds.size(); i++)
+			pts[i] = getVertexPoint(_vertexIds[i]);
 
-	if (pts.size() > 4) {
-		auto& ctr = calCentroid();
-		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-			size_t idx1 = (idx0 + 1) % pts.size();
-			triFunc(ctr, pts[idx0], pts[idx1]);
+		if (pts.size() > 4) {
+			auto& ctr = calCentroid();
+			for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
+				size_t idx1 = (idx0 + 1) % pts.size();
+				triFunc(ctr, pts[idx0], pts[idx1]);
+			}
 		}
-	} else {
-		for (size_t i = 1; i < pts.size() - 1; i++) {
-			size_t idx0 = 0;
-			size_t idx1 = i;
-			size_t idx2 = i + 1;
-			triFunc(pts[idx0], pts[idx1], pts[idx2]);
+		else {
+			for (size_t i = 1; i < pts.size() - 1; i++) {
+				size_t idx0 = 0;
+				size_t idx1 = i;
+				size_t idx2 = i + 1;
+				triFunc(pts[idx0], pts[idx1], pts[idx2]);
+			}
+		}
+
+		for (size_t i = 0; i < pts.size(); i++) {
+			size_t idx0 = i;
+			size_t idx1 = (idx0 + 1) % pts.size();
+			edgeFunc(pts[idx0], pts[idx1]);
 		}
 	}
-
-	for (size_t i = 0; i < pts.size(); i++) {
-		size_t idx0 = i;
-		size_t idx1 = (idx0 + 1) % pts.size();
-		edgeFunc(pts[idx0], pts[idx1]);
+	catch (std::runtime_error err) {
+		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
+		throw err;
 	}
 }
 

@@ -48,21 +48,32 @@ namespace {
 MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* pBlock, const MTC::vector<Index3DId>& vertexIds)
 {
 	MTC::vector<Index3DId> tmp;
+
 	if (pBlock) {
+		vector<bool> colin;
+		vector<const Vector3d*> pts;
+		colin.resize(vertexIds.size());
+		pts.resize(vertexIds.size());
+
+		for (size_t i = 0; i < vertexIds.size(); i++)
+			pts[i] = &pBlock->getVertexPoint(vertexIds[i]);
+
 		for (size_t j = 0; j < vertexIds.size(); j++) {
 			size_t i = (j + vertexIds.size() - 1) % vertexIds.size();
 			size_t k = (j + 1) % vertexIds.size();
-			const auto& pt0 = pBlock->getVertexPoint(vertexIds[i]);
-			const auto& pt1 = pBlock->getVertexPoint(vertexIds[j]);
-			const auto& pt2 = pBlock->getVertexPoint(vertexIds[k]);
-			if (!isColinear(pt0, pt1, pt2)) {
-				tmp.push_back(vertexIds[j]);
-			}
+			colin[j] = isColinear(*pts[i], *pts[j], *pts[k]);
+		}
+		for (size_t i = 0; i < colin.size(); i++) {
+			if (!colin[i])
+				tmp.push_back(vertexIds[i]);
 		}
 	} else {
 		tmp = vertexIds;
 	}
 
+	if (tmp.size() != vertexIds.size()) {
+		int dbgBreak = 1;
+	}
 	return tmp;
 }
 

@@ -63,8 +63,7 @@ namespace
 }
 
 Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level)
-	: _pSrcBlock(pBlock)
-	, _pBlock(pBlock)
+	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _splitLevel(level)
 	, _params(pBlock->getSplitParams())
@@ -175,8 +174,8 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		nonOrthogonal = cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians;
 	});
 
-	size_t minFinalFaces = INT_MAX;
-	int bestTooManyFacesSplitAxis = -1;
+	size_t minComplexCells = INT_MAX;
+	int bestTooManyComplexSplitAxis = -1;
 
 	size_t minFinalOrthoCells = INT_MAX;
 	int bestTooManyOrthoSplitAxis = -1;
@@ -201,15 +200,16 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		bisectHexCell(scratchCellId, tuv, axis, newCellIds);
 
 		if (tooManyFaces) {
-			size_t totalFaces = 0;
+			size_t totalComplex = 0;
 			for (auto& cellId : newCellIds) {
-				cellFunc(cellId, [&totalFaces](const Polyhedron& cell) {
-					totalFaces += cell.getFaceIds().size();
+				cellFunc(cellId, [this, &totalComplex](const Polyhedron& cell) {
+					if (cell.isTooComplex(_params))
+						totalComplex++;
 				});
 			}
-			if (totalFaces < minFinalFaces) {
-				minFinalFaces = totalFaces;
-				bestTooManyFacesSplitAxis = axis;
+			if (totalComplex < minComplexCells) {
+				minComplexCells = totalComplex;
+				bestTooManyComplexSplitAxis = axis;
 			}
 		}
 
@@ -250,8 +250,8 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	int splitAxis = -1;
 
-	if (bestTooManyFacesSplitAxis != -1)
-		splitAxis = bestTooManyFacesSplitAxis;
+	if (bestTooManyComplexSplitAxis != -1)
+		splitAxis = bestTooManyComplexSplitAxis;
 	else if (bestTooManyOrthoSplitAxis != -1)
 		splitAxis = bestTooManyOrthoSplitAxis;
 	else if (bestIntersectionSplitAxis != -1)
@@ -493,6 +493,9 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 		FastBisectionSet<Index3DId> cellIds;
 
 		faceFunc(faceId, [this, &splittingEdges, &splitFacePoints, &cellIds](Polygon& face) {
+			if (Index3DId(5, 2, 7, 0) == _polyhedronId && Index3DId(0, 0, 0, 9) == face.getId()) {
+				int dbgBreak = 1;
+			}
 			Splitter2D sp(face.calPlane());
 			cellIds = face.getCellIds();
 			face.iterateEdges([this, &sp](const Edge& edge)->bool {
@@ -565,7 +568,12 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 			getBlockPtr()->freePolygon(faceId);
 		}
 	}
-	int dbgBreak = 1;
+
+	if (!_testRun) {
+		for (const auto& id : touchedCellIds) {
+			getBlockPtr()->addToTouchedCellList(id);
+		}
+	}
 }
 
 void Splitter3D::addFaceToLocalEdgeSet(set<Edge>& localEdgeSet, const Index3DId& faceId) const
@@ -731,7 +739,7 @@ void Splitter3D::verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const In
 			edgePts.push_back(vec);
 		}
 
-		auto pVol = _pSrcBlock->getVolume();
+		auto pVol = getBlockPtr()->getVolume();
 		{
 			stringstream ss;
 			ss << "D:/DarkSky/Projects/output/objs/_" << getBlockPtr()->getLoggerNumericCode(_polyhedronId) << " badlyImprintedCell_.obj";

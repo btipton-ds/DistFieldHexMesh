@@ -95,7 +95,6 @@ private:
 	size_t _splitLevel;
 
 	Block* _pBlock;
-	Block* _pSrcBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
 	Index3DId _polyhedronId;
