@@ -296,6 +296,17 @@ Index3DId Block::getVertexIdOfPoint(const Vector3d& point)
 	return Index3DId();
 }
 
+Index3DId Block::findVertexIdOfPoint(const Vector3d& point) const
+{
+	auto blkIdx = determineOwnerBlockIdx(point);
+	auto pBlockOwner = _pVol->getBlockPtr(blkIdx);
+	if (pBlockOwner) {
+		Vertex vert(point);
+		return pBlockOwner->_vertices.findId(point);
+	}
+	return Index3DId();
+}
+
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;

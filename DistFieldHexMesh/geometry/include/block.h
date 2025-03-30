@@ -133,6 +133,7 @@ public:
 	Index3D determineOwnerBlockIdx(const Polygon& face) const;
 
 	Index3DId getVertexIdOfPoint(const Vector3d& point);
+	Index3DId findVertexIdOfPoint(const Vector3d& point) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;

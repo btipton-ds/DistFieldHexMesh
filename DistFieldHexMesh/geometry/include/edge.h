@@ -58,9 +58,6 @@ public:
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
 
-	bool imprintVertices(const MTC::vector<Index3DId>& vertIds);
-	bool imprintVertices(const MTC::set<Index3DId>& vertIds);
-
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
@@ -126,13 +123,6 @@ inline void Edge::addFaceId(const Index3DId& faceId)
 inline void Edge::removeFaceId(const Index3DId& faceId)
 {
 	_faceIds.erase(faceId);
-}
-
-inline bool Edge::imprintVertices(const MTC::vector<Index3DId>& vertIds)
-{
-	MTC::set<Index3DId> s;
-	s.insert(vertIds.begin(), vertIds.end());
-	return imprintVertices(s);
 }
 
 inline Block* Edge::getBlockPtr()

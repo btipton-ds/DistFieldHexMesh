@@ -803,35 +803,7 @@ bool Polygon::imprintEdge(const EdgeKey& edgeKey)
 	if (imprintPoints(pts))
 		return true;
 
-	LineSegmentd otherSeg;
-	edgeFunc(edgeKey, [&otherSeg](const Edge& edge) {
-		otherSeg = edge.getSegment();
-	});
-
-	RayHitd hit;
-
-	bool result = false;
-	if (intersect(otherSeg, hit)) { 
-		// The other line segment intersects this face. It's possible the intersection point splits an edge
-		iterateEdges([this, hit, &result](Edge& edge)->bool {
-			const double distTol = Tolerance::sameDistTol();
-			const double tol = Tolerance::paramTol();
-
-			const auto ourSeg = edge.getSegment();
-			double t;
-			double dist = ourSeg.distanceToPoint(hit.hitPt, t);
-			if (dist < distTol && tol < t && t < 1 - tol) {
-				auto vertId = getBlockPtr()->addVertex(hit.hitPt);
-				MTC::vector<Index3DId> vertIds;
-				vertIds.push_back(vertId);
-				edge.imprintVertices(vertIds);
-				result = true;
-			}
-			return !result;
-		});
-	}
-
-	return result;
+	return false;
 }
 
 bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
@@ -909,11 +881,12 @@ bool Polygon::isPlanar() const
 
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
-	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
-	for (size_t i = 1; i < _vertexIds.size() - 1; i++) {
+	auto& vertIds = getNonColinearVertexIds();
+	Vector3d pt0 = getVertexPoint(vertIds[0]);
+	for (size_t i = 1; i < vertIds.size() - 1; i++) {
 		size_t j = (i + 1);
-		Vector3d pt1 = getVertexPoint(_vertexIds[i]);
-		Vector3d pt2 = getVertexPoint(_vertexIds[j]);
+		Vector3d pt1 = getVertexPoint(vertIds[i]);
+		Vector3d pt2 = getVertexPoint(vertIds[j]);
 		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
 			return true;
 	}

@@ -275,42 +275,6 @@ bool Edge::containsFace(const Index3DId& faceId) const
 	return _faceIds.contains(faceId);
 }
 
-bool Edge::imprintVertices(const set<Index3DId>& allVertIds)
-{
-	const double tol = Tolerance::paramTol();
-
-	auto seg = getSegment();
-	set<Index3DId> vertsInBoundsSet;
-	for (const auto& id : allVertIds) {
-#if VALIDATION_ON
-		if (!_vertexIds[0].withinRange(id) || !_vertexIds[1].withinRange(id))
-			continue;
-#endif
-
-		const auto& pt = getBlockPtr()->getVertexPoint(id);
-		double t;
-		if (seg.contains(pt, t, tol) && tol < t && t < 1 - tol) {
-			vertsInBoundsSet.insert(id);
-		}
-	}
-
-	if (vertsInBoundsSet.empty())
-		return false;
-
-	MTC::vector<Vector3d> vertsInBounds;
-	for (const auto& id : vertsInBoundsSet)
-		vertsInBounds.push_back(getBlockPtr()->getVertexPoint(id));
-
-	bool result = false;
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &vertsInBounds, &result](Polygon& face) {
-			result = face.imprintPoints(vertsInBounds);
-		});
-	}
-
-	return result;
-}
-
 bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
 {
 	const auto& pt = getBlockPtr()->getVertexPoint(vertexId);

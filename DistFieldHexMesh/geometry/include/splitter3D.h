@@ -74,6 +74,7 @@ private:
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
@@ -94,6 +95,7 @@ private:
 	size_t _splitLevel;
 
 	Block* _pBlock;
+	Block* _pSrcBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
 	Index3DId _polyhedronId;

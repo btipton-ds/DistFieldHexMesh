@@ -379,6 +379,13 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 	if (ptMap.empty())
 		return 0;
 	
+	bool hasSharedEdge = false;
+	for (auto& pair : edgeUsage) {
+		if (pair.second > 1)
+			hasSharedEdge = true;
+	}
+	if (!hasSharedEdge)
+		return 0;
 	vector<Polyline> pls;
 #if 0
 	// First remove spur polylines. Spurs are strings for points which terminate at a dead end.
