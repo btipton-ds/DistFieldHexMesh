@@ -114,7 +114,7 @@ void PolymeshTables::createVertMaps()
 			pBlk->_vertices.iterateInOrder([this](const Index3DId& id, const Vertex& vert) {
 				int32_t vIdx = (int32_t)vertIdxIdMap.size();
 				vertIdxIdMap.push_back(id);
-				vertIdIdxMap.insert(make_pair(id, vIdx), false);
+				vertIdIdxMap.insert(id, vIdx);
 			});
 		}
 	}
@@ -128,7 +128,7 @@ void PolymeshTables::createPolyhedraMaps()
 				if (cell.exists()) {
 					int32_t cIdx = (int32_t)cellIdxIdMap.size();
 					cellIdxIdMap.push_back(id);
-					cellIdIdxMap.insert(make_pair(id, cIdx), false);
+					cellIdIdxMap.insert(id, cIdx);
 				}
 			});
 		}
@@ -142,7 +142,7 @@ void PolymeshTables::createPolygonMaps()
 			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
 				size_t idx = faceIdxIdMap.size();
 				faceIdxIdMap.push_back(id);
-				faceIdIdxMap.insert(make_pair(id, (int32_t)idx), false);
+				faceIdIdxMap.insert(id, (int32_t)idx);
 			});
 		}
 	}
@@ -172,7 +172,7 @@ void PolymeshTables::createSortPolygons()
 					}
 				}
 
-				faceIdToSearchRecMap.insert(make_pair(id, r), false);
+				faceIdToSearchRecMap.insert(id, r);
 				});
 		}
 	}

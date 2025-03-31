@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <pool_map.h>
 #include <fastBisectionSet.h>
+#include <fastBisectionMap.h>
 #include <patient_lock_guard.h>
 
 namespace DFHM {
@@ -234,6 +235,7 @@ private:
 	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
 	std::vector<ObjectSegPtr> _objSegmentPtrs;
 
+	FastBisectionMap<ObjIndex, size_t> _xx;
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
 	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices and polygons.
 	std::map<ObjIndex, size_t, CompareFunctor> _objToElementIndexMap;	// TODO, may want to change this to a sorted array with bisection lookup for space savings

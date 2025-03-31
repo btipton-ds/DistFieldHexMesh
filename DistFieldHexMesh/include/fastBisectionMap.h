@@ -30,163 +30,76 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <vector>
 #include <algorithm>
+#include <fastBisectionSet.h>
 
 namespace DFHM {
 
 template<class IDX, class VAL>
-struct FastBisectionMapDefComparator {
-	using PAIR = std::pair<IDX, VAL>;
-	inline bool operator()(const PAIR& lhs, const PAIR& rhs) const
+struct FBMPair {
+	inline FBMPair(const IDX& idx, const VAL& v = VAL())
+		: _idx(idx), _val(v)
+	{}
+
+	inline bool operator<(const FBMPair& rhs) const
 	{
-		return lhs.first < rhs.first;
+		return _idx < rhs._idx;
+	}
+
+	inline bool operator==(const FBMPair& rhs) const
+	{
+		return _idx == rhs._idx;
+	}
+
+	IDX _idx;
+	mutable VAL _val;
+};
+
+template<class IDX, class VAL>
+struct FastBisectionMapDefComparator {
+	inline bool operator()(const FBMPair<IDX, VAL>& lhs, const FBMPair<IDX, VAL>& rhs) const
+	{
+		return lhs < rhs;
 	}
 };
 
 template<class IDX, class VAL, class COMP>
-class FastBisectionMap_with_comp {
+class FastBisectionMap_with_comp : public FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP> {
 public:
-	using PAIR = std::pair<IDX, VAL>;
+	using PAIR = FBMPair<IDX, VAL>;
 
 	FastBisectionMap_with_comp();
 	FastBisectionMap_with_comp(const COMP& comp);
 
-	void insert(const PAIR& pair, bool sort = false);
-	VAL operator[](const IDX& id) const;
+	void insert(const IDX& i, const VAL& v);
 
-private:
-	void findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const;
-
-	bool isSorted() const;
-
-	COMP _comp;
-	mutable bool _sorted = true;
-	mutable std::vector<PAIR> _vals;
+	const VAL& operator[](const IDX& idx) const;
 };
 
 template<class IDX, class VAL, class COMP>
 FastBisectionMap_with_comp<IDX, VAL, COMP>::FastBisectionMap_with_comp()
-	: _comp(COMP())
+	: FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>(COMP())
 {
 }
 
 template<class IDX, class VAL, class COMP>
 FastBisectionMap_with_comp<IDX, VAL, COMP>::FastBisectionMap_with_comp(const COMP& comp)
-	: _comp(comp)
+	: FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>(comp)
 {
 }
 
 template<class IDX, class VAL, class COMP>
-void FastBisectionMap_with_comp<IDX, VAL, COMP>::insert(const PAIR& newEntry, bool sort)
+inline void FastBisectionMap_with_comp<IDX, VAL, COMP>::insert(const IDX& i, const VAL& v)
 {
-	if (!sort) {
-		_vals.push_back(newEntry);
-		_sorted = false;
-		return;
-	}
-	size_t idx0, idx1;
-	size_t idx;
-	findIdx(newEntry.first, idx, idx0, idx1);
-	if (idx < _vals.size()) {
-		if (_vals[idx].first == newEntry.first)
-			return;
-
-		bool inserted = false;
-		for (size_t i = idx0; i < idx1 && i + 1 < _vals.size(); i++) {
-			if (i == 0 && newEntry.first < _vals[i].first) {
-				_vals.insert(_vals.begin(), newEntry);
-				inserted = true;
-				break;
-			} else if (_vals[i].first < newEntry.first && newEntry.first < _vals[i + 1].first) {
-				_vals.insert(_vals.begin() + i + 1, newEntry);
-				inserted = true;
-				break;
-			}
-		}
-
-		if (!inserted) {
-			_sorted = _vals.back().first < newEntry.first;
-			if (!_sorted) {
-				int dbgBreak = 1;
-			}
-			_vals.push_back(newEntry);
-		}
-	} else {
-		// idx past the back, so adding to the back won't break the sort
-		_vals.push_back(newEntry);
-	}
-
-#ifdef _DEBUG
-	assert(!_sorted || isSorted());
-#endif
+	FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::insert(FBMPair(i, v));
 }
 
 template<class IDX, class VAL, class COMP>
-VAL FastBisectionMap_with_comp<IDX, VAL, COMP>::operator[](const IDX& id) const
+const VAL& FastBisectionMap_with_comp<IDX, VAL, COMP>::operator[](const IDX& idx) const
 {
-	size_t idx0, idx1;
-	size_t idx;
-	findIdx(id, idx, idx0, idx1);
-	if (idx < _vals.size()) {
-		if (_vals[idx].first == id)
-			return _vals[idx].second;
-	}
-	return VAL();
-}
-
-template<class IDX, class VAL, class COMP>
-void FastBisectionMap_with_comp<IDX, VAL, COMP>::findIdx(const IDX& id, size_t& idx, size_t& idx0, size_t& idx1) const
-{
-	if (_vals.empty()) {
-		idx = idx0 = idx1 = -1;
-		return;
-	}
-
-	if (!_sorted) {
-		COMP comp;
-		std::sort(_vals.begin(), _vals.end(), comp);
-		_sorted = true;
-	}
-	idx0 = 0; 
-	idx1 = _vals.size() - 1;
-
-	if (_vals[idx0].first == id) {
-		idx = idx0;
-		return;
-	} else if (_vals[idx1].first == id) {
-		idx = idx1;
-		return;
-	}
-
-	idx = (idx0 + idx1 + 1) / 2;
-
-	while (idx0 != idx1) {
-		if (id < _vals[idx].first)
-			idx1 = idx + 1;
-		else if (_vals[idx].first < id)
-			idx0 = idx;
-		else {
-			return;
-		}
-
-		size_t nextIdx = (idx0 + idx1) / 2;
-		if (idx == nextIdx) {
-			break; // not found
-		}
-		idx = nextIdx;
-	}
-
-	if (_vals[idx].first != id)
-		idx = -1;
-}
-
-template<class IDX, class VAL, class COMP>
-bool FastBisectionMap_with_comp<IDX, VAL, COMP>::isSorted() const
-{
-	for (size_t i = 0; i < _vals.size() - 1; i++) {
-		if (_vals[i + 1].first < _vals[i].first)
-			return false;
-	}
-	return true;
+	FBMPair<IDX, VAL> key(idx);
+	size_t idx2 = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::find(key);
+	auto& val = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::operator[](idx2);
+	return val._val;
 }
 
 template<class IDX, class VAL>
