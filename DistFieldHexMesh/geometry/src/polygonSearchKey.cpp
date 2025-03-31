@@ -36,12 +36,13 @@ using namespace DFHM;
 namespace {
 	inline bool isColinear(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
 	{
+		const auto tolSqr = Tolerance::paramTolSqr();
 		Vector3d v0 = pt1 - pt0;
 		Vector3d v1 = pt2 - pt1;
 		v0.normalize();
 		v1.normalize();
 		double cpSqr = v1.cross(v0).squaredNorm();
-		return cpSqr < Tolerance::paramTolSqr();
+		return cpSqr < tolSqr;
 	}
 }
 

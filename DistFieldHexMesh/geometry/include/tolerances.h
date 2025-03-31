@@ -52,7 +52,7 @@ namespace Tolerance
 	}
 
 	inline double paramTol() {
-		return 1.0e-12;
+		return 1.0e-10;
 	}
 
 	inline double paramTolSqr() {
