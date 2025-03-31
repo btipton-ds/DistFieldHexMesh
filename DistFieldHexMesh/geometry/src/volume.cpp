@@ -790,7 +790,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		pReporter->reportProgress();
 
 		bool changed = false;
-		runThreadPool_IJK([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 				if (cell.setNeedToSplitConditional(_splitNum, params)) {
 					changed = true;
@@ -852,13 +852,12 @@ void Volume::finishSplits(bool multiCore)
 	bool changed = false;
 	size_t subPassNum = 0;
 	do {
-		cout << "SplitNum: " << _splitNum << ", subPassNum: " << subPassNum << "\n";
 		changed = false;
 		runThreadPool_IJK([this, subPassNum, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->splitRequiredPolyhedra(_splitNum, subPassNum))
 				changed = true;
 			return true;
-			}, multiCore);
+		}, multiCore);
 
 		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			pBlk->updateSplitStack(_splitNum + 1);

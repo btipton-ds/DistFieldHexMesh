@@ -106,8 +106,10 @@ private:
 	const double _paramTolSqr = _paramTol * _paramTol;
 
 	MTC::vector<Index3DId> _cornerVertIds;
-	std::vector<Vector3d> _cornerPts;
+	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
+
+
 
 	thread_local static VolumePtr _pScratchVol;
 };

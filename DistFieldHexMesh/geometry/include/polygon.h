@@ -44,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <edge.h>
 #include <polygonSearchKey.h>
+#include <model.h>
 
 template<class T>
 class Plane;
@@ -145,7 +146,7 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
-	bool intersectsModel(const std::vector<TriMeshIndex>& tris) const;
+	bool intersectsModel(const std::vector<Model::SearchTree::Entry>& entries) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;

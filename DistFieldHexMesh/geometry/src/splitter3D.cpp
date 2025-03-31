@@ -584,7 +584,11 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 
 	if (!_testRun) {
 		for (const auto& id : touchedCellIds) {
-			getBlockPtr()->addToTouchedCellList(id);
+			cellFunc(id, [this](const Polyhedron& cell) {
+				if (cell.isTooComplex(_params, _splitLevel)) {
+					getBlockPtr()->addToTouchedCellList(cell.getId());
+				}
+			});
 		}
 	}
 }

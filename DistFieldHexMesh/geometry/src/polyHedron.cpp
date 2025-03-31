@@ -922,11 +922,11 @@ bool Polyhedron::intersectsModel() const
 	if (_intersectsModel == IS_UNKNOWN) {
 		auto bbox = getBoundingBox();
 		auto& model = getBlockPtr()->getModel();
-		vector<TriMeshIndex> triIndices;
-		if (model.findTris(bbox, triIndices)) {
+		vector<Model::SearchTree::Entry> entries;
+		if (model.findTris(bbox, entries)) {
 			for (const auto& faceId : _faceIds) {
-				faceFunc(faceId, [this, &triIndices](const Polygon& face) {
-					if (face.intersectsModel(triIndices)) {
+				faceFunc(faceId, [this, &entries](const Polygon& face) {
+					if (face.intersectsModel(entries)) {
 						_intersectsModel = IS_TRUE;
 					}
 					});
@@ -1243,7 +1243,7 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		setNeedsDivideAtCentroid();
 		return true;
 	}
-
+#if 0
 	if (passNum < params.numSharpEdgeIntersectionDivs && sharpEdgesIntersectModel(params)) {
 		setNeedsDivideAtCentroid();
 		return true;		
@@ -1289,7 +1289,7 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 			}
 		}
 	}
-
+#endif
 	if (isTooComplex(params)) {
 		setNeedsDivideAtCentroid();
 		return true;

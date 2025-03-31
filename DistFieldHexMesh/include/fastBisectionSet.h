@@ -268,11 +268,12 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 	}
 	idx0 = 0; 
 	idx1 = _vals.size() - 1;
+	auto pVals = _vals.data();
 
-	if (_vals[idx0] == id) {
+	if (pVals[idx0] == id) {
 		idx = idx0;
 		return;
-	} else if (_vals[idx1] == id) {
+	} else if (pVals[idx1] == id) {
 		idx = idx1;
 		return;
 	}
@@ -280,9 +281,9 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 	idx = (idx0 + idx1 + 1) / 2;
 
 	while (idx0 != idx1) {
-		if (id < _vals[idx])
+		if (id < pVals[idx])
 			idx1 = idx + 1;
-		else if (_vals[idx] < id)
+		else if (pVals[idx] < id)
 			idx0 = idx;
 		else {
 			return;
@@ -295,7 +296,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 		idx = nextIdx;
 	}
 
-	if (_vals[idx] != id)
+	if (pVals[idx] != id)
 		idx = -1;
 }
 

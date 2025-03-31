@@ -637,13 +637,20 @@ Vector3d Polygon::calCentroidApprox() const
 	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
 }
 
-bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
+bool Polygon::intersectsModel(const std::vector<Model::SearchTree::Entry>& entries) const
 {
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
+		CBoundingBox3Dd bbox;
+		for (auto& id : _vertexIds) {
+			bbox.merge(getVertexPoint(id));
+		}
 		_cachedIntersectsModel = IS_FALSE;
 		const auto& model = getBlockPtr()->getModel();
-		for (const auto& triIdx : triIndices) {
+		for (const auto& entry : entries) {
+			if (!bbox.intersectsOrContains(entry.getBBox(), Tolerance::sameDistTol()))
+				continue;
+			auto& triIdx = entry.getIndex();
 			const auto tri = model.getTri(triIdx);
 			const Vector3d* pts[] = {
 				&model.getVert(tri[0])._pt,

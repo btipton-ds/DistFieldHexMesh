@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <model.h>
 #include <tm_spatialSearch.hpp>
+#include <tolerances.h>
 
 using namespace std;
 using namespace DFHM;
@@ -88,14 +89,32 @@ size_t Model::addMesh(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 	return _modelMeshData.size();
 }
 
-size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& indices) const
+size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& result) const
 {
-	return _pSearchTree->find(bbox, indices);
+	std::vector<SearchTree::Entry> entries;
+	if (_pSearchTree->find(bbox, entries)) {
+		for (const auto& entry : entries) {
+			const auto& triBox = entry.getBBox();
+			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+				result.push_back(entry);
+			}
+		}
+	}
+	return result.size();
 }
 
 size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, SearchTree::BoxTestType contains) const
 {
-	return _pSearchTree->find(bbox, result, contains);
+	std::vector<SearchTree::Entry> entries;
+	if (_pSearchTree->find(bbox, entries)) {
+		for (const auto& entry : entries) {
+			const auto& triBox = entry.getBBox();
+			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+				result.push_back(entry.getIndex());
+			}
+		}
+	}
+	return result.size();
 }
 
 size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir) const

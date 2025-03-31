@@ -1284,19 +1284,20 @@ void Block::updateSplitStack(size_t splitNum)
 {
 	MTC::set<Index3DId> blockingIds;
 	const auto& params = getSplitParams();
-//	for (const auto& cellId : _touchedCellIds) {
-	_polyhedra.iterateInOrder([this, splitNum, &params](const Index3DId& cellId, const Polyhedron& cell) {
-		if (cell.isTooComplex(params, splitNum)) {
-			_needToSplit.insert(cellId);
-		} else {
+	for (const auto& cellId : _touchedCellIds) {
+		cellFunc(cellId, [this, params, splitNum](const Polyhedron& cell) {
+			_needToSplit.insert(cell.getId());
 #if 0
-			double maxNonOrtho = cell.maxNonOrthogonality();
-			if (maxNonOrtho > params.maxOrthoAngleRadians)
-				_needToSplit.insert(cellId);
+			if (cell.isTooComplex(params, splitNum)) {
+			}
+			else {
+				double maxNonOrtho = cell.maxNonOrthogonality();
+				if (maxNonOrtho > params.maxOrthoAngleRadians)
+					_needToSplit.insert(cellId);
+			}
 #endif
-		}
-	});
-//	}
+		});
+	}
 	_touchedCellIds.clear();
 }
 
