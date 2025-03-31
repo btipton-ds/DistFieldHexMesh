@@ -1290,6 +1290,10 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		}
 	}
 
+	if (isTooComplex(params)) {
+		setNeedsDivideAtCentroid();
+		return true;
+	}
 	return false;
 }
 

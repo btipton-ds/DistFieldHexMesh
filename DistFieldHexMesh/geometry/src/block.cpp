@@ -73,12 +73,13 @@ Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts,
 	assert(pts.size() == 8);
 }
 
+#define MEM_STORE_SCALE 10
 Block::Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading)
 	: _blockIdx(blockIdx)
 	, _pVol(pVol)
-	, _vertices(this, true, 8*8)
-	, _polygons(this, true, 8*6)
-	, _polyhedra(this, false, 8)
+	, _vertices(this, true, MEM_STORE_SCALE * 8 * 8)
+	, _polygons(this, true, MEM_STORE_SCALE * 8 * 6)
+	, _polyhedra(this, false, MEM_STORE_SCALE * 8)
 #if USE_MULTI_THREAD_CONTAINERS			
 	, _heap(1, 512)
 #endif
@@ -1286,9 +1287,6 @@ void Block::updateSplitStack(size_t splitNum)
 //	for (const auto& cellId : _touchedCellIds) {
 	_polyhedra.iterateInOrder([this, splitNum, &params](const Index3DId& cellId, const Polyhedron& cell) {
 		if (cell.isTooComplex(params, splitNum)) {
-			static mutex mut;
-			lock_guard lg(mut);
-			cout << "Cell " << cellId << " isTooComplex. Submitting for resplit\n ";
 			_needToSplit.insert(cellId);
 		} else {
 #if 0

@@ -264,9 +264,6 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis; 
 	else if (bestTooManyComplexSplitAxis != -1) {
-		static mutex mut;
-		lock_guard lg(mut);
-		cout << "Cell " << _polyhedronId << " isTooComplex. Splitting\n ";
 		splitAxis = bestTooManyComplexSplitAxis;
 	} else if (bestTooManyOrthoSplitAxis != -1) {
 		// splitAxis = bestTooManyOrthoSplitAxis;

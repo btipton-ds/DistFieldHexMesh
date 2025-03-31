@@ -785,7 +785,8 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	bool didSplit = false;
 	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
-	while (_splitNum < numPasses) {
+	const size_t fixComplexityPasses = 3;
+	while (_splitNum < numPasses + fixComplexityPasses) {
 		pReporter->reportProgress();
 
 		bool changed = false;
@@ -800,7 +801,6 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		pReporter->reportProgress();
 
-		_splitNum++;
 		if (changed)
 			finishSplits(multiCore);
 		//		assert(verifyTopology(multiCore));
@@ -810,6 +810,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			cout << "No more splits required: " << _splitNum << "\n";
 			break;
 		}
+		_splitNum++;
 	}
 	
 }
@@ -860,7 +861,7 @@ void Volume::finishSplits(bool multiCore)
 			}, multiCore);
 
 		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			pBlk->updateSplitStack(_splitNum);
+			pBlk->updateSplitStack(_splitNum + 1);
 			return true;
 		}, multiCore);
 
