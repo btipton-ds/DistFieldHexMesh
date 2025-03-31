@@ -131,6 +131,8 @@ public:
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);
 	void setLayerNumOnNextPass(int32_t val);
+	void setSplitLevel(size_t val);
+	size_t getSplitLevel() const;
 
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
@@ -227,6 +229,16 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
+}
+
+inline void Polyhedron::setSplitLevel(size_t val)
+{
+	_splitLevel = val;
+}
+
+inline size_t Polyhedron::getSplitLevel() const
+{
+	return _splitLevel;
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

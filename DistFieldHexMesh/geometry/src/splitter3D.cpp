@@ -62,10 +62,11 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t level)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t passNum, size_t subPassNum)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
-	, _splitLevel(level)
+	, _passNum(passNum)
+	, _subPassNum(subPassNum)
 	, _params(pBlock->getSplitParams())
 {
 	if (!_pScratchVol)
@@ -152,6 +153,12 @@ bool Splitter3D::splitAtCenter()
 		default:
 			result = false;
 		}
+		// Now set all the split lev
+		for (auto& id : _createdCellIds) {
+			cellFunc(id, [this](Polyhedron& cell) {
+				cell.setSplitLevel(_splitLevel + 1);
+			});
+		}
 	} catch (const std::runtime_error& err) {
 		cout << "Exception thrown: " << err.what() << "\n";
 	}
@@ -165,13 +172,15 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	}
 	bool wasSplit = false;
 
-	bool intersectsModel;
-	bool tooManyFaces;
-	bool nonOrthogonal;
+	bool intersectsModel = false;
+	bool tooManyFaces = false;
+	bool nonOrthogonal = false;
 	cellFunc(parentId, [this, &intersectsModel, &tooManyFaces, &nonOrthogonal](const Polyhedron& cell) {
-		intersectsModel = cell.intersectsModel();
-		tooManyFaces = cell.getFaceIds().size() > _params.maxCellFaces;
-		nonOrthogonal = cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians;
+		if (_subPassNum == 0)
+			intersectsModel = cell.intersectsModel();
+		if (cell.getSplitLevel() < _splitLevel)
+			tooManyFaces = cell.getFaceIds().size() > _params.maxCellFaces;
+//		nonOrthogonal = cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians;
 	});
 
 	size_t minComplexCells = INT_MAX;
@@ -227,7 +236,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 			}
 		}
 
-		if (intersectsModel && _splitLevel < _params.numIntersectionDivs) {
+		if (intersectsModel && _subPassNum == 0 && _passNum < _params.numIntersectionDivs) {
 			int numIntersections = 0;
 			for (auto& cellId : newCellIds) {
 				cellFunc(cellId, [&numIntersections](const Polyhedron& cell) {
@@ -692,6 +701,8 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 
 	Polyhedron newCell(cellFaces, cornerVertIds);
 	auto newCellId = getBlockPtr()->addCell(newCell, _polyhedronId);
+	if (!_testRun)
+		_createdCellIds.insert(newCellId);
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	cellFunc(newCellId, [this](const Polyhedron& cell) {
@@ -936,13 +947,13 @@ Index3DId Splitter3D::makeScratchHexCell_deprecated(const Index3DId& parentId, c
 	return newCellId;
 }
 
-void Splitter3D::createHexCellData(const Polyhedron& parentCell)
+void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
-	_cornerVertIds = parentCell.getCanonicalVertIds();
+	_splitLevel = targetCell.getSplitLevel();
+	_cornerVertIds = targetCell.getCanonicalVertIds();
 	_cornerPts.reserve(_cornerVertIds.size());
 	for (const auto& id : _cornerVertIds)
 		_cornerPts.push_back(getVertexPoint(id));
-
 	int dbgBreak = 1;
 }
 

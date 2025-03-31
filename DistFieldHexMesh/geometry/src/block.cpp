@@ -1011,7 +1011,7 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::splitRequiredPolyhedra(size_t splittingPass)
+bool Block::splitRequiredPolyhedra(size_t splittingPass, size_t subPassNum)
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
@@ -1022,7 +1022,7 @@ bool Block::splitRequiredPolyhedra(size_t splittingPass)
 
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splittingPass);
+			Splitter3D splitter(this, cellId, splittingPass, subPassNum);
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));

@@ -114,6 +114,7 @@ public:
 	const std::vector<Vector3d>& getModelCornerPts() const;
 
 	void setLayerNums();
+	void resetNumSplits();
 
 	void insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore);
 
@@ -171,7 +172,7 @@ private:
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
-	void finishSplits(size_t splittingPass, bool multiCore);
+	void finishSplits(bool multiCore);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 
@@ -201,7 +202,7 @@ private:
 	template<class L>
 	void runThreadPool_IK(const L& fLambda, bool multiCore);
 
-	int _numSplits = 0;
+	size_t _splitNum = 0;
 	Index3D _volDim, _modelDim, _modelDimOrigin = Index3D(0, 0, 0);
 
 	AppDataPtr _pAppData;

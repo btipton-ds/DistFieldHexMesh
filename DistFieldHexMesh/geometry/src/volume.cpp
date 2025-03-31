@@ -78,7 +78,7 @@ Volume::Volume(const Volume& src)
 	, _sharpVertIndices(src._sharpVertIndices)
 	, _hasSharpVertPlane(src._hasSharpVertPlane)
 	, _sharpVertPlane(src._sharpVertPlane)
-	, _numSplits(src._numSplits)
+	, _splitNum(src._splitNum)
 {
 }
 
@@ -763,62 +763,55 @@ void Volume::dumpCellHistogram() const
 
 void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
-	if (params.numSimpleDivs > 0) {
+	for (size_t i = 0; i < params.numSimpleDivs; i++) {
+		_splitNum++;
+		runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
+			pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
+				cell.setNeedsDivideAtCentroid();
+			});
+			return true;
+		}, multiCore);
 
-		for (size_t i = 0; i < params.numSimpleDivs; i++) {
-			runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
-					cell.setNeedsDivideAtCentroid();
-				});
-				return true;
-			}, multiCore);
-
-			finishSplits(multiCore, i);
-			pReporter->reportProgress();
-		}
-
-//		assert(verifyTopology(multiCore));
+		finishSplits(multiCore);
+		pReporter->reportProgress();
 	}
 }
 
 void Volume::divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
+	double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
+	double sinEdgeAngle = sin(sharpAngleRadians);
+
+	bool didSplit = false;
+	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
-	if (numPasses > 0) {
-		double sharpAngleRadians = params.sharpAngle_degrees / 180.0 * M_PI;
-		double sinEdgeAngle = sin(sharpAngleRadians);
+	while (_splitNum < numPasses) {
+		pReporter->reportProgress();
 
-		bool didSplit = false;
-		int count = 0;
-		for (size_t passNum = 0; passNum < numPasses; passNum++) {
-			pReporter->reportProgress();
+		bool changed = false;
+		runThreadPool_IJK([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+				if (cell.setNeedToSplitConditional(_splitNum, params)) {
+					changed = true;
+				}
+			});
+			return true;
+		}, multiCore);
 
-			bool changed = false;
-			runThreadPool_IJK([this, passNum, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder([this, &changed, passNum, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.setNeedToSplitConditional(passNum, params)) {
-						changed = true;
-					}
-				});
-				return true;
-			}, multiCore);
+		pReporter->reportProgress();
 
-			if (changed)
-				_numSplits++;
+		if (changed)
+			finishSplits(multiCore);
+		//		assert(verifyTopology(multiCore));
+		pReporter->reportProgress();
 
-			pReporter->reportProgress();
-
-			if (changed)
-				finishSplits(passNum, multiCore);
-			//		assert(verifyTopology(multiCore));
-			pReporter->reportProgress();
-
-			if (!changed) {
-				cout << "No more splits required: " << passNum << "\n";
-				break;
-			}
+		if (!changed) {
+			cout << "No more splits required: " << _splitNum << "\n";
+			break;
 		}
+		_splitNum++;
 	}
+	
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
@@ -850,17 +843,18 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 	}, multiCore);
 
 	if (changed)
-		finishSplits(-1, multiCore);
+		finishSplits(multiCore);
 }
 
-void Volume::finishSplits(size_t splittingPass, bool multiCore)
+void Volume::finishSplits(bool multiCore)
 {
 	bool changed = false;
-	int i = 0;
+	size_t subPassNum = 0;
 	do {
+		cout << "subPassNum: " << subPassNum << "\n";
 		changed = false;
-		runThreadPool_IJK([this, splittingPass, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(splittingPass))
+		runThreadPool_IJK([this, subPassNum, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(_splitNum, subPassNum))
 				changed = true;
 			return true;
 			}, multiCore);
@@ -878,9 +872,9 @@ void Volume::finishSplits(size_t splittingPass, bool multiCore)
 			return true;
 		}, multiCore);
 
-		i++;
-		if (i > 20) {
-			cout << "Exited before finishing splits: " << i << "\n";
+		subPassNum++;
+		if (subPassNum > 20) {
+			cout << "Exited before finishing splits: " << subPassNum << "\n";
 			break;
 		}
 	} while (changed);
@@ -926,6 +920,11 @@ void Volume::setLayerNums()
 			return true;
 		}, RUN_MULTI_THREAD);
 	}
+}
+
+void Volume::resetNumSplits()
+{
+	_splitNum = 0;
 }
 
 void Volume::insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore)
@@ -1565,6 +1564,8 @@ bool Volume::write(ostream& out) const
 
 	_modelBoundingBox.write(out);
 
+	out.write((char*)&_splitNum, sizeof(_splitNum));
+
 	const vector<Vector3d>& cPts = _modelCornerPts;
 	IoUtil::writeVector3(out, cPts);
 
@@ -1597,6 +1598,8 @@ bool Volume::read(istream& in)
 	_modelDimOrigin.read(in);
 
 	_modelBoundingBox.read(in);
+
+	in.read((char*)&_splitNum, sizeof(_splitNum));
 
 	vector<Vector3d> cPts;
 	IoUtil::readVector3(in, cPts);

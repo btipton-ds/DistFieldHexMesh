@@ -217,8 +217,6 @@ void Polyhedron::write(ostream& out) const
 	IoUtil::writeObj(out, _faceIds);
 	IoUtil::writeObj(out, _canonicalVertices);
 
-	out.write((char*)&_splitLevel, sizeof(size_t));
-
 	out.write((char*)&_splitLevel, sizeof(_splitLevel));
 	out.write((char*)&_layerNum, sizeof(_layerNum));
 }
@@ -230,7 +228,6 @@ void Polyhedron::read(istream& in)
 
 	IoUtil::readObj(in, _faceIds);
 	IoUtil::readObj(in, _canonicalVertices);
-	in.read((char*)&_splitLevel, sizeof(size_t));
 
 	in.read((char*)&_splitLevel, sizeof(_splitLevel));
 	in.read((char*)&_layerNum, sizeof(_layerNum));

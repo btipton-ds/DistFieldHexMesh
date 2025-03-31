@@ -260,7 +260,7 @@ private:
 
 	void dumpOpenCells() const;
 
-	bool splitRequiredPolyhedra(size_t splittingPass);
+	bool splitRequiredPolyhedra(size_t splittingPass, size_t subPassNum);
 
 	void addToNeedToSplit(const Index3DId& id);
 	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
