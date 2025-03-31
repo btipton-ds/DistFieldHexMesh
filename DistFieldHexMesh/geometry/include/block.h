@@ -184,7 +184,7 @@ public:
 #endif
 
 	void addToSplitStack(const Index3DId& cellIds);
-	void updateSplitStack();
+	void updateSplitStack(size_t splitNum);
 	bool hasPendingSplits() const;
 
 	void resetLayerNums();
@@ -260,7 +260,7 @@ private:
 
 	void dumpOpenCells() const;
 
-	bool splitRequiredPolyhedra(size_t splittingPass, size_t subPassNum);
+	bool splitRequiredPolyhedra(size_t splitNum, size_t subPassNum);
 
 	void addToNeedToSplit(const Index3DId& id);
 	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);

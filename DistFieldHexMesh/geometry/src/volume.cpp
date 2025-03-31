@@ -800,6 +800,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		pReporter->reportProgress();
 
+		_splitNum++;
 		if (changed)
 			finishSplits(multiCore);
 		//		assert(verifyTopology(multiCore));
@@ -809,7 +810,6 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			cout << "No more splits required: " << _splitNum << "\n";
 			break;
 		}
-		_splitNum++;
 	}
 	
 }
@@ -829,7 +829,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 
 	changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+		pBlk->iteratePolyhedraInOrder([this, &pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 			vector<Index3DId> localTouched;
 			if (cell.intersectsModel()) {
 #if 0
@@ -851,7 +851,7 @@ void Volume::finishSplits(bool multiCore)
 	bool changed = false;
 	size_t subPassNum = 0;
 	do {
-		cout << "subPassNum: " << subPassNum << "\n";
+		cout << "SplitNum: " << _splitNum << ", subPassNum: " << subPassNum << "\n";
 		changed = false;
 		runThreadPool_IJK([this, subPassNum, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->splitRequiredPolyhedra(_splitNum, subPassNum))
@@ -860,7 +860,7 @@ void Volume::finishSplits(bool multiCore)
 			}, multiCore);
 
 		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			pBlk->updateSplitStack();
+			pBlk->updateSplitStack(_splitNum);
 			return true;
 		}, multiCore);
 

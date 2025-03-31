@@ -1017,12 +1017,7 @@ void Polyhedron::addToFaceCountHistogram(map<size_t, size_t>& histo) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	MTC::vector<MTC::set<Index3DId>> discarded;
-	return isTooComplex(params, discarded);
-}
-
-bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const
-{
+	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
 	if (_faceIds.size() > params.maxCellFaces)
 		return true;
 
@@ -1032,6 +1027,14 @@ bool Polyhedron::isTooComplex(const SplittingParams& params, MTC::vector<MTC::se
 			return true;
 	}
 
+	return false;
+}
+
+bool Polyhedron::isTooComplex(const SplittingParams& params, size_t splitNum) const
+{
+	if (_splitLevel <= splitNum) {
+		return isTooComplex(params);
+	}
 	return false;
 }
 
@@ -1552,8 +1555,7 @@ bool Polyhedron::verifyTopology() const
 		valid = false;
 	}
 	
-	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
-	if (valid && isTooComplex(params, planarFaceSet))
+	if (valid && isTooComplex(params, INT_MAX))
 		valid = false;
 
 #if DUMP_BAD_CELL_OBJS

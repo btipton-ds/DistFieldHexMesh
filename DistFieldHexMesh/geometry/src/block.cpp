@@ -1011,7 +1011,7 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::splitRequiredPolyhedra(size_t splittingPass, size_t subPassNum)
+bool Block::splitRequiredPolyhedra(size_t splitNum, size_t subPassNum)
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
@@ -1022,7 +1022,7 @@ bool Block::splitRequiredPolyhedra(size_t splittingPass, size_t subPassNum)
 
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splittingPass, subPassNum);
+			Splitter3D splitter(this, cellId, splitNum, subPassNum);
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
@@ -1279,23 +1279,26 @@ void Block::addToSplitStack(const Index3DId& cellId)
 		pOwner->_needToSplit.insert(cellId);
 }
 
-void Block::updateSplitStack()
+void Block::updateSplitStack(size_t splitNum)
 {
 	MTC::set<Index3DId> blockingIds;
 	const auto& params = getSplitParams();
-	for (const auto& cellId : _touchedCellIds) {
-		auto pOwner = getOwner(cellId);
-		if (pOwner && pOwner->_polyhedra.exists(cellId)) {
-			auto& cell = pOwner->_polyhedra[cellId];
-			if (cell.isTooComplex(params))
-				pOwner->_needToSplit.insert(cellId);
-			else {
-				double maxNonOrtho = cell.maxNonOrthogonality();
-				if (maxNonOrtho > params.maxOrthoAngleRadians)
-					pOwner->_needToSplit.insert(cellId);
-			}
+//	for (const auto& cellId : _touchedCellIds) {
+	_polyhedra.iterateInOrder([this, splitNum, &params](const Index3DId& cellId, const Polyhedron& cell) {
+		if (cell.isTooComplex(params, splitNum)) {
+			static mutex mut;
+			lock_guard lg(mut);
+			cout << "Cell " << cellId << " isTooComplex. Submitting for resplit\n ";
+			_needToSplit.insert(cellId);
+		} else {
+#if 0
+			double maxNonOrtho = cell.maxNonOrthogonality();
+			if (maxNonOrtho > params.maxOrthoAngleRadians)
+				_needToSplit.insert(cellId);
+#endif
 		}
-	}
+	});
+//	}
 	_touchedCellIds.clear();
 }
 
