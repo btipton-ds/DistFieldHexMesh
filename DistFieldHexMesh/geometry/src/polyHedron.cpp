@@ -826,15 +826,15 @@ bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const
 	double minCurv = 1 / params.maxCurvatureRadius_meters;
 
 	auto bBox = getBoundingBox();
-	const auto& modelMesh = getBlockPtr()->getModelMeshData();
+	const auto& model = getBlockPtr()->getModel();
 	vector<TriMeshIndex> triIndices;
-	if (modelMesh.findTris(bBox, triIndices)) {
+	if (model.findTris(bBox, triIndices)) {
 		for (const auto& idx : triIndices) {
-			auto curv = modelMesh.triCurvature(idx);
+			auto curv = model.triCurvature(idx);
 			if (curv > minCurv) {
-				auto triIdx = modelMesh.getTri(idx);
+				auto triIdx = model.getTri(idx);
 				for (int i = 0; i < 3; i++) {
-					auto& pt = modelMesh.getVert(triIdx[i])._pt;
+					auto& pt = model.getVert(triIdx[i])._pt;
 					if (pointInside(pt)) {
 						return true;
 					}
@@ -921,9 +921,9 @@ bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
 		auto bbox = getBoundingBox();
-		auto& meshData = getBlockPtr()->getModelMeshData();
+		auto& model = getBlockPtr()->getModel();
 		vector<TriMeshIndex> triIndices;
-		if (meshData.findTris(bbox, triIndices)) {
+		if (model.findTris(bbox, triIndices)) {
 			for (const auto& faceId : _faceIds) {
 				faceFunc(faceId, [this, &triIndices](const Polygon& face) {
 					if (face.intersectsModel(triIndices)) {
@@ -951,8 +951,8 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 	CBoundingBox3Dd bbox = getBoundingBox();
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
 	MTC::vector<size_t> sharpEdges;
-	auto& meshData = getBlockPtr()->getModelMeshData();
-	for (auto& pData : meshData) {
+	auto& model = getBlockPtr()->getModel();
+	for (auto& pData : model) {
 		auto& pMesh = pData->getMesh();
 		vector<size_t> edgeIndices;
 		if (pMesh->findEdges(bbox, edgeIndices)) {
@@ -1090,8 +1090,8 @@ bool Polyhedron::containsSharps() const
 	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
 
 	auto bbox = getBoundingBox();
-	const auto& meshData = getBlockPtr()->getModelMeshData();
-	for (const auto& pData : meshData) {
+	const auto& model = getBlockPtr()->getModel();
+	for (const auto& pData : model) {
 		auto pMesh = pData->getMesh();
 		for (size_t vertIdx : vertIndices) {
 			const auto& pt = pMesh->getVert(vertIdx)._pt;
@@ -1303,9 +1303,9 @@ double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const 
 		return 0;
 
 	_needsCurvatureCheck = false;
-	const auto& meshData = getBlockPtr()->getModelMeshData();
+	const auto& model = getBlockPtr()->getModel();
 
-	for (const auto& pData : meshData) {
+	for (const auto& pData : model) {
 		auto pTriMesh = pData->getMesh();
 
 		const auto& blkIdx = _thisId.blockIdx();

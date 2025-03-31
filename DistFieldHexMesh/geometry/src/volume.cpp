@@ -386,8 +386,8 @@ CBoundingBox3Dd Volume::getModelBBox() const
 {
 	CBoundingBox3Dd result;
 
-	const auto& meshData = _pAppData->getMeshData();
-	for (const auto& pData : meshData) {
+	const auto& model = _pAppData->getModel();
+	for (const auto& pData : model) {
 		const auto& pMesh = pData->getMesh();
 		result.merge(pMesh->getBBox());
 	}

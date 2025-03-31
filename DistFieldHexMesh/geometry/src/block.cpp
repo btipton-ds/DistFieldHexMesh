@@ -174,10 +174,10 @@ void Block::calBlockOriginSpan(Vector3d& origin, Vector3d& span) const
 
 }
 
-const Model& Block::getModelMeshData() const
+const Model& Block::getModel() const
 {
 	auto& pAppData = _pVol->getAppData();
-	return pAppData->getMeshData();
+	return pAppData->getModel();
 }
 
 void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)

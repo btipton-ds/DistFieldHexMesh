@@ -642,7 +642,7 @@ bool Polygon::intersectsModel(const std::vector<TriMeshIndex>& triIndices) const
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
-		const auto& model = getBlockPtr()->getModelMeshData();
+		const auto& model = getBlockPtr()->getModel();
 		for (const auto& triIdx : triIndices) {
 			const auto tri = model.getTri(triIdx);
 			const Vector3d* pts[] = {

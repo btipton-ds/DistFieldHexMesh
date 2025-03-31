@@ -98,9 +98,35 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, 
 	return _pSearchTree->find(bbox, result, contains);
 }
 
-size_t Model::biDirRayCast(const Ray<double>& ray, std::vector<TriMeshIndex>& hits) const
+size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir) const
 {
-	return _pSearchTree->biDirRayCast(ray, hits);
+	vector<TriMeshIndex> hitIndices;
+	if (_pSearchTree->biDirRayCast(ray, hitIndices)) {
+		for (const auto& triIdx2 : hitIndices) {
+			auto pData = _modelMeshData[triIdx2.getMeshIdx()];
+			if (!pData->isActive())
+				continue;
+
+			auto& pMesh = pData->getMesh();
+			const auto& tri = pMesh->getTri(triIdx2.getTriIdx());
+			const Vector3d* pts[] = {
+				&pMesh->getVert(tri[0])._pt,
+				&pMesh->getVert(tri[1])._pt,
+				&pMesh->getVert(tri[2])._pt,
+			};
+
+			RayHitd hit;
+			if (intersectRayTri(ray, pts, hit)) {
+				if (biDir || hit.dist > 0) {
+					MultiMeshRayHit MTHit(triIdx2.getMeshIdx(), hit);
+					hits.push_back(MTHit);
+				}
+			}
+		}
+	}
+
+	sort(hits.begin(), hits.end());
+	return hits.size();
 }
 
 const TriMesh::CVertex& Model::getVert(const TriMeshIndex& idx) const

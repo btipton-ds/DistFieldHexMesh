@@ -77,7 +77,7 @@ public:
 
 	size_t findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& indices) const;
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, SearchTree::BoxTestType contains = SearchTree::BoxTestType::IntersectsOrContains) const;
-	size_t biDirRayCast(const Ray<double>& ray, std::vector<TriMeshIndex>& hits) const;
+	size_t rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir = true) const;
 
 	const TriMesh::CVertex& getVert(const TriMeshIndex& idx) const;
 	const MultMeshTriangle getTri(const TriMeshIndex& idx) const;

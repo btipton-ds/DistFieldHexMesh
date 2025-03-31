@@ -82,4 +82,62 @@ namespace DFHM {
 		return _meshIdx == rhs._meshIdx && _triIdx == rhs._triIdx;
 	}
 
+	struct MultiMeshRayHit : public TriMeshIndex {
+	public:
+		MultiMeshRayHit() = default;
+		MultiMeshRayHit(size_t meshIdx, const RayHitd& hit);
+		MultiMeshRayHit(const MultiMeshRayHit& src) = default;
+		MultiMeshRayHit(const TriMeshIndex& idx = {});
+
+		void setPoint(const Vector3d& pt);
+		const Vector3d& getPoint() const;
+
+		bool operator<(const MultiMeshRayHit& rhs) const;
+
+		double getDist() const;
+		const Vector3d& getPt() const;
+
+	private:
+		double _dist;
+		Vector3d _pt;
+	};
+
+	inline MultiMeshRayHit::MultiMeshRayHit(const TriMeshIndex& idx)
+		: TriMeshIndex(idx)
+	{
+	}
+
+	inline MultiMeshRayHit::MultiMeshRayHit(size_t meshIdx, const RayHitd& hit)
+		: TriMeshIndex(meshIdx, hit.triIdx)
+		, _pt(hit.hitPt)
+		, _dist(hit.dist)
+	{
+	}
+
+	inline void MultiMeshRayHit::setPoint(const Vector3d& pt)
+	{
+		_pt = pt;
+	}
+
+	inline const Vector3d& MultiMeshRayHit::getPoint() const
+	{
+		return _pt;
+	}
+
+	inline bool MultiMeshRayHit::operator<(const MultiMeshRayHit& rhs) const
+	{
+		return _dist < rhs._dist;
+	}
+
+	inline double MultiMeshRayHit::getDist() const
+	{
+		return _dist;
+	}
+
+	inline const Vector3d& MultiMeshRayHit::getPt() const
+	{
+		return _pt;
+	}
+
+
 }

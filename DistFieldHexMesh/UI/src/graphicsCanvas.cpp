@@ -449,38 +449,29 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     if (!_pAppData)
         return;
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
-    vector<CMeshPtr> meshes;
-    const auto& meshData = _pAppData->getMeshData();
-    for (const auto& pMeshData : meshData) {
-        if (pMeshData->isActive()) {
-            auto pMesh = pMeshData->getMesh();
-            if (pMesh)
-                meshes.push_back(pMesh);
-        }
-    }
+
+    const auto& model = _pAppData->getModel();
+
     Vector3d hitModel;
     double minDist = DBL_MAX;
     bool hadHit = false;
     CBoundingBox3Dd bbox;
     Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
-    if (meshes.empty()) {
+    if (model.empty()) {
         // Rotate about point hit at arbitrary depth
         hitModel = startPt;
     } else {
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
+        vector<MultiMeshRayHit> hits;
         Rayd ray(startPt, dir);
-        for (const auto pMesh : meshes) {
-            bbox.merge(pMesh->getBBox());
-            vector<RayHitd> hits;
-            if (pMesh->rayCast(ray, hits)) {
-                hadHit = true;
-                // Rotate about hit point
-                for (const auto& hit : hits) {
-                    if (hit.dist < minDist) {
-                        minDist = hit.dist;
-                        hitModel = hit.hitPt;
-                    }
+        if (model.rayCast(ray, hits)) {
+            hadHit = true;
+            // Rotate about hit point
+            for (const auto& hit : hits) {
+                if (hit.getDist() < minDist) {
+                    minDist = hit.getDist();
+                    hitModel = hit.getPoint();
                 }
             }
         }
@@ -1410,8 +1401,8 @@ void GraphicsCanvas::changeViewElements()
 {
     if (!_pAppData)
         return;
-    const auto& meshData = _pAppData->getMeshData();
-    _pDrawModelMesh->changeViewElements(meshData);
+    const auto& model = _pAppData->getModel();
+    _pDrawModelMesh->changeViewElements(model);
     _pDrawHexMesh->changeViewElements();
 }
 

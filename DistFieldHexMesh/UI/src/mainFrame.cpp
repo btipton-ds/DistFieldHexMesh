@@ -423,10 +423,10 @@ void MainFrame::OnInternalIdle()
 
     _pCanvas->Refresh();
 
-    const auto& meshData = _pAppData->getMeshData();
+    const auto& model = _pAppData->getModel();
     const auto& pVolume = _pAppData->getVolume();
 
-    bool hasModel = (!meshData.empty());
+    bool hasModel = (!model.empty());
     bool hasMesh = (pVolume && pVolume->numPolyhedra() > 0);
 
     if (_editMenu) {
@@ -525,11 +525,11 @@ void MainFrame::OnOpen(wxCommandEvent& event)
 void MainFrame::refreshObjectTree()
 {
     _pObjectTree->DeleteAllItems();
-    const auto& meshObjects = _pAppData->getMeshData();
+    const auto& model = _pAppData->getModel();
     _pObjectTree->SetImages(_images);
     auto solidsItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Solids", -1, 0);
     auto surfacesItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Surfaces", -1, 0);
-    for (const auto& pData : meshObjects) {
+    for (const auto& pData : model) {
         wxDataViewItem item;
         const auto pMesh = pData->getMesh();
         if (pMesh->isClosed())

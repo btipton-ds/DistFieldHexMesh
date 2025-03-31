@@ -151,7 +151,7 @@ public:
 	void addSubBlockFaces();
 	void createBlockFaces();
 
-	const Model& getModelMeshData() const;
+	const Model& getModel() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
