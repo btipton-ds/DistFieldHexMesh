@@ -68,10 +68,11 @@ public:
 	size_t find(const VAL& id) const;
 	void erase(const VAL& VAL);
 	const VAL& operator[](const size_t& idx) const;
-#if 1
+	const VAL* data() const;
+
 	std::vector<VAL>::const_iterator begin() const;
 	std::vector<VAL>::const_iterator end() const;
-#endif
+
 private:
 	void findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const;
 
@@ -240,6 +241,12 @@ inline const VAL& FastBisectionSet_with_comp<VAL, COMP>::operator[](const size_t
 	assert(isSorted());
 #endif
 	return _vals[idx];
+}
+
+template<class VAL, class COMP>
+inline const VAL* FastBisectionSet_with_comp<VAL, COMP>::data() const
+{
+	return _vals.data();
 }
 
 template<class VAL, class COMP>

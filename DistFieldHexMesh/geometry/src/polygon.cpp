@@ -90,7 +90,13 @@ Polygon::Polygon(const Block* pBlock, const Polygon& src)
 	, _cellIds(src._cellIds)
 	, _isConvex(src._isConvex)
 {
+	assert(verifyUnique());
+}
 
+void Polygon::updateObjectKey()
+{
+	auto pBlk = getOurBlockPtr();
+	PolygonSearchKey::set(pBlk, PolygonSearchKey::makeNonColinearVertexIds(pBlk, _vertexIds));
 }
 
 void Polygon::connectVertEdgeTopology() {

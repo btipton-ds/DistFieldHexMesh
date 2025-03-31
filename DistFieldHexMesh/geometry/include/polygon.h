@@ -86,6 +86,8 @@ public:
 	Polygon(const Polygon& src);
 	Polygon(const Block* pBlock, const Polygon& src);
 
+	void updateObjectKey();
+
 	Polygon& operator = (const Polygon& rhs);
 
 	void postAddToPoolActions() override;

@@ -335,18 +335,28 @@ size_t Block::numBytes() const
 bool Block::verifyTopology() const
 {
 	bool result = true;
-	_vertices.iterateInOrder([&result](const Index3DId& id, const Vertex& vert) {
+	_vertices.iterateInOrder([this, &result](const Index3DId& id, const Vertex& vert) {
+		if (vert.getId() != id)
+			result = false;
+		if (_vertices.findId(vert) != id)
+			result = false;
 		if (!vert.verifyTopology())
 			result = false;
 	});
 
-	_polygons.iterateInOrder([&result](const Index3DId& id, const Polygon& face) {
+	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face) {
+		if (face.getId() != id)
+			result = false;
+		if (_polygons.findId(face) != id)
+			result = false;
 		if (!face.verifyTopology())
 			result = false;
 	});
 
 	MTC::vector<Index3DId> badCellIds;
 	_polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
+		if (cell.getId() != id)
+			result = false;
 		if (!cell.verifyTopology()) {
 			badCellIds.push_back(id);
 			result = false;
@@ -808,6 +818,11 @@ bool Block::write(ostream& out) const
 
 void Block::setSupportsReverseLookup(bool val)
 {
+	if (val) {
+		_polygons.iterateInOrder([](const Index3DId& id, Polygon& face) {
+			face.updateObjectKey();
+		});
+	}
 	_polygons.setSupportsReverseLookup(val);
 }
 

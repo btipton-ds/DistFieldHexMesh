@@ -54,8 +54,9 @@ MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* p
 	colin.resize(vertexIds.size());
 	pts.resize(vertexIds.size());
 
-	for (size_t i = 0; i < vertexIds.size(); i++)
+	for (size_t i = 0; i < vertexIds.size(); i++) {
 		pts[i] = &pBlock->getVertexPoint(vertexIds[i]);
+	}
 
 	for (size_t j = 0; j < vertexIds.size(); j++) {
 		size_t i = (j + vertexIds.size() - 1) % vertexIds.size();

@@ -54,10 +54,23 @@ void Edge::initFaceIds()
 
 		vertexFunc(_vertexIds[1], [this, &face0Ids](const Vertex& vert1) {
 			auto& face1Ids = vert1.getFaceIds();
+			auto p0 = face0Ids.data();
+			auto p1 = face1Ids.data();
 
-			for (const auto& id0 : face0Ids) {
-				if (face1Ids.contains(id0))
-					_faceIds.insert(id0);
+			if (face0Ids.size() < face1Ids.size()) {
+				for (size_t i = 0; i < face0Ids.size(); i++) {
+					if (face1Ids.contains(*p0)) {
+						_faceIds.insert(*p0);
+					}
+					p0++;
+				}
+			} else {
+				for (size_t i = 0; i < face1Ids.size(); i++) {
+					if (face0Ids.contains(*p1)) {
+						_faceIds.insert(*p1);
+					}
+					p1++;
+				}
 			}
 		});
 	});
