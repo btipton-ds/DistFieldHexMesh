@@ -146,6 +146,7 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 
 void Polygon::postAddToPoolActions()
 {
+	PolygonSearchKey::set(getOurBlockPtr(), _vertexIds);
 	connectVertEdgeTopology();
 }
 
