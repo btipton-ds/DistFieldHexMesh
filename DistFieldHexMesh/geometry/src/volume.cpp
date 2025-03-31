@@ -692,7 +692,7 @@ void Volume::divideHexMesh(const Model& model, const SplittingParams& params, Pr
 	{
 
 		divideSimple(params, pReporter, multiCore);
-		divideConitional(params, pReporter, multiCore);
+		divideConditional(params, pReporter, multiCore);
 		MultiCore::runLambda([](size_t treadNum, size_t numThreads) {
 			Splitter3D::clearThreadLocal();
 		}, multiCore);
@@ -781,7 +781,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 	}
 }
 
-void Volume::divideConitional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
+void Volume::divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
 	size_t numPasses = params.numConditionalPasses();
 	if (numPasses > 0) {

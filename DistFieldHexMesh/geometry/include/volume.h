@@ -167,7 +167,7 @@ private:
 	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
 	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
-	void divideConitional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
+	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
