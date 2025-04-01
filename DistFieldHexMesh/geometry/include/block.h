@@ -153,6 +153,7 @@ public:
 	void createBlockFaces();
 
 	const Model& getModel() const;
+	const std::shared_ptr<const Model::SearchTree>& getModelSearchTree(const Model::BOX_TYPE& bbox) const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
@@ -299,6 +300,9 @@ private:
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
 	ObjectPool<Polyhedron> _polyhedra;
+
+	mutable bool _searchTreeSet = false;
+	mutable std::shared_ptr<const Model::SearchTree> _pSearchTree;
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

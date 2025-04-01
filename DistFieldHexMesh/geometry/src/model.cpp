@@ -101,10 +101,10 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& res
 		}
 	}
 
-#if 1 && defined(_DEBUG)
+#if 1 
 	set<SearchTree::Entry> result1;
 	std::vector<SearchTree::Entry> entries1;
-	auto pSub = _pSearchTree->getSubTree(bbox);
+	auto pSub = getSubTree(bbox);
 	if (pSub) {
 		if (pSub->find(bbox, entries1)) {
 			for (const auto& entry : entries) {
@@ -116,10 +116,13 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& res
 		}
 
 	}
+#ifdef _DEBUG
+
 	if (result.size() != result1.size())
 		assert(!"subTree wrong size");
 	for (const auto& e : result)
 		assert(result1.contains(e));
+#endif // _DEBUG
 	result.clear();
 	result.insert(result.end(), result1.begin(), result1.end());
 #endif
@@ -170,6 +173,12 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 
 	sort(hits.begin(), hits.end());
 	return hits.size();
+}
+
+std::shared_ptr<const Model::SearchTree> Model::getSubTree(const BOX_TYPE& bbox) const
+{
+	auto p = _pSearchTree->getSubTree(bbox);
+	return p;
 }
 
 const TriMesh::CVertex& Model::getVert(const TriMeshIndex& idx) const
