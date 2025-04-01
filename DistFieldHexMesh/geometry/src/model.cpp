@@ -100,6 +100,30 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& res
 			}
 		}
 	}
+
+#if 1 && defined(_DEBUG)
+	set<SearchTree::Entry> result1;
+	std::vector<SearchTree::Entry> entries1;
+	auto pSub = _pSearchTree->getSubTree(bbox);
+	if (pSub) {
+		if (pSub->find(bbox, entries1)) {
+			for (const auto& entry : entries) {
+				const auto& triBox = entry.getBBox();
+				if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+					result1.insert(entry);
+				}
+			}
+		}
+
+	}
+	if (result.size() != result1.size())
+		assert(!"subTree wrong size");
+	for (const auto& e : result)
+		assert(result1.contains(e));
+	result.clear();
+	result.insert(result.end(), result1.begin(), result1.end());
+#endif
+
 	return result.size();
 }
 
