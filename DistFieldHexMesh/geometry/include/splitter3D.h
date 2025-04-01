@@ -92,6 +92,7 @@ private:
 	LAMBDA_CLIENT_DECLS;
 
 	bool _testRun = false;
+	bool _intersectsModel = false;
 	size_t _subPassNum, _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 

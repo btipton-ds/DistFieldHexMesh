@@ -99,6 +99,7 @@ public:
 	bool isConvex() const;
 	bool pointInside(const Vector3d& pt) const;
 	bool intersectsModel() const;
+	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 #if USE_CELL_HISTOGRAM
 	void addToFaceCountHistogram(std::map<size_t, size_t>& histo) const;

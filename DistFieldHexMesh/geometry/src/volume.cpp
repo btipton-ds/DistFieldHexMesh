@@ -791,11 +791,13 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		bool changed = false;
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				if (cell.setNeedToSplitConditional(_splitNum, params)) {
-					changed = true;
-				}
-			});
+			if (pBlk->intersectsModel()) {
+				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+					if (cell.setNeedToSplitConditional(_splitNum, params)) {
+						changed = true;
+					}
+				});
+			}
 			return true;
 		}, multiCore);
 

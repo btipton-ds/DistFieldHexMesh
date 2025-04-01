@@ -157,6 +157,9 @@ bool Splitter3D::splitAtCenter()
 		for (auto& id : _createdCellIds) {
 			cellFunc(id, [this](Polyhedron& cell) {
 				cell.setSplitLevel(_splitLevel + 1);
+				// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
+				if (!_intersectsModel)
+					cell.setIntersectsModel(false);
 			});
 		}
 		int dbgBreak = 1;
@@ -957,6 +960,7 @@ Index3DId Splitter3D::makeScratchHexCell_deprecated(const Index3DId& parentId, c
 
 void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
+	_intersectsModel = targetCell.intersectsModel();
 	_splitLevel = targetCell.getSplitLevel();
 	_cornerVertIds = targetCell.getCanonicalVertIds();
 	_cornerPts.reserve(_cornerVertIds.size());

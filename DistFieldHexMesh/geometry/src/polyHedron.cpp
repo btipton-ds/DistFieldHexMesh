@@ -920,6 +920,10 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
+		if (!getOurBlockPtr()->intersectsModel()) {
+			_intersectsModel = IS_FALSE;
+			return false;
+		}
 		auto bbox = getBoundingBox();
 		auto& model = getBlockPtr()->getModel();
 		vector<Model::SearchTree::Entry> entries;
@@ -941,6 +945,11 @@ bool Polyhedron::intersectsModel() const
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells
+}
+
+void Polyhedron::setIntersectsModel(bool val)
+{
+	_intersectsModel = val ? IS_TRUE : IS_FALSE;
 }
 
 bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const

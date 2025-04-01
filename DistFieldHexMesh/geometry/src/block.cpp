@@ -333,6 +333,18 @@ size_t Block::numBytes() const
 	return result;
 }
 
+bool Block::intersectsModel() const
+{
+	if (_intersectsModel == IS_UNKNOWN) {
+		auto& model = getModel();
+		auto bbox = getBBox();
+		vector<TriMeshIndex> indices;
+		_intersectsModel = model.findTris(bbox, indices) ? IS_TRUE : IS_FALSE;
+	}
+
+	return _intersectsModel == IS_TRUE;
+}
+
 bool Block::verifyTopology() const
 {
 	bool result = true;

@@ -141,6 +141,7 @@ public:
 
 	const std::vector<Vector3d>& getCornerPts() const;
 
+	bool intersectsModel() const;
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
 	bool verifyIndices(const Index3D& idx) const;
@@ -273,6 +274,8 @@ private:
 	bool isPolygonInUse(const Index3DId& faceId) const;
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
+
+	mutable Trinary _intersectsModel = IS_UNKNOWN;
 
 	Index3D _blockIdx;
 
