@@ -199,10 +199,10 @@ private:
 		{
 		}
 
-		inline bool operator () (const ObjIndex& lhObjIdx, const ObjIndex& rhObjIdx) const
+		inline bool operator () (const FBMPair<ObjIndex,size_t>& lhObjIdx, const FBMPair<ObjIndex, size_t>& rhObjIdx) const
 		{
-			const T* pLHS = _owner.getEntryFromObjIndex(lhObjIdx);
-			const T* pRHS = _owner.getEntryFromObjIndex(rhObjIdx);
+			const T* pLHS = _owner.getEntryFromObjIndex(lhObjIdx.first);
+			const T* pRHS = _owner.getEntryFromObjIndex(rhObjIdx.first);
 			if (pLHS && pRHS)
 				return *pLHS < *pRHS;
 
@@ -235,10 +235,14 @@ private:
 	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
 	std::vector<ObjectSegPtr> _objSegmentPtrs;
 
-	FastBisectionMap<ObjIndex, size_t> _xx;
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
 	// It's ugly, and a bit risky, but it avoids duplicating the storage of vertices and polygons.
-	std::map<ObjIndex, size_t, CompareFunctor> _objToElementIndexMap;	// TODO, may want to change this to a sorted array with bisection lookup for space savings
+#if OBJECT_POOL_USE_STD_MAP
+	std::map<ObjIndex, size_t, CompareFunctor> _objToElementIndexMap;
+#else
+	FastBisectionMap_with_comp<ObjIndex, size_t, CompareFunctor> _objToElementIndexMap;
+#endif
+	// TODO, may want to change this to a sorted array with bisection lookup for space savings
 															// Attempted this on 2/5/25 and gave up after several hours using FastBisectionMap. It's trickier than it looks.
 															// Probably due to _objToElementIndexMap.find not reporting missing entries properly.
 															// Can't use a simple array because of accumulated dead ids at the head.
@@ -417,7 +421,11 @@ inline void ObjectPool<T>::addToLookup(const T& obj)
 		auto id = obj.getId();
 		assert(id.elementId() < _elementIndexToObjIndexMap.size());
 		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
-		_objToElementIndexMap.insert(std::make_pair(objIdx, id.elementId()));
+#if OBJECT_POOL_USE_STD_MAP
+		_objToElementIndexMap.insert(make_pair(objIdx, id.elementId()));
+#else
+		_objToElementIndexMap.insert(objIdx, id.elementId());
+#endif
 		auto testId = findId(obj);
 		assert(testId == id); // make sure we can find ourself
 	}

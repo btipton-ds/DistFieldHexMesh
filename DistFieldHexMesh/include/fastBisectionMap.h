@@ -37,21 +37,26 @@ namespace DFHM {
 template<class IDX, class VAL>
 struct FBMPair {
 	inline FBMPair(const IDX& idx, const VAL& v = VAL())
-		: _idx(idx), _val(v)
+		: first(idx), second(v)
 	{}
 
 	inline bool operator<(const FBMPair& rhs) const
 	{
-		return _idx < rhs._idx;
+		return first < rhs.first;
 	}
 
 	inline bool operator==(const FBMPair& rhs) const
 	{
-		return _idx == rhs._idx;
+		return first == rhs.first;
 	}
 
-	IDX _idx;
-	mutable VAL _val;
+	inline bool operator!=(const FBMPair& rhs) const
+	{
+		return first != rhs.first;
+	}
+
+	IDX first;
+	mutable VAL second;
 };
 
 template<class IDX, class VAL>
@@ -72,6 +77,8 @@ public:
 
 	void insert(const IDX& i, const VAL& v);
 
+	const PAIR* find(const IDX& key) const;
+	const PAIR* end() const;
 	const VAL& operator[](const IDX& idx) const;
 };
 
@@ -94,12 +101,30 @@ inline void FastBisectionMap_with_comp<IDX, VAL, COMP>::insert(const IDX& i, con
 }
 
 template<class IDX, class VAL, class COMP>
+const FastBisectionMap_with_comp<IDX, VAL, COMP>::PAIR* FastBisectionMap_with_comp<IDX, VAL, COMP>::find(const IDX& key) const
+{
+	FBMPair<IDX, VAL> keyVal(key);
+	size_t idx2 = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::find(keyVal);
+	if (idx2 < FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::size()) {
+		auto& val = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::operator[](idx2);
+		return &val;
+	}
+	return nullptr;
+}
+
+template<class IDX, class VAL, class COMP>
+const FastBisectionMap_with_comp<IDX, VAL, COMP>::PAIR* FastBisectionMap_with_comp<IDX, VAL, COMP>::end() const
+{
+	return nullptr;
+}
+
+template<class IDX, class VAL, class COMP>
 const VAL& FastBisectionMap_with_comp<IDX, VAL, COMP>::operator[](const IDX& idx) const
 {
 	FBMPair<IDX, VAL> key(idx);
 	size_t idx2 = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::find(key);
 	auto& val = FastBisectionSet_with_comp<FBMPair<IDX, VAL>, COMP>::operator[](idx2);
-	return val._val;
+	return val.second;
 }
 
 template<class IDX, class VAL>

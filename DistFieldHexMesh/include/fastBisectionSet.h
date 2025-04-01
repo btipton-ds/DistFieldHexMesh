@@ -75,6 +75,7 @@ public:
 
 private:
 	void findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const;
+	bool isEqual(const VAL& lhs, const VAL& rhs) const;
 
 	bool isSorted() const;
 
@@ -82,6 +83,12 @@ private:
 	mutable bool _sorted = true;
 	mutable std::vector<VAL> _vals;
 };
+
+template<class VAL, class COMP>
+inline bool FastBisectionSet_with_comp<VAL, COMP>::isEqual(const VAL& lhs, const VAL& rhs) const
+{
+	return !_comp(lhs, rhs) && !_comp(rhs, lhs); // !(a < b && a > b)
+}
 
 template<class VAL, class COMP>
 inline FastBisectionSet_with_comp<VAL, COMP>::FastBisectionSet_with_comp()
@@ -172,21 +179,21 @@ void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry)
 	size_t idx0, idx1;
 	size_t idx;
 	findIdx(newEntry, idx, idx0, idx1);
-	if (idx < _vals.size() && _vals[idx] == newEntry)
+	if (idx < _vals.size() && isEqual(_vals[idx], newEntry))
 		return;
 
 	if (_vals.empty()) {
 		_vals.push_back(newEntry);
-	} else if (newEntry < _vals.front()) {
+	} else if (_comp(newEntry, _vals.front())) {
 		_vals.insert(_vals.begin(), newEntry);
 	} else if (idx0 < _vals.size()) {
 		bool inserted = false;
 		for (size_t i = idx0; i < idx1 && i + 1 < _vals.size(); i++) {
-			if (i == 0 && newEntry < _vals[i]) {
+			if (i == 0 && _comp(newEntry, _vals[i])) {
 				_vals.insert(_vals.begin(), newEntry);
 				inserted = true;
 				break;
-			} else if (_vals[i] < newEntry && newEntry < _vals[i + 1]) {
+			} else if (_comp(_vals[i], newEntry) && _comp(newEntry, _vals[i + 1])) {
 				_vals.insert(_vals.begin() + i + 1, newEntry);
 				inserted = true;
 				break;
@@ -194,7 +201,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry)
 		}
 
 		if (!inserted) {
-			_sorted = _vals.back() < newEntry;
+			_sorted = _comp(_vals.back(), newEntry);
 			if (!_sorted) {
 				int dbgBreak = 1;
 			}
@@ -261,8 +268,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 	}
 
 	if (!_sorted) {
-		COMP comp;
-		std::sort(_vals.begin(), _vals.end(), comp);
+		std::sort(_vals.begin(), _vals.end(), _comp);
 		_vals.shrink_to_fit();
 		_sorted = true;
 	}
@@ -270,10 +276,10 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 	idx1 = _vals.size() - 1;
 	auto pVals = _vals.data();
 
-	if (pVals[idx0] == id) {
+	if (isEqual(pVals[idx0], id)) {
 		idx = idx0;
 		return;
-	} else if (pVals[idx1] == id) {
+	} else if (isEqual(pVals[idx1], id)) {
 		idx = idx1;
 		return;
 	}
@@ -281,9 +287,9 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 	idx = (idx0 + idx1 + 1) / 2;
 
 	while (idx0 != idx1) {
-		if (id < pVals[idx])
+		if (_comp(id, pVals[idx]))
 			idx1 = idx + 1;
-		else if (pVals[idx] < id)
+		else if (_comp(pVals[idx], id))
 			idx0 = idx;
 		else {
 			return;
