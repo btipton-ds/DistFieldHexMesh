@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_lineSegment.h>
 #include <tm_lineSegment.hpp>
+#include <tm_lineSegment_byref.hpp>
 #include <tm_ioUtil.h>
 #include <tm_spatialSearch.hpp>
 #include <pool_vector.h>
@@ -919,21 +920,38 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 
 bool Polyhedron::intersectsModel() const
 {
+	const auto tol = Tolerance::sameDistTol();
 	if (_intersectsModel == IS_UNKNOWN) {
 		_intersectsModel = IS_FALSE;
 		auto bbox = getBoundingBox();
 		auto pSearchTree = getOurBlockPtr()->getModelSearchTree();
+		const auto& model = getOurBlockPtr()->getModel();
 		vector<Model::SearchTree::Entry> entries;
 		if (pSearchTree && pSearchTree->find(bbox, entries)) {
-			for (const auto& faceId : _faceIds) {
-				faceFunc(faceId, [this, &entries](const Polygon& face) {
-					if (face.intersectsModel(entries)) {
+			for (const auto& entry : entries) {
+				const auto tri = model.getTri(entry.getIndex());
+				for (int i = 0; i < 3; i++) {
+					auto& pt = model.getVert(tri[i])._pt;
+					if (pointInside(pt)) {
 						_intersectsModel = IS_TRUE;
+						break;
 					}
-				});
-
+				}
 				if (_intersectsModel == IS_TRUE)
 					break;
+			}
+
+			if (_intersectsModel != IS_TRUE) {
+				for (const auto& faceId : _faceIds) {
+					faceFunc(faceId, [this, &entries](const Polygon& face) {
+						if (face.intersectsModel(entries)) {
+							_intersectsModel = IS_TRUE;
+						}
+						});
+
+					if (_intersectsModel == IS_TRUE)
+						break;
+				}
 			}
 		}
 	}

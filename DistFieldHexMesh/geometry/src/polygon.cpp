@@ -641,19 +641,13 @@ bool Polygon::intersectsModel(const std::vector<Model::SearchTree::Entry>& entri
 {
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
+		_cachedIntersectsModel = IS_FALSE;
 		if (entries.empty() || !getOurBlockPtr()->intersectsModel()) {
-			_cachedIntersectsModel = IS_FALSE;
 			return false;
 		}
-		CBoundingBox3Dd bbox;
-		for (auto& id : _vertexIds) {
-			bbox.merge(getVertexPoint(id));
-		}
-		_cachedIntersectsModel = IS_FALSE;
+
 		const auto& model = getBlockPtr()->getModel();
 		for (const auto& entry : entries) {
-			if (!bbox.intersectsOrContains(entry.getBBox(), Tolerance::sameDistTol()))
-				continue;
 			auto& triIdx = entry.getIndex();
 			const auto tri = model.getTri(triIdx);
 			const Vector3d* pts[] = {
