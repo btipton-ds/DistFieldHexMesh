@@ -918,6 +918,77 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 	return inside;
 }
 
+bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
+{
+	bool inside = true;
+	auto ctr = calCentroidApprox();
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [&ctr, &seg, &inside](const Polygon& face) {
+			const auto tol = Tolerance::paramTol();
+			auto pl = face.calPlane();
+			auto ctrDist = pl.distanceToPoint(ctr, false);
+			if (ctrDist > 0)
+				pl.reverse(); // Vector points out of the cell
+
+			double dist0 = pl.distanceToPoint(seg._pt0, false);
+			double dist1 = pl.distanceToPoint(seg._pt1, false);
+			if (dist0 > tol || dist1 > tol) {
+				RayHitd hp;
+				if (!face.intersect(seg, hp)) {
+					inside = false;
+				}
+			}
+		});
+		if (!inside)
+			break;
+	}
+
+	return inside;
+
+}
+
+bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
+{
+	const auto& tol = Tolerance::sameDistTol();
+
+	auto& model = getOurBlockPtr()->getModel();
+	const auto tri = model.getTri(entry.getIndex());
+	const Vector3d* pts[] = {
+		&model.getVert(tri[0])._pt,
+		&model.getVert(tri[1])._pt,
+		&model.getVert(tri[2])._pt,
+	};
+
+	for (int i = 0; i < 3; i++) {
+		int j = (i + 1) % 3;
+		LineSegment_byrefd seg(*pts[i], *pts[j]);
+		if (segInside(seg)) {
+			return true;
+		}
+	}
+
+	bool result = false;
+
+	for (const auto& faceId : _faceIds) {
+		faceFunc(faceId, [this, &pts, &result, tol](const Polygon& face) {
+			face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				const Vector3d* facePts[] = {
+					&getVertexPoint(id0),
+					&getVertexPoint(id1),
+					&getVertexPoint(id2),
+				};
+
+				if (intersectTriTri(pts, facePts, tol)) {
+					result = true;
+				}
+
+				return result != true; // false exits the lambda for loop
+				});
+			});
+	}
+	return result;
+}
+
 bool Polyhedron::intersectsModel() const
 {
 	const auto tol = Tolerance::sameDistTol();
@@ -929,18 +1000,12 @@ bool Polyhedron::intersectsModel() const
 		vector<Model::SearchTree::Entry> entries;
 		if (pSearchTree && pSearchTree->find(bbox, entries)) {
 			for (const auto& entry : entries) {
-				const auto tri = model.getTri(entry.getIndex());
-				for (int i = 0; i < 3; i++) {
-					auto& pt = model.getVert(tri[i])._pt;
-					if (pointInside(pt)) {
-						_intersectsModel = IS_TRUE;
-						break;
-					}
+				if (entryInside(entry)) {
+					_intersectsModel = IS_TRUE;
+					return true;
 				}
-				if (_intersectsModel == IS_TRUE)
-					break;
 			}
-
+#if 0
 			if (_intersectsModel != IS_TRUE) {
 				for (const auto& faceId : _faceIds) {
 					faceFunc(faceId, [this, &entries](const Polygon& face) {
@@ -953,6 +1018,7 @@ bool Polyhedron::intersectsModel() const
 						break;
 				}
 			}
+#endif
 		}
 	}
 

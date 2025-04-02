@@ -33,6 +33,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <triMeshPatch.h>
+#include <tm_lineSegment.h>
+#include <tm_lineSegment_byref.h>
 #include <patient_lock_guard.h>
 #include <pool_map.h>
 #include <pool_set.h>
@@ -146,7 +148,7 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
-	bool intersectsModel(const std::vector<Model::SearchTree::Entry>& entries) const;
+	bool intersectsModel_possiblyDeprecated(const Model::SearchTree::Entry& entry) const;
 	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
@@ -158,6 +160,7 @@ public:
 	size_t getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds);
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
+	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& insidePt) const;
 

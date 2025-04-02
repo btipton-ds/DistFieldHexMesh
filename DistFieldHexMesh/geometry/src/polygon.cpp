@@ -33,7 +33,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_vector.h>
 #include <pool_set.h>
 #include <tm_math.h>
-#include <tm_lineSegment.h>
+#include <tm_lineSegment.hpp>
+#include <tm_lineSegment_byref.hpp>
 #include <tm_ray.h>
 #include <tm_ioUtil.h>
 #include <objectPool.hpp>
@@ -637,39 +638,34 @@ Vector3d Polygon::calCentroidApprox() const
 	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
 }
 
-bool Polygon::intersectsModel(const std::vector<Model::SearchTree::Entry>& entries) const
+bool Polygon::intersectsModel_possiblyDeprecated(const Model::SearchTree::Entry& entry) const
 {
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		_cachedIntersectsModel = IS_FALSE;
-		if (entries.empty() || !getOurBlockPtr()->intersectsModel()) {
-			return false;
-		}
-
 		const auto& model = getBlockPtr()->getModel();
-		for (const auto& entry : entries) {
-			auto& triIdx = entry.getIndex();
-			const auto tri = model.getTri(triIdx);
-			const Vector3d* pts[] = {
-				&model.getVert(tri[0])._pt,
-				&model.getVert(tri[1])._pt,
-				&model.getVert(tri[2])._pt,
+		auto& triIdx = entry.getIndex();
+		const auto tri = model.getTri(triIdx);
+		const Vector3d* pts[] = {
+			&model.getVert(tri[0])._pt,
+			&model.getVert(tri[1])._pt,
+			&model.getVert(tri[2])._pt,
+		};
+
+		iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			const Vector3d* facePts[] = {
+				&getVertexPoint(id0),
+				&getVertexPoint(id1),
+				&getVertexPoint(id2),
 			};
 
-			iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				const Vector3d* facePts[] = {
-					&getVertexPoint(id0),
-					&getVertexPoint(id1),
-					&getVertexPoint(id2),
-				};
+			if (intersectTriTri(pts, facePts, tol)) {
+				_cachedIntersectsModel = IS_TRUE;
+			}
 
-				if (intersectTriTri(pts, facePts, tol)) {
-					_cachedIntersectsModel = IS_TRUE;
-				}
-
-				return _cachedIntersectsModel != IS_TRUE; // false exits the lambda for loop
-			});
-		}
+			return _cachedIntersectsModel != IS_TRUE; // false exits the lambda for loop
+		});
+		
 	}
 
 	return _cachedIntersectsModel == IS_TRUE;
@@ -896,6 +892,21 @@ bool Polygon::isPlanar() const
 }
 
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
+{
+	auto& vertIds = getNonColinearVertexIds();
+	Vector3d pt0 = getVertexPoint(vertIds[0]);
+	for (size_t i = 1; i < vertIds.size() - 1; i++) {
+		size_t j = (i + 1);
+		Vector3d pt1 = getVertexPoint(vertIds[i]);
+		Vector3d pt2 = getVertexPoint(vertIds[j]);
+		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
+			return true;
+	}
+
+	return false;
+}
+
+bool Polygon::intersect(const LineSegment_byrefd& seg, RayHitd& hit) const
 {
 	auto& vertIds = getNonColinearVertexIds();
 	Vector3d pt0 = getVertexPoint(vertIds[0]);

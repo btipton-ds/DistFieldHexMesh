@@ -31,6 +31,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <triMesh.h>
 #include <tm_boundingBox.h>
+#include <tm_lineSegment.h>
+#include <tm_lineSegment_byref.h>
 #include <index3D.h>
 #include <pool_vector.h>
 #include <pool_set.h>
@@ -38,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <lambdaMacros.h>
 #include <fastBisectionSet.h>
 #include <meshData.h>
+#include <model.h>
 
 template<class T>
 class Plane;
@@ -98,6 +101,8 @@ public:
 	void classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const;
 	bool isConvex() const;
 	bool pointInside(const Vector3d& pt) const;
+	bool segInside(const LineSegment_byrefd& seg) const;
+	bool entryInside(const Model::SearchTree::Entry& entry) const;
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
