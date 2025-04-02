@@ -920,28 +920,22 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
-		if (!getOurBlockPtr()->intersectsModel()) {
-			_intersectsModel = IS_FALSE;
-			return false;
-		}
+		_intersectsModel = IS_FALSE;
 		auto bbox = getBoundingBox();
-		auto& model = getBlockPtr()->getModel();
+		auto pSearchTree = getOurBlockPtr()->getModelSearchTree();
 		vector<Model::SearchTree::Entry> entries;
-		if (model.findTris(bbox, entries)) {
+		if (pSearchTree && pSearchTree->find(bbox, entries)) {
 			for (const auto& faceId : _faceIds) {
 				faceFunc(faceId, [this, &entries](const Polygon& face) {
 					if (face.intersectsModel(entries)) {
 						_intersectsModel = IS_TRUE;
 					}
-					});
+				});
 
 				if (_intersectsModel == IS_TRUE)
-					return true;
+					break;
 			}
-
 		}
-
-		_intersectsModel = IS_FALSE;
 	}
 
 	return _intersectsModel == IS_TRUE; // Don't test split cells

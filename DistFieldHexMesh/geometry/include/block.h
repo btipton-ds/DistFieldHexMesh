@@ -153,7 +153,7 @@ public:
 	void createBlockFaces();
 
 	const Model& getModel() const;
-	const std::shared_ptr<const Model::SearchTree>& getModelSearchTree(const Model::BOX_TYPE& bbox) const;
+	const std::shared_ptr<const Model::SearchTree>& getModelSearchTree() const;
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());

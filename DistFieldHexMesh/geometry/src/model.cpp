@@ -101,7 +101,7 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& res
 		}
 	}
 
-#if 1 
+#if 0 
 	set<SearchTree::Entry> result1;
 	std::vector<SearchTree::Entry> entries1;
 	auto pSub = getSubTree(bbox);

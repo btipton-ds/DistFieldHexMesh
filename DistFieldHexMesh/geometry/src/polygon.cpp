@@ -641,7 +641,7 @@ bool Polygon::intersectsModel(const std::vector<Model::SearchTree::Entry>& entri
 {
 	const double tol = Tolerance::sameDistTol();
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
-		if (!getOurBlockPtr()->intersectsModel()) {
+		if (entries.empty() || !getOurBlockPtr()->intersectsModel()) {
 			_cachedIntersectsModel = IS_FALSE;
 			return false;
 		}
