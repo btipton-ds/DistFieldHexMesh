@@ -47,6 +47,8 @@ public:
 		TT_splitAtPointInner,
 		TT_needToSplitIntersection,
 		TT_needToSplitConditional,
+		TT_polyhedronIntersectsModel,
+		TT_polyhedronTooManyFaces,
 		TT_divideHexMesh,
 		TT_UpdateTessellation,
 		TT_lastTag,

@@ -228,10 +228,14 @@ void Utils::Timer::dumpAll()
 				str = "updateTessellation"; break;
 			case TT_readVolume:
 				str = "readVolume"; break;
+			case TT_polyhedronIntersectsModel:
+				str = "polyhedronIntersectsModel"; break;
+			case TT_polyhedronTooManyFaces:
+				str = "polyhedronTooManyFaces"; break;
 		}
 
 		if (s_times[i]._count > 0)
-			std::cout << str << ": " << s_times[i]._time << "s, f: " << (s_times[i]._count / s_times[i]._time) << " call/s\n";
+			std::cout << str << ": n:" << s_times[i]._count << ", t:" << s_times[i]._time << "s, f: " << (s_times[i]._count / s_times[i]._time) << " call/s\n";
 		else if (s_times[i]._time > 0)
 			std::cout << str << ": " << s_times[i]._time << "s\n";
 	}

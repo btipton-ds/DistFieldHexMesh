@@ -995,8 +995,9 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 bool Polyhedron::intersectsModel() const
 {
 	const auto tol = Tolerance::sameDistTol();
+
 	if (_intersectsModel == IS_UNKNOWN) {
-		Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
+		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		_intersectsModel = IS_FALSE;
 		vector<Model::SearchTree::Entry> entries;
 		if (getTriEntries(entries)) {
@@ -1099,6 +1100,7 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 {
+	Utils::Timer tmr(Utils::Timer::TT_polyhedronTooManyFaces);
 	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
 	if (_faceIds.size() > params.maxCellFaces)
 		return true;
