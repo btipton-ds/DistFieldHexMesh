@@ -167,15 +167,10 @@ bool Splitter3D::splitAtCenter()
 						cell._pSearchTree = cell.getOurBlockPtr()->getModelSearchTree();
 
 					cell._hasSetSearchTree = true;
-#if 0
-					if (cell._pSearchTree) {
+					if (cell._pSearchTree && _splitLevel < 2) {
 						auto ourBbox = cell.getBoundingBox();
-						if (_splitLevel < 3) {
-							auto& model = getBlockPtr()->getModel();
-							cell._pSearchTree = model.getSubTree(ourBbox);
-						}
+						cell._pSearchTree = cell._pSearchTree->getSubTree(ourBbox);						
 					}
-#endif
 				}
 				cell.setSplitLevel(_splitLevel + 1);
 			});

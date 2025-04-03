@@ -154,6 +154,8 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_layerNum = rhs._layerNum;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_exists = rhs._exists;
+	_hasSetSearchTree = rhs._hasSetSearchTree;
+	_pSearchTree = rhs._pSearchTree;
 
 	return *this;
 }
@@ -1522,13 +1524,7 @@ const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
 bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const
 {
 	const auto tol = Tolerance::sameDistTol();
-#if 1 && defined(_DEBUG)
-	if (getId() == Index3DId(2, 9, 4, 35)) {
-		int dbgBreak = 1;
-		// Need to dig several layers down and there's no easy way to set a break point.
-		// Error is happening below in getModelSearchTree(false)
-	}
-#endif
+
 	try {
 		entries.clear();
 		auto bbox = getBoundingBox();
@@ -1541,7 +1537,7 @@ bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) c
 				}
 			}
 		}
-#if 0
+#if 0 // This turns on very expensive entity search testing.
 		auto pFull = getBlockPtr()->getModel().getSearchTree();
 		vector<Model::SearchTree::Entry> entriesFull;
 		vector<Model::SearchTree::Entry> tmpFull;
