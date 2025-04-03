@@ -1326,7 +1326,7 @@ void Block::updateSplitStack(size_t splitNum)
 		cellFunc(cellId, [this, params, splitNum](const Polyhedron& cell) {
 			_needToSplit.insert(cell.getId());
 #if 0
-			if (cell.isTooComplex(params, splitNum)) {
+			if (cell.isTooComplex(params)) {
 			}
 			else {
 				double maxNonOrtho = cell.maxNonOrthogonality();

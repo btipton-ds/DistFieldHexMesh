@@ -112,7 +112,7 @@ public:
 #endif
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
-	bool isTooComplex(const SplittingParams& params, size_t splitNum) const;
+	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxNonOrthogonality() const;
 
 	void setNeedsDivideAtCentroid();
