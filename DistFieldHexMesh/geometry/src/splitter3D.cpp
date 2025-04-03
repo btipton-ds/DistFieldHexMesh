@@ -194,20 +194,19 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	bool intersectsModel = false;
 	bool tooManyFaces = false;
-	bool nonOrthogonal = false;
-	cellFunc(parentId, [this, numPossibleSplits, &intersectsModel, &tooManyFaces, &nonOrthogonal](const Polyhedron& cell) {
+	double minOfMaxFinalOrthoCells = DBL_MAX;
+	cellFunc(parentId, [this, numPossibleSplits, &intersectsModel, &tooManyFaces, &minOfMaxFinalOrthoCells](const Polyhedron& cell) {
 		if (_subPassNum == 0) {
 			intersectsModel = cell.intersectsModel();
 		} else {
 			tooManyFaces = cell.hasTooManFaces(_params);
-			//		nonOrthogonal = cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians;
+			minOfMaxFinalOrthoCells = cell.maxOrthogonalityAngleRadians();
 		}
 	});
-
+	
 	size_t minTooManyFaceCells = INT_MAX;
 	int bestTooManyFacesSplitAxis = -1;
 
-	size_t minFinalOrthoCells = INT_MAX;
 	int bestTooManyOrthoSplitAxis = -1;
 
 	int minIntersections = INT_MAX;
@@ -243,16 +242,17 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 			}
 		}
 
-		if (nonOrthogonal) {
-			size_t totalFaces = 0;
+		if (minOfMaxFinalOrthoCells > _params.maxOrthoAngleRadians) { // Make sure this is an improvement over the parent cell
+			double maxOrtho = 0;
 			for (auto& cellId : newCellIds) {
-				cellFunc(cellId, [this, &totalFaces](const Polyhedron& cell) {
-					if (cell.maxNonOrthogonality() > _params.maxOrthoAngleRadians)
-						totalFaces++;
+				cellFunc(cellId, [this, &maxOrtho](const Polyhedron& cell) {
+					double ortho = cell.maxOrthogonalityAngleRadians();
+					if (ortho > maxOrtho)
+						maxOrtho = ortho;
 				});
 			}
-			if (totalFaces < minFinalOrthoCells) {
-				minFinalOrthoCells = totalFaces;
+			if (maxOrtho < minOfMaxFinalOrthoCells) {
+				minOfMaxFinalOrthoCells = maxOrtho;
 				bestTooManyOrthoSplitAxis = axis;
 			}
 		}
@@ -280,13 +280,12 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	int splitAxis = -1;
 
-	if (bestIntersectionSplitAxis != -1)
+	if (bestTooManyOrthoSplitAxis != -1)
+		splitAxis = bestTooManyOrthoSplitAxis;
+	else if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis; 
 	else if (bestTooManyFacesSplitAxis != -1) 
 		splitAxis = bestTooManyFacesSplitAxis;
-	else if (bestTooManyOrthoSplitAxis != -1) {
-		// splitAxis = bestTooManyOrthoSplitAxis;
-	}
 
 
 	if (splitAxis != -1) {

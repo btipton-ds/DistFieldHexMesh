@@ -1095,6 +1095,8 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	if (hasTooManFaces(params))
 		return true;
 
+	if (maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians)
+		return true;
 	return false;
 }
 
@@ -1114,7 +1116,7 @@ bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 	return false;
 }
 
-double Polyhedron::maxNonOrthogonality() const
+double Polyhedron::maxOrthogonalityAngleRadians() const
 {
 	double result = 0;
 	auto& cellCtr = calCentroid();
@@ -1313,6 +1315,10 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
+	if (isTooComplex(params)) {
+		setNeedsDivideAtCentroid();
+		return true;
+	}
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
@@ -1364,10 +1370,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		}
 	}
 #endif
-	if (isTooComplex(params)) {
-		setNeedsDivideAtCentroid();
-		return true;
-	}
 	return false;
 }
 

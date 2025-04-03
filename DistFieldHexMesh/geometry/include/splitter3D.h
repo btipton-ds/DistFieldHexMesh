@@ -108,6 +108,8 @@ private:
 	const double _paramTol = Tolerance::paramTol();
 	const double _paramTolSqr = _paramTol * _paramTol;
 
+	double _minOfMaxFinalOrthoCells = DBL_MAX;
+
 	MTC::vector<Index3DId> _cornerVertIds;
 	MTC::vector<Vector3d> _cornerPts;
 	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;

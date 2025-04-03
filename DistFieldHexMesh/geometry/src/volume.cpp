@@ -785,27 +785,49 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	bool didSplit = false;
 	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
-	const size_t fixComplexityPasses = 3;
-	while (_splitNum < numPasses + fixComplexityPasses) {
+	while (_splitNum < numPasses) {
 		pReporter->reportProgress();
 
 		bool changed = false;
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->intersectsModel()) {
-				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.setNeedToSplitConditional(_splitNum, params)) {
-						changed = true;
-					}
+			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+				if (cell.setNeedToSplitConditional(_splitNum, params)) {
+					changed = true;
+				}
 				});
-			}
 			return true;
 		}, multiCore);
-
-		pReporter->reportProgress();
 
 		if (changed)
 			finishSplits(params, multiCore);
 		//		assert(verifyTopology(multiCore));
+
+		bool done = false;
+		int numComplexPasses = 0;
+		while (!done && numComplexPasses < 20) {
+			done = true;
+
+			bool changed = false;
+			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+					if (cell.isTooComplex(params)) {
+						cell.setNeedsDivideAtCentroid();
+						changed = true;
+					}
+					});
+				return true;
+				}, multiCore);
+
+			if (changed)
+				finishSplits(params, multiCore);
+
+			if (!changed) {
+				cout << "No more complexity splits required: " << numComplexPasses << "\n";
+				break;
+			}
+			numComplexPasses++;
+		}
+
 		pReporter->reportProgress();
 
 		if (!changed) {
@@ -814,7 +836,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}
 		_splitNum++;
 	}
-	
+
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
@@ -854,7 +876,6 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 	bool changed = false;
 	size_t subPassNum = 0;
 	do {
-		cout << "finishSplits, subPassNum: " << subPassNum << "\n";
 		changed = false;
 		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
@@ -876,8 +897,8 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 		}, multiCore);
 
 		subPassNum++;
-		if (subPassNum > 5) {
-			cout << "Exited before finishing splits: " << subPassNum << "\n";
+		if (subPassNum > 20) {
+			cout << "Exited before finishSplits done: " << subPassNum << "\n";
 			break;
 		}
 	} while (changed);
