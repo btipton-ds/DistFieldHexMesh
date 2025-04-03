@@ -772,7 +772,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 			return true;
 		}, multiCore);
 
-		finishSplits(multiCore);
+		finishSplits(params, multiCore);
 		pReporter->reportProgress();
 	}
 }
@@ -804,7 +804,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		pReporter->reportProgress();
 
 		if (changed)
-			finishSplits(multiCore);
+			finishSplits(params, multiCore);
 		//		assert(verifyTopology(multiCore));
 		pReporter->reportProgress();
 
@@ -846,17 +846,18 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 	}, multiCore);
 
 	if (changed)
-		finishSplits(multiCore);
+		finishSplits(params, multiCore);
 }
 
-void Volume::finishSplits(bool multiCore)
+void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
 	size_t subPassNum = 0;
 	do {
+		cout << "finishSplits, subPassNum: " << subPassNum << "\n";
 		changed = false;
-		runThreadPool_IJK([this, subPassNum, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(_splitNum, subPassNum))
+		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
 				changed = true;
 			return true;
 		}, multiCore);
@@ -875,7 +876,7 @@ void Volume::finishSplits(bool multiCore)
 		}, multiCore);
 
 		subPassNum++;
-		if (subPassNum > 20) {
+		if (subPassNum > 5) {
 			cout << "Exited before finishing splits: " << subPassNum << "\n";
 			break;
 		}

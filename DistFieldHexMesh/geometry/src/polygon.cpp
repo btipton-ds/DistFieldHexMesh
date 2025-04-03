@@ -868,6 +868,9 @@ bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 		_vertexIds = tmp;
 
 		connectVertEdgeTopology();
+		for (const auto& id : _cellIds) {
+			getBlockPtr()->addToTouchedCellList(id);
+		}
 		return true;
 	}
 

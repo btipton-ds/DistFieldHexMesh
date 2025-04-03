@@ -996,6 +996,7 @@ bool Polyhedron::intersectsModel() const
 {
 	const auto tol = Tolerance::sameDistTol();
 	if (_intersectsModel == IS_UNKNOWN) {
+		Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
 		_intersectsModel = IS_FALSE;
 		vector<Model::SearchTree::Entry> entries;
 		if (getTriEntries(entries)) {
@@ -1310,8 +1311,6 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
-	Utils::Timer tmr(Utils::Timer::TT_needToSplitConditional);
-
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;

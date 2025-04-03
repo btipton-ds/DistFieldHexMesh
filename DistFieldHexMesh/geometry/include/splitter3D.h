@@ -66,7 +66,7 @@ private:
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
-	void reset();
+	void reset(const MTC::vector<Index3DId>& tempCellids);
 
 	Index3DId vertId(const Vector3d& pt);
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;

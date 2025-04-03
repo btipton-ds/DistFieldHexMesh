@@ -172,7 +172,7 @@ private:
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
-	void finishSplits(bool multiCore);
+	void finishSplits(const SplittingParams& params, bool multiCore);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 

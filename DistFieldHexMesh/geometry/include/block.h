@@ -185,6 +185,12 @@ public:
 	const MultiCore::local_heap* getHeapPtr() const;
 #endif
 
+	void addToNeedToSplit(const Index3DId& id);
+	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
+
+	void addToTouchedCellList(const Index3DId& cellId);
+	void removeFromTouchedCellList(const Index3DId& cellId);
+
 	void addToSplitStack(const Index3DId& cellIds);
 	void updateSplitStack(size_t splitNum);
 	bool hasPendingSplits() const;
@@ -262,12 +268,7 @@ private:
 
 	void dumpOpenCells() const;
 
-	bool splitRequiredPolyhedra(size_t splitNum, size_t subPassNum);
-
-	void addToNeedToSplit(const Index3DId& id);
-	void addToNeedToSplit(const FastBisectionSet<Index3DId>& ids);
-
-	void addToTouchedCellList(const Index3DId& cellIds);
+	bool splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum);
 
 	VolumePtr getScratchVolume();
 
@@ -295,7 +296,8 @@ private:
 
 	std::string _filename;
 
-	FastBisectionSet<Index3DId> _needToSplit, _touchedCellIds;
+	mutable std::mutex _touchedCellIdsMutex;
+	std::set<Index3DId> _needToSplit, _touchedCellIds;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;
@@ -413,11 +415,23 @@ inline void Block::addToNeedToSplit(const FastBisectionSet<Index3DId>& ids)
 	}
 }
 
-inline void Block::addToTouchedCellList(const Index3DId& id)
+inline void Block::addToTouchedCellList(const Index3DId& cellId)
 {
-	auto pOwner = getOwner(id);
-	if (pOwner)
-		pOwner->_touchedCellIds.insert(id);
+	auto pOwner = getOwner(cellId);
+	if (pOwner) {
+		std::lock_guard lg(_touchedCellIdsMutex);
+		pOwner->_touchedCellIds.insert(cellId);
+	}
+}
+
+inline void Block::removeFromTouchedCellList(const Index3DId& cellId)
+{
+	auto pOwner = getOwner(cellId);
+	if (pOwner) {
+		std::lock_guard lg(_touchedCellIdsMutex);
+		pOwner->_touchedCellIds.erase(cellId);
+	}
+
 }
 
 }

@@ -96,8 +96,11 @@ Splitter3D::~Splitter3D()
 
 }
 
-void Splitter3D::reset()
+void Splitter3D::reset(const MTC::vector<Index3DId>& tempCellids)
 {
+	for (auto& cellId : tempCellids) {
+		getBlockPtr()->removeFromTouchedCellList(cellId);
+	}
 	_pScratchBlock->clear();
 }
 
@@ -272,7 +275,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		else if (_splitLevel < _params.numCurvatureDivs)
 			doScratchHexCurvatureSplitTests(parentId, tuv, ignoreAxisBits);
 #endif
-		reset();
+		reset(newCellIds);
 	}
 
 	int splitAxis = -1;
@@ -497,18 +500,10 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 		}
 	}
 
-	set<Index3DId> touchedCellIds;
 	for (auto& faceId : faceIds) {
-		faceFunc(faceId, [this, &parentId, &splittingEdges, &touchedCellIds](Polygon& face) {
+		faceFunc(faceId, [this, &parentId, &splittingEdges](Polygon& face) {
 			for (auto& ek : splittingEdges) {
-				if (face.imprintEdge(ek)) {
-					auto& cellIds = face.getCellIds();
-					for (auto& cellId : cellIds) {
-						if (cellId != parentId) {
-							touchedCellIds.insert(cellId);
-						}
-					}
-				}
+				face.imprintEdge(ek);
 			}
 		});
 	}
@@ -561,9 +556,6 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 
 		if (!newFaceIds.empty()) {
 			for (const auto& cellId : cellIds) {
-				if (cellId != parentId)
-					touchedCellIds.insert(cellId);
-
 				// This also changes our faces cellIds to point to this
 				cellFunc(cellId, [this, &faceId, &newFaceIds, splittingFaceId](Polyhedron& cell) {
 					cell.removeFace(faceId);
@@ -595,16 +587,6 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 			}
 
 			getBlockPtr()->freePolygon(faceId);
-		}
-	}
-
-	if (!_testRun) {
-		for (const auto& id : touchedCellIds) {
-			cellFunc(id, [this](const Polyhedron& cell) {
-				if (cell.isTooComplex(_params, _splitLevel)) {
-					getBlockPtr()->addToTouchedCellList(cell.getId());
-				}
-			});
 		}
 	}
 }
