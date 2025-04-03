@@ -185,6 +185,7 @@ const std::shared_ptr<const Model::SearchTree>& Block::getModelSearchTree() cons
 	if (!_searchTreeSet) {
 		_searchTreeSet = true;
 		auto bbox = getBBox();
+		assert(!bbox.empty());
 		_pSearchTree = getModel().getSubTree(bbox);
 	}
 

@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 
+
 #ifdef _WIN32
 #include <windows.h>
 #include <profileapi.h>
@@ -156,10 +157,27 @@ bool Splitter3D::splitAtCenter()
 		// Now set all the split lev
 		for (auto& id : _createdCellIds) {
 			cellFunc(id, [this](Polyhedron& cell) {
-				cell.setSplitLevel(_splitLevel + 1);
 				// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 				if (!_intersectsModel)
 					cell.setIntersectsModel(false);
+				else {
+					if (_hasSetSearchTree)
+						cell._pSearchTree = _pSearchSourceTree;
+					else
+						cell._pSearchTree = cell.getOurBlockPtr()->getModelSearchTree();
+
+					cell._hasSetSearchTree = true;
+#if 0
+					if (cell._pSearchTree) {
+						auto ourBbox = cell.getBoundingBox();
+						if (_splitLevel < 3) {
+							auto& model = getBlockPtr()->getModel();
+							cell._pSearchTree = model.getSubTree(ourBbox);
+						}
+					}
+#endif
+				}
+				cell.setSplitLevel(_splitLevel + 1);
 			});
 		}
 		int dbgBreak = 1;
@@ -961,6 +979,18 @@ Index3DId Splitter3D::makeScratchHexCell_deprecated(const Index3DId& parentId, c
 void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
 	_intersectsModel = targetCell.intersectsModel();
+
+	if (_intersectsModel) {
+		_hasSetSearchTree = targetCell._hasSetSearchTree;
+		if (targetCell._hasSetSearchTree)
+			_pSearchSourceTree = targetCell._pSearchTree;
+		else
+			_pSearchSourceTree = targetCell.getBlockPtr()->getModelSearchTree();
+	} else {
+		_hasSetSearchTree = true;
+		_pSearchSourceTree = nullptr;
+	}
+
 	_splitLevel = targetCell.getSplitLevel();
 	_cornerVertIds = targetCell.getCanonicalVertIds();
 	_cornerPts.reserve(_cornerVertIds.size());

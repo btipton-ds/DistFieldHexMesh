@@ -951,8 +951,8 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 {
 	const auto& tol = Tolerance::sameDistTol();
 
-	auto& model = getOurBlockPtr()->getModel();
-	const auto tri = model.getTri(entry.getIndex());
+	auto& model = getModel();
+	auto tri = model.getTri(entry.getIndex());
 	const Vector3d* pts[] = {
 		&model.getVert(tri[0])._pt,
 		&model.getVert(tri[1])._pt,
@@ -980,11 +980,12 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 
 				if (intersectTriTri(pts, facePts, tol)) {
 					result = true;
+					return false;
 				}
 
-				return result != true; // false exits the lambda for loop
-				});
+				return true; // false exits the lambda for loop
 			});
+		});
 	}
 	return result;
 }
@@ -994,31 +995,14 @@ bool Polyhedron::intersectsModel() const
 	const auto tol = Tolerance::sameDistTol();
 	if (_intersectsModel == IS_UNKNOWN) {
 		_intersectsModel = IS_FALSE;
-		auto bbox = getBoundingBox();
-		auto pSearchTree = getOurBlockPtr()->getModelSearchTree();
-		const auto& model = getOurBlockPtr()->getModel();
 		vector<Model::SearchTree::Entry> entries;
-		if (pSearchTree && pSearchTree->find(bbox, entries)) {
+		if (getTriEntries(entries)) {
 			for (const auto& entry : entries) {
 				if (entryInside(entry)) {
 					_intersectsModel = IS_TRUE;
 					return true;
 				}
 			}
-#if 0
-			if (_intersectsModel != IS_TRUE) {
-				for (const auto& faceId : _faceIds) {
-					faceFunc(faceId, [this, &entries](const Polygon& face) {
-						if (face.intersectsModel(entries)) {
-							_intersectsModel = IS_TRUE;
-						}
-						});
-
-					if (_intersectsModel == IS_TRUE)
-						break;
-				}
-			}
-#endif
 		}
 	}
 
@@ -1519,6 +1503,78 @@ void Polyhedron::setLayerNumOnNextPass(int32_t val)
 		_layerNum = -2;
 }
 
+inline const Model& Polyhedron::getModel() const
+{
+	return getOurBlockPtr()->getModel();
+}
+
+const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
+{
+	if (!_hasSetSearchTree) {
+		auto pBlk = getOurBlockPtr();
+		_hasSetSearchTree = true;
+		_pSearchTree = pBlk->getModelSearchTree();
+	}
+
+	return _pSearchTree;
+}
+
+bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const
+{
+	const auto tol = Tolerance::sameDistTol();
+#if 1 && defined(_DEBUG)
+	if (getId() == Index3DId(2, 9, 4, 35)) {
+		int dbgBreak = 1;
+		// Need to dig several layers down and there's no easy way to set a break point.
+		// Error is happening below in getModelSearchTree(false)
+	}
+#endif
+	try {
+		entries.clear();
+		auto bbox = getBoundingBox();
+		vector<Model::SearchTree::Entry> tmp;
+		auto pClipped = getSearchTree();
+		if (pClipped && pClipped->find(bbox, tmp)) {
+			for (const auto& entry : tmp) {
+				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+					entries.push_back(entry);
+				}
+			}
+		}
+#if 0
+		auto pFull = getBlockPtr()->getModel().getSearchTree();
+		vector<Model::SearchTree::Entry> entriesFull;
+		vector<Model::SearchTree::Entry> tmpFull;
+		if (pFull && pFull->find(bbox, tmpFull)) {
+			for (const auto& entry : tmpFull) {
+				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+					entriesFull.push_back(entry);
+				}
+			}
+		}
+
+		if (!entries.empty()) {
+			if (entriesFull.size() != entries.size()) {
+				stringstream ss;
+				ss << "Search trees sizes don't match. entries.size: " << entries.size() << ", entriesFull.size() : " << entriesFull.size() << " " << __FILE__ << " : " << __LINE__;
+				throw runtime_error(ss.str());
+			}
+			set<Model::SearchTree::Entry> test;
+			test.insert(entries.begin(), entries.end());
+			for (const auto& entry : entriesFull) {
+				if (!test.contains(entry)) {
+					stringstream ss;
+					ss << "Search trees don't match. " << __FILE__ << ":" << __LINE__;
+					throw runtime_error(ss.str());
+				}
+			}
+		}
+#endif
+	} catch (const runtime_error& err) {
+		cout << err.what() << " cell: " << getId() << "\n";
+	}
+	return !entries.empty();
+}
 
 MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {

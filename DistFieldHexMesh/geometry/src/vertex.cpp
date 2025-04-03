@@ -163,7 +163,8 @@ inline int64_t Vertex::scaleToSearch()
 
 inline int64_t Vertex::scaleToSearch(double v)
 {
-	return (int64_t)(v * scaleToSearch());
+	// Rounding is REQUIRED for correct fusing of highly divided edges. DO NOT REMOVE the "+ 0.5" without a lot of verification.
+	return (int64_t)(v * scaleToSearch() + 0.5);
 }
 
 inline Vector3<int64_t> Vertex::scaleToSearch(const Vector3d& pt)

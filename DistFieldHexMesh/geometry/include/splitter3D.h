@@ -93,6 +93,8 @@ private:
 
 	bool _testRun = false;
 	bool _intersectsModel = false;
+	bool _hasSetSearchTree;
+	std::shared_ptr<const Model::SearchTree> _pSearchSourceTree;
 	size_t _subPassNum, _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 

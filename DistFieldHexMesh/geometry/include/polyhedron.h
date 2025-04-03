@@ -103,6 +103,7 @@ public:
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
 	bool entryInside(const Model::SearchTree::Entry& entry) const;
+	bool getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const;
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
@@ -172,8 +173,11 @@ protected:
 private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
+	friend class Splitter3D;
 
 	void updateCachedVerts() const;
+	const std::shared_ptr<const Model::SearchTree> getSearchTree() const;
+	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
@@ -215,6 +219,9 @@ private:
 	mutable double _cachedMinGap = -1;
 
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+
+	mutable bool _hasSetSearchTree = false;
+	mutable std::shared_ptr<const Model::SearchTree> _pSearchTree;
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

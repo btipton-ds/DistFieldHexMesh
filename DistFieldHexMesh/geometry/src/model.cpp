@@ -178,6 +178,38 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 std::shared_ptr<const Model::SearchTree> Model::getSubTree(const BOX_TYPE& bbox) const
 {
 	auto p = _pSearchTree->getSubTree(bbox);
+#if 1
+	vector<Model::SearchTree::Entry> testFull, testClipped;
+	_pSearchTree->find(bbox, testFull);
+	if (!testFull.empty()) {
+		if (!p) {
+			stringstream ss;
+			ss << "SubTree is null " << __FILE__ << ":" << __LINE__;
+			throw runtime_error(ss.str());
+		}
+
+		p->find(bbox, testClipped);
+		if (testFull.size() != testClipped.size()) {
+			stringstream ss;
+			ss << "SubTree error " << __FILE__ << ":" << __LINE__;
+			throw runtime_error(ss.str());
+		} else {
+			set<Model::SearchTree::Entry> test;
+			test.insert(testClipped.begin(), testClipped.end());
+			for (const auto& entry : testFull) {
+				if (!test.contains(entry)) {
+					stringstream ss;
+					ss << "Entry missing in subTree " << __FILE__ << ":" << __LINE__;
+					throw runtime_error(ss.str());
+				}
+			}
+		}
+	} else if (!testFull.empty()) {
+		stringstream ss;
+		ss << "SubTree should have contents " << __FILE__ << ":" << __LINE__;
+		throw runtime_error(ss.str());
+	}
+#endif
 	return p;
 }
 
