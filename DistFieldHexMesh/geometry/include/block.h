@@ -296,7 +296,6 @@ private:
 
 	std::string _filename;
 
-	mutable std::mutex _touchedCellIdsMutex;
 	std::set<Index3DId> _needToSplit, _touchedCellIds;
 
 	ObjectPool<Vertex> _vertices;
@@ -419,7 +418,6 @@ inline void Block::addToTouchedCellList(const Index3DId& cellId)
 {
 	auto pOwner = getOwner(cellId);
 	if (pOwner) {
-		std::lock_guard lg(_touchedCellIdsMutex);
 		pOwner->_touchedCellIds.insert(cellId);
 	}
 }
@@ -428,7 +426,6 @@ inline void Block::removeFromTouchedCellList(const Index3DId& cellId)
 {
 	auto pOwner = getOwner(cellId);
 	if (pOwner) {
-		std::lock_guard lg(_touchedCellIdsMutex);
 		pOwner->_touchedCellIds.erase(cellId);
 	}
 

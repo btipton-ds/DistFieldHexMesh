@@ -1056,11 +1056,9 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	}
 
 	set<Index3DId> touchedCopy, tmp;
-	{
-		lock_guard lg(_touchedCellIdsMutex);
-		touchedCopy.insert(_touchedCellIds.begin(), _touchedCellIds.end());
-		tmp.clear();
-	}
+	touchedCopy.insert(_touchedCellIds.begin(), _touchedCellIds.end());
+	tmp.clear();
+
 	for (const auto& id : tmp) {
 		cellFunc(id, [&touchedCopy, &params](const Polyhedron& cell) {
 			if (cell.isTooComplex(params)) {
