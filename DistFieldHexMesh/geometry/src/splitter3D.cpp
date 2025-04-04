@@ -191,17 +191,76 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	}
 	bool wasSplit = false;
 
+	int splitAxis = determineBestSplitAxis(parentId, tuv, ignoreAxisBits);
+
+	if (splitAxis != -1) {
+		const auto& parentCell = getPolyhedron(parentId);
+
+#if 0
+		string axisStr;
+		switch (splitAxis) {
+		case 0:
+			axisStr = "xAxis";
+			break;
+		case 1:
+			axisStr = "yAxis";
+			break;
+		case 2:
+			axisStr = "zAxis";
+			break;
+		}
+
+		switch (numPossibleSplits) {
+		case 8:
+			cout << "\n\n";
+			cout << "Split " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		case 4:
+			cout << "        " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		case 2:
+			cout << "          " << axisStr << " :" << ignoreAxisBits << "\n";
+			break;
+		default:
+			cout << "Error********\n";
+			break;
+		}
+#endif
+		MTC::vector<Index3DId> newCellIds;
+		bisectHexCell(parentId, tuv, splitAxis, newCellIds);
+		if (numPossibleSplits == 8) {
+			int axisBit = 1 << splitAxis;
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 4);
+			}
+		}
+		else if (numPossibleSplits == 4) {
+			int axisBit = 1 << splitAxis;
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 2);
+			}
+		}
+
+		wasSplit = true;
+	}
+
+	return wasSplit;
+}
+
+int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
+{
+	const auto& parentCell = getPolyhedron(parentId);
 	bool intersectsModel = false;
 	bool tooManyFaces = false;
 	bool tooNonOrthogonal = false;
-	const auto& parentCell = getPolyhedron(parentId);
-	if (_splitLevel < _params.numIntersectionDivs && _subPassNum == 0) {
+	if (_splitLevel < _params.numIntersectionDivs&& _subPassNum == 0) {
 		intersectsModel = parentCell.intersectsModel();
-	} else {
+	}
+	else {
 		tooManyFaces = parentCell.hasTooManFaces(_params);
 		tooNonOrthogonal = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 	}
-	
+
 	size_t minTooManyFaceCells = INT_MAX;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
 	int minIntersections = INT_MAX;
@@ -278,60 +337,11 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	if (bestTooManyOrthoSplitAxis != -1)
 		splitAxis = bestTooManyOrthoSplitAxis;
 	else if (bestIntersectionSplitAxis != -1)
-		splitAxis = bestIntersectionSplitAxis; 
-	else if (bestTooManyFacesSplitAxis != -1) 
+		splitAxis = bestIntersectionSplitAxis;
+	else if (bestTooManyFacesSplitAxis != -1)
 		splitAxis = bestTooManyFacesSplitAxis;
 
-
-	if (splitAxis != -1) {
-#if 0
-		string axisStr;
-		switch (splitAxis) {
-		case 0:
-			axisStr = "xAxis";
-			break;
-		case 1:
-			axisStr = "yAxis";
-			break;
-		case 2:
-			axisStr = "zAxis";
-			break;
-		}
-
-		switch (numPossibleSplits) {
-		case 8:
-			cout << "\n\n";
-			cout << "Split " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		case 4:
-			cout << "        " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		case 2:
-			cout << "          " << axisStr << " :" << ignoreAxisBits << "\n";
-			break;
-		default:
-			cout << "Error********\n";
-			break;
-		}
-#endif
-		MTC::vector<Index3DId> newCellIds;
-		bisectHexCell(parentId, tuv, splitAxis, newCellIds);
-		if (numPossibleSplits == 8) {
-			int axisBit = 1 << splitAxis;
-			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 4);
-			}
-		}
-		else if (numPossibleSplits == 4) {
-			int axisBit = 1 << splitAxis;
-			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits | axisBit, 2);
-			}
-		}
-		wasSplit = true;
-	}
-
-	return wasSplit;
+	return splitAxis;
 }
 
 inline Index3DId Splitter3D::vertId(const Vector3d& pt)
