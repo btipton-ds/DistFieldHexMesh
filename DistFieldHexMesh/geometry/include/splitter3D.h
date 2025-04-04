@@ -76,7 +76,6 @@ private:
 	int determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
-	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 		std::set<Index3DId>& allCellFaceIds, bool useAll);
 	void addFaceToLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
@@ -84,7 +83,6 @@ private:
 	Index3DId findConnectedFaceId(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
 	void verifyLocalEdgeSet(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
 
-	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	Index3DId makeScratchCell(const Index3DId& parentId);
 	Index3DId makeScratchFace(const Index3DId& srcFaceId);
 

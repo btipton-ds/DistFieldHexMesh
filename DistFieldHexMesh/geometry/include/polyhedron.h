@@ -112,9 +112,13 @@ public:
 #endif
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
+	bool hasTooMuchCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
-	const double& getComplexityScore(const SplittingParams& params) const;
+	double calCurvature() const;
+	double calCurvature(int axis) const;
+
+	double getComplexityScore(const SplittingParams& params) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -144,6 +148,8 @@ public:
 
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
+
+	void makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

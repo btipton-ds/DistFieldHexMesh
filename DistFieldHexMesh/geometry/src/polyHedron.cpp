@@ -212,6 +212,64 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 	return !result.empty();
 }
 
+void Polyhedron::makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
+{
+	MTC::vector<Vector3d> cp;
+	set<Index3DId> cvSet;
+	for (const auto& id : _canonicalVertices) {
+		cp.push_back(getVertexPoint(id));
+		cvSet.insert(id);
+	}
+
+	for (int i = 0; i < 2; i++) {
+		double t0 = 0, t1 = 1;
+		double u0 = 0, u1 = 1;
+		double v0 = 0, v1 = 1;
+
+		switch (axis) {
+		case 0:
+			t0 = (i == 0) ? 0 : tuv[0];
+			t1 = (i == 0) ? tuv[0] : 1;
+			break;
+		case 1:
+			u0 = (i == 0) ? 0 : tuv[1];
+			u1 = (i == 0) ? tuv[1] : 1;
+			break;
+		case 2:
+			v0 = (i == 0) ? 0 : tuv[2];
+			v1 = (i == 0) ? tuv[2] : 1;
+			break;
+		}
+
+		MTC::vector<Vector3d> subPts = {
+			TRI_LERP(cp, t0, u0, v0),
+			TRI_LERP(cp, t1, u0, v0),
+			TRI_LERP(cp, t1, u1, v0),
+			TRI_LERP(cp, t0, u1, v0),
+
+			TRI_LERP(cp, t0, u0, v1),
+			TRI_LERP(cp, t1, u0, v1),
+			TRI_LERP(cp, t1, u1, v1),
+			TRI_LERP(cp, t0, u1, v1),
+		};
+		subCells.push_back(subPts);
+		if (i == 0) {
+			switch (axis) {
+			case 0:
+				partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
+				break;
+			case 1:
+				partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
+				break;
+			case 2:
+				partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
+				break;
+			}
+		}
+	}
+
+}
+
 void Polyhedron::write(ostream& out) const
 {
 	uint8_t version = 0;
@@ -1101,6 +1159,11 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	return false;
 }
 
+bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
+{
+	return false;
+}
+
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 {
 	Utils::Timer tmr(Utils::Timer::TT_polyhedronTooManyFaces);
@@ -1139,7 +1202,56 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-const double& Polyhedron::getComplexityScore(const SplittingParams& params) const
+double Polyhedron::calCurvature() const
+{
+	return 0;
+}
+
+double Polyhedron::calCurvature(int axis) const
+{
+	// Split the cell with a plane on each axis
+	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
+	// When finished, only subcells with intersections are marked true
+	auto pVol = getBlockPtr()->getVolume();
+	int orthAxis0 = (axis + 1) % 3;
+	int orthAxis1 = (axis + 2) % 3;;
+
+	Vector3d tuv(0.5, 0.5, 0.5);
+	MTC::vector<MTC::vector<Vector3d>> discarded;
+	MTC::vector<Vector3d> facePts0, facePts1;
+	makeHexCellPoints(orthAxis0, tuv, discarded, facePts0);
+	makeHexCellPoints(orthAxis1, tuv, discarded, facePts1);
+
+	double maxCurv0 = calMaxCurvature2D(facePts0, 0);
+	double maxCurv1 = calMaxCurvature2D(facePts1, 1);
+	double maxCurv = (maxCurv0 > maxCurv1) ? maxCurv0 : maxCurv1;
+
+	if (maxCurv > 0) {
+		MTC::vector<Vector3d> splitFacePts;
+		makeHexCellPoints(axis, tuv, discarded, splitFacePts);
+#if 0 && defined(_DEBUG)
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", { cell.getId() }, false, false, false);
+#endif
+
+		double radius = 1 / maxCurv;
+
+		double avgSpan = 0;
+		for (size_t i = 0; i < splitFacePts.size(); i++) {
+			size_t j = (i + 1) / splitFacePts.size();
+			avgSpan += (splitFacePts[j] - splitFacePts[i]).norm();
+		}
+		avgSpan /= splitFacePts.size();
+		double R0 = (radius + pow(avgSpan, 2)) / (4 * radius);
+		int dbgBreak = 1;
+
+	}
+	return 0;
+}
+
+double Polyhedron::getComplexityScore(const SplittingParams& params) const
 {
 
 	if (_complexityScore < 0) {
