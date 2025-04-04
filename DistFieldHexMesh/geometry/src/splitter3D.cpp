@@ -169,9 +169,10 @@ bool Splitter3D::splitAtCenter()
 					createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModelSearchTree();
 
 				createdCell._hasSetSearchTree = true;
-				if (createdCell._pSearchTree && _splitLevel < 2) {
+				if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 512*/) {
 					auto ourBbox = createdCell.getBoundingBox();
 					createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(ourBbox);
+					int dbgBreak = 1;
 				}
 			}
 			createdCell.setSplitLevel(_splitLevel + 1);
