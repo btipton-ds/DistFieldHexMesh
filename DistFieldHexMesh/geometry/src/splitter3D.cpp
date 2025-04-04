@@ -459,10 +459,8 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 	if (!_testRun) {
 		int dbgBreak = 1;
 	}
-	FastBisectionSet<EdgeKey> cellEdges;
-	cellFunc(parentId, [&cellEdges](const Polyhedron& cell) {
-		cellEdges = cell.getEdgeKeys(false);
-	});
+	const auto& parentCell = getPolyhedron(parentId);
+	const auto cellEdges = parentCell.getEdgeKeys(false);
 
 	set<Index3DId> faceIds;
 	MTC::vector<EdgeKey> splittingEdges;
@@ -547,33 +545,32 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 		if (!newFaceIds.empty()) {
 			for (const auto& cellId : cellIds) {
 				// This also changes our faces cellIds to point to this
-				cellFunc(cellId, [this, &faceId, &newFaceIds, splittingFaceId](Polyhedron& cell) {
-					cell.removeFace(faceId);
-					for (const auto& imprintFaceId : newFaceIds) {
-						cell.addFace(imprintFaceId);
-					}
+				auto& cell = getPolyhedron(cellId);
+				cell.removeFace(faceId);
+				for (const auto& imprintFaceId : newFaceIds) {
+					cell.addFace(imprintFaceId);
+				}
 
-					if (!cell.isClosed()) {
-						{
-							stringstream ss;
-							ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_splittingFace.obj";
-							MTC::vector<Vector3d> facePts;
-							faceFunc(splittingFaceId, [this, &facePts](const Polygon& face) {
-								auto& fv = face.getVertexIds();
-								for (auto& id : fv) {
-									facePts.push_back(getVertexPoint(id));
-								}
+				if (!cell.isClosed()) {
+					{
+						stringstream ss;
+						ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_splittingFace.obj";
+						MTC::vector<Vector3d> facePts;
+						faceFunc(splittingFaceId, [this, &facePts](const Polygon& face) {
+							auto& fv = face.getVertexIds();
+							for (auto& id : fv) {
+								facePts.push_back(getVertexPoint(id));
+							}
 							});
-							getBlockPtr()->getVolume()->writeObj(ss.str(), { facePts }, true);
-						}
-						{
-							stringstream ss;
-							ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
-							getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
-						}
-						assert(!"imprintFaceEdges open cell");
+						getBlockPtr()->getVolume()->writeObj(ss.str(), { facePts }, true);
 					}
-				});
+					{
+						stringstream ss;
+						ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << ".obj";
+						getBlockPtr()->getVolume()->writeObj(ss.str(), { cell.getId() }, false, false, false);
+					}
+					assert(!"imprintFaceEdges open cell");
+				}
 			}
 
 			getBlockPtr()->freePolygon(faceId);
@@ -783,14 +780,14 @@ void Splitter3D::verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const In
 void Splitter3D::makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts)
 {
 	MTC::vector<Vector3d> cp;
-	cellFunc(parentId, [this, &cp](const Polyhedron& cell) {
-		set<Index3DId> cvSet;
-		auto& cornerVertIds = cell.getCanonicalVertIds();
-		for (const auto& id : cornerVertIds) {
-			cp.push_back(getVertexPoint(id));
-			cvSet.insert(id);
-		}
-		});
+
+	const auto& parentCell = getPolyhedron(parentId);
+	set<Index3DId> cvSet;
+	auto& cornerVertIds = parentCell.getCanonicalVertIds();
+	for (const auto& id : cornerVertIds) {
+		cp.push_back(getVertexPoint(id));
+		cvSet.insert(id);
+	}
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = 0, t1 = 1;
