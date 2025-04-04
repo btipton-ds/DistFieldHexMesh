@@ -33,6 +33,9 @@ void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>
 #define LAMBDA_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
 void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>& func) CONST;
 
+#define GET_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
+CONST CLASS& get##NAME(const Index3DId& id) CONST;
+
 #define LAMBDA_FUNC_IMPL(NAME, MEMBER_NAME, CONST, CLASS) \
 void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
@@ -48,9 +51,11 @@ void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS
 	p->NAME##Func(id, func); \
 }
 
-
-
-
+#define GET_CLIENT_FUNC_IMPL(CLASS, NAME, CONST, CLASS2) \
+CONST CLASS2& CLASS::get##NAME(const Index3DId& id) CONST \
+{ \
+	return getBlockPtr()->get##NAME(id); \
+}
 
 #define LAMBDA_FUNC_EDGE_DECL(NAME, CONST) \
 void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST;
@@ -92,13 +97,21 @@ LAMBDA_FUNC_DECL(cell, , Polyhedron) \
 LAMBDA_FUNC_EDGE_DECL(edge, const) \
 LAMBDA_FUNC_EDGE_DECL(edge, )
 
+#define LAMBDA_CLIENT_FUNC_DUAL_DECLS(NAME, CLASS) \
+LAMBDA_CLIENT_FUNC_DECL(NAME, const, CLASS) \
+LAMBDA_CLIENT_FUNC_DECL(NAME, , CLASS)
+
+#define GET_CLIENT_FUNC_DUAL_DECL(NAME) \
+GET_CLIENT_FUNC_DECL(NAME, const, NAME) \
+GET_CLIENT_FUNC_DECL(NAME, , NAME)
+
 #define LAMBDA_CLIENT_DECLS \
-LAMBDA_CLIENT_FUNC_DECL(vertex, const, Vertex) \
-LAMBDA_CLIENT_FUNC_DECL(vertex, , Vertex) \
-LAMBDA_CLIENT_FUNC_DECL(face, const, Polygon) \
-LAMBDA_CLIENT_FUNC_DECL(face, , Polygon) \
-LAMBDA_CLIENT_FUNC_DECL(cell, const, Polyhedron) \
-LAMBDA_CLIENT_FUNC_DECL(cell, , Polyhedron) \
+LAMBDA_CLIENT_FUNC_DUAL_DECLS(vertex, Vertex) \
+LAMBDA_CLIENT_FUNC_DUAL_DECLS(face, Polygon) \
+LAMBDA_CLIENT_FUNC_DUAL_DECLS(cell, Polyhedron) \
+GET_CLIENT_FUNC_DUAL_DECL(Vertex) \
+GET_CLIENT_FUNC_DUAL_DECL(Polygon) \
+GET_CLIENT_FUNC_DUAL_DECL(Polyhedron) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, const) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, )
 
@@ -112,13 +125,21 @@ LAMBDA_FUNC_IMPL(cell, _polyhedra, , Polyhedron) \
 LAMBDA_FUNC_EDGE_IMPL(edge, const) \
 LAMBDA_FUNC_EDGE_IMPL(edge, )
 
+#define LAMBDA_CLIENT_FUNC_DUAL_IMPLS(CLASS, NAME, CLASS2) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const, CLASS2) \
+LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, , CLASS2)
+
+#define GET_CLIENT_FUNC_DUAL_IMPLS(CLASS, NAME, CLASS2) \
+GET_CLIENT_FUNC_IMPL(CLASS, NAME, const, CLASS2) \
+GET_CLIENT_FUNC_IMPL(CLASS, NAME, , CLASS2)
+
 #define LAMBDA_CLIENT_IMPLS(CLASS) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, const, Vertex) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, vertex, , Vertex) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, const, Polygon) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, face, , Polygon) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, const, Polyhedron) \
-LAMBDA_CLIENT_FUNC_IMPL(CLASS, cell, , Polyhedron) \
+LAMBDA_CLIENT_FUNC_DUAL_IMPLS(CLASS, vertex, Vertex) \
+LAMBDA_CLIENT_FUNC_DUAL_IMPLS(CLASS, face, Polygon) \
+LAMBDA_CLIENT_FUNC_DUAL_IMPLS(CLASS, cell, Polyhedron) \
+GET_CLIENT_FUNC_DUAL_IMPLS(CLASS, Vertex, Vertex) \
+GET_CLIENT_FUNC_DUAL_IMPLS(CLASS, Polygon, DFHM::Polygon) \
+GET_CLIENT_FUNC_DUAL_IMPLS(CLASS, Polyhedron, Polyhedron) \
 LAMBDA_CLIENT_FUNC_EDGE_IMPL(CLASS, edge, const) \
 LAMBDA_CLIENT_FUNC_EDGE_IMPL(CLASS, edge, ) 
 

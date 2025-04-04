@@ -177,8 +177,15 @@ public:
 	void addPolygonToLookup(const DFHM::Polygon& face);
 	void removePolygonFromLookup(const DFHM::Polygon& face);
 	Index3DId findPolygon(const Polygon& face) const;
+
+	Vertex& getVertex(const Index3DId& id);
+	const Vertex& getVertex(const Index3DId& id) const;
+
 	Polygon& getPolygon(const Index3DId& id);
+	const Polygon& getPolygon(const Index3DId& id) const;
+
 	Polyhedron& getPolyhedron(const Index3DId& id);
+	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::local_heap* getHeapPtr();

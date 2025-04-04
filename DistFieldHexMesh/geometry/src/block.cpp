@@ -1325,16 +1325,76 @@ bool Block::polyhedronExists(const Index3DId& id) const
 	return pOwner && pOwner->_polyhedra.exists(id);
 }
 
+Vertex& Block::getVertex(const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	auto p = pOwner->_vertices.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
+}
+
+const Vertex& Block::getVertex(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	auto p = pOwner->_vertices.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
+}
+
 DFHM::Polygon& Block::getPolygon(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return pOwner->_polygons[id];
+	auto p = pOwner->_polygons.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
+}
+
+const DFHM::Polygon& Block::getPolygon(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	auto p = pOwner->_polygons.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
 }
 
 Polyhedron& Block::getPolyhedron(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
-	return pOwner->_polyhedra[id];
+	auto p = pOwner->_polyhedra.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
+}
+
+const Polyhedron& Block::getPolyhedron(const Index3DId& id) const
+{
+	auto pOwner = getOwner(id);
+	auto p = pOwner->_polyhedra.get(id);
+	if (p)
+		return *p;
+
+	stringstream ss;
+	ss << "NPE " << __FILE__ << ":" << __LINE__;
+	throw runtime_error(ss.str());
 }
 
 void Block::addToSplitStack(const Index3DId& cellId)

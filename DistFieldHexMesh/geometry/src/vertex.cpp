@@ -228,6 +228,30 @@ void Vertex::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& 
 	p->cellFunc(id, func);
 } 
 
+const Vertex& Vertex::getVertex(const Index3DId& id) const {
+	return getBlockPtr()->getVertex(id);
+}  
+
+Vertex& Vertex::getVertex(const Index3DId& id) {
+	return getBlockPtr()->getVertex(id);
+} 
+
+const DFHM::Polygon& Vertex::getPolygon(const Index3DId& id) const {
+	return getBlockPtr()->getPolygon(id);
+}  
+
+DFHM::Polygon& Vertex::getPolygon(const Index3DId& id) {
+	return getBlockPtr()->getPolygon(id);
+} 
+
+const Polyhedron& Vertex::getPolyhedron(const Index3DId& id) const {
+	return getBlockPtr()->getPolyhedron(id);
+}  
+
+Polyhedron& Vertex::getPolyhedron(const Index3DId& id) {
+	return getBlockPtr()->getPolyhedron(id);
+} 
+
 void Vertex::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);

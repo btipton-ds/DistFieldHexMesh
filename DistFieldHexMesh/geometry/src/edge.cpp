@@ -369,6 +369,7 @@ void Edge::vertexFunc(const Index3DId& id, const std::function<void(const Vertex
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
+
 void Edge::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
@@ -392,6 +393,30 @@ void Edge::cellFunc(const Index3DId& id, const std::function<void(const Polyhedr
 void Edge::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
+} 
+
+const Vertex& Edge::getVertex(const Index3DId& id) const {
+	return getBlockPtr()->getVertex(id);
+}  
+
+Vertex& Edge::getVertex(const Index3DId& id) {
+	return getBlockPtr()->getVertex(id);
+} 
+
+const DFHM::Polygon& Edge::getPolygon(const Index3DId& id) const {
+	return getBlockPtr()->getPolygon(id);
+}  
+
+DFHM::Polygon& Edge::getPolygon(const Index3DId& id) {
+	return getBlockPtr()->getPolygon(id);
+} 
+
+const Polyhedron& Edge::getPolyhedron(const Index3DId& id) const {
+	return getBlockPtr()->getPolyhedron(id);
+}  
+
+Polyhedron& Edge::getPolyhedron(const Index3DId& id) {
+	return getBlockPtr()->getPolyhedron(id);
 } 
 
 void Edge::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {

@@ -74,14 +74,15 @@ Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t spli
 		_pScratchVol = _pBlock->getVolume()->createScratchVolume();
 	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 
-	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
 #ifdef _DEBUG
+	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
+		auto& cell = getPolygon(_polyhedronId);
 		if (!cell.isClosed()) {
 			getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
 			assert(!"Cell not closed");
 		}
-#endif // _DEBUG
 	});
+#endif // _DEBUG
 }
 
 Splitter3D::~Splitter3D()
@@ -132,7 +133,8 @@ bool Splitter3D::splitAtCenter()
 #endif
 		CellType cellType = CT_UNKNOWN;
 
-		cellFunc(_polyhedronId, [this, &cellType](Polyhedron& parentCell) {
+		{
+			auto& parentCell = getPolyhedron(_polyhedronId);
 			Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 			createHexCellData(parentCell);
@@ -144,7 +146,7 @@ bool Splitter3D::splitAtCenter()
 			default:
 				break;
 			}
-		});
+		}
 
 		// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
 		// match with the neighbor cells's faces.
@@ -158,25 +160,24 @@ bool Splitter3D::splitAtCenter()
 			result = false;
 		}
 		// Now set all the split lev
-		for (auto& id : _createdCellIds) {
-			cellFunc(id, [this](Polyhedron& cell) {
-				// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
-				if (!_intersectsModel)
-					cell.setIntersectsModel(false);
-				else {
-					if (_hasSetSearchTree)
-						cell._pSearchTree = _pSearchSourceTree;
-					else
-						cell._pSearchTree = cell.getOurBlockPtr()->getModelSearchTree();
+		for (auto& createdCellId : _createdCellIds) {
+			auto& createdCell = getPolyhedron(createdCellId);
+			// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
+			if (!_intersectsModel)
+				createdCell.setIntersectsModel(false);
+			else {
+				if (_hasSetSearchTree)
+					createdCell._pSearchTree = _pSearchSourceTree;
+				else
+					createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModelSearchTree();
 
-					cell._hasSetSearchTree = true;
-					if (cell._pSearchTree && _splitLevel < 2) {
-						auto ourBbox = cell.getBoundingBox();
-						cell._pSearchTree = cell._pSearchTree->getSubTree(ourBbox);						
-					}
+				createdCell._hasSetSearchTree = true;
+				if (createdCell._pSearchTree && _splitLevel < 2) {
+					auto ourBbox = createdCell.getBoundingBox();
+					createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(ourBbox);
 				}
-				cell.setSplitLevel(_splitLevel + 1);
-			});
+			}
+			createdCell.setSplitLevel(_splitLevel + 1);
 		}
 		int dbgBreak = 1;
 	} catch (const std::runtime_error& err) {
@@ -875,17 +876,15 @@ void Splitter3D::makeScratchHexCells_deprecated(const Index3DId& parentId, const
 
 Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 {
-	MTC::vector<Index3DId> srcCanonicalVertIds;
-	MTC::set<Index3DId> newFaceIds;
-	cellFunc(parentId, [this, &srcCanonicalVertIds, &newFaceIds](const Polyhedron& srcCell) {
-		auto& srcFaceIds = srcCell.getFaceIds();
-		srcCanonicalVertIds = srcCell.getCanonicalVertIds();
-		for (const auto& srcFaceId : srcFaceIds) {
-			const auto& newFaceId = makeScratchFace(srcFaceId);
-			newFaceIds.insert(newFaceId);
-		}
-	});
+	const auto& srcCell = getPolyhedron(parentId);
+	const auto& srcFaceIds = srcCell.getFaceIds();
+	const auto& srcCanonicalVertIds = srcCell.getCanonicalVertIds();
 
+	MTC::set<Index3DId> newFaceIds;
+	for (const auto& srcFaceId : srcFaceIds) {
+		const auto& newFaceId = makeScratchFace(srcFaceId);
+		newFaceIds.insert(newFaceId);
+	}
 
 	MTC::vector<Index3DId> newCanonicalVertIds;
 	for (const auto& srcVertId : srcCanonicalVertIds) {
@@ -975,42 +974,66 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 }
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)
-void Splitter3D::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+void Splitter3D::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter3D::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+void Splitter3D::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter3D::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+void Splitter3D::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter3D::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+void Splitter3D::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter3D::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+void Splitter3D::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter3D::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+void Splitter3D::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+const Vertex& Splitter3D::getVertex(const Index3DId& id) const {
+	return getBlockPtr()->getVertex(id);
+}  
+
+Vertex& Splitter3D::getVertex(const Index3DId& id) {
+	return getBlockPtr()->getVertex(id);
+} 
+
+const DFHM::Polygon& Splitter3D::getPolygon(const Index3DId& id) const {
+	return getBlockPtr()->getPolygon(id);
+}  
+
+DFHM::Polygon& Splitter3D::getPolygon(const Index3DId& id) {
+	return getBlockPtr()->getPolygon(id);
+} 
+
+const Polyhedron& Splitter3D::getPolyhedron(const Index3DId& id) const {
+	return getBlockPtr()->getPolyhedron(id);
+}  
+
+Polyhedron& Splitter3D::getPolyhedron(const Index3DId& id) {
+	return getBlockPtr()->getPolyhedron(id);
+} 
+
+void Splitter3D::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+void Splitter3D::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }
