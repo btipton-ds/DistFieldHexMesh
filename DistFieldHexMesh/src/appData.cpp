@@ -801,11 +801,11 @@ void AppData::doCreateBaseVolume()
         //    _pVolume->verifyUniquePoints(RUN_MULTI_THREAD);
 
         _pVolume->setLayerNums();
-        _pMainFrame->reportProgress();
+        _pMainFrame->reportProgress(1);
 
         buildHexFaceTables();
 
-        _pMainFrame->reportProgress();
+        _pMainFrame->reportProgress(1);
 
         return 2;
     }));
@@ -839,7 +839,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
             _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
 
             buildHexFaceTables();
-            _pMainFrame->reportProgress();
+            _pMainFrame->reportProgress(1);
 
             return 2;
         }));

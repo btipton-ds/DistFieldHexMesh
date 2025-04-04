@@ -193,21 +193,21 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	bool intersectsModel = false;
 	bool tooManyFaces = false;
-	double minOfMaxFinalOrthoCells = DBL_MAX;
+	bool tooNonOrthogonal = false;
 	const auto& parentCell = getPolyhedron(parentId);
-	if (_subPassNum == 0) {
+	if (_splitLevel < _params.numIntersectionDivs && _subPassNum == 0) {
 		intersectsModel = parentCell.intersectsModel();
 	} else {
 		tooManyFaces = parentCell.hasTooManFaces(_params);
-		minOfMaxFinalOrthoCells = parentCell.maxOrthogonalityAngleRadians();
+		tooNonOrthogonal = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 	}
 	
 	size_t minTooManyFaceCells = INT_MAX;
-	int bestTooManyFacesSplitAxis = -1;
-
-	int bestTooManyOrthoSplitAxis = -1;
-
+	double minOfMaxFinalOrthoCells = DBL_MAX;
 	int minIntersections = INT_MAX;
+
+	int bestTooManyFacesSplitAxis = -1;
+	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
@@ -226,45 +226,45 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(scratchCellId, tuv, axis, newCellIds);
 
-		if (tooManyFaces) {
-			size_t totalTooManyFaces = 0;
-			for (auto& newCellId : newCellIds) {
-				const auto& newCell = getPolyhedron(newCellId);
-				if (newCell.hasTooManFaces(_params))
+		size_t totalTooManyFaces = 0;
+		double maxOrtho = 0;
+		int numIntersections = 0;
+		for (auto& newCellId : newCellIds) {
+			const auto& newCell = getPolyhedron(newCellId);
+
+			if (tooManyFaces) {
+				if (newCell.hasTooManFaces(_params)) {
 					totalTooManyFaces++;
-			}
-			if (totalTooManyFaces < minTooManyFaceCells) {
-				minTooManyFaceCells = totalTooManyFaces;
-				bestTooManyFacesSplitAxis = axis;
-			}
-		}
-
-		if (minOfMaxFinalOrthoCells > _params.maxOrthoAngleRadians) { // Make sure this is an improvement over the parent cell
-			double maxOrtho = 0;
-			for (auto& newCellId : newCellIds) {
-				const auto& newCell = getPolyhedron(newCellId);
-				double ortho = newCell.maxOrthogonalityAngleRadians();
-				if (ortho > maxOrtho)
-					maxOrtho = ortho;
-			}
-			if (maxOrtho < minOfMaxFinalOrthoCells) {
-				minOfMaxFinalOrthoCells = maxOrtho;
-				bestTooManyOrthoSplitAxis = axis;
-			}
-		}
-
-		if (intersectsModel) {
-			int numIntersections = 0;
-			for (auto& newCellId : newCellIds) {
-				const auto& newCell = getPolyhedron(newCellId);
-				if (newCell.intersectsModel()) {
-						numIntersections++;
 				}
 			}
-			if (numIntersections < minIntersections) {
-				minIntersections = numIntersections;
-				bestIntersectionSplitAxis = axis;
+
+			if (tooNonOrthogonal) { // Make sure this is an improvement over the parent cell
+				double ortho = newCell.maxOrthogonalityAngleRadians();
+				if (ortho > maxOrtho) {
+					maxOrtho = ortho;
+				}
 			}
+
+			if (intersectsModel) {
+				if (newCell.intersectsModel()) {
+					numIntersections++;
+				}
+			}
+		}
+
+		if (tooManyFaces && totalTooManyFaces < minTooManyFaceCells) {
+			minTooManyFaceCells = totalTooManyFaces;
+			bestTooManyFacesSplitAxis = axis;
+		}
+
+		if (tooNonOrthogonal && maxOrtho < minOfMaxFinalOrthoCells) {
+			minOfMaxFinalOrthoCells = maxOrtho;
+			bestTooManyOrthoSplitAxis = axis;
+		}
+
+		if (intersectsModel && numIntersections < minIntersections) {
+			minIntersections = numIntersections;
+			bestIntersectionSplitAxis = axis;
 		}
 #if 0
 		else if (_splitLevel < _params.numCurvatureDivs)

@@ -46,7 +46,7 @@ PolymeshTables::PolymeshTables(const Volume* pVol, ProgressReporter* pReporter)
 void PolymeshTables::reportProgress() const
 {
 	if (_pProgReporter)
-		_pProgReporter->reportProgress();
+		_pProgReporter->reportProgress(1);
 }
 
 void PolymeshTables::create()

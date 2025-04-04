@@ -34,13 +34,14 @@ namespace DFHM {
     class ProgressReporter {
     public:
         void startProgress(size_t numSteps);
-        void reportProgress();
+        void reportProgress(double steps);
     protected:
         virtual void reportProgressInner(double fraction) = 0;
 
     private:
         std::mutex _mutex;
-        size_t _step, _numSteps;
+        size_t _numSteps;
+        double _step;
     };
 
     inline void ProgressReporter::startProgress(size_t numSteps)
@@ -49,10 +50,10 @@ namespace DFHM {
         _numSteps = numSteps;
     }
 
-    inline void ProgressReporter::reportProgress()
+    inline void ProgressReporter::reportProgress(double stepSize = 1.0)
     {
-        double fraction = _step++ / (double)_numSteps;
         std::lock_guard lg(_mutex);
+        double fraction = (_step += stepSize) / (double)_numSteps;
         reportProgressInner(fraction);
     }
 }
