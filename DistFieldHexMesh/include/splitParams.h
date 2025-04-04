@@ -83,6 +83,11 @@ struct SplittingParams {
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
 	double maxOrthoAngleRadians = 70.0 / 180.0 * M_PI;
 
+	// These are used only to determine which cell is most complex so it gets split first
+	double complexityFaceFactor = 1;
+	double complexitySubFaceFactor = 1.5;
+	double complexityOrthoFactor = 1.25;
+
 	double xMinGrading = 5;
 	double xMaxGrading = 5;
 	double yMinGrading = 5;

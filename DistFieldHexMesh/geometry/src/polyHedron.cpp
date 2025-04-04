@@ -1118,23 +1118,68 @@ bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 
 double Polyhedron::maxOrthogonalityAngleRadians() const
 {
-	double result = 0;
-	auto& cellCtr = calCentroid();
-	for (auto& id : _faceIds) {
-		faceFunc(id, [&cellCtr, &result](const Polygon& face) {
-			auto& faceCtr = face.calCentroid();
-			auto& faceNorm = face.calUnitNormal();
-			Vector3d v = (cellCtr - faceCtr).normalized();
-			double dp = fabs(v.dot(faceNorm));
-			if (dp > 1.0)
-				dp = 1.0;
-			double angle = acos(dp);
-			if (angle > result)
-				result = angle;
-		});
+	if (_maxOrthogonalityAngleRadians < 0) {
+		_maxOrthogonalityAngleRadians = 0;
+		auto& cellCtr = calCentroid();
+		for (auto& id : _faceIds) {
+			faceFunc(id, [this, &cellCtr](const Polygon& face) {
+				auto& faceCtr = face.calCentroid();
+				auto& faceNorm = face.calUnitNormal();
+				Vector3d v = (cellCtr - faceCtr).normalized();
+				double dp = fabs(v.dot(faceNorm));
+				if (dp > 1.0)
+					dp = 1.0;
+				double angle = acos(dp);
+				if (angle > _maxOrthogonalityAngleRadians)
+					_maxOrthogonalityAngleRadians = angle;
+			});
+		}
 	}
+	return _maxOrthogonalityAngleRadians;
+}
 
-	return result;
+const double& Polyhedron::getComplexityScore(const SplittingParams& params) const
+{
+
+	if (_complexityScore < 0) {
+		_complexityScore = 1;
+		const double PI_OVER_2 = M_PI * 0.5;
+		double x;
+
+		MTC::vector<MTC::set<Index3DId>> planarFaceSet;
+		createPlanarFaceSet(planarFaceSet);
+		for (const auto& s : planarFaceSet) {
+			size_t numSubFaces = s.size();
+			double subFaceComplexity = 1;
+			if (numSubFaces > params.maxCoplanarFaces) {
+				subFaceComplexity = 1 + (numSubFaces - params.maxCoplanarFaces) / (double)params.maxCoplanarFaces;
+				int dbgBreak = 1;
+			}
+			x = pow(subFaceComplexity, params.complexitySubFaceFactor);
+			_complexityScore *= x;
+		}
+
+		size_t numFaces = getFaceIds().size();
+		double faceComplexity = 1;
+		if (numFaces > params.maxCellFaces) {
+			faceComplexity = 1 + (numFaces - params.maxCellFaces) / (double)params.maxCellFaces;
+			int dbgBreak = 1;
+		}
+
+		x = pow(faceComplexity, params.complexityFaceFactor);
+		_complexityScore *= x;
+
+		auto orthoAngle = maxOrthogonalityAngleRadians(); // in the range [0, PI/4]
+		double orthoComplexity = 1;
+		if (orthoAngle > params.maxOrthoAngleRadians) {
+			orthoComplexity = 1 + (orthoAngle - params.maxOrthoAngleRadians) / (PI_OVER_2 - params.maxOrthoAngleRadians);
+			int dbgBreak = 1;
+		}
+		x = pow(orthoComplexity, params.complexityOrthoFactor);
+		_complexityScore *= x;
+	}
+	
+	return _complexityScore;
 }
 
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1724,6 +1769,8 @@ void Polyhedron::clearCache() const
 	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 
 	_cachedMinGap = -1;
+	_maxOrthogonalityAngleRadians = -1;
+	_complexityScore = -1;
 }
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)

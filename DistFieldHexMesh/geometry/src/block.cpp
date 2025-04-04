@@ -1042,9 +1042,26 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	if (_needToSplit.empty())
 		return didSplit;
 
-	auto needToSplitCopy = _needToSplit;
+	auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
+		// Sort by complexity factor so we split the most complex first
+
+		double lhsFaceScore, rhsFaceScore;
+
+		cellFunc(lhs, [&params, &lhsFaceScore](const Polyhedron& cell) {
+			lhsFaceScore = cell.getComplexityScore(params);
+			});
+
+		cellFunc(rhs, [&params, &rhsFaceScore](const Polyhedron& cell) {
+			rhsFaceScore = cell.getComplexityScore(params);
+			});
+
+		return lhsFaceScore > rhsFaceScore; // Descending sort
+	};
+
+	vector<Index3DId> needToSplitCopy(_needToSplit.begin(), _needToSplit.end());
 	_needToSplit.clear();
 
+	sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum, subPassNum);
@@ -1055,16 +1072,27 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 		}
 	}
 
-	set<Index3DId> touchedCopy, tmp;
-	touchedCopy.insert(_touchedCellIds.begin(), _touchedCellIds.end());
-	tmp.clear();
+	vector<Index3DId> tooComplexIds, tmp(_touchedCellIds.begin(), _touchedCellIds.end());
+	_touchedCellIds.clear();
 
 	for (const auto& id : tmp) {
-		cellFunc(id, [&touchedCopy, &params](const Polyhedron& cell) {
+		cellFunc(id, [&tooComplexIds, &params](const Polyhedron& cell) {
 			if (cell.isTooComplex(params)) {
-				touchedCopy.insert(cell.getId());
+				tooComplexIds.push_back(cell.getId());
 			}
 		});
+	}
+
+	sort(tooComplexIds.begin(), tooComplexIds.end(), comp);
+
+	for (const auto& cellId : tooComplexIds) {
+		if (polyhedronExists(cellId)) {
+			Splitter3D splitter(this, cellId, splitNum, subPassNum);
+			if (splitter.splitAtCenter()) {
+				didSplit = true;
+				assert(!polyhedronExists(cellId));
+			}
+		}
 	}
 
 	return didSplit;

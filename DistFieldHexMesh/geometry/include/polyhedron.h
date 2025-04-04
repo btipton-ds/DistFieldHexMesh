@@ -114,6 +114,7 @@ public:
 	bool isTooComplex(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
+	const double& getComplexityScore(const SplittingParams& params) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -217,6 +218,8 @@ private:
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;
+	mutable double _complexityScore = -1;
+	mutable double _maxOrthogonalityAngleRadians = -1;
 
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 
