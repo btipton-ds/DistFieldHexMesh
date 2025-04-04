@@ -49,33 +49,30 @@ void Edge::initFaceIds()
 {
 	_faceIds.clear();
 
-	vertexFunc(_vertexIds[0], [this](const Vertex& vert0) {
-		auto& face0Ids = vert0.getFaceIds();
+	const auto& vert0 = getVertex(_vertexIds[0]);
+	auto& face0Ids = vert0.getFaceIds();
 
-		vertexFunc(_vertexIds[1], [this, &face0Ids](const Vertex& vert1) {
-			auto& face1Ids = vert1.getFaceIds();
-			auto p0 = face0Ids.data();
-			auto p1 = face1Ids.data();
+	const auto& vert1 = getVertex(_vertexIds[1]);
+	auto& face1Ids = vert1.getFaceIds();
 
-			if (face0Ids.size() < face1Ids.size()) {
-				for (size_t i = 0; i < face0Ids.size(); i++) {
-					if (face1Ids.contains(*p0)) {
-						_faceIds.insert(*p0);
-					}
-					p0++;
-				}
-			} else {
-				for (size_t i = 0; i < face1Ids.size(); i++) {
-					if (face0Ids.contains(*p1)) {
-						_faceIds.insert(*p1);
-					}
-					p1++;
-				}
+	auto p0 = face0Ids.data();
+	auto p1 = face1Ids.data();
+
+	if (face0Ids.size() < face1Ids.size()) {
+		for (size_t i = 0; i < face0Ids.size(); i++) {
+			if (face1Ids.contains(*p0)) {
+				_faceIds.insert(*p0);
 			}
-		});
-	});
-
-
+			p0++;
+		}
+	} else {
+		for (size_t i = 0; i < face1Ids.size(); i++) {
+			if (face0Ids.contains(*p1)) {
+				_faceIds.insert(*p1);
+			}
+			p1++;
+		}
+	}
 }
 
 double Edge::sameParamTol() const
