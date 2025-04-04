@@ -448,16 +448,16 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	imprintSplittingFace(parentId, splittingFaceId);
 
-	FastBisectionSet<Index3DId> allCellFaceIds;
-	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &allCellFaceIds](Polyhedron& cell) {
-		allCellFaceIds = cell.getFaceIds();
+	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &subCells, &newCellIds](Polyhedron& cell) {
+		auto& faceIds = cell.getFaceIds();
+		set<Index3DId> allCellFaceIds(faceIds.begin(), faceIds.end());
 		cell.detachFaces();
-	});
+		for (int i = 0; i < 2; i++) {
+			Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
+			newCellIds.push_back(cellId);
+		}
+		});
 
-	for (int i = 0; i < 2; i++) {
-		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
-		newCellIds.push_back(cellId);
-	}
 
 	_createdCellIds.erase(parentId);
 	getBlockPtr()->freePolyhedron(parentId);
@@ -646,7 +646,7 @@ Index3DId Splitter3D::findConnectedFaceId(const std::set<Edge>& localEdgeSet, co
 }
 
 Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
-	FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
+	set<Index3DId>& allCellFaceIds, bool useAllFaces)
 {
 #ifdef _DEBUG
 	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
@@ -876,23 +876,22 @@ void Splitter3D::makeScratchHexCells_deprecated(const Index3DId& parentId, const
 Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 {
 	MTC::vector<Index3DId> srcCanonicalVertIds;
-	FastBisectionSet<Index3DId> srcFaceIds;
-	cellFunc(parentId, [&srcFaceIds, &srcCanonicalVertIds](const Polyhedron& srcCell) {
-		srcFaceIds = srcCell.getFaceIds();
+	MTC::set<Index3DId> newFaceIds;
+	cellFunc(parentId, [this, &srcCanonicalVertIds, &newFaceIds](const Polyhedron& srcCell) {
+		auto& srcFaceIds = srcCell.getFaceIds();
 		srcCanonicalVertIds = srcCell.getCanonicalVertIds();
+		for (const auto& srcFaceId : srcFaceIds) {
+			const auto& newFaceId = makeScratchFace(srcFaceId);
+			newFaceIds.insert(newFaceId);
+		}
 	});
+
 
 	MTC::vector<Index3DId> newCanonicalVertIds;
 	for (const auto& srcVertId : srcCanonicalVertIds) {
 		auto& pt = _pBlock->getVertexPoint(srcVertId);
 		auto newVertId = _pScratchBlock->addVertex(pt);
 		newCanonicalVertIds.push_back(newVertId);
-	}
-
-	MTC::set<Index3DId> newFaceIds;
-	for (const auto& srcFaceId : srcFaceIds) {
-		const auto& newFaceId = makeScratchFace(srcFaceId);
-		newFaceIds.insert(newFaceId);
 	}
 
 	Polyhedron newCell(newFaceIds, newCanonicalVertIds);

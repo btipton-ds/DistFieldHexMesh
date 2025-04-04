@@ -77,7 +77,7 @@ private:
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
-		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
+		std::set<Index3DId>& allCellFaceIds, bool useAll);
 	void addFaceToLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
 	void removeFacefromLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
 	Index3DId findConnectedFaceId(const std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;

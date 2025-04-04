@@ -825,6 +825,14 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
         dlg.getParams(_params);
 
+#if 1
+        _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
+        buildHexFaceTables();
+        const Index3D min(0, 0, 0);
+        const Index3D max(_pVolume->volDim());
+        setDisplayMinMax(min, max);
+        copyHexFaceTablesToVBOs();
+#else
         size_t numProgSteps = 1 + _model.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
@@ -836,7 +844,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
             return 2;
         }));
         _pMainFrame->setFuture(pFuture);
-
+#endif
     } catch (const std::runtime_error& err) {
         cout << "Exception thrown: " << err.what() << "\n";
     }

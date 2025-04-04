@@ -36,9 +36,10 @@ Index3DBaseType Index3DBase::s_blockDim = 8;
 Index3DBase::Index3DBase()
 {
 //	assert(sizeof(Index3DBase) == 8);
-	_vals[0] = getMaxBaseType();
-	_vals[1] = getMaxBaseType();
-	_vals[2] = getMaxBaseType();
+	_iVal = 0;
+	_vals[0] = 0xff;
+	_vals[1] = 0xff;
+	_vals[2] = 0xff;
 	_flags = 0;
 //	assert(_iVal == getMask());
 }

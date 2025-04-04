@@ -91,17 +91,14 @@ protected:
 	Index3DBase(const Vector3i& src);
 
 private:
-	static Index3DLongType getMask();
-	static Index3DBaseType getMaxBaseType();
-	Index3DLongType compVal() const;
 	static Index3DBaseType s_blockDim;
 	union {
 		struct {
 			Index3DBaseType _vals[3];
-			mutable Index3DBaseType _flags;
 		};
-		Index3DLongType _iVal;
+		Index3DLongType _iVal = 0;
 	};
+	mutable Index3DBaseType _flags;
 };
 
 inline void Index3DBase::setBlockDim(Index3DBaseType val)
@@ -132,8 +129,7 @@ inline Index3DBase::Index3DBase(const Vector3i& src)
 
 inline bool Index3DBase::isValid() const
 {
-	const Index3DBaseType t = getMaxBaseType();
-	return _vals[0] != t && _vals[1] != t && _vals[2] != t;
+	return _vals[0] != 0xff && _vals[1] != 0xff && _vals[2] != 0xff;
 }
 
 inline bool Index3DBase::isInBounds(size_t bound) const
@@ -168,24 +164,9 @@ void Index3DBase::clampInBounds(const Vector3<BOUND_TYPE>& bounds)
 	}
 }
 
-inline Index3DLongType Index3DBase::getMask()
-{
-	return 0x00ffffff;
-}
-
-inline Index3DBaseType Index3DBase::getMaxBaseType()
-{
-	return 0xff;
-}
-
-inline Index3DLongType Index3DBase::compVal() const
-{
-	return _iVal & getMask();
-}
-
 inline bool Index3DBase::operator < (const Index3DBase& rhs) const
 {
-	return compVal() < rhs.compVal();
+	return _iVal < rhs._iVal;
 }
 
 inline const Index3DBaseType& Index3DBase::operator[](int idx) const
@@ -240,7 +221,7 @@ inline bool Index3DBase::withinRange(const Index3DBase& blockIdx, int range) con
 template<class T>
 inline bool Index3DBase::operator == (const T& rhs) const
 {
-	return compVal() == rhs.compVal();
+	return _iVal == rhs._iVal;
 }
 
 template<class T>
