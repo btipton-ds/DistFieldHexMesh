@@ -196,14 +196,13 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	bool intersectsModel = false;
 	bool tooManyFaces = false;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
-	cellFunc(parentId, [this, numPossibleSplits, &intersectsModel, &tooManyFaces, &minOfMaxFinalOrthoCells](const Polyhedron& cell) {
-		if (_subPassNum == 0) {
-			intersectsModel = cell.intersectsModel();
-		} else {
-			tooManyFaces = cell.hasTooManFaces(_params);
-			minOfMaxFinalOrthoCells = cell.maxOrthogonalityAngleRadians();
-		}
-	});
+	const auto& parentCell = getPolyhedron(parentId);
+	if (_subPassNum == 0) {
+		intersectsModel = parentCell.intersectsModel();
+	} else {
+		tooManyFaces = parentCell.hasTooManFaces(_params);
+		minOfMaxFinalOrthoCells = parentCell.maxOrthogonalityAngleRadians();
+	}
 	
 	size_t minTooManyFaceCells = INT_MAX;
 	int bestTooManyFacesSplitAxis = -1;
@@ -231,11 +230,10 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 		if (tooManyFaces) {
 			size_t totalTooManyFaces = 0;
-			for (auto& cellId : newCellIds) {
-				cellFunc(cellId, [this, &totalTooManyFaces](const Polyhedron& cell) {
-					if (cell.hasTooManFaces(_params))
-						totalTooManyFaces++;
-				});
+			for (auto& newCellId : newCellIds) {
+				const auto& newCell = getPolyhedron(newCellId);
+				if (newCell.hasTooManFaces(_params))
+					totalTooManyFaces++;
 			}
 			if (totalTooManyFaces < minTooManyFaceCells) {
 				minTooManyFaceCells = totalTooManyFaces;
@@ -245,12 +243,11 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 		if (minOfMaxFinalOrthoCells > _params.maxOrthoAngleRadians) { // Make sure this is an improvement over the parent cell
 			double maxOrtho = 0;
-			for (auto& cellId : newCellIds) {
-				cellFunc(cellId, [this, &maxOrtho](const Polyhedron& cell) {
-					double ortho = cell.maxOrthogonalityAngleRadians();
-					if (ortho > maxOrtho)
-						maxOrtho = ortho;
-				});
+			for (auto& newCellId : newCellIds) {
+				const auto& newCell = getPolyhedron(newCellId);
+				double ortho = newCell.maxOrthogonalityAngleRadians();
+				if (ortho > maxOrtho)
+					maxOrtho = ortho;
 			}
 			if (maxOrtho < minOfMaxFinalOrthoCells) {
 				minOfMaxFinalOrthoCells = maxOrtho;
@@ -260,12 +257,11 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 		if (intersectsModel) {
 			int numIntersections = 0;
-			for (auto& cellId : newCellIds) {
-				cellFunc(cellId, [this, &numIntersections](const Polyhedron& cell) {
-					if (cell.intersectsModel()) {
+			for (auto& newCellId : newCellIds) {
+				const auto& newCell = getPolyhedron(newCellId);
+				if (newCell.intersectsModel()) {
 						numIntersections++;
-					}
-				});
+				}
 			}
 			if (numIntersections < minIntersections) {
 				minIntersections = numIntersections;
@@ -438,10 +434,8 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 		int dbgBreak = 1;
 	});
 
-	FastBisectionSet<Index3DId> faceIds;
-	cellFunc(parentId, [&faceIds](const Polyhedron& cell) {
-		faceIds = cell.getFaceIds();
-	});
+	auto& parentCell = getPolyhedron(parentId);
+	const auto& faceIds = parentCell.getFaceIds();
 
 	faceFunc(splittingFaceId, [&faceIds](Polygon& splittingFace) {
 		splittingFace.imprintFaces(faceIds);
@@ -449,16 +443,12 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	imprintSplittingFace(parentId, splittingFaceId);
 
-	cellFunc(parentId, [this, parentId, testId, &splittingFaceId, &subCells, &newCellIds](Polyhedron& cell) {
-		auto& faceIds = cell.getFaceIds();
-		set<Index3DId> allCellFaceIds(faceIds.begin(), faceIds.end());
-		cell.detachFaces();
-		for (int i = 0; i < 2; i++) {
-			Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
-			newCellIds.push_back(cellId);
-		}
-		});
-
+	set<Index3DId> allCellFaceIds(faceIds.begin(), faceIds.end());
+	parentCell.detachFaces();
+	for (int i = 0; i < 2; i++) {
+		Index3DId cellId = makeCellFromHexFaces(splittingFaceId, subCells[i], allCellFaceIds, i == 1);
+		newCellIds.push_back(cellId);
+	}
 
 	_createdCellIds.erase(parentId);
 	getBlockPtr()->freePolyhedron(parentId);
