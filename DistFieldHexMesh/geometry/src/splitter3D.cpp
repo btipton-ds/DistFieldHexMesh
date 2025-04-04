@@ -45,7 +45,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 
-
 #ifdef _WIN32
 #include <windows.h>
 #include <profileapi.h>
@@ -429,17 +428,13 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 	}
 #endif
 
-	faceFunc(splittingFaceId, [splitAxis](const Polygon & face) {
-		auto n = face.calUnitNormal();
-		int dbgBreak = 1;
-	});
+	auto& splittingFace = getPolygon(splittingFaceId);
+	auto n = splittingFace.calUnitNormal();
 
 	auto& parentCell = getPolyhedron(parentId);
 	const auto& faceIds = parentCell.getFaceIds();
 
-	faceFunc(splittingFaceId, [&faceIds](Polygon& splittingFace) {
-		splittingFace.imprintFaces(faceIds);
-	});
+	splittingFace.imprintFaces(faceIds);
 
 	imprintSplittingFace(parentId, splittingFaceId);
 
@@ -463,13 +458,9 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 	const auto cellEdges = parentCell.getEdgeKeys(false);
 
 	set<Index3DId> faceIds;
-	MTC::vector<EdgeKey> splittingEdges;
-	Vector3d splitPlaneNormal;
-	faceFunc(splittingFaceId, [this, &faceIds, &splittingEdges, &splitPlaneNormal](const Polygon& splittingFace) {
-		const auto tol = Tolerance::paramTol();
-		splittingEdges = splittingFace.getEdgeKeys();
-		splitPlaneNormal = splittingFace.calUnitNormal();
-	});
+	auto& splittingFace = getPolygon(splittingFaceId);
+	MTC::vector<EdgeKey> splittingEdges = splittingFace.getEdgeKeys();
+	Vector3d splitPlaneNormal = splittingFace.calUnitNormal();
 
 	for (auto& edge : cellEdges) {
 		FastBisectionSet<Index3DId> edgeFaces;
@@ -477,10 +468,8 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 			edgeFaces = edge.getFaceIds();
 		});
 		for (auto& faceId : edgeFaces) {
-			Vector3d faceNormal;
-			faceFunc(faceId, [&faceNormal](const Polygon& face) {
-				faceNormal = face.calUnitNormal();
-			});
+			auto& face = getPolygon(faceId);
+			auto faceNormal = face.calUnitNormal();
 			auto cp = splitPlaneNormal.cross(faceNormal).norm();
 			if (cp > Tolerance::paramTol()) {
 				faceIds.insert(faceId);
@@ -489,11 +478,10 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 	}
 
 	for (auto& faceId : faceIds) {
-		faceFunc(faceId, [this, &parentId, &splittingEdges](Polygon& face) {
-			for (auto& ek : splittingEdges) {
-				face.imprintEdge(ek);
-			}
-		});
+		auto& face = getPolygon(faceId);
+		for (auto& ek : splittingEdges) {
+			face.imprintEdge(ek);
+		}
 	}
 
 	for (const auto& faceId : faceIds) {
@@ -504,30 +492,30 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 		MTC::vector<MTC::vector<Vector3d>> splitFacePoints;
 		FastBisectionSet<Index3DId> cellIds;
 
-		faceFunc(faceId, [this, &splittingEdges, &splitFacePoints, &cellIds](Polygon& face) {
-			if (Index3DId(5, 2, 7, 0) == _polyhedronId && Index3DId(0, 0, 0, 9) == face.getId()) {
-				int dbgBreak = 1;
-			}
-			Splitter2D sp(face.calPlane());
-			cellIds = face.getCellIds();
-			face.iterateEdges([this, &sp](const Edge& edge)->bool {
-				const auto& pt0 = getVertexPoint(edge[0]);
-				const auto& pt1 = getVertexPoint(edge[1]);
-				sp.add3DEdge(pt0, pt1);
-				return true;
-				});
+		auto& face = getPolygon(faceId);
 
-			for (const auto& ek : splittingEdges) {
-				const auto& pt0 = getVertexPoint(ek[0]);
-				const auto& pt1 = getVertexPoint(ek[1]);
-				bool cp0 = face.isCoplanar(pt0);
-				bool cp1 = face.isCoplanar(pt1);
-				if (cp0 && cp1) {
-					sp.add3DEdge(pt0, pt1);
-				}
+		if (Index3DId(5, 2, 7, 0) == _polyhedronId && Index3DId(0, 0, 0, 9) == face.getId()) {
+			int dbgBreak = 1;
+		}
+		Splitter2D sp(face.calPlane());
+		cellIds = face.getCellIds();
+		face.iterateEdges([this, &sp](const Edge& edge)->bool {
+			const auto& pt0 = getVertexPoint(edge[0]);
+			const auto& pt1 = getVertexPoint(edge[1]);
+			sp.add3DEdge(pt0, pt1);
+			return true;
+			});
+
+		for (const auto& ek : splittingEdges) {
+			const auto& pt0 = getVertexPoint(ek[0]);
+			const auto& pt1 = getVertexPoint(ek[1]);
+			bool cp0 = face.isCoplanar(pt0);
+			bool cp1 = face.isCoplanar(pt1);
+			if (cp0 && cp1) {
+				sp.add3DEdge(pt0, pt1);
 			}
-			sp.getFacePoints(splitFacePoints);
-		});
+		}
+		sp.getFacePoints(splitFacePoints);
 
 		if (splitFacePoints.size() < 2)
 			continue;
@@ -556,8 +544,8 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 						stringstream ss;
 						ss << "D:/DarkSky/Projects/output/objs/imprintFaceEdges_open_cell_" << getBlockPtr()->getLoggerNumericCode(cell.getId()) << "_splittingFace.obj";
 						MTC::vector<Vector3d> facePts;
-						faceFunc(splittingFaceId, [this, &facePts](const Polygon& face) {
-							auto& fv = face.getVertexIds();
+						faceFunc(splittingFaceId, [this, &facePts](const Polygon& splittingFace) {
+							auto& fv = splittingFace.getVertexIds();
 							for (auto& id : fv) {
 								facePts.push_back(getVertexPoint(id));
 							}
@@ -580,55 +568,52 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 
 void Splitter3D::addFaceToLocalEdgeSet(set<Edge>& localEdgeSet, const Index3DId& faceId) const
 {
-	faceFunc(faceId, [this, &localEdgeSet](const Polygon& face) {
-		auto& vertIds = face.getVertexIds();
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			Edge e(EdgeKey(vertIds[i], vertIds[j]), nullptr);
-			localEdgeSet.insert(e);
-			auto& e2 = const_cast<Edge&>(*localEdgeSet.find(e));
-			e2.addFaceId(face.getId());
-		}
-	});
+	auto& face = getPolygon(faceId);
+	auto& vertIds = face.getVertexIds();
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		Edge e(EdgeKey(vertIds[i], vertIds[j]), nullptr);
+		localEdgeSet.insert(e);
+		auto& e2 = const_cast<Edge&>(*localEdgeSet.find(e));
+		e2.addFaceId(face.getId());
+	}
 }
 
 void Splitter3D::removeFacefromLocalEdgeSet(set<Edge>& localEdgeSet, const Index3DId& faceId) const
 {
-	faceFunc(faceId, [this, &localEdgeSet](const Polygon& face) {
-		auto& vertIds = face.getVertexIds();
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			Edge edge(EdgeKey(vertIds[i], vertIds[j]), nullptr);
-			auto iter = localEdgeSet.find(edge);
-			if (iter != localEdgeSet.end()) {
-				auto& edge2 = const_cast<Edge&>(*iter);
-				edge2.removeFaceId(face.getId());
-				if (edge2.getFaceIds().empty())
-					localEdgeSet.erase(edge);
-			}
+	auto& face = getPolygon(faceId);
+	auto& vertIds = face.getVertexIds();
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		Edge edge(EdgeKey(vertIds[i], vertIds[j]), nullptr);
+		auto iter = localEdgeSet.find(edge);
+		if (iter != localEdgeSet.end()) {
+			auto& edge2 = const_cast<Edge&>(*iter);
+			edge2.removeFaceId(face.getId());
+			if (edge2.getFaceIds().empty())
+				localEdgeSet.erase(edge);
 		}
-	});
+	}
 }
 
 Index3DId Splitter3D::findConnectedFaceId(const std::set<Edge>& localEdgeSet, const Index3DId& faceId) const
 {
 	Index3DId result;
-	faceFunc(faceId, [this, &localEdgeSet, &faceId, &result](const Polygon& face) {
-		auto& vertIds = face.getVertexIds();
-		for (size_t i = 0; i < vertIds.size(); i++) {
-			size_t j = (i + 1) % vertIds.size();
-			Edge edge(EdgeKey(vertIds[i], vertIds[j]), getBlockPtr());
-			auto iter = localEdgeSet.find(edge);
-			if (iter != localEdgeSet.end()) {
-				auto& edge2 = *iter;
-				auto& faceIds = edge2.getFaceIds();
-				if (faceIds.size() == 1) {
-					result = *faceIds.begin();
-					break;
-				}
+	auto& face = getPolygon(faceId);
+	auto& vertIds = face.getVertexIds();
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		Edge edge(EdgeKey(vertIds[i], vertIds[j]), getBlockPtr());
+		auto iter = localEdgeSet.find(edge);
+		if (iter != localEdgeSet.end()) {
+			auto& edge2 = *iter;
+			auto& faceIds = edge2.getFaceIds();
+			if (faceIds.size() == 1) {
+				result = *faceIds.begin();
+				break;
 			}
 		}
-	});
+	}
 
 	return result;
 }
@@ -837,30 +822,6 @@ void Splitter3D::makeHexCellPoints(const Index3DId& parentId, const Vector3d& tu
 	}
 }
 
-void Splitter3D::makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells)
-{
-	const double tol = 10 * _distTol; // Sloppier than "exact" match. We just need a "good" match
-
-	MTC::vector<MTC::vector<Vector3d>> subCells;
-	MTC::vector<Vector3d> discarded;
-	makeHexCellPoints(parentId, tuv, axis, subCells, discarded);
-
-	_pScratchBlock->cellFunc(parentId, [](Polyhedron& cell) {
-		cell.detachFaces();
-	});
-
-	for (int i = 0; i < 2; i++) {
-		const auto& subPts = subCells[i];
-
-		MTC::vector<Index3DId> subCorners;
-		for (const auto& pt : subPts)
-			subCorners.push_back(_pScratchBlock->getVertexIdOfPoint(pt));
-
-		auto newId = makeScratchHexCell_deprecated(parentId, subCorners, tol);
-		newCells.push_back(newId);
-	}
-}
-
 Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 {
 	const auto& srcCell = getPolyhedron(parentId);
@@ -897,44 +858,18 @@ Index3DId Splitter3D::makeScratchCell(const Index3DId& parentId)
 Index3DId Splitter3D::makeScratchFace(const Index3DId& srcFaceId)
 {
 	Index3DId newFaceId;
-	faceFunc(srcFaceId, [this, &newFaceId](const Polygon& srcFace) {
-		const auto& srcVertIds = srcFace.getVertexIds();
-		MTC::vector<Index3DId> newVertIds;
-		for (const auto& srcVertId : srcVertIds) {
-			const auto& pt = _pBlock->getVertexPoint(srcVertId);
-			const auto& newVertId = _pScratchBlock->getVertexIdOfPoint(pt);
-			newVertIds.push_back(newVertId);
-		}
-
-		newFaceId = _pScratchBlock->addPolygon(Polygon(newVertIds));
-	});
-
-	return newFaceId;
-}
-
-Index3DId Splitter3D::makeScratchHexCell_deprecated(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol)
-{
-	Index3DId newCellId;
-
-	assert(cubeVerts.size() == 8);
-	MTC::vector<MTC::vector<Index3DId>> faceVertList;
-	GradingOp::getCubeFaceVertIds(cubeVerts, faceVertList);
-	assert(faceVertList.size() == 6);
-
-	MTC::set<Index3DId> cellFaceIds;
-	for (const auto& faceVerts : faceVertList) {
-		assert(faceVerts.size() == 4);
-		MTC::set<Index3DId> newFaceIds;
-		assert(_testRun);
-		// Skip the expensive splitting operations
-		auto newFaceId = _pScratchBlock->addPolygon(Polygon(faceVerts));
-		cellFaceIds.insert(newFaceId);
-
+	auto& srcFace = getPolygon(srcFaceId);
+	const auto& srcVertIds = srcFace.getVertexIds();
+	MTC::vector<Index3DId> newVertIds;
+	for (const auto& srcVertId : srcVertIds) {
+		const auto& pt = _pBlock->getVertexPoint(srcVertId);
+		const auto& newVertId = _pScratchBlock->getVertexIdOfPoint(pt);
+		newVertIds.push_back(newVertId);
 	}
 
-	newCellId = _pScratchBlock->addCell(Polyhedron(cellFaceIds, cubeVerts), parentId);
+	newFaceId = _pScratchBlock->addPolygon(Polygon(newVertIds));
 
-	return newCellId;
+	return newFaceId;
 }
 
 void Splitter3D::createHexCellData(const Polyhedron& targetCell)

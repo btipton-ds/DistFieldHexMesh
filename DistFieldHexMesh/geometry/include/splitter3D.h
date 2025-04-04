@@ -84,10 +84,8 @@ private:
 	void verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const Index3DId& splittingFaceId) const;
 
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
-	void makeScratchHexCells_deprecated(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<Index3DId>& newCells);
 	Index3DId makeScratchCell(const Index3DId& parentId);
 	Index3DId makeScratchFace(const Index3DId& srcFaceId);
-	Index3DId makeScratchHexCell_deprecated(const Index3DId& parentId, const MTC::vector<Index3DId>& cubeVerts, double tol);
 
 	LAMBDA_CLIENT_DECLS;
 
