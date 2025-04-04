@@ -220,8 +220,9 @@ double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 	if (_faceIds.size() != 2)
 		return 0;
 
-	const auto& faceId0 = _faceIds[0];
-	const auto& faceId1 = _faceIds[1];
+	auto iter = _faceIds.begin();
+	const auto& faceId0 = *iter++;
+	const auto& faceId1 = *iter;
 	Vector3d normal0, normal1;
 	getBlockPtr()->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
 		normal0 = face.calOrientedUnitNormal(refCellId);
@@ -258,8 +259,9 @@ bool Edge::isOriented(const Index3DId& refCellId) const
 	if (_faceIds.size() != 2)
 		return false;
 
-	const auto& id0 = _faceIds[0];
-	const auto& id1 = _faceIds[1];
+	auto iter = _faceIds.begin();
+	const auto& id0 = *iter++;
+	const auto& id1 = *iter;
 
 	getBlockPtr()->faceFunc(id0, [this, &id1, &refCellId, &result](const Polygon& face0) {
 		face0.iterateOrientedEdges([this, &id1, &refCellId, &result](const auto& edge0)->bool {
@@ -311,10 +313,9 @@ bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 MTC::set<Index3DId> Edge::getCellIds() const
 {
 	MTC::set<Index3DId> result;
-	if (_faceIds.empty())
-		initFaceIds();
+	auto& faceIds = getFaceIds();
 
-	for (const auto& faceId : _faceIds) {
+	for (const auto& faceId : faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
 			getBlockPtr()->faceFunc(faceId, [this, &result](const Polygon& face) {
 				const auto& adjCellIds = face.getCellIds();

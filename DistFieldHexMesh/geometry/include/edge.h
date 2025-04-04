@@ -57,7 +57,7 @@ public:
 
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
-	const FastBisectionSet<Index3DId>& getFaceIds() const;
+	const MTC::set<Index3DId>& getFaceIds() const;
 	MTC::set<Index3DId> getCellIds() const;
 
 	double sameParamTol() const;
@@ -104,10 +104,10 @@ private:
 	void initFaceIds() const;
 
 	Block* _pBlock = nullptr;
-	mutable FastBisectionSet<Index3DId> _faceIds;
+	mutable MTC::set<Index3DId> _faceIds;
 };
 
-inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
+inline const MTC::set<Index3DId>& Edge::getFaceIds() const
 {
 	if (_faceIds.empty())
 		initFaceIds();

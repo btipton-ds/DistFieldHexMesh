@@ -961,6 +961,7 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 		&model.getVert(tri[2])._pt,
 	};
 
+#if 0
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
 		LineSegment_byrefd seg(*pts[i], *pts[j]);
@@ -968,25 +969,25 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 			return true;
 		}
 	}
+#endif
 
 	bool result = false;
 
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &pts, &result, tol](const Polygon& face) {
-			face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				const Vector3d* facePts[] = {
-					&getVertexPoint(id0),
-					&getVertexPoint(id1),
-					&getVertexPoint(id2),
-				};
+		const auto& face = getPolygon(faceId);
+		face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			const Vector3d* facePts[] = {
+				&getVertexPoint(id0),
+				&getVertexPoint(id1),
+				&getVertexPoint(id2),
+			};
 
-				if (intersectTriTri(pts, facePts, tol)) {
-					result = true;
-					return false;
-				}
+			if (intersectTriTri(pts, facePts, tol)) {
+				result = true;
+				return false;
+			}
 
-				return true; // false exits the lambda for loop
-			});
+			return true; // false exits the lambda for loop
 		});
 	}
 	return result;
@@ -1830,42 +1831,66 @@ return out;
 }
 
 //LAMBDA_CLIENT_IMPLS(Polyhedron)
-void Polyhedron::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Polyhedron::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Polyhedron::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Polyhedron::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Polyhedron::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Polyhedron::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Polyhedron::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+const Vertex& Polyhedron::getVertex(const Index3DId& id) const {
+	return getBlockPtr()->getVertex(id);
+}  
+
+Vertex& Polyhedron::getVertex(const Index3DId& id) {
+	return getBlockPtr()->getVertex(id);
+} 
+
+const DFHM::Polygon& Polyhedron::getPolygon(const Index3DId& id) const {
+	return getBlockPtr()->getPolygon(id);
+}  
+
+DFHM::Polygon& Polyhedron::getPolygon(const Index3DId& id) {
+	return getBlockPtr()->getPolygon(id);
+} 
+
+const Polyhedron& Polyhedron::getPolyhedron(const Index3DId& id) const {
+	return getBlockPtr()->getPolyhedron(id);
+}  
+
+Polyhedron& Polyhedron::getPolyhedron(const Index3DId& id) {
+	return getBlockPtr()->getPolyhedron(id);
+} 
+
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Polyhedron::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }

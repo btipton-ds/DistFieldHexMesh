@@ -788,18 +788,18 @@ bool Polygon::imprintEdge(const EdgeKey& edgeKey)
 	if (containsEdge(edgeKey))
 		return false; // we've already go that edge.
 
-	MTC::vector<Vector3d> pts = { getBlockPtr()->getVertexPoint(edgeKey[0]), getBlockPtr()->getVertexPoint(edgeKey[1]) };
+	MTC::vector<Index3DId> vertIds = { edgeKey[0], edgeKey[1] };
 
 	// Include non planar intersections where other edges intersect the face plane.
-	edgeFunc(edgeKey, [this, &pts](const Edge& edge) {
+	edgeFunc(edgeKey, [this, &vertIds](const Edge& edge) {
 		auto seg = edge.getSegment();
 		RayHitd hp;
 		if (intersect(seg, hp)) {
-			pts.push_back(hp.hitPt);
+			vertIds.push_back(getBlockPtr()->getVertexIdOfPoint(hp.hitPt));
 		}
 	});
 
-	if (imprintPoints(pts))
+	if (imprintVerts(vertIds))
 		return true;
 
 	return false;
@@ -815,7 +815,7 @@ bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
 	return result;
 }
 
-bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
+bool Polygon::imprintVerts(const std::vector<Index3DId>& vertIds)
 {
 	const double tol = Tolerance::sameDistTol();
 	MTC::vector<Index3DId> tmp;
@@ -823,27 +823,22 @@ bool Polygon::imprintPoints(const std::vector<Vector3d>& imprPts)
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
 		tmp.push_back(_vertexIds[i]);
-		for (const auto& imprPt : imprPts) {
-			auto imprintVert = getBlockPtr()->getVertexIdOfPoint(imprPt);
+		for (const auto& imprintVert : vertIds) {
 #if VALIDATION_ON
 			if (!getId().withinRange(imprintVert))
 				continue;
 #endif	
 			bool imprinted = false;
-			edgeFunc(EdgeKey(_vertexIds[i], _vertexIds[j]), [this, &tmp, &imprintVert, &imprinted, &tol](Edge& edge) {
-				auto seg = edge.getSegment();
-				Vector3d pt = getVertexPoint(imprintVert);
-				double t;
-				bool contains = seg.contains(pt, t, tol) && tol < t && t < 1 - tol;
-				if (contains) {
-					tmp.push_back(imprintVert);
-					imprinted = true;
-					return;
-				}
-			});
-
-			if (imprinted)
+			Edge edge(EdgeKey(_vertexIds[i], _vertexIds[j]), getBlockPtr());
+			auto seg = edge.getSegment();
+			Vector3d pt = getVertexPoint(imprintVert);
+			double t;
+			bool contains = seg.contains(pt, t, tol) && tol < t && t < 1 - tol;
+			if (contains) {
+				tmp.push_back(imprintVert);
+				imprinted = true;
 				break;
+			}
 		}
 	}
 

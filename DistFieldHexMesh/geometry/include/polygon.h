@@ -156,7 +156,7 @@ public:
 	bool imprintFace(const Index3DId& faceId);
 	bool imprintFaces(const FastBisectionSet<Index3DId>& faceIds);
 	bool imprintEdge(const EdgeKey& edgeKey);
-	bool imprintPoints(const std::vector<Vector3d>& imprPts);
+	bool imprintVerts(const std::vector<Index3DId>& vertIds);
 	bool isPlanar() const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
