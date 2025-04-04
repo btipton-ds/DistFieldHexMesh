@@ -78,10 +78,10 @@ private:
 	void makeHexCellPoints(const Index3DId& parentId, const Vector3d& tuv, int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts);
 	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
 		std::set<Index3DId>& allCellFaceIds, bool useAll);
-	void addFaceToLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
-	void removeFacefromLocalEdgeSet(std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
-	Index3DId findConnectedFaceId(const std::set<Edge>& localEdgeSet, const Index3DId& faceId) const;
-	void verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const Index3DId& splittingFaceId) const;
+	void addFaceToLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	void removeFacefromLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	Index3DId findConnectedFaceId(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	void verifyLocalEdgeSet(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
 
 	void doScratchHexCurvatureSplitTests(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
 	Index3DId makeScratchCell(const Index3DId& parentId);

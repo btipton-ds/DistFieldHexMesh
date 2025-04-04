@@ -767,19 +767,6 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 }
 
-size_t Polygon::getPossibleOverlappingFaceIds(const MTC::vector<EdgeKey>& ourEdgeKeys, MTC::set<Index3DId>& faceIds)
-{
-	for (const auto& edgeKey : ourEdgeKeys) {
-		edgeFunc(edgeKey, [this, &faceIds](const Edge& edge) {
-			auto& tmp = edge.getFaceIds();
-			faceIds.insert(tmp.begin(), tmp.end());
-		});
-	}
-
-	faceIds.erase(getId());
-	return faceIds.size();
-}
-
 bool Polygon::imprintFace(const Index3DId& faceId)
 {
 	bool result = false;

@@ -41,11 +41,9 @@ Edge::Edge(const EdgeKey& src, const Block* pBlock)
 	: EdgeKey(src)
 	, _pBlock(const_cast<Block*>(pBlock))
 {
-	if (_pBlock)
-		initFaceIds();
 }
 
-void Edge::initFaceIds()
+void Edge::initFaceIds() const
 {
 	_faceIds.clear();
 
@@ -216,8 +214,12 @@ bool Edge::isConnectedTo(const Edge& other) const
 
 double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 {
+	if (_faceIds.empty())
+		initFaceIds();
+
 	if (_faceIds.size() != 2)
 		return 0;
+
 	const auto& faceId0 = _faceIds[0];
 	const auto& faceId1 = _faceIds[1];
 	Vector3d normal0, normal1;
@@ -249,6 +251,10 @@ bool Edge::isConvex(const Index3DId& refCellId) const
 bool Edge::isOriented(const Index3DId& refCellId) const
 {
 	bool result = true;
+
+	if (_faceIds.empty())
+		initFaceIds();
+
 	if (_faceIds.size() != 2)
 		return false;
 
@@ -282,6 +288,8 @@ LineSegmentd Edge::getSegment() const
 
 bool Edge::containsFace(const Index3DId& faceId) const
 {
+	if (_faceIds.empty())
+		initFaceIds();
 	return _faceIds.contains(faceId);
 }
 
@@ -303,6 +311,9 @@ bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 MTC::set<Index3DId> Edge::getCellIds() const
 {
 	MTC::set<Index3DId> result;
+	if (_faceIds.empty())
+		initFaceIds();
+
 	for (const auto& faceId : _faceIds) {
 		if (getBlockPtr()->polygonExists(faceId)) {
 			getBlockPtr()->faceFunc(faceId, [this, &result](const Polygon& face) {
@@ -326,8 +337,6 @@ void Edge::write(std::ostream& out) const
 
 	_vertexIds[0].write(out);
 	_vertexIds[1].write(out);
-
-	IoUtil::writeObj(out, _faceIds);
 }
 
 void Edge::read(std::istream& in)
@@ -337,13 +346,15 @@ void Edge::read(std::istream& in)
 
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);
-
-	IoUtil::readObj(in, _faceIds);
 }
 
 bool Edge::verifyTopology() const
 {
 	bool result = true;
+
+	if (_faceIds.empty())
+		initFaceIds();
+
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this, &result](const Polygon& face) {
 			if (!face.containsEdge(*this))

@@ -55,9 +55,6 @@ public:
 	Edge(const Edge& src) = default;
 	Edge(const EdgeKey& src, const Block* pBlock);
 
-	void addFaceId(const Index3DId& faceId);
-	void removeFaceId(const Index3DId& faceId);
-
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
@@ -104,25 +101,17 @@ private:
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
-	void initFaceIds();
+	void initFaceIds() const;
 
 	Block* _pBlock = nullptr;
-	FastBisectionSet<Index3DId> _faceIds;
+	mutable FastBisectionSet<Index3DId> _faceIds;
 };
 
 inline const FastBisectionSet<Index3DId>& Edge::getFaceIds() const
 {
+	if (_faceIds.empty())
+		initFaceIds();
 	return _faceIds;
-}
-
-inline void Edge::addFaceId(const Index3DId& faceId)
-{
-	_faceIds.insert(faceId);
-}
-
-inline void Edge::removeFaceId(const Index3DId& faceId)
-{
-	_faceIds.erase(faceId);
 }
 
 inline Block* Edge::getBlockPtr()

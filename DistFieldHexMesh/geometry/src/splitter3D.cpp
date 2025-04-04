@@ -74,13 +74,11 @@ Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t spli
 	_pScratchBlock = _pScratchVol->getBlockPtr(Index3D(0, 0, 0));
 
 #ifdef _DEBUG
-	cellFunc(_polyhedronId, [this](Polyhedron& cell) {
-		auto& cell = getPolygon(_polyhedronId);
-		if (!cell.isClosed()) {
-			getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
-			assert(!"Cell not closed");
-		}
-	});
+	auto& cell = getPolyhedron(_polyhedronId);
+	if (!cell.isClosed()) {
+		getBlockPtr()->dumpPolyhedraObj({ cell.getId() }, false, false, false);
+		assert(!"Cell not closed");
+	}
 #endif // _DEBUG
 }
 
@@ -179,7 +177,7 @@ bool Splitter3D::splitAtCenter()
 			createdCell.setSplitLevel(_splitLevel + 1);
 		}
 		int dbgBreak = 1;
-	} catch (const std::runtime_error& err) {
+	} catch (const runtime_error& err) {
 		cout << "Exception thrown: " << err.what() << "\n";
 	}
 	return result;
@@ -566,37 +564,37 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 	}
 }
 
-void Splitter3D::addFaceToLocalEdgeSet(set<Edge>& localEdgeSet, const Index3DId& faceId) const
+void Splitter3D::addFaceToLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	auto& face = getPolygon(faceId);
 	auto& vertIds = face.getVertexIds();
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		size_t j = (i + 1) % vertIds.size();
-		Edge e(EdgeKey(vertIds[i], vertIds[j]), nullptr);
-		localEdgeSet.insert(e);
-		auto& e2 = const_cast<Edge&>(*localEdgeSet.find(e));
-		e2.addFaceId(face.getId());
+		EdgeKey e(vertIds[i], vertIds[j]);
+		auto iter = localEdgeSet.find(e);
+		if (iter == localEdgeSet.end())
+			iter = localEdgeSet.insert(make_pair(e, set<Index3DId>())).first;
+		iter->second.insert(faceId);
 	}
 }
 
-void Splitter3D::removeFacefromLocalEdgeSet(set<Edge>& localEdgeSet, const Index3DId& faceId) const
+void Splitter3D::removeFacefromLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	auto& face = getPolygon(faceId);
 	auto& vertIds = face.getVertexIds();
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		size_t j = (i + 1) % vertIds.size();
-		Edge edge(EdgeKey(vertIds[i], vertIds[j]), nullptr);
-		auto iter = localEdgeSet.find(edge);
+		EdgeKey e(vertIds[i], vertIds[j]);
+		auto iter = localEdgeSet.find(e);
 		if (iter != localEdgeSet.end()) {
-			auto& edge2 = const_cast<Edge&>(*iter);
-			edge2.removeFaceId(face.getId());
-			if (edge2.getFaceIds().empty())
-				localEdgeSet.erase(edge);
+			iter->second.erase(faceId);
+			if (iter->second.empty())
+				localEdgeSet.erase(e);
 		}
 	}
 }
 
-Index3DId Splitter3D::findConnectedFaceId(const std::set<Edge>& localEdgeSet, const Index3DId& faceId) const
+Index3DId Splitter3D::findConnectedFaceId(const map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	Index3DId result;
 	auto& face = getPolygon(faceId);
@@ -606,8 +604,8 @@ Index3DId Splitter3D::findConnectedFaceId(const std::set<Edge>& localEdgeSet, co
 		Edge edge(EdgeKey(vertIds[i], vertIds[j]), getBlockPtr());
 		auto iter = localEdgeSet.find(edge);
 		if (iter != localEdgeSet.end()) {
-			auto& edge2 = *iter;
-			auto& faceIds = edge2.getFaceIds();
+			auto& pair = *iter;
+			auto& faceIds = pair.second;
 			if (faceIds.size() == 1) {
 				result = *faceIds.begin();
 				break;
@@ -631,7 +629,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 	MTC::set<Index3DId> cellFaces;
 
 	if (!useAllFaces) {
-		set<Edge> localEdgeSet;
+		map<EdgeKey, set<Index3DId>> localEdgeSet;
 
 		addFaceToLocalEdgeSet(localEdgeSet, splittingFaceId);
 		for (auto& id : allCellFaceIds) {
@@ -710,12 +708,12 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& splittingFaceId, con
 	return newCellId;
 }
 
-void Splitter3D::verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const Index3DId& splittingFaceId) const
+void Splitter3D::verifyLocalEdgeSet(const map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const
 {
-	set<Edge> unclosedEdges;
-	for (auto& e : localEdgeSet) {
-		if (e.getFaceIds().size() < 2) {
-			unclosedEdges.insert(e);
+	set<EdgeKey> unclosedEdges;
+	for (auto& pair : localEdgeSet) {
+		if (pair.second.size() < 2) {
+			unclosedEdges.insert(pair.first);
 		}
 	}
 
@@ -757,8 +755,8 @@ void Splitter3D::verifyLocalEdgeSet(const std::set<Edge>& localEdgeSet, const In
 			pVol->writeObj(ss.str(), edgePts, false);
 		}
 		assert(!"spltting produced laminar edge(s)");
-		std::string msg = std::string(__FILE__) + ":" + std::to_string(__LINE__) + std::string(" spltting produced laminar edge(s)");
-		throw std::runtime_error(msg);
+		string msg = string(__FILE__) + ":" + to_string(__LINE__) + string(" spltting produced laminar edge(s)");
+		throw runtime_error(msg);
 	}
 }
 
@@ -896,32 +894,32 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 }
 
 //LAMBDA_CLIENT_IMPLS(Splitter3D)
-void Splitter3D::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+void Splitter3D::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter3D::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+void Splitter3D::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->vertexFunc(id, func);
 } 
 
-void Splitter3D::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void Splitter3D::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter3D::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+void Splitter3D::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->faceFunc(id, func);
 } 
 
-void Splitter3D::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void Splitter3D::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
 
-void Splitter3D::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+void Splitter3D::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->cellFunc(id, func);
 } 
@@ -950,12 +948,12 @@ Polyhedron& Splitter3D::getPolyhedron(const Index3DId& id) {
 	return getBlockPtr()->getPolyhedron(id);
 } 
 
-void Splitter3D::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 } 
 
-void Splitter3D::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+void Splitter3D::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
 	auto p = getBlockPtr(); 
 	p->edgeFunc(key, func);
 }
