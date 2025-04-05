@@ -815,52 +815,50 @@ double Polyhedron::calVolume() const
 	return vol;
 }
 
-double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, int axis) const
+double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
 {
-	double maxCurvature = 0, avgCurvature = 0;
-#if 0
-	Splitter2D sp(polyPoints);
+	double maxCurvature = 0;
+	vector<TriMeshIndex> indices;
+	if (getTriIndices(indices)) {
+		Splitter2D sp(polyPoints);
+		double avgCurvature = 0;
 
-	vector<vector<Vector3d>> tris;
-	const auto& modelMesh = getBlockPtr()->getModelMeshData();
-	double height = -DBL_MAX;
-	Vector2d maxPt;
-	for (size_t i = 0; i < _triIndices.size(); i++) {
-		const auto& multiTriIdx = _triIndices[i];
-		const auto& pData = modelMesh[multiTriIdx.getMeshIdx()];
-		const auto& pMesh = pData->getMesh();
-		auto& triIdx = pMesh->getTri(multiTriIdx.getTriIdx());
-		Vector3d pts[] = {
-			pMesh->getVert(triIdx[0])._pt,
-			pMesh->getVert(triIdx[1])._pt,
-			pMesh->getVert(triIdx[2])._pt,
-		};
-		vector<Vector3d> tmp = { pts[0], pts[1], pts[2], };
-		tris.push_back(tmp);
-		sp.add3DTriEdge(pts);
-	}
-	vector<vector<Vector3d>> polylines;
-	vector<vector<double>> curvatures;
-	size_t nPl = sp.getPolylines(polylines);
-	size_t nC = sp.getCurvatures(curvatures);
-	if (nPl > 0) {
-		assert(nPl == nC);
-		size_t count = 0;
-		for (size_t i = 0; i < curvatures.size(); i++) {
-			auto& pl = polylines[i];
-			auto& plc = curvatures[i];
-			assert(pl.size() == plc.size());
-			for (size_t j = 0; j < plc.size(); j++) {
-				auto c = plc[j];
-				if (c > maxCurvature)
-					maxCurvature = c;
-				avgCurvature += c;
-				count++;
-			}
+		vector<vector<Vector3d>> tris;
+		const auto& model = getModel();
+		double height = -DBL_MAX;
+		Vector2d maxPt;
+		for (const auto& multiTriIdx : indices) {
+			auto& triIdx = model.getTri(multiTriIdx);
+			Vector3d pts[] = {
+				model.getVert(triIdx[0])._pt,
+				model.getVert(triIdx[1])._pt,
+				model.getVert(triIdx[2])._pt,
+			};
+			vector<Vector3d> tmp = { pts[0], pts[1], pts[2], };
+			tris.push_back(tmp);
+			sp.add3DTriEdges(pts);
 		}
-		avgCurvature /= count;
+		vector<vector<Vector2d>> polylines;
+		vector<vector<double>> curvatures;
+		size_t nC = sp.getCurvatures(polylines, curvatures);
 
-#if 1 && defined(_DEBUG)
+		if (nC > 0) {
+			size_t count = 0;
+			for (size_t i = 0; i < curvatures.size(); i++) {
+				auto& pl = polylines[i];
+				auto& plc = curvatures[i];
+				assert(pl.size() == plc.size());
+				for (size_t j = 0; j < plc.size(); j++) {
+					auto c = plc[j];
+					if (c > maxCurvature)
+						maxCurvature = c;
+					avgCurvature += c;
+					count++;
+				}
+			}
+			avgCurvature /= count;
+		}
+#if 0 && defined(_DEBUG)
 
 		auto pVol = getBlockPtr()->getVolume();
 		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
@@ -877,34 +875,8 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints, in
 		int dbgBreak = 1;
 #endif
 	}
-#endif
 
 	return maxCurvature;
-}
-
-bool Polyhedron::containsHighCurvatureTris(const SplittingParams& params) const
-{
-	double minCurv = 1 / params.maxCurvatureRadius_meters;
-
-	auto bBox = getBoundingBox();
-	const auto& model = getBlockPtr()->getModel();
-	vector<TriMeshIndex> triIndices;
-	if (model.findTris(bBox, triIndices)) {
-		for (const auto& idx : triIndices) {
-			auto curv = model.triCurvature(idx);
-			if (curv > minCurv) {
-				auto triIdx = model.getTri(idx);
-				for (int i = 0; i < 3; i++) {
-					auto& pt = model.getVert(triIdx[i])._pt;
-					if (pointInside(pt)) {
-						return true;
-					}
-				}
-			}
-		}
-	}
-
-	return false;
 }
 
 bool Polyhedron::isOriented() const
@@ -1161,6 +1133,14 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
 {
+	double maxCurv = calMaxCurvature();
+	if (maxCurv > 0) {
+//		mutex mut;
+//		lock_guard lg(mut);
+		double minCurvRad = 1 / maxCurv;
+		if (minCurvRad < params.ignoreCurvatureRadius_meters)
+			return true;
+	}
 	return false;
 }
 
@@ -1202,13 +1182,24 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-double Polyhedron::calCurvature() const
+double Polyhedron::calMaxCurvature() const
 {
-	return 0;
+	double result = 0;
+	for (int axis = 0; axis < 3; axis++) {
+		auto c = calCurvature(axis);
+		if (c > result) {
+			result = c;
+		}
+	}
+
+	return result;
 }
 
 double Polyhedron::calCurvature(int axis) const
 {
+	if (_cachedCurvature[axis] > 0)
+		return _cachedCurvature[axis];
+
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
@@ -1222,33 +1213,12 @@ double Polyhedron::calCurvature(int axis) const
 	makeHexCellPoints(orthAxis0, tuv, discarded, facePts0);
 	makeHexCellPoints(orthAxis1, tuv, discarded, facePts1);
 
-	double maxCurv0 = calMaxCurvature2D(facePts0, 0);
-	double maxCurv1 = calMaxCurvature2D(facePts1, 1);
+	double maxCurv0 = calMaxCurvature2D(facePts0);
+	double maxCurv1 = calMaxCurvature2D(facePts1);
 	double maxCurv = (maxCurv0 > maxCurv1) ? maxCurv0 : maxCurv1;
 
-	if (maxCurv > 0) {
-		MTC::vector<Vector3d> splitFacePts;
-		makeHexCellPoints(axis, tuv, discarded, splitFacePts);
-#if 0 && defined(_DEBUG)
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureSplittingPlane.obj", { splitFacePts }, true);
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane0.obj", { facePts0 }, true);
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvaturePlane1.obj", { facePts1 }, true);
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/cell.obj", { cell.getId() }, false, false, false);
-#endif
-
-		double radius = 1 / maxCurv;
-
-		double avgSpan = 0;
-		for (size_t i = 0; i < splitFacePts.size(); i++) {
-			size_t j = (i + 1) / splitFacePts.size();
-			avgSpan += (splitFacePts[j] - splitFacePts[i]).norm();
-		}
-		avgSpan /= splitFacePts.size();
-		double R0 = (radius + pow(avgSpan, 2)) / (4 * radius);
-		int dbgBreak = 1;
-
-	}
-	return 0;
+	_cachedCurvature[axis] = maxCurv;
+	return _cachedCurvature[axis];
 }
 
 double Polyhedron::getComplexityScore(const SplittingParams& params) const
@@ -1480,53 +1450,17 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
+	} else if (passNum < params.numCurvatureDivs && hasTooMuchCurvature(params)) {
+		setNeedsDivideAtCentroid();
+		return true;
 	}
+
 #if 0
 	if (passNum < params.numSharpEdgeIntersectionDivs && sharpEdgesIntersectModel(params)) {
 		setNeedsDivideAtCentroid();
 		return true;		
 	}
 
-	if (passNum < params.numCurvatureDivs) {
-		double maxEdgeLength = 0;
-
-		CBoundingBox3Dd bbox = getBoundingBox();
-		FastBisectionSet<EdgeKey> edgeKeys;
-		cellFunc(_thisId, [&edgeKeys](const Polyhedron& cell) {
-			edgeKeys = cell.getEdgeKeys(false);
-		});
-
-		for (const auto& edgeKey : edgeKeys) {
-			edgeFunc(edgeKey, [&maxEdgeLength](const Edge& edge) {
-				auto seg = edge.getSegment();
-				double l = seg.calLength();
-				if (l > maxEdgeLength)
-					maxEdgeLength = l;
-			});
-		}
-
-		double refRadius = calReferenceSurfaceRadius(bbox, params);
-		if (refRadius > 0) {
-			if (refRadius < 0.01) {
-				int dbgBreak = 1;
-			}
-			double gap = minGap();
-			double maxAllowedEdgeLen = DBL_MAX;
-			if (gap < params.maxGapSize) {
-				if (maxEdgeLength > params.minSplitEdgeLengthGapCurvature_meters) {
-					maxAllowedEdgeLen = refRadius / params.divsPerGapCurvatureRadius;
-				}
-			} else {
-				if (maxEdgeLength > params.minSplitEdgeLengthCurvature_meters) {
-					maxAllowedEdgeLen = refRadius / params.divsPerCurvatureRadius;
-				}
-			}
-			if (2 * maxEdgeLength > maxAllowedEdgeLen) {
-				setNeedsDivideAtCentroid();
-				return true;
-			}
-		}
-	}
 #endif
 	return false;
 }
@@ -1680,6 +1614,58 @@ const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
 	}
 
 	return _pSearchTree;
+}
+
+bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
+{
+	const auto tol = Tolerance::sameDistTol();
+
+	try {
+		indices.clear();
+		auto bbox = getBoundingBox();
+		vector<Model::SearchTree::Entry> tmp;
+		auto pClipped = getSearchTree();
+		if (pClipped && pClipped->find(bbox, tmp)) {
+			for (const auto& entry : tmp) {
+				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+					indices.push_back(entry.getIndex());
+				}
+			}
+		}
+#if 1 // This turns on very expensive entity search testing.
+		auto pFull = getBlockPtr()->getModel().getSearchTree();
+		vector<TriMeshIndex> indicesFull;
+		vector<Model::SearchTree::Entry> tmpFull;
+		if (pFull && pFull->find(bbox, tmpFull)) {
+			for (const auto& entry : tmpFull) {
+				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+					indicesFull.push_back(entry.getIndex());
+				}
+			}
+		}
+
+		if (!indices.empty()) {
+			if (indicesFull.size() != indices.size()) {
+				stringstream ss;
+				ss << "Search trees sizes don't match. indices.size: " << indices.size() << ", indicesFull.size() : " << indicesFull.size() << " " << __FILE__ << " : " << __LINE__;
+				throw runtime_error(ss.str());
+			}
+			set<TriMeshIndex> test;
+			test.insert(indices.begin(), indices.end());
+			for (const auto& idx : indicesFull) {
+				if (!test.contains(idx)) {
+					stringstream ss;
+					ss << "Search trees don't match. " << __FILE__ << ":" << __LINE__;
+					throw runtime_error(ss.str());
+				}
+			}
+		}
+#endif
+	}
+	catch (const runtime_error& err) {
+		cout << err.what() << " cell: " << getId() << "\n";
+	}
+	return !indices.empty();
 }
 
 bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const

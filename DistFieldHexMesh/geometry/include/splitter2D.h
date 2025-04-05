@@ -79,16 +79,18 @@ public:
 	Splitter2D(const MTC::vector<Vector3d>& polyPoints);
 
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
-	void add3DTriEdge(const Vector3d pts[3]);
+	void add3DTriEdges(const Vector3d pts[3]);
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
+	size_t getPolylines(std::vector<std::vector<Vector3d>>& polylines);
+
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 
 	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
-	size_t getCurvatures(std::vector<std::vector<double>>& curvatures) const;
+	size_t getCurvatures(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<double>>& curvatures) const;
 	size_t getGaps(std::vector<double>& curvatures) const;
 
 	void writeObj(const std::string& filenameRoot) const;
@@ -130,7 +132,7 @@ private:
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
 
-	size_t createLoops(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
+	size_t createPolylines(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;

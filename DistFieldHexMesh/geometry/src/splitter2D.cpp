@@ -130,9 +130,11 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	}
 }
 
-void Splitter2D::add3DTriEdge(const Vector3d pts[3])
+void Splitter2D::add3DTriEdges(const Vector3d pts[3])
 {
-	set<size_t> iPts;
+	const auto tolSqr = Tolerance::sameDistTolSqr();
+
+	set<Vector2d> iPts;
 	int numInBounds = 0;
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
@@ -144,18 +146,17 @@ void Splitter2D::add3DTriEdge(const Vector3d pts[3])
 			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
 			Vector2d pt;
 			if (project(hit.hitPt, pt)) {
-				size_t idx = addPoint(pt);
-				iPts.insert(idx);
+				iPts.insert(pt);
 			}
 		}
 	}
 
 	if (iPts.size() == 2) {
 		auto it = iPts.begin();
-		size_t idx0 = *it++;
-		size_t idx1 = *it;
-		if (idx0 != idx1 && (insideBoundary(_pts[idx0]) || insideBoundary(_pts[idx1]))) {
-			_edges.insert(Edge2D(idx0, idx1));
+		const auto& pt0 = *it++;
+		const auto& pt1 = *it;
+		if ((pt1 - pt1).squaredNorm() < tolSqr && (insideBoundary(pt0) || insideBoundary(pt1))) {
+			addEdge(pt0, pt1);
 		}
 	}
 }
@@ -205,6 +206,16 @@ size_t Splitter2D::getFacePoints(vector<vector<Vector3d>>& facePoints)
 	vector<vector<Vector3d>> discard;
 	getLoops(discard, facePoints);
 	return facePoints.size();
+}
+
+size_t Splitter2D::getPolylines(vector<vector<Vector3d>>& polylines)
+{
+	vector<vector<Vector3d>> lines, loops;
+	getLoops(lines, loops);
+	polylines.insert(polylines.end(), lines.begin(), lines.end());
+	polylines.insert(polylines.end(), loops.begin(), loops.end());
+	return polylines.size();
+
 }
 
 void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
@@ -272,7 +283,7 @@ void Splitter2D::createPointPointMap(map<size_t, set<size_t>>& ptMap, map<Edge2D
 	createEdgeUsageMap(ptMap, edgeUsage);
 }
 
-void Splitter2D::createEdgeUsageMap(const std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const
+void Splitter2D::createEdgeUsageMap(const map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	edgeUsage.clear();
 	for (const auto& e : _edges) {
@@ -288,7 +299,7 @@ void Splitter2D::createEdgeUsageMap(const std::map<size_t, std::set<size_t>>& pt
 	}
 }
 
-void Splitter2D::removePolylineFromMaps(const Polyline& pl, std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const
+void Splitter2D::removePolylineFromMaps(const Polyline& pl, map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	vector<size_t> indices;
 	pl.createVector(indices);
@@ -379,24 +390,8 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 	if (ptMap.empty())
 		return 0;
 	
-	bool hasSharedEdge = false;
-	for (auto& pair : edgeUsage) {
-		if (pair.second > 1)
-			hasSharedEdge = true;
-	}
-	if (!hasSharedEdge)
-		return 0;
 	vector<Polyline> pls;
-#if 0
-	// First remove spur polylines. Spurs are strings for points which terminate at a dead end.
-	while (createSpurs(ptMap, edgeUsage, pls) > 0) {
-		polylines.insert(polylines.end(), pls.begin(), pls.end());
-		pls.clear();
-	}
-#endif
-
-	// Now there's nothing left but loops
-	while (createLoops(ptMap, edgeUsage, pls) > 0) {
+	while (createPolylines(ptMap, edgeUsage, pls) > 0) {
 		// We're getting spurs that duplicate spurs which were already created.
 		// Need to check for spurs every time a loop is removed in case it leaves and orphan edge.
 		// The duplicate remover should deal with it.
@@ -409,24 +404,33 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 	return polylines.size();
 }
 
-size_t Splitter2D::getCurvatures(vector<vector<double>>& curvatures) const
+size_t Splitter2D::getCurvatures(vector<vector<Vector2d>>& polylines, vector<vector<double>>& curvatures) const
 {
 	curvatures.clear();
-	vector<vector<Vector2d>> polylines, loops;
-	getLoops(polylines, loops);
+	vector<Polyline> mixedLoops;
+	getPolylines(mixedLoops);
+	polylines.clear();
 
-	for (const auto& pl : polylines) {
+	for (const auto& pl : mixedLoops) {
+		vector<size_t> indices;
+		vector<Vector2d> plPts;
+		pl.createVector(indices);
+		for (size_t ptIdx : indices)
+			plPts.push_back(_pts[ptIdx]);
+
 		vector<double> cvec;
-		for (size_t j = 0; j < pl.size(); j++) {
-			if (j == 0 || j == pl.size() - 2) {
-				cvec.push_back(0);
-				continue;
+		for (size_t j = 0; j < plPts.size(); j++) {
+			if (!pl._isClosed) {
+				if (j == 0 || j == pl.size() - 2) {
+					cvec.push_back(0);
+					continue;
+				}
 			}
-			size_t i = (j + pl.size() - 1) % pl.size();
-			size_t k = (j + 1) % pl.size();
-			const Vector2d& pt0 = pl[i];
-			const Vector2d& pt1 = pl[1];
-			const Vector2d& pt2 = pl[2];
+			size_t i = (j + pl.size() - 1) % plPts.size();
+			size_t k = (j + 1) % plPts.size();
+			const Vector2d& pt0 = plPts[i];
+			const Vector2d& pt1 = plPts[1];
+			const Vector2d& pt2 = plPts[2];
 
 			Vector2d v0 = (pt1 - pt0);
 			auto v1 = (pt2 - pt1);
@@ -466,6 +470,7 @@ size_t Splitter2D::getCurvatures(vector<vector<double>>& curvatures) const
 			cvec.push_back(1 / radius);
 		}
 	
+		polylines.push_back(plPts);
 		curvatures.push_back(cvec);
 	}
 	return curvatures.size();
@@ -476,7 +481,7 @@ size_t Splitter2D::getGaps(vector<double>& curvatures) const
 	return 0;
 }
 
-void Splitter2D::writeObj(const std::string& filenameRoot) const
+void Splitter2D::writeObj(const string& filenameRoot) const
 {
 	size_t i = 0;
 	for (auto iter = _edges.begin(); iter != _edges.end(); iter++) {
@@ -726,7 +731,7 @@ bool Splitter2D::PolylineNode::contains(size_t idx) const
 	return false;
 }
 
-size_t Splitter2D::createLoops(map<size_t, set<size_t>>& m, std::map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
+size_t Splitter2D::createPolylines(map<size_t, set<size_t>>& m, map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
 {
 	polylines.clear();
 	PolylineNode n;
@@ -797,10 +802,11 @@ void Splitter2D::splitExisting(const Edge2D& e0)
 
 bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 {
+	const double tol = 1.0e-5;
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
 	double t;
-	if (seg0.intersect(seg1, t) ) {
+	if (seg0.intersect(seg1, t) && tol < t && t < 1 - tol) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt0 = seg0[0];
 		Vector2d pt1 = seg0.interpolate(t);
@@ -823,7 +829,7 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	return !result.empty();
 }
 
-bool Splitter2D::splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& subSegs)
+bool Splitter2D::splitWithAllPoints(const Edge2D& e0, set<Edge2D>& subSegs)
 {
 	const double tol = Tolerance::paramTol();
 	vector<Vector2d> pts;
@@ -979,6 +985,16 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 {
 	const double tol = Tolerance::paramTol();
 	const double MIN_COS_ANGLE = 1.0e-8;
+
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
+			if ((_vals[i] - other._vals[j]).squaredNorm() < Tolerance::sameDistTolSqr()) {
+				// The line segments share a point
+				t = (i == 0) ? 0 : 1;
+				return true;
+			}
+		}
+	}
 
 	Vector2d xAxis = _vals[1] - _vals[0];
 	double len0 = xAxis.norm();

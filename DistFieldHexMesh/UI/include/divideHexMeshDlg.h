@@ -80,7 +80,7 @@ namespace DFHM {
 			* _divsPerGapCurvatureBox = nullptr,
 			* _maxCellFacesBox = nullptr,
 			* _maxGapSizeBox = nullptr,
-			* _maxCurvatureRadiusBox = nullptr,
+			* _ignoreCurvatureRadius_metersBox = nullptr,
 			* _sharpAngleBox = nullptr,
 			* _minSplitEdgeLengthCurvatureBox = nullptr,
 			* _minSplitEdgeLengthGapCurvatureBox = nullptr;

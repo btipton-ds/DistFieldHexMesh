@@ -92,8 +92,7 @@ public:
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	double calVolume() const;
-	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints, int axis) const;
-	bool containsHighCurvatureTris(const SplittingParams& params) const;
+	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
@@ -103,6 +102,7 @@ public:
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
 	bool entryInside(const Model::SearchTree::Entry& entry) const;
+	bool getTriIndices(std::vector<TriMeshIndex>& indices) const;
 	bool getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const;
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
@@ -115,7 +115,7 @@ public:
 	bool hasTooMuchCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
-	double calCurvature() const;
+	double calMaxCurvature() const;
 	double calCurvature(int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
@@ -226,6 +226,9 @@ private:
 	mutable double _cachedMinGap = -1;
 	mutable double _complexityScore = -1;
 	mutable double _maxOrthogonalityAngleRadians = -1;
+
+	// The axes are cached separately because they are accessed separately when determining best split axis
+	mutable double _cachedCurvature[3] = { -1, -1, -1 };
 
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 

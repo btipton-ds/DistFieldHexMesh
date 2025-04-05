@@ -111,7 +111,7 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&zMin, sizeof(zMin));
 	in.read((char*)&zMax, sizeof(zMax));
 	in.read((char*)&maxGapSize, sizeof(maxGapSize));
-	in.read((char*)&maxCurvatureRadius_meters, sizeof(maxCurvatureRadius_meters));
+	in.read((char*)&ignoreCurvatureRadius_meters, sizeof(ignoreCurvatureRadius_meters));
 	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	in.read((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
@@ -167,7 +167,7 @@ void SplittingParams::write(std::ostream& out) const
 	out.write((char*)&zMin, sizeof(zMin));
 	out.write((char*)&zMax, sizeof(zMax));
 	out.write((char*)&maxGapSize, sizeof(maxGapSize));
-	out.write((char*)&maxCurvatureRadius_meters, sizeof(maxCurvatureRadius_meters));
+	out.write((char*)&ignoreCurvatureRadius_meters, sizeof(ignoreCurvatureRadius_meters));
 	out.write((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	out.write((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	out.write((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));

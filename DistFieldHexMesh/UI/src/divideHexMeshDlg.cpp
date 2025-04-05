@@ -49,7 +49,7 @@ namespace
 		SPLIT_SHARP_VERTS_ID = 1,
 		MAX_SPLIT_FACES_ID,
 		MAX_GAP_SIZE_ID,
-		MAX_CURVATURE_RADIUS_ID,
+		IGNORE_CURVATURE_RADIUS_ID,
 		MIN_EDGE_LENGTH_ID,
 		MIN_EDGE_LENGTH_GAP_ID,
 		SHARP_ANGLE_DEGREES_ID,
@@ -105,8 +105,8 @@ DivideHexMeshDlg::DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wx
 	_maxGapSizeBox = new wxTextCtrl(this, MAX_GAP_SIZE_ID, std::to_string(params.maxGapSize), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
-	_maxCurvatureRadiusPrompt = new wxStaticText(this, 0, _T("Max curvature radius"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_maxCurvatureRadiusBox = new wxTextCtrl(this, MAX_CURVATURE_RADIUS_ID, std::to_string(params.maxCurvatureRadius_meters), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_maxCurvatureRadiusPrompt = new wxStaticText(this, 0, _T("Don't split radii >"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_ignoreCurvatureRadius_metersBox = new wxTextCtrl(this, IGNORE_CURVATURE_RADIUS_ID, std::to_string(params.ignoreCurvatureRadius_meters), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_minSplitEdgeLengthCurvaturePrompt = new wxStaticText(this, 0, _T("Min edge length"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -191,7 +191,7 @@ void DivideHexMeshDlg::getParams(SplittingParams& params) const
 	getValue(_divsPerGapCurvatureBox, params.divsPerGapCurvatureRadius);
 	getValue(_maxCellFacesBox, params.maxCellFaces);
 	getValue(_maxGapSizeBox, params.maxGapSize);
-	getValue(_maxCurvatureRadiusBox, params.maxCurvatureRadius_meters);
+	getValue(_ignoreCurvatureRadius_metersBox, params.ignoreCurvatureRadius_meters);
 	getValue(_sharpAngleBox, params.sharpAngle_degrees);
 	getValue(_minSplitEdgeLengthCurvatureBox, params.minSplitEdgeLengthCurvature_meters);
 	getValue(_minSplitEdgeLengthGapCurvatureBox, params.minSplitEdgeLengthGapCurvature_meters);
