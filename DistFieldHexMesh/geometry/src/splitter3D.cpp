@@ -193,6 +193,9 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 	int splitAxis = determineBestSplitAxis(parentId, tuv, ignoreAxisBits);
 
+	if (splitAxis == 4) {
+		return doCurvatureSplit(parentId, tuv);
+	}
 	if (splitAxis != -1) {
 #if 0
 		string axisStr;
@@ -257,7 +260,7 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 	bool doCurvatureSplit = false;
 	if (_subPassNum == 0 && hasIntersection) {
 		doIntersectionSplit = _splitLevel < _params.numIntersectionDivs;
-		if (!doIntersectionSplit)
+		if (!doIntersectionSplit && ignoreAxisBits == 0)
 			doCurvatureSplit = _splitLevel < _params.numCurvatureDivs && parentCell.hasTooMuchCurvature(_params);
 	} 
 	
@@ -342,42 +345,79 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		splitAxis = bestTooManyFacesSplitAxis; 
 	else if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis;
-	else if (false && doCurvatureSplit) {
-		mutex mut;
-		lock_guard lg(mut);
+	else if (doCurvatureSplit) {
+		return 4;
 
-		Trinary exceedsCurvature[] = { IS_UNKNOWN, IS_UNKNOWN, IS_UNKNOWN };
-		for (int axis = 0; axis < 3; axis++) {
-			int axisBit = 1 << axis;
-			bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-			if (ignore)
-				continue;
-			// Curvature calculations are indpendent of newCells
-
-			double processCurvature = 1 / _params.ignoreCurvatureRadius_meters;
-			auto curv = parentCell.calCurvature(axis);
-			exceedsCurvature[axis] = (curv > processCurvature) ? IS_TRUE : IS_FALSE;
-		}
-
-		for (int axis = 0; axis < 3; axis++) {
-			int axisBit = 1 << axis;
-			bool ignore = (ignoreAxisBits & axisBit) == axisBit;
-			if (ignore)
-				continue;
-
-			int orthoAxis0 = (axis + 1) % 3;
-			int orthoAxis1 = (axis + 2) % 3;
-			if (exceedsCurvature[0] == IS_TRUE && exceedsCurvature[1] == IS_TRUE && exceedsCurvature[2] == IS_TRUE) {
-				splitAxis = axis;
-				break;
-			} else if (exceedsCurvature[axis] == IS_FALSE && (exceedsCurvature[orthoAxis0] == IS_TRUE || exceedsCurvature[orthoAxis1] == IS_TRUE)) {
-				splitAxis = axis;
-				break;
-			}
-		}
 	}
 
 	return splitAxis;
+}
+
+bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv)
+{
+	// Curvature split is the same as intersection split, except we skip some splits. The logic is tricky.
+	const auto& parentCell = getPolyhedron(parentId);
+
+	bool exceedsCurvature[3];
+	for (int axis = 0; axis < 3; axis++) {
+		// Curvature calculations are indpendent of newCells
+
+		double processCurvature = 1 / _params.ignoreCurvatureRadius_meters;
+		auto curv = parentCell.calCurvature(axis);
+		exceedsCurvature[axis] = curv > processCurvature;
+	}
+
+	bool changed = false;
+
+#if 0
+	if (exceedsCurvature[0] && exceedsCurvature[1] && exceedsCurvature[2]) {
+		// Eight way split
+		MTC::vector<Index3DId> newCellIds0, newCellIds1;
+		bisectHexCell(parentId, tuv, 0, newCellIds0);
+		for (const auto& id : newCellIds0) {
+			bisectHexCell(id, tuv, 1, newCellIds1);
+		}
+		for (const auto& id : newCellIds1) {
+			MTC::vector<Index3DId> newCellIds2;
+			bisectHexCell(id, tuv, 2, newCellIds2);
+		}
+		changed = true;
+	}
+#endif
+
+	if (exceedsCurvature[0] && !exceedsCurvature[1] && !exceedsCurvature[2]) {
+		// Four way split y,z
+		MTC::vector<Index3DId> newCellIds1;
+		bisectHexCell(parentId, tuv, 1, newCellIds1);
+		for (const auto& id : newCellIds1) {
+			MTC::vector<Index3DId> newCellIds2;
+			bisectHexCell(id, tuv, 2, newCellIds2);
+		}
+		changed = true;
+	}
+
+#if 0
+	if (exceedsCurvature[0] && exceedsCurvature[1] && !exceedsCurvature[2]) {
+		// Four way split x,z
+		MTC::vector<Index3DId> newCellIds0;
+		bisectHexCell(parentId, tuv, 0, newCellIds0);
+		for (const auto& id : newCellIds0) {
+			MTC::vector<Index3DId> newCellIds2;
+			bisectHexCell(parentId, tuv, 2, newCellIds2);
+		}
+	}
+	if (!exceedsCurvature[0] && !exceedsCurvature[1] && exceedsCurvature[2]) {
+		// Four way split x,z
+		MTC::vector<Index3DId> newCellIds0;
+		bisectHexCell(parentId, tuv, 0, newCellIds0);
+		for (const auto& id : newCellIds0) {
+			MTC::vector<Index3DId> newCellIds1;
+			bisectHexCell(parentId, tuv, 1, newCellIds1);
+		}
+	}
+#endif
+
+	return changed;
 }
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)

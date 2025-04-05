@@ -1192,20 +1192,13 @@ double Polyhedron::calCurvature(int axis) const
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
 	auto pVol = getBlockPtr()->getVolume();
-	int orthAxis0 = (axis + 1) % 3;
-	int orthAxis1 = (axis + 2) % 3;;
 
 	Vector3d tuv(0.5, 0.5, 0.5);
 	MTC::vector<MTC::vector<Vector3d>> discarded;
-	MTC::vector<Vector3d> facePts0, facePts1;
-	makeHexCellPoints(orthAxis0, tuv, discarded, facePts0);
-	makeHexCellPoints(orthAxis1, tuv, discarded, facePts1);
+	MTC::vector<Vector3d> facePts;
+	makeHexCellPoints(axis, tuv, discarded, facePts);
 
-	double maxCurv0 = calMaxCurvature2D(facePts0);
-	double maxCurv1 = calMaxCurvature2D(facePts1);
-	double maxCurv = (maxCurv0 > maxCurv1) ? maxCurv0 : maxCurv1;
-
-	_cachedCurvature[axis] = maxCurv;
+	_cachedCurvature[axis] = calMaxCurvature2D(facePts);
 	return _cachedCurvature[axis];
 }
 

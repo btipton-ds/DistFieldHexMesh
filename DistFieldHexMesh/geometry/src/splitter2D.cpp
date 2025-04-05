@@ -376,6 +376,10 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 
 	for (size_t i = 0; i < _pts.size(); i++) {
 		const auto& connectedIndices = ptMap[i];
+		if (connectedIndices.size() < 2) {
+			curvatures.push_back(0);
+			continue;
+		}
 		auto iter2 = connectedIndices.begin();
 		const Vector2d& pt1 = _pts[i];
 		const Vector2d& pt0 = _pts[*iter2++];
