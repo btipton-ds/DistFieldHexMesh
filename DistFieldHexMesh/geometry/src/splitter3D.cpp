@@ -248,29 +248,32 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
 {
 	const auto& parentCell = getPolyhedron(parentId);
-	bool intersectsModel = false;
-	bool tooManyFaces = false;
-	bool tooNonOrthogonal = false;
-	bool tooHighCurvature = false;
-	if ((_splitLevel < _params.numIntersectionDivs || _splitLevel < _params.numCurvatureDivs) && _subPassNum == 0) {
-		intersectsModel = parentCell.intersectsModel();
-		if (intersectsModel && _splitLevel >= _params.numIntersectionDivs)
-			tooHighCurvature = parentCell.hasTooMuchCurvature(_params);
-	} else {
-		tooManyFaces = parentCell.hasTooManFaces(_params);
-		tooNonOrthogonal = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
-	}
+	bool hasIntersection = parentCell.intersectsModel();
+
+	bool doingOptionalSplit = false;
+	bool doIntersectionSplit = false;
+	bool doTooManyFacesSplit = false;
+	bool doTooNonOrthogonalSplit = false;
+	bool doCurvatureSplit = false;
+	if (_subPassNum == 0 && hasIntersection) {
+		doIntersectionSplit = _splitLevel < _params.numIntersectionDivs;
+		if (!doIntersectionSplit)
+			doCurvatureSplit = _splitLevel < _params.numCurvatureDivs && parentCell.hasTooMuchCurvature(_params);
+	} 
+	
+	doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
+	doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 
 	size_t minTooManyFaceCells = INT_MAX;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
 	int minIntersections = INT_MAX;
-	int minTooHighCurvature = INT_MAX;
+	int maxTooLargeRadii = 0;
 
 	int bestTooManyFacesSplitAxis = -1;
 	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
 	int bestCurvatureSplitAxis = -1;
-	int bestTooHighCurvatureSplitAxis = -1;
+	int bestTooLargeRadiiSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -291,54 +294,42 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		size_t totalTooManyFaces = 0;
 		double maxOrtho = 0;
 		int numIntersections = 0;
-		int numTooHighCurvature = 0;
 		for (auto& newCellId : newCellIds) {
 			const auto& newCell = getPolyhedron(newCellId);
 
-			if (tooManyFaces) {
+			if (doTooManyFacesSplit) {
 				if (newCell.hasTooManFaces(_params)) {
 					totalTooManyFaces++;
 				}
 			}
 
-			if (tooNonOrthogonal) { // Make sure this is an improvement over the parent cell
+			if (doTooNonOrthogonalSplit) { // Make sure this is an improvement over the parent cell
 				double ortho = newCell.maxOrthogonalityAngleRadians();
 				if (ortho > maxOrtho) {
 					maxOrtho = ortho;
 				}
 			}
 
-			if (intersectsModel && newCell.intersectsModel()) {
-				if (_splitLevel < _params.numCurvatureDivs)
-					numIntersections++;
-				if (_splitLevel < _params.numCurvatureDivs) {
-					if (newCell.hasTooMuchCurvature(_params))
-						numTooHighCurvature++;
-				}				
+			if (doIntersectionSplit && _splitLevel < _params.numIntersectionDivs && newCell.intersectsModel()) {
+				numIntersections++;
 			}
 		}
 
-		if (tooManyFaces && totalTooManyFaces < minTooManyFaceCells) {
+		if (doTooManyFacesSplit && totalTooManyFaces < minTooManyFaceCells) {
 			minTooManyFaceCells = totalTooManyFaces;
 			bestTooManyFacesSplitAxis = axis;
 		}
 
-		if (tooNonOrthogonal && maxOrtho < minOfMaxFinalOrthoCells) {
+		if (doTooNonOrthogonalSplit && maxOrtho < minOfMaxFinalOrthoCells) {
 			minOfMaxFinalOrthoCells = maxOrtho;
 			bestTooManyOrthoSplitAxis = axis;
 		}
 
-		if (intersectsModel) {
+		if (doIntersectionSplit && _splitLevel < _params.numIntersectionDivs) {
 			if (numIntersections < minIntersections) {
 				minIntersections = numIntersections;
 				bestIntersectionSplitAxis = axis;
 			} 
-			
-			if (tooHighCurvature && numTooHighCurvature < minTooHighCurvature) {
-				minTooHighCurvature = numTooHighCurvature;
-				bestTooHighCurvatureSplitAxis = axis;
-
-			}
 		}
 		reset(newCellIds);
 	}
@@ -351,8 +342,40 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		splitAxis = bestTooManyFacesSplitAxis; 
 	else if (bestIntersectionSplitAxis != -1)
 		splitAxis = bestIntersectionSplitAxis;
-	else if (bestTooHighCurvatureSplitAxis != -1)
-		splitAxis = bestTooHighCurvatureSplitAxis;
+	else if (false && doCurvatureSplit) {
+		mutex mut;
+		lock_guard lg(mut);
+
+		Trinary exceedsCurvature[] = { IS_UNKNOWN, IS_UNKNOWN, IS_UNKNOWN };
+		for (int axis = 0; axis < 3; axis++) {
+			int axisBit = 1 << axis;
+			bool ignore = (ignoreAxisBits & axisBit) == axisBit;
+			if (ignore)
+				continue;
+			// Curvature calculations are indpendent of newCells
+
+			double processCurvature = 1 / _params.ignoreCurvatureRadius_meters;
+			auto curv = parentCell.calCurvature(axis);
+			exceedsCurvature[axis] = (curv > processCurvature) ? IS_TRUE : IS_FALSE;
+		}
+
+		for (int axis = 0; axis < 3; axis++) {
+			int axisBit = 1 << axis;
+			bool ignore = (ignoreAxisBits & axisBit) == axisBit;
+			if (ignore)
+				continue;
+
+			int orthoAxis0 = (axis + 1) % 3;
+			int orthoAxis1 = (axis + 2) % 3;
+			if (exceedsCurvature[0] == IS_TRUE && exceedsCurvature[1] == IS_TRUE && exceedsCurvature[2] == IS_TRUE) {
+				splitAxis = axis;
+				break;
+			} else if (exceedsCurvature[axis] == IS_FALSE && (exceedsCurvature[orthoAxis0] == IS_TRUE || exceedsCurvature[orthoAxis1] == IS_TRUE)) {
+				splitAxis = axis;
+				break;
+			}
+		}
+	}
 
 	return splitAxis;
 }

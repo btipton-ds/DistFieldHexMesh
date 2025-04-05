@@ -821,7 +821,6 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 	vector<TriMeshIndex> indices;
 	if (getTriIndices(indices)) {
 		Splitter2D sp(polyPoints);
-		double avgCurvature = 0;
 
 		vector<vector<Vector3d>> tris;
 		const auto& model = getModel();
@@ -838,26 +837,15 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 			tris.push_back(tmp);
 			sp.add3DTriEdges(pts);
 		}
-		vector<vector<Vector2d>> polylines;
-		vector<vector<double>> curvatures;
-		size_t nC = sp.getCurvatures(polylines, curvatures);
+		vector<double> curvatures;
+		size_t nC = sp.getCurvatures(curvatures);
 
-		if (nC > 0) {
-			size_t count = 0;
-			for (size_t i = 0; i < curvatures.size(); i++) {
-				auto& pl = polylines[i];
-				auto& plc = curvatures[i];
-				assert(pl.size() == plc.size());
-				for (size_t j = 0; j < plc.size(); j++) {
-					auto c = plc[j];
-					if (c > maxCurvature)
-						maxCurvature = c;
-					avgCurvature += c;
-					count++;
-				}
-			}
-			avgCurvature /= count;
+		for (size_t i = 0; i < curvatures.size(); i++) {
+			auto c = curvatures[i];
+			if (c > maxCurvature)
+				maxCurvature = c;
 		}
+
 #if 0 && defined(_DEBUG)
 
 		auto pVol = getBlockPtr()->getVolume();

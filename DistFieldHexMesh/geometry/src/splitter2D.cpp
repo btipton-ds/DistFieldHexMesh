@@ -155,7 +155,7 @@ void Splitter2D::add3DTriEdges(const Vector3d pts[3])
 		auto it = iPts.begin();
 		const auto& pt0 = *it++;
 		const auto& pt1 = *it;
-		if ((pt1 - pt1).squaredNorm() < tolSqr && (insideBoundary(pt0) || insideBoundary(pt1))) {
+		if ((pt1 - pt0).squaredNorm() > tolSqr && (insideBoundary(pt0) || insideBoundary(pt1))) {
 			addEdge(pt0, pt1);
 		}
 	}
@@ -208,16 +208,6 @@ size_t Splitter2D::getFacePoints(vector<vector<Vector3d>>& facePoints)
 	return facePoints.size();
 }
 
-size_t Splitter2D::getPolylines(vector<vector<Vector3d>>& polylines)
-{
-	vector<vector<Vector3d>> lines, loops;
-	getLoops(lines, loops);
-	polylines.insert(polylines.end(), lines.begin(), lines.end());
-	polylines.insert(polylines.end(), loops.begin(), loops.end());
-	return polylines.size();
-
-}
-
 void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 {
 	for (const auto& e : _edges) {
@@ -252,54 +242,30 @@ void Splitter2D::getLoops(vector<vector<Vector3d>>& polylines, vector<vector<Vec
 	}
 }
 
-size_t Splitter2D::findMinConnectedIndex(const map<size_t, set<size_t>>& ptMap)
+void Splitter2D::createPointPointMap(POINT_MAP_TYPE& ptMap) const
 {
-	size_t result = -1;
-	size_t min = SIZE_MAX;
-	for (const auto& pair : ptMap) {
-		if (pair.second.size() < min) {
-			assert(!pair.second.empty());
-			min = pair.second.size();
-			result = pair.first;
-		}
-	}
-	return result;
-}
-
-void Splitter2D::createPointPointMap(map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
-{
+	ptMap.resize(_pts.size());
 	for (const auto& e : _edges) {
-		auto iter0 = ptMap.find(e[0]);
-		if (iter0 == ptMap.end())
-			iter0 = ptMap.insert(make_pair(e[0], set<size_t>())).first;
-		iter0->second.insert(e[1]);
-
-		auto iter1 = ptMap.find(e[1]);
-		if (iter1 == ptMap.end())
-			iter1 = ptMap.insert(make_pair(e[1], set<size_t>())).first;
-		iter1->second.insert(e[0]);
+		ptMap[e[0]].insert(e[1]);
+		ptMap[e[1]].insert(e[0]);
 	}
-
-	createEdgeUsageMap(ptMap, edgeUsage);
 }
 
-void Splitter2D::createEdgeUsageMap(const map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
+void Splitter2D::createEdgeUsageMap(const POINT_MAP_TYPE& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	edgeUsage.clear();
 	for (const auto& e : _edges) {
-		auto iter0 = ptMap.find(e[0]);
-		auto iter1 = ptMap.find(e[1]);
+		const auto& set0 = ptMap[e[0]];
+		const auto& set1 = ptMap[e[1]];
 
-		if (iter0 != ptMap.end() && iter1 != ptMap.end()) {
-			size_t numUsages = 1;
-			if (iter0->second.size() > 2 && iter1->second.size() > 2)
-				numUsages = 2;
-			edgeUsage.insert(make_pair(e, numUsages));
-		}
+		size_t numUsages = 1;
+		if (set0.size() > 2 && set1.size() > 2)
+			numUsages = 2;
+		edgeUsage.insert(make_pair(e, numUsages));
 	}
 }
 
-void Splitter2D::removePolylineFromMaps(const Polyline& pl, map<size_t, set<size_t>>& ptMap, map<Edge2D, size_t>& edgeUsage) const
+void Splitter2D::removePolylineFromMaps(const Polyline& pl, POINT_MAP_TYPE& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	vector<size_t> indices;
 	pl.createVector(indices);
@@ -314,47 +280,45 @@ void Splitter2D::removePolylineFromMaps(const Polyline& pl, map<size_t, set<size
 		iter->second--;
 		if (iter->second == 0) {
 			// Edge is no longer in use
-			auto iter0 = ptMap.find(e[0]);
-			if (iter0 != ptMap.end())
-				iter0->second.erase(e[1]);
-			if (iter0->second.empty())
-				ptMap.erase(e[0]);
 
-			auto iter1 = ptMap.find(e[1]);
-			if (iter1 != ptMap.end())
-				iter1->second.erase(e[0]);
-			if (iter1->second.empty())
-				ptMap.erase(e[1]);
+			auto& conP0 = ptMap[e[0]];
+			conP0.erase(e[1]);
+
+			auto& conP1 = ptMap[e[1]];
+			conP1.erase(e[0]);
+
 		}
 	}
 
 	createEdgeUsageMap(ptMap, edgeUsage);
 }
 
-size_t Splitter2D::getLoopSeedIndex(const map<size_t, set<size_t>>& ptMap) const
+size_t Splitter2D::getLoopSeedIndex(const POINT_MAP_TYPE& ptMap) const
 {
-	size_t maxConnections = 0, idx0 = -1;
-	for (auto& pair : ptMap) {
-		if (pair.second.size() > maxConnections) {
-			maxConnections = pair.second.size();
-			idx0 = pair.first;
+	size_t maxConnections = 0, result = -1;
+	for (size_t i = 0; i < ptMap.size(); i++) {
+		const auto& conP = ptMap[i];
+		if (conP.size() > maxConnections) {
+			maxConnections = conP.size();
+			result = i;
 		}
 	}
 
-	return idx0;
+	return result;
 }
 
-size_t Splitter2D::getSpurSeedIndex(const map<size_t, set<size_t>>& ptMap) const
+size_t Splitter2D::getSpurSeedIndex(const POINT_MAP_TYPE& ptMap) const
 {
-	size_t idx0 = -1;
-	for (auto& pair : ptMap) {
-		if (pair.second.size() == 1) {
-			idx0 = pair.first;
+	size_t result = -1;
+	for (size_t i = 0; i < ptMap.size(); i++) {
+		const auto& conP = ptMap[i];
+		if (conP.size() == 1) {
+			result = i;
 			break;
 		}
 	}
 
-	return idx0;
+	return result;
 }
 
 void Splitter2D::getLoops(vector<vector<Vector2d>>& polylines, vector<vector<Vector2d>>& loops) const
@@ -384,12 +348,14 @@ void Splitter2D::getLoops(vector<vector<Vector2d>>& polylines, vector<vector<Vec
 
 size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 {
-	map<size_t, set<size_t>> ptMap;
+	POINT_MAP_TYPE ptMap;
 	map<Edge2D, size_t> edgeUsage;
-	createPointPointMap(ptMap, edgeUsage);
+	createPointPointMap(ptMap);
 	if (ptMap.empty())
 		return 0;
-	
+
+	createEdgeUsageMap(ptMap, edgeUsage);
+
 	vector<Polyline> pls;
 	while (createPolylines(ptMap, edgeUsage, pls) > 0) {
 		// We're getting spurs that duplicate spurs which were already created.
@@ -399,80 +365,59 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 		pls.clear();
 	}
 
-	assert(ptMap.empty());
-
 	return polylines.size();
 }
 
-size_t Splitter2D::getCurvatures(vector<vector<Vector2d>>& polylines, vector<vector<double>>& curvatures) const
+size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 {
 	curvatures.clear();
-	vector<Polyline> mixedLoops;
-	getPolylines(mixedLoops);
-	polylines.clear();
+	POINT_MAP_TYPE ptMap;
+	createPointPointMap(ptMap);
 
-	for (const auto& pl : mixedLoops) {
-		vector<size_t> indices;
-		vector<Vector2d> plPts;
-		pl.createVector(indices);
-		for (size_t ptIdx : indices)
-			plPts.push_back(_pts[ptIdx]);
+	for (size_t i = 0; i < _pts.size(); i++) {
+		const auto& connectedIndices = ptMap[i];
+		auto iter2 = connectedIndices.begin();
+		const Vector2d& pt1 = _pts[i];
+		const Vector2d& pt0 = _pts[*iter2++];
+		const Vector2d& pt2 = _pts[*iter2];
 
-		vector<double> cvec;
-		for (size_t j = 0; j < plPts.size(); j++) {
-			if (!pl._isClosed) {
-				if (j == 0 || j == pl.size() - 2) {
-					cvec.push_back(0);
-					continue;
-				}
-			}
-			size_t i = (j + pl.size() - 1) % plPts.size();
-			size_t k = (j + 1) % plPts.size();
-			const Vector2d& pt0 = plPts[i];
-			const Vector2d& pt1 = plPts[1];
-			const Vector2d& pt2 = plPts[2];
-
-			Vector2d v0 = (pt1 - pt0);
-			auto v1 = (pt2 - pt1);
-			auto l0 = v0.norm();
-			auto l1 = v1.norm();
-			if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-				cvec.push_back(0);
-				continue;
-			}
-
-			v0 /= l0;
-			v1 /= l1;
-			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-			if (cp > 0.7071 || cp < Tolerance::paramTol()) {
-				cvec.push_back(0);
-				continue; // Skip sharps and colinear points
-			}
-
-			v0 = Vector2d(-v0[1], v0[0]);
-			v1 = Vector2d(-v1[1], v1[0]);
-
-			auto mid0 = (pt0 + pt1) * 0.5;
-			auto mid1 = (pt1 + pt2) * 0.5;
-			LineSegment2d seg0(mid0, v0);
-			LineSegment2d seg1(mid1, v1);
-			double t;
-			if (!seg0.intersect(seg1, t)) {
-				cvec.push_back(0);
-				continue; // Skip sharps and colinear points
-			}
-			Vector2d pt = seg0.interpolate(t);
-			auto radius = (pt0 - pt).norm();
-			if (radius < Tolerance::paramTol()) {
-				cvec.push_back(0);
-				continue; // Skip sharps and colinear points
-			}
-			cvec.push_back(1 / radius);
+		Vector2d v0 = (pt1 - pt0);
+		auto v1 = (pt2 - pt1);
+		auto l0 = v0.norm();
+		auto l1 = v1.norm();
+		if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
+			curvatures.push_back(0);
+			continue;
 		}
-	
-		polylines.push_back(plPts);
-		curvatures.push_back(cvec);
-	}
+
+		v0 /= l0;
+		v1 /= l1;
+		double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
+		if (cp > 0.7071 || cp < Tolerance::paramTol()) {
+			curvatures.push_back(0);
+			continue; // Skip sharps and colinear points
+		}
+
+		v0 = Vector2d(-v0[1], v0[0]);
+		v1 = Vector2d(-v1[1], v1[0]);
+
+		auto mid0 = (pt0 + pt1) * 0.5;
+		auto mid1 = (pt1 + pt2) * 0.5;
+		LineSegment2d seg0(mid0, v0);
+		LineSegment2d seg1(mid1, v1);
+		double t;
+		if (!seg0.intersect(seg1, t)) {
+			curvatures.push_back(0);
+			continue; // Skip sharps and colinear points
+		}
+		Vector2d pt = seg0.interpolate(t);
+		auto radius = (pt0 - pt).norm();
+		if (radius < Tolerance::paramTol()) {
+			curvatures.push_back(0);
+			continue; // Skip sharps and colinear points
+		}
+		curvatures.push_back(1 / radius);
+		}
 	return curvatures.size();
 }
 
@@ -675,49 +620,49 @@ size_t Splitter2D::PolylineNode::getIndices(set<size_t>& indices) const
 	return indices.size();
 }
 
-void Splitter2D::PolylineNode::extend(map<size_t, set<size_t>>& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
+void Splitter2D::PolylineNode::extend(POINT_MAP_TYPE& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
 
-	auto iter = m.find(_idx);
-	if (iter != m.end()) {
-		bool extended = false;
-		if (terminateAtBranch && iter->second.size() > 2) {
-			vector<size_t> r;
-			getIndices(r);
-			results.push_back(r);
-			return;
-		} else {
-			set<size_t> available;
-			for (size_t nextIdx : iter->second) {
-				if (!contains(nextIdx)) {
-					PolylineNode n2;
-					n2._pPrior = this;
-					n2.setIdx(nextIdx);
-					n2.extend(m, terminateAtBranch, results);
-					extended = true;
-				}
-			}
-		}
-		if (!extended) {
-			// NextIdx is already in the list, so we can't use it again.
-			vector<size_t> r;
-			getIndices(r);
-			size_t maxLen = 0;
-			for (size_t idx = results.size() - 1; idx != -1; idx--) {
-				if (results[idx].size() > maxLen)
-					maxLen = results[idx].size();
-				if (results[idx].size() > r.size()) {
-					results.erase(results.begin() + idx);
-				} else if (sameLoop(results[idx], r)) {
-					r.clear(); // We already have this loop
-					break;
-				}
-			}
-
-			if (!r.empty() && (results.empty() || r.size() <= maxLen)) {
-				results.push_back(r);
+	const auto& pCon = m[_idx];
+	bool extended = false;
+	if (terminateAtBranch && pCon.size() > 2) {
+		vector<size_t> r;
+		getIndices(r);
+		results.push_back(r);
+		return;
+	} else {
+		for (size_t nextIdx : pCon) {
+			if (!contains(nextIdx)) {
+				PolylineNode n2;
+				n2._pPrior = this;
+				n2.setIdx(nextIdx);
+				n2.extend(m, terminateAtBranch, results);
+				extended = true;
 			}
 		}
 	}
+
+	if (!extended) {
+		// NextIdx is already in the list, so we can't use it again.
+		vector<size_t> r;
+		getIndices(r);
+		size_t maxLen = 0;
+		for (size_t idx = results.size() - 1; idx != -1; idx--) {
+			if (results[idx].size() > maxLen)
+				maxLen = results[idx].size();
+			if (results[idx].size() > r.size()) {
+				results.erase(results.begin() + idx);
+			}
+			else if (sameLoop(results[idx], r)) {
+				r.clear(); // We already have this loop
+				break;
+			}
+		}
+
+		if (!r.empty() && (results.empty() || r.size() <= maxLen)) {
+			results.push_back(r);
+		}
+	}
+	
 }
 
 bool Splitter2D::PolylineNode::contains(size_t idx) const
@@ -731,7 +676,7 @@ bool Splitter2D::PolylineNode::contains(size_t idx) const
 	return false;
 }
 
-size_t Splitter2D::createPolylines(map<size_t, set<size_t>>& m, map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
+size_t Splitter2D::createPolylines(POINT_MAP_TYPE& m, map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
 {
 	polylines.clear();
 	PolylineNode n;
@@ -755,9 +700,9 @@ size_t Splitter2D::createPolylines(map<size_t, set<size_t>>& m, map<Edge2D, size
 	for (const auto& poly : tmp) {
 		vector<size_t> verifiedPoly;
 		for (size_t idx : poly) {
-			auto iter = m.find(idx);
-			if (iter != m.end()) {
-				verifiedPoly.push_back(iter->first);
+			const auto& conP = m[idx];
+			if (!conP.empty()) {
+				verifiedPoly.push_back(idx);
 			}
 		}
 		if (verifiedPoly.size() == poly.size()) {
@@ -768,14 +713,12 @@ size_t Splitter2D::createPolylines(map<size_t, set<size_t>>& m, map<Edge2D, size
 	for (const auto& indices : allPolylineIndices) {
 		Polyline pl;
 		pl.insert(pl.end(), indices.begin(), indices.end());
-		auto iter = m.find(pl.lastIdx());
-		if (iter != m.end()) {
-			pl._isClosed = pl.size() > 2 && iter->second.contains(pl.firstIdx());
-			if (isLoop)
-				assert(pl._isClosed);
-			else
-				assert(!pl._isClosed);
-		}
+		const auto& conP = m[pl.lastIdx()];
+		pl._isClosed = pl.size() > 2 && conP.contains(pl.firstIdx());
+		if (isLoop)
+			assert(pl._isClosed);
+		else
+			assert(!pl._isClosed);
 
 		removePolylineFromMaps(pl, m, edgeUsage);
 
@@ -803,13 +746,27 @@ void Splitter2D::splitExisting(const Edge2D& e0)
 bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 {
 	const double tol = 1.0e-5;
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
+			if (e0[i] == e1[j]) {
+				return false;
+			}
+		}
+	}
+
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
 	double t;
 	if (seg0.intersect(seg1, t) && tol < t && t < 1 - tol) {
 		const double tol = Tolerance::sameDistTol();
-		Vector2d pt0 = seg0[0];
 		Vector2d pt1 = seg0.interpolate(t);
+		auto iter = _ptToIndexMap.find(pt1);
+		if (iter != _ptToIndexMap.end()) {
+			if (iter->second == e0[0] || iter->second == e0[1])
+				return false;
+		}
+
+		Vector2d pt0 = seg0[0];
 		Vector2d pt2 = seg0[1];
 
 		Vector2d v0 = pt1 - pt0;
@@ -918,11 +875,19 @@ Vector2d Vector2d::operator *(double rhs) const
 	return Vector2d(x);
 }
 
+Eigen::Matrix<int64_t, 2, 1> Vector2d::asIntVec() const
+{
+	int64_t iVal0 = Vertex::scaleToSearch((*this)[0]);
+	int64_t iVal1 = Vertex::scaleToSearch((*this)[1]);
+	Eigen::Matrix<int64_t, 2, 1> result(iVal0, iVal1);
+	return result;
+}
+
 bool Vector2d::operator < (const Vector2d& rhs) const
 {
 	int64_t scale = Vertex::scaleToSearch();
-	Eigen::Matrix<int64_t, 2, 1> pt0((int64_t)((scale * (*this)[0]) + 0.5) , (int64_t)((scale * (*this)[1]) + 0.5));
-	Eigen::Matrix<int64_t, 2, 1> pt1((int64_t)((scale * rhs[0]) + 0.5), (int64_t)((scale * rhs[1]) + 0.5));
+	auto pt0 = asIntVec();
+	auto pt1 = rhs.asIntVec();
 	for (int i = 0; i < 2; i++) {
 		if (pt0[i] < pt1[i])
 			return true;

@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_vector3.h>
 #include <tm_plane.h>
 #include <Eigen/src/Core/Matrix.h>
+#include <fastBisectionSet.h>
 
 namespace DFHM {
 
@@ -48,6 +49,9 @@ public:
 	Vector2d(const Vector2d& src) = default;
 	Vector2d(const Eigen::Vector2d& src);
 	Vector2d(double x, double y);
+
+	Eigen::Matrix<int64_t, 2, 1> asIntVec() const;
+
 	bool operator < (const Vector2d& rhs) const;
 	Vector2d operator -(const Vector2d& rhs) const;
 	Vector2d operator +(const Vector2d& rhs) const;
@@ -65,6 +69,7 @@ private:
 };
 
 class Splitter2D {
+	using POINT_MAP_TYPE = std::vector<std::set<size_t>>;
 public:
 	struct Polyline : public std::list<size_t> {
 		size_t firstIdx() const;
@@ -83,14 +88,13 @@ public:
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
-	size_t getPolylines(std::vector<std::vector<Vector3d>>& polylines);
 
 	void getEdgePts(std::vector<std::vector<Vector3d>>& edgePts) const;
 
 	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
-	size_t getCurvatures(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<double>>& curvatures) const;
+	size_t getCurvatures(std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& curvatures) const;
 
 	void writeObj(const std::string& filenameRoot) const;
@@ -116,7 +120,7 @@ private:
 		void setIdx(size_t val);
 		size_t getIndices(std::vector<size_t>& indices) const;
 		size_t getIndices(std::set<size_t>& indices) const;
-		void extend(std::map<size_t, std::set<size_t>>& m, bool terminateAtBranch, std::vector<std::vector<size_t>>& results);
+		void extend(POINT_MAP_TYPE& m, bool terminateAtBranch, std::vector<std::vector<size_t>>& results);
 		bool contains(size_t idx) const;
 
 	private:
@@ -132,22 +136,21 @@ private:
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
 	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
 
-	size_t createPolylines(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
+	size_t createPolylines(POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
 	bool project(const Vector3d& pt, Vector2d& result) const;
 	Vector3d pt3D(size_t idx) const;
 
-	static size_t findMinConnectedIndex(const std::map<size_t, std::set<size_t>>& ptMap);
 	size_t getPolylines(std::vector<Polyline>& polylines) const;
 	void removeColinearVertsFromVertexLoop(Polyline& pl) const;
-	void createPointPointMap(std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
-	void createEdgeUsageMap(const std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
-	void removePolylineFromMaps(const Polyline& pl, std::map<size_t, std::set<size_t>>& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
+	void createPointPointMap(POINT_MAP_TYPE& ptMap) const;
+	void createEdgeUsageMap(const POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
+	void removePolylineFromMaps(const Polyline& pl, POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
 
-	size_t getLoopSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
-	size_t getSpurSeedIndex(const std::map<size_t, std::set<size_t>>& ptMap) const;
+	size_t getLoopSeedIndex(const POINT_MAP_TYPE& ptMap) const;
+	size_t getSpurSeedIndex(const POINT_MAP_TYPE& ptMap) const;
 
 	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;
