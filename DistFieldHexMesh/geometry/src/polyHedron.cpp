@@ -160,6 +160,32 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	return *this;
 }
 
+void Polyhedron::copyCaches(const Polyhedron& src)
+{
+	_isOriented = src._isOriented;
+	_needsCurvatureCheck = src._needsCurvatureCheck;
+
+	_cachedIsClosed = src._cachedIsClosed;
+	_intersectsModel = src._intersectsModel; // Cached value
+	_sharpEdgesIntersectModel = src._sharpEdgesIntersectModel; // Cached value
+
+	_cachedMinGap = src._cachedMinGap;
+	_cachedComplexityScore = src._cachedComplexityScore;
+	_maxOrthogonalityAngleRadians = src._maxOrthogonalityAngleRadians;
+
+	// The axes are cached separately because they are accessed separately when determining best split axis
+	_cachedAvgCurvature = src._cachedAvgCurvature;
+	for (int i = 0; i < 3; i++)
+		_cachedAvgCurvatureByAxis[i] = src._cachedAvgCurvatureByAxis[i];
+
+	_cachedCanonicalPoints = src._cachedCanonicalPoints;
+	_cachedCtr = src._cachedCtr;
+	_cachedBBox = src._cachedBBox;
+	_hasSetSearchTree = src._hasSetSearchTree;
+	_pSearchTree = src._pSearchTree;
+
+}
+
 void Polyhedron::dumpFaces() const
 {
 	size_t idx = 0;
@@ -214,12 +240,7 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 
 void Polyhedron::makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
 {
-	MTC::vector<Vector3d> cp;
-	set<Index3DId> cvSet;
-	for (const auto& id : _canonicalVertices) {
-		cp.push_back(getVertexPoint(id));
-		cvSet.insert(id);
-	}
+	auto& cp = getCanonicalPoints();
 
 	for (int i = 0; i < 2; i++) {
 		double t0 = 0, t1 = 1;
@@ -268,6 +289,36 @@ void Polyhedron::makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MT
 		}
 	}
 
+}
+
+void Polyhedron::makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const
+{
+	auto& cp = getCanonicalPoints();
+
+	facePts.resize(4);
+	switch (axis) {
+	case 0: {
+		Vector3d pts0[] = { cp[0], cp[3], cp[7], cp[4] };
+		Vector3d pts1[] = { cp[1], cp[2], cp[6], cp[5] };
+		for (size_t i = 0; i < 4; i++)
+			facePts[i] = LERP(pts0[i], pts1[i], w);
+		break;
+	}
+	case 1: {
+		Vector3d pts0[] = { cp[0], cp[1], cp[5], cp[4] };
+		Vector3d pts1[] = { cp[3], cp[2], cp[6], cp[7] };
+		for (size_t i = 0; i < 4; i++)
+			facePts[i] = LERP(pts0[i], pts1[i], w);
+		break;
+	}
+	case 2: {
+		Vector3d pts0[] = { cp[0], cp[1], cp[2], cp[3] };
+		Vector3d pts1[] = { cp[4], cp[5], cp[6], cp[7] };
+		for (size_t i = 0; i < 4; i++)
+			facePts[i] = LERP(pts0[i], pts1[i], w);
+		break;
+	}
+	}
 }
 
 void Polyhedron::write(ostream& out) const
@@ -354,10 +405,70 @@ size_t Polyhedron::getNumFaces() const
 	return _faceIds.size();
 }
 
-
-FastBisectionSet<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
+const MTC::vector<Vector3d>& Polyhedron::getCanonicalPoints() const
 {
-	FastBisectionSet<EdgeKey> result;
+	if (_cachedCanonicalPoints.empty()) {
+		for (const auto& id : _canonicalVertices) {
+			_cachedCanonicalPoints.push_back(getVertexPoint(id));
+		}
+	}
+
+	return _cachedCanonicalPoints;
+}
+
+MTC::set<EdgeKey> Polyhedron::getCanonicalHexEdgeKeys(int ignoreAxis) const
+{
+	MTC::set<EdgeKey> result;
+	if (ignoreAxis == -1) {
+		for (size_t i = 0; i < 4; i++) {
+			size_t j = (i + 1) % 4;
+			result.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[j]));
+			result.insert(EdgeKey(_canonicalVertices[i + 4], _canonicalVertices[j + 4]));
+			result.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[i + 4]));
+		}
+	} else {
+		switch (ignoreAxis) {
+		case 0:
+			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[3]));
+			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[7]));
+			result.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[4]));
+			result.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
+
+			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
+			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
+			result.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[5]));
+			result.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[1]));
+			break;
+		case 1:
+			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
+			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[5]));
+			result.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[4]));
+			result.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
+
+			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[2]));
+			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
+			result.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[7]));
+			result.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[3]));
+			break;
+		case 2:
+			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
+			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
+			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[3]));
+			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[0]));
+
+			result.insert(EdgeKey(_canonicalVertices[0 + 4], _canonicalVertices[1 + 4]));
+			result.insert(EdgeKey(_canonicalVertices[1 + 4], _canonicalVertices[2 + 4]));
+			result.insert(EdgeKey(_canonicalVertices[2 + 4], _canonicalVertices[3 + 4]));
+			result.insert(EdgeKey(_canonicalVertices[3 + 4], _canonicalVertices[0 + 4]));
+			break;
+		}
+	}
+	return result;
+}
+
+MTC::set<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
+{
+	MTC::set<EdgeKey> result;
 	if (includeAdjacentCellFaces) {
 		MTC::set<Index3DId> vertIds;
 		getVertIds(vertIds);
@@ -701,16 +812,17 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 	return corners.size();
 }
 
-CBoundingBox3Dd Polyhedron::getBoundingBox() const
+const CBoundingBox3Dd& Polyhedron::getBoundingBox() const
 {
-	CBoundingBox3Dd bbox;
-	MTC::set<Index3DId> vertIds;
-	getVertIds(vertIds);
-	for (const auto& vertId : vertIds) {
-		bbox.merge(getVertexPoint(vertId));
+	if (_cachedBBox.empty()) {
+		MTC::set<Index3DId> vertIds;
+		getVertIds(vertIds);
+		for (const auto& vertId : vertIds) {
+			_cachedBBox.merge(getVertexPoint(vertId));
+		}
 	}
 
-	return bbox;
+	return _cachedBBox;
 }
 
 bool Polyhedron::containsVertex(const Index3DId& vertId) const
@@ -815,14 +927,13 @@ double Polyhedron::calVolume() const
 	return vol;
 }
 
-double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
+double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
 {
-	double maxCurvature = 0;
+	double avgCurvature = 0;
 	vector<TriMeshIndex> indices;
 	if (getTriIndices(indices)) {
 		Splitter2D sp(polyPoints);
 
-		vector<vector<Vector3d>> tris;
 		const auto& model = getModel();
 		double height = -DBL_MAX;
 		Vector2d maxPt;
@@ -833,19 +944,23 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 				model.getVert(triIdx[1])._pt,
 				model.getVert(triIdx[2])._pt,
 			};
-			vector<Vector3d> tmp = { pts[0], pts[1], pts[2], };
-			tris.push_back(tmp);
 			sp.add3DTriEdges(pts);
 		}
 		vector<double> curvatures;
-		size_t nC = sp.getCurvatures(curvatures);
+		sp.getCurvatures(curvatures);
 
+		size_t count = 0;
 		for (size_t i = 0; i < curvatures.size(); i++) {
 			auto c = curvatures[i];
-			if (c > maxCurvature)
-				maxCurvature = c;
+			if (c > 0) {
+				avgCurvature += c;
+				count++;
+			}
 		}
 
+		if (count > 0) {
+			avgCurvature /= count;
+		}
 #if 0 && defined(_DEBUG)
 
 		auto pVol = getBlockPtr()->getVolume();
@@ -864,7 +979,7 @@ double Polyhedron::calMaxCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 #endif
 	}
 
-	return maxCurvature;
+	return avgCurvature;
 }
 
 bool Polyhedron::isOriented() const
@@ -979,17 +1094,13 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 		&model.getVert(tri[2])._pt,
 	};
 
-#if 0
+	bool result = false;
+
 	for (int i = 0; i < 3; i++) {
-		int j = (i + 1) % 3;
-		LineSegment_byrefd seg(*pts[i], *pts[j]);
-		if (segInside(seg)) {
+		if (pointInside(*pts[i])) {
 			return true;
 		}
 	}
-#endif
-
-	bool result = false;
 
 	for (const auto& faceId : _faceIds) {
 		const auto& face = getPolygon(faceId);
@@ -1013,9 +1124,9 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 
 bool Polyhedron::intersectsModel() const
 {
-	const auto tol = Tolerance::sameDistTol();
-
 	if (_intersectsModel == IS_UNKNOWN) {
+		const auto tol = Tolerance::sameDistTol();
+
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		_intersectsModel = IS_FALSE;
 		vector<Model::SearchTree::Entry> entries;
@@ -1121,15 +1232,8 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
 {
-	double maxCurv = calMaxCurvature();
-	if (maxCurv > 0) {
-//		mutex mut;
-//		lock_guard lg(mut);
-		double minCurvRad = 1 / maxCurv;
-		if (minCurvRad < params.ignoreCurvatureRadius_meters)
-			return true;
-	}
-	return false;
+	double curvatureScore = getCurvatureScore(params);
+	return curvatureScore > 1;
 }
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
@@ -1170,43 +1274,52 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-double Polyhedron::calMaxCurvature() const
+double Polyhedron::calAvgCurvature() const
 {
-	double result = 0;
-	for (int axis = 0; axis < 3; axis++) {
-		auto c = calCurvature(axis);
-		if (c > result) {
-			result = c;
+	if (_cachedAvgCurvature < 0) {
+		_cachedAvgCurvature = 0;
+		for (int axis = 0; axis < 3; axis++) {
+			auto c = calAvgCurvature(axis);
+			_cachedAvgCurvature += c;
 		}
+		_cachedAvgCurvature /= 3;
 	}
-
-	return result;
+	return _cachedAvgCurvature;
 }
 
-double Polyhedron::calCurvature(int axis) const
+double Polyhedron::calAvgCurvature(int axis) const
 {
-	if (_cachedCurvature[axis] > 0)
-		return _cachedCurvature[axis];
+	if (!intersectsModel())
+		return 0;
+
+	if (_cachedAvgCurvatureByAxis[axis] > 0)
+		return _cachedAvgCurvatureByAxis[axis];
 
 	// Split the cell with a plane on each axis
 	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
 	// When finished, only subcells with intersections are marked true
 	auto pVol = getBlockPtr()->getVolume();
 
-	Vector3d tuv(0.5, 0.5, 0.5);
-	MTC::vector<MTC::vector<Vector3d>> discarded;
-	MTC::vector<Vector3d> facePts;
-	makeHexCellPoints(axis, tuv, discarded, facePts);
+	_cachedAvgCurvatureByAxis[axis] = 0;
+	int steps = 3;
+	for (int i = 0; i < steps; i++) {
+		double w = i / (steps - 1.0);
+		MTC::vector<Vector3d> facePts;
+		makeHexFacePoints(axis, w, facePts);
+		// TODO The curvature score should be calculated against face points here where we have them.
+		_cachedAvgCurvatureByAxis[axis] = calAvgCurvature2D(facePts);
+	}
 
-	_cachedCurvature[axis] = calMaxCurvature2D(facePts);
-	return _cachedCurvature[axis];
+	_cachedAvgCurvatureByAxis[axis] /= steps;
+
+	return _cachedAvgCurvatureByAxis[axis];
 }
 
 double Polyhedron::getComplexityScore(const SplittingParams& params) const
 {
 
-	if (_complexityScore < 0) {
-		_complexityScore = 1;
+	if (_cachedComplexityScore < 0) {
+		_cachedComplexityScore = 1;
 		const double PI_OVER_2 = M_PI * 0.5;
 		double x;
 
@@ -1220,7 +1333,7 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 				int dbgBreak = 1;
 			}
 			x = pow(subFaceComplexity, params.complexitySubFaceFactor);
-			_complexityScore *= x;
+			_cachedComplexityScore *= x;
 		}
 
 		size_t numFaces = getFaceIds().size();
@@ -1231,7 +1344,7 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 		}
 
 		x = pow(faceComplexity, params.complexityFaceFactor);
-		_complexityScore *= x;
+		_cachedComplexityScore *= x;
 
 		auto orthoAngle = maxOrthogonalityAngleRadians(); // in the range [0, PI/4]
 		double orthoComplexity = 1;
@@ -1240,10 +1353,52 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 			int dbgBreak = 1;
 		}
 		x = pow(orthoComplexity, params.complexityOrthoFactor);
-		_complexityScore *= x;
+		_cachedComplexityScore *= x;
 	}
 	
-	return _complexityScore;
+	return _cachedComplexityScore;
+}
+
+double Polyhedron::getCurvatureScore(const SplittingParams& params, int axis) const
+{
+	double result = 0;
+	double avgCurv = 0;
+	int count = 0;
+	for (int testAxis = 0; testAxis < 3; testAxis++) {
+		if (testAxis != axis) {
+			auto v = calAvgCurvature(testAxis);
+			avgCurv += v;
+			count++;
+		}
+	}
+
+	avgCurv /= count;
+	if (avgCurv < 1.0e-12)
+		return 1;
+
+	// Curvature is about creating cells with edges the same size or smaller than a chord on the hypothetical circle with radius 
+	// equal to the radius of curvature.
+
+	double avgRad = 1 / avgCurv;
+	size_t divs = params.curvatureDivsPerCircumference;
+	double chordLen = 2 * avgRad * sin(2 * M_PI / divs);
+
+	auto edgeKeys = getCanonicalHexEdgeKeys(axis);
+	double maxEdgeLen = 0;
+	for (const auto& ek : edgeKeys) {
+		edgeFunc(ek, [&maxEdgeLen](const Edge& edge) {
+			auto l = edge.getLength();
+			if (l > maxEdgeLen) {
+				maxEdgeLen = l;
+			}
+		});
+	}
+
+	result = maxEdgeLen / chordLen;
+	if (result < 1)
+		result = 1;
+	
+	return result;
 }
 
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1603,12 +1758,12 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 
 	try {
 		indices.clear();
-		auto bbox = getBoundingBox();
+		auto& bbox = getBoundingBox();
 		vector<Model::SearchTree::Entry> tmp;
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
 			for (const auto& entry : tmp) {
-				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+				if (entryInside(entry)) {
 					indices.push_back(entry.getIndex());
 				}
 			}
@@ -1619,7 +1774,7 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 		vector<Model::SearchTree::Entry> tmpFull;
 		if (pFull && pFull->find(bbox, tmpFull)) {
 			for (const auto& entry : tmpFull) {
-				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+				if (entryInside(entry)) {
 					indicesFull.push_back(entry.getIndex());
 				}
 			}
@@ -1660,18 +1815,18 @@ bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) c
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
 			for (const auto& entry : tmp) {
-				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+				if (entryInside(entry)) {
 					entries.push_back(entry);
 				}
 			}
 		}
-#if 0 // This turns on very expensive entity search testing.
+#if 1 // This turns on very expensive entity search testing.
 		auto pFull = getBlockPtr()->getModel().getSearchTree();
 		vector<Model::SearchTree::Entry> entriesFull;
 		vector<Model::SearchTree::Entry> tmpFull;
 		if (pFull && pFull->find(bbox, tmpFull)) {
 			for (const auto& entry : tmpFull) {
-				if (bbox.intersectsOrContains(entry.getBBox(), tol)) {
+				if (entryInside(entry)) {
 					entriesFull.push_back(entry);
 				}
 			}
@@ -1846,11 +2001,17 @@ void Polyhedron::clearCache() const
 	_intersectsModel = IS_UNKNOWN; // Cached value
 	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
+	_cachedCanonicalPoints.clear();
 	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedBBox = {};
 
+	_cachedAvgCurvature = -1;
+	_cachedAvgCurvatureByAxis[0] = -1;
+	_cachedAvgCurvatureByAxis[1] = -1;
+	_cachedAvgCurvatureByAxis[2] = -1;
 	_cachedMinGap = -1;
 	_maxOrthogonalityAngleRadians = -1;
-	_complexityScore = -1;
+	_cachedComplexityScore = -1;
 }
 
 ostream& DFHM::operator << (ostream& out, const Polyhedron& cell)

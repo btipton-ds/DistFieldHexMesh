@@ -63,6 +63,7 @@ public:
 	void clear() override;
 
 	Polyhedron& operator = (const Polyhedron& rhs);
+	void copyCaches(const Polyhedron& src);
 
 	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
@@ -73,7 +74,9 @@ public:
 	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
-	FastBisectionSet<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
+	const MTC::vector<Vector3d>& getCanonicalPoints() const;
+	MTC::set<EdgeKey> getCanonicalHexEdgeKeys(int ignoreAxis = -1) const;
+	MTC::set<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
 
@@ -82,7 +85,7 @@ public:
 	// Gets the faces for a vertex which belong to this polyhedron
 	FastBisectionSet<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
-	CBoundingBox3Dd getBoundingBox() const;
+	const CBoundingBox3Dd& getBoundingBox() const;
 	void clearCache() const;
 	void updateAllTopolCaches() const;
 
@@ -92,7 +95,7 @@ public:
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	double calVolume() const;
-	double calMaxCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
+	double calAvgCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
@@ -115,10 +118,11 @@ public:
 	bool hasTooMuchCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
-	double calMaxCurvature() const;
-	double calCurvature(int axis) const;
+	double calAvgCurvature() const;
+	double calAvgCurvature(int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
+	double getCurvatureScore(const SplittingParams& params, int axis = -1) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -150,6 +154,7 @@ public:
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
 
 	void makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
+	void makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -224,14 +229,16 @@ private:
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;
-	mutable double _complexityScore = -1;
+	mutable double _cachedComplexityScore = -1;
 	mutable double _maxOrthogonalityAngleRadians = -1;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	mutable double _cachedCurvature[3] = { -1, -1, -1 };
+	mutable double _cachedAvgCurvature = -1;
+	mutable double _cachedAvgCurvatureByAxis[3] = { -1, -1, -1 };
 
+	mutable MTC::vector<Vector3d> _cachedCanonicalPoints;
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
-
+	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;
 	mutable std::shared_ptr<const Model::SearchTree> _pSearchTree;
 };

@@ -95,7 +95,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	size_t getCurvatures(std::vector<double>& curvatures) const;
-	size_t getGaps(std::vector<double>& curvatures) const;
+	size_t getGaps(std::vector<double>& gaps) const;
 
 	void writeObj(const std::string& filenameRoot) const;
 
@@ -158,7 +158,8 @@ private:
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
 	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
-	std::vector<Vector2d> _pts, _boundaryPts;
+	std::vector<Vector2d> _pts;
+	std::vector<size_t> _boundaryIndices;
 	std::map<Vector2d, size_t> _ptToIndexMap;
 	std::set<Edge2D> _edges, _boundaryEdges;
 

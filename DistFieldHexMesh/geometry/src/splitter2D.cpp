@@ -81,7 +81,7 @@ Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 			size_t idx1 = addPoint(p1);
 			Edge2D e(idx0, idx1);
 
-			_boundaryPts.push_back(p0);
+			_boundaryIndices.push_back(idx0);
 			_boundaryEdges.insert(e);
 		}
 
@@ -374,10 +374,10 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 	POINT_MAP_TYPE ptMap;
 	createPointPointMap(ptMap);
 
+	double maxCurv = 0;
 	for (size_t i = 0; i < _pts.size(); i++) {
 		const auto& connectedIndices = ptMap[i];
 		if (connectedIndices.size() < 2) {
-			curvatures.push_back(0);
 			continue;
 		}
 		auto iter2 = connectedIndices.begin();
@@ -390,16 +390,16 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 		auto l0 = v0.norm();
 		auto l1 = v1.norm();
 		if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-			curvatures.push_back(0);
+			// Zero length segment(s) skip
 			continue;
 		}
 
 		v0 /= l0;
 		v1 /= l1;
 		double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-		if (cp > 0.7071 || cp < Tolerance::paramTol()) {
+		if (cp < Tolerance::paramTol()) {
 			curvatures.push_back(0);
-			continue; // Skip sharps and colinear points
+			continue; // Colinear, zero curvature
 		}
 
 		v0 = Vector2d(-v0[1], v0[0]);
@@ -420,8 +420,16 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 			curvatures.push_back(0);
 			continue; // Skip sharps and colinear points
 		}
-		curvatures.push_back(1 / radius);
-		}
+
+		double c = 1 / radius;
+		if (c > maxCurv)
+			maxCurv = c;
+		curvatures.push_back(c);
+	}
+
+	if (maxCurv < 1.0e-12)
+		return 0;
+
 	return curvatures.size();
 }
 
@@ -481,7 +489,10 @@ void Splitter2D::removeColinearVertsFromVertexLoop(Polyline& pl) const
 
 bool Splitter2D::insideBoundary(const Vector2d& testPt) const
 {
-	return insideBoundary(_boundaryPts, testPt);
+	vector<Vector2d> boundaryPts;
+	for (size_t i : _boundaryIndices)
+		boundaryPts.push_back(_pts[i]);
+	return insideBoundary(boundaryPts, testPt);
 }
 
 bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const vector<Vector2d>& testFacePts) const

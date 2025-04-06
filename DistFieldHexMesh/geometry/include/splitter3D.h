@@ -77,7 +77,7 @@ private:
 	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
-	Index3DId makeCellFromHexFaces(const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts, 
+	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
 		std::set<Index3DId>& allCellFaceIds, bool useAll);
 	void addFaceToLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
 	void removeFacefromLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;

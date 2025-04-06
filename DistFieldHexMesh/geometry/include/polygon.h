@@ -92,6 +92,7 @@ public:
 	void updateObjectKey();
 
 	Polygon& operator = (const Polygon& rhs);
+	void copyCaches(const Polygon& src);
 
 	void postAddToPoolActions() override;
 	const Index3DId& getId() const override;
@@ -141,7 +142,8 @@ public:
 
 	double calVertexAngle(size_t index) const;
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
-	double distanceToPoint(const Vector3d& pt) const;
+	double distFromPlane(const Vector3d& pt) const;
+
 	Planed calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;
 	const Vector3d& calUnitNormal() const;
@@ -149,7 +151,6 @@ public:
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	bool intersectsModel_possiblyDeprecated(const Model::SearchTree::Entry& entry) const;
-	double distFromPlane(const Vector3d& pt) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 

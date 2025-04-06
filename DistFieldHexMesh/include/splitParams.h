@@ -57,7 +57,7 @@ struct SplittingParams {
 	size_t numSharpVertDivs = 0;
 	size_t numSharpEdgeIntersectionDivs = 0;
 	size_t numCurvatureDivs = 1;
-	size_t divsPerCurvatureRadius = 2;
+	size_t curvatureDivsPerCircumference = 18;
 	size_t divsPerGapCurvatureRadius = 4;
 	size_t maxCoplanarFaces = 4;
 	size_t maxCellFaces = 12;

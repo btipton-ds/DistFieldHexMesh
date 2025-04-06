@@ -145,6 +145,15 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	return *this;
 }
 
+void Polygon::copyCaches(const Polygon& src)
+{
+	_isConvex = src._isConvex;
+	_cachedIntersectsModel = src._cachedIntersectsModel;
+	_cachedArea = src._cachedArea;
+	_cachedCentroid = src._cachedCentroid;
+	_cachedNormal = src._cachedNormal;
+}
+
 void Polygon::postAddToPoolActions()
 {
 	if (!_vertexIds.empty())
@@ -545,7 +554,7 @@ Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
 #if 0 && defined(_DEBUG)
 	for (const auto& vId : _vertexIds) {
 		Vector3d pt = getVertexPoint(vId);
-		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
+		assert(result.distFromPlane(pt) < Tolerance::sameDistTol());
 	}
 #endif // _DEBUG
 
@@ -600,23 +609,6 @@ double Polygon::calVertexError(const vector<Index3DId>& testVertIds) const
 	avgErr /= _vertexIds.size();
 
 	return avgErr;
-}
-
-double Polygon::distanceToPoint(const Vector3d& pt) const
-{
-	auto& ctr = calCentroid();
-	for (size_t i = 0; i < _vertexIds.size() - 1; i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
-		Vector3d v0 = pt0 - ctr;
-		Vector3d v1 = pt1 - ctr;
-		Vector3d n = v1.cross(v0).normalized();
-		Planed pl(ctr, n);
-		double d = pl.distanceToPoint(pt);
-		return d;
-	}
-	return DBL_MAX;
 }
 
 double Polygon::calVertexAngle(size_t idx1) const
@@ -864,9 +856,7 @@ bool Polygon::isPlanar() const
 	if (_vertexIds.size() == 3)
 		return true;
 
-	auto& ctr = calCentroid();
-	auto& norm = calUnitNormal();
-	Planed pl(ctr, norm);
+	Planed pl = calPlane();
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		auto& pt = getVertexPoint(_vertexIds[i]);
 		if (pl.distanceToPoint(pt) > Tolerance::sameDistTol())

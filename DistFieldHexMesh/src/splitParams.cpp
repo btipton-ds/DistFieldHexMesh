@@ -97,7 +97,7 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
 	in.read((char*)&numSharpEdgeIntersectionDivs, sizeof(numSharpEdgeIntersectionDivs));
 	in.read((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
-	in.read((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
+	in.read((char*)&curvatureDivsPerCircumference, sizeof(curvatureDivsPerCircumference));
 	in.read((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
 	in.read((char*)&maxCellFaces, sizeof(maxCellFaces));
 	in.read((char*)&baseBoxOffset, sizeof(baseBoxOffset));
@@ -151,7 +151,7 @@ void SplittingParams::write(std::ostream& out) const
 	out.write((char*)&numSharpVertDivs, sizeof(numSharpVertDivs));
 	out.write((char*)&numSharpEdgeIntersectionDivs, sizeof(numSharpEdgeIntersectionDivs));
 	out.write((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
-	out.write((char*)&divsPerCurvatureRadius, sizeof(divsPerCurvatureRadius));
+	out.write((char*)&curvatureDivsPerCircumference, sizeof(curvatureDivsPerCircumference));
 	out.write((char*)&divsPerGapCurvatureRadius, sizeof(divsPerGapCurvatureRadius));
 	out.write((char*)&maxCellFaces, sizeof(maxCellFaces));
 
