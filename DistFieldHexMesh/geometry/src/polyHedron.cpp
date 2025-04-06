@@ -931,7 +931,7 @@ double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 {
 	double avgCurvature = 0;
 	vector<TriMeshIndex> indices;
-	if (getTriIndices(indices)) {
+	if (getTriIndices(indices, false)) {
 		Splitter2D sp(polyPoints);
 
 		const auto& model = getModel();
@@ -1130,7 +1130,7 @@ bool Polyhedron::intersectsModel() const
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		_intersectsModel = IS_FALSE;
 		vector<Model::SearchTree::Entry> entries;
-		if (getTriEntries(entries)) {
+		if (getTriEntries(entries, true)) {
 			for (const auto& entry : entries) {
 				if (entryInside(entry)) {
 					_intersectsModel = IS_TRUE;
@@ -1304,26 +1304,37 @@ void Polyhedron::calAvgCurvatures() const
 	if (!intersectsModel())
 		return;
 
-	int steps = 3;
-	int num = 3 * steps;
+	size_t steps = 3;
+	size_t num = 3 * steps;
 
-	int axis = 0, step = 0;
-	double w = step / (steps - 1.0);
-	MTC::vector<Vector3d> facePts;
-	makeHexFacePoints(axis, w, facePts);
-	for (int i = 0; i < num; i++) {
-		_cachedAvgCurvatureByAxis[axis] += calAvgCurvature2D(facePts);
-		axis++;
-		if (axis >= 3) {
-			axis = 0;
-			step++;
-			if (step < steps) {
-				w = step / (steps - 1.0);
-				MTC::vector<Vector3d> facePts;
-				makeHexFacePoints(axis, w, facePts);
+	getCanonicalPoints();
+	auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
+	mutex mut;
+	subThreadPool.run(num, [this, steps, num, &mut](size_t threadNum, size_t idx)->bool {
+		int axis = 0, step = 0;
+		for (size_t i = 0; i < num; i++) {
+			if (i != idx)
+				continue;
+
+			double w = step / (steps - 1.0);
+			MTC::vector<Vector3d> facePts;
+			makeHexFacePoints(axis, w, facePts);
+
+			double c = calAvgCurvature2D(facePts);
+			{
+				lock_guard lg(mut);
+				_cachedAvgCurvatureByAxis[axis] += c;
+			}
+
+			axis++;
+			if (axis >= 3) {
+				axis = 0;
+				step++;
 			}
 		}
-	}
+		return true;
+	}, RUN_MULTI_SUB_THREAD);
+
 
 	for (int i = 0; i < 3; i++)
 		_cachedAvgCurvatureByAxis[i] /= steps;
@@ -1766,7 +1777,7 @@ const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
 	return _pSearchTree;
 }
 
-bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
+bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices, bool useSubThreads) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
@@ -1776,13 +1787,27 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 		vector<Model::SearchTree::Entry> tmp;
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
-			for (const auto& entry : tmp) {
-				if (entryInside(entry)) {
-					indices.push_back(entry.getIndex());
+			if (useSubThreads) {
+				mutex mut;
+				auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
+				subThreadPool.run(tmp.size(), [this, &mut, &tmp, &indices](size_t threadNum, size_t idx)->bool {
+					const auto& entry = tmp[idx];
+					if (entryInside(entry)) {
+						lock_guard lg(mut);
+						indices.push_back(entry.getIndex());
+					}
+					return true;
+					}, RUN_MULTI_SUB_THREAD);
+			} else {
+				for (const auto& entry : tmp) {
+					if (entryInside(entry)) {
+						indices.push_back(entry.getIndex());
+					}
 				}
 			}
 		}
-#if 1 // This turns on very expensive entity search testing.
+
+#if 0 // This turns on very expensive entity search testing.
 		auto pFull = getBlockPtr()->getModel().getSearchTree();
 		vector<TriMeshIndex> indicesFull;
 		vector<Model::SearchTree::Entry> tmpFull;
@@ -1818,7 +1843,7 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 	return !indices.empty();
 }
 
-bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const
+bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries, bool useSubThreads) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
@@ -1828,13 +1853,28 @@ bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) c
 		vector<Model::SearchTree::Entry> tmp;
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
-			for (const auto& entry : tmp) {
-				if (entryInside(entry)) {
-					entries.push_back(entry);
+			if (useSubThreads) {
+				mutex mut;
+				auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
+				subThreadPool.run(tmp.size(), [this, &mut, &tmp, &entries](size_t threadNum, size_t idx)->bool {
+					const auto& entry = tmp[idx];
+					if (entryInside(entry)) {
+						lock_guard lg(mut);
+						entries.push_back(entry);
+					}
+					return true;
+				}, false);
+			}
+			else {
+				for (const auto& entry : tmp) {
+					if (entryInside(entry)) {
+						entries.push_back(entry);
+					}
 				}
 			}
 		}
-#if 1 // This turns on very expensive entity search testing.
+
+#if 0 // This turns on very expensive entity search testing.
 		auto pFull = getBlockPtr()->getModel().getSearchTree();
 		vector<Model::SearchTree::Entry> entriesFull;
 		vector<Model::SearchTree::Entry> tmpFull;

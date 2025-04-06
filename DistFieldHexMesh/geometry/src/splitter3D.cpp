@@ -325,7 +325,6 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 				double cs = newCell.getCurvatureScore(_params, axis);
 				double delta = cs / baseCs;
 				if (delta < 1) {
-					cout << "baseCs: " << baseCs << ", cs: " << cs << "\n";
 					numCurvatures++;
 				}
 			}

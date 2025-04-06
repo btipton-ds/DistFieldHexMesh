@@ -105,8 +105,8 @@ public:
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
 	bool entryInside(const Model::SearchTree::Entry& entry) const;
-	bool getTriIndices(std::vector<TriMeshIndex>& indices) const;
-	bool getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const;
+	bool getTriIndices(std::vector<TriMeshIndex>& indices, bool useSubThreads) const;
+	bool getTriEntries(std::vector<Model::SearchTree::Entry>& entries, bool useSubThreads) const;
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;

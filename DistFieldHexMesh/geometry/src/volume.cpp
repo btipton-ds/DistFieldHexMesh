@@ -85,6 +85,14 @@ Volume::Volume(const Volume& src)
 Volume::~Volume()
 {
 	clear();
+
+	if (_pThreadPool) {
+		_pThreadPool->run(numThreads(), [](size_t, size_t)->bool {
+			ThreadPool::deleteSubThreadPool();
+			return true;
+		}, true);
+	}
+
 	_pThreadPool = nullptr;
 }
 
