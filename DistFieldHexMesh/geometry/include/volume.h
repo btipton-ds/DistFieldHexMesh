@@ -220,7 +220,6 @@ private:
 	Planed _sharpVertPlane;
 
 	mutable std::shared_ptr<MultiCore::ThreadPool> _pThreadPool;
-	static thread_local std::shared_ptr<MultiCore::ThreadPool> s_pSubThreadPool;
 };
 
 using VolumePtr = std::shared_ptr<Volume>;

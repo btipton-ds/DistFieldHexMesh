@@ -263,8 +263,6 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		doCurvatureSplit = !doIntersectionSplit && _splitLevel < _params.numCurvatureDivs;
 	} 
 	
-	double baseCurvatureScore = parentCell.getCurvatureScore(_params);
-
 	doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
 	doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 

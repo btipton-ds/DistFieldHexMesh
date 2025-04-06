@@ -931,7 +931,7 @@ double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 {
 	double avgCurvature = 0;
 	vector<TriMeshIndex> indices;
-	if (getTriIndices(indices, false)) {
+	if (getTriIndices(indices)) {
 		Splitter2D sp(polyPoints);
 
 		const auto& model = getModel();
@@ -1096,12 +1096,6 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 
 	bool result = false;
 
-	for (int i = 0; i < 3; i++) {
-		if (pointInside(*pts[i])) {
-			return true;
-		}
-	}
-
 	for (const auto& faceId : _faceIds) {
 		const auto& face = getPolygon(faceId);
 		face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
@@ -1118,7 +1112,11 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 
 			return true; // false exits the lambda for loop
 		});
+
+		if (result)
+			break;
 	}
+
 	return result;
 }
 
@@ -1130,7 +1128,7 @@ bool Polyhedron::intersectsModel() const
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		_intersectsModel = IS_FALSE;
 		vector<Model::SearchTree::Entry> entries;
-		if (getTriEntries(entries, true)) {
+		if (getTriEntries(entries)) {
 			for (const auto& entry : entries) {
 				if (entryInside(entry)) {
 					_intersectsModel = IS_TRUE;
@@ -1308,34 +1306,22 @@ void Polyhedron::calAvgCurvatures() const
 	size_t num = 3 * steps;
 
 	getCanonicalPoints();
-	auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
-	mutex mut;
-	subThreadPool.run(num, [this, steps, num, &mut](size_t threadNum, size_t idx)->bool {
-		int axis = 0, step = 0;
-		for (size_t i = 0; i < num; i++) {
-			if (i != idx)
-				continue;
+	int axis = 0, step = 0;
+	for (size_t i = 0; i < num; i++) {
+		double w = step / (steps - 1.0);
+		MTC::vector<Vector3d> facePts;
+		makeHexFacePoints(axis, w, facePts);
 
-			double w = step / (steps - 1.0);
-			MTC::vector<Vector3d> facePts;
-			makeHexFacePoints(axis, w, facePts);
+		double c = calAvgCurvature2D(facePts);
+		_cachedAvgCurvatureByAxis[axis] += c;
 
-			double c = calAvgCurvature2D(facePts);
-			{
-				lock_guard lg(mut);
-				_cachedAvgCurvatureByAxis[axis] += c;
-			}
-
-			axis++;
-			if (axis >= 3) {
-				axis = 0;
-				step++;
-			}
+		axis++;
+		if (axis >= 3) {
+			axis = 0;
+			step++;
 		}
-		return true;
-	}, RUN_MULTI_SUB_THREAD);
-
-
+	}
+	
 	for (int i = 0; i < 3; i++)
 		_cachedAvgCurvatureByAxis[i] /= steps;
 }
@@ -1777,7 +1763,7 @@ const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
 	return _pSearchTree;
 }
 
-bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices, bool useSubThreads) const
+bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
@@ -1787,22 +1773,9 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices, bool useSubTh
 		vector<Model::SearchTree::Entry> tmp;
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
-			if (useSubThreads) {
-				mutex mut;
-				auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
-				subThreadPool.run(tmp.size(), [this, &mut, &tmp, &indices](size_t threadNum, size_t idx)->bool {
-					const auto& entry = tmp[idx];
-					if (entryInside(entry)) {
-						lock_guard lg(mut);
-						indices.push_back(entry.getIndex());
-					}
-					return true;
-					}, RUN_MULTI_SUB_THREAD);
-			} else {
-				for (const auto& entry : tmp) {
-					if (entryInside(entry)) {
-						indices.push_back(entry.getIndex());
-					}
+			for (const auto& entry : tmp) {
+				if (entryInside(entry)) {
+					indices.push_back(entry.getIndex());
 				}
 			}
 		}
@@ -1843,7 +1816,7 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices, bool useSubTh
 	return !indices.empty();
 }
 
-bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries, bool useSubThreads) const
+bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
@@ -1853,23 +1826,9 @@ bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries, b
 		vector<Model::SearchTree::Entry> tmp;
 		auto pClipped = getSearchTree();
 		if (pClipped && pClipped->find(bbox, tmp)) {
-			if (useSubThreads) {
-				mutex mut;
-				auto& subThreadPool = MultiCore::ThreadPool::getSubThreadPool();
-				subThreadPool.run(tmp.size(), [this, &mut, &tmp, &entries](size_t threadNum, size_t idx)->bool {
-					const auto& entry = tmp[idx];
-					if (entryInside(entry)) {
-						lock_guard lg(mut);
-						entries.push_back(entry);
-					}
-					return true;
-				}, false);
-			}
-			else {
-				for (const auto& entry : tmp) {
-					if (entryInside(entry)) {
-						entries.push_back(entry);
-					}
+			for (const auto& entry : tmp) {
+				if (entryInside(entry)) {
+					entries.push_back(entry);
 				}
 			}
 		}
