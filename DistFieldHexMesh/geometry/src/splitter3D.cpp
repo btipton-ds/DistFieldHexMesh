@@ -382,7 +382,7 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 		// Curvature calculations are indpendent of newCells
 
 		double processCurvature = 1 / _params.ignoreCurvatureRadius_meters;
-		auto curv = parentCell.calAvgCurvature(axis);
+		auto curv = parentCell.getAvgCurvature(axis);
 		exceedsCurvature[axis] = curv > processCurvature;
 	}
 

@@ -1274,12 +1274,12 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-double Polyhedron::calAvgCurvature() const
+double Polyhedron::getAvgCurvature() const
 {
 	if (_cachedAvgCurvature < 0) {
 		_cachedAvgCurvature = 0;
 		for (int axis = 0; axis < 3; axis++) {
-			auto c = calAvgCurvature(axis);
+			auto c = getAvgCurvature(axis);
 			_cachedAvgCurvature += c;
 		}
 		_cachedAvgCurvature /= 3;
@@ -1287,32 +1287,46 @@ double Polyhedron::calAvgCurvature() const
 	return _cachedAvgCurvature;
 }
 
-double Polyhedron::calAvgCurvature(int axis) const
+double Polyhedron::getAvgCurvature(int axis) const
 {
-	if (!intersectsModel())
-		return 0;
-
-	if (_cachedAvgCurvatureByAxis[axis] > 0)
-		return _cachedAvgCurvatureByAxis[axis];
-
-	// Split the cell with a plane on each axis
-	// When one of the binary split cells has no intersections, it's 4 subcells are marked as no intersect
-	// When finished, only subcells with intersections are marked true
-	auto pVol = getBlockPtr()->getVolume();
-
-	_cachedAvgCurvatureByAxis[axis] = 0;
-	int steps = 3;
-	for (int i = 0; i < steps; i++) {
-		double w = i / (steps - 1.0);
-		MTC::vector<Vector3d> facePts;
-		makeHexFacePoints(axis, w, facePts);
-		// TODO The curvature score should be calculated against face points here where we have them.
-		_cachedAvgCurvatureByAxis[axis] = calAvgCurvature2D(facePts);
+	if (_cachedAvgCurvatureByAxis[axis] < 0) {
+		calAvgCurvatures();
 	}
 
-	_cachedAvgCurvatureByAxis[axis] /= steps;
-
 	return _cachedAvgCurvatureByAxis[axis];
+}
+
+void Polyhedron::calAvgCurvatures() const
+{
+	for (int i = 0; i < 3; i++)
+		_cachedAvgCurvatureByAxis[i] = 0;
+
+	if (!intersectsModel())
+		return;
+
+	int steps = 3;
+	int num = 3 * steps;
+
+	int axis = 0, step = 0;
+	double w = step / (steps - 1.0);
+	MTC::vector<Vector3d> facePts;
+	makeHexFacePoints(axis, w, facePts);
+	for (int i = 0; i < num; i++) {
+		_cachedAvgCurvatureByAxis[axis] += calAvgCurvature2D(facePts);
+		axis++;
+		if (axis >= 3) {
+			axis = 0;
+			step++;
+			if (step < steps) {
+				w = step / (steps - 1.0);
+				MTC::vector<Vector3d> facePts;
+				makeHexFacePoints(axis, w, facePts);
+			}
+		}
+	}
+
+	for (int i = 0; i < 3; i++)
+		_cachedAvgCurvatureByAxis[i] /= steps;
 }
 
 double Polyhedron::getComplexityScore(const SplittingParams& params) const
@@ -1366,7 +1380,7 @@ double Polyhedron::getCurvatureScore(const SplittingParams& params, int axis) co
 	int count = 0;
 	for (int testAxis = 0; testAxis < 3; testAxis++) {
 		if (testAxis != axis) {
-			auto v = calAvgCurvature(testAxis);
+			auto v = getAvgCurvature(testAxis);
 			avgCurv += v;
 			count++;
 		}

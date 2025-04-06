@@ -118,8 +118,8 @@ public:
 	bool hasTooMuchCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
-	double calAvgCurvature() const;
-	double calAvgCurvature(int axis) const;
+	double getAvgCurvature() const;
+	double getAvgCurvature(int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
 	double getCurvatureScore(const SplittingParams& params, int axis = -1) const;
@@ -198,6 +198,8 @@ private:
 	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
+
+	void calAvgCurvatures() const;
 
 	Index3DId _thisId;
 	/*
