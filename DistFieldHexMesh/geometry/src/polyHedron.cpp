@@ -1137,22 +1137,14 @@ bool Polyhedron::intersectsModel() const
 			}
 #endif
 			size_t numAvail = tp.numThreadsAvailable();
-			if (indices.size() > 64 && numAvail > MultiCore::getNumCores() / 4) {
-				tp.run(indices.size(), [this, &indices](size_t threadNum, size_t i)->bool {
-					if (entryIntersectsModel(indices[i])) {
-						_intersectsModel = IS_TRUE;
-						return false;
-					}
-					return true;
-				}, RUN_MULTI_SUB_THREAD);
-			} else {
-				for (const auto& idx : indices) {
-					if (entryIntersectsModel(idx)) {
-						_intersectsModel = IS_TRUE;
-						return true;
-					}
+			size_t numCores = MultiCore::getNumCores();
+			tp.run(indices.size(), [this, &indices](size_t threadNum, size_t i)->bool {
+				if (entryIntersectsModel(indices[i])) {
+					_intersectsModel = IS_TRUE;
+					return false;
 				}
-			}
+				return true;
+			}, RUN_MULTI_SUB_THREAD && (indices.size() > 2 * numCores && numAvail > numCores / 4));
 		}
 	}
 
