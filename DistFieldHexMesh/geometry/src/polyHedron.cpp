@@ -1122,28 +1122,38 @@ bool Polyhedron::intersectsModel() const
 		_intersectsModel = IS_FALSE;
 		vector<TriMeshIndex> indices;
 		if (getTriIndices(indices)) {
-#if 0
+
 			vector<vector<const Vector3d*>> faceTris;
 			for (const auto& faceId : _faceIds) {
 				const auto& face = getPolygon(faceId);
-				face.iterateTriangles([this, &faceTris](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2) {
-					vector<const Vector3d*> tris;
-					tris.resize(3);
-					tris[0] = &getVertexPoint(id0);
-					tris[1] = &getVertexPoint(id1);
-					tris[2] = &getVertexPoint(id2);
+				face.iterateTriangles([this, &faceTris](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+					vector<const Vector3d*> tris{
+						&getVertexPoint(id0),
+						&getVertexPoint(id1),
+						&getVertexPoint(id2),
+					};
 					faceTris.push_back(tris);
+
+					return true;
 				});
 			}
-#endif
+
+			auto& model = getModel();
 			size_t numAvail = tp.numThreadsAvailable();
 			size_t numCores = MultiCore::getNumCores();
-			tp.run(indices.size(), [this, &indices](size_t threadNum, size_t i)->bool {
-				if (entryIntersectsModel(indices[i])) {
-					_intersectsModel = IS_TRUE;
-					return false;
+
+			bool result = false;
+			tp.run(indices.size(), [this, &model, &indices, &faceTris, tol](size_t threadNum, size_t i)->bool {
+				const Vector3d* pts[3];
+				model.getTri(indices[i], pts);
+
+				for (const auto& fp : faceTris) {
+					if (intersectTriTri(pts, fp.data(), tol)) {
+						_intersectsModel = IS_TRUE;
+						break;
+					}
 				}
-				return true;
+				return _intersectsModel != IS_TRUE;
 			}, RUN_MULTI_SUB_THREAD && (indices.size() > 2 * numCores && numAvail > numCores / 4));
 		}
 	}
