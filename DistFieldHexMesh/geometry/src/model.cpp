@@ -218,13 +218,27 @@ const TriMesh::CVertex& Model::getVert(const TriMeshIndex& idx) const
 	return _modelMeshData[idx.getMeshIdx()]->getMesh()->getVert(idx.getTriIdx());
 }
 
-const Model::MultMeshTriangle Model::getTri(const TriMeshIndex& idx) const
+const Model::MultMeshTriangle Model::getTriIndices(const TriMeshIndex& idx) const
 {
 	const auto& triIdx = _modelMeshData[idx.getMeshIdx()]->getMesh()->getTri(idx.getTriIdx());
 	MultMeshTriangle result;
 	for (int i = 0; i < 3; i++)
 		result._vertIds[i] = TriMeshIndex(idx.getMeshIdx(), triIdx[i]);
 	return result;
+}
+
+bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
+{
+	auto pMesh = _modelMeshData[idx.getMeshIdx()]->getMesh().get();
+
+	if (pMesh) {
+		auto tri = pMesh->getTri(idx.getTriIdx());
+		for (int i = 0; i < 3; i++) {
+			pts[i] = &pMesh->getVert(tri[i])._pt;
+		}
+		return true;
+	}
+	return false;
 }
 
 const TriMesh::CEdge& Model::getEdge(const TriMeshIndex& idx) const

@@ -938,12 +938,8 @@ double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 		double height = -DBL_MAX;
 		Vector2d maxPt;
 		for (const auto& multiTriIdx : indices) {
-			auto& triIdx = model.getTri(multiTriIdx);
-			Vector3d pts[] = {
-				model.getVert(triIdx[0])._pt,
-				model.getVert(triIdx[1])._pt,
-				model.getVert(triIdx[2])._pt,
-			};
+			const Vector3d* pts[3];
+			model.getTri(multiTriIdx, pts);
 			sp.add3DTriEdges(pts);
 		}
 		vector<double> curvatures;
@@ -1082,17 +1078,13 @@ bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
 
 }
 
-bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
+bool Polyhedron::entryIntersectsModel(const TriMeshIndex& index) const
 {
 	const auto& tol = Tolerance::sameDistTol();
 
 	auto& model = getModel();
-	auto tri = model.getTri(entry.getIndex());
-	const Vector3d* pts[] = {
-		&model.getVert(tri[0])._pt,
-		&model.getVert(tri[1])._pt,
-		&model.getVert(tri[2])._pt,
-	};
+	const Vector3d* pts[3];
+	model.getTri(index, pts);
 
 	bool result = false;
 
@@ -1111,7 +1103,7 @@ bool Polyhedron::entryInside(const Model::SearchTree::Entry& entry) const
 			}
 
 			return true; // false exits the lambda for loop
-		});
+			});
 
 		if (result)
 			break;
@@ -1124,15 +1116,41 @@ bool Polyhedron::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
 		const auto tol = Tolerance::sameDistTol();
+		auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
 
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		_intersectsModel = IS_FALSE;
-		vector<Model::SearchTree::Entry> entries;
-		if (getTriEntries(entries)) {
-			for (const auto& entry : entries) {
-				if (entryInside(entry)) {
-					_intersectsModel = IS_TRUE;
+		vector<TriMeshIndex> indices;
+		if (getTriIndices(indices)) {
+#if 0
+			vector<vector<const Vector3d*>> faceTris;
+			for (const auto& faceId : _faceIds) {
+				const auto& face = getPolygon(faceId);
+				face.iterateTriangles([this, &faceTris](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2) {
+					vector<const Vector3d*> tris;
+					tris.resize(3);
+					tris[0] = &getVertexPoint(id0);
+					tris[1] = &getVertexPoint(id1);
+					tris[2] = &getVertexPoint(id2);
+					faceTris.push_back(tris);
+				});
+			}
+#endif
+			size_t numAvail = tp.numThreadsAvailable();
+			if (indices.size() > 64 && numAvail > MultiCore::getNumCores() / 4) {
+				tp.run(indices.size(), [this, &indices](size_t threadNum, size_t i)->bool {
+					if (entryIntersectsModel(indices[i])) {
+						_intersectsModel = IS_TRUE;
+						return false;
+					}
 					return true;
+				}, RUN_MULTI_SUB_THREAD);
+			} else {
+				for (const auto& idx : indices) {
+					if (entryIntersectsModel(idx)) {
+						_intersectsModel = IS_TRUE;
+						return true;
+					}
 				}
 			}
 		}
@@ -1767,105 +1785,43 @@ bool Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
-	try {
-		indices.clear();
-		auto& bbox = getBoundingBox();
-		vector<Model::SearchTree::Entry> tmp;
-		auto pClipped = getSearchTree();
-		if (pClipped && pClipped->find(bbox, tmp)) {
-			for (const auto& entry : tmp) {
-				if (entryInside(entry)) {
-					indices.push_back(entry.getIndex());
-				}
-			}
-		}
+	indices.clear();
+	auto& bbox = getBoundingBox();
+	auto pClipped = getSearchTree();
+	if (!pClipped || !pClipped->find(bbox, indices)) {
+		return false;
+	}
 
 #if 0 // This turns on very expensive entity search testing.
-		auto pFull = getBlockPtr()->getModel().getSearchTree();
-		vector<TriMeshIndex> indicesFull;
-		vector<Model::SearchTree::Entry> tmpFull;
-		if (pFull && pFull->find(bbox, tmpFull)) {
-			for (const auto& entry : tmpFull) {
-				if (entryInside(entry)) {
-					indicesFull.push_back(entry.getIndex());
-				}
+	auto pFull = getBlockPtr()->getModel().getSearchTree();
+	vector<TriMeshIndex> indicesFull;
+	vector<Model::SearchTree::Entry> tmpFull;
+	if (pFull && pFull->find(bbox, tmpFull)) {
+		for (const auto& entry : tmpFull) {
+			if (entryInside(entry)) {
+				indicesFull.push_back(entry.getIndex());
 			}
 		}
+	}
 
-		if (!indices.empty()) {
-			if (indicesFull.size() != indices.size()) {
+	if (!indices.empty()) {
+		if (indicesFull.size() != indices.size()) {
+			stringstream ss;
+			ss << "Search trees sizes don't match. indices.size: " << indices.size() << ", indicesFull.size() : " << indicesFull.size() << " " << __FILE__ << " : " << __LINE__;
+			throw runtime_error(ss.str());
+		}
+		set<TriMeshIndex> test;
+		test.insert(indices.begin(), indices.end());
+		for (const auto& idx : indicesFull) {
+			if (!test.contains(idx)) {
 				stringstream ss;
-				ss << "Search trees sizes don't match. indices.size: " << indices.size() << ", indicesFull.size() : " << indicesFull.size() << " " << __FILE__ << " : " << __LINE__;
+				ss << "Search trees don't match. " << __FILE__ << ":" << __LINE__;
 				throw runtime_error(ss.str());
 			}
-			set<TriMeshIndex> test;
-			test.insert(indices.begin(), indices.end());
-			for (const auto& idx : indicesFull) {
-				if (!test.contains(idx)) {
-					stringstream ss;
-					ss << "Search trees don't match. " << __FILE__ << ":" << __LINE__;
-					throw runtime_error(ss.str());
-				}
-			}
 		}
+	}
 #endif
-	}
-	catch (const runtime_error& err) {
-		cout << err.what() << " cell: " << getId() << "\n";
-	}
 	return !indices.empty();
-}
-
-bool Polyhedron::getTriEntries(std::vector<Model::SearchTree::Entry>& entries) const
-{
-	const auto tol = Tolerance::sameDistTol();
-
-	try {
-		entries.clear();
-		auto bbox = getBoundingBox();
-		vector<Model::SearchTree::Entry> tmp;
-		auto pClipped = getSearchTree();
-		if (pClipped && pClipped->find(bbox, tmp)) {
-			for (const auto& entry : tmp) {
-				if (entryInside(entry)) {
-					entries.push_back(entry);
-				}
-			}
-		}
-
-#if 0 // This turns on very expensive entity search testing.
-		auto pFull = getBlockPtr()->getModel().getSearchTree();
-		vector<Model::SearchTree::Entry> entriesFull;
-		vector<Model::SearchTree::Entry> tmpFull;
-		if (pFull && pFull->find(bbox, tmpFull)) {
-			for (const auto& entry : tmpFull) {
-				if (entryInside(entry)) {
-					entriesFull.push_back(entry);
-				}
-			}
-		}
-
-		if (!entries.empty()) {
-			if (entriesFull.size() != entries.size()) {
-				stringstream ss;
-				ss << "Search trees sizes don't match. entries.size: " << entries.size() << ", entriesFull.size() : " << entriesFull.size() << " " << __FILE__ << " : " << __LINE__;
-				throw runtime_error(ss.str());
-			}
-			set<Model::SearchTree::Entry> test;
-			test.insert(entries.begin(), entries.end());
-			for (const auto& entry : entriesFull) {
-				if (!test.contains(entry)) {
-					stringstream ss;
-					ss << "Search trees don't match. " << __FILE__ << ":" << __LINE__;
-					throw runtime_error(ss.str());
-				}
-			}
-		}
-#endif
-	} catch (const runtime_error& err) {
-		cout << err.what() << " cell: " << getId() << "\n";
-	}
-	return !entries.empty();
 }
 
 MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const

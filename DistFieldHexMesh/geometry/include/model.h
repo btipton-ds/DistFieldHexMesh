@@ -82,7 +82,8 @@ public:
 	std::shared_ptr<const SearchTree> getSubTree(const BOX_TYPE& bbox) const;
 
 	const TriMesh::CVertex& getVert(const TriMeshIndex& idx) const;
-	const MultMeshTriangle getTri(const TriMeshIndex& idx) const;
+	const MultMeshTriangle getTriIndices(const TriMeshIndex& idx) const;
+	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
 	const TriMesh::CEdge& getEdge(const TriMeshIndex& idx) const;
 	double triCurvature(const TriMeshIndex& idx) const;
 

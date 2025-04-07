@@ -92,7 +92,9 @@ public:
 	static Index3D calBlockIndexFromLinearIndex(size_t linearIdx, const Index3D& volDim);
 	Index3D calBlockIndexFromLinearIndex(size_t linearIdx) const;
 
-	void setAppData(const AppDataPtr& pAppData);
+	MultiCore::ThreadPool& getThreadPool() const;
+
+	void setAppData(const AppDataPtr& pAppData, const std::shared_ptr<MultiCore::ThreadPool> pThreadPool);
 	const AppDataPtr& getAppData() const;
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
@@ -164,7 +166,7 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
-	void initScratch(const Volume* pVol);
+	void initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::ThreadPool> pThreadPool);
 	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
 	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
@@ -180,7 +182,6 @@ private:
 	void findSharpEdgeEdges();
 
 	void reportProgress(ProgressReporter* pProgress);
-	int numThreads() const;
 
 	friend class PolymeshTables;
 
@@ -224,9 +225,9 @@ private:
 
 using VolumePtr = std::shared_ptr<Volume>;
 
-inline void Volume::setAppData(const AppDataPtr& pAppData)
+inline MultiCore::ThreadPool& Volume::getThreadPool() const
 {
-	_pAppData = pAppData;
+	return *_pThreadPool;
 }
 
 inline const AppDataPtr& Volume::getAppData() const

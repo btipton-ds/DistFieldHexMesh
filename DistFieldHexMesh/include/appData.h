@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <triMesh.h>
 #include <OGLMultiVboHandler.h>
+#include <MultiCoreUtil.h>
 #include <splitParams.h>
 #include <model.h>
 #include <volume.h>
@@ -79,6 +80,8 @@ public:
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
 
+    const std::shared_ptr<MultiCore::ThreadPool>& getThreadPool() const;
+        
     VolumePtr getVolume() const;
     MainFrame* getMainFrame();
 
@@ -133,6 +136,8 @@ private:
 
     SplittingParams _params;
     std::wstring _dhfmFilename;
+
+    mutable std::shared_ptr<MultiCore::ThreadPool> _pThreadPool;
 };
 
 inline SplittingParams& AppData::getParams()

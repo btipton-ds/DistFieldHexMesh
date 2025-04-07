@@ -85,6 +85,7 @@ public:
 
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 	void add3DTriEdges(const Vector3d pts[3]);
+	void add3DTriEdges(const Vector3d* pts[3]);
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);

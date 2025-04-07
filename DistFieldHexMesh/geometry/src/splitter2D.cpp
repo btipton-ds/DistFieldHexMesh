@@ -130,7 +130,7 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	}
 }
 
-void Splitter2D::add3DTriEdges(const Vector3d pts[3])
+void Splitter2D::add3DTriEdges(const Vector3d* pts[3])
 {
 	const auto tolSqr = Tolerance::sameDistTolSqr();
 
@@ -138,7 +138,7 @@ void Splitter2D::add3DTriEdges(const Vector3d pts[3])
 	int numInBounds = 0;
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
-		LineSegmentd seg(pts[i], pts[j]);
+		LineSegmentd seg(*pts[i], *pts[j]);
 		RayHitd hit;
 		if (_plane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
 			assert(_plane.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());

@@ -55,11 +55,11 @@ bool TestMultiCore::testAll()
 bool TestMultiCore::test0(size_t numCores)
 {
 	for (size_t i = 0; i < 10; i++) {
-		MultiCore::ThreadPool tp(numCores);
+		MultiCore::ThreadPool tp(numCores, numCores);
 
 		std::vector<std::vector<size_t>> vv;
-		vv.resize(tp.getNumThreads());
-		for (size_t i = 0; i < tp.getNumThreads(); i++) {
+		vv.resize(tp.getNumAllocatedThreads());
+		for (size_t i = 0; i < tp.getNumAllocatedThreads(); i++) {
 			tp.run(512, [i, &vv](size_t threadNum, size_t idx)->bool {
 				auto& v = vv[threadNum];
 				for (size_t i = 0; i < idx + 5; i++) {
@@ -74,7 +74,7 @@ bool TestMultiCore::test0(size_t numCores)
 
 bool TestMultiCore::testSpeed(size_t numCores)
 {
-	MultiCore::ThreadPool tp(numCores);
+	MultiCore::ThreadPool tp(numCores, numCores);
 
 #ifdef _WIN32
 	LARGE_INTEGER startCount, endCount, freq;
@@ -83,7 +83,7 @@ bool TestMultiCore::testSpeed(size_t numCores)
 
 	size_t size = 1025 * 1024 * 1024;
 	vector<size_t> v;
-	v.resize(tp.getNumThreads());
+	v.resize(tp.getNumAllocatedThreads());
 	tp.run(size, [&v](size_t threadNum, size_t idx)->bool {
 		v[threadNum]++;
 		return true;

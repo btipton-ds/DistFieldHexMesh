@@ -150,7 +150,6 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
-	bool intersectsModel_possiblyDeprecated(const Model::SearchTree::Entry& entry) const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 
@@ -208,6 +207,7 @@ private:
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable Vector3d _cachedNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	mutable std::mutex _nonColinearVertexIdsMutex;
 	mutable MTC::vector<Index3DId> _nonColinearVertexIds;
 };
 

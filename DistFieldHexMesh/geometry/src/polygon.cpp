@@ -188,6 +188,7 @@ void Polygon::addVertex(const Index3DId& vertId)
 
 const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 {
+	lock_guard lg(_nonColinearVertexIdsMutex);
 	if (_nonColinearVertexIds.empty())
 		_nonColinearVertexIds = PolygonSearchKey::makeNonColinearVertexIds(getOurBlockPtr(), _vertexIds);
 
@@ -628,39 +629,6 @@ const Vector3d& Polygon::calCentroid() const
 Vector3d Polygon::calCentroidApprox() const
 {
 	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
-}
-
-bool Polygon::intersectsModel_possiblyDeprecated(const Model::SearchTree::Entry& entry) const
-{
-	const double tol = Tolerance::sameDistTol();
-	if (_cachedIntersectsModel == IS_UNKNOWN) {
-		_cachedIntersectsModel = IS_FALSE;
-		const auto& model = getBlockPtr()->getModel();
-		auto& triIdx = entry.getIndex();
-		const auto tri = model.getTri(triIdx);
-		const Vector3d* pts[] = {
-			&model.getVert(tri[0])._pt,
-			&model.getVert(tri[1])._pt,
-			&model.getVert(tri[2])._pt,
-		};
-
-		iterateTriangles([this, &pts, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			const Vector3d* facePts[] = {
-				&getVertexPoint(id0),
-				&getVertexPoint(id1),
-				&getVertexPoint(id2),
-			};
-
-			if (intersectTriTri(pts, facePts, tol)) {
-				_cachedIntersectsModel = IS_TRUE;
-			}
-
-			return _cachedIntersectsModel != IS_TRUE; // false exits the lambda for loop
-		});
-		
-	}
-
-	return _cachedIntersectsModel == IS_TRUE;
 }
 
 double Polygon::distFromPlane(const Vector3d& pt) const

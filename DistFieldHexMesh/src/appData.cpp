@@ -78,6 +78,14 @@ AppData::~AppData()
 {
 }
 
+const std::shared_ptr<MultiCore::ThreadPool>& AppData::getThreadPool() const
+{
+    if (!_pThreadPool) {
+        _pThreadPool = make_shared< MultiCore::ThreadPool>(MultiCore::getNumCores(), MultiCore::getNumCores());
+    }
+    return _pThreadPool;
+}
+
 void AppData::preDestroy()
 {
     // Clear these to avoid infinite loop on shared_ptr destruction. Ugly, but gets around hang on exit.
@@ -280,7 +288,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     in.read((char*)&hasVolume, sizeof(hasVolume));
     if (hasVolume) {
         _pVolume = make_shared<Volume>();
-        _pVolume->setAppData(shared_from_this());
+        _pVolume->setAppData(shared_from_this(), getThreadPool());
 
         _pVolume->read(in);
         _pVolume->createAdHocBlockSearchTree();
@@ -783,7 +791,7 @@ void AppData::doCreateBaseVolume()
 {
     clear(false);
     _pVolume = make_shared<Volume>(_params.volDivs);
-    _pVolume->setAppData(shared_from_this());
+    _pVolume->setAppData(shared_from_this(), getThreadPool());
 
     _pVolume->setVolCornerPts(_params.getVolBounds());
 
@@ -825,7 +833,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
         dlg.getParams(_params);
 
-#if 1
+#if 0
         _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
         buildHexFaceTables();
         const Index3D min(0, 0, 0);
