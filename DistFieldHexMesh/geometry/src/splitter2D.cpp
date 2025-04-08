@@ -35,21 +35,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-class LineSegment2d {
-public:
-	LineSegment2d(const Vector2d& pt0 = Vector2d(0, 0), const Vector2d& pt1 = Vector2d(0, 0));
-	LineSegment2d(const LineSegment2d& rhs) = default;
-
-	bool project(const Vector2d& pt, double& t) const;
-	bool intersect(const LineSegment2d& other, double& t) const;
-	const Vector2d& operator[](size_t idx) const;
-	Vector2d& operator[](size_t idx);
-	Vector2d interpolate(double t);
-
-private:
-	vector<Vector2d> _vals;
-};
-
 Splitter2D::Splitter2D(const Planed& plane)
 	: _plane(plane)
 {
@@ -132,33 +117,43 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 
 void Splitter2D::add3DTriEdges(const Vector3d* pts[3])
 {
+	Vector2d pt0, pt1;
+	if (calIntersectionTriPts(pts, pt0, pt1)) {
+		addEdge(pt0, pt1);
+	}
+}
+
+bool Splitter2D::calIntersectionTriPts(const Vector3d* const* triPts, Vector2d& pt0, Vector2d& pt1) const
+{
 	const auto tolSqr = Tolerance::sameDistTolSqr();
 
-	set<Vector2d> iPts;
 	int numInBounds = 0;
+	Vector2d iPts[3];
+	int count = 0;
 	for (int i = 0; i < 3; i++) {
 		int j = (i + 1) % 3;
-		LineSegmentd seg(*pts[i], *pts[j]);
+		LineSegmentd triSeg(*triPts[i], *triPts[j]);
 		RayHitd hit;
-		if (_plane.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
-			assert(_plane.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
-			assert(seg.distanceToPoint(hit.hitPt) < Tolerance::sameDistTol());
-			assert (seg.parameterize(hit.hitPt) > -Tolerance::sameDistTol() && seg.parameterize(hit.hitPt) < 1 + Tolerance::sameDistTol());
+		if (_plane.intersectLineSegment(triSeg, hit, Tolerance::sameDistTol())) {
 			Vector2d pt;
 			if (project(hit.hitPt, pt)) {
-				iPts.insert(pt);
+				iPts[count++] = pt;
 			}
 		}
 	}
 
-	if (iPts.size() == 2) {
-		auto it = iPts.begin();
-		const auto& pt0 = *it++;
-		const auto& pt1 = *it;
-		if ((pt1 - pt0).squaredNorm() > tolSqr && (insideBoundary(pt0) || insideBoundary(pt1))) {
-			addEdge(pt0, pt1);
+	if (count == 2) {
+		pt0 = iPts[0];
+		pt1 = iPts[1];
+		if ((pt1 - pt0).squaredNorm() > tolSqr) {
+			LineSegment2d boundarySeg(pt0, pt1);
+			if (segIntersectsBoundary(boundarySeg)) {
+				return true;
+			}
 		}
 	}
+
+	return false;
 }
 
 void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
@@ -361,8 +356,8 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 		// We're getting spurs that duplicate spurs which were already created.
 		// Need to check for spurs every time a loop is removed in case it leaves and orphan edge.
 		// The duplicate remover should deal with it.
-		polylines.insert(polylines.end(), pls.begin(), pls.end());
-		pls.clear();
+polylines.insert(polylines.end(), pls.begin(), pls.end());
+pls.clear();
 	}
 
 	return polylines.size();
@@ -409,10 +404,10 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 		auto mid1 = (pt1 + pt2) * 0.5;
 		LineSegment2d seg0(mid0, v0);
 		LineSegment2d seg1(mid1, v1);
-		double t;
-		if (!seg0.intersect(seg1, t)) {
+		double t, tOther;
+		if (!seg0.intersect(seg1, t, tOther)) {
 			curvatures.push_back(0);
-			continue; // Skip sharps and colinear points
+			continue; // seg0 and seg1 are parallel, no intersection and zero curvature
 		}
 		Vector2d pt = seg0.interpolate(t);
 		auto radius = (pt0 - pt).norm();
@@ -436,6 +431,52 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 size_t Splitter2D::getGaps(vector<double>& curvatures) const
 {
 	return 0;
+}
+
+bool Splitter2D::intersectsTriPoints(const Vector3d* const* triPts) const
+{
+	Vector2d iPt0, iPt1;
+	if (calIntersectionTriPts(triPts, iPt0, iPt1)) {
+		LineSegment2d testSeg(iPt0, iPt1);
+		if (insideBoundary(testSeg[0]))
+			return true;
+
+		for (size_t i = 0; i < _boundaryIndices.size(); i++) {
+
+			size_t j = (i + 1) % _boundaryIndices.size();
+			auto& bPt0 = _pts[_boundaryIndices[i]];
+			auto& bPt1 = _pts[_boundaryIndices[j]];
+
+			double t, tOther;
+			LineSegment2d seg(bPt0, bPt1);
+			if (seg.intersect(testSeg, t, tOther)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool Splitter2D::segIntersectsBoundary(const LineSegment2d& testSeg) const
+{
+	if (insideBoundary(testSeg[0])) { // Don't need to check pt1 because it will be checked on the next pass
+		return true;
+	}
+
+	for (int i = 0; i < _boundaryIndices.size(); i++) {
+		int j = (i + 1) % _boundaryIndices.size();
+		const auto& segPt0 = _pts[_boundaryIndices[i]];
+		const auto& segPt1 = _pts[_boundaryIndices[j]];
+
+		LineSegment2d seg(segPt0, segPt1);
+		double t, tOther;
+		if (seg.intersect(testSeg, t, tOther)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void Splitter2D::writeObj(const string& filenameRoot) const
@@ -487,32 +528,26 @@ void Splitter2D::removeColinearVertsFromVertexLoop(Polyline& pl) const
 
 }
 
-bool Splitter2D::insideBoundary(const Vector2d& testPt) const
-{
-	vector<Vector2d> boundaryPts;
-	for (size_t i : _boundaryIndices)
-		boundaryPts.push_back(_pts[i]);
-	return insideBoundary(boundaryPts, testPt);
-}
-
-bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const vector<Vector2d>& testFacePts) const
+bool Splitter2D::insideBoundary(const vector<Vector2d>& testFacePts) const
 {
 	for (const auto& testPt : testFacePts) {
-		if (!insideBoundary(boundaryPts, testPt))
+		if (!insideBoundary(testPt))
 			return false;
 	}
 	return true;
 }
-bool Splitter2D::insideBoundary(const vector<Vector2d>& boundaryPts, const Vector2d& testPt) const
+bool Splitter2D::insideBoundary(const Vector2d& testPt) const
 {
 	// Check if the point lies on the positive side of all edges
-	for (size_t i = 0; i < boundaryPts.size(); i++) {
-		Vector2d v = testPt - boundaryPts[i];
+	for (size_t i = 0; i < _boundaryIndices.size(); i++) {
+		auto& pt0 = _pts[_boundaryIndices[i]];
+		Vector2d v = testPt - pt0;
 		if (v.squaredNorm() < Tolerance::sameDistTolSqr())
 			return true; // Points coincident
 
-		size_t j = (i + 1) % boundaryPts.size();
-		Vector2d xAxis = boundaryPts[j] - boundaryPts[i];
+		size_t j = (i + 1) % _boundaryIndices.size();
+		auto& pt1 = _pts[_boundaryIndices[j]];
+		Vector2d xAxis = pt1 - pt0;
 		xAxis.normalize();
 		Vector2d yAxis(-xAxis[1], xAxis[0]);
 		double dist = v.dot(yAxis);
@@ -771,8 +806,8 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
-	double t;
-	if (seg0.intersect(seg1, t) && tol < t && t < 1 - tol) {
+	double t, tOther;
+	if (seg0.intersect(seg1, t, tOther)) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt1 = seg0.interpolate(t);
 		auto iter = _ptToIndexMap.find(pt1);
@@ -942,18 +977,18 @@ inline size_t Edge2D::otherIdx(size_t i) const
 
 inline LineSegment2d::LineSegment2d(const Vector2d& pt0, const Vector2d& pt1)
 {
-	_vals = { pt0, pt1 };
+	_pts = { pt0, pt1 };
 }
 
 bool LineSegment2d::project(const Vector2d& pt, double& t) const
 {
 	const double tolSqr = Tolerance::sameDistTolSqr();
 
-	Vector2d dir = (_vals[1] - _vals[0]);
+	Vector2d dir = (_pts[1] - _pts[0]);
 	auto len = dir.norm();
 	dir /= len;
 
-	Vector2d v = pt - _vals[0];
+	Vector2d v = pt - _pts[0];
 	auto dp = v.dot(dir);
 	t = dp / len;
 	v = v - dir * dp;
@@ -961,90 +996,141 @@ bool LineSegment2d::project(const Vector2d& pt, double& t) const
 	return errSqr < tolSqr;
 }
 
-bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
+bool LineSegment2d::intersect(const LineSegment2d& other, double& t, double& tOther) const
 {
+#ifdef _DEBUG
+	static mutex mut;
+	lock_guard lg(mut);
+#endif // _DEBUG
+
 	const double tol = Tolerance::paramTol();
-	const double MIN_COS_ANGLE = 1.0e-8;
+	t = tOther = -1;
 
 	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < 2; j++) {
-			if ((_vals[i] - other._vals[j]).squaredNorm() < Tolerance::sameDistTolSqr()) {
+			if ((_pts[i] - other._pts[j]).squaredNorm() < Tolerance::sameDistTolSqr()) {
 				// The line segments share a point
 				t = (i == 0) ? 0 : 1;
+				tOther = (j == 0) ? 0 : 1;
 				return true;
 			}
 		}
 	}
 
-	Vector2d xAxis = _vals[1] - _vals[0];
+	Vector2d xAxis = _pts[1] - _pts[0];
 	double len0 = xAxis.norm();
 	if (len0 < tol)
 		return  false;
 	xAxis /= len0;
 
+	auto vOther = other[1] - other[0];
+	auto lenOther = vOther.norm();
+	if (lenOther < tol)
+		return  false;
+	vOther /= lenOther;
+
 	Vector2d yAxis(-xAxis[1], xAxis[0]);
 
-	Vector2d dir = other[1] - other[0];
-	double len1 = dir.norm();
-	if (len1 < tol)
-		return false;
-	dir /= len1;
+	auto v0 = other[0] - _pts[0];
+	auto v1 = other[1] - _pts[0];
 
-	auto dp = dir.dot(yAxis);
-	if (fabs(dp) < MIN_COS_ANGLE) {
-		for (int i = 0; i < 2; i++) {
-			Vector2d v = other[i] - _vals[0];
-			if (fabs(v.dot(yAxis)) < tol) {
-				double l = v.dot(xAxis);
-				t = l / len0;
-				if (tol < t && t < 1 - tol)
-					return true;
-			}
-		}
-		return false; // dir is perpendicular to yAxis, so parallel to xAxis
-	}
+	double x0 = xAxis.dot(v0);
+	double y0 = yAxis.dot(v0);
 
-	Vector2d v = other[0] - _vals[0];
+	double x1 = xAxis.dot(v1);
+	double y1 = yAxis.dot(v1);
 
-	auto h = v.dot(yAxis);
-	auto dist0 = -h / dp;
-	Vector2d hitPt = other[0] +  dir * dist0;
+	double dx = x1 - x0;
+	double dy = y1 - y0;
 
-	v = hitPt - _vals[0];
-	auto dist1 = v.norm();
-	t = dist1 / len0;
-
-	bool inBounds = tol < t && t < 1 - tol;
-#if VALIDATION_ON && defined(_DEBUG) // Verification code
-	if (inBounds) {
-		Vector2d vTest = hitPt - _vals[0];
-		double testDist = vTest.dot(yAxis);
-		if (fabs(testDist) > tol) {
-			assert(!"Point not on seg0");
+	if (fabs(dy) < Tolerance::sameDistTol()) {
+		// Horizontal line case
+		if (fabs(y0) >= tol && fabs(y1) >= tol) {
+			return false; // They are parallel but not colinear, not intersecting
 		}
 
-		Vector2d vx = hitPt - other[0];
-		vx = vx - dir * vx.dot(dir);
-		if (vx.norm() > tol) {
-			assert(!"Point not on seg1");
+		double t00 = x0 / len0;
+		double t01 = x1 / len0;
+
+		// AND both of the test seg's points fall outside our range
+		if ((t00 <= tol && t01 <= tol) || (t00 >= 1 - tol && t01 >= 1 - tol)) {
+			// Both are less than zero or both are greater than 1
+			return false;
+		} 
+
+		if (-tol < t00 && t00 < 1 + tol) {
+			t = t00;
+		} else {
+			t = t01;
 		}
-	}
+	} else {
+		double slope = DBL_MAX;;
+		if (fabs(dx) >= tol)
+			slope = dy / dx;
+
+		if (fabs(slope) > 1.0e6) {
+			// Vertical line case
+			double sign = fabs(y0) > 0 ? y1 / y0 : (fabs(y1) > 0 ? y0 / y1 : 0);
+
+			if (sign <= 0) {
+				// crosses x axis
+				double x = 0.5 * (x0 + x1);
+				t = x / len0;
+			} else
+				return false;
+		} else {
+			double b = y0 - slope * x0;
+//			double xIntercept = -b / slope;
+			t = (-b / slope) / len0;
+		}
+
+		if (-tol < t && t < 1 + tol) {
+			if (t < 0)
+				t = 0;
+			else if (t > 1)
+				t = 1;
+		} else
+			return false;
+
+		auto iPt = _pts[0] + xAxis * len0 * t;
+
+		auto v = iPt - other[0];
+		auto distOther = vOther.dot(v);
+		tOther = distOther / lenOther;
+
+		if (-tol < tOther && tOther < 1 + tol) {
+			if (tOther < 0)
+				tOther = 0;
+			else if (tOther > 1)
+				tOther = 1;
+		} else
+			return false;
+
+#ifdef _DEBUG
+		{
+			v = v - vOther * distOther;
+			assert(v.squaredNorm() < Tolerance::sameDistTolSqr());
+			auto iPtOther = other[0] + vOther * lenOther * tOther;
+			assert((iPtOther - iPt).squaredNorm() < Tolerance::sameDistTolSqr());
+		}
 #endif
-	
-	return inBounds;
+		return true;
+	}
+
+	return false;
 }
 
 inline const Vector2d& LineSegment2d::operator[](size_t idx) const
 {
-	return _vals[idx];
+	return _pts[idx];
 }
 
 inline Vector2d& LineSegment2d::operator[](size_t idx)
 {
-	return _vals[idx];
+	return _pts[idx];
 }
 
-Vector2d LineSegment2d::interpolate(double t)
+Vector2d LineSegment2d::interpolate(double t) const
 {
 	const double tol = Tolerance::paramTol();
 	assert(t >= -tol && t <= 1 + tol);
@@ -1052,9 +1138,14 @@ Vector2d LineSegment2d::interpolate(double t)
 		t = 0;
 	else if (t > 1)
 		t = 1;
-	Vector2d v = _vals[1] - _vals[0];
-	Vector2d x = _vals[0] + v * t;
+	Vector2d v = _pts[1] - _pts[0];
+	Vector2d x = _pts[0] + v * t;
 	return x;
+}
+
+double LineSegment2d::length() const
+{
+	return (_pts[1] - _pts[0]).norm();
 }
 
 size_t Splitter2D::Polyline::firstIdx() const

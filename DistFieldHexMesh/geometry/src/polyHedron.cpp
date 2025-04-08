@@ -1123,19 +1123,15 @@ bool Polyhedron::intersectsModel() const
 		vector<TriMeshIndex> indices;
 		if (getTriIndices(indices)) {
 
-			vector<vector<const Vector3d*>> faceTris;
+			vector<shared_ptr<Splitter2D>> faceSplitters;
 			for (const auto& faceId : _faceIds) {
 				const auto& face = getPolygon(faceId);
-				face.iterateTriangles([this, &faceTris](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-					vector<const Vector3d*> tris{
-						&getVertexPoint(id0),
-						&getVertexPoint(id1),
-						&getVertexPoint(id2),
-					};
-					faceTris.push_back(tris);
-
-					return true;
-				});
+				vector<Vector3d> facePts;
+				auto& ids = face.getNonColinearVertexIds();
+				for (const auto& id : ids)
+					facePts.push_back(getVertexPoint(id));
+				
+				faceSplitters.push_back(make_shared<Splitter2D>(facePts));
 			}
 
 			auto& model = getModel();
@@ -1143,12 +1139,13 @@ bool Polyhedron::intersectsModel() const
 			size_t numCores = MultiCore::getNumCores();
 
 			bool result = false;
-			tp.run(indices.size(), [this, &model, &indices, &faceTris, tol](size_t threadNum, size_t i)->bool {
+			tp.run(indices.size(), [this, &model, &indices, &faceSplitters, tol](size_t threadNum, size_t i)->bool {
 				const Vector3d* pts[3];
 				model.getTri(indices[i], pts);
 
-				for (const auto& fp : faceTris) {
-					if (intersectTriTri(pts, fp.data(), tol)) {
+				for (const auto& pSp : faceSplitters) {
+					auto& sp = *pSp;
+					if (sp.intersectsTriPoints(pts)) {
 						_intersectsModel = IS_TRUE;
 						break;
 					}

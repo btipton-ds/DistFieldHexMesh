@@ -294,43 +294,32 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 template<class F>
 void Polygon::iterateEdges(F fLambda) const
 {
-	try {
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			EdgeKey ek(_vertexIds[i], _vertexIds[j]);
-			bool result;
-			edgeFunc(ek, [&result, &fLambda](const Edge& edge) {
-				result = fLambda(edge);
-				});
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+		bool result;
+		edgeFunc(ek, [&result, &fLambda](const Edge& edge) {
+			result = fLambda(edge);
+			});
 
-			if (!result)
-				break;
-		}
-	} catch (std::runtime_error err) {
-		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		throw err;
+		if (!result)
+			break;
 	}
 }
 
 template<class F>
 void Polygon::iterateEdges(F fLambda)
 {
-	try {
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			size_t j = (i + 1) % _vertexIds.size();
-			EdgeKey ek(_vertexIds[i], _vertexIds[j]);
-			bool result;
-			edgeFunc(ek, [&result, &fLambda](Edge& edge) {
-				result = fLambda(edge);
-				});
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+		bool result;
+		edgeFunc(ek, [&result, &fLambda](Edge& edge) {
+			result = fLambda(edge);
+			});
 
-			if (!result)
-				break;
-		}
-	}
-	catch (std::runtime_error err) {
-		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		throw err;
+		if (!result)
+			break;
 	}
 }
 
@@ -365,22 +354,16 @@ void Polygon::iterateOrientedEdges(F fLambda, const Index3DId& cellId) const
 template<class F>
 void Polygon::iterateTriangles(F fLambda) const
 {
-	try {
-		const auto& verts = getNonColinearVertexIds();
-		if (verts.size() < 3) {
-			throw (std::runtime_error("Less than three vertices"));
-		}
-
-		size_t i = 0;
-		for (size_t j = 1; j < verts.size() - 1; j++) {
-			size_t k = (j + 1) % verts.size();
-			if (!fLambda(verts[i], verts[j], verts[k]))
-				break;
-		}
+	const auto& verts = getNonColinearVertexIds();
+	if (verts.size() < 3) {
+		throw (std::runtime_error("Less than three vertices"));
 	}
-	catch (std::runtime_error err) {
-		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		throw err;
+
+	size_t i = 0;
+	for (size_t j = 1; j < verts.size() - 1; j++) {
+		size_t k = (j + 1) % verts.size();
+		if (!fLambda(verts[i], verts[j], verts[k]))
+			break;
 	}
 }
 
@@ -413,37 +396,31 @@ void Polygon::iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const
 template<class TRI_FUNC, class EDGE_FUNC>
 void Polygon::getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const
 {
-	try {
-		std::vector<Vector3d> pts;
-		pts.resize(_vertexIds.size());
-		for (size_t i = 0; i < _vertexIds.size(); i++)
-			pts[i] = getVertexPoint(_vertexIds[i]);
+	std::vector<Vector3d> pts;
+	pts.resize(_vertexIds.size());
+	for (size_t i = 0; i < _vertexIds.size(); i++)
+		pts[i] = getVertexPoint(_vertexIds[i]);
 
-		if (pts.size() > 4) {
-			auto& ctr = calCentroid();
-			for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
-				size_t idx1 = (idx0 + 1) % pts.size();
-				triFunc(ctr, pts[idx0], pts[idx1]);
-			}
-		}
-		else {
-			for (size_t i = 1; i < pts.size() - 1; i++) {
-				size_t idx0 = 0;
-				size_t idx1 = i;
-				size_t idx2 = i + 1;
-				triFunc(pts[idx0], pts[idx1], pts[idx2]);
-			}
-		}
-
-		for (size_t i = 0; i < pts.size(); i++) {
-			size_t idx0 = i;
+	if (pts.size() > 4) {
+		auto& ctr = calCentroid();
+		for (size_t idx0 = 0; idx0 < pts.size(); idx0++) {
 			size_t idx1 = (idx0 + 1) % pts.size();
-			edgeFunc(pts[idx0], pts[idx1]);
+			triFunc(ctr, pts[idx0], pts[idx1]);
 		}
 	}
-	catch (std::runtime_error err) {
-		std::cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		throw err;
+	else {
+		for (size_t i = 1; i < pts.size() - 1; i++) {
+			size_t idx0 = 0;
+			size_t idx1 = i;
+			size_t idx2 = i + 1;
+			triFunc(pts[idx0], pts[idx1], pts[idx2]);
+		}
+	}
+
+	for (size_t i = 0; i < pts.size(); i++) {
+		size_t idx0 = i;
+		size_t idx1 = (idx0 + 1) % pts.size();
+		edgeFunc(pts[idx0], pts[idx1]);
 	}
 }
 

@@ -394,17 +394,11 @@ bool Polygon::isCoplanar(const EdgeKey& edgeKey) const
 Vector3d Polygon::calCentroidApproxStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
 {
 	Vector3d ctr(0, 0, 0);
-	try {
-		if (vertIds.empty())
-			return Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
-		for (size_t i = 0; i < vertIds.size(); i++)
-			ctr += pBlock->getVertexPoint(vertIds[i]);
-		ctr /= vertIds.size();
-	} catch (runtime_error err) {
-		cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		cout << err.what();
-		throw err;
-	}
+	if (vertIds.empty())
+		return Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	for (size_t i = 0; i < vertIds.size(); i++)
+		ctr += pBlock->getVertexPoint(vertIds[i]);
+	ctr /= vertIds.size();
 
 	return ctr;
 }
@@ -452,32 +446,25 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 {
 	Vector3d norm(0, 0, 0);
 
-	try {
-		size_t i = 0;
-		Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
-		for (size_t j = 1; j < vertIds.size() - 1; j++) {
-			size_t k = (j + 1) % vertIds.size();
+	size_t i = 0;
+	Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
+	for (size_t j = 1; j < vertIds.size() - 1; j++) {
+		size_t k = (j + 1) % vertIds.size();
 
-			Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
-			Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
+		Vector3d pt1 = pBlock->getVertexPoint(vertIds[j]);
+		Vector3d pt2 = pBlock->getVertexPoint(vertIds[k]);
 
-			Vector3d v0 = pt0 - pt1;
-			Vector3d v1 = pt2 - pt1;
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
 
-			Vector3d n = v1.cross(v0);
-			double l = n.norm();
-			if (l > Tolerance::angleTol()) {
-				n /= l;
-				norm += n;
-			}
+		Vector3d n = v1.cross(v0);
+		double l = n.norm();
+		if (l > Tolerance::angleTol()) {
+			n /= l;
+			norm += n;
 		}
-		norm.normalize();
-	} catch (runtime_error err) {
-		cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		cout << err.what();
-		throw err;
 	}
-	return norm;
+	norm.normalize();	return norm;
 }
 
 void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const MTC::vector<Index3DId>& vertIds)
@@ -533,15 +520,9 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 Planed Polygon::calPlane() const
 {
 	Planed result;
-	try {
-		auto& origin = calCentroid(); // Use every point to get more preceision
-		auto& normal = calUnitNormal();
-		result = Planed(origin, normal);
-	} catch (runtime_error err) {
-		cout << "Exception thrown: " << __FILE__ << ":" << __LINE__ << err.what() << "\n";
-		cout << err.what();
-		throw err;
-	}
+	auto& origin = calCentroid(); // Use every point to get more preceision
+	auto& normal = calUnitNormal();
+	result = Planed(origin, normal);
 
 	return result;
 }

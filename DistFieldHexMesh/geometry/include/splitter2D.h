@@ -68,6 +68,22 @@ private:
 	size_t _indices[2];
 };
 
+class LineSegment2d {
+public:
+	LineSegment2d(const Vector2d& pt0 = Vector2d(0, 0), const Vector2d& pt1 = Vector2d(0, 0));
+	LineSegment2d(const LineSegment2d& rhs) = default;
+
+	bool project(const Vector2d& pt, double& t) const;
+	bool intersect(const LineSegment2d& other, double& t, double& tOther) const;
+	const Vector2d& operator[](size_t idx) const;
+	Vector2d& operator[](size_t idx);
+	Vector2d interpolate(double t) const;
+	double length() const;
+
+private:
+	std::vector<Vector2d> _pts;
+};
+
 class Splitter2D {
 	using POINT_MAP_TYPE = std::vector<std::set<size_t>>;
 public:
@@ -82,6 +98,7 @@ public:
 
 	Splitter2D(const Planed& plane);
 	Splitter2D(const MTC::vector<Vector3d>& polyPoints);
+	Splitter2D(const MTC::vector<const Vector3d*>& polyPoints);
 
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 	void add3DTriEdges(const Vector3d pts[3]);
@@ -97,6 +114,8 @@ public:
 
 	size_t getCurvatures(std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
+
+	bool intersectsTriPoints(const Vector3d* const * triPts) const;
 
 	void writeObj(const std::string& filenameRoot) const;
 
@@ -134,8 +153,8 @@ private:
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
 	void addEdge(const Edge2D& edge);
 	bool insideBoundary(const Vector2d& testPt) const;
-	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const std::vector<Vector2d>& testFacePts) const;
-	bool insideBoundary(const std::vector<Vector2d>& boundaryPts, const Vector2d& testPt) const;
+	bool insideBoundary(const std::vector<Vector2d>& testFacePts) const;
+	bool segIntersectsBoundary(const LineSegment2d& testSeg) const;
 
 	size_t createPolylines(POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
@@ -143,6 +162,7 @@ private:
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
 	bool project(const Vector3d& pt, Vector2d& result) const;
 	Vector3d pt3D(size_t idx) const;
+	bool calIntersectionTriPts(const Vector3d* const * pts, Vector2d& pt0, Vector2d& pt1) const;
 
 	size_t getPolylines(std::vector<Polyline>& polylines) const;
 	void removeColinearVertsFromVertexLoop(Polyline& pl) const;
