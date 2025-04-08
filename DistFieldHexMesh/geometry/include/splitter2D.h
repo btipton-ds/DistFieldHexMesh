@@ -74,7 +74,7 @@ public:
 	LineSegment2d(const LineSegment2d& rhs) = default;
 
 	bool project(const Vector2d& pt, double& t) const;
-	bool intersect(const LineSegment2d& other, double& t, double& tOther) const;
+	bool intersect(const LineSegment2d& other, double& t) const;
 	const Vector2d& operator[](size_t idx) const;
 	Vector2d& operator[](size_t idx);
 	Vector2d interpolate(double t) const;

@@ -404,8 +404,8 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 		auto mid1 = (pt1 + pt2) * 0.5;
 		LineSegment2d seg0(mid0, v0);
 		LineSegment2d seg1(mid1, v1);
-		double t, tOther;
-		if (!seg0.intersect(seg1, t, tOther)) {
+		double t;
+		if (!seg0.intersect(seg1, t)) {
 			curvatures.push_back(0);
 			continue; // seg0 and seg1 are parallel, no intersection and zero curvature
 		}
@@ -447,9 +447,9 @@ bool Splitter2D::intersectsTriPoints(const Vector3d* const* triPts) const
 			auto& bPt0 = _pts[_boundaryIndices[i]];
 			auto& bPt1 = _pts[_boundaryIndices[j]];
 
-			double t, tOther;
+			double t;
 			LineSegment2d seg(bPt0, bPt1);
-			if (seg.intersect(testSeg, t, tOther)) {
+			if (seg.intersect(testSeg, t)) {
 				return true;
 			}
 		}
@@ -470,8 +470,8 @@ bool Splitter2D::segIntersectsBoundary(const LineSegment2d& testSeg) const
 		const auto& segPt1 = _pts[_boundaryIndices[j]];
 
 		LineSegment2d seg(segPt0, segPt1);
-		double t, tOther;
-		if (seg.intersect(testSeg, t, tOther)) {
+		double t;
+		if (seg.intersect(testSeg, t)) {
 			return true;
 		}
 	}
@@ -806,8 +806,8 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
-	double t, tOther;
-	if (seg0.intersect(seg1, t, tOther)) {
+	double t;
+	if (seg0.intersect(seg1, t)) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt1 = seg0.interpolate(t);
 		auto iter = _ptToIndexMap.find(pt1);
@@ -996,7 +996,7 @@ bool LineSegment2d::project(const Vector2d& pt, double& t) const
 	return errSqr < tolSqr;
 }
 
-bool LineSegment2d::intersect(const LineSegment2d& other, double& t, double& tOther) const
+bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 {
 #ifdef _DEBUG
 	static mutex mut;
@@ -1004,7 +1004,8 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t, double& tOt
 #endif // _DEBUG
 
 	const double tol = Tolerance::paramTol();
-	t = tOther = -1;
+	double tOther = -1;
+	t = -1;
 
 	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < 2; j++) {
@@ -1099,22 +1100,16 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t, double& tOt
 		tOther = distOther / lenOther;
 
 		if (-tol < tOther && tOther < 1 + tol) {
-			if (tOther < 0)
-				tOther = 0;
-			else if (tOther > 1)
-				tOther = 1;
-		} else
-			return false;
-
 #ifdef _DEBUG
-		{
 			v = v - vOther * distOther;
 			assert(v.squaredNorm() < Tolerance::sameDistTolSqr());
 			auto iPtOther = other[0] + vOther * lenOther * tOther;
 			assert((iPtOther - iPt).squaredNorm() < Tolerance::sameDistTolSqr());
-		}
 #endif
-		return true;
+			return true;
+		} 
+		
+		return false;
 	}
 
 	return false;
