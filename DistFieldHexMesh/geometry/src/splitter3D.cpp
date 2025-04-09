@@ -156,28 +156,9 @@ bool Splitter3D::splitAtCenter()
 		default:
 			result = false;
 		}
-		// Now set all the split lev
-		for (auto& createdCellId : _createdCellIds) {
-			auto& createdCell = getPolyhedron(createdCellId);
-			// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
-			if (!_intersectsModel)
-				createdCell.setIntersectsModel(false);
-			else {
-				auto subBbox = createdCell.getBoundingBox();
-				if (!createdCell._hasSetSearchTree) {
-					createdCell._hasSetSearchTree = true;
-					if (_hasSetSearchTree) {
-						createdCell._pSearchTree = _pSearchSourceTree;
-						if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 128*/) {
-							// Splitting small trees takes time and memory, so only reduce larger ones
-							createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(subBbox);
-						}
-					} else
-						createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModel().getSubTree(subBbox);
-				}
-			}
-			createdCell.setSplitLevel(_splitLevel + 1);
-		}
+
+		finalizeCreatedCells();
+
 		int dbgBreak = 1;
 	} catch (const runtime_error& err) {
 		cout << "Exception thrown: " << err.what() << "\n";
@@ -483,6 +464,32 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 
 	_createdCellIds.erase(parentId);
 	getBlockPtr()->freePolyhedron(parentId);
+}
+
+void Splitter3D::finalizeCreatedCells()
+{
+	for (auto& createdCellId : _createdCellIds) {
+		auto& createdCell = getPolyhedron(createdCellId);
+		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
+		if (!_intersectsModel)
+			createdCell.setIntersectsModel(false);
+		else {
+			auto subBbox = createdCell.getBoundingBox();
+			if (!createdCell._hasSetSearchTree) {
+				createdCell._hasSetSearchTree = true;
+				if (_hasSetSearchTree) {
+					createdCell._pSearchTree = _pSearchSourceTree;
+					if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 128*/) {
+						// Splitting small trees takes time and memory, so only reduce larger ones
+						createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(subBbox);
+					}
+				}
+				else
+					createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModel().getSubTree(subBbox);
+			}
+		}
+		createdCell.setSplitLevel(_splitLevel + 1);
+	}
 }
 
 void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId)

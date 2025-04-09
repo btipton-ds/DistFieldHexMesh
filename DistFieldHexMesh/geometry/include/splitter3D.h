@@ -83,6 +83,7 @@ private:
 	void removeFacefromLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
 	Index3DId findConnectedFaceId(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
 	void verifyLocalEdgeSet(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
+	void finalizeCreatedCells();
 
 	Index3DId makeScratchCell(const Index3DId& parentId);
 	Index3DId makeScratchFace(const Index3DId& srcFaceId);
