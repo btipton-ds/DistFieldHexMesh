@@ -847,7 +847,7 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
 	size_t subPassNum;
-	for (subPassNum = 0; subPassNum < 5; subPassNum++) {
+	for (subPassNum = 0; subPassNum < 6; subPassNum++) {
 		changed = false;
 		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))

@@ -163,16 +163,17 @@ bool Splitter3D::splitAtCenter()
 			if (!_intersectsModel)
 				createdCell.setIntersectsModel(false);
 			else {
-				if (_hasSetSearchTree)
-					createdCell._pSearchTree = _pSearchSourceTree;
-				else
-					createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModelSearchTree();
-
-				createdCell._hasSetSearchTree = true;
-				if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 512*/) {
-					auto ourBbox = createdCell.getBoundingBox();
-					createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(ourBbox);
-					int dbgBreak = 1;
+				auto subBbox = createdCell.getBoundingBox();
+				if (!createdCell._hasSetSearchTree) {
+					createdCell._hasSetSearchTree = true;
+					if (_hasSetSearchTree) {
+						createdCell._pSearchTree = _pSearchSourceTree;
+						if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 128*/) {
+							// Splitting small trees takes time and memory, so only reduce larger ones
+							createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(subBbox);
+						}
+					} else
+						createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModel().getSubTree(subBbox);
 				}
 			}
 			createdCell.setSplitLevel(_splitLevel + 1);
