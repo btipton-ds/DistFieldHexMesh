@@ -482,7 +482,7 @@ void Volume::initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::Th
 	_blocks[0] = createBlock(0);
 }
 
-void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
+void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	_modelBoundingBox.clear();
 	_modelBoundingBox.merge(volBox);
@@ -512,6 +512,9 @@ void Volume::buildModelBlocks(const SplittingParams& params, const Vector3d pts[
 	reportProgress(pReporter);
 
 	gradeSurroundingBlocks(params, pReporter, multiCore);
+	runThreadPool([this, pReporter](size_t threadNum, const BlockPtr& pBlk) {
+		pBlk->deleteModelSearchTree();
+	}, multiCore);
 }
 
 void Volume::buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore)

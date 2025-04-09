@@ -154,6 +154,7 @@ public:
 
 	const Model& getModel() const;
 	const std::shared_ptr<const Model::SearchTree>& getModelSearchTree() const;
+	void deleteModelSearchTree();
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());

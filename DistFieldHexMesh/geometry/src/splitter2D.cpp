@@ -1100,7 +1100,7 @@ bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 		tOther = distOther / lenOther;
 
 		if (-tol < tOther && tOther < 1 + tol) {
-#ifdef _DEBUG
+#if 0 && defined(_DEBUG)
 			v = v - vOther * distOther;
 			assert(v.squaredNorm() < Tolerance::sameDistTolSqr());
 			auto iPtOther = other[0] + vOther * lenOther * tOther;

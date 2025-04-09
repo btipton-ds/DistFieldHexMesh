@@ -192,6 +192,11 @@ const std::shared_ptr<const Model::SearchTree>& Block::getModelSearchTree() cons
 	return _pSearchTree;
 }
 
+void Block::deleteModelSearchTree()
+{
+	_pSearchTree = nullptr;
+}
+
 void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)
 {
 	size_t srcIdx = Volume::calLinearBlockIndex(_blockIdx, srcDims);
