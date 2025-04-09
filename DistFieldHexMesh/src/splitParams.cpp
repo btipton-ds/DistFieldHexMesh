@@ -36,14 +36,8 @@ size_t SplittingParams::numConditionalPasses() const
 	if (numIntersectionDivs > result)
 		result = numIntersectionDivs;
 
-	if (numSharpVertDivs > result)
-		result = numSharpVertDivs;
-
 	if (numCurvatureDivs > result)
 		result = numCurvatureDivs;
-
-	if (numSharpEdgeIntersectionDivs > result)
-		result = numSharpEdgeIntersectionDivs;
 
 	return result;
 }

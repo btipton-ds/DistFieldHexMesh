@@ -199,7 +199,7 @@ public:
 	void removeFromTouchedCellList(const Index3DId& cellId);
 
 	void addToSplitStack(const Index3DId& cellIds);
-	void updateSplitStack(size_t splitNum);
+	void updateSplitStack();
 	bool hasPendingSplits() const;
 
 	void resetLayerNums();

@@ -793,58 +793,84 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	bool didSplit = false;
 	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
-	while (_splitNum < numPasses) {
+	bool changed = false;
+	for (_splitNum = 0; _splitNum < numPasses; _splitNum++) {
 		pReporter->reportProgress();
 
-		bool changed = false;
-		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 				if (cell.setNeedToSplitConditional(_splitNum, params)) {
 					changed = true;
 				}
-				});
+			});
+		}, multiCore);
+
+		if (changed) {
+			finishSplits(params, multiCore);
+			//		assert(verifyTopology(multiCore));
+		}
+		else {
+			cout << "Finished early. No more splits required: " << _splitNum << "\n";
+			break;
+		}
+		pReporter->reportProgress();
+	}
+
+	int numComplexPasses;
+	for (numComplexPasses = 0; numComplexPasses < 10; numComplexPasses++) {
+		changed = false;
+		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
+			pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
+				if (cell.isTooComplex(params)) {
+					changed = true;
+					pBlk->addToSplitStack(cell.getId());
+				}
+				return true;
+			});
+		}, multiCore);
+
+		if (changed) {
+			finishSplits(params, multiCore);
+		} else {
+			break;
+		}
+	}
+	if (changed) {
+		cout << "Warning, did not complete complexity splits: " << numComplexPasses << "\n";
+	}
+}
+
+void Volume::finishSplits(const SplittingParams& params, bool multiCore)
+{
+	bool changed = false;
+	size_t subPassNum;
+	for (subPassNum = 0; subPassNum < 5; subPassNum++) {
+		changed = false;
+		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
+				changed = true;
 			return true;
 		}, multiCore);
 
-		if (changed)
-			finishSplits(params, multiCore);
-		//		assert(verifyTopology(multiCore));
-
-		bool done = false;
-		int numComplexPasses = 0;
-		while (!done && numComplexPasses < 20) {
-			done = true;
-
-			bool changed = false;
-			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					if (cell.isTooComplex(params)) {
-						cell.setNeedsDivideAtCentroid();
-						changed = true;
-					}
-					});
+		if (changed) {
+			// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
+			runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
+				pBlk->updateSplitStack();
 				return true;
-				}, multiCore);
+			}, multiCore);
 
-			if (changed)
-				finishSplits(params, multiCore);
-
-			if (!changed) {
-				cout << "No more complexity splits required: " << numComplexPasses << "\n";
-				break;
-			}
-			numComplexPasses++;
+			runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
+				if (pBlk->hasPendingSplits()) {
+					changed = true;
+				}
+			}, multiCore);
 		}
 
-		pReporter->reportProgress();
-
+		subPassNum++;
 		if (!changed) {
-			cout << "No more splits required: " << _splitNum << "\n";
 			break;
 		}
-		_splitNum++;
 	}
-
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
@@ -856,9 +882,9 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 				if (cell.setNeedsCleanFaces())
 					changed = true;
 			}
-		});
+			});
 		return true;
-	}, multiCore);
+		}, multiCore);
 
 	changed = false;
 	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
@@ -871,85 +897,47 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 					changed = true;
 #endif
 			}
-		});
+			});
 		return true;
-	}, multiCore);
+		}, multiCore);
 
 	if (changed)
 		finishSplits(params, multiCore);
 }
 
-void Volume::finishSplits(const SplittingParams& params, bool multiCore)
-{
-	bool changed = false;
-	size_t subPassNum = 0;
-	do {
-		changed = false;
-		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
-				changed = true;
-			return true;
-		}, multiCore);
-
-		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			pBlk->updateSplitStack(_splitNum + 1);
-			return true;
-		}, multiCore);
-
-		runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->hasPendingSplits()) {
-				changed = true;
-				return false; // We need to split 1, so we need to split all. Exit early
-			}
-			return true;
-		}, multiCore);
-
-		subPassNum++;
-		if (subPassNum > 20) {
-			cout << "Exited before finishSplits done: " << subPassNum << "\n";
-			break;
-		}
-	} while (changed);
-}
-
 void Volume::dumpOpenCells(bool multiCore) const
 {
 #if DUMP_OPEN_CELL_OBJS
-	runThreadPool([this](size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool([this](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->dumpOpenCells();
-		return true;
 	}, multiCore);
 #endif
 }
 
 void Volume::setLayerNums()
 {
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			cell.clearLayerNum();
 		});
-		return true;
 	}, RUN_MULTI_THREAD);
 
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 			if (cell.intersectsModel()) {
 				cell.setLayerNum(0, true);
 			};
 		});
-		return true;
 	}, RUN_MULTI_THREAD);
 
 	int steps = 5;
 	for (int i = 0; i < steps; i++) {
-		runThreadPool([i](size_t threadNum, BlockPtr& pBlk)->bool {
+		runThreadPool([i](size_t threadNum, BlockPtr& pBlk) {
 			pBlk->markIncrementLayerNums(i);
-			return true;
 		}, RUN_MULTI_THREAD);
 
-		runThreadPool([i](size_t threadNum, BlockPtr& pBlk)->bool {
+		runThreadPool([i](size_t threadNum, BlockPtr& pBlk) {
 			pBlk->setIncrementLayerNums(i);
-			return true;
 		}, RUN_MULTI_THREAD);
 	}
 }
@@ -1266,7 +1254,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 		triMeshes[ft].resize(nThreads);
 	}
 
-	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, const BlockPtr& blockPtr)->bool {
+	runThreadPool([this, &triMeshes, &min, &max](size_t threadNum, const BlockPtr& blockPtr) {
 		if (blockPtr) {
 #if USE_MULTI_THREAD_CONTAINERS			
 			MultiCore::scoped_set_local_heap st(blockPtr->getHeapPtr());
@@ -1281,7 +1269,6 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 				}
 			}
 		}
-		return true;
 	}, multiCore);
 
 	for (size_t i = 0; i < nThreads; i++) {
@@ -1736,12 +1723,10 @@ bool Volume::verifyTopology(bool multiCore) const
 {
 	bool result = true;
 
-	runThreadPool([this, &result](size_t threadNum, const BlockPtr& pBlk)->bool {
-		if (pBlk)
-			if (!pBlk->verifyTopology()) {
-				result = false;
-			}
-		return true;
+	runThreadPool([this, &result](size_t threadNum, const BlockPtr& pBlk) {
+		if (pBlk && !pBlk->verifyTopology()) {
+			result = false;
+		}
 	}, multiCore);
 	return result;
 }

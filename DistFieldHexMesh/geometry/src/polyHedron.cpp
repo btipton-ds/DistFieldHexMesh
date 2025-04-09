@@ -1264,12 +1264,13 @@ bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
 	if (_faceIds.size() > params.maxCellFaces)
 		return true;
-
+#if 0
 	createPlanarFaceSet(planarFaceSet);
 	for (const auto& fc : planarFaceSet) {
 		if (fc.size() > params.maxCoplanarFaces)
 			return true;
 	}
+#endif
 
 	return false;
 }

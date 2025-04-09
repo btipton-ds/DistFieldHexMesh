@@ -1404,24 +1404,18 @@ void Block::addToSplitStack(const Index3DId& cellId)
 		pOwner->_needToSplit.insert(cellId);
 }
 
-void Block::updateSplitStack(size_t splitNum)
+void Block::updateSplitStack()
 {
 	MTC::set<Index3DId> blockingIds;
 	const auto& params = getSplitParams();
 	for (const auto& cellId : _touchedCellIds) {
-		cellFunc(cellId, [this, params, splitNum](const Polyhedron& cell) {
-			_needToSplit.insert(cell.getId());
-#if 0
+		cellFunc(cellId, [this, params](const Polyhedron& cell) {
 			if (cell.isTooComplex(params)) {
+				addToSplitStack(cell.getId());
 			}
-			else {
-				double maxNonOrtho = cell.maxNonOrthogonality();
-				if (maxNonOrtho > params.maxOrthoAngleRadians)
-					_needToSplit.insert(cellId);
-			}
-#endif
 		});
 	}
+
 	_touchedCellIds.clear();
 }
 
