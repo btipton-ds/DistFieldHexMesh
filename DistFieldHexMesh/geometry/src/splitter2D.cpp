@@ -366,6 +366,7 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 
 size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& curvatures) const
 {
+	const double sharpAngleRadians = params.getSharpAngleRadians();
 	curvatures.clear();
 	POINT_MAP_TYPE ptMap;
 	createPointPointMap(ptMap);
@@ -375,8 +376,6 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	double maxCurv = 0;
 	for (size_t i = 0; i < _pts.size(); i++) {
 		const auto& connectedIndices = ptMap[i];
-		double radius = DBL_MAX; // Zero curvature
-		const double sharpRadius = 1.0e-6; // 1 / (1 micron)
 		if (connectedIndices.size() != 2) {
 			continue;
 		}
@@ -389,39 +388,40 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 		auto v1 = (pt2 - pt1);
 		auto l0 = v0.norm();
 		auto l1 = v1.norm();
-		if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-			// zero length segments, assume colinear
-			continue;
-		}
+		if (l0 >= Tolerance::paramTol() && l1 >= Tolerance::paramTol()) {
+			v0 /= l0;
+			v1 /= l1;
+			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
+			if (cp >= Tolerance::paramTol()) {
+				double radius = 0; // Zero curvature
+				const double sharpRadius = 1.0e-6; // 1 / (1 micron)
 
-		v0 /= l0;
-		v1 /= l1;
-		double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-		if (cp >= Tolerance::paramTol()) {
+				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
+				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
 
-			Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
-			Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
-
-			double cosTheta = v1.dot(v0);
-			double sinTheta = v1.dot(perpV0);
-			double theta = atan2(sinTheta, cosTheta);
-			if (fabs(theta) > params.getSharpAngleRadians()) {
-				radius = sharpRadius;
-			} else {
-				auto mid0 = (pt0 + pt1) * 0.5;
-				auto mid1 = (pt1 + pt2) * 0.5;
-				LineSegment2d seg0(mid0, perpV0);
-				LineSegment2d seg1(mid1, perpV1);
-				double t;
-				if (seg0.intersect(seg1, t)) {
-					Vector2d pt = seg0.interpolate(t);
-					radius = (pt0 - pt).norm();
-					if (radius < Tolerance::paramTol()) {
-						radius = sharpRadius;
+				double cosTheta = v1.dot(v0);
+				double sinTheta = v1.dot(perpV0);
+				double theta = atan2(sinTheta, cosTheta);
+				if (fabs(theta) > sharpAngleRadians) {
+					auto thetaDeg = theta * 180 / M_PI;
+					radius = sharpRadius;
+				} else {
+					auto mid0 = (pt0 + pt1) * 0.5;
+					auto mid1 = (pt1 + pt2) * 0.5;
+					LineSegment2d seg0(mid0, perpV0);
+					LineSegment2d seg1(mid1, perpV1);
+					double t;
+					if (seg0.intersect(seg1, t)) {
+						Vector2d pt = seg0.interpolate(t);
+						radius = (pt0 - pt).norm();
+						if (radius < Tolerance::paramTol()) {
+							radius = sharpRadius;
+						}
 					}
-					curvatures[i] = 1 / radius;
-					maxCurv = curvatures[i];
 				}
+
+				if (radius > 0) 
+					curvatures[i] = 1 / radius;
 			}
 		}
 	}
