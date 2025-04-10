@@ -247,6 +247,7 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 	int bestTooManyFacesSplitAxis = -1;
 	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
+	int bestCurvatureSplitAxis = -1;
 
 	bool needCurvatureSplit[] = { false, false, false };
 	for (int axis = 0; axis < 3; axis++) {
@@ -261,6 +262,9 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 			auto curvScore0 = parentCell.getMaxEdgeLengthOverCurvatureChord(_params, ortho0);
 			auto curvScore1 = parentCell.getMaxEdgeLengthOverCurvatureChord(_params, ortho1);
 			needCurvatureSplit[axis] = curvScore0 > 1 || curvScore1 > 1;
+			if (needCurvatureSplit[axis] && bestCurvatureSplitAxis == -1) {
+				bestCurvatureSplitAxis = axis;
+			}
 		}
 
 		auto scratchCellId = makeScratchCell(parentId);
@@ -325,7 +329,7 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 	else if (_subPassNum == 0) {
 		if (doIntersectionSplit) {
 			splitAxis = bestIntersectionSplitAxis;
-		} else if (bestIntersectionSplitAxis != -1 && doCurvatureSplit) {
+		} else if (doCurvatureSplit) {
 #ifdef _DEBUG
 			static mutex mut;
 			lock_guard lg(mut);
@@ -333,8 +337,8 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 
 			if (minIntersections == 1) {
 				splitAxis = bestIntersectionSplitAxis;
-			} else if (minIntersections == 2 && needCurvatureSplit[bestIntersectionSplitAxis]) {
-				splitAxis = bestIntersectionSplitAxis;
+			} else {
+				splitAxis = bestCurvatureSplitAxis;
 			}
 		}
 	}

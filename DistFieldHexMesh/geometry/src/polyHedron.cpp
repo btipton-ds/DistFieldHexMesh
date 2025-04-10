@@ -1319,13 +1319,12 @@ double Polyhedron::calCurvature(const SplittingParams& params, int axis) const
 		double c = calCurvature2D(params, facePts);
 
 		lock_guard lg(mut);
-		_cachedAvgCurvatureByAxis[axis] += c;
+		if (c > _cachedAvgCurvatureByAxis[axis])
+			_cachedAvgCurvatureByAxis[axis] = c;
 
 		return true;
 	}, RUN_MULTI_THREAD);
 	
-	_cachedAvgCurvatureByAxis[axis] /= steps;
-
 	return _cachedAvgCurvatureByAxis[axis];
 }
 
