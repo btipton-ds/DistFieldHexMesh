@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.hpp>
 #include <tolerances.h>
 #include <vertex.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -356,23 +357,27 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 		// We're getting spurs that duplicate spurs which were already created.
 		// Need to check for spurs every time a loop is removed in case it leaves and orphan edge.
 		// The duplicate remover should deal with it.
-polylines.insert(polylines.end(), pls.begin(), pls.end());
-pls.clear();
+		polylines.insert(polylines.end(), pls.begin(), pls.end());
+		pls.clear();
 	}
 
 	return polylines.size();
 }
 
-size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
+size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& curvatures) const
 {
 	curvatures.clear();
 	POINT_MAP_TYPE ptMap;
 	createPointPointMap(ptMap);
 
+	curvatures.resize(_pts.size(), 0);
+	mutex mut;
 	double maxCurv = 0;
 	for (size_t i = 0; i < _pts.size(); i++) {
 		const auto& connectedIndices = ptMap[i];
-		if (connectedIndices.size() < 2) {
+		double radius = DBL_MAX; // Zero curvature
+		const double sharpRadius = 1.0e-6; // 1 / (1 micron)
+		if (connectedIndices.size() != 2) {
 			continue;
 		}
 		auto iter2 = connectedIndices.begin();
@@ -385,41 +390,40 @@ size_t Splitter2D::getCurvatures(vector<double>& curvatures) const
 		auto l0 = v0.norm();
 		auto l1 = v1.norm();
 		if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-			// Zero length segment(s) skip
+			// zero length segments, assume colinear
 			continue;
 		}
 
 		v0 /= l0;
 		v1 /= l1;
 		double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-		if (cp < Tolerance::paramTol()) {
-			curvatures.push_back(0);
-			continue; // Colinear, zero curvature
-		}
+		if (cp >= Tolerance::paramTol()) {
 
-		v0 = Vector2d(-v0[1], v0[0]);
-		v1 = Vector2d(-v1[1], v1[0]);
+			Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
+			Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
 
-		auto mid0 = (pt0 + pt1) * 0.5;
-		auto mid1 = (pt1 + pt2) * 0.5;
-		LineSegment2d seg0(mid0, v0);
-		LineSegment2d seg1(mid1, v1);
-		double t;
-		if (!seg0.intersect(seg1, t)) {
-			curvatures.push_back(0);
-			continue; // seg0 and seg1 are parallel, no intersection and zero curvature
+			double cosTheta = v1.dot(v0);
+			double sinTheta = v1.dot(perpV0);
+			double theta = atan2(sinTheta, cosTheta);
+			if (fabs(theta) > params.getSharpAngleRadians()) {
+				radius = sharpRadius;
+			} else {
+				auto mid0 = (pt0 + pt1) * 0.5;
+				auto mid1 = (pt1 + pt2) * 0.5;
+				LineSegment2d seg0(mid0, perpV0);
+				LineSegment2d seg1(mid1, perpV1);
+				double t;
+				if (seg0.intersect(seg1, t)) {
+					Vector2d pt = seg0.interpolate(t);
+					radius = (pt0 - pt).norm();
+					if (radius < Tolerance::paramTol()) {
+						radius = sharpRadius;
+					}
+					curvatures[i] = 1 / radius;
+					maxCurv = curvatures[i];
+				}
+			}
 		}
-		Vector2d pt = seg0.interpolate(t);
-		auto radius = (pt0 - pt).norm();
-		if (radius < Tolerance::paramTol()) {
-			curvatures.push_back(0);
-			continue; // Skip sharps and colinear points
-		}
-
-		double c = 1 / radius;
-		if (c > maxCurv)
-			maxCurv = c;
-		curvatures.push_back(c);
 	}
 
 	if (maxCurv < 1.0e-12)
@@ -998,11 +1002,6 @@ bool LineSegment2d::project(const Vector2d& pt, double& t) const
 
 bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
 {
-#ifdef _DEBUG
-	static mutex mut;
-	lock_guard lg(mut);
-#endif // _DEBUG
-
 	const double tol = Tolerance::paramTol();
 	double tOther = -1;
 	t = -1;

@@ -174,7 +174,6 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_maxOrthogonalityAngleRadians = src._maxOrthogonalityAngleRadians;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	_cachedAvgCurvature = src._cachedAvgCurvature;
 	for (int i = 0; i < 3; i++)
 		_cachedAvgCurvatureByAxis[i] = src._cachedAvgCurvatureByAxis[i];
 
@@ -927,7 +926,7 @@ double Polyhedron::calVolume() const
 	return vol;
 }
 
-double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) const
+double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints) const
 {
 	double avgCurvature = 0;
 	vector<TriMeshIndex> indices;
@@ -935,27 +934,23 @@ double Polyhedron::calAvgCurvature2D(const MTC::vector<Vector3d>& polyPoints) co
 		Splitter2D sp(polyPoints);
 
 		const auto& model = getModel();
-		double height = -DBL_MAX;
-		Vector2d maxPt;
+
 		for (const auto& multiTriIdx : indices) {
 			const Vector3d* pts[3];
 			model.getTri(multiTriIdx, pts);
 			sp.add3DTriEdges(pts);
 		}
 		vector<double> curvatures;
-		sp.getCurvatures(curvatures);
+		auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
+		sp.getCurvatures(params, curvatures);
 
-		size_t count = 0;
 		for (size_t i = 0; i < curvatures.size(); i++) {
 			auto c = curvatures[i];
-			if (c > 0) {
-				avgCurvature += c;
-				count++;
-			}
+			avgCurvature += c;
 		}
 
-		if (count > 0) {
-			avgCurvature /= count;
+		if (curvatures.size() > 0) {
+			avgCurvature /= curvatures.size();
 		}
 #if 0 && defined(_DEBUG)
 
@@ -1254,8 +1249,13 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
 {
-	double curvatureScore = getCurvatureScore(params);
-	return curvatureScore > 1;
+	double maxCurvScore = 0;
+	for (int axis = 0; axis < 3; axis++) {
+		double curvatureScore = getMaxEdgeLengthOverCurvatureChord(params, axis);
+		if (curvatureScore > maxCurvScore)
+			maxCurvScore = curvatureScore;
+	}
+	return maxCurvScore > 1;
 }
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
@@ -1297,58 +1297,36 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-double Polyhedron::getAvgCurvature() const
+double Polyhedron::calCurvature(const SplittingParams& params, int axis) const
 {
-	if (_cachedAvgCurvature < 0) {
-		_cachedAvgCurvature = 0;
-		for (int axis = 0; axis < 3; axis++) {
-			auto c = getAvgCurvature(axis);
-			_cachedAvgCurvature += c;
-		}
-		_cachedAvgCurvature /= 3;
-	}
-	return _cachedAvgCurvature;
-}
-
-double Polyhedron::getAvgCurvature(int axis) const
-{
-	if (_cachedAvgCurvatureByAxis[axis] < 0) {
-		calAvgCurvatures();
-	}
-
-	return _cachedAvgCurvatureByAxis[axis];
-}
-
-void Polyhedron::calAvgCurvatures() const
-{
-	for (int i = 0; i < 3; i++)
-		_cachedAvgCurvatureByAxis[i] = 0;
+	if (_cachedAvgCurvatureByAxis[axis] >= 0)
+		return _cachedAvgCurvatureByAxis[axis];
+	_cachedAvgCurvatureByAxis[axis] = 0;
 
 	if (!intersectsModel())
-		return;
+		return _cachedAvgCurvatureByAxis[axis];
 
 	size_t steps = 3;
-	size_t num = 3 * steps;
 
 	getCanonicalPoints();
-	int axis = 0, step = 0;
-	for (size_t i = 0; i < num; i++) {
+	auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
+	mutex mut;
+	tp.run(steps, [this, axis, &params, steps, &mut](size_t threadNum, size_t step)->bool {
 		double w = step / (steps - 1.0);
 		MTC::vector<Vector3d> facePts;
 		makeHexFacePoints(axis, w, facePts);
 
-		double c = calAvgCurvature2D(facePts);
+		double c = calCurvature2D(params, facePts);
+
+		lock_guard lg(mut);
 		_cachedAvgCurvatureByAxis[axis] += c;
 
-		axis++;
-		if (axis >= 3) {
-			axis = 0;
-			step++;
-		}
-	}
+		return true;
+	}, RUN_MULTI_THREAD);
 	
-	for (int i = 0; i < 3; i++)
-		_cachedAvgCurvatureByAxis[i] /= steps;
+	_cachedAvgCurvatureByAxis[axis] /= steps;
+
+	return _cachedAvgCurvatureByAxis[axis];
 }
 
 double Polyhedron::getComplexityScore(const SplittingParams& params) const
@@ -1395,44 +1373,33 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 	return _cachedComplexityScore;
 }
 
-double Polyhedron::getCurvatureScore(const SplittingParams& params, int axis) const
+double Polyhedron::getMaxEdgeLengthOverCurvatureChord(const SplittingParams& params, int axis) const
+// If this greater than 2, the cell should be split so the number becomes 1
 {
 	double result = 0;
-	double avgCurv = 0;
-	int count = 0;
-	for (int testAxis = 0; testAxis < 3; testAxis++) {
-		if (testAxis != axis) {
-			auto v = getAvgCurvature(testAxis);
-			avgCurv += v;
-			count++;
-		}
-	}
-
-	avgCurv /= count;
-	if (avgCurv < 1.0e-12)
-		return 1;
+	double curv = calCurvature(params, axis);
+	if (curv < 1.0e-12)
+		return 0;
 
 	// Curvature is about creating cells with edges the same size or smaller than a chord on the hypothetical circle with radius 
 	// equal to the radius of curvature.
 
-	double avgRad = 1 / avgCurv;
+	double rad = 1 / curv;
 	size_t divs = params.curvatureDivsPerCircumference;
-	double chordLen = 2 * avgRad * sin(2 * M_PI / divs);
+	double chordLen = 2 * rad * sin(2 * M_PI / divs);
 
-	auto edgeKeys = getCanonicalHexEdgeKeys(axis);
+	vector<Vector3d> facePts;
+	makeHexFacePoints(axis, 0.5, facePts);
 	double maxEdgeLen = 0;
-	for (const auto& ek : edgeKeys) {
-		edgeFunc(ek, [&maxEdgeLen](const Edge& edge) {
-			auto l = edge.getLength();
-			if (l > maxEdgeLen) {
-				maxEdgeLen = l;
-			}
-		});
+	for (size_t i = 0; i < facePts.size(); i++) {
+		size_t j = (i + 1) % facePts.size();
+		double l = (facePts[j] - facePts[i]).norm();
+		if (l > maxEdgeLen) {
+			maxEdgeLen = l;
+		}
 	}
 
 	result = maxEdgeLen / chordLen;
-	if (result < 1)
-		result = 1;
 	
 	return result;
 }
@@ -1981,7 +1948,6 @@ void Polyhedron::clearCache() const
 	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_cachedBBox = {};
 
-	_cachedAvgCurvature = -1;
 	_cachedAvgCurvatureByAxis[0] = -1;
 	_cachedAvgCurvatureByAxis[1] = -1;
 	_cachedAvgCurvatureByAxis[2] = -1;

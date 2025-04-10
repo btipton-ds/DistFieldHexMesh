@@ -95,7 +95,7 @@ public:
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	double calVolume() const;
-	double calAvgCurvature2D(const MTC::vector<Vector3d>& quadPoints) const;
+	double calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& quadPoints) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
@@ -117,11 +117,9 @@ public:
 	bool hasTooMuchCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
-	double getAvgCurvature() const;
-	double getAvgCurvature(int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
-	double getCurvatureScore(const SplittingParams& params, int axis = -1) const;
+	double getMaxEdgeLengthOverCurvatureChord(const SplittingParams& params, int axis) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -198,7 +196,7 @@ private:
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
-	void calAvgCurvatures() const;
+	double calCurvature(const SplittingParams& paramsm, int axis) const;
 
 	Index3DId _thisId;
 	/*
@@ -234,7 +232,6 @@ private:
 	mutable double _maxOrthogonalityAngleRadians = -1;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	mutable double _cachedAvgCurvature = -1;
 	mutable double _cachedAvgCurvatureByAxis[3] = { -1, -1, -1 };
 
 	mutable MTC::vector<Vector3d> _cachedCanonicalPoints;

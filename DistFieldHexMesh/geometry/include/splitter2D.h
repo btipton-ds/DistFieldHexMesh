@@ -39,8 +39,11 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_plane.h>
 #include <Eigen/src/Core/Matrix.h>
 #include <fastBisectionSet.h>
+#include <MultiCoreUtil.h>
 
 namespace DFHM {
+
+struct SplittingParams;
 
 class Vector2d : public Eigen::Vector2d
 {
@@ -112,7 +115,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
-	size_t getCurvatures(std::vector<double>& curvatures) const;
+	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
 
 	bool intersectsTriPoints(const Vector3d* const * triPts) const;

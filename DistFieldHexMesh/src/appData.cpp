@@ -87,7 +87,7 @@ const std::shared_ptr<MultiCore::ThreadPool>& AppData::getThreadPool() const
         // If the primary jobs are well balanced, then there should be no sub threads at all, because all threads are loaded.
         // This gets tricky and requirs a lot of tuning.
         // The capability is available, it now needs to be used properly.
-        _pThreadPool = make_shared< MultiCore::ThreadPool>(MultiCore::getNumCores(), MultiCore::getNumCores());
+        _pThreadPool = make_shared< MultiCore::ThreadPool>(MultiCore::getNumCores() / 2, 6 * (MultiCore::getNumCores() / 4));
     }
     return _pThreadPool;
 }
