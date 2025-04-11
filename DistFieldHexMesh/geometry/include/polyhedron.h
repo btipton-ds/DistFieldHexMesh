@@ -119,7 +119,7 @@ public:
 	double maxOrthogonalityAngleRadians() const;
 
 	double getComplexityScore(const SplittingParams& params) const;
-	double getMaxEdgeLengthOverCurvatureChord(const SplittingParams& params, int axis) const;
+	bool needCurvatureSplit(const SplittingParams& params, double& curvature, double& edgeLenOverChordLen, int axis) const;
 
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
@@ -224,7 +224,8 @@ private:
 	mutable bool _needsCurvatureCheck = true;
 
 	mutable Trinary _cachedIsClosed = IS_UNKNOWN;
-	mutable Trinary _intersectsModel = IS_UNKNOWN; // Cached value
+	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN; // Cached value
+	mutable Trinary _cachedHasTooMuchCurvature = IS_UNKNOWN; // Cached value
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;

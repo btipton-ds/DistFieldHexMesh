@@ -166,7 +166,8 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_needsCurvatureCheck = src._needsCurvatureCheck;
 
 	_cachedIsClosed = src._cachedIsClosed;
-	_intersectsModel = src._intersectsModel; // Cached value
+	_cachedIntersectsModel = src._cachedIntersectsModel; // Cached value
+	_cachedHasTooMuchCurvature = src._cachedHasTooMuchCurvature; // Cached value
 	_sharpEdgesIntersectModel = src._sharpEdgesIntersectModel; // Cached value
 
 	_cachedMinGap = src._cachedMinGap;
@@ -1109,7 +1110,7 @@ bool Polyhedron::entryIntersectsModel(const TriMeshIndex& index) const
 
 bool Polyhedron::intersectsModel() const
 {
-	if (_intersectsModel == IS_UNKNOWN) {
+	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		const auto tol = Tolerance::sameDistTol();
 		auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
 
@@ -1120,7 +1121,7 @@ bool Polyhedron::intersectsModel() const
 			for (const auto& faceId : _faceIds) {
 				const auto& face = getPolygon(faceId);
 				if (face._cachedIntersectsModel == IS_TRUE) {
-					_intersectsModel = IS_TRUE;
+					_cachedIntersectsModel = IS_TRUE;
 					return true;
 				}
 				vector<Vector3d> facePts;
@@ -1144,25 +1145,25 @@ bool Polyhedron::intersectsModel() const
 					auto& face = getPolygon(pair.first);
 					auto& sp = *pair.second;
 					if (sp.intersectsTriPoints(pts)) {
-						_intersectsModel = face._cachedIntersectsModel = IS_TRUE;
+						_cachedIntersectsModel = face._cachedIntersectsModel = IS_TRUE;
 						break;
 					} else {
 						face._cachedIntersectsModel = IS_FALSE;
 					}
 				}
-				return _intersectsModel != IS_TRUE;
+				return _cachedIntersectsModel != IS_TRUE;
 			}, RUN_MULTI_SUB_THREAD && (indices.size() > 2 * numCores && numAvail > numCores / 4));
 		}
-		if (_intersectsModel != IS_TRUE)
-			_intersectsModel = IS_FALSE;
+		if (_cachedIntersectsModel != IS_TRUE)
+			_cachedIntersectsModel = IS_FALSE;
 	}
 
-	return _intersectsModel == IS_TRUE; // Don't test split cells
+	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
 void Polyhedron::setIntersectsModel(bool val)
 {
-	_intersectsModel = val ? IS_TRUE : IS_FALSE;
+	_cachedIntersectsModel = val ? IS_TRUE : IS_FALSE;
 }
 
 bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
@@ -1249,13 +1250,22 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
 {
-	double maxCurvScore = 0;
-	for (int axis = 0; axis < 3; axis++) {
-		double curvatureScore = getMaxEdgeLengthOverCurvatureChord(params, axis);
-		if (curvatureScore > maxCurvScore)
-			maxCurvScore = curvatureScore;
+	if (_cachedHasTooMuchCurvature == IS_UNKNOWN) {
+		if (!intersectsModel()) {
+			_cachedHasTooMuchCurvature = IS_FALSE;
+			return false;
+		}
+
+		double maxCurvScore = 0;
+		for (int axis = 0; axis < 3; axis++) {
+			double curvature, curvatureScore;
+			needCurvatureSplit(params, curvature, curvatureScore, axis);
+			if (curvatureScore > maxCurvScore)
+				maxCurvScore = curvatureScore;
+		}
+		_cachedHasTooMuchCurvature = (maxCurvScore > 1) ? IS_TRUE : IS_FALSE;
 	}
-	return maxCurvScore > 1;
+	return _cachedHasTooMuchCurvature == IS_TRUE;
 }
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
@@ -1372,18 +1382,18 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 	return _cachedComplexityScore;
 }
 
-double Polyhedron::getMaxEdgeLengthOverCurvatureChord(const SplittingParams& params, int axis) const
+bool Polyhedron::needCurvatureSplit(const SplittingParams& params, double& curvature, double& edgeLenOverChordLen, int axis) const
 // If this greater than 2, the cell should be split so the number becomes 1
 {
 	double result = 0;
-	double curv = calCurvature(params, axis);
-	if (curv < 1.0e-12)
-		return 0;
+	curvature = edgeLenOverChordLen = calCurvature(params, axis);
+	if (curvature < 1.0e-12)
+		return false;
 
 	// Curvature is about creating cells with edges the same size or smaller than a chord on the hypothetical circle with radius 
 	// equal to the radius of curvature.
 
-	double rad = 1 / curv;
+	double rad = 1 / curvature;
 	size_t divs = params.curvatureDivsPerCircumference;
 	double chordLen = 2 * rad * sin(2 * M_PI / divs);
 
@@ -1398,9 +1408,9 @@ double Polyhedron::getMaxEdgeLengthOverCurvatureChord(const SplittingParams& par
 		}
 	}
 
-	result = maxEdgeLen / chordLen;
+	edgeLenOverChordLen = maxEdgeLen / chordLen;
 	
-	return result;
+	return edgeLenOverChordLen > 1;
 }
 
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1940,7 +1950,8 @@ void Polyhedron::clearCache() const
 	_needsCurvatureCheck = true;
 	_isOriented = false;
 
-	_intersectsModel = IS_UNKNOWN; // Cached value
+	_cachedIntersectsModel = IS_UNKNOWN; // Cached value
+	_cachedHasTooMuchCurvature = IS_UNKNOWN;
 	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
 	_cachedCanonicalPoints.clear();

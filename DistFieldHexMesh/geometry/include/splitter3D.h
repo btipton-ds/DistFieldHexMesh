@@ -74,6 +74,7 @@ private:
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
 	int determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits);
+	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,

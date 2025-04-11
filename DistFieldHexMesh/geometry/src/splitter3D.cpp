@@ -171,8 +171,12 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
 		int dbgBreak = 1;
 	}
-	bool wasSplit = false;
 
+	if (numPossibleSplits == 8 && doCurvatureSplit(parentId, tuv, ignoreAxisBits)) {
+		return true;
+	}
+
+	bool wasSplit = false;
 	int splitAxis = determineBestSplitAxis(parentId, tuv, ignoreAxisBits);
 
 	if (splitAxis != -1) {
@@ -238,7 +242,6 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		hasIntersection = parentCell.intersectsModel();
 
 	bool doIntersectionSplit = hasIntersection && _splitLevel < _params.numIntersectionDivs;
-	bool doCurvatureSplit = hasIntersection && !doIntersectionSplit && _splitLevel < _params.numCurvatureDivs;
 
 	size_t minTooManyFaceCells = INT_MAX;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
@@ -247,25 +250,12 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 	int bestTooManyFacesSplitAxis = -1;
 	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
-	int bestCurvatureSplitAxis = -1;
 
-	bool needCurvatureSplit[] = { false, false, false };
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
 		bool ignore = (ignoreAxisBits & axisBit) == axisBit;
 		if (ignore)
 			continue;
-
-		if (doCurvatureSplit) {
-			int ortho0 = (axis + 1) % 3;
-			int ortho1 = (axis + 2) % 3;
-			auto curvScore0 = parentCell.getMaxEdgeLengthOverCurvatureChord(_params, ortho0);
-			auto curvScore1 = parentCell.getMaxEdgeLengthOverCurvatureChord(_params, ortho1);
-			needCurvatureSplit[axis] = curvScore0 > 1 || curvScore1 > 1;
-			if (needCurvatureSplit[axis] && bestCurvatureSplitAxis == -1) {
-				bestCurvatureSplitAxis = axis;
-			}
-		}
 
 		auto scratchCellId = makeScratchCell(parentId);
 
@@ -327,23 +317,73 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 	else if (bestTooManyFacesSplitAxis != -1)
 		splitAxis = bestTooManyFacesSplitAxis; 
 	else if (_subPassNum == 0) {
-		if (doIntersectionSplit) {
+		if (_splitLevel < _params.numIntersectionDivs) {
+			// If we're doing intersection splits, split there's any intersection
 			splitAxis = bestIntersectionSplitAxis;
-		} else if (doCurvatureSplit) {
-#ifdef _DEBUG
-			static mutex mut;
-			lock_guard lg(mut);
-#endif // _DEBUG
-
-			if (minIntersections == 1) {
-				splitAxis = bestIntersectionSplitAxis;
-			} else {
-				splitAxis = bestCurvatureSplitAxis;
-			}
+		} else if (_splitLevel < _params.numCurvatureDivs && minIntersections == 1) {
+			// If we're doing curvature splits, only split if one side is empty
+			splitAxis = bestIntersectionSplitAxis;
 		}
 	}
 
 	return splitAxis;
+}
+
+bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits)
+{
+	if (_splitLevel < _params.numIntersectionDivs || _splitLevel >= _params.numCurvatureDivs)
+		return false;
+
+	const auto& parentCell = getPolyhedron(parentId);
+	if (!parentCell.hasTooMuchCurvature(_params) /* hasTooMuchCurvature tests intersectsModel */)
+		return false;
+
+	// Determine all required curvatures splits before doing any other splitting.
+	bool axisNeedsSplit[3];
+	for (int axis = 0; axis < 3; axis++) {
+		double curvature;
+		double edgeLenOverChordLen;
+		axisNeedsSplit[axis] = parentCell.needCurvatureSplit(_params, curvature, edgeLenOverChordLen, axis);
+	}
+
+#if 1 && defined(_DEBUG)
+	static mutex mut;
+	lock_guard lg(mut);
+#endif // _DEBUG
+
+	bool needCurvatureSplit[] = { false, false, false };
+	for (int axis = 0; axis < 3; axis++) {
+		int orthoAxis0 = (axis + 1) % 3;
+		int orthoAxis1 = (axis + 2) % 3;
+		needCurvatureSplit[axis] = axisNeedsSplit[orthoAxis0] || axisNeedsSplit[orthoAxis1];
+	}
+
+	bool wasSplit = false;
+	vector<Index3DId> newCellIds;
+	newCellIds.push_back(parentId);
+	for (int axis = 0; axis < 3; axis++) {
+		if (needCurvatureSplit[axis]) {
+			int axisBit = 1 << axis;
+			ignoreAxisBits |= axisBit;
+
+			vector<Index3DId> tmp(newCellIds);
+			newCellIds.clear();
+			for (const auto& id : tmp) {
+				bisectHexCell(id, tuv, axis, newCellIds);
+			}
+		}
+
+		wasSplit = true;
+	}
+
+	if (newCellIds.size() == 4) {
+		for (const auto& cellId : newCellIds) {
+			if (conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, 2)) {
+				wasSplit = true;
+			}
+		}
+	}
+	return wasSplit;
 }
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds)
