@@ -942,7 +942,6 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 			sp.add3DTriEdges(pts);
 		}
 		vector<double> curvatures;
-		auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
 		sp.getCurvatures(params, curvatures);
 
 		for (size_t i = 0; i < curvatures.size(); i++) {

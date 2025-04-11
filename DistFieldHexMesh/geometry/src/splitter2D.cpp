@@ -367,6 +367,8 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& curvatures) const
 {
 	const double sharpAngleRadians = params.getSharpAngleRadians();
+	const double sharpRadius = params.sharpEffectiveRadius;
+
 	curvatures.clear();
 	POINT_MAP_TYPE ptMap;
 	createPointPointMap(ptMap);
@@ -394,7 +396,6 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
 			if (cp >= Tolerance::paramTol()) {
 				double radius = 0; // Zero curvature
-				const double sharpRadius = 1.0e-6; // 1 / (1 micron)
 
 				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
 				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
