@@ -225,7 +225,6 @@ private:
 
 	mutable Trinary _cachedIsClosed = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN; // Cached value
-	mutable Trinary _cachedHasTooMuchCurvature = IS_UNKNOWN; // Cached value
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;

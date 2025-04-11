@@ -167,7 +167,6 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 
 	_cachedIsClosed = src._cachedIsClosed;
 	_cachedIntersectsModel = src._cachedIntersectsModel; // Cached value
-	_cachedHasTooMuchCurvature = src._cachedHasTooMuchCurvature; // Cached value
 	_sharpEdgesIntersectModel = src._sharpEdgesIntersectModel; // Cached value
 
 	_cachedMinGap = src._cachedMinGap;
@@ -930,7 +929,9 @@ double Polyhedron::calVolume() const
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints) const
 {
 	double avgCurvature = 0;
+	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 	vector<TriMeshIndex> indices;
+
 	if (getTriIndices(indices)) {
 		Splitter2D sp(polyPoints);
 
@@ -940,6 +941,33 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 			const Vector3d* pts[3];
 			model.getTri(multiTriIdx, pts);
 			sp.add3DTriEdges(pts);
+
+			// Reflect triangles across symmetry plane to remove false sharps at the boundary
+			for (int relectionAxis = 0; relectionAxis < 3; relectionAxis++) {
+				bool reflect = false;
+				switch (relectionAxis) {
+					case 0:
+						reflect = params.symXAxis; break;
+					case 1:
+						reflect = params.symYAxis; break;
+					case 2:
+						reflect = params.symZAxis; break;			
+				}
+				if (reflect) {
+					int numPointsOnBoundary = 0;
+					Vector3d symPts[3];
+					for (int ptIdx = 0; ptIdx < 3; ptIdx++) {
+						Vector3d dv = *pts[ptIdx] - origin;
+						if (fabs(dv[relectionAxis]) < Tolerance::sameDistTol()) {
+							numPointsOnBoundary++;
+						}
+						dv[relectionAxis] = -dv[relectionAxis];
+						symPts[ptIdx] = origin + dv;
+					}
+					if (numPointsOnBoundary == 1 || numPointsOnBoundary == 2)
+						sp.add3DTriEdges(symPts);
+				}
+			}
 		}
 		vector<double> curvatures;
 		sp.getCurvatures(params, curvatures);
@@ -1249,22 +1277,19 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
 {
-	if (_cachedHasTooMuchCurvature == IS_UNKNOWN) {
-		if (!intersectsModel()) {
-			_cachedHasTooMuchCurvature = IS_FALSE;
-			return false;
-		}
-
-		double maxCurvScore = 0;
-		for (int axis = 0; axis < 3; axis++) {
-			double curvature, curvatureScore;
-			needCurvatureSplit(params, curvature, curvatureScore, axis);
-			if (curvatureScore > maxCurvScore)
-				maxCurvScore = curvatureScore;
-		}
-		_cachedHasTooMuchCurvature = (maxCurvScore > 1) ? IS_TRUE : IS_FALSE;
+	if (!intersectsModel()) {
+		return false;
 	}
-	return _cachedHasTooMuchCurvature == IS_TRUE;
+
+	double maxCurvScore = 0;
+	for (int axis = 0; axis < 3; axis++) {
+		double curvature, curvatureScore;
+		needCurvatureSplit(params, curvature, curvatureScore, axis);
+		if (curvatureScore > maxCurvScore)
+			maxCurvScore = curvatureScore;
+	}
+
+	return maxCurvScore > 1;
 }
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
@@ -1950,7 +1975,6 @@ void Polyhedron::clearCache() const
 	_isOriented = false;
 
 	_cachedIntersectsModel = IS_UNKNOWN; // Cached value
-	_cachedHasTooMuchCurvature = IS_UNKNOWN;
 	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
 	_cachedCanonicalPoints.clear();

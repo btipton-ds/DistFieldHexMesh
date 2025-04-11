@@ -53,11 +53,10 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Complex spliting to support the new states
-2D face curvature splitting using model triangles intersecting mesh faces.
-
-Conditional intersection splitting 1 hex into 2 wedges
-Splitting of wedges
+Need to handle short or degenerate edges in Spitter2D curvature calculations. This is causing false sharps and small radii producing too many cells.
+Need to handle the edge/chord length ratio taking into account the principal axes of the face. Otherwise, one axis is being over divided. 
+It may be best to split the faces to make them closer to 1:1 aspect ratio, before curvature splitting.
+It seems we are dividing high aspect ratio cells that should not be split. This may be done by the quality enforcer, if so that's fine. Turn it off and see if that's the cause.
 
 Cross mesh gap analysis using the above search tree.
 
@@ -80,6 +79,10 @@ Add read/write of a document file. This contains all the configuration specific 
 
 *******************************************************************************************
 Future - too hard and time consuming for now
+
+Conditional intersection splitting 1 hex into 2 wedges
+Splitting of wedges
+
 Restore graphics multisampling for OIT - There's a mutlsampling facility for anti aliasing, but it requires changing all the buffer code.
     I spent a day on it and it was just a big can of worms. Higher priorities right now.
 
@@ -87,6 +90,8 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 Already done
 ****************************************************************************************************************************************
 
+Complex spliting to support the new states
+2D face curvature splitting using model triangles intersecting mesh faces.
 Remove individual search trees per mesh and replace with a single search tree for all meshes
     Then redo gap sampling, ignore sharp verts and edges inside solids
 

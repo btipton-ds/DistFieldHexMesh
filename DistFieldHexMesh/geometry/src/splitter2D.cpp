@@ -116,6 +116,17 @@ void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 	}
 }
 
+void Splitter2D::add3DTriEdges(const Vector3d pts[3])
+{
+	const Vector3d* pPts[] = {
+		&pts[0],
+		&pts[1],
+		&pts[2],
+	};
+
+	return add3DTriEdges(pPts);
+}
+
 void Splitter2D::add3DTriEdges(const Vector3d* pts[3])
 {
 	Vector2d pt0, pt1;

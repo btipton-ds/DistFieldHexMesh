@@ -343,6 +343,8 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 	for (int axis = 0; axis < 3; axis++) {
 		double curvature;
 		double edgeLenOverChordLen;
+		// TODO needCurvatureSplit must account for the ortho axes edge lengths, not just the multi axis maximum
+		// Otherwise it's over splitting in one axis.
 		axisNeedsSplit[axis] = parentCell.needCurvatureSplit(_params, curvature, edgeLenOverChordLen, axis);
 	}
 
