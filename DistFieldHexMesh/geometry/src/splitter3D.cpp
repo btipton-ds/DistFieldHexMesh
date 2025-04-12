@@ -335,18 +335,9 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 		return false;
 
 	const auto& parentCell = getPolyhedron(parentId);
-	if (!parentCell.hasTooMuchCurvature(_params) /* hasTooMuchCurvature tests intersectsModel */)
+	double maxEdgeLenOverChordLenByAxis[3];
+	if (!parentCell.hasTooHighCurvature(_params, maxEdgeLenOverChordLenByAxis) /* hasTooMuchCurvature tests intersectsModel */)
 		return false;
-
-	// Determine all required curvatures splits before doing any other splitting.
-	bool axisNeedsSplit[3];
-	for (int axis = 0; axis < 3; axis++) {
-		double curvature;
-		double edgeLenOverChordLen;
-		// TODO needCurvatureSplit must account for the ortho axes edge lengths, not just the multi axis maximum
-		// Otherwise it's over splitting in one axis.
-		axisNeedsSplit[axis] = parentCell.needCurvatureSplit(_params, curvature, edgeLenOverChordLen, axis);
-	}
 
 #if 1 && defined(_DEBUG)
 	static mutex mut;
@@ -355,9 +346,7 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 
 	bool needCurvatureSplit[] = { false, false, false };
 	for (int axis = 0; axis < 3; axis++) {
-		int orthoAxis0 = (axis + 1) % 3;
-		int orthoAxis1 = (axis + 2) % 3;
-		needCurvatureSplit[axis] = axisNeedsSplit[orthoAxis0] || axisNeedsSplit[orthoAxis1];
+		needCurvatureSplit[axis] = maxEdgeLenOverChordLenByAxis[axis] > 1;
 	}
 
 	bool wasSplit = false;
@@ -378,6 +367,7 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 		wasSplit = true;
 	}
 
+#if 1
 	if (newCellIds.size() == 4) {
 		for (const auto& cellId : newCellIds) {
 			if (conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, 2)) {
@@ -385,6 +375,8 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 			}
 		}
 	}
+#endif
+
 	return wasSplit;
 }
 

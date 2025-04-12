@@ -1275,21 +1275,45 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	return false;
 }
 
-bool Polyhedron::hasTooMuchCurvature(const SplittingParams& params) const
+bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEdgeLenOverChordLenByAxis[3]) const
 {
 	if (!intersectsModel()) {
 		return false;
 	}
-
-	double maxCurvScore = 0;
 	for (int axis = 0; axis < 3; axis++) {
-		double curvature, curvatureScore;
-		needCurvatureSplit(params, curvature, curvatureScore, axis);
-		if (curvatureScore > maxCurvScore)
-			maxCurvScore = curvatureScore;
+		maxEdgeLenOverChordLenByAxis[axis] = 0;
 	}
 
-	return maxCurvScore > 1;
+	for (int axis = 0; axis < 3; axis++) {
+		double curvature = calCurvature(params, axis);
+		double rad = 1 / curvature;
+		size_t divs = params.curvatureDivsPerCircumference;
+		double chordLen = 2 * rad * sin(2 * M_PI / divs);
+
+
+		MTC::vector<Vector3d> facePts;
+		makeHexFacePoints(axis, 0.5, facePts);
+		auto l0 = (facePts[1] - facePts[0]).norm() + (facePts[3] - facePts[2]).norm();
+		auto l1 = (facePts[3] - facePts[0]).norm() + (facePts[2] - facePts[1]).norm();
+
+		auto edgeLenOverChordLen0 = l0 / chordLen;
+		auto edgeLenOverChordLen1 = l1 / chordLen;
+
+		int orthAxis0 = (axis + 1) % 3;
+		int orthAxis1 = (axis + 2) % 3;
+
+		if (edgeLenOverChordLen0 > maxEdgeLenOverChordLenByAxis[orthAxis0])
+			maxEdgeLenOverChordLenByAxis[orthAxis0] = edgeLenOverChordLen0;
+		if (edgeLenOverChordLen1 > maxEdgeLenOverChordLenByAxis[orthAxis1])
+			maxEdgeLenOverChordLenByAxis[orthAxis1] = edgeLenOverChordLen0;
+	}
+
+	for (int axis = 0; axis < 3; axis++) {
+		if (maxEdgeLenOverChordLenByAxis[axis] > 1)
+			return true;
+	}
+
+	return false;
 }
 
 bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
@@ -1404,37 +1428,6 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 	}
 	
 	return _cachedComplexityScore;
-}
-
-bool Polyhedron::needCurvatureSplit(const SplittingParams& params, double& curvature, double& edgeLenOverChordLen, int axis) const
-// If this greater than 2, the cell should be split so the number becomes 1
-{
-	double result = 0;
-	curvature = edgeLenOverChordLen = calCurvature(params, axis);
-	if (curvature < 1.0e-12)
-		return false;
-
-	// Curvature is about creating cells with edges the same size or smaller than a chord on the hypothetical circle with radius 
-	// equal to the radius of curvature.
-
-	double rad = 1 / curvature;
-	size_t divs = params.curvatureDivsPerCircumference;
-	double chordLen = 2 * rad * sin(2 * M_PI / divs);
-
-	vector<Vector3d> facePts;
-	makeHexFacePoints(axis, 0.5, facePts);
-	double maxEdgeLen = 0;
-	for (size_t i = 0; i < facePts.size(); i++) {
-		size_t j = (i + 1) % facePts.size();
-		double l = (facePts[j] - facePts[i]).norm();
-		if (l > maxEdgeLen) {
-			maxEdgeLen = l;
-		}
-	}
-
-	edgeLenOverChordLen = maxEdgeLen / chordLen;
-	
-	return edgeLenOverChordLen > 1;
 }
 
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
@@ -1619,10 +1612,12 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		setNeedsDivideAtCentroid();
 		return true;
 	}
+
+	double maxEdgeLenOverChordLenByAxis[3];
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
-	} else if (passNum < params.numCurvatureDivs && hasTooMuchCurvature(params)) {
+	} else if (passNum < params.numCurvatureDivs && hasTooHighCurvature(params, maxEdgeLenOverChordLenByAxis)) {
 		setNeedsDivideAtCentroid();
 		return true;
 	}
