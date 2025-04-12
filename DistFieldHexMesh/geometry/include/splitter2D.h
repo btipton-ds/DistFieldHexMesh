@@ -94,7 +94,7 @@ public:
 		size_t firstIdx() const;
 		size_t lastIdx() const;
 
-		size_t createVector(std::vector<size_t>& vec) const;
+		size_t createVector(std::vector<size_t>& vec, const std::vector<Vector2d>& pts) const;
 
 		bool _isClosed = false;
 	};
@@ -161,7 +161,7 @@ private:
 
 	size_t createPolylines(POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage, std::vector<Polyline>& polylines) const;
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
-	bool isColinear(size_t idx0, size_t idx1, size_t idx2) const;
+	bool isColinear(size_t i, size_t j, size_t k) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
 	bool project(const Vector3d& pt, Vector2d& result) const;
 	Vector3d pt3D(size_t idx) const;

@@ -970,14 +970,12 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 			}
 		}
 		vector<double> curvatures;
-		sp.getCurvatures(params, curvatures);
+		if (sp.getCurvatures(params, curvatures) > 0) {
+			for (size_t i = 0; i < curvatures.size(); i++) {
+				auto c = curvatures[i];
+				avgCurvature += c;
+			}
 
-		for (size_t i = 0; i < curvatures.size(); i++) {
-			auto c = curvatures[i];
-			avgCurvature += c;
-		}
-
-		if (curvatures.size() > 0) {
 			avgCurvature /= curvatures.size();
 		}
 #if 0 && defined(_DEBUG)
@@ -1284,28 +1282,36 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEd
 		maxEdgeLenOverChordLenByAxis[axis] = 0;
 	}
 
+	const double minCurvature = 1 / 10.0;
+
 	for (int axis = 0; axis < 3; axis++) {
 		double curvature = calCurvature(params, axis);
+		if (curvature < minCurvature)
+			continue;
+
 		double rad = 1 / curvature;
+		cout << "rad: " << rad << "\n";
 		size_t divs = params.curvatureDivsPerCircumference;
 		double chordLen = 2 * rad * sin(2 * M_PI / divs);
 
 
 		MTC::vector<Vector3d> facePts;
 		makeHexFacePoints(axis, 0.5, facePts);
-		auto l0 = (facePts[1] - facePts[0]).norm() + (facePts[3] - facePts[2]).norm();
-		auto l1 = (facePts[3] - facePts[0]).norm() + (facePts[2] - facePts[1]).norm();
+		{
+			auto l0 = ((facePts[1] - facePts[0]).norm() + (facePts[3] - facePts[2]).norm()) * 0.5;
+			int orthAxis0 = (axis + 1) % 3;
+			auto edgeLenOverChordLen0 = l0 / chordLen;
+			if (edgeLenOverChordLen0 > maxEdgeLenOverChordLenByAxis[orthAxis0])
+				maxEdgeLenOverChordLenByAxis[orthAxis0] = edgeLenOverChordLen0;
+		}
 
-		auto edgeLenOverChordLen0 = l0 / chordLen;
-		auto edgeLenOverChordLen1 = l1 / chordLen;
-
-		int orthAxis0 = (axis + 1) % 3;
-		int orthAxis1 = (axis + 2) % 3;
-
-		if (edgeLenOverChordLen0 > maxEdgeLenOverChordLenByAxis[orthAxis0])
-			maxEdgeLenOverChordLenByAxis[orthAxis0] = edgeLenOverChordLen0;
-		if (edgeLenOverChordLen1 > maxEdgeLenOverChordLenByAxis[orthAxis1])
-			maxEdgeLenOverChordLenByAxis[orthAxis1] = edgeLenOverChordLen0;
+		{
+			auto l1 = ((facePts[3] - facePts[0]).norm() + (facePts[2] - facePts[1]).norm()) * 0.5;
+			int orthAxis1 = (axis + 2) % 3;
+			auto edgeLenOverChordLen1 = l1 / chordLen;
+			if (edgeLenOverChordLen1 > maxEdgeLenOverChordLenByAxis[orthAxis1])
+				maxEdgeLenOverChordLenByAxis[orthAxis1] = edgeLenOverChordLen1;
+		}
 	}
 
 	for (int axis = 0; axis < 3; axis++) {
@@ -1357,10 +1363,10 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 
 double Polyhedron::calCurvature(const SplittingParams& params, int axis) const
 {
-	if (_cachedAvgCurvatureByAxis[axis] >= 0)
+	if (_cachedAvgCurvatureByAxis[axis] > -1)
 		return _cachedAvgCurvatureByAxis[axis];
-	_cachedAvgCurvatureByAxis[axis] = 0;
 
+	_cachedAvgCurvatureByAxis[axis] = 0;
 	if (!intersectsModel())
 		return _cachedAvgCurvatureByAxis[axis];
 
@@ -1377,12 +1383,12 @@ double Polyhedron::calCurvature(const SplittingParams& params, int axis) const
 		double c = calCurvature2D(params, facePts);
 
 		lock_guard lg(mut);
-		if (c > _cachedAvgCurvatureByAxis[axis])
-			_cachedAvgCurvatureByAxis[axis] = c;
+		_cachedAvgCurvatureByAxis[axis] += c;
 
 		return true;
 	}, RUN_MULTI_THREAD);
 	
+	_cachedAvgCurvatureByAxis[axis] /= steps;
 	return _cachedAvgCurvatureByAxis[axis];
 }
 

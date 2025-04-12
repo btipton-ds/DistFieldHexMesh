@@ -275,7 +275,7 @@ void Splitter2D::createEdgeUsageMap(const POINT_MAP_TYPE& ptMap, map<Edge2D, siz
 void Splitter2D::removePolylineFromMaps(const Polyline& pl, POINT_MAP_TYPE& ptMap, map<Edge2D, size_t>& edgeUsage) const
 {
 	vector<size_t> indices;
-	pl.createVector(indices);
+	pl.createVector(indices, vector<Vector2d>());
 	size_t num = pl._isClosed ? indices.size() : indices.size() - 1;
 	for (size_t i = 0; i < num; i++) {
 		size_t j = (i + 1) % indices.size();
@@ -379,67 +379,111 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 {
 	const double sharpAngleRadians = params.getSharpAngleRadians();
 	const double sharpRadius = params.sharpEffectiveRadius;
+	const double minRatio = 1 / 25.0;
 
 	curvatures.clear();
+	if (_edges.empty())
+		return 0;
 	POINT_MAP_TYPE ptMap;
 	createPointPointMap(ptMap);
+	if (ptMap.size() <= _boundaryIndices.size())
+		return 0;
 
-	curvatures.resize(_pts.size(), 0);
-	mutex mut;
-	double maxCurv = 0;
-	for (size_t i = 0; i < _pts.size(); i++) {
-		const auto& connectedIndices = ptMap[i];
-		if (connectedIndices.size() != 2) {
-			continue;
+	map<Edge2D, size_t> edgeUsage;
+	createEdgeUsageMap(ptMap, edgeUsage);
+	vector<Polyline> pls;
+	if (createPolylines(ptMap, edgeUsage, pls) == 0)
+		return 0;
+
+#if 0 && defined(_DEBUG)
+	static mutex mut;
+	lock_guard lg(mut);
+#endif
+
+	curvatures.reserve(_pts.size());
+	for (const auto& pl : pls) {
+		vector<size_t> indices;
+		size_t numIndices = pl.createVector(indices, _pts);
+		size_t start = 0, stop = numIndices;
+		if (!pl._isClosed) {
+			start = 1;
+			stop = numIndices - 1;
 		}
-		auto iter2 = connectedIndices.begin();
-		const Vector2d& pt1 = _pts[i];
-		const Vector2d& pt0 = _pts[*iter2++];
-		const Vector2d& pt2 = _pts[*iter2];
 
-		Vector2d v0 = (pt1 - pt0);
-		auto v1 = (pt2 - pt1);
-		auto l0 = v0.norm();
-		auto l1 = v1.norm();
-		if (l0 >= Tolerance::paramTol() && l1 >= Tolerance::paramTol()) {
+		for (size_t j = start; j < stop; j++) {
+			size_t i = (j + numIndices - 1) % numIndices;
+			size_t k = (j + 1) % numIndices;
+
+			size_t idx0 = indices[i];
+			size_t idx1 = indices[j];
+			size_t idx2 = indices[k];
+
+			if (isColinear(idx0, idx1, idx2)) {
+				curvatures.push_back(0);
+				continue;
+			}
+
+			const auto& pt0 = _pts[idx0];
+			const auto& pt1 = _pts[idx1];
+			const auto& pt2 = _pts[idx2];
+
+			Vector2d v0 = (pt1 - pt0);
+			auto v1 = (pt2 - pt1);
+			auto l0 = v0.norm();
+			auto l1 = v1.norm();
+			if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
+				continue;
+			}
+
 			v0 /= l0;
 			v1 /= l1;
 			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-			if (cp >= Tolerance::paramTol()) {
-				double radius = 0; // Zero curvature
+			if (cp < Tolerance::paramTol()) {
+				curvatures.push_back(0);
+				continue;
+			}
+			double radius = 0; // Zero curvature
 
-				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
-				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
+			Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
+			Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
 
-				double cosTheta = v1.dot(v0);
-				double sinTheta = v1.dot(perpV0);
-				double theta = atan2(sinTheta, cosTheta);
-				if (fabs(theta) > sharpAngleRadians) {
-					auto thetaDeg = theta * 180 / M_PI;
-					radius = sharpRadius;
-				} else {
-					auto mid0 = (pt0 + pt1) * 0.5;
-					auto mid1 = (pt1 + pt2) * 0.5;
-					LineSegment2d seg0(mid0, perpV0);
-					LineSegment2d seg1(mid1, perpV1);
-					double t;
-					if (seg0.intersect(seg1, t)) {
-						Vector2d pt = seg0.interpolate(t);
-						radius = (pt0 - pt).norm();
-						if (radius < Tolerance::paramTol()) {
-							radius = sharpRadius;
-						}
+			double cosTheta = v1.dot(v0);
+			double sinTheta = v1.dot(perpV0);
+			double theta = atan2(sinTheta, cosTheta);
+			if (fabs(theta) > sharpAngleRadians) {
+				auto thetaDeg = theta * 180 / M_PI;
+				radius = sharpRadius;
+			} else {
+				auto mid0 = (pt0 + pt1) * 0.5;
+				auto mid1 = (pt1 + pt2) * 0.5;
+				LineSegment2d seg0(mid0, perpV0);
+				LineSegment2d seg1(mid1, perpV1);
+				double t;
+				if (seg0.intersect(seg1, t)) {
+					Vector2d pt = seg0.interpolate(t);
+					radius = (pt0 - pt).norm();
+					if (radius < sharpRadius) {
+						radius = sharpRadius;
 					}
 				}
+			}
 
-				if (radius > 0) 
-					curvatures[i] = 1 / radius;
+			if (radius > 0) {
+				curvatures.push_back(1 / radius);
+#if 0
+				if (radius > sharpRadius) {
+					static mutex mut;
+					lock_guard lg(mut);
+					cout << "Rad: " << radius << "\n";
+				}
+#endif
 			}
 		}
 	}
 
-	if (maxCurv < 1.0e-12)
-		return 0;
+	if (!curvatures.empty()) {
+		int dbgBreak = 1;
+	}
 
 	return curvatures.size();
 }
@@ -584,14 +628,15 @@ Vector3d Splitter2D::calNormal(size_t idx0, size_t idx1, size_t idx2) const
 	return v1.cross(v0);
 }
 
-bool Splitter2D::isColinear(size_t idx0, size_t idx1, size_t idx2) const
+bool Splitter2D::isColinear(size_t i, size_t j, size_t k) const
 {
-	const auto& pt0 = _pts[idx0];
-	const auto& pt1 = _pts[idx1];
-	const auto& pt2 = _pts[idx2];
+	const auto& pt0 = _pts[i];
+	const auto& pt1 = _pts[j];
+	const auto& pt2 = _pts[k];
 
-	Vector2d v0 = (pt1 - pt0).normalized();
-	Vector2d v1 = pt2 - pt0;
+	Vector2d v0 = pt2 - pt0;
+	v0.normalize();
+	Vector2d v1 = pt1 - pt0;
 	double dp = v1.dot(v0);
 	v1 = v1 - v0 * dp;
 	double distSqr = v1.squaredNorm();
@@ -1168,11 +1213,33 @@ size_t Splitter2D::Polyline::lastIdx() const
 	return *rbegin();
 }
 
-size_t Splitter2D::Polyline::createVector(vector<size_t>& vec) const
+size_t Splitter2D::Polyline::createVector(vector<size_t>& vec, const vector<Vector2d>& pts) const
 {
 	vec.clear();
-	for (auto iter = begin(); iter != end(); iter++)
-		vec.push_back(*iter);
+	if (pts.empty()) {
+		for (auto iter = begin(); iter != end(); iter++) {
+			vec.push_back(*iter);
+		}
+	} else {
+		for (auto iter = begin(); iter != end(); iter++) {
+			size_t nextIdx = *iter;
+			if (vec.size() > 2) {
+				size_t idx0 = vec[vec.size() - 2];
+				size_t idx1 = vec[vec.size() - 1];
+
+				const auto& pt0 = pts[idx0];
+				const auto& pt1 = pts[idx1];
+				const auto& pt2 = pts[nextIdx];
+				auto l0 = (pt2 - pt0).norm();
+				auto l1 = (pt2 - pt1).norm();
+				if (l1 / l0 > 0.001) {
+					vec.push_back(nextIdx);
+				}
+			} else {
+				vec.push_back(nextIdx);
+			}
+		}
+	}
 
 	return vec.size();
 }

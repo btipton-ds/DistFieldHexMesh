@@ -344,16 +344,20 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 	lock_guard lg(mut);
 #endif // _DEBUG
 
-	bool needCurvatureSplit[] = { false, false, false };
+	vector<pair<double, int>> splitPriority;
 	for (int axis = 0; axis < 3; axis++) {
-		needCurvatureSplit[axis] = maxEdgeLenOverChordLenByAxis[axis] > 1;
+		splitPriority.push_back(make_pair(maxEdgeLenOverChordLenByAxis[axis], axis));
 	}
+	sort(splitPriority.begin(), splitPriority.end(), [](const pair<double, int>& lhs, const pair<double, int>& rhs) {
+		return lhs.first > rhs.first;
+	});
 
 	bool wasSplit = false;
 	vector<Index3DId> newCellIds;
 	newCellIds.push_back(parentId);
-	for (int axis = 0; axis < 3; axis++) {
-		if (needCurvatureSplit[axis]) {
+	for (const auto& pair : splitPriority) {
+		if (pair.first > 1) {
+			int axis = pair.second;
 			int axisBit = 1 << axis;
 			ignoreAxisBits |= axisBit;
 
