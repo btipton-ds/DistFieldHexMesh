@@ -331,6 +331,7 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 
 bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits)
 {
+	// This needs to create the two subCells then decide, just like intersection logic. We can't tell the outcome without doing it.
 	if (_splitLevel < _params.numIntersectionDivs || _splitLevel >= _params.numCurvatureDivs)
 		return false;
 
@@ -344,20 +345,19 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 	lock_guard lg(mut);
 #endif // _DEBUG
 
-	vector<pair<double, int>> splitPriority;
+
+	bool needCurvatureSplit[] = { false, false, false };
 	for (int axis = 0; axis < 3; axis++) {
-		splitPriority.push_back(make_pair(maxEdgeLenOverChordLenByAxis[axis], axis));
+		needCurvatureSplit[axis] = maxEdgeLenOverChordLenByAxis[axis] > 1;
 	}
-	sort(splitPriority.begin(), splitPriority.end(), [](const pair<double, int>& lhs, const pair<double, int>& rhs) {
-		return lhs.first > rhs.first;
-	});
 
 	bool wasSplit = false;
 	vector<Index3DId> newCellIds;
 	newCellIds.push_back(parentId);
-	for (const auto& pair : splitPriority) {
-		if (pair.first > 1) {
-			int axis = pair.second;
+	for (int axis = 0; axis < 3; axis++) {
+		int orthoAxis0 = (axis + 1) % 3;
+		int orthoAxis1 = (axis + 2) % 3;
+		if (needCurvatureSplit[axis]) {
 			int axisBit = 1 << axis;
 			ignoreAxisBits |= axisBit;
 
@@ -371,7 +371,7 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 		wasSplit = true;
 	}
 
-#if 1
+#if 0
 	if (newCellIds.size() == 4) {
 		for (const auto& cellId : newCellIds) {
 			if (conditionalBisectionHexSplit(cellId, tuv, ignoreAxisBits, 2)) {

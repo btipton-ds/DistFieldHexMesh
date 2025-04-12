@@ -1298,16 +1298,24 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEd
 		MTC::vector<Vector3d> facePts;
 		makeHexFacePoints(axis, 0.5, facePts);
 		{
-			auto l0 = ((facePts[1] - facePts[0]).norm() + (facePts[3] - facePts[2]).norm()) * 0.5;
 			int orthAxis0 = (axis + 1) % 3;
+
+			auto v0 = facePts[1] - facePts[0];
+			auto v1 = facePts[3] - facePts[2];
+			auto l0 = (v0.norm() + v1.norm()) * 0.5;
+
 			auto edgeLenOverChordLen0 = l0 / chordLen;
 			if (edgeLenOverChordLen0 > maxEdgeLenOverChordLenByAxis[orthAxis0])
 				maxEdgeLenOverChordLenByAxis[orthAxis0] = edgeLenOverChordLen0;
 		}
 
 		{
-			auto l1 = ((facePts[3] - facePts[0]).norm() + (facePts[2] - facePts[1]).norm()) * 0.5;
 			int orthAxis1 = (axis + 2) % 3;
+
+			auto v0 = facePts[3] - facePts[0];
+			auto v1 = facePts[2] - facePts[1];
+			auto l1 = (v0.norm() + v1.norm()) * 0.5;
+
 			auto edgeLenOverChordLen1 = l1 / chordLen;
 			if (edgeLenOverChordLen1 > maxEdgeLenOverChordLenByAxis[orthAxis1])
 				maxEdgeLenOverChordLenByAxis[orthAxis1] = edgeLenOverChordLen1;
