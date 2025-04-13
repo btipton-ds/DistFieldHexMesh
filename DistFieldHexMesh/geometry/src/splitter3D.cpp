@@ -288,16 +288,15 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 				if (val0 <= 1 + Tolerance::paramTol() && val1 <= 1 + Tolerance::paramTol()) {
 					// The edge length to chord ratios in the orthoganal planes are good enough
 					// Don't split this axis
-					ignoreAxisBits |= axisBit;
-					return -1;
-				}
+					ignoreAxisBits |= axisBit; // Prevent future splits from splitting on this axis, but not here in the code flow
+				} else {
+					if (val0 > parentMaxLenChordRatio) {
+						parentMaxLenChordRatio = val0;
+					}
 
-				if (val0 > parentMaxLenChordRatio) {
-					parentMaxLenChordRatio = val0;
-				}
-
-				if (val1 > parentMaxLenChordRatio) {
-					parentMaxLenChordRatio = val1;
+					if (val1 > parentMaxLenChordRatio) {
+						parentMaxLenChordRatio = val1;
+					}
 				}
 			}
 		}
@@ -401,9 +400,10 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 
 	int splitAxis = -1;
 
-	if (bestTooManyOrthoSplitAxis != -1)
+	bool disableQualitySplits = true;
+	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1)
 		splitAxis = bestTooManyOrthoSplitAxis;
-	else if (bestTooManyFacesSplitAxis != -1)
+	else if (!disableQualitySplits && bestTooManyFacesSplitAxis != -1)
 		splitAxis = bestTooManyFacesSplitAxis; 
 	else if (_subPassNum == 0) {
 		if (_splitLevel < _params.numIntersectionDivs) {

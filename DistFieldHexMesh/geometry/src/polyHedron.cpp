@@ -1399,6 +1399,8 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 	mutex mut;
 	tp.run(steps, [this, axis, &params, steps, pCurvature, &mut](size_t threadNum, size_t step)->bool {
 		double w = step / (steps - 1.0);
+		double margin = 0.001;
+		w = margin + (1 - 2 * margin) * w;
 		MTC::vector<Vector3d> facePts;
 		makeHexFacePoints(axis, w, facePts);
 
