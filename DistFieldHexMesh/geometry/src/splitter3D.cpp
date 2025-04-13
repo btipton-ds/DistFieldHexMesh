@@ -172,12 +172,14 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 		int dbgBreak = 1;
 	}
 
+#if 0
 	if (numPossibleSplits == 8 && doCurvatureSplit(parentId, tuv, ignoreAxisBits)) {
 		return true;
 	}
+#endif
 
 	bool wasSplit = false;
-	int splitAxis = determineBestSplitAxis(parentId, tuv, ignoreAxisBits);
+	int splitAxis = determineBestSplitAxis(parentId, tuv, ignoreAxisBits, numPossibleSplits);
 
 	if (splitAxis != -1) {
 #if 0
@@ -231,7 +233,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	return wasSplit;
 }
 
-int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits)
+int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits, int numPossibleSplits)
 {
 	const auto& parentCell = getPolyhedron(parentId);
 
@@ -245,11 +247,18 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 
 	size_t minTooManyFaceCells = INT_MAX;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
+	double newMinOfMaxLenChordRatio = DBL_MAX;
 	int minIntersections = INT_MAX;
 
 	int bestTooManyFacesSplitAxis = -1;
 	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
+	int bestCurvatureSplitAxis = -1;
+
+#if 1// && defined(_DEBUG)
+	static mutex debugMut;
+	lock_guard lg(debugMut);
+#endif
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -257,6 +266,41 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		if (ignore)
 			continue;
 
+		double parentMaxLenChordRatio = 1; // Set this off of the parent cell. Only split the
+		if (hasIntersection) {
+			if (_splitLevel >= _params.numSharpEdgeIntersectionDivs && _splitLevel < _params.numCurvatureDivs) {
+				double val0, val1;
+				switch (axis) {
+				default:
+				case 0: // X normal vector
+					val0 = parentCell.calCurvatureXYPlane(_params);
+					val1 = parentCell.calCurvatureZXPlane(_params);
+					break;
+				case 1: // Y normal vector
+					val0 = parentCell.calCurvatureXYPlane(_params);
+					val1 = parentCell.calCurvatureYZPlane(_params);
+					break;
+				case 2: // Z normal vector
+					val0 = parentCell.calCurvatureYZPlane(_params);
+					val1 = parentCell.calCurvatureZXPlane(_params);
+					break;
+				}
+				if (val0 <= 1 + Tolerance::paramTol() && val1 <= 1 + Tolerance::paramTol()) {
+					// The edge length to chord ratios in the orthoganal planes are good enough
+					// Don't split this axis
+					ignoreAxisBits |= axisBit;
+					return -1;
+				}
+
+				if (val0 > parentMaxLenChordRatio) {
+					parentMaxLenChordRatio = val0;
+				}
+
+				if (val1 > parentMaxLenChordRatio) {
+					parentMaxLenChordRatio = val1;
+				}
+			}
+		}
 		auto scratchCellId = makeScratchCell(parentId);
 
 		Utils::ScopedRestore restore1(_testRun);
@@ -269,6 +313,7 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 
 		size_t totalTooManyFaces = 0;
 		double maxOrtho = 0;
+		double minOfMaxLenChordRatios = DBL_MAX;
 		int numIntersections = 0;
 
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
@@ -283,9 +328,40 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 				if (ortho > maxOrtho) {
 					maxOrtho = ortho;
 				}
-			}
-			else if (_subPassNum == 0 && newCell.intersectsModel()) {
+			} else if (hasIntersection && newCell.intersectsModel()) {
 				numIntersections++;
+				if (_splitLevel < _params.numIntersectionDivs) {
+					// NO OP
+				} else if (_splitLevel < _params.numCurvatureDivs) {
+					double maxLenChordRatio = 1;
+
+					double val0, val1;
+					switch (axis) {
+					case 0: // X normal vector
+						val0 = newCell.calCurvatureXYPlane(_params);
+						val1 = newCell.calCurvatureZXPlane(_params);
+						break;
+					case 1: // Y normal vector
+						val0 = newCell.calCurvatureXYPlane(_params);
+						val1 = newCell.calCurvatureYZPlane(_params);
+						break;
+					case 2: // Z normal vector
+						val0 = newCell.calCurvatureYZPlane(_params);
+						val1 = newCell.calCurvatureZXPlane(_params);
+						break;
+					}
+
+					if (val0 > 1 && val0 > maxLenChordRatio) {
+						maxLenChordRatio = val0;
+					}
+
+					if (val1 > 1 && val1 > maxLenChordRatio) {
+						maxLenChordRatio = val1;
+					}
+
+					if (maxLenChordRatio < minOfMaxLenChordRatios)
+						minOfMaxLenChordRatios = maxLenChordRatio;
+				}
 			}
 		}
 
@@ -300,10 +376,23 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		}
 
 		if (_subPassNum == 0) {
-			if (numIntersections < minIntersections) {
-				// If neither sub cell intersects, we do not need to split this one
-				minIntersections = numIntersections;
-				bestIntersectionSplitAxis = axis;
+			if (_splitLevel < _params.numIntersectionDivs) {
+				if (numIntersections < minIntersections) {
+					// If neither sub cell intersects, we do not need to split this one
+					minIntersections = numIntersections;
+					bestIntersectionSplitAxis = axis;
+				}
+			} else if (_splitLevel < _params.numCurvatureDivs) {
+				if (numIntersections < minIntersections) {
+					// If neither sub cell intersects, we do not need to split this one
+					minIntersections = numIntersections;
+					bestIntersectionSplitAxis = axis;
+				}
+
+				if (minOfMaxLenChordRatios < parentMaxLenChordRatio && minOfMaxLenChordRatios < newMinOfMaxLenChordRatio) {
+					newMinOfMaxLenChordRatio = minOfMaxLenChordRatios;
+					bestCurvatureSplitAxis = axis;
+				}
 			}
 		}
 
@@ -320,9 +409,12 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 		if (_splitLevel < _params.numIntersectionDivs) {
 			// If we're doing intersection splits, split there's any intersection
 			splitAxis = bestIntersectionSplitAxis;
-		} else if (_splitLevel < _params.numCurvatureDivs && minIntersections == 1) {
+		} else if (_splitLevel < _params.numCurvatureDivs) {
 			// If we're doing curvature splits, only split if one side is empty
-			splitAxis = bestIntersectionSplitAxis;
+			if (bestCurvatureSplitAxis != -1)
+				splitAxis = bestCurvatureSplitAxis;
+			else if (minIntersections == 1)
+				splitAxis = bestIntersectionSplitAxis;
 		}
 	}
 

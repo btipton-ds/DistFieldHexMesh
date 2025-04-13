@@ -418,14 +418,16 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 			size_t idx1 = indices[j];
 			size_t idx2 = indices[k];
 
+			const auto& pt0 = _pts[idx0];
+			const auto& pt1 = _pts[idx1];
+			const auto& pt2 = _pts[idx2];
+			if (!insideBoundary(pt1))
+				continue;
+
 			if (isColinear(idx0, idx1, idx2)) {
 				curvatures.push_back(0);
 				continue;
 			}
-
-			const auto& pt0 = _pts[idx0];
-			const auto& pt1 = _pts[idx1];
-			const auto& pt2 = _pts[idx2];
 
 			Vector2d v0 = (pt1 - pt0);
 			auto v1 = (pt2 - pt1);

@@ -117,6 +117,7 @@ public:
 	bool hasTooHighCurvature(const SplittingParams& params, double maxEdgeLenOverChordLenByAxis[3]) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	double maxOrthogonalityAngleRadians() const;
+	double callMaxEdgeLenOverChordLenByNormalAxis(const SplittingParams& params, int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
 
@@ -195,7 +196,10 @@ private:
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
-	double calCurvature(const SplittingParams& paramsm, int axis) const;
+	double calCurvatureXYPlane(const SplittingParams& params) const;
+	double calCurvatureYZPlane(const SplittingParams& params) const;
+	double calCurvatureZXPlane(const SplittingParams& params) const;
+	double calCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 
 	Index3DId _thisId;
 	/*
@@ -231,7 +235,9 @@ private:
 	mutable double _maxOrthogonalityAngleRadians = -1;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	mutable double _cachedAvgCurvatureByAxis[3] = { -1, -1, -1 };
+	mutable double _cachedCurvatureXYPlane = -1;
+	mutable double _cachedCurvatureYZPlane = -1;
+	mutable double _cachedCurvatureZXPlane = -1;
 
 	mutable MTC::vector<Vector3d> _cachedCanonicalPoints;
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
@@ -268,6 +274,21 @@ inline void Polyhedron::setSplitLevel(size_t val)
 inline size_t Polyhedron::getSplitLevel() const
 {
 	return _splitLevel;
+}
+
+inline double Polyhedron::calCurvatureXYPlane(const SplittingParams& params) const
+{
+	return calCurvatureByNormalAxis(params, 2);
+}
+
+inline double Polyhedron::calCurvatureYZPlane(const SplittingParams& params) const
+{
+	return calCurvatureByNormalAxis(params, 0);
+}
+
+inline double Polyhedron::calCurvatureZXPlane(const SplittingParams& params) const
+{
+	return calCurvatureByNormalAxis(params, 1);
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);
