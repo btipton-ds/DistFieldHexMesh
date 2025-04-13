@@ -410,11 +410,13 @@ int Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d
 			// If we're doing intersection splits, split there's any intersection
 			splitAxis = bestIntersectionSplitAxis;
 		} else if (_splitLevel < _params.numCurvatureDivs) {
-			// If we're doing curvature splits, only split if one side is empty
-			if (bestCurvatureSplitAxis != -1)
-				splitAxis = bestCurvatureSplitAxis;
-			else if (minIntersections == 1)
+			// If there's one intersecti
+			if (minIntersections == 1)
 				splitAxis = bestIntersectionSplitAxis;
+			else if (minIntersections == 2)
+				splitAxis = bestCurvatureSplitAxis;
+			else 
+				assert(!"If the parent had intersections, at least one child must also have intersections. Should never reach here.");
 		}
 	}
 
