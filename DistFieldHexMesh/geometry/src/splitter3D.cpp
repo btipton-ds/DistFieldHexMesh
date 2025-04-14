@@ -156,9 +156,14 @@ bool Splitter3D::splitAtCenter()
 		// Now split the parentCell
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
-		case CT_HEX:
+		case CT_HEX: {
+#if 1 && defined(_DEBUG)
+			static mutex mut;
+			lock_guard lg(mut);
+#endif // _DEBUG
 			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
 			break;
+		}
 		default:
 			result = false;
 		}
@@ -187,9 +192,9 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	bool wasSplit = false;
 	int splitAxis = -1;
 	
-	determineBestSplitAxis(parentId, testedAxisBits, numPossibleSplits, splitAxis);
+	bool doSplit = determineBestSplitAxis(parentId, testedAxisBits, numPossibleSplits, splitAxis);
 
-	if (splitAxis != -1) {
+	if (doSplit) {
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(parentId, splitAxis, newCellIds);
 
@@ -207,6 +212,20 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 		}
 
 		wasSplit = true;
+	} else if (splitAxis != -1) {
+		int axisBit = 1 << splitAxis;
+		testedAxisBits |= axisBit;
+		if (testedAxisBits != 7) {
+			if (numPossibleSplits == 8) {
+				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 4)) {
+					wasSplit = false;
+				}
+			} else if (numPossibleSplits == 4) {
+				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 2)) {
+					wasSplit = false;
+				}
+			}
+		}
 	}
 
 	return wasSplit;
@@ -289,31 +308,32 @@ bool Splitter3D::determineBestSplitAxis(const Index3DId& parentId, int testedAxi
 	}
 
 	bool disableQualitySplits = true;
-	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1)
+	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1) {
 		splitAxis = bestTooManyOrthoSplitAxis;
-	else if (!disableQualitySplits && bestTooManyFacesSplitAxis != -1)
+		return splitAxis != -1;
+	} else if (!disableQualitySplits && bestTooManyFacesSplitAxis != -1) {
 		splitAxis = bestTooManyFacesSplitAxis;
-	else if (_subPassNum == 0) {
+		return splitAxis != -1;
+	} else if (_subPassNum == 0) {
 		if (_splitLevel < _params.numIntersectionDivs) {
 			splitAxis = bestIntersectionSplitAxis;
+			return splitAxis != -1;
 		} else if (_splitLevel < _params.numCurvatureDivs) {
-#if 1 && defined(_DEBUG)
-			static mutex mut;
-			lock_guard lg(mut);
-#endif // _DEBUG
 			if (minIntersections == 1) {
 				// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 				splitAxis = bestIntersectionSplitAxis;
+				return splitAxis != -1;
 			} else if (minIntersections == 2) {
 				// Add this cell and the axis to the list of cells requring curvature testing before splitting.
+				splitAxis = bestIntersectionSplitAxis;
 				if (needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
-					splitAxis = bestIntersectionSplitAxis;
+					return splitAxis != -1;
 				}
 			}
 		}
 	}
 
-	return splitAxis != -1;
+	return false;
 }
 
 namespace
