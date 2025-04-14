@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_bestFit.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
+#include <tm_math.hpp>
 #include <triMesh.h>
 #include <triMeshPatch.h>
 #include <pool_vector.h>
@@ -365,37 +366,27 @@ bool Splitter3D::needsCurvatureSplit(const Index3DId& testId, int axis)
 	if (!testCell.intersectsModel())
 		return false;
 
-	MTC::vector<Vector3d> facePts;
-	testCell.makeHexFacePoints(axis, 0.5, facePts);
-	double len0 = ((facePts[1] - facePts[0]).norm() + (facePts[2] - facePts[3]).norm()) * 0.5;
-	double len1 = ((facePts[3] - facePts[0]).norm() + (facePts[2] - facePts[1]).norm()) * 0.5;
+	const auto& corners = testCell.getCanonicalPoints();
 
 	double maxLenChordRatio = 1;
-	double c0, c1, val0 = 0, val1 = 0;
-	switch (axis) {
-	default:
-	case 0: // X normal vector
-		c0 = testCell.calCurvatureXYPlane(_params);
-		val0 = chordEdgeLenRatio(c0, minCurvature, len0, sinWedgeAngle);
+	double len, c0, c1, val0 = 0, val1 = 0;
 
-		c1 = testCell.calCurvatureZXPlane(_params);
-		val1 = chordEdgeLenRatio(c1, minCurvature, len1, sinWedgeAngle);
-		break;
-	case 1: // Y normal vector
-		c0 = testCell.calCurvatureXYPlane(_params);
-		val0 = chordEdgeLenRatio(c0, minCurvature, len0, sinWedgeAngle);
+	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
+	tuv0[axis] = 0;
+	tuv1[axis] = 1;
+	Vector3d pt0 = TRI_LERP(corners, tuv0[0], tuv0[1], tuv0[2]);
+	Vector3d pt1 = TRI_LERP(corners, tuv1[0], tuv1[1], tuv1[2]);
+	Vector3d v = pt1 - pt0;
 
-		c1 = testCell.calCurvatureYZPlane(_params);
-		val1 = chordEdgeLenRatio(c1, minCurvature, len1, sinWedgeAngle);
-		break;
-	case 2: // Z normal vector
-		c0 = testCell.calCurvatureZXPlane(_params);
-		val0 = chordEdgeLenRatio(c0, minCurvature, len0, sinWedgeAngle);
+	len = v.norm();
 
-		c1 = testCell.calCurvatureYZPlane(_params);
-		val1 = chordEdgeLenRatio(c1, minCurvature, len1, sinWedgeAngle);
-		break;
-	}
+	int orthoAxis0 = (axis + 1) % 3;
+	int orthoAxis1 = (axis + 2) % 3;
+
+	c0 = testCell.calCurvatureByNormalAxis(_params, orthoAxis0);
+	c1 = testCell.calCurvatureByNormalAxis(_params, orthoAxis1);
+	val0 = chordEdgeLenRatio(c0, minCurvature, len, sinWedgeAngle);
+	val1 = chordEdgeLenRatio(c1, minCurvature, len, sinWedgeAngle);
 
 	return (val0 > 1 || val1 > 1);
 }
