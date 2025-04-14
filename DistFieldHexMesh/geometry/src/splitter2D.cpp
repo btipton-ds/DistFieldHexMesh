@@ -408,6 +408,9 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 		if (!pl._isClosed) {
 			start = 1;
 			stop = numIndices - 1;
+			if (insideBoundary(_pts[indices.front()])) {
+				curvatures.push_back(1 / sharpRadius);
+			}
 		}
 
 		for (size_t j = start; j < stop; j++) {
@@ -479,6 +482,12 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 					cout << "Rad: " << radius << "\n";
 				}
 #endif
+			}
+		}
+		
+		if (!pl._isClosed) {
+			if (insideBoundary(_pts[indices.back()])) {
+				curvatures.push_back(1 / sharpRadius);
 			}
 		}
 	}

@@ -307,7 +307,7 @@ bool Splitter3D::determineBestSplitAxis(const Index3DId& parentId, int testedAxi
 		reset(newCellIds);
 	}
 
-	bool disableQualitySplits = true;
+	bool disableQualitySplits = false;
 	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1) {
 		splitAxis = bestTooManyOrthoSplitAxis;
 		return splitAxis != -1;
