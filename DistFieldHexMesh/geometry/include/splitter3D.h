@@ -63,6 +63,17 @@ private:
 		CT_UNKNOWN,
 	};
 
+	struct CurvatureCellResplitRec {
+		int _testedAxisBits;
+		Index3DId _cellId;
+		inline bool operator < (const CurvatureCellResplitRec& rhs) const {
+			return _cellId < rhs._cellId;
+		}
+		inline bool operator == (const CurvatureCellResplitRec& rhs) const {
+			return _cellId == rhs._cellId;
+		}
+	};
+
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
@@ -72,9 +83,10 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int ignoreAxisBits, int numPossibleSplits);
-	int determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits, int numPossibleSplits);
-	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& ignoreAxisBits);
+	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, bool doIntersectionTests, int testedAxisBits, int numPossibleSplits);
+	int determineBestIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits, int numPossibleSplits);
+	bool needsCurvatureSplit(const Index3DId& testId, const Vector3d& tuv, int axis);
+	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
@@ -96,6 +108,7 @@ private:
 	std::shared_ptr<const Model::SearchTree> _pSearchSourceTree;
 	size_t _subPassNum, _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
+	std::set<CurvatureCellResplitRec> _curvatureTestRequiredRecs;
 
 	Block* _pBlock;
 	Block* _pScratchBlock;
@@ -106,13 +119,6 @@ private:
 	const double _distTolSr = _distTol * _distTol;
 	const double _paramTol = Tolerance::paramTol();
 	const double _paramTolSqr = _paramTol * _paramTol;
-
-	double _minOfMaxFinalOrthoCells = DBL_MAX;
-
-	MTC::vector<Index3DId> _cornerVertIds;
-	MTC::vector<Vector3d> _cornerPts;
-	MTC::vector<MTC::vector<Vector3d>> _cellFacePoints;
-
 
 
 	thread_local static VolumePtr _pScratchVol;
