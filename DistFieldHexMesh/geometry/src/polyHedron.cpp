@@ -238,7 +238,7 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 	return !result.empty();
 }
 
-void Polyhedron::makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
+void Polyhedron::makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
 {
 	auto& cp = getCanonicalPoints();
 
@@ -249,16 +249,16 @@ void Polyhedron::makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MT
 
 		switch (axis) {
 		case 0:
-			t0 = (i == 0) ? 0 : tuv[0];
-			t1 = (i == 0) ? tuv[0] : 1;
+			t0 = (i == 0) ? 0 : 0.5;
+			t1 = (i == 0) ? 0.5 : 1;
 			break;
 		case 1:
-			u0 = (i == 0) ? 0 : tuv[1];
-			u1 = (i == 0) ? tuv[1] : 1;
+			u0 = (i == 0) ? 0 : 0.5;
+			u1 = (i == 0) ? 0.5 : 1;
 			break;
 		case 2:
-			v0 = (i == 0) ? 0 : tuv[2];
-			v1 = (i == 0) ? tuv[2] : 1;
+			v0 = (i == 0) ? 0 : 0.5;
+			v1 = (i == 0) ? 0.5 : 1;
 			break;
 		}
 

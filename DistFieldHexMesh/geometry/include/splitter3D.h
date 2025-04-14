@@ -72,11 +72,11 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits);
-	bool determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits, int& splitAxis);
-	bool needsCurvatureSplit(const Index3DId& testId, const Vector3d& tuv, int axis);
-	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits);
-	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	bool determineBestSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits, int& splitAxis);
+	bool needsCurvatureSplit(const Index3DId& testId, int axis);
+	bool doCurvatureSplit(const Index3DId& parentId, int& testedAxisBits);
+	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
 		std::set<Index3DId>& allCellFaceIds, bool useAll);

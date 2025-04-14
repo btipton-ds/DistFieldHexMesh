@@ -150,7 +150,7 @@ public:
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
 
-	void makeHexCellPoints(int axis, const Vector3d& tuv, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
+	void makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 	void makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
 	void write(std::ostream& out) const;
