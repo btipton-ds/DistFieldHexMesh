@@ -63,17 +63,6 @@ private:
 		CT_UNKNOWN,
 	};
 
-	struct CurvatureCellResplitRec {
-		int _testedAxisBits;
-		Index3DId _cellId;
-		inline bool operator < (const CurvatureCellResplitRec& rhs) const {
-			return _cellId < rhs._cellId;
-		}
-		inline bool operator == (const CurvatureCellResplitRec& rhs) const {
-			return _cellId == rhs._cellId;
-		}
-	};
-
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
@@ -83,8 +72,8 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, bool doIntersectionTests, int testedAxisBits, int numPossibleSplits);
-	int determineBestIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits, int numPossibleSplits);
+	bool conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits);
+	bool determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits, int& splitAxis);
 	bool needsCurvatureSplit(const Index3DId& testId, const Vector3d& tuv, int axis);
 	bool doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits);
 	void bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, int splitAxis, MTC::vector<Index3DId>& newCellIds);
@@ -108,7 +97,6 @@ private:
 	std::shared_ptr<const Model::SearchTree> _pSearchSourceTree;
 	size_t _subPassNum, _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
-	std::set<CurvatureCellResplitRec> _curvatureTestRequiredRecs;
 
 	Block* _pBlock;
 	Block* _pScratchBlock;

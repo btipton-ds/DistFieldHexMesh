@@ -157,7 +157,7 @@ bool Splitter3D::splitAtCenter()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX:
-			result = conditionalBisectionHexSplit(_polyhedronId, tuv, true, 0, 8);
+			result = conditionalBisectionHexSplit(_polyhedronId, tuv, 0, 8);
 			break;
 		default:
 			result = false;
@@ -172,7 +172,7 @@ bool Splitter3D::splitAtCenter()
 	return result;
 }
 
-bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, bool doIntersectionTests, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits)
 {
 	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
 		int dbgBreak = 1;
@@ -187,9 +187,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 	bool wasSplit = false;
 	int splitAxis = -1;
 	
-	if (doIntersectionTests) {
-		splitAxis = determineBestIntersectionSplitAxis(parentId, tuv, testedAxisBits, numPossibleSplits);
-	}
+	determineBestSplitAxis(parentId, tuv, testedAxisBits, numPossibleSplits, splitAxis);
 
 	if (splitAxis != -1) {
 		MTC::vector<Index3DId> newCellIds;
@@ -200,46 +198,23 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, const V
 
 		if (numPossibleSplits == 8) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, doIntersectionTests, testedAxisBits, 4);
+				conditionalBisectionHexSplit(cellId, tuv, testedAxisBits, 4);
 			}
 		} else if (numPossibleSplits == 4) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, tuv, doIntersectionTests, testedAxisBits, 2);
+				conditionalBisectionHexSplit(cellId, tuv, testedAxisBits, 2);
 			}
 		}
 
 		wasSplit = true;
 	}
 
-	if (numPossibleSplits == -1 && !_curvatureTestRequiredRecs.empty() && _splitLevel >= _params.numIntersectionDivs && _splitLevel < _params.numCurvatureDivs) {
-#if 1 && defined(_DEBUG)
-		static mutex mut;
-		lock_guard lg(mut);
-#endif
-		while (!_curvatureTestRequiredRecs.empty()) {
-			// Make a copy of _curvatureTestRequiredRecs and use the copy, because the original will change during bisectHexCell.
-			set<CurvatureCellResplitRec> tmp(_curvatureTestRequiredRecs);
-			for (const auto& rec : tmp) {
-				for (int subAxis = 0; subAxis < 3; subAxis++) {
-					int axisBit = 1 < subAxis;
-					if ((rec._testedAxisBits & axisBit) != axisBit) {
-						if (needsCurvatureSplit(rec._cellId, tuv, subAxis)) {
-							MTC::vector<Index3DId> newCellIds;
-							bisectHexCell(rec._cellId, tuv, subAxis, newCellIds); // Erases this cell from the created list and adds two new ones
-							wasSplit = true;
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-
 	return wasSplit;
 }
 
-int Splitter3D::determineBestIntersectionSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int& testedAxisBits, int numPossibleSplits)
+bool Splitter3D::determineBestSplitAxis(const Index3DId& parentId, const Vector3d& tuv, int testedAxisBits, int numPossibleSplits, int& splitAxis)
 {
+	splitAxis = -1;
 	const auto& parentCell = getPolyhedron(parentId);
 
 	bool doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
@@ -247,8 +222,6 @@ int Splitter3D::determineBestIntersectionSplitAxis(const Index3DId& parentId, co
 	bool hasIntersection = false;
 	if (_subPassNum == 0)
 		hasIntersection = parentCell.intersectsModel();
-
-	bool doIntersectionSplit = hasIntersection && _splitLevel < _params.numIntersectionDivs;
 
 	size_t minTooManyFaceCells = INT_MAX;
 	double minOfMaxFinalOrthoCells = DBL_MAX;
@@ -289,8 +262,7 @@ int Splitter3D::determineBestIntersectionSplitAxis(const Index3DId& parentId, co
 				if (ortho > maxOrtho) {
 					maxOrtho = ortho;
 				}
-			}
-			else if (hasIntersection && newCell.intersectsModel()) {
+			} else if (hasIntersection && newCell.intersectsModel()) {
 				numIntersections++;
 			}
 		}
@@ -316,30 +288,32 @@ int Splitter3D::determineBestIntersectionSplitAxis(const Index3DId& parentId, co
 		reset(newCellIds);
 	}
 
-	int splitAxis = -1;
-
 	bool disableQualitySplits = true;
 	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1)
 		splitAxis = bestTooManyOrthoSplitAxis;
 	else if (!disableQualitySplits && bestTooManyFacesSplitAxis != -1)
 		splitAxis = bestTooManyFacesSplitAxis;
 	else if (_subPassNum == 0) {
-		if (_splitLevel < _params.numIntersectionDivs || (_splitLevel < _params.numCurvatureDivs)) {
+		if (_splitLevel < _params.numIntersectionDivs) {
+			splitAxis = bestIntersectionSplitAxis;
+		} else if (_splitLevel < _params.numCurvatureDivs) {
+#if 1 && defined(_DEBUG)
+			static mutex mut;
+			lock_guard lg(mut);
+#endif // _DEBUG
 			if (minIntersections == 1) {
-				// If we're doing intersection splits, split there's any intersection
+				// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 				splitAxis = bestIntersectionSplitAxis;
 			} else if (minIntersections == 2) {
-				assert(bestIntersectionSplitAxis != -1);
 				// Add this cell and the axis to the list of cells requring curvature testing before splitting.
-				CurvatureCellResplitRec rec;
-				rec._testedAxisBits = testedAxisBits;
-				rec._cellId = parentId;
-				_curvatureTestRequiredRecs.insert(rec);
+				if (needsCurvatureSplit(parentId, tuv, bestIntersectionSplitAxis)) {
+					splitAxis = bestIntersectionSplitAxis;
+				}
 			}
 		}
 	}
 
-	return splitAxis;
+	return splitAxis != -1;
 }
 
 namespace
@@ -416,12 +390,6 @@ bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, const Vector3d& tuv
 	double maxEdgeLenOverChordLenByAxis[3];
 	if (!parentCell.hasTooHighCurvature(_params, maxEdgeLenOverChordLenByAxis) /* hasTooMuchCurvature tests intersectsModel */)
 		return false;
-
-#if 1 && defined(_DEBUG)
-	static mutex mut;
-	lock_guard lg(mut);
-#endif // _DEBUG
-
 
 	bool needCurvatureSplit[] = { false, false, false };
 	for (int axis = 0; axis < 3; axis++) {
@@ -505,22 +473,6 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, const Vector3d& tuv, i
 		newCellIds.push_back(cellId);
 	}
 
-	if (!_testRun) {
-		CurvatureCellResplitRec testRec;
-		testRec._cellId = parentId;
-		auto iter = _curvatureTestRequiredRecs.find(testRec);
-		if (iter != _curvatureTestRequiredRecs.end()) {
-			auto oldRec = *iter;
-			int axisBit = 1 < splitAxis;
-			_curvatureTestRequiredRecs.erase(iter);
-			for (const auto& newCellId : newCellIds) {
-				CurvatureCellResplitRec newRec;
-				newRec._testedAxisBits = oldRec._testedAxisBits | axisBit;
-				newRec._cellId = newCellId;
-				_curvatureTestRequiredRecs.insert(newRec);
-			}
-		}
-	}
 	_createdCellIds.erase(parentId);
 	getBlockPtr()->freePolyhedron(parentId);
 }
