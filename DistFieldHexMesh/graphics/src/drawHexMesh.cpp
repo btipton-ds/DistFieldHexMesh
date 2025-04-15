@@ -95,6 +95,9 @@ DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
     case FT_MESH_LAYER_9:
         return DS_MESH_LAYER_9;
 
+    case FT_MESH_SELECTED:
+        return DS_MESH_SELECTED;
+
     default:
     case FT_ALL:
         return DS_MESH_ALL;
@@ -157,6 +160,7 @@ bool DrawHexMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO,
             ft2 = FT_MESH_LAYER_8;
             useDrawState2 = true;
             break;            
+
         }
 
         if (ft < tessellations.size() && tessellations[ft] && !tessellations[ft]->m_elementIndices.empty()) {
@@ -353,6 +357,8 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
         blocksAdded |= includeElementIndices(_options.layers[7], VBO, FT_MESH_LAYER_7, tess);
         blocksAdded |= includeElementIndices(_options.layers[8], VBO, FT_MESH_LAYER_8, tess);
         blocksAdded |= includeElementIndices(_options.layers[9], VBO, FT_MESH_LAYER_9, tess);
+
+        blocksAdded |= includeElementIndices(true, VBO, FT_MESH_SELECTED, tess);
     }
 }
 
@@ -559,6 +565,11 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     case DS_MESH_RIGHT:
         blend = true;
         UBO.defColor = p4f(1.0f, 1.0f, satVal, alphaWall);
+        break;
+
+    case DS_MESH_SELECTED:
+        blend = false;
+        UBO.defColor = p4f(0.0f, 1.0f, 0.0f, 1);
         break;
     }
 

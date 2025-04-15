@@ -79,7 +79,7 @@ struct SplittingParams {
 	double maxGapSize = 0.01; // 10 mm
 	double ignoreCurvatureRadius_meters = 0.3; // ignore chordal divisions > ~10 in
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
-	double sharpEffectiveRadius = 0.0025; // 1/4 cm
+	double sharpRadius = 0.001; // 1 mm
 	double maxRadius = 100; // m
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm

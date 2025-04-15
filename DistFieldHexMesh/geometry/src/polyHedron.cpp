@@ -929,7 +929,7 @@ double Polyhedron::calVolume() const
 
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints) const
 {
-	double avgCurvature = 0;
+	double result = 0;
 	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 	vector<TriMeshIndex> indices;
 
@@ -973,12 +973,34 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 		}
 		vector<double> curvatures;
 		if (sp.getCurvatures(params, curvatures) > 0) {
-			for (size_t i = 0; i < curvatures.size(); i++) {
-				auto c = curvatures[i];
-				avgCurvature += c;
+			int avgHalfWindow = 0;
+			if (avgHalfWindow > 0) {
+				vector<double> curvatures2(curvatures);
+				for (size_t i = 0; i < curvatures2.size(); i++) {
+					double avg = 0;
+					int count = 0;
+					for (int j = -avgHalfWindow; j < avgHalfWindow; j++) {
+						size_t idx = i + j;
+						if (idx < curvatures2.size()) {
+							avg += curvatures2[idx];
+							count++;
+						}
+					}
+					if (count > 0) {
+						avg /= count;
+						curvatures[i] = avg;
+					}
+					else
+						curvatures[i] = curvatures2[i];
+				}
 			}
 
-			avgCurvature /= curvatures.size();
+			for (size_t i = 0; i < curvatures.size(); i++) {
+				auto c = curvatures[i];
+				if (c > result)
+					result = c;
+			}
+
 		}
 #if 0 && defined(_DEBUG)
 
@@ -998,7 +1020,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 #endif
 	}
 
-	return avgCurvature;
+	return result;
 }
 
 bool Polyhedron::isOriented() const

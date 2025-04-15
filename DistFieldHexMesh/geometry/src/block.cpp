@@ -1213,6 +1213,10 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 				result = true;
 			break;
 
+		case FT_MESH_SELECTED:
+			if (face.usedByCell(Index3DId(2, 0, 4, 0)))
+				result = true;
+			break;
 	}
 
 	return result;

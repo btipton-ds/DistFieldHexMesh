@@ -378,7 +378,7 @@ size_t Splitter2D::getPolylines(vector<Polyline>& polylines) const
 size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& curvatures) const
 {
 	const double sharpAngleRadians = params.getSharpAngleRadians();
-	const double sharpRadius = params.sharpEffectiveRadius;
+	const double sharpRadius = params.sharpRadius;
 	const double minRatio = 1 / 25.0;
 
 	curvatures.clear();
@@ -394,11 +394,6 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	vector<Polyline> pls;
 	if (createPolylines(ptMap, edgeUsage, pls) == 0)
 		return 0;
-
-#if 0 && defined(_DEBUG)
-	static mutex mut;
-	lock_guard lg(mut);
-#endif
 
 	curvatures.reserve(_pts.size());
 	for (const auto& pl : pls) {
@@ -475,13 +470,6 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 
 			if (radius > 0) {
 				curvatures.push_back(1 / radius);
-#if 0
-				if (radius > sharpRadius) {
-					static mutex mut;
-					lock_guard lg(mut);
-					cout << "Rad: " << radius << "\n";
-				}
-#endif
 			}
 		}
 		
