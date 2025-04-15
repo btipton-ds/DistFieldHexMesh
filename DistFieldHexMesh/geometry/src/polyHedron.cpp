@@ -1302,16 +1302,28 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEd
 	if (!intersectsModel()) {
 		return false;
 	}
+
+#if 0 && defined(_DEBUG)
+	static mutex mut;
+	lock_guard lg(mut);
+
+	if (getId() == Index3DId(2, 0, 4, 0)) {
+		int dbgBreak = 1; // returning correct result for this cell
+	}
+#endif
+	bool result = false;
 	for (int axis = 0; axis < 3; axis++) {
+		if (needsCurvatureSplit(params, axis))
+			result = true;
 		maxEdgeLenOverChordLenByAxis[axis] = callMaxEdgeLenOverChordLenByNormalAxis(params, axis);
 	}
 
 	for (int axis = 0; axis < 3; axis++) {
 		if (maxEdgeLenOverChordLenByAxis[axis] > 1)
-			return true;
+			result = true;
 	}
 
-	return false;
+	return result;
 }
 
 double Polyhedron::callMaxEdgeLenOverChordLenByNormalAxis(const SplittingParams& params, int axis) const
