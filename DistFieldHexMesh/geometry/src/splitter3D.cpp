@@ -158,7 +158,7 @@ bool Splitter3D::splitAtCenter()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 			static mutex mut;
 			lock_guard lg(mut);
 #endif // _DEBUG
@@ -308,11 +308,10 @@ bool Splitter3D::determineBestSplitAxis(const Index3DId& parentId, int testedAxi
 		reset(newCellIds);
 	}
 
-	bool disableQualitySplits = false;
-	if (!disableQualitySplits && bestTooManyOrthoSplitAxis != -1) {
+	if (!DISABLE_QUALITY_SPLITTING && bestTooManyOrthoSplitAxis != -1) {
 		splitAxis = bestTooManyOrthoSplitAxis;
 		return splitAxis != -1;
-	} else if (!disableQualitySplits && bestTooManyFacesSplitAxis != -1) {
+	} else if (!DISABLE_QUALITY_SPLITTING && bestTooManyFacesSplitAxis != -1) {
 		splitAxis = bestTooManyFacesSplitAxis;
 		return splitAxis != -1;
 	} else if (_subPassNum == 0) {
@@ -337,25 +336,8 @@ bool Splitter3D::determineBestSplitAxis(const Index3DId& parentId, int testedAxi
 	return false;
 }
 
-namespace
-{
-double chordEdgeLenRatio(double curvature, double minCurvature, double len, double sinWedgeAngle)
-{
-	double result = 0;
-	if (curvature > minCurvature) {
-		double rad = 1 / curvature;
-		double chordLen = 2 * rad * sinWedgeAngle;
-		result = len / chordLen;
-	}
-	return result;
-}
-}
-
 bool Splitter3D::needsCurvatureSplit(const Index3DId& testId, int axis)
 {
-	const double minCurvature = 1 / _params.maxRadius;
-	const double sinWedgeAngle = sin(2 * M_PI / _params.curvatureDivsPerCircumference);
-
 	if (_subPassNum != 0 || _splitLevel >= _params.numCurvatureDivs)
 		return false;
 
@@ -363,32 +345,7 @@ bool Splitter3D::needsCurvatureSplit(const Index3DId& testId, int axis)
 		return false;
 
 	const auto& testCell = getPolyhedron(testId);
-	if (!testCell.intersectsModel())
-		return false;
-
-	const auto& corners = testCell.getCanonicalPoints();
-
-	double maxLenChordRatio = 1;
-	double len, c0, c1, val0 = 0, val1 = 0;
-
-	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
-	tuv0[axis] = 0;
-	tuv1[axis] = 1;
-	Vector3d pt0 = TRI_LERP(corners, tuv0[0], tuv0[1], tuv0[2]);
-	Vector3d pt1 = TRI_LERP(corners, tuv1[0], tuv1[1], tuv1[2]);
-	Vector3d v = pt1 - pt0;
-
-	len = v.norm();
-
-	int orthoAxis0 = (axis + 1) % 3;
-	int orthoAxis1 = (axis + 2) % 3;
-
-	c0 = testCell.calCurvatureByNormalAxis(_params, orthoAxis0);
-	c1 = testCell.calCurvatureByNormalAxis(_params, orthoAxis1);
-	val0 = chordEdgeLenRatio(c0, minCurvature, len, sinWedgeAngle);
-	val1 = chordEdgeLenRatio(c1, minCurvature, len, sinWedgeAngle);
-
-	return (val0 > 1 || val1 > 1);
+	return testCell.needsCurvatureSplit(_params, axis);
 }
 
 bool Splitter3D::doCurvatureSplit(const Index3DId& parentId, int& testedAxisBits)

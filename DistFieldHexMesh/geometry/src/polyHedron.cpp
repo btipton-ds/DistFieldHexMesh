@@ -1352,6 +1352,54 @@ bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
 	return false;
 }
 
+namespace
+{
+double chordEdgeLenRatio(double curvature, double minCurvature, double len, double sinWedgeAngle)
+{
+	double result = 0;
+	if (curvature > minCurvature) {
+		double rad = 1 / curvature;
+		double chordLen = 2 * rad * sinWedgeAngle;
+		result = len / chordLen;
+	}
+	return result;
+}
+}
+
+
+bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int axis) const
+{
+	const double minCurvature = 1 / params.maxRadius;
+	const double sinWedgeAngle = sin(2 * M_PI / params.curvatureDivsPerCircumference);
+
+	if (!intersectsModel())
+		return false;
+
+	const auto& corners = getCanonicalPoints();
+
+	double maxLenChordRatio = 1;
+	double len, c0, c1, val0 = 0, val1 = 0;
+
+	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
+	tuv0[axis] = 0;
+	tuv1[axis] = 1;
+	Vector3d pt0 = TRI_LERP(corners, tuv0[0], tuv0[1], tuv0[2]);
+	Vector3d pt1 = TRI_LERP(corners, tuv1[0], tuv1[1], tuv1[2]);
+	Vector3d v = pt1 - pt0;
+
+	len = v.norm();
+
+	int orthoAxis0 = (axis + 1) % 3;
+	int orthoAxis1 = (axis + 2) % 3;
+
+	c0 = calCurvatureByNormalAxis(params, orthoAxis0);
+	c1 = calCurvatureByNormalAxis(params, orthoAxis1);
+	val0 = chordEdgeLenRatio(c0, minCurvature, len, sinWedgeAngle);
+	val1 = chordEdgeLenRatio(c1, minCurvature, len, sinWedgeAngle);
+
+	return (val0 > 1 || val1 > 1);
+}
+
 double Polyhedron::maxOrthogonalityAngleRadians() const
 {
 	if (_maxOrthogonalityAngleRadians < 0) {
