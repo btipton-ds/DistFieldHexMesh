@@ -846,8 +846,12 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
-	size_t subPassNum;
-	for (subPassNum = 0; subPassNum < 6; subPassNum++) {
+	size_t subPassNum, steps = 6;
+#if DISABLE_QUALITY_SPLITTING
+	steps = 1;
+#endif
+
+	for (subPassNum = 0; subPassNum < steps; subPassNum++) {
 		changed = false;
 		if (subPassNum == 0) {
 			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
@@ -856,15 +860,14 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 				return true;
 			}, multiCore);
 		} else {
-#if !DISABLE_QUALITY_SPLITTING
 			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 				if (pBlk->splitComplexPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
 			}, multiCore);
-#endif
 		}
 
+#if !DISABLE_QUALITY_SPLITTING
 		if (changed) {
 			// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
 			runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
@@ -878,6 +881,7 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 				}
 			}, multiCore);
 		}
+#endif
 
 		subPassNum++;
 		if (!changed) {

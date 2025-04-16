@@ -437,7 +437,7 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 
 	const auto& parentCell = getPolyhedron(parentId);
 	if (!parentCell.isTooComplex(_params))
-		return false;
+		return -1;
 
 	bool doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
 	bool doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
