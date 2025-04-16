@@ -279,22 +279,6 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 		}
 
 		wasSplit = true;
-#if 0
-	} else if (splitAxis != -1) {
-		int axisBit = 1 << splitAxis;
-		testedAxisBits |= axisBit;
-		if (testedAxisBits != 7) {
-			if (numPossibleSplits == 8) {
-				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 4)) {
-					wasSplit = false;
-				}
-			} else if (numPossibleSplits == 4) {
-				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 2)) {
-					wasSplit = false;
-				}
-			}
-		}
-#endif
 	}
 
 	return wasSplit;
@@ -414,12 +398,6 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 		int dbgBreak = 1;
 	}
 
-#if 0
-	if (numPossibleSplits == 8 && doCurvatureSplit(parentId, testedAxisBits)) {
-		return true;
-	}
-#endif
-
 	bool wasSplit = false;
 	int splitAxis = determineBestComplexitySplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
@@ -432,34 +410,16 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 
 		if (numPossibleSplits == 8) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, testedAxisBits, 4);
+				complexityBisectionHexSplit(cellId, testedAxisBits, 4);
 			}
 		}
 		else if (numPossibleSplits == 4) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionHexSplit(cellId, testedAxisBits, 2);
+				complexityBisectionHexSplit(cellId, testedAxisBits, 2);
 			}
 		}
 
 		wasSplit = true;
-#if 0
-	}
-	else if (splitAxis != -1) {
-		int axisBit = 1 << splitAxis;
-		testedAxisBits |= axisBit;
-		if (testedAxisBits != 7) {
-			if (numPossibleSplits == 8) {
-				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 4)) {
-					wasSplit = false;
-				}
-			}
-			else if (numPossibleSplits == 4) {
-				if (conditionalBisectionHexSplit(parentId, testedAxisBits, 2)) {
-					wasSplit = false;
-				}
-			}
-		}
-#endif
 	}
 
 	return wasSplit;
@@ -476,6 +436,8 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 		return -1;
 
 	const auto& parentCell = getPolyhedron(parentId);
+	if (!parentCell.isTooComplex(_params))
+		return false;
 
 	bool doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
 	bool doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
