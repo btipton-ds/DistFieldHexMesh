@@ -276,8 +276,8 @@ private:
 
 	void dumpOpenCells() const;
 
-	bool splitComplexPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum);
-	bool splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum);
+	bool splitComplexPolyhedra(const SplittingParams& params, size_t splitNum);
+	bool splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum);
 
 	VolumePtr getScratchVolume();
 

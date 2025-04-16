@@ -1041,7 +1041,7 @@ void Block::dumpOpenCells() const
 #endif
 }
 
-bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum)
+bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum)
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
@@ -1069,8 +1069,8 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 	sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, subPassNum);
-			if (splitter.splitAtCenter()) {
+			Splitter3D splitter(this, cellId, splitNum, 1);
+			if (splitter.splitComplex()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}
@@ -1092,8 +1092,8 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 
 	for (const auto& cellId : tooComplexIds) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, subPassNum);
-			if (splitter.splitAtCenter()) {
+			Splitter3D splitter(this, cellId, splitNum, 1);
+			if (splitter.splitComplex()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}
@@ -1103,7 +1103,7 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 	return didSplit;
 }
 
-bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum)
+bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum)
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
@@ -1131,7 +1131,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, subPassNum);
+			Splitter3D splitter(this, cellId, splitNum, 0);
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
@@ -1154,8 +1154,8 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 
 	for (const auto& cellId : tooComplexIds) {
 		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, subPassNum);
-			if (splitter.splitAtCenter()) {
+			Splitter3D splitter(this, cellId, splitNum, 1);
+			if (splitter.splitComplex()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}

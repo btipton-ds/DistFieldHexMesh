@@ -74,7 +74,11 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	int determineBestSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	int determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+
+	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	int determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+
 	bool needsCurvatureSplit(const Index3DId& testId, int axis);
 	bool doCurvatureSplit(const Index3DId& parentId, int& testedAxisBits);
 	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);

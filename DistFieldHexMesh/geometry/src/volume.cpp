@@ -851,13 +851,13 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 		changed = false;
 		if (subPassNum == 0) {
 			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
+				if (pBlk->splitRequiredPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
 			}, multiCore);
 		} else {
 			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
+				if (pBlk->splitComplexPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
 			}, multiCore);
