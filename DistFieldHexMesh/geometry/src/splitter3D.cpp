@@ -293,18 +293,11 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 #endif
 	const auto& parentCell = getPolyhedron(parentId);
 
-	bool doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
-	bool doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 	bool hasIntersection = false;
 	if (_subPassNum == 0)
 		hasIntersection = parentCell.intersectsModel();
 
-	size_t minTooManyFaceCells = INT_MAX;
-	double minOfMaxFinalOrthoCells = DBL_MAX;
 	int minIntersections = INT_MAX;
-
-	int bestTooManyFacesSplitAxis = -1;
-	int bestTooManyOrthoSplitAxis = -1;
 	int bestIntersectionSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
@@ -329,30 +322,9 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (doTooManyFacesSplit || doTooNonOrthogonalSplit) {
-				if (newCell.hasTooManFaces(_params)) {
-					totalTooManyFaces++;
-				}
-
-				double ortho = newCell.maxOrthogonalityAngleRadians();
-				if (ortho > maxOrtho) {
-					maxOrtho = ortho;
-				}
-			} 
-			
 			if (hasIntersection && newCell.intersectsModel()) {
 				numIntersections++;
 			}
-		}
-
-		if (doTooManyFacesSplit && totalTooManyFaces < minTooManyFaceCells) {
-			minTooManyFaceCells = totalTooManyFaces;
-			bestTooManyFacesSplitAxis = axis;
-		}
-
-		if (doTooNonOrthogonalSplit && maxOrtho < minOfMaxFinalOrthoCells) {
-			minOfMaxFinalOrthoCells = maxOrtho;
-			bestTooManyOrthoSplitAxis = axis;
 		}
 
 		if (_subPassNum == 0) {
@@ -366,22 +338,16 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		reset(newCellIds);
 	}
 
-	if (!DISABLE_QUALITY_SPLITTING && bestTooManyOrthoSplitAxis != -1) {
-		return bestTooManyOrthoSplitAxis;
-	} else if (!DISABLE_QUALITY_SPLITTING && bestTooManyFacesSplitAxis != -1) {
-		return bestTooManyFacesSplitAxis;
-	} else if (_subPassNum == 0) {
-		if (_splitLevel < _params.numIntersectionDivs) {
+	if (_splitLevel < _params.numIntersectionDivs) {
+		return bestIntersectionSplitAxis;
+	} else if (_splitLevel < _params.numCurvatureDivs) {
+		if (minIntersections == 1) {
+			// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 			return bestIntersectionSplitAxis;
-		} else if (_splitLevel < _params.numCurvatureDivs) {
-			if (minIntersections == 1) {
-				// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
+		} else if (minIntersections == 2 && bestIntersectionSplitAxis != -1) {
+			// Add this cell and the axis to the list of cells requring curvature testing before splitting.
+			if (needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
 				return bestIntersectionSplitAxis;
-			} else if (minIntersections == 2) {
-				// Add this cell and the axis to the list of cells requring curvature testing before splitting.
-				if (needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
-					return bestIntersectionSplitAxis;
-				}
 			}
 		}
 	}
@@ -412,8 +378,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 			for (const auto& cellId : newCellIds) {
 				complexityBisectionHexSplit(cellId, testedAxisBits, 4);
 			}
-		}
-		else if (numPossibleSplits == 4) {
+		} else if (numPossibleSplits == 4) {
 			for (const auto& cellId : newCellIds) {
 				complexityBisectionHexSplit(cellId, testedAxisBits, 2);
 			}
