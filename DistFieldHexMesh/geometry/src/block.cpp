@@ -1041,6 +1041,68 @@ void Block::dumpOpenCells() const
 #endif
 }
 
+bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum)
+{
+	bool didSplit = false;
+	if (_needToSplit.empty())
+		return didSplit;
+
+	auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
+		// Sort by complexity factor so we split the most complex first
+
+		double lhsFaceScore, rhsFaceScore;
+
+		cellFunc(lhs, [&params, &lhsFaceScore](const Polyhedron& cell) {
+			lhsFaceScore = cell.getComplexityScore(params);
+			});
+
+		cellFunc(rhs, [&params, &rhsFaceScore](const Polyhedron& cell) {
+			rhsFaceScore = cell.getComplexityScore(params);
+			});
+
+		return lhsFaceScore > rhsFaceScore; // Descending sort
+		};
+
+	vector<Index3DId> needToSplitCopy(_needToSplit.begin(), _needToSplit.end());
+	_needToSplit.clear();
+
+	sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
+	for (const auto& cellId : needToSplitCopy) {
+		if (polyhedronExists(cellId)) {
+			Splitter3D splitter(this, cellId, splitNum, subPassNum);
+			if (splitter.splitAtCenter()) {
+				didSplit = true;
+				assert(!polyhedronExists(cellId));
+			}
+		}
+	}
+
+	vector<Index3DId> tooComplexIds, tmp(_touchedCellIds.begin(), _touchedCellIds.end());
+	_touchedCellIds.clear();
+
+	for (const auto& id : tmp) {
+		cellFunc(id, [&tooComplexIds, &params](const Polyhedron& cell) {
+			if (cell.isTooComplex(params)) {
+				tooComplexIds.push_back(cell.getId());
+			}
+			});
+	}
+
+	sort(tooComplexIds.begin(), tooComplexIds.end(), comp);
+
+	for (const auto& cellId : tooComplexIds) {
+		if (polyhedronExists(cellId)) {
+			Splitter3D splitter(this, cellId, splitNum, subPassNum);
+			if (splitter.splitAtCenter()) {
+				didSplit = true;
+				assert(!polyhedronExists(cellId));
+			}
+		}
+	}
+
+	return didSplit;
+}
+
 bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum, size_t subPassNum)
 {
 	bool didSplit = false;

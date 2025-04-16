@@ -849,11 +849,19 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 	size_t subPassNum;
 	for (subPassNum = 0; subPassNum < 6; subPassNum++) {
 		changed = false;
-		runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
-				changed = true;
-			return true;
-		}, multiCore);
+		if (subPassNum == 0) {
+			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+				if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
+					changed = true;
+				return true;
+			}, multiCore);
+		} else {
+			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+				if (pBlk->splitRequiredPolyhedra(params, _splitNum, subPassNum))
+					changed = true;
+				return true;
+			}, multiCore);
+		}
 
 		if (changed) {
 			// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.

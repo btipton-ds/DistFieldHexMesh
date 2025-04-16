@@ -56,6 +56,7 @@ public:
 	Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t splitLevel, size_t subPassNum);
 	~Splitter3D();
 
+	bool splitComplex();
 	bool splitAtCenter();
 private:
 	enum CellType {
