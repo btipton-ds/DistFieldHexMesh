@@ -1214,7 +1214,19 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 			break;
 
 		case FT_MESH_SELECTED:
-			if (face.usedByCell(Index3DId(2, 0, 4, 0)))
+			set<Index3DId> selected = {
+#if 0
+				Index3DId(2, 0, 4, 0),
+#endif
+			};
+			bool includeFace = false;
+			for (const auto& cellId : face.getCellIds()) {
+				if (selected.contains(cellId)) {
+					includeFace = true;
+					break;
+				}
+			}
+			if (includeFace)
 				result = true;
 			break;
 	}
