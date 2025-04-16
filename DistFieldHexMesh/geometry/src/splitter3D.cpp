@@ -248,7 +248,7 @@ bool Splitter3D::splitAtCenter()
 
 bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
+	if (_polyhedronId.blockIdx() == Index3D(2, 4, 7)) {
 		int dbgBreak = 1;
 	}
 
@@ -287,7 +287,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
 #if 1 && defined(_DEBUG)
-	if (_polyhedronId == Index3DId(2, 0, 4, 0)) {
+	if (_polyhedronId.blockIdx() == Index3D(2, 0, 4)) {
 		int dbgBreak = 1; // returning correct result for this cell
 	}
 #endif
@@ -360,10 +360,6 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 	if (DISABLE_QUALITY_SPLITTING)
 		return false;
 
-	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
-		int dbgBreak = 1;
-	}
-
 	bool wasSplit = false;
 	int splitAxis = determineBestComplexitySplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
@@ -392,11 +388,6 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 
 int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-#if 1 && defined(_DEBUG)
-	if (_polyhedronId == Index3DId(2, 0, 4, 0)) {
-		int dbgBreak = 1; // returning correct result for this cell
-	}
-#endif
 	if (DISABLE_QUALITY_SPLITTING)
 		return -1;
 

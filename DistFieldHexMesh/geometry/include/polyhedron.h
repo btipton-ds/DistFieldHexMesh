@@ -95,7 +95,7 @@ public:
 	const Vector3d& calCentroid() const;
 	Vector3d calCentroidApprox() const;
 	double calVolume() const;
-	double calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& quadPoints) const;
+	double calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& quadPoints, size_t step) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
@@ -105,7 +105,7 @@ public:
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
 	bool entryIntersectsModel(const TriMeshIndex& index) const;
-	bool getTriIndices(std::vector<TriMeshIndex>& indices) const;
+	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;

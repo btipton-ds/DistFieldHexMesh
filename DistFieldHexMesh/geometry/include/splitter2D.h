@@ -104,8 +104,8 @@ public:
 	Splitter2D(const MTC::vector<const Vector3d*>& polyPoints);
 
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
-	void add3DTriEdges(const Vector3d pts[3]);
-	void add3DTriEdges(const Vector3d* pts[3]);
+	void add3DTriEdges(const Vector3d pts[3], bool split);
+	void add3DTriEdges(const Vector3d* pts[3], bool split);
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
@@ -121,6 +121,7 @@ public:
 	bool intersectsTriPoints(const Vector3d* const * triPts) const;
 
 	void writeObj(const std::string& filenameRoot) const;
+	void writePolylinesObj(const std::string& filenameRoot) const;
 
 	inline const std::set<Edge2D>& getEdges() const
 	{
@@ -153,8 +154,8 @@ private:
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
-	void addEdge(const Vector2d& pt0, const Vector2d& pt1);
-	void addEdge(const Edge2D& edge);
+	void addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split);
+	void addEdge(const Edge2D& edge, bool split);
 	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& testFacePts) const;
 	bool segIntersectsBoundary(const LineSegment2d& testSeg) const;

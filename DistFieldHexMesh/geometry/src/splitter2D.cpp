@@ -74,11 +74,15 @@ Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 	}
 }
 
-void Splitter2D::addEdge(const Edge2D& edge)
+void Splitter2D::addEdge(const Edge2D& edge, bool split)
 {
 	if (edge[0] == edge[1])
 		return;
 
+	if (!split) {
+		_edges.insert(edge);
+		return;
+	}
 	splitExisting(edge);
 
 	set<Edge2D> subs;
@@ -101,22 +105,23 @@ void Splitter2D::addEdge(const Edge2D& edge)
 	}
 }
 
-void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1)
+void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split)
 {
 	size_t idx0 = addPoint(pt0);
 	size_t idx1 = addPoint(pt1);
-	addEdge(Edge2D(idx0, idx1));
+	Edge2D edge(idx0, idx1);
+	addEdge(edge, split);
 }
 
 void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 {
 	Vector2d p0, p1;
 	if (project(pt3D0, p0) && project(pt3D1, p1)) {
-		addEdge(p0, p1);
+		addEdge(p0, p1, true);
 	}
 }
 
-void Splitter2D::add3DTriEdges(const Vector3d pts[3])
+void Splitter2D::add3DTriEdges(const Vector3d pts[3], bool split)
 {
 	const Vector3d* pPts[] = {
 		&pts[0],
@@ -124,14 +129,14 @@ void Splitter2D::add3DTriEdges(const Vector3d pts[3])
 		&pts[2],
 	};
 
-	return add3DTriEdges(pPts);
+	return add3DTriEdges(pPts, split);
 }
 
-void Splitter2D::add3DTriEdges(const Vector3d* pts[3])
+void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 {
 	Vector2d pt0, pt1;
 	if (calIntersectionTriPts(pts, pt0, pt1)) {
-		addEdge(pt0, pt1);
+		addEdge(pt0, pt1, split);
 	}
 }
 
@@ -382,100 +387,90 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	const double minRatio = 1 / 25.0;
 
 	curvatures.clear();
-	if (_edges.empty())
-		return 0;
-	POINT_MAP_TYPE ptMap;
-	createPointPointMap(ptMap);
-	if (ptMap.size() <= _boundaryIndices.size())
-		return 0;
-
-	map<Edge2D, size_t> edgeUsage;
-	createEdgeUsageMap(ptMap, edgeUsage);
 	vector<Polyline> pls;
-	if (createPolylines(ptMap, edgeUsage, pls) == 0)
-		return 0;
-
-	curvatures.reserve(_pts.size());
-	for (const auto& pl : pls) {
-		vector<size_t> indices;
-		size_t numIndices = pl.createVector(indices, _pts);
-		size_t start = 0, stop = numIndices;
-		if (!pl._isClosed) {
-			start = 1;
-			stop = numIndices - 1;
-			if (insideBoundary(_pts[indices.front()])) {
-				curvatures.push_back(1 / sharpRadius);
-			}
-		}
-
-		for (size_t j = start; j < stop; j++) {
-			size_t i = (j + numIndices - 1) % numIndices;
-			size_t k = (j + 1) % numIndices;
-
-			size_t idx0 = indices[i];
-			size_t idx1 = indices[j];
-			size_t idx2 = indices[k];
-
-			const auto& pt0 = _pts[idx0];
-			const auto& pt1 = _pts[idx1];
-			const auto& pt2 = _pts[idx2];
-			if (!insideBoundary(pt1))
-				continue;
-
-			if (isColinear(idx0, idx1, idx2)) {
-				curvatures.push_back(0);
-				continue;
-			}
-
-			Vector2d v0 = (pt1 - pt0);
-			auto v1 = (pt2 - pt1);
-			auto l0 = v0.norm();
-			auto l1 = v1.norm();
-			if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-				continue;
-			}
-
-			v0 /= l0;
-			v1 /= l1;
-			double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
-			if (cp < Tolerance::paramTol()) {
-				curvatures.push_back(0);
-				continue;
-			}
-			double radius = 0; // Zero curvature
-
-			Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
-			Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
-
-			double cosTheta = v1.dot(v0);
-			double sinTheta = v1.dot(perpV0);
-			double theta = atan2(sinTheta, cosTheta);
-			if (fabs(theta) > sharpAngleRadians) {
-				auto thetaDeg = theta * 180 / M_PI;
-				radius = sharpRadius;
-			} else {
-				auto mid0 = (pt0 + pt1) * 0.5;
-				auto mid1 = (pt1 + pt2) * 0.5;
-				LineSegment2d seg0(mid0, perpV0);
-				LineSegment2d seg1(mid1, perpV1);
-				double t;
-				if (seg0.intersect(seg1, t)) {
-					Vector2d pt = seg0.interpolate(t);
-					radius = (pt0 - pt).norm();
-					if (radius < sharpRadius) {
-						radius = sharpRadius;
-					}
+	if (getPolylines(pls)) {
+		for (const auto& pl : pls) {
+			vector<size_t> indices;
+			size_t numIndices = pl.createVector(indices, _pts);
+			size_t start = 0, stop = numIndices;
+			if (!pl._isClosed) {
+				start = 1;
+				stop = numIndices - 1;
+				if (insideBoundary(_pts[indices.front()])) {
+					curvatures.push_back(1 / sharpRadius);
 				}
 			}
 
-			if (radius > 0) {
-				curvatures.push_back(1 / radius);
+			for (size_t j = start; j < stop; j++) {
+				size_t i = (j + numIndices - 1) % numIndices;
+				size_t k = (j + 1) % numIndices;
+
+				size_t idx0 = indices[i];
+				size_t idx1 = indices[j];
+				size_t idx2 = indices[k];
+
+				const auto& pt0 = _pts[idx0];
+				const auto& pt1 = _pts[idx1];
+				const auto& pt2 = _pts[idx2];
+				if (!insideBoundary(pt1))
+					continue;
+
+				if (isColinear(idx0, idx1, idx2)) {
+					curvatures.push_back(0);
+					continue;
+				}
+
+				Vector2d v0 = (pt1 - pt0);
+				auto v1 = (pt2 - pt1);
+				auto l0 = v0.norm();
+				auto l1 = v1.norm();
+				if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
+					continue;
+				}
+
+				v0 /= l0;
+				v1 /= l1;
+				double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
+				if (cp < Tolerance::paramTol()) {
+					curvatures.push_back(0);
+					continue;
+				}
+				double radius = 0; // Zero curvature
+
+				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
+				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
+
+				double cosTheta = v1.dot(v0);
+				double sinTheta = v1.dot(perpV0);
+				double theta = atan2(sinTheta, cosTheta);
+				if (fabs(theta) > sharpAngleRadians) {
+					auto thetaDeg = theta * 180 / M_PI;
+					radius = sharpRadius;
+				}
+				else {
+					auto mid0 = (pt0 + pt1) * 0.5;
+					auto mid1 = (pt1 + pt2) * 0.5;
+					LineSegment2d seg0(mid0, perpV0);
+					LineSegment2d seg1(mid1, perpV1);
+					double t;
+					if (seg0.intersect(seg1, t)) {
+						Vector2d pt = seg0.interpolate(t);
+						radius = (pt0 - pt).norm();
+						if (radius < sharpRadius) {
+							radius = sharpRadius;
+						}
+					}
+				}
+
+				if (radius > 0) {
+					curvatures.push_back(1 / radius);
+				}
 			}
-		}
-		
-		if (!pl._isClosed) {
-			if (insideBoundary(_pts[indices.back()])) {
-				curvatures.push_back(1 / sharpRadius);
+
+			if (!pl._isClosed) {
+				if (insideBoundary(_pts[indices.back()])) {
+					curvatures.push_back(1 / sharpRadius);
+				}
 			}
 		}
 	}
@@ -519,7 +514,7 @@ bool Splitter2D::intersectsTriPoints(const Vector3d* const* triPts) const
 
 bool Splitter2D::segIntersectsBoundary(const LineSegment2d& testSeg) const
 {
-	if (insideBoundary(testSeg[0])) { // Don't need to check pt1 because it will be checked on the next pass
+	if (insideBoundary(testSeg[0]) || insideBoundary(testSeg[1])) { // An edge for intersecting triangle does not have all tri points checked. Must check both points
 		return true;
 	}
 
@@ -558,6 +553,31 @@ void Splitter2D::writeObj(const string& filenameRoot) const
 			out << (edge[i] + 1) << " ";
 		}
 		out << "\n";
+	}
+}
+
+void Splitter2D::writePolylinesObj(const string& filenameRoot) const
+{
+	vector<Polyline> pls;
+	if (getPolylines(pls)) {
+		size_t n = 0;
+		for (const auto& pl : pls) {
+			string str = filenameRoot + to_string(n++) + ".obj";
+			ofstream out(str);
+			out << "#Vertices " << _pts.size() << "\n";
+			for (const auto& pt : _pts) {
+				auto pt2 = pt3D(pt);
+				out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
+			}
+
+			out << "#Edges " << _edges.size() << "\n";
+			vector<size_t> indices;
+			pl.createVector(indices, vector<Vector2d>());
+			for (size_t i = 0; i < indices.size() - 1; i++) {
+				size_t j = (i + 1) % indices.size();
+				out << "l " << (indices[i] + 1) << " " << (indices[j] + 1) << "\n";
+			}
+		}
 	}
 }
 
