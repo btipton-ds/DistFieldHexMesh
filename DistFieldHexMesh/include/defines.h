@@ -38,7 +38,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD 1
 #define RUN_MULTI_SUB_THREAD 1
-#define OBJECT_POOL_USE_STD_MAP 1
 #define DISABLE_QUALITY_SPLITTING 0 // Quality splitting handles too many faces, nonorthoganality etc. Disable it to view the direct splitting results. DO NOT SHIP DISABLED
 #define USE_CELL_HISTOGRAM 0
 #define FAST_BISECTION_VALIDATION_ENABLED 0
@@ -46,6 +45,8 @@ This file is part of the DistFieldHexMesh application/library.
 #define SHARP_EDGE_ANGLE_DEGREES 15
 #define SHARP_EDGE_ANGLE_RADIANS (SHARP_EDGE_ANGLE_DEGREES * M_PI / 180.0)
 #define GRAPHICS_OVER_SAMPLING 1
+
+#define OBJECT_POOL_USE_STD_MAP 1
 
 #define OBJECT_TREE_WIDTH 200
 #define VERIFY_REDUCED_FINDER 0

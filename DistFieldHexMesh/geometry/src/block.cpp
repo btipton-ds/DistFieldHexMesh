@@ -1278,6 +1278,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_MESH_SELECTED:
 			set<Index3DId> selected = {
 				Index3DId(3, 0, 4, 0),
+				Index3DId(3, 0, 4, 5),
 				Index3DId(3, 0, 4, 7),
 #if 0
 #endif

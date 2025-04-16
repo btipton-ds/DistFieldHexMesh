@@ -67,7 +67,6 @@ Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t spli
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _splitLevel(splitLevel)
-	, _subPassNum(subPassNum)
 	, _params(pBlock->getSplitParams())
 {
 	if (!_pScratchVol)
@@ -162,7 +161,7 @@ bool Splitter3D::splitComplex()
 			static mutex mut;
 			lock_guard lg(mut);
 
-			if (_polyhedronId == Index3DId(2, 0, 4, 0)) {
+			if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
 				int dbgBreak = 1; // returning correct result for this cell
 			}
 #endif
@@ -226,8 +225,8 @@ bool Splitter3D::splitAtCenter()
 			static mutex mut;
 			lock_guard lg(mut);
 
-			if (_polyhedronId.blockIdx() == Index3D(2, 0, 4)) {
-				int dbgBreak = 1; // returning correct result for this cell
+			if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
+				int dbgBreak = 1;
 			}
 #endif
 			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
@@ -248,7 +247,7 @@ bool Splitter3D::splitAtCenter()
 
 bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-	if (_polyhedronId.blockIdx() == Index3D(2, 4, 7)) {
+	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
 		int dbgBreak = 1;
 	}
 
@@ -284,18 +283,16 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	return wasSplit;
 }
 
-int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int& testedAxisBits, int numPossibleSplits)
 {
 #if 1 && defined(_DEBUG)
-	if (_polyhedronId.blockIdx() == Index3D(2, 0, 4)) {
-		int dbgBreak = 1; // returning correct result for this cell
+	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
+		int dbgBreak = 1;
 	}
 #endif
 	const auto& parentCell = getPolyhedron(parentId);
-
-	bool hasIntersection = false;
-	if (_subPassNum == 0)
-		hasIntersection = parentCell.intersectsModel();
+	if (!parentCell.intersectsModel())
+		return -1;
 
 	int minIntersections = INT_MAX;
 	int bestIntersectionSplitAxis = -1;
@@ -315,24 +312,20 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(scratchCellId, axis, newCellIds);
 
-		size_t totalTooManyFaces = 0;
-		double maxOrtho = 0;
 		int numIntersections = 0;
 
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (hasIntersection && newCell.intersectsModel()) {
+			if (newCell.intersectsModel()) {
 				numIntersections++;
 			}
 		}
 
-		if (_subPassNum == 0) {
-			if (numIntersections < minIntersections) {
-				// If neither sub cell intersects, we do not need to split this one
-				minIntersections = numIntersections;
-				bestIntersectionSplitAxis = axis;
-			}
+		if (numIntersections < minIntersections) {
+			// If neither sub cell intersects, we do not need to split this one
+			minIntersections = numIntersections;
+			bestIntersectionSplitAxis = axis;
 		}
 
 		reset(newCellIds);
@@ -344,10 +337,15 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		if (minIntersections == 1) {
 			// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 			return bestIntersectionSplitAxis;
-		} else if (minIntersections == 2) {
+		}
+		else if (minIntersections == 2) {
 			// Add this cell and the axis to the list of cells requring curvature testing before splitting.
-			if (bestIntersectionSplitAxis != -1 && needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
-				return bestIntersectionSplitAxis;
+			if (bestIntersectionSplitAxis != -1) {
+				int axisBit = 1 < bestIntersectionSplitAxis;
+				testedAxisBits |= axisBit; // Even though we don't split it, mark it as split to the caller so this axis isn't checked on subCells
+				if (needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
+					return bestIntersectionSplitAxis;
+				}
 			}
 		}
 	}
@@ -462,7 +460,7 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 
 bool Splitter3D::needsCurvatureSplit(const Index3DId& testId, int axis)
 {
-	if (_subPassNum != 0 || _splitLevel >= _params.numCurvatureDivs)
+	if (_splitLevel < _params.numIntersectionDivs || _splitLevel >= _params.numCurvatureDivs)
 		return false;
 
 	if (!getBlockPtr()->polyhedronExists(testId))

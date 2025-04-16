@@ -74,7 +74,7 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	int determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	int determineBestConditionalSplitAxis(const Index3DId& parentId, int& testedAxisBits, int numPossibleSplits);
 
 	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 	int determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
@@ -99,7 +99,7 @@ private:
 	bool _intersectsModel = false;
 	bool _hasSetSearchTree;
 	std::shared_ptr<const Model::SearchTree> _pSearchSourceTree;
-	size_t _subPassNum, _splitLevel;
+	size_t _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 
 	Block* _pBlock;
