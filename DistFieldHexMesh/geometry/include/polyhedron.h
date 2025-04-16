@@ -114,12 +114,11 @@ public:
 #endif
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
-	bool hasTooHighCurvature(const SplittingParams& params, double maxEdgeLenOverChordLenByAxis[3]) const;
+	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int axis) const;
 
 	double maxOrthogonalityAngleRadians() const;
-	double callMaxEdgeLenOverChordLenByNormalAxis(const SplittingParams& params, int axis) const;
 
 	double getComplexityScore(const SplittingParams& params) const;
 

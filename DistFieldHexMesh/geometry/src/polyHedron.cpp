@@ -1300,17 +1300,17 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	return false;
 }
 
-bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEdgeLenOverChordLenByAxis[3]) const
+bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 {
 	if (!intersectsModel()) {
 		return false;
 	}
 
-#if 0 && defined(_DEBUG)
+#if 1 && defined(_DEBUG)
 	static mutex mut;
 	lock_guard lg(mut);
 
-	if (getId() == Index3DId(2, 0, 4, 0)) {
+	if (getId().blockIdx() == Index3D(2, 0, 4)) {
 		int dbgBreak = 1; // returning correct result for this cell
 	}
 #endif
@@ -1318,55 +1318,6 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params, double maxEd
 	for (int axis = 0; axis < 3; axis++) {
 		if (needsCurvatureSplit(params, axis))
 			result = true;
-		maxEdgeLenOverChordLenByAxis[axis] = callMaxEdgeLenOverChordLenByNormalAxis(params, axis);
-	}
-
-	for (int axis = 0; axis < 3; axis++) {
-		if (maxEdgeLenOverChordLenByAxis[axis] > 1)
-			result = true;
-	}
-
-	return result;
-}
-
-double Polyhedron::callMaxEdgeLenOverChordLenByNormalAxis(const SplittingParams& params, int axis) const
-{
-	const double minCurvature = 1 / params.maxRadius;
-
-	double curvature = calCurvatureByNormalAxis(params, axis);
-	if (curvature < minCurvature)
-		return 0;
-
-	double result = 0;
-	double rad = 1 / curvature;
-	size_t divs = params.curvatureDivsPerCircumference;
-	double chordLen = 2 * rad * sin(2 * M_PI / divs);
-
-
-	MTC::vector<Vector3d> facePts;
-	makeHexFacePoints(axis, 0.5, facePts);
-	{
-		int orthAxis0 = (axis + 1) % 3;
-
-		auto v0 = facePts[1] - facePts[0];
-		auto v1 = facePts[3] - facePts[2];
-		auto l0 = (v0.norm() + v1.norm()) * 0.5;
-
-		auto edgeLenOverChordLen0 = l0 / chordLen;
-		if (edgeLenOverChordLen0 > result)
-			result = edgeLenOverChordLen0;
-	}
-
-	{
-		int orthAxis1 = (axis + 2) % 3;
-
-		auto v0 = facePts[3] - facePts[0];
-		auto v1 = facePts[2] - facePts[1];
-		auto l1 = (v0.norm() + v1.norm()) * 0.5;
-
-		auto edgeLenOverChordLen1 = l1 / chordLen;
-		if (edgeLenOverChordLen1 > result)
-			result = edgeLenOverChordLen1;
 	}
 
 	return result;
@@ -1728,11 +1679,10 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		return true;
 	}
 
-	double maxEdgeLenOverChordLenByAxis[3];
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
-	} else if (passNum < params.numCurvatureDivs && hasTooHighCurvature(params, maxEdgeLenOverChordLenByAxis)) {
+	} else if (passNum < params.numCurvatureDivs && hasTooHighCurvature(params)) {
 		setNeedsDivideAtCentroid();
 		return true;
 	}

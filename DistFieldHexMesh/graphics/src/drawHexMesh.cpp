@@ -569,7 +569,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
 
     case DS_MESH_SELECTED:
         blend = true;
-        UBO.defColor = p4f(0.0f, 1.0f, 0.0f, 0.9f);
+        UBO.defColor = p4f(0.0f, 1.0f, 0.0f, 0.6f);
         break;
     }
 
