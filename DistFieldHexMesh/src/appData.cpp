@@ -72,6 +72,7 @@ AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
 {
     clearCache();
+    loadPrefs();
 }
 
 AppData::~AppData()
@@ -499,6 +500,61 @@ void AppData::clearCache()
         }
     }
 }
+
+namespace
+{
+    void cleanUpStr(string& str) {
+        while (!str.empty() && str[0] == ' ') {
+            str = str.substr(1, str.length());
+        }
+
+        for (size_t i = 0; i < str.size(); i++) {
+            str[i] = std::tolower(str[i]);
+            if (str[i] == ',')
+                str[i] = ' ';
+        }
+    }
+}
+void AppData::loadPrefs()
+{
+    const string qsStr("qualitysplits");
+    const string selStartStr("selected start");
+    const string selEndStr("selected end");
+    const string cellIdStr("cellid");
+
+    string filename = "assets/prefs.txt";
+    ifstream in(filename);
+    char buf[1024];
+    while (!in.eof()) {
+        in.getline(buf, 1024);
+        string str(buf);
+        cleanUpStr(str);
+
+        if (str.find(qsStr) != string::npos) {
+            str = str.substr(qsStr.length(), str.length());
+            int val = std::stoi(str);
+            _doQualitySplits = val != 0;
+        } else if (str.find(selStartStr) != string::npos) {
+            bool done = false;
+            do {
+                in.getline(buf, 1024);
+                string str2(buf);
+                cleanUpStr(str2);
+                if (str2.find(selEndStr) != string::npos) {
+                    done = true;
+                } else if (str2.find(cellIdStr) != string::npos) {
+                    str2 = str2.substr(cellIdStr.length(), str2.length());
+                    stringstream ss(str2);
+                    size_t i, j, k, el;
+                    ss >> i >> j >> k >> el;
+                    Index3DId cellId(i, j, k, el);
+                    _selectedCellIds.insert(cellId);
+                }
+            } while (!done);
+        }
+    }
+}
+
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {

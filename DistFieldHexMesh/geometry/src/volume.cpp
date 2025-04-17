@@ -847,9 +847,9 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 {
 	bool changed = false;
 	size_t subPassNum, steps = 6;
-#if DISABLE_QUALITY_SPLITTING
-	steps = 1;
-#endif
+	if (!getAppData()->getDoQualitySplits()) {
+		steps = 1;
+	}
 
 	for (subPassNum = 0; subPassNum < steps; subPassNum++) {
 		changed = false;
@@ -867,21 +867,21 @@ void Volume::finishSplits(const SplittingParams& params, bool multiCore)
 			}, multiCore);
 		}
 
-#if !DISABLE_QUALITY_SPLITTING
-		if (changed) {
-			// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
-			runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
-				pBlk->updateSplitStack();
-				return true;
-			}, multiCore);
+		if (!getAppData()->getDoQualitySplits()) {
+			if (changed) {
+				// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
+				runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
+					pBlk->updateSplitStack();
+					return true;
+					}, multiCore);
 
-			runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
-				if (pBlk->hasPendingSplits()) {
-					changed = true;
-				}
-			}, multiCore);
+				runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
+					if (pBlk->hasPendingSplits()) {
+						changed = true;
+					}
+					}, multiCore);
+			}
 		}
-#endif
 
 		subPassNum++;
 		if (!changed) {

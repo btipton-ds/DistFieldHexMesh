@@ -142,6 +142,7 @@ public:
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool intersectsModel() const;
+	bool doQualitySplits() const;
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
 	bool verifyIndices(const Index3D& idx) const;

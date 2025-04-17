@@ -350,6 +350,11 @@ size_t Block::numBytes() const
 	return result;
 }
 
+bool Block::doQualitySplits() const
+{
+	return getVolume()->getAppData()->getDoQualitySplits();
+}
+
 bool Block::intersectsModel() const
 {
 	if (_intersectsModel == IS_UNKNOWN) {
@@ -1181,6 +1186,7 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		}
 	}
 
+	const auto& selectedCellIds = getVolume()->getAppData()->getSelectedCellIds();
 	int64_t layerNum = face.getLayerNum();
 
 	bool isBlockBoundary = face.isBlockBoundary();
@@ -1276,16 +1282,9 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 			break;
 
 		case FT_MESH_SELECTED:
-			set<Index3DId> selected = {
-				Index3DId(3, 0, 4, 0),
-				Index3DId(3, 0, 4, 5),
-				Index3DId(3, 0, 4, 7),
-#if 0
-#endif
-			};
 			bool includeFace = false;
 			for (const auto& cellId : face.getCellIds()) {
-				if (selected.contains(cellId)) {
+				if (selectedCellIds.contains(cellId)) {
 					includeFace = true;
 					break;
 				}

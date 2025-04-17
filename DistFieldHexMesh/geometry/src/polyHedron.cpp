@@ -1316,7 +1316,7 @@ void Polyhedron::addToFaceCountHistogram(map<size_t, size_t>& histo) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	if (DISABLE_QUALITY_SPLITTING)
+	if (!getOurBlockPtr()->doQualitySplits())
 		return false;
 
 	if (hasTooManFaces(params))

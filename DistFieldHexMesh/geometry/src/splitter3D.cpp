@@ -355,7 +355,7 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 
 bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-	if (DISABLE_QUALITY_SPLITTING)
+	if (!getBlockPtr()->doQualitySplits())
 		return false;
 
 	bool wasSplit = false;
@@ -386,7 +386,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 
 int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-	if (DISABLE_QUALITY_SPLITTING)
+	if (!getBlockPtr()->doQualitySplits())
 		return -1;
 
 	const auto& parentCell = getPolyhedron(parentId);

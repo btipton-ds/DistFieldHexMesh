@@ -1,0 +1,6 @@
+QualitySplits 1
+Selected start
+  CellId 3, 0, 4, 0
+  CellId 3, 0, 4, 5
+  CellId 3, 0, 4, 7
+Selected end

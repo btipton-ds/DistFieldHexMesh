@@ -18,7 +18,7 @@ endif(WIN32)
 if(WIN32)
 set(triMeshLibDir "../../triMesh/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_SHADER_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/shaders")
-message(STATUS "CMAKE_SHADER_SOURCE_DIR: ${CMAKE_SHADER_SOURCE_DIR}")
+set (CMAKE_ASSETS_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/assets")
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
@@ -263,6 +263,10 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
                 "${CMAKE_SHADER_SOURCE_DIR}/debug.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.frag"
+
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_ASSETS_SOURCE_DIR}/"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
 )
 
 if(WIN32)

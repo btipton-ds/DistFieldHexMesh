@@ -98,6 +98,9 @@ public:
     const Model& getModel() const;
     MeshDataConstPtr getMeshData(const std::wstring& name) const;
     MeshDataPtr getMeshData(const std::wstring& name);
+    const std::set<Index3DId>& getSelectedCellIds() const;
+    std::set<Index3DId>& getSelectedCellIds();
+    bool getDoQualitySplits() const;
 
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
@@ -106,6 +109,7 @@ public:
 private:
     void clear(bool includeModelData);
     void clearCache();
+    void loadPrefs();
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
@@ -121,6 +125,7 @@ private:
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;
 
+    bool _doQualitySplits = true;
 	std::string _workDirName;
     MainFrame* _pMainFrame = nullptr;
     Model _model;
@@ -133,6 +138,7 @@ private:
         _sharpPointTess;
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
+    std::set<Index3DId> _selectedCellIds;
 
     SplittingParams _params;
     std::wstring _dhfmFilename;
@@ -153,6 +159,21 @@ inline const SplittingParams& AppData::getParams() const
 inline const Model& AppData::getModel() const
 {
     return _model;
+}
+
+inline const std::set<Index3DId>& AppData::getSelectedCellIds() const
+{
+    return _selectedCellIds;
+}
+
+inline std::set<Index3DId>& AppData::getSelectedCellIds()
+{
+    return _selectedCellIds;
+}
+
+inline bool AppData::getDoQualitySplits() const
+{
+    return _doQualitySplits;
 }
 
 inline VolumePtr AppData::getVolume() const
