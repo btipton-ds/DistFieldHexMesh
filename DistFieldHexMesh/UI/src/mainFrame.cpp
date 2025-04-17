@@ -44,6 +44,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <mainFrame.h>
 #include <makeBlockDlg.h>
+#include <editPrefsDlg.h>
 #include <selectBlocksDlg.h>
 #include <divideHexMeshDlg.h>
 #include <createBaseMeshDlg.h>
@@ -189,6 +190,11 @@ void MainFrame::createFileMenu()
 
     _fileMenu->Append(wxID_SAVEAS);
     Bind(wxEVT_MENU, &MainFrame::OnSaveAs, this, wxID_SAVEAS);
+
+    _fileMenu->AppendSeparator();
+
+    _fileMenu->Append(ID_EDIT_PREFS, "Edit Prefs...");
+    Bind(wxEVT_MENU, &MainFrame::OnEditPrefs, this, ID_EDIT_PREFS);
 
     _fileMenu->AppendSeparator();
 
@@ -592,6 +598,14 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
 
             return 1;
         }));
+    }
+}
+
+void MainFrame::OnEditPrefs(wxCommandEvent& event)
+{
+    EditPrefsDlg dlg(this, "Edit Prefs");
+    if (dlg.ShowModal() == wxID_OK) {
+        dlg.save();
     }
 }
 

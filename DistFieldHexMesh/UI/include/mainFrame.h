@@ -127,6 +127,7 @@ enum DFHM_MENU_ID
     ID_REMESH,
     ID_CREATE_BASE_MESH,
     ID_BuildCFDHexes,
+    ID_EDIT_PREFS,
     ID_IMPORT_MESH,
     ID_WRITE_POLYMESH,
 
@@ -237,6 +238,8 @@ private:
     void OnSave(wxCommandEvent& event);
     void OnSaveAs(wxCommandEvent& event);
     void OnWritePolymesh(wxCommandEvent& event);
+
+    void OnEditPrefs(wxCommandEvent& event);
 
     void OnClose(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);

@@ -109,6 +109,7 @@ add_executable (DistFieldHexMesh
 	"graphics/src/graphicsVBORec.cpp"
 
 	"UI/src/createBaseMeshDlg.cpp"
+	"UI/src/editPrefsDlg.cpp"
 	"UI/src/divideHexMeshDlg.cpp"
 	"UI/src/graphicsCanvas.cpp"
 	"UI/src/graphicsDebugCanvas.cpp"

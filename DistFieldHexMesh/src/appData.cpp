@@ -203,6 +203,12 @@ std::wstring AppData::getCacheDirName() const
 
 }
 
+void AppData::updateHexTess()
+{
+    buildHexFaceTables();
+    copyHexFaceTablesToVBOs();
+}
+
 void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
@@ -515,6 +521,7 @@ namespace
         }
     }
 }
+
 void AppData::loadPrefs()
 {
     const string qsStr("qualitysplits");
@@ -524,6 +531,11 @@ void AppData::loadPrefs()
 
     string filename = "assets/prefs.txt";
     ifstream in(filename);
+    if (!in.good())
+        return;
+
+    _selectedCellIds.clear();
+
     char buf[1024];
     while (!in.eof()) {
         in.getline(buf, 1024);
@@ -555,6 +567,31 @@ void AppData::loadPrefs()
     }
 }
 
+bool AppData::readPrefsFile(std::string& contents) const
+{
+    contents.clear();
+
+    string filename = "assets/prefs.txt";
+    ifstream in(filename);
+    if (in.good()) {
+        char buf[1024];
+        while (!in.eof()) {
+            in.getline(buf, 1024);
+            string str(buf);
+            contents += str + "\n";
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void AppData::updatePrefsFile(const std::string& contents)
+{
+    string filename = "assets/prefs.txt";
+    ofstream out(filename);
+    out.write((const char*)contents.data(), contents.size());
+}
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)
 {

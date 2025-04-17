@@ -102,14 +102,18 @@ public:
     std::set<Index3DId>& getSelectedCellIds();
     bool getDoQualitySplits() const;
 
+    void loadPrefs();
+    bool readPrefsFile(std::string& contents) const;
+    void updatePrefsFile(const std::string& contents);
+
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
+    void updateHexTess();
     void updateModelTess();
 
 private:
     void clear(bool includeModelData);
     void clearCache();
-    void loadPrefs();
     void makeBlock(const MakeBlockDlg& dlg);
 	void makeCylinderWedge(const MakeBlockDlg& dlg, bool isCylinder);
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
