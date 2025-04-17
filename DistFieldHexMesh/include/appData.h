@@ -100,6 +100,7 @@ public:
     MeshDataPtr getMeshData(const std::wstring& name);
     const std::set<Index3DId>& getSelectedCellIds() const;
     std::set<Index3DId>& getSelectedCellIds();
+    std::set<Index3D>& getSelectedBlockIds();
     bool getDoQualitySplits() const;
 
     void loadPrefs();
@@ -143,6 +144,7 @@ private:
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
     std::set<Index3DId> _selectedCellIds;
+    std::set<Index3D> _selectedBlockIds;
 
     SplittingParams _params;
     std::wstring _dhfmFilename;
@@ -173,6 +175,11 @@ inline const std::set<Index3DId>& AppData::getSelectedCellIds() const
 inline std::set<Index3DId>& AppData::getSelectedCellIds()
 {
     return _selectedCellIds;
+}
+
+inline std::set<Index3D>& AppData::getSelectedBlockIds()
+{
+    return _selectedBlockIds;
 }
 
 inline bool AppData::getDoQualitySplits() const

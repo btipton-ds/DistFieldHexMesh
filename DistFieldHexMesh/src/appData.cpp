@@ -528,6 +528,7 @@ void AppData::loadPrefs()
     const string selStartStr("selected start");
     const string selEndStr("selected end");
     const string cellIdStr("cellid");
+    const string blockIdStr("blockid");
 
     string filename = "assets/prefs.txt";
     ifstream in(filename);
@@ -535,6 +536,7 @@ void AppData::loadPrefs()
         return;
 
     _selectedCellIds.clear();
+    _selectedBlockIds.clear();
 
     char buf[1024];
     while (!in.eof()) {
@@ -561,6 +563,13 @@ void AppData::loadPrefs()
                     ss >> i >> j >> k >> el;
                     Index3DId cellId(i, j, k, el);
                     _selectedCellIds.insert(cellId);
+                } else if (str2.find(blockIdStr) != string::npos) {
+                    str2 = str2.substr(blockIdStr.length(), str2.length());
+                    stringstream ss(str2);
+                    size_t i, j, k;
+                    ss >> i >> j >> k;
+                    Index3D blockId(i, j, k);
+                    _selectedBlockIds.insert(blockId);
                 }
             } while (!done);
         }

@@ -108,6 +108,15 @@ void Polyhedron::setId(const Index3DId& id)
 	_thisId = id;
 }
 
+void Polyhedron::initializeSearchTree() const
+{
+	if (!_hasSetSearchTree) {
+		auto pBlk = getOurBlockPtr();
+		_hasSetSearchTree = true;
+		_pSearchTree = pBlk->getModelSearchTree();
+	}
+}
+
 void Polyhedron::clear()
 {
 	ObjectPoolOwnerUser::clear();
@@ -1868,12 +1877,7 @@ inline const Model& Polyhedron::getModel() const
 
 const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
 {
-	if (!_hasSetSearchTree) {
-		auto pBlk = getOurBlockPtr();
-		_hasSetSearchTree = true;
-		_pSearchTree = pBlk->getModelSearchTree();
-	}
-
+	initializeSearchTree();
 	return _pSearchTree;
 }
 

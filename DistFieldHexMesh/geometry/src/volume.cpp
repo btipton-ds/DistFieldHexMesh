@@ -1667,6 +1667,12 @@ bool Volume::read(istream& in)
 			pBlock->read(in);
 		}
 
+		runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
+			pBlk->iteratePolyhedraInOrder([](const Index3DId& cellId, Polyhedron& cell) {
+				cell.initializeSearchTree();
+			});
+		}, RUN_MULTI_THREAD);
+
 		// Now create the search trees
 		for (size_t i = 0; i < _blocks.size(); i++) {
 			_blocks[i]->setSupportsReverseLookup(true);

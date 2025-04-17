@@ -60,6 +60,8 @@ public:
 	explicit Polyhedron(const std::vector<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds = std::vector<Index3DId>());
 	Polyhedron(const Polyhedron& src);
 
+	void initializeSearchTree() const;
+
 	void clear() override;
 
 	Polyhedron& operator = (const Polyhedron& rhs);

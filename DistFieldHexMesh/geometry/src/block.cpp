@@ -1187,6 +1187,8 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	}
 
 	const auto& selectedCellIds = getVolume()->getAppData()->getSelectedCellIds();
+	const auto& selectedBlockIds = getVolume()->getAppData()->getSelectedBlockIds();
+
 	int64_t layerNum = face.getLayerNum();
 
 	bool isBlockBoundary = face.isBlockBoundary();
@@ -1284,9 +1286,15 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 		case FT_MESH_SELECTED:
 			bool includeFace = false;
 			for (const auto& cellId : face.getCellIds()) {
-				if (selectedCellIds.contains(cellId)) {
-					includeFace = true;
-					break;
+				if (selectedCellIds.contains(cellId) || selectedBlockIds.contains(cellId.blockIdx())) {
+					auto pOwnerBlock = getOwner(cellId.blockIdx());
+					if (pOwnerBlock && pOwnerBlock->polyhedronExists(cellId)) {
+						const auto& cell = pOwnerBlock->getPolyhedron(cellId);
+						if (cell.intersectsModel()) {
+							includeFace = true;
+							break;
+						}
+					}
 				}
 			}
 			if (includeFace)
