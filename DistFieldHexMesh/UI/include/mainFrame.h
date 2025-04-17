@@ -53,10 +53,8 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Need to handle short or degenerate edges in Spitter2D curvature calculations. This is causing false sharps and small radii producing too many cells.
-Need to handle the edge/chord length ratio taking into account the principal axes of the face. Otherwise, one axis is being over divided. 
-It may be best to split the faces to make them closer to 1:1 aspect ratio, before curvature splitting.
-It seems we are dividing high aspect ratio cells that should not be split. This may be done by the quality enforcer, if so that's fine. Turn it off and see if that's the cause.
+Complex cell splitting is broken at high levels. That's was fixed but came back when complexity splitting was separated from conditional splitting.
+Curvature logic is solid, but need to handle short or degenerate edges in Spitter2D curvature calculations. This is causing false sharps and small radii producing too many cells.
 
 Cross mesh gap analysis using the above search tree.
 
@@ -90,6 +88,9 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 Already done
 ****************************************************************************************************************************************
 
+Need to handle the edge/chord length ratio taking into account the principal axes of the face. Otherwise, one axis is being over divided.
+It may be best to split the faces to make them closer to 1:1 aspect ratio, before curvature splitting.
+It seems we are dividing high aspect ratio cells that should not be split. This may be done by the quality enforcer, if so that's fine. Turn it off and see if that's the cause.
 Complex spliting to support the new states
 2D face curvature splitting using model triangles intersecting mesh faces.
 Remove individual search trees per mesh and replace with a single search tree for all meshes

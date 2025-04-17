@@ -948,7 +948,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 		const auto& model = getModel();
 
 		int reflectionAxisBits = 0;
-# if 0
+# if 1
 		for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
 			bool reflect = false;
 			switch (reflectionAxis) {
@@ -1468,7 +1468,7 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 	size_t steps = 3;
 
 	getCanonicalPoints();
-	bool multiThread = RUN_MULTI_SUB_THREAD && getId() != Index3DId(3, 0, 4, 5);
+	bool multiThread = RUN_MULTI_SUB_THREAD; //&& getId() != Index3DId(3, 0, 4, 5);
 	auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
 	mutex mut;
 	tp.run(steps, [this, axis, &params, steps, pCurvature, &mut](size_t threadNum, size_t step)->bool {

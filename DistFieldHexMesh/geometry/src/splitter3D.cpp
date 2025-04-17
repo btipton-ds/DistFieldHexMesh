@@ -251,12 +251,6 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 		int dbgBreak = 1;
 	}
 
-#if 0
-	if (numPossibleSplits == 8 && doCurvatureSplit(parentId, testedAxisBits)) {
-		return true;
-	}
-#endif
-
 	bool wasSplit = false;
 	int splitAxis = determineBestConditionalSplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
@@ -283,7 +277,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	return wasSplit;
 }
 
-int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int& testedAxisBits, int numPossibleSplits)
+int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
 #if 1 && defined(_DEBUG)
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -296,39 +290,53 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 
 	int minIntersections = INT_MAX;
 	int bestIntersectionSplitAxis = -1;
+	int bestCurvatureSplitAxis = -1;
 
+	// Search for the best split axis
+	// If there's a split which creates sub cells where one intersects and one does not (numIntersection == 1), take it as soon as found.
+	// If there's a cell which has two intersection splits AND needs a curvature split, record it for later
+	// If there're no splits with 1 intersecting subCell AND a curvature split is needed, use the first axis which had a curvature split
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
 		if ((testedAxisBits & axisBit) == axisBit)
 			continue;
 
-		auto scratchCellId = makeScratchCell(parentId);
-
-		Utils::ScopedRestore restore1(_testRun);
-		Utils::ScopedRestore restore2(_pBlock);
-		_testRun = true;
-		_pBlock = _pScratchBlock;
-
-		MTC::vector<Index3DId> newCellIds;
-		bisectHexCell(scratchCellId, axis, newCellIds);
-
 		int numIntersections = 0;
+		{
+			auto scratchCellId = makeScratchCell(parentId);
 
-		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
-			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
+			Utils::ScopedRestore restore1(_testRun);
+			Utils::ScopedRestore restore2(_pBlock);
+			_testRun = true;
+			_pBlock = _pScratchBlock;
 
-			if (newCell.intersectsModel()) {
-				numIntersections++;
+			MTC::vector<Index3DId> newCellIds;
+			bisectHexCell(scratchCellId, axis, newCellIds);
+
+			for (size_t cellNum = 0; cellNum < 2; cellNum++) {
+				const auto& newCell = getPolyhedron(newCellIds[cellNum]);
+				// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
+				if (intersectsModel(newCell)) {
+					numIntersections++;
+				}
+			}
+
+			if (numIntersections < minIntersections) {
+				// If neither sub cell intersects, we do not need to split this one
+				minIntersections = numIntersections;
+				bestIntersectionSplitAxis = axis;
+			}
+
+			reset(newCellIds);
+		}
+
+		if (numIntersections == 2 && bestCurvatureSplitAxis == -1) {
+			const auto& parentCell = getPolyhedron(parentId);
+			// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
+			if (needsCurvatureSplit(parentCell, axis)) {
+				bestCurvatureSplitAxis = axis;
 			}
 		}
-
-		if (numIntersections < minIntersections) {
-			// If neither sub cell intersects, we do not need to split this one
-			minIntersections = numIntersections;
-			bestIntersectionSplitAxis = axis;
-		}
-
-		reset(newCellIds);
 	}
 
 	if (_splitLevel < _params.numIntersectionDivs) {
@@ -337,16 +345,8 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		if (minIntersections == 1) {
 			// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 			return bestIntersectionSplitAxis;
-		}
-		else if (minIntersections == 2) {
-			// Add this cell and the axis to the list of cells requring curvature testing before splitting.
-			if (bestIntersectionSplitAxis != -1) {
-				int axisBit = 1 < bestIntersectionSplitAxis;
-				testedAxisBits |= axisBit; // Even though we don't split it, mark it as split to the caller so this axis isn't checked on subCells
-				if (needsCurvatureSplit(parentId, bestIntersectionSplitAxis)) {
-					return bestIntersectionSplitAxis;
-				}
-			}
+		} else if (minIntersections== 2) { // The only way to reach here is there's a cuvature split. We could test if bestCurvatureSplitAxis != -1, but that will be handled by the caller.
+			return bestCurvatureSplitAxis;
 		}
 	}
 
@@ -458,16 +458,16 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 	return -1;
 }
 
-bool Splitter3D::needsCurvatureSplit(const Index3DId& testId, int axis)
+bool Splitter3D::intersectsModel(const Polyhedron& testCell) const
 {
-	if (_splitLevel < _params.numIntersectionDivs || _splitLevel >= _params.numCurvatureDivs)
-		return false;
+	return testCell.intersectsModel();
+}
 
-	if (!getBlockPtr()->polyhedronExists(testId))
-		return false;
-
-	const auto& testCell = getPolyhedron(testId);
-	return testCell.needsCurvatureSplit(_params, axis);
+bool Splitter3D::needsCurvatureSplit(const Polyhedron& testCell, int axis) const
+{
+	if (_splitLevel >= _params.numIntersectionDivs && _splitLevel < _params.numCurvatureDivs)
+		return testCell.needsCurvatureSplit(_params, axis);
+	return false;
 }
 
 void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds)

@@ -205,8 +205,10 @@ std::wstring AppData::getCacheDirName() const
 
 void AppData::updateHexTess()
 {
-    buildHexFaceTables();
-    copyHexFaceTablesToVBOs();
+    if (_pVolume) {
+        buildHexFaceTables();
+        copyHexFaceTablesToVBOs();
+    }
 }
 
 void AppData::updateModelTess()
