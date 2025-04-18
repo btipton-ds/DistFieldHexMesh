@@ -63,7 +63,7 @@ namespace
 	static atomic<size_t> numSplitsComplex8 = 0;
 }
 
-Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t splitLevel, size_t subPassNum)
+Splitter3D::Splitter3D(Block* pBlock, const Index3DId& polyhedronId, size_t splitLevel)
 	: _pBlock(pBlock)
 	, _polyhedronId(polyhedronId)
 	, _splitLevel(splitLevel)
