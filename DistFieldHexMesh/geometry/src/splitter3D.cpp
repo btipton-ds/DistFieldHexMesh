@@ -393,14 +393,9 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 	if (!parentCell.isTooComplex(_params))
 		return -1;
 
-	bool doTooManyFacesSplit = parentCell.hasTooManFaces(_params);
-	bool doTooNonOrthogonalSplit = parentCell.maxOrthogonalityAngleRadians() > _params.maxOrthoAngleRadians;
 
-	size_t minTooManyFaceCells = INT_MAX;
-	double minOfMaxFinalOrthoCells = DBL_MAX;
-
-	int bestTooManyFacesSplitAxis = -1;
-	int bestTooManyOrthoSplitAxis = -1;
+	size_t minTooComplexCells = INT_MAX;
+	int bestTooComplexSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -417,45 +412,32 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(scratchCellId, axis, newCellIds);
 
-		size_t totalTooManyFaces = 0;
+		size_t totalTooComplex = 0;
 		double maxOrtho = 0;
 
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (doTooManyFacesSplit || doTooNonOrthogonalSplit) {
-				if (newCell.hasTooManFaces(_params)) {
-					totalTooManyFaces++;
-				}
-
-				double ortho = newCell.maxOrthogonalityAngleRadians();
-				if (ortho > maxOrtho) {
-					maxOrtho = ortho;
-				}
+			if (newCell.isTooComplex(_params)) {
+				totalTooComplex++;
 			}
 		}
 
-		if (doTooManyFacesSplit && totalTooManyFaces < minTooManyFaceCells) {
-			minTooManyFaceCells = totalTooManyFaces;
-			bestTooManyFacesSplitAxis = axis;
-		}
-
-		if (doTooNonOrthogonalSplit && maxOrtho < minOfMaxFinalOrthoCells) {
-			minOfMaxFinalOrthoCells = maxOrtho;
-			bestTooManyOrthoSplitAxis = axis;
+		if (totalTooComplex < minTooComplexCells) {
+			minTooComplexCells = totalTooComplex;
+			bestTooComplexSplitAxis = axis;
 		}
 
 		reset(newCellIds);
 	}
 
-	if (bestTooManyOrthoSplitAxis != -1) {
-		return bestTooManyOrthoSplitAxis;
-	}
-	else if (bestTooManyFacesSplitAxis != -1) {
-		return bestTooManyFacesSplitAxis;
+	if (bestTooComplexSplitAxis == -1) {
+		static mutex mut;
+		lock_guard lg(mut);
+		cout << "determineBestComplexitySplitAxis failed to return a good split\n";
 	}
 
-	return -1;
+	return bestTooComplexSplitAxis;
 }
 
 bool Splitter3D::intersectsModel(const Polyhedron& testCell) const

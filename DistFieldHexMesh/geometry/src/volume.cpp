@@ -783,7 +783,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 			return true;
 		}, multiCore);
 
-		finishSplits(params, multiCore);
+		finishSplits(params, true, multiCore);
 		pReporter->reportProgress();
 	}
 }
@@ -809,7 +809,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		if (changed) {
-			finishSplits(params, multiCore);
+			finishSplits(params, true, multiCore);
 			//		assert(verifyTopology(multiCore));
 		}
 		else {
@@ -819,73 +819,82 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		pReporter->reportProgress();
 	}
 
-	int numComplexPasses;
-	for (numComplexPasses = 0; numComplexPasses < 10; numComplexPasses++) {
-		changed = false;
-		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-			pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
-				if (cell.isTooComplex(params)) {
-					changed = true;
-					pBlk->addToSplitStack(cell.getId());
-				}
-				return true;
-			});
-		}, multiCore);
+	if (_pAppData->getDoQualitySplits()) {
+		int numComplexityPasses;
+		for (numComplexityPasses = 0; numComplexityPasses < 100; numComplexityPasses++) {
+			changed = false;
+			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
+				pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
+					if (cell.isTooComplex(params)) {
+						changed = true;
+						pBlk->addToSplitStack(cell.getId());
+					}
+					return true;
+				});
+			}, multiCore);
+
+			if (changed) {
+				finishSplits(params, false, multiCore);
+			} else {
+				break;
+			}
+		}
 
 		if (changed) {
-			finishSplits(params, multiCore);
+			cout << "Complexity splitting was incomplete. numComplexityPasses: " << numComplexityPasses << "\n";
 		} else {
-			break;
+			cout << "Complexity splitting complete. numComplexityPasses: " << numComplexityPasses << "\n";
 		}
-	}
-	if (changed) {
-		cout << "Warning, did not complete complexity splits: " << numComplexPasses << "\n";
 	}
 }
 
-void Volume::finishSplits(const SplittingParams& params, bool multiCore)
+void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool multiCore)
 {
+	const bool doQualitySplits = getAppData()->getDoQualitySplits();
 	bool changed = false;
-	size_t subPassNum, steps = 6;
-	if (!getAppData()->getDoQualitySplits()) {
-		steps = 1;
-	}
 
-	for (subPassNum = 0; subPassNum < steps; subPassNum++) {
-		changed = false;
-		if (subPassNum == 0) {
-			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				if (pBlk->splitRequiredPolyhedra(params, _splitNum))
-					changed = true;
-				return true;
-			}, multiCore);
-		} else {
-			runThreadPool_IJK([this, subPassNum, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+	if (doRequired) {
+		runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(params, _splitNum))
+				changed = true;
+			return true;
+		}, multiCore);
+	}
+	size_t subPassNum, steps = 50;
+	if (doQualitySplits) {
+		for (subPassNum = 0; subPassNum < steps; subPassNum++) {
+			changed = false;
+			runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
 				if (pBlk->splitComplexPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
 			}, multiCore);
-		}
 
-		if (!getAppData()->getDoQualitySplits()) {
 			if (changed) {
 				// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
 				runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
 					pBlk->updateSplitStack();
 					return true;
-					}, multiCore);
+				}, multiCore);
 
 				runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
 					if (pBlk->hasPendingSplits()) {
 						changed = true;
 					}
-					}, multiCore);
+				}, multiCore);
+			}
+
+			subPassNum++;
+			if (!changed) {
+				break;
 			}
 		}
 
-		subPassNum++;
-		if (!changed) {
-			break;
+		if (changed) {
+			cout << "finishSplits was incomplete. subPassNum: " << subPassNum << "\n";
+		}
+		else {
+			cout << "finishSplits complete. subPassNum: " << subPassNum << "\n";
 		}
 	}
 }
@@ -919,7 +928,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 		}, multiCore);
 
 	if (changed)
-		finishSplits(params, multiCore);
+		finishSplits(params, true, multiCore);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

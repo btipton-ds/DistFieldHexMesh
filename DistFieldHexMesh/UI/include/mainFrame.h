@@ -55,8 +55,10 @@ TODO
 
 Complex cell splitting is broken at high levels. That's was fixed but came back when complexity splitting was separated from conditional splitting.
 Curvature logic is solid, but need to handle short or degenerate edges in Spitter2D curvature calculations. This is causing false sharps and small radii producing too many cells.
+    I think the best way to deal with this is to repurpose a single Block Volume as Polygon mesh (with no cells) and use that to form the intersections with cell faces. After moving
+    the triangles to this PolygonMesh, coplanar edges are removed to form polygons. In some cases, large polygon fans. Then, these are intersected to form clean edges without tiny slivers.
 
-Cross mesh gap analysis using the above search tree.
+Cross mesh gap analysis using the new search tree.
 
 Add offset/fat triangle intersections to triMesh. Allow setting a distance offset for each triangle vertex and conical frustum intersection for each edge.
 That will allow tapered offset boundary layers.

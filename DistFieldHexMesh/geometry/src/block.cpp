@@ -1082,28 +1082,7 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 		}
 	}
 
-	vector<Index3DId> tooComplexIds, tmp(_touchedCellIds.begin(), _touchedCellIds.end());
-	_touchedCellIds.clear();
-
-	for (const auto& id : tmp) {
-		cellFunc(id, [&tooComplexIds, &params](const Polyhedron& cell) {
-			if (cell.isTooComplex(params)) {
-				tooComplexIds.push_back(cell.getId());
-			}
-			});
-	}
-
-	sort(tooComplexIds.begin(), tooComplexIds.end(), comp);
-
-	for (const auto& cellId : tooComplexIds) {
-		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, 1);
-			if (splitter.splitComplex()) {
-				didSplit = true;
-				assert(!polyhedronExists(cellId));
-			}
-		}
-	}
+	updateSplitStack();
 
 	return didSplit;
 }
@@ -1144,28 +1123,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 		}
 	}
 
-	vector<Index3DId> tooComplexIds, tmp(_touchedCellIds.begin(), _touchedCellIds.end());
-	_touchedCellIds.clear();
-
-	for (const auto& id : tmp) {
-		cellFunc(id, [&tooComplexIds, &params](const Polyhedron& cell) {
-			if (cell.isTooComplex(params)) {
-				tooComplexIds.push_back(cell.getId());
-			}
-		});
-	}
-
-	sort(tooComplexIds.begin(), tooComplexIds.end(), comp);
-
-	for (const auto& cellId : tooComplexIds) {
-		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum, 1);
-			if (splitter.splitComplex()) {
-				didSplit = true;
-				assert(!polyhedronExists(cellId));
-			}
-		}
-	}
+	updateSplitStack();
 
 	return didSplit;
 }
