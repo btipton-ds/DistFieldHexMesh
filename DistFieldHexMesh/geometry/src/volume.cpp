@@ -871,12 +871,6 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			}, multiCore);
 
 			if (changed) {
-				// Cannot test for pending splits until ALL blocks have been updated with updateSplitStack.
-				runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
-					pBlk->updateSplitStack();
-					return true;
-				}, multiCore);
-
 				runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
 					if (pBlk->hasPendingSplits()) {
 						changed = true;
