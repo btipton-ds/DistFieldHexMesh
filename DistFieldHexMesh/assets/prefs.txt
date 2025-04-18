@@ -1,5 +1,15 @@
 QualitySplits 1
 Selected start
-  CellId 3, 0, 4, 0
-  CellId 3, 0, 4, 5
+BlockId 2,0,3
+BlockId 2,0,4
+BlockId 2,1,3
+BlockId 2,1,4
 Selected end
+OnlyProcessBlocks start
+BlockId 2,0,3
+BlockId 2,0,4
+BlockId 2,1,3
+BlockId 2,1,4
+OnlyProcessBlocks end
+
+

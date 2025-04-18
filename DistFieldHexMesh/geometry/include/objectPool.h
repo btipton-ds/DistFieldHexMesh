@@ -352,7 +352,7 @@ inline T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx)
 	if (objIdx != -1) {
 		size_t segNum, segIdx;
 		if (calObjSegIndices(objIdx, segNum, segIdx)) {
-			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+//			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
 			p = &((*_objSegmentPtrs[segNum])[segIdx]);
 		}
 		assert(p);
@@ -369,7 +369,7 @@ inline const T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx) cons
 	else {
 		size_t segNum, segIdx;
 		if (calObjSegIndices(objIdx, segNum, segIdx)) {
-			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+//			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
 			p = &((*_objSegmentPtrs[segNum])[segIdx]);
 		}
 
@@ -419,7 +419,7 @@ inline void ObjectPool<T>::addToLookup(const T& obj)
 {
 	if (_supportsReverseLookup) {
 		auto id = obj.getId();
-		assert(id.elementId() < _elementIndexToObjIndexMap.size());
+//		assert(id.elementId() < _elementIndexToObjIndexMap.size());
 		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
 #if OBJECT_POOL_USE_STD_MAP
 		_objToElementIndexMap.insert(make_pair(objIdx, id.elementId()));

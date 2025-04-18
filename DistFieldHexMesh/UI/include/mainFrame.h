@@ -53,10 +53,12 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Complex cell splitting is broken at high levels. That's was fixed but came back when complexity splitting was separated from conditional splitting.
-Curvature logic is solid, but need to handle short or degenerate edges in Spitter2D curvature calculations. This is causing false sharps and small radii producing too many cells.
-    I think the best way to deal with this is to repurpose a single Block Volume as Polygon mesh (with no cells) and use that to form the intersections with cell faces. After moving
-    the triangles to this PolygonMesh, coplanar edges are removed to form polygons. In some cases, large polygon fans. Then, these are intersected to form clean edges without tiny slivers.
+Curvature logic is solid, but many problems -
+    Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
+    High level of division, with all block ON creates laminar edges at level 5+, but processing only a few blocks goes up to level 10 with no issues. It's not related to numerical precision
+    within blocks, but might be releated across blocks.
+    The cross bars don't stop splitting when they should, they just keep subdividing
+    There are cells which should split on the numIntersects == 1 rule which are not subdividing.
 
 Cross mesh gap analysis using the new search tree.
 
@@ -90,6 +92,7 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 Already done
 ****************************************************************************************************************************************
 
+Complex cell splitting is broken at high levels. That's was fixed but came back when complexity splitting was separated from conditional splitting.
 Need to handle the edge/chord length ratio taking into account the principal axes of the face. Otherwise, one axis is being over divided.
 It may be best to split the faces to make them closer to 1:1 aspect ratio, before curvature splitting.
 It seems we are dividing high aspect ratio cells that should not be split. This may be done by the quality enforcer, if so that's fine. Turn it off and see if that's the cause.

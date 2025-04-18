@@ -484,6 +484,7 @@ void Volume::initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::Th
 
 void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
+	resetNumSplits();
 	_modelBoundingBox.clear();
 	_modelBoundingBox.merge(volBox);
 	for (int i = 0; i < 8; i++) {
@@ -699,7 +700,6 @@ void Volume::divideHexMesh(const Model& model, const SplittingParams& params, Pr
 		}
 	}
 
-#if 1
 	{
 
 		divideSimple(params, pReporter, multiCore);
@@ -715,7 +715,6 @@ void Volume::divideHexMesh(const Model& model, const SplittingParams& params, Pr
 
 //	assert(verifyTopology(multiCore));
 
-#endif
 	setLayerNums();
 
 	tmr.recordEntry();
@@ -774,8 +773,7 @@ void Volume::dumpCellHistogram() const
 
 void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore)
 {
-	for (size_t i = 0; i < params.numSimpleDivs; i++) {
-		_splitNum++;
+	for (; _splitNum < params.numSimpleDivs; _splitNum++) {
 		runThreadPool_IJK([this](size_t threadNum, const BlockPtr& pBlk)->bool {
 			pBlk->iteratePolyhedraInOrder([](const auto& cellId, Polyhedron& cell) {
 				cell.setNeedsDivideAtCentroid();
@@ -797,7 +795,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
 	bool changed = false;
-	for (_splitNum = 0; _splitNum < numPasses; _splitNum++) {
+	for (; _splitNum < numPasses; _splitNum++) {
 		pReporter->reportProgress();
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
@@ -811,8 +809,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		if (changed) {
 			finishSplits(params, true, multiCore);
 			//		assert(verifyTopology(multiCore));
-		}
-		else {
+		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
 			break;
 		}
@@ -1593,7 +1590,9 @@ void Volume::polymeshWrite(const string& dirPath, ProgressReporter* pReporter)
 
 bool Volume::write(ostream& out) const
 {
+#if VALIDATION_ON
 	assert(verifyTopology(true));
+#endif
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
@@ -1858,6 +1857,8 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 	if (_blocks.empty())
 		return;
 
+	const auto& processOnlyBlocks = getAppData()->getProcessOnlyBlockIds();
+
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
@@ -1872,7 +1873,8 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 					for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
 						for (idx[0] = phaseIdx[0]; idx[0] < _volDim[0]; idx[0] += stride) {
 							size_t linearIdx = calLinearBlockIndex(idx);
-							blocksToProcess.push_back(linearIdx);
+							if (processOnlyBlocks.empty() || processOnlyBlocks.contains(idx))
+								blocksToProcess.push_back(linearIdx);
 						}
 					}
 				}
@@ -1910,6 +1912,8 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 	if (_blocks.empty())
 		return;
 
+	const auto& processOnlyBlocks = getAppData()->getProcessOnlyBlockIds();
+
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
@@ -1931,7 +1935,8 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 				for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
 					for (idx[0] = phaseIdx[0]; idx[0] < _volDim[0]; idx[0] += stride) {
 						size_t linearIdx = calLinearBlockIndex(idx);
-						blocksToProcess.push_back(linearIdx);
+						if (processOnlyBlocks.empty() || processOnlyBlocks.contains(idx))
+							blocksToProcess.push_back(linearIdx);
 					}
 				}
 			}
@@ -1966,6 +1971,8 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 	if (_blocks.empty())
 		return;
 
+	const auto& processOnlyBlocks = getAppData()->getProcessOnlyBlockIds();
+
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
@@ -1988,7 +1995,8 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 				for (idx[2] = phaseIdx[2] + 1; idx[2] < _volDim[2] - 1; idx[2] += stride) {
 					for (idx[1] = phaseIdx[1]; idx[1] < _volDim[1]; idx[1] += stride) {
 						size_t linearIdx = calLinearBlockIndex(idx);
-						blocksToProcess.push_back(linearIdx);
+						if (processOnlyBlocks.empty() || processOnlyBlocks.contains(idx))
+							blocksToProcess.push_back(linearIdx);
 					}
 				}
 			}
@@ -2022,6 +2030,8 @@ void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 	if (_blocks.empty())
 		return;
 
+	const auto& processOnlyBlocks = getAppData()->getProcessOnlyBlockIds();
+
 	// Pass one, process all cells. That can leave faces in an interim state.
 	// If the interim cell is also modified, it should be taken care of on pass 1
 	// Adjacents cells with face splits or vertex insertions may be left behind
@@ -2044,7 +2054,8 @@ void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 				for (idx[2] = phaseIdx[2] + 1; idx[2] < _volDim[2] - 1; idx[2] += stride) {
 					for (idx[0] = phaseIdx[0] + 1; idx[0] < _volDim[0] - 1; idx[0] += stride) {
 						size_t linearIdx = calLinearBlockIndex(idx);
-						blocksToProcess.push_back(linearIdx);
+						if (processOnlyBlocks.empty() || processOnlyBlocks.contains(idx))
+							blocksToProcess.push_back(linearIdx);
 					}
 				}
 			}

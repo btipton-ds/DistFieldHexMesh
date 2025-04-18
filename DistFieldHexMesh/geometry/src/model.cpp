@@ -178,7 +178,7 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 std::shared_ptr<const Model::SearchTree> Model::getSubTree(const BOX_TYPE& bbox) const
 {
 	auto p = _pSearchTree->getSubTree(bbox);
-#if 1
+#if 0
 	vector<Model::SearchTree::Entry> testFull, testClipped;
 	_pSearchTree->find(bbox, testFull);
 	if (!testFull.empty()) {

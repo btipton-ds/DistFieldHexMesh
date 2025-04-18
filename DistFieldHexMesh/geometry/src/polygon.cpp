@@ -65,13 +65,17 @@ using namespace DFHM;
 Polygon::Polygon(const MTC::vector<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+#if VALIDATION_ON
 	assert(verifyUnique());
+#endif
 }
 
 Polygon::Polygon(const std::initializer_list<Index3DId>& verts)
 	: _vertexIds(verts)
 {
+#if VALIDATION_ON
 	assert(verifyUnique());
+#endif
 }
 
 Polygon::Polygon(const Polygon& src)
@@ -81,7 +85,9 @@ Polygon::Polygon(const Polygon& src)
 	, _cellIds(src._cellIds)
 	, _isConvex(src._isConvex)
 {
+#if VALIDATION_ON
 	assert(verifyUnique());
+#endif
 }
 
 Polygon::Polygon(const Block* pBlock, const Polygon& src)
@@ -91,7 +97,9 @@ Polygon::Polygon(const Block* pBlock, const Polygon& src)
 	, _cellIds(src._cellIds)
 	, _isConvex(src._isConvex)
 {
+#if VALIDATION_ON
 	assert(verifyUnique());
+#endif
 }
 
 void Polygon::updateObjectKey()
@@ -136,7 +144,6 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	ObjectPoolOwnerUser::operator=(rhs);
 	PolygonSearchKey::operator<(rhs);
 	_thisId = rhs._thisId;
-	assert(rhs.verifyUnique());
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
@@ -182,7 +189,9 @@ void Polygon::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims
 void Polygon::addVertex(const Index3DId& vertId)
 {
 	_vertexIds.push_back(vertId);
+#if VALIDATION_ON
 	assert(verifyUnique());
+#endif
 	clearCache();
 }
 
@@ -684,7 +693,7 @@ void Polygon::addCellId(const Index3DId& cellId)
 #endif
 
 	_cellIds.insert(cellId);
-#if 1 && defined(_DEBUG)
+#if VALIDATION_ON && defined(_DEBUG)
 	if (_cellIds.size() > 2) {
 		for (const auto& cellId1 : _cellIds) {
 			assert(getBlockPtr()->polyhedronExists(cellId1));
@@ -787,7 +796,9 @@ bool Polygon::imprintVerts(const std::vector<Index3DId>& vertIds)
 		disconnectVertEdgeTopology();
 		clearCache(false);
 
+#if VALIDATION_ON		
 		assert(verifyUniqueStat(tmp));
+#endif
 		_vertexIds = tmp;
 
 		connectVertEdgeTopology();

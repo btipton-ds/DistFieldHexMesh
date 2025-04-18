@@ -101,6 +101,7 @@ public:
     const std::set<Index3DId>& getSelectedCellIds() const;
     std::set<Index3DId>& getSelectedCellIds();
     std::set<Index3D>& getSelectedBlockIds();
+    std::set<Index3D>& getProcessOnlyBlockIds();
     bool getDoQualitySplits() const;
 
     void loadPrefs();
@@ -144,7 +145,7 @@ private:
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
     std::set<Index3DId> _selectedCellIds;
-    std::set<Index3D> _selectedBlockIds;
+    std::set<Index3D> _selectedBlockIds, _processOnlyBlocks;
 
     SplittingParams _params;
     std::wstring _dhfmFilename;
@@ -180,6 +181,11 @@ inline std::set<Index3DId>& AppData::getSelectedCellIds()
 inline std::set<Index3D>& AppData::getSelectedBlockIds()
 {
     return _selectedBlockIds;
+}
+
+inline std::set<Index3D>& AppData::getProcessOnlyBlockIds()
+{
+    return _processOnlyBlocks;
 }
 
 inline bool AppData::getDoQualitySplits() const

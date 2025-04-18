@@ -531,6 +531,8 @@ void AppData::loadPrefs()
     const string selEndStr("selected end");
     const string cellIdStr("cellid");
     const string blockIdStr("blockid");
+    const string processOnlyStartStr("onlyprocessblocks start");
+    const string processOnlyEndStr("onlyprocessblocks end");
 
     string filename = "assets/prefs.txt";
     ifstream in(filename);
@@ -539,6 +541,7 @@ void AppData::loadPrefs()
 
     _selectedCellIds.clear();
     _selectedBlockIds.clear();
+    _processOnlyBlocks.clear();
 
     char buf[1024];
     while (!in.eof()) {
@@ -572,6 +575,23 @@ void AppData::loadPrefs()
                     ss >> i >> j >> k;
                     Index3D blockId(i, j, k);
                     _selectedBlockIds.insert(blockId);
+                }
+            } while (!done);
+        } else if (str.find(processOnlyStartStr) != string::npos) {
+            bool done = false;
+            do {
+                in.getline(buf, 1024);
+                string str2(buf);
+                cleanUpStr(str2);
+                if (str2.find(processOnlyEndStr) != string::npos) {
+                    done = true;
+                } else if (str2.find(blockIdStr) != string::npos) {
+                    str2 = str2.substr(blockIdStr.length(), str2.length());
+                    stringstream ss(str2);
+                    size_t i, j, k;
+                    ss >> i >> j >> k;
+                    Index3D blockId(i, j, k);
+                    _processOnlyBlocks.insert(blockId);
                 }
             } while (!done);
         }

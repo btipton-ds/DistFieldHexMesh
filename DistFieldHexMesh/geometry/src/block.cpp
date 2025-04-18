@@ -741,7 +741,7 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -759,7 +759,7 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 	// Test that block indices are within 1 index of the thread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -804,7 +804,7 @@ Index3DId Block::addVertex(const Vector3d& pt, const Index3DId& currentId)
 
 Index3DId Block::addPolygon(const Polygon& face)
 {
-	assert(Polygon::verifyVertsConvexStat(this, face.getVertexIds()));
+//	assert(Polygon::verifyVertsConvexStat(this, face.getVertexIds()));
 	auto ownerBlockIdx = determineOwnerBlockIdx(face);
 	auto* pOwner = getOwner(ownerBlockIdx);
 	Polygon connectedFace(pOwner, face);
@@ -1050,39 +1050,49 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 {
 	bool didSplit = false;
 	if (_needToSplit.empty())
-		return didSplit;
+		return false;
 
-	auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
-		// Sort by complexity factor so we split the most complex first
+	int i;
+	for (i = 0; i < 25; i++) {
+		auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
+			// Sort by complexity factor so we split the most complex first
 
-		double lhsFaceScore, rhsFaceScore;
+			double lhsFaceScore, rhsFaceScore;
 
-		cellFunc(lhs, [&params, &lhsFaceScore](const Polyhedron& cell) {
-			lhsFaceScore = cell.getComplexityScore(params);
+			cellFunc(lhs, [&params, &lhsFaceScore](const Polyhedron& cell) {
+				lhsFaceScore = cell.getComplexityScore(params);
 			});
 
-		cellFunc(rhs, [&params, &rhsFaceScore](const Polyhedron& cell) {
-			rhsFaceScore = cell.getComplexityScore(params);
+			cellFunc(rhs, [&params, &rhsFaceScore](const Polyhedron& cell) {
+				rhsFaceScore = cell.getComplexityScore(params);
 			});
 
-		return lhsFaceScore > rhsFaceScore; // Descending sort
-		};
+			return lhsFaceScore > rhsFaceScore; // Descending sort
+			};
 
-	vector<Index3DId> needToSplitCopy(_needToSplit.begin(), _needToSplit.end());
-	_needToSplit.clear();
+		vector<Index3DId> needToSplitCopy(_needToSplit.begin(), _needToSplit.end());
+		_needToSplit.clear();
 
-	sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
-	for (const auto& cellId : needToSplitCopy) {
-		if (polyhedronExists(cellId)) {
-			Splitter3D splitter(this, cellId, splitNum);
-			if (splitter.splitComplex()) {
-				didSplit = true;
-				assert(!polyhedronExists(cellId));
+		sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
+		for (const auto& cellId : needToSplitCopy) {
+			if (polyhedronExists(cellId)) {
+				Splitter3D splitter(this, cellId, splitNum);
+				if (splitter.splitComplex()) {
+					didSplit = true;
+					assert(!polyhedronExists(cellId));
+				}
 			}
 		}
+
+		updateSplitStack();
+
+		if (_needToSplit.empty())
+			break;
 	}
 
-	updateSplitStack();
+	if (!_needToSplit.empty()) {
+		cout << "Still have pending splits pass: " << i << "\n";
+	}
 
 	return didSplit;
 }

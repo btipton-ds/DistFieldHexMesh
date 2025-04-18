@@ -1342,7 +1342,7 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 		return false;
 	}
 
-#if 1 && defined(_DEBUG)
+#if 0 && defined(_DEBUG)
 	static mutex mut;
 	lock_guard lg(mut);
 
@@ -1422,6 +1422,7 @@ bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int axis) co
 	val0 = chordEdgeLenRatio(c0, minCurvature, len, sinWedgeAngle);
 	val1 = chordEdgeLenRatio(c1, minCurvature, len, sinWedgeAngle);
 
+	// TODO Need to test for an oblique model surface intersection. One that might cause a concave edge.
 	return (val0 > 1 || val1 > 1);
 }
 
@@ -1492,7 +1493,6 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 
 double Polyhedron::getComplexityScore(const SplittingParams& params) const
 {
-
 	if (_cachedComplexityScore < 0) {
 		_cachedComplexityScore = 1;
 		const double PI_OVER_2 = M_PI * 0.5;
@@ -1892,7 +1892,7 @@ size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 	if (pClipped)
 		result = pClipped->find(bbox, indices);
 
-#if 1 // This turns on very expensive entity search testing.
+#if 0 // This turns on very expensive entity search testing.
 	size_t dbgResult = 0;
 	auto pFull = getBlockPtr()->getModel().getSearchTree();
 	vector<TriMeshIndex> indicesFull;
