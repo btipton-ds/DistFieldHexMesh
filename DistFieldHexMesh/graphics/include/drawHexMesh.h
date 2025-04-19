@@ -143,7 +143,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void clearPrior();
 		void clearPost();
 
-		int _priorDrawTwoSided;
+		int _priorDrawTwoSided = 0;
 
 		HexMeshViewOptions _options;
 
