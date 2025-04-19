@@ -247,6 +247,20 @@ bool Polyhedron::getSharpEdgeIndices(MTC::vector<size_t>& result, const Splittin
 	return !result.empty();
 }
 
+MTC::vector<Index3DId> Polyhedron::getParents() const
+{
+	MTC::vector<Index3DId> result;
+	auto curId = _parentId;
+	result.push_back(curId);
+	while (curId.isValid()) {
+		auto& parent = getPolyhedron(_parentId);
+		curId = parent._parentId;
+		result.push_back(curId);
+	}
+	return result;
+}
+
+
 void Polyhedron::makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
 {
 	auto& cp = getCanonicalPoints();
@@ -338,6 +352,8 @@ void Polyhedron::write(ostream& out) const
 	IoUtil::writeObj(out, _faceIds);
 	IoUtil::writeObj(out, _canonicalVertices);
 
+	_parentId.write(out);
+
 	out.write((char*)&_splitLevel, sizeof(_splitLevel));
 	out.write((char*)&_layerNum, sizeof(_layerNum));
 }
@@ -349,6 +365,8 @@ void Polyhedron::read(istream& in)
 
 	IoUtil::readObj(in, _faceIds);
 	IoUtil::readObj(in, _canonicalVertices);
+
+	_parentId.read(in);
 
 	in.read((char*)&_splitLevel, sizeof(_splitLevel));
 	in.read((char*)&_layerNum, sizeof(_layerNum));

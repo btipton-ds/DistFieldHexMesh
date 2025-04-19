@@ -1818,6 +1818,11 @@ bool Volume::verifyUniquePolygons(bool multiCore) const
 	return true;
 }
 
+namespace
+{
+	const unsigned int stride = 4; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+}
+
 template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore) const
 {
@@ -1851,7 +1856,6 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 {
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	Index3D phaseIdx, idx;
 
 	if (_blocks.empty())
@@ -1905,7 +1909,6 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 {
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 
@@ -1964,7 +1967,6 @@ void Volume::runThreadPool_IJ(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 {
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 
@@ -2023,7 +2025,6 @@ void Volume::runThreadPool_JK(const L& fLambda, bool multiCore)
 template<class L>
 void Volume::runThreadPool_IK(const L& fLambda, bool multiCore)
 {
-	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 	const auto& params = _pAppData->getParams();
 	Index3D phaseIdx, idx;
 

@@ -157,11 +157,11 @@ bool Splitter3D::splitComplex()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if 0 && defined(_DEBUG)
+#if 1 // && defined(_DEBUG)
 			static mutex mut;
 			lock_guard lg(mut);
 
-			if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
+			if (_polyhedronId == Index3DId(3, 1, 5, 433)) {
 				int dbgBreak = 1; // returning correct result for this cell
 			}
 #endif
@@ -394,8 +394,10 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 		return -1;
 
 
-	size_t minTooComplexCells = INT_MAX;
-	int bestTooComplexSplitAxis = -1;
+	size_t minFaceSplits = INT_MAX;
+	double minOfMaxOrtho = DBL_MAX;
+	int bestFaceSplitAxis = -1;
+	int bestOrthoSplitAxis = -1;
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -412,32 +414,40 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(scratchCellId, axis, newCellIds);
 
-		size_t totalTooComplex = 0;
+		size_t totalTooManyFaces = 0;
 		double maxOrtho = 0;
 
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (newCell.isTooComplex(_params)) {
-				totalTooComplex++;
+			if (newCell.hasTooManFaces(_params)) {
+				totalTooManyFaces++;
+			}
+
+			auto ortho = newCell.maxOrthogonalityAngleRadians();
+			if (ortho > maxOrtho) {
+				maxOrtho = ortho;
 			}
 		}
 
-		if (totalTooComplex < minTooComplexCells) {
-			minTooComplexCells = totalTooComplex;
-			bestTooComplexSplitAxis = axis;
+		// MUST split on face complexity first. If face complexity gets too high, the splitting process degenerates. The is also reduces orthoganlity by itself.
+		if (totalTooManyFaces < minFaceSplits) {
+			minFaceSplits = totalTooManyFaces;
+			bestFaceSplitAxis = axis;
 		}
 
+		if (maxOrtho < minOfMaxOrtho) {
+			minOfMaxOrtho = maxOrtho;
+			bestOrthoSplitAxis = axis;
+		}
 		reset(newCellIds);
 	}
 
-	if (bestTooComplexSplitAxis == -1) {
-		static mutex mut;
-		lock_guard lg(mut);
-		cout << "determineBestComplexitySplitAxis failed to return a good split\n";
+	if (bestFaceSplitAxis == -1) {
+		return bestFaceSplitAxis;
 	}
 
-	return bestTooComplexSplitAxis;
+	return bestOrthoSplitAxis;
 }
 
 bool Splitter3D::intersectsModel(const Polyhedron& testCell) const
@@ -811,6 +821,7 @@ void Splitter3D::verifyLocalEdgeSet(const map<EdgeKey, set<Index3DId>>& localEdg
 		}
 
 		auto pVol = getBlockPtr()->getVolume();
+#if 0
 		{
 			stringstream ss;
 			ss << "D:/DarkSky/Projects/output/objs/_" << getBlockPtr()->getLoggerNumericCode(_polyhedronId) << " badlyImprintedCell_.obj";
@@ -832,15 +843,15 @@ void Splitter3D::verifyLocalEdgeSet(const map<EdgeKey, set<Index3DId>>& localEdg
 			ss << "D:/DarkSky/Projects/output/objs/_" << getBlockPtr()->getLoggerNumericCode(_polyhedronId) << " badlyImprintedSplittingFace.obj";
 			pVol->writeObj(ss.str(), { face.getVertexIds() });
 		});
-
+#endif
 		{
 			stringstream ss;
-			ss << "D:/DarkSky/Projects/output/objs/_" << getBlockPtr()->getLoggerNumericCode(_polyhedronId) << " badlyImprintedEdges_.obj";
+			ss << "D:/DarkSky/Projects/output/objs/_parentCell_" << getBlockPtr()->getLoggerNumericCode(_polyhedronId) << " badlyTestSplit_.obj";
 			pVol->writeObj(ss.str(), edgePts, false);
 		}
 		assert(!"spltting produced laminar edge(s)");
-		string msg = string(__FILE__) + ":" + to_string(__LINE__) + string(" spltting produced laminar edge(s)");
-		throw runtime_error(msg);
+//		string msg = string(__FILE__) + ":" + to_string(__LINE__) + string(" spltting produced laminar edge(s)");
+//		throw runtime_error(msg);
 	}
 }
 

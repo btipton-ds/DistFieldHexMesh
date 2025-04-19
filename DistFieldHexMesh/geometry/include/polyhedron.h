@@ -153,6 +153,8 @@ public:
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
 
+	MTC::vector<Index3DId> getParents() const;
+
 	void makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 	void makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
@@ -211,6 +213,7 @@ private:
 		The original face is marked as split, no longer really exists, and points to it's replacements.
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
+	Index3DId _parentId;
 #if USE_CELL_HISTOGRAM
 	std::vector<Index3DId> _parentIds;
 #endif
