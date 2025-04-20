@@ -963,7 +963,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
         dlg.getParams(_params);
 
-#if 1
+#if 0
         _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
         buildHexFaceTables();
         const Index3D min(0, 0, 0);

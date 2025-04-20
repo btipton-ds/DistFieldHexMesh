@@ -84,16 +84,6 @@ DrawStates DrawHexMesh::faceTypeToDrawState(FaceDrawType ft)
         return DS_MESH_LAYER_3;
     case FT_MESH_LAYER_4:
         return DS_MESH_LAYER_4;
-    case FT_MESH_LAYER_5:
-        return DS_MESH_LAYER_5;
-    case FT_MESH_LAYER_6:
-        return DS_MESH_LAYER_6;
-    case FT_MESH_LAYER_7:
-        return DS_MESH_LAYER_7;
-    case FT_MESH_LAYER_8:
-        return DS_MESH_LAYER_8;
-    case FT_MESH_LAYER_9:
-        return DS_MESH_LAYER_9;
 
     case FT_MESH_SELECTED:
         return DS_MESH_SELECTED;
@@ -135,32 +125,6 @@ bool DrawHexMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO,
             ft2 = FT_MESH_LAYER_3;
             useDrawState2 = true;
             break;
-        case FT_MESH_LAYER_5:
-            drawState2 = DS_MESH_LAYER_4_OPAQUE;
-            ft2 = FT_MESH_LAYER_4;
-            useDrawState2 = true;
-            break;
-        case FT_MESH_LAYER_6:
-            drawState2 = DS_MESH_LAYER_5_OPAQUE;
-            ft2 = FT_MESH_LAYER_5;
-            useDrawState2 = true;
-            break;
-        case FT_MESH_LAYER_7:
-            drawState2 = DS_MESH_LAYER_6_OPAQUE;
-            ft2 = FT_MESH_LAYER_6;
-            useDrawState2 = true;
-            break;
-        case FT_MESH_LAYER_8:
-            drawState2 = DS_MESH_LAYER_7_OPAQUE;
-            ft2 = FT_MESH_LAYER_7;
-            useDrawState2 = true;
-            break;
-        case FT_MESH_LAYER_9:
-            drawState2 = DS_MESH_LAYER_8_OPAQUE;
-            ft2 = FT_MESH_LAYER_8;
-            useDrawState2 = true;
-            break;            
-
         }
 
         if (ft < tessellations.size() && tessellations[ft] && !tessellations[ft]->m_elementIndices.empty()) {
@@ -246,7 +210,10 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
     createBlockMeshStorage(blockMeshes[FT_ALL]);
 
-    MultiCore::runLambda([this, &blockMeshes](size_t threadNum, size_t numThreads) {
+    size_t numThreads = MultiCore::getNumCores() / 4;
+    if (numThreads < 1)
+        numThreads = 1;
+    MultiCore::runLambda(numThreads, [this, &blockMeshes](size_t threadNum, size_t numThreads) {
         for (size_t mode = threadNum; mode < FT_ALL; mode += numThreads) {
             FaceDrawType faceType = (FaceDrawType)mode;
             auto& thisGroup = blockMeshes[mode];
@@ -352,11 +319,6 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
         blocksAdded |= includeElementIndices(_options.layers[2], VBO, FT_MESH_LAYER_2, tess);
         blocksAdded |= includeElementIndices(_options.layers[3], VBO, FT_MESH_LAYER_3, tess);
         blocksAdded |= includeElementIndices(_options.layers[4], VBO, FT_MESH_LAYER_4, tess);
-        blocksAdded |= includeElementIndices(_options.layers[5], VBO, FT_MESH_LAYER_5, tess);
-        blocksAdded |= includeElementIndices(_options.layers[6], VBO, FT_MESH_LAYER_6, tess);
-        blocksAdded |= includeElementIndices(_options.layers[7], VBO, FT_MESH_LAYER_7, tess);
-        blocksAdded |= includeElementIndices(_options.layers[8], VBO, FT_MESH_LAYER_8, tess);
-        blocksAdded |= includeElementIndices(_options.layers[9], VBO, FT_MESH_LAYER_9, tess);
 
         blocksAdded |= includeElementIndices(true, VBO, FT_MESH_SELECTED, tess);
     }
@@ -411,16 +373,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
         case DS_MESH_LAYER_3:
         case DS_MESH_LAYER_3_OPAQUE:
         case DS_MESH_LAYER_4:
-        case DS_MESH_LAYER_4_OPAQUE:
-        case DS_MESH_LAYER_5:
-        case DS_MESH_LAYER_5_OPAQUE:
-        case DS_MESH_LAYER_6:
-        case DS_MESH_LAYER_6_OPAQUE:
-        case DS_MESH_LAYER_7:
-        case DS_MESH_LAYER_7_OPAQUE:
-        case DS_MESH_LAYER_8:
-        case DS_MESH_LAYER_8_OPAQUE:
-        case DS_MESH_LAYER_9:
+
         case DS_MESH_INNER:
             UBO.defColor = p3f(1.0f, 0.5f, 0.50f);
             break;
@@ -516,22 +469,11 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         blend = true;
         UBO.defColor = p4f(1, 0.75f, 0.75f, alpha);
         break;
-    case DS_MESH_LAYER_4_OPAQUE:
-        alpha = alpha2;
     case DS_MESH_LAYER_4:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 0.75f, alpha);
         break;
-    case DS_MESH_LAYER_5_OPAQUE:
-        alpha = alpha2;
-    case DS_MESH_LAYER_5:
-        blend = true;
-        UBO.defColor = p4f(0.75f, 0.75f, 1, alpha);
-        break;
-    case DS_MESH_LAYER_6:
-    case DS_MESH_LAYER_7:
-    case DS_MESH_LAYER_8:
-    case DS_MESH_LAYER_9:
+
     case DS_MESH_INNER:
         blend = true;
         UBO.defColor = p4f(0.75f, 1, 1, alpha);

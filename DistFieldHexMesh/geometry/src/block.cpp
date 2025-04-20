@@ -1230,26 +1230,6 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 			if (layerNum == 4)
 				result = true;
 			break;
-		case FT_MESH_LAYER_5:
-			if (layerNum == 5)
-				result = true;
-			break;
-		case FT_MESH_LAYER_6:
-			if (layerNum == 6)
-				result = true;
-			break;
-		case FT_MESH_LAYER_7:
-			if (layerNum == 7)
-				result = true;
-			break;
-		case FT_MESH_LAYER_8:
-			if (layerNum == 8)
-				result = true;
-			break;
-		case FT_MESH_LAYER_9:
-			if (layerNum == 9)
-				result = true;
-			break;
 
 		case FT_MESH_SELECTED:
 			bool includeFace = false;
