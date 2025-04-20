@@ -27,52 +27,69 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <defines.h>
+#include <stdint.h>
 #include <vector>
-#include <Index3D.h>
+#include <map>
+#include <mutex>
+#include <MultiCoreUtil.h>
+#include <index3D.h>
+#include <triMesh.h>
+#include <tm_spatialSearch.h>
+#include <unalignedBBox.h>
+#include <objectPool.h>
+#include <polygon.h>
+#include <polyhedron.h>
+#include <block.h>
+#include <polymeshTables.h>
+#include <progressReporter.h>
+
+namespace TriMesh {
+	class CMesh;
+	using CMeshPtr = std::shared_ptr<CMesh>;
+}
 
 namespace DFHM {
 
-class Block;
-class PolyMesh;
+	struct SplittingParams;
 
-class PolygonSearchKey {
-public:
-	static MTC::vector<Index3DId> makeNonColinearVertexIds(const Block* pBlock, const MTC::vector<Index3DId>& vertexIds);
-	static MTC::vector<Index3DId> makeNonColinearVertexIds(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertexIds);
+	class AppData;
+	using AppDataPtr = std::shared_ptr<AppData>;
 
-	PolygonSearchKey() = default;
-	PolygonSearchKey(const PolygonSearchKey& src) = default;
-	PolygonSearchKey(const Block* pBlock, const MTC::vector<Index3DId>& ids);
+	class Model;
+	using ModelPtr = std::shared_ptr<Model>;
 
-	void set(const Block* pBlock, const MTC::vector<Index3DId>& ids) const;
-	void set(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& ids) const;
-	bool empty() const;
-	bool operator < (const PolygonSearchKey& rhs) const;
-	bool operator == (const PolygonSearchKey& rhs) const;
-	void clear() const;
+	class PolyMesh;
+	using PolyMeshPtr = std::shared_ptr<PolyMesh>;
 
-private:
-	mutable MTC::vector<Index3DId> _ids;
-};
+	class PolyMesh : public ObjectPoolOwner {
+	public:
+		PolyMesh();
+		PolyMesh(const TriMesh::CMeshPtr& srcMesh);
+		~PolyMesh();
 
-inline PolygonSearchKey::PolygonSearchKey(const Block* pBlock, const MTC::vector<Index3DId>& ids)
-{
-	set(pBlock, ids);
-}
+		const Index3D& getBlockIdx() const override;
 
-inline bool PolygonSearchKey::empty() const
-{
-	return _ids.empty();
-}
+		Volume* getVolume() override;
+		const Volume* getVolume() const override;
 
-inline void PolygonSearchKey::clear() const {
-	_ids.clear();
-}
+		const Block* getOwner(const Index3D& blockIdx) const override;
+		Block* getOwner(const Index3D& blockIdx) override;
 
-inline bool PolygonSearchKey::operator == (const PolygonSearchKey& rhs) const
-{
-	return !operator < (rhs) && !rhs.operator<(*this);
-}
+		const PolyMesh* getOwnerAsPolyMesh() const override;
+		PolyMesh* getOwnerAsPolyMesh() override;
 
-}
+		const Vertex& getVertex(const Index3DId& id) const;
+		const Polygon& getPolygon(const Index3DId& id) const;
+
+	private:
+
+		CMesh::BoundingBox _modelBoundingBox;
+
+		ObjectPool<Vertex> _vertices;
+		ObjectPool<Polygon> _polygons;
+	};
+
+	using VolumePtr = std::shared_ptr<Volume>;
+
+
+} // end namespace DFHM

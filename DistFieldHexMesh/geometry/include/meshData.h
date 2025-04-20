@@ -50,6 +50,9 @@ namespace DFHM {
 
 	class AppData;
 
+	class PolyMesh;
+	using PolyMeshPtr = std::shared_ptr<PolyMesh>;
+
 	class MeshData;
 	using MeshDataPtr = std::shared_ptr<MeshData>;
 
@@ -97,6 +100,7 @@ namespace DFHM {
 
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
+		PolyMeshPtr _pPolyMesh;
 
 		OGL::IndicesPtr 
 			_faceTess, 

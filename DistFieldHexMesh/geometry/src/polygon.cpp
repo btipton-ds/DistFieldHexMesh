@@ -163,8 +163,14 @@ void Polygon::copyCaches(const Polygon& src)
 
 void Polygon::postAddToPoolActions()
 {
-	if (!_vertexIds.empty())
-		PolygonSearchKey::set(getOurBlockPtr(), _vertexIds);
+	if (!_vertexIds.empty()) {
+		auto pBlk = getOurBlockPtr();
+		if (pBlk) {
+			PolygonSearchKey::set(pBlk, _vertexIds);
+		} else {
+			PolygonSearchKey::set(getPolyMeshPtr(), _vertexIds);
+		}
+	}
 	connectVertEdgeTopology();
 }
 

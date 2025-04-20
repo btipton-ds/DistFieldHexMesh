@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <polygonSearchKey.h>
 #include <block.h>
+#include <polyMesh.h>
 #include <tolerances.h>
 
 using namespace std;
@@ -78,10 +79,50 @@ MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* p
 	return tmp;
 }
 
+MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertexIds)
+{
+	MTC::vector<Index3DId> tmp;
+	assert(pPolyMesh);
+	vector<bool> colin;
+	vector<const Vector3d*> pts;
+	colin.resize(vertexIds.size());
+	pts.resize(vertexIds.size());
+
+	for (size_t i = 0; i < vertexIds.size(); i++) {
+		pts[i] = &pPolyMesh->getVertex(vertexIds[i]).getPoint();
+	}
+
+	for (size_t j = 0; j < vertexIds.size(); j++) {
+		size_t i = (j + vertexIds.size() - 1) % vertexIds.size();
+		size_t k = (j + 1) % vertexIds.size();
+		colin[j] = isColinear(*pts[i], *pts[j], *pts[k]);
+	}
+	for (size_t i = 0; i < colin.size(); i++) {
+		if (!colin[i])
+			tmp.push_back(vertexIds[i]);
+	}
+
+	if (tmp.size() != vertexIds.size()) {
+		int dbgBreak = 1;
+	}
+
+	assert(tmp.size() == 4);
+	return tmp;
+}
+
 void PolygonSearchKey::set(const Block* pBlock, const MTC::vector<Index3DId>& ids) const
 {
 	if (PolygonSearchKey::empty()) {
 		_ids = makeNonColinearVertexIds(pBlock, ids);
+
+		std::sort(_ids.begin(), _ids.end());
+	}
+}
+
+void PolygonSearchKey::set(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& ids) const
+{
+	if (PolygonSearchKey::empty()) {
+		_ids = makeNonColinearVertexIds(pPolyMesh, ids);
 
 		std::sort(_ids.begin(), _ids.end());
 	}

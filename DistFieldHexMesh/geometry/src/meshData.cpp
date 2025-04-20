@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <rgbaColor.h>
 #include <index3D.h>
 #include <meshData.h>
+#include <polyMesh.h>
 #include <volume.h>
 #include <splitParams.h>
 
@@ -45,6 +46,7 @@ MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 	: _name(name)
 	, _pMesh(pMesh)
 {
+	_pPolyMesh = make_shared<PolyMesh>(pMesh);
 }
 
 MeshData::~MeshData()

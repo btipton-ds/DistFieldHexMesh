@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
+#include <polyMesh.h>
 #include <volume.h>
 #include <logger.h>
 
@@ -87,6 +88,16 @@ const Block* ObjectPoolOwnerUser::getOurBlockPtr() const
 Block* ObjectPoolOwnerUser::getOurBlockPtr()
 {
 	return dynamic_cast<Block*>(_pPoolOwner);
+}
+
+const PolyMesh* ObjectPoolOwnerUser::getPolyMeshPtr() const
+{
+	return dynamic_cast<const PolyMesh*>(_pPoolOwner);
+}
+
+PolyMesh* ObjectPoolOwnerUser::getPolyMeshPtr()
+{
+	return dynamic_cast<PolyMesh*>(_pPoolOwner);
 }
 
 const Block* ObjectPoolOwnerUser::getBlockPtr() const
@@ -212,6 +223,16 @@ const Index3D& ObjectPoolOwner::getThreadBlockIdx() const
 #else
 	return getBlockIdx();
 #endif
+}
+
+const PolyMesh* ObjectPoolOwner::getOwnerAsPolyMesh() const
+{
+	return nullptr;
+}
+
+PolyMesh* ObjectPoolOwner::getOwnerAsPolyMesh()
+{
+	return nullptr;
 }
 
 shared_ptr<Logger> ObjectPoolOwner::getLogger() const

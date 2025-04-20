@@ -96,6 +96,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/polygon.cpp"
 	"geometry/src/polygonSearchKey.cpp"
 	"geometry/src/polyHedron.cpp"
+	"geometry/src/polyMesh.cpp"
     "geometry/src/splitter2D.cpp" 
 	"geometry/src/splitter3D.cpp"
 	"geometry/src/unalignedBBox.cpp"
@@ -128,7 +129,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-)
+ )
 
 
 if (WIN32)
@@ -198,6 +199,7 @@ add_executable (TestDFM
 	"geometry/src/polygon.cpp"
 	"geometry/src/polygonSearchKey.cpp"
 	"geometry/src/polyHedron.cpp"
+	"geometry/src/polyMesh.cpp"
     "geometry/src/splitter2D.cpp" 
 	"geometry/src/splitter3D.cpp"
 	"geometry/src/unalignedBBox.cpp"
@@ -212,7 +214,7 @@ add_executable (TestDFM
 	"test/src/testMain.cpp"
 	"test/src/testPoolMemory.cpp" 
 	"test/src/testMultiCore.cpp"
-)
+ )
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh

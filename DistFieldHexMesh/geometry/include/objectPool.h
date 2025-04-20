@@ -46,6 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 class Block;
+class PolyMesh;
 class Volume;
 class Logger;
 
@@ -62,6 +63,9 @@ public:
 
 	virtual const Block* getOwner(const Index3D& blockIdx) const = 0;
 	virtual Block* getOwner(const Index3D& blockIdx) = 0;
+
+	virtual const PolyMesh* getOwnerAsPolyMesh() const;
+	virtual PolyMesh* getOwnerAsPolyMesh();
 
 	std::shared_ptr<Logger> getLogger() const;
 	std::string getLoggerNumericCode() const;
@@ -88,6 +92,9 @@ public:
 
 	const Block* getOurBlockPtr() const;
 	Block* getOurBlockPtr();
+
+	const PolyMesh* getPolyMeshPtr() const;
+	PolyMesh* getPolyMeshPtr();
 
 	const Block* getBlockPtr() const;
 	Block* getBlockPtr();
