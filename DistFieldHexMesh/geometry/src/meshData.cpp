@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyMesh.h>
 #include <volume.h>
 #include <splitParams.h>
+#include <tolerances.h>
 
 using namespace std;
 using namespace DFHM;
@@ -89,6 +90,12 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 		readMeshFromCache();
 	_pMesh->splitLongTris(maxLength);
 	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
+}
+
+void MeshData::markCoplanarEdges(const SplittingParams& params)
+{
+	if (_pMesh)
+		_pMesh->markCoplanarEdges(params.maxRadius, RUN_MULTI_THREAD);
 }
 
 void MeshData::write(std::ostream& out) const

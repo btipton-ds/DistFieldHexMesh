@@ -61,6 +61,13 @@ void Model::setBounds(const BOX_TYPE& bbox)
 
 size_t Model::add(const MeshDataPtr& pData)
 {
+	CBoundingBox3Dd bbox;
+	for (const auto& model : _modelMeshData) {
+		bbox.merge(model->getMesh()->getBBox());
+	}
+	bbox.merge(pData->getMesh()->getBBox());
+	setBounds(bbox);
+
 	size_t meshIdx = _modelMeshData.size();
 	_modelMeshData.push_back(pData);
 
@@ -259,4 +266,11 @@ const TriMesh::CEdge& Model::getEdge(const TriMeshIndex& idx) const
 double Model::triCurvature(const TriMeshIndex& idx) const
 {
 	return _modelMeshData[idx.getMeshIdx()]->getMesh()->triCurvature(idx.getTriIdx());
+}
+
+void Model::markCoplanarEdges(const SplittingParams& params)
+{
+	for (const auto& pData : _modelMeshData) {
+		pData->markCoplanarEdges(params);
+	}
 }

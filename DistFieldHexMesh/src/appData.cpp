@@ -186,6 +186,7 @@ bool AppData::doImportMesh()
         wstring name = filename.replace(pos, filename.size(), L"");
         MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name);
         _model.add(pMeshData);
+        _model.markCoplanarEdges(_params);
 
         updateModelTess();
         return true;
