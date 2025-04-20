@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
 #include <tm_math.hpp>
+#include <tm_spatialSearch.hpp>
 #include <triMesh.h>
 #include <triMeshPatch.h>
 #include <pool_vector.h>
@@ -512,6 +513,16 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 
 void Splitter3D::finalizeCreatedCells()
 {
+	const auto& model = _pBlock->getModel();
+	auto refineFunc = [this, &model](const Model::SearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		const auto& tol = Tolerance::sameDistTol();
+		const Vector3d* pts[3];
+		if (model.getTri(entry.getIndex(), pts)) {
+			return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
+		}
+		return false;
+	};
+
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
@@ -523,13 +534,12 @@ void Splitter3D::finalizeCreatedCells()
 				createdCell._hasSetSearchTree = true;
 				if (_hasSetSearchTree) {
 					createdCell._pSearchTree = _pSearchSourceTree;
-					if (createdCell._pSearchTree /* && createdCell._pSearchTree->numInTree() > 128*/) {
+					if (createdCell._pSearchTree && _splitLevel < 4) {
 						// Splitting small trees takes time and memory, so only reduce larger ones
-						createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(subBbox);
+						createdCell._pSearchTree = createdCell._pSearchTree->getSubTree(subBbox, refineFunc);
 					}
-				}
-				else
-					createdCell._pSearchTree = createdCell.getOurBlockPtr()->getModel().getSubTree(subBbox);
+				} else
+					createdCell._pSearchTree = model.getSubTree(subBbox);
 			}
 		}
 		createdCell.setSplitLevel(_splitLevel + 1);

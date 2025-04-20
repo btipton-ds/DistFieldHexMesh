@@ -177,10 +177,20 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 
 std::shared_ptr<const Model::SearchTree> Model::getSubTree(const BOX_TYPE& bbox) const
 {
-	auto p = _pSearchTree->getSubTree(bbox);
+	auto refineFunc = [this](const SearchTree::Entry& entry, const BOX_TYPE& bbox)->bool {
+		const auto& tol = Tolerance::sameDistTol();
+		const Vector3d* pts[3];
+		if (getTri(entry.getIndex(), pts)) {
+			return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
+		}
+		return false;
+	};
+
+	auto p = _pSearchTree->getSubTree(bbox, refineFunc);
+
 #if 0
 	vector<Model::SearchTree::Entry> testFull, testClipped;
-	_pSearchTree->find(bbox, testFull);
+	_pSearchTree->find(bbox, refineFunc, testFull);
 	if (!testFull.empty()) {
 		if (!p) {
 			stringstream ss;
@@ -188,7 +198,7 @@ std::shared_ptr<const Model::SearchTree> Model::getSubTree(const BOX_TYPE& bbox)
 			throw runtime_error(ss.str());
 		}
 
-		p->find(bbox, testClipped);
+		p->find(bbox, refineFunc, testClipped);
 		if (testFull.size() != testClipped.size()) {
 			stringstream ss;
 			ss << "SubTree error " << __FILE__ << ":" << __LINE__;

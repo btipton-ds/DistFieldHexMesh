@@ -55,8 +55,6 @@ TODO
 
 Curvature logic is solid, but many problems -
     Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
-    High level of division, with all block ON creates laminar edges at level 5+, but processing only a few blocks goes up to level 10 with no issues. It's not related to numerical precision
-    within blocks, but might be releated across blocks.
     The cross bars don't stop splitting when they should, they just keep subdividing
     There are cells which should split on the numIntersects == 1 rule which are not subdividing.
 
@@ -91,6 +89,9 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 ****************************************************************************************************************************************
 Already done
 ****************************************************************************************************************************************
+
+High level of division, with all block ON creates laminar edges at level 5+, but processing only a few blocks goes up to level 10 with no issues. It's not related to numerical precision
+within blocks, but might be releated across blocks. THIS WAS CAUSED by not resolving all of the "too many faces" cases BEFORE the bad orthogonality cases. MUST FIX NUM FACES BEFORE ORTHO!!!
 
 Complex cell splitting is broken at high levels. That's was fixed but came back when complexity splitting was separated from conditional splitting.
 Need to handle the edge/chord length ratio taking into account the principal axes of the face. Otherwise, one axis is being over divided.
