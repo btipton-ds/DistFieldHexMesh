@@ -245,6 +245,10 @@ void MainFrame::createViewMenu()
     _viewMenu = new wxMenu;
 
     addStandardViewsSubMenu(_viewMenu);
+    addBoundarySubMenu(_viewMenu);
+    addLayersMenu(_viewMenu);
+
+    _viewMenu->AppendSeparator();
 
     _viewMenu->Append(ID_SHOW_MODEL_FACES, "Model - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelFaces, this, ID_SHOW_MODEL_FACES);
@@ -266,7 +270,8 @@ void MainFrame::createViewMenu()
 
     _viewMenu->AppendSeparator();
 
-    addBoundarySubMenu(_viewMenu);
+    _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
 
     _viewMenu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshFaces, this, ID_SHOW_MESH_FACES);
@@ -279,10 +284,6 @@ void MainFrame::createViewMenu()
 
     _viewMenu->Append(ID_SHOW_MESH_ALL_BLOCKS, "Mesh - Show all Blocks", "Shows all blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowAllBlocks, this, ID_SHOW_MESH_ALL_BLOCKS);
-
-    _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
-    addLayersMenu(_viewMenu);
 
     _menuBar->Append(_viewMenu, "&View");
 
@@ -373,11 +374,6 @@ void MainFrame::addLayersMenu(wxMenu* pParentMenu)
     IMPL_LAYER2(1, 2);
     IMPL_LAYER2(2, 3);
     IMPL_LAYER2(3, 4);
-    IMPL_LAYER2(4, 5);
-    IMPL_LAYER2(5, 6);
-    IMPL_LAYER2(6, 7);
-    IMPL_LAYER2(7, 8);
-    IMPL_LAYER2(8, 9);
 
     pParentMenu->AppendSubMenu(_layersSubMenu, "Show Layers", "Boundary layer drawing");
 }
@@ -495,11 +491,6 @@ void MainFrame::OnInternalIdle()
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_2, _pCanvas->showLayer(2));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_3, _pCanvas->showLayer(3));
             _layersSubMenu->Check(ID_SHOW_MESH_LAYER_4, _pCanvas->showLayer(4));
-            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_5, _pCanvas->showLayer(5));
-            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_6, _pCanvas->showLayer(6));
-            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_7, _pCanvas->showLayer(7));
-            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_8, _pCanvas->showLayer(8));
-            _layersSubMenu->Check(ID_SHOW_MESH_LAYER_9, _pCanvas->showLayer(9));
 
             _layersSubMenu->Enable(ID_SHOW_MESH_LAYERS_OFF, hasMesh && _pCanvas->showLayersOn());
             _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_0, hasMesh);
@@ -507,11 +498,6 @@ void MainFrame::OnInternalIdle()
             _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_2, hasMesh);
             _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_3, hasMesh);
             _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_4, hasMesh);
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_5, hasMesh);
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_6, hasMesh);
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_7, hasMesh);
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_8, hasMesh);
-            _layersSubMenu->Enable(ID_SHOW_MESH_LAYER_9, hasMesh);
 
         }
     }
