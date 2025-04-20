@@ -67,6 +67,7 @@ namespace DFHM {
 		const std::wstring& getName() const;
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
+		void markCoplanarEdges(const SplittingParams& params);
 
 		void write(std::ostream& out) const;
 		void read(std::istream& in);

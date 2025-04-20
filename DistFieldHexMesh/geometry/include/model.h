@@ -86,6 +86,7 @@ public:
 	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
 	const TriMesh::CEdge& getEdge(const TriMeshIndex& idx) const;
 	double triCurvature(const TriMeshIndex& idx) const;
+	void markCoplanarEdges(const SplittingParams& params);
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
