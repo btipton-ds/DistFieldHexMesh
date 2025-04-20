@@ -1215,7 +1215,6 @@ bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		const auto tol = Tolerance::sameDistTol();
-		auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
 
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 		vector<TriMeshIndex> indices;
@@ -1236,13 +1235,11 @@ bool Polyhedron::intersectsModel() const
 			}
 
 			auto& model = getModel();
-			size_t numAvail = tp.numThreadsAvailable();
-			size_t numCores = MultiCore::getNumCores();
 
 			bool result = false;
-			tp.run(indices.size(), [this, &model, &indices, &faceIdToSplitterMap, tol](size_t threadNum, size_t i)->bool {
+			for (const auto& index : indices) {
 				const Vector3d* pts[3];
-				model.getTri(indices[i], pts);
+				model.getTri(index, pts);
 
 				for (const auto& pair : faceIdToSplitterMap) {
 					auto& face = getPolygon(pair.first);
@@ -1254,8 +1251,7 @@ bool Polyhedron::intersectsModel() const
 						face._cachedIntersectsModel = IS_FALSE;
 					}
 				}
-				return _cachedIntersectsModel != IS_TRUE;
-			}, RUN_MULTI_SUB_THREAD && (indices.size() > 2 * numCores && numAvail > numCores / 4));
+			}
 		}
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
@@ -1487,10 +1483,7 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 	size_t steps = 3;
 
 	getCanonicalPoints();
-	bool multiThread = RUN_MULTI_SUB_THREAD; //&& getId() != Index3DId(3, 0, 4, 5);
-	auto& tp = getOurBlockPtr()->getVolume()->getThreadPool();
-	mutex mut;
-	tp.run(steps, [this, axis, &params, steps, pCurvature, &mut](size_t threadNum, size_t step)->bool {
+	for (int step = 0; step < steps; step++) {
 		double w = step / (steps - 1.0);
 		double margin = 0.001;
 		w = margin + (1 - 2 * margin) * w;
@@ -1499,11 +1492,8 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 
 		double c = calCurvature2D(params, facePts, step);
 
-		lock_guard lg(mut);
 		*pCurvature += c;
-
-		return true;
-	}, multiThread);
+	}
 	
 	*pCurvature /= steps;
 	return *pCurvature;

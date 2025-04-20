@@ -795,11 +795,15 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	int count = 0;
 	size_t numPasses = params.numConditionalPasses();
 	bool changed = false;
+	size_t numPrimaryThreads = (_splitNum < 3) ? 8 : 4;
+	size_t numSecondaryThreads = 2 * MultiCore::getNumCores() / numPrimaryThreads;
+	
+	auto& tp = getThreadPool();
 	for (; _splitNum < numPasses; _splitNum++) {
 		pReporter->reportProgress();
 
-		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
+		runThreadPool(numPrimaryThreads, [this, &tp, numSecondaryThreads, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
+			pBlk->iteratePolyhedraInOrder(tp, numSecondaryThreads, [this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 				if (cell.setNeedToSplitConditional(_splitNum, params)) {
 					changed = true;
 				}
@@ -820,8 +824,8 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		int numComplexityPasses;
 		for (numComplexityPasses = 0; numComplexityPasses < 100; numComplexityPasses++) {
 			changed = false;
-			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-				pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
+			runThreadPool(numPrimaryThreads, [this, &tp, numSecondaryThreads, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
+				pBlk->iteratePolyhedraInOrder(tp, numSecondaryThreads, [this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
 					if (cell.isTooComplex(params)) {
 						changed = true;
 						pBlk->addToSplitStack(cell.getId());
@@ -868,7 +872,7 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			}, multiCore);
 
 			if (changed) {
-				runThreadPool_IJK([this, &changed](size_t threadNum, const BlockPtr& pBlk) {
+				runThreadPool(MultiCore::getNumCores(), [this, &changed](size_t threadNum, const BlockPtr& pBlk) {
 					if (pBlk->hasPendingSplits()) {
 						changed = true;
 					}
@@ -1820,7 +1824,7 @@ bool Volume::verifyUniquePolygons(bool multiCore) const
 
 namespace
 {
-	const unsigned int stride = 4; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
+	const unsigned int stride = 3; // Stride = 3 creates a super block 3x3x3 across. Each thread has exclusive access to the super block
 }
 
 template<class L>
@@ -1842,6 +1846,21 @@ template<class L>
 inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 {
 	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
+		auto& pBlk = _blocks[linearIdx];
+		if (pBlk) {
+#if USE_MULTI_THREAD_CONTAINERS			
+			MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
+#endif
+			fLambda(threadNum, pBlk);
+		}
+		return true;
+	}, multiCore);
+}
+
+template<class L>
+inline void Volume::runThreadPool(size_t numThreads, const L& fLambda, bool multiCore)
+{
+	_pThreadPool->run(numThreads, _blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS			

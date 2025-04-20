@@ -192,6 +192,12 @@ private:
 	void runThreadPool(const L& fLambda, bool multiCore);
 
 	template<class L>
+	void runThreadPool(size_t numThreads, const L& fLambda, bool multiCore) const;
+
+	template<class L>
+	void runThreadPool(size_t numThreads, const L& fLambda, bool multiCore);
+
+	template<class L>
 	void runThreadPool_IJK(const L& fLambda, bool multiCore);
 
 	template<class L>

@@ -41,6 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <fastBisectionSet.h>
 #include <fastBisectionMap.h>
 #include <patient_lock_guard.h>
+#include <MultiCoreUtil.h>
 
 namespace DFHM {
 
@@ -160,6 +161,9 @@ public:
 
 	template<class F>
 	void iterateInOrder(F fLambda);
+
+	template<class F>
+	void iterateInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda);
 
 	bool empty() const;
 	size_t size() const;
@@ -704,6 +708,24 @@ void ObjectPool<T>::iterateInOrder(F fLambda)
 	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
 	for (size_t idx = 0; idx < num; idx++) {
 		auto objIdx = _elementIndexToObjIndexMap[idx];
+		if (objIdx != -1) {
+			auto p = getEntryFromObjIndex(objIdx);
+			if (p) {
+				Index3DId id(blkIdx, idx);
+				fLambda(id, *p);
+			}
+		}
+	}
+}
+
+template<class T>
+template<class F>
+void ObjectPool<T>::iterateInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda)
+{
+	auto blkIdx = _pPoolOwner->getBlockIdx();
+	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
+	for (size_t idx = 0; idx < num; idx++) {
+		const ObjIndex& objIdx = _elementIndexToObjIndexMap[idx];
 		if (objIdx != -1) {
 			auto p = getEntryFromObjIndex(objIdx);
 			if (p) {
