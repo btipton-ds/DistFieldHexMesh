@@ -187,6 +187,7 @@ bool AppData::doImportMesh()
         MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name);
         _model.add(pMeshData);
 
+        _model.rebuildSearchTree();
         updateModelTess();
         return true;
     }
@@ -297,6 +298,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _model.add(pData);
     }
 
+    _model.rebuildSearchTree();
     updateModelTess();
 
     bool hasVolume;

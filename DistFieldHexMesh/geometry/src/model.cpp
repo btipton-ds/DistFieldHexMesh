@@ -64,14 +64,44 @@ size_t Model::add(const MeshDataPtr& pData)
 	size_t meshIdx = _modelMeshData.size();
 	_modelMeshData.push_back(pData);
 
-	auto pMesh = pData->getMesh();
-	for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
-		auto bb = pMesh->getTriBBox(idx);
-		_pSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
-	}
-	pMesh->clearSearchTrees();
-
 	return _modelMeshData.size();
+}
+
+void Model::rebuildSearchTree()
+{
+	CBoundingBox3Dd bbox;
+	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
+		auto& pData = _modelMeshData[meshIdx];
+		auto& pMesh = pData->getMesh();
+		if (pMesh) {
+			bbox.merge(pMesh->getBBox());
+		}
+	}
+
+	if (_pSearchTree) {
+		CBoundingBox3Dd curBbox = _pSearchTree->getBounds();
+		if (!curBbox.contains(bbox, Tolerance::sameDistTol())) {
+			_pSearchTree = make_shared<SearchTree>(bbox);
+			_indicesInSearchTree.clear();
+		}
+	} else {
+		_pSearchTree = make_shared<SearchTree>(bbox);
+		_indicesInSearchTree.clear();
+	}
+
+	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
+		if (!_indicesInSearchTree.contains(meshIdx)) {
+			_indicesInSearchTree.insert(meshIdx);
+			auto& pData = _modelMeshData[meshIdx];
+			auto& pMesh = pData->getMesh();
+			if (pMesh) {
+				for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
+					auto bb = pMesh->getTriBBox(idx);
+					_pSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
+				}
+			}
+		}
+	}
 }
 
 size_t Model::addMesh(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)

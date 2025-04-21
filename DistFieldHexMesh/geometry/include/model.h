@@ -86,9 +86,11 @@ public:
 	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
 	const TriMesh::CEdge& getEdge(const TriMeshIndex& idx) const;
 	double triCurvature(const TriMeshIndex& idx) const;
+	void rebuildSearchTree();
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
+	std::set<size_t> _indicesInSearchTree;
 	std::shared_ptr<SearchTree> _pSearchTree;
 
 };
