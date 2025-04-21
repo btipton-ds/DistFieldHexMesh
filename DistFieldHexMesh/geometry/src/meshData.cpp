@@ -46,6 +46,7 @@ MeshData::MeshData()
 MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 	: _name(name)
 	, _pMesh(pMesh)
+	, _id(pMesh->getId())
 {
 	_pPolyMesh = make_shared<PolyMesh>(pMesh);
 	_pPolyMesh->makeQuads();

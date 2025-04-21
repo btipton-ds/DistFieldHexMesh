@@ -864,14 +864,14 @@ void AppData::setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingPa
 
     auto pMesh = pData->getMesh();
     bool includeSmooth = true;
-    pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+    pData->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
     indices = smoothIndices;
     indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
     auto& VBOs = pDrawModelMesh->getVBOs();
 
-    auto meshId = pMesh->getId();
-    auto changeNumber = pMesh->getChangeNumber();
+    auto meshId = pData->getId();
+    auto changeNumber = 1;
     auto& edgeVBO = VBOs->_edgeVBO;
     pData->_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
     pData->_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);

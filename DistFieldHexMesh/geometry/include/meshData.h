@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
 #include <drawModelMesh.h>
+#include <polyMesh.h>
 
 namespace OGL
 {
@@ -65,6 +66,7 @@ namespace DFHM {
 		void clear();
 
 		size_t numBytes() const;
+		size_t getId() const;
 
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
@@ -72,11 +74,17 @@ namespace DFHM {
 		void splitLongTris(const SplittingParams& params, double maxLength);
 		void markCoplanarEdges(const SplittingParams& params);
 
+		template<typename LAMBDA>
+		void getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
+			double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices);
+
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
 
 		bool isActive() const;
 		void setActive(bool val);
+
+		const PolyMeshPtr& getPolyMesh() const;
 
 		const OGL::IndicesPtr getFaceTess() const;
 		const OGL::IndicesPtr getAllEdgeTess() const;
@@ -98,6 +106,7 @@ namespace DFHM {
 		void readMeshFromCache();
 
 		bool _active = true;
+		size_t _id;
 
 		std::wstring _name;
 		TriMesh::CMeshPtr _pMesh;
@@ -111,6 +120,11 @@ namespace DFHM {
 			_normalTess, 
 			_sharpPointTess;
 	};
+
+	inline size_t MeshData::getId() const
+	{
+		return _id;
+	}
 
 	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
 	{
@@ -150,6 +164,36 @@ namespace DFHM {
 	inline const OGL::IndicesPtr MeshData::getNormalTess() const
 	{
 		return _normalTess;
+	}
+
+	inline const PolyMeshPtr& MeshData::getPolyMesh() const
+	{
+		return _pPolyMesh;
+	}
+
+	template<typename LAMBDA>
+	void MeshData::getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
+		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
+	{
+#if 1
+		unsigned int idx = 0;
+		_pPolyMesh->iterateFaces([this, &points, &colors, &smoothIndices, &idx](const Index3DId& faceId, const Polygon& face)->bool {
+			face.iterateEdges([this, &points, &colors, &smoothIndices, &idx](const Edge& edge)->bool {
+				for (int i = 0; i < 2; i++) {
+					auto& pt = _pPolyMesh->getVertexPoint(edge[i]);
+					for (int j = 0; j < 3; j++) {
+						points.push_back((float)pt[j]);
+						colors.push_back(0);
+					}
+					smoothIndices.push_back(idx++);
+				}
+				return true;
+			});
+			return true;
+		});
+#else
+		_pMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+#endif
 	}
 
 }

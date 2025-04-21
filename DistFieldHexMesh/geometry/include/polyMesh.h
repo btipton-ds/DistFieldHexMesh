@@ -83,6 +83,9 @@ namespace DFHM {
 		void makeQuads();
 		void removeFace(const Index3DId& id);
 
+		template<class FACE_FUNC>
+		void iterateFaces(FACE_FUNC faceFunc) const;
+
 		LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
 		LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
 		LAMBDA_BLOCK_DECLS(cell, Index3DId, Polyhedron)
@@ -92,11 +95,14 @@ namespace DFHM {
 		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
 		void mergeToQuad(const Edge& edge);
 
-		CMesh::BoundingBox _modelBoundingBox;
-
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
 	};
+
+	template<class FACE_FUNC>
+	inline void PolyMesh::iterateFaces(FACE_FUNC faceFunc) const {
+		_polygons.iterateInOrder(faceFunc);
+	}
 
 	using VolumePtr = std::shared_ptr<Volume>;
 

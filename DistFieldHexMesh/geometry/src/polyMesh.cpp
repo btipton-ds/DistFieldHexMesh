@@ -129,6 +129,18 @@ void PolyMesh::makeQuads()
 		return true;
 	});
 
+	sort(edges.begin(), edges.end(), [this](const EdgeKey& lhs, const EdgeKey& rhs) {
+		double l0, l1;
+		edgeFunc(lhs, [&l0](const Edge& edge) {
+			l0 = edge.calLength();
+		});
+		edgeFunc(rhs, [&l1](const Edge& edge) {
+			l1 = edge.calLength();
+		});
+
+		return l0 > l1;
+	});
+
 	for (const auto& ek : edges) {
 		edgeFunc(ek, [this](const Edge& edge) {
 			mergeToQuad(edge);
@@ -151,14 +163,25 @@ void PolyMesh::mergeToQuad(const Edge& edge)
 		return;
 
 	auto& face0 = getPolygon(faceId0);
-	const auto& vertIds0 = face0.getVertexIds();
 	auto& face1 = getPolygon(faceId1);
+
+	const auto& vertIds0 = face0.getVertexIds();
 	const auto& vertIds1 = face1.getVertexIds();
 
 	if (vertIds0.size() != 3 || vertIds1.size() != 3)
 		return;
 
 	if (!isLongestEdge(face0, edge) || !isLongestEdge(face1, edge))
+		return;
+
+	// Check for close to coplanar
+	auto ncLin0 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds0);
+	auto norm0 = Polygon::calUnitNormalStat(this, ncLin0);
+
+	auto ncLin1 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds1);
+	auto norm1 = Polygon::calUnitNormalStat(this, ncLin1);
+	auto cp = norm0.cross(norm1).norm();
+	if (cp > 0.02)
 		return;
 
 	Index3DId otherId;

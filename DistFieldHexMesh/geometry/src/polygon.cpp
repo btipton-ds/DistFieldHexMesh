@@ -483,6 +483,31 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 	norm.normalize();	return norm;
 }
 
+Vector3d Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds)
+{
+	Vector3d norm(0, 0, 0);
+
+	size_t i = 0;
+	Vector3d pt0 = pPolyMesh->getVertexPoint(vertIds[i]);
+	for (size_t j = 1; j < vertIds.size() - 1; j++) {
+		size_t k = (j + 1) % vertIds.size();
+
+		Vector3d pt1 = pPolyMesh->getVertexPoint(vertIds[j]);
+		Vector3d pt2 = pPolyMesh->getVertexPoint(vertIds[k]);
+
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+
+		Vector3d n = v1.cross(v0);
+		double l = n.norm();
+		if (l > Tolerance::angleTol()) {
+			n /= l;
+			norm += n;
+		}
+	}
+	norm.normalize();	return norm;
+}
+
 void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const MTC::vector<Index3DId>& vertIds)
 {
 	MTC::vector<Vector3d> pts;
