@@ -188,6 +188,7 @@ bool AppData::doImportMesh()
         _model.add(pMeshData);
         _model.markCoplanarEdges(_params);
 
+        _model.rebuildSearchTree();
         updateModelTess();
         return true;
     }
@@ -298,6 +299,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _model.add(pData);
     }
 
+    _model.rebuildSearchTree();
     updateModelTess();
 
     bool hasVolume;

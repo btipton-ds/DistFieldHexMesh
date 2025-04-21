@@ -87,9 +87,11 @@ public:
 	const TriMesh::CEdge& getEdge(const TriMeshIndex& idx) const;
 	double triCurvature(const TriMeshIndex& idx) const;
 	void markCoplanarEdges(const SplittingParams& params);
+	void rebuildSearchTree();
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
+	std::set<size_t> _indicesInSearchTree;
 	std::shared_ptr<SearchTree> _pSearchTree;
 
 };
