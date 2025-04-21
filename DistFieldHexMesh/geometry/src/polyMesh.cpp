@@ -151,6 +151,9 @@ void PolyMesh::makeQuads()
 
 void PolyMesh::mergeToQuad(const Edge& edge)
 {
+	const double MAX_CP = 0.02;
+	const double MAX_CP_SQR = MAX_CP * MAX_CP;
+
 	auto& faceIds = edge.getFaceIds();
 	if (faceIds.size() != 2)
 		return;
@@ -180,8 +183,8 @@ void PolyMesh::mergeToQuad(const Edge& edge)
 
 	auto ncLin1 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds1);
 	auto norm1 = Polygon::calUnitNormalStat(this, ncLin1);
-	auto cp = norm0.cross(norm1).norm();
-	if (cp > 0.02)
+	auto cp = norm0.cross(norm1).squaredNorm();
+	if (cp > MAX_CP_SQR)
 		return;
 
 	Index3DId otherId;
