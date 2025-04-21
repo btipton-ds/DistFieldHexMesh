@@ -225,12 +225,12 @@ const Index3D& ObjectPoolOwner::getThreadBlockIdx() const
 #endif
 }
 
-const PolyMesh* ObjectPoolOwner::getOwnerAsPolyMesh() const
+const PolyMesh* ObjectPoolOwner::getPolyMeshPtr() const
 {
 	return nullptr;
 }
 
-PolyMesh* ObjectPoolOwner::getOwnerAsPolyMesh()
+PolyMesh* ObjectPoolOwner::getPolyMeshPtr()
 {
 	return nullptr;
 }

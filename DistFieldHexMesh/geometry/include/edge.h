@@ -69,6 +69,7 @@ public:
 	Vector3d calCoedgeUnitDir(const Index3DId& faceId, const Index3DId& cellId) const;
 	Vector3d calPointAt(double t) const;
 	double paramOfPt(const Vector3d& pt, bool& inBounds) const;
+	double calLength() const;
 	Vector3d projectPt(const Vector3d& pt) const;
 	bool onPrincipalAxis() const;
 	bool isColinearWith(const Edge& other) const;
@@ -107,6 +108,8 @@ private:
 	PolyMesh* getPolyMeshPtr();
 
 	void initFaceIds() const;
+
+	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
 	Block* _pBlock = nullptr;
 	PolyMesh* _pPolyMesh = nullptr;

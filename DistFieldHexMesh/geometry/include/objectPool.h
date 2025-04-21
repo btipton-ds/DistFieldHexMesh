@@ -64,8 +64,8 @@ public:
 	virtual const Block* getOwner(const Index3D& blockIdx) const = 0;
 	virtual Block* getOwner(const Index3D& blockIdx) = 0;
 
-	virtual const PolyMesh* getOwnerAsPolyMesh() const;
-	virtual PolyMesh* getOwnerAsPolyMesh();
+	virtual const PolyMesh* getPolyMeshPtr() const;
+	virtual PolyMesh* getPolyMeshPtr();
 
 	std::shared_ptr<Logger> getLogger() const;
 	std::string getLoggerNumericCode() const;

@@ -39,14 +39,6 @@ void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>
 #define GET_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
 CONST CLASS& get##NAME(const Index3DId& id) CONST;
 
-#define LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
-void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \
-{ \
-	auto p = getOwnerAsPolyMesh(); \
-	if (p->MEMBER_NAME.exists(id)) \
-		func(p->MEMBER_NAME[id]); \
-}
-
 #define LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, CONST, CLASS2) \
 void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
@@ -96,7 +88,13 @@ void Block::NAME##Func(const EdgeKey& key, const function<void(CONST Edge& obj)>
 void CLASS::NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST \
 { \
 	CONST auto p = getBlockPtr(); \
-	p->NAME##Func(key, func); \
+	if (p) \
+		p->NAME##Func(key, func); \
+	else { \
+	CONST auto p2 = getPolyMeshPtr(); \
+		if (p2) \
+			p2->NAME##Func(key, func); \
+	} \
 }
 
 /****************************************************************************************************/
@@ -124,11 +122,6 @@ GET_CLIENT_FUNC_DUAL_DECL(Polygon) \
 GET_CLIENT_FUNC_DUAL_DECL(Polyhedron) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, const) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, )
-
-
-#define LAMBDA_POLYMESH_IMPLS(NAME, KEY, MEMBER_NAME, CLASS) \
-LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, const, CLASS) \
-LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, , CLASS)
 
 #define LAMBDA_POLYMESH_EDGE_IMPLS(NAME, CLASS) \
 LAMBDA_POLYMESH_FUNC_EDGE_IMPL(NAME, const, CLASS) \

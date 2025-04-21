@@ -103,31 +103,120 @@ Block* PolyMesh::getOwner(const Index3D& blockIdx)
 	return nullptr;
 }
 
-const PolyMesh* PolyMesh::getOwnerAsPolyMesh() const
+const PolyMesh* PolyMesh::getPolyMeshPtr() const
 {
 	return this;
 }
 
-PolyMesh* PolyMesh::getOwnerAsPolyMesh()
+PolyMesh* PolyMesh::getPolyMeshPtr()
 {
 	return this;
+}
+
+const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
+{
+	return _vertices[id];
+}
+
+void PolyMesh::makeQuads()
+{
+	vector<EdgeKey> edges;
+	_polygons.iterateInOrder([&edges](const Index3DId& faceId, const Polygon& face)->bool {
+		face.iterateEdges([&edges](const Edge& edge) {
+			edges.push_back(edge);
+			return true;
+		});
+		return true;
+	});
+
+	for (const auto& ek : edges) {
+		edgeFunc(ek, [this](const Edge& edge) {
+			mergeToQuad(edge);
+		});
+	}
+	int dbgBreak = 1;
+}
+
+void PolyMesh::mergeToQuad(const Edge& edge)
+{
+	auto& faceIds = edge.getFaceIds();
+	if (faceIds.size() != 2)
+		return;
+
+	auto iter = faceIds.begin();
+	auto faceId0 = *iter++;
+	auto faceId1 = *iter;
+
+	if (!_polygons.exists(faceId0) || !_polygons.exists(faceId1))
+		return;
+
+	auto& face0 = getPolygon(faceId0);
+	const auto& vertIds0 = face0.getVertexIds();
+	auto& face1 = getPolygon(faceId1);
+	const auto& vertIds1 = face1.getVertexIds();
+
+	if (vertIds0.size() != 3 || vertIds1.size() != 3)
+		return;
+
+	if (!isLongestEdge(face0, edge) || !isLongestEdge(face1, edge))
+		return;
+
+	Index3DId otherId;
+	for (const auto& id : vertIds1) {
+		if (!edge.containsVertex(id)) {
+			otherId = id;
+			break;
+		}
+	}
+	assert(otherId.isValid());
+
+	MTC::vector<Index3DId> newVertIds;
+	for (size_t i = 0; i < vertIds0.size(); i++) {
+		size_t j = (i + 1) % vertIds0.size();
+		newVertIds.push_back(vertIds0[i]);
+		if (edge.containsVertex(vertIds0[i]) && edge.containsVertex(vertIds0[j])) {
+			newVertIds.push_back(otherId);
+		}
+	}
+
+	removeFace(faceId0);
+	removeFace(faceId1);
+	Polygon newFace(newVertIds);
+	_polygons.findOrAdd(newFace);
+
+}
+
+void PolyMesh::removeFace(const Index3DId& id)
+{
+	_polygons.removeFromLookup(id);
+	_polygons.free(id);
+}
+
+bool PolyMesh::isLongestEdge(const Polygon& face, const Edge& edge) const
+{
+	bool result = true;
+	auto l0 = edge.calLength();
+	face.iterateEdges([&edge, l0, &result](const Edge& edge1) {
+		if (edge != edge1) {
+			if (edge.calLength() > l0) {
+				result = false;
+			}
+		}
+		return result;
+	});
+	return result;
 }
 
 #define FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
 void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
-	auto p = getOwnerAsPolyMesh(); \
-	if (p->MEMBER_NAME.exists(id)) \
-		func(p->MEMBER_NAME[id]); \
+	func(MEMBER_NAME[id]); \
 }
 
 #define POINTER_FUNC_IMPL(KEY, MEMBER_NAME, CONST, CLASS) \
 CONST DFHM::CLASS& PolyMesh::get##CLASS(const KEY& id) CONST \
 { \
-	auto p = getOwnerAsPolyMesh(); \
-	if (p->MEMBER_NAME.exists(id)) \
-		return p->MEMBER_NAME[id]; \
-	throw runtime_error("Object doesn't exit"); \
+	return MEMBER_NAME[id]; \
 }
 
 #define IMPLS(NAME, KEY, MEMBER_NAME, CLASS) \
@@ -139,22 +228,62 @@ POINTER_FUNC_IMPL(KEY, MEMBER_NAME, , CLASS)
 #define EDGE_IMPL(NAME, KEY, CONST, CLASS) \
 void PolyMesh::NAME##Func(const KEY& key, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
-	auto& idx = getBlockIdx();\
-	CONST auto* p = getOwnerAsPolyMesh();\
-	if (p) {\
-		Edge edge(key, p);\
-		func(edge);\
-	}\
+	CLASS edge(key, this);\
+	func(edge);\
 }
 
 #define EDGE_IMPLS(NAME, KEY, CLASS) \
 EDGE_IMPL(NAME, KEY, const, CLASS) \
 EDGE_IMPL(NAME, KEY, , CLASS)
 
-
+#if 0
 IMPLS(vertex, Index3DId, _vertices, Vertex)
 IMPLS(face, Index3DId, _polygons, Polygon)
 EDGE_IMPLS(edge, EdgeKey, Edge)
+#endif
+
+void PolyMesh::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+	func(_vertices[id]);
+} 
+
+void PolyMesh::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+	func(_vertices[id]);
+} 
+
+const DFHM::Vertex& PolyMesh::getVertex(const Index3DId& id) const {
+	return _vertices[id];
+}  
+
+DFHM::Vertex& PolyMesh::getVertex(const Index3DId& id) {
+	return _vertices[id];
+}
+
+void PolyMesh::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	func(_polygons[id]);
+} 
+
+void PolyMesh::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+	func(_polygons[id]);
+} 
+
+const DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) const {
+	return _polygons[id];
+}  
+
+DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) {
+	return _polygons[id];
+}
+
+void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+	Edge edge(key, this); 
+	func(edge);
+} 
+
+void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+	Edge edge(key, this); 
+	func(edge);
+}
+
 
 void PolyMesh::cellFunc(const Index3DId& key, const std::function<void(const Polyhedron& obj)>& func) const
 {

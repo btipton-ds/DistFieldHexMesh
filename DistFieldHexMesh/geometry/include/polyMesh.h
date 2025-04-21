@@ -76,9 +76,12 @@ namespace DFHM {
 		const Block* getOwner(const Index3D& blockIdx) const override;
 		Block* getOwner(const Index3D& blockIdx) override;
 
-		const PolyMesh* getOwnerAsPolyMesh() const override;
-		PolyMesh* getOwnerAsPolyMesh() override;
+		const PolyMesh* getPolyMeshPtr() const override;
+		PolyMesh* getPolyMeshPtr() override;
 
+		const Vector3d& getVertexPoint(const Index3DId& id) const;
+		void makeQuads();
+		void removeFace(const Index3DId& id);
 
 		LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
 		LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
@@ -86,6 +89,8 @@ namespace DFHM {
 		LAMBDA_BLOCK_DECLS(edge, EdgeKey, Edge)
 
 	private:
+		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
+		void mergeToQuad(const Edge& edge);
 
 		CMesh::BoundingBox _modelBoundingBox;
 

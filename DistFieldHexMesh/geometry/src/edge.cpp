@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <io_utils.h>
 #include <edge.h>
 #include <block.h>
+#include <polyMesh.h>
 #include <volume.h>
 
 using namespace std;
@@ -77,6 +78,16 @@ void Edge::initFaceIds() const
 			p1++;
 		}
 	}
+}
+
+const Vector3d& Edge::getVertexPoint(const Index3DId& id) const
+{
+	if (_pBlock)
+		return _pBlock->getVertexPoint(id);
+	else if (_pPolyMesh)
+		return _pPolyMesh->getVertexPoint(id);
+
+	throw runtime_error("Bad vertex id");
 }
 
 double Edge::sameParamTol() const
@@ -145,6 +156,14 @@ double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 	inBounds = (t > -Tolerance::paramTol()) && (t < 1 + Tolerance::paramTol());
 
 	return t;
+}
+
+double Edge::calLength() const
+{
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
+	Vector3d v = pt1 - pt0;
+	return v.norm();
 }
 
 Vector3d Edge::projectPt(const Vector3d& pt) const
@@ -382,64 +401,155 @@ ostream& DFHM::operator << (ostream& out, const EdgeKey& edge)
 //LAMBDA_CLIENT_IMPLS(Edge)
 void Edge::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
+	if (p) 
+		p->vertexFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->vertexFunc(id, func);
+	}
 } 
 
 void Edge::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
+	if (p) 
+		p->vertexFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->vertexFunc(id, func);
+	}
 } 
 
 void Edge::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
+	if (p) 
+		p->faceFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->faceFunc(id, func);
+	}
 } 
 
 void Edge::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
+	if (p) 
+		p->faceFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->faceFunc(id, func);
+	}
 } 
 
 void Edge::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
+	if (p) 
+		p->cellFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->cellFunc(id, func);
+	}
 } 
 
 void Edge::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
+	if (p) 
+		p->cellFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->cellFunc(id, func);
+	}
 } 
 
 const Vertex& Edge::getVertex(const Index3DId& id) const {
-	return getBlockPtr()->getVertex(id);
+	const auto p = getBlockPtr(); 
+	if (p) 
+		return p->getVertex(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getVertex(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 }  
 
 Vertex& Edge::getVertex(const Index3DId& id) {
-	return getBlockPtr()->getVertex(id);
+	auto p = getBlockPtr(); 
+	if (p) 
+		return p->getVertex(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getVertex(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 } 
 
 const DFHM::Polygon& Edge::getPolygon(const Index3DId& id) const {
-	return getBlockPtr()->getPolygon(id);
+	const auto p = getBlockPtr(); 
+	if (p) 
+		return p->getPolygon(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolygon(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 }  
 
 DFHM::Polygon& Edge::getPolygon(const Index3DId& id) {
-	return getBlockPtr()->getPolygon(id);
+	auto p = getBlockPtr(); if (p) 
+		return p->getPolygon(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolygon(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 } 
 
 const Polyhedron& Edge::getPolyhedron(const Index3DId& id) const {
-	return getBlockPtr()->getPolyhedron(id);
+	const auto p = getBlockPtr(); if (p) 
+		return p->getPolyhedron(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolyhedron(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 }  
 
 Polyhedron& Edge::getPolyhedron(const Index3DId& id) {
-	return getBlockPtr()->getPolyhedron(id);
+	auto p = getBlockPtr(); if (p) 
+		return p->getPolyhedron(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolyhedron(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
 } 
 
 void Edge::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->edgeFunc(key, func);
+	const auto p = getBlockPtr(); if (p) 
+		p->edgeFunc(key, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->edgeFunc(key, func);
+	}
 } 
 
 void Edge::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->edgeFunc(key, func);
+	auto p = getBlockPtr(); if (p) 
+		p->edgeFunc(key, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->edgeFunc(key, func);
+	}
 }
