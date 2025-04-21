@@ -1860,7 +1860,7 @@ inline void Volume::runThreadPool(const L& fLambda, bool multiCore)
 template<class L>
 inline void Volume::runThreadPool(size_t numThreads, const L& fLambda, bool multiCore)
 {
-	_pThreadPool->run(numThreads, _blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
+	_pThreadPool->run(_blocks.size(), [this, fLambda](size_t threadNum, size_t linearIdx)->bool {
 		auto& pBlk = _blocks[linearIdx];
 		if (pBlk) {
 #if USE_MULTI_THREAD_CONTAINERS			

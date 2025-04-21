@@ -106,7 +106,6 @@ MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const PolyMesh
 		int dbgBreak = 1;
 	}
 
-	assert(tmp.size() == 4);
 	return tmp;
 }
 

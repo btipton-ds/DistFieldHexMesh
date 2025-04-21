@@ -43,6 +43,12 @@ Edge::Edge(const EdgeKey& src, const Block* pBlock)
 {
 }
 
+Edge::Edge(const EdgeKey& src, const PolyMesh* pPolyMesh)
+	: EdgeKey(src)
+	, _pPolyMesh(const_cast<PolyMesh*>(pPolyMesh))
+{
+}
+
 void Edge::initFaceIds() const
 {
 	_faceIds.clear();

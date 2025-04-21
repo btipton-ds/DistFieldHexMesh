@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <block.h>
+#include <polyMesh.h>
 
 using namespace std;
 using namespace DFHM;
@@ -198,66 +199,4 @@ ostream& DFHM::operator << (ostream& out, const Vertex& vert)
 }
 
 //LAMBDA_CLIENT_IMPLS(Vertex)
-void Vertex::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Vertex::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->vertexFunc(id, func);
-} 
-
-void Vertex::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
-} 
-
-void Vertex::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->faceFunc(id, func);
-} 
-
-void Vertex::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
-} 
-
-void Vertex::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->cellFunc(id, func);
-} 
-
-const Vertex& Vertex::getVertex(const Index3DId& id) const {
-	return getBlockPtr()->getVertex(id);
-}  
-
-Vertex& Vertex::getVertex(const Index3DId& id) {
-	return getBlockPtr()->getVertex(id);
-} 
-
-const DFHM::Polygon& Vertex::getPolygon(const Index3DId& id) const {
-	return getBlockPtr()->getPolygon(id);
-}  
-
-DFHM::Polygon& Vertex::getPolygon(const Index3DId& id) {
-	return getBlockPtr()->getPolygon(id);
-} 
-
-const Polyhedron& Vertex::getPolyhedron(const Index3DId& id) const {
-	return getBlockPtr()->getPolyhedron(id);
-}  
-
-Polyhedron& Vertex::getPolyhedron(const Index3DId& id) {
-	return getBlockPtr()->getPolyhedron(id);
-} 
-
-void Vertex::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
-	const auto p = getBlockPtr(); 
-	p->edgeFunc(key, func);
-} 
-
-void Vertex::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
-	auto p = getBlockPtr(); 
-	p->edgeFunc(key, func);
-}
+LAMBDA_CLIENT_IMPLS(Vertex)

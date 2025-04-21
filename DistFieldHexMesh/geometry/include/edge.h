@@ -45,6 +45,7 @@ using LineSegmentd = LineSegment<double>;
 namespace DFHM {
 
 class Block;
+class PolyMesh;
 class Vertex;
 class Polygon;
 class Polyhedron;
@@ -54,6 +55,7 @@ public:
 
 	Edge(const Edge& src) = default;
 	Edge(const EdgeKey& src, const Block* pBlock);
+	Edge(const EdgeKey& src, const PolyMesh* pBlock);
 
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
@@ -101,9 +103,13 @@ private:
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
+	const PolyMesh* getPolyMeshPtr() const;
+	PolyMesh* getPolyMeshPtr();
+
 	void initFaceIds() const;
 
 	Block* _pBlock = nullptr;
+	PolyMesh* _pPolyMesh = nullptr;
 	mutable MTC::set<Index3DId> _faceIds;
 };
 
@@ -122,6 +128,16 @@ inline Block* Edge::getBlockPtr()
 inline const Block* Edge::getBlockPtr() const
 {
 	return _pBlock;
+}
+
+inline const PolyMesh* Edge::getPolyMeshPtr() const
+{
+	return _pPolyMesh;
+}
+
+inline PolyMesh* Edge::getPolyMeshPtr()
+{
+	return _pPolyMesh;
 }
 
 std::ostream& operator << (std::ostream& out, const EdgeKey& edge);

@@ -180,15 +180,6 @@ public:
 	void removePolygonFromLookup(const DFHM::Polygon& face);
 	Index3DId findPolygon(const Polygon& face) const;
 
-	Vertex& getVertex(const Index3DId& id);
-	const Vertex& getVertex(const Index3DId& id) const;
-
-	Polygon& getPolygon(const Index3DId& id);
-	const Polygon& getPolygon(const Index3DId& id) const;
-
-	Polyhedron& getPolyhedron(const Index3DId& id);
-	const Polyhedron& getPolyhedron(const Index3DId& id) const;
-
 #if USE_MULTI_THREAD_CONTAINERS			
 	MultiCore::local_heap* getHeapPtr();
 	const MultiCore::local_heap* getHeapPtr() const;
@@ -251,10 +242,14 @@ public:
 	template<class F>
 	void iteratePolyhedraInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda);
 
-	LAMBDA_BLOCK_DECLS
+	LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
+	LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
+	LAMBDA_BLOCK_DECLS(cell, Index3DId, Polyhedron)
+	LAMBDA_BLOCK_DECLS(edge, EdgeKey, Edge)
 
 private:
 	friend class PolymeshTables;
+	friend class PolyMesh;
 	friend class Volume;
 	friend class TestBlock;
 	friend class MultiLockGuard;

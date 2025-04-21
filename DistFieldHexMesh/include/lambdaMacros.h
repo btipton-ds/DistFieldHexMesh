@@ -27,8 +27,11 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#define LAMBDA_FUNC_DECL(NAME, CONST, CLASS) \
-void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>& func) CONST;
+#define LAMBDA_FUNC_DECL(NAME, KEY, CONST, CLASS) \
+void NAME##Func(const KEY& key, const std::function<void(CONST CLASS& obj)>& func) CONST;
+
+#define LAMBDA_POINTER_FUNC_DECL(NAME, KEY, CONST, CLASS) \
+CONST CLASS& get##NAME(const KEY& id) CONST;
 
 #define LAMBDA_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
 void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>& func) CONST;
@@ -36,10 +39,10 @@ void NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS& obj)>
 #define GET_CLIENT_FUNC_DECL(NAME, CONST, CLASS) \
 CONST CLASS& get##NAME(const Index3DId& id) CONST;
 
-#define LAMBDA_FUNC_IMPL(NAME, MEMBER_NAME, CONST, CLASS) \
-void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj)>& func) CONST \
+#define LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
+void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \
-	auto p = getOwner(id); \
+	auto p = getOwnerAsPolyMesh(); \
 	if (p->MEMBER_NAME.exists(id)) \
 		func(p->MEMBER_NAME[id]); \
 }
@@ -48,17 +51,28 @@ void Block::NAME##Func(const Index3DId& id, const function<void(CONST CLASS& obj
 void CLASS::NAME##Func(const Index3DId& id, const std::function<void(CONST CLASS2& obj)>& func) CONST \
 { \
 	CONST auto p = getBlockPtr(); \
-	p->NAME##Func(id, func); \
+	if (p) \
+		p->NAME##Func(id, func); \
+	else { \
+		CONST auto p2 = getPolyMeshPtr(); \
+		if (p2) \
+			p2->NAME##Func(id, func); \
+	} \
 }
 
 #define GET_CLIENT_FUNC_IMPL(CLASS, NAME, CONST, CLASS2) \
 CONST CLASS2& CLASS::get##NAME(const Index3DId& id) CONST \
 { \
-	return getBlockPtr()->get##NAME(id); \
+	CONST auto p = getBlockPtr(); \
+	if (p) \
+		return p->get##NAME(id); \
+	else { \
+		CONST auto p2 = getPolyMeshPtr(); \
+		if (p2) \
+			return p2->get##NAME(id); \
+	} \
+	throw std::runtime_error("Entity does not exist"); \
 }
-
-#define LAMBDA_FUNC_EDGE_DECL(NAME, CONST) \
-void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST;
 
 #define LAMBDA_CLIENT_FUNC_EDGE_DECL(NAME, CONST) \
 void NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& obj)>& func) CONST;
@@ -87,15 +101,11 @@ void CLASS::NAME##Func(const EdgeKey& key, const std::function<void(CONST Edge& 
 
 /****************************************************************************************************/
 
-#define LAMBDA_BLOCK_DECLS \
-LAMBDA_FUNC_DECL(vertex, const, Vertex) \
-LAMBDA_FUNC_DECL(vertex, , Vertex) \
-LAMBDA_FUNC_DECL(face, const, Polygon) \
-LAMBDA_FUNC_DECL(face, , Polygon) \
-LAMBDA_FUNC_DECL(cell, const, Polyhedron) \
-LAMBDA_FUNC_DECL(cell, , Polyhedron) \
-LAMBDA_FUNC_EDGE_DECL(edge, const) \
-LAMBDA_FUNC_EDGE_DECL(edge, )
+#define LAMBDA_BLOCK_DECLS(name, KEY, CLASS) \
+LAMBDA_FUNC_DECL(name, KEY, const, CLASS) \
+LAMBDA_FUNC_DECL(name, KEY, , CLASS) \
+LAMBDA_POINTER_FUNC_DECL(CLASS, KEY, const, CLASS) \
+LAMBDA_POINTER_FUNC_DECL(CLASS, KEY, ,CLASS) 
 
 #define LAMBDA_CLIENT_FUNC_DUAL_DECLS(NAME, CLASS) \
 LAMBDA_CLIENT_FUNC_DECL(NAME, const, CLASS) \
@@ -115,15 +125,14 @@ GET_CLIENT_FUNC_DUAL_DECL(Polyhedron) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, const) \
 LAMBDA_CLIENT_FUNC_EDGE_DECL(edge, )
 
-#define LAMBDA_BLOCK_IMPLS \
-LAMBDA_FUNC_IMPL(vertex, _vertices, const, Vertex) \
-LAMBDA_FUNC_IMPL(vertex, _vertices, , Vertex) \
-LAMBDA_FUNC_IMPL(face, _polygons, const, Polygon) \
-LAMBDA_FUNC_IMPL(face, _polygons, , Polygon) \
-LAMBDA_FUNC_IMPL(cell, _polyhedra, const, Polyhedron) \
-LAMBDA_FUNC_IMPL(cell, _polyhedra, , Polyhedron) \
-LAMBDA_FUNC_EDGE_IMPL(edge, const) \
-LAMBDA_FUNC_EDGE_IMPL(edge, )
+
+#define LAMBDA_POLYMESH_IMPLS(NAME, KEY, MEMBER_NAME, CLASS) \
+LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, const, CLASS) \
+LAMBDA_POLYMESH_FUNC_IMPL(NAME, KEY, MEMBER_NAME, , CLASS)
+
+#define LAMBDA_POLYMESH_EDGE_IMPLS(NAME, CLASS) \
+LAMBDA_POLYMESH_FUNC_EDGE_IMPL(NAME, const, CLASS) \
+LAMBDA_POLYMESH_FUNC_EDGE_IMPL(NAME, , CLASS)
 
 #define LAMBDA_CLIENT_FUNC_DUAL_IMPLS(CLASS, NAME, CLASS2) \
 LAMBDA_CLIENT_FUNC_IMPL(CLASS, NAME, const, CLASS2) \

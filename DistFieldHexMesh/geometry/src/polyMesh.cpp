@@ -36,8 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <index3D.h>
 #include <splitParams.h>
-#include <vertex.h>
 #include <appData.h>
+#include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
 #include <polyMesh.h>
@@ -113,12 +113,65 @@ PolyMesh* PolyMesh::getOwnerAsPolyMesh()
 	return this;
 }
 
-const Vertex& PolyMesh::getVertex(const Index3DId& id) const
-{
-	return *_vertices.get(id);
+#define FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
+void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \
+{ \
+	auto p = getOwnerAsPolyMesh(); \
+	if (p->MEMBER_NAME.exists(id)) \
+		func(p->MEMBER_NAME[id]); \
 }
 
-const DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) const
+#define POINTER_FUNC_IMPL(KEY, MEMBER_NAME, CONST, CLASS) \
+CONST DFHM::CLASS& PolyMesh::get##CLASS(const KEY& id) CONST \
+{ \
+	auto p = getOwnerAsPolyMesh(); \
+	if (p->MEMBER_NAME.exists(id)) \
+		return p->MEMBER_NAME[id]; \
+	throw runtime_error("Object doesn't exit"); \
+}
+
+#define IMPLS(NAME, KEY, MEMBER_NAME, CLASS) \
+FUNC_IMPL(NAME, KEY, MEMBER_NAME, const, CLASS) \
+FUNC_IMPL(NAME, KEY, MEMBER_NAME, , CLASS) \
+POINTER_FUNC_IMPL(KEY, MEMBER_NAME, const, CLASS) \
+POINTER_FUNC_IMPL(KEY, MEMBER_NAME, , CLASS) 
+
+#define EDGE_IMPL(NAME, KEY, CONST, CLASS) \
+void PolyMesh::NAME##Func(const KEY& key, const function<void(CONST CLASS& obj)>& func) CONST \
+{ \
+	auto& idx = getBlockIdx();\
+	CONST auto* p = getOwnerAsPolyMesh();\
+	if (p) {\
+		Edge edge(key, p);\
+		func(edge);\
+	}\
+}
+
+#define EDGE_IMPLS(NAME, KEY, CLASS) \
+EDGE_IMPL(NAME, KEY, const, CLASS) \
+EDGE_IMPL(NAME, KEY, , CLASS)
+
+
+IMPLS(vertex, Index3DId, _vertices, Vertex)
+IMPLS(face, Index3DId, _polygons, Polygon)
+EDGE_IMPLS(edge, EdgeKey, Edge)
+
+void PolyMesh::cellFunc(const Index3DId& key, const std::function<void(const Polyhedron& obj)>& func) const
 {
-	return *_polygons.get(id);
+	throw runtime_error("Not implemented");
+}
+
+void PolyMesh::cellFunc(const Index3DId& key, const std::function<void(Polyhedron& obj)>& func)
+{
+	throw runtime_error("Not implemented");
+}
+
+const Polyhedron& PolyMesh::getPolyhedron(const Index3DId& id) const
+{
+	throw runtime_error("Not implemented");
+}
+
+Polyhedron& PolyMesh::getPolyhedron(const Index3DId& id)
+{
+	throw runtime_error("Not implemented");
 }

@@ -63,6 +63,7 @@ namespace DFHM {
 
 	class PolyMesh : public ObjectPoolOwner {
 	public:
+		friend class Block;
 		PolyMesh();
 		PolyMesh(const TriMesh::CMeshPtr& srcMesh);
 		~PolyMesh();
@@ -78,8 +79,11 @@ namespace DFHM {
 		const PolyMesh* getOwnerAsPolyMesh() const override;
 		PolyMesh* getOwnerAsPolyMesh() override;
 
-		const Vertex& getVertex(const Index3DId& id) const;
-		const Polygon& getPolygon(const Index3DId& id) const;
+
+		LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
+		LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
+		LAMBDA_BLOCK_DECLS(cell, Index3DId, Polyhedron)
+		LAMBDA_BLOCK_DECLS(edge, EdgeKey, Edge)
 
 	private:
 

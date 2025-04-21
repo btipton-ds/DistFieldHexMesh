@@ -210,10 +210,7 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
     createBlockMeshStorage(blockMeshes[FT_ALL]);
 
-    size_t numThreads = MultiCore::getNumCores() / 4;
-    if (numThreads < 1)
-        numThreads = 1;
-    MultiCore::runLambda(numThreads, [this, &blockMeshes](size_t threadNum, size_t numThreads) {
+    MultiCore::runLambda([this, &blockMeshes](size_t threadNum, size_t numThreads) {
         for (size_t mode = threadNum; mode < FT_ALL; mode += numThreads) {
             FaceDrawType faceType = (FaceDrawType)mode;
             auto& thisGroup = blockMeshes[mode];
