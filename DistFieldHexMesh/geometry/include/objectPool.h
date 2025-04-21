@@ -30,6 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <string>
 #include <vector>
+#include <list>
 #include <map>
 #include <iostream>
 #include <mutexType.h>
@@ -239,9 +240,8 @@ private:
 	bool _supportsReverseLookup;
 	ObjectPoolOwner* _pPoolOwner;
 	const size_t _objectSegmentSize; // May want to tune this so the first segment only holds 1 cell since most blocks only contain one cell. We're allocating a lot of unused memory in sparse blocks
-	std::vector<ObjIndex> 
-		_elementIndexToObjIndexMap,
-		_availableObjIndices;
+	std::vector<ObjIndex> _elementIndexToObjIndexMap;
+	std::list<ObjIndex> _availableObjIndices;
 
 	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
 	std::vector<ObjectSegPtr> _objSegmentPtrs;
@@ -567,8 +567,8 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 		segData.back().setPoolOwner(_pPoolOwner);
 		objIdx = segNum * _objectSegmentSize + segIdx;
 	} else {
-		objIdx = _availableObjIndices.back();
-		_availableObjIndices.pop_back();
+		objIdx = _availableObjIndices.front();
+		_availableObjIndices.pop_front();
 
 		calObjSegIndices(objIdx, segNum, segIdx);
 		if (segNum >= _objSegmentPtrs.size()) {
