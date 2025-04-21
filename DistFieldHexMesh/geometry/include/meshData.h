@@ -176,14 +176,18 @@ namespace DFHM {
 		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
 	{
 #if 1
+		_pPolyMesh->calCurvatures();
 		unsigned int idx = 0;
-		_pPolyMesh->iterateFaces([this, &points, &colors, &smoothIndices, &idx](const Index3DId& faceId, const Polygon& face)->bool {
-			face.iterateEdges([this, &points, &colors, &smoothIndices, &idx](const Edge& edge)->bool {
+		_pPolyMesh->iterateFaces([this, curvatureToColorFunc, &points, &colors, &smoothIndices, &idx](const Index3DId& faceId, const Polygon& face)->bool {
+			face.iterateEdges([this, curvatureToColorFunc, &points, &colors, &smoothIndices, &idx](const Edge& edge)->bool {
 				for (int i = 0; i < 2; i++) {
 					auto& pt = _pPolyMesh->getVertexPoint(edge[i]);
+					double c = _pPolyMesh->getPointCurvature(edge[i]);
+					float rgb[3] = { 0,0,0 };
+					curvatureToColorFunc(c, rgb);
 					for (int j = 0; j < 3; j++) {
 						points.push_back((float)pt[j]);
-						colors.push_back(0);
+						colors.push_back(rgb[i]);
 					}
 					smoothIndices.push_back(idx++);
 				}

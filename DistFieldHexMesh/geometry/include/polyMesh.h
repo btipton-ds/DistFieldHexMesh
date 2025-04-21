@@ -81,7 +81,9 @@ namespace DFHM {
 
 		const Vector3d& getVertexPoint(const Index3DId& id) const;
 		void makeQuads();
+		void calCurvatures();
 		void removeFace(const Index3DId& id);
+		double getPointCurvature(const Index3DId& id) const;
 
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
@@ -97,11 +99,25 @@ namespace DFHM {
 
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
+		struct CurvRec {
+			double curvature = 0;
+			int count = 0;
+		};
+		MTC::map<Index3DId, CurvRec> _pointCurvatures;
 	};
 
 	template<class FACE_FUNC>
 	inline void PolyMesh::iterateFaces(FACE_FUNC faceFunc) const {
 		_polygons.iterateInOrder(faceFunc);
+	}
+
+	inline double PolyMesh::getPointCurvature(const Index3DId& id) const
+	{
+		auto iter = _pointCurvatures.find(id);
+		if (iter != _pointCurvatures.end())
+			return iter->second.curvature;
+
+		return 0;
 	}
 
 	using VolumePtr = std::shared_ptr<Volume>;

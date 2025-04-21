@@ -149,6 +149,42 @@ void PolyMesh::makeQuads()
 	int dbgBreak = 1;
 }
 
+void PolyMesh::calCurvatures()
+{
+	_pointCurvatures.clear();
+
+	map<EdgeKey, double> edges;
+	_polygons.iterateInOrder([&edges](const Index3DId& faceId, const Polygon& face)->bool {
+		face.iterateEdges([&edges](const Edge& edge) {
+			edges.insert(make_pair(edge, 0));
+			return true;
+		});
+		return true;
+	});
+
+	for (auto& pair : edges) {
+		edgeFunc(pair.first, [&pair](const Edge& edge) {
+			pair.second = edge.calCurvature();
+		});
+	}
+
+	for (auto& pair : edges) {
+		const auto& ek = pair.first;
+		for (int i = 0; i < 2; i++) {
+			const auto& vId = ek[i];
+			auto iter = _pointCurvatures.find(vId);
+			if (iter == _pointCurvatures.end())
+				iter = _pointCurvatures.insert(make_pair(vId, CurvRec())).first;
+			iter->second.curvature += pair.second;
+			iter->second.count++;
+		}
+	}
+
+	for (auto& pair : _pointCurvatures) {
+		pair.second.curvature /= pair.second.count;
+	}
+}
+
 void PolyMesh::mergeToQuad(const Edge& edge)
 {
 	const double MAX_CP = 0.02;
@@ -214,6 +250,7 @@ void PolyMesh::mergeToQuad(const Edge& edge)
 
 void PolyMesh::removeFace(const Index3DId& id)
 {
+	_polygons[id].disconnectVertEdgeTopology();
 	_polygons.removeFromLookup(id);
 	_polygons.free(id);
 }
@@ -306,7 +343,7 @@ void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)
 } 
 
 void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
-	Edge edge(key, this); 
+	Edge edge(key, this);
 	func(edge);
 }
 

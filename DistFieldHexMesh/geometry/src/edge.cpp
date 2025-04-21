@@ -97,7 +97,7 @@ double Edge::sameParamTol() const
 
 double Edge::getLength() const
 {
-	LineSegmentd seg(getBlockPtr()->getVertexPoint(_vertexIds[0]), getBlockPtr()->getVertexPoint(_vertexIds[1]));
+	LineSegmentd seg(getVertexPoint(_vertexIds[0]), getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
@@ -108,8 +108,8 @@ Vector3d Edge::calCenter() const
 
 Vector3d Edge::calUnitDir() const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 	return v;
@@ -135,8 +135,8 @@ Vector3d Edge::calCoedgeUnitDir(const Index3DId& faceId, const Index3DId& cellId
 
 Vector3d Edge::calPointAt(double t) const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 	
 	Vector3d result = pt0 + t * (pt1 - pt0);
 
@@ -145,8 +145,8 @@ Vector3d Edge::calPointAt(double t) const
 
 double Edge::paramOfPt(const Vector3d& pt, bool& inBounds) const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	double len = v.norm();
 	v.normalize();
@@ -166,10 +166,100 @@ double Edge::calLength() const
 	return v.norm();
 }
 
+double Edge::calCurvature() const
+{
+	initFaceIds();
+	if (_faceIds.size() != 2)
+		return 0;
+
+	auto iter = _faceIds.begin();
+	auto faceId0 = *iter++;
+	auto faceId1 = *iter;
+
+	auto& face0 = getPolygon(faceId0);
+	auto& face1 = getPolygon(faceId1);
+
+	MTC::vector<Index3DId> nclVerts0, nclVerts1;
+	if (_pBlock) {
+		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pBlock, face0.getVertexIds());
+		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(_pBlock, face1.getVertexIds());
+	} else if (_pPolyMesh) {
+		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face0.getVertexIds());
+		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face1.getVertexIds());
+	}
+	for (int i = 0; i < 2; i++) {
+		auto iter = find(nclVerts0.begin(), nclVerts0.end(), _vertexIds[i]);
+		if (iter != nclVerts0.end())
+			nclVerts0.erase(iter);
+
+		iter = find(nclVerts1.begin(), nclVerts1.end(), _vertexIds[i]);
+		if (iter != nclVerts1.end())
+			nclVerts1.erase(iter);
+	}
+
+	double curvature = 0;
+	int count = 0;
+	const auto& pt0 = getVertexPoint(_vertexIds[0]);
+	const auto& pt1 = getVertexPoint(_vertexIds[1]);
+	for (const auto& id0 : nclVerts0) {
+		const auto& pt2 = getVertexPoint(id0);
+		for (const auto& id1 : nclVerts1) {
+			const auto& pt3 = getVertexPoint(id1);
+			curvature += calCurvature(pt0, pt1, pt2, pt3);
+			count++;
+		}
+	}
+
+	curvature /= count;
+
+	return curvature;
+}
+
+double Edge::calCurvature(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const
+{
+	Vector3d axis = (pt1 - pt0).normalized();
+
+	Vector3d v0 = pt2 - pt0;
+	v0 = v0 - v0.dot(axis) * axis;
+	double l0 = v0.norm();
+	v0 /= l0;
+	Vector3d mid0 = pt0 + 0.5 * l0 * v0;
+
+	Vector3d v1 = (pt3 - pt0);
+	v1 = v1 - v1.dot(axis) * axis;
+	double l1 = v1.norm();
+	if (l1 < Tolerance::sameDistTol())
+		return 0; // pt3 is colinear with the axis
+
+	v1 /= l1;
+
+	const auto& ptA = pt0;
+	Vector3d ptB = ptA + l0 * v0;
+	Vector3d ptC = ptA + l1 * v1;
+
+	Vector3d vCA = ptC - ptA;
+	Vector3d vAB = ptA - ptB;
+	Vector3d vBC = ptB - ptC;
+
+	double area = 0.5 * vBC.cross(vAB).dot(axis);
+	if (area < Tolerance::sameDistTolSqr())
+		return 0;
+
+	double ca = vCA.norm();
+	double ab = vAB.norm();
+	double bc = vBC.norm();
+	double r = ca * ab * bc / area * 0.25;
+
+	double c = 0;
+	if (r > 0.001)
+		c = 1 / r;
+	return c;
+}
+
 Vector3d Edge::projectPt(const Vector3d& pt) const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 
@@ -197,12 +287,12 @@ bool Edge::onPrincipalAxis() const
 bool Edge::isColinearWith(const Edge& other) const
 {
 	LineSegment seg(getSegment());
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(other._vertexIds[0]);
+	Vector3d pt0 = getVertexPoint(other._vertexIds[0]);
 
 	if (seg.distanceToPoint(pt0) > Tolerance::sameDistTol())
 		return false;
 
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(other._vertexIds[1]);
+	Vector3d pt1 = getVertexPoint(other._vertexIds[1]);
 	if (seg.distanceToPoint(pt1) > Tolerance::sameDistTol())
 		return false;
 
@@ -211,9 +301,9 @@ bool Edge::isColinearWith(const Edge& other) const
 
 bool Edge::isColinearWith(const Index3DId& vert, double& param) const
 {
-	Vector3d pt = getBlockPtr()->getVertexPoint(vert);
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt = getVertexPoint(vert);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 
 	Vector3d v = pt1 - pt0;
 	double len = v.norm();
@@ -307,8 +397,8 @@ bool Edge::isOriented(const Index3DId& refCellId) const
 
 LineSegmentd Edge::getSegment() const
 {
-	Vector3d pt0 = getBlockPtr()->getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getBlockPtr()->getVertexPoint(_vertexIds[1]);
+	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
+	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
 	LineSegmentd result(pt0, pt1);
 	return result;
 }
@@ -322,7 +412,7 @@ bool Edge::containsFace(const Index3DId& faceId) const
 
 bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
 {
-	const auto& pt = getBlockPtr()->getVertexPoint(vertexId);
+	const auto& pt = getVertexPoint(vertexId);
 	return pointLiesOnEdge(pt);
 }
 

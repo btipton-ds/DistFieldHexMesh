@@ -70,6 +70,8 @@ public:
 	Vector3d calPointAt(double t) const;
 	double paramOfPt(const Vector3d& pt, bool& inBounds) const;
 	double calLength() const;
+	double calCurvature() const;
+
 	Vector3d projectPt(const Vector3d& pt) const;
 	bool onPrincipalAxis() const;
 	bool isColinearWith(const Edge& other) const;
@@ -110,6 +112,7 @@ private:
 	void initFaceIds() const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
+	double calCurvature(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const;
 
 	Block* _pBlock = nullptr;
 	PolyMesh* _pPolyMesh = nullptr;
