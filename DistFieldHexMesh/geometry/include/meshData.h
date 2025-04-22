@@ -59,8 +59,8 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData();
-		MeshData(const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
+		MeshData(const AppDataPtr& pAppData);
+		MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
 		virtual ~MeshData();
 
 		void clear();
@@ -105,6 +105,7 @@ namespace DFHM {
 		void cacheMesh();
 		void readMeshFromCache();
 
+		AppDataPtr _pAppData;
 		bool _active = true;
 		size_t _id;
 
@@ -176,25 +177,7 @@ namespace DFHM {
 		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
 	{
 #if 1
-		_pPolyMesh->calCurvatures();
-		unsigned int idx = 0;
-		_pPolyMesh->iterateFaces([this, curvatureToColorFunc, &points, &colors, &smoothIndices, &idx](const Index3DId& faceId, const Polygon& face)->bool {
-			face.iterateEdges([this, curvatureToColorFunc, &points, &colors, &smoothIndices, &idx](const Edge& edge)->bool {
-				for (int i = 0; i < 2; i++) {
-					auto& pt = _pPolyMesh->getVertexPoint(edge[i]);
-					double c = _pPolyMesh->getPointCurvature(edge[i]);
-					float rgb[3] = { 0,0,0 };
-					curvatureToColorFunc(c, rgb);
-					for (int j = 0; j < 3; j++) {
-						points.push_back((float)pt[j]);
-						colors.push_back(rgb[i]);
-					}
-					smoothIndices.push_back(idx++);
-				}
-				return true;
-			});
-			return true;
-		});
+		_pPolyMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
 #else
 		_pMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
 #endif

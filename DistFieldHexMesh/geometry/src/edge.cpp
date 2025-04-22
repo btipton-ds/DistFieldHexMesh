@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <block.h>
 #include <polyMesh.h>
 #include <volume.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -166,7 +167,7 @@ double Edge::calLength() const
 	return v.norm();
 }
 
-double Edge::calCurvature() const
+double Edge::calCurvature(const SplittingParams& params) const
 {
 	initFaceIds();
 	if (_faceIds.size() != 2)
@@ -205,7 +206,7 @@ double Edge::calCurvature() const
 		const auto& pt2 = getVertexPoint(id0);
 		for (const auto& id1 : nclVerts1) {
 			const auto& pt3 = getVertexPoint(id1);
-			curvature += calCurvature(pt0, pt1, pt2, pt3);
+			curvature += calCurvature(pt0, pt1, pt2, pt3, params);
 			count++;
 		}
 	}
@@ -215,35 +216,46 @@ double Edge::calCurvature() const
 	return curvature;
 }
 
-double Edge::calCurvature(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const
+double Edge::calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const Vector3d& pt0, const Vector3d& pt1, const SplittingParams& params) const
 {
-	Vector3d axis = (pt1 - pt0).normalized();
+	Vector3d axis = (ptAxis - origin).normalized();
 
-	Vector3d v0 = pt2 - pt0;
+	Vector3d v0 = pt0 - origin;
 	v0 = v0 - v0.dot(axis) * axis;
 	double l0 = v0.norm();
+	if (l0 < Tolerance::sameDistTol())
+		return 0;
 	v0 /= l0;
-	Vector3d mid0 = pt0 + 0.5 * l0 * v0;
+	assert(fabs(v0.dot(axis)) < Tolerance::looseParamTol());
 
-	Vector3d v1 = (pt3 - pt0);
+	Vector3d v1 = (pt1 - origin);
 	v1 = v1 - v1.dot(axis) * axis;
 	double l1 = v1.norm();
 	if (l1 < Tolerance::sameDistTol())
 		return 0; // pt3 is colinear with the axis
-
 	v1 /= l1;
+	assert(fabs(v1.dot(axis)) < Tolerance::looseParamTol());
 
-	const auto& ptA = pt0;
-	Vector3d ptB = ptA + l0 * v0;
-	Vector3d ptC = ptA + l1 * v1;
+	Vector3d ptB = origin + l0 * v0;
+	Vector3d ptC = origin + l1 * v1;
 
-	Vector3d vCA = ptC - ptA;
-	Vector3d vAB = ptA - ptB;
+	Vector3d orthAxis = (origin - ptB).normalized();
+
+	Vector3d vCA = ptC - origin;
+	Vector3d vAB = origin - ptB;
 	Vector3d vBC = ptB - ptC;
 
-	double area = 0.5 * vBC.cross(vAB).dot(axis);
+	double area = fabs(0.5 * vBC.cross(vAB).dot(axis));
 	if (area < Tolerance::sameDistTolSqr())
 		return 0;
+
+	double dotProdCA = vCA.dot(orthAxis);
+	Vector3d perp = orthAxis.cross(axis).normalized();
+	assert(fabs(axis.dot(perp)) < Tolerance::paramTol());
+	double dotPerp = vCA.dot(perp);
+	double angle = atan2(dotPerp, dotProdCA);
+	if (fabs(angle) > params.getSharpAngleRadians())
+		return DBL_MAX; // Sharp edge, infinite curvature
 
 	double ca = vCA.norm();
 	double ab = vAB.norm();

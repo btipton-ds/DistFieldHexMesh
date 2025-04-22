@@ -157,10 +157,12 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
         break;
     }
 
+#if 0
     if (_options.showCurvature) {
         UBO.useDefColor = 0;
         result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
     }
+#endif
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
     glEnable(GL_DEPTH_TEST);

@@ -44,6 +44,7 @@ using LineSegmentd = LineSegment<double>;
 
 namespace DFHM {
 
+struct SplittingParams;
 class Block;
 class PolyMesh;
 class Vertex;
@@ -70,7 +71,7 @@ public:
 	Vector3d calPointAt(double t) const;
 	double paramOfPt(const Vector3d& pt, bool& inBounds) const;
 	double calLength() const;
-	double calCurvature() const;
+	double calCurvature(const SplittingParams& params) const;
 
 	Vector3d projectPt(const Vector3d& pt) const;
 	bool onPrincipalAxis() const;
@@ -112,7 +113,7 @@ private:
 	void initFaceIds() const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
-	double calCurvature(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2, const Vector3d& pt3) const;
+	double calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const Vector3d& pt0, const Vector3d& pt1, const SplittingParams& params) const;
 
 	Block* _pBlock = nullptr;
 	PolyMesh* _pPolyMesh = nullptr;

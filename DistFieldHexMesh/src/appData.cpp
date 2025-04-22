@@ -184,7 +184,7 @@ bool AppData::doImportMesh()
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
-        MeshDataPtr pMeshData = make_shared<MeshData>(pMesh, name);
+        MeshDataPtr pMeshData = make_shared<MeshData>(shared_from_this(), pMesh, name);
         _model.add(pMeshData);
 
         _model.rebuildSearchTree();
@@ -287,7 +287,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     vector<MeshDataPtr> meshes;
     CBoundingBox3Dd bbox;
     for (size_t i = 0; i < numMeshes; i++) {
-        auto pData = make_shared<MeshData>();
+        auto pData = make_shared<MeshData>(shared_from_this());
         pData->read(in);
         meshes.push_back(pData);
         bbox.merge(pData->getMesh()->getBBox());
@@ -834,7 +834,7 @@ const OGL::IndicesPtr AppData::createFaceTessellation(const MeshDataPtr& pData, 
         return true;
         };
 
-    const auto& colors = pMesh->getGlTriCurvatureColors(colorFunc);
+    vector<float> colors;
     auto meshId = pMesh->getId();
     auto changeNumber = pMesh->getChangeNumber();
 
@@ -850,13 +850,7 @@ void AppData::setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingPa
     vector<float> points, colors;
     vector<unsigned int> indices, sharpIndices, smoothIndices;
     auto colorFunc = [](float curvature, float rgb[3])->bool {
-        rgbaColor c;
-        if (curvature < 0)
-            c = rgbaColor(1, 0, 0);
-        else if (curvature < 1.0e-6)
-            c = rgbaColor(0, 0, 0);
-        else
-            c = curvatureToColor(curvature);
+        rgbaColor c = curvatureToColor(curvature);
         for (int i = 0; i < 3; i++)
             rgb[i] = c._rgba[i] / 255.0f;
         return true;

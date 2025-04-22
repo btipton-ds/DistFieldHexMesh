@@ -111,10 +111,10 @@ void Model::rebuildSearchTree()
 	}
 }
 
-size_t Model::addMesh(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
+size_t Model::addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 {
 	size_t meshIdx = _modelMeshData.size();
-	auto pData = make_shared<MeshData>(pMesh, name);
+	auto pData = make_shared<MeshData>(pAppData, pMesh, name);
 	_modelMeshData.push_back(pData);
 
 	for (size_t idx = 0; idx < pMesh->numTris(); idx++) {

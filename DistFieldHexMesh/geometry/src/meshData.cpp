@@ -39,16 +39,18 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData()
+MeshData::MeshData(const AppDataPtr& pAppData)
+	: _pAppData(pAppData)
 {
 }
 
-MeshData::MeshData(const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
-	: _name(name)
+MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
+	: _pAppData(pAppData)
+	, _name(name)
 	, _pMesh(pMesh)
 	, _id(pMesh->getId())
 {
-	_pPolyMesh = make_shared<PolyMesh>(pMesh);
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, pMesh);
 	_pPolyMesh->makeQuads();
 }
 

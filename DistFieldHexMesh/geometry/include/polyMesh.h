@@ -64,8 +64,8 @@ namespace DFHM {
 	class PolyMesh : public ObjectPoolOwner {
 	public:
 		friend class Block;
-		PolyMesh();
-		PolyMesh(const TriMesh::CMeshPtr& srcMesh);
+		PolyMesh(const AppDataPtr& pAppData);
+		PolyMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& srcMesh);
 		~PolyMesh();
 
 		const Index3D& getBlockIdx() const override;
@@ -83,10 +83,14 @@ namespace DFHM {
 		void makeQuads();
 		void calCurvatures();
 		void removeFace(const Index3DId& id);
-		double getPointCurvature(const Index3DId& id) const;
+		double getEdgeCurvature(const EdgeKey& key) const;
 
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
+
+		template<typename LAMBDA>
+		void getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
+			double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices);
 
 		LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
 		LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
@@ -97,13 +101,10 @@ namespace DFHM {
 		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
 		void mergeToQuad(const Edge& edge);
 
+		AppDataPtr _pAppData;
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
-		struct CurvRec {
-			double curvature = 0;
-			int count = 0;
-		};
-		MTC::map<Index3DId, CurvRec> _pointCurvatures;
+		MTC::map<EdgeKey, double> _edgeCurvatures;
 	};
 
 	template<class FACE_FUNC>
@@ -111,13 +112,43 @@ namespace DFHM {
 		_polygons.iterateInOrder(faceFunc);
 	}
 
-	inline double PolyMesh::getPointCurvature(const Index3DId& id) const
+	inline double PolyMesh::getEdgeCurvature(const EdgeKey& key) const
 	{
-		auto iter = _pointCurvatures.find(id);
-		if (iter != _pointCurvatures.end())
-			return iter->second.curvature;
+		auto iter = _edgeCurvatures.find(key);
+		if (iter != _edgeCurvatures.end())
+			return iter->second;
 
 		return 0;
+	}
+
+	template<typename LAMBDA>
+	void PolyMesh::getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
+		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
+	{
+#if 1
+		calCurvatures();
+		size_t idx = 0;
+		for (const auto& pair : _edgeCurvatures) {
+			auto& ek = pair.first;
+			double c = pair.second;
+			edgeFunc(ek, [this, c, &curvatureToColorFunc, &idx, &points, &colors, &smoothIndices](const Edge& edge) {
+				for (int i = 0; i < 2; i++) {
+					auto& pt = getVertexPoint(edge[i]);
+					double c = getEdgeCurvature(edge);
+					float rgb[3] = { 0, 0, 0 };
+					if (c > 0.001)
+						curvatureToColorFunc(c, rgb);
+					for (int j = 0; j < 3; j++) {
+						points.push_back((float)pt[j]);
+						colors.push_back(rgb[j]);
+					}
+					smoothIndices.push_back(idx++);
+				}
+			});
+		}
+#else
+		_pMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+#endif
 	}
 
 	using VolumePtr = std::shared_ptr<Volume>;

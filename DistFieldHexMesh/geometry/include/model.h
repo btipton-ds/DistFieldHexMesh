@@ -41,6 +41,7 @@ class DrawModelMesh;
 struct SplittingParams;
 
 class AppData;
+using AppDataPtr = std::shared_ptr<AppData>;
 
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
@@ -64,7 +65,7 @@ public:
 	void setBounds(const BOX_TYPE& bbox);
 
 	size_t add(const MeshDataPtr& pData);
-	size_t addMesh(const TriMesh::CMeshPtr& pMesh, const std::wstring& name);
+	size_t addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name);
 	void clear();
 	bool empty() const;
 	size_t size() const;
