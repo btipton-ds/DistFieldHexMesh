@@ -92,7 +92,6 @@ public:
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
-	std::set<size_t> _indicesInSearchTree;
 	std::shared_ptr<SearchTree> _pSearchTree;
 
 };

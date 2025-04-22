@@ -85,27 +85,15 @@ void Model::rebuildSearchTree()
 		}
 	}
 
-	if (_pSearchTree) {
-		CBoundingBox3Dd curBbox = _pSearchTree->getBounds();
-		if (!curBbox.contains(bbox, Tolerance::sameDistTol())) {
-			_pSearchTree = make_shared<SearchTree>(bbox);
-			_indicesInSearchTree.clear();
-		}
-	} else {
-		_pSearchTree = make_shared<SearchTree>(bbox);
-		_indicesInSearchTree.clear();
-	}
+	_pSearchTree = make_shared<SearchTree>(bbox);
 
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
-		if (!_indicesInSearchTree.contains(meshIdx)) {
-			_indicesInSearchTree.insert(meshIdx);
-			auto& pData = _modelMeshData[meshIdx];
-			auto& pMesh = pData->getMesh();
-			if (pMesh) {
-				for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
-					auto bb = pMesh->getTriBBox(idx);
-					_pSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
-				}
+		auto& pData = _modelMeshData[meshIdx];
+		auto& pMesh = pData->getMesh();
+		if (pMesh) {
+			for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
+				auto bb = pMesh->getTriBBox(idx);
+				_pSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
 			}
 		}
 	}

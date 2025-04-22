@@ -99,6 +99,7 @@ namespace DFHM {
 
 	private:
 		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
+		bool isShortestEdge(const Polygon& face, const Edge& edge) const;
 		void mergeToQuad(const Edge& edge);
 
 		AppDataPtr _pAppData;

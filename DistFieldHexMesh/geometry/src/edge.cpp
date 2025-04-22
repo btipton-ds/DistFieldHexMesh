@@ -206,12 +206,16 @@ double Edge::calCurvature(const SplittingParams& params) const
 		const auto& pt2 = getVertexPoint(id0);
 		for (const auto& id1 : nclVerts1) {
 			const auto& pt3 = getVertexPoint(id1);
-			curvature += calCurvature(pt0, pt1, pt2, pt3, params);
-			count++;
+			double c = calCurvature(pt0, pt1, pt2, pt3, params);
+			if (c >= 0) {
+				curvature += c;
+				count++;
+			}
 		}
 	}
 
-	curvature /= count;
+	if (count > 0)
+		curvature /= count;
 
 	return curvature;
 }
@@ -222,19 +226,27 @@ double Edge::calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const 
 
 	Vector3d v0 = pt0 - origin;
 	v0 = v0 - v0.dot(axis) * axis;
+	v0 = v0 - v0.dot(axis) * axis;
 	double l0 = v0.norm();
 	if (l0 < Tolerance::sameDistTol())
-		return 0;
+		return -1;
 	v0 /= l0;
 	assert(fabs(v0.dot(axis)) < Tolerance::looseParamTol());
 
+	if (axis.cross(v0).norm() < 0.01)
+		return -1;
+
 	Vector3d v1 = (pt1 - origin);
+	v1 = v1 - v1.dot(axis) * axis;
 	v1 = v1 - v1.dot(axis) * axis;
 	double l1 = v1.norm();
 	if (l1 < Tolerance::sameDistTol())
-		return 0; // pt3 is colinear with the axis
+		return -1; // pt3 is colinear with the axis
 	v1 /= l1;
 	assert(fabs(v1.dot(axis)) < Tolerance::looseParamTol());
+
+	if (axis.cross(v1).norm() < 0.01)
+		return -1;
 
 	Vector3d ptB = origin + l0 * v0;
 	Vector3d ptC = origin + l1 * v1;
@@ -247,7 +259,7 @@ double Edge::calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const 
 
 	double area = fabs(0.5 * vBC.cross(vAB).dot(axis));
 	if (area < Tolerance::sameDistTolSqr())
-		return 0;
+		return -1;
 
 	double dotProdCA = vCA.dot(orthAxis);
 	Vector3d perp = orthAxis.cross(axis).normalized();

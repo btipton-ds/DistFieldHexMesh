@@ -50,6 +50,7 @@ MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, c
 	, _pMesh(pMesh)
 	, _id(pMesh->getId())
 {
+	_pMesh->clearSearchTrees();
 	_pPolyMesh = make_shared<PolyMesh>(_pAppData, pMesh);
 	_pPolyMesh->makeQuads();
 }

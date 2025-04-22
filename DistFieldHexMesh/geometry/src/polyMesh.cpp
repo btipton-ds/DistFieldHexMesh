@@ -121,16 +121,7 @@ const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
 
 void PolyMesh::makeQuads()
 {
-	vector<EdgeKey> edges;
-	_polygons.iterateInOrder([&edges](const Index3DId& faceId, const Polygon& face)->bool {
-		face.iterateEdges([&edges](const Edge& edge) {
-			edges.push_back(edge);
-			return true;
-		});
-		return true;
-	});
-
-	sort(edges.begin(), edges.end(), [this](const EdgeKey& lhs, const EdgeKey& rhs) {
+	auto sortLenFunc = [this](const EdgeKey& lhs, const EdgeKey& rhs) {
 		double l0, l1;
 		edgeFunc(lhs, [&l0](const Edge& edge) {
 			l0 = edge.calLength();
@@ -140,7 +131,18 @@ void PolyMesh::makeQuads()
 		});
 
 		return l0 > l1;
+	};
+
+	vector<EdgeKey> edges;
+	_polygons.iterateInOrder([&edges](const Index3DId& faceId, const Polygon& face)->bool {
+		face.iterateEdges([&edges](const Edge& edge) {
+			edges.push_back(edge);
+			return true;
+		});
+		return true;
 	});
+
+	sort(edges.begin(), edges.end(), sortLenFunc);
 
 	for (const auto& ek : edges) {
 		edgeFunc(ek, [this](const Edge& edge) {
@@ -189,10 +191,10 @@ void PolyMesh::mergeToQuad(const Edge& edge)
 
 	if (vertIds0.size() != 3 || vertIds1.size() != 3)
 		return;
-
+#if 0
 	if (!isLongestEdge(face0, edge) || !isLongestEdge(face1, edge))
 		return;
-
+#endif
 	// Check for close to coplanar
 	auto ncLin0 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds0);
 	auto norm0 = Polygon::calUnitNormalStat(this, ncLin0);
@@ -203,28 +205,57 @@ void PolyMesh::mergeToQuad(const Edge& edge)
 	if (cp > MAX_CP_SQR)
 		return;
 
-	Index3DId otherId;
-	for (const auto& id : vertIds1) {
+	Index3DId otherId0;
+	for (const auto& id : vertIds0) {
 		if (!edge.containsVertex(id)) {
-			otherId = id;
+			otherId0 = id;
 			break;
 		}
 	}
-	assert(otherId.isValid());
+	if (!otherId0.isValid())
+		return;
+
+
+	Index3DId otherId1;
+	for (const auto& id : vertIds1) {
+		if (!edge.containsVertex(id)) {
+			otherId1 = id;
+			break;
+		}
+	}
+	if (!otherId1.isValid())
+		return;
+
+	const auto& ePt0 = getVertexPoint(edge[0]);
+	const auto& ePt1 = getVertexPoint(edge[1]);
+	const auto& pt0 = getVertexPoint(otherId0);
+	const auto& pt1 = getVertexPoint(otherId1);
+	LineSegmentd seg(ePt0, ePt1);
+	double t;
+
+	double deltaT = 0.25;
+	if (seg.distanceToPoint(pt0, t) < Tolerance::sameDistTol() || t < -deltaT || t > 1 + deltaT)
+		return;
+
+	if (seg.distanceToPoint(pt1, t) < Tolerance::sameDistTol() || t < -deltaT || t > 1 + deltaT)
+		return;
 
 	MTC::vector<Index3DId> newVertIds;
 	for (size_t i = 0; i < vertIds0.size(); i++) {
 		size_t j = (i + 1) % vertIds0.size();
 		newVertIds.push_back(vertIds0[i]);
 		if (edge.containsVertex(vertIds0[i]) && edge.containsVertex(vertIds0[j])) {
-			newVertIds.push_back(otherId);
+			newVertIds.push_back(otherId1);
 		}
 	}
-
-	removeFace(faceId0);
-	removeFace(faceId1);
-	Polygon newFace(newVertIds);
-	_polygons.findOrAdd(newFace);
+	
+	auto tstIds = PolygonSearchKey::makeNonColinearVertexIds(this, newVertIds);
+	if (tstIds.size() == newVertIds.size()) {
+		removeFace(faceId0);
+		removeFace(faceId1);
+		Polygon newFace(newVertIds);
+		_polygons.findOrAdd(newFace);
+	}
 
 }
 
@@ -247,6 +278,21 @@ bool PolyMesh::isLongestEdge(const Polygon& face, const Edge& edge) const
 		}
 		return result;
 	});
+	return result;
+}
+
+bool PolyMesh::isShortestEdge(const Polygon& face, const Edge& edge) const
+{
+	bool result = true;
+	auto l0 = edge.calLength();
+	face.iterateEdges([&edge, l0, &result](const Edge& edge1) {
+		if (edge != edge1) {
+			if (edge.calLength() < l0) {
+				result = false;
+			}
+		}
+		return result;
+		});
 	return result;
 }
 
