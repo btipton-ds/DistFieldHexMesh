@@ -156,7 +156,7 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 {
 	_vertices.iterateInOrder([this, &params, minAngleRadians](const Index3DId& id, const Vertex& vert)->bool {
 		vector<vector<Index3DId>> planarFaceSets;
-		vector<shared_ptr<map<double, EdgeKey>>> planarAngleEdgeMap;
+		vector<shared_ptr<vector<pair<double, Index3DId>>>> planarAngleEdgeMap;
 		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
 		vector<Planed> planes;
 		for (const auto& faceIds : planarFaceSets) {
@@ -168,7 +168,10 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 				for (const auto& vertId : vertIds) {
 					uniqueVerts.insert(vertId);
 				}
-				normal += face.calUnitNormal();
+				auto n = face.calUnitNormal();
+				if (normal.squaredNorm() > 0 && normal.dot(n) < 0)
+					n = -n;
+				normal += n;
 			}
 
 			for (const auto& vertId : uniqueVerts) {
@@ -176,7 +179,12 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 			}
 
 			origin /= uniqueVerts.size();
-			normal.normalize();
+			double l = normal.norm();
+			if (l > Tolerance::paramTol())
+				normal /= l;
+			else {
+				assert(!"zero length normal");
+			}
 
 			Planed plane(origin, normal);
 			planes.push_back(plane);
@@ -195,6 +203,7 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 					return true;
 				});
 			}
+
 			if (!connectedVertIds.empty()) {
 				vector<Index3DId> orderedVertIds(connectedVertIds.begin(), connectedVertIds.end());
 				auto axisId = orderedVertIds.back();
@@ -207,13 +216,17 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 				Vector3d xAxis = (pt1 - origin).normalized();
 				Vector3d yAxis = zAxis.cross(xAxis);
 
-				shared_ptr<map<double, EdgeKey>> pAngleToEdgeMap = make_shared<map<double, EdgeKey>>();
+				shared_ptr<vector<pair<double, Index3DId>>> pAngleToEdgeMap = make_shared<vector<pair<double, Index3DId>>>();
 				for (const auto& vertId : orderedVertIds) {
 					double angle = calEdgeAngle(vertId, origin, xAxis, yAxis);
-					pAngleToEdgeMap->insert(make_pair(angle, EdgeKey(vert.getId(), vertId)));
+					pAngleToEdgeMap->push_back(make_pair(angle, vertId));
 				}
-				if (pAngleToEdgeMap->size() > 3)
+				if (pAngleToEdgeMap->size() > 2) {
+					sort(pAngleToEdgeMap->begin(), pAngleToEdgeMap->end(), [](const pair<double, Index3DId>& lhs, const pair<double, Index3DId>& rhs)->bool {
+						return lhs.first < rhs.first;
+					});
 					planarAngleEdgeMap.push_back(pAngleToEdgeMap);
+				}
 			}
 		}
 
@@ -222,15 +235,14 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 			const auto& plane = planes[i];
 			int dbgBreak = 1;
 			const auto& angleToEdgeMap = *pMap;
-			auto iter = angleToEdgeMap.begin();
-			auto lastAngle = iter->first;
-			iter++;
-			for (; iter != angleToEdgeMap.end(); iter++) {
-				auto thisAngle = iter->first;
+			auto lastAngle = angleToEdgeMap.back().first;
+			for (const auto& pair : angleToEdgeMap) {
+				auto thisAngle = pair.first;
+				const auto& thisId = pair.second;
 				auto deltaAngle = thisAngle - lastAngle;
 				if (deltaAngle > minAngleRadians) {
 					lastAngle = thisAngle;
-				} else if (!removeEdge(params, plane, iter->second)) {
+				} else if (!removeEdge(params, plane, EdgeKey(vert.getId(), thisId))) {
 					lastAngle = thisAngle;
 				}
 			}
@@ -277,9 +289,12 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		const auto& faceId1 = *iter;
 
 		auto& face0 = getPolygon(faceId0);
-		auto norm0 = face0.calUnitNormal();
 		auto& face1 = getPolygon(faceId1);
+
+		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
+		assert(norm0.dot(norm1) > 0);
+
 		auto cp = norm0.cross(norm1).norm();
 		if (cp > Tolerance::looseParamTol()) {
 			result = false;
@@ -359,14 +374,7 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 			newVertIds.pop_back();
 
 		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
-		const auto& pt0 = getVertexPoint(newVertIds[0]);
-		const auto& pt1 = getVertexPoint(newVertIds[1]);
-		const auto& pt2 = getVertexPoint(newVertIds[2]);
-		Vector3d v0 = pt0 - pt1;
-		Vector3d v1 = pt2 - pt1;
-		Vector3d n2 = v1.cross(v0).normalized();
-
-
+		Vector3d n2 = Polygon::calUnitNormalStat(this, newVertIds);
 		if (n2.dot(norm0) < 0)
 			reverse(newVertIds.begin(), newVertIds.end());
 

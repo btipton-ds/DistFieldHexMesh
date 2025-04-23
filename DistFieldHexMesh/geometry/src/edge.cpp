@@ -39,6 +39,10 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+namespace {
+	const double MAX_CURVATURE = DBL_MAX / 100; // Divid by 100 so that averaging several won't result in floating point overflow.
+}
+
 Edge::Edge(const EdgeKey& src, const Block* pBlock)
 	: EdgeKey(src)
 	, _pBlock(const_cast<Block*>(pBlock))
@@ -180,6 +184,14 @@ double Edge::calCurvature(const SplittingParams& params) const
 	auto& face0 = getPolygon(faceId0);
 	auto& face1 = getPolygon(faceId1);
 
+	auto norm0 = face0.calUnitNormal();
+	auto norm1 = face1.calUnitNormal();
+	auto dp = norm0.dot(norm1);
+	auto cp = norm0.cross(norm1).norm();
+	auto angle = atan2(cp, dp);
+	if (fabs(angle) > params.getSharpAngleRadians())
+		return MAX_CURVATURE;
+
 	MTC::vector<Index3DId> nclVerts0, nclVerts1;
 	if (_pBlock) {
 		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pBlock, face0.getVertexIds());
@@ -267,7 +279,7 @@ double Edge::calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const 
 	double dotPerp = vCA.dot(perp);
 	double angle = atan2(dotPerp, dotProdCA);
 	if (fabs(angle) > params.getSharpAngleRadians())
-		return DBL_MAX; // Sharp edge, infinite curvature
+		return MAX_CURVATURE; // Sharp edge, infinite curvature
 
 	double ca = vCA.norm();
 	double ab = vAB.norm();
