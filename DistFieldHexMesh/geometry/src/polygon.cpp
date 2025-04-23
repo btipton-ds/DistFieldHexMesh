@@ -205,9 +205,16 @@ void Polygon::addVertex(const Index3DId& vertId)
 const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 {
 	lock_guard lg(_nonColinearVertexIdsMutex);
-	if (_nonColinearVertexIds.empty())
-		_nonColinearVertexIds = PolygonSearchKey::makeNonColinearVertexIds(getOurBlockPtr(), _vertexIds);
-
+	if (_nonColinearVertexIds.empty()) {
+		auto p = getOurBlockPtr();
+		if (p)
+			_nonColinearVertexIds = PolygonSearchKey::makeNonColinearVertexIds(p, _vertexIds);
+		else {
+			auto p2 = getPolyMeshPtr();
+			if (p2)
+				_nonColinearVertexIds = PolygonSearchKey::makeNonColinearVertexIds(p2, _vertexIds);
+		}
+	}
 	return _nonColinearVertexIds;
 }
 
@@ -462,6 +469,7 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 {
 	Vector3d norm(0, 0, 0);
 
+	double maxNorm = 0;
 	size_t i = 0;
 	Vector3d pt0 = pBlock->getVertexPoint(vertIds[i]);
 	for (size_t j = 1; j < vertIds.size() - 1; j++) {
@@ -475,18 +483,21 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 
 		Vector3d n = v1.cross(v0);
 		double l = n.norm();
-		if (l > Tolerance::angleTol()) {
+		if (l > maxNorm) {
+			maxNorm = l;
 			n /= l;
-			norm += n;
+			norm = n;
 		}
 	}
-	norm.normalize();	return norm;
+
+	return norm;
 }
 
 Vector3d Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds)
 {
 	Vector3d norm(0, 0, 0);
 
+	double maxNorm = 0;
 	size_t i = 0;
 	Vector3d pt0 = pPolyMesh->getVertexPoint(vertIds[i]);
 	for (size_t j = 1; j < vertIds.size() - 1; j++) {
@@ -500,12 +511,14 @@ Vector3d Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector
 
 		Vector3d n = v1.cross(v0);
 		double l = n.norm();
-		if (l > Tolerance::angleTol()) {
+		if (l > maxNorm) {
+			maxNorm = l;
 			n /= l;
-			norm += n;
+			norm = n;
 		}
 	}
-	norm.normalize();	return norm;
+
+	return norm;
 }
 
 void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const MTC::vector<Index3DId>& vertIds)
@@ -534,11 +547,25 @@ void Polygon::dumpPolygonPoints(ostream& out, const MTC::vector<Vector3d>& pts)
 
 const Vector3d& Polygon::calUnitNormal() const
 {
+	assert(!_cachedNormal.isNAN());
 	if (_cachedNormal[0] == DBL_MAX) {
 		auto& nonColin = getNonColinearVertexIds();
-		_cachedNormal = calUnitNormalStat(getBlockPtr(), nonColin);
+		auto p = getBlockPtr();
+		if (p)
+			_cachedNormal = calUnitNormalStat(p, nonColin);
+		else {
+			_cachedNormal = calUnitNormalStat(getPolyMeshPtr(), nonColin);
+		}
+		assert(fabs(_cachedNormal.squaredNorm() - 1) < 1.0e-12);
+		assert(!_cachedNormal.isNAN());
 	}
 	return _cachedNormal;
+}
+
+void Polygon::setUnitNormal_risky(const Vector3d& val)
+{
+	_cachedNormal = val;
+	assert(!_cachedNormal.isNAN());
 }
 
 Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
@@ -562,7 +589,9 @@ Planed Polygon::calPlane() const
 {
 	Planed result;
 	auto& origin = calCentroid(); // Use every point to get more preceision
+	assert(!origin.isNAN());
 	auto& normal = calUnitNormal();
+	assert(!normal.isNAN());
 	result = Planed(origin, normal);
 
 	return result;
@@ -648,6 +677,11 @@ const Vector3d& Polygon::calCentroid() const
 	return _cachedCentroid;
 }
 
+void Polygon::setCentroid_risky(const Vector3d& val)
+{
+	_cachedCentroid = val;
+}
+
 Vector3d Polygon::calCentroidApprox() const
 {
 	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
@@ -690,7 +724,8 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 	centroid /= area;
 
 	_cachedArea = area;
-	_cachedCentroid = centroid;
+	if (_cachedCentroid[0] == DBL_MAX)
+		_cachedCentroid = centroid;
 }
 
 Vector3d Polygon::projectPoint(const Vector3d& pt) const
@@ -1144,7 +1179,11 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 
 inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 {
-	return getOurBlockPtr()->getVertexPoint(id);
+	auto p = getOurBlockPtr();
+	if (p)
+		return p->getVertexPoint(id);
+	
+	return getPolyMeshPtr()->getVertexPoint(id);
 }
 
 

@@ -54,13 +54,12 @@ bool EdgeKey::operator < (const EdgeKey& rhs) const
 
 Index3DId EdgeKey::getOtherVert(const Index3DId& vert) const
 {
+	Index3DId result;
 	if (vert == _vertexIds[0])
-		return _vertexIds[1];
+		result = _vertexIds[1];
 	else if (vert == _vertexIds[1])
-		return _vertexIds[0];
-
-	assert(!"Invalid vert");
-	return Index3DId();
+		result = _vertexIds[0];
+	return result;
 }
 
 bool EdgeKey::containsVertex(const Index3DId& vertexId) const

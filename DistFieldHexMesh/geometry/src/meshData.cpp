@@ -50,13 +50,26 @@ MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, c
 	, _pMesh(pMesh)
 	, _id(pMesh->getId())
 {
-	_pMesh->clearSearchTrees();
-	_pPolyMesh = make_shared<PolyMesh>(_pAppData, pMesh);
-	_pPolyMesh->makeQuads();
+	postReadCreate();
 }
 
 MeshData::~MeshData()
 {
+}
+
+void MeshData::postReadCreate()
+{
+	const auto& params = _pAppData->getParams();
+
+	_pMesh->clearSearchTrees();
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
+	_pPolyMesh->makeQuads(params);
+
+#if 1
+	double sliverAngleRadians = 25 / 180.0 * M_PI;
+	_pPolyMesh->reduceSlivers(params, sliverAngleRadians);
+#endif
+
 }
 
 void MeshData::clear()
@@ -133,6 +146,8 @@ void MeshData::read(std::istream& in)
 
 	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
+	
+	postReadCreate();
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const

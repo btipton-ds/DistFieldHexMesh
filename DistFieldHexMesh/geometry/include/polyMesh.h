@@ -80,7 +80,8 @@ namespace DFHM {
 		PolyMesh* getPolyMeshPtr() override;
 
 		const Vector3d& getVertexPoint(const Index3DId& id) const;
-		void makeQuads();
+		void makeQuads(const SplittingParams& params);
+		void reduceSlivers(const SplittingParams& params, double minAngleRadians);
 		void calCurvatures();
 		void removeFace(const Index3DId& id);
 		double getEdgeCurvature(const EdgeKey& key) const;
@@ -100,7 +101,10 @@ namespace DFHM {
 	private:
 		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
 		bool isShortestEdge(const Polygon& face, const Edge& edge) const;
-		void mergeToQuad(const Edge& edge);
+		void mergeToQuad(const SplittingParams& params, const Edge& edge);
+		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
+		bool removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key);
+		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
 
 		AppDataPtr _pAppData;
 		ObjectPool<Vertex> _vertices;

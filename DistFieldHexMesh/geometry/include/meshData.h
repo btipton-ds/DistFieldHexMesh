@@ -95,6 +95,8 @@ namespace DFHM {
 	private:
 		friend class AppData;
 
+		void postReadCreate();
+
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
