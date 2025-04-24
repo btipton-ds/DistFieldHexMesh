@@ -80,11 +80,12 @@ struct SplittingParams {
 	double ignoreCurvatureRadius_meters = 0.3; // ignore chordal divisions > ~10 in
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double sharpRadius = 0.001; // 1 mm
-	double maxRadius = 100; // m
+	double maxCuvatureRadius = 100; // m
+	double maxComplanarEdgeRemovalRadius = 2; // m
 	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
 	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
 	double maxOrthoAngleRadians = 70.0 / 180.0 * M_PI;
-	double maxLocalConcavityCrossProduct = -sin(2.5 / 180.0 * M_PI); // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
+	double maxLocalConcavityCrossProduct = -sin(5 / 180.0 * M_PI); // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
 
 	// These are used only to determine which cell is most complex so it gets split first
 	double complexityFaceFactor = 1;

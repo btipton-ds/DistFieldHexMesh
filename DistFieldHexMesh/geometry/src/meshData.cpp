@@ -69,7 +69,7 @@ void MeshData::postReadCreate()
 	double sliverAngleRadians = 25 / 180.0 * M_PI;
 	_pPolyMesh->reduceSlivers(params, sliverAngleRadians);
 
-//	_pPolyMesh->removeAllPossibleCoplanarEdges(params);
+	_pPolyMesh->removeAllPossibleCoplanarEdges(params);
 #endif
 
 }
@@ -110,12 +110,6 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 		readMeshFromCache();
 	_pMesh->splitLongTris(maxLength);
 	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
-}
-
-void MeshData::markCoplanarEdges(const SplittingParams& params)
-{
-	if (_pMesh)
-		_pMesh->markCoplanarEdges(params.maxRadius, RUN_MULTI_THREAD);
 }
 
 void MeshData::write(std::ostream& out) const

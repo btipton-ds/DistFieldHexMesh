@@ -205,9 +205,6 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 			}
 
 			if (!connectedVertIds.empty()) {
-				if (connectedVertIds.size() > 30 && connectedVertIds.size() < 40) {
-					int dbgBreak = 1;
-				}
 				vector<Index3DId> orderedVertIds(connectedVertIds.begin(), connectedVertIds.end());
 				auto axisId = orderedVertIds.front();
 
@@ -227,16 +224,20 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 					sort(pAngleToEdgeMap->begin(), pAngleToEdgeMap->end(), [](const pair<double, Index3DId>& lhs, const pair<double, Index3DId>& rhs)->bool {
 						return lhs.first < rhs.first;
 					});
+
 					planarAngleEdgeMap.push_back(pAngleToEdgeMap);
 				}
 			}
 		}
 
 		for (size_t i = 0; i < planarAngleEdgeMap.size(); i++) {
-			const auto& pMap = planarAngleEdgeMap[i];
+			const auto& angleToEdgeMap = *planarAngleEdgeMap[i];
 			const auto& plane = planes[i];
-			int dbgBreak = 1;
-			const auto& angleToEdgeMap = *pMap;
+
+			if (angleToEdgeMap.size() > 20) {
+				int dbgBreak = 1;
+			}
+
 			auto lastAngle = angleToEdgeMap.back().first;
 			for (const auto& pair : angleToEdgeMap) {
 				auto thisAngle = pair.first;
@@ -281,17 +282,10 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 
 	bool result = false;
 	edgeFunc(key, [this, &plane, &params, &result](const Edge& edge) {
-#if 1 && defined(_DEBUG)
-		if (edge == EdgeKey(Index3DId(0, 0, 0, 6179), Index3DId(0, 0, 0, 3072))) {
-			int dbgBreak = 1;
-		}
-#endif
-		const auto maxCurv = 1 / params.maxRadius;
+		const auto maxCurv = 1 / params.maxComplanarEdgeRemovalRadius;
 		double curv = edge.calCurvature(params);
-		if (curv > maxCurv) {
-			result = false;
+		if (curv > maxCurv)
 			return;
-		}
 
 		const auto& faceIds = edge.getFaceIds();
 		if (faceIds.size() != 2)
@@ -520,7 +514,7 @@ void PolyMesh::removeAllPossibleCoplanarEdges(const SplittingParams& params)
 
 				edgeFunc(testEdgeKey, [this, &coplanarEdgesToRemove](const Edge& testEdge) {
 					const auto& params = _pAppData->getParams();
-					const auto maxCoplanarCurvature = 1 / params.maxRadius;
+					const auto maxCoplanarCurvature = 1 / params.maxComplanarEdgeRemovalRadius;
 					auto c = testEdge.calCurvature(params);
 					if (c < maxCoplanarCurvature)
 						coplanarEdgesToRemove.insert(testEdge);

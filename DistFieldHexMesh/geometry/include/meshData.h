@@ -72,7 +72,6 @@ namespace DFHM {
 		const std::wstring& getName() const;
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
-		void markCoplanarEdges(const SplittingParams& params);
 
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,

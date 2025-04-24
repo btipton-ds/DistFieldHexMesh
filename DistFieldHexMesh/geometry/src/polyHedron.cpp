@@ -1408,8 +1408,8 @@ double chordEdgeLenRatio(double curvature, double minCurvature, double len, doub
 
 bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int axis) const
 {
-	const double minCurvature = 1 / params.maxRadius;
-	const double wedgeAngle = 2 * M_PI / params.curvatureDivsPerCircumference;
+	const double minCurvature = 1 / params.maxCuvatureRadius;
+	const double wedgeAngle = 2 * M_PI / params.maxCuvatureRadius;
 	const double sinWedgeAngle = sin(wedgeAngle / 2);
 
 	if (!intersectsModel())

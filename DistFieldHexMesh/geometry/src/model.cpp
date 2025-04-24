@@ -285,10 +285,3 @@ double Model::triCurvature(const TriMeshIndex& idx) const
 {
 	return _modelMeshData[idx.getMeshIdx()]->getMesh()->triCurvature(idx.getTriIdx());
 }
-
-void Model::markCoplanarEdges(const SplittingParams& params)
-{
-	for (const auto& pData : _modelMeshData) {
-		pData->markCoplanarEdges(params);
-	}
-}
