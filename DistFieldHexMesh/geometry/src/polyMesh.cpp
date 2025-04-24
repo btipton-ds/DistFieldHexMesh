@@ -180,7 +180,7 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 
 			origin /= uniqueVerts.size();
 			double l = normal.norm();
-			if (l > Tolerance::paramTol())
+			if (l > Tolerance::divideByZeroTol())
 				normal /= l;
 			else {
 				assert(!"zero length normal");
@@ -205,9 +205,11 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 			}
 
 			if (!connectedVertIds.empty()) {
+				if (connectedVertIds.size() > 30 && connectedVertIds.size() < 40) {
+					int dbgBreak = 1;
+				}
 				vector<Index3DId> orderedVertIds(connectedVertIds.begin(), connectedVertIds.end());
-				auto axisId = orderedVertIds.back();
-				orderedVertIds.pop_back();
+				auto axisId = orderedVertIds.front();
 
 				const auto& face = getPolygon(faceIds.front());
 				auto zAxis = face.calUnitNormal();
@@ -240,10 +242,17 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 				auto thisAngle = pair.first;
 				const auto& thisId = pair.second;
 				auto deltaAngle = thisAngle - lastAngle;
+				if (deltaAngle < 0) {
+					deltaAngle += 2 * M_PI;
+				}
+
 				if (deltaAngle > minAngleRadians) {
 					lastAngle = thisAngle;
-				} else if (!removeEdge(params, plane, EdgeKey(vert.getId(), thisId))) {
-					lastAngle = thisAngle;
+				} else {
+					EdgeKey ek(vert.getId(), thisId);
+					if (!removeEdge(params, plane, ek)) {
+						lastAngle = thisAngle;
+					}
 				}
 			}
 		}
@@ -271,17 +280,16 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 
 	bool result = false;
 	edgeFunc(key, [this, &plane, &params, &result](const Edge& edge) {
+		const auto maxCurv = 1 / params.maxRadius;
 		double curv = edge.calCurvature(params);
-		if (curv > Tolerance::looseParamTol()) {
+		if (curv > maxCurv) {
 			result = false;
 			return;
 		}
 
 		const auto& faceIds = edge.getFaceIds();
-		if (faceIds.size() != 2) {
-			result = false;
+		if (faceIds.size() != 2)
 			return;
-		}
 
 		auto iter = faceIds.begin();
 
@@ -294,12 +302,6 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
 		assert(norm0.dot(norm1) > 0);
-
-		auto cp = norm0.cross(norm1).norm();
-		if (cp > Tolerance::looseParamTol()) {
-			result = false;
-			return;
-		}
 
 		const auto& vertIds0 = face0.getVertexIds();
 		const auto& vertIds1 = face1.getVertexIds();
@@ -378,17 +380,16 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		if (n2.dot(norm0) < 0)
 			reverse(newVertIds.begin(), newVertIds.end());
 
-		auto tstIds = PolygonSearchKey::makeNonColinearVertexIds(this, newVertIds);
-		if (tstIds.size() == newVertIds.size()) {
-			removeFace(faceId0);
-			removeFace(faceId1);
-			Polygon newFace(newVertIds);
-			auto newFaceId = _polygons.findOrAdd(newFace);
-			auto& face = getPolygon(newFaceId);
-			// For this new face to have the plane of the source faces
-			face.setCentroid_risky(plane.getOrgin());
-			face.setUnitNormal_risky(plane.getNormal());
-		}
+		removeFace(faceId0);
+		removeFace(faceId1);
+		Polygon newFace(newVertIds);
+		auto newFaceId = _polygons.findOrAdd(newFace);
+		auto& face = getPolygon(newFaceId);
+		// For this new face to have the plane of the source faces
+		face.setCentroid_risky(plane.getOrgin());
+		face.setUnitNormal_risky(plane.getNormal());
+
+		result = true;
 	});
 	return result;
 }
@@ -539,8 +540,9 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
 	Planed plane(ctr, norm);
-	removeEdge(params, plane, edge);
 #if 0
+	removeEdge(params, plane, edge);
+#else
 	MTC::vector<Index3DId> newVertIds;
 	for (size_t i = 0; i < vertIds0.size(); i++) {
 		size_t j = (i + 1) % vertIds0.size();

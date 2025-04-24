@@ -60,6 +60,9 @@ namespace Tolerance
 		return 1.0e-10;
 	}
 
+	inline double divideByZeroTol() {
+		return 1.0e-12;
+	}
 	inline double paramTolSqr() {
 		return paramTol() * paramTol();
 	}
@@ -68,8 +71,8 @@ namespace Tolerance
 		return 1.0e-6;
 	}
 
-	inline double angleTol() {
-		return 1.0e-12;
+	inline double zeroAngleTol() {
+		return 1.0e-5; // radian
 	}
 
 }

@@ -173,6 +173,8 @@ double Edge::calLength() const
 
 double Edge::calCurvature(const SplittingParams& params) const
 {
+	const auto distTol = Tolerance::sameDistTol();
+
 	initFaceIds();
 	if (_faceIds.size() != 2)
 		return 0;
@@ -186,8 +188,10 @@ double Edge::calCurvature(const SplittingParams& params) const
 
 	auto norm0 = face0.calUnitNormal();
 	auto norm1 = face1.calUnitNormal();
+
 	auto dp = norm0.dot(norm1);
 	auto cp = norm0.cross(norm1).norm();
+
 	auto angle = atan2(cp, dp);
 	if (fabs(angle) > params.getSharpAngleRadians())
 		return MAX_CURVATURE;
@@ -200,6 +204,7 @@ double Edge::calCurvature(const SplittingParams& params) const
 		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face0.getVertexIds());
 		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face1.getVertexIds());
 	}
+
 	for (int i = 0; i < 2; i++) {
 		auto iter = find(nclVerts0.begin(), nclVerts0.end(), _vertexIds[i]);
 		if (iter != nclVerts0.end())
@@ -210,14 +215,56 @@ double Edge::calCurvature(const SplittingParams& params) const
 			nclVerts1.erase(iter);
 	}
 
-	double curvature = 0;
-	int count = 0;
 	const auto& pt0 = getVertexPoint(_vertexIds[0]);
 	const auto& pt1 = getVertexPoint(_vertexIds[1]);
+	LineSegmentd axisSeg(pt0, pt1);
+
+	Vector3d xAxis = (pt1 - pt0).normalized();
+	Vector3d maxDistPt0, maxDistPt1;
+
+	double maxDist = -1;
+	for (const auto& id : nclVerts0) {
+		const auto& pt = getVertexPoint(id);
+		auto d = axisSeg.distanceToPoint(pt);
+		if (fabs(d) > maxDist) {
+			maxDist = d;
+			maxDistPt0 = pt;
+		}
+	}
+	assert(maxDist > 0);
+
+	maxDist = -1;
+	for (const auto& id : nclVerts1) {
+		const auto& pt = getVertexPoint(id);
+		auto d = axisSeg.distanceToPoint(pt);
+		if (fabs(d) > maxDist) {
+			maxDist = d;
+			maxDistPt1 = pt;
+		}
+	}
+	assert(maxDist > 0);
+
+	Vector3d yAxis0 = maxDistPt0 - pt0; // Furthest point in face0 plane, orthoganlized to xAxis. Could use z X x, but this resolves the sign to point into the face
+	yAxis0 = yAxis0 - yAxis0.dot(xAxis) * xAxis;
+	yAxis0.normalize();
+
+	Vector3d yAxis1 = maxDistPt1 - pt0; // As face1
+	yAxis1 = yAxis1 - yAxis1.dot(xAxis) * xAxis;
+	yAxis1.normalize();
+
+	double curvature = 0;
+	int count = 0;
+	Vector3d v;
 	for (const auto& id0 : nclVerts0) {
 		const auto& pt2 = getVertexPoint(id0);
+		v = pt2 - pt0;
+		if (v.dot(yAxis0) < distTol)
+			continue;
 		for (const auto& id1 : nclVerts1) {
 			const auto& pt3 = getVertexPoint(id1);
+			v = pt3 - pt0;
+			if (v.dot(yAxis1) < distTol)
+				continue;
 			double c = calCurvature(pt0, pt1, pt2, pt3, params);
 			if (c >= 0) {
 				curvature += c;
@@ -396,7 +443,7 @@ double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 bool Edge::isConvex(const Index3DId& refCellId) const
 {
 	const auto angle = calDihedralAngleRadians(refCellId);
-	const auto tol = Tolerance::angleTol();
+	const auto tol = Tolerance::zeroAngleTol();
 	return angle >= -tol;
 }
 
