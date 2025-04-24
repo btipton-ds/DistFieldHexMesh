@@ -104,6 +104,7 @@ namespace DFHM {
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
 		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		bool removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key);
+		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
 
 		AppDataPtr _pAppData;

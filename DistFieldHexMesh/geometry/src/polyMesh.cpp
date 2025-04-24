@@ -380,6 +380,9 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		if (n2.dot(norm0) < 0)
 			reverse(newVertIds.begin(), newVertIds.end());
 
+		if (hasHighLocalConvexity(params, norm0, newVertIds))
+			return;
+
 		removeFace(faceId0);
 		removeFace(faceId1);
 		Polygon newFace(newVertIds);
@@ -391,7 +394,33 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 
 		result = true;
 	});
+
 	return result;
+}
+
+bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const
+{
+	vector<const Vector3d*> pts;
+	pts.resize(vertIds.size());
+	for (size_t i = 0; i < vertIds.size(); i++)
+		pts[i] = &getVertexPoint(vertIds[i]);
+
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		size_t k = (i + 2) % vertIds.size();
+
+		const auto& pt0 = *pts[i];
+		const auto& pt1 = *pts[j];
+		const auto& pt2 = *pts[k];
+
+		Vector3d v0 = (pt0 - pt1).normalized();
+		Vector3d v1 = (pt2 - pt1).normalized();
+		Vector3d n = v1.cross(v0);
+		double cp = n.dot(norm);
+		if (cp < params.maxLocalConcavityCrossProduct)
+			return true;
+	}
+	return false;
 }
 
 double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const
