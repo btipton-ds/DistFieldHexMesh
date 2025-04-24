@@ -305,6 +305,9 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		auto& face0 = getPolygon(faceId0);
 		auto& face1 = getPolygon(faceId1);
 
+		if (isShortEdge(edge, face0, face1))
+			return;
+
 		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
 		assert(norm0.dot(norm1) > 0);
@@ -406,6 +409,20 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 	});
 
 	return result;
+}
+
+bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
+{
+	auto edgeLength = edge.calLength();
+	double area0, area1;
+	Vector3d ctr0, ctr1;
+	face0.calAreaAndCentroid(area0, ctr0);
+	face1.calAreaAndCentroid(area1, ctr1);
+
+	// Edge length of a square of equivalent area
+	auto sqrEdgeLen = sqrt(area0 + area1);
+	// Don't merge a short edge
+	return edgeLength < sqrEdgeLen;
 }
 
 bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const
@@ -575,6 +592,8 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 
 	auto& face0 = getPolygon(faceId0);
 	auto& face1 = getPolygon(faceId1);
+	if (isShortEdge(edge, face0, face1))
+		return;
 
 	auto vertIds0 = face0.getVertexIds();
 	auto vertIds1 = face1.getVertexIds();
@@ -582,18 +601,6 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	auto ncLin0 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds0);
 	auto ncLin1 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds1);
 	if (ncLin0.size() != 3 || ncLin1.size() != 3)
-		return;
-
-
-	auto edgeLength = edge.calLength();
-	double area0, area1;
-	Vector3d ctr0, ctr1;
-	face0.calAreaAndCentroid(area0, ctr0);
-	face1.calAreaAndCentroid(area1, ctr1);
-
-	// Edge length of a square of equivalent area
-	auto sqrEdgeLen = sqrt(area0 + area1);
-	if (edgeLength < sqrEdgeLen)
 		return;
 
 	// Check for close to coplanar
@@ -644,6 +651,10 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 		int dbgBreak = 1;
 	}
 #endif
+	double area0, area1;
+	Vector3d ctr0, ctr1;
+	face0.calAreaAndCentroid(area0, ctr0);
+	face1.calAreaAndCentroid(area1, ctr1);
 	Vector3d ctr = (ctr0 * area0 + ctr1 * area1) / (area0 + area1);
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();

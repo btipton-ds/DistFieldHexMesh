@@ -107,6 +107,7 @@ namespace DFHM {
 		bool removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key);
 		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
+		bool isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
 
 		AppDataPtr _pAppData;
 		ObjectPool<Vertex> _vertices;
