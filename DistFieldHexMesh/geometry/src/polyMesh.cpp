@@ -277,9 +277,15 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 {
 	const double MAX_CP = 0.02;
 	const double MAX_CP_SQR = MAX_CP * MAX_CP;
+	const size_t maxVerts = 30;
 
 	bool result = false;
 	edgeFunc(key, [this, &plane, &params, &result](const Edge& edge) {
+#if 1 && defined(_DEBUG)
+		if (edge == EdgeKey(Index3DId(0, 0, 0, 6179), Index3DId(0, 0, 0, 3072))) {
+			int dbgBreak = 1;
+		}
+#endif
 		const auto maxCurv = 1 / params.maxRadius;
 		double curv = edge.calCurvature(params);
 		if (curv > maxCurv) {
@@ -305,6 +311,8 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 
 		const auto& vertIds0 = face0.getVertexIds();
 		const auto& vertIds1 = face1.getVertexIds();
+		if (vertIds0.size() + vertIds1.size() > maxVerts)
+			return;
 
 		map<Index3DId, set<Index3DId>> vertToVertMap;
 		for (size_t i = 0; i < vertIds0.size(); i++) {
@@ -362,7 +370,9 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 			} else {
 				auto curBack = newVertIds.back();
 				auto iter = vertToVertMap.find(curBack);
-				assert(iter->second.size() == 1);
+				if (iter->second.size() != 1)
+					return; // This can happen when removing edges from a full circle. That's not allowed
+
 				auto iter2 = iter->second.begin();
 				newVertIds.push_back(*iter2);
 				vertToVertMap.erase(curBack);
@@ -468,6 +478,70 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 	}
 }
 
+void PolyMesh::removeAllPossibleCoplanarEdges(const SplittingParams& params)
+{
+	set<EdgeKey> coplanarEdgesToRemove;
+	_polygons.iterateInOrder([this, &coplanarEdgesToRemove](const Index3DId& faceId, const Polygon& face)->bool {
+		vector<pair<double, EdgeKey>> edges;
+		face.iterateEdges([this, &edges](const Edge& edge)->bool {
+			auto l = edge.calLength();
+			edges.push_back(pair(l, edge));
+			return true;
+		});
+
+		// This handles cases of high aspect ratio polygons with imprinted vertices and short, nearly colinear edges.
+		// We only want to remove one of the "longer" edges and never remove one of the "shorter" edges.
+		double maxLength = 0;
+		for (const auto& pair : edges) {
+			if (pair.first > maxLength)
+				maxLength = pair.first;
+		}
+
+		for (const auto& pair : edges) {
+			if (pair.first > 0.9 * maxLength) {
+				const auto& testEdgeKey = pair.second;
+
+				edgeFunc(testEdgeKey, [this, &coplanarEdgesToRemove](const Edge& testEdge) {
+					const auto& params = _pAppData->getParams();
+					const auto maxCoplanarCurvature = 1 / params.maxRadius;
+					auto c = testEdge.calCurvature(params);
+					if (c < maxCoplanarCurvature)
+						coplanarEdgesToRemove.insert(testEdge);
+				});
+			}
+		}
+		return true;
+	});
+
+	for (const auto& ek : coplanarEdgesToRemove) {
+		Planed plane;
+		edgeFunc(ek, [this, &params, &plane](const Edge& edge) {
+			const auto& faceIds = edge.getFaceIds();
+			if (faceIds.size() != 2)
+				return;
+
+			auto iter = faceIds.begin();
+			const auto& faceId0 = *iter++;
+			const auto& faceId1 = *iter;
+
+			const auto& face0 = getPolygon(faceId0);
+			const auto& face1 = getPolygon(faceId1);
+			
+			Vector3d norm = face0.calUnitNormal();
+			norm += face1.calUnitNormal();
+			norm;
+
+			double area0, area1;
+			Vector3d ctr0, ctr1;
+			face0.calAreaAndCentroid(area0, ctr0);
+			face1.calAreaAndCentroid(area1, ctr1);
+			Vector3d ctr = (area0 * ctr0 + area1 * ctr1) / (area0 + area1);
+			plane = Planed(ctr, norm);
+		});
+		removeEdge(params, plane, ek);
+	}
+}
+
 void PolyMesh::calCurvatures()
 {
 	_edgeCurvatures.clear();
@@ -502,20 +576,29 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	auto& face0 = getPolygon(faceId0);
 	auto& face1 = getPolygon(faceId1);
 
-	const auto& vertIds0 = face0.getVertexIds();
-	const auto& vertIds1 = face1.getVertexIds();
+	auto vertIds0 = face0.getVertexIds();
+	auto vertIds1 = face1.getVertexIds();
 
-	if (vertIds0.size() != 3 || vertIds1.size() != 3)
-		return;
-#if 0
-	if (!isLongestEdge(face0, edge) || !isLongestEdge(face1, edge))
-		return;
-#endif
-	// Check for close to coplanar
 	auto ncLin0 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds0);
+	auto ncLin1 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds1);
+	if (ncLin0.size() != 3 || ncLin1.size() != 3)
+		return;
+
+
+	auto edgeLength = edge.calLength();
+	double area0, area1;
+	Vector3d ctr0, ctr1;
+	face0.calAreaAndCentroid(area0, ctr0);
+	face1.calAreaAndCentroid(area1, ctr1);
+
+	// Edge length of a square of equivalent area
+	auto sqrEdgeLen = sqrt(area0 + area1);
+	if (edgeLength < sqrEdgeLen)
+		return;
+
+	// Check for close to coplanar
 	auto norm0 = Polygon::calUnitNormalStat(this, ncLin0);
 
-	auto ncLin1 = PolygonSearchKey::makeNonColinearVertexIds(this, vertIds1);
 	auto norm1 = Polygon::calUnitNormalStat(this, ncLin1);
 	auto cp = norm0.cross(norm1).squaredNorm();
 	if (cp > MAX_CP_SQR)
@@ -561,10 +644,6 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 		int dbgBreak = 1;
 	}
 #endif
-	double area0, area1;
-	Vector3d ctr0, ctr1;
-	face0.calAreaAndCentroid(area0, ctr0);
-	face1.calAreaAndCentroid(area1, ctr1);
 	Vector3d ctr = (ctr0 * area0 + ctr1 * area1) / (area0 + area1);
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
@@ -646,21 +725,23 @@ FUNC_IMPL(NAME, KEY, MEMBER_NAME, , CLASS) \
 POINTER_FUNC_IMPL(KEY, MEMBER_NAME, const, CLASS) \
 POINTER_FUNC_IMPL(KEY, MEMBER_NAME, , CLASS) 
 
-#define EDGE_IMPL(NAME, KEY, CONST, CLASS) \
-void PolyMesh::NAME##Func(const KEY& key, const function<void(CONST CLASS& obj)>& func) CONST \
+#define EDGE_IMPL(NAME, KEY, CONST) \
+void PolyMesh::NAME##Func(const KEY& key, const function<void(CONST Edge& obj)>& func) CONST \
 { \
-	CLASS edge(key, this);\
-	func(edge);\
+	if (_vertices.exists(key[0]) && _vertices.exists(key[1])) { \
+		Edge edge(key, this); \
+		func(edge); \
+	} \
 }
 
-#define EDGE_IMPLS(NAME, KEY, CLASS) \
-EDGE_IMPL(NAME, KEY, const, CLASS) \
-EDGE_IMPL(NAME, KEY, , CLASS)
+#define EDGE_IMPLS(NAME, KEY) \
+EDGE_IMPL(NAME, KEY, const) \
+EDGE_IMPL(NAME, KEY,)
 
 #if 0
 IMPLS(vertex, Index3DId, _vertices, Vertex)
 IMPLS(face, Index3DId, _polygons, Polygon)
-EDGE_IMPLS(edge, EdgeKey, Edge)
+EDGE_IMPLS(edge, EdgeKey)
 #endif
 
 void PolyMesh::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
@@ -696,15 +777,18 @@ DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) {
 }
 
 void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
-	Edge edge(key, this); 
-	func(edge);
+	if (_vertices.exists(key[0]) && _vertices.exists(key[1])) {
+		Edge edge(key, this); 
+		func(edge);
+	}
 } 
 
 void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
-	Edge edge(key, this);
-	func(edge);
+	if (_vertices.exists(key[0]) && _vertices.exists(key[1])) {
+		Edge edge(key, this); 
+		func(edge);
+	}
 }
-
 
 void PolyMesh::cellFunc(const Index3DId& key, const std::function<void(const Polyhedron& obj)>& func) const
 {
