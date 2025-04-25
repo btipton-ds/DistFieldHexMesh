@@ -59,8 +59,8 @@ public:
 		TriMeshIndex _vertIds[3];
 	};
 
-	using SearchTree = CSpatialSearchBase<double, TriMeshIndex, 25>;
-	using BOX_TYPE = SearchTree::BOX_TYPE;
+	using TriSearchTree = CSpatialSearchBase<double, TriMeshIndex, 25>;
+	using BOX_TYPE = TriSearchTree::BOX_TYPE;
 
 	void setBounds(const BOX_TYPE& bbox);
 
@@ -76,11 +76,11 @@ public:
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
-	size_t findTris(const BOX_TYPE& bbox, std::vector<SearchTree::Entry>& indices) const;
-	size_t findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, SearchTree::BoxTestType contains = SearchTree::BoxTestType::IntersectsOrContains) const;
+	size_t findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& indices) const;
+	size_t findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, TriSearchTree::BoxTestType contains = TriSearchTree::BoxTestType::IntersectsOrContains) const;
 	size_t rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir = true) const;
-	std::shared_ptr<const SearchTree> getSearchTree() const;
-	std::shared_ptr<const SearchTree> getSubTree(const BOX_TYPE& bbox) const;
+	std::shared_ptr<const TriSearchTree> getTriSearchTree() const;
+	std::shared_ptr<const TriSearchTree> getSubTree(const BOX_TYPE& bbox) const;
 
 	const TriMesh::CVertex& getVert(const TriMeshIndex& idx) const;
 	const MultMeshTriangle getTriIndices(const TriMeshIndex& idx) const;
@@ -91,7 +91,7 @@ public:
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
-	std::shared_ptr<SearchTree> _pSearchTree;
+	std::shared_ptr<TriSearchTree> _pTriSearchTree;
 
 };
 
@@ -135,9 +135,9 @@ inline const TriMeshIndex& Model::MultMeshTriangle::operator[](size_t i) const
 	return _vertIds[i];
 }
 
-inline std::shared_ptr<const Model::SearchTree> Model::getSearchTree() const
+inline std::shared_ptr<const Model::TriSearchTree> Model::getTriSearchTree() const
 {
-	return _pSearchTree;
+	return _pTriSearchTree;
 }
 
 

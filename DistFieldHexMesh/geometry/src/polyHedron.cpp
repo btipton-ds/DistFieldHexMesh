@@ -1884,7 +1884,7 @@ inline const Model& Polyhedron::getModel() const
 	return getOurBlockPtr()->getModel();
 }
 
-const std::shared_ptr<const Model::SearchTree> Polyhedron::getSearchTree() const
+const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getSearchTree() const
 {
 	initializeSearchTree();
 	return _pSearchTree;

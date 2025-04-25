@@ -181,7 +181,7 @@ const Model& Block::getModel() const
 	return pAppData->getModel();
 }
 
-const std::shared_ptr<const Model::SearchTree>& Block::getModelSearchTree() const
+const std::shared_ptr<const Model::TriSearchTree>& Block::getModelSearchTree() const
 {
 	if (!_searchTreeSet) {
 		_searchTreeSet = true;

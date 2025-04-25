@@ -514,7 +514,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 void Splitter3D::finalizeCreatedCells()
 {
 	const auto& model = _pBlock->getModel();
-	auto refineFunc = [this, &model](const Model::SearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+	auto refineFunc = [this, &model](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
 		const auto& tol = Tolerance::sameDistTol();
 		const Vector3d* pts[3];
 		if (model.getTri(entry.getIndex(), pts)) {
