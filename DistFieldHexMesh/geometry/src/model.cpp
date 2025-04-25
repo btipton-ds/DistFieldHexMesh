@@ -86,6 +86,7 @@ void Model::rebuildSearchTree()
 	}
 
 	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
+	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
 
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
 		auto& pData = _modelMeshData[meshIdx];
@@ -95,6 +96,17 @@ void Model::rebuildSearchTree()
 				auto bb = pMesh->getTriBBox(idx);
 				_pTriSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
 			}
+		}
+
+		auto& pPolyMesh = pData->getPolyMesh();
+
+		if (pMesh) {
+			pPolyMesh->iterateFaces([this, meshIdx](const Index3DId& id, const Polygon& face) {
+				auto bb = face.getBBox();
+				_pPolyMeshSearchTree->add(bb, PolyMeshIndex(meshIdx, id));
+
+				return true;
+			});
 		}
 	}
 }

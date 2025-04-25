@@ -1078,6 +1078,19 @@ bool Polygon::verifyUniqueStat(const MTC::vector<Index3DId>& vertIds)
 	return valid;
 }
 
+CBoundingBox3Dd Polygon::getBBox() const
+{
+	CBoundingBox3Dd result;
+	const double thick = 0.0001; // Give it some minimal thickness
+	Vector3d norm = calUnitNormal();
+	for (const auto& id : _vertexIds) {
+		const auto& pt = getVertexPoint(id);
+		result.merge(pt + thick * norm);
+		result.merge(pt - thick * norm);
+	}
+	return result;
+}
+
 int64_t Polygon::getLayerNum() const
 {
 	// Get the layer number of the lowest layer numbered cell.

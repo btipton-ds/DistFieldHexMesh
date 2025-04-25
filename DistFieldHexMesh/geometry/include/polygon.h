@@ -133,6 +133,7 @@ public:
 	bool findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const;
 	template<class TRI_FUNC, class EDGE_FUNC>
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
+	CBoundingBox3Dd getBBox() const;
 	int64_t getLayerNum() const;
 
 	bool verifyUnique() const;

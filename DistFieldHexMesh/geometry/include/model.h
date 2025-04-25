@@ -34,6 +34,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_spatialSearch.h>
 #include <triMesh.h>
 #include <triMeshIndex.h>
+#include <polyMeshIndex.h>
 
 #define DO_MODEL_SEARCH_TREE_VERIFICATION 0
 
@@ -62,6 +63,7 @@ public:
 	};
 
 	using TriSearchTree = CSpatialSearchBase<double, TriMeshIndex, 25>;
+	using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 	using BOX_TYPE = TriSearchTree::BOX_TYPE;
 
 	void setBounds(const BOX_TYPE& bbox);
@@ -93,6 +95,7 @@ public:
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<TriSearchTree> _pTriSearchTree;
+	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
 
 };
 
