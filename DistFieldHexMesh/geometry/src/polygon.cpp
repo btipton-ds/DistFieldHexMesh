@@ -893,6 +893,15 @@ bool Polygon::isPlanar() const
 	return true;
 }
 
+bool Polygon::intersect(const Rayd& ray, RayHitd& hit) const
+{
+	auto plane = calPlane();
+	if (plane.intersectRay(ray, hit, Tolerance::sameDistTol())) {
+		return isPointInside(hit.hitPt);
+	}
+	return false;
+}
+
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
 	auto& vertIds = getNonColinearVertexIds();
@@ -952,37 +961,41 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 	return false;
 }
 
-bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& insidePt) const
+bool Polygon::isPointInside(const Vector3d& pt) const
 {
 	bool result;
-	result = isPointInsideInner(pt, insidePt);
+	Vector3d norm = calUnitNormal();
+	result = isPointInsideInner(pt, norm);
 
 	return result;
 }
 
-bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const
+bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
 {
-	bool above;
+	bool result;
+	result = isPointInsideInner(pt, norm);
+
+	return result;
+}
+
+
+bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
+{
 	const double tol = Tolerance::sameDistTol();
-	iterateTriangles([this, &tol, &pt, &insidePt, &above](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-		Vector3d triPts[] = {
-			getVertexPoint(id0),
-			getVertexPoint(id1),
-			getVertexPoint(id2),
-		};
-		Planed pl(triPts[0], triPts[1], triPts[2]);
-		Vector3d v = triPts[0] - insidePt;
 
-		// Assure vector is pointing outwards
-		if (v.dot(pl.getNormal()) < 0)
-			pl.reverse();
+	auto& nclinVerts = getNonColinearVertexIds();
+	for (size_t i = 0; i < nclinVerts.size(); i++) {
+		size_t j = (i + 1) % nclinVerts.size();
+		const auto& pt0 = getVertexPoint(nclinVerts[i]);
+		const auto& pt1 = getVertexPoint(nclinVerts[j]);
+		Vector3d vEdge = (pt1 - pt0).normalized();
+		Vector3d vPerpInside = norm.cross(vEdge); // Perpendicular to edge, point left (inside).
+		Vector3d v = pt - pt0;
+		if (v.dot(vPerpInside) < -tol)
+			return false;
+	}
 
-		double dist = pl.distanceToPoint(pt);
-		above = dist > tol;
-		return above;
-	});
-
-	return !above;
+	return true;
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

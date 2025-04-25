@@ -53,6 +53,10 @@ class Plane;
 template<class T>
 struct RayHit;
 
+template<class T>
+struct Ray;
+
+using Rayd = Ray<double>;
 using RayHitd = RayHit<double>;
 using Planed = Plane<double>;
 
@@ -161,10 +165,12 @@ public:
 	bool imprintEdge(const EdgeKey& edgeKey);
 	bool imprintVerts(const std::vector<Index3DId>& vertIds);
 	bool isPlanar() const;
+	bool intersect(const Rayd& ray, RayHitd& hit) const;
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
-	bool isPointInside(const Vector3d& pt, const Vector3d& insidePt) const;
+	bool isPointInside(const Vector3d& pt) const;
+	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
@@ -198,7 +204,7 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
-	bool isPointInsideInner(const Vector3d& pt, const Vector3d& insidePt) const;
+	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
 
 	Index3DId _thisId;
 
