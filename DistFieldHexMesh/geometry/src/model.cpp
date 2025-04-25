@@ -114,6 +114,16 @@ size_t Model::addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh
 	return _modelMeshData.size();
 }
 
+bool Model::doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
+{
+	const auto tol = Tolerance::sameDistTol();
+	const Vector3d* pts[3];
+	if (getTri(entry.getIndex(), pts)) {
+		return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
+	}
+	return  false;
+}
+
 size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& result) const
 {
 	std::vector<TriSearchTree::Entry> entries;
@@ -126,10 +136,10 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& 
 		}
 	}
 
-#if 1 
+#if DO_MODEL_SEARCH_TREE_VERIFICATION 
 	set<TriSearchTree::Entry> result1;
 	std::vector<TriSearchTree::Entry> entries1;
-	auto pSub = getSubTree(bbox);
+	auto pSub = getTriSubTree(bbox);
 	if (pSub) {
 		if (pSub->find(bbox, entries1)) {
 			for (const auto& entry : entries) {
@@ -200,20 +210,15 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 	return hits.size();
 }
 
-std::shared_ptr<const Model::TriSearchTree> Model::getSubTree(const BOX_TYPE& bbox) const
+std::shared_ptr<const Model::TriSearchTree> Model::getTriSubTree(const BOX_TYPE& bbox) const
 {
-	auto refineFunc = [this](const TriSearchTree::Entry& entry, const BOX_TYPE& bbox)->bool {
-		const auto& tol = Tolerance::sameDistTol();
-		const Vector3d* pts[3];
-		if (getTri(entry.getIndex(), pts)) {
-			return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
-		}
-		return false;
+	auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		return doesTriIntersect(entry, bbox);
 	};
 
 	auto p = _pTriSearchTree->getSubTree(bbox, refineFunc);
 
-#if 1
+#if DO_MODEL_SEARCH_TREE_VERIFICATION
 	vector<Model::TriSearchTree::Entry> testFull, testClipped;
 	_pTriSearchTree->find(bbox, refineFunc, testFull);
 	if (!testFull.empty()) {
@@ -248,11 +253,6 @@ std::shared_ptr<const Model::TriSearchTree> Model::getSubTree(const BOX_TYPE& bb
 	return p;
 }
 
-const TriMesh::CVertex& Model::getVert(const TriMeshIndex& idx) const
-{
-	return _modelMeshData[idx.getMeshIdx()]->getMesh()->getVert(idx.getTriIdx());
-}
-
 const Model::MultMeshTriangle Model::getTriIndices(const TriMeshIndex& idx) const
 {
 	const auto& triIdx = _modelMeshData[idx.getMeshIdx()]->getMesh()->getTri(idx.getTriIdx());
@@ -274,14 +274,4 @@ bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 		return true;
 	}
 	return false;
-}
-
-const TriMesh::CEdge& Model::getEdge(const TriMeshIndex& idx) const
-{
-	return _modelMeshData[idx.getMeshIdx()]->getMesh()->getEdge(idx.getTriIdx());
-}
-
-double Model::triCurvature(const TriMeshIndex& idx) const
-{
-	return _modelMeshData[idx.getMeshIdx()]->getMesh()->triCurvature(idx.getTriIdx());
 }

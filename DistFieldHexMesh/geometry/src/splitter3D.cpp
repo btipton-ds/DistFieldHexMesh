@@ -515,12 +515,7 @@ void Splitter3D::finalizeCreatedCells()
 {
 	const auto& model = _pBlock->getModel();
 	auto refineFunc = [this, &model](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		const auto& tol = Tolerance::sameDistTol();
-		const Vector3d* pts[3];
-		if (model.getTri(entry.getIndex(), pts)) {
-			return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
-		}
-		return false;
+		return model.doesTriIntersect(entry, bbox);
 	};
 
 	for (auto& createdCellId : _createdCellIds) {
@@ -534,12 +529,14 @@ void Splitter3D::finalizeCreatedCells()
 				createdCell._hasSetSearchTree = true;
 				if (_hasSetSearchTree) {
 					createdCell._pTriSearchTree = _pTriSearchTree;
-					if (createdCell._pTriSearchTree && _splitLevel < 4) {
-						// Splitting small trees takes time and memory, so only reduce larger ones
-						createdCell._pTriSearchTree = createdCell._pTriSearchTree->getSubTree(subBbox, refineFunc);
-					}
-				} else
-					createdCell._pTriSearchTree = model.getSubTree(subBbox);
+				} else {
+					createdCell._pTriSearchTree = model.getTriSubTree(subBbox);
+				}
+
+				if (createdCell._pTriSearchTree && _splitLevel < 4) {
+					// Splitting small trees takes time and memory, so only reduce larger ones
+					createdCell._pTriSearchTree = createdCell._pTriSearchTree->getSubTree(subBbox, refineFunc);
+				}
 			}
 		}
 		createdCell.setSplitLevel(_splitLevel + 1);

@@ -35,6 +35,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMesh.h>
 #include <triMeshIndex.h>
 
+#define DO_MODEL_SEARCH_TREE_VERIFICATION 0
+
 namespace DFHM {
 
 class DrawModelMesh;
@@ -76,17 +78,16 @@ public:
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
+	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
+
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& indices) const;
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, TriSearchTree::BoxTestType contains = TriSearchTree::BoxTestType::IntersectsOrContains) const;
 	size_t rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir = true) const;
 	std::shared_ptr<const TriSearchTree> getTriSearchTree() const;
-	std::shared_ptr<const TriSearchTree> getSubTree(const BOX_TYPE& bbox) const;
+	std::shared_ptr<const TriSearchTree> getTriSubTree(const BOX_TYPE& bbox) const;
 
-	const TriMesh::CVertex& getVert(const TriMeshIndex& idx) const;
 	const MultMeshTriangle getTriIndices(const TriMeshIndex& idx) const;
 	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
-	const TriMesh::CEdge& getEdge(const TriMeshIndex& idx) const;
-	double triCurvature(const TriMeshIndex& idx) const;
 	void rebuildSearchTree();
 
 private:

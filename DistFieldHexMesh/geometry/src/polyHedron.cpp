@@ -115,6 +115,17 @@ void Polyhedron::initializeSearchTree() const
 		auto pBlk = getOurBlockPtr();
 		_hasSetSearchTree = true;
 		_pTriSearchTree = pBlk->getModelTriSearchTree();
+		if (_pTriSearchTree) {
+			auto bbox = getBoundingBox();
+			auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+				const auto& model = getModel();
+				return model.doesTriIntersect(entry, bbox);
+			};
+
+			_pTriSearchTree = _pTriSearchTree->getSubTree(bbox);
+			if (_pTriSearchTree)
+				_pTriSearchTree = _pTriSearchTree->getSubTree(bbox, refineFunc);
+		}
 	}
 }
 
@@ -1884,7 +1895,7 @@ inline const Model& Polyhedron::getModel() const
 	return getOurBlockPtr()->getModel();
 }
 
-const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getSearchTree() const
+const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getTriSearchTree() const
 {
 	initializeSearchTree();
 	return _pTriSearchTree;
@@ -1892,21 +1903,25 @@ const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getSearchTree() co
 
 size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 {
-	const auto tol = Tolerance::sameDistTol();
+	auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		const auto& model = getModel();
+		return model.doesTriIntersect(entry, bbox);
+	};
 
 	indices.clear();
 	auto& bbox = getBoundingBox();
-	auto pClipped = getSearchTree();
+	auto pClipped = getTriSearchTree();
 	size_t result = 0;
 	if (pClipped)
-		result = pClipped->find(bbox, indices);
+		result = pClipped->find(bbox, refineFunc, indices);
 
-#if 0 // This turns on very expensive entity search testing.
+#if DO_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	size_t dbgResult = 0;
-	auto pFull = getBlockPtr()->getModel().getSearchTree();
+	auto pFull = getBlockPtr()->getModel().getTriSearchTree();
 	vector<TriMeshIndex> indicesFull;
-	if (pFull)
-		dbgResult = pFull->find(bbox, indicesFull);
+	if (pFull) {
+		dbgResult = pFull->find(bbox, refineFunc, indicesFull);
+	}
 
 	if (result != dbgResult) {
 			stringstream ss;

@@ -187,7 +187,16 @@ const std::shared_ptr<const Model::TriSearchTree>& Block::getModelTriSearchTree(
 		_searchTreeSet = true;
 		auto bbox = getBBox();
 		assert(!bbox.empty());
-		_pTriSearchTree = getModel().getSubTree(bbox);
+
+		auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+			const auto& model = getModel();
+			return model.doesTriIntersect(entry, bbox);
+		};
+
+		_pTriSearchTree = getModel().getTriSubTree(bbox);
+		if (_pTriSearchTree) {
+			_pTriSearchTree = _pTriSearchTree->getSubTree(bbox, refineFunc);
+		}
 	}
 
 	return _pTriSearchTree;

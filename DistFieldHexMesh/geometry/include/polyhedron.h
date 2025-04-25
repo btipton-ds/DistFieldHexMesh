@@ -190,7 +190,7 @@ private:
 	friend class Splitter3D;
 
 	void updateCachedVerts() const;
-	const std::shared_ptr<const Model::TriSearchTree> getSearchTree() const;
+	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
 	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
