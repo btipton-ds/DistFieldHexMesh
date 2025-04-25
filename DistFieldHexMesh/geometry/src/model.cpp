@@ -179,7 +179,7 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, 
 	return result.size();
 }
 
-size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits, bool biDir) const
+size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiTriMeshRayHit>& hits, bool biDir) const
 {
 	vector<TriMeshIndex> hitIndices;
 	if (_pTriSearchTree->biDirRayCast(ray, hitIndices)) {
@@ -199,7 +199,7 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiMeshRayHit>& hits
 			RayHitd hit;
 			if (intersectRayTri(ray, pts, hit)) {
 				if (biDir || hit.dist > 0) {
-					MultiMeshRayHit MTHit(triIdx2.getMeshIdx(), hit);
+					MultiTriMeshRayHit MTHit(triIdx2.getMeshIdx(), hit);
 					hits.push_back(MTHit);
 				}
 			}

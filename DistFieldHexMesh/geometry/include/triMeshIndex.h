@@ -82,17 +82,17 @@ namespace DFHM {
 		return _meshIdx == rhs._meshIdx && _triIdx == rhs._triIdx;
 	}
 
-	struct MultiMeshRayHit : public TriMeshIndex {
+	struct MultiTriMeshRayHit : public TriMeshIndex {
 	public:
-		MultiMeshRayHit() = default;
-		MultiMeshRayHit(size_t meshIdx, const RayHitd& hit);
-		MultiMeshRayHit(const MultiMeshRayHit& src) = default;
-		MultiMeshRayHit(const TriMeshIndex& idx = {});
+		MultiTriMeshRayHit() = default;
+		MultiTriMeshRayHit(size_t meshIdx, const RayHitd& hit);
+		MultiTriMeshRayHit(const MultiTriMeshRayHit& src) = default;
+		MultiTriMeshRayHit(const TriMeshIndex& idx = {});
 
 		void setPoint(const Vector3d& pt);
 		const Vector3d& getPoint() const;
 
-		bool operator<(const MultiMeshRayHit& rhs) const;
+		bool operator<(const MultiTriMeshRayHit& rhs) const;
 
 		double getDist() const;
 		const Vector3d& getPt() const;
@@ -102,39 +102,39 @@ namespace DFHM {
 		Vector3d _pt;
 	};
 
-	inline MultiMeshRayHit::MultiMeshRayHit(const TriMeshIndex& idx)
+	inline MultiTriMeshRayHit::MultiTriMeshRayHit(const TriMeshIndex& idx)
 		: TriMeshIndex(idx)
 	{
 	}
 
-	inline MultiMeshRayHit::MultiMeshRayHit(size_t meshIdx, const RayHitd& hit)
+	inline MultiTriMeshRayHit::MultiTriMeshRayHit(size_t meshIdx, const RayHitd& hit)
 		: TriMeshIndex(meshIdx, hit.triIdx)
 		, _pt(hit.hitPt)
 		, _dist(hit.dist)
 	{
 	}
 
-	inline void MultiMeshRayHit::setPoint(const Vector3d& pt)
+	inline void MultiTriMeshRayHit::setPoint(const Vector3d& pt)
 	{
 		_pt = pt;
 	}
 
-	inline const Vector3d& MultiMeshRayHit::getPoint() const
+	inline const Vector3d& MultiTriMeshRayHit::getPoint() const
 	{
 		return _pt;
 	}
 
-	inline bool MultiMeshRayHit::operator<(const MultiMeshRayHit& rhs) const
+	inline bool MultiTriMeshRayHit::operator<(const MultiTriMeshRayHit& rhs) const
 	{
 		return _dist < rhs._dist;
 	}
 
-	inline double MultiMeshRayHit::getDist() const
+	inline double MultiTriMeshRayHit::getDist() const
 	{
 		return _dist;
 	}
 
-	inline const Vector3d& MultiMeshRayHit::getPt() const
+	inline const Vector3d& MultiTriMeshRayHit::getPt() const
 	{
 		return _pt;
 	}

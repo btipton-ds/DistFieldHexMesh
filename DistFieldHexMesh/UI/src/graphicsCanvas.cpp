@@ -463,7 +463,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     } else {
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
-        vector<MultiMeshRayHit> hits;
+        vector<MultiTriMeshRayHit> hits;
         Rayd ray(startPt, dir);
         if (model.rayCast(ray, hits)) {
             hadHit = true;
