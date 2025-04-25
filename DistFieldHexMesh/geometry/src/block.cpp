@@ -181,21 +181,21 @@ const Model& Block::getModel() const
 	return pAppData->getModel();
 }
 
-const std::shared_ptr<const Model::TriSearchTree>& Block::getModelSearchTree() const
+const std::shared_ptr<const Model::TriSearchTree>& Block::getModelTriSearchTree() const
 {
 	if (!_searchTreeSet) {
 		_searchTreeSet = true;
 		auto bbox = getBBox();
 		assert(!bbox.empty());
-		_pSearchTree = getModel().getSubTree(bbox);
+		_pTriSearchTree = getModel().getSubTree(bbox);
 	}
 
-	return _pSearchTree;
+	return _pTriSearchTree;
 }
 
 void Block::deleteModelSearchTree()
 {
-	_pSearchTree = nullptr;
+	_pTriSearchTree = nullptr;
 }
 
 void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)

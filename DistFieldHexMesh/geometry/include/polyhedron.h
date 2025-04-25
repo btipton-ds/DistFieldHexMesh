@@ -249,7 +249,7 @@ private:
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;
-	mutable std::shared_ptr<const Model::TriSearchTree> _pSearchTree;
+	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

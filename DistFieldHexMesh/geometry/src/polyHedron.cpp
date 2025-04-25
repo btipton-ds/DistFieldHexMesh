@@ -114,7 +114,7 @@ void Polyhedron::initializeSearchTree() const
 	if (!_hasSetSearchTree) {
 		auto pBlk = getOurBlockPtr();
 		_hasSetSearchTree = true;
-		_pSearchTree = pBlk->getModelSearchTree();
+		_pTriSearchTree = pBlk->getModelTriSearchTree();
 	}
 }
 
@@ -165,7 +165,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
-	_pSearchTree = rhs._pSearchTree;
+	_pTriSearchTree = rhs._pTriSearchTree;
 
 	return *this;
 }
@@ -192,7 +192,7 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_cachedCtr = src._cachedCtr;
 	_cachedBBox = src._cachedBBox;
 	_hasSetSearchTree = src._hasSetSearchTree;
-	_pSearchTree = src._pSearchTree;
+	_pTriSearchTree = src._pTriSearchTree;
 
 }
 
@@ -1887,7 +1887,7 @@ inline const Model& Polyhedron::getModel() const
 const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getSearchTree() const
 {
 	initializeSearchTree();
-	return _pSearchTree;
+	return _pTriSearchTree;
 }
 
 size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
