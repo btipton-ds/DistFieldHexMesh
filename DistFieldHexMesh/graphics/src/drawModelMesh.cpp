@@ -107,7 +107,7 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
 
     bool includeSmooth = true;
 
-#if 0
+#if 1
     auto pPolyMesh = pData->getPolyMesh();
     pPolyMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
 #else
