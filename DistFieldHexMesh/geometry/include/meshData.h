@@ -72,6 +72,7 @@ namespace DFHM {
 		const std::wstring& getName() const;
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
+		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
@@ -85,6 +86,9 @@ namespace DFHM {
 
 		const PolyMeshPtr& getPolyMesh() const;
 
+		void setFaceTess(const OGL::IndicesPtr& faceTess);
+		void setTessEdges(const OGL::IndicesPtr& allEdgeTess, const OGL::IndicesPtr& sharpEdgeTess, const OGL::IndicesPtr& smoothEdgeTess);
+		void setTessNormals(const OGL::IndicesPtr& normalsTess);
 		const OGL::IndicesPtr getFaceTess() const;
 		const OGL::IndicesPtr getAllEdgeTess() const;
 		const OGL::IndicesPtr getSmoothEdgeTess() const;
@@ -95,8 +99,6 @@ namespace DFHM {
 		friend class AppData;
 
 		void postReadCreate();
-
-		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		TriMesh::CMeshPtr getSharpVertMesh() const;

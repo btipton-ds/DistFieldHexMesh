@@ -76,6 +76,12 @@ struct SplittingParams;
 
 class Polygon : public PolygonSearchKey, public ObjectPoolOwnerUser {
 public:
+	enum Convexity {
+		IS_CONVEX,
+		IS_CONCAVE,
+		IS_CONVEX_ENOUGH, // Special case for reduced PolyMesh fans where on end follows a curved shape like a cylinder.
+		CONVEXITY_UNKNOWN,
+	};
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
@@ -119,14 +125,15 @@ public:
 	bool isCoplanar(const Vector3d& pt) const;
 	bool isCoplanar(const Planed& pl) const;
 	bool isCoplanar(const EdgeKey& edgeKey) const;
-	bool isConvex()const;
+	Convexity isConvex()const;
 	bool isWall() const;
 	bool isBlockBoundary() const;
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool usesEdge(const Edge& EdgeKey) const;
 	bool usesEdge(const Edge& EdgeKey, size_t& idx0, size_t& idx1) const;
 	bool isPointOnEdge(const Vector3d& pt) const;
-	bool containsPoint(const Vector3d& pt) const;
+	bool isPointInside(const Vector3d& pt) const;
+	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsEdge(const EdgeKey& edge) const;
 
@@ -170,8 +177,6 @@ public:
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
-	bool isPointInside(const Vector3d& pt) const;
-	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
@@ -206,13 +211,14 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
+	void rotateVertices();
 
 	Index3DId _thisId;
 
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
 
-	mutable Trinary _isConvex = IS_UNKNOWN;
+	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
@@ -273,14 +279,14 @@ inline bool Polygon::usedByCell(const Index3DId& cellId) const
 	return _cellIds.contains(cellId);
 }
 
-inline bool Polygon::isConvex() const
+inline Polygon::Convexity Polygon::isConvex() const
 {
-	if (_isConvex == IS_UNKNOWN) {
+	if (_isConvex == CONVEXITY_UNKNOWN) {
 		MTC::set<Index3DId> tmp;
 		findConcaveVertIdsStat(getBlockPtr(), _vertexIds, tmp);
-		_isConvex = tmp.empty() ? IS_TRUE : IS_FALSE;
+		_isConvex = tmp.empty() ? IS_CONVEX : IS_CONCAVE;
 	}
-	return _isConvex == IS_TRUE;
+	return _isConvex;
 }
 
 inline bool Polygon::isWall() const

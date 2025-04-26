@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <graphicsCanvas.h>
 #include <meshData.h>
 #include <model.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -59,6 +60,73 @@ DrawModelMesh::DrawModelMesh(GraphicsCanvas* pCanvas)
 DrawModelMesh::~DrawModelMesh()
 {
 
+}
+
+void DrawModelMesh::createFaceTessellation(const MeshDataPtr& pData)
+{
+    auto pMesh = pData->getMesh();
+    pMesh->buildCentroids();
+    pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
+
+    const auto& points = pMesh->getGlTriPoints();
+    const auto& normals = pMesh->getGlTriNormals(false);
+    const auto& parameters = pMesh->getGlTriParams();
+    const auto& vertIndices = pMesh->getGlTriIndices();
+
+    auto colorFunc = [](double curvature, float rgb[3])->bool {
+        rgbaColor c = curvatureToColor(curvature);
+        for (int i = 0; i < 3; i++)
+            rgb[i] = c._rgba[i] / 255.0f;
+        return true;
+        };
+
+    vector<float> colors;
+    auto meshId = pMesh->getId();
+    auto changeNumber = pMesh->getChangeNumber();
+
+    auto& VBOs = getVBOs();
+    auto& faceVBO = VBOs->_faceVBO;
+    auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
+    pData->setFaceTess(tess);
+}
+
+void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData)
+{
+    const auto sinSharpAngle = params.getSinSharpAngle();
+
+    vector<float> points, colors;
+    vector<unsigned int> indices, sharpIndices, smoothIndices;
+    auto colorFunc = [](float curvature, float rgb[3])->bool {
+        rgbaColor c = curvatureToColor(curvature);
+        for (int i = 0; i < 3; i++)
+            rgb[i] = c._rgba[i] / 255.0f;
+        return true;
+        };
+
+    auto pMesh = pData->getMesh();
+    bool includeSmooth = true;
+    pData->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+    indices = smoothIndices;
+    indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
+
+    auto& VBOs = getVBOs();
+
+    auto meshId = pData->getId();
+    auto changeNumber = 1;
+    auto& edgeVBO = VBOs->_edgeVBO;
+    auto allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
+    auto sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
+    auto smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
+
+    pData->setTessEdges(allEdgeTess, sharpEdgeTess, smoothEdgeTess);
+    vector<float> normPts;
+    vector<unsigned int> normIndices;
+    pData->getEdgeData(normPts, normIndices);
+
+    if (!normPts.empty()) {
+        auto normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
+        pData->setTessNormals(normalTess);
+    }
 }
 
 void DrawModelMesh::changeViewElements(const Model& meshData)

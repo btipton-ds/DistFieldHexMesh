@@ -38,114 +38,118 @@ namespace OGL
 }
 
 namespace DFHM {
-	class Model;
-	class MeshData;
-	using MeshDataPtr = std::shared_ptr<MeshData>;
+struct SplittingParams;
+class Model;
+class MeshData;
+using MeshDataPtr = std::shared_ptr<MeshData>;
 
-	struct ModelViewOptions {
-		bool
-			showSharpEdges = false,
-			showTriNormals = false,
-			showSharpVerts = false,
-			showEdges = false,
-			showFaces = true,
-			showCurvature = false;
-	};
+struct ModelViewOptions {
+	bool
+		showSharpEdges = false,
+		showTriNormals = false,
+		showSharpVerts = false,
+		showEdges = false,
+		showFaces = true,
+		showCurvature = false;
+};
 
-	class DrawModelMesh : public DrawMesh {
-	public:
-		DrawModelMesh(GraphicsCanvas* pCanvas);
-		virtual ~DrawModelMesh();
+class DrawModelMesh : public DrawMesh {
+public:
+	DrawModelMesh(GraphicsCanvas* pCanvas);
+	virtual ~DrawModelMesh();
 
-		void changeViewElements(const Model& meshData);
+	void createFaceTessellation(const MeshDataPtr& pData);
+	void createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData);
 
-		bool showSharpEdges() const;
-		bool toggleShowSharpEdges();
+	void changeViewElements(const Model& meshData);
 
-		bool showSharpVerts() const;
-		bool toggleShowSharpVerts();
+	bool showSharpEdges() const;
+	bool toggleShowSharpEdges();
 
-		bool showTriNormals() const;
-		bool toggleShowTriNormals();
+	bool showSharpVerts() const;
+	bool toggleShowSharpVerts();
 
-		bool showFaces() const;
-		bool toggleShowFaces();
+	bool showTriNormals() const;
+	bool toggleShowTriNormals();
 
-		bool showCurvature() const;
-		bool toggleShowCurvature();
+	bool showFaces() const;
+	bool toggleShowFaces();
 
-		bool showEdges() const;
-		bool toggleShowEdges();
+	bool showCurvature() const;
+	bool toggleShowCurvature();
 
-	protected:
-		OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
-		void postDrawEdges() override;
+	bool showEdges() const;
+	bool toggleShowEdges();
 
-		OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key) override;
-		void postDrawFaces() override;
+protected:
+	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
+	void postDrawEdges() override;
 
-	private:
-		ModelViewOptions _options;
-	};
+	OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key) override;
+	void postDrawFaces() override;
 
-	inline bool DrawModelMesh::showSharpEdges() const
-	{
-		return _options.showSharpEdges;
-	}
+private:
+	ModelViewOptions _options;
+};
 
-	inline bool DrawModelMesh::toggleShowSharpEdges()
-	{
-		return toggle(_options.showSharpEdges);
-	}
+inline bool DrawModelMesh::showSharpEdges() const
+{
+	return _options.showSharpEdges;
+}
 
-	inline bool DrawModelMesh::showSharpVerts() const
-	{
-		return _options.showSharpVerts;
-	}
+inline bool DrawModelMesh::toggleShowSharpEdges()
+{
+	return toggle(_options.showSharpEdges);
+}
 
-	inline bool DrawModelMesh::toggleShowSharpVerts()
-	{
-		return toggle(_options.showSharpVerts);
-	}
+inline bool DrawModelMesh::showSharpVerts() const
+{
+	return _options.showSharpVerts;
+}
 
-	inline bool DrawModelMesh::showTriNormals() const
-	{
-		return _options.showTriNormals;
-	}
+inline bool DrawModelMesh::toggleShowSharpVerts()
+{
+	return toggle(_options.showSharpVerts);
+}
 
-	inline bool DrawModelMesh::toggleShowTriNormals()
-	{
-		return toggle(_options.showTriNormals);
-	}
+inline bool DrawModelMesh::showTriNormals() const
+{
+	return _options.showTriNormals;
+}
 
-	inline bool DrawModelMesh::showFaces() const
-	{
-		return _options.showFaces;
-	}
+inline bool DrawModelMesh::toggleShowTriNormals()
+{
+	return toggle(_options.showTriNormals);
+}
 
-	inline bool DrawModelMesh::toggleShowFaces()
-	{
-		return toggle(_options.showFaces);
-	}
+inline bool DrawModelMesh::showFaces() const
+{
+	return _options.showFaces;
+}
 
-	inline bool DrawModelMesh::showCurvature() const
-	{
-		return _options.showCurvature;
-	}
+inline bool DrawModelMesh::toggleShowFaces()
+{
+	return toggle(_options.showFaces);
+}
 
-	inline bool DrawModelMesh::toggleShowCurvature()
-	{
-		return toggle(_options.showCurvature);
-	}
+inline bool DrawModelMesh::showCurvature() const
+{
+	return _options.showCurvature;
+}
 
-	inline bool DrawModelMesh::showEdges() const
-	{
-		return _options.showEdges;
-	}
+inline bool DrawModelMesh::toggleShowCurvature()
+{
+	return toggle(_options.showCurvature);
+}
 
-	inline bool DrawModelMesh::toggleShowEdges()
-	{
-		return toggle(_options.showEdges);
-	}
+inline bool DrawModelMesh::showEdges() const
+{
+	return _options.showEdges;
+}
+
+inline bool DrawModelMesh::toggleShowEdges()
+{
+	return toggle(_options.showEdges);
+}
 
 }

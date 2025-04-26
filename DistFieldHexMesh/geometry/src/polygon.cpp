@@ -220,7 +220,7 @@ const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 
 void Polygon::clearCache(bool clearSortIds) const
 {
-	_isConvex = IS_UNKNOWN;
+	_isConvex = CONVEXITY_UNKNOWN;
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedArea = -1;
 	_cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
@@ -297,29 +297,6 @@ MTC::vector<EdgeKey> Polygon::getEdgeKeys() const
 	}
 
 	return result;
-}
-
-bool Polygon::containsPoint(const Vector3d& pt) const
-{
-	if (!isPointOnPlane(pt) || !isConvex())
-		return false;
-
-	Vector3d norm = calUnitNormal();
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-
-		Vector3d pt0 = getVertexPoint(_vertexIds[i]);
-		Vector3d pt1 = getVertexPoint(_vertexIds[j]);
-		Vector3d v1 = (pt1 - pt0).normalized();
-		Vector3d v0 = pt - pt0;
-		v0 = v0 - v0.dot(v1) * v1;
-		Vector3d cp = v1.cross(v0);
-		double dist = norm.dot(cp);
-	
-		if (dist < -Tolerance::sameDistTol())
-			return false;
-	}
-	return true;
 }
 
 bool Polygon::isPointOnPlane(const Vector3d& pt) const {
@@ -982,6 +959,9 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
 bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 {
 	const double tol = Tolerance::sameDistTol();
+	Plane_byref pl(pt, norm);
+	if (!pl.isCoincident(pt, tol) || isConvex() == IS_CONCAVE)
+		return false;
 
 	auto& nclinVerts = getNonColinearVertexIds();
 	for (size_t i = 0; i < nclinVerts.size(); i++) {
@@ -996,6 +976,40 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 	}
 
 	return true;
+}
+
+void Polygon::rotateVertices()
+{
+	/* This for polygon fans, which may be slightly, locally cocave.
+	It moves the most remote vertex to position zero so the triangulation method
+	uses it as the origin for the fan.
+
+	It also sets _isCovex to IS_CONVEX_ENOUGH
+	*/
+	if (_vertexIds.size() > 4) {
+		auto ctr = calCentroidApprox();
+		size_t startIdx = -1;
+		double maxDist = 0;
+		for (size_t i = 0; i < _vertexIds.size(); i++) {
+			const auto& pt = getVertexPoint(_vertexIds[i]);
+			Vector3d v = pt - ctr;
+			double r = v.norm();
+			if (r > maxDist) {
+				startIdx = i;
+				maxDist = r;
+			}
+		}
+
+		vector<Index3DId> tmp(_vertexIds);
+		_vertexIds.clear();
+		_vertexIds.resize(tmp.size());
+		for (size_t i = 0; i < tmp.size(); i++) {
+			size_t j = (i + 1) % tmp.size();
+			_vertexIds[i] = tmp[j];
+		}
+
+		_isConvex = IS_CONVEX_ENOUGH;
+	}
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

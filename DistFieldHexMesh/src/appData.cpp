@@ -785,20 +785,14 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 
 void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
-    auto pMesh = pData->getMesh();
-    //    _pMesh->squeezeSkinnyTriangles(0.025); TODO This helps curvature calculations, but should be removed
-    pMesh->buildCentroids();
-    pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
-    //	_pMesh->calGaps();
-
-    pData->_faceTess = createFaceTessellation(pData, pDrawModelMesh);
+    pDrawModelMesh->createFaceTessellation(pData);
 #if 0
     CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
     if (pSharpVertMesh)
         pData->_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
 #endif
 
-    setEdgeSegTessellation(pData, _params, pDrawModelMesh);
+    pDrawModelMesh->createEdgeTessellation(_params, pData);
 
 }
 
@@ -819,31 +813,7 @@ void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawM
     }
 }
 
-const OGL::IndicesPtr AppData::createFaceTessellation(const MeshDataPtr& pData, shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-    auto pMesh = pData->getMesh();
-    const auto& points = pMesh->getGlTriPoints();
-    const auto& normals = pMesh->getGlTriNormals(false);
-    const auto& parameters = pMesh->getGlTriParams();
-    const auto& vertIndices = pMesh->getGlTriIndices();
-
-    auto colorFunc = [](double curvature, float rgb[3])->bool {
-        rgbaColor c = curvatureToColor(curvature);
-        for (int i = 0; i < 3; i++)
-            rgb[i] = c._rgba[i] / 255.0f;
-        return true;
-        };
-
-    vector<float> colors;
-    auto meshId = pMesh->getId();
-    auto changeNumber = pMesh->getChangeNumber();
-
-    auto& VBOs = pDrawModelMesh->getVBOs();
-    auto& faceVBO = VBOs->_faceVBO;
-    return faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
-}
-
-void AppData::setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
+void AppData::setEdgeSegTessellationxx(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
     const auto sinSharpAngle = params.getSinSharpAngle();
 

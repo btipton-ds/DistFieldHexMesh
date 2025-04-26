@@ -123,9 +123,7 @@ private:
     void makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
     void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
 
-    // vertiIndices is index pairs into points, normals and parameters to form triangles. It's the standard OGL element index structure
-    const OGL::IndicesPtr createFaceTessellation(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& _pDrawModelMesh);
-    void setEdgeSegTessellation(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
+    void setEdgeSegTessellationxx(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);

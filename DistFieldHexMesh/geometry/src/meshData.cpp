@@ -112,6 +112,23 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
 }
 
+void MeshData::setFaceTess(const OGL::IndicesPtr& faceTess)
+{
+	_faceTess = faceTess;
+}
+
+void MeshData::setTessEdges(const OGL::IndicesPtr& allEdgeTess, const OGL::IndicesPtr& sharpEdgeTess, const OGL::IndicesPtr& smoothEdgeTess)
+{
+	_allEdgeTess = allEdgeTess;
+	_sharpEdgeTess = sharpEdgeTess;
+	_smoothEdgeTess = smoothEdgeTess;
+}
+
+void MeshData::setTessNormals(const OGL::IndicesPtr& normalsTess)
+{
+	_normalTess = normalsTess;
+}
+
 void MeshData::write(std::ostream& out) const
 {
 	uint8_t version = 0;
