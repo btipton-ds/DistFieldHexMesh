@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <triMesh.hpp>
 #include <drawModelMesh.h>
 #include <OGLMultiVboHandlerTempl.h>
 #include <OGLShader.h>
@@ -103,9 +104,17 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
         return true;
         };
 
-    auto pMesh = pData->getMesh();
+
     bool includeSmooth = true;
-    pData->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+
+#if 0
+    auto pPolyMesh = pData->getPolyMesh();
+    pPolyMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+#else
+    auto pMesh = pData->getMesh();
+    pMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
+#endif
+
     indices = smoothIndices;
     indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 

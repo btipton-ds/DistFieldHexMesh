@@ -123,8 +123,6 @@ private:
     void makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
     void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
 
-    void setEdgeSegTessellationxx(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
     void writeDHFM() const;

@@ -786,14 +786,13 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
     pDrawModelMesh->createFaceTessellation(pData);
+    pDrawModelMesh->createEdgeTessellation(_params, pData);
+
 #if 0
     CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
     if (pSharpVertMesh)
         pData->_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
 #endif
-
-    pDrawModelMesh->createEdgeTessellation(_params, pData);
-
 }
 
 void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw)
@@ -802,52 +801,11 @@ void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawM
         return;
 
     auto& VBOs = pDraw->getVBOs();
-    auto& faceVBO = VBOs->_faceVBO;
-    auto& edgeVBO = VBOs->_edgeVBO;
-
-    if (pDraw->showFaces()) {
-        faceVBO.includeElementIndices(DS_MESH_FACES, pData->getFaceTess());
-    }
-    if (pDraw->showEdges()) {
-        edgeVBO.includeElementIndices(DS_MESH_EDGES, pData->getAllEdgeTess());
-    }
-}
-
-void AppData::setEdgeSegTessellationxx(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
-{
-    const auto sinSharpAngle = params.getSinSharpAngle();
-
-    vector<float> points, colors;
-    vector<unsigned int> indices, sharpIndices, smoothIndices;
-    auto colorFunc = [](float curvature, float rgb[3])->bool {
-        rgbaColor c = curvatureToColor(curvature);
-        for (int i = 0; i < 3; i++)
-            rgb[i] = c._rgba[i] / 255.0f;
-        return true;
-        };
-
-    auto pMesh = pData->getMesh();
-    bool includeSmooth = true;
-    pData->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
-    indices = smoothIndices;
-    indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
-
-    auto& VBOs = pDrawModelMesh->getVBOs();
-
-    auto meshId = pData->getId();
-    auto changeNumber = 1;
-    auto& edgeVBO = VBOs->_edgeVBO;
-    pData->_allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
-    pData->_sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
-    pData->_smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
-
-    vector<float> normPts;
-    vector<unsigned int> normIndices;
-    pData->getEdgeData(normPts, normIndices);
-
-    if (!normPts.empty()) {
-        pData->_normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
-    }
+    if (pDraw->showFaces())
+        VBOs->_faceVBO.includeElementIndices(DS_MESH_FACES, pData->getFaceTess());
+    
+    if (pDraw->showEdges()) 
+        VBOs->_edgeVBO.includeElementIndices(DS_MESH_EDGES, pData->getAllEdgeTess());    
 }
 
 MeshDataConstPtr AppData::getMeshData(const std::wstring& name) const

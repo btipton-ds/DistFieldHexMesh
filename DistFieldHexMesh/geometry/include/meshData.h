@@ -31,7 +31,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 
 #include <tm_vector3.h>
-#include <triMesh.h>
 #include <graphicsVBORec.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
@@ -73,10 +72,6 @@ namespace DFHM {
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
 		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
-
-		template<typename LAMBDA>
-		void getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
-			double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices);
 
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
@@ -173,17 +168,6 @@ namespace DFHM {
 	inline const PolyMeshPtr& MeshData::getPolyMesh() const
 	{
 		return _pPolyMesh;
-	}
-
-	template<typename LAMBDA>
-	void MeshData::getGlEdges(LAMBDA curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
-		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
-	{
-#if 1
-		_pPolyMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
-#else
-		_pMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
-#endif
 	}
 
 }
