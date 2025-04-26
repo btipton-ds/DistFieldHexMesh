@@ -88,6 +88,7 @@ public:
 	static Vector3d calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidApproxStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
+	static Vector3d calCentroidApproxStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds);
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
 	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
@@ -164,6 +165,7 @@ public:
 	Vector3d calOrientedUnitNormal(const Index3DId& cellId) const;
 	const Vector3d& calCentroid() const;
 	void setCentroid_risky(const Vector3d& val);
+	void setIsConvex_risky(Convexity convexity);
 	Vector3d calCentroidApprox() const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
@@ -211,7 +213,6 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
-	void rotateVertices();
 
 	Index3DId _thisId;
 

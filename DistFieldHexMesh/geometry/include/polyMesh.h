@@ -104,14 +104,14 @@ namespace DFHM {
 		LAMBDA_BLOCK_DECLS(edge, EdgeKey, Edge)
 
 	private:
-		bool isLongestEdge(const Polygon& face, const Edge& edge) const;
-		bool isShortestEdge(const Polygon& face, const Edge& edge) const;
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
 		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		bool removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key);
 		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
 		bool isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
+		bool hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
+		bool formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
 
 		AppDataPtr _pAppData;
 		ObjectPool<Vertex> _vertices;

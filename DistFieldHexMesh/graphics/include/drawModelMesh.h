@@ -85,9 +85,7 @@ public:
 	bool toggleShowEdges();
 
 protected:
-	OGL::IndicesPtr createFaceTessellation(const TriMesh::CMeshPtr& pMesh);
 	OGL::IndicesPtr createFaceTessellation(const PolyMeshPtr& pMesh);
-
 
 	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
 	void postDrawEdges() override;

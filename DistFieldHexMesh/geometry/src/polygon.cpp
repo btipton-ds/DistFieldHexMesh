@@ -172,6 +172,7 @@ void Polygon::postAddToPoolActions()
 			PolygonSearchKey::set(getPolyMeshPtr(), _vertexIds);
 		}
 	}
+
 	connectVertEdgeTopology();
 }
 
@@ -403,6 +404,17 @@ Vector3d Polygon::calCentroidApproxStat(const Block* pBlock, const MTC::vector<I
 	return ctr;
 }
 
+Vector3d Polygon::calCentroidApproxStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds)
+{
+	Vector3d ctr(0, 0, 0);
+	if (vertIds.empty())
+		return Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	for (size_t i = 0; i < vertIds.size(); i++)
+		ctr += pPolyMesh->getVertexPoint(vertIds[i]);
+	ctr /= vertIds.size();
+
+	return ctr;
+}
 
 void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis)
 {
@@ -659,9 +671,17 @@ void Polygon::setCentroid_risky(const Vector3d& val)
 	_cachedCentroid = val;
 }
 
+void Polygon::setIsConvex_risky(Convexity convexity)
+{
+	_isConvex = convexity;
+}
+
 Vector3d Polygon::calCentroidApprox() const
 {
-	return calCentroidApproxStat(getBlockPtr(), _vertexIds);
+	auto pBlk = getBlockPtr();
+	if (pBlk)
+		return calCentroidApproxStat(pBlk, _vertexIds);
+	return calCentroidApproxStat(getPolyMeshPtr(), _vertexIds);
 }
 
 double Polygon::distFromPlane(const Vector3d& pt) const
@@ -976,40 +996,6 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 	}
 
 	return true;
-}
-
-void Polygon::rotateVertices()
-{
-	/* This for polygon fans, which may be slightly, locally cocave.
-	It moves the most remote vertex to position zero so the triangulation method
-	uses it as the origin for the fan.
-
-	It also sets _isCovex to IS_CONVEX_ENOUGH
-	*/
-	if (_vertexIds.size() > 4) {
-		auto ctr = calCentroidApprox();
-		size_t startIdx = -1;
-		double maxDist = 0;
-		for (size_t i = 0; i < _vertexIds.size(); i++) {
-			const auto& pt = getVertexPoint(_vertexIds[i]);
-			Vector3d v = pt - ctr;
-			double r = v.norm();
-			if (r > maxDist) {
-				startIdx = i;
-				maxDist = r;
-			}
-		}
-
-		vector<Index3DId> tmp(_vertexIds);
-		_vertexIds.clear();
-		_vertexIds.resize(tmp.size());
-		for (size_t i = 0; i < tmp.size(); i++) {
-			size_t j = (i + 1) % tmp.size();
-			_vertexIds[i] = tmp[j];
-		}
-
-		_isConvex = IS_CONVEX_ENOUGH;
-	}
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

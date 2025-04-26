@@ -390,19 +390,38 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		if (hasHighLocalConvexity(params, norm0, newVertIds))
 			return;
 
-		removeFace(faceId0);
-		removeFace(faceId1);
-		Polygon newFace(newVertIds);
-		auto newFaceId = _polygons.findOrAdd(newFace);
-		auto& face = getPolygon(newFaceId);
-		// For this new face to have the plane of the source faces
-		face.setCentroid_risky(plane.getOrgin());
-		face.setUnitNormal_risky(plane.getNormal());
+		// Run through all possible rotations
 
-		result = true;
+		if (hasValidRotation(newVertIds, norm0)) {
+			removeFace(faceId0);
+			removeFace(faceId1);
+			Polygon newFace(newVertIds);
+			auto newFaceId = _polygons.findOrAdd(newFace);
+			auto& face = getPolygon(newFaceId);
+			// For this new face to have the plane of the source faces
+			face.setCentroid_risky(plane.getOrgin());
+			face.setUnitNormal_risky(plane.getNormal());
+			face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
+
+			result = true;
+		}
 	});
 
 	return result;
+}
+
+bool PolyMesh::hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
+{
+	// Brute force rotation and test of all vertices to assure that all fan triangles have correctly oriented normals.
+	// The prevents "drawing out of bounds" when retessellating for rendering and correct intersection for raycasting and curvature calculations.
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		bool isValid = formsValidPolygon(vertIds, norm);
+		if (isValid)
+			return true;
+		rotate(vertIds.begin(), vertIds.begin() + 1, vertIds.end());
+	}
+
+	return false;
 }
 
 bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
@@ -452,6 +471,30 @@ double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, c
 	double y = v.dot(yAxis);
 	double angle = atan2(y, x);
 	return angle;
+}
+
+bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
+{
+	vector<Vector3d> pts;
+	for (const auto& id : vertIds) {
+		pts.push_back(getVertexPoint(id));
+	}
+
+	const auto& pt0 = pts[0];
+	for (size_t i = 1; i < pts.size(); i++) {
+		size_t j = (i + 1) % pts.size();
+		size_t k = (i + 2) % pts.size();
+		const auto& pt1 = pts[j];
+		const auto& pt2 = pts[k];
+
+		auto v0 = pt0 - pt1;
+		auto v1 = pt2 - pt1;
+		auto n = v1.cross(v0);
+		if (norm.dot(n) < 0)
+			return false;
+	}
+
+	return true;
 }
 
 void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets)
@@ -652,8 +695,8 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	Vector3d ctr = (ctr0 * area0 + ctr1 * area1) / (area0 + area1);
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
-	Planed plane(ctr, norm);
 #if 0
+	Planed plane(ctr, norm);
 	removeEdge(params, plane, edge);
 #else
 	MTC::vector<Index3DId> newVertIds;
@@ -664,13 +707,15 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 			newVertIds.push_back(otherId1);
 		}
 	}
-	
-	auto tstIds = PolygonSearchKey::makeNonColinearVertexIds(this, newVertIds);
-	if (tstIds.size() == newVertIds.size()) {
+
+	if (hasValidRotation(newVertIds, norm)) {
 		removeFace(faceId0);
 		removeFace(faceId1);
 		Polygon newFace(newVertIds);
-		_polygons.findOrAdd(newFace);
+		auto newFaceId = _polygons.findOrAdd(newFace);
+		auto& face = getPolygon(newFaceId);
+		// For this new face to have the plane of the source faces
+		face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
 	}
 #endif
 }
@@ -681,37 +726,6 @@ void PolyMesh::removeFace(const Index3DId& id)
 	_polygons.removeFromLookup(id);
 	_polygons.free(id);
 }
-
-bool PolyMesh::isLongestEdge(const Polygon& face, const Edge& edge) const
-{
-	bool result = true;
-	auto l0 = edge.calLength();
-	face.iterateEdges([&edge, l0, &result](const Edge& edge1) {
-		if (edge != edge1) {
-			if (edge.calLength() > l0) {
-				result = false;
-			}
-		}
-		return result;
-	});
-	return result;
-}
-
-bool PolyMesh::isShortestEdge(const Polygon& face, const Edge& edge) const
-{
-	bool result = true;
-	auto l0 = edge.calLength();
-	face.iterateEdges([&edge, l0, &result](const Edge& edge1) {
-		if (edge != edge1) {
-			if (edge.calLength() < l0) {
-				result = false;
-			}
-		}
-		return result;
-		});
-	return result;
-}
-
 
 std::vector<float> PolyMesh::getGlTriPoints() const
 {
