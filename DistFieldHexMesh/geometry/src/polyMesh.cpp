@@ -712,6 +712,66 @@ bool PolyMesh::isShortestEdge(const Polygon& face, const Edge& edge) const
 	return result;
 }
 
+
+std::vector<float> PolyMesh::getGlTriPoints() const
+{
+	std::vector<float> result;
+	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
+		face.iterateTriangles([this, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			const Vector3d* pts[] = {
+				&getVertexPoint(id0),
+				&getVertexPoint(id1),
+				&getVertexPoint(id2),
+			};
+
+			for (int i = 0; i < 3; i++) {
+				const auto& pt = *pts[i];
+				for (int j = 0; j < 3; j++) {
+					result.push_back((float)pt[j]);
+				}
+			}
+			return true;
+		});
+		return true;
+	});
+	return result;
+}
+
+std::vector<float> PolyMesh::getGlTriNormals() const
+{
+	std::vector<float> result;
+	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
+		Vector3d norm = face.calUnitNormal();
+		face.iterateTriangles([this, &result, &norm](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					result.push_back((float)norm[j]);
+				}
+			}
+			return true;
+		});
+		return true;
+	});
+	return result;
+}
+
+std::vector<unsigned int> PolyMesh::getGlTriIndices() const
+{
+	std::vector<unsigned int> result;
+	unsigned int idx = 0;
+	_polygons.iterateInOrder([this, &result, &idx](const Index3DId& id, const Polygon& face)->bool {
+		face.iterateTriangles([this, &result, &idx](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			for (int i = 0; i < 3; i++) {
+				result.push_back(idx++);
+			}
+			return true;
+		});
+		return true;
+	});
+	return result;
+}
+
+
 #define FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
 void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \
 { \

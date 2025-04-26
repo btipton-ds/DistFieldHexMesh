@@ -90,6 +90,10 @@ namespace DFHM {
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
 
+		std::vector<float> getGlTriPoints() const;
+		std::vector<float> getGlTriNormals() const;
+		std::vector<unsigned int> getGlTriIndices() const;
+
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
 			double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices);

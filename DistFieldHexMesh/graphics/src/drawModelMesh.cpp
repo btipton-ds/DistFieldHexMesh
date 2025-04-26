@@ -65,7 +65,19 @@ DrawModelMesh::~DrawModelMesh()
 
 void DrawModelMesh::createFaceTessellation(const MeshDataPtr& pData)
 {
+    OGL::IndicesPtr tess;
+#if 1
+    auto pMesh = pData->getPolyMesh();
+    tess = createFaceTessellation(pMesh);
+#else
     auto pMesh = pData->getMesh();
+    tess = createFaceTessellation(pMesh);
+#endif
+    pData->setFaceTess(tess);
+}
+
+OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const TriMesh::CMeshPtr& pMesh)
+{
     pMesh->buildCentroids();
     pMesh->calCurvatures(SHARP_EDGE_ANGLE_RADIANS, false);
 
@@ -88,7 +100,32 @@ void DrawModelMesh::createFaceTessellation(const MeshDataPtr& pData)
     auto& VBOs = getVBOs();
     auto& faceVBO = VBOs->_faceVBO;
     auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
-    pData->setFaceTess(tess);
+    return tess;
+}
+
+OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
+{
+    const auto& points = pMesh->getGlTriPoints();
+    const auto& normals = pMesh->getGlTriNormals();
+    vector<float> parameters;
+    parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
+    const auto& vertIndices = pMesh->getGlTriIndices();
+
+    auto colorFunc = [](double curvature, float rgb[3])->bool {
+        rgbaColor c = curvatureToColor(curvature);
+        for (int i = 0; i < 3; i++)
+            rgb[i] = c._rgba[i] / 255.0f;
+        return true;
+    };
+
+    vector<float> colors;
+    auto meshId = 1;// pMesh->getId();
+    auto changeNumber = 0; // pMesh->getChangeNumber();
+
+    auto& VBOs = getVBOs();
+    auto& faceVBO = VBOs->_faceVBO;
+    auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
+    return tess;
 }
 
 void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData)

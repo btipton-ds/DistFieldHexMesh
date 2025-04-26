@@ -39,6 +39,9 @@ namespace OGL
 
 namespace DFHM {
 struct SplittingParams;
+class PolyMesh;
+using PolyMeshPtr = std::shared_ptr<PolyMesh>;
+
 class Model;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
@@ -82,6 +85,10 @@ public:
 	bool toggleShowEdges();
 
 protected:
+	OGL::IndicesPtr createFaceTessellation(const TriMesh::CMeshPtr& pMesh);
+	OGL::IndicesPtr createFaceTessellation(const PolyMeshPtr& pMesh);
+
+
 	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
 	void postDrawEdges() override;
 
