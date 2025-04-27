@@ -250,8 +250,7 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 				if (deltaAngle > minAngleRadians) {
 					lastAngle = thisAngle;
 				} else {
-					EdgeKey ek(vert.getId(), thisId);
-					if (!removeEdge(params, plane, ek)) {
+					if (!removeEdge(params, plane, vert.getId(), thisId)) {
 						lastAngle = thisAngle;
 					}
 				}
@@ -262,26 +261,15 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 	});
 }
 
-namespace
-{
-template<class T, class U>
-size_t findIndex(const T& vec, const U& val) {
-	for (size_t i = 0; i < vec.size(); i++) {
-		if (vec[i] == val)
-			return i;
-	}
-	return -1;
-}
-}
-
-bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key)
+bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
 {
 	const double MAX_CP = 0.02;
 	const double MAX_CP_SQR = MAX_CP * MAX_CP;
 	const size_t maxVerts = 30;
 
 	bool result = false;
-	edgeFunc(key, [this, &plane, &params, &result](const Edge& edge) {
+	EdgeKey key(radiantVertId, otherVertId);
+	edgeFunc(key, [this, &plane, &params, &radiantVertId, &result](const Edge& edge) {
 		const auto maxCurv = 1 / params.maxComplanarEdgeRemovalRadius;
 		double curv = edge.calCurvature(params);
 		if (curv > maxCurv)
@@ -352,10 +340,12 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 		MTC::vector<Index3DId> newVertIds;
 		while (!vertToVertMap.empty()) {
 			if (newVertIds.empty()) {
-				auto iter = vertToVertMap.begin();
-				newVertIds.push_back(iter->first);
+				auto iter = vertToVertMap.find(radiantVertId);
 				auto iter2 = iter->second.begin();
-				newVertIds.push_back(*iter2);
+				const auto& id0 = iter->first;
+				const auto& id1 = *iter2;
+				newVertIds.push_back(id0);
+				newVertIds.push_back(id1);
 
 				iter = vertToVertMap.find(newVertIds.front());
 				iter->second.erase(newVertIds.back());
@@ -414,6 +404,8 @@ bool PolyMesh::hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d&
 {
 	// Brute force rotation and test of all vertices to assure that all fan triangles have correctly oriented normals.
 	// The prevents "drawing out of bounds" when retessellating for rendering and correct intersection for raycasting and curvature calculations.
+	// If vertIds is constructed with the radiant vertex of the fan in position zero, no rotations will be required.
+	// The loop is a safety net for cases that don't match that rule.
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		bool isValid = formsValidPolygon(vertIds, norm);
 		if (isValid)
@@ -422,6 +414,30 @@ bool PolyMesh::hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d&
 	}
 
 	return false;
+}
+
+bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
+{
+	vector<Vector3d> pts;
+	for (const auto& id : vertIds) {
+		pts.push_back(getVertexPoint(id));
+	}
+
+	const auto& pt0 = pts[0];
+	for (size_t i = 1; i < pts.size(); i++) {
+		size_t j = (i + 1) % pts.size();
+		size_t k = (i + 2) % pts.size();
+		const auto& pt1 = pts[j];
+		const auto& pt2 = pts[k];
+
+		auto v0 = pt0 - pt1;
+		auto v1 = pt2 - pt1;
+		auto n = v1.cross(v0);
+		if (norm.dot(n) < 0)
+			return false;
+	}
+
+	return true;
 }
 
 bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
@@ -471,30 +487,6 @@ double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, c
 	double y = v.dot(yAxis);
 	double angle = atan2(y, x);
 	return angle;
-}
-
-bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
-{
-	vector<Vector3d> pts;
-	for (const auto& id : vertIds) {
-		pts.push_back(getVertexPoint(id));
-	}
-
-	const auto& pt0 = pts[0];
-	for (size_t i = 1; i < pts.size(); i++) {
-		size_t j = (i + 1) % pts.size();
-		size_t k = (i + 2) % pts.size();
-		const auto& pt1 = pts[j];
-		const auto& pt2 = pts[k];
-
-		auto v0 = pt0 - pt1;
-		auto v1 = pt2 - pt1;
-		auto n = v1.cross(v0);
-		if (norm.dot(n) < 0)
-			return false;
-	}
-
-	return true;
 }
 
 void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets)
@@ -592,7 +584,7 @@ void PolyMesh::removeAllPossibleCoplanarEdges(const SplittingParams& params)
 			Vector3d ctr = (area0 * ctr0 + area1 * ctr1) / (area0 + area1);
 			plane = Planed(ctr, norm);
 		});
-		removeEdge(params, plane, ek);
+		removeEdge(params, plane, ek[0], ek[1]);
 	}
 }
 
