@@ -68,8 +68,6 @@ void MeshData::postReadCreate()
 #if 1
 	double sliverAngleRadians = 25 / 180.0 * M_PI;
 	_pPolyMesh->reduceSlivers(params, sliverAngleRadians);
-
-	_pPolyMesh->removeAllPossibleCoplanarEdges(params);
 #endif
 
 }

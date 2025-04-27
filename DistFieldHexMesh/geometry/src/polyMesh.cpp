@@ -160,44 +160,29 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
 		vector<Planed> planes;
 		for (const auto& faceIds : planarFaceSets) {
-			Vector3d origin(0, 0, 0), normal(0, 0, 0);
+			Planed basePlane;
 			set<Index3DId> uniqueVerts;
 			for (size_t i = 0; i < faceIds.size(); i++) {
 				const auto& face = getPolygon(faceIds[i]);
+				if (i == 0)
+					basePlane = face.calPlane();
 				const auto& vertIds = face.getVertexIds();
 				for (const auto& vertId : vertIds) {
 					uniqueVerts.insert(vertId);
 				}
-				auto n = face.calUnitNormal();
-				if (normal.squaredNorm() > 0 && normal.dot(n) < 0)
-					n = -n;
-				normal += n;
 			}
 
-			for (const auto& vertId : uniqueVerts) {
-				origin += getVertexPoint(vertId);
-			}
-
-			origin /= uniqueVerts.size();
-			double l = normal.norm();
-			if (l > Tolerance::divideByZeroTol())
-				normal /= l;
-			else {
-				assert(!"zero length normal");
-			}
-
-			Planed plane(origin, normal);
-			planes.push_back(plane);
+			planes.push_back(basePlane);
 
 			set<Index3DId> connectedVertIds;
 			for (size_t i = 0; i < faceIds.size(); i++) {
 				const auto& face = getPolygon(faceIds[i]);
-				face.iterateEdges([this, &plane, &vert, &connectedVertIds](const Edge& edge)->bool {
+				face.iterateEdges([this, &basePlane, &vert, &connectedVertIds](const Edge& edge)->bool {
 					const double tol = Tolerance::sameDistTol();
 					auto id = edge.getOtherVert(vert.getId());
 					if (id.isValid()) {
 						const auto& pt = getVertexPoint(id);
-						if (plane.isCoincident(pt, Tolerance::sameDistTol()))
+						if (basePlane.isCoincident(pt, Tolerance::sameDistTol()))
 							connectedVertIds.insert(id);
 					}
 					return true;
@@ -521,70 +506,6 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 		if (thisSet.size() > 2) {
 			planarFaceSets.push_back(thisSet);
 		}
-	}
-}
-
-void PolyMesh::removeAllPossibleCoplanarEdges(const SplittingParams& params)
-{
-	set<EdgeKey> coplanarEdgesToRemove;
-	_polygons.iterateInOrder([this, &coplanarEdgesToRemove](const Index3DId& faceId, const Polygon& face)->bool {
-		vector<pair<double, EdgeKey>> edges;
-		face.iterateEdges([this, &edges](const Edge& edge)->bool {
-			auto l = edge.calLength();
-			edges.push_back(pair(l, edge));
-			return true;
-		});
-
-		// This handles cases of high aspect ratio polygons with imprinted vertices and short, nearly colinear edges.
-		// We only want to remove one of the "longer" edges and never remove one of the "shorter" edges.
-		double maxLength = 0;
-		for (const auto& pair : edges) {
-			if (pair.first > maxLength)
-				maxLength = pair.first;
-		}
-
-		for (const auto& pair : edges) {
-			if (pair.first > 0.9 * maxLength) {
-				const auto& testEdgeKey = pair.second;
-
-				edgeFunc(testEdgeKey, [this, &coplanarEdgesToRemove](const Edge& testEdge) {
-					const auto& params = _pAppData->getParams();
-					const auto maxCoplanarCurvature = 1 / params.maxComplanarEdgeRemovalRadius;
-					auto c = testEdge.calCurvature(params);
-					if (c < maxCoplanarCurvature)
-						coplanarEdgesToRemove.insert(testEdge);
-				});
-			}
-		}
-		return true;
-	});
-
-	for (const auto& ek : coplanarEdgesToRemove) {
-		Planed plane;
-		edgeFunc(ek, [this, &params, &plane](const Edge& edge) {
-			const auto& faceIds = edge.getFaceIds();
-			if (faceIds.size() != 2)
-				return;
-
-			auto iter = faceIds.begin();
-			const auto& faceId0 = *iter++;
-			const auto& faceId1 = *iter;
-
-			const auto& face0 = getPolygon(faceId0);
-			const auto& face1 = getPolygon(faceId1);
-			
-			Vector3d norm = face0.calUnitNormal();
-			norm += face1.calUnitNormal();
-			norm;
-
-			double area0, area1;
-			Vector3d ctr0, ctr1;
-			face0.calAreaAndCentroid(area0, ctr0);
-			face1.calAreaAndCentroid(area1, ctr1);
-			Vector3d ctr = (area0 * ctr0 + area1 * ctr1) / (area0 + area1);
-			plane = Planed(ctr, norm);
-		});
-		removeEdge(params, plane, ek[0], ek[1]);
 	}
 }
 
