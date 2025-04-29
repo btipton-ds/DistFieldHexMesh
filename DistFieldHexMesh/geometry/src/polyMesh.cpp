@@ -154,24 +154,114 @@ void PolyMesh::makeQuads(const SplittingParams& params)
 
 void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadians)
 {
-	_vertices.iterateInOrder([this, &params, minAngleRadians](const Index3DId& id, const Vertex& vert)->bool {
-		vector<vector<Index3DId>> planarFaceSets;
-		vector<shared_ptr<vector<pair<double, Index3DId>>>> planarAngleEdgeMap;
+	vector<Index3DId> orderedVertIds;
+	_vertices.iterateInOrder([this, &orderedVertIds](const Index3DId& radiantId, const Vertex& vert)->bool {
+		orderedVertIds.push_back(radiantId);
+		return true;
+	});
+
+	sort(orderedVertIds.begin(), orderedVertIds.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
+		const auto& lhsVert = getVertex(lhsId);
+		const auto& rhsVert = getVertex(rhsId);
+		return lhsVert.getFaceIds().size() > rhsVert.getFaceIds().size();
+	});
+
+	for (const auto& radiantId : orderedVertIds) {
+		const auto& vert = getVertex(radiantId);
+		if (radiantId == Index3DId(0, 0, 0, 113)) {
+			int dbgBreak = 1;
+		}
+		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
 		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
+		for (const auto& faceIds : planarFaceSets) {
+			vector<Index3DId> orderedFaceIds(faceIds.begin(), faceIds.end());
+
+			// ordered largest to smallest by area
+			sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
+				const auto& lhsFace = getPolygon(lhsId);
+				const auto& rhsFace = getPolygon(rhsId);
+				double lhsArea, rhsArea;
+				Vector3d discarded;
+				lhsFace.calAreaAndCentroid(lhsArea, discarded);
+				rhsFace.calAreaAndCentroid(rhsArea, discarded);
+
+				return lhsArea > rhsArea;
+			});
+
+			const auto& largestFace = getPolygon(orderedFaceIds.front());
+			auto plane = largestFace.calPlane();
+
+
+			while (!orderedFaceIds.empty()) {
+				auto curFaceId = orderedFaceIds.back();
+				orderedFaceIds.pop_back();
+				while (curFaceId.isValid()) {
+					const auto& curFace = getPolygon(curFaceId);
+					curFaceId = {};
+					for (size_t i = orderedFaceIds.size() - 1; i != -1; i--) {
+						const auto& testFace = getPolygon(orderedFaceIds[i]);
+						auto commonEdge = findCommonEdge(curFace, testFace);
+						if (commonEdge.isValid()) {
+							auto otherId = commonEdge.getOtherVert(radiantId);
+							if (otherId.isValid()) {
+								auto newFaceId = removeEdge(params, plane, radiantId, otherId);
+								if (newFaceId.isValid()) {
+									orderedFaceIds.erase(orderedFaceIds.begin() + i);
+									curFaceId = newFaceId;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void PolyMesh::reduceSlivers_old(const SplittingParams& params, double minAngleRadians)
+{
+	_vertices.iterateInOrder([this, &params, minAngleRadians](const Index3DId& id, const Vertex& vert)->bool {
+		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
+		vector<set<Index3DId>> planarFaceSharedVerts;
+		vector<shared_ptr<vector<pair<double, Index3DId>>>> planarAngleEdgeMap;
+		if (id == Index3DId(0, 0, 0, 112)) {
+			int dbgBreak = 1;
+		}
+		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
+
 		vector<Planed> planes;
 		for (const auto& faceIds : planarFaceSets) {
+			set<Index3DId> faceSet(faceIds.begin(), faceIds.end());
 			Planed basePlane;
-			set<Index3DId> uniqueVerts;
+			set<Index3DId> sharedVerts;
 			for (size_t i = 0; i < faceIds.size(); i++) {
 				const auto& face = getPolygon(faceIds[i]);
 				if (i == 0)
 					basePlane = face.calPlane();
-				const auto& vertIds = face.getVertexIds();
-				for (const auto& vertId : vertIds) {
-					uniqueVerts.insert(vertId);
-				}
+				face.iterateEdges([&vert, &faceSet, &sharedVerts](const Edge& edge)->bool {
+					const auto& adjFaceIds = edge.getFaceIds();
+					bool bothFacesInSet = true;
+					for (const auto& id : adjFaceIds) {
+						if (!faceSet.contains(id)) {
+							bothFacesInSet = false;
+							break;
+						}
+					}
+					if (bothFacesInSet) {
+						auto otherId = edge.getOtherVert(vert.getId());
+						if (otherId.isValid())
+							sharedVerts.insert(otherId);
+					}
+					return true;
+				});
 			}
 
+			if (faceIds.size() > 10) {
+				static size_t count = 0;
+				dumpFaceSetAsObj("D:/DarkSky/Projects/output/objs", count++, id, faceIds, sharedVerts);
+			}
+			planarFaceSharedVerts.push_back(sharedVerts);
 			planes.push_back(basePlane);
 
 			set<Index3DId> connectedVertIds;
@@ -218,6 +308,7 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 		for (size_t i = 0; i < planarAngleEdgeMap.size(); i++) {
 			const auto& angleToEdgeMap = *planarAngleEdgeMap[i];
 			const auto& plane = planes[i];
+			const auto& sharedVerts = planarFaceSharedVerts[i];
 
 			if (angleToEdgeMap.size() > 20) {
 				int dbgBreak = 1;
@@ -232,10 +323,11 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 					deltaAngle += 2 * M_PI;
 				}
 
-				if (deltaAngle > minAngleRadians) {
+				if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
 					lastAngle = thisAngle;
 				} else {
-					if (!removeEdge(params, plane, vert.getId(), thisId)) {
+					auto newFaceId = removeEdge(params, plane, vert.getId(), thisId);
+					if (!newFaceId.isValid()) {
 						lastAngle = thisAngle;
 					}
 				}
@@ -246,13 +338,180 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 	});
 }
 
-bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
+Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
 {
 	const double MAX_CP = 0.02;
 	const double MAX_CP_SQR = MAX_CP * MAX_CP;
 	const size_t maxVerts = 30;
 
-	bool result = false;
+	Index3DId result;
+	EdgeKey key(radiantVertId, otherVertId);
+	edgeFunc(key, [this, &plane, &params, &radiantVertId, &result](const Edge& edge) {
+		const auto& faceIds = edge.getFaceIds();
+		if (faceIds.size() != 2)
+			return;
+
+		auto iter = faceIds.begin();
+
+		const auto& faceId0 = *iter++;
+		const auto& faceId1 = *iter;
+
+		auto& face0 = getPolygon(faceId0);
+		auto& face1 = getPolygon(faceId1);
+
+		if (isShortEdge(edge, face0, face1))
+			return;
+
+		auto norm0 = face0.calUnitNormal();
+		auto norm1 = face1.calUnitNormal();
+		if (norm0.dot(norm1) < 0)
+			return;
+
+		const auto& vertIds0 = face0.getVertexIds();
+		const auto& vertIds1 = face1.getVertexIds();
+		if (vertIds0.size() + vertIds1.size() > maxVerts)
+			return;
+
+		map<Index3DId, set<Index3DId>> vertToVertMap;
+		for (size_t i = 0; i < vertIds0.size(); i++) {
+			size_t j = (i + 1) % vertIds0.size();
+			const auto& id0 = vertIds0[i];
+			const auto& id1 = vertIds0[j];
+
+			if (edge != EdgeKey(id0, id1)) {
+				auto iter = vertToVertMap.find(id0);
+				if (iter == vertToVertMap.end())
+					iter = vertToVertMap.insert(make_pair(id0, set<Index3DId>())).first;
+				iter->second.insert(id1);
+
+				iter = vertToVertMap.find(id1);
+				if (iter == vertToVertMap.end())
+					iter = vertToVertMap.insert(make_pair(id1, set<Index3DId>())).first;
+				iter->second.insert(id0);
+			}
+		}
+
+		for (size_t i = 0; i < vertIds1.size(); i++) {
+			size_t j = (i + 1) % vertIds1.size();
+			const auto& id0 = vertIds1[i];
+			const auto& id1 = vertIds1[j];
+
+			if (edge != EdgeKey(id0, id1)) {
+				auto iter = vertToVertMap.find(id0);
+				if (iter == vertToVertMap.end())
+					iter = vertToVertMap.insert(make_pair(id0, set<Index3DId>())).first;
+				iter->second.insert(id1);
+
+				iter = vertToVertMap.find(id1);
+				if (iter == vertToVertMap.end())
+					iter = vertToVertMap.insert(make_pair(id1, set<Index3DId>())).first;
+				iter->second.insert(id0);
+			}
+		}
+
+
+		MTC::vector<Index3DId> newVertIds;
+		while (!vertToVertMap.empty()) {
+			if (newVertIds.empty()) {
+				auto iter = vertToVertMap.find(radiantVertId);
+				auto iter2 = iter->second.begin();
+				const auto& id0 = iter->first;
+				const auto& id1 = *iter2;
+				newVertIds.push_back(id0);
+				newVertIds.push_back(id1);
+
+				iter = vertToVertMap.find(newVertIds.front());
+				iter->second.erase(newVertIds.back());
+
+				iter = vertToVertMap.find(newVertIds.back());
+				iter->second.erase(newVertIds.front());
+
+				vertToVertMap.erase(newVertIds.front());
+			}
+			else {
+				auto curBack = newVertIds.back();
+				auto iter = vertToVertMap.find(curBack);
+				if (iter->second.size() != 1)
+					return; // This can happen when removing edges from a full circle. That's not allowed
+
+				auto iter2 = iter->second.begin();
+				newVertIds.push_back(*iter2);
+				vertToVertMap.erase(curBack);
+				iter = vertToVertMap.find(newVertIds.back());
+				if (iter != vertToVertMap.end())
+					iter->second.erase(curBack);
+			}
+		}
+
+		if (newVertIds.front() == newVertIds.back())
+			newVertIds.pop_back();
+
+		if (!hasValidRotation(newVertIds, norm0))
+			return;
+
+		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
+		Vector3d n2;
+		if (!Polygon::calUnitNormalStat(this, newVertIds, n2))
+			return;
+
+		if (n2.dot(norm0) < 0) {
+			// DO NOT USE - std::reverse(newVertIds.begin(), newVertIds.end());
+			// Index 0 must remain at index 0
+
+			MTC::vector<Index3DId> tmp(newVertIds);
+			newVertIds.clear();
+			for (size_t i = 0; i < tmp.size(); i++) {
+				size_t j = (i == 0) ? i : (tmp.size() - i);
+				newVertIds.push_back(tmp[j]);
+			}
+
+		}
+
+		Vector3d n;
+		if (!Polygon::calUnitNormalStat(this, newVertIds, n))
+			assert("calUnitNormalStat failed");
+		assert(norm0.dot(n) > 0);
+		assert(norm1.dot(n) > 0);
+
+		if (hasHighLocalConvexity(params, norm0, newVertIds))
+			return;
+
+		// Run through all possible rotations
+
+		if (hasValidRotation(newVertIds, norm0)) {
+			removeFace(faceId0);
+			removeFace(faceId1);
+			Polygon newFace(newVertIds);
+			result = _polygons.findOrAdd(newFace);
+			if (result == Index3DId(0, 0, 0, 113)) {
+				int dbgBreak = 1;
+			}
+			auto& face = getPolygon(result);
+#ifdef _DEBUG
+			{
+				auto n = face.calUnitNormal();
+				assert(n.squaredNorm() > 0);
+				assert(norm0.dot(n) > 0);
+				assert(norm1.dot(n) > 0);
+			}
+#endif
+			// For this new face to have the plane of the source faces
+			face.setCentroid_risky(plane.getOrgin());
+			face.setUnitNormal_risky(plane.getNormal());
+			face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
+		}
+	});
+
+	return result;
+}
+
+Index3DId PolyMesh::removeEdge_deprecated(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
+{
+	const double MAX_CP = 0.02;
+	const double MAX_CP_SQR = MAX_CP * MAX_CP;
+	const size_t maxVerts = 30;
+
+	Index3DId result;
 	EdgeKey key(radiantVertId, otherVertId);
 	edgeFunc(key, [this, &plane, &params, &radiantVertId, &result](const Edge& edge) {
 		const auto maxCurv = 1 / params.maxComplanarEdgeRemovalRadius;
@@ -358,7 +617,10 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 			newVertIds.pop_back();
 
 		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
-		Vector3d n2 = Polygon::calUnitNormalStat(this, newVertIds);
+		Vector3d n2;
+		if (!Polygon::calUnitNormalStat(this, newVertIds, n2))
+			return;
+
 		if (n2.dot(norm0) < 0)
 			reverse(newVertIds.begin(), newVertIds.end());
 
@@ -371,14 +633,12 @@ bool PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, co
 			removeFace(faceId0);
 			removeFace(faceId1);
 			Polygon newFace(newVertIds);
-			auto newFaceId = _polygons.findOrAdd(newFace);
-			auto& face = getPolygon(newFaceId);
+			result = _polygons.findOrAdd(newFace);
+			auto& face = getPolygon(result);
 			// For this new face to have the plane of the source faces
 			face.setCentroid_risky(plane.getOrgin());
 			face.setUnitNormal_risky(plane.getNormal());
 			face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
-
-			result = true;
 		}
 	});
 
@@ -408,6 +668,7 @@ bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Ve
 		pts.push_back(getVertexPoint(id));
 	}
 
+	Vector3d n;
 	const auto& pt0 = pts[0];
 	for (size_t i = 1; i < pts.size(); i++) {
 		size_t j = (i + 1) % pts.size();
@@ -417,12 +678,28 @@ bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Ve
 
 		auto v0 = pt0 - pt1;
 		auto v1 = pt2 - pt1;
-		auto n = v1.cross(v0);
+		n = v1.cross(v0);
 		if (norm.dot(n) < 0)
 			return false;
 	}
 
-	return true;
+	return Polygon::calUnitNormalStat(this, vertIds, n);
+}
+
+EdgeKey PolyMesh::findCommonEdge(const Polygon& a, const Polygon& b)
+{
+	EdgeKey result;
+	a.iterateEdges([&b, &result](const Edge& edgeA)->bool {
+		b.iterateEdges([&edgeA, &result](const Edge& edgeB)->bool {
+			if (edgeA == edgeB) {
+				result = edgeA;
+			}
+			return !result.isValid();
+		});
+		return !result.isValid();
+	});
+
+	return result;
 }
 
 bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
@@ -476,6 +753,86 @@ double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, c
 
 void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets)
 {
+#if 1
+	const double sameDistTol = Tolerance::sameDistTolFloat();
+
+	// There's a potential hole in the algorithm if there is a coplanar face which is not edge adjacent with the other members of the set. 
+	// Not sure that's possible, and it's computationally expensive to remove.
+	// It should also have no effect on the outcome of edge removal.
+	// If it shows up, then plug the hole.
+
+	if (faceIds.size() > 50) {
+		int dbgBreak = 1;
+	}
+	vector<Index3DId> faceIdsAscendingArea(faceIds.begin(), faceIds.end());
+	sort(faceIdsAscendingArea.begin(), faceIdsAscendingArea.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId) {
+		const auto& lhsFace = getPolygon(lhsId);
+		const auto& rhsFace = getPolygon(rhsId);
+
+		double lhsArea, rhsArea;
+		Vector3d discarded;
+		lhsFace.calAreaAndCentroid(lhsArea, discarded);
+		rhsFace.calAreaAndCentroid(rhsArea, discarded);
+		return lhsArea < rhsArea;
+	});
+
+	MTC::vector<Index3DId> currentFaces;
+	Vector3d weightedNormal, groupOrigin;
+	double totalArea = 0;
+	double currentArea;
+	Vector3d discarded;
+	while (!faceIdsAscendingArea.empty()) {
+		if (currentFaces.empty()) {
+			currentFaces.push_back(faceIdsAscendingArea.back());
+			faceIdsAscendingArea.pop_back();
+			const auto& face = getPolygon(currentFaces.back());
+			face.calAreaAndCentroid(currentArea, groupOrigin);
+			weightedNormal = currentArea * face.calUnitNormal();
+			totalArea += currentArea;
+		}
+
+		double maxArea = 0;
+		size_t bestFaceIdx = -1;
+		Vector3d bestNormal;
+		Planed groupPlane(groupOrigin, weightedNormal);
+		for (size_t i = 0; i < faceIdsAscendingArea.size(); i++) {
+			const auto& currentFace = getPolygon(faceIdsAscendingArea[i]);
+			auto currentFaceNorm = currentFace.calUnitNormal();
+			if (weightedNormal.dot(currentFaceNorm) > 0) {
+				const auto& vertIds = currentFace.getVertexIds();
+				bool allVertsCoplanar = true;
+				for (const auto& vertId : vertIds) {
+					const auto& pt = getVertexPoint(vertId);
+					if (!groupPlane.isCoincident(pt, sameDistTol)) {
+						allVertsCoplanar = false;
+						break;
+					}
+				}
+
+				if (allVertsCoplanar) {
+					currentFace.calAreaAndCentroid(currentArea, discarded);
+					if (currentArea > maxArea) {
+						maxArea = currentArea;
+						bestNormal = currentFaceNorm;
+						bestFaceIdx = i;
+					}
+				}
+			}
+		}
+
+		if (bestFaceIdx != -1) {
+			currentFaces.push_back(faceIdsAscendingArea[bestFaceIdx]);
+			faceIdsAscendingArea.erase(faceIdsAscendingArea.begin() + bestFaceIdx);
+			assert(bestNormal.dot(weightedNormal) > 0);
+			weightedNormal += maxArea * bestNormal;
+			totalArea += maxArea;
+		} else {
+			if (currentFaces.size() > 1)
+				planarFaceSets.push_back(currentFaces);
+			currentFaces.clear();
+		}
+	}
+#else
 	set<size_t> usedIndices;
 	for (size_t i = 0; i < faceIds.size(); i++) {
 		if (usedIndices.contains(i))
@@ -483,11 +840,6 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 		usedIndices.insert(i);
 		MTC::vector<Index3DId> thisSet;
 		const auto& faceId = faceIds[i];
-#if 1 && defined(_DEBUG)
-		if (faceId == Index3DId(0, 0, 0, 10545)) {
-			int dbgBreak = 1;
-		}
-#endif
 		thisSet.push_back(faceId);
 		const auto& baseFace = getPolygon(faceId);
 		auto basePlane = baseFace.calPlane();
@@ -507,6 +859,7 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 			planarFaceSets.push_back(thisSet);
 		}
 	}
+#endif
 }
 
 void PolyMesh::calCurvatures()
@@ -554,9 +907,12 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 		return;
 
 	// Check for close to coplanar
-	auto norm0 = Polygon::calUnitNormalStat(this, ncLin0);
+	Vector3d norm0, norm1;
+	if (!Polygon::calUnitNormalStat(this, ncLin0, norm0))
+		return;
+	if (!Polygon::calUnitNormalStat(this, ncLin1, norm1))
+		return;
 
-	auto norm1 = Polygon::calUnitNormalStat(this, ncLin1);
 	auto cp = norm0.cross(norm1).squaredNorm();
 	if (cp > MAX_CP_SQR)
 		return;
@@ -608,9 +964,9 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	Vector3d ctr = (ctr0 * area0 + ctr1 * area1) / (area0 + area1);
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
-#if 0
+#if 1
 	Planed plane(ctr, norm);
-	removeEdge(params, plane, edge);
+	removeEdge(params, plane, edge[0], edge[1]);
 #else
 	MTC::vector<Index3DId> newVertIds;
 	for (size_t i = 0; i < vertIds0.size(); i++) {
@@ -627,6 +983,14 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 		Polygon newFace(newVertIds);
 		auto newFaceId = _polygons.findOrAdd(newFace);
 		auto& face = getPolygon(newFaceId);
+#ifdef _DEBUG
+		{
+			auto n = face.calUnitNormal();
+			assert(n.dot(norm0) > 0);
+			assert(n.dot(norm1) > 0);
+		}
+#endif // _DEBUG
+
 		// For this new face to have the plane of the source faces
 		face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
 	}
@@ -698,6 +1062,69 @@ std::vector<unsigned int> PolyMesh::getGlTriIndices() const
 	return result;
 }
 
+
+void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& sharedVerts)
+{
+	vector<Index3DId> verts;
+	map<Index3DId, size_t> ptToIndexMap;
+	set<EdgeKey> edges;
+
+	stringstream ss;
+	ss << "vert_" << num << "_";
+	string prefix = ss.str();
+	verts.push_back(radiantId);
+	ptToIndexMap.insert(make_pair(radiantId, 0));
+
+	for (const auto& faceId : faceIds) {
+		const auto& face = getPolygon(faceId);
+		const auto& vertIds = face.getVertexIds();
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			size_t j = (i + 1) % vertIds.size();
+			auto iter = ptToIndexMap.find(vertIds[i]);
+			if (iter == ptToIndexMap.end()) {
+				size_t newIdx = verts.size();
+				verts.push_back(vertIds[i]);
+				ptToIndexMap.insert(make_pair(vertIds[i], newIdx));
+			}
+			edges.insert(EdgeKey(vertIds[i], vertIds[j]));
+		}
+	}
+
+	{
+		ofstream out(path + "/" + prefix + "planarFaceGroup.obj");
+		for (const auto& id : verts) {
+			const auto& pt = getVertexPoint(id);
+			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+		}
+
+		for (const auto& id : faceIds) {
+			const auto& face = getPolygon(id);
+			const auto& vertIds = face.getVertexIds();
+			out << "f";
+			for (const auto& id : vertIds) {
+				auto iter = ptToIndexMap.find(id);
+				size_t idx = iter->second + 1;
+				out << " " << idx;
+			}
+			out << "\n";
+		}
+	}
+
+	{
+		ofstream out(path + "/" + prefix + "removableEdges.obj");
+		for (const auto& id : verts) {
+			const auto& pt = getVertexPoint(id);
+			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+		}
+
+		for (const auto& id : sharedVerts) {
+			size_t idx0 = 1;
+			auto iter = ptToIndexMap.find(id);
+			size_t idx1 = iter->second + 1;
+			out << "l " << idx0 << " " << idx1 << "\n";
+		}
+	}
+}
 
 #define FUNC_IMPL(NAME, KEY, MEMBER_NAME, CONST, CLASS) \
 void PolyMesh::NAME##Func(const KEY& id, const function<void(CONST CLASS& obj)>& func) CONST \

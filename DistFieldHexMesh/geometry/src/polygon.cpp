@@ -419,7 +419,9 @@ Vector3d Polygon::calCentroidApproxStat(const PolyMesh* pPolyMesh, const MTC::ve
 void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis)
 {
 	origin = calCentroidApproxStat(pBlock, vertIds);
-	zAxis = Polygon::calUnitNormalStat(pBlock, vertIds);
+	if (!Polygon::calUnitNormalStat(pBlock, vertIds, zAxis))
+		throw runtime_error("calUnitNormalStat failed");
+
 	xAxis = Vector3d(1, 0, 0);
 	if (fabs(xAxis.dot(zAxis)) > 0.7071) {
 		xAxis = Vector3d(0, 1, 0);
@@ -434,7 +436,11 @@ void Polygon::calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>&
 
 void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds)
 {
-	auto zAxis = calUnitNormalStat(pBlock, vertIds);
+	Vector3d zAxis;
+	if (!calUnitNormalStat(pBlock, vertIds, zAxis)) {
+		cVertIds.insert(vertIds.begin(), vertIds.end());
+		return;
+	}
 
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		size_t j = (i + 1) % vertIds.size();
@@ -454,9 +460,9 @@ void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Inde
 	}
 }
 
-Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds)
+bool Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& norm)
 {
-	Vector3d norm(0, 0, 0);
+	norm = Vector3d(0, 0, 0);
 
 	double maxNorm = 0;
 	size_t i = 0;
@@ -479,12 +485,14 @@ Vector3d Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index
 		}
 	}
 
-	return norm;
+	if (norm.isNAN())
+		return false;
+	return true;
 }
 
-Vector3d Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds)
+bool Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds, Vector3d& norm)
 {
-	Vector3d norm(0, 0, 0);
+	norm = Vector3d(0, 0, 0);
 
 	double maxNorm = 0;
 	size_t i = 0;
@@ -499,15 +507,20 @@ Vector3d Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector
 		Vector3d v1 = pt2 - pt1;
 
 		Vector3d n = v1.cross(v0);
-		double l = n.norm();
-		if (l > maxNorm) {
-			maxNorm = l;
-			n /= l;
+		if (norm.squaredNorm() > 0) {
+			if (n.dot(norm) < 0)
+				return false;
+			norm += n;
+		} else {
 			norm = n;
 		}
 	}
 
-	return norm;
+	norm.normalize();
+
+	if (norm.isNAN())
+		return false;
+	return true;
 }
 
 void Polygon::dumpPolygonPoints(const Block* pBlock, ostream& out, const MTC::vector<Index3DId>& vertIds)
@@ -540,10 +553,12 @@ const Vector3d& Polygon::calUnitNormal() const
 	if (_cachedNormal[0] == DBL_MAX) {
 		auto& nonColin = getNonColinearVertexIds();
 		auto p = getBlockPtr();
-		if (p)
-			_cachedNormal = calUnitNormalStat(p, nonColin);
-		else {
-			_cachedNormal = calUnitNormalStat(getPolyMeshPtr(), nonColin);
+		if (p) {
+			if (!calUnitNormalStat(p, nonColin, _cachedNormal))
+				throw runtime_error("calUnitNormal() failed");
+		} else {
+			if (!calUnitNormalStat(getPolyMeshPtr(), nonColin, _cachedNormal))
+				throw runtime_error("calUnitNormal() failed");
 		}
 		assert(fabs(_cachedNormal.squaredNorm() - 1) < 1.0e-12);
 		assert(!_cachedNormal.isNAN());
@@ -606,7 +621,10 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3
 {
 	const size_t sz = vertIds.size();
 	if (idx1 < sz) {
-		Vector3d norm = calUnitNormalStat(pBlock, vertIds);
+		Vector3d norm;
+		if (!calUnitNormalStat(pBlock, vertIds, norm)) {
+			return DBL_MAX;
+		}
 		size_t idx0 = (idx1 + sz - 1) % sz;
 		size_t idx2 = (idx1 + 1) % sz;
 

@@ -43,7 +43,7 @@ namespace Tolerance
 
 	inline double sameDistTolFloat() // This is needed for handling stl files, which are stored in float precision
 	{
-		return 0.25e-4; // meters
+		return 1.0e-5; // meters
 	}
 
 	inline double planeCoincidentDistTol()
