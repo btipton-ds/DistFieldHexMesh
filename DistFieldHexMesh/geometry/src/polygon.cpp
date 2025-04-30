@@ -617,6 +617,18 @@ Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
 	return result;
 }
 
+double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, const Index3DId& vertId)
+{
+	size_t idx1 = -1;
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		if (vertIds[i] == vertId) {
+			idx1 = i;
+			break;
+		}
+	}
+	return calVertexAngleStat(pBlock, vertIds, idx1);
+}
+
 double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t idx1)
 {
 	const size_t sz = vertIds.size();
@@ -631,6 +643,45 @@ double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3
 		Vector3d pt0 = pBlock->getVertexPoint(vertIds[idx0]);
 		Vector3d pt1 = pBlock->getVertexPoint(vertIds[idx1]);
 		Vector3d pt2 = pBlock->getVertexPoint(vertIds[idx2]);
+
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+
+		double dp = v1.dot(v0);
+		double cp = v1.cross(v0).dot(norm);
+		double angle = atan2(cp, dp);
+		return angle;
+	}
+
+	return nanf("");
+}
+
+double Polygon::calVertexAngleStat(const PolyMesh* pMesh, const MTC::vector<Index3DId>& vertIds, const Index3DId& vertId)
+{
+	size_t idx1 = -1;
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		if (vertIds[i] == vertId) {
+			idx1 = i;
+			break;
+		}
+	}
+	return calVertexAngleStat(pMesh, vertIds, idx1);
+}
+
+double Polygon::calVertexAngleStat(const PolyMesh* pMesh, const MTC::vector<Index3DId>& vertIds, size_t idx1)
+{
+	const size_t sz = vertIds.size();
+	if (idx1 < sz) {
+		Vector3d norm;
+		if (!calUnitNormalStat(pMesh, vertIds, norm)) {
+			return DBL_MAX;
+		}
+		size_t idx0 = (idx1 + sz - 1) % sz;
+		size_t idx2 = (idx1 + 1) % sz;
+
+		Vector3d pt0 = pMesh->getVertexPoint(vertIds[idx0]);
+		Vector3d pt1 = pMesh->getVertexPoint(vertIds[idx1]);
+		Vector3d pt2 = pMesh->getVertexPoint(vertIds[idx2]);
 
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
@@ -670,9 +721,13 @@ double Polygon::calVertexError(const vector<Index3DId>& testVertIds) const
 	return avgErr;
 }
 
-double Polygon::calVertexAngle(size_t idx1) const
+double Polygon::calVertexAngle(const Index3DId& vertId) const
 {
-	return calVertexAngleStat(getBlockPtr(), _vertexIds, idx1);
+	auto p = getBlockPtr();
+	if (p)
+		return calVertexAngleStat(p, _vertexIds, vertId);
+
+	return calVertexAngleStat(getPolyMeshPtr(), _vertexIds, vertId);
 }
 
 const Vector3d& Polygon::calCentroid() const

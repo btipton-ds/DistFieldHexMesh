@@ -177,18 +177,17 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 			vector<Index3DId> orderedFaceIds(faceIds.begin(), faceIds.end());
 
 			// ordered largest to smallest by area
-			sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
+			sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this, &radiantId](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
 				const auto& lhsFace = getPolygon(lhsId);
 				const auto& rhsFace = getPolygon(rhsId);
-				double lhsArea, rhsArea;
-				Vector3d discarded;
-				lhsFace.calAreaAndCentroid(lhsArea, discarded);
-				rhsFace.calAreaAndCentroid(rhsArea, discarded);
 
-				return lhsArea > rhsArea;
+				double lhsVertAngle = lhsFace.calVertexAngle(radiantId);
+				double rhsVertAngle = rhsFace.calVertexAngle(radiantId);
+
+				return lhsVertAngle < rhsVertAngle;
 			});
 
-			const auto& largestFace = getPolygon(orderedFaceIds.front());
+			const auto& largestFace = getPolygon(orderedFaceIds.back());
 			auto plane = largestFace.calPlane();
 
 
@@ -198,6 +197,12 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 				while (curFaceId.isValid()) {
 					const auto& curFace = getPolygon(curFaceId);
 					curFaceId = {};
+
+					double vertAngle = curFace.calVertexAngle(radiantId);
+					if (vertAngle > minAngleRadians) {
+						continue;
+					}
+
 					for (size_t i = orderedFaceIds.size() - 1; i != -1; i--) {
 						const auto& testFace = getPolygon(orderedFaceIds[i]);
 						auto commonEdge = findCommonEdge(curFace, testFace);

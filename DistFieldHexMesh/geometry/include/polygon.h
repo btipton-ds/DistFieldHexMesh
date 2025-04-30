@@ -84,11 +84,19 @@ public:
 	};
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
-	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t index);
+
+	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, size_t idx);
+	static double calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, const Index3DId& vertId);
+
+	static double calVertexAngleStat(const PolyMesh* pMesh, const MTC::vector<Index3DId>& vertIds, size_t idx);
+	static double calVertexAngleStat(const PolyMesh* pMesh, const MTC::vector<Index3DId>& vertIds, const Index3DId& vertId);
+
 	static bool calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& norm);
 	static bool calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds, Vector3d& norm);
+	
 	static Vector3d calCentroidApproxStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 	static Vector3d calCentroidApproxStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds);
+	
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
 	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
@@ -154,7 +162,7 @@ public:
 	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
 
-	double calVertexAngle(size_t index) const;
+	double calVertexAngle(const Index3DId& vertId) const;
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
 	double distFromPlane(const Vector3d& pt) const;
 
