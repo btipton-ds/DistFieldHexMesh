@@ -81,8 +81,7 @@ namespace DFHM {
 
 		const Vector3d& getVertexPoint(const Index3DId& id) const;
 		void makeQuads(const SplittingParams& params);
-		void reduceSlivers(const SplittingParams& params, double minAngleRadians);
-		void reduceSlivers_old(const SplittingParams& params, double minAngleRadians);
+		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		void calCurvatures();
 		void removeFace(const Index3DId& id);
 		double getEdgeCurvature(const EdgeKey& key) const;
