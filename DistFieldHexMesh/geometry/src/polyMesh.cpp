@@ -174,54 +174,131 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double minAngleRadia
 		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
 		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
 		for (const auto& faceIds : planarFaceSets) {
-			vector<Index3DId> orderedFaceIds(faceIds.begin(), faceIds.end());
+			processPlanarFaces(params, radiantId, minAngleRadians, faceIds);
+		}
+	}
+}
 
-			// ordered largest to smallest by area
-			sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this, &radiantId](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
-				const auto& lhsFace = getPolygon(lhsId);
-				const auto& rhsFace = getPolygon(rhsId);
+void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds)
+{
+	const auto& radiantVert = getVertex(radiantId);
+	vector<Index3DId> orderedFaceIds(faceIds.begin(), faceIds.end());
+	set<Index3DId> faceIdSet(faceIds.begin(), faceIds.end()), sharedVerts;
 
-				double lhsVertAngle = lhsFace.calVertexAngle(radiantId);
-				double rhsVertAngle = rhsFace.calVertexAngle(radiantId);
+	// ordered largest to smallest by area
+	sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this, &radiantId](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
+		const auto& lhsFace = getPolygon(lhsId);
+		const auto& rhsFace = getPolygon(rhsId);
 
-				return lhsVertAngle < rhsVertAngle;
-			});
+		double lhsVertAngle = lhsFace.calVertexAngle(radiantId);
+		double rhsVertAngle = rhsFace.calVertexAngle(radiantId);
 
-			const auto& largestFace = getPolygon(orderedFaceIds.back());
-			auto plane = largestFace.calPlane();
+		return lhsVertAngle < rhsVertAngle;
+	});
 
+	const auto& largestFace = getPolygon(orderedFaceIds.back());
+	double largestAngle = largestFace.calVertexAngle(radiantId);
+	auto basePlane = largestFace.calPlane();
 
-			while (!orderedFaceIds.empty()) {
-				auto curFaceId = orderedFaceIds.back();
-				orderedFaceIds.pop_back();
-				while (curFaceId.isValid()) {
-					const auto& curFace = getPolygon(curFaceId);
-					curFaceId = {};
+	set<Index3DId> connectedVertIds;
+	for (size_t i = 0; i < faceIds.size(); i++) {
+		const auto& face = getPolygon(faceIds[i]);
+		face.iterateEdges([this, &basePlane, &radiantId, &connectedVertIds, &faceIdSet, &sharedVerts](const Edge& edge)->bool {
+			auto id = edge.getOtherVert(radiantId);
+			if (id.isValid()) {
+				connectedVertIds.insert(id);
 
-					double vertAngle = curFace.calVertexAngle(radiantId);
-					if (vertAngle > minAngleRadians) {
-						continue;
-					}
+				const auto& adjFaceIds = edge.getFaceIds();
+				int numAdj = 0;
+				for (const auto& adjFaceId : adjFaceIds) {
+					if (faceIdSet.contains(adjFaceId))
+						numAdj++;
+				}
+				if (numAdj == 2)
+					sharedVerts.insert(id);
+			}
+			return true;
+		});
+	}
 
-					for (size_t i = orderedFaceIds.size() - 1; i != -1; i--) {
-						const auto& testFace = getPolygon(orderedFaceIds[i]);
-						auto commonEdge = findCommonEdge(curFace, testFace);
-						if (commonEdge.isValid()) {
-							auto otherId = commonEdge.getOtherVert(radiantId);
-							if (otherId.isValid()) {
-								auto newFaceId = removeEdge(params, plane, radiantId, otherId);
-								if (newFaceId.isValid()) {
-									orderedFaceIds.erase(orderedFaceIds.begin() + i);
-									curFaceId = newFaceId;
-									break;
-								}
-							}
+	if (connectedVertIds.empty())
+		return;
+
+	vector<Index3DId> orderedVertIds(connectedVertIds.begin(), connectedVertIds.end());
+	auto axisId = orderedVertIds.front();
+
+	const auto& face = getPolygon(faceIds.front());
+	auto zAxis = face.calUnitNormal();
+	const auto& origin = radiantVert.getPoint();
+	const auto& pt1 = getVertexPoint(axisId);
+	Vector3d xAxis = (pt1 - origin).normalized();
+	Vector3d yAxis = zAxis.cross(xAxis);
+
+	vector<pair<double, Index3DId>> planarAngleEdgeMap;
+	for (const auto& vertId : orderedVertIds) {
+		double angle = calEdgeAngle(vertId, origin, xAxis, yAxis);
+		planarAngleEdgeMap.push_back(make_pair(angle, vertId));
+	}
+
+	if (planarAngleEdgeMap.size() < 2)
+		return;
+
+	sort(planarAngleEdgeMap.begin(), planarAngleEdgeMap.end(), [](const pair<double, Index3DId>& lhs, const pair<double, Index3DId>& rhs)->bool {
+		return lhs.first < rhs.first;
+	});
+	
+	auto lastAngle = planarAngleEdgeMap.back().first;
+	for (const auto& pair : planarAngleEdgeMap) {
+		auto thisAngle = pair.first;
+		const auto& thisId = pair.second;
+		auto deltaAngle = thisAngle - lastAngle;
+		if (deltaAngle < 0) {
+			deltaAngle += 2 * M_PI;
+		}
+
+		if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
+			lastAngle = thisAngle;
+		}
+		else {
+			auto newFaceId = removeEdge(params, basePlane, radiantId, thisId);
+			if (!newFaceId.isValid()) {
+				lastAngle = thisAngle;
+			}
+		}
+	}
+
+#if 0
+
+	while (!orderedFaceIds.empty()) {
+		auto curFaceId = orderedFaceIds.back();
+		orderedFaceIds.pop_back();
+		while (curFaceId.isValid()) {
+			const auto& curFace = getPolygon(curFaceId);
+			curFaceId = {};
+
+			double vertAngle = curFace.calVertexAngle(radiantId);
+			if (vertAngle > minAngleRadians) {
+				continue;
+			}
+
+			for (size_t i = orderedFaceIds.size() - 1; i != -1; i--) {
+				const auto& testFace = getPolygon(orderedFaceIds[i]);
+				auto commonEdge = findCommonEdge(curFace, testFace);
+				if (commonEdge.isValid()) {
+					auto otherId = commonEdge.getOtherVert(radiantId);
+					if (otherId.isValid()) {
+						auto newFaceId = removeEdge(params, basePlane, radiantId, otherId);
+						if (newFaceId.isValid()) {
+							orderedFaceIds.erase(orderedFaceIds.begin() + i);
+							curFaceId = newFaceId;
+							break;
 						}
 					}
 				}
 			}
 		}
 	}
+#endif
 }
 
 void PolyMesh::reduceSlivers_old(const SplittingParams& params, double minAngleRadians)
