@@ -66,7 +66,7 @@ void MeshData::postReadCreate()
 	_pPolyMesh->makeQuads(params);
 
 #if 1
-	double maxSliverAngleRadians = 5 / 180.0 * M_PI;
+	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
 	_pPolyMesh->reduceSlivers(params, maxSliverAngleRadians);
 #endif
 

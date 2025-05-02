@@ -168,11 +168,12 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 
 	for (const auto& radiantId : orderedVertIds) {
 		const auto& vert = getVertex(radiantId);
-		if (radiantId == Index3DId(0, 0, 0, 113)) {
+		const auto& faceIds = vert.getFaceIds();
+		if (faceIds.size() > 90 || radiantId == Index3DId(0, 0, 0, 113)) {
 			int dbgBreak = 1;
 		}
 		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
-		makeCoplanarFaceSets(vert.getFaceIds(), planarFaceSets);
+		makeCoplanarFaceSets(faceIds, planarFaceSets);
 		for (const auto& faceIds : planarFaceSets) {
 			processPlanarFaces(params, radiantId, maxSliverAngleRadians, faceIds);
 		}
@@ -247,6 +248,7 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 		return lhs.first < rhs.first;
 	});
 	
+	cout << "Radiant id: " << radiantId << "\n";
 	auto lastAngle = planarAngleEdgeMap.back().first;
 	for (const auto& pair : planarAngleEdgeMap) {
 		auto thisAngle = pair.first;
@@ -256,11 +258,13 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 			deltaAngle += 2 * M_PI;
 		}
 
+		cout << "  Angle: " << (thisAngle * 180 / M_PI) << ", deltaAngle: " << (deltaAngle * 180 / M_PI);
 		if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
 			lastAngle = thisAngle;
-		}
-		else {
-			auto newFaceId = removeEdge(params, basePlane, radiantId, thisId);
+			cout << " skipped anngle too large\n";
+		} else {
+			bool requireSliver = true;
+			auto newFaceId = removeEdge(params, basePlane, radiantId, thisId, requireSliver);
 			if (!newFaceId.isValid()) {
 				lastAngle = thisAngle;
 			}
@@ -269,7 +273,7 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 
 }
 
-Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
+Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId, bool requireSliver)
 {
 	const double MAX_CP = 0.02;
 	const double MAX_CP_SQR = MAX_CP * MAX_CP;
@@ -277,10 +281,12 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 
 	Index3DId result;
 	EdgeKey key(radiantVertId, otherVertId);
-	edgeFunc(key, [this, &plane, &params, &radiantVertId, &result](const Edge& edge) {
+	edgeFunc(key, [this, &plane, &params, requireSliver, &radiantVertId, &result](const Edge& edge) {
 		const auto& faceIds = edge.getFaceIds();
-		if (faceIds.size() != 2)
+		if (faceIds.size() != 2) {
+			cout << " skipped, too many faces\n";
 			return;
+		}
 
 		auto iter = faceIds.begin();
 
@@ -290,13 +296,22 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 		auto& face0 = getPolygon(faceId0);
 		auto& face1 = getPolygon(faceId1);
 
-		if (isShortEdge(edge, face0, face1))
+		const auto& otherId = edge.getOtherVert(radiantVertId);
+		if (!otherId.isValid()) {
+			cout << " skipped, otherId invalid\n";
 			return;
+		}
+		if (requireSliver && adjacentEdgesAreTooLong(radiantVertId, otherId, face0, face1)) {
+			cout << " skipped, adjacent too long\n";
+			return;
+		}
 
 		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
-		if (norm0.dot(norm1) < 0)
+		if (norm0.dot(norm1) < 0) {
+			cout << " skipped, reversed normal\n";
 			return;
+		}
 
 		const auto& vertIds0 = face0.getVertexIds();
 		const auto& vertIds1 = face1.getVertexIds();
@@ -375,8 +390,10 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 		if (newVertIds.front() == newVertIds.back())
 			newVertIds.pop_back();
 
-		if (!hasValidRotation(newVertIds, norm0))
+		if (!hasValidRotation(newVertIds, norm0)) {
+			cout << " skipped, invalid rotation\n";
 			return;
+		}
 
 		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
 		Vector3d n2;
@@ -402,8 +419,10 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 		assert(norm0.dot(n) > 0);
 		assert(norm1.dot(n) > 0);
 
-		if (hasHighLocalConvexity(params, norm0, newVertIds))
+		if (hasHighLocalConvexity(params, norm0, newVertIds)) {
+			cout << " skipped, too high convexity\n";
 			return;
+		}
 
 		// Run through all possible rotations
 
@@ -428,6 +447,10 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 			face.setCentroid_risky(plane.getOrgin());
 			face.setUnitNormal_risky(plane.getNormal());
 			face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
+			cout << " merged\n";
+		} else {
+			cout << " skipped, invalid rotation\n";
+			return;
 		}
 	});
 
@@ -503,6 +526,54 @@ bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon
 	auto sqrEdgeLen = sqrt(area0 + area1);
 	// Don't merge a short edge
 	return edgeLength < sqrEdgeLen;
+}
+
+bool PolyMesh::adjacentEdgesAreTooLong(const Index3DId& radiantId, const Index3DId& otherId, const Polygon& face0, const Polygon& face1) const
+{
+	EdgeKey ek(radiantId, otherId), ek0, ek1;
+
+	face0.iterateEdges([&otherId, &ek, &ek0](const Edge& testEdge)->bool {
+		if (ek != testEdge) {
+			if (testEdge.containsVertex(otherId)) {
+				ek0 = testEdge;
+				return false;
+			}
+		}
+		return true;
+	});
+
+	if (!ek0.isValid())
+		return false;
+
+	face1.iterateEdges([&otherId, &ek, &ek1](const Edge& testEdge)->bool {
+		if (ek != testEdge) {
+			if (testEdge.containsVertex(otherId)) {
+				ek1 = testEdge;
+				return false;
+			}
+		}
+		return true;
+	});
+
+	if (!ek1.isValid())
+		return false;
+
+	double thisLen, len0, len1;
+
+	edgeFunc(ek, [&thisLen](const Edge& e) {
+		thisLen = e.calLength();
+	});
+
+	edgeFunc(ek0, [&len0](const Edge& e) {
+		len0 = e.calLength();
+	});
+
+	edgeFunc(ek1, [&len1](const Edge& e) {
+		len1 = e.calLength();
+	});
+
+	double ratio = (len0 + len1) / thisLen;
+	return ratio > 0.1;
 }
 
 bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const
@@ -753,37 +824,9 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	Vector3d ctr = (ctr0 * area0 + ctr1 * area1) / (area0 + area1);
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
-#if 1
 	Planed plane(ctr, norm);
-	removeEdge(params, plane, edge[0], edge[1]);
-#else
-	MTC::vector<Index3DId> newVertIds;
-	for (size_t i = 0; i < vertIds0.size(); i++) {
-		size_t j = (i + 1) % vertIds0.size();
-		newVertIds.push_back(vertIds0[i]);
-		if (edge.containsVertex(vertIds0[i]) && edge.containsVertex(vertIds0[j])) {
-			newVertIds.push_back(otherId1);
-		}
-	}
-
-	if (hasValidRotation(newVertIds, norm)) {
-		removeFace(faceId0);
-		removeFace(faceId1);
-		Polygon newFace(newVertIds);
-		auto newFaceId = _polygons.findOrAdd(newFace);
-		auto& face = getPolygon(newFaceId);
-#ifdef _DEBUG
-		{
-			auto n = face.calUnitNormal();
-			assert(n.dot(norm0) > 0);
-			assert(n.dot(norm1) > 0);
-		}
-#endif // _DEBUG
-
-		// For this new face to have the plane of the source faces
-		face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
-	}
-#endif
+	bool requireSliver = false;
+	removeEdge(params, plane, edge[0], edge[1], requireSliver);
 }
 
 void PolyMesh::removeFace(const Index3DId& id)
