@@ -301,10 +301,6 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 			cout << " skipped, otherId invalid\n";
 			return;
 		}
-		if (requireSliver && adjacentEdgesAreTooLong(radiantVertId, otherId, face0, face1)) {
-			cout << " skipped, adjacent too long\n";
-			return;
-		}
 
 		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
@@ -526,54 +522,6 @@ bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon
 	auto sqrEdgeLen = sqrt(area0 + area1);
 	// Don't merge a short edge
 	return edgeLength < sqrEdgeLen;
-}
-
-bool PolyMesh::adjacentEdgesAreTooLong(const Index3DId& radiantId, const Index3DId& otherId, const Polygon& face0, const Polygon& face1) const
-{
-	EdgeKey ek(radiantId, otherId), ek0, ek1;
-
-	face0.iterateEdges([&otherId, &ek, &ek0](const Edge& testEdge)->bool {
-		if (ek != testEdge) {
-			if (testEdge.containsVertex(otherId)) {
-				ek0 = testEdge;
-				return false;
-			}
-		}
-		return true;
-	});
-
-	if (!ek0.isValid())
-		return false;
-
-	face1.iterateEdges([&otherId, &ek, &ek1](const Edge& testEdge)->bool {
-		if (ek != testEdge) {
-			if (testEdge.containsVertex(otherId)) {
-				ek1 = testEdge;
-				return false;
-			}
-		}
-		return true;
-	});
-
-	if (!ek1.isValid())
-		return false;
-
-	double thisLen, len0, len1;
-
-	edgeFunc(ek, [&thisLen](const Edge& e) {
-		thisLen = e.calLength();
-	});
-
-	edgeFunc(ek0, [&len0](const Edge& e) {
-		len0 = e.calLength();
-	});
-
-	edgeFunc(ek1, [&len1](const Edge& e) {
-		len1 = e.calLength();
-	});
-
-	double ratio = (len0 + len1) / thisLen;
-	return ratio > 0.1;
 }
 
 bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const
