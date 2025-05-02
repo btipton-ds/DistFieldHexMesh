@@ -309,6 +309,10 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 			return;
 		}
 
+		if (requireSliver && !adjacentEdgesHaveSimilarLength(edge, face0, face1)) {
+			cout << " skipped, adjacent edge do not have similar length\n";
+			return;
+		}
 		const auto& vertIds0 = face0.getVertexIds();
 		const auto& vertIds1 = face1.getVertexIds();
 
@@ -547,6 +551,39 @@ bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector
 			return true;
 	}
 	return false;
+}
+
+bool PolyMesh::adjacentEdgesHaveSimilarLength(const Edge& edge, const Polygon& face0, const Polygon& face1) const
+{
+	const double MAX_LENGTH_VARIATION = 0.025;
+	const auto& radiantId = edge[0];
+	const auto& otherId = edge[1];
+	double edgeLen = edge.calLength(), len0, len1;
+
+	face0.iterateEdges([&len0, &edge, &radiantId](const Edge& testEdge)->bool {
+		if (testEdge != edge && testEdge.containsVertex(radiantId)) {
+			len0 = testEdge.calLength();
+			return false;
+		}
+		return true;
+	});
+
+	face1.iterateEdges([&len1, &edge, &radiantId](const Edge& testEdge)->bool {
+		if (testEdge != edge && testEdge.containsVertex(radiantId)) {
+			len1 = testEdge.calLength();
+			return false;
+		}
+		return true;
+	});
+
+	double ratio;
+	if (len0 > len1)
+		ratio = len1 / len0;
+	else
+		ratio = len0 / len1;
+
+	assert(ratio <= 1); // Should be guaranteed due to the preceding if test
+	return ratio > 1 - MAX_LENGTH_VARIATION;
 }
 
 double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const

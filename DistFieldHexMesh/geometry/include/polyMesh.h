@@ -108,6 +108,7 @@ namespace DFHM {
 		void processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds);
 		Index3DId removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId, bool requireSliver);
 		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
+		bool adjacentEdgesHaveSimilarLength(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
 		bool isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
 		bool hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
