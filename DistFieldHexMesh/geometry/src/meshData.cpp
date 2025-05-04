@@ -63,13 +63,7 @@ void MeshData::postReadCreate()
 
 	_pMesh->clearSearchTrees();
 	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
-	_pPolyMesh->makeQuads(params);
-
-#if 1
-	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
-	_pPolyMesh->reduceSlivers(params, maxSliverAngleRadians);
-#endif
-
+	_pPolyMesh->simplify(params);
 }
 
 void MeshData::clear()

@@ -119,6 +119,17 @@ const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
 	return _vertices[id];
 }
 
+void PolyMesh::simplify(const SplittingParams& params)
+{
+	makeQuads(params);
+
+#if 1
+	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
+	reduceSlivers(params, maxSliverAngleRadians);
+#endif
+
+}
+
 void PolyMesh::makeQuads(const SplittingParams& params)
 {
 	auto sortLenFunc = [this](const EdgeKey& lhs, const EdgeKey& rhs) {

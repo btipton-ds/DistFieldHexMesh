@@ -80,6 +80,7 @@ namespace DFHM {
 		PolyMesh* getPolyMeshPtr() override;
 
 		const Vector3d& getVertexPoint(const Index3DId& id) const;
+		void simplify(const SplittingParams& params);
 		void makeQuads(const SplittingParams& params);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		void calCurvatures();
