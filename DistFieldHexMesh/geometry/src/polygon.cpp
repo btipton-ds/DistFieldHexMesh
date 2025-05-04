@@ -494,26 +494,26 @@ bool Polygon::calUnitNormalStat(const PolyMesh* pPolyMesh, const MTC::vector<Ind
 {
 	norm = Vector3d(0, 0, 0);
 
-	double maxNorm = 0;
 	size_t i = 0;
 	Vector3d pt0 = pPolyMesh->getVertexPoint(vertIds[i]);
 	for (size_t j = 1; j < vertIds.size() - 1; j++) {
 		size_t k = (j + 1) % vertIds.size();
 
-		Vector3d pt1 = pPolyMesh->getVertexPoint(vertIds[j]);
-		Vector3d pt2 = pPolyMesh->getVertexPoint(vertIds[k]);
+		const auto& pt1 = pPolyMesh->getVertexPoint(vertIds[j]);
+		const auto& pt2 = pPolyMesh->getVertexPoint(vertIds[k]);
 
 		Vector3d v0 = pt0 - pt1;
 		Vector3d v1 = pt2 - pt1;
 
 		Vector3d n = v1.cross(v0);
+#if 1 && defined(_DEBUG)
 		if (norm.squaredNorm() > 0) {
-			if (n.dot(norm) < 0)
+			auto dp = n.dot(norm);
+			if (dp < 0)
 				return false;
-			norm += n;
-		} else {
-			norm = n;
 		}
+#endif
+		norm += n;
 	}
 
 	norm.normalize();

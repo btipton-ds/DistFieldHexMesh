@@ -111,11 +111,11 @@ namespace DFHM {
 		bool adjacentEdgesHaveSimilarLength(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
 		bool isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
-		bool hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
-		bool formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
+		bool formsValidPolygon(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
 		EdgeKey findCommonEdge(const Polygon& a, const Polygon& b);
 
-		void dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& uniqueVerts);
+		void dumpVertsAsPolygon(const std::string& path, const MTC::vector<Index3DId>& vertIds) const;
+		void dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& uniqueVerts) const;
 
 		AppDataPtr _pAppData;
 		ObjectPool<Vertex> _vertices;

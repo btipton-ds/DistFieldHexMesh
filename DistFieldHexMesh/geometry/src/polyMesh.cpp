@@ -168,14 +168,16 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 
 	for (const auto& radiantId : orderedVertIds) {
 		const auto& vert = getVertex(radiantId);
-		const auto& faceIds = vert.getFaceIds();
-		if (faceIds.size() > 90 || radiantId == Index3DId(0, 0, 0, 113)) {
+		const auto faceIds = vert.getFaceIds();
+		if (faceIds.size() > 90 || radiantId == Index3DId(0, 0, 0, 6145)) {
 			int dbgBreak = 1;
 		}
 		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
 		makeCoplanarFaceSets(faceIds, planarFaceSets);
 		for (const auto& faceIds : planarFaceSets) {
-			processPlanarFaces(params, radiantId, maxSliverAngleRadians, faceIds);
+			if (faceIds.size() > 2) {
+				processPlanarFaces(params, radiantId, maxSliverAngleRadians, faceIds);
+			}
 		}
 	}
 }
@@ -248,7 +250,6 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 		return lhs.first < rhs.first;
 	});
 	
-	cout << "Radiant id: " << radiantId << "\n";
 	auto lastAngle = planarAngleEdgeMap.back().first;
 	for (const auto& pair : planarAngleEdgeMap) {
 		auto thisAngle = pair.first;
@@ -258,10 +259,8 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 			deltaAngle += 2 * M_PI;
 		}
 
-		cout << "  Angle: " << (thisAngle * 180 / M_PI) << ", deltaAngle: " << (deltaAngle * 180 / M_PI);
 		if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
 			lastAngle = thisAngle;
-			cout << " skipped anngle too large\n";
 		} else {
 			bool requireSliver = true;
 			auto newFaceId = removeEdge(params, basePlane, radiantId, thisId, requireSliver);
@@ -282,13 +281,12 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 	Index3DId result;
 	EdgeKey key(radiantVertId, otherVertId);
 	edgeFunc(key, [this, &plane, &params, requireSliver, &radiantVertId, &result](const Edge& edge) {
-		const auto& faceIds = edge.getFaceIds();
-		if (faceIds.size() != 2) {
-			cout << " skipped, too many faces\n";
+		const auto& edgeFaceIds = edge.getFaceIds();
+		if (edgeFaceIds.size() != 2) {
 			return;
 		}
 
-		auto iter = faceIds.begin();
+		auto iter = edgeFaceIds.begin();
 
 		const auto& faceId0 = *iter++;
 		const auto& faceId1 = *iter;
@@ -298,19 +296,16 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 
 		const auto& otherId = edge.getOtherVert(radiantVertId);
 		if (!otherId.isValid()) {
-			cout << " skipped, otherId invalid\n";
 			return;
 		}
 
 		auto norm0 = face0.calUnitNormal();
 		auto norm1 = face1.calUnitNormal();
 		if (norm0.dot(norm1) < 0) {
-			cout << " skipped, reversed normal\n";
 			return;
 		}
 
 		if (requireSliver && !adjacentEdgesHaveSimilarLength(edge, face0, face1)) {
-			cout << " skipped, adjacent edge do not have similar length\n";
 			return;
 		}
 		const auto& vertIds0 = face0.getVertexIds();
@@ -389,16 +384,14 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 
 		if (newVertIds.front() == newVertIds.back())
 			newVertIds.pop_back();
-
-		if (!hasValidRotation(newVertIds, norm0)) {
-			cout << " skipped, invalid rotation\n";
-			return;
-		}
+		assert(newVertIds[0] == radiantVertId);
 
 		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
 		Vector3d n2;
-		if (!Polygon::calUnitNormalStat(this, newVertIds, n2))
+		if (!Polygon::calUnitNormalStat(this, newVertIds, n2)) {
+			dumpVertsAsPolygon("D:/DarkSky/Projects/output/objs/badPolyNormal.obj", newVertIds);
 			return;
+		}
 
 		if (n2.dot(norm0) < 0) {
 			// DO NOT USE - std::reverse(newVertIds.begin(), newVertIds.end());
@@ -420,13 +413,12 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 		assert(norm1.dot(n) > 0);
 
 		if (hasHighLocalConvexity(params, norm0, newVertIds)) {
-			cout << " skipped, too high convexity\n";
 			return;
 		}
 
 		// Run through all possible rotations
 
-		if (hasValidRotation(newVertIds, norm0)) {
+		if (formsValidPolygon(params, newVertIds, norm0)) {
 			removeFace(faceId0);
 			removeFace(faceId1);
 			Polygon newFace(newVertIds);
@@ -447,9 +439,7 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 			face.setCentroid_risky(plane.getOrgin());
 			face.setUnitNormal_risky(plane.getNormal());
 			face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
-			cout << " merged\n";
 		} else {
-			cout << " skipped, invalid rotation\n";
 			return;
 		}
 	});
@@ -457,23 +447,7 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 	return result;
 }
 
-bool PolyMesh::hasValidRotation(MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
-{
-	// Brute force rotation and test of all vertices to assure that all fan triangles have correctly oriented normals.
-	// The prevents "drawing out of bounds" when retessellating for rendering and correct intersection for raycasting and curvature calculations.
-	// If vertIds is constructed with the radiant vertex of the fan in position zero, no rotations will be required.
-	// The loop is a safety net for cases that don't match that rule.
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		bool isValid = formsValidPolygon(vertIds, norm);
-		if (isValid)
-			return true;
-		rotate(vertIds.begin(), vertIds.begin() + 1, vertIds.end());
-	}
-
-	return false;
-}
-
-bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
+bool PolyMesh::formsValidPolygon(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const
 {
 	vector<Vector3d> pts;
 	for (const auto& id : vertIds) {
@@ -488,14 +462,17 @@ bool PolyMesh::formsValidPolygon(const MTC::vector<Index3DId>& vertIds, const Ve
 		const auto& pt1 = pts[j];
 		const auto& pt2 = pts[k];
 
-		auto v0 = pt0 - pt1;
-		auto v1 = pt2 - pt1;
+		auto v0 = (pt0 - pt1).normalized();
+		auto v1 = (pt2 - pt1).normalized();
 		n = v1.cross(v0);
-		if (norm.dot(n) < 0)
+		auto dp = norm.dot(n);
+		if (dp < params.maxLocalConcavityCrossProduct)
 			return false;
 	}
 
-	return Polygon::calUnitNormalStat(this, vertIds, n);
+	if (!Polygon::calUnitNormalStat(this, vertIds, n))
+		return false;
+	return true;
 }
 
 EdgeKey PolyMesh::findCommonEdge(const Polygon& a, const Polygon& b)
@@ -555,7 +532,7 @@ bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector
 
 bool PolyMesh::adjacentEdgesHaveSimilarLength(const Edge& edge, const Polygon& face0, const Polygon& face1) const
 {
-	const double MAX_LENGTH_VARIATION = 0.025;
+	const double MAX_LENGTH_VARIATION = 0.075;
 	const auto& radiantId = edge[0];
 	const auto& otherId = edge[1];
 	double edgeLen = edge.calLength(), len0, len1;
@@ -879,8 +856,23 @@ std::vector<unsigned int> PolyMesh::getGlTriIndices() const
 	return result;
 }
 
+void PolyMesh::dumpVertsAsPolygon(const std::string& path, const MTC::vector<Index3DId>& vertIds) const
+{
+	ofstream out(path);
+	for (const auto& id : vertIds) {
+		const auto& pt = getVertexPoint(id);
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
 
-void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& sharedVerts)
+	out << "f";
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t idx = i + 1;
+		out << " " << idx;
+	}
+	out << "\n";
+}
+
+void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& sharedVerts) const
 {
 	vector<Index3DId> verts;
 	map<Index3DId, size_t> ptToIndexMap;
@@ -893,6 +885,9 @@ void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index
 	ptToIndexMap.insert(make_pair(radiantId, 0));
 
 	for (const auto& faceId : faceIds) {
+		if (!_polygons.exists(faceId))
+			continue;
+
 		const auto& face = getPolygon(faceId);
 		const auto& vertIds = face.getVertexIds();
 		for (size_t i = 0; i < vertIds.size(); i++) {
@@ -914,8 +909,10 @@ void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index
 			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
 		}
 
-		for (const auto& id : faceIds) {
-			const auto& face = getPolygon(id);
+		for (const auto& faceId : faceIds) {
+			if (!_polygons.exists(faceId))
+				continue;
+			const auto& face = getPolygon(faceId);
 			const auto& vertIds = face.getVertexIds();
 			out << "f";
 			for (const auto& id : vertIds) {
@@ -937,8 +934,10 @@ void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index
 		for (const auto& id : sharedVerts) {
 			size_t idx0 = 1;
 			auto iter = ptToIndexMap.find(id);
-			size_t idx1 = iter->second + 1;
-			out << "l " << idx0 << " " << idx1 << "\n";
+			if (iter != ptToIndexMap.end()) {
+				size_t idx1 = iter->second + 1;
+				out << "l " << idx0 << " " << idx1 << "\n";
+			}
 		}
 	}
 }
