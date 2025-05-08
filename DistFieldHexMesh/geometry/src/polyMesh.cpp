@@ -152,9 +152,11 @@ void PolyMesh::simplify(const SplittingParams& params)
 
 				Vector3d normal = face0.calUnitNormal() + face1.calUnitNormal();
 				Planed plane(pt, normal);
-				auto newFaceId = removeEdge(params, plane, edge, true);
-				if (newFaceId.isValid()) {
-					changed = true;
+				if (adjacentEdgesHaveSimilarLength(edge)) {
+					auto newFaceId = removeEdge(params, plane, edge);
+					if (newFaceId.isValid()) {
+						changed = true;
+					}
 				}
 			});
 		}
@@ -307,10 +309,12 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 		if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
 			lastAngle = thisAngle;
 		} else {
-			bool requireSliver = true;
-			auto newFaceId = removeEdge(params, basePlane, radiantId, thisId, requireSliver);
-			if (!newFaceId.isValid()) {
-				lastAngle = thisAngle;
+			EdgeKey ek(radiantId, thisId);
+			if (adjacentEdgesHaveSimilarLength(ek)) {
+				auto newFaceId = removeEdge(params, basePlane, radiantId, thisId);
+				if (!newFaceId.isValid()) {
+					lastAngle = thisAngle;
+				}
 			}
 		}
 	}
@@ -362,15 +366,51 @@ bool PolyMesh::chooseRadiantVertId(const SplittingParams& params, const Planed& 
 	return radiantVertId.isValid() && otherVertId.isValid();
 }
 
-Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key, bool requireSliver)
+bool PolyMesh::isRemovable(const SplittingParams& params, const EdgeKey& key) const
+{
+	bool result = false;
+
+	edgeFunc(key, [this, &params, &result](const Edge& edge) {
+		const auto& faceIds = edge.getFaceIds();
+		auto iter = faceIds.begin();
+		const auto& id0 = *iter++;
+		const auto& id1 = *iter;
+
+		const auto& face0 = getPolygon(id0);
+		const auto& face1 = getPolygon(id1);
+
+		const auto& verts0 = face0.getVertexIds();
+		const auto& verts1 = face1.getVertexIds();
+
+		if (verts0.size() + verts1.size() < 8) {
+			double area0, area1;
+			Vector3d discarded;
+			face0.calAreaAndCentroid(area0, discarded);
+			face1.calAreaAndCentroid(area1, discarded);
+			if (area0 > area1)
+				swap(area0, area1);
+			double ratio = area0 / area1;
+			if (ratio > 0.95) {
+				double l = edge.calLength();
+				double w = (area0 + area1) / l;
+				double aspectRatio = l / w;
+				result = aspectRatio > 5;
+			}
+		}
+	});
+
+	return result;
+}
+
+Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const EdgeKey& key)
 {
 	Index3DId radiantVertId, otherVertId;
 	if (chooseRadiantVertId(params, plane, key, radiantVertId, otherVertId))
-		return removeEdge(params, plane, radiantVertId, otherVertId, requireSliver);
+		return removeEdge(params, plane, radiantVertId, otherVertId);
 	return Index3DId();
 }
 
-Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId, bool requireSliver)
+Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)
 {
 	const double MAX_CP = 0.02;
 	const double MAX_CP_SQR = MAX_CP * MAX_CP;
@@ -378,7 +418,7 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 
 	Index3DId result;
 	EdgeKey key(radiantVertId, otherVertId);
-	edgeFunc(key, [this, &plane, &params, requireSliver, &radiantVertId, &result](const Edge& edge) {
+	edgeFunc(key, [this, &plane, &params, &radiantVertId, &result](const Edge& edge) {
 		const auto& edgeFaceIds = edge.getFaceIds();
 		if (edgeFaceIds.size() != 2) {
 			return;
@@ -403,9 +443,6 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 			return;
 		}
 
-		if (requireSliver && !adjacentEdgesHaveSimilarLength(edge, face0, face1)) {
-			return;
-		}
 		const auto& vertIds0 = face0.getVertexIds();
 		const auto& vertIds1 = face1.getVertexIds();
 
@@ -634,36 +671,47 @@ bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector
 	return false;
 }
 
-bool PolyMesh::adjacentEdgesHaveSimilarLength(const Edge& edge, const Polygon& face0, const Polygon& face1) const
+bool PolyMesh::adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey) const
 {
 	const double MAX_LENGTH_VARIATION = 0.2;
-	const auto& radiantId = edge[0];
-	const auto& otherId = edge[1];
-	double edgeLen = edge.calLength(), len0, len1;
-
-	face0.iterateEdges([&len0, &edge, &radiantId](const Edge& testEdge)->bool {
-		if (testEdge != edge && testEdge.containsVertex(radiantId)) {
-			len0 = testEdge.calLength();
-			return false;
-		}
-		return true;
-	});
-
-	face1.iterateEdges([&len1, &edge, &radiantId](const Edge& testEdge)->bool {
-		if (testEdge != edge && testEdge.containsVertex(radiantId)) {
-			len1 = testEdge.calLength();
-			return false;
-		}
-		return true;
-	});
-
 	double ratio;
-	if (len0 > len1)
-		ratio = len1 / len0;
-	else
-		ratio = len0 / len1;
+	edgeFunc(edgeKey, [this, &ratio](const Edge& edge) {
+		const auto& radiantId = edge[0];
 
-	assert(ratio <= 1); // Should be guaranteed due to the preceding if test
+		auto& faceIds = edge.getFaceIds();
+		auto iter = faceIds.begin();
+		const auto& faceId0 = *iter++;
+		const auto& faceId1 = *iter;
+
+		const auto& face0 = getPolygon(faceId0);
+		const auto& face1 = getPolygon(faceId1);
+
+		double edgeLen = edge.calLength(), len0, len1;
+
+		face0.iterateEdges([&len0, &edge, &radiantId](const Edge& testEdge)->bool {
+			if (testEdge != edge && testEdge.containsVertex(radiantId)) {
+				len0 = testEdge.calLength();
+				return false;
+			}
+			return true;
+			});
+
+		face1.iterateEdges([&len1, &edge, &radiantId](const Edge& testEdge)->bool {
+			if (testEdge != edge && testEdge.containsVertex(radiantId)) {
+				len1 = testEdge.calLength();
+				return false;
+			}
+			return true;
+			});
+
+		if (len0 > len1)
+			ratio = len1 / len0;
+		else
+			ratio = len0 / len1;
+
+		assert(ratio <= 1); // Should be guaranteed due to the preceding if test
+	});
+
 	return ratio > 1 - MAX_LENGTH_VARIATION;
 }
 
@@ -891,8 +939,7 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
 	Planed plane(ctr, norm);
-	bool requireSliver = false;
-	removeEdge(params, plane, edge[0], edge[1], requireSliver);
+	removeEdge(params, plane, edge[0], edge[1]);
 }
 
 void PolyMesh::removeFace(const Index3DId& id)
