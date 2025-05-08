@@ -128,6 +128,11 @@ void PolyMesh::simplify(const SplittingParams& params)
 	reduceSlivers(params, maxSliverAngleRadians);
 #endif
 
+#if 0
+	_maxRemovableVerts = 10;
+	_maxRemovableAreaRatio = 0.5;
+	_minAspectRatio = 10;
+
 	for (int i = 0; i < 10; i++) {
 		set<EdgeKey> coplanarEdges;
 		_polygons.iterateInOrder([this, &coplanarEdges, &params](const Index3DId& id, const Polygon& face)->bool {
@@ -143,16 +148,16 @@ void PolyMesh::simplify(const SplittingParams& params)
 		bool changed = false;
 		for (const auto& ek : coplanarEdges) {
 			edgeFunc(ek, [this, &params, &changed](const Edge& edge) {
-				const auto& pt = getVertexPoint(edge[0]);
+				if (isRemovable(params, edge)) {
+					const auto& pt = getVertexPoint(edge[0]);
 
-				const auto& faceIds = edge.getFaceIds();
-				auto iter = faceIds.begin();
-				const auto& face0 = getPolygon(*iter++);
-				const auto& face1 = getPolygon(*iter);
+					const auto& faceIds = edge.getFaceIds();
+					auto iter = faceIds.begin();
+					const auto& face0 = getPolygon(*iter++);
+					const auto& face1 = getPolygon(*iter);
 
-				Vector3d normal = face0.calUnitNormal() + face1.calUnitNormal();
-				Planed plane(pt, normal);
-				if (adjacentEdgesHaveSimilarLength(edge)) {
+					Vector3d normal = face0.calUnitNormal() + face1.calUnitNormal();
+					Planed plane(pt, normal);
 					auto newFaceId = removeEdge(params, plane, edge);
 					if (newFaceId.isValid()) {
 						changed = true;
@@ -164,6 +169,8 @@ void PolyMesh::simplify(const SplittingParams& params)
 		if (!changed)
 			break;
 	}
+
+#endif
 }
 
 void PolyMesh::makeQuads(const SplittingParams& params)
@@ -382,19 +389,19 @@ bool PolyMesh::isRemovable(const SplittingParams& params, const EdgeKey& key) co
 		const auto& verts0 = face0.getVertexIds();
 		const auto& verts1 = face1.getVertexIds();
 
-		if (verts0.size() + verts1.size() < 8) {
+		if (verts0.size() + verts1.size() < _maxRemovableVerts) {
 			double area0, area1;
 			Vector3d discarded;
 			face0.calAreaAndCentroid(area0, discarded);
 			face1.calAreaAndCentroid(area1, discarded);
-			if (area0 > area1)
-				swap(area0, area1);
-			double ratio = area0 / area1;
-			if (ratio > 0.95) {
+			double ratio = fabs((area0 / (area0 + area1)) - 0.5);
+			if (ratio < _maxRemovableAreaRatio) {
 				double l = edge.calLength();
 				double w = (area0 + area1) / l;
 				double aspectRatio = l / w;
-				result = aspectRatio > 5;
+				if (aspectRatio > _minAspectRatio) {
+					result = true;
+				}
 			}
 		}
 	});
@@ -523,8 +530,9 @@ Index3DId PolyMesh::removeEdge(const SplittingParams& params, const Planed& plan
 
 		// It's 50/50 that the new vertices are reversed. Test the new normal with the prior normal(s) and reverse if needed
 		Vector3d n2;
-		if (!Polygon::calUnitNormalStat(this, newVertIds, n2)) {
-			dumpVertsAsPolygon("D:/DarkSky/Projects/output/objs/badPolyNormal.obj", newVertIds);
+		auto ncolin = PolygonSearchKey::makeNonColinearVertexIds(this, newVertIds);
+		if (!Polygon::calUnitNormalStat(this, ncolin, n2)) {
+//			dumpVertsAsPolygon("D:/DarkSky/Projects/output/objs/badPolyNormal.obj", newVertIds);
 			return;
 		}
 
