@@ -239,23 +239,19 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds)
 {
 	const auto& radiantVert = getVertex(radiantId);
-	vector<Index3DId> orderedFaceIds(faceIds.begin(), faceIds.end());
 	set<Index3DId> faceIdSet(faceIds.begin(), faceIds.end()), sharedVerts;
 
-	// ordered largest to smallest by area
-	sort(orderedFaceIds.begin(), orderedFaceIds.end(), [this, &radiantId](const Index3DId& lhsId, const Index3DId& rhsId)->bool {
-		const auto& lhsFace = getPolygon(lhsId);
-		const auto& rhsFace = getPolygon(rhsId);
+	Planed basePlane;
+	double maxAngle = 0;
+	for (const auto& id : faceIds) {
+		const auto& lhsFace = getPolygon(id);
 
-		double lhsVertAngle = lhsFace.calVertexAngle(radiantId);
-		double rhsVertAngle = rhsFace.calVertexAngle(radiantId);
-
-		return lhsVertAngle < rhsVertAngle;
-	});
-
-	const auto& largestFace = getPolygon(orderedFaceIds.back());
-	double largestAngle = largestFace.calVertexAngle(radiantId);
-	auto basePlane = largestFace.calPlane();
+		double angle = lhsFace.calVertexAngle(radiantId);
+		if (angle > maxAngle) {
+			basePlane = lhsFace.calPlane();
+			maxAngle = angle;
+		}
+	}
 
 	set<Index3DId> connectedVertIds;
 	for (size_t i = 0; i < faceIds.size(); i++) {
@@ -328,51 +324,6 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 
 }
 
-bool PolyMesh::chooseRadiantVertId(const SplittingParams& params, const Planed& plane, const EdgeKey& key, Index3DId& radiantVertId, Index3DId& otherVertId) const
-{
-	radiantVertId = {};
-	otherVertId = {};
-
-	edgeFunc(key, [this, &params, &plane, &radiantVertId, &otherVertId](const Edge& edge) {
-		const double maxAngle = 45;
-		const auto& faceIds = edge.getFaceIds();
-		auto iter = faceIds.begin();
-		const auto& faceId0 = *iter++;
-		const auto& faceId1 = *iter;
-
-		const auto& face0 = getPolygon(faceId0);
-		const auto& face1 = getPolygon(faceId1);
-
-		// Angles at vertex 0
-		auto angle00 = face0.calVertexAngle(edge[0]) * 180 / M_PI;
-		auto angle01 = face1.calVertexAngle(edge[0]) * 180 / M_PI;
-		if(angle00 < 0 || angle01 < 0)
-			return;
-
-		// Angles at vertex 1
-		auto angle10 = face0.calVertexAngle(edge[1]) * 180 / M_PI;
-		auto angle11 = face1.calVertexAngle(edge[1]) * 180 / M_PI;
-		if (angle10 < 0 || angle11 < 0)
-			return;
-
-		auto totalAngle0 = angle00 + angle01;
-		auto totalAngle1 = angle10 + angle11;
-
-		if (totalAngle0 < totalAngle1) {
-			if (totalAngle0 < maxAngle) {
-				radiantVertId = edge[0];
-				otherVertId = edge[1];
-			}
-		} else {
-			if (totalAngle1 < maxAngle) {
-				radiantVertId = edge[1];
-				otherVertId = edge[0];
-			}
-		}
-	});
-	return radiantVertId.isValid() && otherVertId.isValid();
-}
-
 bool PolyMesh::isRemovable(const SplittingParams& params, const EdgeKey& key) const
 {
 	bool result = false;
@@ -407,14 +358,6 @@ bool PolyMesh::isRemovable(const SplittingParams& params, const EdgeKey& key) co
 	});
 
 	return result;
-}
-
-Index3DId PolyMesh::removeEdgeWithChecks(const SplittingParams& params, const Planed& plane, const EdgeKey& key)
-{
-	Index3DId radiantVertId, otherVertId;
-	if (chooseRadiantVertId(params, plane, key, radiantVertId, otherVertId))
-		return removeEdgeWithChecks(params, plane, radiantVertId, otherVertId);
-	return Index3DId();
 }
 
 Index3DId PolyMesh::removeEdgeWithChecks(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId)

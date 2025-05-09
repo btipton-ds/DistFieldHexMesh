@@ -106,9 +106,7 @@ namespace DFHM {
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
 		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		void processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds);
-		bool chooseRadiantVertId(const SplittingParams& params, const Planed& plane, const EdgeKey& key, Index3DId& radiantVertId, Index3DId& otherVertId) const;
 		Index3DId removeEdge(const EdgeKey& key, const Index3DId& faceId0, const Index3DId& faceId1, const MTC::vector<Index3DId>& newVertIds, const Planed& plane);
-		Index3DId removeEdgeWithChecks(const SplittingParams& params, const Planed& plane, const EdgeKey& key);
 		Index3DId removeEdgeWithChecks(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId);
 		bool mergeVertices(const EdgeKey& key, const Polygon& face0, const Polygon& face1, MTC::vector<Index3DId>& newVertIds) const;
 		void removeFace(const Index3DId& id);
