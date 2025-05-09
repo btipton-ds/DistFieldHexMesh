@@ -671,22 +671,6 @@ bool PolyMesh::formsValidQuad(const SplittingParams& params, const MTC::vector<I
 	return true;
 }
 
-EdgeKey PolyMesh::findCommonEdge(const Polygon& a, const Polygon& b)
-{
-	EdgeKey result;
-	a.iterateEdges([&b, &result](const Edge& edgeA)->bool {
-		b.iterateEdges([&edgeA, &result](const Edge& edgeB)->bool {
-			if (edgeA == edgeB) {
-				result = edgeA;
-			}
-			return !result.isValid();
-		});
-		return !result.isValid();
-	});
-
-	return result;
-}
-
 bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
 {
 	auto edgeLength = edge.calLength();

@@ -122,8 +122,6 @@ namespace DFHM {
 		bool formsValidPolygon(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
 		bool formsValidQuad(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds) const;
 
-		EdgeKey findCommonEdge(const Polygon& a, const Polygon& b);
-
 		void dumpVertsAsPolygon(const std::string& path, const MTC::vector<Index3DId>& vertIds) const;
 		void dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& uniqueVerts) const;
 
@@ -155,7 +153,6 @@ namespace DFHM {
 	void PolyMesh::getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
 		double sinSharpAngle, std::vector<unsigned int>& sharpIndices, std::vector<unsigned int>& smoothIndices)
 	{
-#if 1
 		calCurvatures();
 		size_t idx = 0;
 		for (const auto& pair : _edgeCurvatures) {
@@ -176,12 +173,8 @@ namespace DFHM {
 				}
 			});
 		}
-#else
-		_pMesh->getGlEdges(curvatureToColorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
-#endif
 	}
 
 	using VolumePtr = std::shared_ptr<Volume>;
-
 
 } // end namespace DFHM
