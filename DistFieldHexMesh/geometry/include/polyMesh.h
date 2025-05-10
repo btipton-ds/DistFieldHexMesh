@@ -101,16 +101,20 @@ namespace DFHM {
 		LAMBDA_BLOCK_DECLS(edge, EdgeKey, Edge)
 
 	private:
+		void flattenSharps(const SplittingParams& params);
+		void flattenEdgeLoop(const std::vector<Index3DId>& loop);
 		void makeQuads(const SplittingParams& params);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
 		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		void processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds);
+		void createSharpEdgeLoops(const SplittingParams& params, std::vector<std::shared_ptr<std::vector<Index3DId>>>& sharpLoops) const;
 		Index3DId removeEdge(const EdgeKey& key, const Index3DId& faceId0, const Index3DId& faceId1, const MTC::vector<Index3DId>& newVertIds, const Planed& plane);
 		Index3DId removeEdgeWithChecks(const SplittingParams& params, const Planed& plane, const Index3DId& radiantVertId, const Index3DId& otherVertId);
 		bool mergeVertices(const EdgeKey& key, const Polygon& face0, const Polygon& face1, MTC::vector<Index3DId>& newVertIds) const;
 		void removeFace(const Index3DId& id);
 		double calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, const Vector3d& xAxis, const Vector3d& yAxis) const;
+		double calEdgeAngle(const Edge& edge) const;
 
 		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
 		bool adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey) const;
@@ -120,7 +124,10 @@ namespace DFHM {
 		bool formsValidPolygon(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds, const Vector3d& norm) const;
 		bool formsValidQuad(const SplittingParams& params, const MTC::vector<Index3DId>& vertIds) const;
 
+		Index3DId chooseSmoothestVert(const SplittingParams& params, const std::set<Index3DId>& conVerts, const std::vector<Index3DId>& loop) const;
+
 		void dumpVertsAsPolygon(const std::string& path, const MTC::vector<Index3DId>& vertIds) const;
+		void dumpVertsAsLineSegs(const std::string& path, const MTC::vector<Index3DId>& vertIds) const;
 		void dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& uniqueVerts) const;
 
 		AppDataPtr _pAppData;

@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_ioUtil.h>
 #include <tm_spatialSearch.hpp>
 #include <tm_math.h>
+#include <tm_bestFit.h>
 
 #include <tolerances.h>
 #include <index3D.h>
@@ -121,6 +122,7 @@ const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
 
 void PolyMesh::simplify(const SplittingParams& params)
 {
+	flattenSharps(params);
 	makeQuads(params);
 
 #if 1
@@ -171,6 +173,55 @@ void PolyMesh::simplify(const SplittingParams& params)
 	}
 
 #endif
+}
+
+void PolyMesh::flattenSharps(const SplittingParams& params)
+{
+	vector<shared_ptr<vector<Index3DId>>> sharpLoops;
+	createSharpEdgeLoops(params, sharpLoops);
+
+	// Turn off vertex searching
+	_vertices.setSupportsReverseLookup(false);
+
+	size_t count = 0;
+	for (const auto& ptr : sharpLoops) {
+		const auto& loop = *ptr;
+		if (loop.size() > 5) {
+			stringstream ss;
+			ss << "D:/DarkSky/Projects/output/objs/sharpLoop_" << count++ << ".obj";
+			dumpVertsAsLineSegs(ss.str(), loop);
+			flattenEdgeLoop(loop);
+		}
+	}
+
+	// Turn vertex searching back on. This also recreates the search map.
+	_vertices.setSupportsReverseLookup(true);
+}
+
+void PolyMesh::flattenEdgeLoop(const std::vector<Index3DId>& loop)
+{
+	const auto tol = Tolerance::sameDistTolFloat();
+	const auto tol2 = 2 * tol;
+
+	vector<Vector3d> pts;
+	for (const auto& id : loop)
+		pts.push_back(getVertexPoint(id));
+
+	Planed plane;
+	double err;
+	if (bestFitPlane(pts, plane, err) && err < tol) {
+		for (const auto& id : loop) {
+			const auto& pt = getVertexPoint(id);
+			double dist = plane.distanceToPoint(pt);
+			if (dist < tol2) {
+				auto projPt = plane.projectPoint(pt);
+				auto& vert = getVertex(id);
+				vert.replacePoint(projPt);
+			} else {
+				int dbgBreak = 1;
+			}
+		}
+	}
 }
 
 void PolyMesh::makeQuads(const SplittingParams& params)
@@ -522,6 +573,135 @@ bool PolyMesh::mergeVertices(const EdgeKey& key, const Polygon& face0, const Pol
 	return !newVertIds.empty();
 }
 
+void PolyMesh::createSharpEdgeLoops(const SplittingParams& params, std::vector<std::shared_ptr<std::vector<Index3DId>>>& sharpLoops) const
+{
+	set<EdgeKey> sharpEdges;
+	_polygons.iterateInOrder([this, &params, &sharpEdges](const Index3DId& id, const Polygon& face)->bool {
+		face.iterateEdges([this, &params, &sharpEdges](const Edge& edge)->bool {
+			if (edge.getFaceIds().size() == 2) {
+				auto angle = calEdgeAngle(edge);
+				if (angle > params.getSharpAngleRadians())
+					sharpEdges.insert(edge);
+			}
+			return true;
+		});
+		return true;
+	});
+
+	map<Index3DId, set<Index3DId>> vertToVertMap;
+	for (const auto& ek : sharpEdges) {
+		for (int i = 0; i < 2; i++) {
+			auto iter = vertToVertMap.find(ek[i]);
+			if (iter == vertToVertMap.end())
+				iter = vertToVertMap.insert(make_pair(ek[i], set<Index3DId>())).first;
+			iter->second.insert(ek[1 - i]);
+		}
+	}
+
+	shared_ptr<vector<Index3DId>> pLoop = make_shared<vector<Index3DId>>();
+	while (!vertToVertMap.empty()) {
+		auto& loop = *pLoop;
+		if (loop.empty()) {
+			for (const auto& pair : vertToVertMap) {
+				if (pair.second.size() > 2) {
+					loop.push_back(pair.first);
+					loop.push_back(*pair.second.begin());
+
+					break;
+				}
+			}
+
+			if (loop.empty()) {
+				for (const auto& pair : vertToVertMap) {
+					if (pair.second.size() == 1) {
+						loop.push_back(pair.first);
+						loop.push_back(*pair.second.begin());
+
+						break;
+					}
+				}
+			}
+
+			if (loop.empty()) {
+				auto iter = vertToVertMap.begin();
+				loop.push_back(iter->first);
+				const auto& conSet = iter->second;
+				if (conSet.empty()) {
+					assert(!"Not implemented yet");
+				} else {
+					auto iter2 = conSet.begin();
+					loop.push_back(*iter2);
+
+				}
+			}
+
+			vertToVertMap.erase(loop.front());
+			auto iter = vertToVertMap.find(loop.back());
+			if (iter != vertToVertMap.end()) {
+				iter->second.erase(loop.front());
+				if (iter->second.empty()) {
+					vertToVertMap.erase(loop.back());
+				}
+			}
+		}
+
+		auto tailId = loop.back();
+		auto tailIter = vertToVertMap.find(tailId);
+		if (tailIter == vertToVertMap.end()) {
+			sharpLoops.push_back(pLoop);
+			pLoop = make_shared<vector<Index3DId>>();
+		} else {
+			auto& conSet = tailIter->second;
+			Index3DId smoothestVert = chooseSmoothestVert(params, conSet, loop);
+
+			if (!smoothestVert.isValid()) {
+				sharpLoops.push_back(pLoop);
+				pLoop = make_shared<vector<Index3DId>>();
+			} else {
+				loop.push_back(smoothestVert);
+				conSet.erase(smoothestVert);
+				if (conSet.empty())
+					vertToVertMap.erase(tailId);
+
+			}
+
+			tailIter = vertToVertMap.find(loop.back());
+			if (tailIter != vertToVertMap.end()) {
+				tailIter->second.erase(tailId);
+				if (tailIter->second.empty())
+					vertToVertMap.erase(loop.back());
+			}
+		}
+	}
+}
+
+Index3DId PolyMesh::chooseSmoothestVert(const SplittingParams& params, const std::set<Index3DId>& conVerts, const std::vector<Index3DId>& loop) const
+{
+	auto maxAngle = params.getSharpAngleRadians();
+
+	double angle = 0;
+	const auto& pt0 = getVertexPoint(loop[loop.size() - 2]);
+	const auto& origin = getVertexPoint(loop[loop.size() - 1]);
+	Vector3d xAxis = (origin - pt0).normalized();
+	for (const auto& id : conVerts) {
+		const auto& pt1 = getVertexPoint(id);
+		Vector3d v = (pt1 - origin).normalized();
+		Vector3d zAxis = v.cross(xAxis);
+		if (zAxis.squaredNorm() < 1.0e-12)
+			continue;
+		zAxis.normalize();
+		Vector3d yAxis = zAxis.cross(xAxis);
+		double x = v.dot(xAxis);
+		double y = v.dot(yAxis);
+		angle = atan2(y, x);
+		if (fabs(angle) < maxAngle) {
+			return id;
+		}
+	}
+
+	return Index3DId();
+}
+
 Index3DId PolyMesh::removeEdge(const EdgeKey& key, const Index3DId& faceId0, const Index3DId& faceId1, const MTC::vector<Index3DId>& newVertIds, const Planed& plane)
 {
 	Index3DId result;
@@ -709,6 +889,37 @@ double PolyMesh::calEdgeAngle(const Index3DId& vertId, const Vector3d& origin, c
 	Vector3d v = pt - origin;
 	double x = v.dot(xAxis);
 	double y = v.dot(yAxis);
+	double angle = atan2(y, x);
+	return angle;
+}
+
+double PolyMesh::calEdgeAngle(const Edge& edge) const
+{
+	const auto& origin = getVertexPoint(edge[0]);
+	auto zAxis = edge.calUnitDir();
+
+	const auto& faceIds = edge.getFaceIds();
+	assert(faceIds.size() == 2);
+
+	auto iter = faceIds.begin();
+	const auto& face0 = getPolygon(*iter++);
+	const auto& face1 = getPolygon(*iter);
+
+	auto ctr0 = face0.calCentroidApprox();
+	auto ctr1 = face1.calCentroidApprox();
+
+	Vector3d xAxis = origin - ctr0;
+	xAxis = xAxis - zAxis * zAxis.dot(xAxis);
+	xAxis.normalize();
+	Vector3d yAxis = zAxis.cross(xAxis);
+
+	Vector3d v = ctr1 - origin;
+	v = v - zAxis * zAxis.dot(xAxis);
+	v.normalize();
+
+	double x = v.dot(zAxis);
+	double y = v.dot(yAxis);
+
 	double angle = atan2(y, x);
 	return angle;
 }
@@ -952,6 +1163,20 @@ void PolyMesh::dumpVertsAsPolygon(const std::string& path, const MTC::vector<Ind
 		out << " " << idx;
 	}
 	out << "\n";
+}
+
+void PolyMesh::dumpVertsAsLineSegs(const std::string& path, const MTC::vector<Index3DId>& vertIds) const
+{
+	ofstream out(path);
+	for (const auto& id : vertIds) {
+		const auto& pt = getVertexPoint(id);
+		out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+	}
+
+	for (size_t i = 0; i < vertIds.size() - 1; i++) {
+		size_t j = (i + 1) % vertIds.size();
+		out << "l " << (i + 1) << " " << (j + 1) << "\n";
+	}
 }
 
 void PolyMesh::dumpFaceSetAsObj(const std::string& path, size_t num, const Index3DId& radiantId, const MTC::vector<Index3DId>& faceIds, const std::set<Index3DId>& sharedVerts) const

@@ -84,6 +84,8 @@ public:
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	MTC::set<Index3DId> getCellIds() const;
 
+	void replacePoint(const Vector3d& newPt);
+
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
@@ -145,6 +147,11 @@ inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 {
 	auto conVerts = getConnectedVertexIds();
 	return conVerts.contains(vertId);
+}
+
+inline void Vertex::replacePoint(const Vector3d& newPt)
+{
+	_pt = newPt;
 }
 
 inline const FastBisectionSet<Index3DId>& Vertex::getFaceIds() const
