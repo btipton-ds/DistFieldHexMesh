@@ -272,14 +272,9 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 	});
 
 	for (const auto& radiantId : orderedVertIds) {
-
 		const auto& vert = getVertex(radiantId);
-		size_t startSize = vert.getFaceIds().size();
 
 		const auto faceIds = vert.getFaceIds();
-		if (radiantId == Index3DId(0, 0, 0, 4559)) {
-			int dbgBreak = 1;
-		}
 		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
 		makeCoplanarFaceSets(radiantId, faceIds, planarFaceSets);
 		for (const auto& faceIds : planarFaceSets) {
@@ -287,21 +282,11 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 				processPlanarFaces(params, radiantId, maxSliverAngleRadians, faceIds);
 			}
 		}
-
-		size_t lastSize = vert.getFaceIds().size();
-		size_t deltaSize = startSize - lastSize;
-		cout << "RadiantId: " << radiantId << ", startSize: " << startSize << ", deltaSize : " << deltaSize << "\n";
 	}
 }
 
 void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds)
 {
-#ifdef _DEBUG
-	if (radiantId == Index3DId(0, 0, 0, 5976)) {
-		int dbgBreak = 1;
-	}
-#endif // _DEBUG
-
 	const auto& radiantVert = getVertex(radiantId);
 
 	set<Index3DId> faceIdSet(faceIds.begin(), faceIds.end()), sharedVerts;
