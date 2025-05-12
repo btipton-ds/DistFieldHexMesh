@@ -78,13 +78,6 @@ OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
     parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
     const auto& vertIndices = pMesh->getGlTriIndices();
 
-    auto colorFunc = [](double curvature, float rgb[3])->bool {
-        rgbaColor c = curvatureToColor(curvature);
-        for (int i = 0; i < 3; i++)
-            rgb[i] = c._rgba[i] / 255.0f;
-        return true;
-    };
-
     vector<float> colors;
     auto meshId = 1;// pMesh->getId();
     auto changeNumber = 0; // pMesh->getChangeNumber();
@@ -98,15 +91,15 @@ OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
 void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData)
 {
     const auto sinSharpAngle = params.getSinSharpAngle();
-
-    vector<float> points, colors;
-    vector<unsigned int> indices, sharpIndices, smoothIndices;
     auto colorFunc = [](float curvature, float rgb[3])->bool {
         rgbaColor c = curvatureToColor(curvature);
         for (int i = 0; i < 3; i++)
             rgb[i] = c._rgba[i] / 255.0f;
         return true;
-        };
+    };
+
+    vector<float> points, colors;
+    vector<unsigned int> indices, sharpIndices, smoothIndices;
 
 
     bool includeSmooth = true;

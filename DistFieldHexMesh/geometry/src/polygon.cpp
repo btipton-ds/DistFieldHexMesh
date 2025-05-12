@@ -463,6 +463,7 @@ void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Inde
 bool Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& norm)
 {
 	norm = Vector3d(0, 0, 0);
+	Vector3d lastNorm(DBL_MAX, DBL_MAX, DBL_MAX);
 
 	double maxNorm = 0;
 	size_t i = 0;
@@ -477,6 +478,13 @@ bool Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId
 		Vector3d v1 = pt2 - pt1;
 
 		Vector3d n = v1.cross(v0);
+#ifdef _DEBUG
+		if (j > 1) {
+			assert(n.dot(lastNorm) > 0);
+		}
+		lastNorm = n;
+#endif // _DEBUG
+
 		double l = n.norm();
 		if (l > maxNorm) {
 			maxNorm = l;
