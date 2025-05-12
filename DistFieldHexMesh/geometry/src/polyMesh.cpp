@@ -272,24 +272,38 @@ void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngl
 	});
 
 	for (const auto& radiantId : orderedVertIds) {
+
 		const auto& vert = getVertex(radiantId);
+		size_t startSize = vert.getFaceIds().size();
+
 		const auto faceIds = vert.getFaceIds();
-		if (faceIds.size() > 90 || radiantId == Index3DId(0, 0, 0, 6145)) {
+		if (radiantId == Index3DId(0, 0, 0, 4559)) {
 			int dbgBreak = 1;
 		}
 		MTC::vector<MTC::vector<Index3DId>> planarFaceSets;
-		makeCoplanarFaceSets(faceIds, planarFaceSets);
+		makeCoplanarFaceSets(radiantId, faceIds, planarFaceSets);
 		for (const auto& faceIds : planarFaceSets) {
 			if (faceIds.size() > 2) {
 				processPlanarFaces(params, radiantId, maxSliverAngleRadians, faceIds);
 			}
 		}
+
+		size_t lastSize = vert.getFaceIds().size();
+		size_t deltaSize = startSize - lastSize;
+		cout << "RadiantId: " << radiantId << ", startSize: " << startSize << ", deltaSize : " << deltaSize << "\n";
 	}
 }
 
 void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds)
 {
+#ifdef _DEBUG
+	if (radiantId == Index3DId(0, 0, 0, 5976)) {
+		int dbgBreak = 1;
+	}
+#endif // _DEBUG
+
 	const auto& radiantVert = getVertex(radiantId);
+
 	set<Index3DId> faceIdSet(faceIds.begin(), faceIds.end()), sharedVerts;
 
 	Planed basePlane;
@@ -341,6 +355,8 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 	vector<pair<double, Index3DId>> planarAngleEdgeMap;
 	for (const auto& vertId : orderedVertIds) {
 		double angle = calEdgeAngle(vertId, origin, xAxis, yAxis);
+		if (angle < 0)
+			angle += 2 * M_PI;
 		planarAngleEdgeMap.push_back(make_pair(angle, vertId));
 	}
 
@@ -356,9 +372,9 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 		auto thisAngle = pair.first;
 		const auto& thisId = pair.second;
 		auto deltaAngle = thisAngle - lastAngle;
-		if (deltaAngle < 0) {
+		if (deltaAngle < 0)
 			deltaAngle += 2 * M_PI;
-		}
+		assert(deltaAngle >= 0 && deltaAngle < 2 * M_PI);
 
 		if (deltaAngle > minAngleRadians || !sharedVerts.contains(thisId)) {
 			lastAngle = thisAngle;
@@ -372,7 +388,6 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 			}
 		}
 	}
-
 }
 
 bool PolyMesh::isRemovable(const SplittingParams& params, const EdgeKey& key) const
@@ -924,7 +939,7 @@ double PolyMesh::calEdgeAngle(const Edge& edge) const
 	return angle;
 }
 
-void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets)
+void PolyMesh::makeCoplanarFaceSets(const Index3DId& radiantId, const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets)
 {
 #if 1
 	const double sameDistTol = Tolerance::sameDistTolFloat();
@@ -937,16 +952,14 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 	if (faceIds.size() > 50) {
 		int dbgBreak = 1;
 	}
-	vector<Index3DId> faceIdsAscendingArea(faceIds.begin(), faceIds.end());
-	sort(faceIdsAscendingArea.begin(), faceIdsAscendingArea.end(), [this](const Index3DId& lhsId, const Index3DId& rhsId) {
+	vector<Index3DId> faceIdsAscendingAngle(faceIds.begin(), faceIds.end());
+	sort(faceIdsAscendingAngle.begin(), faceIdsAscendingAngle.end(), [this, &radiantId](const Index3DId& lhsId, const Index3DId& rhsId) {
 		const auto& lhsFace = getPolygon(lhsId);
 		const auto& rhsFace = getPolygon(rhsId);
 
-		double lhsArea, rhsArea;
-		Vector3d discarded;
-		lhsFace.calAreaAndCentroid(lhsArea, discarded);
-		rhsFace.calAreaAndCentroid(rhsArea, discarded);
-		return lhsArea < rhsArea;
+		double lhsAngle = lhsFace.calVertexAngle(radiantId);
+		double rhsAngle = rhsFace.calVertexAngle(radiantId);
+		return lhsAngle < rhsAngle;
 	});
 
 	MTC::vector<Index3DId> currentFaces;
@@ -954,10 +967,10 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 	double totalArea = 0;
 	double currentArea;
 	Vector3d discarded;
-	while (!faceIdsAscendingArea.empty()) {
+	while (!faceIdsAscendingAngle.empty()) {
 		if (currentFaces.empty()) {
-			currentFaces.push_back(faceIdsAscendingArea.back());
-			faceIdsAscendingArea.pop_back();
+			currentFaces.push_back(faceIdsAscendingAngle.back());
+			faceIdsAscendingAngle.pop_back();
 			const auto& face = getPolygon(currentFaces.back());
 			face.calAreaAndCentroid(currentArea, groupOrigin);
 			weightedNormal = currentArea * face.calUnitNormal();
@@ -968,15 +981,16 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 		size_t bestFaceIdx = -1;
 		Vector3d bestNormal;
 		Planed groupPlane(groupOrigin, weightedNormal);
-		for (size_t i = 0; i < faceIdsAscendingArea.size(); i++) {
-			const auto& currentFace = getPolygon(faceIdsAscendingArea[i]);
+		for (size_t i = 0; i < faceIdsAscendingAngle.size(); i++) {
+			const auto& currentFace = getPolygon(faceIdsAscendingAngle[i]);
 			auto currentFaceNorm = currentFace.calUnitNormal();
 			if (weightedNormal.dot(currentFaceNorm) > 0) {
 				const auto& vertIds = currentFace.getVertexIds();
 				bool allVertsCoplanar = true;
 				for (const auto& vertId : vertIds) {
 					const auto& pt = getVertexPoint(vertId);
-					if (!groupPlane.isCoincident(pt, sameDistTol)) {
+					auto dist = groupPlane.distanceToPoint(pt);
+					if (dist > sameDistTol) {
 						allVertsCoplanar = false;
 						break;
 					}
@@ -994,8 +1008,8 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 		}
 
 		if (bestFaceIdx != -1) {
-			currentFaces.push_back(faceIdsAscendingArea[bestFaceIdx]);
-			faceIdsAscendingArea.erase(faceIdsAscendingArea.begin() + bestFaceIdx);
+			currentFaces.push_back(faceIdsAscendingAngle[bestFaceIdx]);
+			faceIdsAscendingAngle.erase(faceIdsAscendingAngle.begin() + bestFaceIdx);
 			assert(bestNormal.dot(weightedNormal) > 0);
 			weightedNormal += maxArea * bestNormal;
 			totalArea += maxArea;
@@ -1005,6 +1019,10 @@ void PolyMesh::makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, 
 			currentFaces.clear();
 		}
 	}
+
+	if (currentFaces.size() > 1)
+		planarFaceSets.push_back(currentFaces);
+
 #else
 	set<size_t> usedIndices;
 	for (size_t i = 0; i < faceIds.size(); i++) {

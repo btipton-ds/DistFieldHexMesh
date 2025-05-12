@@ -106,7 +106,7 @@ namespace DFHM {
 		void makeQuads(const SplittingParams& params);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
-		void makeCoplanarFaceSets(const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
+		void makeCoplanarFaceSets(const Index3DId& radiantId, const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		void processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds);
 		void createSharpEdgeLoops(const SplittingParams& params, std::vector<std::shared_ptr<std::vector<Index3DId>>>& sharpLoops) const;
 		Index3DId removeEdge(const EdgeKey& key, const Index3DId& faceId0, const Index3DId& faceId1, const MTC::vector<Index3DId>& newVertIds, const Planed& plane);
