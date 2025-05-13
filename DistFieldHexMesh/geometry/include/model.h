@@ -77,12 +77,14 @@ public:
 	size_t size() const;
 	size_t numBytes() const;
 
+	const MeshDataPtr& getMeshData(size_t index) const;
+
 	std::vector<MeshDataPtr>::iterator begin();
 	std::vector<MeshDataPtr>::iterator end();
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
-#define USE_POLYMESH 0
+#define USE_POLYMESH 1
 #if !USE_POLYMESH
 	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
 
@@ -123,6 +125,11 @@ inline bool Model::empty() const
 inline size_t Model::size() const
 {
 	return _modelMeshData.size();
+}
+
+inline const MeshDataPtr& Model::getMeshData(size_t index) const
+{
+	return _modelMeshData[index];
 }
 
 inline std::vector<MeshDataPtr>::iterator Model::begin()

@@ -1436,12 +1436,14 @@ bool Polyhedron::intersectsModel() const
 
 			bool result = false;
 			for (const auto& polyIndex : indices) {
+				auto pData = model.getMeshData(polyIndex.getMeshIdx());
+				auto pPolyMesh = pData->getPolyMesh();
 				const auto& modelFace = model.getPolygon(polyIndex);
-				modelFace->iterateTriangles([this, &faceIdToSplitterMap](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				modelFace->iterateTriangles([this, &faceIdToSplitterMap, &pPolyMesh](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 					const Vector3d* pts[3] = {
-						&getVertexPoint(id0),
-						&getVertexPoint(id1),
-						&getVertexPoint(id2),
+						&pPolyMesh->getVertexPoint(id0),
+						&pPolyMesh->getVertexPoint(id1),
+						&pPolyMesh->getVertexPoint(id2),
 					};
 
 					for (const auto& pair : faceIdToSplitterMap) {
