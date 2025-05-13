@@ -514,9 +514,15 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 void Splitter3D::finalizeCreatedCells()
 {
 	const auto& model = _pBlock->getModel();
+#if USE_POLYMESH
+	auto refineFunc = [this, &model](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		return model.doesPolyIntersect(entry, bbox);
+	};
+#else
 	auto refineFunc = [this, &model](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
 		return model.doesTriIntersect(entry, bbox);
-	};
+		};
+#endif
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
@@ -527,16 +533,28 @@ void Splitter3D::finalizeCreatedCells()
 			auto subBbox = createdCell.getBoundingBox();
 			if (!createdCell._hasSetSearchTree) {
 				createdCell._hasSetSearchTree = true;
+#if USE_POLYMESH
+				if (_hasSetSearchTree) {
+					createdCell._pPolySearchTree = _pPolySearchTree;
+				} else {
+					createdCell._pPolySearchTree = model.getPolySubTree(subBbox);
+				}
+				if (createdCell._pPolySearchTree && _splitLevel < 4) {
+					// Splitting small trees takes time and memory, so only reduce larger ones
+					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, refineFunc);
+				}
+#else
 				if (_hasSetSearchTree) {
 					createdCell._pTriSearchTree = _pTriSearchTree;
-				} else {
+				}
+				else {
 					createdCell._pTriSearchTree = model.getTriSubTree(subBbox);
 				}
-
 				if (createdCell._pTriSearchTree && _splitLevel < 4) {
 					// Splitting small trees takes time and memory, so only reduce larger ones
 					createdCell._pTriSearchTree = createdCell._pTriSearchTree->getSubTree(subBbox, refineFunc);
 				}
+#endif
 			}
 		}
 		createdCell.setSplitLevel(_splitLevel + 1);
@@ -918,6 +936,19 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
 	_intersectsModel = targetCell.intersectsModel();
 
+#if USE_POLYMESH
+	if (_intersectsModel) {
+		_hasSetSearchTree = targetCell._hasSetSearchTree;
+		if (targetCell._hasSetSearchTree)
+			_pPolySearchTree = targetCell._pPolySearchTree;
+		else
+			_pPolySearchTree = targetCell.getBlockPtr()->getModelPolySearchTree();
+	}
+	else {
+		_hasSetSearchTree = true;
+		_pPolySearchTree = nullptr;
+	}
+#else
 	if (_intersectsModel) {
 		_hasSetSearchTree = targetCell._hasSetSearchTree;
 		if (targetCell._hasSetSearchTree)
@@ -928,7 +959,7 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 		_hasSetSearchTree = true;
 		_pTriSearchTree = nullptr;
 	}
-
+#endif
 	_splitLevel = targetCell.getSplitLevel();
 }
 

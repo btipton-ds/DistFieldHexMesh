@@ -106,8 +106,15 @@ public:
 	bool isConvex() const;
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
+
+#if USE_POLYMESH
+	bool entryIntersectsModel(const PolyMeshIndex& index) const;
+	size_t getPolyIndices(std::vector<PolyMeshIndex>& indices) const;
+#else
 	bool entryIntersectsModel(const TriMeshIndex& index) const;
 	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
+#endif
+
 	bool intersectsModel() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
@@ -191,6 +198,7 @@ private:
 
 	void updateCachedVerts() const;
 	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
+	const std::shared_ptr<const Model::PolyMeshSearchTree> getPolySearchTree() const;
 	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
@@ -250,6 +258,7 @@ private:
 	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;
 	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+	mutable std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

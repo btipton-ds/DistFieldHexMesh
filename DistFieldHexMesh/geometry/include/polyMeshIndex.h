@@ -38,23 +38,23 @@ namespace DFHM {
 
 	class PolyMeshIndex {
 	public:
-		PolyMeshIndex(size_t meshIdx = -1, const Index3DId& triIdx = {});
+		PolyMeshIndex(size_t meshIdx = -1, const Index3DId& polyId = {});
 		PolyMeshIndex(const PolyMeshIndex& src) = default;
 
 		size_t getMeshIdx() const;
-		const Index3DId& getTriIdx() const;
+		const Index3DId& getPolyId() const;
 
 		bool operator < (const PolyMeshIndex& rhs) const;
 		bool operator == (const PolyMeshIndex& rhs) const;
 
 	private:
 		size_t _meshIdx = -1;
-		Index3DId _triIdx;
+		Index3DId _polyId;
 	};
 
-	inline PolyMeshIndex::PolyMeshIndex(size_t meshIdx, const Index3DId& triIdx)
+	inline PolyMeshIndex::PolyMeshIndex(size_t meshIdx, const Index3DId& polyId)
 		: _meshIdx(meshIdx)
-		, _triIdx(triIdx)
+		, _polyId(polyId)
 	{
 	}
 
@@ -63,9 +63,9 @@ namespace DFHM {
 		return _meshIdx;
 	}
 
-	inline const Index3DId& PolyMeshIndex::getTriIdx() const
+	inline const Index3DId& PolyMeshIndex::getPolyId() const
 	{
-		return _triIdx;
+		return _polyId;
 	}
 
 	inline bool PolyMeshIndex::operator < (const PolyMeshIndex& rhs) const
@@ -75,25 +75,25 @@ namespace DFHM {
 		else if (_meshIdx > rhs._meshIdx)
 			return false;
 
-		return _triIdx < rhs._triIdx;
+		return _polyId < rhs._polyId;
 	}
 
 	inline bool PolyMeshIndex::operator == (const PolyMeshIndex& rhs) const
 	{
-		return _meshIdx == rhs._meshIdx && _triIdx == rhs._triIdx;
+		return _meshIdx == rhs._meshIdx && _polyId == rhs._polyId;
 	}
 
-	struct MultiPolyTriMeshRayHit : public PolyMeshIndex {
+	struct MultiPolyMeshRayHit : public PolyMeshIndex {
 	public:
-		MultiPolyTriMeshRayHit() = default;
-		MultiPolyTriMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist);
-		MultiPolyTriMeshRayHit(const MultiPolyTriMeshRayHit& src) = default;
-		MultiPolyTriMeshRayHit(const PolyMeshIndex& idx = {});
+		MultiPolyMeshRayHit() = default;
+		MultiPolyMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist);
+		MultiPolyMeshRayHit(const MultiPolyMeshRayHit& src) = default;
+		MultiPolyMeshRayHit(const PolyMeshIndex& idx = {});
 
 		void setPoint(const Vector3d& pt);
 		const Vector3d& getPoint() const;
 
-		bool operator<(const MultiPolyTriMeshRayHit& rhs) const;
+		bool operator<(const MultiPolyMeshRayHit& rhs) const;
 
 		double getDist() const;
 		const Vector3d& getPt() const;
@@ -103,39 +103,39 @@ namespace DFHM {
 		Vector3d _pt;
 	};
 
-	inline MultiPolyTriMeshRayHit::MultiPolyTriMeshRayHit(const PolyMeshIndex& idx)
+	inline MultiPolyMeshRayHit::MultiPolyMeshRayHit(const PolyMeshIndex& idx)
 		: PolyMeshIndex(idx)
 	{
 	}
 
-	inline MultiPolyTriMeshRayHit::MultiPolyTriMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist)
+	inline MultiPolyMeshRayHit::MultiPolyMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist)
 		: PolyMeshIndex(meshIdx, hitID)
 		, _pt(pt)
 		, _dist(dist)
 	{
 	}
 
-	inline void MultiPolyTriMeshRayHit::setPoint(const Vector3d& pt)
+	inline void MultiPolyMeshRayHit::setPoint(const Vector3d& pt)
 	{
 		_pt = pt;
 	}
 
-	inline const Vector3d& MultiPolyTriMeshRayHit::getPoint() const
+	inline const Vector3d& MultiPolyMeshRayHit::getPoint() const
 	{
 		return _pt;
 	}
 
-	inline bool MultiPolyTriMeshRayHit::operator<(const MultiPolyTriMeshRayHit& rhs) const
+	inline bool MultiPolyMeshRayHit::operator<(const MultiPolyMeshRayHit& rhs) const
 	{
 		return _dist < rhs._dist;
 	}
 
-	inline double MultiPolyTriMeshRayHit::getDist() const
+	inline double MultiPolyMeshRayHit::getDist() const
 	{
 		return _dist;
 	}
 
-	inline const Vector3d& MultiPolyTriMeshRayHit::getPt() const
+	inline const Vector3d& MultiPolyMeshRayHit::getPt() const
 	{
 		return _pt;
 	}

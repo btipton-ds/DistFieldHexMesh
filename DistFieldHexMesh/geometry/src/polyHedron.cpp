@@ -114,6 +114,18 @@ void Polyhedron::initializeSearchTree() const
 	if (!_hasSetSearchTree) {
 		auto pBlk = getOurBlockPtr();
 		_hasSetSearchTree = true;
+#if USE_POLYMESH
+		_pPolySearchTree = pBlk->getModel().getPolySearchTree();
+		if (_pPolySearchTree) {
+			auto bbox = getBoundingBox();
+			auto refineFunc = [this](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+				const auto& model = getModel();
+				return model.doesPolyIntersect(entry, bbox);
+			};
+			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox);
+			if (_pPolySearchTree)
+				_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, refineFunc);
+#else
 		_pTriSearchTree = pBlk->getModelTriSearchTree();
 		if (_pTriSearchTree) {
 			auto bbox = getBoundingBox();
@@ -121,10 +133,11 @@ void Polyhedron::initializeSearchTree() const
 				const auto& model = getModel();
 				return model.doesTriIntersect(entry, bbox);
 			};
-
 			_pTriSearchTree = _pTriSearchTree->getSubTree(bbox);
 			if (_pTriSearchTree)
 				_pTriSearchTree = _pTriSearchTree->getSubTree(bbox, refineFunc);
+#endif
+
 		}
 	}
 }
@@ -970,37 +983,46 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 {
 	double result = 0;
 	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
-	vector<TriMeshIndex> indices;
+#if USE_POLYMESH
+	vector<PolyMeshIndex> indices;
 
-	if (getTriIndices(indices) != 0) {
-		Splitter2D sp(polyPoints);
+	if (getPolyIndices(indices) == 0)
+		return 0;
+	
+	Splitter2D sp(polyPoints);
 
-		const auto& model = getModel();
+	const auto& model = getModel();
 
-		int reflectionAxisBits = 0;
+	int reflectionAxisBits = 0;
 # if 1
-		for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
-			bool reflect = false;
-			switch (reflectionAxis) {
-			case 0:
-				reflect = params.symXAxis; break;
-			case 1:
-				reflect = params.symYAxis; break;
-			case 2:
-				reflect = params.symZAxis; break;
-			}
-			if (reflect)
-				reflectionAxisBits |= 1 << reflectionAxis;
+	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
+		bool reflect = false;
+		switch (reflectionAxis) {
+		case 0:
+			reflect = params.symXAxis; break;
+		case 1:
+			reflect = params.symYAxis; break;
+		case 2:
+			reflect = params.symZAxis; break;
 		}
+		if (reflect)
+			reflectionAxisBits |= 1 << reflectionAxis;
+	}
 #endif		
-		for (const auto& multiTriIdx : indices) {
-			const Vector3d* pts[3];
-			model.getTri(multiTriIdx, pts);
+	for (const auto& multiPolyIdx : indices) {
+		const auto& face = model.getPolygon(multiPolyIdx);
+		face->iterateTriangles([this, reflectionAxisBits, &sp](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			const Vector3d* pts[3] = {
+				&getVertexPoint(id0),
+				&getVertexPoint(id1),
+				&getVertexPoint(id2),
+			};
 
 			// Reflect triangles across symmetry plane to remove false sharps at the boundary
 			if (reflectionAxisBits == 0) {
 				sp.add3DTriEdges(pts, false);
-			} else {
+			}
+			else {
 				bool triLiesOnSymmetryPlane = false;
 				for (int axis = 0; axis < 3; axis++) {
 					int numPointsOnBoundary = 0;
@@ -1029,7 +1051,10 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 				if (!triLiesOnSymmetryPlane)
 					sp.add3DTriEdges(pts, false);
 			}
-		}
+			return true;
+		});
+
+		
 #if 0
 		if (step == 0 && (getId().blockIdx() == Index3D(3, 0, 4))) {
 			stringstream ss;
@@ -1085,7 +1110,125 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 		int dbgBreak = 1;
 #endif
 	}
+#else
+	vector<TriMeshIndex> indices;
 
+	if (getTriIndices(indices) == 0)
+		return false;
+
+	Splitter2D sp(polyPoints);
+
+	const auto& model = getModel();
+
+	int reflectionAxisBits = 0;
+# if 1
+	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
+		bool reflect = false;
+		switch (reflectionAxis) {
+		case 0:
+			reflect = params.symXAxis; break;
+		case 1:
+			reflect = params.symYAxis; break;
+		case 2:
+			reflect = params.symZAxis; break;
+		}
+		if (reflect)
+			reflectionAxisBits |= 1 << reflectionAxis;
+	}
+#endif		
+	for (const auto& multiTriIdx : indices) {
+		const Vector3d* pts[3];
+		model.getTri(multiTriIdx, pts);
+
+		// Reflect triangles across symmetry plane to remove false sharps at the boundary
+		if (reflectionAxisBits == 0) {
+			sp.add3DTriEdges(pts, false);
+		} else {
+			bool triLiesOnSymmetryPlane = false;
+			for (int axis = 0; axis < 3; axis++) {
+				int numPointsOnBoundary = 0;
+				int axisBit = 1 << axis;
+				if ((reflectionAxisBits & axisBit) != axisBit)
+					continue;
+
+				Vector3d mirrorPts[3];
+				for (int ptIdx = 0; ptIdx < 3; ptIdx++) {
+					mirrorPts[ptIdx] = *pts[ptIdx];
+					double dist = (*pts[ptIdx])[axis] - origin[axis];
+					if (dist > 0) {
+						mirrorPts[ptIdx][axis] = origin[axis] - dist;
+					}
+					if (fabs(dist) < Tolerance::sameDistTol()) {
+						numPointsOnBoundary++;
+					}
+				}
+
+				if (numPointsOnBoundary == 3) {
+					triLiesOnSymmetryPlane = true;
+				} if (numPointsOnBoundary == 2) {
+					sp.add3DTriEdges(mirrorPts, false);
+				}
+			}
+			if (!triLiesOnSymmetryPlane)
+				sp.add3DTriEdges(pts, false);
+		}
+	}
+#if 0
+	if (step == 0 && (getId().blockIdx() == Index3D(3, 0, 4))) {
+		stringstream ss;
+		ss << "D:/DarkSky/Projects/output/objs/cuvature_polylines_" << getBlockPtr()->getLoggerNumericCode(getId()) << "_" << step << "_";
+		sp.writePolylinesObj(ss.str());
+	}
+#endif
+	vector<double> curvatures;
+	if (sp.getCurvatures(params, curvatures) > 0) {
+		int avgHalfWindow = 0;
+		if (avgHalfWindow > 0) {
+			vector<double> curvatures2(curvatures);
+			for (size_t i = 0; i < curvatures2.size(); i++) {
+				double avg = 0;
+				int count = 0;
+				for (int j = -avgHalfWindow; j < avgHalfWindow; j++) {
+					size_t idx = i + j;
+					if (idx < curvatures2.size()) {
+						avg += curvatures2[idx];
+						count++;
+					}
+				}
+				if (count > 0) {
+					avg /= count;
+					curvatures[i] = avg;
+				}
+				else
+					curvatures[i] = curvatures2[i];
+			}
+		}
+
+		for (size_t i = 0; i < curvatures.size(); i++) {
+			auto c = curvatures[i];
+			if (c > result)
+				result = c;
+		}
+
+	}
+#if 0 && defined(_DEBUG)
+
+	auto pVol = getBlockPtr()->getVolume();
+	pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
+	for (size_t i = 0; i < polylines.size(); i++) {
+		vector<vector<Vector3d>> segs;
+		for (size_t j = 0; j < polylines[i].size() - 1; j++) {
+			vector<Vector3d> seg;
+			seg.push_back(polylines[i][j]);
+			seg.push_back(polylines[i][j + 1]);
+			segs.push_back(seg);
+		}
+		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
+	}
+	int dbgBreak = 1;
+#endif
+	
+#endif
 	return result;
 }
 
@@ -1189,6 +1332,47 @@ bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
 
 }
 
+#if USE_POLYMESH
+bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
+{
+	const auto& tol = Tolerance::sameDistTol();
+
+	bool result = false;
+	auto& model = getModel();
+	const auto& modelFace = model.getPolygon(index);
+	modelFace->iterateTriangles([this, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+		const Vector3d* pts[3] = {
+			&getVertexPoint(id0),
+			&getVertexPoint(id1),
+			&getVertexPoint(id2),
+		};
+
+		for (const auto& faceId : _faceIds) {
+			const auto& face = getPolygon(faceId);
+			face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				const Vector3d* facePts[] = {
+					&getVertexPoint(id0),
+					&getVertexPoint(id1),
+					&getVertexPoint(id2),
+				};
+
+				if (intersectTriTri(pts, facePts, tol)) {
+					result = true;
+					return false;
+				}
+
+				return true; // false exits the lambda for loop
+				});
+
+			if (result)
+				break;
+		}
+
+		return !result;
+	});
+	return result;
+}
+#else
 bool Polyhedron::entryIntersectsModel(const TriMeshIndex& index) const
 {
 	const auto& tol = Tolerance::sameDistTol();
@@ -1222,6 +1406,7 @@ bool Polyhedron::entryIntersectsModel(const TriMeshIndex& index) const
 
 	return result;
 }
+#endif
 
 bool Polyhedron::intersectsModel() const
 {
@@ -1229,6 +1414,52 @@ bool Polyhedron::intersectsModel() const
 		const auto tol = Tolerance::sameDistTol();
 
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
+#if USE_POLYMESH
+		vector<PolyMeshIndex> indices;
+		if (getPolyIndices(indices) != 0) {
+			map<Index3DId, shared_ptr<Splitter2D>> faceIdToSplitterMap;
+			for (const auto& faceId : _faceIds) {
+				const auto& face = getPolygon(faceId);
+				if (face._cachedIntersectsModel == IS_TRUE) {
+					_cachedIntersectsModel = IS_TRUE;
+					return true;
+				}
+				vector<Vector3d> facePts;
+				auto& ids = face.getNonColinearVertexIds();
+				for (const auto& id : ids)
+					facePts.push_back(getVertexPoint(id));
+
+				faceIdToSplitterMap.insert(make_pair(faceId, make_shared<Splitter2D>(facePts)));
+			}
+
+			auto& model = getModel();
+
+			bool result = false;
+			for (const auto& polyIndex : indices) {
+				const auto& modelFace = model.getPolygon(polyIndex);
+				modelFace->iterateTriangles([this, &faceIdToSplitterMap](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+					const Vector3d* pts[3] = {
+						&getVertexPoint(id0),
+						&getVertexPoint(id1),
+						&getVertexPoint(id2),
+					};
+
+					for (const auto& pair : faceIdToSplitterMap) {
+						auto& face = getPolygon(pair.first);
+						auto& sp = *pair.second;
+						if (sp.intersectsTriPoints(pts)) {
+							_cachedIntersectsModel = face._cachedIntersectsModel = IS_TRUE;
+							break;
+						}
+						else {
+							face._cachedIntersectsModel = IS_FALSE;
+						}
+					}
+					return true;
+				});
+			}
+		}
+#else
 		vector<TriMeshIndex> indices;
 		if (getTriIndices(indices) != 0) {
 			map<Index3DId, shared_ptr<Splitter2D>> faceIdToSplitterMap;
@@ -1265,6 +1496,7 @@ bool Polyhedron::intersectsModel() const
 				}
 			}
 		}
+#endif
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
 	}
@@ -1901,6 +2133,45 @@ const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getTriSearchTree()
 	return _pTriSearchTree;
 }
 
+const std::shared_ptr<const Model::PolyMeshSearchTree> Polyhedron::getPolySearchTree() const
+{
+	initializeSearchTree();
+	return _pPolySearchTree;
+}
+
+#if USE_POLYMESH
+
+size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
+{
+	auto refineFunc = [this](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		const auto& model = getModel();
+		return model.doesPolyIntersect(entry, bbox);
+	};
+
+	indices.clear();
+	auto& bbox = getBoundingBox();
+	auto pClipped = getPolySearchTree();
+	size_t result = 0;
+	if (pClipped)
+		result = pClipped->find(bbox, refineFunc, indices);
+
+#if DO_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
+	size_t dbgResult = 0;
+	auto pFull = getBlockPtr()->getModel().getTriSearchTree();
+	vector<TriMeshIndex> indicesFull;
+	if (pFull) {
+		dbgResult = pFull->find(bbox, refineFunc, indicesFull);
+	}
+
+	if (result != dbgResult) {
+		stringstream ss;
+		ss << "Search trees sizes don't match. indices.size: " << indices.size() << ", indicesFull.size() : " << indicesFull.size() << " " << __FILE__ << " : " << __LINE__;
+		throw runtime_error(ss.str());
+	}
+#endif
+	return result;
+}
+#else
 size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 {
 	auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
@@ -1931,6 +2202,7 @@ size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 #endif
 	return result;
 }
+#endif
 
 MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {

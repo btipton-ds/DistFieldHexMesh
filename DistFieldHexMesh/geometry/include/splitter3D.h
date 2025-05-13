@@ -100,6 +100,7 @@ private:
 	bool _intersectsModel = false;
 	bool _hasSetSearchTree;
 	std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+	std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
 	size_t _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 

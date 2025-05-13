@@ -53,10 +53,14 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
+Switch from tri mesh to polymesh 
+    raycasting
+    Intersect mesh and model
+
 Curvature logic is solid, but many problems -
-    Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
     The cross bars don't stop splitting when they should, they just keep subdividing
     There are cells which should split on the numIntersects == 1 rule which are not subdividing.
+    Done - Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
 
 Cross mesh gap analysis using the new search tree.
 

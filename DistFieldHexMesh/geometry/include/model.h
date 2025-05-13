@@ -43,6 +43,8 @@ namespace DFHM {
 class DrawModelMesh;
 struct SplittingParams;
 
+class Polygon;
+
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
 
@@ -80,6 +82,8 @@ public:
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
+#define USE_POLYMESH 0
+#if !USE_POLYMESH
 	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
 
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& indices) const;
@@ -90,6 +94,18 @@ public:
 
 	const MultMeshTriangle getTriIndices(const TriMeshIndex& idx) const;
 	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
+#endif
+
+	bool doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
+
+	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::Entry>& indices) const;
+	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
+	size_t rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& hits, bool biDir = true) const;
+	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
+	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox) const;
+
+	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
+
 	void rebuildSearchTree();
 
 private:
@@ -139,10 +155,11 @@ inline const TriMeshIndex& Model::MultMeshTriangle::operator[](size_t i) const
 	return _vertIds[i];
 }
 
+#if !USE_POLYMESH
 inline std::shared_ptr<const Model::TriSearchTree> Model::getTriSearchTree() const
 {
 	return _pTriSearchTree;
 }
-
+#endif
 
 }

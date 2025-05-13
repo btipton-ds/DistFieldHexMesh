@@ -154,7 +154,11 @@ public:
 	void createBlockFaces();
 
 	const Model& getModel() const;
+#if USE_POLYMESH
+	const std::shared_ptr<const Model::PolyMeshSearchTree>& getModelPolySearchTree() const;
+#else
 	const std::shared_ptr<const Model::TriSearchTree>& getModelTriSearchTree() const;
+#endif
 	void deleteModelSearchTree();
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
@@ -314,6 +318,7 @@ private:
 	ObjectPool<Polyhedron> _polyhedra;
 
 	mutable bool _searchTreeSet = false;
+	mutable std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
 	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
