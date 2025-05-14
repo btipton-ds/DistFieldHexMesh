@@ -158,13 +158,15 @@ bool Splitter3D::splitComplex()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if 1 // && defined(_DEBUG)
+#if ENABLE_DEBUGGING_MUTEXES
 			static mutex mut;
 			lock_guard lg(mut);
 
+#if 1 // && defined(_DEBUG)
 			if (_polyhedronId == Index3DId(3, 1, 5, 433)) {
 				int dbgBreak = 1; // returning correct result for this cell
 			}
+#endif
 #endif
 			result = complexityBisectionHexSplit(_polyhedronId, 0, 8);
 			break;
@@ -222,13 +224,15 @@ bool Splitter3D::splitAtCenter()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if 0 && defined(_DEBUG)
+#if ENABLE_DEBUGGING_MUTEXES
 			static mutex mut;
 			lock_guard lg(mut);
 
+#ifdef _DEBUG
 			if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
 				int dbgBreak = 1;
 			}
+#endif
 #endif
 			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
 			break;
@@ -256,6 +260,11 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	int splitAxis = determineBestConditionalSplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
 	if (splitAxis != -1) {
+#if ENABLE_DEBUGGING_MUTEXES
+		static mutex mut;
+		lock_guard lg(mut);
+#endif
+
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(parentId, splitAxis, newCellIds);
 

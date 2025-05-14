@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <vertex.h>
 #include <splitParams.h>
+#include <polygon.h>
 
 using namespace std;
 using namespace DFHM;
@@ -137,6 +138,29 @@ void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 	Vector2d pt0, pt1;
 	if (calIntersectionTriPts(pts, pt0, pt1)) {
 		addEdge(pt0, pt1, split);
+	}
+}
+
+void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
+	vector<Vector2d> iPts;
+	face.iterateEdges([this, &iPts](const Edge& edge)->bool {
+		const auto tol = Tolerance::paramTol();
+		auto seg = edge.getSegment();
+		RayHitd hp;
+		if (_plane.intersectLineSegment(seg, hp, tol)) {
+			Vector2d pt2d;
+			if (project(hp.hitPt, pt2d)) {
+				iPts.push_back(pt2d);
+			}
+		}
+		return true;
+	});
+
+	if (!iPts.empty() && iPts.size() % 2 == 0) {
+		for (size_t i = 0; i < iPts.size() / 2; i++) {
+			size_t j = (i + 1) % iPts.size();
+			addEdge(iPts[i], iPts[j], split);
+		}
 	}
 }
 
@@ -385,6 +409,9 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	const double sharpAngleRadians = params.getSharpAngleRadians();
 	const double sharpRadius = params.sharpRadius;
 	const double minRatio = 1 / 25.0;
+
+	if (_edges.empty())
+		return 0;
 
 	curvatures.clear();
 	vector<Polyline> pls;

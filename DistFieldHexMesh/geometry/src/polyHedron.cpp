@@ -994,7 +994,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 	const auto& model = getModel();
 
 	int reflectionAxisBits = 0;
-# if 1
+# if 0
 	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
 		bool reflect = false;
 		switch (reflectionAxis) {
@@ -1011,6 +1011,15 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 #endif		
 	for (const auto& multiPolyIdx : indices) {
 		const auto& face = model.getPolygon(multiPolyIdx);
+#if 1
+		if (!face)
+			continue;
+
+		if (reflectionAxisBits == 0) {
+			sp.addFaceEdges(*face, false);
+		}
+
+#else
 		face->iterateTriangles([this, reflectionAxisBits, &sp](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 			const Vector3d* pts[3] = {
 				&getVertexPoint(id0),
@@ -1053,12 +1062,12 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 			}
 			return true;
 		});
-
+#endif
 		
 #if 0
-		if (step == 0 && (getId().blockIdx() == Index3D(3, 0, 4))) {
+		if (sp.getPoints().size() > 10) {
 			stringstream ss;
-			ss << "D:/DarkSky/Projects/output/objs/cuvature_polylines_" << getBlockPtr()->getLoggerNumericCode(getId()) << "_" << step << "_";
+			ss << "D:/DarkSky/Projects/output/objs/cuvature_polylines";
 			sp.writePolylinesObj(ss.str());
 		}
 #endif
@@ -1598,17 +1607,16 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 {
-	if (!intersectsModel()) {
-		return false;
-	}
-
-#if 0 && defined(_DEBUG)
+#if ENABLE_DEBUGGING_MUTEXES
 	static mutex mut;
 	lock_guard lg(mut);
 
+#ifdef _DEBUG
 	if (getId() == Index3DId(3, 0, 4, 5)) {
 		int dbgBreak = 1; // returning correct result for this cell
 	}
+#endif
+
 #endif
 	bool result = false;
 	for (int axis = 0; axis < 3; axis++) {

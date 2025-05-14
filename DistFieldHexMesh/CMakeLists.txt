@@ -273,7 +273,7 @@ add_custom_command(
 )
 
 if(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /Zo")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11 ")
