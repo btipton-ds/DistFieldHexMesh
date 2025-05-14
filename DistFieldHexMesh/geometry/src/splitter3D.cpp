@@ -260,11 +260,6 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	int splitAxis = determineBestConditionalSplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
 	if (splitAxis != -1) {
-#if ENABLE_DEBUGGING_MUTEXES
-		static mutex mut;
-		lock_guard lg(mut);
-#endif
-
 		MTC::vector<Index3DId> newCellIds;
 		bisectHexCell(parentId, splitAxis, newCellIds);
 
