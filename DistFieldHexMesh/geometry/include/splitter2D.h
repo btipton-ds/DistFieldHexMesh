@@ -37,6 +37,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <tm_vector3.h>
 #include <tm_plane.h>
+#include <tm_ray.h>
+#include <tm_lineSegment.h>
 #include <Eigen/src/Core/Matrix.h>
 #include <fastBisectionSet.h>
 #include <MultiCoreUtil.h>
@@ -78,7 +80,8 @@ public:
 	LineSegment2d(const LineSegment2d& rhs) = default;
 
 	bool project(const Vector2d& pt, double& t) const;
-	bool intersect(const LineSegment2d& other, double& t) const;
+	bool intersectRay(const LineSegment2d& ray, double& t) const;
+	bool intersectionInBounds(const LineSegment2d& other, double& t) const;
 	const Vector2d& operator[](size_t idx) const;
 	Vector2d& operator[](size_t idx);
 	Vector2d interpolate(double t) const;
@@ -103,6 +106,7 @@ public:
 	Splitter2D(const Planed& plane);
 	Splitter2D(const MTC::vector<Vector3d>& polyPoints);
 	Splitter2D(const MTC::vector<const Vector3d*>& polyPoints);
+	Splitter2D(const Polygon& face);
 
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 	void add3DTriEdges(const Vector3d pts[3], bool split);
@@ -121,19 +125,16 @@ public:
 	size_t getGaps(std::vector<double>& gaps) const;
 
 	bool intersectsTriPoints(const Vector3d* const * triPts) const;
+	bool intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& segs) const;
+	bool intersectWithSeg(const LineSegmentd& seg) const;
 
 	void writeObj(const std::string& filenameRoot) const;
+	void writeBoundaryEdgesObj(const std::string& filenameRoot) const;
 	void writePolylinesObj(const std::string& filenameRoot) const;
 
-	inline const std::set<Edge2D>& getEdges() const
-	{
-		return _edges;
-	}
-
-	inline const std::vector<Vector2d>& getPoints() const
-	{
-		return _pts;
-	}
+	const std::set<Edge2D>& getEdges() const;
+	inline const std::vector<Vector2d>& getPoints() const;
+	const Planed& getPlane() const;
 
 	Vector3d pt3D(const Vector2d& pt2d) const;
 
@@ -156,6 +157,7 @@ private:
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
+	void initFromPoints(const MTC::vector<Vector3d>& polyPoints);
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split);
 	void addEdge(const Edge2D& edge, bool split);
 	bool insideBoundary(const Vector2d& testPt) const;
@@ -193,5 +195,20 @@ private:
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;
 };
+
+inline const std::set<Edge2D>& Splitter2D::getEdges() const
+{
+	return _edges;
+}
+
+inline const std::vector<Vector2d>& Splitter2D::getPoints() const
+{
+	return _pts;
+}
+
+inline const Planed& Splitter2D::getPlane() const
+{
+	return _plane;
+}
 
 }

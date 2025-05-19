@@ -53,6 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMeshIndex.h>
 #include <meshData.h>
 #include <model.h>
+#include <splitter2D.h>
 
 #define CACHE_BIT_SORTED 1
 #define CACHE_BIT_EDGES 2
@@ -480,7 +481,8 @@ bool Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId
 		Vector3d n = v1.cross(v0);
 #ifdef _DEBUG
 		if (j > 1) {
-			assert(n.dot(lastNorm) > 0);
+			auto dp = n.dot(lastNorm);
+			assert(dp > -Tolerance::paramTol());
 		}
 		lastNorm = n;
 #endif // _DEBUG
@@ -1033,9 +1035,52 @@ bool Polygon::intersect(const Planed& pl, LineSegmentd& intersectionSeg) const
 		intersectionSeg = LineSegmentd(pt0, pt1);
 		return true;
 	} else if (!intersectionPoints.empty()) {
+		assert(!"Unexpected case");
 		int dbgBreak = 1;
 	}
 
+	return false;
+}
+
+bool Polygon::intersect(const Polygon& otherFace, bool dumpObj) const
+{
+	const auto tol = Tolerance::paramTol();
+
+	// Refactor to use Splitter2d instead of polygon AND use the splitters planes for the plane/plane intersection.
+	// This will prevent minor deviations between the polygon planes and the splitter planes which is dropping projections.
+
+	Splitter2D sp(*this), sp2(otherFace);
+
+	if (dumpObj) {
+		sp.writeBoundaryEdgesObj("D:/DarkSky/Projects/output/objs/meshFace.obj");
+		sp2.writeBoundaryEdgesObj("D:/DarkSky/Projects/output/objs/modelFace.obj");
+	}
+	auto& ourPlane = sp.getPlane();
+	auto& otherPlane = sp2.getPlane();
+	Rayd ray;
+	if (ourPlane.intersectPlane(otherPlane, ray, tol)) {
+		vector<LineSegmentd> segs;
+		if (sp.intersectWithRay(ray, segs)) {
+			const auto& pt0 = ray._origin;
+			const auto& pt1 = pt0 + ray._dir;
+
+			assert(ourPlane.isCoincident(pt0, tol));
+			assert(ourPlane.isCoincident(pt1, tol));
+			assert(otherPlane.isCoincident(pt0, tol));
+			assert(otherPlane.isCoincident(pt1, tol));
+
+			for (const auto& seg : segs) {
+				assert(ourPlane.isCoincident(seg._pt0, tol));
+				assert(ourPlane.isCoincident(seg._pt1, tol));
+				assert(otherPlane.isCoincident(seg._pt0, tol));
+				assert(otherPlane.isCoincident(seg._pt1, tol));
+
+				if (sp2.intersectWithSeg(seg)) {
+					return true;
+				}
+			}
+		}
+	}
 	return false;
 }
 

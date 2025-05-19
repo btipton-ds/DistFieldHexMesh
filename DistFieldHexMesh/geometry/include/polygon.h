@@ -187,6 +187,7 @@ public:
 	bool intersect(const LineSegmentd& seg, RayHitd& hit) const;
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
+	bool intersect(const Polygon& otherFace, bool dumpObj) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 

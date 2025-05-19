@@ -187,9 +187,11 @@ void PolyMesh::flattenSharps(const SplittingParams& params)
 	for (const auto& ptr : sharpLoops) {
 		const auto& loop = *ptr;
 		if (loop.size() > 5) {
+#if 0
 			stringstream ss;
 			ss << "D:/DarkSky/Projects/output/objs/sharpLoop_" << count++ << ".obj";
 			dumpVertsAsLineSegs(ss.str(), loop);
+#endif
 			flattenEdgeLoop(loop);
 		}
 	}

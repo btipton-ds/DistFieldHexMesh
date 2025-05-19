@@ -46,20 +46,60 @@ Splitter2D::Splitter2D(const Planed& plane)
 
 Splitter2D::Splitter2D(const MTC::vector<Vector3d>& polyPoints)
 {
-	auto origin = BI_LERP(polyPoints, 0.5, 0.5);
+	initFromPoints(polyPoints);
+}
 
-	_xAxis = BI_LERP(polyPoints, 1.0, 0.5) - BI_LERP(polyPoints, 0.0, 0.5);
+Splitter2D::Splitter2D(const Polygon& face)
+{
+	const auto& vertIds = face.getNonColinearVertexIds();
+	vector<Vector3d> polyPts;
+	for (const auto& id : vertIds) {
+		polyPts.push_back(face.getVertexPoint(id));
+	}
 
-	_xAxis.normalize();
-	Vector3d v = polyPoints[2] - polyPoints[0];
-	Vector3d n = _xAxis.cross(v);
-	_plane = Planed(origin, n);
-	_plane.setXRef(_xAxis);
-	_yAxis = _plane.getNormal().cross(_xAxis);
+	initFromPoints(polyPts);
+}
 
-#ifdef _DEBUG
-	Vector2d ctr(0, 0);
-#endif
+void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
+{
+	if (polyPoints.size() < 3) {
+		throw runtime_error("Splitter2D::Splitter2D(). Insufficient points to define plane");
+	}
+
+	Vector3d origin(0, 0, 0);
+	if (polyPoints.size() == 4) {
+		origin = BI_LERP(polyPoints, 0.5, 0.5);
+		_xAxis = BI_LERP(polyPoints, 1.0, 0.5) - BI_LERP(polyPoints, 0.0, 0.5);
+		_xAxis.normalize();
+		Vector3d v = polyPoints[2] - polyPoints[0];
+		Vector3d n = _xAxis.cross(v);
+		_plane = Planed(origin, n);
+		_plane.setXRef(_xAxis);
+		_yAxis = _plane.getNormal().cross(_xAxis);
+	}
+	else {
+		for (const auto& pt : polyPoints)
+			origin += pt;
+		origin /= polyPoints.size();
+
+
+		const auto& pt0 = polyPoints[0];
+		const auto& pt1 = polyPoints[1];
+		const auto& pt2 = polyPoints[2];
+
+		Vector3d v0 = pt0 - pt1;
+		_xAxis = -v0.normalized();
+		Vector3d v1 = pt2 - pt1;
+		Vector3d n = v1.cross(v0);
+		_plane = Planed(origin, n);
+		_plane.setXRef(_xAxis);
+		_yAxis = _plane.getNormal().cross(_xAxis);
+	}
+
+	assert(fabs(_plane.getNormal().dot(_xAxis)) < Tolerance::paramTol());
+	assert(fabs(_plane.getNormal().dot(_yAxis)) < Tolerance::paramTol());
+	assert(fabs(_xAxis.dot(_yAxis)) < Tolerance::paramTol());
+
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
 		Vector2d p0, p1;
@@ -480,7 +520,7 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 					LineSegment2d seg0(mid0, perpV0);
 					LineSegment2d seg1(mid1, perpV1);
 					double t;
-					if (seg0.intersect(seg1, t)) {
+					if (seg0.intersectionInBounds(seg1, t)) {
 						Vector2d pt = seg0.interpolate(t);
 						radius = (pt0 - pt).norm();
 						if (radius < sharpRadius) {
@@ -530,12 +570,88 @@ bool Splitter2D::intersectsTriPoints(const Vector3d* const* triPts) const
 
 			double t;
 			LineSegment2d seg(bPt0, bPt1);
-			if (seg.intersect(testSeg, t)) {
+			if (seg.intersectionInBounds(testSeg, t)) {
 				return true;
 			}
 		}
 	}
 
+	return false;
+}
+
+bool Splitter2D::intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& segs) const
+{
+	Vector2d rayOrigin2d, rayPt2d;
+	if (!project(ray._origin, rayOrigin2d) || !project(ray._origin + ray._dir, rayPt2d))
+		return false;
+
+	const auto tol = Tolerance::sameDistTol();
+
+	LineSegment2d seg2d(rayOrigin2d, rayPt2d);
+	set<Vector2d> ptSet;
+	for (const auto& e : _boundaryEdges) {
+		LineSegment2d eSeg(_pts[e[0]], _pts[e[1]]);
+		double t;
+		if (seg2d.intersectRay(eSeg, t) && -tol < t && t < 1 + tol) {
+			auto pt = rayOrigin2d + (rayPt2d - rayOrigin2d) * t;
+			if (insideBoundary(pt)) {
+				ptSet.insert(pt);
+			}
+		}
+	}
+	
+	if (ptSet.empty())
+		return false;
+
+
+	if (ptSet.size() % 2 != 0)
+		return false;
+
+	vector<Vector2d> pts(ptSet.begin(), ptSet.end());
+
+	Vector2d dir = (rayPt2d - rayOrigin2d).normalized();
+	sort(pts.begin(), pts.end(), [&rayOrigin2d, &rayPt2d, &dir](const Vector2d& lhs, const Vector2d& rhs)->bool {
+		auto lhDist = (lhs - rayOrigin2d).dot(dir);
+		auto rhDist = (rhs - rayOrigin2d).dot(dir);
+		return lhDist < rhDist;
+	});
+
+	for (size_t i = 0; i < pts.size() / 2; i++) {
+		const auto& pt0 = pt3D(pts[2 * i]);
+		const auto& pt1 = pt3D(pts[2 * i + 1]);
+		LineSegmentd seg(pt0, pt1);
+		segs.push_back(seg);
+	}
+	return true;
+}
+
+bool Splitter2D::intersectWithSeg(const LineSegmentd& seg) const
+{
+	Vector2d pt0, pt1;
+
+	bool projValid = project(seg._pt0, pt0);
+	assert (projValid);
+
+	if (insideBoundary(pt0))
+		return true;
+
+	projValid = project(seg._pt1, pt1);
+	assert(projValid);
+
+	if (insideBoundary(pt1))
+		return true;
+
+	LineSegment2d seg2d(pt0, pt1);
+	for (const auto& e : _boundaryEdges) {
+		LineSegment2d testSeg2d(_pts[e[0]], _pts[e[1]]);
+		double t;
+		if (testSeg2d.intersectionInBounds(seg2d, t)) {
+			auto pt = seg2d.interpolate(t);
+			if (insideBoundary(pt)) {
+				return true;
+			}
+		}
+	}
 	return false;
 }
 
@@ -552,7 +668,7 @@ bool Splitter2D::segIntersectsBoundary(const LineSegment2d& testSeg) const
 
 		LineSegment2d seg(segPt0, segPt1);
 		double t;
-		if (seg.intersect(testSeg, t)) {
+		if (seg.intersectionInBounds(testSeg, t)) {
 			return true;
 		}
 	}
@@ -580,6 +696,21 @@ void Splitter2D::writeObj(const string& filenameRoot) const
 			out << (edge[i] + 1) << " ";
 		}
 		out << "\n";
+	}
+}
+
+void Splitter2D::writeBoundaryEdgesObj(const string& filename) const
+{
+	ofstream out(filename);
+	out << "#Vertices " << _pts.size() << "\n";
+	for (const auto& pt : _pts) {
+		auto pt2 = pt3D(pt);
+		out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
+	}
+
+	out << "#Edges " << _boundaryEdges.size() << "\n";
+	for (const auto& e : _boundaryEdges) {
+		out << "l " << (e[0] + 1) << " " << (e[1] + 1) << "\n";
 	}
 }
 
@@ -914,7 +1045,7 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	LineSegment2d seg0(getPoint(e0[0]), getPoint(e0[1]));
 	LineSegment2d seg1(getPoint(e1[0]), getPoint(e1[1]));
 	double t;
-	if (seg0.intersect(seg1, t)) {
+	if (seg0.intersectionInBounds(seg1, t)) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt1 = seg0.interpolate(t);
 		auto iter = _ptToIndexMap.find(pt1);
@@ -1103,7 +1234,112 @@ bool LineSegment2d::project(const Vector2d& pt, double& t) const
 	return errSqr < tolSqr;
 }
 
-bool LineSegment2d::intersect(const LineSegment2d& other, double& t) const
+bool LineSegment2d::intersectRay(const LineSegment2d& ray, double& t) const
+{
+	const double tol = Tolerance::paramTol();
+	double tOther = -1;
+	t = -1;
+
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
+			if ((_pts[i] - ray._pts[j]).squaredNorm() < Tolerance::sameDistTolSqr()) {
+				// The line segments share a point
+				t = (i == 0) ? 0 : 1;
+				tOther = (j == 0) ? 0 : 1;
+				return true;
+			}
+		}
+	}
+
+	Vector2d xAxis = _pts[1] - _pts[0];
+	double len0 = xAxis.norm();
+	if (len0 < tol)
+		return  false;
+	xAxis /= len0;
+
+	auto vOther = ray[1] - ray[0];
+	auto lenOther = vOther.norm();
+	if (lenOther < tol)
+		return  false;
+	vOther /= lenOther;
+
+	Vector2d yAxis(-xAxis[1], xAxis[0]);
+
+	auto v0 = ray[0] - _pts[0];
+	auto v1 = ray[1] - _pts[0];
+
+	double x0 = xAxis.dot(v0);
+	double y0 = yAxis.dot(v0);
+
+	double x1 = xAxis.dot(v1);
+	double y1 = yAxis.dot(v1);
+
+	double dx = x1 - x0;
+	double dy = y1 - y0;
+
+	if (fabs(dy) < Tolerance::sameDistTol()) {
+		// Horizontal line case
+		if (fabs(y0) >= tol && fabs(y1) >= tol) {
+			return false; // They are parallel but not colinear, not intersecting
+		}
+
+		double t00 = x0 / len0;
+		double t01 = x1 / len0;
+
+		// AND both of the test seg's points fall outside our range
+		if ((t00 <= tol && t01 <= tol) || (t00 >= 1 - tol && t01 >= 1 - tol)) {
+			// Both are less than zero or both are greater than 1
+			return false;
+		}
+
+		if (-tol < t00 && t00 < 1 + tol) {
+			t = t00;
+		} else {
+			t = t01;
+		}
+		return true;
+	} else {
+		double slope = DBL_MAX;;
+		if (fabs(dx) >= tol)
+			slope = dy / dx;
+
+		if (fabs(slope) > 1.0e9) {
+			// Perpendicular line case
+			double sign = fabs(y0) > 0 ? y1 / y0 : (fabs(y1) > 0 ? y0 / y1 : 0);
+
+			if (sign <= 0) {
+				// crosses x axis
+				double x = 0.5 * (x0 + x1); // Average out any miniscule error
+				t = (x - x0) / len0;
+			} else
+				return false;
+		} else {
+			double b = y0 - slope * x0;
+			//			double xIntercept = -b / slope;
+			t = (-b / slope) / len0;
+		}
+
+		auto iPt = _pts[0] + xAxis * len0 * t;
+
+		auto v = iPt - ray[0];
+		auto distOther = vOther.dot(v);
+		tOther = distOther / lenOther;
+
+		if (-tol < tOther && tOther < 1 + tol) {
+#if 0 && defined(_DEBUG)
+			v = v - vOther * distOther;
+			assert(v.squaredNorm() < Tolerance::sameDistTolSqr());
+			auto iPtOther = other[0] + vOther * lenOther * tOther;
+			assert((iPtOther - iPt).squaredNorm() < Tolerance::sameDistTolSqr());
+#endif
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool LineSegment2d::intersectionInBounds(const LineSegment2d& other, double& t) const
 {
 	const double tol = Tolerance::paramTol();
 	double tOther = -1;

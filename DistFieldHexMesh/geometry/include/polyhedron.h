@@ -107,15 +107,15 @@ public:
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
 
-#if USE_POLYMESH
 	bool entryIntersectsModel(const PolyMeshIndex& index) const;
 	size_t getPolyIndices(std::vector<PolyMeshIndex>& indices) const;
-#else
+
 	bool entryIntersectsModel(const TriMeshIndex& index) const;
 	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
-#endif
 
 	bool intersectsModel() const;
+	Trinary intersectsModelTriMesh() const;
+	Trinary intersectsModelPolyMesh() const;
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 #if USE_CELL_HISTOGRAM

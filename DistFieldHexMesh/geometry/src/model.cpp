@@ -126,7 +126,6 @@ size_t Model::addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh
 	return _modelMeshData.size();
 }
 
-#if !USE_POLYMESH
 bool Model::doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
 {
 	const auto tol = Tolerance::sameDistTol();
@@ -137,6 +136,7 @@ bool Model::doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Mod
 	return  false;
 }
 
+#if !USE_POLYMESH
 size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& result) const
 {
 	std::vector<TriSearchTree::Entry> entries;
@@ -277,6 +277,8 @@ const Model::MultMeshTriangle Model::getTriIndices(const TriMeshIndex& idx) cons
 	return result;
 }
 
+#endif
+
 bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 {
 	auto pMesh = _modelMeshData[idx.getMeshIdx()]->getMesh().get();
@@ -290,7 +292,6 @@ bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 	}
 	return false;
 }
-#endif
 
 bool Model::doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
 {
