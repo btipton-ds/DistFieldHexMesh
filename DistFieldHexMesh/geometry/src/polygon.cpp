@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment_byref.hpp>
 #include <tm_ray.h>
 #include <tm_ioUtil.h>
+#include <tm_bestFit.h>
 #include <objectPool.hpp>
 #include <vertex.h>
 #include <edge.h>
@@ -246,6 +247,36 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	}
 
 	return result;
+}
+
+bool Polygon::flatten()
+{
+	const auto tol = Tolerance::sameDistTol();
+	if (_vertexIds.size() < 4)
+		return false;
+
+	vector<Vector3d> pts;
+	for (const auto& vertId : _vertexIds) {
+		pts.push_back(getVertexPoint(vertId));
+	}
+
+	bool changed = false;
+	Planed plane;
+	double err;
+	if (bestFitPlane(pts, plane, err) && err > tol) {
+		for (const auto& vertId : _vertexIds) {
+			auto& vert = getVertex(vertId);
+			auto pt = vert.getPoint();
+			if (!plane.isCoincident(pt, tol)) {
+				pt = plane.projectPoint(pt);
+				assert(plane.isCoincident(pt, tol));
+				vert.replacePoint(pt);
+				changed = true;
+			}
+		}
+	}
+
+	return changed;
 }
 
 void Polygon::write(ostream& out) const

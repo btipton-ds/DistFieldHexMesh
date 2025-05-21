@@ -125,54 +125,10 @@ void PolyMesh::simplify(const SplittingParams& params)
 	flattenSharps(params);
 	makeQuads(params);
 
-#if 1
 	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
 	reduceSlivers(params, maxSliverAngleRadians);
-#endif
 
-#if 0
-	_maxRemovableVerts = 10;
-	_maxRemovableAreaRatio = 0.5;
-	_minAspectRatio = 10;
-
-	for (int i = 0; i < 10; i++) {
-		set<EdgeKey> coplanarEdges;
-		_polygons.iterateInOrder([this, &coplanarEdges, &params](const Index3DId& id, const Polygon& face)->bool {
-			face.iterateEdges([this, &coplanarEdges, &params](const Edge& edge)->bool {
-				if (isCoplanar(params, edge)) {
-					coplanarEdges.insert(edge);
-				}
-				return true;
-			});
-			return true;
-		});
-
-		bool changed = false;
-		for (const auto& ek : coplanarEdges) {
-			edgeFunc(ek, [this, &params, &changed](const Edge& edge) {
-				if (isRemovable(params, edge)) {
-					const auto& pt = getVertexPoint(edge[0]);
-
-					const auto& faceIds = edge.getFaceIds();
-					auto iter = faceIds.begin();
-					const auto& face0 = getPolygon(*iter++);
-					const auto& face1 = getPolygon(*iter);
-
-					Vector3d normal = face0.calUnitNormal() + face1.calUnitNormal();
-					Planed plane(pt, normal);
-					auto newFaceId = removeEdge(params, plane, edge);
-					if (newFaceId.isValid()) {
-						changed = true;
-					}
-				}
-			});
-		}
-
-		if (!changed)
-			break;
-	}
-
-#endif
+	flattenFaces(params);
 }
 
 void PolyMesh::flattenSharps(const SplittingParams& params)
@@ -223,6 +179,22 @@ void PolyMesh::flattenEdgeLoop(const std::vector<Index3DId>& loop)
 				int dbgBreak = 1;
 			}
 		}
+	}
+}
+
+void PolyMesh::flattenFaces(const SplittingParams& params)
+{
+	bool changed = false;
+	for (int i = 0; i < params.numFlattenPasses; i++) {
+		changed = false;
+		_polygons.iterateInOrder([&changed](const Index3DId& id, Polygon& face)->bool {
+			if (face.flatten())
+				changed = true;
+			return true;
+		});
+
+		if (changed)
+			break;
 	}
 }
 

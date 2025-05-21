@@ -103,6 +103,7 @@ namespace DFHM {
 	private:
 		void flattenSharps(const SplittingParams& params);
 		void flattenEdgeLoop(const std::vector<Index3DId>& loop);
+		void flattenFaces(const SplittingParams& params);
 		void makeQuads(const SplittingParams& params);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		void mergeToQuad(const SplittingParams& params, const Edge& edge);
