@@ -90,6 +90,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
 	"geometry/src/gradingOp.cpp"
+	"geometry/src/lineSegment2D.cpp"
 	"geometry/src/meshData.cpp"
 	"geometry/src/model.cpp"
 	"geometry/src/objectPool.cpp" 
@@ -102,6 +103,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/unalignedBBox.cpp"
 	"geometry/src/vertexSpatialTree.cpp"
 	"geometry/src/vertex.cpp"
+	"geometry/src/vector2d.cpp"
 	"geometry/src/volume.cpp"
 
 	"graphics/src/drawMesh.cpp"
@@ -193,6 +195,7 @@ add_executable (TestDFM
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
 	"geometry/src/gradingOp.cpp"
+	"geometry/src/lineSegment2D.cpp"
 	"geometry/src/meshData.cpp"
 	"geometry/src/model.cpp"
 	"geometry/src/objectPool.cpp" 
@@ -204,6 +207,7 @@ add_executable (TestDFM
 	"geometry/src/splitter3D.cpp"
 	"geometry/src/unalignedBBox.cpp"
 	"geometry/src/vertexSpatialTree.cpp"
+	"geometry/src/vector2d.cpp"
 	"geometry/src/vertex.cpp"
 	"geometry/src/volume.cpp"
 

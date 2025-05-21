@@ -41,28 +41,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment.h>
 #include <Eigen/src/Core/Matrix.h>
 #include <fastBisectionSet.h>
+#include <lineSegment2D.h>
 #include <MultiCoreUtil.h>
 
 namespace DFHM {
 
 struct SplittingParams;
 class Polygon;
-
-class Vector2d : public Eigen::Vector2d
-{
-public:
-	Vector2d() = default;
-	Vector2d(const Vector2d& src) = default;
-	Vector2d(const Eigen::Vector2d& src);
-	Vector2d(double x, double y);
-
-	Eigen::Matrix<int64_t, 2, 1> asIntVec() const;
-
-	bool operator < (const Vector2d& rhs) const;
-	Vector2d operator -(const Vector2d& rhs) const;
-	Vector2d operator +(const Vector2d& rhs) const;
-	Vector2d operator *(double rhs) const;
-};
 
 class Edge2D {
 public:
@@ -72,23 +57,6 @@ public:
 	size_t otherIdx(size_t i) const;
 private:
 	size_t _indices[2];
-};
-
-class LineSegment2d {
-public:
-	LineSegment2d(const Vector2d& pt0 = Vector2d(0, 0), const Vector2d& pt1 = Vector2d(0, 0));
-	LineSegment2d(const LineSegment2d& rhs) = default;
-
-	bool project(const Vector2d& pt, double& t) const;
-	bool intersectRay(const LineSegment2d& ray, double& t) const;
-	bool intersectionInBounds(const LineSegment2d& other, double& t) const;
-	const Vector2d& operator[](size_t idx) const;
-	Vector2d& operator[](size_t idx);
-	Vector2d interpolate(double t) const;
-	double length() const;
-
-private:
-	std::vector<Vector2d> _pts;
 };
 
 class Splitter2D {

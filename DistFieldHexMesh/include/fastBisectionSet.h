@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <vector>
+#include <set>
 #include <algorithm>
 
 namespace DFHM {
