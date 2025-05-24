@@ -252,7 +252,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 bool Polygon::flatten()
 {
 	const auto tol = Tolerance::sameDistTol();
-	if (_vertexIds.size() < 4)
+	if (_vertexIds.size() <= 4)
 		return false;
 
 	vector<Vector3d> pts;

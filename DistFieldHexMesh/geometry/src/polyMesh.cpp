@@ -731,41 +731,40 @@ bool PolyMesh::formsValidQuad(const SplittingParams& params, const MTC::vector<I
 	if (vertIds.size() != 4)
 		return false;
 
-	const Vector3d* pts[] = {
-		&getVertexPoint(vertIds[0]),
-		&getVertexPoint(vertIds[1]),
-		&getVertexPoint(vertIds[2]),
-		&getVertexPoint(vertIds[3]),
+	const vector<Vector3d> pts = {
+		getVertexPoint(vertIds[0]),
+		getVertexPoint(vertIds[1]),
+		getVertexPoint(vertIds[2]),
+		getVertexPoint(vertIds[3]),
 	};
 
 	Vector3d v0, v1, n0, n1;
 
 	// Check normals are aligned
-	v0 = *pts[0] - *pts[1];
-	v1 = *pts[2] - *pts[1];
+	v0 = pts[0] - pts[1];
+	v1 = pts[2] - pts[1];
 
 	n0 = v1.cross(v0);
 
-	v0 = *pts[2] - *pts[3];
-	v1 = *pts[0] - *pts[3];
+	v0 = pts[2] - pts[3];
+	v1 = pts[0] - pts[3];
 
 	n1 = v1.cross(v0);
 	auto dp = n0.dot(n1);
 	if (dp < 0)
 		return false;
 
-	// Check normals are close to parallel
-	n0.normalize();
-	n1.normalize();
-	double cp = n1.cross(n0).norm();
-	if (cp > 0.01)
-		return false;
-
-	for (size_t i = 0; i < vertIds.size(); i++) {
-		if (Polygon::calVertexAngleStat(this, vertIds, i) < maxAcuteAngle)
-			return false;
+	Planed plane;
+	double err;
+	if (bestFitPlane(pts, plane, err) && err < Tolerance::sameDistTolFloat()) {
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			if (Polygon::calVertexAngleStat(this, vertIds, i) < maxAcuteAngle)
+				return false;
+		}
+		return true;
 	}
-	return true;
+
+	return false;
 }
 
 bool PolyMesh::isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const
@@ -1036,6 +1035,9 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	if (faceIds.size() != 2)
 		return;
 
+	if (faceIds.contains(Index3DId(0, 0, 0, 17789)) || faceIds.contains(Index3DId(0, 0, 0, 17790))) {
+		int dbgBreak = 1;
+	}
 	auto iter = faceIds.begin();
 	auto faceId0 = *iter++;
 	auto faceId1 = *iter;

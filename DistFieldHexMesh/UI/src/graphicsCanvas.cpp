@@ -471,6 +471,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
             // Rotate about hit point
             for (const auto& hit : hits) {
                 if (hit.getDist() < minDist) {
+                    cout << "Model poly hit.idx: " << hit.getPolyId() << "\n";
                     minDist = hit.getDist();
                     hitModel = hit.getPoint();
                 }
