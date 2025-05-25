@@ -200,16 +200,16 @@ void PolyMesh::flattenFaces(const SplittingParams& params)
 
 void PolyMesh::makeQuads(const SplittingParams& params, bool flatten)
 {
-	auto sortLenFunc = [this](const EdgeKey& lhs, const EdgeKey& rhs) {
-		double l0, l1;
-		edgeFunc(lhs, [&l0](const Edge& edge) {
-			l0 = edge.calLength();
+	auto sortFunc = [this, &params](const EdgeKey& lhs, const EdgeKey& rhs) {
+		double c0, c1;
+		edgeFunc(lhs, [&c0, &params](const Edge& edge) {
+			c0 = edge.calCurvature(params);
 		});
-		edgeFunc(rhs, [&l1](const Edge& edge) {
-			l1 = edge.calLength();
+		edgeFunc(rhs, [&c1, &params](const Edge& edge) {
+			c1 = edge.calCurvature(params);
 		});
 
-		return l0 > l1;
+		return c0 < c1;
 	};
 
 	vector<EdgeKey> edges;
@@ -221,7 +221,7 @@ void PolyMesh::makeQuads(const SplittingParams& params, bool flatten)
 		return true;
 	});
 
-	sort(edges.begin(), edges.end(), sortLenFunc);
+	sort(edges.begin(), edges.end(), sortFunc);
 
 	vector<Index3DId> newFaceIds;
 	for (const auto& ek : edges) {
