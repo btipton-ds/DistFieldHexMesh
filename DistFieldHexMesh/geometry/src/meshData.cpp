@@ -63,7 +63,9 @@ void MeshData::postReadCreate()
 
 	_pMesh->clearSearchTrees();
 	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
-	_pPolyMesh->simplify(params);
+
+	bool flattenQuads = true;
+	_pPolyMesh->simplify(params, flattenQuads);
 }
 
 void MeshData::clear()

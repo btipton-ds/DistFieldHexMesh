@@ -80,7 +80,7 @@ namespace DFHM {
 		PolyMesh* getPolyMeshPtr() override;
 
 		const Vector3d& getVertexPoint(const Index3DId& id) const;
-		void simplify(const SplittingParams& params);
+		void simplify(const SplittingParams& params, bool flattenQuads);
 		void calCurvatures();
 		double getEdgeCurvature(const EdgeKey& key) const;
 
@@ -104,9 +104,9 @@ namespace DFHM {
 		void flattenSharps(const SplittingParams& params);
 		void flattenEdgeLoop(const std::vector<Index3DId>& loop);
 		void flattenFaces(const SplittingParams& params);
-		void makeQuads(const SplittingParams& params);
+		void makeQuads(const SplittingParams& params, bool flatten);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
-		void mergeToQuad(const SplittingParams& params, const Edge& edge);
+		Index3DId mergeToQuad(const SplittingParams& params, const Edge& edge);
 		void makeCoplanarFaceSets(const Index3DId& radiantId, const FastBisectionSet<Index3DId>& faceIds, MTC::vector<MTC::vector<Index3DId>>& planarFaceSets);
 		void processPlanarFaces(const SplittingParams& params, const Index3DId& radiantId, double minAngleRadians, const MTC::vector<Index3DId>& faceIds);
 		void createSharpEdgeLoops(const SplittingParams& params, std::vector<std::shared_ptr<std::vector<Index3DId>>>& sharpLoops) const;

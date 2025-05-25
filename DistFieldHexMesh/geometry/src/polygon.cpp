@@ -249,10 +249,12 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	return result;
 }
 
-bool Polygon::flatten()
+bool Polygon::flatten(bool allowQuads)
 {
-	const auto tol = Tolerance::sameDistTol();
-	if (_vertexIds.size() <= 4)
+	const auto tolLoose = Tolerance::sameDistTolFloat();
+	const auto tolTight = Tolerance::sameDistTol();
+
+	if (!allowQuads && _vertexIds.size() <= 4)
 		return false;
 
 	vector<Vector3d> pts;
@@ -263,13 +265,13 @@ bool Polygon::flatten()
 	bool changed = false;
 	Planed plane;
 	double err;
-	if (bestFitPlane(pts, plane, err) && err > tol) {
+	if (bestFitPlane(pts, plane, err) && (err > tolTight && (allowQuads || err < tolLoose))) {
 		for (const auto& vertId : _vertexIds) {
 			auto& vert = getVertex(vertId);
 			auto pt = vert.getPoint();
-			if (!plane.isCoincident(pt, tol)) {
+			if (!plane.isCoincident(pt, tolTight)) {
 				pt = plane.projectPoint(pt);
-				assert(plane.isCoincident(pt, tol));
+				assert(plane.isCoincident(pt, tolTight));
 				vert.replacePoint(pt);
 				changed = true;
 			}

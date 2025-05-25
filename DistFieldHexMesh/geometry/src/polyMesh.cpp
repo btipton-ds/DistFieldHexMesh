@@ -120,10 +120,10 @@ const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
 	return _vertices[id];
 }
 
-void PolyMesh::simplify(const SplittingParams& params)
+void PolyMesh::simplify(const SplittingParams& params, bool flattenQuads)
 {
 	flattenSharps(params);
-	makeQuads(params);
+	makeQuads(params, flattenQuads);
 
 	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
 	reduceSlivers(params, maxSliverAngleRadians);
@@ -188,7 +188,7 @@ void PolyMesh::flattenFaces(const SplittingParams& params)
 	for (int i = 0; i < params.numFlattenPasses; i++) {
 		changed = false;
 		_polygons.iterateInOrder([&changed](const Index3DId& id, Polygon& face)->bool {
-			if (face.flatten())
+			if (face.flatten(false))
 				changed = true;
 			return true;
 		});
@@ -198,7 +198,7 @@ void PolyMesh::flattenFaces(const SplittingParams& params)
 	}
 }
 
-void PolyMesh::makeQuads(const SplittingParams& params)
+void PolyMesh::makeQuads(const SplittingParams& params, bool flatten)
 {
 	auto sortLenFunc = [this](const EdgeKey& lhs, const EdgeKey& rhs) {
 		double l0, l1;
@@ -223,12 +223,24 @@ void PolyMesh::makeQuads(const SplittingParams& params)
 
 	sort(edges.begin(), edges.end(), sortLenFunc);
 
+	vector<Index3DId> newFaceIds;
 	for (const auto& ek : edges) {
-		edgeFunc(ek, [this, &params](const Edge& edge) {
-			mergeToQuad(params, edge);
+		edgeFunc(ek, [this, &params, &newFaceIds](const Edge& edge) {
+			auto id = mergeToQuad(params, edge);
+			if (id.isValid())
+				newFaceIds.push_back(id);
 		});
 	}
-	int dbgBreak = 1;
+
+	if (flatten) {
+		_polygons.setSupportsReverseLookup(false);
+
+		for (const auto& faceId : newFaceIds) {
+			auto& face = getPolygon(faceId);
+			face.flatten(true);
+		}
+		_polygons.setSupportsReverseLookup(true);
+	}
 }
 
 void PolyMesh::reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians)
@@ -1026,14 +1038,13 @@ void PolyMesh::calCurvatures()
 	});
 }
 
-void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
+Index3DId PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 {
-	const double MAX_CP = 0.02;
-	const double MAX_CP_SQR = MAX_CP * MAX_CP;
+	Index3DId result;
 
 	auto& faceIds = edge.getFaceIds();
 	if (faceIds.size() != 2)
-		return;
+		return result;
 
 	if (faceIds.contains(Index3DId(0, 0, 0, 17789)) || faceIds.contains(Index3DId(0, 0, 0, 17790))) {
 		int dbgBreak = 1;
@@ -1043,24 +1054,30 @@ void PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	auto faceId1 = *iter;
 
 	if (!_polygons.exists(faceId0) || !_polygons.exists(faceId1))
-		return;
+		return result;
 
 	auto& face0 = getPolygon(faceId0);
 	auto& face1 = getPolygon(faceId1);
 	if (isShortEdge(edge, face0, face1))
-		return;
+		return result;
 
 	auto vertIds0 = face0.getVertexIds();
 	auto vertIds1 = face1.getVertexIds();
 
 	MTC::vector<Index3DId> newVertIds;
-	if (mergeVertices(edge, face0, face1, newVertIds) && formsValidQuad(params, newVertIds)) {
-		Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
-		norm.normalize();
-		const auto& ctr = getVertexPoint(vertIds0[0]);
-		Planed plane(ctr, norm);
-		removeEdge(edge, faceId0, faceId1, newVertIds, plane);
-	}
+	if (!mergeVertices(edge, face0, face1, newVertIds))
+		return result;
+	
+	if (!formsValidQuad(params, newVertIds))
+		return result;
+
+	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
+	norm.normalize();
+	const auto& ctr = getVertexPoint(vertIds0[0]);
+	Planed plane(ctr, norm);
+	result = removeEdge(edge, faceId0, faceId1, newVertIds, plane);
+
+	return result;
 }
 
 void PolyMesh::removeFace(const Index3DId& id)
