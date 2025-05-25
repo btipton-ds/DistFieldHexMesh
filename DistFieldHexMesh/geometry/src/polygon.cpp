@@ -338,25 +338,6 @@ bool Polygon::isPointOnPlane(const Vector3d& pt) const {
 	return distFromPlane(pt) < Tolerance::sameDistTol();
 }
 
-bool Polygon::findPiercePoints(const std::vector<size_t>& edgeIndices, MTC::vector<RayHitd>& piercePoints) const
-{
-	piercePoints.clear();
-#if 0
-	Planed pl = calPlane();
-	auto pMesh = getBlockPtr()->getModelMesh();
-	for (size_t edgeIdx : edgeIndices) {
-		const auto& edge = pMesh->getEdge(edgeIdx);
-		auto seg = edge.getSeg(pMesh);
-		RayHitd hit;
-		if (pl.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
-			hit.edgeIdx = edgeIdx;
-			piercePoints.push_back(hit);
-		}
-	}
-#endif
-	return !piercePoints.empty();
-}
-
 bool Polygon::usesEdge(const Edge& edgeKey) const
 {
 	size_t idx0, idx1;
@@ -650,7 +631,7 @@ Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
 	Vector3d normal = calOrientedUnitNormal(cellId);
 	Planed result(origin, normal);
 
-#if 0 && defined(_DEBUG)
+#if VALIDATION_ON && defined(_DEBUG)
 	for (const auto& vId : _vertexIds) {
 		Vector3d pt = getVertexPoint(vId);
 		assert(result.distFromPlane(pt) < Tolerance::sameDistTol());

@@ -194,7 +194,7 @@ bool LineSegment2d::intersectionInBounds(const LineSegment2d& other, double& t) 
 		tOther = distOther / lenOther;
 
 		if (-tol < tOther && tOther < 1 + tol) {
-#if 0 && defined(_DEBUG)
+#if VALIDATION_ON && defined(_DEBUG)
 			v = v - vOther * distOther;
 			assert(v.squaredNorm() < Tolerance::sameDistTolSqr());
 			auto iPtOther = other[0] + vOther * lenOther * tOther;

@@ -563,23 +563,6 @@ bool Block::verifyIndices(const Index3D& idx) const
 	auto pOwner = _pVol->getBlockPtr(idx);
 	if (pOwner != this)
 		return false;
-#if 0
-	bool result = true;
-	_vertices.iterateInOrder([&idx, &result](const Index3DId& id, const Vertex& vert) {
-		if (!vert.verifyIndices(idx))
-			result = false;
-	});
-
-	_polygons.iterateInOrder([&idx, &result](const Index3DId& faceId, const Polygon& face) {
-		if (!face.verifyIndices(idx))
-			result = false;
-	});
-
-	_polyhedra.iterateInOrder([&idx, &result](const Index3DId& faceId, const Polyhedron& cell) {
-		if (!cell.verifyIndices(idx))
-			result = false;
-	});
-#endif
 	return true;
 }
 
@@ -780,7 +763,7 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 
 const Block* Block::getOwner(const Index3D& blockIdx) const
 {
-#if 0 && defined(_DEBUG)
+#if ENABLE_VERIFY_THREAD_AND_BLOCK_IDX_MATCH && defined(_DEBUG)
 	// Test that block indices are within 1 index of the tread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -798,7 +781,7 @@ const Block* Block::getOwner(const Index3D& blockIdx) const
 
 Block* Block::getOwner(const Index3D& blockIdx)
 {
-#if 0 && defined(_DEBUG)
+#if ENABLE_VERIFY_THREAD_AND_BLOCK_IDX_MATCH && defined(_DEBUG)
 	// Test that block indices are within 1 index of the thread index
 	Index3D threadIdx = getThreadBlockIdx();
 
@@ -1584,36 +1567,6 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 	return result;
 }
 #endif // _DEBUG
-
-size_t Block::processEdges(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& edgeIndices) const
-{
-#if 0
-	auto pMesh = getModelMesh();
-	pMesh->processFoundEdges(_edgeIndices, bbox, edgeIndices);
-
-#if VERIFY_REDUCED_FINDER
-	vector<size_t> edgeIndices1;
-	pMesh->findEdges(bbox, edgeIndices1);
-	assert(edgeIndices.size() == edgeIndices1.size());
-#endif
-#endif
-	return edgeIndices.size();
-}
-
-size_t Block::processTris(const TriMesh::CMesh::BoundingBox& bbox, vector<size_t>& triIndices) const
-{
-#if 0
-	auto pMesh = getModelMesh();
-	pMesh->processFoundTris(_triIndices, bbox, triIndices);
-#if VERIFY_REDUCED_FINDER
-	vector<size_t> triIndices1;
-	pMesh->findTris(bbox, triIndices1);
-	assert(triIndices.size() == triIndices1.size());
-#endif
-#endif
-
-	return triIndices.size();
-}
 
 void Block::pack()
 {

@@ -228,13 +228,6 @@ void GradingOp::createGradedCells() const {
                 double v1 = v0 + 1.0 / (double)_divs[2] * kz * zScale;
                 kz *= zGrading;
 
-#if 0
-                Index3D testIdx(0, 1, 1);
-                if (_pBlk->getBlockIdx() == testIdx && i == _divs[0] - 1) {
-                    int dbgBreak = 1;
-                }
-#endif
-
                 MTC::vector<Index3DId> cornerVertIds;
                 cornerVertIds.resize(8);
                 cornerVertIds[0] = _pBlk->getVertexIdOfPoint(TRI_LERP(cPts, t0, u0, v0));

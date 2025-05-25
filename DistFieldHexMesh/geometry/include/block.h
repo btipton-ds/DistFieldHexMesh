@@ -206,9 +206,6 @@ public:
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 
-	size_t processEdges(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& edgeIndices) const;
-	size_t processTris(const TriMesh::CMesh::BoundingBox& bbox, std::vector<size_t>& triIndices) const;
-
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
 	void pack();
 	bool write(std::ostream& outStream) const;

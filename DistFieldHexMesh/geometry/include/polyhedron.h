@@ -89,7 +89,6 @@ public:
 
 	const CBoundingBox3Dd& getBoundingBox() const;
 	void clearCache() const;
-	void updateAllTopolCaches() const;
 
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsFace(const Index3DId& faceId) const;
@@ -196,7 +195,6 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 	friend class Splitter3D;
 
-	void updateCachedVerts() const;
 	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
 	const std::shared_ptr<const Model::PolyMeshSearchTree> getPolySearchTree() const;
 	const Model& getModel() const;
