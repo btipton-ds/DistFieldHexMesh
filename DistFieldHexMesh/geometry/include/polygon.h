@@ -190,7 +190,7 @@ public:
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
-	bool flatten(bool allowQuads);
+	double flatten(bool allowQuads);
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

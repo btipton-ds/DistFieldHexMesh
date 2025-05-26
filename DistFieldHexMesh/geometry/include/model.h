@@ -84,7 +84,6 @@ public:
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
-#define USE_POLYMESH 1
 	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
 #if !USE_POLYMESH
 

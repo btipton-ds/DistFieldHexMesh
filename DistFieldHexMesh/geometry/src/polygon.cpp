@@ -249,7 +249,7 @@ Index3DId Polygon::getAdjacentCellId(const Index3DId& thisCellId) const
 	return result;
 }
 
-bool Polygon::flatten(bool allowQuads)
+double Polygon::flatten(bool allowQuads)
 {
 	const auto tolLoose = Tolerance::sameDistTolFloat();
 	const auto tolTight = Tolerance::sameDistTol();
@@ -262,7 +262,6 @@ bool Polygon::flatten(bool allowQuads)
 		pts.push_back(getVertexPoint(vertId));
 	}
 
-	bool changed = false;
 	Planed plane;
 	double err;
 	if (bestFitPlane(pts, plane, err) && (err > tolTight && (allowQuads || err < tolLoose))) {
@@ -273,12 +272,11 @@ bool Polygon::flatten(bool allowQuads)
 				pt = plane.projectPoint(pt);
 				assert(plane.isCoincident(pt, tolTight));
 				vert.replacePoint(pt);
-				changed = true;
 			}
 		}
 	}
 
-	return changed;
+	return err;
 }
 
 void Polygon::write(ostream& out) const

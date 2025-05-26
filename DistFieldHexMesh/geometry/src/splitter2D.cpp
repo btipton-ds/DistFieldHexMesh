@@ -57,6 +57,11 @@ Splitter2D::Splitter2D(const Polygon& face)
 		polyPts.push_back(face.getVertexPoint(id));
 	}
 
+#ifdef _DEBUG
+	if (Index3DId(0, 0, 0, 106855) == face.getId()) {
+		int dbgBreak = 1;
+	}
+#endif
 	initFromPoints(polyPts);
 }
 
@@ -76,12 +81,10 @@ void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 		_plane = Planed(origin, n);
 		_plane.setXRef(_xAxis);
 		_yAxis = _plane.getNormal().cross(_xAxis);
-	}
-	else {
+	} else {
 		for (const auto& pt : polyPoints)
 			origin += pt;
 		origin /= polyPoints.size();
-
 
 		const auto& pt0 = polyPoints[0];
 		const auto& pt1 = polyPoints[1];
@@ -100,16 +103,19 @@ void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 	assert(fabs(_plane.getNormal().dot(_yAxis)) < Tolerance::paramTol());
 	assert(fabs(_xAxis.dot(_yAxis)) < Tolerance::paramTol());
 
+	const auto tol = .1; // Extremely loose tolerance since these points define the plane.
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
 		Vector2d p0, p1;
-		if (project(polyPoints[i], p0) && project(polyPoints[j], p1)) {
+		if (project(polyPoints[i], p0, tol) && project(polyPoints[j], p1, tol)) {
 			size_t idx0 = addPoint(p0);
 			size_t idx1 = addPoint(p1);
 			Edge2D e(idx0, idx1);
 
 			_boundaryIndices.push_back(idx0);
 			_boundaryEdges.insert(e);
+		} else {
+			assert(!"project(polyPoints) failed");
 		}
 
 	}
@@ -156,8 +162,9 @@ void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split)
 
 void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 {
+	const auto tol = Tolerance::sameDistTol();
 	Vector2d p0, p1;
-	if (project(pt3D0, p0) && project(pt3D1, p1)) {
+	if (project(pt3D0, p0, tol) && project(pt3D1, p1, tol)) {
 		addEdge(p0, p1, true);
 	}
 }
@@ -184,12 +191,13 @@ void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
 	vector<Vector2d> iPts;
 	face.iterateEdges([this, &iPts](const Edge& edge)->bool {
+		const auto distTol = Tolerance::sameDistTol();
 		const auto tol = Tolerance::paramTol();
 		auto seg = edge.getSegment();
 		RayHitd hp;
 		if (_plane.intersectLineSegment(seg, hp, tol)) {
 			Vector2d pt2d;
-			if (project(hp.hitPt, pt2d)) {
+			if (project(hp.hitPt, pt2d, distTol)) {
 				iPts.push_back(pt2d);
 			}
 		}
@@ -206,7 +214,8 @@ void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
 
 bool Splitter2D::calIntersectionTriPts(const Vector3d* const* triPts, Vector2d& pt0, Vector2d& pt1) const
 {
-	const auto tolSqr = Tolerance::sameDistTolSqr();
+	const auto tol = Tolerance::sameDistTol();
+	const auto tolSqr = tol * tol;
 
 	int numInBounds = 0;
 	Vector2d iPts[3];
@@ -217,7 +226,7 @@ bool Splitter2D::calIntersectionTriPts(const Vector3d* const* triPts, Vector2d& 
 		RayHitd hit;
 		if (_plane.intersectLineSegment(triSeg, hit, Tolerance::sameDistTol())) {
 			Vector2d pt;
-			if (project(hit.hitPt, pt)) {
+			if (project(hit.hitPt, pt, tol)) {
 				iPts[count++] = pt;
 			}
 		}
@@ -239,8 +248,9 @@ bool Splitter2D::calIntersectionTriPts(const Vector3d* const* triPts, Vector2d& 
 
 void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
 {
+	const auto tol = Tolerance::sameDistTol();
 	Vector2d pt;
-	if (!project(pt3D0, pt))
+	if (!project(pt3D0, pt, tol))
 		return;
 
 	auto iter = _ptToIndexMap.find(pt);
@@ -581,11 +591,10 @@ bool Splitter2D::intersectsTriPoints(const Vector3d* const* triPts) const
 
 bool Splitter2D::intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& segs) const
 {
-	Vector2d rayOrigin2d, rayPt2d;
-	if (!project(ray._origin, rayOrigin2d) || !project(ray._origin + ray._dir, rayPt2d))
-		return false;
-
 	const auto tol = Tolerance::sameDistTol();
+	Vector2d rayOrigin2d, rayPt2d;
+	if (!project(ray._origin, rayOrigin2d, tol) || !project(ray._origin + ray._dir, rayPt2d, tol))
+		return false;
 
 	LineSegment2d seg2d(rayOrigin2d, rayPt2d);
 	set<Vector2d> ptSet;
@@ -626,15 +635,16 @@ bool Splitter2D::intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& se
 
 bool Splitter2D::intersectWithSeg(const LineSegmentd& seg) const
 {
+	const auto tol = Tolerance::sameDistTol();
 	Vector2d pt0, pt1;
 
-	bool projValid = project(seg._pt0, pt0);
+	bool projValid = project(seg._pt0, pt0, tol);
 	assert (projValid);
 
 	if (insideBoundary(pt0))
 		return true;
 
-	projValid = project(seg._pt1, pt1);
+	projValid = project(seg._pt1, pt1, tol);
 	assert(projValid);
 
 	if (insideBoundary(pt1))
@@ -645,10 +655,7 @@ bool Splitter2D::intersectWithSeg(const LineSegmentd& seg) const
 		LineSegment2d testSeg2d(_pts[e[0]], _pts[e[1]]);
 		double t;
 		if (testSeg2d.intersectionInBounds(seg2d, t)) {
-			auto pt = seg2d.interpolate(t);
-			if (insideBoundary(pt)) {
-				return true;
-			}
+			return true;
 		}
 	}
 	return false;
@@ -1104,10 +1111,10 @@ bool Splitter2D::splitWithAllPoints(const Edge2D& e0, set<Edge2D>& subSegs)
 	return true;
 }
 
-bool Splitter2D::project(const Vector3d& pt, Vector2d& result) const
+bool Splitter2D::project(const Vector3d& pt, Vector2d& result, double tol) const
 {
 	auto dist = _plane.distanceToPoint(pt);
-	if (dist < Tolerance::sameDistTol()) {
+	if (dist < tol) {
 		Vector3d v = pt - _plane.getOrgin();
 		double x = v.dot(_xAxis);
 		double y = v.dot(_yAxis);

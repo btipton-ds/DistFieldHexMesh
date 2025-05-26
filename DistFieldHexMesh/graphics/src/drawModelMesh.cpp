@@ -72,11 +72,14 @@ void DrawModelMesh::createFaceTessellation(const MeshDataPtr& pData)
 
 OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
 {
-    const auto& points = pMesh->getGlTriPoints();
-    const auto& normals = pMesh->getGlTriNormals();
+    vector<float> points, normals;
+    vector<unsigned int> vertIndices;
+    pMesh->getGlTriPoints(points);
+    pMesh->getGlTriNormals(normals);
+    pMesh->getGlTriIndices(vertIndices);
+
     vector<float> parameters;
     parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
-    const auto& vertIndices = pMesh->getGlTriIndices();
 
     vector<float> colors;
     auto meshId = 1;// pMesh->getId();

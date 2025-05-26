@@ -42,6 +42,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <edge.h>
 #include <polygon.h>
 #include <polyMesh.h>
+#include <splitter2D.h>
 #include <logger.h>
 #include <appData.h>
 
@@ -181,45 +182,184 @@ void PolyMesh::flattenEdgeLoop(const std::vector<Index3DId>& loop)
 		}
 	}
 }
-
 void PolyMesh::flattenFaces(const SplittingParams& params)
 {
-	bool changed = false;
-	for (int i = 0; i < params.numFlattenPasses; i++) {
-		changed = false;
-		_polygons.iterateInOrder([&changed](const Index3DId& id, Polygon& face)->bool {
-			if (face.flatten(false))
-				changed = true;
+	_polygons.setSupportsReverseLookup(false);
+
+	for (int i = 0; i < 5; i++) {
+		map<Index3DId, Planed> faceIdToPlaneMap;
+		auto createFaceToPlaneMap = [&]() {
+			faceIdToPlaneMap.clear();
+			_polygons.iterateInOrder([this, &faceIdToPlaneMap](const Index3DId& id, const Polygon& face)->bool {
+				const auto& vertIds = face.getVertexIds();
+				vector<Vector3d> pts;
+				for (const auto& id : vertIds) {
+					pts.push_back(getVertexPoint(id));
+				}
+
+				Planed plane;
+				double err;
+				bool fitPass = bestFitPlane(pts, plane, err);
+				assert(fitPass);
+				faceIdToPlaneMap.insert(make_pair(face.getId(), plane));
+				return true;
+				});
+			};
+		createFaceToPlaneMap();
+
+		_vertices.iterateInOrder([&faceIdToPlaneMap, &createFaceToPlaneMap](const Index3DId& id, Vertex& vert)->bool {
+			const double diff = 1.0e-9;
+			const auto& faceIdSet = vert.getFaceIds();
+			vector<Index3DId> faceIds(faceIdSet.begin(), faceIdSet.end());
+
+			vector<Planed> planes;
+			vector<double> grad, nullGrad, delta;
+
+			planes.resize(faceIds.size());
+			grad.resize(faceIds.size());
+			delta.resize(faceIds.size(), 0);
+
+			for (size_t i = 0; i < faceIds.size(); i++) {
+				const auto& pl = faceIdToPlaneMap[faceIds[i]];
+				planes[i] = pl;
+			}
+
+			auto calErr = [&](Vector3d pt, size_t idx, double sign)->double {
+				double rmsErr = 0;
+				for (size_t i = 0; i < faceIds.size(); i++) {
+					const auto& pl = planes[i];
+
+					if (idx == i) {
+						pt += diff * pl.getNormal();
+					}
+					else if (fabs(sign) != 0) {
+						pt += sign * diff * grad[i] * pl.getNormal();
+					}
+					auto err = pl.distanceToPoint(pt);
+					rmsErr += err * err;
+				}
+				rmsErr /= faceIds.size();
+				rmsErr = sqrt(rmsErr);
+
+				return rmsErr;
+				};
+
+			Vector3d pt = vert.getPoint();
+
+			double rmsErr1 = calErr(pt, -1, 0);
+			if (rmsErr1 < Tolerance::sameDistTol()) {
+				return true;
+			}
+
+			auto calGradient = [&]() {
+				double gradSqr = 0;
+				for (size_t i = 0; i < faceIds.size(); i++) {
+					grad[i] = (calErr(pt, i, 0) - rmsErr1) / diff;
+					gradSqr += grad[i] * grad[i];
+				}
+				gradSqr = sqrt(gradSqr);
+				for (size_t i = 0; i < faceIds.size(); i++) {
+					grad[i] /= gradSqr;
+				}
+				};
+			calGradient();
+
+			const double scale = 1;
+			auto rmsErr0 = calErr(pt, -1, -1);
+			auto rmsErr2 = calErr(pt, -1, 1);
+			double b = (rmsErr2 - rmsErr0) / (2 * diff);
+			double a = (rmsErr0 - rmsErr2) / (2 * diff * diff);
+			double dx = scale * -b / (2 * a);
+
+			Vector3d pt2 = pt;
+			for (size_t i = 0; i < faceIds.size(); i++) {
+				pt2 -= planes[i].getNormal() * dx * grad[i];
+			}
+
+			auto rmsErr3 = calErr(pt2, -1, 0);
+			for (int i = 0; i < 3; i++) {
+				if (b < 0.001)
+					break;
+				rmsErr1 = calErr(pt, -1, 0);
+				pt = pt2;
+				calGradient();
+
+				rmsErr0 = calErr(pt, -1, -1);
+				rmsErr2 = calErr(pt, -1, 1);
+				b = (rmsErr2 - rmsErr0) / (2 * diff);
+				a = (rmsErr0 - rmsErr2) / (2 * diff * diff);
+				dx = scale * -b / (2 * a);
+
+				pt2 = pt;
+				for (size_t i = 0; i < faceIds.size(); i++) {
+					pt2 -= planes[i].getNormal() * dx * grad[i];
+				}
+
+				rmsErr3 = calErr(pt2, -1, 0);
+			}
 			return true;
 		});
+	}
+	_polygons.setSupportsReverseLookup(true);
+}
 
-		if (changed)
+void PolyMesh::flattenFaces_deprecated(const SplittingParams& params)
+{
+	/*
+	* This needs to move vertices to be coplanar with the existing faces instead of moving independently.
+	* That should converge in one pass - or NOT.
+	*/
+	size_t num = 0;
+	double avgError = 0;
+	for (int i = 0; i < params.numFlattenPasses; i++) {
+		num = 0;
+		_polygons.iterateInOrder([&num, &avgError](const Index3DId& id, Polygon& face)->bool {
+			auto err = face.flatten(true);
+			avgError += err;
+			num++;
+			return true;
+		});
+		avgError /= num;
+
+		if (avgError < Tolerance::sameDistTol())
 			break;
 	}
 }
 
 void PolyMesh::makeQuads(const SplittingParams& params, bool flatten)
 {
-	auto sortFunc = [this, &params](const EdgeKey& lhs, const EdgeKey& rhs) {
-		double c0, c1;
-		edgeFunc(lhs, [&c0, &params](const Edge& edge) {
-			c0 = edge.calCurvature(params);
-		});
-		edgeFunc(rhs, [&c1, &params](const Edge& edge) {
-			c1 = edge.calCurvature(params);
-		});
-
-		return c0 < c1;
-	};
-
-	vector<EdgeKey> edges;
-	_polygons.iterateInOrder([&edges](const Index3DId& faceId, const Polygon& face)->bool {
-		face.iterateEdges([&edges](const Edge& edge) {
-			edges.push_back(edge);
+#if 1
+	set<EdgeKey> edgeSet;
+	_polygons.iterateInOrder([&edgeSet](const Index3DId& faceId, const Polygon& face)->bool {
+		face.iterateEdges([&edgeSet](const Edge& edge) {
+			edgeSet.insert(edge);
 			return true;
 		});
 		return true;
 	});
+
+	// The set, vector, map allow the sort lambda to access precalulcated curvatures. It avoids expensive duplicate curvature calculations.
+	vector<EdgeKey> edges;
+	map<EdgeKey, double> edgeToCurvMap;
+	for (const auto& ek : edgeSet) {
+		double curv;
+		edgeFunc(ek, [&curv, &params](const Edge& edge) {
+			curv = edge.calCurvature(params);
+		});
+		edgeToCurvMap.insert(make_pair(ek, curv));
+		edges.push_back(ek);
+	}
+
+	auto sortFunc = [this, &edgeToCurvMap](const EdgeKey& lhs, const EdgeKey& rhs) {
+		auto iter = edgeToCurvMap.find(lhs);
+		assert(iter != edgeToCurvMap.end());
+		auto c0 = iter->second;
+
+		iter = edgeToCurvMap.find(rhs);
+		assert(iter != edgeToCurvMap.end());
+		auto c1 = iter->second;
+		return c0 < c1;
+	};
 
 	sort(edges.begin(), edges.end(), sortFunc);
 
@@ -231,6 +371,41 @@ void PolyMesh::makeQuads(const SplittingParams& params, bool flatten)
 				newFaceIds.push_back(id);
 		});
 	}
+#else
+	set<EdgeKey> edgeSet;
+	_polygons.iterateInOrder([&edgeSet](const Index3DId& faceId, const Polygon& face)->bool {
+		face.iterateEdges([&edgeSet](const Edge& edge) {
+			edgeSet.insert(edge);
+			return true;
+		});
+		return true;
+	});
+
+	vector<EdgeKey> edges(edgeSet.begin(), edgeSet.end());
+
+	auto sortFunc = [this, &params](const EdgeKey& lhs, const EdgeKey& rhs) {
+		double c0, c1;
+		edgeFunc(lhs, [&c0, &params](const Edge& edge) {
+			c0 = edge.calCurvature(params);
+			});
+		edgeFunc(rhs, [&c1, &params](const Edge& edge) {
+			c1 = edge.calCurvature(params);
+			});
+
+		return c0 < c1;
+	};
+
+	sort(edges.begin(), edges.end(), sortFunc);
+
+	vector<Index3DId> newFaceIds;
+	for (const auto& ek : edges) {
+		edgeFunc(ek, [this, &params, &newFaceIds](const Edge& edge) {
+			auto id = mergeToQuad(params, edge);
+			if (id.isValid())
+				newFaceIds.push_back(id);
+		});
+	}
+#endif
 
 	if (flatten) {
 		_polygons.setSupportsReverseLookup(false);
@@ -1046,9 +1221,6 @@ Index3DId PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 	if (faceIds.size() != 2)
 		return result;
 
-	if (faceIds.contains(Index3DId(0, 0, 0, 17789)) || faceIds.contains(Index3DId(0, 0, 0, 17790))) {
-		int dbgBreak = 1;
-	}
 	auto iter = faceIds.begin();
 	auto faceId0 = *iter++;
 	auto faceId1 = *iter;
@@ -1087,9 +1259,9 @@ void PolyMesh::removeFace(const Index3DId& id)
 	_polygons.free(id);
 }
 
-std::vector<float> PolyMesh::getGlTriPoints() const
+void PolyMesh::getGlTriPoints(std::vector<float>& result) const
 {
-	std::vector<float> result;
+	result.clear();
 	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
 		face.iterateTriangles([this, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 			const Vector3d* pts[] = {
@@ -1108,12 +1280,11 @@ std::vector<float> PolyMesh::getGlTriPoints() const
 		});
 		return true;
 	});
-	return result;
 }
 
-std::vector<float> PolyMesh::getGlTriNormals() const
+void PolyMesh::getGlTriNormals(std::vector<float>& result) const
 {
-	std::vector<float> result;
+	result.clear();
 	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
 		Vector3d norm = face.calUnitNormal();
 		face.iterateTriangles([this, &result, &norm](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
@@ -1126,12 +1297,11 @@ std::vector<float> PolyMesh::getGlTriNormals() const
 		});
 		return true;
 	});
-	return result;
 }
 
-std::vector<unsigned int> PolyMesh::getGlTriIndices() const
+void PolyMesh::getGlTriIndices(std::vector<unsigned int>& result) const
 {
-	std::vector<unsigned int> result;
+	result.clear();
 	unsigned int idx = 0;
 	_polygons.iterateInOrder([this, &result, &idx](const Index3DId& id, const Polygon& face)->bool {
 		face.iterateTriangles([this, &result, &idx](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
@@ -1142,7 +1312,6 @@ std::vector<unsigned int> PolyMesh::getGlTriIndices() const
 		});
 		return true;
 	});
-	return result;
 }
 
 void PolyMesh::dumpVertsAsPolygon(const std::string& path, const MTC::vector<Index3DId>& vertIds) const

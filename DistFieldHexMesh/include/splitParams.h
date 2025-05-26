@@ -52,7 +52,7 @@ struct SplittingParams {
 	bool symYAxis = true;
 	bool symZAxis = false;
 
-	int numFlattenPasses = 1;
+	int numFlattenPasses = 3;
 	size_t numSimpleDivs = 0;
 	size_t numIntersectionDivs = 0;
 	size_t numSharpVertDivs = 0;

@@ -1249,16 +1249,11 @@ bool Polyhedron::intersectsModel() const
 		lock_guard lg(mut);
 #endif
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
-		Trinary result0 = intersectsModelPolyMesh();
-		Trinary result1 = intersectsModelTriMesh();
-		if (result0 != result1) {
-#if !ENABLE_DEBUGGING_MUTEXES
-			lock_guard lg(mut);
+#if USE_POLYMESH
+		_cachedIntersectsModel = intersectsModelPolyMesh();
+#else
+		_cachedIntersectsModel = intersectsModelTriMesh();
 #endif
-			cout << "intersectsModel() mismatch " << getId() << "\n";
-		}
-
-		_cachedIntersectsModel = result0;
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
 	}
@@ -1311,11 +1306,14 @@ Trinary Polyhedron::intersectsModelTriMesh() const
 	return result;
 }
 
+#if USE_POLYMESH
 Trinary Polyhedron::intersectsModelPolyMesh() const
 {
+	Trinary result = IS_UNKNOWN;
+
 	bool dumpObj = false;
 #ifdef _DEBUG
-	if (Index3D(2, 0, 2) == getId().blockIdx()) {
+	if (Index3D(1, 1, 3) == getId().blockIdx()) {
 		dumpObj = true;
 	}
 #endif // 
@@ -1323,85 +1321,53 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 	vector<PolyMeshIndex> indices;
 	if (getPolyIndices(indices) != 0) {
 		auto& model = getModel();
-#if 1
-		for (const auto& meshFaceId : _faceIds) {
-			const auto& meshFace = getPolygon(meshFaceId);
-			for (const auto& polyIndex : indices) {
-				auto pModelFace = model.getPolygon(polyIndex);
-				if (pModelFace && meshFace.intersect(*pModelFace, dumpObj)) {
-					return IS_TRUE;
-				}
-#if 0
-				pModelFace->iterateEdges([this, &pPolyMesh, &meshFace, &meshPlane, &result](const Edge& modelEdge)->bool {
-					const auto tol = Tolerance::sameDistTol();
+		vector<const Vector3d*> cellTriPts;
+		for (const auto& id : _faceIds) {
+			auto& face = getPolygon(id);
+			face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				cellTriPts.push_back(&face.getVertexPoint(id0));
+				cellTriPts.push_back(&face.getVertexPoint(id1));
+				cellTriPts.push_back(&face.getVertexPoint(id2));
 
-					// Need mesh edge to model intersection as well.
-					auto seg = modelEdge.getSegment();
-					RayHitd hp;
-					if (meshPlane.intersectLineSegment(seg, hp, tol)) {
-						if (meshFace.isPointInside(hp.hitPt)) {
-							result = IS_TRUE;
-						}
-					} else {
-						for (int i = 0; i < 2; i++) {
-							const auto& pt = pPolyMesh->getVertexPoint(modelEdge[i]);
-							if (pointInside(pt)) {
-								result = IS_TRUE;
-							}
-						}
-					}
-					return result == IS_UNKNOWN;
-				});
-#endif
-			}
-		}
-#else
-		map<Index3DId, shared_ptr<Splitter2D>> faceIdToSplitterMap;
-		for (const auto& faceId : _faceIds) {
-			const auto& face = getPolygon(faceId);
-			if (face._cachedIntersectsModel == IS_TRUE) {
-				result = IS_TRUE;
-				return result;
-			}
-			vector<Vector3d> facePts;
-			auto& ids = face.getNonColinearVertexIds();
-			for (const auto& id : ids)
-				facePts.push_back(getVertexPoint(id));
-
-			faceIdToSplitterMap.insert(make_pair(faceId, make_shared<Splitter2D>(facePts)));
-		}
-
-
-		for (const auto& polyIndex : indices) {
-			auto pData = model.getMeshData(polyIndex.getMeshIdx());
-			auto pPolyMesh = pData->getPolyMesh();
-			const auto& modelFace = model.getPolygon(polyIndex);
-
-			modelFace->iterateTriangles([this, &faceIdToSplitterMap, &pPolyMesh, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				const Vector3d* pts[3] = {
-					&pPolyMesh->getVertexPoint(id0),
-					&pPolyMesh->getVertexPoint(id1),
-					&pPolyMesh->getVertexPoint(id2),
-				};
-
-				for (const auto& pair : faceIdToSplitterMap) {
-					auto& face = getPolygon(pair.first);
-					auto& sp = *pair.second;
-					if (sp.intersectsTriPoints(pts)) {
-						result = face._cachedIntersectsModel = IS_TRUE;
-						break;
-					} else {
-						face._cachedIntersectsModel = IS_FALSE;
-					}
-				}
-				return result != IS_UNKNOWN;
+				return true;
 			});
 		}
-#endif
+
+		size_t nTris = cellTriPts.size() / 3;
+		auto pMeshTriData = cellTriPts.data();
+
+		for (const auto& id : indices) {
+			auto pFace = model.getPolygon(id);
+			pFace->iterateTriangles([this, &pFace, nTris, &pMeshTriData, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+				const Vector3d* modelTriPts[] = {
+					&pFace->getVertexPoint(id0),
+					&pFace->getVertexPoint(id1),
+					&pFace->getVertexPoint(id2),
+				};
+
+				for (size_t i = 0; i < nTris; i++) {
+					const Vector3d* meshTriPts[] = {
+						pMeshTriData[3 * i + 0],
+						pMeshTriData[3 * i + 1],
+						pMeshTriData[3 * i + 2],
+					};
+					if (intersectTriTri(modelTriPts, meshTriPts)) {
+						result = IS_TRUE;
+						break;
+					}
+				}
+
+				return result == IS_UNKNOWN;
+			});
+
+			if (result != IS_UNKNOWN)
+				break;
+		}
 	}
 
-	return IS_FALSE;
+	return result;
 }
+#endif
 
 void Polyhedron::setIntersectsModel(bool val)
 {

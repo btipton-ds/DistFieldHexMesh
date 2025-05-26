@@ -87,9 +87,9 @@ namespace DFHM {
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
 
-		std::vector<float> getGlTriPoints() const;
-		std::vector<float> getGlTriNormals() const;
-		std::vector<unsigned int> getGlTriIndices() const;
+		void getGlTriPoints(std::vector<float>& result) const;
+		void getGlTriNormals(std::vector<float>& result) const;
+		void getGlTriIndices(std::vector<unsigned int>& result) const;
 
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
@@ -104,6 +104,7 @@ namespace DFHM {
 		void flattenSharps(const SplittingParams& params);
 		void flattenEdgeLoop(const std::vector<Index3DId>& loop);
 		void flattenFaces(const SplittingParams& params);
+		void flattenFaces_deprecated(const SplittingParams& params);
 		void makeQuads(const SplittingParams& params, bool flatten);
 		void reduceSlivers(const SplittingParams& params, double maxSliverAngleRadians);
 		Index3DId mergeToQuad(const SplittingParams& params, const Edge& edge);

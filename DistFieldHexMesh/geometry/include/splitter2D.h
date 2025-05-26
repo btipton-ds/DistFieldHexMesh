@@ -136,7 +136,7 @@ private:
 	Vector3d calNormal(size_t idx0, size_t idx1, size_t idx2) const;
 	bool isColinear(size_t i, size_t j, size_t k) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
-	bool project(const Vector3d& pt, Vector2d& result) const;
+	bool project(const Vector3d& pt, Vector2d& result, double tol) const;
 	Vector3d pt3D(size_t idx) const;
 	bool calIntersectionTriPts(const Vector3d* const * pts, Vector2d& pt0, Vector2d& pt1) const;
 
