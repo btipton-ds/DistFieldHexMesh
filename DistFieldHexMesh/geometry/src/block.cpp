@@ -1148,10 +1148,33 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum);
+#if ENABLE_DEBUGGING_MUTEXES
+			set<Index3DId> testIds({
+				Index3DId(2, 0, 3, 126),
+				Index3DId(2, 0, 3, 127),
+				Index3DId(2, 0, 3, 128),
+				Index3DId(2, 0, 3, 129),
+				Index3DId(2, 0, 3, 130),
+				});
+			if (testIds.contains(cellId)) {
+				static mutex mut;
+				lock_guard lg(mut);
+				if (splitter.splitAtCenter()) {
+					didSplit = true;
+					assert(!polyhedronExists(cellId));
+				}
+			} else {
+				if (splitter.splitAtCenter()) {
+					didSplit = true;
+					assert(!polyhedronExists(cellId));
+				}
+			}
+#else
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}
+#endif
 		}
 	}
 
@@ -1500,7 +1523,25 @@ void Block::markIncrementLayerNums(int i)
 			const auto& adjIds = cell.getAdjacentCells();
 			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
+#if ENABLE_DEBUGGING_MUTEXES
+					set<Index3DId> testIds({
+						Index3DId(2, 0, 3, 126),
+						Index3DId(2, 0, 3, 127),
+						Index3DId(2, 0, 3, 128),
+						Index3DId(2, 0, 3, 129),
+						Index3DId(2, 0, 3, 130),
+					});
+					if (testIds.contains(adjCell.getId())) {
+						static mutex mut;
+						lock_guard lg(mut);
+						adjCell.setLayerNumOnNextPass(adjCell.getLayerNum());
+					} else {
+						adjCell.setLayerNumOnNextPass(adjCell.getLayerNum());
+					}
+
+#else
 					adjCell.setLayerNumOnNextPass(adjCell.getLayerNum());
+#endif
 				});
 			}
 		}

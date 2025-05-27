@@ -86,6 +86,8 @@ void Model::rebuildSearchTree()
 	}
 
 	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
+
+	bbox.grow(Polygon::bboxOffsetDist());
 	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
 
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {

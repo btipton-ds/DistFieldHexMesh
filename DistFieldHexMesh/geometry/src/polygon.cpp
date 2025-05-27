@@ -1219,13 +1219,10 @@ bool Polygon::verifyUniqueStat(const MTC::vector<Index3DId>& vertIds)
 CBoundingBox3Dd Polygon::getBBox() const
 {
 	CBoundingBox3Dd result;
-	const double thick = 0.0001; // Give it some minimal thickness
-	Vector3d norm = calUnitNormal();
 	for (const auto& id : _vertexIds) {
-		const auto& pt = getVertexPoint(id);
-		result.merge(pt + thick * norm);
-		result.merge(pt - thick * norm);
+		result.merge(getVertexPoint(id));
 	}
+	result.grow(bboxOffsetDist());
 	return result;
 }
 

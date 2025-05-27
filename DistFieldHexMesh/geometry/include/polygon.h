@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_set.h>
 #include <pool_vector.h>
 #include <index3D.h>
+#include <tolerances.h>
 #include <objectPool.h>
 #include <lambdaMacros.h>
 #include <fastBisectionSet.h>
@@ -102,6 +103,8 @@ public:
 
 	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const MTC::vector<Index3DId>& vertIds);
 	static void dumpPolygonPoints(std::ostream& out, const MTC::vector<Vector3d>& pts);
+
+	static double bboxOffsetDist();
 
 	Polygon() = default;
 	Polygon(const MTC::vector<Index3DId>& verts);
@@ -237,6 +240,11 @@ private:
 	mutable std::mutex _nonColinearVertexIdsMutex;
 	mutable MTC::vector<Index3DId> _nonColinearVertexIds;
 };
+
+inline double Polygon::bboxOffsetDist()
+{
+	return Tolerance::sameDistTol();
+}
 
 inline bool Polygon::verifyUnique() const
 {
