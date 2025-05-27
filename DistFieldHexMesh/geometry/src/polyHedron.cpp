@@ -1308,66 +1308,9 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 	Trinary result = IS_UNKNOWN;
 
 	bool dumpObj = false;
-#if 0 && defined(_DEBUG)
-	set<Index3DId> testIds({
-		Index3DId(2, 0, 3, 126),
-		Index3DId(2, 0, 3, 127),
-		Index3DId(2, 0, 3, 128),
-		Index3DId(2, 0, 3, 129),
-		Index3DId(2, 0, 3, 130),
-		});
-	if (testIds.contains(getId())) {
-		dumpObj = true;
-	}
-#endif // 
-
 	auto bbox = getBoundingBox();
 	auto& model = getModel();
 	vector<PolyMeshIndex> indices;
-#if 0 // This is slow but works, the other option does not. The only difference is model.findPolys(bbox, indices)
-	vector<const Vector3d*> cellTriPts;
-	for (const auto& id : _faceIds) {
-		auto& face = getPolygon(id);
-		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			cellTriPts.push_back(&face.getVertexPoint(id0));
-			cellTriPts.push_back(&face.getVertexPoint(id1));
-			cellTriPts.push_back(&face.getVertexPoint(id2));
-
-			return true;
-			});
-	}
-
-	size_t nTris = cellTriPts.size() / 3;
-	auto pMeshTriData = cellTriPts.data();
-
-	for (size_t i = 0; i < model.size(); i++) {
-		auto pMesh = model.getMeshData(i)->getPolyMesh();
-		pMesh->iterateFaces([this, nTris, &pMeshTriData, &result](const Index3DId& id, const Polygon& face)->bool {
-			face.iterateTriangles([this, &face, nTris, &pMeshTriData, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				const Vector3d* modelTriPts[] = {
-					&face.getVertexPoint(id0),
-					&face.getVertexPoint(id1),
-					&face.getVertexPoint(id2),
-				};
-
-				for (size_t i = 0; i < nTris; i++) {
-					const Vector3d* meshTriPts[] = {
-						pMeshTriData[3 * i + 0],
-						pMeshTriData[3 * i + 1],
-						pMeshTriData[3 * i + 2],
-					};
-					if (intersectTriTri(modelTriPts, meshTriPts)) {
-						result = IS_TRUE;
-						break;
-					}
-				}
-
-				return result == IS_UNKNOWN;
-			});
-			return result == IS_UNKNOWN;
-		});
-	}
-#else
 	if (model.findPolys(bbox, indices) != 0) {
 		vector<const Vector3d*> cellTriPts;
 		for (const auto& id : _faceIds) {
@@ -1412,7 +1355,7 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 				break;
 		}
 	}
-#endif
+
 	return result;
 }
 #endif
