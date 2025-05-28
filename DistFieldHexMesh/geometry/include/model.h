@@ -83,7 +83,6 @@ public:
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
 	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
-#if !USE_POLYMESH
 
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& indices) const;
 	size_t findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, TriSearchTree::BoxTestType contains = TriSearchTree::BoxTestType::IntersectsOrContains) const;
@@ -92,7 +91,7 @@ public:
 	std::shared_ptr<const TriSearchTree> getTriSubTree(const BOX_TYPE& bbox) const;
 
 	const MultMeshTriangle getTriIndices(const TriMeshIndex& idx) const;
-#endif
+
 	bool getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const;
 
 	bool doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
@@ -159,11 +158,9 @@ inline const TriMeshIndex& Model::MultMeshTriangle::operator[](size_t i) const
 	return _vertIds[i];
 }
 
-#if !USE_POLYMESH
 inline std::shared_ptr<const Model::TriSearchTree> Model::getTriSearchTree() const
 {
 	return _pTriSearchTree;
 }
-#endif
 
 }

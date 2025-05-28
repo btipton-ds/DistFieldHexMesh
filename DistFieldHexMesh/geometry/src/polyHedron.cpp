@@ -2004,10 +2004,10 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 	if (pClipped)
 		result = pClipped->find(bbox, refineFunc, indices);
 
-#if DO_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	size_t dbgResult = 0;
-	auto pFull = getBlockPtr()->getModel().getTriSearchTree();
-	vector<TriMeshIndex> indicesFull;
+	auto pFull = getBlockPtr()->getModel().getPolySearchTree();
+	vector<PolyMeshIndex> indicesFull;
 	if (pFull) {
 		dbgResult = pFull->find(bbox, refineFunc, indicesFull);
 	}
@@ -2037,7 +2037,7 @@ size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
 	if (pClipped)
 		result = pClipped->find(bbox, refineFunc, indices);
 
-#if DO_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	size_t dbgResult = 0;
 	auto pFull = getBlockPtr()->getModel().getTriSearchTree();
 	vector<TriMeshIndex> indicesFull;
