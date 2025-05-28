@@ -151,7 +151,7 @@ size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& 
 		}
 	}
 
-#if DO_MODEL_SEARCH_TREE_VERIFICATION 
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION 
 	set<TriSearchTree::Entry> result1;
 	std::vector<TriSearchTree::Entry> entries1;
 	auto pSub = getTriSubTree(bbox);
@@ -233,7 +233,7 @@ std::shared_ptr<const Model::TriSearchTree> Model::getTriSubTree(const BOX_TYPE&
 
 	auto p = _pTriSearchTree->getSubTree(bbox, refineFunc);
 
-#if DO_MODEL_SEARCH_TREE_VERIFICATION
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION
 	vector<Model::TriSearchTree::Entry> testFull, testClipped;
 	_pTriSearchTree->find(bbox, refineFunc, testFull);
 	if (!testFull.empty()) {
@@ -337,10 +337,10 @@ size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::En
 		}
 	}
 
-#if DO_MODEL_SEARCH_TREE_VERIFICATION 
-	set<TriSearchTree::Entry> result1;
-	std::vector<TriSearchTree::Entry> entries1;
-	auto pSub = getTriSubTree(bbox);
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION 
+	set<PolyMeshSearchTree::Entry> result1;
+	std::vector<PolyMeshSearchTree::Entry> entries1;
+	auto pSub = getPolySubTree(bbox);
 	if (pSub) {
 		if (pSub->find(bbox, entries1)) {
 			for (const auto& entry : entries) {
@@ -352,8 +352,8 @@ size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::En
 		}
 
 	}
-#ifdef _DEBUG
 
+#ifdef _DEBUG
 	if (result.size() != result1.size())
 		assert(!"subTree wrong size");
 	for (const auto& e : result)

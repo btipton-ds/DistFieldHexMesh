@@ -36,8 +36,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMeshIndex.h>
 #include <polyMeshIndex.h>
 
-#define DO_MODEL_SEARCH_TREE_VERIFICATION 0
-
 namespace DFHM {
 
 class DrawModelMesh;
