@@ -33,6 +33,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_vector3.h>
 #include <tm_spatialSearch.h>
 #include <triMesh.h>
+
+#include <tolerances.h>
 #include <triMeshIndex.h>
 #include <polyMeshIndex.h>
 
@@ -98,6 +100,12 @@ public:
 
 	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::Entry>& indices) const;
 	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
+
+	template<class REFINER>
+	size_t findPolys(const BOX_TYPE& bbox, REFINER refineFunc, std::vector<PolyMeshSearchTree::Entry>& indices) const;
+	template<class REFINER>
+	size_t findPolys(const BOX_TYPE& bbox, REFINER refineFunc, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
+
 	size_t rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& hits, bool biDir = true) const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox) const;
@@ -162,5 +170,63 @@ inline std::shared_ptr<const Model::TriSearchTree> Model::getTriSearchTree() con
 {
 	return _pTriSearchTree;
 }
+
+template<class REFINER>
+size_t Model::findPolys(const BOX_TYPE& bbox, REFINER refineFunc, std::vector<PolyMeshSearchTree::Entry>& result) const
+{
+	std::vector<PolyMeshSearchTree::Entry> entries;
+	if (_pPolyMeshSearchTree->find(bbox, entries)) {
+		for (const auto& entry : entries) {
+			const auto& triBox = entry.getBBox();
+			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+				result.push_back(entry);
+			}
+		}
+	}
+
+#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION 
+	std::set<PolyMeshSearchTree::Entry> result1;
+	std::vector<PolyMeshSearchTree::Entry> entries1;
+	auto pSub = getPolySubTree(bbox);
+	if (pSub) {
+		if (pSub->find(bbox, entries1)) {
+			for (const auto& entry : entries) {
+				const auto& triBox = entry.getBBox();
+				if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+					result1.insert(entry);
+				}
+			}
+		}
+
+	}
+
+#ifdef _DEBUG
+	if (result.size() != result1.size())
+		assert(!"subTree wrong size");
+	for (const auto& e : result)
+		assert(result1.contains(e));
+#endif // _DEBUG
+	result.clear();
+	result.insert(result.end(), result1.begin(), result1.end());
+#endif
+
+	return result.size();
+}
+
+template<class REFINER>
+size_t Model::findPolys(const BOX_TYPE& bbox, REFINER refineFunc, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains) const
+{
+	std::vector<PolyMeshSearchTree::Entry> entries;
+	if (_pPolyMeshSearchTree->find(bbox, entries)) {
+		for (const auto& entry : entries) {
+			const auto& triBox = entry.getBBox();
+			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
+				result.push_back(entry.getIndex());
+			}
+		}
+	}
+	return result.size();
+}
+
 
 }

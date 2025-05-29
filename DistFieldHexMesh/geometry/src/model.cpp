@@ -297,6 +297,7 @@ bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 
 bool Model::doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
 {
+	// TODO Remove - This function was verified, 5/28/25.
 	const auto tol = Tolerance::sameDistTol();
 
 	bool result = false;

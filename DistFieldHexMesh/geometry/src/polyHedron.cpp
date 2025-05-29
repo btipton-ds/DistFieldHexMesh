@@ -1310,8 +1310,12 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 	bool dumpObj = false;
 	auto bbox = getBoundingBox();
 	auto& model = getModel();
+	auto refineFunc = [&model](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
+		return model.doesPolyIntersect(entry, bbox);
+	};
+
 	vector<PolyMeshIndex> indices;
-	if (model.findPolys(bbox, indices) != 0) {
+	if (getPolyIndices(indices) != 0) {
 		vector<const Vector3d*> cellTriPts;
 		for (const auto& id : _faceIds) {
 			auto& face = getPolygon(id);
@@ -1992,14 +1996,15 @@ const std::shared_ptr<const Model::PolyMeshSearchTree> Polyhedron::getPolySearch
 
 size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 {
-	auto refineFunc = [this](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		const auto& model = getModel();
+	const auto& model = getModel();
+	auto refineFunc = [&model](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
 		return model.doesPolyIntersect(entry, bbox);
 	};
 
 	indices.clear();
 	auto& bbox = getBoundingBox();
-	auto pClipped = getPolySearchTree();
+//	auto pClipped = getPolySearchTree();
+	auto pClipped = model.getPolySubTree(bbox);
 	size_t result = 0;
 	if (pClipped)
 		result = pClipped->find(bbox, refineFunc, indices);
