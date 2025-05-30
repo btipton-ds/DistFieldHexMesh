@@ -324,7 +324,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 	vector<BlockPtr> foundBlocks;
 	CBoundingBox3Dd ptBox(point);
 	ptBox.grow(0.0001); // 1/10 mm
-	if (_adHocBlockTree.find(ptBox, foundBlocks)) {
+	if (_adHocBlockTree.find(ptBox, nullptr, foundBlocks)) {
 		set<Index3D> candidates;
 		for (size_t idx = 0; idx < foundBlocks.size(); idx++) {
 			const auto& pBlk = foundBlocks[idx];
@@ -1668,7 +1668,14 @@ bool Volume::read(istream& in)
 			_blocks[i] = pBlock;
 			pBlock->_pVol = this;
 
+			// Disable creation of search trees until after everything is loaded
+			pBlock->setSupportsReverseLookup(false);
 			pBlock->read(in);
+		}
+
+		// Now create the search trees
+		for (size_t i = 0; i < _blocks.size(); i++) {
+			_blocks[i]->setSupportsReverseLookup(true);
 		}
 	}
 

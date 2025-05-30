@@ -189,14 +189,10 @@ const std::shared_ptr<const Model::PolyMeshSearchTree>& Block::getModelPolySearc
 		auto bbox = getBBox();
 		assert(!bbox.empty());
 
-		auto refineFunc = [this](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-			const auto& model = getModel();
-			return model.doesPolyIntersect(entry, bbox);
-			};
-
+		const auto& model = getModel();
 		_pPolySearchTree = getModel().getPolySubTree(bbox);
 		if (_pPolySearchTree) {
-			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, refineFunc);
+			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, model.getRefiner());
 		}
 	}
 
@@ -228,7 +224,11 @@ const std::shared_ptr<const Model::TriSearchTree>& Block::getModelTriSearchTree(
 
 void Block::deleteModelSearchTree()
 {
+#if USE_POLYMESH
+	_pPolySearchTree = nullptr;
+#else
 	_pTriSearchTree = nullptr;
+#endif
 }
 
 void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)

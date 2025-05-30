@@ -315,8 +315,11 @@ private:
 	ObjectPool<Polyhedron> _polyhedra;
 
 	mutable bool _searchTreeSet = false;
+#if USE_POLYMESH
 	mutable std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
+#else
 	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+#endif
 #if USE_MULTI_THREAD_CONTAINERS
 	MultiCore::local_heap _heap;
 #endif

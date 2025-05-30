@@ -540,7 +540,7 @@ void Splitter3D::finalizeCreatedCells()
 				}
 				if (createdCell._pPolySearchTree && _splitLevel < 4) {
 					// Splitting small trees takes time and memory, so only reduce larger ones
-					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, refineFunc);
+					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, model.getRefiner());
 				}
 #else
 				if (_hasSetSearchTree) {
@@ -794,7 +794,11 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& parentId, const Inde
 		const auto& parentCell = getBlockPtr()->getPolyhedron(parentId);
 		auto& newCell = getBlockPtr()->getPolyhedron(newCellId);
 		newCell._hasSetSearchTree = parentCell._hasSetSearchTree;
+#if USE_POLYMESH
+		newCell._pPolySearchTree = parentCell._pPolySearchTree;
+#else
 		newCell._pTriSearchTree = parentCell._pTriSearchTree;
+#endif
 	} else
 		_createdCellIds.insert(newCellId);
 
@@ -937,16 +941,14 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 
 #if USE_POLYMESH
 	if (_intersectsModel) {
-		_hasSetSearchTree = targetCell._hasSetSearchTree;
 		if (targetCell._hasSetSearchTree)
 			_pPolySearchTree = targetCell._pPolySearchTree;
 		else
 			_pPolySearchTree = targetCell.getBlockPtr()->getModelPolySearchTree();
-	}
-	else {
-		_hasSetSearchTree = true;
+	} else {
 		_pPolySearchTree = nullptr;
 	}
+	_hasSetSearchTree = true;
 #else
 	if (_intersectsModel) {
 		_hasSetSearchTree = targetCell._hasSetSearchTree;

@@ -908,7 +908,9 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         _pMainFrame->setFuture(pFuture);
 #endif
     } catch (const std::runtime_error& err) {
-        cout << "Exception thrown: " << err.what() << "\n";
+        static mutex mut;
+        lock_guard lg(mut);
+        cout << "Exception: " << err.what() << "\n";
     }
 }
 

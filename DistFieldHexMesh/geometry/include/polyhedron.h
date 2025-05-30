@@ -114,9 +114,10 @@ public:
 	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
 
 	bool intersectsModel() const;
-	Trinary intersectsModelTriMesh() const;
 #if USE_POLYMESH
 	Trinary intersectsModelPolyMesh() const;
+#else
+	Trinary intersectsModelTriMesh() const;
 #endif
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
@@ -198,8 +199,11 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 	friend class Splitter3D;
 
-	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
+#if USE_POLYMESH
 	const std::shared_ptr<const Model::PolyMeshSearchTree> getPolySearchTree() const;
+#else
+	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
+#endif
 	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
@@ -258,8 +262,12 @@ private:
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;
-	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+
+#if USE_POLYMESH
 	mutable std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
+#else
+	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+#endif
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

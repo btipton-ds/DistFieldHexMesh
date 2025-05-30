@@ -35,11 +35,24 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
+#if USE_POLYMESH
+Model::Model()
+	: _refiner(this)
+{
+}
+#else
+#endif
+
 void Model::clear()
 {
 	_modelMeshData.clear();
+#if USE_POLYMESH
+	if (_pPolyMeshSearchTree)
+		_pPolyMeshSearchTree->clear();
+#else
 	if (_pTriSearchTree)
 		_pTriSearchTree->clear();
+#endif
 }
 
 size_t Model::numBytes() const
@@ -49,14 +62,24 @@ size_t Model::numBytes() const
 		if (pData)
 			result += pData->numBytes();
 	}
+
+#if USE_POLYMESH
+	if (_pPolyMeshSearchTree)
+		result += _pPolyMeshSearchTree->numBytes();
+#else
 	if (_pTriSearchTree)
 		result += _pTriSearchTree->numBytes();
+#endif
 	return result;
 }
 
 void Model::setBounds(const BOX_TYPE& bbox)
 {
+#if USE_POLYMESH
+	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
+#else
 	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
+#endif
 }
 
 size_t Model::add(const MeshDataPtr& pData)
@@ -84,11 +107,25 @@ void Model::rebuildSearchTree()
 			bbox.merge(pMesh->getBBox());
 		}
 	}
-
-	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
-
+#if USE_POLYMESH
 	bbox.grow(Polygon::bboxOffsetDist());
 	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
+
+	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
+		auto& pData = _modelMeshData[meshIdx];
+		auto& pPolyMesh = pData->getPolyMesh();
+
+		if (pPolyMesh) {
+			pPolyMesh->iterateFaces([this, meshIdx](const Index3DId& id, const Polygon& face) {
+				auto bb = face.getBBox();
+				_pPolyMeshSearchTree->add(bb, PolyMeshIndex(meshIdx, id));
+
+				return true;
+			});
+		}
+	}
+#else
+	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
 
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
 		auto& pData = _modelMeshData[meshIdx];
@@ -108,11 +145,13 @@ void Model::rebuildSearchTree()
 				_pPolyMeshSearchTree->add(bb, PolyMeshIndex(meshIdx, id));
 
 				return true;
-			});
+				});
 		}
 	}
+#endif
 }
 
+#if !USE_POLYMESH
 size_t Model::addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
 {
 	size_t meshIdx = _modelMeshData.size();
@@ -138,7 +177,6 @@ bool Model::doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Mod
 	return  false;
 }
 
-#if !USE_POLYMESH
 size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& result) const
 {
 	std::vector<TriSearchTree::Entry> entries;
@@ -279,7 +317,6 @@ const Model::MultMeshTriangle Model::getTriIndices(const TriMeshIndex& idx) cons
 	return result;
 }
 
-#endif
 
 bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 {
@@ -293,6 +330,19 @@ bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 		return true;
 	}
 	return false;
+}
+
+#endif
+
+#if USE_POLYMESH
+
+const Model::PolyMeshSearchTree::Refiner* Model::getRefiner() const
+{
+#if USE_REFINER
+	return &_refiner;
+#else
+	return nullptr;
+#endif
 }
 
 bool Model::doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
@@ -329,7 +379,7 @@ bool Model::doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, con
 size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::Entry>& result) const
 {
 	std::vector<PolyMeshSearchTree::Entry> entries;
-	if (_pPolyMeshSearchTree->find(bbox, entries)) {
+	if (_pPolyMeshSearchTree->find(bbox, getRefiner(), entries)) {
 		for (const auto& entry : entries) {
 			const auto& triBox = entry.getBBox();
 			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
@@ -370,7 +420,7 @@ size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::En
 size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains) const
 {
 	std::vector<PolyMeshSearchTree::Entry> entries;
-	if (_pPolyMeshSearchTree->find(bbox, entries)) {
+	if (_pPolyMeshSearchTree->find(bbox, getRefiner(), entries)) {
 		for (const auto& entry : entries) {
 			const auto& triBox = entry.getBBox();
 			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
@@ -415,15 +465,6 @@ size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& 
 	return hits.size();
 }
 
-std::shared_ptr<const Model::PolyMeshSearchTree> Model::getPolySearchTree() const
-{
-	return _pPolyMeshSearchTree;
-}
-std::shared_ptr<const Model::PolyMeshSearchTree> Model::getPolySubTree(const BOX_TYPE& bbox) const
-{
-	return _pPolyMeshSearchTree->getSubTree(bbox);
-}
-
 const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 {
 	size_t meshIdx = idx.getMeshIdx();
@@ -433,4 +474,16 @@ const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 		return &pMesh->getPolygon(idx.getPolyId());
 	}
 	return nullptr;
+}
+
+#endif
+
+Model::PolyRefiner::PolyRefiner(const Model* pModel)
+	: _pModel(pModel)
+{
+}
+
+bool Model::PolyRefiner::entryIntersects(const PolyMeshSearchTree::Entry& entry, const BOX_TYPE& bbox) const
+{
+	return _pModel->doesPolyIntersect(entry, bbox);
 }

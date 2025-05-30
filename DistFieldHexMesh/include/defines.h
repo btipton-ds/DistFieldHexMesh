@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define RUN_MULTI_THREAD 1
 #define RUN_MULTI_SUB_THREAD 1
 #define USE_POLYMESH 1
+#define USE_REFINER 0 // Turning on the refiner is breaking things
 #define ENABLE_DEBUGGING_MUTEXES (0 && _DEBUG && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
 #define ENABLE_VERIFY_THREAD_AND_BLOCK_IDX_MATCH 0
 #define ENABLE_MODEL_SEARCH_TREE_VERIFICATION 0
