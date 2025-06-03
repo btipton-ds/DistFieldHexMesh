@@ -513,15 +513,6 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 void Splitter3D::finalizeCreatedCells()
 {
 	const auto& model = _pBlock->getModel();
-#if USE_POLYMESH
-	auto refineFunc = [this, &model](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		return model.doesPolyIntersect(entry, bbox);
-	};
-#else
-	auto refineFunc = [this, &model](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		return model.doesTriIntersect(entry, bbox);
-		};
-#endif
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
@@ -536,11 +527,11 @@ void Splitter3D::finalizeCreatedCells()
 				if (_hasSetSearchTree) {
 					createdCell._pPolySearchTree = _pPolySearchTree;
 				} else {
-					createdCell._pPolySearchTree = model.getPolySubTree(subBbox);
+					createdCell._pPolySearchTree = model.getPolySubTree(subBbox, nullptr);
 				}
 				if (createdCell._pPolySearchTree && _splitLevel < 4) {
 					// Splitting small trees takes time and memory, so only reduce larger ones
-					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, model.getRefiner());
+					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, nullptr);
 				}
 #else
 				if (_hasSetSearchTree) {

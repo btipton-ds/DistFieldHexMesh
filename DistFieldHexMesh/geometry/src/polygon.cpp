@@ -1096,6 +1096,37 @@ bool Polygon::intersect(const Polygon& otherFace, bool dumpObj) const
 	return false;
 }
 
+bool Polygon::intersect(const vector<const Vector3d*>& cellTriPts) const
+{
+	bool result = false;
+	iterateTriangles([this, &cellTriPts, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+		const Vector3d* modelTriPts[] = {
+			&getVertexPoint(id0),
+			&getVertexPoint(id1),
+			&getVertexPoint(id2),
+		};
+
+		size_t nTris = cellTriPts.size() / 3;
+		auto pMeshTriData = cellTriPts.data();
+
+		for (size_t i = 0; i < nTris; i++) {
+			const Vector3d* meshTriPts[] = {
+				pMeshTriData[3 * i + 0],
+				pMeshTriData[3 * i + 1],
+				pMeshTriData[3 * i + 2],
+			};
+			if (intersectTriTri(modelTriPts, meshTriPts)) {
+				result = IS_TRUE;
+				break;
+			}
+		}
+
+		return result == IS_UNKNOWN;
+	});
+
+	return result;
+}
+
 bool Polygon::isPointInside(const Vector3d& pt) const
 {
 	bool result;

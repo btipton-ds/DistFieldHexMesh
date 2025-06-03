@@ -51,7 +51,11 @@ struct SplittingParams;
 class Block;
 class Edge;
 
+#if USE_POLYMESH
+class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
+#else
 class Polyhedron : public ObjectPoolOwnerUser {
+#endif
 public:
 	Polyhedron() = default;
 	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds = MultiCore::vector<Index3DId>());
@@ -63,6 +67,11 @@ public:
 	void initializeSearchTree() const;
 
 	void clear() override;
+#if USE_POLYMESH
+	const PolyMeshSearchTree::Refiner* getRefiner() const;
+	bool entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSearchTree::Entry& entry) const override;
+#else
+#endif
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 	void copyCaches(const Polyhedron& src);
@@ -200,9 +209,9 @@ private:
 	friend class Splitter3D;
 
 #if USE_POLYMESH
-	const std::shared_ptr<const Model::PolyMeshSearchTree> getPolySearchTree() const;
+	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 #else
-	const std::shared_ptr<const Model::TriSearchTree> getTriSearchTree() const;
+	const std::shared_ptr<const TriSearchTree> getTriSearchTree() const;
 #endif
 	const Model& getModel() const;
 
@@ -218,6 +227,8 @@ private:
 	double calCurvatureYZPlane(const SplittingParams& params) const;
 	double calCurvatureZXPlane(const SplittingParams& params) const;
 	double calCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
+
+	void createTriPoints(std::vector<const Vector3d*>& cellTriPts) const;
 
 	Index3DId _thisId;
 	/*
@@ -264,9 +275,9 @@ private:
 	mutable bool _hasSetSearchTree = false;
 
 #if USE_POLYMESH
-	mutable std::shared_ptr<const Model::PolyMeshSearchTree> _pPolySearchTree;
+	mutable std::shared_ptr<const PolyMeshSearchTree> _pPolySearchTree;
 #else
-	mutable std::shared_ptr<const Model::TriSearchTree> _pTriSearchTree;
+	mutable std::shared_ptr<const TriSearchTree> _pTriSearchTree;
 #endif
 };
 

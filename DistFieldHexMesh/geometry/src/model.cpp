@@ -35,14 +35,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-#if USE_POLYMESH
-Model::Model()
-	: _refiner(this)
-{
-}
-#else
-#endif
-
 void Model::clear()
 {
 	_modelMeshData.clear();
@@ -336,50 +328,10 @@ bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
 
 #if USE_POLYMESH
 
-const Model::PolyMeshSearchTree::Refiner* Model::getRefiner() const
-{
-#if USE_REFINER
-	return &_refiner;
-#else
-	return nullptr;
-#endif
-}
-
-bool Model::doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
-{
-	// TODO Remove - This function was verified, 5/28/25.
-	const auto tol = Tolerance::sameDistTol();
-
-	bool result = false;
-	if (!bbox.intersects(entry.getBBox(), tol))
-		return result;
-
-	const auto polyIdx = entry.getIndex();
-	auto pData = _modelMeshData[polyIdx.getMeshIdx()];
-	if (!pData->isActive())
-		return result;
-
-	auto& pMesh = pData->getPolyMesh();
-	const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
-	face.iterateTriangles([&pMesh, &polyIdx, &bbox, &result, tol](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
-		const Vector3d* pts[] = {
-			&pMesh->getVertexPoint(idx0),
-			&pMesh->getVertexPoint(idx1),
-			&pMesh->getVertexPoint(idx2),
-		};
-		if (bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol)) {
-			result = true;
-		}
-		return !result;
-	});
-
-	return result;
-}
-
-size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::Entry>& result) const
+size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& result) const
 {
 	std::vector<PolyMeshSearchTree::Entry> entries;
-	if (_pPolyMeshSearchTree->find(bbox, getRefiner(), entries)) {
+	if (_pPolyMeshSearchTree->find(bbox, pRefiner, entries)) {
 		for (const auto& entry : entries) {
 			const auto& triBox = entry.getBBox();
 			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
@@ -417,10 +369,10 @@ size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::En
 	return result.size();
 }
 
-size_t Model::findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains) const
+size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains) const
 {
 	std::vector<PolyMeshSearchTree::Entry> entries;
-	if (_pPolyMeshSearchTree->find(bbox, getRefiner(), entries)) {
+	if (_pPolyMeshSearchTree->find(bbox, pRefiner, entries)) {
 		for (const auto& entry : entries) {
 			const auto& triBox = entry.getBBox();
 			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
@@ -478,12 +430,3 @@ const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 
 #endif
 
-Model::PolyRefiner::PolyRefiner(const Model* pModel)
-	: _pModel(pModel)
-{
-}
-
-bool Model::PolyRefiner::entryIntersects(const PolyMeshSearchTree::Entry& entry, const BOX_TYPE& bbox) const
-{
-	return _pModel->doesPolyIntersect(entry, bbox);
-}

@@ -55,6 +55,12 @@ using MeshDataConstPtr = std::shared_ptr<const MeshData>;
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
 
+#if USE_POLYMESH
+using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
+#else
+using TriSearchTree = CSpatialSearchBase<double, TriMeshIndex, 25>;
+#endif
+
 class Model {
 public:
 	struct MultMeshTriangle {
@@ -65,22 +71,9 @@ public:
 	};
 
 #if USE_POLYMESH
-	using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 	using BOX_TYPE = PolyMeshSearchTree::BOX_TYPE;
-
-	class PolyRefiner : public PolyMeshSearchTree::Refiner
-	{
-	public:
-		PolyRefiner(const Model* pModel);
-		bool entryIntersects(const PolyMeshSearchTree::Entry& entry, const BOX_TYPE& bbox) const override;
-	private:
-		const Model* _pModel;
-	};
-
-	Model();
 #else
 	using BOX_TYPE = TriSearchTree::BOX_TYPE;
-	using TriSearchTree = CSpatialSearchBase<double, TriMeshIndex, 25>;
 #endif
 	void setBounds(const BOX_TYPE& bbox);
 
@@ -102,15 +95,13 @@ public:
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
 #if USE_POLYMESH
-	const PolyMeshSearchTree::Refiner* getRefiner() const;
-	bool doesPolyIntersect(const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
 
-	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshSearchTree::Entry>& indices) const;
-	size_t findPolys(const BOX_TYPE& bbox, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
+	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& indices) const;
+	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
 
 	size_t rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& hits, bool biDir = true) const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
-	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox) const;
+	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;
 #else
 	const TriSearchTree::Refiner* getRefiner() const;
 	bool doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const;
@@ -134,7 +125,6 @@ private:
 	std::vector<MeshDataPtr> _modelMeshData;
 #if USE_POLYMESH
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
-	PolyRefiner _refiner;
 #else
 	std::shared_ptr<TriSearchTree> _pTriSearchTree;
 #endif
@@ -186,14 +176,14 @@ inline const TriMeshIndex& Model::MultMeshTriangle::operator[](size_t i) const
 }
 
 #if USE_POLYMESH
-inline std::shared_ptr<const Model::PolyMeshSearchTree> Model::getPolySearchTree() const
+inline std::shared_ptr<const PolyMeshSearchTree> Model::getPolySearchTree() const
 {
 	return _pPolyMeshSearchTree;
 }
 
-inline std::shared_ptr<const Model::PolyMeshSearchTree> Model::getPolySubTree(const BOX_TYPE& bbox) const
+inline std::shared_ptr<const PolyMeshSearchTree> Model::getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const
 {
-	return _pPolyMeshSearchTree->getSubTree(bbox, getRefiner());
+	return _pPolyMeshSearchTree->getSubTree(bbox, pRefiner);
 }
 
 #else

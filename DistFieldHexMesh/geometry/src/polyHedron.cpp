@@ -119,7 +119,7 @@ void Polyhedron::initializeSearchTree() const
 		if (_pPolySearchTree) {
 			auto bbox = getBoundingBox();
 			const auto& model = getModel();
-			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, model.getRefiner());
+			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION
 			vector<PolyMeshIndex> indicesA, indicesB;
 			size_t numA = model.findPolys(bbox, indicesA);
@@ -188,6 +188,38 @@ void Polyhedron::clear()
 		getBlockPtr()->freePolygon(faceId);
 	}
 }
+
+#if USE_POLYMESH
+const PolyMeshSearchTree::Refiner* Polyhedron::getRefiner() const
+{
+#if USE_REFINER
+	return this;
+#else
+	return nullptr;
+#endif
+}
+
+bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSearchTree::Entry& entry) const
+{
+#if 0
+	return true;
+#else
+	if (_cachedIntersectsModel == IS_UNKNOWN) {
+		vector<const Vector3d*> cellTriPts;
+		createTriPoints(cellTriPts);
+
+		auto& model = getModel();
+		auto pFace = model.getPolygon(entry.getIndex());
+		if (pFace->intersect(cellTriPts)) {
+			return true;
+		}
+	}
+	return _cachedIntersectsModel == IS_TRUE;
+#endif
+}
+
+#else
+#endif
 
 Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
@@ -1290,61 +1322,74 @@ bool Polyhedron::intersectsModel() const
 }
 
 #if USE_POLYMESH
+void Polyhedron::createTriPoints(vector<const Vector3d*>& cellTriPts) const
+{
+	for (const auto& id : _faceIds) {
+		auto& face = getPolygon(id);
+		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			cellTriPts.push_back(&face.getVertexPoint(id0));
+			cellTriPts.push_back(&face.getVertexPoint(id1));
+			cellTriPts.push_back(&face.getVertexPoint(id2));
+
+			return true;
+		});
+	}
+}
+
 Trinary Polyhedron::intersectsModelPolyMesh() const
 {
+	static map<size_t, size_t> bins;
 	Trinary result = IS_UNKNOWN;
 
 	bool dumpObj = false;
 	auto bbox = getBoundingBox();
-	auto& model = getModel();
-	auto refineFunc = [&model](const Model::PolyMeshSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		return model.doesPolyIntersect(entry, bbox);
-	};
 
 	vector<PolyMeshIndex> indices;
 	if (getPolyIndices(indices) != 0) {
 		vector<const Vector3d*> cellTriPts;
-		for (const auto& id : _faceIds) {
-			auto& face = getPolygon(id);
-			face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				cellTriPts.push_back(&face.getVertexPoint(id0));
-				cellTriPts.push_back(&face.getVertexPoint(id1));
-				cellTriPts.push_back(&face.getVertexPoint(id2));
-
-				return true;
-			});
+		createTriPoints(cellTriPts);
+		auto& model = getModel();
+#if 0
+		{
+			static mutex mut;
+			lock_guard lg(mut);
+			auto iter = bins.find(indices.size());
+			if (iter == bins.end())
+				iter = bins.insert(make_pair(indices.size(), 0)).first;
+			iter->second++;
 		}
-
-		size_t nTris = cellTriPts.size() / 3;
-		auto pMeshTriData = cellTriPts.data();
+#endif
+#if 1
+		if (indices.size() > 1024) {
+			auto pVol = getOurBlockPtr()->getVolume();
+			auto& tp = pVol->getThreadPool();
+			tp.run(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx) {
+				const auto& id = indices[idx];
+				auto pFace = model.getPolygon(id);
+				if (pFace->intersect(cellTriPts)) {
+					result = IS_TRUE;
+				}
+				return result != IS_TRUE;
+			}, RUN_MULTI_SUB_THREAD);
+		} else {
+			for (const auto& id : indices) {
+				auto pFace = model.getPolygon(id);
+				if (pFace->intersect(cellTriPts)) {
+					result = IS_TRUE;
+					break;
+				}
+			}
+		}
+#else
 
 		for (const auto& id : indices) {
 			auto pFace = model.getPolygon(id);
-			pFace->iterateTriangles([this, &pFace, nTris, &pMeshTriData, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-				const Vector3d* modelTriPts[] = {
-					&pFace->getVertexPoint(id0),
-					&pFace->getVertexPoint(id1),
-					&pFace->getVertexPoint(id2),
-				};
-
-				for (size_t i = 0; i < nTris; i++) {
-					const Vector3d* meshTriPts[] = {
-						pMeshTriData[3 * i + 0],
-						pMeshTriData[3 * i + 1],
-						pMeshTriData[3 * i + 2],
-					};
-					if (intersectTriTri(modelTriPts, meshTriPts)) {
-						result = IS_TRUE;
-						break;
-					}
-				}
-
-				return result == IS_UNKNOWN;
-			});
-
-			if (result != IS_UNKNOWN)
+			if (pFace->intersect(cellTriPts)) {
+				result = IS_TRUE;
 				break;
+			}
 		}
+#endif
 	}
 
 	return result;
@@ -2014,7 +2059,7 @@ inline const Model& Polyhedron::getModel() const
 
 #if USE_POLYMESH
 
-const std::shared_ptr<const Model::PolyMeshSearchTree> Polyhedron::getPolySearchTree() const
+const std::shared_ptr<const PolyMeshSearchTree> Polyhedron::getPolySearchTree() const
 {
 	initializeSearchTree();
 	return _pPolySearchTree;
@@ -2030,7 +2075,7 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 //	auto pClipped = model.getPolySubTree(bbox);
 	size_t result = 0;
 	if (pClipped)
-		result = pClipped->find(bbox, model.getRefiner(), indices);
+		result = pClipped->find(bbox, getRefiner(), indices);
 
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	vector<PolyMeshIndex> indicesFull;

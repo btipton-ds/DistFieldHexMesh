@@ -182,7 +182,7 @@ const Model& Block::getModel() const
 }
 
 #if USE_POLYMESH
-const std::shared_ptr<const Model::PolyMeshSearchTree>& Block::getModelPolySearchTree() const
+const std::shared_ptr<const PolyMeshSearchTree>& Block::getModelPolySearchTree() const
 {
 	if (!_searchTreeSet) {
 		_searchTreeSet = true;
@@ -190,9 +190,9 @@ const std::shared_ptr<const Model::PolyMeshSearchTree>& Block::getModelPolySearc
 		assert(!bbox.empty());
 
 		const auto& model = getModel();
-		_pPolySearchTree = getModel().getPolySubTree(bbox);
+		_pPolySearchTree = getModel().getPolySubTree(bbox, nullptr);
 		if (_pPolySearchTree) {
-			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, model.getRefiner());
+			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
 		}
 	}
 
@@ -396,7 +396,7 @@ bool Block::intersectsModel() const
 		auto bbox = getBBox();
 #if USE_POLYMESH
 		vector<PolyMeshIndex> indices;
-		_intersectsModel = model.findPolys(bbox, indices) ? IS_TRUE : IS_FALSE;
+		_intersectsModel = model.findPolys(bbox, nullptr, indices) ? IS_TRUE : IS_FALSE;
 #else
 		vector<TriMeshIndex> indices;
 		_intersectsModel = model.findTris(bbox, indices) ? IS_TRUE : IS_FALSE;
