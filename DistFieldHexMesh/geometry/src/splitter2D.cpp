@@ -204,6 +204,43 @@ void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
 		return true;
 	});
 
+	if (iPts.size() < 2)
+		return;
+
+	// sort all the points into ascending order along the line of intersection.
+	const auto& pt0 = iPts[0];
+	Vector2d v;
+	double len = -1;
+	for (size_t i = 1; i < iPts.size(); i++) {
+		v = iPts[i] - pt0;
+		len = v.norm();
+		if (len > Tolerance::paramTol()) {
+			v /= len;
+			break;
+		}
+	}
+
+	if (len < Tolerance::sameDistTol())
+		return;
+
+	if (iPts.size() > 2) {
+		sort(iPts.begin(), iPts.end(), [&pt0, &v](const Vector2d& lhs, const Vector2d& rhs)->bool {
+			double lhsDist = (lhs - pt0).dot(v);
+			double rhsDist = (rhs - pt0).dot(v);
+			return lhsDist < rhsDist;
+		});
+
+		for (size_t i = iPts.size() - 2; i != -1; i--) {
+			size_t j = (i + 1) % iPts.size();
+			const auto& pt0 = iPts[i];
+			const auto& pt1 = iPts[j];
+			auto l = (pt1 - pt0).squaredNorm();
+			if (l < Tolerance::sameDistTolSqr()) {
+				iPts.erase(iPts.begin() + j);
+			}
+		}
+	}
+
 	if (!iPts.empty() && iPts.size() % 2 == 0) {
 		for (size_t i = 0; i < iPts.size() / 2; i++) {
 			size_t j = (i + 1) % iPts.size();
