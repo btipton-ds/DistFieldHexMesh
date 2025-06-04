@@ -181,7 +181,7 @@ const Model& Block::getModel() const
 	return pAppData->getModel();
 }
 
-const std::shared_ptr<const PolyMeshSearchTree>& Block::getModelPolySearchTree() const
+const std::shared_ptr<const PolyMeshSearchTree>& Block::getPolySearchTree() const
 {
 	if (!_searchTreeSet) {
 		_searchTreeSet = true;
@@ -190,9 +190,6 @@ const std::shared_ptr<const PolyMeshSearchTree>& Block::getModelPolySearchTree()
 
 		const auto& model = getModel();
 		_pPolySearchTree = getModel().getPolySubTree(bbox, nullptr);
-		if (_pPolySearchTree) {
-			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
-		}
 	}
 
 	return _pPolySearchTree;

@@ -154,7 +154,7 @@ public:
 	void createBlockFaces();
 
 	const Model& getModel() const;
-	const std::shared_ptr<const PolyMeshSearchTree>& getModelPolySearchTree() const;
+	const std::shared_ptr<const PolyMeshSearchTree>& getPolySearchTree() const;
 	void deleteModelSearchTree();
 	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 

@@ -114,7 +114,12 @@ void Polyhedron::initializeSearchTree() const
 	if (!_hasSetSearchTree) {
 		auto pBlk = getOurBlockPtr();
 		_hasSetSearchTree = true;
-		_pPolySearchTree = pBlk->getModel().getPolySearchTree();
+		if (pBlk->polyhedronExists(_parentId)) {
+			const auto& cell = getPolyhedron(_parentId);
+			_pPolySearchTree = cell._pPolySearchTree;
+		} else
+			_pPolySearchTree = pBlk->getPolySearchTree();
+
 		if (_pPolySearchTree) {
 			auto bbox = getBoundingBox();
 			const auto& model = getModel();
@@ -2098,4 +2103,157 @@ return out;
 }
 
 //LAMBDA_CLIENT_IMPLS(Polyhedron)
-LAMBDA_CLIENT_IMPLS(Polyhedron)
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		p->vertexFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->vertexFunc(id, func);
+	}
+} 
+
+void Polyhedron::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		p->vertexFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->vertexFunc(id, func);
+	}
+} 
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		p->faceFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->faceFunc(id, func);
+	}
+} 
+
+void Polyhedron::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		p->faceFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->faceFunc(id, func);
+	}
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		p->cellFunc(id, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->cellFunc(id, func);
+	}
+} 
+
+void Polyhedron::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		p->cellFunc(id, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			p2->cellFunc(id, func);
+	}
+} 
+
+const Vertex& Polyhedron::getVertex(const Index3DId& id) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		return p->getVertex(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getVertex(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+}  
+
+Vertex& Polyhedron::getVertex(const Index3DId& id) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		return p->getVertex(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getVertex(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+} 
+
+const DFHM::Polygon& Polyhedron::getPolygon(const Index3DId& id) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		return p->getPolygon(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolygon(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+}  
+
+DFHM::Polygon& Polyhedron::getPolygon(const Index3DId& id) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		return p->getPolygon(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolygon(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+} 
+
+const Polyhedron& Polyhedron::getPolyhedron(const Index3DId& id) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		return p->getPolyhedron(id); 
+	else {
+		const auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolyhedron(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+}  
+
+Polyhedron& Polyhedron::getPolyhedron(const Index3DId& id) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		return p->getPolyhedron(id); 
+	else {
+		auto p2 = getPolyMeshPtr(); 
+		if (p2) 
+			return p2->getPolyhedron(id);
+	} 
+	throw std::runtime_error("Entity does not exist");
+} 
+
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
+		p->edgeFunc(key, func); 
+	else {
+		const auto p2 = getPolyMeshPtr(); if (p2) p2->edgeFunc(key, func);
+	}
+} 
+
+void Polyhedron::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	if (p) 
+		p->edgeFunc(key, func); 
+	else {
+		auto p2 = getPolyMeshPtr(); if (p2) p2->edgeFunc(key, func);
+	}
+}
