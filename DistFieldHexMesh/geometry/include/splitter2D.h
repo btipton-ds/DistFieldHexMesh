@@ -79,7 +79,7 @@ public:
 	void add3DEdge(const Vector3d& pt0, const Vector3d& pt1);
 	void add3DTriEdges(const Vector3d pts[3], bool split);
 	void add3DTriEdges(const Vector3d* pts[3], bool split);
-	void addFaceEdges(const Polygon& face, bool split);
+	void addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split);
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);

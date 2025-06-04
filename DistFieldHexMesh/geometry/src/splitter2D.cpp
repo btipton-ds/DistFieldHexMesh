@@ -188,12 +188,13 @@ void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 	}
 }
 
-void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
+void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split) {
 	vector<Vector2d> iPts;
-	face.iterateEdges([this, &iPts](const Edge& edge)->bool {
+	for (size_t i = 0; i < polyPoints.size(); i++) {
+		size_t j = (i + 1) % polyPoints.size();
+		LineSegmentd seg(*polyPoints[i], *polyPoints[j]);
 		const auto distTol = Tolerance::sameDistTol();
 		const auto tol = Tolerance::paramTol();
-		auto seg = edge.getSegment();
 		RayHitd hp;
 		if (_plane.intersectLineSegment(seg, hp, tol)) {
 			Vector2d pt2d;
@@ -201,8 +202,7 @@ void Splitter2D::addFaceEdges(const Polygon& face, bool split) {
 				iPts.push_back(pt2d);
 			}
 		}
-		return true;
-	});
+	}
 
 	if (iPts.size() < 2)
 		return;

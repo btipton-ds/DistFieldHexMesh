@@ -881,7 +881,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 	const auto& model = getModel();
 
 	int reflectionAxisBits = 0;
-# if 0
+# if 1
 	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
 		bool reflect = false;
 		switch (reflectionAxis) {
@@ -902,8 +902,14 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 		if (!face)
 			continue;
 
+		const auto& nclinIds = face->getNonColinearVertexIds();
+		MTC::vector<const Vector3d*> pts;
+		pts.resize(nclinIds.size());
+		for (size_t i = 0; i < nclinIds.size(); i++) {
+			pts[i] = &getVertexPoint(nclinIds[i]);
+		}
 		if (reflectionAxisBits == 0) {
-			sp.addFaceEdges(*face, false);
+			sp.addFaceEdges(pts, false);
 		}
 
 #else
@@ -1640,6 +1646,11 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 {
 	double* pCurvature = nullptr;
 	switch (axis) {
+	default: {
+		stringstream ss;
+		ss << "calCurvatureByNormalAxis bad axis - " << __FILE__ << "-" << __LINE__;
+		throw runtime_error(ss.str());
+	}
 	case 0: // X axis is normal
 		pCurvature = &_cachedCurvatureYZPlane; break;
 	case 1: // Y axis is normal
@@ -1915,66 +1926,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 
 #endif
 	return false;
-}
-
-double Polyhedron::calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const
-{
-	if (!_needsCurvatureCheck)
-		return 0;
-
-	_needsCurvatureCheck = false;
-	const auto& model = getBlockPtr()->getModel();
-
-	for (const auto& pData : model) {
-		auto pTriMesh = pData->getMesh();
-
-		const auto& blkIdx = _thisId.blockIdx();
-		if (blkIdx[0] == 0 && blkIdx[1] == 0) {
-			int dbgBreak = 1;
-		}
-
-		vector<size_t> triIndices;
-		size_t numTris = pTriMesh->findTris(bbox, triIndices);
-		if (numTris > 0) {
-			static thread_local vector<double> radii;
-			if (radii.size() < pTriMesh->numTris()) {
-				radii.reserve(pTriMesh->numTris());
-			}
-			radii.clear();
-			for (const auto triIdx : triIndices) {
-				double triCurv = pTriMesh->triCurvature(triIdx);
-				if (triCurv > 2) { // Radius < 1/2
-					radii.push_back(1 / triCurv);
-				}
-			}
-
-			if (radii.empty())
-				return 1e6;
-
-			sort(radii.begin(), radii.end());
-			double maxRad = 0;
-			double avgRad = 0;
-			size_t count = 0;
-			for (size_t i = 0; i < radii.size(); i++) {
-				if (maxRad == 0 || radii[i] <= 1.5 * maxRad) {
-					if (radii[i] > maxRad)
-						maxRad = radii[i];
-
-					avgRad += radii[i];
-					count++;
-				}
-				else
-					break;
-			}
-
-			if (count > 0 && avgRad >= 0) {
-				avgRad /= count;
-				return avgRad;
-			}
-			return -1;
-		}
-	}
-	return 0;
 }
 
 double Polyhedron::minGap() const

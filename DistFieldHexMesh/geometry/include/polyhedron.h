@@ -218,7 +218,6 @@ private:
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
 	void copyToOut() const;
-	double calReferenceSurfaceRadius(const CBoundingBox3Dd& bbox, const SplittingParams& params) const;
 	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
