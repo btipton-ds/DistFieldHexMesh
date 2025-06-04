@@ -464,7 +464,6 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
         Rayd ray(startPt, dir);
-#if USE_POLYMESH
         vector<MultiPolyMeshRayHit> hits;
         if (model.rayCast(ray, hits)) {
             hadHit = true;
@@ -478,19 +477,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
                 }
             }
         }
-#else
-        vector<MultiTriMeshRayHit> hits;
-        if (model.rayCast(ray, hits)) {
-            hadHit = true;
-            // Rotate about hit point
-            for (const auto& hit : hits) {
-                if (hit.getDist() < minDist) {
-                    minDist = hit.getDist();
-                    hitModel = hit.getPoint();
-                }
-            }
-        }
-#endif
+
         if (!hadHit) {
             hitModel = bbox.getMin() + bbox.range() * 0.5;
         }

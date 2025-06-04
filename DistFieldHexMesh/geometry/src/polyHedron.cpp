@@ -114,7 +114,6 @@ void Polyhedron::initializeSearchTree() const
 	if (!_hasSetSearchTree) {
 		auto pBlk = getOurBlockPtr();
 		_hasSetSearchTree = true;
-#if USE_POLYMESH
 		_pPolySearchTree = pBlk->getModel().getPolySearchTree();
 		if (_pPolySearchTree) {
 			auto bbox = getBoundingBox();
@@ -150,19 +149,6 @@ void Polyhedron::initializeSearchTree() const
 				}
 			}
 #endif
-#else
-		_pTriSearchTree = pBlk->getModelTriSearchTree();
-		if (_pTriSearchTree) {
-			auto bbox = getBoundingBox();
-			auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-				const auto& model = getModel();
-				return model.doesTriIntersect(entry, bbox);
-			};
-			_pTriSearchTree = _pTriSearchTree->getSubTree(bbox);
-			if (_pTriSearchTree)
-				_pTriSearchTree = _pTriSearchTree->getSubTree(bbox, refineFunc);
-#endif
-
 		}
 	}
 }
@@ -189,7 +175,6 @@ void Polyhedron::clear()
 	}
 }
 
-#if USE_POLYMESH
 const PolyMeshSearchTree::Refiner* Polyhedron::getRefiner() const
 {
 #if USE_REFINER
@@ -218,9 +203,6 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 #endif
 }
 
-#else
-#endif
-
 Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 {
 	ObjectPoolOwnerUser::operator=(rhs);
@@ -246,11 +228,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
-#if USE_POLYMESH
 	_pPolySearchTree = rhs._pPolySearchTree;
-#else
-	_pTriSearchTree = rhs._pTriSearchTree;
-#endif
 	return *this;
 }
 
@@ -276,11 +254,7 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_cachedCtr = src._cachedCtr;
 	_cachedBBox = src._cachedBBox;
 	_hasSetSearchTree = src._hasSetSearchTree;
-#if USE_POLYMESH
 	_pPolySearchTree = src._pPolySearchTree;
-#else
-	_pTriSearchTree = src._pTriSearchTree;
-#endif
 
 }
 
@@ -870,7 +844,6 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 {
 	double result = 0;
 	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
-#if USE_POLYMESH
 	vector<PolyMeshIndex> indices;
 
 	if (getPolyIndices(indices) == 0)
@@ -912,51 +885,6 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 			sp.addFaceEdges(pts, false);
 		}
 
-#else
-		face->iterateTriangles([this, reflectionAxisBits, &sp](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			const Vector3d* pts[3] = {
-				&getVertexPoint(id0),
-				&getVertexPoint(id1),
-				&getVertexPoint(id2),
-			};
-
-			// Reflect triangles across symmetry plane to remove false sharps at the boundary
-			if (reflectionAxisBits == 0) {
-				sp.add3DTriEdges(pts, false);
-			}
-			else {
-				bool triLiesOnSymmetryPlane = false;
-				for (int axis = 0; axis < 3; axis++) {
-					int numPointsOnBoundary = 0;
-					int axisBit = 1 << axis;
-					if ((reflectionAxisBits & axisBit) != axisBit)
-						continue;
-
-					Vector3d mirrorPts[3];
-					for (int ptIdx = 0; ptIdx < 3; ptIdx++) {
-						mirrorPts[ptIdx] = *pts[ptIdx];
-						double dist = (*pts[ptIdx])[axis] - origin[axis];
-						if (dist > 0) {
-							mirrorPts[ptIdx][axis] = origin[axis] - dist;
-						}
-						if (fabs(dist) < Tolerance::sameDistTol()) {
-							numPointsOnBoundary++;
-						}
-					}
-
-					if (numPointsOnBoundary == 3) {
-						triLiesOnSymmetryPlane = true;
-					} if (numPointsOnBoundary == 2) {
-						sp.add3DTriEdges(mirrorPts, false);
-					}
-				}
-				if (!triLiesOnSymmetryPlane)
-					sp.add3DTriEdges(pts, false);
-			}
-			return true;
-		});
-#endif
-		
 #if 0
 		if (sp.getPoints().size() > 10) {
 			stringstream ss;
@@ -1234,7 +1162,6 @@ bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
 
 }
 
-#if USE_POLYMESH
 bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 {
 	const auto& tol = Tolerance::sameDistTol();
@@ -1274,52 +1201,13 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 	});
 	return result;
 }
-#else
-bool Polyhedron::entryIntersectsModel(const TriMeshIndex& index) const
-{
-	const auto& tol = Tolerance::sameDistTol();
-
-	auto& model = getModel();
-	const Vector3d* pts[3];
-	model.getTri(index, pts);
-
-	bool result = false;
-
-	for (const auto& faceId : _faceIds) {
-		const auto& face = getPolygon(faceId);
-		face.iterateTriangles([this, &pts, &result, tol](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			const Vector3d* facePts[] = {
-				&getVertexPoint(id0),
-				&getVertexPoint(id1),
-				&getVertexPoint(id2),
-			};
-
-			if (intersectTriTri(pts, facePts, tol)) {
-				result = true;
-				return false;
-			}
-
-			return true; // false exits the lambda for loop
-			});
-
-		if (result)
-			break;
-	}
-
-	return result;
-}
-#endif
 
 bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		const auto tol = Tolerance::sameDistTol();
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
-#if USE_POLYMESH
 		_cachedIntersectsModel = intersectsModelPolyMesh();
-#else
-		_cachedIntersectsModel = intersectsModelTriMesh();
-#endif
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
 	}
@@ -1327,7 +1215,6 @@ bool Polyhedron::intersectsModel() const
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
-#if USE_POLYMESH
 void Polyhedron::createTriPoints(vector<const Vector3d*>& cellTriPts) const
 {
 	for (const auto& id : _faceIds) {
@@ -1400,52 +1287,6 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 
 	return result;
 }
-#else
-Trinary Polyhedron::intersectsModelTriMesh() const
-{
-	Trinary result = IS_UNKNOWN;
-
-	vector<TriMeshIndex> indices;
-	if (getTriIndices(indices) != 0) {
-		map<Index3DId, shared_ptr<Splitter2D>> faceIdToSplitterMap;
-		for (const auto& faceId : _faceIds) {
-			const auto& face = getPolygon(faceId);
-			if (face._cachedIntersectsModel == IS_TRUE) {
-				result = IS_TRUE;
-				return result;
-			}
-			vector<Vector3d> facePts;
-			auto& ids = face.getNonColinearVertexIds();
-			for (const auto& id : ids)
-				facePts.push_back(getVertexPoint(id));
-
-			faceIdToSplitterMap.insert(make_pair(faceId, make_shared<Splitter2D>(facePts)));
-		}
-
-		auto& model = getModel();
-
-		bool result = false;
-		for (const auto& index : indices) {
-			const Vector3d* pts[3];
-			model.getTri(index, pts);
-
-			for (const auto& pair : faceIdToSplitterMap) {
-				auto& face = getPolygon(pair.first);
-				auto& sp = *pair.second;
-				if (sp.intersectsTriPoints(pts)) {
-					result = face._cachedIntersectsModel = IS_TRUE;
-					break;
-				}
-				else {
-					face._cachedIntersectsModel = IS_FALSE;
-				}
-			}
-		}
-	}
-
-	return result;
-}
-#endif
 
 void Polyhedron::setIntersectsModel(bool val)
 {
@@ -2008,8 +1849,6 @@ inline const Model& Polyhedron::getModel() const
 	return getOurBlockPtr()->getModel();
 }
 
-#if USE_POLYMESH
-
 const std::shared_ptr<const PolyMeshSearchTree> Polyhedron::getPolySearchTree() const
 {
 	initializeSearchTree();
@@ -2042,46 +1881,6 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 #endif
 	return result;
 }
-
-#else
-const std::shared_ptr<const Model::TriSearchTree> Polyhedron::getTriSearchTree() const
-{
-	initializeSearchTree();
-	return _pTriSearchTree;
-}
-
-
-size_t Polyhedron::getTriIndices(std::vector<TriMeshIndex>& indices) const
-{
-	auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		const auto& model = getModel();
-		return model.doesTriIntersect(entry, bbox);
-		};
-
-	indices.clear();
-	auto& bbox = getBoundingBox();
-	auto pClipped = getTriSearchTree();
-	size_t result = 0;
-	if (pClipped)
-		result = pClipped->find(bbox, indices);
-
-#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
-	size_t dbgResult = 0;
-	auto pFull = getBlockPtr()->getModel().getTriSearchTree();
-	vector<TriMeshIndex> indicesFull;
-	if (pFull) {
-		dbgResult = pFull->find(bbox, refineFunc, indicesFull);
-	}
-
-	if (result != dbgResult) {
-		stringstream ss;
-		ss << "Search trees sizes don't match. indices.size: " << indices.size() << ", indicesFull.size() : " << indicesFull.size() << " " << __FILE__ << " : " << __LINE__;
-		throw runtime_error(ss.str());
-	}
-#endif
-	return result;
-}
-#endif
 
 MTC::set<EdgeKey> Polyhedron::createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const
 {

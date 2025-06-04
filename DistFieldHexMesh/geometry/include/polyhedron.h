@@ -51,11 +51,7 @@ struct SplittingParams;
 class Block;
 class Edge;
 
-#if USE_POLYMESH
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
-#else
-class Polyhedron : public ObjectPoolOwnerUser {
-#endif
 public:
 	Polyhedron() = default;
 	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds = MultiCore::vector<Index3DId>());
@@ -67,11 +63,8 @@ public:
 	void initializeSearchTree() const;
 
 	void clear() override;
-#if USE_POLYMESH
 	const PolyMeshSearchTree::Refiner* getRefiner() const;
 	bool entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSearchTree::Entry& entry) const override;
-#else
-#endif
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 	void copyCaches(const Polyhedron& src);
@@ -116,18 +109,14 @@ public:
 	bool segInside(const LineSegment_byrefd& seg) const;
 
 	bool entryIntersectsModel(const PolyMeshIndex& index) const;
-#if USE_POLYMESH
 	size_t getPolyIndices(std::vector<PolyMeshIndex>& indices) const;
-#endif
+
 	bool entryIntersectsModel(const TriMeshIndex& index) const;
 	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
 
 	bool intersectsModel() const;
-#if USE_POLYMESH
 	Trinary intersectsModelPolyMesh() const;
-#else
-	Trinary intersectsModelTriMesh() const;
-#endif
+
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
 #if USE_CELL_HISTOGRAM
@@ -208,11 +197,7 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 	friend class Splitter3D;
 
-#if USE_POLYMESH
 	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
-#else
-	const std::shared_ptr<const TriSearchTree> getTriSearchTree() const;
-#endif
 	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
@@ -273,11 +258,7 @@ private:
 	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;
 
-#if USE_POLYMESH
 	mutable std::shared_ptr<const PolyMeshSearchTree> _pPolySearchTree;
-#else
-	mutable std::shared_ptr<const TriSearchTree> _pTriSearchTree;
-#endif
 };
 
 inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const

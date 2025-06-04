@@ -181,7 +181,6 @@ const Model& Block::getModel() const
 	return pAppData->getModel();
 }
 
-#if USE_POLYMESH
 const std::shared_ptr<const PolyMeshSearchTree>& Block::getModelPolySearchTree() const
 {
 	if (!_searchTreeSet) {
@@ -198,37 +197,10 @@ const std::shared_ptr<const PolyMeshSearchTree>& Block::getModelPolySearchTree()
 
 	return _pPolySearchTree;
 }
-#else
-
-const std::shared_ptr<const Model::TriSearchTree>& Block::getModelTriSearchTree() const
-{
-	if (!_searchTreeSet) {
-		_searchTreeSet = true;
-		auto bbox = getBBox();
-		assert(!bbox.empty());
-
-		auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-			const auto& model = getModel();
-			return model.doesTriIntersect(entry, bbox);
-		};
-
-		_pTriSearchTree = getModel().getTriSubTree(bbox);
-		if (_pTriSearchTree) {
-			_pTriSearchTree = _pTriSearchTree->getSubTree(bbox, refineFunc);
-		}
-	}
-
-	return _pTriSearchTree;
-}
-#endif
 
 void Block::deleteModelSearchTree()
 {
-#if USE_POLYMESH
 	_pPolySearchTree = nullptr;
-#else
-	_pTriSearchTree = nullptr;
-#endif
 }
 
 void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D& srcDims)
@@ -394,13 +366,8 @@ bool Block::intersectsModel() const
 	if (_intersectsModel == IS_UNKNOWN) {
 		auto& model = getModel();
 		auto bbox = getBBox();
-#if USE_POLYMESH
 		vector<PolyMeshIndex> indices;
 		_intersectsModel = model.findPolys(bbox, nullptr, indices) ? IS_TRUE : IS_FALSE;
-#else
-		vector<TriMeshIndex> indices;
-		_intersectsModel = model.findTris(bbox, indices) ? IS_TRUE : IS_FALSE;
-#endif
 	}
 
 	return _intersectsModel == IS_TRUE;

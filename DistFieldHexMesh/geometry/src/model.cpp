@@ -38,13 +38,8 @@ using namespace DFHM;
 void Model::clear()
 {
 	_modelMeshData.clear();
-#if USE_POLYMESH
 	if (_pPolyMeshSearchTree)
 		_pPolyMeshSearchTree->clear();
-#else
-	if (_pTriSearchTree)
-		_pTriSearchTree->clear();
-#endif
 }
 
 size_t Model::numBytes() const
@@ -55,23 +50,14 @@ size_t Model::numBytes() const
 			result += pData->numBytes();
 	}
 
-#if USE_POLYMESH
 	if (_pPolyMeshSearchTree)
 		result += _pPolyMeshSearchTree->numBytes();
-#else
-	if (_pTriSearchTree)
-		result += _pTriSearchTree->numBytes();
-#endif
 	return result;
 }
 
 void Model::setBounds(const BOX_TYPE& bbox)
 {
-#if USE_POLYMESH
 	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
-#else
-	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
-#endif
 }
 
 size_t Model::add(const MeshDataPtr& pData)
@@ -99,7 +85,7 @@ void Model::rebuildSearchTree()
 			bbox.merge(pMesh->getBBox());
 		}
 	}
-#if USE_POLYMESH
+
 	bbox.grow(Polygon::bboxOffsetDist());
 	_pPolyMeshSearchTree = make_shared<PolyMeshSearchTree>(bbox);
 
@@ -116,217 +102,7 @@ void Model::rebuildSearchTree()
 			});
 		}
 	}
-#else
-	_pTriSearchTree = make_shared<TriSearchTree>(bbox);
-
-	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
-		auto& pData = _modelMeshData[meshIdx];
-		auto& pMesh = pData->getMesh();
-		if (pMesh) {
-			for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
-				auto bb = pMesh->getTriBBox(idx);
-				_pTriSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
-			}
-		}
-
-		auto& pPolyMesh = pData->getPolyMesh();
-
-		if (pMesh) {
-			pPolyMesh->iterateFaces([this, meshIdx](const Index3DId& id, const Polygon& face) {
-				auto bb = face.getBBox();
-				_pPolyMeshSearchTree->add(bb, PolyMeshIndex(meshIdx, id));
-
-				return true;
-				});
-		}
-	}
-#endif
 }
-
-#if !USE_POLYMESH
-size_t Model::addMesh(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
-{
-	size_t meshIdx = _modelMeshData.size();
-	auto pData = make_shared<MeshData>(pAppData, pMesh, name);
-	_modelMeshData.push_back(pData);
-
-	for (size_t idx = 0; idx < pMesh->numTris(); idx++) {
-		auto bb = pMesh->getTriBBox(idx);
-		_pTriSearchTree->add(bb, TriMeshIndex(meshIdx, idx));
-	}
-	pMesh->clearSearchTrees();
-
-	return _modelMeshData.size();
-}
-
-bool Model::doesTriIntersect(const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox) const
-{
-	const auto tol = Tolerance::sameDistTol();
-	const Vector3d* pts[3];
-	if (getTri(entry.getIndex(), pts)) {
-		return bbox.intersectsOrContains(*pts[0], *pts[1], *pts[2], tol);
-	}
-	return  false;
-}
-
-size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriSearchTree::Entry>& result) const
-{
-	std::vector<TriSearchTree::Entry> entries;
-	if (_pTriSearchTree->find(bbox, entries)) {
-		for (const auto& entry : entries) {
-			const auto& triBox = entry.getBBox();
-			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
-				result.push_back(entry);
-			}
-		}
-	}
-
-#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION 
-	set<TriSearchTree::Entry> result1;
-	std::vector<TriSearchTree::Entry> entries1;
-	auto pSub = getTriSubTree(bbox);
-	if (pSub) {
-		if (pSub->find(bbox, entries1)) {
-			for (const auto& entry : entries) {
-				const auto& triBox = entry.getBBox();
-				if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
-					result1.insert(entry);
-				}
-			}
-		}
-
-	}
-#ifdef _DEBUG
-
-	if (result.size() != result1.size())
-		assert(!"subTree wrong size");
-	for (const auto& e : result)
-		assert(result1.contains(e));
-#endif // _DEBUG
-	result.clear();
-	result.insert(result.end(), result1.begin(), result1.end());
-#endif
-
-	return result.size();
-}
-
-size_t Model::findTris(const BOX_TYPE& bbox, std::vector<TriMeshIndex>& result, TriSearchTree::BoxTestType contains) const
-{
-	std::vector<TriSearchTree::Entry> entries;
-	if (_pTriSearchTree->find(bbox, entries)) {
-		for (const auto& entry : entries) {
-			const auto& triBox = entry.getBBox();
-			if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {
-				result.push_back(entry.getIndex());
-			}
-		}
-	}
-	return result.size();
-}
-
-size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiTriMeshRayHit>& hits, bool biDir) const
-{
-	vector<TriMeshIndex> hitIndices;
-	if (_pTriSearchTree->biDirRayCast(ray, hitIndices)) {
-		for (const auto& triIdx2 : hitIndices) {
-			auto pData = _modelMeshData[triIdx2.getMeshIdx()];
-			if (!pData->isActive())
-				continue;
-
-			auto& pMesh = pData->getMesh();
-			const auto& tri = pMesh->getTri(triIdx2.getTriIdx());
-			const Vector3d* pts[] = {
-				&pMesh->getVert(tri[0])._pt,
-				&pMesh->getVert(tri[1])._pt,
-				&pMesh->getVert(tri[2])._pt,
-			};
-
-			RayHitd hit;
-			if (intersectRayTri(ray, pts, hit)) {
-				if (biDir || hit.dist > 0) {
-					MultiTriMeshRayHit MTHit(triIdx2.getMeshIdx(), hit);
-					hits.push_back(MTHit);
-				}
-			}
-		}
-	}
-
-	sort(hits.begin(), hits.end());
-	return hits.size();
-}
-
-std::shared_ptr<const Model::TriSearchTree> Model::getTriSubTree(const BOX_TYPE& bbox) const
-{
-	auto refineFunc = [this](const Model::TriSearchTree::Entry& entry, const Model::BOX_TYPE& bbox)->bool {
-		return doesTriIntersect(entry, bbox);
-		};
-
-	auto p = _pTriSearchTree->getSubTree(bbox, refineFunc);
-
-#if ENABLE_MODEL_SEARCH_TREE_VERIFICATION
-	vector<Model::TriSearchTree::Entry> testFull, testClipped;
-	_pTriSearchTree->find(bbox, refineFunc, testFull);
-	if (!testFull.empty()) {
-		if (!p) {
-			stringstream ss;
-			ss << "SubTree is null " << __FILE__ << ":" << __LINE__;
-			throw runtime_error(ss.str());
-		}
-
-		p->find(bbox, refineFunc, testClipped);
-		if (testFull.size() != testClipped.size()) {
-			stringstream ss;
-			ss << "SubTree error " << __FILE__ << ":" << __LINE__;
-			throw runtime_error(ss.str());
-		}
-		else {
-			set<Model::TriSearchTree::Entry> test;
-			test.insert(testClipped.begin(), testClipped.end());
-			for (const auto& entry : testFull) {
-				if (!test.contains(entry)) {
-					stringstream ss;
-					ss << "Entry missing in subTree " << __FILE__ << ":" << __LINE__;
-					throw runtime_error(ss.str());
-				}
-			}
-		}
-	}
-	else if (!testFull.empty()) {
-		stringstream ss;
-		ss << "SubTree should have contents " << __FILE__ << ":" << __LINE__;
-		throw runtime_error(ss.str());
-	}
-#endif
-	return p;
-}
-
-const Model::MultMeshTriangle Model::getTriIndices(const TriMeshIndex& idx) const
-{
-	const auto& triIdx = _modelMeshData[idx.getMeshIdx()]->getMesh()->getTri(idx.getTriIdx());
-	MultMeshTriangle result;
-	for (int i = 0; i < 3; i++)
-		result._vertIds[i] = TriMeshIndex(idx.getMeshIdx(), triIdx[i]);
-	return result;
-}
-
-
-bool Model::getTri(const TriMeshIndex& idx, const Vector3d* pts[3]) const
-{
-	auto pMesh = _modelMeshData[idx.getMeshIdx()]->getMesh().get();
-
-	if (pMesh) {
-		auto tri = pMesh->getTri(idx.getTriIdx());
-		for (int i = 0; i < 3; i++) {
-			pts[i] = &pMesh->getVert(tri[i])._pt;
-		}
-		return true;
-	}
-	return false;
-}
-
-#endif
-
-#if USE_POLYMESH
 
 size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& result) const
 {
@@ -427,6 +203,3 @@ const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 	}
 	return nullptr;
 }
-
-#endif
-

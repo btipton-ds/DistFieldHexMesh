@@ -99,11 +99,8 @@ private:
 	bool _testRun = false;
 	bool _intersectsModel = false;
 	bool _hasSetSearchTree;
-#if USE_POLYMESH
 	std::shared_ptr<const PolyMeshSearchTree> _pPolySearchTree;
-#else
-	std::shared_ptr<const TriSearchTree> _pTriSearchTree;
-#endif
+
 	size_t _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 

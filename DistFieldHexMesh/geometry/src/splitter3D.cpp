@@ -523,7 +523,6 @@ void Splitter3D::finalizeCreatedCells()
 			auto subBbox = createdCell.getBoundingBox();
 			if (!createdCell._hasSetSearchTree) {
 				createdCell._hasSetSearchTree = true;
-#if USE_POLYMESH
 				if (_hasSetSearchTree) {
 					createdCell._pPolySearchTree = _pPolySearchTree;
 				} else {
@@ -533,18 +532,6 @@ void Splitter3D::finalizeCreatedCells()
 					// Splitting small trees takes time and memory, so only reduce larger ones
 					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, nullptr);
 				}
-#else
-				if (_hasSetSearchTree) {
-					createdCell._pTriSearchTree = _pTriSearchTree;
-				}
-				else {
-					createdCell._pTriSearchTree = model.getTriSubTree(subBbox);
-				}
-				if (createdCell._pTriSearchTree && _splitLevel < 4) {
-					// Splitting small trees takes time and memory, so only reduce larger ones
-					createdCell._pTriSearchTree = createdCell._pTriSearchTree->getSubTree(subBbox, refineFunc);
-				}
-#endif
 			}
 		}
 		createdCell.setSplitLevel(_splitLevel + 1);
@@ -785,11 +772,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& parentId, const Inde
 		const auto& parentCell = getBlockPtr()->getPolyhedron(parentId);
 		auto& newCell = getBlockPtr()->getPolyhedron(newCellId);
 		newCell._hasSetSearchTree = parentCell._hasSetSearchTree;
-#if USE_POLYMESH
 		newCell._pPolySearchTree = parentCell._pPolySearchTree;
-#else
-		newCell._pTriSearchTree = parentCell._pTriSearchTree;
-#endif
 	} else
 		_createdCellIds.insert(newCellId);
 
@@ -930,7 +913,6 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
 	_intersectsModel = targetCell.intersectsModel();
 
-#if USE_POLYMESH
 	if (_intersectsModel) {
 		if (targetCell._hasSetSearchTree)
 			_pPolySearchTree = targetCell._pPolySearchTree;
@@ -940,18 +922,6 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 		_pPolySearchTree = nullptr;
 	}
 	_hasSetSearchTree = true;
-#else
-	if (_intersectsModel) {
-		_hasSetSearchTree = targetCell._hasSetSearchTree;
-		if (targetCell._hasSetSearchTree)
-			_pTriSearchTree = targetCell._pTriSearchTree;
-		else
-			_pTriSearchTree = targetCell.getBlockPtr()->getModelTriSearchTree();
-	} else {
-		_hasSetSearchTree = true;
-		_pTriSearchTree = nullptr;
-	}
-#endif
 	_splitLevel = targetCell.getSplitLevel();
 }
 
