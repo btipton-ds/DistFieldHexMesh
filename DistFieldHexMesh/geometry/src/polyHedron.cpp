@@ -1258,26 +1258,16 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 		}
 #endif
 #if 1
-		if (indices.size() > 1024) {
-			auto pVol = getOurBlockPtr()->getVolume();
-			auto& tp = pVol->getThreadPool();
-			tp.run(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx) {
-				const auto& id = indices[idx];
-				auto pFace = model.getPolygon(id);
-				if (pFace->intersect(cellTriPts)) {
-					result = IS_TRUE;
-				}
-				return result != IS_TRUE;
-			}, RUN_MULTI_SUB_THREAD);
-		} else {
-			for (const auto& id : indices) {
-				auto pFace = model.getPolygon(id);
-				if (pFace->intersect(cellTriPts)) {
-					result = IS_TRUE;
-					break;
-				}
+		auto pVol = getOurBlockPtr()->getVolume();
+		auto& tp = pVol->getThreadPool();
+		tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx) {
+			const auto& id = indices[idx];
+			auto pFace = model.getPolygon(id);
+			if (pFace->intersect(cellTriPts)) {
+				result = IS_TRUE;
 			}
-		}
+			return result != IS_TRUE;
+		}, RUN_MULTI_SUB_THREAD);
 #else
 
 		for (const auto& id : indices) {

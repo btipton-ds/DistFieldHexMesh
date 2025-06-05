@@ -90,8 +90,9 @@ const std::shared_ptr<MultiCore::ThreadPool>& AppData::getThreadPool() const
         // The capability is available, it now needs to be used properly.
         int numCores = MultiCore::getNumCores();
         int numThreads = (int)(numCores * 0.75);
+        int numSubThreads = (int)(numCores * 0.5);
         int numAvailable = (int)(numCores * 1.25);
-        _pThreadPool = make_shared< MultiCore::ThreadPool>(numThreads, numAvailable);
+        _pThreadPool = make_shared< MultiCore::ThreadPool>(numThreads, numSubThreads, numAvailable);
     }
     return _pThreadPool;
 }
@@ -890,14 +891,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
         dlg.getParams(_params);
 
-#if 0
-        _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
-        buildHexFaceTables();
-        const Index3D min(0, 0, 0);
-        const Index3D max(_pVolume->volDim());
-        setDisplayMinMax(min, max);
-        copyHexFaceTablesToVBOs();
-#else
+#if ENABLE_BACKGROUND_PROCESSING
         size_t numProgSteps = 1 + _model.size() + _params.numSimpleDivs + 3 * _params.numConditionalPasses();
         _pMainFrame->startProgress(numProgSteps);
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
@@ -909,7 +903,15 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
             return 2;
         }));
         _pMainFrame->setFuture(pFuture);
+#else
+        _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
+        buildHexFaceTables();
+        const Index3D min(0, 0, 0);
+        const Index3D max(_pVolume->volDim());
+        setDisplayMinMax(min, max);
+        copyHexFaceTablesToVBOs();
 #endif
+
     } catch (const std::runtime_error& err) {
         static mutex mut;
         lock_guard lg(mut);
