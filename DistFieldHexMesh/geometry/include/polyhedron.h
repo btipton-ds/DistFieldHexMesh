@@ -213,6 +213,7 @@ private:
 	double calCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 
 	void createTriPoints(std::vector<const Vector3d*>& cellTriPts) const;
+	void createTriPoints(std::vector<Vector3d>& cellTriPts) const;
 
 	Index3DId _thisId;
 	/*

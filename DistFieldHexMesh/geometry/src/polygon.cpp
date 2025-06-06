@@ -1096,15 +1096,10 @@ bool Polygon::intersect(const Polygon& otherFace, bool dumpObj) const
 	return false;
 }
 
-bool Polygon::intersect(const vector<const Vector3d*>& cellTriPts) const
+void Polygon::intersect(const vector<const Vector3d*>& cellTriPts, Trinary& result) const
 {
-	bool result = false;
-	iterateTriangles([this, &cellTriPts, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-		const Vector3d* modelTriPts[] = {
-			&getVertexPoint(id0),
-			&getVertexPoint(id1),
-			&getVertexPoint(id2),
-		};
+	iterateTrianglePts([this, &cellTriPts, &result](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
+		const Vector3d* modelTriPts[] = {pt0, pt1, pt2};
 
 		size_t nTris = cellTriPts.size() / 3;
 		auto pMeshTriData = cellTriPts.data();
@@ -1115,16 +1110,40 @@ bool Polygon::intersect(const vector<const Vector3d*>& cellTriPts) const
 				pMeshTriData[3 * i + 1],
 				pMeshTriData[3 * i + 2],
 			};
-			if (intersectTriTri(modelTriPts, meshTriPts)) {
+			if (result == IS_TRUE || intersectTriTri(modelTriPts, meshTriPts)) {
 				result = IS_TRUE;
 				break;
 			}
 		}
 
-		return result == IS_UNKNOWN;
+		return result != IS_TRUE;
 	});
 
-	return result;
+}
+
+void Polygon::intersect(const vector<Vector3d>& cellTriPts, Trinary& result) const
+{
+	iterateTrianglePts([this, &cellTriPts, &result](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
+		const Vector3d* modelTriPts[] = { pt0, pt1, pt2 };
+
+		size_t nTris = cellTriPts.size() / 3;
+		auto pMeshTriData = cellTriPts.data();
+
+		for (size_t i = 0; i < nTris; i++) {
+			const Vector3d* meshTriPts[] = {
+				&pMeshTriData[3 * i + 0],
+				&pMeshTriData[3 * i + 1],
+				&pMeshTriData[3 * i + 2],
+			};
+			if (result == IS_TRUE || intersectTriTri(modelTriPts, meshTriPts)) {
+				result = IS_TRUE;
+				break;
+			}
+		}
+
+		return result != IS_TRUE;
+	});
+
 }
 
 bool Polygon::isPointInside(const Vector3d& pt) const

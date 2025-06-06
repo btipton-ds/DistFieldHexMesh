@@ -190,7 +190,8 @@ public:
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersect(const Polygon& otherFace, bool dumpObj) const;
-	bool intersect(const std::vector<const Vector3d*>& cellTriPts) const;
+	void intersect(const std::vector<const Vector3d*>& cellTriPts, Trinary& result) const;
+	void intersect(const std::vector<Vector3d>& cellTriPts, Trinary& result) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
@@ -211,6 +212,8 @@ public:
 
 	template<class F>
 	void iterateTriangles(F fLambda) const;
+	template<class F>
+	void iterateTrianglePts(F fLambda) const;
 	template<class F>
 	void iterateOrientedTriangles(F fLambda, const Index3DId& cellId) const;
 
@@ -399,6 +402,27 @@ void Polygon::iterateTriangles(F fLambda) const
 	for (size_t j = 1; j < verts.size() - 1; j++) {
 		size_t k = (j + 1) % verts.size();
 		if (!fLambda(verts[i], verts[j], verts[k]))
+			break;
+	}
+}
+
+template<class F>
+void Polygon::iterateTrianglePts(F fLambda) const
+{
+	const auto& verts = getNonColinearVertexIds();
+	if (verts.size() < 3) {
+		throw (std::runtime_error("Less than three vertices"));
+	}
+
+	std::vector<const Vector3d*> pts;
+	pts.resize(verts.size());
+	for (size_t i = 0; i < verts.size(); i++)
+		pts[i] = &getVertexPoint(verts[i]);
+
+	size_t i = 0;
+	for (size_t j = 1; j < pts.size() - 1; j++) {
+		size_t k = (j + 1) % pts.size();
+		if (!fLambda(pts[i], pts[j], pts[k]))
 			break;
 	}
 }

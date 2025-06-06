@@ -200,8 +200,10 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 
 		auto& model = getModel();
 		auto pFace = model.getPolygon(entry.getIndex());
-		if (pFace->intersect(cellTriPts)) {
-			return true;
+
+		pFace->intersect(cellTriPts, _cachedIntersectsModel);
+		if (_cachedIntersectsModel != IS_TRUE) {
+			_cachedIntersectsModel = IS_FALSE;
 		}
 	}
 	return _cachedIntersectsModel == IS_TRUE;
@@ -1234,6 +1236,20 @@ void Polyhedron::createTriPoints(vector<const Vector3d*>& cellTriPts) const
 	}
 }
 
+void Polyhedron::createTriPoints(vector<Vector3d>& cellTriPts) const
+{
+	for (const auto& id : _faceIds) {
+		auto& face = getPolygon(id);
+		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			cellTriPts.push_back(face.getVertexPoint(id0));
+			cellTriPts.push_back(face.getVertexPoint(id1));
+			cellTriPts.push_back(face.getVertexPoint(id2));
+
+			return true;
+		});
+	}
+}
+
 Trinary Polyhedron::intersectsModelPolyMesh() const
 {
 	static map<size_t, size_t> bins;
@@ -1260,11 +1276,11 @@ Trinary Polyhedron::intersectsModelPolyMesh() const
 #if 1
 		auto pVol = getOurBlockPtr()->getVolume();
 		auto& tp = pVol->getThreadPool();
-		tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx) {
-			const auto& id = indices[idx];
-			auto pFace = model.getPolygon(id);
-			if (pFace->intersect(cellTriPts)) {
-				result = IS_TRUE;
+		tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx)->bool {
+			if (result == IS_UNKNOWN) {
+				const auto& id = indices[idx];
+				auto pFace = model.getPolygon(id);
+				pFace->intersect(cellTriPts, result);
 			}
 			return result != IS_TRUE;
 		}, RUN_MULTI_SUB_THREAD);
