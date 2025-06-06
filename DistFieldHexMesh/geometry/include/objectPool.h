@@ -30,7 +30,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <string>
 #include <vector>
-#include <list>
+#include <deque>
 #include <map>
 #include <iostream>
 #include <mutexType.h>
@@ -39,10 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_ioUtil.h>
 #include <index3D.h>
 #include <pool_map.h>
-#include <fastBisectionSet.h>
 #include <fastBisectionMap.h>
-#include <patient_lock_guard.h>
-#include <MultiCoreUtil.h>
 
 namespace DFHM {
 
@@ -170,9 +167,6 @@ public:
 	template<class F>
 	void iterateInOrder(F fLambda);
 
-	template<class F>
-	void iterateInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda);
-
 	bool empty() const;
 	size_t size() const;
 	size_t getNumAllocated() const;
@@ -190,6 +184,11 @@ private:
 	There is no ObjIndex(size_t src) constructor to prevent automatic promotion from size_t to ObjIndex when passed as a parameter.
 	This makes it extremely difficult to accidentally pass a size_t where an ObjIndex is required.
 	*/
+
+	enum ObjStatus {
+		OS_UNKNOWN = 0,
+		OS_IN_USE = 1
+	};
 	class ObjIndex {
 	public:
 		ObjIndex() = default;
@@ -237,13 +236,19 @@ private:
 	T* getEntryFromElementIndex(size_t elementIndex);
 	const T* getEntryFromElementIndex(size_t elementIndex) const;
 
+	std::pair<T, ObjStatus>* getPairFromObjIndex(const ObjIndex& objIdx);
+	const std::pair<T, ObjStatus>* getPairFromObjIndex(const ObjIndex& objIdx) const;
+
+	std::pair<T, ObjStatus>* getPairFromElementIndex(size_t elementIndex);
+	const std::pair<T, ObjStatus>* getPairFromElementIndex(size_t elementIndex) const;
+
 	bool _supportsReverseLookup;
 	ObjectPoolOwner* _pPoolOwner;
 	const size_t _objectSegmentSize; // May want to tune this so the first segment only holds 1 cell since most blocks only contain one cell. We're allocating a lot of unused memory in sparse blocks
 	std::vector<ObjIndex> _elementIndexToObjIndexMap;
-	std::list<ObjIndex> _availableObjIndices;
+	std::deque<ObjIndex> _availableObjIndices;
 
-	using ObjectSegPtr = std::shared_ptr<std::vector<T>>;
+	using ObjectSegPtr = std::shared_ptr<std::vector<std::pair<T, ObjStatus>>>;
 	std::vector<ObjectSegPtr> _objSegmentPtrs;
 
 	// This oddball indirection was used so that the map of obj to id can use the vector of objects without duplicating the storage.
@@ -283,7 +288,7 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	for (size_t i = 0; i < src._objSegmentPtrs.size(); i++) {
 		const auto& pSrcVec = src._objSegmentPtrs[i];
 		const auto& srcVec = *pSrcVec;
-		_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>(srcVec));
+		_objSegmentPtrs.push_back(std::make_shared<std::vector<std::pair<T, ObjStatus>>>(srcVec));
 	}
 	iterateInOrder([this](const Index3DId& id, T& obj) {
 		obj._pPoolOwner = _pPoolOwner;
@@ -364,7 +369,7 @@ inline T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx)
 		size_t segNum, segIdx;
 		if (calObjSegIndices(objIdx, segNum, segIdx)) {
 //			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
-			p = &((*_objSegmentPtrs[segNum])[segIdx]);
+			p = &((*_objSegmentPtrs[segNum])[segIdx].first);
 		}
 		assert(p);
 	}
@@ -381,7 +386,7 @@ inline const T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx) cons
 		size_t segNum, segIdx;
 		if (calObjSegIndices(objIdx, segNum, segIdx)) {
 //			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
-			p = &((*_objSegmentPtrs[segNum])[segIdx]);
+			p = &((*_objSegmentPtrs[segNum])[segIdx].first);
 		}
 
 		assert(p);
@@ -390,16 +395,67 @@ inline const T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx) cons
 }
 
 template<class T>
+std::pair<T, typename ObjectPool<T>::ObjStatus>* ObjectPool<T>::getPairFromElementIndex(size_t elementIndex)
+{
+	std::pair<T, ObjStatus>* p = nullptr;
+	if (elementIndex < _elementIndexToObjIndexMap.size()) {
+		const ObjIndex& objIndex = _elementIndexToObjIndexMap[elementIndex];
+		return getPairFromObjIndex(objIndex);
+	}
+	return p;
+}
+
+template<class T>
+const std::pair<T, typename ObjectPool<T>::ObjStatus>* ObjectPool<T>::getPairFromElementIndex(size_t elementIndex) const
+{
+	std::pair<T, ObjStatus>* p = nullptr;
+	if (elementIndex < _elementIndexToObjIndexMap.size()) {
+		const ObjIndex& objIndex = _elementIndexToObjIndexMap[elementIndex];
+		return getPairFromObjIndex(objIndex);
+	}
+	return p;
+}
+
+template<class T>
+inline std::pair<T, typename ObjectPool<T>::ObjStatus>* ObjectPool<T>::getPairFromObjIndex(const ObjIndex& objIdx)
+{
+	size_t segNum, segIdx;
+	if (calObjSegIndices(objIdx, segNum, segIdx)) {
+		//			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+		auto p = &((*_objSegmentPtrs[segNum])[segIdx]);
+		assert(p);
+		return p;
+	}
+
+	return nullptr;
+}
+
+template<class T>
+inline const std::pair<T, typename ObjectPool<T>::ObjStatus>* ObjectPool<T>::getPairFromObjIndex(const ObjIndex& objIdx) const
+{
+	size_t segNum, segIdx;
+	if (calObjSegIndices(objIdx, segNum, segIdx)) {
+		//			assert(segNum < _objSegmentPtrs.size() && segIdx < _objSegmentPtrs[segNum]->size());
+		auto p = &((*_objSegmentPtrs[segNum])[segIdx]);
+		assert(p);
+		return p;
+	}
+
+	return nullptr;
+}
+
+template<class T>
 bool ObjectPool<T>::free(const Index3DId& globalId)
 {
 	if (!exists(globalId))
 		return false;
 
-	T* p = getEntryFromElementIndex(globalId.elementId());
+	auto p = getPairFromElementIndex(globalId.elementId());
 	if (p) {
 		removeFromLookup(globalId);
 
-		*p = {};
+		p->first = {};
+		p->second = OS_UNKNOWN;
 		const ObjIndex objIdx = _elementIndexToObjIndexMap[globalId.elementId()];
 		_elementIndexToObjIndexMap[globalId.elementId()] = ObjIndex(); // Clear this id so it won't be used again
 		_availableObjIndices.push_back(objIdx);
@@ -456,7 +512,7 @@ void ObjectPool<T>::resize(size_t size)
 		size_t remaining = size;
 		for (size_t i = 0; i < numSegs; i++) {
 			// Reserve the segment size so the array won't resize during use
-			_objSegmentPtrs[i] = std::make_shared<std::vector<T>>();
+			_objSegmentPtrs[i] = std::make_shared<std::vector<std::pair<T, ObjStatus>>>();
 			_objSegmentPtrs[i]->reserve(_objectSegmentSize);
 			if (size > _objectSegmentSize) {
 				_objSegmentPtrs[i]->resize(_objectSegmentSize);
@@ -554,7 +610,7 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 
 	if (_availableObjIndices.empty()) {
 		if (_objSegmentPtrs.empty() || _objSegmentPtrs.back()->size() >= _objectSegmentSize) {
-			_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>());
+			_objSegmentPtrs.push_back(std::make_shared<std::vector<std::pair<T, ObjStatus>>>());
 		}
 		segNum = _objSegmentPtrs.size() - 1;
 
@@ -563,8 +619,8 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 			segData.reserve(_objectSegmentSize);
 
 		segIdx = segData.size();
-		segData.push_back(obj);
-		segData.back().setPoolOwner(_pPoolOwner);
+		segData.push_back(std::make_pair(obj, OS_IN_USE));
+		segData.back().first.setPoolOwner(_pPoolOwner);
 		objIdx = segNum * _objectSegmentSize + segIdx;
 	} else {
 		objIdx = _availableObjIndices.front();
@@ -572,7 +628,7 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 
 		calObjSegIndices(objIdx, segNum, segIdx);
 		if (segNum >= _objSegmentPtrs.size()) {
-			_objSegmentPtrs.push_back(std::make_shared<std::vector<T>>());
+			_objSegmentPtrs.push_back(std::make_shared<std::vector<std::pair<T, ObjStatus>>>());
 		}
 		auto& segData = *_objSegmentPtrs[segNum];
 		if (segData.capacity() == 0)
@@ -581,10 +637,11 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 		if (segIdx >= segData.size())
 			segData.resize(segIdx + 1);
 
-		segData[segIdx] = obj;
+		segData[segIdx].first = obj;
+		segData[segIdx].second = OS_IN_USE;
 
 		// Set the stored copy's owner to our pool owner
-		segData[segIdx].setPoolOwner(_pPoolOwner);
+		segData[segIdx].first.setPoolOwner(_pPoolOwner);
 	}
 	return objIdx;
 }
@@ -694,16 +751,20 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
-	for (size_t idx = 0; idx < num; idx++) {
-		const ObjIndex& objIdx = _elementIndexToObjIndexMap[idx];
-		if (objIdx != -1) {
-			auto p = getEntryFromObjIndex(objIdx);
-			if (p) {
-				Index3DId id(blkIdx, idx);
-				fLambda(id, *p);
+	std::vector<const T*> objsToProcess;
+	objsToProcess.reserve(_elementIndexToObjIndexMap.size());
+	for (auto& pb : _objSegmentPtrs) {
+		if (!pb)
+			continue;
+		auto& seg = *pb;
+		for (auto& pr : seg) {
+			if (pr.second == OS_IN_USE) {
+				objsToProcess.push_back(&pr.first);
 			}
 		}
+	}
+	for (auto pObj : objsToProcess) {
+		fLambda(pObj->getId(), *pObj);
 	}
 }
 
@@ -712,34 +773,20 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
-	for (size_t idx = 0; idx < num; idx++) {
-		auto objIdx = _elementIndexToObjIndexMap[idx];
-		if (objIdx != -1) {
-			auto p = getEntryFromObjIndex(objIdx);
-			if (p) {
-				Index3DId id(blkIdx, idx);
-				fLambda(id, *p);
+	std::vector<T*> objsToProcess;
+	objsToProcess.reserve(_elementIndexToObjIndexMap.size());
+	for (auto& pb : _objSegmentPtrs) {
+		if (!pb)
+			continue;
+		auto& seg = *pb;
+		for (auto& pr : seg) {
+			if (pr.second == OS_IN_USE) {
+				objsToProcess.push_back(&pr.first);
 			}
 		}
 	}
-}
-
-template<class T>
-template<class F>
-void ObjectPool<T>::iterateInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda)
-{
-	auto blkIdx = _pPoolOwner->getBlockIdx();
-	size_t num = _elementIndexToObjIndexMap.size(); // _elementIndexToObjIndexMap can't decrease in size
-	for (size_t idx = 0; idx < num; idx++) {
-		const ObjIndex& objIdx = _elementIndexToObjIndexMap[idx];
-		if (objIdx != -1) {
-			auto p = getEntryFromObjIndex(objIdx);
-			if (p) {
-				Index3DId id(blkIdx, idx);
-				fLambda(id, *p);
-			}
-		}
+	for (auto pObj : objsToProcess) {
+		fLambda(pObj->getId(), *pObj);
 	}
 }
 

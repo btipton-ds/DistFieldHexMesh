@@ -233,12 +233,6 @@ public:
 	template<class F>
 	void iteratePolyhedraInOrder(F fLambda);
 
-	template<class F>
-	void iteratePolyhedraInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda) const;
-
-	template<class F>
-	void iteratePolyhedraInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda);
-
 	LAMBDA_BLOCK_DECLS(vertex, Index3DId, Vertex)
 	LAMBDA_BLOCK_DECLS(face, Index3DId, Polygon)
 	LAMBDA_BLOCK_DECLS(cell, Index3DId, Polyhedron)
@@ -404,18 +398,6 @@ template<class F>
 inline void Block::iteratePolyhedraInOrder(F fLambda)
 {
 	_polyhedra.iterateInOrder(fLambda);
-}
-
-template<class F>
-inline void Block::iteratePolyhedraInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda) const
-{
-	_polyhedra.iterateInOrder(tp, numThreads, fLambda);
-}
-
-template<class F>
-inline void Block::iteratePolyhedraInOrder(MultiCore::ThreadPool& tp, size_t numThreads, F fLambda)
-{
-	_polyhedra.iterateInOrder(tp, numThreads, fLambda);
 }
 
 inline void Block::addToNeedToSplit(const Index3DId& id)
