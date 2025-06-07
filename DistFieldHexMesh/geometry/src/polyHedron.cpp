@@ -1216,7 +1216,53 @@ bool Polyhedron::intersectsModel() const
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		const auto tol = Tolerance::sameDistTol();
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
-		_cachedIntersectsModel = intersectsModelPolyMesh();
+
+
+		static map<size_t, size_t> bins;
+		Trinary result = IS_UNKNOWN;
+
+		bool dumpObj = false;
+		auto bbox = getBoundingBox();
+
+		vector<PolyMeshIndex> indices;
+		if (getPolyIndices(indices) != 0) {
+			vector<const Vector3d*> cellTriPts;
+			createTriPoints(cellTriPts);
+			auto& model = getModel();
+#if 0
+			{
+				static mutex mut;
+				lock_guard lg(mut);
+				auto iter = bins.find(indices.size());
+				if (iter == bins.end())
+					iter = bins.insert(make_pair(indices.size(), 0)).first;
+				iter->second++;
+			}
+#endif
+#if 1
+			auto pVol = getOurBlockPtr()->getVolume();
+			auto& tp = pVol->getThreadPool();
+			tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx)->bool {
+				if (result == IS_UNKNOWN) {
+					const auto& id = indices[idx];
+					auto pFace = model.getPolygon(id);
+					pFace->intersect(cellTriPts, result);
+				}
+				return result != IS_TRUE;
+			}, RUN_MULTI_SUB_THREAD);
+#else
+
+			for (const auto& id : indices) {
+				auto pFace = model.getPolygon(id);
+				if (pFace->intersect(cellTriPts)) {
+					result = IS_TRUE;
+					break;
+				}
+			}
+#endif
+		}
+
+		_cachedIntersectsModel = result;
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
 	}
@@ -1250,55 +1296,6 @@ void Polyhedron::createTriPoints(vector<Vector3d>& cellTriPts) const
 			return true;
 		});
 	}
-}
-
-Trinary Polyhedron::intersectsModelPolyMesh() const
-{
-	static map<size_t, size_t> bins;
-	Trinary result = IS_UNKNOWN;
-
-	bool dumpObj = false;
-	auto bbox = getBoundingBox();
-
-	vector<PolyMeshIndex> indices;
-	if (getPolyIndices(indices) != 0) {
-		vector<const Vector3d*> cellTriPts;
-		createTriPoints(cellTriPts);
-		auto& model = getModel();
-#if 0
-		{
-			static mutex mut;
-			lock_guard lg(mut);
-			auto iter = bins.find(indices.size());
-			if (iter == bins.end())
-				iter = bins.insert(make_pair(indices.size(), 0)).first;
-			iter->second++;
-		}
-#endif
-#if 1
-		auto pVol = getOurBlockPtr()->getVolume();
-		auto& tp = pVol->getThreadPool();
-		tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx)->bool {
-			if (result == IS_UNKNOWN) {
-				const auto& id = indices[idx];
-				auto pFace = model.getPolygon(id);
-				pFace->intersect(cellTriPts, result);
-			}
-			return result != IS_TRUE;
-		}, RUN_MULTI_SUB_THREAD);
-#else
-
-		for (const auto& id : indices) {
-			auto pFace = model.getPolygon(id);
-			if (pFace->intersect(cellTriPts)) {
-				result = IS_TRUE;
-				break;
-			}
-		}
-#endif
-	}
-
-	return result;
 }
 
 void Polyhedron::setIntersectsModel(bool val)

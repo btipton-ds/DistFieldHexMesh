@@ -115,7 +115,6 @@ public:
 	size_t getTriIndices(std::vector<TriMeshIndex>& indices) const;
 
 	bool intersectsModel() const;
-	Trinary intersectsModelPolyMesh() const;
 
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
