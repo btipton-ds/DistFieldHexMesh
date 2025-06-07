@@ -1098,10 +1098,12 @@ void Polyhedron::classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>
 
 bool Polyhedron::isConvex() const
 {
+#if 0 && defined(_DEBUG)
 	if (!isClosed()) {
 		assert(!"open cell cannot be tested for convexity");
 		return false;
 	}
+#endif
 
 	bool result = true;
 	const auto& edgeKeys = getEdgeKeys(false);

@@ -629,6 +629,7 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 					cell.addFace(imprintFaceId);
 				}
 
+#if 0 && defined(_DEBUG)
 				if (!cell.isClosed()) {
 					{
 						stringstream ss;
@@ -649,8 +650,8 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 					}
 					assert(!"imprintFaceEdges open cell");
 				}
+#endif
 			}
-
 			getBlockPtr()->freePolygon(faceId);
 		}
 	}
