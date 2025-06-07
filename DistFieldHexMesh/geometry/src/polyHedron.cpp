@@ -1275,22 +1275,115 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
+#if 1 && defined(_DEBUG)
+		static mutex mut;
+		lock_guard lg(mut);
+#endif
 		const auto tol = Tolerance::sameDistTol();
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 
+		for (const auto& id : _faceIds) {
+			auto& face = getPolygon(id);
+			if (face._cachedIntersectsModel == IS_TRUE) {
+				_cachedIntersectsModel = IS_TRUE;
+				return true;
+			}
+		}
+
 		vector<PolyMeshIndex> indices;
 		if (getPolyIndices(indices) != 0) {
-			vector<const Vector3d*> cellTriPts;
+			vector<pair<const Vector3d*, Index3DId>> cellTriPts;
 			createTriPoints(cellTriPts);
 
 			auto& model = getModel();
 			auto pVol = getOurBlockPtr()->getVolume();
 			auto& tp = pVol->getThreadPool();
-			tp.runSub(indices.size(), [this, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
+
+			tp.runSub(indices.size(), [this, tol, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
+				size_t nTris = cellTriPts.size() / 3;
+				auto pMeshTriData = cellTriPts.data();
+
 				const auto& id = indices[idx];
-				auto pFace = model.getPolygon(id);
-				if (pFace->intersect(cellTriPts))
-					_cachedIntersectsModel = IS_TRUE;
+				auto pModelFace = model.getPolygon(id);
+
+#if 0
+				auto& vertIds = pFace->getVertexIds();
+				vector<const Vector3d*> pts;
+				pts.resize(vertIds.size());
+				for (size_t i = 0; i < vertIds.size(); i++)
+					pts[i] = &pFace->getVertexPoint(vertIds[i]);
+
+				for (size_t i = 0; i < nTris; i++) {
+					Vector3d const* const* meshTriPts = pMeshTriData + 3 * i;
+					Planed meshTriPlane(meshTriPts);
+					vector<RayHitd> hits;
+					for (size_t i = 0; i < pts.size(); i++) {
+						size_t j = (i + 1) % pts.size();
+						LineSegmentd seg(*pts[i], *pts[j]);
+						RayHitd hit;
+						if (meshTriPlane.intersectLineSegment(seg, hit, tol)) {
+							hits.push_back(hit);
+						}
+					}
+
+					if (hits.empty())
+						return false;
+
+					const auto& triNorm = meshTriPlane.getNormal();
+					vector<Vector3d> meshTriDirs = {
+						(*meshTriPts[0] - *meshTriPts[1]).normalized(),
+						(*meshTriPts[1] - *meshTriPts[2]).normalized(),
+						(*meshTriPts[2] - *meshTriPts[0]).normalized(),
+					};
+
+					vector<Vector3d> meshTriPerpDirs = {
+						meshTriDirs[0].cross(triNorm).normalized(),
+						meshTriDirs[1].cross(triNorm).normalized(),
+						meshTriDirs[2].cross(triNorm).normalized(),
+					};
+
+					// Test if a poly edge intersects inside a mesh triangle
+					bool inside = true;
+					for (const auto& hit : hits) {
+						for (int i = 0; i < 3; i++) {
+							Vector3d v = hit.hitPt - *meshTriPts[i];
+							Vector3d vPerp = meshTriPerpDirs[i];
+							double dist = v.dot(vPerp);
+							if (dist > tol) {
+								inside = false;
+								break;
+							}
+						}
+						if (inside) {
+							_cachedIntersectsModel = IS_TRUE;
+							pFace->_cachedIntersectsModel = IS_TRUE;
+							return false; // Exit lambda loop
+						}
+					}
+				}
+#else
+				pModelFace->iterateTrianglePts([this, nTris, &pMeshTriData](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
+					const Vector3d* modelTriPts[] = { pt0, pt1, pt2 };
+
+					for (size_t i = 0; i < nTris; i++) {
+						const Vector3d* meshTriPts[] = {
+							pMeshTriData[3 * i + 0].first,
+							pMeshTriData[3 * i + 1].first,
+							pMeshTriData[3 * i + 2].first,
+						};
+						if (intersectTriTri(modelTriPts, meshTriPts)) {
+							_cachedIntersectsModel = IS_TRUE;
+							const auto& meshFaceId = pMeshTriData[3 * i + 0].second;
+							auto& face = getPolygon(meshFaceId);
+							face._cachedIntersectsModel = IS_TRUE;
+							break;
+						}
+					}
+
+					return _cachedIntersectsModel != IS_TRUE;
+				});
+#endif
+
 				return _cachedIntersectsModel != IS_TRUE;
 			}, RUN_MULTI_SUB_THREAD);
 		}
@@ -1302,28 +1395,28 @@ bool Polyhedron::intersectsModel() const
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
-void Polyhedron::createTriPoints(vector<const Vector3d*>& cellTriPts) const
+void Polyhedron::createTriPoints(vector<pair<const Vector3d*, Index3DId>>& cellTriPts) const
 {
 	for (const auto& id : _faceIds) {
 		auto& face = getPolygon(id);
 		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			cellTriPts.push_back(&face.getVertexPoint(id0));
-			cellTriPts.push_back(&face.getVertexPoint(id1));
-			cellTriPts.push_back(&face.getVertexPoint(id2));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id0), face.getId()));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id1), face.getId()));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id2), face.getId()));
 
 			return true;
 		});
 	}
 }
 
-void Polyhedron::createTriPoints(vector<Vector3d>& cellTriPts) const
+void Polyhedron::createTriPoints(vector<pair<const Vector3d, Index3DId>>& cellTriPts) const
 {
 	for (const auto& id : _faceIds) {
 		auto& face = getPolygon(id);
 		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			cellTriPts.push_back(face.getVertexPoint(id0));
-			cellTriPts.push_back(face.getVertexPoint(id1));
-			cellTriPts.push_back(face.getVertexPoint(id2));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id0), face.getId()));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id1), face.getId()));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id2), face.getId()));
 
 			return true;
 		});

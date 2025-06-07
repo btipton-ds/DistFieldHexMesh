@@ -211,8 +211,8 @@ private:
 	double calCurvatureZXPlane(const SplittingParams& params) const;
 	double calCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 
-	void createTriPoints(std::vector<const Vector3d*>& cellTriPts) const;
-	void createTriPoints(std::vector<Vector3d>& cellTriPts) const;
+	void createTriPoints(std::vector<std::pair<const Vector3d*, Index3DId>>& cellTriPts) const;
+	void createTriPoints(std::vector<std::pair<const Vector3d, Index3DId>>& cellTriPts) const;
 
 	Index3DId _thisId;
 	/*
