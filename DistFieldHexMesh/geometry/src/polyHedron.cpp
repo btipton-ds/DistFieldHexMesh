@@ -1272,6 +1272,31 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 	return result;
 }
 
+namespace
+{
+	bool intersectPlaneTri(const Planed& plane, const LineSegmentd segs[3], LineSegmentd& iSeg, double tol)
+	{
+
+		int numHits = 0;
+
+		Vector3d iPts[2];
+		RayHitd hit;
+
+		for (int i = 0; i < 3; i++) {
+			if (plane.intersectLineSegment(segs[i], hit, tol)) {
+				iPts[numHits++] = hit.hitPt;
+				if (numHits == 2) {
+					iSeg = LineSegmentd(iPts[0], iPts[1]);
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+}
+
 bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
@@ -1363,7 +1388,15 @@ bool Polyhedron::intersectsModel() const
 				}
 #else
 				pModelFace->iterateTrianglePts([this, nTris, &pMeshTriData](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
+					const auto tol = Tolerance::sameDistTol();
 					const Vector3d* modelTriPts[] = { pt0, pt1, pt2 };
+					Planed modelTriPlane(modelTriPts, false);
+					const LineSegmentd modelTriSegs[] = {
+						LineSegmentd(*pt0, *pt1), 
+						LineSegmentd(*pt1, *pt2),
+						LineSegmentd(*pt2, *pt0),
+					};
+
 
 					for (size_t i = 0; i < nTris; i++) {
 						size_t triIdx = 3 * i;
@@ -1372,7 +1405,36 @@ bool Polyhedron::intersectsModel() const
 							pMeshTriData[triIdx + 1].first,
 							pMeshTriData[triIdx + 2].first,
 						};
-						if (intersectTriTri(modelTriPts, meshTriPts)) {
+
+						const LineSegmentd meshTriSegs[] = {
+							LineSegmentd(*meshTriPts[0], *meshTriPts[1]),
+							LineSegmentd(*meshTriPts[1], *meshTriPts[2]),
+							LineSegmentd(*meshTriPts[2], *meshTriPts[0]),
+						};
+#if 1
+						LineSegmentd iSeg0;
+						if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg0, tol))
+							continue;
+
+						Planed meshTriPlane(meshTriPts, false);
+
+						LineSegmentd iSeg1;
+						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg1, tol))
+							continue;
+
+						bool intersects = false;
+
+						auto looseTol = 10 * tol;
+						double t;
+						if (iSeg1.contains(iSeg0._pt0, t, looseTol) || iSeg1.contains(iSeg0._pt1, t, looseTol))
+							intersects = true;
+						else if (iSeg0.contains(iSeg1._pt0, t, looseTol) || iSeg0.contains(iSeg1._pt1, t, looseTol))
+							intersects = true;
+
+#else
+						bool intersects = intersectTriTri(modelTriPts, meshTriPts);
+#endif
+						if (intersects) {
 							_cachedIntersectsModel = IS_TRUE;
 							auto pFace = pMeshTriData[triIdx].second;
 							if (pFace)
