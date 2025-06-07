@@ -1295,6 +1295,28 @@ namespace
 		return false;
 	}
 
+	bool segsOverlap(const LineSegmentd segs[2], double tol, double paramTol)
+	{
+		for (int i = 0; i < 2; i++) {
+			const auto& segBase = segs[i];
+			const auto& segTest = segs[1 - i];
+			Vector3d vBase = segBase._pt1 - segBase._pt0;
+			double lenBase = vBase.norm();
+			if (lenBase > paramTol) {
+				vBase /= lenBase;
+				for (int j = 0; j < 2; j++) {
+					const auto& pt = (j == 0) ? segTest._pt0 : segTest._pt1;
+					Vector3d v = pt - segBase._pt0;
+					double dist = vBase.dot(v);
+					if (-tol < dist && dist < lenBase + tol) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
 }
 
 bool Polyhedron::intersectsModel() const
@@ -1421,28 +1443,7 @@ bool Polyhedron::intersectsModel() const
 						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg[1], tol))
 							continue;
 
-						bool intersects = false;
-						for (int j = 0; j < 2; j++) {
-							int k = 1 - j;
-							const auto& segA = iSeg[j];
-							const auto& segB = iSeg[k];
-							auto& origin = segB._pt0;
-							Vector3d vBase = segB._pt1 - origin;
-							double lenBase = vBase.norm();
-							vBase /= lenBase;
-							for (int l = 0; l < 2; l++) {
-								const auto& pt = (l == 0) ? segA._pt0 : segA._pt1;
-								Vector3d v = pt - origin;
-								double dist = vBase.dot(v);
-								if (-tol < dist && dist < lenBase + tol) {
-									intersects = true;
-									break;
-								}
-							}
-							if (intersects)
-								break;
-						}
-
+						bool intersects = segsOverlap(iSeg, tol, Tolerance::divideByZeroTol());
 #else
 						bool intersects = intersectTriTri(modelTriPts, meshTriPts);
 #endif
