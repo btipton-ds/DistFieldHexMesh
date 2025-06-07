@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define RUN_MULTI_SUB_THREAD 1
 #define ENABLE_BACKGROUND_PROCESSING 1
 #define USE_REFINER 0 // Turning on the refiner is breaking things
+#define COALESCE_POINTS_BEFORE_LOOPING 0
 #define ENABLE_DEBUGGING_MUTEXES (0 && _DEBUG && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
 #define ENABLE_VERIFY_THREAD_AND_BLOCK_IDX_MATCH 0
 #define ENABLE_MODEL_SEARCH_TREE_VERIFICATION 0
@@ -52,6 +53,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define OBJECT_POOL_USE_STD_MAP 1
 
+#define MAX_SUB_TREE_COUNT (8 * 1024)
+#define SUB_TREE_SPLIT_RATIO 4
 #define OBJECT_TREE_WIDTH 200
 #define VERIFY_REDUCED_FINDER 0
 #define LOGGING_ENABLED 1

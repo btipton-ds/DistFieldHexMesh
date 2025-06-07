@@ -1099,8 +1099,8 @@ bool Polygon::intersect(const Polygon& otherFace, bool dumpObj) const
 bool Polygon::intersect(const vector<const Vector3d*>& cellTriPts) const
 {
 	bool result = false;
-	iterateTrianglePts([this, &cellTriPts, &result](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
-		const Vector3d* modelTriPts[] = {pt0, pt1, pt2};
+	iterateTrianglePts([this, &cellTriPts, &result](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
+		const Vector3d* modelTriPts[] = {&pt0, &pt1, &pt2};
 
 		size_t nTris = cellTriPts.size() / 3;
 		auto pMeshTriData = cellTriPts.data();

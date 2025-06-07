@@ -121,39 +121,47 @@ void Polyhedron::initializeSearchTree() const
 			_pPolySearchTree = pBlk->getPolySearchTree();
 
 		if (_pPolySearchTree) {
-			auto bbox = getBoundingBox();
-			const auto& model = getModel();
-			_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
+			size_t numInTree = _pPolySearchTree->numInTree();
+			if (numInTree > MAX_SUB_TREE_COUNT) {
+				auto bbox = getBoundingBox();
+				size_t n = _pPolySearchTree->count(bbox, nullptr);
+				if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
+					_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION
-			vector<PolyMeshIndex> indicesA, indicesB;
-			size_t numA = model.findPolys(bbox, indicesA);
-			if (numA != 0) {
-				if (_pPolySearchTree) {
-					size_t numB = _pPolySearchTree->find(bbox, indicesB);
-					if (numA == numB) {
-						size_t numMismatch = 0;
-						for (size_t i = 0; i < numA; i++) {
-							if (indicesA[i] != indicesB[i]) {
-								numMismatch++;
+					const auto& model = getModel();
+					vector<PolyMeshIndex> indicesA, indicesB;
+					size_t numA = model.findPolys(bbox, indicesA);
+					if (numA != 0) {
+						if (_pPolySearchTree) {
+							size_t numB = _pPolySearchTree->find(bbox, indicesB);
+							if (numA == numB) {
+								size_t numMismatch = 0;
+								for (size_t i = 0; i < numA; i++) {
+									if (indicesA[i] != indicesB[i]) {
+										numMismatch++;
+									}
+								}
+								if (numMismatch != 0) {
+									stringstream ss;
+									ss << "initializeSearchTree _pPolySearchTree numMismatch != 0" << __FILE__ << "-" << __LINE__;
+									throw runtime_error(ss.str());
+								}
+							}
+							else {
+								stringstream ss;
+								ss << "initializeSearchTree _pPolySearchTree numA != numB" << __FILE__ << "-" << __LINE__;
+								throw runtime_error(ss.str());
 							}
 						}
-						if (numMismatch != 0) {
+						else {
 							stringstream ss;
-							ss << "initializeSearchTree _pPolySearchTree numMismatch != 0" << __FILE__ << "-" << __LINE__;
+							ss << "initializeSearchTree _pPolySearchTree is null" << __FILE__ << "-" << __LINE__;
 							throw runtime_error(ss.str());
 						}
-					} else {
-						stringstream ss;
-						ss << "initializeSearchTree _pPolySearchTree numA != numB" << __FILE__ << "-" << __LINE__;
-						throw runtime_error(ss.str());
 					}
-				} else {
-					stringstream ss;
-					ss << "initializeSearchTree _pPolySearchTree is null" << __FILE__ << "-" << __LINE__;
-					throw runtime_error(ss.str());
+#endif
 				}
 			}
-#endif
 		}
 	}
 }
@@ -1274,7 +1282,7 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 
 namespace
 {
-	bool intersectPlaneTri(const Planed& plane, const LineSegmentd segs[3], LineSegmentd& iSeg, double tol)
+	bool intersectPlaneTri(const Planed& plane, const LineSegment_byrefd segs[3], LineSegmentd& iSeg, double tol)
 	{
 
 		int numHits = 0;
@@ -1411,14 +1419,14 @@ bool Polyhedron::intersectsModel() const
 					}
 				}
 #else
-				pModelFace->iterateTrianglePts([this, nTris, &pMeshTriData](const Vector3d* pt0, const Vector3d* pt1, const Vector3d* pt2)->bool {
+				pModelFace->iterateTrianglePts([this, nTris, &pMeshTriData](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
 					const auto tol = Tolerance::sameDistTol();
-					const Vector3d* modelTriPts[] = { pt0, pt1, pt2 };
+					const Vector3d* modelTriPts[] = { &pt0, &pt1, &pt2 };
 					Planed modelTriPlane(modelTriPts, false);
-					const LineSegmentd modelTriSegs[] = {
-						LineSegmentd(*pt0, *pt1), 
-						LineSegmentd(*pt1, *pt2),
-						LineSegmentd(*pt2, *pt0),
+					const LineSegment_byrefd modelTriSegs[] = {
+						LineSegment_byrefd(pt0, pt1),
+						LineSegment_byrefd(pt1, pt2),
+						LineSegment_byrefd(pt2, pt0),
 					};
 
 
@@ -1430,10 +1438,10 @@ bool Polyhedron::intersectsModel() const
 							pMeshTriData[triIdx + 2].first,
 						};
 
-						const LineSegmentd meshTriSegs[] = {
-							LineSegmentd(*meshTriPts[0], *meshTriPts[1]),
-							LineSegmentd(*meshTriPts[1], *meshTriPts[2]),
-							LineSegmentd(*meshTriPts[2], *meshTriPts[0]),
+						const LineSegment_byrefd meshTriSegs[] = {
+							LineSegment_byrefd(*meshTriPts[0], *meshTriPts[1]),
+							LineSegment_byrefd(*meshTriPts[1], *meshTriPts[2]),
+							LineSegment_byrefd(*meshTriPts[2], *meshTriPts[0]),
 						};
 
 						LineSegmentd iSeg[2];

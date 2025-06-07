@@ -529,9 +529,16 @@ void Splitter3D::finalizeCreatedCells()
 				} else {
 					createdCell._pPolySearchTree = _pBlock->getPolySearchTree();
 				}
-				if (createdCell._pPolySearchTree && _splitLevel < 6) {
-					// Splitting small trees takes time and memory, so only reduce larger ones
-					createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, nullptr);
+
+				if (createdCell._pPolySearchTree) {
+					size_t numInTree = createdCell._pPolySearchTree->numInTree();
+					if (numInTree > MAX_SUB_TREE_COUNT) {
+						size_t n = createdCell._pPolySearchTree->count(subBbox, nullptr);
+						if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
+							// Splitting small trees takes time and memory, so only reduce larger ones
+							createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, nullptr);
+						}
+					}
 				}
 			}
 		}

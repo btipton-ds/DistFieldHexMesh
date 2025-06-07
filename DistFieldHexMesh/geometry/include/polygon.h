@@ -425,6 +425,26 @@ void Polygon::iterateTrianglePts(F fLambda) const
 		throw (std::runtime_error("Less than three vertices"));
 	}
 
+	// If there are performance issues due to cache hits, there might be an advantage to moving once
+	// and coallescing the points into one array over dereferencing pointers to scattered memory
+	// multiple times.
+	//
+	// Testing on a single case showed zero performance difference. I'm leaving the option here for future testing on more cases.
+#if COALESCE_POINTS_BEFORE_LOOPING
+	// This version copies data 
+	std::vector<Vector3d> pts;
+	pts.resize(verts.size());
+	for (size_t i = 0; i < verts.size(); i++)
+		pts[i] = getVertexPoint(verts[i]);
+
+	size_t i = 0;
+	for (size_t j = 1; j < pts.size() - 1; j++) {
+		size_t k = (j + 1) % pts.size();
+		if (!fLambda(pts[i], pts[j], pts[k]))
+			break;
+	}
+#else
+	// This version stores pointers
 	std::vector<const Vector3d*> pts;
 	pts.resize(verts.size());
 	for (size_t i = 0; i < verts.size(); i++)
@@ -433,9 +453,10 @@ void Polygon::iterateTrianglePts(F fLambda) const
 	size_t i = 0;
 	for (size_t j = 1; j < pts.size() - 1; j++) {
 		size_t k = (j + 1) % pts.size();
-		if (!fLambda(pts[i], pts[j], pts[k]))
+		if (!fLambda(*pts[i], *pts[j], *pts[k]))
 			break;
 	}
+#endif
 }
 
 template<class F>
