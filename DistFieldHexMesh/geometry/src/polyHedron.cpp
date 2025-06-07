@@ -1295,7 +1295,7 @@ namespace
 		return false;
 	}
 
-	bool segsOverlap(const LineSegmentd segs[2], double tol, double paramTol)
+	inline bool segsOverlap(const LineSegmentd segs[2], double tol, double paramTol)
 	{
 		for (int i = 0; i < 2; i++) {
 			const auto& segBase = segs[i];
@@ -1346,7 +1346,9 @@ bool Polyhedron::intersectsModel() const
 			auto pVol = getOurBlockPtr()->getVolume();
 			auto& tp = pVol->getThreadPool();
 
-			tp.runSub(indices.size(), [this, tol, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
+			size_t numSteps = indices.size();
+			size_t minStepsToMultiThread = 1000;
+			tp.runSub(numSteps, minStepsToMultiThread, [this, tol, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
 				size_t nTris = cellTriPts.size() / 3;
 				auto pMeshTriData = cellTriPts.data();
 
@@ -1433,7 +1435,7 @@ bool Polyhedron::intersectsModel() const
 							LineSegmentd(*meshTriPts[1], *meshTriPts[2]),
 							LineSegmentd(*meshTriPts[2], *meshTriPts[0]),
 						};
-#if 1
+
 						LineSegmentd iSeg[2];
 						if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg[0], tol))
 							continue;
@@ -1443,11 +1445,7 @@ bool Polyhedron::intersectsModel() const
 						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg[1], tol))
 							continue;
 
-						bool intersects = segsOverlap(iSeg, tol, Tolerance::divideByZeroTol());
-#else
-						bool intersects = intersectTriTri(modelTriPts, meshTriPts);
-#endif
-						if (intersects) {
+						if (segsOverlap(iSeg, tol, Tolerance::divideByZeroTol())) {
 							_cachedIntersectsModel = IS_TRUE;
 							auto pFace = pMeshTriData[triIdx].second;
 							if (pFace)
@@ -1461,7 +1459,7 @@ bool Polyhedron::intersectsModel() const
 #endif
 
 				return _cachedIntersectsModel != IS_TRUE;
-			}, false && RUN_MULTI_SUB_THREAD);
+			}, RUN_MULTI_SUB_THREAD);
 		}
 
 		if (_cachedIntersectsModel != IS_TRUE)

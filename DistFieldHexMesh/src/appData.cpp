@@ -89,8 +89,8 @@ const std::shared_ptr<MultiCore::ThreadPool>& AppData::getThreadPool() const
         // This gets tricky and requirs a lot of tuning.
         // The capability is available, it now needs to be used properly.
         int numCores = MultiCore::getNumCores();
-        int numThreads = (int)(numCores * 1);
-        int numSubThreads = (int)(numCores * 0.5);
+        int numThreads = (int)(numCores * 0.875);
+        int numSubThreads = (int)(numCores * 0.75);
         int numAvailable = (int)(numCores * 1.1);
         _pThreadPool = make_shared< MultiCore::ThreadPool>(numThreads, numSubThreads, numAvailable);
     }
