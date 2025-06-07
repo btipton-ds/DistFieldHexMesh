@@ -1412,24 +1412,36 @@ bool Polyhedron::intersectsModel() const
 							LineSegmentd(*meshTriPts[2], *meshTriPts[0]),
 						};
 #if 1
-						LineSegmentd iSeg0;
-						if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg0, tol))
+						LineSegmentd iSeg[2];
+						if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg[0], tol))
 							continue;
 
 						Planed meshTriPlane(meshTriPts, false);
 
-						LineSegmentd iSeg1;
-						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg1, tol))
+						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg[1], tol))
 							continue;
 
 						bool intersects = false;
-
-						auto looseTol = 10 * tol;
-						double t;
-						if (iSeg1.contains(iSeg0._pt0, t, looseTol) || iSeg1.contains(iSeg0._pt1, t, looseTol))
-							intersects = true;
-						else if (iSeg0.contains(iSeg1._pt0, t, looseTol) || iSeg0.contains(iSeg1._pt1, t, looseTol))
-							intersects = true;
+						for (int j = 0; j < 2; j++) {
+							int k = 1 - j;
+							const auto& segA = iSeg[j];
+							const auto& segB = iSeg[k];
+							auto& origin = segB._pt0;
+							Vector3d vBase = segB._pt1 - origin;
+							double lenBase = vBase.norm();
+							vBase /= lenBase;
+							for (int l = 0; l < 2; l++) {
+								const auto& pt = (l == 0) ? segA._pt0 : segA._pt1;
+								Vector3d v = pt - origin;
+								double dist = vBase.dot(v);
+								if (-tol < dist && dist < lenBase + tol) {
+									intersects = true;
+									break;
+								}
+							}
+							if (intersects)
+								break;
+						}
 
 #else
 						bool intersects = intersectTriTri(modelTriPts, meshTriPts);
@@ -1448,7 +1460,7 @@ bool Polyhedron::intersectsModel() const
 #endif
 
 				return _cachedIntersectsModel != IS_TRUE;
-			}, RUN_MULTI_SUB_THREAD);
+			}, false && RUN_MULTI_SUB_THREAD);
 		}
 
 		if (_cachedIntersectsModel != IS_TRUE)
