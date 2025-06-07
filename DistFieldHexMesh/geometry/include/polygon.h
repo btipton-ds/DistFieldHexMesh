@@ -179,7 +179,9 @@ public:
 	Vector3d calCentroidApprox() const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
+	void setIntersectsModel(Trinary val) const;
 
+	bool intersectsModel() const;
 	bool imprintFace(const Index3DId& faceId);
 	bool imprintFaces(const FastBisectionSet<Index3DId>& faceIds);
 	bool imprintEdge(const EdgeKey& edgeKey);
@@ -309,6 +311,16 @@ inline Polygon::Convexity Polygon::isConvex() const
 		_isConvex = tmp.empty() ? IS_CONVEX : IS_CONCAVE;
 	}
 	return _isConvex;
+}
+
+inline void Polygon::setIntersectsModel(Trinary val) const
+{
+	_cachedIntersectsModel = val;
+}
+
+inline bool Polygon::intersectsModel() const
+{
+	return _cachedIntersectsModel == IS_TRUE;
 }
 
 inline bool Polygon::isWall() const

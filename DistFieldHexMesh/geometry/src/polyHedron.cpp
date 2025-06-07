@@ -1284,7 +1284,7 @@ bool Polyhedron::intersectsModel() const
 
 		for (const auto& id : _faceIds) {
 			auto& face = getPolygon(id);
-			if (face._cachedIntersectsModel == IS_TRUE) {
+			if (face.intersectsModel()) {
 				_cachedIntersectsModel = IS_TRUE;
 				return true;
 			}
@@ -1292,7 +1292,7 @@ bool Polyhedron::intersectsModel() const
 
 		vector<PolyMeshIndex> indices;
 		if (getPolyIndices(indices) != 0) {
-			vector<pair<const Vector3d*, Index3DId>> cellTriPts;
+			vector<pair<const Vector3d*, const Polygon*>> cellTriPts;
 			createTriPoints(cellTriPts);
 
 			auto& model = getModel();
@@ -1366,16 +1366,17 @@ bool Polyhedron::intersectsModel() const
 					const Vector3d* modelTriPts[] = { pt0, pt1, pt2 };
 
 					for (size_t i = 0; i < nTris; i++) {
+						size_t triIdx = 3 * i;
 						const Vector3d* meshTriPts[] = {
-							pMeshTriData[3 * i + 0].first,
-							pMeshTriData[3 * i + 1].first,
-							pMeshTriData[3 * i + 2].first,
+							pMeshTriData[triIdx + 0].first,
+							pMeshTriData[triIdx + 1].first,
+							pMeshTriData[triIdx + 2].first,
 						};
 						if (intersectTriTri(modelTriPts, meshTriPts)) {
 							_cachedIntersectsModel = IS_TRUE;
-							const auto& meshFaceId = pMeshTriData[3 * i + 0].second;
-							auto& face = getPolygon(meshFaceId);
-							face._cachedIntersectsModel = IS_TRUE;
+							auto pFace = pMeshTriData[triIdx].second;
+							if (pFace)
+								pFace->setIntersectsModel(IS_TRUE);
 							break;
 						}
 					}
@@ -1395,28 +1396,28 @@ bool Polyhedron::intersectsModel() const
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 
-void Polyhedron::createTriPoints(vector<pair<const Vector3d*, Index3DId>>& cellTriPts) const
+void Polyhedron::createTriPoints(vector<pair<const Vector3d*, const Polygon*>>& cellTriPts) const
 {
 	for (const auto& id : _faceIds) {
 		auto& face = getPolygon(id);
 		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			cellTriPts.push_back(make_pair(&face.getVertexPoint(id0), face.getId()));
-			cellTriPts.push_back(make_pair(&face.getVertexPoint(id1), face.getId()));
-			cellTriPts.push_back(make_pair(&face.getVertexPoint(id2), face.getId()));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id0), &face));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id1), &face));
+			cellTriPts.push_back(make_pair(&face.getVertexPoint(id2), &face));
 
 			return true;
 		});
 	}
 }
 
-void Polyhedron::createTriPoints(vector<pair<const Vector3d, Index3DId>>& cellTriPts) const
+void Polyhedron::createTriPoints(vector<pair<const Vector3d, const Polygon*>>& cellTriPts) const
 {
 	for (const auto& id : _faceIds) {
 		auto& face = getPolygon(id);
 		face.iterateTriangles([&face, &cellTriPts](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			cellTriPts.push_back(make_pair(face.getVertexPoint(id0), face.getId()));
-			cellTriPts.push_back(make_pair(face.getVertexPoint(id1), face.getId()));
-			cellTriPts.push_back(make_pair(face.getVertexPoint(id2), face.getId()));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id0), &face));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id1), &face));
+			cellTriPts.push_back(make_pair(face.getVertexPoint(id2), &face));
 
 			return true;
 		});
