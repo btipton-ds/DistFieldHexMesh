@@ -201,10 +201,7 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 		auto& model = getModel();
 		auto pFace = model.getPolygon(entry.getIndex());
 
-		pFace->intersect(cellTriPts, _cachedIntersectsModel);
-		if (_cachedIntersectsModel != IS_TRUE) {
-			_cachedIntersectsModel = IS_FALSE;
-		}
+		_cachedIntersectsModel = pFace->intersect(cellTriPts) ? IS_TRUE : IS_FALSE;
 	}
 	return _cachedIntersectsModel == IS_TRUE;
 #endif
@@ -1217,52 +1214,23 @@ bool Polyhedron::intersectsModel() const
 		const auto tol = Tolerance::sameDistTol();
 		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
 
-
-		static map<size_t, size_t> bins;
-		Trinary result = IS_UNKNOWN;
-
-		bool dumpObj = false;
-		auto bbox = getBoundingBox();
-
 		vector<PolyMeshIndex> indices;
 		if (getPolyIndices(indices) != 0) {
 			vector<const Vector3d*> cellTriPts;
 			createTriPoints(cellTriPts);
+
 			auto& model = getModel();
-#if 0
-			{
-				static mutex mut;
-				lock_guard lg(mut);
-				auto iter = bins.find(indices.size());
-				if (iter == bins.end())
-					iter = bins.insert(make_pair(indices.size(), 0)).first;
-				iter->second++;
-			}
-#endif
-#if 1
 			auto pVol = getOurBlockPtr()->getVolume();
 			auto& tp = pVol->getThreadPool();
-			tp.runSub(indices.size(), [&model, &cellTriPts, &indices, &result](size_t threadNum, size_t idx)->bool {
-				if (result == IS_UNKNOWN) {
-					const auto& id = indices[idx];
-					auto pFace = model.getPolygon(id);
-					pFace->intersect(cellTriPts, result);
-				}
-				return result != IS_TRUE;
-			}, RUN_MULTI_SUB_THREAD);
-#else
-
-			for (const auto& id : indices) {
+			tp.runSub(indices.size(), [this, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
+				const auto& id = indices[idx];
 				auto pFace = model.getPolygon(id);
-				if (pFace->intersect(cellTriPts)) {
-					result = IS_TRUE;
-					break;
-				}
-			}
-#endif
+				if (pFace->intersect(cellTriPts))
+					_cachedIntersectsModel = IS_TRUE;
+				return _cachedIntersectsModel != IS_TRUE;
+			}, RUN_MULTI_SUB_THREAD);
 		}
 
-		_cachedIntersectsModel = result;
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
 	}

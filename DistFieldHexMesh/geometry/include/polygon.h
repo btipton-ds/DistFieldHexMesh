@@ -190,8 +190,7 @@ public:
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersect(const Polygon& otherFace, bool dumpObj) const;
-	void intersect(const std::vector<const Vector3d*>& cellTriPts, Trinary& result) const;
-	void intersect(const std::vector<Vector3d>& cellTriPts, Trinary& result) const;
+	bool intersect(const std::vector<const Vector3d*>& cellTriPts) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
