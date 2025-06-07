@@ -1302,6 +1302,7 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 
 size_t Volume::numFaces(bool includeInner) const
 {
+	// TODO Rare race condition crash
 	size_t result = 0;
 	for (auto pBlock : _blocks) {
 		if (pBlock)
@@ -1313,6 +1314,7 @@ size_t Volume::numFaces(bool includeInner) const
 
 size_t Volume::numPolyhedra() const
 {
+	// TODO Rare race condition crash
 	size_t result = 0;
 	for (auto pBlock : _blocks) {
 		if (pBlock)
@@ -1324,6 +1326,7 @@ size_t Volume::numPolyhedra() const
 
 size_t Volume::numBytes() const
 {
+	// TODO Rare race condition crash
 	size_t result = sizeof(Volume);
 	for (const auto& pBlk : _blocks) {
 		if (pBlk)

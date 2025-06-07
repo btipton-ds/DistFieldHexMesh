@@ -195,8 +195,72 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 	return true;
 #else
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
+		auto& pt = bbox.getMin();
+		auto d = bbox.range();
+		Vector3d dx(d[0], 0, 0);
+		Vector3d dy(0, d[1], 0);
+		Vector3d dz(0, 0, d[2]);
+		Vector3d pts[]{
+			pt,
+			pt + dx,
+			pt + dx + dy,
+			pt + dy,
+
+			pt + dz,
+			pt + dx + dz,
+			pt + dx + dy + dz,
+			pt + dy + dz,
+		};
+
 		vector<const Vector3d*> cellTriPts;
-		createTriPoints(cellTriPts);
+
+		// Bottom
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[1]);
+		cellTriPts.push_back(&pts[2]);
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[2]);
+		cellTriPts.push_back(&pts[3]);
+
+		// Top
+		cellTriPts.push_back(&pts[4]);
+		cellTriPts.push_back(&pts[5]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[4]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[7]);
+
+		// Front
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[1]);
+		cellTriPts.push_back(&pts[5]);
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[5]);
+		cellTriPts.push_back(&pts[4]);
+
+		// Back
+		cellTriPts.push_back(&pts[3]);
+		cellTriPts.push_back(&pts[2]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[3]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[7]);
+
+		// Left
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[3]);
+		cellTriPts.push_back(&pts[7]);
+		cellTriPts.push_back(&pts[0]);
+		cellTriPts.push_back(&pts[7]);
+		cellTriPts.push_back(&pts[4]);
+
+		// Right
+		cellTriPts.push_back(&pts[1]);
+		cellTriPts.push_back(&pts[2]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[1]);
+		cellTriPts.push_back(&pts[6]);
+		cellTriPts.push_back(&pts[5]);
 
 		auto& model = getModel();
 		auto pFace = model.getPolygon(entry.getIndex());
