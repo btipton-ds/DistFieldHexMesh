@@ -124,16 +124,16 @@ void Polyhedron::initializeSearchTree() const
 			size_t numInTree = _pPolySearchTree->numInTree();
 			if (numInTree > MAX_SUB_TREE_COUNT) {
 				auto bbox = getBoundingBox();
-				size_t n = _pPolySearchTree->count(bbox, nullptr);
+				size_t n = _pPolySearchTree->count(bbox, getRefiner());
 				if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
-					_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, nullptr);
+					_pPolySearchTree = _pPolySearchTree->getSubTree(bbox, getRefiner());
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION
 					const auto& model = getModel();
 					vector<PolyMeshIndex> indicesA, indicesB;
-					size_t numA = model.findPolys(bbox, indicesA);
+					size_t numA = model.findPolys(bbox, getRefiner(), indicesA);
 					if (numA != 0) {
 						if (_pPolySearchTree) {
-							size_t numB = _pPolySearchTree->find(bbox, indicesB);
+							size_t numB = _pPolySearchTree->find(bbox, getRefiner(), indicesB);
 							if (numA == numB) {
 								size_t numMismatch = 0;
 								for (size_t i = 0; i < numA; i++) {
@@ -2086,7 +2086,7 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	vector<PolyMeshIndex> indicesFull;
-	size_t dbgResult = model.findPolys(bbox, indicesFull);
+	size_t dbgResult = model.findPolys(bbox, nullptr, indicesFull);
 
 	if (result != dbgResult) {
 		static mutex mut;
@@ -2096,6 +2096,7 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 		throw runtime_error(ss.str());
 	}
 #endif
+
 	return result;
 }
 

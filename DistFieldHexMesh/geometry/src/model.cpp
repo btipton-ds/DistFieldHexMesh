@@ -119,9 +119,9 @@ size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner*
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION 
 	set<PolyMeshSearchTree::Entry> result1;
 	std::vector<PolyMeshSearchTree::Entry> entries1;
-	auto pSub = getPolySubTree(bbox);
+	auto pSub = getPolySubTree(bbox, nullptr);
 	if (pSub) {
-		if (pSub->find(bbox, entries1)) {
+		if (pSub->find(bbox, nullptr, entries1)) {
 			for (const auto& entry : entries) {
 				const auto& triBox = entry.getBBox();
 				if (bbox.intersectsOrContains(triBox, Tolerance::sameDistTol())) {

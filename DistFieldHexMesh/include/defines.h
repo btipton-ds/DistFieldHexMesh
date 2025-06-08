@@ -53,7 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define OBJECT_POOL_USE_STD_MAP 1
 
-#define MAX_SUB_TREE_COUNT (8 * 1024)
+#define MAX_SUB_TREE_COUNT (1 * 1024 / 2)
 #define SUB_TREE_SPLIT_RATIO 4
 #define OBJECT_TREE_WIDTH 200
 #define VERIFY_REDUCED_FINDER 0
