@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <index3D.h>
 #include <pool_set.h>
 #include <pool_vector.h>
+#include <fastBisectionSet.h>
 #include <tolerances.h>
 #include <volume.h>
 
@@ -84,11 +85,11 @@ private:
 	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
-		std::set<Index3DId>& allCellFaceIds, bool useAll);
-	void addFaceToLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
-	void removeFacefromLocalEdgeSet(std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
-	Index3DId findConnectedFaceId(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
-	void verifyLocalEdgeSet(const std::map<EdgeKey, std::set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
+		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
+	void addFaceToLocalEdgeSet(std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	void removeFacefromLocalEdgeSet(std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	Index3DId findConnectedFaceId(const std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
+	void verifyLocalEdgeSet(const std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
 	void finalizeCreatedCells();
 
 	Index3DId makeScratchCell(const Index3DId& parentId);

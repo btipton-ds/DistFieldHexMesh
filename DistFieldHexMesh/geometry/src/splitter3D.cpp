@@ -499,7 +499,8 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 
 	imprintSplittingFace(parentId, splittingFaceId);
 
-	set<Index3DId> allCellFaceIds(faceIds.begin(), faceIds.end());
+	// faceIds is a reference and is modifed by the preceding operations. It's value has changed.
+	FastBisectionSet<Index3DId> allCellFaceIds(faceIds);
 	parentCell.detachFaces();
 	for (int i = 0; i < 2; i++) {
 		Index3DId cellId = makeCellFromHexFaces(parentId, splittingFaceId, subCellPts[i], allCellFaceIds, i == 1);
@@ -664,7 +665,7 @@ void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId
 	}
 }
 
-void Splitter3D::addFaceToLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
+void Splitter3D::addFaceToLocalEdgeSet(map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	auto& face = getPolygon(faceId);
 	auto& vertIds = face.getVertexIds();
@@ -673,12 +674,12 @@ void Splitter3D::addFaceToLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localEdgeSe
 		EdgeKey e(vertIds[i], vertIds[j]);
 		auto iter = localEdgeSet.find(e);
 		if (iter == localEdgeSet.end())
-			iter = localEdgeSet.insert(make_pair(e, set<Index3DId>())).first;
+			iter = localEdgeSet.insert(make_pair(e, FastBisectionSet<Index3DId>())).first;
 		iter->second.insert(faceId);
 	}
 }
 
-void Splitter3D::removeFacefromLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
+void Splitter3D::removeFacefromLocalEdgeSet(map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	auto& face = getPolygon(faceId);
 	auto& vertIds = face.getVertexIds();
@@ -694,7 +695,7 @@ void Splitter3D::removeFacefromLocalEdgeSet(map<EdgeKey, set<Index3DId>>& localE
 	}
 }
 
-Index3DId Splitter3D::findConnectedFaceId(const map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
+Index3DId Splitter3D::findConnectedFaceId(const map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const
 {
 	Index3DId result;
 	auto& face = getPolygon(faceId);
@@ -717,7 +718,7 @@ Index3DId Splitter3D::findConnectedFaceId(const map<EdgeKey, set<Index3DId>>& lo
 }
 
 Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
-	set<Index3DId>& allCellFaceIds, bool useAllFaces)
+	FastBisectionSet<Index3DId>& allCellFaceIds, bool useAllFaces)
 {
 #ifdef _DEBUG
 	if (Index3DId(2, 4, 7, 0) == _polyhedronId) {
@@ -729,7 +730,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& parentId, const Inde
 	MTC::set<Index3DId> cellFaces;
 
 	if (!useAllFaces) {
-		map<EdgeKey, set<Index3DId>> localEdgeSet;
+		map<EdgeKey, FastBisectionSet<Index3DId>> localEdgeSet;
 
 		addFaceToLocalEdgeSet(localEdgeSet, splittingFaceId);
 		for (auto& id : allCellFaceIds) {
@@ -814,7 +815,7 @@ Index3DId Splitter3D::makeCellFromHexFaces(const Index3DId& parentId, const Inde
 	return newCellId;
 }
 
-void Splitter3D::verifyLocalEdgeSet(const map<EdgeKey, set<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const
+void Splitter3D::verifyLocalEdgeSet(const map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const
 {
 	set<EdgeKey> unclosedEdges;
 	for (auto& pair : localEdgeSet) {
