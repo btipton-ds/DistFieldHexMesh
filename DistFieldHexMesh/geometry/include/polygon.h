@@ -168,7 +168,7 @@ public:
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
 	double distFromPlane(const Vector3d& pt) const;
 
-	Planed calPlane() const;
+	const Planed& calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;
 	const Vector3d& calUnitNormal() const;
 	void setUnitNormal_risky(const Vector3d& val);
@@ -242,6 +242,7 @@ private:
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable Vector3d _cachedNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	mutable Planed _cachedPlane = Planed(Vector3d(DBL_MAX, DBL_MAX, DBL_MAX), Vector3d(DBL_MAX, DBL_MAX, DBL_MAX), true);
 	mutable std::mutex _nonColinearVertexIdsMutex;
 	mutable MTC::vector<Index3DId> _nonColinearVertexIds;
 };

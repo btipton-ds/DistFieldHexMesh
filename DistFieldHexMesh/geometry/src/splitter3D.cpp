@@ -533,10 +533,10 @@ void Splitter3D::finalizeCreatedCells()
 				if (createdCell._pPolySearchTree) {
 					size_t numInTree = createdCell._pPolySearchTree->numInTree();
 					if (numInTree > MAX_SUB_TREE_COUNT) {
-						size_t n = createdCell._pPolySearchTree->count(subBbox, nullptr);
+						size_t n = createdCell._pPolySearchTree->count(subBbox, createdCell.getRefiner());
 						if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
 							// Splitting small trees takes time and memory, so only reduce larger ones
-							createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, nullptr);
+							createdCell._pPolySearchTree = createdCell._pPolySearchTree->getSubTree(subBbox, createdCell.getRefiner());
 						}
 					}
 				}

@@ -202,80 +202,97 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 #if 0
 	return true;
 #else
-	if (_cachedIntersectsModel == IS_UNKNOWN) {
-		auto& pt = bbox.getMin();
-		auto d = bbox.range();
-		Vector3d dx(d[0], 0, 0);
-		Vector3d dy(0, d[1], 0);
-		Vector3d dz(0, 0, d[2]);
-		Vector3d pts[]{
-			pt,
-			pt + dx,
-			pt + dx + dy,
-			pt + dy,
+	Trinary result = IS_UNKNOWN;
+	auto& model = getModel();
+	auto pFace = model.getPolygon(entry.getIndex());
 
-			pt + dz,
-			pt + dx + dz,
-			pt + dx + dy + dz,
-			pt + dy + dz,
-		};
-
-		vector<const Vector3d*> cellTriPts;
-
-		// Bottom
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[1]);
-		cellTriPts.push_back(&pts[2]);
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[2]);
-		cellTriPts.push_back(&pts[3]);
-
-		// Top
-		cellTriPts.push_back(&pts[4]);
-		cellTriPts.push_back(&pts[5]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[4]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[7]);
-
-		// Front
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[1]);
-		cellTriPts.push_back(&pts[5]);
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[5]);
-		cellTriPts.push_back(&pts[4]);
-
-		// Back
-		cellTriPts.push_back(&pts[3]);
-		cellTriPts.push_back(&pts[2]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[3]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[7]);
-
-		// Left
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[3]);
-		cellTriPts.push_back(&pts[7]);
-		cellTriPts.push_back(&pts[0]);
-		cellTriPts.push_back(&pts[7]);
-		cellTriPts.push_back(&pts[4]);
-
-		// Right
-		cellTriPts.push_back(&pts[1]);
-		cellTriPts.push_back(&pts[2]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[1]);
-		cellTriPts.push_back(&pts[6]);
-		cellTriPts.push_back(&pts[5]);
-
-		auto& model = getModel();
-		auto pFace = model.getPolygon(entry.getIndex());
-
-//		_cachedIntersectsModel = pFace->intersectX(cellTriPts) ? IS_TRUE : IS_FALSE;
+	const auto& modelVerts = pFace->getVertexIds();
+	set<Index3DId> idSet;
+	for (const auto& id : modelVerts) {
+		idSet.insert(id);
 	}
-	return _cachedIntersectsModel == IS_TRUE;
+	for (const auto& id : idSet) {
+		auto& pt = pFace->getVertexPoint(id);
+		if (pointInside(pt)) {
+			return true;
+		}
+	}
+
+	vector<pair<const Vector3d*, const Polygon*>> cellTriPts;
+#if 1
+	createTriPoints(cellTriPts);
+#else
+	auto& pt = bbox.getMin();
+	auto d = bbox.range();
+	Vector3d dx(d[0], 0, 0);
+	Vector3d dy(0, d[1], 0);
+	Vector3d dz(0, 0, d[2]);
+	Vector3d pts[]{
+		pt,
+		pt + dx,
+		pt + dx + dy,
+		pt + dy,
+
+		pt + dz,
+		pt + dx + dz,
+		pt + dx + dy + dz,
+		pt + dy + dz,
+	};
+
+	// Bottom
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[1], nullptr));
+	cellTriPts.push_back(make_pair(&pts[2], nullptr));
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[2], nullptr));
+	cellTriPts.push_back(make_pair(&pts[3], nullptr));
+
+	// Top
+	cellTriPts.push_back(make_pair(&pts[4], nullptr));
+	cellTriPts.push_back(make_pair(&pts[5], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[4], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[7], nullptr));
+
+	// Front
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[1], nullptr));
+	cellTriPts.push_back(make_pair(&pts[5], nullptr));
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[5], nullptr));
+	cellTriPts.push_back(make_pair(&pts[4], nullptr));
+
+	// Back
+	cellTriPts.push_back(make_pair(&pts[3], nullptr));
+	cellTriPts.push_back(make_pair(&pts[2], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[3], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[7], nullptr));
+
+	// Left
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[3], nullptr));
+	cellTriPts.push_back(make_pair(&pts[7], nullptr));
+	cellTriPts.push_back(make_pair(&pts[0], nullptr));
+	cellTriPts.push_back(make_pair(&pts[7], nullptr));
+	cellTriPts.push_back(make_pair(&pts[4], nullptr));
+
+	// Right
+	cellTriPts.push_back(make_pair(&pts[1], nullptr));
+	cellTriPts.push_back(make_pair(&pts[2], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[1], nullptr));
+	cellTriPts.push_back(make_pair(&pts[6], nullptr));
+	cellTriPts.push_back(make_pair(&pts[5], nullptr));
+#endif
+
+	size_t nTris = cellTriPts.size() / 3;
+	auto pMeshTriData = cellTriPts.data();
+	pFace->intersectHexMeshTris(nTris, pMeshTriData, result);
+
+	return result == IS_TRUE;
 #endif
 }
 
@@ -1191,16 +1208,20 @@ bool Polyhedron::isConvex() const
 
 bool Polyhedron::pointInside(const Vector3d& pt) const
 {
+	const auto tol = Tolerance::sameDistTol();
+	auto& bbox = getBoundingBox();
+	if (!bbox.contains(pt, tol))
+		return false;
+
 	bool inside = true;
 	auto ctr = calCentroidApprox();
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [&ctr, &pt, &inside](const Polygon& face) {
-			auto pl = face.calPlane();
+			auto& pl = face.calPlane();
 			auto ctrDist = pl.distanceToPoint(ctr, false);
-			if (ctrDist > 0)
-				pl.reverse(); // Vector points out of the cell
+			double sign = ctrDist > 0 ? -1 : 1;
 
-			double dist = pl.distanceToPoint(pt, false);
+			double dist = sign * pl.distanceToPoint(pt, false);
 			if (dist > Tolerance::paramTol())
 				inside = false;
 		});
@@ -1304,22 +1325,52 @@ bool Polyhedron::intersectsModel() const
 			createTriPoints(cellTriPts);
 
 			auto& model = getModel();
+
+#define INTERSECT_MODEL_MULTITHREAD 0
+#if INTERSECT_MODEL_MULTITHREAD
 			auto pVol = getOurBlockPtr()->getVolume();
 			auto& tp = pVol->getThreadPool();
-
 			size_t numSteps = indices.size();
-			size_t minStepsToMultiThread = 1000;
+			size_t minStepsToMultiThread = 500;
 			tp.runSub(numSteps, minStepsToMultiThread, [this, tol, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
 				size_t nTris = cellTriPts.size() / 3;
 				auto pMeshTriData = cellTriPts.data();
+#else
+			size_t nTris = cellTriPts.size() / 3;
+			auto pMeshTriData = cellTriPts.data();
+			for (size_t idx = 0; idx < indices.size(); idx++) {
+#endif
+				auto pModelFace = model.getPolygon(indices[idx]);
 
-				const auto& polyId = indices[idx];
-				auto pModelFace = model.getPolygon(polyId);
 				pModelFace->intersectHexMeshTris(nTris, pMeshTriData, _cachedIntersectsModel);
 
+#if INTERSECT_MODEL_MULTITHREAD
 				return _cachedIntersectsModel != IS_TRUE;
 			}, RUN_MULTI_SUB_THREAD);
+#else
+				if (_cachedIntersectsModel == IS_TRUE)
+					break;
+			}
+#endif
+#undef INTERSECT_MODEL_MULTITHREAD
+
+			// This covers small faces which lie completely inside the cell, but don't
+			auto& bbox = getBoundingBox();
+			if (_cachedIntersectsModel == IS_UNKNOWN) {
+				for (size_t idx = 0; idx < indices.size(); idx++) {
+					auto pModelFace = model.getPolygon(indices[idx]);
+					const auto& vertIds = pModelFace->getVertexIds();
+					for (const auto& id : vertIds) {
+						const auto& pt = pModelFace->getVertexPoint(id);
+						if (pointInside(pt)) {
+							_cachedIntersectsModel = IS_TRUE;
+							break;
+						}
+					}
+				}
+			}
 		}
+
 
 		if (_cachedIntersectsModel != IS_TRUE)
 			_cachedIntersectsModel = IS_FALSE;
@@ -1933,7 +1984,7 @@ size_t Polyhedron::getPolyIndices(std::vector<PolyMeshIndex>& indices) const
 //	auto pClipped = model.getPolySubTree(bbox);
 	size_t result = 0;
 	if (pClipped)
-		result = pClipped->find(bbox, getRefiner(), indices);
+		result = pClipped->find(bbox, nullptr, indices);
 
 #if ENABLE_MODEL_SEARCH_TREE_VERIFICATION // This turns on very expensive entity search testing.
 	vector<PolyMeshIndex> indicesFull;

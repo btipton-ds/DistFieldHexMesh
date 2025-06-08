@@ -161,6 +161,7 @@ void Polygon::copyCaches(const Polygon& src)
 	_cachedIntersectsModel = src._cachedIntersectsModel;
 	_cachedArea = src._cachedArea;
 	_cachedCentroid = src._cachedCentroid;
+	_cachedPlane = src._cachedPlane;
 	_cachedNormal = src._cachedNormal;
 }
 
@@ -227,6 +228,7 @@ void Polygon::clearCache(bool clearSortIds) const
 	_cachedIntersectsModel = IS_UNKNOWN;
 	_cachedArea = -1;
 	_cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedPlane = Planed(Vector3d(DBL_MAX, DBL_MAX, DBL_MAX), Vector3d(DBL_MAX, DBL_MAX, DBL_MAX), true);
 	_cachedNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_nonColinearVertexIds.clear();
 
@@ -611,16 +613,17 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 	return result;
 }
 
-Planed Polygon::calPlane() const
+const Planed& Polygon::calPlane() const
 {
-	Planed result;
-	auto& origin = calCentroid(); // Use every point to get more preceision
-	assert(!origin.isNAN());
-	auto& normal = calUnitNormal();
-	assert(!normal.isNAN());
-	result = Planed(origin, normal);
+	if (_cachedPlane.getOrgin()[0] == DBL_MAX) {
+		auto& origin = calCentroid(); // Use every point to get more preceision
+		assert(!origin.isNAN());
+		auto& normal = calUnitNormal();
+		assert(!normal.isNAN());
+		_cachedPlane = Planed(origin, normal, true);
+	}
 
-	return result;
+	return _cachedPlane;
 }
 
 Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
