@@ -883,12 +883,11 @@ bool Polygon::imprintFace(const Index3DId& faceId)
 {
 	bool result = false;
 
-	MTC::vector<EdgeKey> otherEdgeKeys;
-	faceFunc(faceId, [&otherEdgeKeys](const Polygon& face) {
-		otherEdgeKeys = face.getEdgeKeys();
-	});
-
-	for (const auto& otherEk : otherEdgeKeys) {
+	const auto& face = getPolygon(faceId);
+	const auto& vertIds = face.getVertexIds();
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		EdgeKey otherEk(vertIds[i], vertIds[j]);
 		result = imprintEdge(otherEk) && result;
 	}
 

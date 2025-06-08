@@ -549,39 +549,37 @@ void Splitter3D::finalizeCreatedCells()
 
 void Splitter3D::imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId)
 {
-	if (!_testRun) {
-		int dbgBreak = 1;
-	}
+	const auto tol = Tolerance::sameDistTol();
+
 	const auto& parentCell = getPolyhedron(parentId);
-	const auto cellEdges = parentCell.getEdgeKeys(false);
+	const auto cellEdgeKeys = parentCell.getEdgeKeys(false);
 
 	set<Index3DId> faceIds;
 	auto& splittingFace = getPolygon(splittingFaceId);
-	MTC::vector<EdgeKey> splittingEdges = splittingFace.getEdgeKeys();
 	Vector3d splitPlaneNormal = splittingFace.calUnitNormal();
 
-	for (auto& edge : cellEdges) {
-		FastBisectionSet<Index3DId> edgeFaces;
-		edgeFunc(edge, [this, &edgeFaces](const Edge& edge) {
-			edgeFaces = edge.getFaceIds();
-		});
-		for (auto& faceId : edgeFaces) {
-			auto& face = getPolygon(faceId);
-			auto faceNormal = face.calUnitNormal();
-			auto cp = splitPlaneNormal.cross(faceNormal).norm();
-			if (cp > Tolerance::paramTol()) {
-				faceIds.insert(faceId);
+	for (auto& edgeKey : cellEdgeKeys) {
+		edgeFunc(edgeKey, [this, &splitPlaneNormal, &faceIds](const Edge& edge) {
+			auto& edgeFaces = edge.getFaceIds();
+			for (auto& faceId : edgeFaces) {
+				auto& face = getPolygon(faceId);
+				auto& faceNormal = face.calUnitNormal();
+				auto cp = splitPlaneNormal.cross(faceNormal).norm();
+				if (cp > Tolerance::paramTol()) {
+					faceIds.insert(faceId);
+				}
 			}
-		}
+		});
 	}
+
+	vector<Index3DId> vertIds = splittingFace.getVertexIds();
 
 	for (auto& faceId : faceIds) {
 		auto& face = getPolygon(faceId);
-		for (auto& ek : splittingEdges) {
-			face.imprintEdge(ek);
-		}
+		face.imprintVerts(vertIds);
 	}
 
+	MTC::vector<EdgeKey> splittingEdges = splittingFace.getEdgeKeys();
 	for (const auto& faceId : faceIds) {
 		if (Index3DId(3, 0, 3, 13) == faceId) {
 			int dbgBreak = 1;
