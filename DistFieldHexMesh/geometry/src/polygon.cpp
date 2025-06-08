@@ -1096,31 +1096,114 @@ bool Polygon::intersect(const Polygon& otherFace, bool dumpObj) const
 	return false;
 }
 
-bool Polygon::intersect(const vector<const Vector3d*>& cellTriPts) const
+namespace
 {
-	bool result = false;
-	iterateTrianglePts([this, &cellTriPts, &result](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
-		const Vector3d* modelTriPts[] = {&pt0, &pt1, &pt2};
+	bool intersectPlaneTri(const Planed& plane, const LineSegment_byrefd segs[3], LineSegmentd& iSeg, double tol)
+	{
 
-		size_t nTris = cellTriPts.size() / 3;
-		auto pMeshTriData = cellTriPts.data();
+		int numHits = 0;
 
-		for (size_t i = 0; i < nTris; i++) {
-			const Vector3d* meshTriPts[] = {
-				pMeshTriData[3 * i + 0],
-				pMeshTriData[3 * i + 1],
-				pMeshTriData[3 * i + 2],
-			};
-			if (intersectTriTri(modelTriPts, meshTriPts)) {
-				result = IS_TRUE;
-				break;
+		Vector3d iPts[2];
+		RayHitd hit;
+
+		for (int i = 0; i < 3; i++) {
+			if (plane.intersectLineSegment(segs[i], hit, tol)) {
+				iPts[numHits++] = hit.hitPt;
+				if (numHits == 2) {
+					iSeg = LineSegmentd(iPts[0], iPts[1]);
+					return true;
+				}
 			}
 		}
 
-		return result != IS_TRUE;
-	});
+		return false;
+	}
 
-	return result;
+	inline bool segsOverlap(const LineSegmentd segs[2], double tol, double paramTol)
+	{
+		for (int i = 0; i < 2; i++) {
+			const auto& segBase = segs[i];
+			const auto& segTest = segs[1 - i];
+			Vector3d vBase = segBase._pt1 - segBase._pt0;
+			double lenBase = vBase.norm();
+			if (lenBase > paramTol) {
+				vBase /= lenBase;
+				for (int j = 0; j < 2; j++) {
+					const auto& pt = (j == 0) ? segTest._pt0 : segTest._pt1;
+					Vector3d v = pt - segBase._pt0;
+					double dist = vBase.dot(v);
+					if (-tol < dist && dist < lenBase + tol) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+}
+
+void Polygon::intersectHexMeshTris(size_t numTris, const pair<const Vector3d*, const Polygon*>* pMeshTriData, Trinary& result) const
+{
+	const auto& verts = getNonColinearVertexIds();
+	if (verts.size() < 3) {
+		throw (std::runtime_error("Less than three vertices"));
+	}
+
+	std::vector<const Vector3d*> pts;
+	pts.resize(verts.size());
+	for (size_t i = 0; i < verts.size(); i++)
+		pts[i] = &getVertexPoint(verts[i]);
+
+	size_t i = 0;
+	for (size_t j = 1; j < pts.size() - 1; j++) {
+		size_t k = (j + 1) % pts.size();
+		const auto& pt0 = *pts[i];
+		const auto& pt1 = *pts[j];
+		const auto& pt2 = *pts[k];
+
+		const auto tol = Tolerance::sameDistTol();
+		const Vector3d* modelTriPts[] = { &pt0, &pt1, &pt2 };
+		Planed modelTriPlane(modelTriPts, false);
+		const LineSegment_byrefd modelTriSegs[] = {
+			LineSegment_byrefd(pt0, pt1),
+			LineSegment_byrefd(pt1, pt2),
+			LineSegment_byrefd(pt2, pt0),
+		};
+
+
+		for (size_t i = 0; i < numTris; i++) {
+			size_t triIdx = 3 * i;
+			const Vector3d* meshTriPts[] = {
+				pMeshTriData[triIdx + 0].first,
+				pMeshTriData[triIdx + 1].first,
+				pMeshTriData[triIdx + 2].first,
+			};
+
+			const LineSegment_byrefd meshTriSegs[] = {
+				LineSegment_byrefd(*meshTriPts[0], *meshTriPts[1]),
+				LineSegment_byrefd(*meshTriPts[1], *meshTriPts[2]),
+				LineSegment_byrefd(*meshTriPts[2], *meshTriPts[0]),
+			};
+
+			LineSegmentd iSeg[2];
+			if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg[0], tol))
+				continue;
+
+			Planed meshTriPlane(meshTriPts, false);
+
+			if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg[1], tol))
+				continue;
+
+			if (segsOverlap(iSeg, tol, Tolerance::divideByZeroTol())) {
+				result = IS_TRUE;
+				auto pFace = pMeshTriData[triIdx].second;
+				if (pFace)
+					pFace->setIntersectsModel(IS_TRUE);
+				break;
+			}
+		}
+	}
 }
 
 bool Polygon::isPointInside(const Vector3d& pt) const

@@ -273,7 +273,7 @@ bool Polyhedron::entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSear
 		auto& model = getModel();
 		auto pFace = model.getPolygon(entry.getIndex());
 
-		_cachedIntersectsModel = pFace->intersect(cellTriPts) ? IS_TRUE : IS_FALSE;
+//		_cachedIntersectsModel = pFace->intersectX(cellTriPts) ? IS_TRUE : IS_FALSE;
 	}
 	return _cachedIntersectsModel == IS_TRUE;
 #endif
@@ -1280,53 +1280,6 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 	return result;
 }
 
-namespace
-{
-	bool intersectPlaneTri(const Planed& plane, const LineSegment_byrefd segs[3], LineSegmentd& iSeg, double tol)
-	{
-
-		int numHits = 0;
-
-		Vector3d iPts[2];
-		RayHitd hit;
-
-		for (int i = 0; i < 3; i++) {
-			if (plane.intersectLineSegment(segs[i], hit, tol)) {
-				iPts[numHits++] = hit.hitPt;
-				if (numHits == 2) {
-					iSeg = LineSegmentd(iPts[0], iPts[1]);
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	inline bool segsOverlap(const LineSegmentd segs[2], double tol, double paramTol)
-	{
-		for (int i = 0; i < 2; i++) {
-			const auto& segBase = segs[i];
-			const auto& segTest = segs[1 - i];
-			Vector3d vBase = segBase._pt1 - segBase._pt0;
-			double lenBase = vBase.norm();
-			if (lenBase > paramTol) {
-				vBase /= lenBase;
-				for (int j = 0; j < 2; j++) {
-					const auto& pt = (j == 0) ? segTest._pt0 : segTest._pt1;
-					Vector3d v = pt - segBase._pt0;
-					double dist = vBase.dot(v);
-					if (-tol < dist && dist < lenBase + tol) {
-						return true;
-					}
-				}
-			}
-		}
-
-		return false;
-	}
-}
-
 bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
@@ -1360,111 +1313,9 @@ bool Polyhedron::intersectsModel() const
 				size_t nTris = cellTriPts.size() / 3;
 				auto pMeshTriData = cellTriPts.data();
 
-				const auto& id = indices[idx];
-				auto pModelFace = model.getPolygon(id);
-
-#if 0
-				auto& vertIds = pFace->getVertexIds();
-				vector<const Vector3d*> pts;
-				pts.resize(vertIds.size());
-				for (size_t i = 0; i < vertIds.size(); i++)
-					pts[i] = &pFace->getVertexPoint(vertIds[i]);
-
-				for (size_t i = 0; i < nTris; i++) {
-					Vector3d const* const* meshTriPts = pMeshTriData + 3 * i;
-					Planed meshTriPlane(meshTriPts);
-					vector<RayHitd> hits;
-					for (size_t i = 0; i < pts.size(); i++) {
-						size_t j = (i + 1) % pts.size();
-						LineSegmentd seg(*pts[i], *pts[j]);
-						RayHitd hit;
-						if (meshTriPlane.intersectLineSegment(seg, hit, tol)) {
-							hits.push_back(hit);
-						}
-					}
-
-					if (hits.empty())
-						return false;
-
-					const auto& triNorm = meshTriPlane.getNormal();
-					vector<Vector3d> meshTriDirs = {
-						(*meshTriPts[0] - *meshTriPts[1]).normalized(),
-						(*meshTriPts[1] - *meshTriPts[2]).normalized(),
-						(*meshTriPts[2] - *meshTriPts[0]).normalized(),
-					};
-
-					vector<Vector3d> meshTriPerpDirs = {
-						meshTriDirs[0].cross(triNorm).normalized(),
-						meshTriDirs[1].cross(triNorm).normalized(),
-						meshTriDirs[2].cross(triNorm).normalized(),
-					};
-
-					// Test if a poly edge intersects inside a mesh triangle
-					bool inside = true;
-					for (const auto& hit : hits) {
-						for (int i = 0; i < 3; i++) {
-							Vector3d v = hit.hitPt - *meshTriPts[i];
-							Vector3d vPerp = meshTriPerpDirs[i];
-							double dist = v.dot(vPerp);
-							if (dist > tol) {
-								inside = false;
-								break;
-							}
-						}
-						if (inside) {
-							_cachedIntersectsModel = IS_TRUE;
-							pFace->_cachedIntersectsModel = IS_TRUE;
-							return false; // Exit lambda loop
-						}
-					}
-				}
-#else
-				pModelFace->iterateTrianglePts([this, nTris, &pMeshTriData](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
-					const auto tol = Tolerance::sameDistTol();
-					const Vector3d* modelTriPts[] = { &pt0, &pt1, &pt2 };
-					Planed modelTriPlane(modelTriPts, false);
-					const LineSegment_byrefd modelTriSegs[] = {
-						LineSegment_byrefd(pt0, pt1),
-						LineSegment_byrefd(pt1, pt2),
-						LineSegment_byrefd(pt2, pt0),
-					};
-
-
-					for (size_t i = 0; i < nTris; i++) {
-						size_t triIdx = 3 * i;
-						const Vector3d* meshTriPts[] = {
-							pMeshTriData[triIdx + 0].first,
-							pMeshTriData[triIdx + 1].first,
-							pMeshTriData[triIdx + 2].first,
-						};
-
-						const LineSegment_byrefd meshTriSegs[] = {
-							LineSegment_byrefd(*meshTriPts[0], *meshTriPts[1]),
-							LineSegment_byrefd(*meshTriPts[1], *meshTriPts[2]),
-							LineSegment_byrefd(*meshTriPts[2], *meshTriPts[0]),
-						};
-
-						LineSegmentd iSeg[2];
-						if (!intersectPlaneTri(modelTriPlane, meshTriSegs, iSeg[0], tol))
-							continue;
-
-						Planed meshTriPlane(meshTriPts, false);
-
-						if (!intersectPlaneTri(meshTriPlane, modelTriSegs, iSeg[1], tol))
-							continue;
-
-						if (segsOverlap(iSeg, tol, Tolerance::divideByZeroTol())) {
-							_cachedIntersectsModel = IS_TRUE;
-							auto pFace = pMeshTriData[triIdx].second;
-							if (pFace)
-								pFace->setIntersectsModel(IS_TRUE);
-							break;
-						}
-					}
-
-					return _cachedIntersectsModel != IS_TRUE;
-				});
-#endif
+				const auto& polyId = indices[idx];
+				auto pModelFace = model.getPolygon(polyId);
+				pModelFace->intersectHexMeshTris(nTris, pMeshTriData, _cachedIntersectsModel);
 
 				return _cachedIntersectsModel != IS_TRUE;
 			}, RUN_MULTI_SUB_THREAD);

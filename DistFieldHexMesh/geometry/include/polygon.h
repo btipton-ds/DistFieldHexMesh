@@ -192,7 +192,7 @@ public:
 	bool intersect(const LineSegment_byrefd& seg, RayHitd& hit) const;
 	bool intersect(const Planed& pl, LineSegmentd& intersectionSeg) const;
 	bool intersect(const Polygon& otherFace, bool dumpObj) const;
-	bool intersect(const std::vector<const Vector3d*>& cellTriPts) const;
+	void intersectHexMeshTris(size_t numTris, const std::pair<const Vector3d*, const Polygon*>* pMeshTriData, Trinary& result) const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
