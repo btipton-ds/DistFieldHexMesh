@@ -633,55 +633,6 @@ bool Splitter3D::cellBoundsContainsFace(const std::vector<Planed>& boundingPlane
 	return true;
 }
 
-void Splitter3D::bisectHexCell_old(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds)
-{
-	Index3DId testId(2, 4, 7, 0);
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (testId == parentId) {
-		int dbgBreak = 1;
-	}
-#endif
-	auto& parentCell = getPolyhedron(parentId);
-
-	MTC::vector<MTC::vector<Vector3d>> subCellPts;
-	MTC::vector<Vector3d> splittingFacePts;
-	parentCell.makeHexCellPoints(splitAxis, subCellPts, splittingFacePts);
-	MTC::vector<Index3DId> splittingFaceVertIds;
-	for (const auto& pt : splittingFacePts)
-		splittingFaceVertIds.push_back(vertId(pt));
-	auto splittingFaceId = getBlockPtr()->addPolygon(Polygon(splittingFaceVertIds));
-
-#if DEBUG_BREAKS && defined(_DEBUG)
-	if (testId == _polyhedronId) {
-		stringstream ss;
-		ss << "splittingFace_" << getBlockPtr()->getLoggerNumericCode(splittingFaceId);
-		MTC::vector<Index3DId> ids;
-		ids.push_back(splittingFaceId);
-		getBlockPtr()->dumpPolygonObj(ss.str(), ids);
-	}
-#endif
-
-	auto& splittingFace = getPolygon(splittingFaceId);
-	auto n = splittingFace.calUnitNormal();
-
-	const auto& faceIds = parentCell.getFaceIds();
-
-	splittingFace.imprintFaces(faceIds);
-
-	imprintSplittingFaceVerts(parentCell, splittingFaceId);
-
-	// faceIds is a reference and is modifed by the preceding operations. It's value has changed.
-	FastBisectionSet<Index3DId> allCellFaceIds(faceIds);
-	parentCell.detachFaces();
-	for (int i = 0; i < 2; i++) {
-		Index3DId cellId = makeCellFromHexFaces(parentId, splittingFaceId, subCellPts[i], allCellFaceIds, i == 1);
-		newCellIds.push_back(cellId);
-	}
-
-	_createdCellIds.erase(parentId);
-	getBlockPtr()->freePolyhedron(parentId);
-}
-
 void Splitter3D::finalizeCreatedCells()
 {
 	const auto& model = _pBlock->getModel();
@@ -704,7 +655,9 @@ void Splitter3D::finalizeCreatedCells()
 
 				if (createdCell._pPolySearchTree) {
 					size_t numInTree = createdCell._pPolySearchTree->numInTree();
-					if (numInTree > MAX_SUB_TREE_COUNT) {
+					if (numInTree == 0)
+						createdCell._pPolySearchTree = nullptr;
+					else if (numInTree > MAX_SUB_TREE_COUNT) {
 						size_t n = createdCell._pPolySearchTree->count(subBbox, createdCell.getRefiner());
 						if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
 							// Splitting small trees takes time and memory, so only reduce larger ones

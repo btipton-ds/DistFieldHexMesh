@@ -121,7 +121,9 @@ void Polyhedron::initializeSearchTree() const
 
 		if (_pPolySearchTree) {
 			size_t numInTree = _pPolySearchTree->numInTree();
-			if (numInTree > MAX_SUB_TREE_COUNT) {
+			if (numInTree == 0)
+				_pPolySearchTree = nullptr;
+			else if (numInTree > MAX_SUB_TREE_COUNT) {
 				auto bbox = getBoundingBox();
 				size_t n = _pPolySearchTree->count(bbox, getRefiner());
 				if (numInTree > SUB_TREE_SPLIT_RATIO * n) {
@@ -1305,13 +1307,6 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 bool Polyhedron::intersectsModel() const
 {
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
-#if 1 && defined(_DEBUG)
-		static mutex mut;
-		lock_guard lg(mut);
-#endif
-		const auto tol = Tolerance::sameDistTol();
-		Utils::Timer tmr(Utils::Timer::TT_polyhedronIntersectsModel);
-
 		for (const auto& id : _faceIds) {
 			auto& face = getPolygon(id);
 			if (face.intersectsModel()) {
@@ -1320,62 +1315,25 @@ bool Polyhedron::intersectsModel() const
 			}
 		}
 
-		vector<PolyMeshIndex> indices;
-		if (getPolyIndices(indices) != 0) {
+		auto pTree = getPolySearchTree();
+		if (pTree) {
 			vector<pair<const Vector3d*, const Polygon*>> cellTriPts;
 			createTriPoints(cellTriPts);
 
 			auto& model = getModel();
-
-#if INTERSECT_MODEL_MULTITHREAD
-			auto pVol = getOurBlockPtr()->getVolume();
-			auto& tp = pVol->getThreadPool();
-			size_t numSteps = indices.size();
-			size_t minStepsToMultiThread = 500;
-			tp.runSub(numSteps, minStepsToMultiThread, [this, tol, &model, &cellTriPts, &indices](size_t threadNum, size_t idx)->bool {
+			auto& bbox = getBoundingBox();
+			pTree->traverse(bbox, [this, &cellTriPts, &model](const PolyMeshIndex& polyIdx)->bool {
 				size_t nTris = cellTriPts.size() / 3;
 				auto pMeshTriData = cellTriPts.data();
-#else
-			size_t nTris = cellTriPts.size() / 3;
-			auto pMeshTriData = cellTriPts.data();
-			for (size_t idx = 0; idx < indices.size(); idx++) {
-#endif
-				auto pModelFace = model.getPolygon(indices[idx]);
+				auto pModelFace = model.getPolygon(polyIdx);
 
 				pModelFace->intersectHexMeshTris(nTris, pMeshTriData, _cachedIntersectsModel);
 
-#if INTERSECT_MODEL_MULTITHREAD
 				return _cachedIntersectsModel != IS_TRUE;
-			}, RUN_MULTI_SUB_THREAD);
-#else
-				if (_cachedIntersectsModel == IS_TRUE)
-					break;
-			}
-#endif
-#undef INTERSECT_MODEL_MULTITHREAD
-
-			// This covers small faces which lie completely inside the cell, but don't
-			auto& bbox = getBoundingBox();
-			if (_cachedIntersectsModel == IS_UNKNOWN) {
-				for (size_t idx = 0; idx < indices.size(); idx++) {
-					auto pModelFace = model.getPolygon(indices[idx]);
-					const auto& vertIds = pModelFace->getVertexIds();
-					for (const auto& id : vertIds) {
-						const auto& pt = pModelFace->getVertexPoint(id);
-						if (pointInside(pt)) {
-							_cachedIntersectsModel = IS_TRUE;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-
-		if (_cachedIntersectsModel != IS_TRUE)
+			});
+		} else
 			_cachedIntersectsModel = IS_FALSE;
 	}
-
 	return _cachedIntersectsModel == IS_TRUE; // Don't test split cells
 }
 

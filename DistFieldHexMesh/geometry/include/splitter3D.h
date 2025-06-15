@@ -83,7 +83,6 @@ private:
 	bool intersectsModel(const Polyhedron& testCell) const;
 	bool needsCurvatureSplit(const Polyhedron& testCell, int axis) const;
 	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
-	void bisectHexCell_old(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintCellOnFace(const Index3DId& splittingFaceId, const Polyhedron& parentCell);
 	void splitCell(Polyhedron& parentCell, const Index3DId& splittingFaceId);
 	bool splitFace(Polygon& targetFace, const EdgeKey& toolEdgeKey);
