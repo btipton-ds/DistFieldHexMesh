@@ -41,7 +41,7 @@ This file is part of the DistFieldHexMesh application/library.
 #define ENABLE_BACKGROUND_PROCESSING 1
 #define USE_REFINER 0 // Refiner is working, but slows things down by about 2.5 times.
 #define COALESCE_POINTS_BEFORE_LOOPING 0
-#define ENABLE_DEBUGGING_MUTEXES (0 && _DEBUG && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
+#define ENABLE_DEBUGGING_MUTEXES (1 && _DEBUG && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
 #define ENABLE_VERIFY_THREAD_AND_BLOCK_IDX_MATCH 0
 #define ENABLE_MODEL_SEARCH_TREE_VERIFICATION 0
 #define USE_CELL_HISTOGRAM 0

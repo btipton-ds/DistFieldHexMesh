@@ -185,6 +185,7 @@ public:
 	bool imprintFace(const Index3DId& faceId);
 	bool imprintFaces(const FastBisectionSet<Index3DId>& faceIds);
 	bool imprintEdge(const EdgeKey& edgeKey);
+	bool imprintVert(const Index3DId& vertId);
 	bool imprintVerts(const std::vector<Index3DId>& vertIds);
 	bool isPlanar() const;
 	bool intersect(const Rayd& ray, RayHitd& hit) const;
@@ -208,6 +209,10 @@ public:
 	void iterateEdges(F fLambda) const;
 	template<class F>
 	void iterateEdges(F fLambda);
+
+	template<class F>
+	void iterateEdgeKeys(F fLambda) const;
+
 	template<class F>
 	void iterateOrientedEdges(F fLambda, const Index3DId& cellId) const;
 
@@ -368,6 +373,19 @@ void Polygon::iterateEdges(F fLambda)
 		edgeFunc(ek, [&result, &fLambda](Edge& edge) {
 			result = fLambda(edge);
 			});
+
+		if (!result)
+			break;
+	}
+}
+
+template<class F>
+void Polygon::iterateEdgeKeys(F fLambda) const
+{
+	for (size_t i = 0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		EdgeKey ek(_vertexIds[i], _vertexIds[j]);
+		bool result = fLambda(ek);
 
 		if (!result)
 			break;

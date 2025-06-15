@@ -1113,32 +1113,13 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum);
 #if ENABLE_DEBUGGING_MUTEXES
-			set<Index3DId> testIds({
-				Index3DId(2, 0, 3, 126),
-				Index3DId(2, 0, 3, 127),
-				Index3DId(2, 0, 3, 128),
-				Index3DId(2, 0, 3, 129),
-				Index3DId(2, 0, 3, 130),
-				});
-			if (testIds.contains(cellId)) {
-				static mutex mut;
-				lock_guard lg(mut);
-				if (splitter.splitAtCenter()) {
-					didSplit = true;
-					assert(!polyhedronExists(cellId));
-				}
-			} else {
-				if (splitter.splitAtCenter()) {
-					didSplit = true;
-					assert(!polyhedronExists(cellId));
-				}
-			}
-#else
+			static mutex mut;
+			lock_guard lg(mut);
+#endif
 			if (splitter.splitAtCenter()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}
-#endif
 		}
 	}
 
@@ -1616,8 +1597,71 @@ void Block::NAME##Func(const KEY& key, const function<void(CONST CLASS& obj)>& f
 EDGE_IMPL(NAME, KEY, const, CLASS) \
 EDGE_IMPL(NAME, KEY, , CLASS)
 
-
+#if 0
 IMPLS(vertex, Index3DId, _vertices, Vertex)
 IMPLS(face, Index3DId, _polygons, Polygon)
 IMPLS(cell, Index3DId, _polyhedra, Polyhedron)
 EDGE_IMPLS(edge, EdgeKey, Edge)
+#endif
+
+void Block::vertexFunc(const Index3DId& id, const function<void(const Vertex& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+}
+
+void Block::vertexFunc(const Index3DId& id, const function<void(Vertex& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_vertices.exists(id)) 
+		func(p->_vertices[id]);
+}
+
+void Block::faceFunc(const Index3DId& id, const function<void(const Polygon& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+}
+
+void Block::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polygons.exists(id)) 
+		func(p->_polygons[id]);
+}
+
+void Block::cellFunc(const Index3DId& id, const function<void(const Polyhedron& obj)>& func) const {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+}
+
+void Block::cellFunc(const Index3DId& id, const function<void(Polyhedron& obj)>& func) {
+	auto p = getOwner(id); 
+	if (p->_polyhedra.exists(id)) 
+		func(p->_polyhedra[id]);
+}
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
+	auto& idx = getBlockIdx(); 
+	const Block* p; 
+	if (idx.withinRange(key[0])) 
+		p = getOwner(key[0]); 
+	else if (idx.withinRange(key[1])) 
+		p = getOwner(key[1]); 
+	if (p) {
+		Edge edge(key, p); 
+		func(edge);
+	}
+}
+
+void Block::edgeFunc(const EdgeKey& key, const function<void(Edge& obj)>& func) {
+	auto& idx = getBlockIdx();  
+	Block* p; 
+	if (idx.withinRange(key[0])) 
+		p = getOwner(key[0]); 
+	else if (idx.withinRange(key[1])) 
+		p = getOwner(key[1]); 
+	if (p) {
+		Edge edge(key, p); 
+		func(edge);
+	}
+}

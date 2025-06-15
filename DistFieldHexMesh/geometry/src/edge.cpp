@@ -43,54 +43,76 @@ namespace {
 	const double MAX_CURVATURE = DBL_MAX / 100; // Divid by 100 so that averaging several won't result in floating point overflow.
 }
 
-Edge::Edge(const EdgeKey& src, const Block* pBlock)
+EdgeStorage::EdgeStorage(const EdgeKey& src, const Block* pBlock)
 	: EdgeKey(src)
 	, _pBlock(const_cast<Block*>(pBlock))
 {
 }
 
-Edge::Edge(const EdgeKey& src, const PolyMesh* pPolyMesh)
+EdgeStorage::EdgeStorage(const EdgeKey& src, const PolyMesh* pPolyMesh)
 	: EdgeKey(src)
 	, _pPolyMesh(const_cast<PolyMesh*>(pPolyMesh))
 {
 }
 
-void Edge::initFaceIds() const
+EdgeStorage::EdgeStorage(const EdgeStorage& src, const Block* pBlock)
+	: EdgeKey(src)
+	, _pBlock(const_cast<Block*>(pBlock))
 {
-	_faceIds.clear();
+}
 
-	const auto& vert0 = getVertex(_vertexIds[0]);
-	auto& face0Ids = vert0.getFaceIds();
+EdgeStorage::EdgeStorage(const EdgeStorage& src, const PolyMesh* pPolyMesh)
+	: EdgeKey(src)
+	, _pPolyMesh(const_cast<PolyMesh*>(pPolyMesh))
+{
+}
 
-	const auto& vert1 = getVertex(_vertexIds[1]);
-	auto& face1Ids = vert1.getFaceIds();
+Edge::Edge(const EdgeKey& src, const Block* pBlock)
+	: EdgeStorage(src, pBlock)
+{
+}
 
-	auto p0 = face0Ids.data();
-	auto p1 = face1Ids.data();
+Edge::Edge(const EdgeKey& src, const PolyMesh* pPolyMesh)
+	: EdgeStorage(src, pPolyMesh)
+{
+}
 
-	if (face0Ids.size() < face1Ids.size()) {
-		for (size_t i = 0; i < face0Ids.size(); i++) {
-			if (face1Ids.contains(*p0)) {
-				_faceIds.insert(*p0);
+void EdgeStorage::initFaceIds() const
+{
+	if (_faceIds.empty()) {
+		const auto& vert0 = getVertex(_vertexIds[0]);
+		auto& face0Ids = vert0.getFaceIds();
+
+		const auto& vert1 = getVertex(_vertexIds[1]);
+		auto& face1Ids = vert1.getFaceIds();
+
+		auto p0 = face0Ids.data();
+		auto p1 = face1Ids.data();
+
+		if (face0Ids.size() < face1Ids.size()) {
+			for (size_t i = 0; i < face0Ids.size(); i++) {
+				if (face1Ids.contains(*p0)) {
+					_faceIds.insert(*p0);
+				}
+				p0++;
 			}
-			p0++;
-		}
-	} else {
-		for (size_t i = 0; i < face1Ids.size(); i++) {
-			if (face0Ids.contains(*p1)) {
-				_faceIds.insert(*p1);
+		} else {
+			for (size_t i = 0; i < face1Ids.size(); i++) {
+				if (face0Ids.contains(*p1)) {
+					_faceIds.insert(*p1);
+				}
+				p1++;
 			}
-			p1++;
 		}
 	}
 }
 
 const Vector3d& Edge::getVertexPoint(const Index3DId& id) const
 {
-	if (_pBlock)
-		return _pBlock->getVertexPoint(id);
-	else if (_pPolyMesh)
-		return _pPolyMesh->getVertexPoint(id);
+	if (getBlockPtr())
+		return getBlockPtr()->getVertexPoint(id);
+	else if (getPolyMeshPtr())
+		return getPolyMeshPtr()->getVertexPoint(id);
 
 	throw runtime_error("Bad vertex id");
 }
@@ -102,7 +124,7 @@ double Edge::sameParamTol() const
 
 double Edge::getLength() const
 {
-	LineSegmentd seg(getVertexPoint(_vertexIds[0]), getVertexPoint(_vertexIds[1]));
+	LineSegment_byrefd seg(getVertexPoint(_vertexIds[0]), getVertexPoint(_vertexIds[1]));
 	return seg.calLength();
 }
 
@@ -113,8 +135,8 @@ Vector3d Edge::calCenter() const
 
 Vector3d Edge::calUnitDir() const
 {
-	Vector3d pt0 = getVertexPoint(_vertexIds[0]);
-	Vector3d pt1 = getVertexPoint(_vertexIds[1]);
+	auto& pt0 = getVertexPoint(_vertexIds[0]);
+	auto& pt1 = getVertexPoint(_vertexIds[1]);
 	Vector3d v = pt1 - pt0;
 	v.normalize();
 	return v;
@@ -175,11 +197,11 @@ double Edge::calCurvature(const SplittingParams& params) const
 {
 	const auto distTol = Tolerance::sameDistTol();
 
-	initFaceIds();
-	if (_faceIds.size() != 2)
+	auto& faceIds = getFaceIds();
+	if (faceIds.size() != 2)
 		return 0;
 
-	auto iter = _faceIds.begin();
+	auto iter = faceIds.begin();
 	auto faceId0 = *iter++;
 	auto faceId1 = *iter;
 
@@ -197,12 +219,12 @@ double Edge::calCurvature(const SplittingParams& params) const
 		return MAX_CURVATURE;
 
 	MTC::vector<Index3DId> nclVerts0, nclVerts1;
-	if (_pBlock) {
-		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pBlock, face0.getVertexIds());
-		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(_pBlock, face1.getVertexIds());
-	} else if (_pPolyMesh) {
-		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face0.getVertexIds());
-		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(_pPolyMesh, face1.getVertexIds());
+	if (getBlockPtr()) {
+		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(getBlockPtr(), face0.getVertexIds());
+		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(getBlockPtr(), face1.getVertexIds());
+	} else if (getPolyMeshPtr()) {
+		nclVerts0 = PolygonSearchKey::makeNonColinearVertexIds(getPolyMeshPtr(), face0.getVertexIds());
+		nclVerts1 = PolygonSearchKey::makeNonColinearVertexIds(getPolyMeshPtr(), face1.getVertexIds());
 	}
 
 	for (int i = 0; i < 2; i++) {
@@ -412,13 +434,12 @@ bool Edge::isConnectedTo(const Edge& other) const
 
 double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 {
-	if (_faceIds.empty())
-		initFaceIds();
+	auto& faceIds = getFaceIds();
 
-	if (_faceIds.size() != 2)
+	if (faceIds.size() != 2)
 		return 0;
 
-	auto iter = _faceIds.begin();
+	auto iter = faceIds.begin();
 	const auto& faceId0 = *iter++;
 	const auto& faceId1 = *iter;
 	Vector3d normal0, normal1;
@@ -451,13 +472,12 @@ bool Edge::isOriented(const Index3DId& refCellId) const
 {
 	bool result = true;
 
-	if (_faceIds.empty())
-		initFaceIds();
+	auto& faceIds = getFaceIds();
 
-	if (_faceIds.size() != 2)
+	if (faceIds.size() != 2)
 		return false;
 
-	auto iter = _faceIds.begin();
+	auto iter = faceIds.begin();
 	const auto& id0 = *iter++;
 	const auto& id1 = *iter;
 
@@ -488,9 +508,8 @@ LineSegmentd Edge::getSegment() const
 
 bool Edge::containsFace(const Index3DId& faceId) const
 {
-	if (_faceIds.empty())
-		initFaceIds();
-	return _faceIds.contains(faceId);
+	auto& faceIds = getFaceIds();
+	return faceIds.contains(faceId);
 }
 
 bool Edge::vertexLiesOnEdge(const Index3DId& vertexId) const
@@ -508,7 +527,7 @@ bool Edge::pointLiesOnEdge(const Vector3d& pt) const
 
 }
 
-MTC::set<Index3DId> Edge::getCellIds() const
+MTC::set<Index3DId> EdgeStorage::getCellIds() const
 {
 	MTC::set<Index3DId> result;
 	auto& faceIds = getFaceIds();
@@ -523,6 +542,28 @@ MTC::set<Index3DId> Edge::getCellIds() const
 					}
 				}
 			});
+		}
+	}
+
+	return result;
+}
+
+bool Edge::imprintVertex(const Index3DId& vertId)
+{
+	bool result = false;
+	if (!containsVertex(vertId)) {
+		const auto tol = Tolerance::sameDistTol();
+		const auto& pt = getVertexPoint(vertId);
+		const auto& pt0 = getVertexPoint(_vertexIds[0]);
+		const auto& pt1 = getVertexPoint(_vertexIds[1]);
+		LineSegment_byrefd seg(pt0, pt1);
+		double t;
+		if (seg.contains(pt, t, tol)) {
+			auto& faceIds = getFaceIds();
+			for (const auto& faceId : faceIds) {
+				auto& face = getBlockPtr()->getPolygon(faceId);
+				result = face.imprintVert(vertId) || result;
+			}
 		}
 	}
 
@@ -550,11 +591,9 @@ void Edge::read(std::istream& in)
 bool Edge::verifyTopology() const
 {
 	bool result = true;
+	auto& faceIds = getFaceIds();
 
-	if (_faceIds.empty())
-		initFaceIds();
-
-	for (const auto& faceId : _faceIds) {
+	for (const auto& faceId : faceIds) {
 		faceFunc(faceId, [this, &result](const Polygon& face) {
 			if (!face.containsEdge(*this))
 				result = false;
@@ -571,8 +610,9 @@ ostream& DFHM::operator << (ostream& out, const EdgeKey& edge)
 	return out;
 }
 
-//LAMBDA_CLIENT_IMPLS(Edge)
-void Edge::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
+//LAMBDA_CLIENT_IMPLS(EdgeStorage)
+
+void EdgeStorage::vertexFunc(const Index3DId& id, const std::function<void(const Vertex& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	if (p) 
 		p->vertexFunc(id, func); 
@@ -581,9 +621,10 @@ void Edge::vertexFunc(const Index3DId& id, const std::function<void(const Vertex
 		if (p2) 
 			p2->vertexFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-void Edge::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
+void EdgeStorage::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)>& func) {
 	auto p = getBlockPtr(); 
 	if (p) 
 		p->vertexFunc(id, func); 
@@ -592,9 +633,10 @@ void Edge::vertexFunc(const Index3DId& id, const std::function<void(Vertex& obj)
 		if (p2) 
 			p2->vertexFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-void Edge::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
+void EdgeStorage::faceFunc(const Index3DId& id, const std::function<void(const Polygon& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	if (p) 
 		p->faceFunc(id, func); 
@@ -603,9 +645,10 @@ void Edge::faceFunc(const Index3DId& id, const std::function<void(const Polygon&
 		if (p2) 
 			p2->faceFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-void Edge::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
+void EdgeStorage::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>& func) {
 	auto p = getBlockPtr(); 
 	if (p) 
 		p->faceFunc(id, func); 
@@ -614,9 +657,10 @@ void Edge::faceFunc(const Index3DId& id, const std::function<void(Polygon& obj)>
 		if (p2) 
 			p2->faceFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-void Edge::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
+void EdgeStorage::cellFunc(const Index3DId& id, const std::function<void(const Polyhedron& obj)>& func) const {
 	const auto p = getBlockPtr(); 
 	if (p) 
 		p->cellFunc(id, func); 
@@ -625,20 +669,21 @@ void Edge::cellFunc(const Index3DId& id, const std::function<void(const Polyhedr
 		if (p2) 
 			p2->cellFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-void Edge::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
+void EdgeStorage::cellFunc(const Index3DId& id, const std::function<void(Polyhedron& obj)>& func) {
 	auto p = getBlockPtr(); 
-	if (p) 
-		p->cellFunc(id, func); 
+	if (p) p->cellFunc(id, func); 
 	else {
 		auto p2 = getPolyMeshPtr(); 
 		if (p2) 
 			p2->cellFunc(id, func);
 	}
-} 
+	throw std::runtime_error("Entity does not exist");
+}
 
-const Vertex& Edge::getVertex(const Index3DId& id) const {
+const Vertex& EdgeStorage::getVertex(const Index3DId& id) const {
 	const auto p = getBlockPtr(); 
 	if (p) 
 		return p->getVertex(id); 
@@ -650,7 +695,7 @@ const Vertex& Edge::getVertex(const Index3DId& id) const {
 	throw std::runtime_error("Entity does not exist");
 }  
 
-Vertex& Edge::getVertex(const Index3DId& id) {
+Vertex& EdgeStorage::getVertex(const Index3DId& id) {
 	auto p = getBlockPtr(); 
 	if (p) 
 		return p->getVertex(id); 
@@ -662,7 +707,7 @@ Vertex& Edge::getVertex(const Index3DId& id) {
 	throw std::runtime_error("Entity does not exist");
 } 
 
-const DFHM::Polygon& Edge::getPolygon(const Index3DId& id) const {
+const DFHM::Polygon& EdgeStorage::getPolygon(const Index3DId& id) const {
 	const auto p = getBlockPtr(); 
 	if (p) 
 		return p->getPolygon(id); 
@@ -674,9 +719,10 @@ const DFHM::Polygon& Edge::getPolygon(const Index3DId& id) const {
 	throw std::runtime_error("Entity does not exist");
 }  
 
-DFHM::Polygon& Edge::getPolygon(const Index3DId& id) {
-	auto p = getBlockPtr(); if (p) 
-		return p->getPolygon(id); 
+DFHM::Polygon& EdgeStorage::getPolygon(const Index3DId& id) {
+	auto p = getBlockPtr(); 
+	if (p) return 
+		p->getPolygon(id); 
 	else {
 		auto p2 = getPolyMeshPtr(); 
 		if (p2) 
@@ -685,8 +731,9 @@ DFHM::Polygon& Edge::getPolygon(const Index3DId& id) {
 	throw std::runtime_error("Entity does not exist");
 } 
 
-const Polyhedron& Edge::getPolyhedron(const Index3DId& id) const {
-	const auto p = getBlockPtr(); if (p) 
+const Polyhedron& EdgeStorage::getPolyhedron(const Index3DId& id) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
 		return p->getPolyhedron(id); 
 	else {
 		const auto p2 = getPolyMeshPtr(); 
@@ -696,8 +743,9 @@ const Polyhedron& Edge::getPolyhedron(const Index3DId& id) const {
 	throw std::runtime_error("Entity does not exist");
 }  
 
-Polyhedron& Edge::getPolyhedron(const Index3DId& id) {
-	auto p = getBlockPtr(); if (p) 
+Polyhedron& EdgeStorage::getPolyhedron(const Index3DId& id) {
+	auto p = getBlockPtr(); 
+	if (p) 
 		return p->getPolyhedron(id); 
 	else {
 		auto p2 = getPolyMeshPtr(); 
@@ -707,8 +755,9 @@ Polyhedron& Edge::getPolyhedron(const Index3DId& id) {
 	throw std::runtime_error("Entity does not exist");
 } 
 
-void Edge::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
-	const auto p = getBlockPtr(); if (p) 
+void EdgeStorage::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj)>& func) const {
+	const auto p = getBlockPtr(); 
+	if (p) 
 		p->edgeFunc(key, func); 
 	else {
 		const auto p2 = getPolyMeshPtr(); 
@@ -717,8 +766,9 @@ void Edge::edgeFunc(const EdgeKey& key, const std::function<void(const Edge& obj
 	}
 } 
 
-void Edge::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
-	auto p = getBlockPtr(); if (p) 
+void EdgeStorage::edgeFunc(const EdgeKey& key, const std::function<void(Edge& obj)>& func) {
+	auto p = getBlockPtr(); 
+	if (p) 
 		p->edgeFunc(key, func); 
 	else {
 		auto p2 = getPolyMeshPtr(); 

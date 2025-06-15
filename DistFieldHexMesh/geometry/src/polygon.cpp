@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <set>
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -926,23 +927,12 @@ bool Polygon::imprintFaces(const FastBisectionSet<Index3DId>& faceIds)
 	return result;
 }
 
-bool Polygon::imprintVerts(const vector<Index3DId>& vertIds)
+bool Polygon::imprintVert(const Index3DId& vertId)
 {
 	const double tol = Tolerance::sameDistTol();
 
-	auto facePlane = calPlane();
-	vector<Vector3d> coplanarPts;
-	vector<Index3DId> coplanarVerts;
-	for (const auto& imprintVert : vertIds) {
-		Vector3d pt = getVertexPoint(imprintVert);
-		if (facePlane.isCoincident(pt, tol)) {
-			coplanarPts.push_back(pt);
-			coplanarVerts.push_back(imprintVert);
-		}
-	}
-
 	MTC::vector<Index3DId> tmp;
-
+	tmp.reserve(_vertexIds.size() + 1);
 
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
@@ -951,23 +941,15 @@ bool Polygon::imprintVerts(const vector<Index3DId>& vertIds)
 		const auto& pt0 = getVertexPoint(_vertexIds[i]);
 		const auto& pt1 = getVertexPoint(_vertexIds[j]);
 
-		for (size_t i = 0; i < coplanarVerts.size(); i++) {
-#if VALIDATION_ON
-			if (!getId().withinRange(imprintVert))
-				continue;
-#endif	
-			bool imprinted = false;
-			LineSegment_byrefd seg(pt0, pt1);
-			double t;
-			const auto& pt = coplanarPts[i];
-			bool contains = seg.contains(pt, t, tol) && tol < t && t < 1 - tol;
-			if (contains) {
-				tmp.push_back(coplanarVerts[i]);
-				imprinted = true;
-				break;
-			}
+		LineSegment_byrefd seg(pt0, pt1);
+		double t;
+		const auto& pt = getVertexPoint(vertId);
+		bool contains = seg.contains(pt, t, tol) && tol < t && t < 1 - tol;
+		if (contains) {
+			tmp.push_back(vertId);
 		}
 	}
+	
 
 	if (tmp.size() > _vertexIds.size()) {
 		disconnectVertEdgeTopology();
@@ -979,6 +961,8 @@ bool Polygon::imprintVerts(const vector<Index3DId>& vertIds)
 		_vertexIds = tmp;
 
 		connectVertEdgeTopology();
+
+		// TODO This should be moved to only where it's needed
 		for (const auto& id : _cellIds) {
 			getBlockPtr()->addToTouchedCellList(id);
 		}
@@ -986,6 +970,16 @@ bool Polygon::imprintVerts(const vector<Index3DId>& vertIds)
 	}
 
 	return false;
+}
+
+bool Polygon::imprintVerts(const vector<Index3DId>& vertIds)
+{
+	bool result = false;
+	for (const auto& vertId : vertIds) {
+		result = imprintVert(vertId) || result;
+	}
+
+	return result;
 }
 
 bool Polygon::isPlanar() const

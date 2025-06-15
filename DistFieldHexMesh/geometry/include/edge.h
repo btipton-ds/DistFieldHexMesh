@@ -50,8 +50,68 @@ class PolyMesh;
 class Vertex;
 class Polygon;
 class Polyhedron;
+class Edge;
 
-class Edge : public EdgeKey {
+// EdgeStorage holds data for an Edge which is not used by an EdgeKey.
+// It is not REQUIRED, but having it assures that _faceIds can only be accessed by getFaceIds() 
+// which assures that _faceIds is initialized first.
+// Lack of this led to several lost days fixing a new function which did not call initFaceIds().
+class EdgeStorage : public EdgeKey {
+public:
+	EdgeStorage(const EdgeStorage& src) = default;
+	EdgeStorage(const EdgeKey& src, const Block* pBlock);
+	EdgeStorage(const EdgeKey& src, const PolyMesh* pBlock);
+	EdgeStorage(const EdgeStorage& src, const Block* pBlock);
+	EdgeStorage(const EdgeStorage& src, const PolyMesh* pBlock);
+	const MTC::set<Index3DId>& getFaceIds() const;
+	MTC::set<Index3DId> getCellIds() const;
+
+	LAMBDA_CLIENT_DECLS
+
+protected:
+	Block* getBlockPtr();
+	const Block* getBlockPtr() const;
+
+	const PolyMesh* getPolyMeshPtr() const;
+	PolyMesh* getPolyMeshPtr();
+
+	void initFaceIds() const;
+
+private:
+	Block* _pBlock = nullptr;
+	PolyMesh* _pPolyMesh = nullptr;
+	mutable MTC::set<Index3DId> _faceIds;
+};
+
+inline Block* EdgeStorage::getBlockPtr()
+{
+	return _pBlock;
+}
+
+inline const Block* EdgeStorage::getBlockPtr() const
+{
+	return _pBlock;
+}
+
+inline const PolyMesh* EdgeStorage::getPolyMeshPtr() const
+{
+	return _pPolyMesh;
+}
+
+inline PolyMesh* EdgeStorage::getPolyMeshPtr()
+{
+	return _pPolyMesh;
+}
+
+inline const MTC::set<Index3DId>& EdgeStorage::getFaceIds() const
+{
+	initFaceIds();
+	return _faceIds;
+}
+
+/*******************************************************************************************************/
+
+class Edge : public EdgeStorage {
 public:
 
 	Edge(const Edge& src) = default;
@@ -60,8 +120,6 @@ public:
 
 	bool vertexLiesOnEdge(const Index3DId& vertexId) const;
 	bool pointLiesOnEdge(const Vector3d& pt) const;
-	const MTC::set<Index3DId>& getFaceIds() const;
-	MTC::set<Index3DId> getCellIds() const;
 
 	double sameParamTol() const;
 	double getLength() const;
@@ -96,56 +154,17 @@ public:
 	bool isConvex(const Index3DId& refCellId) const;
 	bool isOriented(const Index3DId& refCellId) const;
 
+	bool imprintVertex(const Index3DId& vertId);
+
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
 	bool verifyTopology() const;
 
-	LAMBDA_CLIENT_DECLS
-
 private:
-	Block* getBlockPtr();
-	const Block* getBlockPtr() const;
-
-	const PolyMesh* getPolyMeshPtr() const;
-	PolyMesh* getPolyMeshPtr();
-
-	void initFaceIds() const;
-
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 	double calCurvature(const Vector3d& origin, const Vector3d& ptAxis, const Vector3d& pt0, const Vector3d& pt1, const SplittingParams& params) const;
-
-	Block* _pBlock = nullptr;
-	PolyMesh* _pPolyMesh = nullptr;
-	mutable MTC::set<Index3DId> _faceIds;
 };
-
-inline const MTC::set<Index3DId>& Edge::getFaceIds() const
-{
-	if (_faceIds.empty())
-		initFaceIds();
-	return _faceIds;
-}
-
-inline Block* Edge::getBlockPtr()
-{
-	return _pBlock;
-}
-
-inline const Block* Edge::getBlockPtr() const
-{
-	return _pBlock;
-}
-
-inline const PolyMesh* Edge::getPolyMeshPtr() const
-{
-	return _pPolyMesh;
-}
-
-inline PolyMesh* Edge::getPolyMeshPtr()
-{
-	return _pPolyMesh;
-}
 
 std::ostream& operator << (std::ostream& out, const EdgeKey& edge);
 

@@ -739,7 +739,8 @@ void PolyMesh::createSharpEdgeLoops(const SplittingParams& params, std::vector<s
 	set<EdgeKey> sharpEdges;
 	_polygons.iterateInOrder([this, &params, &sharpEdges](const Index3DId& id, const Polygon& face)->bool {
 		face.iterateEdges([this, &params, &sharpEdges](const Edge& edge)->bool {
-			if (edge.getFaceIds().size() == 2) {
+			auto& faceEdges = edge.getFaceIds();
+			if (faceEdges.size() == 2) {
 				auto angle = calEdgeAngle(edge);
 				if (angle > params.getSharpAngleRadians())
 					sharpEdges.insert(edge);

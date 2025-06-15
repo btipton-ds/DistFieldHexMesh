@@ -83,7 +83,12 @@ private:
 	bool intersectsModel(const Polyhedron& testCell) const;
 	bool needsCurvatureSplit(const Polyhedron& testCell, int axis) const;
 	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
-	void imprintSplittingFace(const Index3DId& parentId, const Index3DId& splittingFaceId);
+	void bisectHexCell_old(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	void imprintCellOnFace(const Index3DId& splittingFaceId, const Polyhedron& parentCell);
+	void splitCell(Polyhedron& parentCell, const Index3DId& splittingFaceId);
+	bool splitFace(Polyhedron& targetCell, Polygon& targetFace, const EdgeKey& toolEdgeKey);
+	bool cellBoundsContainsFace(const std::vector<Planed>& boundingPlanes, const Index3DId& faceId);
+	bool imprintSplittingFaceVerts(const Polyhedron& parentCell, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,
 		FastBisectionSet<Index3DId>& allCellFaceIds, bool useAll);
 	void addFaceToLocalEdgeSet(std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
