@@ -114,6 +114,7 @@ public:
 	bool getSharpVertPlane(Planed& plane) const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 	const std::vector<Vector3d>& getModelCornerPts() const;
+	size_t numBlocks() const;
 
 	void setLayerNums();
 	void resetNumSplits();
@@ -259,6 +260,11 @@ inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 	else
 		idx = calLinearBlockIndex(blockIdx);
 	return _blocks[idx].get();
+}
+
+inline size_t Volume::numBlocks() const
+{
+	return _blocks.size();
 }
 
 inline const std::vector<Vector3d>& Volume::getModelCornerPts() const

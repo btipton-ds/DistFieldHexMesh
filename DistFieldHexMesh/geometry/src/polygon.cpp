@@ -602,12 +602,10 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 	auto pBlk = getBlockPtr();
 	Vector3d result = calUnitNormal();
 	auto& nonColin = getNonColinearVertexIds();
-	auto faceApproxCtr = calCentroidApproxStat(pBlk, nonColin);
-	Vector3d cellApproxCtr;
-	cellFunc(cellId, [&cellApproxCtr](const Polyhedron& cell) {
-		cellApproxCtr = cell.calCentroidApprox();
-	});
-	Vector3d v = faceApproxCtr - cellApproxCtr;
+	auto faceCtr = calCentroidApproxStat(pBlk, nonColin);
+	auto& cell = getPolyhedron(cellId);
+	Vector3d cellApproxCtr = cell.calCentroid();
+	Vector3d v = faceCtr - cellApproxCtr;
 	if (v.dot(result) < 0)
 		return -result;
 
@@ -636,11 +634,21 @@ Planed Polygon::calOrientedPlane(const Index3DId& cellId) const
 #if VALIDATION_ON && defined(_DEBUG)
 	for (const auto& vId : _vertexIds) {
 		Vector3d pt = getVertexPoint(vId);
-		assert(result.distFromPlane(pt) < Tolerance::sameDistTol());
+		assert(result.distanceToPoint(pt) < Tolerance::sameDistTol());
 	}
 #endif // _DEBUG
 
 	return result;
+}
+
+bool Polygon::isReversed(const Index3DId& cellId) const
+{
+	auto& cell = getPolyhedron(cellId);
+	Planed opl;
+	cell.calOrientatedPlane(getId(), opl);
+	auto& pl = calPlane();
+	auto result = pl.getNormal().dot(opl.getNormal());
+	return result < 0;
 }
 
 double Polygon::calVertexAngleStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, const Index3DId& vertId)
@@ -775,14 +783,6 @@ void Polygon::setIsConvex_risky(Convexity convexity)
 	_isConvex = convexity;
 }
 
-Vector3d Polygon::calCentroidApprox() const
-{
-	auto pBlk = getBlockPtr();
-	if (pBlk)
-		return calCentroidApproxStat(pBlk, _vertexIds);
-	return calCentroidApproxStat(getPolyMeshPtr(), _vertexIds);
-}
-
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
 	auto pl = calPlane();
@@ -844,14 +844,6 @@ void Polygon::addCellId(const Index3DId& cellId)
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(4, 6, 1, 0) == cellId) {
 		int dbgBreak = 1;
-	}
-	std::vector<Planed> boundaryPlanes;
-	getOurBlockPtr()->getVolume()->getModelBoundaryPlanes(boundaryPlanes);
-	auto pl = calPlane();
-	for (auto& bpl : boundaryPlanes) {
-		if (bpl.isCoincident(pl, Tolerance::sameDistTol(), Tolerance::planeCoincidentCrossProductTol())) {
-			assert(_cellIds.empty());
-		}
 	}
 #endif
 

@@ -146,15 +146,14 @@ Vector3d Edge::calCoedgeUnitDir(const Index3DId& faceId, const Index3DId& cellId
 {
 	Vector3d result;
 	bool found = false;
-	getBlockPtr()->faceFunc(faceId, [this, &cellId, &result, &found](const Polygon& face) {
-		face.iterateOrientedEdges([this, &cellId, &result, &found](const Edge& edge)->bool {
-			if (edge == *this) {
-				result = edge.calUnitDir();
-				found = true;
-			}
-			return !found; // continue the loop
-		}, cellId);
-	});
+	auto& face = getBlockPtr()->getPolygon(faceId);
+	face.iterateOrientedEdges([this, &cellId, &result, &found](const Edge& edge)->bool {
+		if (edge == *this) {
+			result = edge.calUnitDir();
+			found = true;
+		}
+		return !found; // continue the loop
+	}, cellId);
 
 	assert(found);
 	return result;
@@ -436,26 +435,34 @@ double Edge::calDihedralAngleRadians(const Index3DId& refCellId) const
 {
 	auto& faceIds = getFaceIds();
 
-	if (faceIds.size() != 2)
+	FastBisectionSet<Index3DId> refCellsFaceIds;
+	for (const auto& faceId : faceIds) {
+		auto& face = getPolygon(faceId);
+		if (face.getCellIds().contains(refCellId))
+			refCellsFaceIds.insert(faceId);
+	}
+	if (refCellsFaceIds.size() != 2)
 		return 0;
 
-	auto iter = faceIds.begin();
+	auto& cell = getBlockPtr()->getPolyhedron(refCellId);
+	auto cellCtr = cell.calCentroid();
+	auto iter = refCellsFaceIds.begin();
 	const auto& faceId0 = *iter++;
 	const auto& faceId1 = *iter;
-	Vector3d normal0, normal1;
-	getBlockPtr()->faceFunc(faceId0, [&normal0, &refCellId](const Polygon& face) {
-		normal0 = face.calOrientedUnitNormal(refCellId);
-	});
-	getBlockPtr()->faceFunc(faceId1, [&normal1, &refCellId](const Polygon& face) {
-		normal1 = face.calOrientedUnitNormal(refCellId);
-	});
 
-	const auto& zAxis = normal0;
-	Vector3d yAxis = calCoedgeUnitDir(faceId0, refCellId);
-	Vector3d xAxis = yAxis.cross(zAxis); // xAxis points from plane0 center to the edge
+	Planed plane0, plane1;
+	cell.calOrientatedPlane(faceId0, cellCtr, plane0);
+	cell.calOrientatedPlane(faceId1, cellCtr, plane1);
 
-	double cosTheta = -normal1.dot(zAxis);
-	double sinTheta = normal1.dot(xAxis);
+	const auto& normal0 = plane0.getNormal();
+	const auto& normal1 = plane1.getNormal();
+
+	const auto& xAxis = normal0;
+	Vector3d zAxis = calCoedgeUnitDir(faceId0, refCellId);
+	Vector3d yAxis = zAxis.cross(xAxis); // xAxis points from plane0 center to the edge
+
+	double cosTheta = normal1.dot(xAxis);
+	double sinTheta = normal1.dot(yAxis);
 	double angle = atan2(sinTheta, cosTheta);
 
 	return angle;

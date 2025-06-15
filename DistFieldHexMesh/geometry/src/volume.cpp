@@ -726,34 +726,6 @@ void Volume::divideHexMesh(const Model& model, const SplittingParams& params, Pr
 
 void Volume::dumpCellHistogram() const
 {
-#if USE_CELL_HISTOGRAM
-
-	map<size_t, size_t> faceCountHistogram;
-	vector<map<size_t, size_t>> faceCountHistograms;
-	faceCountHistograms.resize(MultiCore::getNumCores());
-	runThreadPool([&faceCountHistograms](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder([&threadNum, &faceCountHistograms](const Index3DId& cellId, const Polyhedron& cell) {
-			cell.addToFaceCountHistogram(faceCountHistograms[threadNum]);
-		});
-		return true;
-	}, false && RUN_MULTI_THREAD);
-
-	size_t total = 0;
-	for (const auto& histo : faceCountHistograms) {
-		for (const auto& pair : histo) {
-			auto iter = faceCountHistogram.find(pair.first);
-			if (iter == faceCountHistogram.end())
-				iter = faceCountHistogram.insert(make_pair(pair.first, 0)).first;
-			iter->second += pair.second;
-			total += pair.second;
-		}
-	}
-
-	cout << "Total cells: " << total << "\n";
-	for (const auto& pair : faceCountHistogram) {
-		cout << "numFaces: " << pair.first << " - count: " << pair.second << "\n";
-	}
-#endif
 }
 
 /*
@@ -1407,22 +1379,6 @@ void Volume::writeObj(ostream& out, const vector<Index3DId>& cellIds, bool inclu
 			});
 		}
 	}
-
-#if USE_CELL_HISTOGRAM
-	for (const auto& cellId : cellIds) {
-		out << "#CellId " << cellId << "\n";
-		getBlockPtr(cellId)->cellFunc(cellId, [this, &out](const Polyhedron& cell) {
-			const auto& parentIds = cell.getParentIds();
-			if (!parentIds.empty()) {
-				out << "  parentIds:";
-				for (const auto& parentId : parentIds) {
-					out << " " << parentId;
-				}
-				out << "\n";
-			}
-		});
-	}
-#endif
 
 	out << "#Vertices " << pts.size() << "\n";
 	for (const auto& pt : pts) {

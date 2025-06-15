@@ -1066,8 +1066,8 @@ double PolyMesh::calEdgeAngle(const Edge& edge) const
 	const auto& face0 = getPolygon(*iter++);
 	const auto& face1 = getPolygon(*iter);
 
-	auto ctr0 = face0.calCentroidApprox();
-	auto ctr1 = face1.calCentroidApprox();
+	auto ctr0 = face0.calCentroid();
+	auto ctr1 = face1.calCentroid();
 
 	Vector3d xAxis = origin - ctr0;
 	xAxis = xAxis - zAxis * zAxis.dot(xAxis);

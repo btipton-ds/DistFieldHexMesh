@@ -86,7 +86,7 @@ private:
 	void bisectHexCell_old(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintCellOnFace(const Index3DId& splittingFaceId, const Polyhedron& parentCell);
 	void splitCell(Polyhedron& parentCell, const Index3DId& splittingFaceId);
-	bool splitFace(Polyhedron& targetCell, Polygon& targetFace, const EdgeKey& toolEdgeKey);
+	bool splitFace(Polygon& targetFace, const EdgeKey& toolEdgeKey);
 	bool cellBoundsContainsFace(const std::vector<Planed>& boundingPlanes, const Index3DId& faceId);
 	bool imprintSplittingFaceVerts(const Polyhedron& parentCell, const Index3DId& splittingFaceId);
 	Index3DId makeCellFromHexFaces(const Index3DId& parentId, const Index3DId& splittingFaceId, const MTC::vector<Vector3d>& cornerPts,

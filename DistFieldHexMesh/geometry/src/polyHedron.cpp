@@ -85,7 +85,6 @@ Polyhedron::Polyhedron(const MultiCore::vector<Index3DId>& faceIds, const MultiC
 Polyhedron::Polyhedron(const vector<Index3DId>& faceIds, const vector<Index3DId>& cornerVertIds)
 {
 	_faceIds = faceIds;
-	_canonicalVertices.clear();
 	_canonicalVertices.insert(_canonicalVertices.end(), cornerVertIds.begin(), cornerVertIds.end());
 }
 
@@ -327,7 +326,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 
 void Polyhedron::copyCaches(const Polyhedron& src)
 {
-	_isOriented = src._isOriented;
 	_needsCurvatureCheck = src._needsCurvatureCheck;
 
 	_cachedIsClosed = src._cachedIsClosed;
@@ -906,7 +904,7 @@ Vector3d Polyhedron::calCentroidApprox() const
 	Vector3d ctr(0, 0, 0);
 
 	for (const auto& id : _canonicalVertices) {
-		ctr += getBlockPtr()->getVertexPoint(id);
+		ctr += getVertexPoint(id);
 	}
 
 	ctr /= _canonicalVertices.size();
@@ -917,18 +915,20 @@ Vector3d Polyhedron::calCentroidApprox() const
 double Polyhedron::calVolume() const
 {
 	double vol = 0;
+	Vector3d cellCtr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this, &vol](const Polygon& face) {
-			const Vector3d zAxis(0, 0, 1);
-			Vector3d norm = face.calOrientedUnitNormal(getId());
-			double area;
-			Vector3d ctr;
-			face.calAreaAndCentroid(area, ctr);
-			double h = ctr.dot(zAxis);
-			double dp = norm.dot(zAxis);
-			double v = dp * h * area;
-			vol += v;
-		});
+		auto& face = getPolygon(faceId);
+		const Vector3d zAxis(0, 0, 1);
+		Vector3d norm = face.calUnitNormal();
+		double area;
+		Vector3d faceCtr;
+		face.calAreaAndCentroid(area, faceCtr);
+		Planed pl;
+		calOrientatedPlane(faceId, cellCtr, pl);
+		double h = faceCtr.dot(zAxis);
+		double dp = pl.getNormal().dot(zAxis);
+		double deltaVol = dp * h * area;
+		vol += deltaVol;
 	}
 	return vol;
 }
@@ -1192,17 +1192,22 @@ bool Polyhedron::isConvex() const
 #endif
 
 	bool result = true;
-	const auto& edgeKeys = getEdgeKeys(false);
-	for (const auto& edgeKey : edgeKeys) {
-		edgeFunc(edgeKey, [this, &result](const Edge& edge) {
-			if (!edge.isConvex(getId())) {
-				result = false;
+	auto& id = getId();
+	set<EdgeKey> testedEdgeKeys;
+	for (const auto& faceId : _faceIds) {
+		auto& face = getPolygon(faceId);
+		face.iterateOrientedEdges([&testedEdgeKeys, &id, &result](const Edge& edge)->bool {
+			if (!testedEdgeKeys.contains(edge)) {
+				testedEdgeKeys.insert(edge);
+				if (!edge.isConvex(id)) {
+					result = false;
+				}
 			}
-		});
 
-		if (!result)
-			break;
+			return !result;
+		}, id);
 	}
+
 	return result;
 }
 
@@ -1213,23 +1218,19 @@ bool Polyhedron::pointInside(const Vector3d& pt) const
 	if (!bbox.contains(pt, tol))
 		return false;
 
-	bool inside = true;
-	auto ctr = calCentroidApprox();
+	auto cellCtr = calCentroid();
 	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&ctr, &pt, &inside](const Polygon& face) {
-			auto& pl = face.calPlane();
-			auto ctrDist = pl.distanceToPoint(ctr, false);
-			double sign = ctrDist > 0 ? -1 : 1;
+		auto& face = getPolygon(faceId);
+		Planed pl;
+		calOrientatedPlane(faceId, cellCtr, pl);
 
-			double dist = sign * pl.distanceToPoint(pt, false);
-			if (dist > Tolerance::paramTol())
-				inside = false;
-		});
-		if (!inside)
-			break;
+		double dist = pl.distanceToPoint(pt, false);
+		if (dist > Tolerance::paramTol()) {
+			return false;
+		}
 	}
 
-	return inside;
+	return true;
 }
 
 bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
@@ -1456,33 +1457,6 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 	}
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
-
-#if USE_CELL_HISTOGRAM
-void Polyhedron::addToFaceCountHistogram(map<size_t, size_t>& histo) const
-{
-	size_t numFaces = getNumFaces();
-
-	switch (numFaces) {
-		case 6:
-		case 9:
-		case 12:
-			break;
-		default: {
-			cout << "Split history of bad cell with " << numFaces << " faces:\n";
-			for (const auto& id : _parentIds) {
-				cout << "  " << id << "\n";
-			}
-			cout << "  " << getId() << "\n";
-
-			break;
-		}
-	}
-	auto iter = histo.find(numFaces);
-	if (iter == histo.end())
-		iter = histo.insert(make_pair(numFaces, 0)).first;
-	iter->second++;
-}
-#endif
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
@@ -1734,69 +1708,6 @@ bool Polyhedron::containsSharps() const
 	return false;
 }
 
-void Polyhedron::orientFaces()
-{
-	if (_isOriented)
-		return;
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this](Polygon& face) {
-			face.setReversed(getId(), false);
-		});
-	}
-
-	MTC::set<Index3DId> orientedIds, unorientedIds;
-	unorientedIds.insert(_faceIds.begin(), _faceIds.end());
-	orientedIds.insert(*unorientedIds.begin());
-	unorientedIds.erase(*orientedIds.begin());
-	while (!unorientedIds.empty()) {
-		bool found = false;
-		for (const auto& oriented : orientedIds) {
-			faceFunc(oriented, [&](const Polygon& orientedFace) {
-				orientedFace.iterateOrientedEdges([&](const Edge& edgeA) {
-					for (const auto& unoriented : unorientedIds) {
-						faceFunc(unoriented, [&](Polygon& unorientedFace) {
-							unorientedFace.iterateOrientedEdges([&](const Edge& edgeB) {
-								if (edgeA == edgeB) {
-									if (edgeA[0] == edgeB[0]) { // face is reversed
-										unorientedFace.flipReversed(getId());
-									}
-									orientedIds.insert(unoriented);
-									unorientedIds.erase(unoriented);
-									found = true;
-								}
-								return !found;
-							}, getId());
-						});
-
-						if (found)
-							break;
-					}
-					return !found;
-				}, getId());
-			});
-
-			if (found)
-				break;
-		}
-	}
-
-
-	double vol = calVolume();
-	if (vol < 0) {
-		// flip all face orientation flags
-		for (auto& faceId : _faceIds) {
-			faceFunc(faceId, [this](Polygon& face) {
-				face.flipReversed(getId());
-			});
-		}
-		vol = calVolume();
-		assert(vol > 0);
-	}
-
-	_isOriented = true;
-}
-
 void Polyhedron::attachFaces()
 {
 	for (const auto& faceId : _faceIds) {
@@ -1909,9 +1820,28 @@ double Polyhedron::minGap() const
 	return _cachedMinGap;
 }
 
-inline bool Polyhedron::polygonExists(const Index3DId& id) const
+bool Polyhedron::polygonExists(const Index3DId& id) const
 {
 	return getBlockPtr()->polygonExists(id);
+}
+
+void Polyhedron::calOrientatedPlane(const Index3DId& id, Planed& pl) const
+{
+	auto ctr = calCentroid();
+	return calOrientatedPlane(id, ctr, pl);
+}
+
+void Polyhedron::calOrientatedPlane(const Index3DId& id, const Vector3d& cellCtr, Planed& pl) const
+{
+	const auto& face = getPolygon(id);
+	auto faceCtr = face.calCentroid();
+	auto v = faceCtr - cellCtr;
+
+	pl = face.calPlane();
+	auto dp = v.dot(pl.getNormal());
+	auto fdp = fabs(dp);
+	if (fdp > 0 && dp / fdp < 0)
+		pl.reverse();
 }
 
 void Polyhedron::createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const
@@ -2143,7 +2073,6 @@ bool Polyhedron::verifyTopology() const
 void Polyhedron::clearCache() const
 {
 	_needsCurvatureCheck = true;
-	_isOriented = false;
 
 	_cachedIntersectsModel = IS_UNKNOWN; // Cached value
 	_sharpEdgesIntersectModel = IS_UNKNOWN;

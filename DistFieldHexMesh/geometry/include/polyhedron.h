@@ -99,6 +99,8 @@ public:
 	Vector3d calCentroidApprox() const;
 	double calVolume() const;
 	double calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& quadPoints, size_t step) const;
+	void calOrientatedPlane(const Index3DId& faceId, Planed& facePlane) const;
+	void calOrientatedPlane(const Index3DId& faceId, const Vector3d& cellCtr, Planed& facePlane) const;
 	bool isClosed() const;
 	bool isOriented() const;
 	bool exists() const;
@@ -118,9 +120,7 @@ public:
 
 	void setIntersectsModel(bool val);
 	bool sharpEdgesIntersectModel(const SplittingParams& params) const;
-#if USE_CELL_HISTOGRAM
-	void addToFaceCountHistogram(std::map<size_t, size_t>& histo) const;
-#endif
+
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
@@ -142,7 +142,6 @@ public:
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
 	bool setNeedToSplitConditional(size_t passNum, const SplittingParams& params);
-	void orientFaces();
 
 	void attachFaces();
 	void detachFaces();
@@ -176,16 +175,11 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
-#if USE_CELL_HISTOGRAM
 	inline void setParentId(const Index3DId& id)
 	{
-		_parentIds.push_back(id);
+		_parentId = id;
 	}
-	const std::vector<Index3DId>& getParentIds() const
-	{
-		return _parentIds;
-	}
-#endif
+
 	LAMBDA_CLIENT_DECLS
 
 protected:
@@ -222,9 +216,6 @@ private:
 		The same applies for faces with split edges, but the number of faces is only 1.
 	*/
 	Index3DId _parentId;
-#if USE_CELL_HISTOGRAM
-	std::vector<Index3DId> _parentIds;
-#endif
 	FastBisectionSet<Index3DId> _faceIds;
 
 	// _canonicalVertices are the vertices that define the polyhedron 4 = tet, 5 = pyramid, 6 = triangular prism, 8 = hexahedron, 12 = hexagonal cylinder
@@ -237,7 +228,6 @@ private:
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
 
-	mutable bool _isOriented = false;
 	mutable bool _needsCurvatureCheck = true;
 
 	mutable Trinary _cachedIsClosed = IS_UNKNOWN;

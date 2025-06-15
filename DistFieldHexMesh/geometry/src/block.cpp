@@ -668,25 +668,23 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 #endif // _DEBUG
 
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
-	auto& newCell = _polyhedra[cellId];
-#if USE_CELL_HISTOGRAM
+	auto& newCell = getPolyhedron(cellId);
 	newCell.setParentId(parentCellId);
-#endif
+
 	const auto& cellFaceIds = newCell.getFaceIds();
 
 	for (const auto& faceId : cellFaceIds) {
-		faceFunc(faceId, [this, &cellId](Polygon& cellFace) {
-			cellFace.addCellId(cellId);
-		});
+		auto& cellFace = getPolygon(faceId);
+		cellFace.addCellId(cellId);
 	}
-//	newCell.orientFaces();
 
 #if VALIDATION_ON && defined(_DEBUG)
-	auto& ctr = newCell.calCentroid();
-	assert(newCell.pointInside(ctr));
-	assert(newCell.isOriented());
+	auto eks = newCell.getEdgeKeys(false);
+	assert(newCell.isClosed());
 //	assert(newCell.isConvex());
 	assert(newCell.calVolume() > 0);
+	auto& ctr = newCell.calCentroid();
+	assert(newCell.pointInside(ctr));
 #endif
 
 	return cellId;

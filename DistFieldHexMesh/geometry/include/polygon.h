@@ -128,8 +128,6 @@ public:
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
 	bool isReversed(const Index3DId& cellId) const; // Orientation is relative to cellId
-	void setReversed(const Index3DId& cellId, bool reversed); // Orientation is relative to cellId
-	void flipReversed(const Index3DId& cellId); // Orientation is relative to cellId
 	size_t numCells() const;
 	const FastBisectionSet<Index3DId>& getCellIds() const;
 
@@ -176,7 +174,6 @@ public:
 	const Vector3d& calCentroid() const;
 	void setCentroid_risky(const Vector3d& val);
 	void setIsConvex_risky(Convexity convexity);
-	Vector3d calCentroidApprox() const;
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
 	Vector3d projectPoint(const Vector3d& pt) const;
 	void setIntersectsModel(Trinary val) const;
@@ -260,38 +257,6 @@ inline double Polygon::bboxOffsetDist()
 inline bool Polygon::verifyUnique() const
 {
 	return verifyUniqueStat(_vertexIds);
-}
-
-inline void Polygon::setReversed(const Index3DId& cellId, bool reversed)
-{
-	for (auto& id : _cellIds) {
-		if (id == cellId) {
-			id.setUserFlag(UF_FACE_REVERSED, reversed);
-			break;
-		}
-	}
-}
-
-inline void Polygon::flipReversed(const Index3DId& cellId) // Orientation is relative to cellId
-{
-	for (const auto& id : _cellIds) {
-		if (id == cellId) {
-			bool reversed = id.isUserFlagSet(UF_FACE_REVERSED);
-			id.setUserFlag(UF_FACE_REVERSED, !reversed);
-			break;
-		}
-	}
-}
-
-inline bool Polygon::isReversed(const Index3DId& cellId) const
-{
-	for (const auto& id : _cellIds) {
-		if (id == cellId) {
-			return id.isUserFlagSet(UF_FACE_REVERSED);
-		}
-	}
-	return false;
-
 }
 
 inline size_t Polygon::numCells() const
