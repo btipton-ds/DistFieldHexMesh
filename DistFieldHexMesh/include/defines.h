@@ -38,6 +38,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #define RUN_MULTI_THREAD 1
 #define RUN_MULTI_SUB_THREAD 1
+#define INTERSECT_MODEL_MULTITHREAD 0
+
 #define ENABLE_BACKGROUND_PROCESSING 1
 #define USE_REFINER 0 // Refiner is working, but slows things down by about 2.5 times.
 #define COALESCE_POINTS_BEFORE_LOOPING 0

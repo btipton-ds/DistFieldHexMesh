@@ -1327,7 +1327,6 @@ bool Polyhedron::intersectsModel() const
 
 			auto& model = getModel();
 
-#define INTERSECT_MODEL_MULTITHREAD 0
 #if INTERSECT_MODEL_MULTITHREAD
 			auto pVol = getOurBlockPtr()->getVolume();
 			auto& tp = pVol->getThreadPool();
