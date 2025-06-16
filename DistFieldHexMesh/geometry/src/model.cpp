@@ -63,10 +63,10 @@ void Model::setBounds(const BOX_TYPE& bbox)
 size_t Model::add(const MeshDataPtr& pData)
 {
 	CBoundingBox3Dd bbox;
-	for (const auto& model : _modelMeshData) {
-		bbox.merge(model->getMesh()->getBBox());
+	for (const auto& pData : _modelMeshData) {
+		bbox.merge(pData->getBBox());
 	}
-	bbox.merge(pData->getMesh()->getBBox());
+	bbox.merge(pData->getBBox());
 	setBounds(bbox);
 
 	size_t meshIdx = _modelMeshData.size();
@@ -80,10 +80,7 @@ void Model::rebuildSearchTree()
 	CBoundingBox3Dd bbox;
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
 		auto& pData = _modelMeshData[meshIdx];
-		auto& pMesh = pData->getMesh();
-		if (pMesh) {
-			bbox.merge(pMesh->getBBox());
-		}
+		bbox.merge(pData->getBBox());
 	}
 
 	bbox.grow(Polygon::bboxOffsetDist());

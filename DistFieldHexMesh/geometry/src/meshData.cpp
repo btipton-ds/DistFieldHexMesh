@@ -79,6 +79,15 @@ void MeshData::clear()
 	_sharpPointTess = nullptr;
 }
 
+CBoundingBox3Dd MeshData::getBBox() const
+{
+	if (_pPolyMesh)
+		return _pPolyMesh->getBBox();
+	else if (_pMesh)
+		return _pMesh->getBBox();
+	return CBoundingBox3Dd();
+}
+
 size_t MeshData::numBytes() const
 {
 	size_t result = sizeof(MeshData);
@@ -154,8 +163,6 @@ void MeshData::read(std::istream& in)
 
 	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
-	
-	postReadCreate();
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const

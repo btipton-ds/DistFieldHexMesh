@@ -144,6 +144,22 @@ void PolyMesh::initClosed()
 	}
 }
 
+const CBoundingBox3Dd& PolyMesh::getBBox() const
+{
+	if (_bbox.empty()) {
+		_polygons.iterateInOrder([this](const Index3DId& faceId, const Polygon& face) {
+			const auto& vertIds = face.getVertexIds();
+			for (const auto& id : vertIds) {
+				const auto& pt = face.getVertexPoint(id);
+				_bbox.merge(pt);
+			}
+		});
+	}
+
+	return _bbox;
+}
+
+
 bool PolyMesh::isClosed() const
 {
 	return _isClosed == IS_TRUE;

@@ -83,6 +83,7 @@ namespace DFHM {
 		void simplify(const SplittingParams& params, bool flattenQuads);
 		void calCurvatures();
 		double getEdgeCurvature(const EdgeKey& key) const;
+		const CBoundingBox3Dd& getBBox() const;
 		void initClosed();
 		bool isClosed() const;
 
@@ -142,6 +143,7 @@ namespace DFHM {
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
 		MTC::map<EdgeKey, double> _edgeCurvatures;
+		mutable CBoundingBox3Dd _bbox;
 
 		mutable Trinary _isClosed = IS_UNKNOWN;
 	};

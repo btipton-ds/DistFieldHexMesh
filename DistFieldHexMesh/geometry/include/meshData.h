@@ -66,6 +66,7 @@ namespace DFHM {
 
 		size_t numBytes() const;
 		size_t getId() const;
+		CBoundingBox3Dd getBBox() const;
 
 		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;

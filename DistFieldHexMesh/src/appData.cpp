@@ -296,6 +296,11 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         meshes.push_back(pData);
         bbox.merge(pData->getMesh()->getBBox());
     }
+    MultiCore::runLambda([&meshes](size_t threadNum, size_t numThreads) {
+        for (size_t i = threadNum; i < meshes.size(); i += numThreads) {
+            meshes[i]->postReadCreate();
+        }
+    }, true);
 
     _model.setBounds(bbox);
     for (auto& pData : meshes) {
