@@ -20,7 +20,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -824,12 +824,21 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 		_cachedCentroid = centroid;
 }
 
-Vector3d Polygon::projectPoint(const Vector3d& pt) const
+Vector2d Polygon::projectPoint(const Vector3d& pt) const
 {
-	Vector3d origin = getVertexPoint(_vertexIds[0]); // And point will do
-	Vector3d normal = calUnitNormal();
-	Plane pl(origin, normal);
-	auto result = pl.projectPoint(pt);
+	auto& origin = getVertexPoint(_vertexIds[0]); // And point will do
+	auto& zAxis = calUnitNormal();
+	Vector3d xAxis(1, 0, 0);
+	if (fabs(zAxis.dot(xAxis) > 0.7071)) {
+		xAxis = Vector3d(0, 1, 0);
+		if (fabs(zAxis.dot(xAxis) > 0.7071)) {
+			xAxis = Vector3d(0, 0, 1);
+		}
+	}
+	xAxis.normalize();
+	Vector3d yAxis = zAxis.cross(xAxis);
+	Vector3d v = pt - origin;
+	Vector2d result(v.dot(xAxis), v.dot(yAxis));
 
 	return result;
 }
@@ -1232,22 +1241,31 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 {
 	const double tol = Tolerance::sameDistTol();
 	Plane_byref pl(pt, norm);
-	if (!pl.isCoincident(pt, tol) || isConvex() == IS_CONCAVE)
+	if (!pl.isCoincident(pt, tol))
 		return false;
 
 	auto& nclinVerts = getNonColinearVertexIds();
+	vector<Vector2d> pts2D;
+	pts2D.resize(nclinVerts.size());
 	for (size_t i = 0; i < nclinVerts.size(); i++) {
-		size_t j = (i + 1) % nclinVerts.size();
-		const auto& pt0 = getVertexPoint(nclinVerts[i]);
-		const auto& pt1 = getVertexPoint(nclinVerts[j]);
-		Vector3d vEdge = (pt1 - pt0).normalized();
-		Vector3d vPerpInside = norm.cross(vEdge); // Perpendicular to edge, point left (inside).
-		Vector3d v = pt - pt0;
-		if (v.dot(vPerpInside) < -tol)
-			return false;
+		pts2D[i] = projectPoint(getVertexPoint(nclinVerts[i]));
 	}
 
-	return true;
+	Vector2d pt2d = projectPoint(pt);
+	LineSegment2d ray(pt2d, pt2d + Vector2d(1, 0));
+	size_t count = 0;
+	for (size_t i = 0; i < pts2D.size(); i++) {
+		size_t j = (i + 1) % nclinVerts.size();
+		const auto& pt0 = pts2D[i];
+		const auto& pt1 = pts2D[j];
+		LineSegment2d polyLeg(pt0, pt1);
+		Vector2d iPt;
+		if (polyLeg.intersectRay(ray, iPt)) {
+			count++;
+		}
+	}
+
+	return count % 2 == 1;
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

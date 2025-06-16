@@ -20,7 +20,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -114,6 +114,39 @@ const PolyMesh* PolyMesh::getPolyMeshPtr() const
 PolyMesh* PolyMesh::getPolyMeshPtr()
 {
 	return this;
+}
+
+void PolyMesh::initClosed()
+{
+	if (_isClosed == IS_UNKNOWN) {
+		_isClosed = IS_TRUE;
+
+		map<EdgeKey, int> edgeMap;
+		_polygons.iterateInOrder([&edgeMap](const Index3DId& faceId, const Polygon& face) {
+			face.iterateEdgeKeys([&edgeMap](const EdgeKey& ek)->bool {
+				auto iter = edgeMap.find(ek);
+				if (iter == edgeMap.end()) {
+					iter = edgeMap.insert(make_pair(ek, 0)).first;
+				}
+				iter->second++;
+				return true;
+				});
+			});
+
+		size_t numOpen = 0;
+		for (const auto& pair : edgeMap) {
+			if (pair.second != 2) {
+				numOpen++;
+			}
+		}
+
+		_isClosed = numOpen < 2 ? IS_TRUE : IS_FALSE;
+	}
+}
+
+bool PolyMesh::isClosed() const
+{
+	return _isClosed == IS_TRUE;
 }
 
 const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const

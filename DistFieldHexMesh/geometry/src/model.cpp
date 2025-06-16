@@ -20,7 +20,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -104,6 +104,45 @@ void Model::rebuildSearchTree()
 	}
 }
 
+bool Model::isPointInside(const Vector3d& pt) const
+{
+	if (_pPolyMeshSearchTree) {
+		int numInside = 0;
+		for (int i = 0; i < 3; i++) {
+			Vector3d v(0, 0, 0);
+			v[i] = 1;
+			Rayd ray(pt, v);
+			size_t count = 0;
+			_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, &count](const Rayd& ray, const PolyMeshIndex& polyIdx)->bool {
+				if (polyIdx.getMeshIdx() >= _modelMeshData.size())
+					return true;
+				auto pData = _modelMeshData[polyIdx.getMeshIdx()];
+				if (!pData || !pData->isActive())
+					return true;
+
+				auto& pMesh = pData->getPolyMesh();
+				if (!pMesh || !pMesh->isClosed())
+					return true;
+
+				const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
+
+				RayHitd hit;
+				if (face.intersect(ray, hit)) {
+					count++;
+				}
+
+				return true;
+			});
+
+			if ((count % 2) == 1)
+				numInside++;
+		}
+		// If 2 out of 3 are inside, count it as inside
+		return numInside >= 2;
+	}
+	return false;
+}
+
 size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& result) const
 {
 	std::vector<PolyMeshSearchTree::Entry> entries;
@@ -159,10 +198,10 @@ size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner*
 	return result.size();
 }
 
-bool DFHM::Model::rayCast(const Ray<double>& ray, MultiPolyMeshRayHit& hit, bool biDir) const
+bool DFHM::Model::rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir) const
 {
 	double minDist = DBL_MAX; // Distance increases deeper in the view. Min distance is closest to the viewer - aka the first hit
-	_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, biDir, &hit, &minDist](const Ray<double>& ray, const PolyMeshIndex& polyIdx)->bool {
+	_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, biDir, &hit, &minDist](const Rayd& ray, const PolyMeshIndex& polyIdx)->bool {
 		if (polyIdx.getMeshIdx() >= _modelMeshData.size())
 			return true;
 		auto pData = _modelMeshData[polyIdx.getMeshIdx()];

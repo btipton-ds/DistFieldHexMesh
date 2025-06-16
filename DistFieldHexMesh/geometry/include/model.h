@@ -22,7 +22,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -84,10 +84,12 @@ public:
 	std::vector<MeshDataPtr>::const_iterator begin() const;
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
+	bool isPointInside(const Vector3d&  pt) const;
+
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& indices) const;
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
 
-	bool rayCast(const Ray<double>& ray, MultiPolyMeshRayHit& hit, bool biDir = true) const;
+	bool rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir = true) const;
 
 	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;

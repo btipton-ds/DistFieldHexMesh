@@ -22,7 +22,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -176,6 +176,7 @@ private:
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(const SplittingParams& params, bool doRequired, bool multiCore);
+	void deleteInteriorCells(const SplittingParams& params, bool multiCore);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 

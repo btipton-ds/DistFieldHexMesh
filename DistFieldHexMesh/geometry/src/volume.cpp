@@ -20,7 +20,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -754,6 +754,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 		}, multiCore);
 
 		finishSplits(params, true, multiCore);
+		deleteInteriorCells(params, multiCore);
 		pReporter->reportProgress();
 	}
 }
@@ -810,6 +811,8 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			}
 		}
 
+//		deleteInteriorCells(params, multiCore);
+
 		if (changed) {
 			cout << "Complexity splitting was incomplete. numComplexityPasses: " << numComplexityPasses << "\n";
 		} else {
@@ -861,6 +864,18 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			cout << "finishSplits complete. subPassNum: " << subPassNum << "\n";
 		}
 	}
+}
+
+void Volume::deleteInteriorCells(const SplittingParams& params, bool multiCore)
+{
+	runThreadPool_IJK([this, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder([&pBlk, &params](const Index3DId& cellId, Polyhedron& cell) {
+			if (cell.insideModel()) {
+				pBlk->freePolyhedron(cellId);
+			}
+		});
+		return true;
+	}, multiCore);
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)

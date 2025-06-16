@@ -22,7 +22,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -83,6 +83,8 @@ namespace DFHM {
 		void simplify(const SplittingParams& params, bool flattenQuads);
 		void calCurvatures();
 		double getEdgeCurvature(const EdgeKey& key) const;
+		void initClosed();
+		bool isClosed() const;
 
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
@@ -140,6 +142,8 @@ namespace DFHM {
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
 		MTC::map<EdgeKey, double> _edgeCurvatures;
+
+		mutable Trinary _isClosed = IS_UNKNOWN;
 	};
 
 	template<class FACE_FUNC>

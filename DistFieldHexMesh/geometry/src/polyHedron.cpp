@@ -20,7 +20,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -1262,6 +1262,27 @@ bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
 
 	return inside;
 
+}
+
+bool Polyhedron::insideModel() const
+{
+	if (_cachedIntersectsModel == IS_TRUE)
+		return false;
+
+	const auto& model = getModel();
+	bool allPointsInsided = true;
+	MTC::set<Index3DId> vertIds;
+	getVertIds(vertIds);
+
+	for (const auto& vertId : vertIds) {
+		const auto& pt = getVertexPoint(vertId);
+		if (!model.isPointInside(pt)) {
+			allPointsInsided = false;
+			break;
+		}
+	}
+
+	return allPointsInsided;
 }
 
 bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const

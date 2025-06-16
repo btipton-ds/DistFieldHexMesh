@@ -22,7 +22,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 	In lay terms, if you make a profit by using the DistFieldHexMesh application/library (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
-	Robert R Tipton - Author
+	Copyright Robert R Tipton, 2022, all rights reserved except those granted in prior license statement.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
@@ -33,6 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <triMeshPatch.h>
+#include <Vector2d.h>
 #include <tm_lineSegment.h>
 #include <tm_lineSegment_byref.h>
 #include <patient_lock_guard.h>
@@ -175,7 +176,7 @@ public:
 	void setCentroid_risky(const Vector3d& val);
 	void setIsConvex_risky(Convexity convexity);
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
-	Vector3d projectPoint(const Vector3d& pt) const;
+	Vector2d projectPoint(const Vector3d& pt) const;
 	void setIntersectsModel(Trinary val) const;
 
 	bool intersectsModel() const;
