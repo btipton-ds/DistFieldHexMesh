@@ -39,6 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectPool.h>
 #include <lambdaMacros.h>
 #include <fastBisectionSet.h>
+#include <polyMeshIndex.h>
 #include <meshData.h>
 #include <model.h>
 
@@ -50,6 +51,7 @@ namespace DFHM {
 struct SplittingParams;
 class Block;
 class Edge;
+using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
 public:
@@ -64,7 +66,7 @@ public:
 
 	void clear() override;
 	const PolyMeshSearchTree::Refiner* getRefiner() const;
-	bool entryIntersects(const Model::BOX_TYPE& bbox, const PolyMeshSearchTree::Entry& entry) const override;
+	bool entryIntersects(const PolyMeshSearchTree::BOX_TYPE& bbox, const PolyMeshSearchTree::Entry& entry) const override;
 
 	Polyhedron& operator = (const Polyhedron& rhs);
 	void copyCaches(const Polyhedron& src);

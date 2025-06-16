@@ -88,7 +88,7 @@ namespace DFHM {
 		MultiPolyMeshRayHit() = default;
 		MultiPolyMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist);
 		MultiPolyMeshRayHit(const MultiPolyMeshRayHit& src) = default;
-		MultiPolyMeshRayHit(const PolyMeshIndex& idx = {});
+		MultiPolyMeshRayHit(const PolyMeshIndex& idx);
 
 		void setPoint(const Vector3d& pt);
 		const Vector3d& getPoint() const;

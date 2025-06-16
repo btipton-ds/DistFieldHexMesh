@@ -453,8 +453,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     const auto& model = _pAppData->getModel();
 
     Vector3d hitModel;
-    double minDist = DBL_MAX;
-    bool hadHit = false;
+
     CBoundingBox3Dd bbox;
     Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (model.empty()) {
@@ -464,21 +463,10 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
         Rayd ray(startPt, dir);
-        vector<MultiPolyMeshRayHit> hits;
-        if (model.rayCast(ray, hits)) {
-            hadHit = true;
-            // Rotate about hit point
-            for (const auto& hit : hits) {
-                if (hit.getDist() < minDist) {
-                    const auto& face = model.getPolygon(hit);
-                    cout << "Model poly hit.idx: " << face->getId() << ", nV: " << face->getVertexIds().size() << "\n";
-                    minDist = hit.getDist();
-                    hitModel = hit.getPoint();
-                }
-            }
-        }
-
-        if (!hadHit) {
+        MultiPolyMeshRayHit hit;
+        if (model.rayCast(ray, hit)) {
+            hitModel = hit.getPoint();
+        } else {
             hitModel = bbox.getMin() + bbox.range() * 0.5;
         }
     }

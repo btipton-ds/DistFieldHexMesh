@@ -87,7 +87,8 @@ public:
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& indices) const;
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
 
-	size_t rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& hits, bool biDir = true) const;
+	bool rayCast(const Ray<double>& ray, MultiPolyMeshRayHit& hit, bool biDir = true) const;
+
 	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;
 
@@ -154,5 +155,7 @@ inline std::shared_ptr<const PolyMeshSearchTree> Model::getPolySubTree(const BOX
 {
 	return _pPolyMeshSearchTree->getSubTree(bbox, pRefiner);
 }
+
+
 
 }

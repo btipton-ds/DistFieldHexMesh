@@ -159,38 +159,46 @@ size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner*
 	return result.size();
 }
 
-size_t Model::rayCast(const Ray<double>& ray, std::vector<MultiPolyMeshRayHit>& hits, bool biDir) const
+bool DFHM::Model::rayCast(const Ray<double>& ray, MultiPolyMeshRayHit& hit, bool biDir) const
 {
-	vector<PolyMeshIndex> hitIndices;
-	if (_pPolyMeshSearchTree->biDirRayCast(ray, hitIndices)) {
-		for (const auto& polyIdx : hitIndices) {
-			auto pData = _modelMeshData[polyIdx.getMeshIdx()];
-			if (!pData->isActive())
-				continue;
+	double minDist = DBL_MAX; // Distance increases deeper in the view. Min distance is closest to the viewer - aka the first hit
+	_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, biDir, &hit, &minDist](const Ray<double>& ray, const PolyMeshIndex& polyIdx)->bool {
+		if (polyIdx.getMeshIdx() >= _modelMeshData.size())
+			return true;
+		auto pData = _modelMeshData[polyIdx.getMeshIdx()];
+		if (!pData || !pData->isActive())
+			return true;
 
-			auto& pMesh = pData->getPolyMesh();
-			const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
-			face.iterateTriangles([&ray, &pMesh, &polyIdx, biDir, &hits](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
-				const Vector3d* pts[] = {
-					&pMesh->getVertexPoint(idx0),
-					&pMesh->getVertexPoint(idx1),
-					&pMesh->getVertexPoint(idx2),
-				};
+		auto& pMesh = pData->getPolyMesh();
+		if (!pMesh)
+			return true;
 
-				RayHitd hit;
-				if (intersectRayTri(ray, pts, hit)) {
-					if (biDir || hit.dist > 0) {
-						MultiPolyMeshRayHit MTHit(polyIdx.getMeshIdx(), polyIdx.getPolyId(), hit.hitPt, hit.dist);
-						hits.push_back(MTHit);
+		const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
+		face.iterateTriangles([&ray, &pMesh, &polyIdx, &hit, &minDist, biDir](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
+			const Vector3d* pts[] = {
+				&pMesh->getVertexPoint(idx0),
+				&pMesh->getVertexPoint(idx1),
+				&pMesh->getVertexPoint(idx2),
+			};
+
+			RayHitd rayHit;
+			if (intersectRayTri(ray, pts, rayHit)) {
+				if (biDir) {
+					if (rayHit.dist < minDist) {
+						minDist = rayHit.dist;
+						hit = MultiPolyMeshRayHit(polyIdx.getMeshIdx(), polyIdx.getPolyId(), rayHit.hitPt, rayHit.dist);
 					}
+				} else if (rayHit.dist > 0 && rayHit.dist < minDist) {
+					minDist = rayHit.dist;
+					hit = MultiPolyMeshRayHit(polyIdx.getMeshIdx(), polyIdx.getPolyId(), rayHit.hitPt, rayHit.dist);
 				}
-				return true;
-			});
-		}
-	}
+			}
+			return true;
+		});
+		return true;
+	});
 
-	sort(hits.begin(), hits.end());
-	return hits.size();
+	return minDist != DBL_MAX;
 }
 
 const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
