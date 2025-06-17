@@ -507,6 +507,7 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 			if (pl.size() > max)
 				max = pl.size();
 		}
+#if 0
 		if (max > 50) {
 			static mutex mut;
 			lock_guard lg(mut);
@@ -514,6 +515,7 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 			writePolylinesObj("D:/DarkSky/Projects/output/objs/getCurvatures_pls");
 			int dbgBreak = 1;
 		}
+#endif
 		for (const auto& pl : pls) {
 			vector<size_t> indices;
 			size_t numIndices = pl.createVector(indices, _pts);
