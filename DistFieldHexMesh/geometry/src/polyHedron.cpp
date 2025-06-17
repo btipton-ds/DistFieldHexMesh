@@ -949,7 +949,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 	const auto& model = getModel();
 
 	int reflectionAxisBits = 0;
-# if 1
+# if 0
 	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
 		bool reflect = false;
 		switch (reflectionAxis) {
@@ -974,7 +974,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 		MTC::vector<const Vector3d*> pts;
 		pts.resize(nclinIds.size());
 		for (size_t i = 0; i < nclinIds.size(); i++) {
-			pts[i] = &getVertexPoint(nclinIds[i]);
+			pts[i] = &face->getVertexPoint(nclinIds[i]);
 		}
 		if (reflectionAxisBits == 0) {
 			sp.addFaceEdges(pts, false);
@@ -1458,8 +1458,10 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 #endif
 	bool result = false;
 	for (int axis = 0; axis < 3; axis++) {
-		if (needsCurvatureSplit(params, axis))
+		if (needsCurvatureSplit(params, axis)) {
 			result = true;
+			break;
+		}
 	}
 
 	return result;
@@ -1564,11 +1566,14 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 		throw runtime_error(ss.str());
 	}
 	case 0: // X axis is normal
-		pCurvature = &_cachedCurvatureYZPlane; break;
+		pCurvature = &_cachedCurvatureYZPlane; 
+		break;
 	case 1: // Y axis is normal
-		pCurvature = &_cachedCurvatureZXPlane; break;
+		pCurvature = &_cachedCurvatureZXPlane; 
+		break;
 	case 2: // Z Axis is normal
-		pCurvature = &_cachedCurvatureXYPlane; break;
+		pCurvature = &_cachedCurvatureXYPlane; 
+		break;
 	}
 	if (*pCurvature > -1)
 		return *pCurvature;

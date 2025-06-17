@@ -410,10 +410,9 @@ void Splitter2D::removePolylineFromMaps(const Polyline& pl, POINT_MAP_TYPE& ptMa
 			auto& conP1 = ptMap[e[1]];
 			conP1.erase(e[0]);
 
+			edgeUsage.erase(iter);
 		}
 	}
-
-	createEdgeUsageMap(ptMap, edgeUsage);
 }
 
 size_t Splitter2D::getLoopSeedIndex(const POINT_MAP_TYPE& ptMap) const
@@ -503,6 +502,18 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	curvatures.clear();
 	vector<Polyline> pls;
 	if (getPolylines(pls)) {
+		size_t max = 0;
+		for (const auto& pl : pls) {
+			if (pl.size() > max)
+				max = pl.size();
+		}
+		if (max > 50) {
+			static mutex mut;
+			lock_guard lg(mut);
+			writeObj("D:/DarkSky/Projects/output/objs/getCurvatures");
+			writePolylinesObj("D:/DarkSky/Projects/output/objs/getCurvatures_pls");
+			int dbgBreak = 1;
+		}
 		for (const auto& pl : pls) {
 			vector<size_t> indices;
 			size_t numIndices = pl.createVector(indices, _pts);
@@ -721,24 +732,18 @@ bool Splitter2D::segIntersectsBoundary(const LineSegment2d& testSeg) const
 
 void Splitter2D::writeObj(const string& filenameRoot) const
 {
-	size_t i = 0;
-	for (auto iter = _edges.begin(); iter != _edges.end(); iter++) {
-		string str = filenameRoot + to_string(i++) + ".obj";
-		ofstream out(str);
+	string str = filenameRoot + ".obj";
+	ofstream out(str);
 
-		out << "#Vertices " << _pts.size() << "\n";
-		for (const auto& pt : _pts) {
-			auto pt2 = pt3D(pt);
-			out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
-		}
+	out << "#Vertices " << _pts.size() << "\n";
+	for (const auto& pt : _pts) {
+		auto pt2 = pt3D(pt);
+		out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
+	}
 
-		out << "#Edges " << _edges.size() << "\n";
-		out << "l ";
-		auto& edge = *iter;
-		for (int i = 0; i < 2; i++) {
-			out << (edge[i] + 1) << " ";
-		}
-		out << "\n";
+	out << "#Edges " << _edges.size() << "\n";
+	for (auto& edge : _edges) {
+		out << "l " << (edge[0] + 1) << " " << (edge[1] + 1) << "\n";
 	}
 }
 
@@ -951,9 +956,9 @@ size_t Splitter2D::PolylineNode::getIndices(set<size_t>& indices) const
 	return indices.size();
 }
 
-void Splitter2D::PolylineNode::extend(POINT_MAP_TYPE& m, bool terminateAtBranch, vector<vector<size_t>>& results) {
+void Splitter2D::PolylineNode::extend(POINT_MAP_TYPE& ptMap, bool terminateAtBranch, vector<vector<size_t>>& results) {
 
-	const auto& pCon = m[_idx];
+	const auto& pCon = ptMap[_idx];
 	bool extended = false;
 	if (terminateAtBranch && pCon.size() > 2) {
 		vector<size_t> r;
@@ -966,7 +971,7 @@ void Splitter2D::PolylineNode::extend(POINT_MAP_TYPE& m, bool terminateAtBranch,
 				PolylineNode n2;
 				n2._pPrior = this;
 				n2.setIdx(nextIdx);
-				n2.extend(m, terminateAtBranch, results);
+				n2.extend(ptMap, terminateAtBranch, results);
 				extended = true;
 			}
 		}
@@ -1007,23 +1012,23 @@ bool Splitter2D::PolylineNode::contains(size_t idx) const
 	return false;
 }
 
-size_t Splitter2D::createPolylines(POINT_MAP_TYPE& m, map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
+size_t Splitter2D::createPolylines(POINT_MAP_TYPE& ptMap, map<Edge2D, size_t>& edgeUsage, vector<Polyline>& polylines) const
 {
 	polylines.clear();
 	PolylineNode n;
 
 	bool isLoop = false;
-	n.setIdx(getSpurSeedIndex(m));
+	n.setIdx(getSpurSeedIndex(ptMap));
 
 	if (n.getIdx() == -1) {
 		isLoop = true;
-		n.setIdx(getLoopSeedIndex(m));
+		n.setIdx(getLoopSeedIndex(ptMap));
 	}
 	if (n.getIdx() == -1)
 		return 0;
 
 	vector<vector<size_t>> tmp, allPolylineIndices;
-	n.extend(m, !isLoop, tmp);
+	n.extend(ptMap, !isLoop, tmp);
 	sort(tmp.begin(), tmp.end(), [](const vector<size_t>& lhs, const vector<size_t>& rhs) {
 		return lhs.size() < rhs.size();
 		});
@@ -1031,7 +1036,7 @@ size_t Splitter2D::createPolylines(POINT_MAP_TYPE& m, map<Edge2D, size_t>& edgeU
 	for (const auto& poly : tmp) {
 		vector<size_t> verifiedPoly;
 		for (size_t idx : poly) {
-			const auto& conP = m[idx];
+			const auto& conP = ptMap[idx];
 			if (!conP.empty()) {
 				verifiedPoly.push_back(idx);
 			}
@@ -1044,14 +1049,14 @@ size_t Splitter2D::createPolylines(POINT_MAP_TYPE& m, map<Edge2D, size_t>& edgeU
 	for (const auto& indices : allPolylineIndices) {
 		Polyline pl;
 		pl.insert(pl.end(), indices.begin(), indices.end());
-		const auto& conP = m[pl.lastIdx()];
+		const auto& conP = ptMap[pl.lastIdx()];
 		pl._isClosed = pl.size() > 2 && conP.contains(pl.firstIdx());
 		if (isLoop)
 			assert(pl._isClosed);
 		else
 			assert(!pl._isClosed);
 
-		removePolylineFromMaps(pl, m, edgeUsage);
+		removePolylineFromMaps(pl, ptMap, edgeUsage);
 
 		polylines.push_back(pl);
 	}
