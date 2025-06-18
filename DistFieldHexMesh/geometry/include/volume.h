@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
 #include <stdint.h>
 #include <vector>
 #include <map>
@@ -59,6 +60,9 @@ using BlockPtr = std::shared_ptr<Block>;
 
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
+
+class Splitter2D;
+using Splitter2DPtr = std::shared_ptr<Splitter2D>;
 
 class Volume {
 public:
@@ -172,6 +176,8 @@ private:
 	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
+	void createCrossSections(const SplittingParams& params);
+
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
@@ -224,6 +230,7 @@ private:
 
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;
+	std::vector<Splitter2DPtr> _crossSections[3];
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
 

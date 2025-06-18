@@ -46,6 +46,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <splitParams.h>
 #include <vertex.h>
+#include <splitter2D.h>
 #include <splitter3D.h>
 #include <vertexSpatialTree.h>
 #include <tolerances.h>
@@ -768,8 +769,14 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	size_t numPasses = params.numConditionalPasses();
 	bool changed = false;
 	
+	bool needsCrossSections = params.numCurvatureDivs > 0;
+
 	for (; _splitNum < numPasses; _splitNum++) {
 		pReporter->reportProgress();
+
+		if (needsCrossSections) {
+			createCrossSections(params);
+		}
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
@@ -861,6 +868,82 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			cout << "finishSplits complete. subPassNum: " << subPassNum << "\n";
 		}
 	}
+}
+
+void Volume::createCrossSections(const SplittingParams& params)
+{
+	for (int i = 0; i < 3; i++) {
+		if (_crossSections[i].empty()) {
+			// There will be numSimpleDivs cells across each cell
+			// We need to compute crossections for the split cells and each split cell also computes a half section, 
+			// so we need 4 splits
+			auto nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[i];
+			_crossSections[i].resize(nDivs + 1);
+			const std::vector<Vector3<double>>& pts = _modelCornerPts;
+			for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
+				double t = j / (double) nDivs;
+				Vector3 uvw(0.5, 0.5, 0.5);
+
+				uvw[i] = 0;
+				Vector3d pt0 = TRI_LERP(pts, uvw);
+				uvw[i] = 1;
+				Vector3d pt1 = TRI_LERP(pts, uvw);
+				Vector3d norm = pt1 - pt0;
+
+				uvw[i] = t;
+				Vector3d pt = TRI_LERP(pts, uvw);
+				Planed pl(pt, norm);
+
+				_crossSections[i][j] = make_shared<Splitter2D>(pl);
+			}
+		} else {
+			// We need to insert a new section between each existing section
+			size_t n = _crossSections[i].size();
+			for (size_t k = n - 1; k != 0; k--) {
+				size_t j = (k - 1);
+				const auto& pt0 = _crossSections[i][j]->getPlane().getOrgin();
+				const auto& pt1 = _crossSections[i][k]->getPlane().getOrgin();
+				auto pt2 = (pt0 + pt1) / 2;
+				Planed pl(pt2, _crossSections[i][j]->getPlane().getNormal());
+				_crossSections[i].insert(_crossSections[i].begin() + j, make_shared<Splitter2D>(pl));
+			}
+		}
+	}
+
+	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+		size_t count = 0;
+		for (int i = 0; i < 3; i++) {
+			auto nDivs = _crossSections[i].size();
+			for (size_t j = 0; j < nDivs; j++) {
+				count++;
+				if (count % numThreads != threadNum)
+					continue;
+				auto pSplitter = _crossSections[i][j];
+				if (pSplitter && pSplitter->getEdges().empty()) {
+					auto& model = getAppData()->getModel();
+					for (const auto& pData : model) {
+						auto& pPolyMesh = pData->getPolyMesh();
+						pPolyMesh->iterateFaces([&pSplitter](const Index3DId& id, const Polygon& face)->bool {
+							const auto& nclin = face.getNonColinearVertexIds();
+							MTC::vector<const Vector3d*> pts;
+							pts.resize(nclin.size());
+							for (size_t i = 0; i < nclin.size(); i++)
+								pts[i] = &face.getVertexPoint(nclin[i]);
+
+							pSplitter->addFaceEdges(pts, false);
+							return true;
+						});
+					}
+
+					if (pSplitter->numEdges() == 0) {
+						_crossSections[i][j] = nullptr;
+					} else if (pSplitter->numEdges() > 50) {
+						int dbgBreak = 1;
+					}
+				}
+			}
+		}
+	}, RUN_MULTI_THREAD);
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)

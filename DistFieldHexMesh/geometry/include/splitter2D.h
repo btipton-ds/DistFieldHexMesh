@@ -89,6 +89,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
+	size_t numEdges() const;
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
 
@@ -163,6 +164,11 @@ private:
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;
 };
+
+inline size_t Splitter2D::numEdges() const 
+{
+	return _edges.size();
+}
 
 inline const std::set<Edge2D>& Splitter2D::getEdges() const
 {
