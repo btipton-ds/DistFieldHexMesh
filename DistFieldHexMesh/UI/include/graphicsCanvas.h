@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <graphicsVBORec.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <drawCrossSectionEdges.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
@@ -251,6 +252,7 @@ private:
     GLuint _width, _height;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+    std::shared_ptr<DrawCrossSectionEdges> _pDrawCrossSections;
     CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLocNDC_2D;
     Vector3d _mouseStartLocal;

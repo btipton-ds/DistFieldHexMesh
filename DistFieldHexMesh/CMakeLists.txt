@@ -106,6 +106,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/vector2d.cpp"
 	"geometry/src/volume.cpp"
 
+	"graphics/src/drawCrossSectionEdges.cpp"
 	"graphics/src/drawMesh.cpp"
 	"graphics/src/drawHexMesh.cpp" 
 	"graphics/src/drawModelMesh.cpp"

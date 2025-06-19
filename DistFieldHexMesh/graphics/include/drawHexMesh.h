@@ -182,3 +182,6 @@ using VolumePtr = std::shared_ptr<Volume>;
 	}
 
 }
+
+#undef DECL_OPTS
+#undef IMPL_OPTS

@@ -192,8 +192,9 @@ size_t GraphicsCanvas::numBytes() const
         result += _pDrawHexMesh->numBytes();
     if (_pDrawModelMesh)
         result += _pDrawModelMesh->numBytes();
-    std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
-    std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+    if (_pDrawCrossSections)
+        result += _pDrawCrossSections->numBytes();
+
 
     return result;
 }
@@ -962,6 +963,14 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     _pDrawModelMesh->render();
 
     bool twoSided = _graphicsUBO.twoSideLighting;
+    if (_pDrawCrossSections) {
+        _pDrawCrossSections->setShader(pShader);
+
+        _graphicsUBO.twoSideLighting = false;
+        updateUniformBlock();
+        _pDrawCrossSections->render();
+    }
+
     _graphicsUBO.twoSideLighting = true;
     updateUniformBlock();
 
