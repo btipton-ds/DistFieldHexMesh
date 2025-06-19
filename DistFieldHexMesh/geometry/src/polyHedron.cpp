@@ -937,6 +937,9 @@ double Polyhedron::calVolume() const
 
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints, size_t step) const
 {
+# if 1
+	return 0;
+#else
 	double result = 0;
 	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
 	vector<PolyMeshIndex> indices;
@@ -1155,6 +1158,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 	
 #endif
 	return result;
+#endif
 }
 
 bool Polyhedron::isOriented() const
