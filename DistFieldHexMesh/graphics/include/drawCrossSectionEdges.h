@@ -27,6 +27,9 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
+#include <string>
+
 #include <OGLMultiVbo.h>
 #include <drawMesh.h>
 #include <Index3D.h>
@@ -56,6 +59,9 @@ namespace DFHM {
 class Volume;
 using VolumePtr = std::shared_ptr<Volume>;
 
+class Splitter2D;
+using Splitter2DPtr = std::shared_ptr<Splitter2D>;
+
 struct DrawCrossSectionEdgesOptions {
 	bool
 		showX = true,
@@ -68,15 +74,18 @@ public:
 	DrawCrossSectionEdges(GraphicsCanvas* pCanvas);
 	virtual ~DrawCrossSectionEdges();
 
-	void setTessellations(const std::vector<OGL::IndicesPtr>& src);
+	size_t numBytes() const override;
+
 	void changeViewElements();
 
 	DECL_OPTS(X)
 	DECL_OPTS(Y)
 	DECL_OPTS(Z)
 			
-	void buildTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
+	void buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections);
 	void copyTablesToVBOs();
+
+	void writeGLObj(const std::string& fullPath) const;
 
 protected:
 	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
@@ -86,41 +95,19 @@ protected:
 	void postDrawFaces() override;
 
 private:
-	static DrawStates faceTypeToDrawState(FaceDrawType ft);
-	static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
+	static DrawStates faceTypeToDrawState(IntersectionDrawType idt);
 	void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
-	struct VertexPointAndNormal {
-		VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());
-		bool operator < (const VertexPointAndNormal& rhs) const;
-		Vector3<int> _iPoint, _iNormal;
-	};
-
-	struct GLEdge {
-		GLEdge(unsigned int idx0 = -1, unsigned int idx1 = -1);
-		GLEdge(const GLEdge& src) = default;
-
-		bool operator < (const GLEdge& rhs) const;
-
-		const unsigned int _idx0;
-		const unsigned int _idx1;
-	};
-
-	void createBlockMeshStorage(const Block::GlHexFacesVector& faces);
 
 	void clearPrior();
 	void clearPost();
 
 	DrawCrossSectionEdgesOptions _options;
 
-	std::vector<float> _points, _colors; // Appears to not being cleared
-	std::vector<std::vector<unsigned int>> _indices;
+	std::vector<float> _points, _colors;
+	std::vector<unsigned int> _indices[3];
+	OGL::IndicesPtr _allTessellations;
 	std::vector<OGL::IndicesPtr> _tessellations;
 };
-
-inline void DrawCrossSectionEdges::setTessellations(const std::vector<OGL::IndicesPtr>& src)
-{
-	_tessellations = src;
-}
 
 IMPL_OPTS(X)
 IMPL_OPTS(Y)

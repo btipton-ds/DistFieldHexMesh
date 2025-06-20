@@ -944,7 +944,8 @@ void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
                     const Index3D min(0, 0, 0);
                     const Index3D max(pVol ? pVol->volDim() : Index3D());
                     _pAppData->setDisplayMinMax(min, max);
-                    _pAppData->copyHexFaceTablesToVBOs();
+                    _pAppData->updateHexTess();
+                    _pCanvas->changeViewElements();
                 }
             }
         }

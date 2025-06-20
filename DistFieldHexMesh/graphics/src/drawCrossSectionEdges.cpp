@@ -26,7 +26,12 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <fstream>
+
 #include <drawCrossSectionEdges.h>
+#include <splitter2D.h>
+#include <graphicsCanvas.h>
+#include <rgbaColor.h>
 
 using namespace std;
 using namespace DFHM;
@@ -42,24 +47,145 @@ DrawCrossSectionEdges::~DrawCrossSectionEdges()
 
 }
 
+size_t DrawCrossSectionEdges::numBytes() const
+{
+	size_t result = DrawMesh::numBytes();
+	result += _points.size() * sizeof(float);
+	result += _colors.size() * sizeof(float);
+	for (int i = 0; i < 3; i++)
+		result += _indices[i].size() * sizeof(unsigned int);
+
+	for (const auto& p : _tessellations) {
+		if (p)
+			result += p->numBytes();
+	}
+
+	return result;
+}
+
 void DrawCrossSectionEdges::changeViewElements()
 {
+	auto& edgeVBO = _VBOs->_edgeVBO;
+
+	edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
+
+	if (_options.showX)
+		includeElements(edgeVBO, _tessellations);
+
+	edgeVBO.endSettingElementIndices();
 
 }
 
-void DrawCrossSectionEdges::buildTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore)
+void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections)
 {
+	if (!crossSections)
+		return;
+	_points.clear();
+	_colors.clear();
+	unsigned int idx = 0;
+	for (int sectionNum = 0; sectionNum < 3; sectionNum++) {
+		_indices[sectionNum].clear();
+		if (!crossSections[sectionNum].empty()) {
+			vector<Vector3d> points;
+			vector<double> curvatures;
 
+			auto& sections = crossSections[sectionNum];
+			for (auto& pSection : sections) {
+				if (pSection)
+					pSection->getPointCurvatures(params, points, curvatures);
+			}
+			for (size_t i = 0; i < points.size(); i++) {
+				_indices[sectionNum].push_back(idx++);
+				for (int j = 0; j < 3; j++) {
+					_points.push_back(float(points[i][j]));
+				}
+				rgbaColor c = curvatureToColor(curvatures[i]);
+				for (int j = 0; j < 3; j++)
+					_colors.push_back(c._rgba[j] / 255.0f);
+			}
+		}
+	}
 }
 
 void DrawCrossSectionEdges::copyTablesToVBOs()
 {
+	auto& edgeVBO = _VBOs->_edgeVBO;
+	edgeVBO.beginEdgeTesselation();
+	if (!_indices->empty()) {
+		_tessellations.resize(3);
+
+		// Setup the VBOs for all sections in one VBO
+		vector<unsigned int> indices(_indices[0]);
+		indices.insert(indices.end(), _indices[1].begin(), _indices[1].end());
+		indices.insert(indices.end(), _indices[2].begin(), _indices[2].end());
+		_allTessellations = edgeVBO.setEdgeSegTessellation(DS_INTERSECTION_ALL, 0, _points, _colors, indices);
+
+		for (int i = 0; i < 3; i++) {
+			if (!_indices[i].empty()) {
+				DrawStates ds;
+				switch (i) {
+				case 0:
+					ds = DS_INTERSECTION_X;
+					break;
+				case 1:
+					ds = DS_INTERSECTION_Y;
+					break;
+				case 2:
+					ds = DS_INTERSECTION_Z;
+					break;
+				}
+
+				// Create a sub tessellation just for this axis' indices.
+				// No other data is duplicated
+				_tessellations[i] = edgeVBO.setEdgeSegTessellation(ds, _allTessellations, _indices[i]);
+			}
+		}
+	}
+	edgeVBO.endEdgeTesselation();
+}
+
+void DrawCrossSectionEdges::writeGLObj(const std::string& fullPath) const
+{
+	ofstream out(fullPath);
+	size_t nPts = _points.size() / 3;
+	out << "#Vertices " << nPts << "\n";
+	for (size_t i = 0; i < nPts; i++) {
+		out << "v " << _points[3 * i + 0] << " " << _points[3 * i + 1] << " " << _points[3 * i + 2] << "\n";
+	}
+
+	size_t nEdges = nPts / 2;
+	out << "#Edges " << nEdges << "\n";
+	for (size_t i = 0; i < nEdges; i++) {
+		out << "l ";
+		size_t idx0 = 2 * i + 1;
+		size_t idx1 = idx0 + 1;
+		out << idx0 << " " << idx1 << "\n";
+	}
 
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawEdges(int key)
 {
-	return OGL::MultiVBO::DRAW_COLOR;
+	OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+
+	DrawStates ds = (DrawStates)key;
+
+	auto& UBO = _pCanvas->getUBO();
+
+	_priorNormalShadingOn = UBO.normalShadingOn;
+	UBO.normalShadingOn = 0;
+
+	glLineWidth(1.0f);
+	UBO.useDefColor = 1;
+	UBO.defColor = p4f(1.0f, 0.0f, 1.0f, 1.0f);
+
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	UBO.normalShadingOn = _priorNormalShadingOn;
+	return result;
 }
 
 void DrawCrossSectionEdges::postDrawEdges()
@@ -69,7 +195,7 @@ void DrawCrossSectionEdges::postDrawEdges()
 
 OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawFaces(int key)
 {
-	return OGL::MultiVBO::DRAW_COLOR_NONE;
+	return OGL::MultiVBO::DRAW_COLOR_SKIP;
 }
 
 void DrawCrossSectionEdges::postDrawFaces()
@@ -77,34 +203,46 @@ void DrawCrossSectionEdges::postDrawFaces()
 
 }
 
-DrawStates DrawCrossSectionEdges::faceTypeToDrawState(FaceDrawType ft)
+DrawStates DrawCrossSectionEdges::faceTypeToDrawState(IntersectionDrawType idt)
 {
-	return DS_SECTION_X;
-}
-
-bool DrawCrossSectionEdges::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, FaceDrawType ft, std::vector<OGL::IndicesPtr>& tessellations)
-{
-	return false;
+    switch (idt) {
+		default:
+		case IDT_INTERSECTION_X:
+			return DS_INTERSECTION_X;
+		case IDT_INTERSECTION_Y:
+			return DS_INTERSECTION_Y;
+		case IDT_INTERSECTION_Z:
+			return DS_INTERSECTION_Z;
+	}
 }
 
 void DrawCrossSectionEdges::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const
 {
+	if (tess.empty())
+		return;
 
-}
+	if (_options.showX && tess[0])
+		VBO.includeElementIndices(DS_INTERSECTION_X, tess[0]);
 
-void DrawCrossSectionEdges::createBlockMeshStorage(const Block::GlHexFacesVector& faces)
-{
+	if (_options.showY && tess[1])
+		VBO.includeElementIndices(DS_INTERSECTION_Y, tess[1]);
 
+	if (_options.showZ && tess[2])
+		VBO.includeElementIndices(DS_INTERSECTION_Z, tess[2]);
 }
 
 void DrawCrossSectionEdges::clearPrior()
 {
+	// Clear all graphics memory
+	_allTessellations = nullptr;
 	_tessellations.clear();
 }
 
 void DrawCrossSectionEdges::clearPost()
 {
+	// Now that it's copied, clear all the local caches.
 	_points.clear();
 	_colors.clear();
-	_indices.clear();
+	for (int i = 0; i < 3; i++)
+		_indices[i].clear();
 }

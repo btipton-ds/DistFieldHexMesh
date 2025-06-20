@@ -213,6 +213,14 @@ void AppData::updateHexTess()
     if (_pVolume) {
         buildHexFaceTables();
         copyHexFaceTablesToVBOs();
+
+        if (_pVolume->hasCrossSections()) {
+            auto pCanvas = _pMainFrame->getCanvas();
+            auto pDraw = pCanvas->getDrawCrossSectionEdges();
+            pDraw->buildTables(_params, _pVolume->getCrossSections());
+//            pDraw->writeGLObj("D:/DarkSky/Projects/output/objs/allSections.obj");
+            pDraw->copyTablesToVBOs();
+        }
     }
 }
 
@@ -319,8 +327,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->read(in);
         _pVolume->createAdHocBlockSearchTree();
 
-        buildHexFaceTables();
-        copyHexFaceTablesToVBOs();
+        updateHexTess();
     }
 
     _pMainFrame->refreshObjectTree();
@@ -462,8 +469,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->clearMesh3D();
     pCanvas->setShowMeshSelectedBlocks(true);
 
-    buildHexFaceTables();
-    copyHexFaceTablesToVBOs();
+    updateHexTess();
 }
 
 CBoundingBox3Dd AppData::getBoundingBox() const
@@ -874,10 +880,6 @@ void AppData::doCreateBaseVolume()
         _pVolume->setLayerNums();
         _pMainFrame->reportProgress(1);
 
-        buildHexFaceTables();
-
-        _pMainFrame->reportProgress(1);
-
         return 2;
     }));
     _pMainFrame->setFuture(pFuture);
@@ -902,7 +904,6 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         auto pFuture = make_shared<future<int>>(async(std::launch::async, [this]()->int {
             _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
 
-            buildHexFaceTables();
             _pMainFrame->reportProgress(1);
 
             return 2;
@@ -910,11 +911,10 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         _pMainFrame->setFuture(pFuture);
 #else
         _pVolume->divideHexMesh(_model, _params, _pMainFrame, RUN_MULTI_THREAD);
-        buildHexFaceTables();
         const Index3D min(0, 0, 0);
         const Index3D max(_pVolume->volDim());
         setDisplayMinMax(min, max);
-        copyHexFaceTablesToVBOs();
+        updateHexTess();
 #endif
 
     } catch (const std::runtime_error& err) {

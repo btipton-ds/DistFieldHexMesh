@@ -184,6 +184,14 @@ GraphicsCanvas::~GraphicsCanvas()
     releaseDepthPeeling();
 }
 
+std::shared_ptr<DrawCrossSectionEdges> GraphicsCanvas::getDrawCrossSectionEdges()
+{
+    if (!_pDrawCrossSections)
+        _pDrawCrossSections = make_shared<DrawCrossSectionEdges>(this);
+    return _pDrawCrossSections;
+}
+
+
 size_t GraphicsCanvas::numBytes() const
 {
     size_t result = sizeof(GraphicsCanvas);
@@ -957,28 +965,39 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     // TODO find where we're breaking it and FIX IT, then remove this hack
     glPushAttrib(0xffffffff);
 
-    _pDrawModelMesh->setShader(pShader);
-    _pDrawHexMesh->setShader(pShader);
-
-    _pDrawModelMesh->render();
-
-    bool twoSided = _graphicsUBO.twoSideLighting;
     if (_pDrawCrossSections) {
+        _pDrawModelMesh->setShader(pShader);
+        _pDrawHexMesh->setShader(pShader);
         _pDrawCrossSections->setShader(pShader);
 
-        _graphicsUBO.twoSideLighting = false;
-        updateUniformBlock();
+        _pDrawModelMesh->render();
         _pDrawCrossSections->render();
+
+        bool twoSided = _graphicsUBO.twoSideLighting;
+
+        _graphicsUBO.twoSideLighting = true;
+        updateUniformBlock();
+
+        _pDrawHexMesh->render();
+
+        _graphicsUBO.twoSideLighting = twoSided;
+        updateUniformBlock();
+    } else {
+        _pDrawModelMesh->setShader(pShader);
+        _pDrawHexMesh->setShader(pShader);
+
+        _pDrawModelMesh->render();
+
+        bool twoSided = _graphicsUBO.twoSideLighting;
+
+        _graphicsUBO.twoSideLighting = true;
+        updateUniformBlock();
+
+        _pDrawHexMesh->render();
+
+        _graphicsUBO.twoSideLighting = twoSided;
+        updateUniformBlock();
     }
-
-    _graphicsUBO.twoSideLighting = true;
-    updateUniformBlock();
-
-    _pDrawHexMesh->render();
-
-    _graphicsUBO.twoSideLighting = twoSided;
-    updateUniformBlock();
-
     glPopAttrib();
 }
 
@@ -1404,6 +1423,8 @@ void GraphicsCanvas::changeViewElements()
     const auto& model = _pAppData->getModel();
     _pDrawModelMesh->changeViewElements(model);
     _pDrawHexMesh->changeViewElements();
+    if (_pDrawCrossSections)
+        _pDrawCrossSections->changeViewElements();
 }
 
 void GraphicsCanvas::writeTexture(const std::string& filename, GLenum target, GLuint texId)

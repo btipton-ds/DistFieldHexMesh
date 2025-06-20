@@ -585,7 +585,12 @@ const Vector3d& Polygon::calUnitNormal() const
 			if (!calUnitNormalStat(getPolyMeshPtr(), nonColin, _cachedNormal))
 				throw runtime_error("calUnitNormal() failed");
 		}
-		assert(fabs(_cachedNormal.squaredNorm() - 1) < 1.0e-12);
+#if _DEBUG
+		auto err = fabs(_cachedNormal.squaredNorm() - 1);
+		if (err > 1.0e-12) {
+			assert(!"bad squaredNorm");
+		}
+#endif _DEBUG
 		assert(!_cachedNormal.isNAN());
 	}
 	return _cachedNormal;

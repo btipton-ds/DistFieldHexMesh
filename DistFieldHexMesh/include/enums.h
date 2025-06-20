@@ -57,31 +57,40 @@ enum CubeFaceType {
 	CFT_BACK,
 	CFT_FRONT,
 	CFT_UNDEFINED,
-
 };
 
-enum FaceDrawType {
-	FT_ERROR_WALL,
-	FT_INNER,
+enum MeshDrawType {
+	MDT_ERROR_WALL,
+	MDT_INNER,
 
-	FT_BOTTOM,
-	FT_TOP,
-	FT_LEFT,
-	FT_RIGHT,
-	FT_BACK,
-	FT_FRONT,
+	MDT_BOTTOM,
+	MDT_TOP,
+	MDT_LEFT,
+	MDT_RIGHT,
+	MDT_BACK,
+	MDT_FRONT,
 
-	FT_MESH_LAYER_0,
-	FT_MESH_LAYER_1,
-	FT_MESH_LAYER_2,
-	FT_MESH_LAYER_3,
-	FT_MESH_LAYER_4,
+	MDT_MESH_LAYER_0,
+	MDT_MESH_LAYER_1,
+	MDT_MESH_LAYER_2,
+	MDT_MESH_LAYER_3,
+	MDT_MESH_LAYER_4,
 
-	FT_MESH_SELECTED,
+	MDT_MESH_SELECTED,
 
-	FT_ALL,
+	MDT_ALL,
 };
 
+enum IntersectionDrawType {
+	IDT_INTERSECTION_X,
+	IDT_INTERSECTION_Y,
+	IDT_INTERSECTION_Z,
+
+	IDT_ALL,
+};
+
+// DrawStates must be universally unique across all entities because they are keys
+// into the renderer's VBO map.
 enum DrawStates {
     DS_MODEL_FACES,
 	DS_MODEL_EDGES,
@@ -109,13 +118,15 @@ enum DrawStates {
 	DS_MESH_LAYER_3, DS_MESH_LAYER_3_OPAQUE,
 	DS_MESH_LAYER_4,
 
-	DS_SECTION_X,
-	DS_SECTION_Y,
-	DS_SECTION_Z,
-
 	DS_MESH_SELECTED,
 
+	DS_INTERSECTION_X,
+	DS_INTERSECTION_Y,
+	DS_INTERSECTION_Z,
+
+	DS_MODEL_ALL,
 	DS_MESH_ALL,
+	DS_INTERSECTION_ALL,
 };
 
 enum VertexLockType {

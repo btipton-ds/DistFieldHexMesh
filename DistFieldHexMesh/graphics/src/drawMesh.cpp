@@ -46,7 +46,7 @@ DrawMesh::~DrawMesh()
 
 size_t DrawMesh::numBytes() const
 {
-    size_t result = 0;
+    size_t result = sizeof(DrawMesh);
 
     if (_VBOs) {
         result += sizeof(VBORec);
@@ -74,20 +74,22 @@ void DrawMesh::render()
 
 void DrawMesh::drawEdges()
 {
-    _VBOs->_edgeVBO.drawAllKeys(
-        [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+    auto preDrawFunc = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
         return preDrawEdges(key);
-        },
-        [this]() {
-            postDrawEdges();
-        }, 
-        [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
-            return preTexDraw(texId);
-        },
-        [this]() {
-            postTexDraw();
-        }
-    );
+    };
+    auto postDrawFunc = [this]() {
+        postDrawEdges();
+    };
+
+    auto preTexDrawFunc = [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
+        return preTexDraw(texId);
+    };
+
+    auto postTexDrawFunc = [this]() {
+        postTexDraw();
+    };
+
+    _VBOs->_edgeVBO.drawAllKeys(preDrawFunc, postDrawFunc, preTexDrawFunc, postTexDrawFunc);
 }
 
 void DrawMesh::drawFaces()

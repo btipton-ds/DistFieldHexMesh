@@ -118,6 +118,10 @@ public:
 	bool getSharpVertPlane(Planed& plane) const;
 	const std::set<size_t>& getSharpEdgeIndices() const;
 	const std::vector<Vector3d>& getModelCornerPts() const;
+
+	bool hasCrossSections() const;
+	const std::vector<Splitter2DPtr>* getCrossSections() const;
+
 	size_t numBlocks() const;
 
 	void setLayerNums();
@@ -125,7 +129,7 @@ public:
 
 	void insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore);
 
-	void makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
+	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 	void createAdHocBlockSearchTree();
 
@@ -307,6 +311,11 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 {
 	return _sharpEdgeIndices;
 
+}
+
+inline const std::vector<Splitter2DPtr>* Volume::getCrossSections() const
+{
+	return _crossSections;
 }
 
 } // end namespace DFHM

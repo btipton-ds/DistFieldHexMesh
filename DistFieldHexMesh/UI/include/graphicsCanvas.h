@@ -117,6 +117,9 @@ public:
     std::shared_ptr<DrawHexMesh> getDrawHexMesh();
     const std::shared_ptr<DrawHexMesh> getDrawHexMesh() const;
 
+    std::shared_ptr<DrawCrossSectionEdges> getDrawCrossSectionEdges();
+    const std::shared_ptr<DrawCrossSectionEdges> getDrawCrossSectionEdges() const;
+
     void doPaint(wxPaintEvent& event);
     void render();
     void setBackColor(const rgbaColor& color);
@@ -323,6 +326,11 @@ inline std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh()
 inline const std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh() const
 {
     return _pDrawHexMesh;
+}
+
+inline const std::shared_ptr<DrawCrossSectionEdges> GraphicsCanvas::getDrawCrossSectionEdges() const
+{
+    return _pDrawCrossSections;
 }
 
 inline void GraphicsCanvas::setBackColor(const rgbaColor& color)

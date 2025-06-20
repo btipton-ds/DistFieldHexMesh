@@ -90,6 +90,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	size_t numEdges() const;
+	void getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures);
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
 
@@ -105,7 +106,7 @@ public:
 	inline const std::vector<Vector2d>& getPoints() const;
 	const Planed& getPlane() const;
 
-	Vector3d pt3D(const Vector2d& pt2d) const;
+	Vector3d unproject(const Vector2d& pt2d) const;
 
 private:
 	class PolylineNode {
@@ -138,7 +139,7 @@ private:
 	bool isColinear(size_t i, size_t j, size_t k) const;
 	Vector2d calTurningUnitVector(size_t idx0, size_t idx1, size_t idx2) const;
 	bool project(const Vector3d& pt, Vector2d& result, double tol) const;
-	Vector3d pt3D(size_t idx) const;
+	Vector3d unproject(size_t idx) const;
 	bool calIntersectionTriPts(const Vector3d* const * pts, Vector2d& pt0, Vector2d& pt1) const;
 
 	size_t getPolylines(std::vector<Polyline>& polylines) const;
@@ -157,6 +158,7 @@ private:
 	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
 	std::vector<Vector2d> _pts;
+	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;
 	std::map<Vector2d, size_t> _ptToIndexMap;
 	std::set<Edge2D> _edges, _boundaryEdges;

@@ -156,7 +156,7 @@ public:
 	const Model& getModel() const;
 	const std::shared_ptr<const PolyMeshSearchTree>& getPolySearchTree() const;
 	void deleteModelSearchTree();
-	void createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
+	void createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
@@ -265,7 +265,7 @@ private:
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
 	void calBlockOriginSpan(Vector3d& origin, Vector3d& span) const;
-	bool includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
+	bool includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const;
 
 	void dumpOpenCells() const;
 

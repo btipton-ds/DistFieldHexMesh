@@ -870,6 +870,16 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 	}
 }
 
+bool Volume::hasCrossSections() const
+{
+	for (int i = 0; i < 3; i++) {
+		if (!_crossSections[i].empty()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void Volume::createCrossSections(const SplittingParams& params)
 {
 	for (int i = 0; i < 3; i++) {
@@ -1307,7 +1317,7 @@ void Volume::createAdHocBlockSearchTree()
 	}
 }
 
-void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
+void Volume::makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
 {
 	CBoundingBox3Dd bbox = _modelBoundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1321,9 +1331,9 @@ void Volume::makeFaceTriMesh(FaceDrawType faceType, Block::GlHexFacesPtr& polys,
 void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t nThreads = (multiCore && _pThreadPool) ? _pThreadPool->getNumThreads() : 1;
-	triMeshes.resize(FT_ALL + 1);
-	for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
-		FaceDrawType ft = (FaceDrawType)j;
+	triMeshes.resize(MDT_ALL + 1);
+	for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
+		MeshDrawType ft = (MeshDrawType)j;
 		triMeshes[ft].resize(nThreads);
 	}
 
@@ -1336,8 +1346,8 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 
-				for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
-					FaceDrawType ft = (FaceDrawType)j;
+				for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
+					MeshDrawType ft = (MeshDrawType)j;
 					makeFaceTriMesh(ft, triMeshes[ft][threadNum], blockPtr);
 				}
 			}
@@ -1345,8 +1355,8 @@ void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& 
 	}, multiCore);
 
 	for (size_t i = 0; i < nThreads; i++) {
-		for (int j = FT_ERROR_WALL; j <= FT_ALL; j++) {
-			FaceDrawType ft = (FaceDrawType)j;
+		for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
+			MeshDrawType ft = (MeshDrawType)j;
 #if 0
 			if (triMeshes[ft][i])
 				triMeshes[ft][i]->changed();

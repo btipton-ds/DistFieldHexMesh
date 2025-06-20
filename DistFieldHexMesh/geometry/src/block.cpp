@@ -1126,7 +1126,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	return didSplit;
 }
 
-bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
+bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
 
@@ -1165,61 +1165,61 @@ bool Block::includeFaceInDrawKey(FaceDrawType meshType, const std::vector<Planed
 	result = false;
 	switch (meshType) {
 		default:
-		case FT_ALL:
+		case MDT_ALL:
 			result = true;
 			break;
-		case FT_INNER:
+		case MDT_INNER:
 			result = isInner;
 			break;
-		case FT_ERROR_WALL:
+		case MDT_ERROR_WALL:
 			result = isWall;
 			break;
 
-		case FT_BOTTOM:
+		case MDT_BOTTOM:
 			result = face.isCoplanar(planes[CFT_BOTTOM]);
 			break;
 
-		case FT_TOP:
+		case MDT_TOP:
 			result = face.isCoplanar(planes[CFT_TOP]);
 			break;
 
-		case FT_LEFT:
+		case MDT_LEFT:
 			result = face.isCoplanar(planes[CFT_LEFT]);
 			break;
 
-		case FT_RIGHT:
+		case MDT_RIGHT:
 			result = face.isCoplanar(planes[CFT_RIGHT]);
 			break;
 
-		case FT_BACK:
+		case MDT_BACK:
 			result = face.isCoplanar(planes[CFT_BACK]);
 			break;
-		case FT_FRONT: 
+		case MDT_FRONT:
 			result = face.isCoplanar(planes[CFT_FRONT]);
 			break;
 		
-		case FT_MESH_LAYER_0:
+		case MDT_MESH_LAYER_0:
 			if (layerNum == 0)
 				result = true;
 			break;
-		case FT_MESH_LAYER_1:
+		case MDT_MESH_LAYER_1:
 			if (layerNum == 1)
 				result = true;
 			break;
-		case FT_MESH_LAYER_2:
+		case MDT_MESH_LAYER_2:
 			if (layerNum == 2)
 				result = true;
 			break;
-		case FT_MESH_LAYER_3:
+		case MDT_MESH_LAYER_3:
 			if (layerNum == 3)
 				result = true;
 			break;
-		case FT_MESH_LAYER_4:
+		case MDT_MESH_LAYER_4:
 			if (layerNum == 4)
 				result = true;
 			break;
 
-		case FT_MESH_SELECTED:
+		case MDT_MESH_SELECTED:
 			bool includeFace = false;
 			for (const auto& cellId : face.getCellIds()) {
 				if (selectedCellIds.contains(cellId) || selectedBlockIds.contains(cellId.blockIdx())) {
@@ -1309,7 +1309,7 @@ size_t Block::GlHexFaces::numEdgeVertices() const
 	return _glEdgePoints.size() / 2;
 }
 
-void Block::createHexTriMesh(FaceDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& glPolys)
+void Block::createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& glPolys)
 {
 	if (numFaces(true) == 0)
 		return;

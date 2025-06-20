@@ -336,7 +336,7 @@ void Splitter2D::getEdgePts(vector<vector<Vector3d>>& edgePts) const
 	for (const auto& e : _edges) {
 		vector<Vector3d> pts;
 		for (int i = 0; i < 2; i++) {
-			Vector3d pt(pt3D(e[i]));
+			Vector3d pt(unproject(e[i]));
 			pts.push_back(pt);
 		}
 		edgePts.push_back(pts);
@@ -351,7 +351,7 @@ void Splitter2D::getLoops(vector<vector<Vector3d>>& polylines, vector<vector<Vec
 	for (const auto& pl2 : polylines2D) {
 		vector<Vector3d> pl3;
 		for (const auto& pt2 : pl2) {
-			pl3.push_back(pt3D(pt2));
+			pl3.push_back(unproject(pt2));
 		}
 		polylines.push_back(pl3);
 	}
@@ -359,7 +359,7 @@ void Splitter2D::getLoops(vector<vector<Vector3d>>& polylines, vector<vector<Vec
 	for (const auto& pl2 : loops2d) {
 		vector<Vector3d> pl3;
 		for (const auto& pt2 : pl2) {
-			pl3.push_back(pt3D(pt2));
+			pl3.push_back(unproject(pt2));
 		}
 		loops.push_back(pl3);
 	}
@@ -609,6 +609,97 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	return curvatures.size();
 }
 
+void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures)
+{
+	if (_curvatures.size() != _pts.size()) {
+		const auto sharpRadius = params.sharpRadius;
+		const auto sharpAngleRadians = params.getSharpAngleRadians();
+
+		map<size_t, set<size_t>> pointToPointsMap;
+
+		for (const auto& edge : _edges) {
+			auto iter = pointToPointsMap.find(edge[0]);
+			if (iter == pointToPointsMap.end())
+				iter = pointToPointsMap.insert(make_pair(edge[0], set<size_t>())).first;
+			iter->second.insert(edge[1]);
+
+			iter = pointToPointsMap.find(edge[1]);
+			if (iter == pointToPointsMap.end())
+				iter = pointToPointsMap.insert(make_pair(edge[1], set<size_t>())).first;
+			iter->second.insert(edge[0]);
+		}
+
+		_curvatures.resize(_pts.size());
+		for (const auto& pair : pointToPointsMap) {
+			size_t idx1 = pair.first;
+			const auto& connectedIndices = pair.second;
+			if (connectedIndices.size() != 2)
+				_curvatures[idx1] = 1 / sharpRadius;
+			else {
+				auto iter = connectedIndices.begin();
+				size_t idx0 = *iter++;
+				size_t idx2 = *iter;
+
+				const auto& pt0 = _pts[idx0];
+				const auto& pt1 = _pts[idx1];
+				const auto& pt2 = _pts[idx2];
+
+				if (isColinear(idx0, idx1, idx2)) {
+					_curvatures[idx1] = 0;
+					continue;
+				}
+
+				Vector2d v0 = (pt1 - pt0);
+				auto v1 = (pt2 - pt1);
+				auto l0 = v0.norm();
+				auto l1 = v1.norm();
+				if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
+					_curvatures[idx1] = 0;
+					continue;
+				}
+
+				v0 /= l0;
+				v1 /= l1;
+				double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
+				if (cp < Tolerance::paramTol()) {
+					_curvatures[idx1] = 0;
+					continue;
+				}
+				double radius = sharpRadius; // Zero curvature
+
+				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
+				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
+
+				double cosTheta = v1.dot(v0);
+				double sinTheta = v1.dot(perpV0);
+				double theta = atan2(sinTheta, cosTheta);
+				if (fabs(theta) < sharpAngleRadians) {
+					auto mid0 = (pt0 + pt1) * 0.5;
+					auto mid1 = (pt1 + pt2) * 0.5;
+					LineSegment2d seg0(mid0, perpV0);
+					LineSegment2d seg1(mid1, perpV1);
+					double t;
+					if (seg0.intersectionInBounds(seg1, t)) {
+						Vector2d pt = seg0.interpolate(t);
+						radius = (pt0 - pt).norm();
+						if (radius < sharpRadius) {
+							radius = sharpRadius;
+						}
+					}
+				}
+
+				assert(radius > 0);
+				_curvatures[idx1] = 1 / radius;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < _pts.size(); i++) {
+		curvatures.push_back(_curvatures[i]);
+		points.push_back(unproject(i));
+	}
+}
+
 size_t Splitter2D::getGaps(vector<double>& curvatures) const
 {
 	return 0;
@@ -675,8 +766,8 @@ bool Splitter2D::intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& se
 	});
 
 	for (size_t i = 0; i < pts.size() / 2; i++) {
-		const auto& pt0 = pt3D(pts[2 * i]);
-		const auto& pt1 = pt3D(pts[2 * i + 1]);
+		const auto pt0 = unproject(pts[2 * i]);
+		const auto pt1 = unproject(pts[2 * i + 1]);
 		LineSegmentd seg(pt0, pt1);
 		segs.push_back(seg);
 	}
@@ -739,7 +830,7 @@ void Splitter2D::writeObj(const string& filenameRoot) const
 
 	out << "#Vertices " << _pts.size() << "\n";
 	for (const auto& pt : _pts) {
-		auto pt2 = pt3D(pt);
+		auto pt2 = unproject(pt);
 		out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
 	}
 
@@ -754,7 +845,7 @@ void Splitter2D::writeBoundaryEdgesObj(const string& filename) const
 	ofstream out(filename);
 	out << "#Vertices " << _pts.size() << "\n";
 	for (const auto& pt : _pts) {
-		auto pt2 = pt3D(pt);
+		auto pt2 = unproject(pt);
 		out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
 	}
 
@@ -774,7 +865,7 @@ void Splitter2D::writePolylinesObj(const string& filenameRoot) const
 			ofstream out(str);
 			out << "#Vertices " << _pts.size() << "\n";
 			for (const auto& pt : _pts) {
-				auto pt2 = pt3D(pt);
+				auto pt2 = unproject(pt);
 				out << "v " << pt2[0] << " " << pt2[1] << " " << pt2[2] << "\n";
 			}
 
@@ -846,9 +937,9 @@ bool Splitter2D::insideBoundary(const Vector2d& testPt) const
 
 Vector3d Splitter2D::calNormal(size_t idx0, size_t idx1, size_t idx2) const
 {
-	Vector3d pt0 = pt3D(idx0);
-	Vector3d pt1 = pt3D(idx1);
-	Vector3d pt2 = pt3D(idx2);
+	Vector3d pt0 = unproject(idx0);
+	Vector3d pt1 = unproject(idx1);
+	Vector3d pt2 = unproject(idx2);
 
 	Vector3d v0 = pt0 - pt1;
 	Vector3d v1 = pt2 - pt1;
@@ -888,17 +979,6 @@ The maximum result[1] is the sharpest left turn, assuming result[0] > 0
 	Vector2d result(v1.dot(xAxis), v1.dot(yAxis));
 	result.normalize();
 	return result;
-}
-
-inline Vector3d Splitter2D::pt3D(const Vector2d& pt2d) const
-{
-	Vector3d pt3d(_plane.getOrgin() + _xAxis * pt2d[0] + _yAxis * pt2d[1]);
-	return pt3d;
-}
-
-inline Vector3d Splitter2D::pt3D(size_t idx) const
-{
-	return pt3D(_pts[idx]);
 }
 
 bool Splitter2D::PolylineNode::sameLoop(const vector<size_t>& A, const vector<size_t>& B)
@@ -1167,6 +1247,17 @@ bool Splitter2D::project(const Vector3d& pt, Vector2d& result, double tol) const
 	}
 
 	return false;
+}
+
+inline Vector3d Splitter2D::unproject(const Vector2d& pt2d) const
+{
+	Vector3d pt3d(_plane.getOrgin() + _xAxis * pt2d[0] + _yAxis * pt2d[1]);
+	return pt3d;
+}
+
+inline Vector3d Splitter2D::unproject(size_t idx) const
+{
+	return unproject(_pts[idx]);
 }
 
 inline const Vector2d& Splitter2D::getPoint(size_t idx) const
