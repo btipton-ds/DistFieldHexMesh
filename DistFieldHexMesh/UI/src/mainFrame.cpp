@@ -285,6 +285,17 @@ void MainFrame::createViewMenu()
     _viewMenu->Append(ID_SHOW_MESH_ALL_BLOCKS, "Mesh - Show all Blocks", "Shows all blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowAllBlocks, this, ID_SHOW_MESH_ALL_BLOCKS);
 
+    _viewMenu->AppendSeparator();
+
+    _viewMenu->Append(ID_SHOW_SECTIONS_X, "Sections X", "Show sections in X", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsX, this, ID_SHOW_SECTIONS_X);
+
+    _viewMenu->Append(ID_SHOW_SECTIONS_Y, "Sections Y", "Show sections in Y", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsY, this, ID_SHOW_SECTIONS_Y);
+
+    _viewMenu->Append(ID_SHOW_SECTIONS_Z, "Sections Z", "Show sections in Z", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsZ, this, ID_SHOW_SECTIONS_Z);
+
     _menuBar->Append(_viewMenu, "&View");
 
 }
@@ -453,6 +464,9 @@ void MainFrame::OnInternalIdle()
         _viewMenu->Check(ID_SHOW_MESH_WALL, _pCanvas->showMeshWalls());
 //        _viewMenu->Check(ID_SHOW_MESH_SELECTED_BLOCKS, _pCanvas->showMeshFaces());
 
+        _viewMenu->Check(ID_SHOW_SECTIONS_X, _pCanvas->showSections(0));
+        _viewMenu->Check(ID_SHOW_SECTIONS_Y, _pCanvas->showSections(1));
+        _viewMenu->Check(ID_SHOW_SECTIONS_Z, _pCanvas->showSections(2));
 
         _viewMenu->Enable(ID_SHOW_MODEL_FACES, hasModel);
         _viewMenu->Enable(ID_SHOW_MODEL_EDGES, hasModel);
@@ -465,6 +479,10 @@ void MainFrame::OnInternalIdle()
         _viewMenu->Enable(ID_SHOW_MESH_EDGES, hasMesh);
         _viewMenu->Enable(ID_SHOW_MESH_WALL, hasMesh);
         _viewMenu->Enable(ID_SHOW_MESH_SELECTED_BLOCKS, hasMesh);
+
+        _viewMenu->Enable(ID_SHOW_SECTIONS_X, _pCanvas->hasSections());
+        _viewMenu->Enable(ID_SHOW_SECTIONS_Y, _pCanvas->hasSections());
+        _viewMenu->Enable(ID_SHOW_SECTIONS_Z, _pCanvas->hasSections());
 
         if (_viewBoundarySubMenu) {
             _viewBoundarySubMenu->Check(ID_SHOW_FRONT, _pCanvas->showFace(GraphicsCanvas::VIEW_FRONT));
@@ -749,6 +767,33 @@ void MainFrame::OnShowMeshSelectedBlocks(wxCommandEvent& event)
     if (dlg.ShowModal() == wxID_OK) {
         _pAppData->doSelectBlocks(dlg);
     }
+}
+
+void MainFrame::OnShowSectionsX(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowSections(0);
+
+    auto item = _menuBar->FindItem(ID_SHOW_SECTIONS_X);
+    if (item)
+        item->Check(getCanvas()->showSections(0));
+}
+
+void MainFrame::OnShowSectionsY(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowSections(1);
+
+    auto item = _menuBar->FindItem(ID_SHOW_SECTIONS_Y);
+    if (item)
+        item->Check(getCanvas()->showSections(1));
+}
+
+void MainFrame::OnShowSectionsZ(wxCommandEvent& event)
+{
+    getCanvas()->toggleShowSections(2);
+
+    auto item = _menuBar->FindItem(ID_SHOW_SECTIONS_Z);
+    if (item)
+        item->Check(getCanvas()->showSections(2));
 }
 
 void MainFrame::OnSetViewFront(wxCommandEvent& event)

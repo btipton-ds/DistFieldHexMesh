@@ -1566,3 +1566,45 @@ void GraphicsCanvas::writeDepthTexture(const std::string& filename, GLenum targe
         (void)fclose(fp);
     }
 }
+
+bool GraphicsCanvas::hasSections() const
+{
+    return _pDrawCrossSections != nullptr;
+}
+
+bool GraphicsCanvas::showSections(int axis) const
+{
+    if (_pDrawCrossSections) {
+        switch (axis) {
+        default:
+            break;
+        case 0:
+            return _pDrawCrossSections->showX();
+        case 1:
+            return _pDrawCrossSections->showY();
+        case 2:
+            return _pDrawCrossSections->showZ();
+        }
+    }
+    return false;
+}
+
+void GraphicsCanvas::toggleShowSections(int axis)
+{
+    if (_pDrawCrossSections) {
+        switch (axis) {
+        default:
+            return;
+        case 0:
+            _pDrawCrossSections->toggleShowX();
+            break;
+        case 1:
+            _pDrawCrossSections->toggleShowY();
+            break;
+        case 2:
+            _pDrawCrossSections->toggleShowZ();
+            break;
+        }
+        changeViewElements();
+    }
+}

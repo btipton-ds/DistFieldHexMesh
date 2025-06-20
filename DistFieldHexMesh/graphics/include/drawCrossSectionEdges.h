@@ -81,8 +81,8 @@ public:
 	DECL_OPTS(X)
 	DECL_OPTS(Y)
 	DECL_OPTS(Z)
-			
-	void buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections);
+
+		void buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections, size_t idx0 = -1, size_t idx1 = -1);
 	void copyTablesToVBOs();
 
 	void writeGLObj(const std::string& fullPath) const;
@@ -109,9 +109,27 @@ private:
 	std::vector<OGL::IndicesPtr> _tessellations;
 };
 
-IMPL_OPTS(X)
-IMPL_OPTS(Y)
-IMPL_OPTS(Z)
+inline bool DrawCrossSectionEdges::showX() const {
+	return _options.showX;
+} 
+
+inline bool DrawCrossSectionEdges::toggleShowX() {
+	return toggle(_options.showX);
+}
+inline bool DrawCrossSectionEdges::showY() const {
+	return _options.showY;
+} 
+
+inline bool DrawCrossSectionEdges::toggleShowY() {
+	return toggle(_options.showY);
+}
+inline bool DrawCrossSectionEdges::showZ() const {
+	return _options.showZ;
+} 
+
+inline bool DrawCrossSectionEdges::toggleShowZ() {
+	return toggle(_options.showZ);
+}
 
 }
 

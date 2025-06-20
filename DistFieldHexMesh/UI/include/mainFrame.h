@@ -183,6 +183,10 @@ enum DFHM_MENU_ID
     ID_OBJ_TREE_CTRL,
     ID_TREE_CTRL_SHOW,
 
+    ID_SHOW_SECTIONS_X,
+    ID_SHOW_SECTIONS_Y,
+    ID_SHOW_SECTIONS_Z,
+
     ID_QUERY_PROGRESS,
 #if INCLUDE_DEBUG_WX_FRAME
     ID_TOGGLE_DEBUG_FRAME,
@@ -272,6 +276,10 @@ private:
     void OnShowMeshWalls(wxCommandEvent& event);
     void OnShowAllBlocks(wxCommandEvent& event);
     void OnShowMeshSelectedBlocks(wxCommandEvent& event);
+
+    void OnShowSectionsX(wxCommandEvent& event);
+    void OnShowSectionsY(wxCommandEvent& event);
+    void OnShowSectionsZ(wxCommandEvent& event);
 
     void OnSetViewFront(wxCommandEvent& event);
     void OnSetViewBack(wxCommandEvent& event);

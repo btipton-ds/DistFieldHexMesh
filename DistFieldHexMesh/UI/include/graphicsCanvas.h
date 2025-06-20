@@ -172,6 +172,10 @@ public:
     bool showLayer(int32_t layerNum) const;
     void setShowLayer(int32_t layerNum);
 
+    bool hasSections() const;
+    bool showSections(int axis) const;
+    void toggleShowSections(int axis);
+
     void setShowMeshSelectedBlocks(bool val);
 
     void setView(View v);

@@ -69,33 +69,40 @@ void DrawCrossSectionEdges::changeViewElements()
 
 	edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-	if (_options.showX)
-		includeElements(edgeVBO, _tessellations);
+	includeElements(edgeVBO, _tessellations);
 
 	edgeVBO.endSettingElementIndices();
 
 }
 
-void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections)
+void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections, size_t idx0, size_t idx1)
 {
 	if (!crossSections)
 		return;
 	_points.clear();
 	_colors.clear();
 	unsigned int idx = 0;
-	for (int sectionNum = 0; sectionNum < 3; sectionNum++) {
-		_indices[sectionNum].clear();
-		if (!crossSections[sectionNum].empty()) {
+	for (int axisNum = 0; axisNum < 3; axisNum++) {
+		_indices[axisNum].clear();
+		if (!crossSections[axisNum].empty()) {
 			vector<Vector3d> points;
 			vector<double> curvatures;
 
-			auto& sections = crossSections[sectionNum];
-			for (auto& pSection : sections) {
+			auto& sections = crossSections[axisNum];
+			size_t start = 0, end = sections.size();
+			if (idx0 != -1 && idx0 < sections.size())
+				start = idx0;
+
+			if (idx1 != -1 && idx1 <= sections.size() && idx1 > idx0)
+				end = idx1;
+
+			for (size_t sectionNum = start; sectionNum < end; sectionNum++) {
+				auto& pSection = sections[sectionNum];
 				if (pSection)
 					pSection->getPointCurvatures(params, points, curvatures);
 			}
 			for (size_t i = 0; i < points.size(); i++) {
-				_indices[sectionNum].push_back(idx++);
+				_indices[axisNum].push_back(idx++);
 				for (int j = 0; j < 3; j++) {
 					_points.push_back(float(points[i][j]));
 				}
