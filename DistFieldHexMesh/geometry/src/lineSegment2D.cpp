@@ -222,6 +222,15 @@ Vector2d LineSegment2d::interpolate(double t) const
 	return x;
 }
 
+Vector2d LineSegment2d::dir() const
+{
+	Vector2d result = (_pts[1] - _pts[0]);
+	auto l = result.norm();
+	if (l > 0)
+		result / l;
+	return result;
+}
+
 double LineSegment2d::length() const
 {
 	return (_pts[1] - _pts[0]).norm();

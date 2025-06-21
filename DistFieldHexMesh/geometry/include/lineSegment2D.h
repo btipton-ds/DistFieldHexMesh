@@ -44,6 +44,7 @@ public:
 	Vector2d& operator[](size_t idx);
 	Vector2d interpolate(double t) const;
 	double length() const;
+	Vector2d dir() const;
 
 private:
 	std::vector<Vector2d> _pts;

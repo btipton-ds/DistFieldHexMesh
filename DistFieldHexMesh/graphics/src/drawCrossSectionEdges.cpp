@@ -69,7 +69,7 @@ void DrawCrossSectionEdges::changeViewElements()
 
 	edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
-	includeElements(edgeVBO, _tessellations);
+	includeElements(edgeVBO);
 
 	edgeVBO.endSettingElementIndices();
 
@@ -81,11 +81,14 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 		return;
 	_points.clear();
 	_colors.clear();
-	unsigned int idx = 0;
+	_radiusSegPts.clear();
+
+	unsigned int idx = 0, radiusIdx = 0;
 	for (int axisNum = 0; axisNum < 3; axisNum++) {
 		_indices[axisNum].clear();
+		_radiusIndices[axisNum].clear();
 		if (!crossSections[axisNum].empty()) {
-			vector<Vector3d> points;
+			vector<Vector3d> points, radiusSegs;
 			vector<double> curvatures;
 
 			auto& sections = crossSections[axisNum];
@@ -99,8 +102,9 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 			for (size_t sectionNum = start; sectionNum < end; sectionNum++) {
 				auto& pSection = sections[sectionNum];
 				if (pSection)
-					pSection->getPointCurvatures(params, points, curvatures);
+					pSection->getPointCurvatures(params, points, radiusSegs, curvatures);
 			}
+
 			for (size_t i = 0; i < points.size(); i++) {
 				_indices[axisNum].push_back(idx++);
 				for (int j = 0; j < 3; j++) {
@@ -110,6 +114,13 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 				for (int j = 0; j < 3; j++)
 					_colors.push_back(c._rgba[j] / 255.0f);
 			}
+
+			for (size_t i = 0; i < radiusSegs.size(); i++) {
+				_radiusIndices[axisNum].push_back(radiusIdx++);
+				for (int j = 0; j < 3; j++) {
+					_radiusSegPts.push_back(float(radiusSegs[i][j]));
+				}
+			}
 		}
 	}
 }
@@ -118,6 +129,7 @@ void DrawCrossSectionEdges::copyTablesToVBOs()
 {
 	auto& edgeVBO = _VBOs->_edgeVBO;
 	edgeVBO.beginEdgeTesselation();
+
 	if (!_indices->empty()) {
 		_tessellations.resize(3);
 
@@ -148,6 +160,38 @@ void DrawCrossSectionEdges::copyTablesToVBOs()
 			}
 		}
 	}
+
+	if (!_radiusIndices->empty()) {
+		_radiusTessellations.resize(3);
+
+		// Setup the VBOs for all sections in one VBO
+		vector<unsigned int> indices(_radiusIndices[0]);
+		indices.insert(indices.end(), _radiusIndices[1].begin(), _radiusIndices[1].end());
+		indices.insert(indices.end(), _radiusIndices[2].begin(), _radiusIndices[2].end());
+		_allRadiusTessellations = edgeVBO.setEdgeSegTessellation(DS_INTERSECTION_RADII_ALL, 0, _radiusSegPts, indices);
+
+		for (int i = 0; i < 3; i++) {
+			if (!_radiusIndices[i].empty()) {
+				DrawStates ds;
+				switch (i) {
+				case 0:
+					ds = DS_INTERSECTION_RADIUS_X;
+					break;
+				case 1:
+					ds = DS_INTERSECTION_RADIUS_Y;
+					break;
+				case 2:
+					ds = DS_INTERSECTION_RADIUS_Z;
+					break;
+				}
+
+				// Create a sub tessellation just for this axis' indices.
+				// No other data is duplicated
+				_radiusTessellations[i] = edgeVBO.setEdgeSegTessellation(ds, _allRadiusTessellations, _radiusIndices[i]);
+			}
+		}
+	}
+
 	edgeVBO.endEdgeTesselation();
 }
 
@@ -173,7 +217,7 @@ void DrawCrossSectionEdges::writeGLObj(const std::string& fullPath) const
 
 OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawEdges(int key)
 {
-	OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+	OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
 
 	DrawStates ds = (DrawStates)key;
 
@@ -183,8 +227,28 @@ OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawEdges(int key)
 	UBO.normalShadingOn = 0;
 
 	glLineWidth(1.0f);
-	UBO.useDefColor = 1;
-	UBO.defColor = p4f(1.0f, 0.0f, 1.0f, 1.0f);
+	switch (key) {
+	default:
+		break;
+	case DS_INTERSECTION_X:
+	case DS_INTERSECTION_Y:
+	case DS_INTERSECTION_Z:
+		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+		UBO.useDefColor = 0;
+		UBO.defColor = p4f(0.0f, 0.0f, 0.0f, 1.0f);
+		break;
+	case DS_INTERSECTION_RADIUS_X:
+	case DS_INTERSECTION_RADIUS_Y:
+	case DS_INTERSECTION_RADIUS_Z:
+#if 0
+		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+		UBO.useDefColor = 1;
+		UBO.defColor = p4f(1.0f, 0.0f, 0.0f, 1.0f);
+#else
+		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
+#endif
+		break;
+	}
 
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
 
@@ -210,32 +274,35 @@ void DrawCrossSectionEdges::postDrawFaces()
 
 }
 
-DrawStates DrawCrossSectionEdges::faceTypeToDrawState(IntersectionDrawType idt)
+void DrawCrossSectionEdges::includeElements(OGL::MultiVboHandler& VBO) const
 {
-    switch (idt) {
-		default:
-		case IDT_INTERSECTION_X:
-			return DS_INTERSECTION_X;
-		case IDT_INTERSECTION_Y:
-			return DS_INTERSECTION_Y;
-		case IDT_INTERSECTION_Z:
-			return DS_INTERSECTION_Z;
+	if (!_tessellations.empty()) {
+		if (_options.showX && _tessellations[0]) {
+			VBO.includeElementIndices(DS_INTERSECTION_X, _tessellations[0]);
+		}
+
+		if (_options.showY && _tessellations[1]) {
+			VBO.includeElementIndices(DS_INTERSECTION_Y, _tessellations[1]);
+		}
+
+		if (_options.showZ && _tessellations[2]) {
+			VBO.includeElementIndices(DS_INTERSECTION_Z, _tessellations[2]);
+		}
 	}
-}
 
-void DrawCrossSectionEdges::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const
-{
-	if (tess.empty())
-		return;
+	if (!_radiusTessellations.empty()) {
+		if (_options.showX && _radiusTessellations[0]) {
+			VBO.includeElementIndices(DS_INTERSECTION_RADIUS_X, _radiusTessellations[0]);
+		}
 
-	if (_options.showX && tess[0])
-		VBO.includeElementIndices(DS_INTERSECTION_X, tess[0]);
+		if (_options.showY && _radiusTessellations[1]) {
+			VBO.includeElementIndices(DS_INTERSECTION_RADIUS_Y, _radiusTessellations[1]);
+		}
 
-	if (_options.showY && tess[1])
-		VBO.includeElementIndices(DS_INTERSECTION_Y, tess[1]);
-
-	if (_options.showZ && tess[2])
-		VBO.includeElementIndices(DS_INTERSECTION_Z, tess[2]);
+		if (_options.showZ && _radiusTessellations[2]) {
+			VBO.includeElementIndices(DS_INTERSECTION_RADIUS_Z, _radiusTessellations[2]);
+		}
+	}
 }
 
 void DrawCrossSectionEdges::clearPrior()
@@ -243,6 +310,9 @@ void DrawCrossSectionEdges::clearPrior()
 	// Clear all graphics memory
 	_allTessellations = nullptr;
 	_tessellations.clear();
+
+	_allRadiusTessellations = nullptr;
+	_radiusTessellations.clear();
 }
 
 void DrawCrossSectionEdges::clearPost()
@@ -252,4 +322,8 @@ void DrawCrossSectionEdges::clearPost()
 	_colors.clear();
 	for (int i = 0; i < 3; i++)
 		_indices[i].clear();
+
+	_radiusSegPts.clear();
+	for (int i = 0; i < 3; i++)
+		_radiusIndices[i].clear();
 }

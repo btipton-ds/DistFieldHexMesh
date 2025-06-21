@@ -95,18 +95,17 @@ protected:
 	void postDrawFaces() override;
 
 private:
-	static DrawStates faceTypeToDrawState(IntersectionDrawType idt);
-	void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
+	void includeElements(OGL::MultiVboHandler& VBO) const;
 
 	void clearPrior();
 	void clearPost();
 
 	DrawCrossSectionEdgesOptions _options;
 
-	std::vector<float> _points, _colors;
-	std::vector<unsigned int> _indices[3];
-	OGL::IndicesPtr _allTessellations;
-	std::vector<OGL::IndicesPtr> _tessellations;
+	std::vector<float> _points, _colors, _radiusSegPts;
+	std::vector<unsigned int> _indices[3], _radiusIndices[3];
+	OGL::IndicesPtr _allTessellations, _allRadiusTessellations;
+	std::vector<OGL::IndicesPtr> _tessellations, _radiusTessellations;
 };
 
 inline bool DrawCrossSectionEdges::showX() const {

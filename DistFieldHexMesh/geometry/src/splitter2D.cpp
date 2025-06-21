@@ -663,7 +663,7 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	return curvatures.size();
 }
 
-void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures)
+void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<Vector3d>& radiusSegs, std::vector<double>& curvatures)
 {
 	if (_curvatures.size() != _pts.size()) {
 		const auto sharpRadius = params.sharpRadius;
@@ -684,58 +684,90 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 		}
 
 		_curvatures.resize(_pts.size());
+		_radiusPts.resize(_pts.size());
 		for (const auto& pair : pointToPointsMap) {
-			size_t idx1 = pair.first;
+			size_t ctrPtIdx = pair.first;
+			_radiusPts[ctrPtIdx] = _pts[ctrPtIdx];
 			const auto& connectedIndices = pair.second;
-			if (connectedIndices.size() != 2)
-				_curvatures[idx1] = 1 / sharpRadius;
-			else {
+			if (connectedIndices.size() != 2) {
+				_curvatures[ctrPtIdx] = 1 / sharpRadius;
+			} else {
 				auto iter = connectedIndices.begin();
 				size_t idx0 = *iter++;
-				size_t idx2 = *iter;
+				size_t idx1 = *iter;
 
 				const auto& pt0 = _pts[idx0];
+				const auto& ctrPt = _pts[ctrPtIdx];
 				const auto& pt1 = _pts[idx1];
-				const auto& pt2 = _pts[idx2];
 
-				if (isColinear(idx0, idx1, idx2)) {
-					_curvatures[idx1] = 0;
+				if (isColinear(idx0, ctrPtIdx, idx1)) {
+					_curvatures[ctrPtIdx] = 0;
 					continue;
 				}
 
-				Vector2d v0 = (pt1 - pt0);
-				auto v1 = (pt2 - pt1);
+				Vector2d v0 = (ctrPt - pt0);
+				auto v1 = (pt1 - ctrPt);
 				auto l0 = v0.norm();
 				auto l1 = v1.norm();
+#if 0
 				if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
-					_curvatures[idx1] = 0;
+					_curvatures[ctrPtIdx] = 0;
 					continue;
 				}
+#endif
 
 				v0 /= l0;
 				v1 /= l1;
 				double cp = fabs(v0[0] * v1[1] - v0[1] * v1[0]);
 				if (cp < Tolerance::paramTol()) {
-					_curvatures[idx1] = 0;
+					_curvatures[ctrPtIdx] = 0;
 					continue;
 				}
 				double radius = sharpRadius; // Zero curvature
 
-				Vector2d perpV0 = Vector2d(-v0[1], v0[0]);
-				Vector2d perpV1 = Vector2d(-v1[1], v1[0]);
+				auto mid = (pt0 + pt1) * 0.5;
+				auto mid0 = (pt0 + ctrPt) * 0.5;
+				auto mid1 = (ctrPt + pt1) * 0.5;
+
+				Vector2d vMid = mid - ctrPt;
+				Vector2d perpV0 = vMid - vMid.dot(v0) * v0;
+				perpV0.normalize();
+
+				Vector2d perpV1 = vMid - vMid.dot(v1) * v1;
+				perpV1.normalize();
 
 				double cosTheta = v1.dot(v0);
 				double sinTheta = v1.dot(perpV0);
 				double theta = atan2(sinTheta, cosTheta);
 				if (fabs(theta) < sharpAngleRadians) {
-					auto mid0 = (pt0 + pt1) * 0.5;
-					auto mid1 = (pt1 + pt2) * 0.5;
-					LineSegment2d seg0(mid0, perpV0);
-					LineSegment2d seg1(mid1, perpV1);
-					double t;
-					if (seg0.intersectionInBounds(seg1, t)) {
-						Vector2d pt = seg0.interpolate(t);
-						radius = (pt0 - pt).norm();
+					LineSegment2d seg0(mid0, mid0 + perpV0);
+					LineSegment2d seg1(mid1, mid1 + perpV1);
+					Vector2d arcCtr;
+					if (seg0.intersectRay(seg1, arcCtr)) {
+#if 0 && defined(_DEBUG)
+						{
+							auto dir0 = seg0.dir();
+							auto& origin = seg0[0];
+							Vector2d v = arcCtr - origin;
+							v = v - v.dot(dir0) * dir0;
+							auto dist = v.norm();
+							assert(dist < Tolerance::sameDistTol());
+						}
+						{
+							auto dir1 = seg1.dir();
+							auto& origin = seg1[0];
+							Vector2d v = arcCtr - origin;
+							v = v - v.dot(dir1) * dir1;
+							auto dist = v.norm();
+							assert(dist < Tolerance::sameDistTol());
+						}
+#endif
+						_radiusPts[ctrPtIdx] = arcCtr;
+						Vector2d vRad = arcCtr - ctrPt;
+						radius = vRad.norm();
+						assert(fabs((arcCtr - pt0).norm() - radius) < Tolerance::sameDistTol());
+						assert(fabs((arcCtr - ctrPt).norm() - radius) < Tolerance::sameDistTol());
+						assert(fabs((arcCtr - pt1).norm() - radius) < Tolerance::sameDistTol());
 						if (radius < sharpRadius) {
 							radius = sharpRadius;
 						}
@@ -743,7 +775,7 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 				}
 
 				assert(radius > 0);
-				_curvatures[idx1] = 1 / radius;
+				_curvatures[ctrPtIdx] = 1 / radius;
 			}
 		}
 	}
@@ -756,6 +788,12 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 
 		curvatures.push_back(_curvatures[idx0]);
 		curvatures.push_back(_curvatures[idx1]);
+	}
+
+	assert(_pts.size() == _radiusPts.size());
+	for (size_t i = 0; i < _radiusPts.size(); i++) {
+		radiusSegs.push_back(unproject(_pts[i]));
+		radiusSegs.push_back(unproject(_radiusPts[i]));
 	}
 }
 

@@ -887,7 +887,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 			// There will be numSimpleDivs cells across each cell
 			// We need to compute crossections for the split cells and each split cell also computes a half section, 
 			// so we need 4 splits
-			auto nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[i];
+			auto nDivs = 32 * (params.numSimpleDivs + 1) * _modelDim[i];
 			_crossSections[i].resize(nDivs + 1);
 			const std::vector<Vector3<double>>& pts = _modelCornerPts;
 			for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
@@ -953,7 +953,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 				}
 			}
 		}
-	}, false && RUN_MULTI_THREAD);
+	},  RUN_MULTI_THREAD);
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)

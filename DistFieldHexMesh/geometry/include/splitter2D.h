@@ -90,7 +90,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	size_t numEdges() const;
-	void getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures);
+	void getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<Vector3d>& radiusPts, std::vector<double>& curvatures);
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
 
@@ -157,7 +157,7 @@ private:
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
 	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
-	std::vector<Vector2d> _pts;
+	std::vector<Vector2d> _pts, _radiusPts;
 	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;
 	std::map<Vector2d, size_t> _ptToIndexMap;
