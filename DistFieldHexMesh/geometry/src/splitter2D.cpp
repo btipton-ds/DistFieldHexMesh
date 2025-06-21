@@ -189,19 +189,73 @@ void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 }
 
 void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split) {
+	const auto distTol = Tolerance::sameDistTol();
+	const auto distTolSqr = Tolerance::sameDistTolSqr();
+	const auto tol = Tolerance::paramTol();
+
 	vector<Vector2d> iPts;
+	set<size_t> usedIndices;
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
-		LineSegmentd seg(*polyPoints[i], *polyPoints[j]);
-		const auto distTol = Tolerance::sameDistTol();
-		const auto tol = Tolerance::paramTol();
-		RayHitd hp;
-		if (_plane.intersectLineSegment(seg, hp, tol)) {
-			Vector2d pt2d;
-			if (project(hp.hitPt, pt2d, distTol)) {
-				iPts.push_back(pt2d);
+		size_t k = (i + 2) % polyPoints.size();
+
+		Vector2d pt02d, pt12d;
+		auto& pt0 = *polyPoints[i];
+		auto& pt1 = *polyPoints[j];
+#if 1
+		auto& pt2 = *polyPoints[k];
+
+		auto dist0 = _plane.distanceToPoint(pt0, false);
+		auto dist1 = _plane.distanceToPoint(pt1, false);
+		auto dist2 = _plane.distanceToPoint(pt2, false);
+
+		if (fabs(dist0) < distTol && fabs(dist1) < distTol) {
+			// The entire segment lies in the plane
+
+			if (!usedIndices.contains(i) && project(pt0, pt02d, distTol)) {
+				usedIndices.insert(i);
+				iPts.push_back(pt02d);
+			}
+
+			if (!usedIndices.contains(j) && project(pt1, pt12d, distTol)) {
+				usedIndices.insert(j);
+				iPts.push_back(pt12d);
+			}
+		} else if (dist0 * dist1 < 0) {
+			if (!usedIndices.contains(i)) {
+				// There is a clear crossing of vertI and vertJ;
+				LineSegment_byrefd seg(pt0, pt1);
+				RayHitd hp;
+				if (_plane.intersectLineSegment(seg, hp, tol)) {
+					if (project(hp.hitPt, pt02d, distTol)) {
+						usedIndices.insert(i);
+						iPts.push_back(pt02d);
+					}
+				}
+			}
+		} else if (fabs(dist1) < distTol && dist0 * dist2 < 0 && !usedIndices.contains(j)) {
+			// The mid point lies on the plane, but pt0 and pt2 cross
+			if (project(pt1, pt12d, distTol)) {
+				usedIndices.insert(j);
+				iPts.push_back(pt12d);
 			}
 		}
+#else
+		if (_plane.isCoincident(pt0, distTol) && _plane.isCoincident(pt1, distTol)) {
+			if (project(pt0, pt02d, distTol) && project(pt1, pt12d, distTol)) {
+				addEdge(pt02d, pt12d, split);
+				continue;
+			}
+		} else {
+			LineSegment_byrefd seg(pt0, pt1);
+			RayHitd hp;
+			if (_plane.intersectLineSegment(seg, hp, tol)) {
+				if (project(hp.hitPt, pt02d, distTol)) {
+					iPts.push_back(pt02d);
+				}
+			}
+		}
+#endif
 	}
 
 	if (iPts.size() < 2)
@@ -694,9 +748,14 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 		}
 	}
 
-	for (size_t i = 0; i < _pts.size(); i++) {
-		curvatures.push_back(_curvatures[i]);
-		points.push_back(unproject(i));
+	for (const auto& e : _edges) {
+		size_t idx0 = e[0];
+		size_t idx1 = e[1];
+		points.push_back(unproject(idx0));
+		points.push_back(unproject(idx1));
+
+		curvatures.push_back(_curvatures[idx0]);
+		curvatures.push_back(_curvatures[idx1]);
 	}
 }
 

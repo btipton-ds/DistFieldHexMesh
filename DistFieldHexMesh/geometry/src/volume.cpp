@@ -953,7 +953,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 				}
 			}
 		}
-	}, RUN_MULTI_THREAD);
+	}, false && RUN_MULTI_THREAD);
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
