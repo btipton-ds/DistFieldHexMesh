@@ -554,6 +554,9 @@ void Polyhedron::remapId(const vector<size_t>& idRemap, const Index3D& srcDims)
 void Polyhedron::addFace(const Index3DId& faceId)
 {
 	_faceIds.insert(faceId);
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(_faceIds.isSorted());
+#endif
 	faceFunc(faceId, [this](Polygon& face) {
 		face.addCellId(getId());
 	});

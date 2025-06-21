@@ -32,6 +32,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <algorithm>
 
+#if FAST_BISECTION_VALIDATION_ENABLED
+#include <assert.h>
+#endif
+
 namespace DFHM {
 
 template<class VAL>
@@ -74,11 +78,11 @@ public:
 	std::vector<VAL>::const_iterator begin() const;
 	std::vector<VAL>::const_iterator end() const;
 
+	bool isSorted() const;
+
 private:
 	void findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const;
 	bool isEqual(const VAL& lhs, const VAL& rhs) const;
-
-	bool isSorted() const;
 
 	COMP _comp;
 	mutable bool _sorted = true;
@@ -153,6 +157,9 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 {
 	_vals = rhs._vals;
 	_sorted = rhs._sorted;
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	return  *this;
 }
 
@@ -161,6 +168,9 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 {
 	_vals = rhs;
 	_sorted = false;
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	return  *this;
 }
 
@@ -171,6 +181,9 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 	for (const auto& id : rhs)
 		_vals.push_back(id);
 	_sorted = false;
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
 	return  *this;
 }
 
@@ -273,6 +286,11 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 		_vals.shrink_to_fit();
 		_sorted = true;
 	}
+
+#if FAST_BISECTION_VALIDATION_ENABLED
+	assert(isSorted());
+#endif
+
 	idx0 = 0; 
 	idx1 = _vals.size() - 1;
 	auto pVals = _vals.data();
@@ -313,9 +331,24 @@ inline bool FastBisectionSet_with_comp<VAL, COMP>::isSorted() const
 #if FAST_BISECTION_VALIDATION_ENABLED
 	if (_vals.empty())
 		return true;
+
+	if (!_sorted) {
+		for (size_t i = 0; i < _vals.size() - 1; i++) {
+			for (size_t j = i + 1; j < _vals.size(); j++) {
+				if (_vals[i] == _vals[j])
+					return false;
+			}
+		}
+		return true;
+	}
+
 	for (size_t i = 0; i < _vals.size() - 1; i++) {
 		if (_vals[i + 1] < _vals[i])
 			return false;
+		for (size_t j = i + 1; j < _vals.size(); j++) {
+			if (_vals[i] == _vals[j])
+				return false;
+		}
 	}
 #endif
 	return true;

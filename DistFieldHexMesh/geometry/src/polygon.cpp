@@ -578,20 +578,22 @@ const Vector3d& Polygon::calUnitNormal() const
 	if (_cachedNormal[0] == DBL_MAX) {
 		auto& nonColin = getNonColinearVertexIds();
 		auto p = getBlockPtr();
+		Vector3d tmp;
 		if (p) {
-			if (!calUnitNormalStat(p, nonColin, _cachedNormal))
+			if (!calUnitNormalStat(p, nonColin, tmp))
 				throw runtime_error("calUnitNormal() failed");
 		} else {
-			if (!calUnitNormalStat(getPolyMeshPtr(), nonColin, _cachedNormal))
+			if (!calUnitNormalStat(getPolyMeshPtr(), nonColin, tmp))
 				throw runtime_error("calUnitNormal() failed");
 		}
 #if _DEBUG
-		auto err = fabs(_cachedNormal.squaredNorm() - 1);
-		if (err > 1.0e-12) {
+		auto err = tmp.squaredNorm() - 1.0;
+		if (fabs(err) > 1.0e-12) {
 			assert(!"bad squaredNorm");
 		}
 #endif _DEBUG
-		assert(!_cachedNormal.isNAN());
+		assert(!tmp.isNAN());
+		_cachedNormal = tmp;
 	}
 	return _cachedNormal;
 }
