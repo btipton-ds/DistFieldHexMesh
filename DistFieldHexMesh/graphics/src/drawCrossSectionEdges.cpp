@@ -89,7 +89,7 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 		_radiusIndices[axisNum].clear();
 		if (!crossSections[axisNum].empty()) {
 			vector<Vector3d> points, radiusSegs;
-			vector<double> curvatures;
+			vector<double> curvatures, radiusCurvatures;
 
 			auto& sections = crossSections[axisNum];
 			size_t start = 0, end = sections.size();
@@ -102,7 +102,7 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 			for (size_t sectionNum = start; sectionNum < end; sectionNum++) {
 				auto& pSection = sections[sectionNum];
 				if (pSection)
-					pSection->getPointCurvatures(params, points, radiusSegs, curvatures);
+					pSection->getPointCurvatures(params, points, curvatures, radiusSegs, radiusCurvatures);
 			}
 
 			for (size_t i = 0; i < points.size(); i++) {
@@ -120,6 +120,9 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 				for (int j = 0; j < 3; j++) {
 					_radiusSegPts.push_back(float(radiusSegs[i][j]));
 				}
+				rgbaColor c = curvatureToColor(radiusCurvatures[i]);
+				for (int j = 0; j < 3; j++)
+					_radiusColors.push_back(c._rgba[j] / 255.0f);
 			}
 		}
 	}
@@ -168,7 +171,7 @@ void DrawCrossSectionEdges::copyTablesToVBOs()
 		vector<unsigned int> indices(_radiusIndices[0]);
 		indices.insert(indices.end(), _radiusIndices[1].begin(), _radiusIndices[1].end());
 		indices.insert(indices.end(), _radiusIndices[2].begin(), _radiusIndices[2].end());
-		_allRadiusTessellations = edgeVBO.setEdgeSegTessellation(DS_INTERSECTION_RADII_ALL, 0, _radiusSegPts, indices);
+		_allRadiusTessellations = edgeVBO.setEdgeSegTessellation(DS_INTERSECTION_RADII_ALL, 0, _radiusSegPts, _radiusColors, indices);
 
 		for (int i = 0; i < 3; i++) {
 			if (!_radiusIndices[i].empty()) {
@@ -241,9 +244,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawEdges(int key)
 	case DS_INTERSECTION_RADIUS_Y:
 	case DS_INTERSECTION_RADIUS_Z:
 #if 1
-		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
-		UBO.useDefColor = 1;
-		UBO.defColor = p4f(1.0f, 0.0f, 0.0f, 1.0f);
+		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+		UBO.useDefColor = 0;
+		UBO.defColor = p4f(0.0f, 0.0f, 0.0f, 1.0f);
 #else
 		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_SKIP;
 #endif

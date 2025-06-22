@@ -102,7 +102,7 @@ private:
 
 	DrawCrossSectionEdgesOptions _options;
 
-	std::vector<float> _points, _colors, _radiusSegPts;
+	std::vector<float> _points, _colors, _radiusSegPts, _radiusColors;
 	std::vector<unsigned int> _indices[3], _radiusIndices[3];
 	OGL::IndicesPtr _allTessellations, _allRadiusTessellations;
 	std::vector<OGL::IndicesPtr> _tessellations, _radiusTessellations;

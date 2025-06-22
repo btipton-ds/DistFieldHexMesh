@@ -677,7 +677,8 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	return curvatures.size();
 }
 
-void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<Vector3d>& radiusSegs, std::vector<double>& curvatures)
+void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures,
+	std::vector<Vector3d>& radiusSegs, std::vector<double>& radiusCurvatures)
 {
 	if (!_pts.empty()  && _curvatureEdges.empty()) {
 		map<size_t, set<size_t>> pointToPointsMap;
@@ -704,13 +705,13 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 	}
 
 	// Don't clear points etc. because the caller accumulates them
-	set<size_t> usedPts;
+	set<size_t> usedPtIndices;
 	for (const auto& e : _curvatureEdges) {
 		size_t idx0 = e[0];
 		size_t idx1 = e[1];
 
-		usedPts.insert(idx0);
-		usedPts.insert(idx1);
+		usedPtIndices.insert(idx0);
+		usedPtIndices.insert(idx1);
 
 		points.push_back(unproject(idx0));
 		points.push_back(unproject(idx1));
@@ -719,9 +720,16 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 		curvatures.push_back(_curvatures[idx1]);
 	}
 
-	for (size_t i : usedPts) {
-		radiusSegs.push_back(unproject(_pts[i]));
-		radiusSegs.push_back(unproject(_radiusPts[i]));
+	for (size_t ptIdx : usedPtIndices) {
+		auto v = _radiusPts[ptIdx] - _pts[ptIdx];
+		auto l = v.norm();
+		if (l > 10 * Tolerance::sameDistTol()) {
+			radiusSegs.push_back(unproject(_pts[ptIdx]));
+			radiusCurvatures.push_back(_curvatures[ptIdx]);
+
+			radiusSegs.push_back(unproject(_radiusPts[ptIdx]));
+			radiusCurvatures.push_back(_curvatures[ptIdx]);
+		}
 	}
 }
 
