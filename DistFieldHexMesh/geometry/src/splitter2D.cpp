@@ -687,10 +687,10 @@ void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<V
 		calCurvaturesAndRadPoints(params, pointToPointsMap);
 
 		set<size_t> badIndices;
-		const double maxCurvatureRatio = 20;
+		const double maxCurvatureRatio = 0.04;
 		calBadCurvatureIndices(pointToPointsMap, maxCurvatureRatio, badIndices);
 #if 1
-		for (size_t i = 0; i < 1; i++) {
+		for (size_t i = 0; i < 3; i++) {
 			if (badIndices.empty())
 				break;
 
@@ -832,24 +832,28 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 					double renderRatio = 1;
 					if (radius > 0.25)
 						renderRatio = 0.25 / radius;
-					_radiusPts[ctrIdx] = ctrPt + vRad * renderRatio;
 
 #if 0
 					assert(fabs((arcCtr - pt0).norm() - radius) < assertTol);
 					assert(fabs((arcCtr - ctrPt).norm() - radius) < assertTol);
 					assert(fabs((arcCtr - pt1).norm() - radius) < assertTol);
 #endif
-					if (radius < sharpRadius) {
+					if (radius < sharpRadius)
 						radius = sharpRadius;
-					}
+					else if (radius > params.maxCuvatureRadius)
+						radius = -1;
+					else
+						_radiusPts[ctrIdx] = ctrPt + vRad * renderRatio;
 				} else {
-					_curvatures[ctrIdx] = 0;
-					continue;
+					radius = -1;
 				}
 			}
 
-			assert(radius > 0);
-			_curvatures[ctrIdx] = 1 / radius;
+			if (radius <= 0) {
+				_radiusPts[ctrIdx] = _pts[ctrIdx];
+				_curvatures[ctrIdx] = 0;
+			} else
+				_curvatures[ctrIdx] = 1 / radius;
 		}
 	}
 
@@ -868,19 +872,40 @@ void Splitter2D::calBadCurvatureIndices(const std::map<size_t, std::set<size_t>>
 			size_t idx1 = *iter;
 
 #if 1
-			Vector2d vCtr = _radiusPts[ctrIdx] - _pts[ctrIdx];
-			Vector2d v0 = _radiusPts[idx0] - _pts[idx1];
-			Vector2d v1 = _radiusPts[idx1] - _pts[idx1];
-			if (v0.dot(v1) > 0 && vCtr.dot(v0 + v1) < 0) {
-				badIndices.insert(ctrIdx);
-				continue;
-			}
-
 			auto curvCtr = _curvatures[ctrIdx];
-			auto avgCurv = (_curvatures[idx0] + _curvatures[idx1]) / 2;
-			if (curvCtr < avgCurv / maxCurvatureRatio) {
-				badIndices.insert(ctrIdx);
+			auto curv0 = _curvatures[idx0];
+			auto curv1 = _curvatures[idx1];
+			if (curvCtr < curv0 && curvCtr < curv1) {
+				const auto& pt0 = _pts[idx0];
+				const auto& ctrPt = _pts[ctrIdx];
+				const auto& pt1 = _pts[idx1];
+
+				Vector2d vCtr = _radiusPts[ctrIdx] - ctrPt;
+				Vector2d v0 = _radiusPts[idx0] - pt0;
+				Vector2d v1 = _radiusPts[idx1] - pt1;
+				if (v0.dot(v1) > 0 && vCtr.dot(v0 + v1) < 0) {
+					badIndices.insert(ctrIdx);
+					continue;
+				}
+
+				auto avgCurv = (curv0 + curv1) / 2;
+				if (curvCtr < 0.05 * avgCurv) {
+					badIndices.insert(ctrIdx);
+					continue;
+				}
+#if 1
+				auto l0 = (ctrPt - pt0).norm();
+				auto l1 = (ctrPt - pt1).norm();
+				auto l = l0 + l1;
+				double ratio;
+				if (l0 < l1)
+					ratio = l0 / l;
+				else
+					ratio = l1 / l;
+				if (ratio < maxCurvatureRatio)
+					badIndices.insert(ctrIdx);
 			}
+#endif
 #else
 			const auto& pt0 = _pts[idx0];
 			const auto& ctrPt = _pts[ctrIdx];

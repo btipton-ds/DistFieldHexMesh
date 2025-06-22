@@ -243,7 +243,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawCrossSectionEdges::preDrawEdges(int key)
 	case DS_INTERSECTION_RADIUS_X:
 	case DS_INTERSECTION_RADIUS_Y:
 	case DS_INTERSECTION_RADIUS_Z:
-#if 1
+#if 0
 		result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
 		UBO.useDefColor = 0;
 		UBO.defColor = p4f(0.0f, 0.0f, 0.0f, 1.0f);
