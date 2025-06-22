@@ -65,6 +65,36 @@ Splitter2D::Splitter2D(const Polygon& face)
 	initFromPoints(polyPts);
 }
 
+size_t Splitter2D::findPtIndex(const Vector2d& pt) const
+{
+	auto iter = _ptToIndexMap.find(FixedPt::fromDbl(pt[0]));
+	if (iter != _ptToIndexMap.end()) {
+		auto& subMap = iter->second;
+		auto iter2 = subMap.find(FixedPt::fromDbl(pt[1]));
+		if (iter2 != subMap.end())
+			return iter2->second;
+	}
+	return -1;
+}
+
+size_t Splitter2D::addPoint(const Vector2d& pt)
+{
+	auto valXi = FixedPt::fromDbl(pt[0]);
+	auto valYi = FixedPt::fromDbl(pt[1]);
+
+	auto iter = _ptToIndexMap.find(valXi);
+	if (iter == _ptToIndexMap.end())
+		iter = _ptToIndexMap.insert(make_pair(valXi, std::map<FIXED_PT_SCALAR_TYPE, size_t>())).first;
+	auto& subMap = iter->second;
+	auto iter2 = subMap.find(valYi);
+	if (iter2 == subMap.end()) {
+		size_t idx = _pts.size();
+		_pts.push_back(pt);
+		iter2 = subMap.insert(make_pair(valYi, idx)).first;
+	}
+	return iter2->second;
+}
+
 void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 {
 	if (polyPoints.size() < 3) {
@@ -344,8 +374,8 @@ void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
 	if (!project(pt3D0, pt, tol))
 		return;
 
-	auto iter = _ptToIndexMap.find(pt);
-	if (iter != _ptToIndexMap.end())
+	auto idx = findPtIndex(pt);
+	if (idx != -1)
 		return;
 	for (const auto& e : _edges) {
 		const auto& pt0 = _pts[e[0]];
@@ -362,7 +392,7 @@ void Splitter2D::imprint3DPoint(const Vector3d& pt3D0)
 			break;
 		}
 	}
-	auto idx = addPoint(pt);
+	idx = addPoint(pt);
 }
 
 void Splitter2D::cleanMap(map<size_t, set<size_t>>& map, size_t indexToRemove)
@@ -1434,11 +1464,9 @@ bool Splitter2D::split(const Edge2D& e0, const Edge2D& e1, set<Edge2D>& result)
 	if (seg0.intersectionInBounds(seg1, t)) {
 		const double tol = Tolerance::sameDistTol();
 		Vector2d pt1 = seg0.interpolate(t);
-		auto iter = _ptToIndexMap.find(pt1);
-		if (iter != _ptToIndexMap.end()) {
-			if (iter->second == e0[0] || iter->second == e0[1])
-				return false;
-		}
+		size_t idx1 = findPtIndex(pt1);
+		if (idx1 == e0[0] || idx1 == e0[1])
+			return false;
 
 		Vector2d pt0 = seg0[0];
 		Vector2d pt2 = seg0[1];
@@ -1519,17 +1547,6 @@ inline Vector3d Splitter2D::unproject(size_t idx) const
 inline const Vector2d& Splitter2D::getPoint(size_t idx) const
 {
 	return _pts[idx];
-}
-
-size_t Splitter2D::addPoint(const Vector2d& pt)
-{
-	auto iter = _ptToIndexMap.find(pt);
-	if (iter == _ptToIndexMap.end()) {
-		size_t idx = _pts.size();
-		_pts.push_back(pt);
-		iter = _ptToIndexMap.insert(make_pair(pt, idx)).first;
-	}
-	return iter->second;
 }
 
 Edge2D::Edge2D(size_t i0, size_t i1)

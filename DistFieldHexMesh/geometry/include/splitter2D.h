@@ -40,6 +40,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_ray.h>
 #include <tm_lineSegment.h>
 #include <Eigen/src/Core/Matrix.h>
+#include <fixedPoint.h>
 #include <fastBisectionSet.h>
 #include <lineSegment2D.h>
 #include <MultiCoreUtil.h>
@@ -128,6 +129,8 @@ private:
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
 
+	size_t findPtIndex(const Vector2d& pt) const;
+	size_t addPoint(const Vector2d& pt);
 	void initFromPoints(const MTC::vector<Vector3d>& polyPoints);
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split);
 	void addEdge(const Edge2D& edge, bool split);
@@ -157,7 +160,6 @@ private:
 	size_t getLoopSeedIndex(const POINT_MAP_TYPE& ptMap) const;
 	size_t getSpurSeedIndex(const POINT_MAP_TYPE& ptMap) const;
 
-	size_t addPoint(const Vector2d& pt);
 	const Vector2d& getPoint(size_t idx) const;
 	void splitExisting(const Edge2D& edge);
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
@@ -166,7 +168,7 @@ private:
 	std::vector<Vector2d> _pts, _radiusPts;
 	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;
-	std::map<Vector2d, size_t> _ptToIndexMap;
+	std::map<FIXED_PT_SCALAR_TYPE, std::map<FIXED_PT_SCALAR_TYPE, size_t>> _ptToIndexMap;
 	std::set<Edge2D> _edges, _boundaryEdges, _curvatureEdges;
 
 	Vector3d _xAxis, _yAxis;
