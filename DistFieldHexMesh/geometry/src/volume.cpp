@@ -987,6 +987,9 @@ const Splitter2DPtr Volume::getSection(const Planed& pl) const
 	const auto tol = Tolerance::sameDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
 
+	Splitter2DPtr result;
+	bool foundAxis = false;
+
 	const std::vector<Vector3<double>>& pts = _modelCornerPts;
 	for (int axis = 0; axis < 3; axis++) {
 		Vector3 uvw(0.5, 0.5, 0.5);
@@ -999,17 +1002,21 @@ const Splitter2DPtr Volume::getSection(const Planed& pl) const
 
 		auto cp = pl.getNormal().cross(norm).norm();
 		if (cp < cpTol) {
+			foundAxis = true;
 			const auto& section = _crossSections[axis];
 			const auto& testPt = pl.getOrgin();
 			for (const auto& pSection : section) {
 				if (pSection && pSection->getPlane().isCoincident(testPt, tol)) {
-					return pSection;
+					result = pSection;
+					break;
 				}
 			}
 		}
 	}
 
-	return nullptr;
+	assert(foundAxis);
+
+	return result;
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
