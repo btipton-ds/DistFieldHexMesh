@@ -882,53 +882,70 @@ bool Volume::hasCrossSections() const
 
 void Volume::createCrossSections(const SplittingParams& params)
 {
-	for (int i = 0; i < 3; i++) {
-		if (_crossSections[i].empty()) {
+	for (int axis = 0; axis < 3; axis++) {
+		bool ignoreFirstPlane = false;
+		switch (axis) {
+		default:
+			break;
+		case 0:
+			ignoreFirstPlane = params.symXAxis;
+			break;
+		case 1:
+			ignoreFirstPlane = params.symYAxis;
+			break;
+		case 2:
+			ignoreFirstPlane = params.symZAxis;
+			break;
+		}
+		if (_crossSections[axis].empty()) {
 			// There will be numSimpleDivs cells across each cell
 			// We need to compute crossections for the split cells and each split cell also computes a half section, 
 			// so we need 4 splits
-			auto nDivs = 32 * (params.numSimpleDivs + 1) * _modelDim[i];
-			_crossSections[i].resize(nDivs + 1);
+			auto nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis];
+			_crossSections[axis].resize(nDivs + 1);
 			const std::vector<Vector3<double>>& pts = _modelCornerPts;
 			for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
+				if (j == 0 && ignoreFirstPlane)
+					continue;
+
 				double t = j / (double) nDivs;
 				Vector3 uvw(0.5, 0.5, 0.5);
 
-				uvw[i] = 0;
+				uvw[axis] = 0;
 				Vector3d pt0 = TRI_LERP(pts, uvw);
-				uvw[i] = 1;
+				uvw[axis] = 1;
 				Vector3d pt1 = TRI_LERP(pts, uvw);
 				Vector3d norm = pt1 - pt0;
 
-				uvw[i] = t;
+				uvw[axis] = t;
 				Vector3d pt = TRI_LERP(pts, uvw);
 				Planed pl(pt, norm);
 
-				_crossSections[i][j] = make_shared<Splitter2D>(pl);
+				_crossSections[axis][j] = make_shared<Splitter2D>(pl);
 			}
 		} else {
 			// We need to insert a new section between each existing section
-			size_t n = _crossSections[i].size();
+			size_t n = _crossSections[axis].size();
 			for (size_t k = n - 1; k != 0; k--) {
 				size_t j = (k - 1);
-				const auto& pt0 = _crossSections[i][j]->getPlane().getOrgin();
-				const auto& pt1 = _crossSections[i][k]->getPlane().getOrgin();
+				const auto& pt0 = _crossSections[axis][j]->getPlane().getOrgin();
+				const auto& pt1 = _crossSections[axis][k]->getPlane().getOrgin();
 				auto pt2 = (pt0 + pt1) / 2;
-				Planed pl(pt2, _crossSections[i][j]->getPlane().getNormal());
-				_crossSections[i].insert(_crossSections[i].begin() + j, make_shared<Splitter2D>(pl));
+				Planed pl(pt2, _crossSections[axis][j]->getPlane().getNormal());
+				_crossSections[axis].insert(_crossSections[axis].begin() + j, make_shared<Splitter2D>(pl));
 			}
 		}
 	}
 
 	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
 		size_t count = 0;
-		for (int i = 0; i < 3; i++) {
-			auto nDivs = _crossSections[i].size();
+		for (int axis = 0; axis < 3; axis++) {
+			auto nDivs = _crossSections[axis].size();
 			for (size_t j = 0; j < nDivs; j++) {
 				count++;
 				if (count % numThreads != threadNum)
 					continue;
-				auto pSplitter = _crossSections[i][j];
+				auto pSplitter = _crossSections[axis][j];
 				if (pSplitter && pSplitter->getEdges().empty()) {
 					auto& model = getAppData()->getModel();
 					for (const auto& pData : model) {
@@ -946,7 +963,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 					}
 
 					if (pSplitter->numEdges() == 0) {
-						_crossSections[i][j] = nullptr;
+						_crossSections[axis][j] = nullptr;
 					} else if (pSplitter->numEdges() > 50) {
 						int dbgBreak = 1;
 					}

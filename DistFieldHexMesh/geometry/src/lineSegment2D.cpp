@@ -49,6 +49,7 @@ bool LineSegment2d::project(const Vector2d& pt, double& t) const
 bool LineSegment2d::intersectRay(const LineSegment2d& ray, Vector2d& iPt) const
 {
 	const double tol = Tolerance::sameDistTol();
+	const auto tolSqr = tol * tol;
 	const double paramTol = Tolerance::paramTol();
 
 	Vector2d segOrigin = _pts[0];
@@ -83,11 +84,11 @@ bool LineSegment2d::intersectRay(const LineSegment2d& ray, Vector2d& iPt) const
 		}
 	}
 
-	if (-tol < x && x < ourLen + tol) {
-		iPt = segOrigin + x * xAxis;
-		return true;
-	}
-	return false;
+	iPt = segOrigin + x * xAxis;
+	if (distToPointSqr(iPt) > tolSqr || ray.distToPointSqr(iPt) > tolSqr)
+		return false;
+
+	return true;
 }
 
 bool LineSegment2d::intersectionInBounds(const LineSegment2d& other, double& t) const
@@ -229,6 +230,19 @@ Vector2d LineSegment2d::dir() const
 	if (l > 0)
 		result / l;
 	return result;
+}
+
+double LineSegment2d::distToPointSqr(const Vector2d& pt) const
+{
+	Vector2d ourDir = dir();
+	Vector2d v = pt - _pts[0];
+	v = v - v.dot(ourDir) * ourDir;
+	return v.squaredNorm();
+}
+
+double LineSegment2d::distToPoint(const Vector2d& pt) const
+{
+	return sqrt(distToPointSqr(pt));
 }
 
 double LineSegment2d::length() const

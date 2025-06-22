@@ -145,6 +145,11 @@ private:
 	size_t getPolylines(std::vector<Polyline>& polylines) const;
 	void removeColinearVertsFromVertexLoop(Polyline& pl) const;
 	void createPointPointMap(POINT_MAP_TYPE& ptMap) const;
+	void createPointPointMap(std::map<size_t, std::set<size_t>>& pointToPointsMap) const;
+	void calCurvaturesAndRadPoints(const SplittingParams& params, std::map<size_t, std::set<size_t>>& pointToPointsMap);
+	void calBadCurvatureIndices(const std::map<size_t, std::set<size_t>>& pointToPointsMap, std::set<size_t>& badIndices) const;
+	void removedBadIndices(const std::set<size_t>& badIndices, std::map<size_t, std::set<size_t>>& pointToPointsMap) const;
+
 	void createEdgeUsageMap(const POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
 	void removePolylineFromMaps(const Polyline& pl, POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
 
@@ -161,7 +166,7 @@ private:
 	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;
 	std::map<Vector2d, size_t> _ptToIndexMap;
-	std::set<Edge2D> _edges, _boundaryEdges;
+	std::set<Edge2D> _edges, _boundaryEdges, _curvatureEdges;
 
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;

@@ -45,6 +45,8 @@ public:
 	Vector2d interpolate(double t) const;
 	double length() const;
 	Vector2d dir() const;
+	double distToPoint(const Vector2d& pt) const;
+	double distToPointSqr(const Vector2d& pt) const;
 
 private:
 	std::vector<Vector2d> _pts;
