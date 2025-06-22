@@ -91,6 +91,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	size_t numEdges() const;
+	size_t findCurvaturesInPolygon(const std::vector<Vector3d>& polygon, std::vector<double>& curvatures) const;
 	void getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures, 
 		std::vector<Vector3d>& radiusSegs, std::vector<double>& radiusCurvatures);
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
@@ -128,6 +129,7 @@ private:
 	};
 
 	static void cleanMap(std::map<size_t, std::set<size_t>>& map, size_t indexToRemove);
+	bool pointInPolygon(const Vector2d& pt, const std::vector<Vector2d>& poly2D) const;
 
 	size_t findPtIndex(const Vector2d& pt) const;
 	size_t addPoint(const Vector2d& pt);

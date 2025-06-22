@@ -65,6 +65,27 @@ Splitter2D::Splitter2D(const Polygon& face)
 	initFromPoints(polyPts);
 }
 
+bool Splitter2D::pointInPolygon(const Vector2d& pt, const vector<Vector2d>& poly2D) const
+{
+	const auto tol = Tolerance::sameDistTol();
+
+	for (size_t i = 0; i < poly2D.size(); i++) {
+		size_t j = (i + 1) % poly2D.size();
+		auto& pt0 = poly2D[i];
+		auto& pt1 = poly2D[j];
+
+		Vector2d legVec = pt1 - pt0;
+		legVec.normalize();
+		Vector2d legPerp(-legVec[1], legVec[0]);
+		Vector2d v = pt - pt0;
+		double dist = v.dot(legPerp);
+		if (dist > tol)
+			return false;
+	}
+
+	return true;
+}
+
 size_t Splitter2D::findPtIndex(const Vector2d& pt) const
 {
 	auto iter = _ptToIndexMap.find(FixedPt::fromDbl(pt[0]));
@@ -707,6 +728,61 @@ size_t Splitter2D::getCurvatures(const SplittingParams& params, vector<double>& 
 	return curvatures.size();
 }
 
+size_t Splitter2D::findCurvaturesInPolygon(const std::vector<Vector3d>& polygon, std::vector<double>& curvatures) const
+{
+	const auto tol = Tolerance::sameDistTol();
+	vector<Vector2d> poly2D;
+
+	double xMin = DBL_MAX, xMax = -DBL_MAX;
+	double yMin = DBL_MAX, yMax = -DBL_MAX;
+
+	for (auto& pt : polygon) {
+		Vector2d projPt; 
+		auto success = project(pt, projPt, tol);
+		assert(success);
+
+		if (projPt[0] < xMin)
+			xMin = projPt[0];
+		if (projPt[0] > xMax)
+			xMax = projPt[0];
+
+		if (projPt[1] < yMin)
+			yMin = projPt[1];
+		if (projPt[1] > yMax)
+			yMax = projPt[1];
+
+		poly2D.push_back(projPt);
+
+		auto iterXBegin = _ptToIndexMap.lower_bound(FixedPt::fromDbl(xMin - tol));
+		auto iterXEnd = _ptToIndexMap.upper_bound(FixedPt::fromDbl(xMax + tol));
+
+		vector<size_t> tmpIndices;
+		for (auto iterX = iterXBegin; iterX != iterXEnd; iterX++) {
+			auto& subMap = iterX->second;
+
+			auto iterYBegin = subMap.lower_bound(FixedPt::fromDbl(yMin - tol));
+			auto iterYEnd = subMap.upper_bound(FixedPt::fromDbl(yMax + tol));
+
+			for (auto iterY = iterYBegin; iterY != iterYEnd; iterY++) {
+				size_t idx = iterY->second;
+				if (_curvatures[idx] > 0) {
+					tmpIndices.push_back(idx);
+				}
+			}
+		}
+
+		for (const size_t idx : tmpIndices) {
+			if (pointInPolygon(_pts[idx], poly2D)) {
+				auto curv = _curvatures[idx];
+				if (curv > 0)
+					curvatures.push_back(curv);
+			}
+		}
+	}
+
+	return curvatures.size();
+}
+
 void Splitter2D::getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures,
 	std::vector<Vector3d>& radiusSegs, std::vector<double>& radiusCurvatures)
 {
@@ -776,6 +852,11 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 
 	_curvatures.resize(_pts.size());
 	_radiusPts.resize(_pts.size());
+	for (size_t i = 0; i < _pts.size(); i++) {
+		_curvatures[i] = 0;
+		_radiusPts[i] = _pts[i];
+	}
+
 	for (const auto& pair : pointToPointsMap) {
 		size_t ctrIdx = pair.first;
 		_radiusPts[ctrIdx] = _pts[ctrIdx];
