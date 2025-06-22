@@ -148,7 +148,7 @@ private:
 	void createPointPointMap(POINT_MAP_TYPE& ptMap) const;
 	void createPointPointMap(std::map<size_t, std::set<size_t>>& pointToPointsMap) const;
 	void calCurvaturesAndRadPoints(const SplittingParams& params, std::map<size_t, std::set<size_t>>& pointToPointsMap);
-	void calBadCurvatureIndices(const std::map<size_t, std::set<size_t>>& pointToPointsMap, std::set<size_t>& badIndices) const;
+	void calBadCurvatureIndices(const std::map<size_t, std::set<size_t>>& pointToPointsMap, double maxCurvatureRatio, std::set<size_t>& badIndices) const;
 	void removedBadIndices(const std::set<size_t>& badIndices, std::map<size_t, std::set<size_t>>& pointToPointsMap) const;
 
 	void createEdgeUsageMap(const POINT_MAP_TYPE& ptMap, std::map<Edge2D, size_t>& edgeUsage) const;
