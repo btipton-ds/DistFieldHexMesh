@@ -183,6 +183,7 @@ enum DFHM_MENU_ID
     ID_OBJ_TREE_CTRL,
     ID_TREE_CTRL_SHOW,
 
+    ID_ENABLE_CROSSSECTION_GRAPHICS,
     ID_SHOW_SECTIONS_X,
     ID_SHOW_SECTIONS_Y,
     ID_SHOW_SECTIONS_Z,
@@ -277,6 +278,7 @@ private:
     void OnShowAllBlocks(wxCommandEvent& event);
     void OnShowMeshSelectedBlocks(wxCommandEvent& event);
 
+    void OnShowEnableSectionGraphics(wxCommandEvent& event);
     void OnShowSectionsX(wxCommandEvent& event);
     void OnShowSectionsY(wxCommandEvent& event);
     void OnShowSectionsZ(wxCommandEvent& event);

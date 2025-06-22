@@ -172,6 +172,9 @@ public:
     bool showLayer(int32_t layerNum) const;
     void setShowLayer(int32_t layerNum);
 
+    bool drawSectionsEnabled() const;
+    void toggleDrawSections(const VolumePtr& pVolume);
+
     bool hasSections() const;
     bool showSections(int axis) const;
     void toggleShowSections(int axis);
@@ -259,6 +262,7 @@ private:
     GLuint _width, _height;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+    bool _drawSectionsEnabled = false;
     std::shared_ptr<DrawCrossSectionEdges> _pDrawCrossSections;
     CBoundingBox3Dd _viewBounds;
     Eigen::Vector2d _mouseStartLocNDC_2D;

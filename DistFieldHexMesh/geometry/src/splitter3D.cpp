@@ -159,7 +159,7 @@ bool Splitter3D::splitComplex()
 		switch (cellType) {
 		case CT_HEX: {
 #if 1 // && defined(_DEBUG)
-			if (_polyhedronId == Index3DId(3, 1, 5, 433)) {
+			if (_polyhedronId == Index3DId(3, 0, 4, 0)) {
 				int dbgBreak = 1; // returning correct result for this cell
 			}
 #endif

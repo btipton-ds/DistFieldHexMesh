@@ -287,6 +287,9 @@ void MainFrame::createViewMenu()
 
     _viewMenu->AppendSeparator();
 
+    _viewMenu->Append(ID_ENABLE_CROSSSECTION_GRAPHICS, "Enable cross section graphics", "Show sections in X", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowEnableSectionGraphics, this, ID_ENABLE_CROSSSECTION_GRAPHICS);
+
     _viewMenu->Append(ID_SHOW_SECTIONS_X, "Sections X", "Show sections in X", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowSectionsX, this, ID_SHOW_SECTIONS_X);
 
@@ -464,6 +467,7 @@ void MainFrame::OnInternalIdle()
         _viewMenu->Check(ID_SHOW_MESH_WALL, _pCanvas->showMeshWalls());
 //        _viewMenu->Check(ID_SHOW_MESH_SELECTED_BLOCKS, _pCanvas->showMeshFaces());
 
+        _viewMenu->Check(ID_ENABLE_CROSSSECTION_GRAPHICS, _pCanvas->drawSectionsEnabled());
         _viewMenu->Check(ID_SHOW_SECTIONS_X, _pCanvas->showSections(0));
         _viewMenu->Check(ID_SHOW_SECTIONS_Y, _pCanvas->showSections(1));
         _viewMenu->Check(ID_SHOW_SECTIONS_Z, _pCanvas->showSections(2));
@@ -480,9 +484,9 @@ void MainFrame::OnInternalIdle()
         _viewMenu->Enable(ID_SHOW_MESH_WALL, hasMesh);
         _viewMenu->Enable(ID_SHOW_MESH_SELECTED_BLOCKS, hasMesh);
 
-        _viewMenu->Enable(ID_SHOW_SECTIONS_X, _pCanvas->hasSections());
-        _viewMenu->Enable(ID_SHOW_SECTIONS_Y, _pCanvas->hasSections());
-        _viewMenu->Enable(ID_SHOW_SECTIONS_Z, _pCanvas->hasSections());
+        _viewMenu->Enable(ID_SHOW_SECTIONS_X, _pCanvas->drawSectionsEnabled() && _pCanvas->hasSections());
+        _viewMenu->Enable(ID_SHOW_SECTIONS_Y, _pCanvas->drawSectionsEnabled() && _pCanvas->hasSections());
+        _viewMenu->Enable(ID_SHOW_SECTIONS_Z, _pCanvas->drawSectionsEnabled() && _pCanvas->hasSections());
 
         if (_viewBoundarySubMenu) {
             _viewBoundarySubMenu->Check(ID_SHOW_FRONT, _pCanvas->showFace(GraphicsCanvas::VIEW_FRONT));
@@ -767,6 +771,12 @@ void MainFrame::OnShowMeshSelectedBlocks(wxCommandEvent& event)
     if (dlg.ShowModal() == wxID_OK) {
         _pAppData->doSelectBlocks(dlg);
     }
+}
+
+void MainFrame::OnShowEnableSectionGraphics(wxCommandEvent& event)
+{
+    auto pVol = _pAppData->getVolume();
+    _pCanvas->toggleDrawSections(pVol);
 }
 
 void MainFrame::OnShowSectionsX(wxCommandEvent& event)

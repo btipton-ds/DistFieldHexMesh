@@ -582,8 +582,12 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    auto& VBOs = _pDrawHexMesh->getVBOs();
-    VBOs->clear();
+    auto& meshVBOs = _pDrawHexMesh->getVBOs();
+    meshVBOs->clear();
+    if (_pDrawCrossSections) {
+        auto& sectionVBOs = _pDrawCrossSections->getVBOs();
+        sectionVBOs->clear();
+    }
 }
 
 void GraphicsCanvas::clearModel()
@@ -1564,6 +1568,31 @@ void GraphicsCanvas::writeDepthTexture(const std::string& filename, GLenum targe
             }
         }
         (void)fclose(fp);
+    }
+}
+
+bool GraphicsCanvas::drawSectionsEnabled() const
+{
+    return _drawSectionsEnabled;
+}
+
+void GraphicsCanvas::toggleDrawSections(const VolumePtr& pVolume)
+{
+
+    if (_drawSectionsEnabled) {
+        if (_pDrawCrossSections)
+            _pDrawCrossSections->getVBOs()->clear();
+        _pDrawCrossSections = nullptr;
+        _drawSectionsEnabled = false;
+    } else {
+        if (pVolume && pVolume->hasCrossSections()) {
+            if (!_pDrawCrossSections)
+                _pDrawCrossSections = make_shared<DrawCrossSectionEdges>(this);
+
+            _drawSectionsEnabled = true;
+            _pAppData->updateHexTess();
+            _pDrawCrossSections->changeViewElements();
+        }
     }
 }
 

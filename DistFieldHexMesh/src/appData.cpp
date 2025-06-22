@@ -214,7 +214,7 @@ void AppData::updateHexTess()
         buildHexFaceTables();
         copyHexFaceTablesToVBOs();
 
-        if (_pVolume->hasCrossSections()) {
+        if (_pMainFrame->getCanvas()->drawSectionsEnabled() && _pVolume->hasCrossSections()) {
             auto pCanvas = _pMainFrame->getCanvas();
             auto pDraw = pCanvas->getDrawCrossSectionEdges();
             pDraw->buildTables(_params, _pVolume->getCrossSections());
