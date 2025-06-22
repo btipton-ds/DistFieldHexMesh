@@ -182,6 +182,7 @@ private:
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void createCrossSections(const SplittingParams& params);
 	void createCrossSections(const SplittingParams& params, int axis);
+	const Splitter2DPtr getSection(const Planed& pl) const;
 
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);

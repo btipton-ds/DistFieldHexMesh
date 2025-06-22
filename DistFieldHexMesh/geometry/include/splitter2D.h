@@ -92,6 +92,7 @@ public:
 
 	size_t numEdges() const;
 	size_t findCurvaturesInPolygon(const std::vector<Vector3d>& polygon, std::vector<double>& curvatures) const;
+	void initCurvatures(const SplittingParams& params);
 	void getPointCurvatures(const SplittingParams& params, std::vector<Vector3d>& points, std::vector<double>& curvatures, 
 		std::vector<Vector3d>& radiusSegs, std::vector<double>& radiusCurvatures);
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;

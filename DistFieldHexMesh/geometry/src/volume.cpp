@@ -886,7 +886,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 		createCrossSections(params, axis);
 	}
 
-	MultiCore::runLambda([this](size_t threadNum, size_t numThreads) {
+	MultiCore::runLambda([this, &params](size_t threadNum, size_t numThreads) {
 		size_t count = 0;
 		for (int axis = 0; axis < 3; axis++) {
 			auto& axisSections = _crossSections[axis];
@@ -896,7 +896,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 				if (count % numThreads != threadNum)
 					continue;
 				auto pSplitter = axisSections[j];
-				if (pSplitter && pSplitter->getEdges().empty()) {
+				if (pSplitter && pSplitter->numEdges() == 0) {
 					auto& model = getAppData()->getModel();
 					for (const auto& pData : model) {
 						auto& pPolyMesh = pData->getPolyMesh();
@@ -914,8 +914,8 @@ void Volume::createCrossSections(const SplittingParams& params)
 
 					if (pSplitter->numEdges() == 0) {
 						axisSections[j] = nullptr;
-					} else if (pSplitter->numEdges() > 50) {
-						int dbgBreak = 1;
+					} else {
+						axisSections[j]->initCurvatures(params);
 					}
 				}
 			}
@@ -941,13 +941,13 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 		break;
 	}
 
+	const std::vector<Vector3<double>>& pts = _modelCornerPts;
 	if (axisSections.empty()) {
 		// There will be numSimpleDivs cells across each cell
 		// We need to compute crossections for the split cells and each split cell also computes a half section, 
 		// so we need 4 splits
 		auto nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis];
 		axisSections.resize(nDivs + 1);
-		const std::vector<Vector3<double>>& pts = _modelCornerPts;
 		for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
 			if (j == 0 && ignoreFirstPlane)
 				continue;
@@ -980,6 +980,36 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 			axisSections.insert(axisSections.begin() + j, make_shared<Splitter2D>(pl));
 		}
 	}
+}
+
+const Splitter2DPtr Volume::getSection(const Planed& pl) const
+{
+	const auto tol = Tolerance::sameDistTol();
+	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
+
+	const std::vector<Vector3<double>>& pts = _modelCornerPts;
+	for (int axis = 0; axis < 3; axis++) {
+		Vector3 uvw(0.5, 0.5, 0.5);
+
+		uvw[axis] = 0;
+		Vector3d pt0 = TRI_LERP(pts, uvw);
+		uvw[axis] = 1;
+		Vector3d pt1 = TRI_LERP(pts, uvw);
+		Vector3d norm = pt1 - pt0;
+
+		auto cp = pl.getNormal().cross(norm).norm();
+		if (cp < cpTol) {
+			const auto& section = _crossSections[axis];
+			const auto& testPt = pl.getOrgin();
+			for (const auto& pSection : section) {
+				if (pSection && pSection->getPlane().isCoincident(testPt, tol)) {
+					return pSection;
+				}
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)

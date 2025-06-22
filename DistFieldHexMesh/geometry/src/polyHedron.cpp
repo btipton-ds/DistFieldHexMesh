@@ -36,6 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_lineSegment_byref.hpp>
 #include <tm_ioUtil.h>
 #include <tm_spatialSearch.hpp>
+#include <tm_bestFit.h>
+
 #include <pool_vector.h>
 #include <pool_map.h>
 #include <pool_set.h>
@@ -941,7 +943,24 @@ double Polyhedron::calVolume() const
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints, size_t step) const
 {
 # if 1
-	return 0;
+	double result = 0;
+	Planed pl;
+	double err;
+	if (bestFitPlane(polyPoints, pl, err)) {
+		auto pVol = getOurBlockPtr()->getVolume();
+		auto pSection = pVol->getSection(pl);
+		if (pSection) {
+			vector<double> curvatures;
+			if (pSection->findCurvaturesInPolygon(polyPoints, curvatures) > 0) {
+				for (double c : curvatures) {
+					if (c > result)
+						result = c;
+				}
+			}
+		}
+	}
+
+	return result;
 #else
 	double result = 0;
 	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
