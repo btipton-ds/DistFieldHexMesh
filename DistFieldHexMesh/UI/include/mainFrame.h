@@ -53,23 +53,12 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Switch from tri mesh to polymesh 
-    raycasting
-    Intersect mesh and model
-
-Curvature logic is solid, but many problems -
-    The cross bars don't stop splitting when they should, they just keep subdividing
-    There are cells which should split on the numIntersects == 1 rule which are not subdividing.
-    Done - Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
+Looks like some sections are not being found. The rear cross bar is not radially splitting as it should
 
 Cross mesh gap analysis using the new search tree.
 
-Add offset/fat triangle intersections to triMesh. Allow setting a distance offset for each triangle vertex and conical frustum intersection for each edge.
-That will allow tapered offset boundary layers.
 Memory reporting is far out of line with reported memory allocations.
 
-Fix failure to keep a closed mesh when splitting long tris - or report an error to retry.
-Add bi/quad/oct/wedge splitting in addition to oct splitting.
 Add grid relaxation with vertex sliding along geometric surfaces
 Add cell cutting
 Add cell,face,edge squeezing
@@ -94,6 +83,11 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 Already done
 ****************************************************************************************************************************************
 
+Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
+Add bi/quad/oct/wedge splitting in addition to oct splitting.
+raycasting
+Intersect mesh and model
+Switch from tri mesh to polymesh
 High level of division, with all block ON creates laminar edges at level 5+, but processing only a few blocks goes up to level 10 with no issues. It's not related to numerical precision
 within blocks, but might be releated across blocks. THIS WAS CAUSED by not resolving all of the "too many faces" cases BEFORE the bad orthogonality cases. MUST FIX NUM FACES BEFORE ORTHO!!!
 

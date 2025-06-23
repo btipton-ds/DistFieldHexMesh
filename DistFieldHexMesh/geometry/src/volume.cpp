@@ -970,14 +970,28 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 	}
 	else {
 		// We need to insert a new section between each existing section
-		size_t n = axisSections.size();
-		for (size_t k = n - 1; k != 0; k--) {
-			size_t j = (k - 1);
-			const auto& pt0 = axisSections[j]->getPlane().getOrigin();
-			const auto& pt1 = axisSections[k]->getPlane().getOrigin();
-			auto pt2 = (pt0 + pt1) / 2;
-			Planed pl(pt2, axisSections[j]->getPlane().getNormal());
-			axisSections.insert(axisSections.begin() + j, make_shared<Splitter2D>(pl));
+		auto tmp = axisSections;
+		axisSections.clear();
+		axisSections.resize(2 * tmp.size() - 1);
+		for (size_t i = 0; i < tmp.size(); i++) {
+			axisSections[2 * i] = tmp[i];
+		}
+		size_t nDivs = axisSections.size() - 1;
+		for (size_t i = 1; i < axisSections.size() - 1; i += 2) {
+			double t = i / (double)nDivs;
+			Vector3 uvw(0.5, 0.5, 0.5);
+
+			uvw[axis] = 0;
+			Vector3d pt0 = TRI_LERP(pts, uvw);
+			uvw[axis] = 1;
+			Vector3d pt1 = TRI_LERP(pts, uvw);
+			Vector3d norm = pt1 - pt0;
+
+			uvw[axis] = t;
+			Vector3d pt = TRI_LERP(pts, uvw);
+			Planed pl(pt, norm);
+
+			axisSections[i] = make_shared<Splitter2D>(pl);
 		}
 	}
 }
