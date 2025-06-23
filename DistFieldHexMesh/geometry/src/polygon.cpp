@@ -621,7 +621,7 @@ Vector3d Polygon::calOrientedUnitNormal(const Index3DId& cellId) const
 
 const Planed& Polygon::calPlane() const
 {
-	if (_cachedPlane.getOrgin()[0] == DBL_MAX) {
+	if (_cachedPlane.getOrigin()[0] == DBL_MAX) {
 		auto& origin = calCentroid(); // Use every point to get more preceision
 		assert(!origin.isNAN());
 		auto& normal = calUnitNormal();

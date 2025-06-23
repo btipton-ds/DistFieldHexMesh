@@ -278,7 +278,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 		return (Index3D(0, 0, 0)); // Special case for single block, sractch volume.
 
 	const double tol = 1.0e-13;
-	const int64_t numSubDivisions = 2 * 1024;
+	const int64_t numSubDivisions = getNumSubDivisions();
 
 	Index3D result;
 	const double pTol = Tolerance::paramTol();
@@ -973,8 +973,8 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 		size_t n = axisSections.size();
 		for (size_t k = n - 1; k != 0; k--) {
 			size_t j = (k - 1);
-			const auto& pt0 = axisSections[j]->getPlane().getOrgin();
-			const auto& pt1 = axisSections[k]->getPlane().getOrgin();
+			const auto& pt0 = axisSections[j]->getPlane().getOrigin();
+			const auto& pt1 = axisSections[k]->getPlane().getOrigin();
 			auto pt2 = (pt0 + pt1) / 2;
 			Planed pl(pt2, axisSections[j]->getPlane().getNormal());
 			axisSections.insert(axisSections.begin() + j, make_shared<Splitter2D>(pl));
@@ -982,7 +982,7 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 	}
 }
 
-const Splitter2DPtr Volume::getSection(const Planed& pl) const
+const Splitter2DPtr Volume::getSection(const Planed& searchPlane) const
 {
 	const auto tol = Tolerance::sameDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
@@ -990,7 +990,9 @@ const Splitter2DPtr Volume::getSection(const Planed& pl) const
 	Splitter2DPtr result;
 	bool foundAxis = false;
 
-	const std::vector<Vector3<double>>& pts = _modelCornerPts;
+	const std::vector<Vector3d>& pts = _modelCornerPts;
+	Vector3d modelOrigin = _modelCornerPts[0];
+	Vector3d modelRange = _modelCornerPts[6] - _modelCornerPts[0];
 	for (int axis = 0; axis < 3; axis++) {
 		Vector3 uvw(0.5, 0.5, 0.5);
 
@@ -998,19 +1000,39 @@ const Splitter2DPtr Volume::getSection(const Planed& pl) const
 		Vector3d pt0 = TRI_LERP(pts, uvw);
 		uvw[axis] = 1;
 		Vector3d pt1 = TRI_LERP(pts, uvw);
-		Vector3d norm = pt1 - pt0;
+		Vector3d dir = pt1 - pt0;
 
-		auto cp = pl.getNormal().cross(norm).norm();
+		auto cp = searchPlane.getNormal().cross(dir).norm();
 		if (cp < cpTol) {
-			foundAxis = true;
-			const auto& section = _crossSections[axis];
-			const auto& testPt = pl.getOrgin();
-			for (const auto& pSection : section) {
-				if (pSection && pSection->getPlane().isCoincident(testPt, tol)) {
-					result = pSection;
-					break;
-				}
+			const auto& axisSections = _crossSections[axis];
+
+			auto& searchPlaneOrigin = searchPlane.getOrigin();
+			auto len = dir.norm();
+			double dist = searchPlane.distanceToPoint(pt0);
+			double t = dist / len;
+			assert(-Tolerance::paramTol() <= t && t < 1 + Tolerance::paramTol());
+			if (t < 0)
+				t = 0;
+			else if (t > 1)
+				t = 1;
+
+			size_t maxIdx = axisSections.size() - 1;
+			auto floatNum = maxIdx * t;
+			size_t idx = (size_t)(floatNum + 0.5);
+			assert(idx < axisSections.size());
+			double t2 = idx / (double)maxIdx;
+			double err = t2 - t;
+			assert(fabs(err) < Tolerance::paramTol());
+			const auto& pSection = axisSections[idx];
+			if (pSection) {
+				auto& sectionPlane = pSection->getPlane();
+				auto dist = sectionPlane.distanceToPoint(searchPlaneOrigin);
+				assert(dist < tol);
+				pSection->addHit();
+				result = pSection;
 			}
+
+			foundAxis = true;
 		}
 	}
 

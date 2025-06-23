@@ -163,6 +163,8 @@ private:
 	using AxisIndex = Block::AxisIndex;
 	using ThreadPool = MultiCore::ThreadPool;
 
+	static int64_t getNumSubDivisions();
+
 	void clear();
 
 	// Get the block using a block index
@@ -182,7 +184,7 @@ private:
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void createCrossSections(const SplittingParams& params);
 	void createCrossSections(const SplittingParams& params, int axis);
-	const Splitter2DPtr getSection(const Planed& pl) const;
+	const Splitter2DPtr getSection(const Planed& searchPlane) const;
 
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
@@ -244,6 +246,11 @@ private:
 };
 
 using VolumePtr = std::shared_ptr<Volume>;
+
+inline int64_t Volume::getNumSubDivisions()
+{
+	return 2 * 1024;
+}
 
 inline MultiCore::ThreadPool& Volume::getThreadPool() const
 {

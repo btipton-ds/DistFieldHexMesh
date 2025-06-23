@@ -1613,8 +1613,6 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 	getCanonicalPoints();
 	for (int step = 0; step < steps; step++) {
 		double w = step / (steps - 1.0);
-		double margin = 0.001;
-		w = margin + (1 - 2 * margin) * w;
 		MTC::vector<Vector3d> facePts;
 		makeHexFacePoints(axis, w, facePts);
 

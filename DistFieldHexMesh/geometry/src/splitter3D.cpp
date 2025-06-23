@@ -508,7 +508,7 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 			}
 
 			// Force all plane normals to point outward from the cell center
-			Vector3d v = pl.getOrgin() - ctr;
+			Vector3d v = pl.getOrigin() - ctr;
 			if (pl.getNormal().dot(v) < 0)
 				pl.reverse();
 			boundingPlanes.push_back(pl);

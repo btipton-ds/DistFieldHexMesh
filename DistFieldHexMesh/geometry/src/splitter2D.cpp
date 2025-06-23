@@ -1613,7 +1613,7 @@ bool Splitter2D::project(const Vector3d& pt, Vector2d& result, double tol) const
 {
 	auto dist = _plane.distanceToPoint(pt);
 	if (dist < tol) {
-		Vector3d v = pt - _plane.getOrgin();
+		Vector3d v = pt - _plane.getOrigin();
 		double x = v.dot(_xAxis);
 		double y = v.dot(_yAxis);
 		result = Vector2d(x, y);
@@ -1625,7 +1625,7 @@ bool Splitter2D::project(const Vector3d& pt, Vector2d& result, double tol) const
 
 inline Vector3d Splitter2D::unproject(const Vector2d& pt2d) const
 {
-	Vector3d pt3d(_plane.getOrgin() + _xAxis * pt2d[0] + _yAxis * pt2d[1]);
+	Vector3d pt3d(_plane.getOrigin() + _xAxis * pt2d[0] + _yAxis * pt2d[1]);
 	return pt3d;
 }
 
@@ -1711,3 +1711,10 @@ size_t Splitter2D::Polyline::createVector(vector<size_t>& vec, const vector<Vect
 
 	return vec.size();
 }
+
+void Splitter2D::addHit() const
+{
+	std::lock_guard lg(_mutex);
+	_numHits++;
+}
+

@@ -97,6 +97,7 @@ public:
 		std::vector<Vector3d>& radiusSegs, std::vector<double>& radiusCurvatures);
 	size_t getCurvatures(const SplittingParams& params, std::vector<double>& curvatures) const;
 	size_t getGaps(std::vector<double>& gaps) const;
+	void addHit() const;
 
 	bool intersectsTriPoints(const Vector3d* const * triPts) const;
 	bool intersectWithRay(const Rayd& ray, std::vector<LineSegmentd>& segs) const;
@@ -168,6 +169,8 @@ private:
 	bool split(const Edge2D& e0, const Edge2D& e1, std::set<Edge2D>& result);
 	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
+	mutable std::mutex _mutex;
+	mutable size_t _numHits = 0;
 	std::vector<Vector2d> _pts, _radiusPts;
 	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;

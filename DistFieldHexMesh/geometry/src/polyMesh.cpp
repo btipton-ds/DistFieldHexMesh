@@ -926,7 +926,7 @@ Index3DId PolyMesh::removeEdge(const EdgeKey& key, const Index3DId& faceId0, con
 	auto& face = getPolygon(result);
 
 	// For this new face to have the plane of the source faces
-	face.setCentroid_risky(plane.getOrgin());
+	face.setCentroid_risky(plane.getOrigin());
 	face.setUnitNormal_risky(plane.getNormal());
 	face.setIsConvex_risky(Polygon::IS_CONVEX_ENOUGH);
 
