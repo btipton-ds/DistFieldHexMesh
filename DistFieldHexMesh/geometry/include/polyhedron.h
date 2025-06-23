@@ -128,7 +128,7 @@ public:
 	bool isTooComplex(const SplittingParams& params) const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
-	bool needsCurvatureSplit(const SplittingParams& params, int axis) const;
+	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 
 	double maxOrthogonalityAngleRadians() const;
 
@@ -206,7 +206,8 @@ private:
 	double calCurvatureXYPlane(const SplittingParams& params) const;
 	double calCurvatureYZPlane(const SplittingParams& params) const;
 	double calCurvatureZXPlane(const SplittingParams& params) const;
-	double calCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
+	double getCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
+	void initCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis0) const;
 
 	void createTriPoints(std::vector<std::pair<const Vector3d*, const Polygon*>>& cellTriPts) const;
 	void createTriPoints(std::vector<std::pair<const Vector3d, const Polygon*>>& cellTriPts) const;
@@ -286,17 +287,17 @@ inline size_t Polyhedron::getSplitLevel() const
 
 inline double Polyhedron::calCurvatureXYPlane(const SplittingParams& params) const
 {
-	return calCurvatureByNormalAxis(params, 2);
+	return getCurvatureByNormalAxis(params, 2);
 }
 
 inline double Polyhedron::calCurvatureYZPlane(const SplittingParams& params) const
 {
-	return calCurvatureByNormalAxis(params, 0);
+	return getCurvatureByNormalAxis(params, 0);
 }
 
 inline double Polyhedron::calCurvatureZXPlane(const SplittingParams& params) const
 {
-	return calCurvatureByNormalAxis(params, 1);
+	return getCurvatureByNormalAxis(params, 1);
 }
 
 std::ostream& operator << (std::ostream& out, const Polyhedron& cell);

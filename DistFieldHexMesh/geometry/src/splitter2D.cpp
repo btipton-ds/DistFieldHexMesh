@@ -79,7 +79,7 @@ bool Splitter2D::pointInPolygon(const Vector2d& pt, const vector<Vector2d>& poly
 		Vector2d legPerp(-legVec[1], legVec[0]);
 		Vector2d v = pt - pt0;
 		double dist = v.dot(legPerp);
-		if (dist > tol)
+		if (dist < -tol)
 			return false;
 	}
 

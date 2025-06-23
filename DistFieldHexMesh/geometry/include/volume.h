@@ -131,6 +131,7 @@ public:
 
 	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
+	bool isSymmetryPlane(const SplittingParams& params, const Planed& pl) const;
 	void createAdHocBlockSearchTree();
 
 	void writeObj(const std::string& path, const std::vector<Index3DId>& cellIds, bool includeModel, bool useEdges, bool sharpOnly, const std::vector<Vector3d>& pts = std::vector<Vector3d>()) const;
@@ -184,7 +185,7 @@ private:
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void createCrossSections(const SplittingParams& params);
 	void createCrossSections(const SplittingParams& params, int axis);
-	const Splitter2DPtr getSection(const Planed& searchPlane) const;
+	bool getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const;
 
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);

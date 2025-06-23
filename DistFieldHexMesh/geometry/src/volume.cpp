@@ -982,12 +982,11 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 	}
 }
 
-const Splitter2DPtr Volume::getSection(const Planed& searchPlane) const
+bool Volume::getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const
 {
 	const auto tol = Tolerance::sameDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
 
-	Splitter2DPtr result;
 	bool foundAxis = false;
 
 	const std::vector<Vector3d>& pts = _modelCornerPts;
@@ -1023,22 +1022,19 @@ const Splitter2DPtr Volume::getSection(const Planed& searchPlane) const
 			double t2 = idx / (double)maxIdx;
 			double err = t2 - t;
 			assert(fabs(err) < Tolerance::paramTol());
-			const auto& pSection = axisSections[idx];
+			pSection = axisSections[idx];
 			if (pSection) {
 				auto& sectionPlane = pSection->getPlane();
 				auto dist = sectionPlane.distanceToPoint(searchPlaneOrigin);
 				assert(dist < tol);
 				pSection->addHit();
-				result = pSection;
 			}
 
 			foundAxis = true;
 		}
 	}
 
-	assert(foundAxis);
-
-	return result;
+	return foundAxis;
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
@@ -1874,6 +1870,38 @@ void Volume::getModelBoundaryPlanes(vector<Planed>& vals) const
 	vals.push_back(Planed(_modelBoundingBox.getMin(), -xAxis)); // backPlane
 	vals.push_back(Planed(_modelBoundingBox.getMax(), xAxis));  // frontPlane
 
+}
+
+bool Volume::isSymmetryPlane(const SplittingParams& params, const Planed& pl) const
+{
+	const auto tol = Tolerance::planeCoincidentDistTol();
+	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
+	auto& pts = getModelCornerPts();
+	if (params.symXAxis) {
+		const auto& pt0 = pts[3];
+		const auto& pt1 = pts[0];
+		const auto& pt2 = pts[4];
+		Planed symPlane(pt0, pt1, pt2);
+		return symPlane.isCoincident(pl, tol, cpTol);
+	}
+
+	if (params.symYAxis) {
+		const auto& pt0 = pts[1];
+		const auto& pt1 = pts[0];
+		const auto& pt2 = pts[4];
+		Planed symPlane(pt0, pt1, pt2);
+		return symPlane.isCoincident(pl, tol, cpTol);
+	}
+
+	if (params.symZAxis) {
+		const auto& pt0 = pts[1];
+		const auto& pt1 = pts[0];
+		const auto& pt2 = pts[3];
+		Planed symPlane(pt0, pt1, pt2);
+		return symPlane.isCoincident(pl, tol, cpTol);
+	}
+
+	return false;
 }
 
 bool Volume::verifyTopology(bool multiCore) const

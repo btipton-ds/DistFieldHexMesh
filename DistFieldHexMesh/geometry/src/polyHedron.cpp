@@ -943,20 +943,27 @@ double Polyhedron::calVolume() const
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints, size_t step) const
 {
 # if 1
+	const auto tol = Tolerance::sameDistTol();
 	double result = 0;
 	Planed pl;
 	double err;
 	if (bestFitPlane(polyPoints, pl, err)) {
 		auto pVol = getOurBlockPtr()->getVolume();
-		auto pSection = pVol->getSection(pl);
-		if (pSection) {
-			vector<double> curvatures;
-			if (pSection->findCurvaturesInPolygon(polyPoints, curvatures) > 0) {
-				for (double c : curvatures) {
-					if (c > result)
-						result = c;
+
+		Splitter2DPtr pSection;
+		if (pVol->getSection(pl, pSection)) {
+			// Do test separately for assertion that the entry was found, but has no contents
+			if (pSection) {
+				vector<double> curvatures;
+				if (pSection->findCurvaturesInPolygon(polyPoints, curvatures) > 0) {
+					for (double c : curvatures) {
+						if (c > result)
+							result = c;
+					}
 				}
 			}
+		} else {
+			assert(!"getSection failed to find section in list");
 		}
 	}
 
@@ -1478,13 +1485,21 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 {
 #ifdef _DEBUG
-	if (getId() == Index3DId(3, 0, 4, 5)) {
+#if ENABLE_DEBUGGING_MUTEXES
+	static mutex mut;
+	lock_guard lg(mut);
+#endif
+	if (getId().blockIdx() == Index3D(3, 0, 3) || getId().blockIdx() == Index3D(3, 0, 4)) {
 		int dbgBreak = 1; // returning correct result for this cell
 	}
 #endif
+	for (int orthoAxis = 0; orthoAxis < 3; orthoAxis++) {
+		getCurvatureByNormalAxis(params, orthoAxis);
+	}
+	
 	bool result = false;
-	for (int axis = 0; axis < 3; axis++) {
-		if (needsCurvatureSplit(params, axis)) {
+	for (int splittingPlaneNormalAxis = 0; splittingPlaneNormalAxis < 3; splittingPlaneNormalAxis++) {
+		if (needsCurvatureSplit(params, splittingPlaneNormalAxis)) {
 			result = true;
 			break;
 		}
@@ -1525,7 +1540,7 @@ double chordEdgeLenRatio(double curvature, double minCurvature, double len, doub
 }
 
 
-bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int axis) const
+bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const
 {
 	const double minCurvature = 1 / params.maxCuvatureRadius;
 	const double wedgeAngle = 2 * M_PI / params.curvatureDivsPerCircumference;
@@ -1540,19 +1555,19 @@ bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int axis) co
 	double len, c0, c1, val0 = 0, val1 = 0;
 
 	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
-	tuv0[axis] = 0;
-	tuv1[axis] = 1;
+	tuv0[splittingPlaneNormalAxis] = 0;
+	tuv1[splittingPlaneNormalAxis] = 1;
 	Vector3d pt0 = TRI_LERP(corners, tuv0[0], tuv0[1], tuv0[2]);
 	Vector3d pt1 = TRI_LERP(corners, tuv1[0], tuv1[1], tuv1[2]);
 	Vector3d v = pt1 - pt0;
 
 	len = v.norm();
 
-	int orthoAxis0 = (axis + 1) % 3;
-	int orthoAxis1 = (axis + 2) % 3;
+	int orthoAxis0 = (splittingPlaneNormalAxis + 1) % 3;
+	int orthoAxis1 = (splittingPlaneNormalAxis + 2) % 3;
 
-	c0 = calCurvatureByNormalAxis(params, orthoAxis0);
-	c1 = calCurvatureByNormalAxis(params, orthoAxis1);
+	c0 = getCurvatureByNormalAxis(params, orthoAxis0);
+	c1 = getCurvatureByNormalAxis(params, orthoAxis1);
 	val0 = chordEdgeLenRatio(c0, minCurvature, len, sinWedgeAngle);
 	val1 = chordEdgeLenRatio(c1, minCurvature, len, sinWedgeAngle);
 
@@ -1582,13 +1597,58 @@ double Polyhedron::maxOrthogonalityAngleRadians() const
 	return _maxOrthogonalityAngleRadians;
 }
 
-double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int axis) const
+void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis) const
 {
 	double* pCurvature = nullptr;
-	switch (axis) {
+	switch (orthoAxis) {
 	default: {
 		stringstream ss;
-		ss << "calCurvatureByNormalAxis bad axis - " << __FILE__ << "-" << __LINE__;
+		ss << "getCurvatureByNormalAxis bad axis - " << __FILE__ << "-" << __LINE__;
+		throw runtime_error(ss.str());
+	}
+	case 0: // X axis is normal to y z
+		pCurvature = &_cachedCurvatureYZPlane;
+		break;
+	case 1: // Y axis is normal to x z
+		pCurvature = &_cachedCurvatureZXPlane;
+		break;
+	case 2: // Z Axis is normal to x y
+		pCurvature = &_cachedCurvatureXYPlane;
+		break;
+	}
+	if (*pCurvature > -1)
+		return;
+
+	*pCurvature = 0;
+	if (!intersectsModel())
+		return;
+
+	const size_t steps = params.curvatureSamples;
+
+	getCanonicalPoints();
+	for (int step = 0; step < steps; step++) {
+		double w = step / (steps - 1.0);
+		MTC::vector<Vector3d> facePts;
+		makeHexFacePoints(orthoAxis, w, facePts);
+
+		double c = calCurvature2D(params, facePts, step);
+
+		*pCurvature += c;
+	}
+
+	*pCurvature /= steps;
+}
+
+double Polyhedron::getCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis) const
+{
+	initCurvatureByNormalAxis(params, orthoAxis);
+
+	double* pCurvature = nullptr;
+
+	switch (orthoAxis) {
+	default: {
+		stringstream ss;
+		ss << "getCurvatureByNormalAxis bad axis - " << __FILE__ << "-" << __LINE__;
 		throw runtime_error(ss.str());
 	}
 	case 0: // X axis is normal
@@ -1601,27 +1661,7 @@ double Polyhedron::calCurvatureByNormalAxis(const SplittingParams& params, int a
 		pCurvature = &_cachedCurvatureXYPlane; 
 		break;
 	}
-	if (*pCurvature > -1)
-		return *pCurvature;
 
-	*pCurvature = 0;
-	if (!intersectsModel())
-		return *pCurvature;
-
-	size_t steps = 3;
-
-	getCanonicalPoints();
-	for (int step = 0; step < steps; step++) {
-		double w = step / (steps - 1.0);
-		MTC::vector<Vector3d> facePts;
-		makeHexFacePoints(axis, w, facePts);
-
-		double c = calCurvature2D(params, facePts, step);
-
-		*pCurvature += c;
-	}
-	
-	*pCurvature /= steps;
 	return *pCurvature;
 }
 
