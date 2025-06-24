@@ -81,6 +81,7 @@ public:
 	void add3DTriEdges(const Vector3d pts[3], bool split);
 	void add3DTriEdges(const Vector3d* pts[3], bool split);
 	void addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split);
+	void addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, const MTC::vector<Vector3d>& polySurfaceNormals, bool split);
 	void imprint3DPoint(const Vector3d& pt0);
 
 	size_t getFacePoints(std::vector<std::vector<Vector3d>>& facePoints);
@@ -136,8 +137,10 @@ private:
 
 	size_t findPtIndex(const Vector2d& pt) const;
 	size_t addPoint(const Vector2d& pt);
+	size_t addPoint(const std::pair<Vector2d, Vector3d>& ptNormPair);
 	void initFromPoints(const MTC::vector<Vector3d>& polyPoints);
 	void addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split);
+	void addEdge(const std::pair<Vector2d, Vector3d>& pt0, const std::pair<Vector2d, Vector3d>& pt1, bool split);
 	void addEdge(const Edge2D& edge, bool split);
 	bool insideBoundary(const Vector2d& testPt) const;
 	bool insideBoundary(const std::vector<Vector2d>& testFacePts) const;
@@ -173,6 +176,7 @@ private:
 	mutable std::mutex _mutex;
 	mutable size_t _numHits = 0;
 	std::vector<Vector2d> _pts, _radiusPts;
+	std::vector<Vector3d> _surfaceNormals;
 	std::vector<double> _curvatures;
 	std::vector<size_t> _boundaryIndices;
 	std::map<FIXED_PT_SCALAR_TYPE, std::map<FIXED_PT_SCALAR_TYPE, size_t>> _ptToIndexMap;

@@ -84,6 +84,8 @@ public:
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	MTC::set<Index3DId> getCellIds() const;
 
+	Vector3d calSurfaceNormal() const;
+
 	void replacePoint(const Vector3d& newPt);
 
 	void write(std::ostream& out) const;

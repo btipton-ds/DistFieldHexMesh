@@ -111,6 +111,19 @@ MTC::set<Index3DId> Vertex::getCellIds() const
 	return result;
 }
 
+Vector3d Vertex::calSurfaceNormal() const
+{
+	Vector3d norm(0, 0, 0);
+	for (const auto& id : _faceIds) {
+		faceFunc(id, [&norm](const Polygon& face) {
+			const auto& n = face.calUnitNormal();
+			norm += n;
+		});
+	}
+	norm.normalize();
+	return norm;
+}
+
 void Vertex::write(std::ostream& out) const
 {
 	uint8_t version = 0;

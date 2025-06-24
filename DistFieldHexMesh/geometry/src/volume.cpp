@@ -901,14 +901,19 @@ void Volume::createCrossSections(const SplittingParams& params)
 				if (pSplitter && pSplitter->empty()) {
 					for (const auto& pData : model) {
 						auto& pPolyMesh = pData->getPolyMesh();
-						pPolyMesh->iterateFaces([&pSplitter](const Index3DId& id, const Polygon& face)->bool {
+						pPolyMesh->iterateFaces([this, &pSplitter](const Index3DId& id, const Polygon& face)->bool {
 							const auto& nclin = face.getNonColinearVertexIds();
 							MTC::vector<const Vector3d*> pts;
+							MTC::vector<Vector3d> surfNorms;
 							pts.resize(nclin.size());
-							for (size_t i = 0; i < nclin.size(); i++)
+							surfNorms.resize(nclin.size());
+							for (size_t i = 0; i < nclin.size(); i++) {
 								pts[i] = &face.getVertexPoint(nclin[i]);
+								auto& vert = face.getVertex(nclin[i]);
+								surfNorms[i] = vert.calSurfaceNormal();
+							}
 
-							pSplitter->addFaceEdges(pts, false);
+							pSplitter->addFaceEdges(pts, surfNorms, false);
 							return true;
 						});
 					}

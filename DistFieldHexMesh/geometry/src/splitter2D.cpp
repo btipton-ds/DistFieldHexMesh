@@ -127,6 +127,25 @@ size_t Splitter2D::addPoint(const Vector2d& pt)
 	return iter2->second;
 }
 
+size_t Splitter2D::addPoint(const std::pair<Vector2d, Vector3d>& ptNormPair)
+{
+	auto valXi = FixedPt::fromDbl(ptNormPair.first[0]);
+	auto valYi = FixedPt::fromDbl(ptNormPair.first[1]);
+
+	auto iter = _ptToIndexMap.find(valXi);
+	if (iter == _ptToIndexMap.end())
+		iter = _ptToIndexMap.insert(make_pair(valXi, std::map<FIXED_PT_SCALAR_TYPE, size_t>())).first;
+	auto& subMap = iter->second;
+	auto iter2 = subMap.find(valYi);
+	if (iter2 == subMap.end()) {
+		size_t idx = _pts.size();
+		_pts.push_back(ptNormPair.first);
+		_surfaceNormals.push_back(ptNormPair.second);
+		iter2 = subMap.insert(make_pair(valYi, idx)).first;
+	}
+	return iter2->second;
+}
+
 void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 {
 	if (polyPoints.size() < 3) {
@@ -222,6 +241,14 @@ void Splitter2D::addEdge(const Vector2d& pt0, const Vector2d& pt1, bool split)
 	addEdge(edge, split);
 }
 
+void Splitter2D::addEdge(const std::pair<Vector2d, Vector3d>& pt0, const std::pair<Vector2d, Vector3d>& pt1, bool split)
+{
+	size_t idx0 = addPoint(pt0);
+	size_t idx1 = addPoint(pt1);
+	Edge2D edge(idx0, idx1);
+	addEdge(edge, split);
+}
+
 void Splitter2D::add3DEdge(const Vector3d& pt3D0, const Vector3d& pt3D1)
 {
 	const auto tol = Tolerance::sameDistTol();
@@ -250,12 +277,20 @@ void Splitter2D::add3DTriEdges(const Vector3d* pts[3], bool split)
 	}
 }
 
-void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split) {
+void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bool split) 
+{
+	MTC::vector<Vector3d> polySurfaceNormals(polyPoints.size(), Vector3d(0, 0, 0));
+	addFaceEdges(polyPoints, polySurfaceNormals, split);
+}
+
+void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, const MTC::vector<Vector3d>& polySurfaceNormals, bool split)
+{
 	const auto distTol = Tolerance::sameDistTol();
 	const auto distTolSqr = Tolerance::sameDistTolSqr();
 	const auto tol = Tolerance::paramTol();
 
-	vector<Vector2d> iPts;
+	vector<pair<Vector2d, Vector3d>> iPts;
+
 	set<size_t> usedIndices;
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
@@ -264,8 +299,11 @@ void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bo
 		Vector2d pt02d, pt12d;
 		auto& pt0 = *polyPoints[i];
 		auto& pt1 = *polyPoints[j];
-#if 1
 		auto& pt2 = *polyPoints[k];
+
+		Vector3d sn0 = polySurfaceNormals[i];
+		Vector3d sn1 = polySurfaceNormals[j];
+		Vector3d sn2 = polySurfaceNormals[k];
 
 		auto dist0 = _plane.distanceToPoint(pt0, false);
 		auto dist1 = _plane.distanceToPoint(pt1, false);
@@ -276,12 +314,12 @@ void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bo
 
 			if (!usedIndices.contains(i) && project(pt0, pt02d, distTol)) {
 				usedIndices.insert(i);
-				iPts.push_back(pt02d);
+				iPts.push_back(make_pair(pt02d, sn0));
 			}
 
 			if (!usedIndices.contains(j) && project(pt1, pt12d, distTol)) {
 				usedIndices.insert(j);
-				iPts.push_back(pt12d);
+				iPts.push_back(make_pair(pt12d, sn1));
 			}
 		} else if (dist0 * dist1 < 0) {
 			if (!usedIndices.contains(i)) {
@@ -291,7 +329,11 @@ void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bo
 				if (_plane.intersectLineSegment(seg, hp, tol)) {
 					if (project(hp.hitPt, pt02d, distTol)) {
 						usedIndices.insert(i);
-						iPts.push_back(pt02d);
+
+						double t = hp.dist / seg.calLength();
+						Vector3d interpSn = LERP(sn0, sn1, t);
+						interpSn.normalize();
+						iPts.push_back(make_pair(pt02d, interpSn));
 					}
 				}
 			}
@@ -299,36 +341,20 @@ void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bo
 			// The mid point lies on the plane, but pt0 and pt2 cross
 			if (project(pt1, pt12d, distTol)) {
 				usedIndices.insert(j);
-				iPts.push_back(pt12d);
+				iPts.push_back(make_pair(pt12d, sn1));
 			}
 		}
-#else
-		if (_plane.isCoincident(pt0, distTol) && _plane.isCoincident(pt1, distTol)) {
-			if (project(pt0, pt02d, distTol) && project(pt1, pt12d, distTol)) {
-				addEdge(pt02d, pt12d, split);
-				continue;
-			}
-		} else {
-			LineSegment_byrefd seg(pt0, pt1);
-			RayHitd hp;
-			if (_plane.intersectLineSegment(seg, hp, tol)) {
-				if (project(hp.hitPt, pt02d, distTol)) {
-					iPts.push_back(pt02d);
-				}
-			}
-		}
-#endif
 	}
 
 	if (iPts.size() < 2)
 		return;
 
 	// sort all the points into ascending order along the line of intersection.
-	const auto& pt0 = iPts[0];
+	const auto& pt0 = iPts[0].first;
 	Vector2d v;
 	double len = -1;
 	for (size_t i = 1; i < iPts.size(); i++) {
-		v = iPts[i] - pt0;
+		v = iPts[i].first - pt0;
 		len = v.norm();
 		if (len > Tolerance::paramTol()) {
 			v /= len;
@@ -340,16 +366,16 @@ void Splitter2D::addFaceEdges(const MTC::vector<const Vector3d*>& polyPoints, bo
 		return;
 
 	if (iPts.size() > 2) {
-		sort(iPts.begin(), iPts.end(), [&pt0, &v](const Vector2d& lhs, const Vector2d& rhs)->bool {
-			double lhsDist = (lhs - pt0).dot(v);
-			double rhsDist = (rhs - pt0).dot(v);
+		sort(iPts.begin(), iPts.end(), [&pt0, &v](const pair<Vector2d, Vector3d>& lhs, const pair<Vector2d, Vector3d>& rhs)->bool {
+			double lhsDist = (lhs.first - pt0).dot(v);
+			double rhsDist = (rhs.first - pt0).dot(v);
 			return lhsDist < rhsDist;
 		});
 
 		for (size_t i = iPts.size() - 2; i != -1; i--) {
 			size_t j = (i + 1) % iPts.size();
-			const auto& pt0 = iPts[i];
-			const auto& pt1 = iPts[j];
+			const auto& pt0 = iPts[i].first;
+			const auto& pt1 = iPts[j].first;
 			auto l = (pt1 - pt0).squaredNorm();
 			if (l < Tolerance::sameDistTolSqr()) {
 				iPts.erase(iPts.begin() + j);
@@ -879,10 +905,16 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 
 	for (const auto& pair : pointToPointsMap) {
 		size_t ctrIdx = pair.first;
+		auto& surfNorm = _surfaceNormals[ctrIdx];
+
+		double kSurf = 1;
+		if (surfNorm.norm() > 0.9)
+			kSurf = _plane.getNormal().cross(surfNorm).norm();
+
 		_radiusPts[ctrIdx] = _pts[ctrIdx];
 		const auto& connectedIndices = pair.second;
 		if (connectedIndices.size() != 2) {
-			_curvatures[ctrIdx] = 1 / sharpRadius;
+			_curvatures[ctrIdx] = kSurf * 1 / sharpRadius;
 		}
 		else {
 			auto iter = connectedIndices.begin();
@@ -984,7 +1016,7 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 				_radiusPts[ctrIdx] = _pts[ctrIdx];
 				_curvatures[ctrIdx] = 0;
 			} else
-				_curvatures[ctrIdx] = 1 / radius;
+				_curvatures[ctrIdx] = kSurf * 1 / radius;
 		}
 	}
 
