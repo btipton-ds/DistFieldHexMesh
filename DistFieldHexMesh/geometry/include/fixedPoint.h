@@ -67,7 +67,7 @@ inline FixedPt::FixedPt(const Vector3d& pt)
 
 inline double FixedPt::getFixedScale()
 {
-	return 1000.0; // +/- 25 m volume
+	return 250.0; // +/- 250 m span
 }
 
 inline FIXED_PT_SCALAR_TYPE FixedPt::fromDbl(double val)

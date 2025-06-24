@@ -836,7 +836,7 @@ void Splitter2D::initCurvatures(const SplittingParams& params)
 		set<size_t> badIndices;
 		const double maxCurvatureRatio = 0.04;
 		calBadCurvatureIndices(pointToPointsMap, maxCurvatureRatio, badIndices);
-#if 1
+
 		for (size_t i = 0; i < 3; i++) {
 			if (badIndices.empty())
 				break;
@@ -846,7 +846,7 @@ void Splitter2D::initCurvatures(const SplittingParams& params)
 
 			calBadCurvatureIndices(pointToPointsMap, maxCurvatureRatio, badIndices);
 		}
-#endif
+
 		for (const auto& pair : pointToPointsMap) {
 			size_t idx0 = pair.first;
 			for (size_t idx1 : pair.second) {
@@ -913,10 +913,10 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 
 		_radiusPts[ctrIdx] = _pts[ctrIdx];
 		const auto& connectedIndices = pair.second;
-		if (connectedIndices.size() != 2) {
-			_curvatures[ctrIdx] = kSurf * 1 / sharpRadius;
-		}
-		else {
+		if (connectedIndices.size() == 1) {
+			// TODO test if there's a surface within distance and if so fake this edge as smooth
+			_curvatures[ctrIdx] = 0;
+		} else if (connectedIndices.size() == 2) {
 			auto iter = connectedIndices.begin();
 			size_t idx0 = *iter++;
 			size_t idx1 = *iter;
@@ -934,12 +934,11 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 			auto v1 = (pt1 - ctrPt);
 			auto l0 = v0.norm();
 			auto l1 = v1.norm();
-#if 0
+
 			if (l0 < Tolerance::paramTol() || l1 < Tolerance::paramTol()) {
 				_curvatures[ctrIdx] = 0;
 				continue;
 			}
-#endif
 
 			v0 /= l0;
 			v1 /= l1;
@@ -1017,6 +1016,8 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 				_curvatures[ctrIdx] = 0;
 			} else
 				_curvatures[ctrIdx] = kSurf * 1 / radius;
+		} else {
+			_curvatures[ctrIdx] = kSurf * 1 / sharpRadius;
 		}
 	}
 

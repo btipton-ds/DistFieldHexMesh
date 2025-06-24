@@ -252,7 +252,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 
 inline int64_t Volume::getNumSubDivisions()
 {
-	return 2 * 1024;
+	return 1ll << 13; //2 * 1024;
 }
 
 inline MultiCore::ThreadPool& Volume::getThreadPool() const
