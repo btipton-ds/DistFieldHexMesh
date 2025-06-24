@@ -75,7 +75,7 @@ void DrawCrossSectionEdges::changeViewElements()
 
 }
 
-void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections, size_t idx0, size_t idx1)
+void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std::map<double, Splitter2DPtr>* crossSections)
 {
 	if (!crossSections)
 		return;
@@ -92,15 +92,9 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 			vector<double> curvatures, radiusCurvatures;
 
 			auto& sections = crossSections[axisNum];
-			size_t start = 0, end = sections.size();
-			if (idx0 != -1 && idx0 < sections.size())
-				start = idx0;
 
-			if (idx1 != -1 && idx1 <= sections.size() && idx1 > idx0)
-				end = idx1;
-
-			for (size_t sectionNum = start; sectionNum < end; sectionNum++) {
-				auto& pSection = sections[sectionNum];
+			for (const auto& pair : sections) {
+				auto& pSection = pair.second;
 				if (pSection)
 					pSection->getPointCurvatures(params, points, curvatures, radiusSegs, radiusCurvatures);
 			}

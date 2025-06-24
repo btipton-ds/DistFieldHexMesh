@@ -82,7 +82,7 @@ public:
 	DECL_OPTS(Y)
 	DECL_OPTS(Z)
 
-		void buildTables(const SplittingParams& params, const std::vector<Splitter2DPtr>* crossSections, size_t idx0 = -1, size_t idx1 = -1);
+	void buildTables(const SplittingParams& params, const std::map<double, Splitter2DPtr>* crossSections);
 	void copyTablesToVBOs();
 
 	void writeGLObj(const std::string& fullPath) const;

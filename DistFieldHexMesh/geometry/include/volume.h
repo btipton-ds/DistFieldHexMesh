@@ -120,7 +120,7 @@ public:
 	const std::vector<Vector3d>& getModelCornerPts() const;
 
 	bool hasCrossSections() const;
-	const std::vector<Splitter2DPtr>* getCrossSections() const;
+	const std::map<double, Splitter2DPtr>* getCrossSections() const;
 
 	size_t numBlocks() const;
 
@@ -185,6 +185,8 @@ private:
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void createCrossSections(const SplittingParams& params);
 	void createCrossSections(const SplittingParams& params, int axis);
+	void calSectionAxis(int axis, Vector3d& origin, Vector3d& sectionAxis) const;
+	Planed calSectionPlane(int axis, const Vector3d& origin, const Vector3d& sectionAxis, double t) const;
 	bool getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const;
 
 	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
@@ -239,7 +241,7 @@ private:
 
 	std::set<size_t> _sharpEdgeIndices;
 	std::vector<size_t> _sharpVertIndices;
-	std::vector<Splitter2DPtr> _crossSections[3];
+	std::map<double, Splitter2DPtr> _crossSections[3];
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
 
@@ -323,7 +325,7 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 
 }
 
-inline const std::vector<Splitter2DPtr>* Volume::getCrossSections() const
+inline const std::map<double, Splitter2DPtr>* Volume::getCrossSections() const
 {
 	return _crossSections;
 }

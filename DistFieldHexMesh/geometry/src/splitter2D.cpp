@@ -65,10 +65,19 @@ Splitter2D::Splitter2D(const Polygon& face)
 	initFromPoints(polyPts);
 }
 
+bool Splitter2D::empty() const
+{
+	return _pts.empty();
+}
+
 bool Splitter2D::pointInPolygon(const Vector2d& pt, const vector<Vector2d>& poly2D) const
 {
 	const auto tol = Tolerance::sameDistTol();
 
+	// Polygon winding may be reversed.
+	// If all are on the SAME side (positive OR negative), the point is inside the polygon
+	// This save the time of reversing the polygon winding to right handed.
+	size_t numPos = 0, numNeg = 0;
 	for (size_t i = 0; i < poly2D.size(); i++) {
 		size_t j = (i + 1) % poly2D.size();
 		auto& pt0 = poly2D[i];
@@ -80,10 +89,12 @@ bool Splitter2D::pointInPolygon(const Vector2d& pt, const vector<Vector2d>& poly
 		Vector2d v = pt - pt0;
 		double dist = v.dot(legPerp);
 		if (dist < -tol)
-			return false;
+			numNeg++;
+		if (dist > tol)
+			numPos++;
 	}
 
-	return true;
+	return numNeg == poly2D.size() || numPos == poly2D.size();
 }
 
 size_t Splitter2D::findPtIndex(const Vector2d& pt) const

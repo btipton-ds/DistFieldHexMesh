@@ -1489,12 +1489,12 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 	static mutex mut;
 	lock_guard lg(mut);
 #endif
-	if (getId().blockIdx() == Index3D(3, 0, 3) || getId().blockIdx() == Index3D(3, 0, 4)) {
+	if (getId().blockIdx() == Index3D(1, 4, 5)) {
 		int dbgBreak = 1; // returning correct result for this cell
 	}
 #endif
 	for (int orthoAxis = 0; orthoAxis < 3; orthoAxis++) {
-		getCurvatureByNormalAxis(params, orthoAxis);
+		initCurvatureByNormalAxis(params, orthoAxis);
 	}
 	
 	bool result = false;
@@ -1633,10 +1633,11 @@ void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int or
 
 		double c = calCurvature2D(params, facePts, step);
 
-		*pCurvature += c;
+		// Use the maximum because many samples may be empty/zero.
+		if (c > *pCurvature) {
+			*pCurvature = c;
+		}
 	}
-
-	*pCurvature /= steps;
 }
 
 double Polyhedron::getCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis) const

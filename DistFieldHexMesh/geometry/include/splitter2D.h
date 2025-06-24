@@ -90,6 +90,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector3d>>& polylines, std::vector<std::vector<Vector3d>>& loops) const;
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
+	bool empty() const;
 	size_t numEdges() const;
 	size_t findCurvaturesInPolygon(const std::vector<Vector3d>& polygon, std::vector<double>& curvatures) const;
 	void initCurvatures(const SplittingParams& params);

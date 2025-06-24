@@ -888,16 +888,17 @@ void Volume::createCrossSections(const SplittingParams& params)
 
 	MultiCore::runLambda([this, &params](size_t threadNum, size_t numThreads) {
 		size_t count = 0;
+		auto& model = getAppData()->getModel();
+
 		for (int axis = 0; axis < 3; axis++) {
 			auto& axisSections = _crossSections[axis];
-			auto nDivs = axisSections.size();
-			for (size_t j = 0; j < nDivs; j++) {
+			for (auto& pair : axisSections) {
 				count++;
 				if (count % numThreads != threadNum)
 					continue;
-				auto pSplitter = axisSections[j];
-				if (pSplitter && pSplitter->numEdges() == 0) {
-					auto& model = getAppData()->getModel();
+
+				const auto& pSplitter = pair.second;
+				if (pSplitter && pSplitter->empty()) {
 					for (const auto& pData : model) {
 						auto& pPolyMesh = pData->getPolyMesh();
 						pPolyMesh->iterateFaces([&pSplitter](const Index3DId& id, const Polygon& face)->bool {
@@ -912,10 +913,10 @@ void Volume::createCrossSections(const SplittingParams& params)
 						});
 					}
 
-					if (pSplitter->numEdges() == 0) {
-						axisSections[j] = nullptr;
+					if (pSplitter->empty()) {
+						pair.second = nullptr;
 					} else {
-						axisSections[j]->initCurvatures(params);
+						pSplitter->initCurvatures(params);
 					}
 				}
 			}
@@ -925,130 +926,143 @@ void Volume::createCrossSections(const SplittingParams& params)
 
 void Volume::createCrossSections(const SplittingParams& params, int axis)
 {
-	auto& axisSections = _crossSections[axis];
-	bool ignoreFirstPlane = false;
-	switch (axis) {
-	default:
-		break;
-	case 0:
-		ignoreFirstPlane = params.symXAxis;
-		break;
-	case 1:
-		ignoreFirstPlane = params.symYAxis;
-		break;
-	case 2:
-		ignoreFirstPlane = params.symZAxis;
-		break;
-	}
+	const auto tol = Tolerance::sameDistTol();
 
-	const std::vector<Vector3<double>>& pts = _modelCornerPts;
+	Vector3d origin, sectionAxis;
+	calSectionAxis(axis, origin, sectionAxis);
+	double len = sectionAxis.norm();
+	sectionAxis /= len;
+
+	auto& axisSections = _crossSections[axis];
+	size_t nDivs;
 	if (axisSections.empty()) {
 		// There will be numSimpleDivs cells across each cell
 		// We need to compute crossections for the split cells and each split cell also computes a half section, 
 		// so we need 4 splits
-		auto nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis];
-		axisSections.resize(nDivs + 1);
+		nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis];
 		for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
-			if (j == 0 && ignoreFirstPlane)
-				continue;
-
 			double t = j / (double)nDivs;
-			Vector3 uvw(0.5, 0.5, 0.5);
 
-			uvw[axis] = 0;
-			Vector3d pt0 = TRI_LERP(pts, uvw);
-			uvw[axis] = 1;
-			Vector3d pt1 = TRI_LERP(pts, uvw);
-			Vector3d norm = pt1 - pt0;
+			Planed pl = calSectionPlane(axis, origin, sectionAxis, t);
 
-			uvw[axis] = t;
-			Vector3d pt = TRI_LERP(pts, uvw);
-			Planed pl(pt, norm);
+			const auto& pt = pl.getOrigin();
+			Vector3d v = pt - origin;
+			double pos = sectionAxis.dot(v);
 
-			axisSections[j] = make_shared<Splitter2D>(pl);
+			auto pSection = make_shared<Splitter2D>(pl);
+			axisSections.insert(make_pair(pos, pSection));
+		}
+	} else {
+		vector<double> tmp;
+		for (const auto& pair : axisSections) {
+			tmp.push_back(pair.first);
+		}
+		for (size_t i = 0; i < tmp.size() - 1; i++) {
+			size_t j = (i + 1) % tmp.size();
+			double pos = (tmp[i] + tmp[j]) / 2;
+			double t = pos / len;
+
+			Planed pl = calSectionPlane(axis, origin, sectionAxis, t);
+#ifdef _DEBUG
+			Vector3d v = pl.getOrigin() - origin;
+			double pos2 = v.dot(sectionAxis);
+			assert(fabs(pos2 - pos) < tol);
+#endif
+
+			auto pSection = make_shared<Splitter2D>(pl);
+			axisSections.insert(make_pair(pos, pSection));
 		}
 	}
-	else {
-		// We need to insert a new section between each existing section
-		auto tmp = axisSections;
-		axisSections.clear();
-		axisSections.resize(2 * tmp.size() - 1);
-		for (size_t i = 0; i < tmp.size(); i++) {
-			axisSections[2 * i] = tmp[i];
-		}
-		size_t nDivs = axisSections.size() - 1;
-		for (size_t i = 1; i < axisSections.size() - 1; i += 2) {
-			double t = i / (double)nDivs;
-			Vector3 uvw(0.5, 0.5, 0.5);
 
-			uvw[axis] = 0;
-			Vector3d pt0 = TRI_LERP(pts, uvw);
-			uvw[axis] = 1;
-			Vector3d pt1 = TRI_LERP(pts, uvw);
-			Vector3d norm = pt1 - pt0;
-
-			uvw[axis] = t;
-			Vector3d pt = TRI_LERP(pts, uvw);
-			Planed pl(pt, norm);
-
-			axisSections[i] = make_shared<Splitter2D>(pl);
-		}
-	}
 }
 
-bool Volume::getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const
+void Volume::calSectionAxis(int axis, Vector3d& origin, Vector3d& sectionAxis) const
+{
+	const std::vector<Vector3<double>>& pts = _modelCornerPts;
+	Vector3d uvw(0.5, 0.5, 0.5);
+	uvw[axis] = 0;
+	origin = TRI_LERP(pts, uvw);
+	uvw[axis] = 1;
+	Vector3d pt = TRI_LERP(pts, uvw);
+	sectionAxis = pt - origin;
+}
+
+Planed Volume::calSectionPlane(int axis, const Vector3d& origin, const Vector3d& sectionAxis, double t) const
+{
+	const std::vector<Vector3<double>>& pts = _modelCornerPts;
+	Vector3d uvw(0.5, 0.5, 0.5);
+
+	uvw[axis] = t;
+	Vector3d pt1 = TRI_LERP(pts, uvw);
+
+	uvw[(axis + 2) % 3] = 1;
+	Vector3d pt0 = TRI_LERP(pts, uvw);
+	uvw[(axis + 2) % 3] = 0.5;
+
+	uvw[(axis + 1) % 3] = 1;
+	Vector3d pt2 = TRI_LERP(pts, uvw);
+
+	Vector3d v0 = pt0 - pt1;
+	Vector3d v1 = pt2 - pt1;
+	Vector3d norm = v1.cross(v0);
+	norm.normalize();
+	if (norm.dot(sectionAxis) < 0)
+		norm = -norm;
+
+	return Planed(pt1, norm);
+}
+
+bool Volume::getSection(const Planed& searchPlane, Splitter2DPtr& result) const
 {
 	const auto tol = Tolerance::sameDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
 
-	bool foundAxis = false;
+	const std::vector<Vector3<double>>& pts = _modelCornerPts;
 
-	const std::vector<Vector3d>& pts = _modelCornerPts;
-	Vector3d modelOrigin = _modelCornerPts[0];
-	Vector3d modelRange = _modelCornerPts[6] - _modelCornerPts[0];
+	const auto& searchPlaneOrigin = searchPlane.getOrigin();
+
 	for (int axis = 0; axis < 3; axis++) {
-		Vector3 uvw(0.5, 0.5, 0.5);
+		Vector3d uvw(0.5, 0.5, 0.5);
 
-		uvw[axis] = 0;
-		Vector3d pt0 = TRI_LERP(pts, uvw);
-		uvw[axis] = 1;
-		Vector3d pt1 = TRI_LERP(pts, uvw);
-		Vector3d dir = pt1 - pt0;
+		Vector3d origin, sectionAxis;
+		calSectionAxis(axis, origin, sectionAxis);
 
-		auto cp = searchPlane.getNormal().cross(dir).norm();
+		double len = sectionAxis.norm();
+		sectionAxis /= len;
+		Vector3d v = searchPlaneOrigin - origin;
+		double t = sectionAxis.dot(v) / len;
+
+		auto sectionPlane = calSectionPlane(axis, origin, sectionAxis, t);
+		const auto& norm = sectionPlane.getNormal();
+
+		auto cp = searchPlane.getNormal().cross(norm).norm();
 		if (cp < cpTol) {
+			Vector3d v = searchPlaneOrigin - origin;
+			double pos = sectionAxis.dot(v);
+
 			const auto& axisSections = _crossSections[axis];
+			// This is required to handle double precision tolerances.
+			// There should be a single entry, but the values may differ within tolerance
+			auto begin = axisSections.lower_bound(pos - tol);
+			auto end = axisSections.upper_bound(pos + tol);
+			bool found = false;
+			for (auto iter = begin; iter != end; iter++) {
+				double err = pos - iter->first;
+				if (fabs(err) < tol) {
+					result = begin->second;
 
-			auto& searchPlaneOrigin = searchPlane.getOrigin();
-			auto len = dir.norm();
-			double dist = searchPlane.distanceToPoint(pt0);
-			double t = dist / len;
-			assert(-Tolerance::paramTol() <= t && t < 1 + Tolerance::paramTol());
-			if (t < 0)
-				t = 0;
-			else if (t > 1)
-				t = 1;
+					if (result) {
+						result->addHit();
+					}
 
-			size_t maxIdx = axisSections.size() - 1;
-			auto floatNum = maxIdx * t;
-			size_t idx = (size_t)(floatNum + 0.5);
-			assert(idx < axisSections.size());
-			double t2 = idx / (double)maxIdx;
-			double err = t2 - t;
-			assert(fabs(err) < Tolerance::paramTol());
-			pSection = axisSections[idx];
-			if (pSection) {
-				auto& sectionPlane = pSection->getPlane();
-				auto dist = sectionPlane.distanceToPoint(searchPlaneOrigin);
-				assert(dist < tol);
-				pSection->addHit();
+					return true;
+				}
 			}
 
-			foundAxis = true;
 		}
 	}
 
-	return foundAxis;
+	return false;
 }
 
 void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
