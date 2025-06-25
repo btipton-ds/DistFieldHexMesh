@@ -33,9 +33,10 @@ This file is part of the DistFieldHexMesh application/library.
 #include "wx/wx.h"
 #endif
 
-#include <string>
 #include <defines.h>
+#include <string>
 #include <memory>
+
 #include <triMesh.h>
 #include <OGLMultiVboHandler.h>
 #include <MultiCoreUtil.h>
@@ -51,6 +52,7 @@ class MakeBlockDlg;
 class SelectBlocksDlg;
 class DivideHexMeshDlg;
 class CreateBaseMeshDlg;
+class Index3DId;
 
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
@@ -58,8 +60,15 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 class AppData;
 using AppDataPtr = std::shared_ptr<AppData>;
 
+using Index3DIdSearchTree = CSpatialSearchBase<double, Index3DId, 25>;
+
 class AppData : public std::enable_shared_from_this<AppData> {
 public:
+    class MeshPickHandler {
+    public:
+        virtual bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const = 0;
+    };
+
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
     void preDestroy();
@@ -79,6 +88,7 @@ public:
     void doDivideHexMesh(const DivideHexMeshDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
+    void handleMeshRayCast(const Rayd& ray) const;
 
     const std::shared_ptr<MultiCore::ThreadPool>& getThreadPool() const;
         
@@ -98,6 +108,9 @@ public:
     const Model& getModel() const;
     MeshDataConstPtr getMeshData(const std::wstring& name) const;
     MeshDataPtr getMeshData(const std::wstring& name);
+
+    void beginMeshFaceInfoPick();
+    void beginMeshFaceDebugPick();
     const std::set<Index3DId>& getSelectedCellIds() const;
     std::set<Index3DId>& getSelectedCellIds();
     std::set<Index3D>& getSelectedBlockIds();
@@ -114,6 +127,11 @@ public:
     void updateModelTess();
 
 private:
+    class MeshFaceInfoSelectHandler;
+    class MeshFaceDebugSelectHandler;
+    friend class MeshFaceInfoSelectHandler;
+    friend class MeshFaceDebugSelectHandler;
+
     void clear(bool includeModelData);
     void clearCache();
     void makeBlock(const MakeBlockDlg& dlg);
@@ -122,6 +140,10 @@ private:
 
     void makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
     void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
+
+    void initMeshSearchTree();
+    bool handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
+    bool handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
@@ -133,6 +155,9 @@ private:
     Model _model;
 
     VolumePtr _pVolume;
+    std::shared_ptr<const MeshPickHandler> _pMeshPickHandler;
+    std::shared_ptr<Index3DIdSearchTree> _pFaceSearchTree;
+
     const OGL::IndicesPtr 
         _modelFaceTess, 
         _modelEdgeTess, 

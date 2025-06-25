@@ -459,23 +459,34 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
         return;
     _mouseStartLocNDC_2D = screenToNDC(event.GetPosition());
 
+    Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
+    if (_meshSelection) {
+        onMouseLeftDownMesh(startPt);
+    } else {
+        onMouseLeftDownModel(startPt);
+    }
+}
+
+void GraphicsCanvas::onMouseLeftDownModel(const Vector3d& startPt)
+{
     const auto& model = _pAppData->getModel();
 
     Vector3d hitModel;
 
-    CBoundingBox3Dd bbox;
-    Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (model.empty()) {
         // Rotate about point hit at arbitrary depth
         hitModel = startPt;
-    } else {
+    }
+    else {
         Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
         dir.normalize();
         Rayd ray(startPt, dir);
         MultiPolyMeshRayHit hit;
         if (model.rayCast(ray, hit)) {
             hitModel = hit.getPoint();
-        } else {
+        }
+        else {
+            CBoundingBox3Dd bbox = _pAppData->getBoundingBox();
             hitModel = bbox.getMin() + bbox.range() * 0.5;
         }
     }
@@ -484,6 +495,19 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 
     _intitialModelView = _modelView;
     _leftDown = true;
+}
+
+void GraphicsCanvas::onMouseLeftDownMesh(const Vector3d& startPt)
+{
+
+    Vector3d hitPt;
+
+    Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
+    dir.normalize();
+    Rayd ray(startPt, dir);
+    _pAppData->handleMeshRayCast(ray);
+
+    _leftDown = false;
 }
 
 void GraphicsCanvas::onMouseLeftUp(wxMouseEvent& event)

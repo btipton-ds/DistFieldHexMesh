@@ -127,6 +127,8 @@ public:
     void setView(Vector3d viewVec);
     void setLights();
 
+    void enableMeshSelection(bool val);
+
     void changeViewElements();
     void buildHexFaceTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
     void copyHexFaceTablesToVBOs();
@@ -191,6 +193,8 @@ public:
 #endif
 
     void onMouseLeftDown(wxMouseEvent& event);
+    void onMouseLeftDownModel(const Vector3d& startPt);
+    void onMouseLeftDownMesh(const Vector3d& startPt);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
     void onMouseMiddleUp(wxMouseEvent& event);
@@ -250,6 +254,7 @@ private:
 
     bool _initialized = false;
     bool _renderRunning = true;
+    bool _meshSelection = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     
 #define INIT_VIEW_SCALE 10
@@ -314,6 +319,11 @@ inline GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO()
 inline const GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO() const
 {
     return _graphicsUBO;
+}
+
+inline void GraphicsCanvas::enableMeshSelection(bool val)
+{
+    _meshSelection = val;
 }
 
 inline std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh()

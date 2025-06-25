@@ -87,6 +87,10 @@ public:
 
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);
+
+	const Block* getBlockPtr(size_t idx) const;
+	Block* getBlockPtr(size_t idx);
+
 	BlockPtr& getBoundingBlock(const Index3D& blkIdx, const Vector3d cPts[8]);
 	Index3D determineOwnerBlockIdx(const Vector3d& point) const;
 
@@ -154,6 +158,7 @@ public:
 	bool verifyUniquePolygons(bool multiCore) const;
 
 private:
+	friend class AppData;
 	friend class Vertex;
 	friend class Polygon;
 	friend class Polyhedron;
@@ -282,6 +287,16 @@ inline Block* Volume::getBlockPtr(const Index3D& blockIdx)
 		idx = 0;
 	else
 		idx = calLinearBlockIndex(blockIdx);
+	return _blocks[idx].get();
+}
+
+inline const Block* Volume::getBlockPtr(size_t idx) const
+{
+	return _blocks[idx].get();
+}
+
+inline Block* Volume::getBlockPtr(size_t idx)
+{
 	return _blocks[idx].get();
 }
 

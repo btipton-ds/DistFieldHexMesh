@@ -42,6 +42,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <appData.h>
 #include <tm_math.h>
 #include <triMesh.hpp>
+#include <tm_spatialSearch.hpp>
+
 #include <readWriteStl.h>
 #include <MultiCoreUtil.h>
 #include <selectBlocksDlg.h>
@@ -116,6 +118,130 @@ size_t AppData::numBytes() const
         result += _pVolume->numBytes();
 
     return result;
+}
+
+class AppData::MeshFaceInfoSelectHandler : public AppData::MeshPickHandler
+{
+public:
+    MeshFaceInfoSelectHandler(AppData* pAppData)
+        : _pAppData(pAppData)
+    {
+    }
+
+    bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    {
+        if (_pAppData) {
+            if (_pAppData->handleMeshFaceInfoClick(ray, hits)) {
+                _pAppData->getMainFrame()->getCanvas()->enableMeshSelection(false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    AppData* _pAppData;
+};
+
+class AppData::MeshFaceDebugSelectHandler : public AppData::MeshPickHandler
+{
+public:
+    MeshFaceDebugSelectHandler(AppData* pAppData) 
+        : _pAppData(pAppData)
+    {
+    }
+
+    bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    {
+        if (_pAppData) {
+            if (_pAppData->handleMeshFaceDebugClick(ray, hits)) {
+                _pAppData->getMainFrame()->getCanvas()->enableMeshSelection(false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    AppData* _pAppData;
+};
+
+void AppData::initMeshSearchTree()
+{
+    if (!_pFaceSearchTree && _pVolume) {
+        auto bBox = _pVolume->getVolumeBBox();
+        mutex mut;
+        _pFaceSearchTree = make_shared<Index3DIdSearchTree>(bBox);
+
+        MultiCore::runLambda([this, &mut](size_t threadNum, size_t numThreads) {
+            for (size_t blkIdx = threadNum; blkIdx < _pVolume->numBlocks(); blkIdx += numThreads) {
+                auto pBlk = _pVolume->getBlockPtr(blkIdx);
+                if (pBlk) {
+                    pBlk->iteratePolygonsInOrder([this, &mut](const Index3DId& id, const Polygon& face)->bool {
+                        auto bBox = face.getBBox();
+                        lock_guard lg(mut);
+                        _pFaceSearchTree->add(bBox, id);
+                        return true;
+                        });
+                }
+            }
+        }, RUN_MULTI_THREAD);
+    }
+}
+
+bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3DId>& hits) const
+{
+    double minDist = DBL_MAX;
+    Index3DId hitId;
+    for (const auto& id : hits) {
+        const auto& face = _pVolume->getPolygon(id);
+        RayHitd hit;
+        if (face.intersect(ray, hit)) {
+            if (hit.dist < minDist) {
+                minDist = hit.dist;
+                hitId = id;
+            }
+        }
+    }
+
+    if (hitId.isValid()) {
+
+        return true;
+    }
+    return false;
+}
+
+bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3DId>& hits) const
+{
+    double minDist = DBL_MAX;
+    Index3DId hitId;
+    for (const auto& id : hits) {
+        const auto& face = _pVolume->getPolygon(id);
+        RayHitd hit;
+        if (face.intersect(ray, hit)) {
+            if (hit.dist < minDist) {
+                minDist = hit.dist;
+                hitId = id;
+            }
+        }
+    }
+
+    if (hitId.isValid()) {
+        return true;
+    }
+    return false;
+}
+
+void AppData::beginMeshFaceInfoPick()
+{
+    initMeshSearchTree();
+    _pMeshPickHandler = make_shared<MeshFaceInfoSelectHandler>(this);
+}
+
+void AppData::beginMeshFaceDebugPick()
+{
+    initMeshSearchTree();
+    _pMeshPickHandler = make_shared<MeshFaceDebugSelectHandler>(this);
 }
 
 bool AppData::doOpen()
@@ -470,6 +596,14 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->setShowMeshSelectedBlocks(true);
 
     updateHexTess();
+}
+
+void AppData::handleMeshRayCast(const Rayd& ray) const
+{
+    vector<Index3DId> hits;
+    if (_pMeshPickHandler && _pFaceSearchTree && _pFaceSearchTree->biDirRayCast(ray, hits)) {
+        _pMeshPickHandler->handle(ray, hits);
+    }
 }
 
 CBoundingBox3Dd AppData::getBoundingBox() const

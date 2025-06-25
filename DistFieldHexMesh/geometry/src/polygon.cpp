@@ -1260,19 +1260,25 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 
 	Vector2d pt2d = projectPoint(pt);
 	LineSegment2d ray(pt2d, pt2d + Vector2d(1, 0));
-	size_t count = 0;
+	size_t posCount = 0, negCount = 0;
 	for (size_t i = 0; i < pts2D.size(); i++) {
 		size_t j = (i + 1) % nclinVerts.size();
 		const auto& pt0 = pts2D[i];
 		const auto& pt1 = pts2D[j];
-		LineSegment2d polyLeg(pt0, pt1);
-		Vector2d iPt;
-		if (polyLeg.intersectRay(ray, iPt)) {
-			count++;
-		}
+		Vector2d vLeg = pt1 - pt0;
+		Vector2d vPerp(-vLeg[1], vLeg[0]);
+		vPerp.normalize();
+
+		Vector2d v = pt2d - pt0;
+		double dist = vPerp.dot(v);
+		if (dist < tol)
+			negCount++;
+
+		if (dist > -tol)
+			posCount++;
 	}
 
-	return count % 2 == 1;
+	return negCount == pts2D.size() || posCount == pts2D.size();
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

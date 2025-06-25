@@ -155,6 +155,7 @@ void MainFrame::addMenus()
 
     createFileMenu();
     createEditMenu();
+    createSelectMenu();
     createViewMenu();
     createHelpMenu();
 #if INCLUDE_DEBUG_WX_FRAME
@@ -238,6 +239,19 @@ void MainFrame::createEditMenu()
 
     _menuBar->Append(_editMenu, "&Edit");
 
+}
+
+void MainFrame::createSelectMenu()
+{
+    _selectMenu = new wxMenu;
+
+    _selectMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", false);
+    Bind(wxEVT_MENU, &MainFrame::OnMeshInfo, this, ID_MESH_INFO);
+
+    _selectMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", false);
+    Bind(wxEVT_MENU, &MainFrame::OnMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
+
+    _menuBar->Append(_selectMenu, "&Select");
 }
 
 void MainFrame::createViewMenu()
@@ -839,6 +853,18 @@ void MainFrame::OnSetViewBottom(wxCommandEvent& event)
 void MainFrame::OnResetView(wxCommandEvent& event)
 {
     _pCanvas->resetView();
+}
+
+void MainFrame::OnMeshInfo(wxCommandEvent& event)
+{
+    _pCanvas->enableMeshSelection(true);
+    _pAppData->beginMeshFaceInfoPick();
+}
+
+void MainFrame::OnMeshDebug(wxCommandEvent& event)
+{
+    _pCanvas->enableMeshSelection(true);
+    _pAppData->beginMeshFaceDebugPick();
 }
 
 void MainFrame::OnShowAllSides(wxCommandEvent& event)

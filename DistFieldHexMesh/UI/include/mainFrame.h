@@ -136,6 +136,9 @@ enum DFHM_MENU_ID
     ID_IMPORT_MESH,
     ID_WRITE_POLYMESH,
 
+    ID_MESH_INFO,
+    ID_ADD_TO_MESH_DEBUG,
+
     ID_VIEW_FRONT,
     ID_VIEW_BACK,
     ID_VIEW_TOP,
@@ -228,6 +231,7 @@ private:
 
     void createFileMenu();
     void createEditMenu();
+    void createSelectMenu();
     void createViewMenu();
     void addStandardViewsSubMenu(wxMenu* pParentMenu);
     void addBoundarySubMenu(wxMenu* pParentMenu);
@@ -285,6 +289,9 @@ private:
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
 
+    void OnMeshInfo(wxCommandEvent& event);
+    void OnMeshDebug(wxCommandEvent& event);
+
     void OnShowAllSides(wxCommandEvent& event);
     void OnHideAllSides(wxCommandEvent& event);
 
@@ -329,6 +336,7 @@ private:
         * _editMenu = nullptr,
         * _fileMenu = nullptr,
         * _viewMenu = nullptr,
+        * _selectMenu = nullptr,
         * _viewBoundarySubMenu = nullptr,
         * _viewStandardViewsSubMenu = nullptr,
         * _layersSubMenu = nullptr;
