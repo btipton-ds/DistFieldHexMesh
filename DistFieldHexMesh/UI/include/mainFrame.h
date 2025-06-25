@@ -231,15 +231,12 @@ private:
 
     void createFileMenu();
     void createEditMenu();
-    void createSelectMenu();
+    void createDebugMenu();
     void createViewMenu();
     void addStandardViewsSubMenu(wxMenu* pParentMenu);
     void addBoundarySubMenu(wxMenu* pParentMenu);
     void addLayersMenu(wxMenu* pParentMenu);
     void createHelpMenu();
-#if INCLUDE_DEBUG_WX_FRAME
-    void createDebugMenu();
-#endif
 
     void OnOpen(wxCommandEvent& event);
     void OnImportMesh(wxCommandEvent& event);
@@ -336,7 +333,7 @@ private:
         * _editMenu = nullptr,
         * _fileMenu = nullptr,
         * _viewMenu = nullptr,
-        * _selectMenu = nullptr,
+        * _debugMenu = nullptr,
         * _viewBoundarySubMenu = nullptr,
         * _viewStandardViewsSubMenu = nullptr,
         * _layersSubMenu = nullptr;

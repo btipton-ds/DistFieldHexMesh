@@ -144,6 +144,7 @@ private:
     void initMeshSearchTree();
     bool handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
     bool handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
+    bool faceCellVisible(const Polygon& face) const;
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);

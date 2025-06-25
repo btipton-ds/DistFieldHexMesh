@@ -155,12 +155,10 @@ void MainFrame::addMenus()
 
     createFileMenu();
     createEditMenu();
-    createSelectMenu();
     createViewMenu();
     createHelpMenu();
-#if INCLUDE_DEBUG_WX_FRAME
     createDebugMenu();
-#endif
+
 
     SetMenuBar(_menuBar);
 }
@@ -241,17 +239,21 @@ void MainFrame::createEditMenu()
 
 }
 
-void MainFrame::createSelectMenu()
+void MainFrame::createDebugMenu()
 {
-    _selectMenu = new wxMenu;
+    _debugMenu = new wxMenu;
 
-    _selectMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", false);
+    _debugMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", false);
     Bind(wxEVT_MENU, &MainFrame::OnMeshInfo, this, ID_MESH_INFO);
 
-    _selectMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", false);
+    _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", false);
     Bind(wxEVT_MENU, &MainFrame::OnMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
 
-    _menuBar->Append(_selectMenu, "&Select");
+#if INCLUDE_DEBUG_WX_FRAME
+    _debugMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
+    Bind(wxEVT_MENU, &MainFrame::OnToggleDebugFrame, this, ID_TOGGLE_DEBUG_FRAME);
+#endif
+    _menuBar->Append(_debugMenu, "&Debug");
 }
 
 void MainFrame::createViewMenu()
@@ -416,19 +418,6 @@ void MainFrame::createHelpMenu()
 
 
 }
-#if INCLUDE_DEBUG_WX_FRAME
-
-void MainFrame::createDebugMenu()
-{
-    wxMenu* pMenu = new wxMenu;
-
-    pMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
-    Bind(wxEVT_MENU, &MainFrame::OnToggleDebugFrame, this, ID_TOGGLE_DEBUG_FRAME);
-
-    _menuBar->Append(pMenu, "&Debug");
-}
-
-#endif
 
 void MainFrame::addStatusBar()
 {

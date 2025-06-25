@@ -196,7 +196,7 @@ bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3D
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        if (face.intersect(ray, hit)) {
+        if (faceCellVisible(face) && face.intersect(ray, hit)) {
             if (hit.dist < minDist) {
                 minDist = hit.dist;
                 hitId = id;
@@ -205,7 +205,7 @@ bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3D
     }
 
     if (hitId.isValid()) {
-
+        cout << "Clicked mesh " << hitId << "\n";
         return true;
     }
     return false;
@@ -218,7 +218,7 @@ bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        if (face.intersect(ray, hit)) {
+        if (faceCellVisible(face) && face.intersect(ray, hit)) {
             if (hit.dist < minDist) {
                 minDist = hit.dist;
                 hitId = id;
@@ -227,7 +227,21 @@ bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3
     }
 
     if (hitId.isValid()) {
+        cout << "Clicked mesh " << hitId << "\n";
         return true;
+    }
+    return false;
+}
+
+bool AppData::faceCellVisible(const Polygon& face) const
+{
+    auto pCanvas = _pMainFrame->getCanvas();
+    const auto& cellIds = face.getCellIds();
+    for (const auto& id : cellIds) {
+        const auto& cell = _pVolume->getPolyhedron(id);
+        size_t layerNum = cell.getLayerNum();
+        if (pCanvas->showLayer(layerNum))
+            return true;
     }
     return false;
 }
