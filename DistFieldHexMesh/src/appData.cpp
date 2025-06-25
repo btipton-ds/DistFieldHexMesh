@@ -132,7 +132,6 @@ public:
     {
         if (_pAppData) {
             if (_pAppData->handleMeshFaceInfoClick(ray, hits)) {
-                _pAppData->getMainFrame()->getCanvas()->enableMeshSelection(false);
                 return true;
             }
         }
@@ -155,7 +154,6 @@ public:
     {
         if (_pAppData) {
             if (_pAppData->handleMeshFaceDebugClick(ray, hits)) {
-                _pAppData->getMainFrame()->getCanvas()->enableMeshSelection(false);
                 return true;
             }
         }
@@ -196,16 +194,41 @@ bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3D
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        if (faceCellVisible(face) && face.intersect(ray, hit)) {
+        auto cellId = faceCellVisible(face);
+        if (cellId.isValid() && face.intersect(ray, hit)) {
             if (hit.dist < minDist) {
                 minDist = hit.dist;
-                hitId = id;
+                hitId = cellId;
             }
         }
     }
 
     if (hitId.isValid()) {
-        cout << "Clicked mesh " << hitId << "\n";
+        const auto& cell = _pVolume->getPolyhedron(hitId);
+        const auto& faceIds = cell.getFaceIds();
+        cout << "Info for cell " << hitId << "\n";
+        cout << "  Layer                  : " << cell.getLayerNum() << "\n";
+        cout << "  Intersects Model       : " << cell.intersectsModel() << "\n";
+        cout << "\n";
+        cout << "  Has too high curvature : " << cell.hasTooHighCurvature(_params) << "\n";
+        cout << "  YZ curvature           : " << cell.calCurvatureYZPlane(_params) << "\n";
+        cout << "  ZX curvature           : " << cell.calCurvatureZXPlane(_params) << "\n";
+        cout << "  XY curvature           : " << cell.calCurvatureXYPlane(_params) << "\n";
+
+        cout << "\n";
+        cout << "  Norm curvature x       : " << cell.getCurvatureByNormalAxis(_params, 0) << "\n";
+        cout << "  Norm curvature y       : " << cell.getCurvatureByNormalAxis(_params, 1) << "\n";
+        cout << "  Norm curvature z       : " << cell.getCurvatureByNormalAxis(_params, 2) << "\n";
+
+        cout << "  numFaces               : " << faceIds.size() << "\n";
+        for (const auto& faceId : faceIds) {
+            const auto& face = _pVolume->getPolygon(faceId);
+            cout << "  Info for face " << faceId << "\n";
+            const auto& vertIds = face.getVertexIds();
+            cout << "    num verts/edges      : " << vertIds.size() << "\n";
+        }
+        cout << "\n";
+        cout << "\n";
         return true;
     }
     return false;
@@ -218,7 +241,8 @@ bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        if (faceCellVisible(face) && face.intersect(ray, hit)) {
+        auto cellId = faceCellVisible(face);
+        if (cellId.isValid()  && face.intersect(ray, hit)) {
             if (hit.dist < minDist) {
                 minDist = hit.dist;
                 hitId = id;
@@ -233,7 +257,7 @@ bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3
     return false;
 }
 
-bool AppData::faceCellVisible(const Polygon& face) const
+Index3DId AppData::faceCellVisible(const Polygon& face) const
 {
     auto pCanvas = _pMainFrame->getCanvas();
     const auto& cellIds = face.getCellIds();
@@ -241,9 +265,9 @@ bool AppData::faceCellVisible(const Polygon& face) const
         const auto& cell = _pVolume->getPolyhedron(id);
         size_t layerNum = cell.getLayerNum();
         if (pCanvas->showLayer(layerNum))
-            return true;
+            return id;
     }
-    return false;
+    return Index3DId();
 }
 
 void AppData::beginMeshFaceInfoPick()
@@ -1054,6 +1078,9 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
 
             _pMainFrame->reportProgress(1);
 
+            _pFaceSearchTree = nullptr;
+            initMeshSearchTree();
+
             return 2;
         }));
         _pMainFrame->setFuture(pFuture);
@@ -1063,6 +1090,9 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         const Index3D max(_pVolume->volDim());
         setDisplayMinMax(min, max);
         updateHexTess();
+
+        _pFaceSearchTree = nullptr;
+        initMeshSearchTree();
 #endif
 
     } catch (const std::runtime_error& err) {

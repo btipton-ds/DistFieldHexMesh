@@ -127,7 +127,7 @@ public:
     void setView(Vector3d viewVec);
     void setLights();
 
-    void enableMeshSelection(bool val);
+    bool toggleMeshSelection();
 
     void changeViewElements();
     void buildHexFaceTables(const VolumePtr& pVolume, const Index3D& min, const Index3D& max, bool multiCore);
@@ -321,9 +321,10 @@ inline const GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO() const
     return _graphicsUBO;
 }
 
-inline void GraphicsCanvas::enableMeshSelection(bool val)
+inline bool GraphicsCanvas::toggleMeshSelection()
 {
-    _meshSelection = val;
+    _meshSelection = !_meshSelection;
+    return _meshSelection;
 }
 
 inline std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh()

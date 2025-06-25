@@ -243,11 +243,11 @@ void MainFrame::createDebugMenu()
 {
     _debugMenu = new wxMenu;
 
-    _debugMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", false);
-    Bind(wxEVT_MENU, &MainFrame::OnMeshInfo, this, ID_MESH_INFO);
+    _debugMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", true);
+    Bind(wxEVT_MENU, &MainFrame::OnToggleMeshInfo, this, ID_MESH_INFO);
 
-    _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", false);
-    Bind(wxEVT_MENU, &MainFrame::OnMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
+    _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", true);
+    Bind(wxEVT_MENU, &MainFrame::OnToggleMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
 
 #if INCLUDE_DEBUG_WX_FRAME
     _debugMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
@@ -844,16 +844,19 @@ void MainFrame::OnResetView(wxCommandEvent& event)
     _pCanvas->resetView();
 }
 
-void MainFrame::OnMeshInfo(wxCommandEvent& event)
+void MainFrame::OnToggleMeshInfo(wxCommandEvent& event)
 {
-    _pCanvas->enableMeshSelection(true);
-    _pAppData->beginMeshFaceInfoPick();
+    bool startPicking = _pCanvas->toggleMeshSelection();
+    if (startPicking) {
+        _pAppData->beginMeshFaceInfoPick();
+    }
 }
 
-void MainFrame::OnMeshDebug(wxCommandEvent& event)
+void MainFrame::OnToggleMeshDebug(wxCommandEvent& event)
 {
-    _pCanvas->enableMeshSelection(true);
-    _pAppData->beginMeshFaceDebugPick();
+    bool startPicking = _pCanvas->toggleMeshSelection();
+    if (startPicking)
+        _pAppData->beginMeshFaceDebugPick();
 }
 
 void MainFrame::OnShowAllSides(wxCommandEvent& event)

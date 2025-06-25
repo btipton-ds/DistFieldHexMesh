@@ -286,8 +286,8 @@ private:
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
 
-    void OnMeshInfo(wxCommandEvent& event);
-    void OnMeshDebug(wxCommandEvent& event);
+    void OnToggleMeshInfo(wxCommandEvent& event);
+    void OnToggleMeshDebug(wxCommandEvent& event);
 
     void OnShowAllSides(wxCommandEvent& event);
     void OnHideAllSides(wxCommandEvent& event);

@@ -51,6 +51,7 @@ namespace DFHM {
 struct SplittingParams;
 class Block;
 class Edge;
+class AppData;
 using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
@@ -129,6 +130,9 @@ public:
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
+	double calCurvatureXYPlane(const SplittingParams& params) const;
+	double calCurvatureYZPlane(const SplittingParams& params) const;
+	double calCurvatureZXPlane(const SplittingParams& params) const;
 
 	double maxOrthogonalityAngleRadians() const;
 
@@ -192,6 +196,7 @@ private:
 	friend class Block;
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 	friend class Splitter3D;
+	friend class AppData;
 
 	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	const Model& getModel() const;
@@ -203,9 +208,6 @@ private:
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
-	double calCurvatureXYPlane(const SplittingParams& params) const;
-	double calCurvatureYZPlane(const SplittingParams& params) const;
-	double calCurvatureZXPlane(const SplittingParams& params) const;
 	double getCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 	void initCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis0) const;
 
