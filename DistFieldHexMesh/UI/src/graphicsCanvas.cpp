@@ -1007,7 +1007,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 
 void GraphicsCanvas::subRenderOIT()
 {
-    const int numPasses = 30;
+    const int numPeelingPasses = 15;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;
@@ -1035,7 +1035,7 @@ void GraphicsCanvas::subRenderOIT()
     int currId = 0, pass;
     GLuint sample_count;
 
-    for (pass = 1; pass < numPasses; pass++) {
+    for (pass = 1; pass < numPeelingPasses; pass++) {
         currId = pass % 2;
         int prevId = 1 - currId;
         int bufOffset = currId * 3;
