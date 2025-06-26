@@ -45,11 +45,9 @@ using namespace DFHM;
 namespace
 {
 	enum Ids {
-		UNIFORM_RATIO_ID = 1,
 		SPLIT_SHARP_VERTS_ID = 1,
 		MAX_SPLIT_FACES_ID,
 		MAX_GAP_SIZE_ID,
-		IGNORE_CURVATURE_RADIUS_ID,
 		MIN_EDGE_LENGTH_ID,
 		MIN_EDGE_LENGTH_GAP_ID,
 		SHARP_ANGLE_DEGREES_ID,
@@ -93,20 +91,13 @@ DivideHexMeshDlg::DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wx
 #endif
 
 	int rowNum = 0;
-	_uniformRatioCheckBox = new wxCheckBox(this, UNIFORM_RATIO_ID, _T("Uniform cells per side"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_uniformRatioCheckBox->SetValue(params.uniformRatio);
 
-	rowNum++;
 	_splitSharpVertsCheckBox = new wxCheckBox(this, SPLIT_SHARP_VERTS_ID, _T("Split sharp verts"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_splitSharpVertsCheckBox->SetValue(params.splitAtSharpVerts);
 
 	rowNum++;
 	_maxGapSizePrompt = new wxStaticText(this, 0, _T("Max gap size"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_maxGapSizeBox = new wxTextCtrl(this, MAX_GAP_SIZE_ID, std::to_string(params.maxGapSize), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
-
-	rowNum++;
-	_maxCurvatureRadiusPrompt = new wxStaticText(this, 0, _T("Don't split radii >"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_ignoreCurvatureRadius_metersBox = new wxTextCtrl(this, IGNORE_CURVATURE_RADIUS_ID, std::to_string(params.ignoreCurvatureRadius_meters), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_minSplitEdgeLengthCurvaturePrompt = new wxStaticText(this, 0, _T("Min edge length"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -181,7 +172,6 @@ bool DivideHexMeshDlg::getValue(wxTextCtrl* item, double& value) const
 
 void DivideHexMeshDlg::getParams(SplittingParams& params) const
 {
-	params.uniformRatio = _uniformRatioCheckBox->GetValue();
 	params.splitAtSharpVerts = _splitSharpVertsCheckBox->GetValue();
 	getValue(_numSimpleDivsBox, params.numSimpleDivs);
 	getValue(_numIntersectionDivsBox, params.numIntersectionDivs);
@@ -191,7 +181,6 @@ void DivideHexMeshDlg::getParams(SplittingParams& params) const
 	getValue(_divsPerGapCurvatureBox, params.divsPerGapCurvatureRadius);
 	getValue(_maxCellFacesBox, params.maxCellFaces);
 	getValue(_maxGapSizeBox, params.maxGapSize);
-	getValue(_ignoreCurvatureRadius_metersBox, params.ignoreCurvatureRadius_meters);
 	getValue(_sharpAngleBox, params.sharpAngle_degrees);
 	getValue(_minSplitEdgeLengthCurvatureBox, params.minSplitEdgeLengthCurvature_meters);
 	getValue(_minSplitEdgeLengthGapCurvatureBox, params.minSplitEdgeLengthGapCurvature_meters);

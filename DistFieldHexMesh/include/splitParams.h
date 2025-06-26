@@ -45,7 +45,6 @@ struct SplittingParams {
 	void read(std::istream& in);
 	void write(std::ostream& out) const;
 
-	bool uniformRatio = false;
 	bool splitAtSharpVerts = true;
 
 	bool symXAxis = false;
@@ -79,7 +78,6 @@ struct SplittingParams {
 	double yMin = DBL_MAX, yMax = 1;
 	double zMin = DBL_MAX, zMax = 1;
 	double maxGapSize = 0.01; // 10 mm
-	double ignoreCurvatureRadius_meters = 0.3; // ignore chordal divisions > ~10 in
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double sharpRadius = 0.0001; // .1 mm
 	double maxCuvatureRadius = 100; // m

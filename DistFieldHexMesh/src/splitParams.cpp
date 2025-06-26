@@ -79,7 +79,9 @@ void SplittingParams::read(std::istream& in)
 	size_t version;
 	in.read((char*)&version, sizeof(size_t));
 
-	in.read((char*)&uniformRatio, sizeof(uniformRatio));
+	char charDeprecated;
+	double doubleDeprecated;
+	in.read((char*)&charDeprecated, sizeof(charDeprecated));
 	in.read((char*)&splitAtSharpVerts, sizeof(splitAtSharpVerts));
 
 	in.read((char*)&symXAxis, sizeof(symXAxis));
@@ -105,7 +107,8 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&zMin, sizeof(zMin));
 	in.read((char*)&zMax, sizeof(zMax));
 	in.read((char*)&maxGapSize, sizeof(maxGapSize));
-	in.read((char*)&ignoreCurvatureRadius_meters, sizeof(ignoreCurvatureRadius_meters));
+
+	in.read((char*)&doubleDeprecated, sizeof(doubleDeprecated));
 	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	in.read((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	in.read((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));
@@ -133,7 +136,6 @@ void SplittingParams::write(std::ostream& out) const
 	size_t version = 3;
 	out.write((char*)&version, sizeof(size_t));
 
-	out.write((char*)&uniformRatio, sizeof(uniformRatio));
 	out.write((char*)&splitAtSharpVerts, sizeof(splitAtSharpVerts));
 
 	out.write((char*)&symXAxis, sizeof(symXAxis));
@@ -161,7 +163,6 @@ void SplittingParams::write(std::ostream& out) const
 	out.write((char*)&zMin, sizeof(zMin));
 	out.write((char*)&zMax, sizeof(zMax));
 	out.write((char*)&maxGapSize, sizeof(maxGapSize));
-	out.write((char*)&ignoreCurvatureRadius_meters, sizeof(ignoreCurvatureRadius_meters));
 	out.write((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	out.write((char*)&minSplitEdgeLengthCurvature_meters, sizeof(minSplitEdgeLengthCurvature_meters));
 	out.write((char*)&minSplitEdgeLengthGapCurvature_meters, sizeof(minSplitEdgeLengthGapCurvature_meters));

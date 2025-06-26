@@ -62,13 +62,11 @@ namespace DFHM {
 			* _divsPerGapCurvaturePrompt = nullptr,
 			* _maxCellFacesPrompt = nullptr,
 			* _maxGapSizePrompt = nullptr,
-			* _maxCurvatureRadiusPrompt = nullptr,
 			* _sharpAnglePrompt = nullptr,
 			* _minSplitEdgeLengthCurvaturePrompt = nullptr,
 			* _minSplitEdgeLengthGapCurvaturePrompt = nullptr;
 
 		wxCheckBox
-			* _uniformRatioCheckBox = nullptr,
 			* _splitSharpVertsCheckBox = nullptr;
 
 		wxTextCtrl
@@ -80,7 +78,6 @@ namespace DFHM {
 			* _divsPerGapCurvatureBox = nullptr,
 			* _maxCellFacesBox = nullptr,
 			* _maxGapSizeBox = nullptr,
-			* _ignoreCurvatureRadius_metersBox = nullptr,
 			* _sharpAngleBox = nullptr,
 			* _minSplitEdgeLengthCurvatureBox = nullptr,
 			* _minSplitEdgeLengthGapCurvatureBox = nullptr;

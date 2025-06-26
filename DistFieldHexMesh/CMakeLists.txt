@@ -277,9 +277,10 @@ add_custom_command(
                 "${CMAKE_SHADER_SOURCE_DIR}/debug.frag"
                 "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.frag"
 
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_ASSETS_SOURCE_DIR}/"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
+# Only needed if the assets folder has contents, which it currently does not
+#        COMMAND ${CMAKE_COMMAND} -E copy_directory
+#                "${CMAKE_ASSETS_SOURCE_DIR}/"
+#                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"
 )
 
 if(WIN32)
