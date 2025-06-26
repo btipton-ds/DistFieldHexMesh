@@ -294,6 +294,8 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 	if (!parentCell.intersectsModel())
 		return -1;
 
+	auto cellSpan = parentCell.calSpan();
+
 	int minIntersections = INT_MAX;
 	int bestIntersectionSplitAxis = -1;
 	int bestCurvatureSplitAxis = -1;
@@ -306,6 +308,10 @@ int Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int
 		int axisBit = 1 << axis;
 		if ((testedAxisBits & axisBit) == axisBit)
 			continue;
+
+		if (cellSpan[axis] < 2 * _params.minEdgeLength) {
+			continue;
+		}
 
 		int numIntersections = 0;
 		{

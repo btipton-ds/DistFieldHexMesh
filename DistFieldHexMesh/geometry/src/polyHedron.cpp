@@ -1579,6 +1579,33 @@ bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int splittin
 	return (val0 > 1 || val1 > 1);
 }
 
+Vector3d Polyhedron::calSpan() const
+{
+	const auto& pts = getCanonicalPoints();
+	Vector3d span;
+	for (int axis = 0; axis < 3; axis++) {
+		Vector3d a, b;
+		switch (axis) {
+		default:
+		case 0:
+			a = 0.25 * (pts[0] + pts[3] + pts[7] + pts[4]);
+			b = 0.25 * (pts[1] + pts[2] + pts[6] + pts[5]);
+			break;
+		case 1:
+			a = 0.25 * (pts[0] + pts[1] + pts[5] + pts[4]);
+			b = 0.25 * (pts[3] + pts[2] + pts[6] + pts[7]);
+			break;
+		case 2:
+			a = 0.25 * (pts[0] + pts[1] + pts[2] + pts[3]);
+			b = 0.25 * (pts[4] + pts[5] + pts[6] + pts[7]);
+			break;
+		}
+		span[axis] = (b - a).norm();
+	}
+	return span;
+}
+
+
 double Polyhedron::maxOrthogonalityAngleRadians() const
 {
 	if (_maxOrthogonalityAngleRadians < 0) {
@@ -1845,6 +1872,18 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 		setNeedsDivideAtCentroid();
 		return true;
 	}
+
+	auto span = calSpan();
+	bool canSplit = false;
+	for (int i = 0; i < 3; i++) {
+		if (span[i] > 2 * params.minEdgeLength) {
+			canSplit = true;
+			break;
+		}
+	}
+
+	if (!canSplit) // Cell span in each axis is too small so don't split
+		return false;
 
 	if (passNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
