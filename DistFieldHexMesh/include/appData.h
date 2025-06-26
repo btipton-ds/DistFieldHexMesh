@@ -66,7 +66,7 @@ class AppData : public std::enable_shared_from_this<AppData> {
 public:
     class MeshPickHandler {
     public:
-        virtual bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const = 0;
+        virtual bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const = 0;
     };
 
     AppData(MainFrame* pMainFrame = nullptr);
@@ -88,7 +88,7 @@ public:
     void doDivideHexMesh(const DivideHexMeshDlg& dlg);
     void doNew(const MakeBlockDlg& dlg);
     void doSelectBlocks(const SelectBlocksDlg& dlg);
-    void handleMeshRayCast(const Rayd& ray) const;
+    void handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const;
 
     const std::shared_ptr<MultiCore::ThreadPool>& getThreadPool() const;
         
@@ -119,7 +119,8 @@ public:
 
     void loadPrefs();
     bool readPrefsFile(std::string& contents) const;
-    void updatePrefsFile(const std::string& contents);
+    void updatePrefsFile() const;
+    void updatePrefsFile(const std::string& contents) const;
 
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
@@ -142,9 +143,9 @@ private:
     void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
 
     void initMeshSearchTree();
-    bool handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
-    bool handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3DId>& hits) const;
-    Index3DId faceCellVisible(const Polygon& face) const;
+    bool handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const;
+    bool handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
+    Index3DId faceCellDisplayed(const Polygon& face) const;
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
     void readDHFM(const std::wstring& path, const std::wstring& filename);
@@ -167,7 +168,8 @@ private:
 
     Index3D _minDisplayBlock, _maxDisplayBlock;
     std::set<Index3DId> _selectedCellIds;
-    std::set<Index3D> _selectedBlockIds, _processOnlyBlocks;
+    std::set<Index3D> _selectedBlockIds;
+    std::set<Index3D> _processOnlyBlocks;
 
     SplittingParams _params;
     std::wstring _dhfmFilename;

@@ -1,5 +1,0 @@
-QualitySplits 1
-Selected start
-Selected end
-OnlyProcessBlocks start
-OnlyProcessBlocks end

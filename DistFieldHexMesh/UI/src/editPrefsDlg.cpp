@@ -101,6 +101,5 @@ void EditPrefsDlg::save()
 	auto pAppData = _pMainFrame->getAppData();
 	string str(_prefsText->GetValue());
 	pAppData->updatePrefsFile(str);
-	pAppData->loadPrefs();
 	pAppData->updateHexTess();
 }

@@ -128,10 +128,10 @@ public:
     {
     }
 
-    bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const override
     {
         if (_pAppData) {
-            if (_pAppData->handleMeshFaceInfoClick(ray, hits)) {
+            if (_pAppData->handleMeshFaceInfoClick(event, ray, hits)) {
                 return true;
             }
         }
@@ -150,10 +150,10 @@ public:
     {
     }
 
-    bool handle(const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const override
     {
         if (_pAppData) {
-            if (_pAppData->handleMeshFaceDebugClick(ray, hits)) {
+            if (_pAppData->handleMeshFaceDebugClick(event, ray, hits)) {
                 return true;
             }
         }
@@ -187,14 +187,14 @@ void AppData::initMeshSearchTree()
     }
 }
 
-bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3DId>& hits) const
+bool AppData::handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const
 {
     double minDist = DBL_MAX;
     Index3DId hitId;
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        auto cellId = faceCellVisible(face);
+        auto cellId = faceCellDisplayed(face);
         if (cellId.isValid() && face.intersect(ray, hit)) {
             if (hit.dist < minDist) {
                 minDist = hit.dist;
@@ -234,30 +234,38 @@ bool AppData::handleMeshFaceInfoClick(const Rayd& ray, const std::vector<Index3D
     return false;
 }
 
-bool AppData::handleMeshFaceDebugClick(const Rayd& ray, const std::vector<Index3DId>& hits) const
+bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
 {
     double minDist = DBL_MAX;
-    Index3DId hitId;
+    Index3DId hitFaceId, hitCellId;
     for (const auto& id : hits) {
         const auto& face = _pVolume->getPolygon(id);
         RayHitd hit;
-        auto cellId = faceCellVisible(face);
-        if (cellId.isValid()  && face.intersect(ray, hit)) {
-            if (hit.dist < minDist) {
+        if (face.intersect(ray, hit)) {
+            auto cellId = faceCellDisplayed(face);
+            if (hit.dist < minDist && cellId.isValid()) {
                 minDist = hit.dist;
-                hitId = id;
+                hitFaceId = id;
+                hitCellId = cellId;
             }
         }
     }
 
-    if (hitId.isValid()) {
-        cout << "Clicked mesh " << hitId << "\n";
+    if (hitCellId.isValid()) {
+        if (event.ShiftDown())
+            _selectedCellIds.erase(hitCellId);
+        else
+            _selectedCellIds.insert(hitCellId);
+
+        updatePrefsFile();
+        updateHexTess();
+
         return true;
     }
     return false;
 }
 
-Index3DId AppData::faceCellVisible(const Polygon& face) const
+Index3DId AppData::faceCellDisplayed(const Polygon& face) const
 {
     auto pCanvas = _pMainFrame->getCanvas();
     const auto& cellIds = face.getCellIds();
@@ -636,11 +644,11 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     updateHexTess();
 }
 
-void AppData::handleMeshRayCast(const Rayd& ray) const
+void AppData::handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const
 {
     vector<Index3DId> hits;
     if (_pMeshPickHandler && _pFaceSearchTree && _pFaceSearchTree->biDirRayCast(ray, hits)) {
-        _pMeshPickHandler->handle(ray, hits);
+        _pMeshPickHandler->handle(event, ray, hits);
     }
 }
 
@@ -806,7 +814,39 @@ bool AppData::readPrefsFile(std::string& contents) const
     return false;
 }
 
-void AppData::updatePrefsFile(const std::string& contents)
+void AppData::updatePrefsFile() const
+{
+    stringstream contents;
+
+    const string qsStr("qualitysplits");
+    const string selStartStr("selected start");
+    const string selEndStr("selected end");
+    const string cellIdStr("cellid");
+    const string blockIdStr("blockid");
+    const string processOnlyStartStr("onlyprocessblocks start");
+    const string processOnlyEndStr("onlyprocessblocks end");
+
+    contents << qsStr << " " << (_doQualitySplits ? 1 : 0) << "\n";
+
+    contents << selStartStr << "\n";
+    for (const auto& id : _selectedCellIds) {
+        contents << "  " << cellIdStr << " " << (int)id[0] << " " << (int)id[1] << " " << (int)id[2] << " " << id.elementId() << "\n";
+    }
+    for (const auto& id : _selectedBlockIds) {
+        contents << "  " << blockIdStr << " " << (int)id[0] << " " << (int)id[1] << " " << (int)id[2] << "\n";
+    }
+    contents << selEndStr << "\n";
+
+    contents << processOnlyStartStr << "\n";
+    for (const auto& id : _processOnlyBlocks) {
+        contents << "  " << (int)id[0] << " " << (int)id[1] << " " << (int)id[2] << "\n";
+    }
+    contents << processOnlyEndStr << "\n";
+
+    updatePrefsFile(contents.str());
+}
+
+void AppData::updatePrefsFile(const std::string& contents) const
 {
     string filename = "assets/prefs.txt";
     ofstream out(filename);

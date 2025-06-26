@@ -462,13 +462,13 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (_meshSelection && event.ControlDown()) {
         cout << "Mesh click\n";
-        onMouseLeftDownMesh(startPt);
+        onMouseLeftDownMesh(event, startPt);
     } else {
-        onMouseLeftDownModel(startPt);
+        onMouseLeftDownModel(event, startPt);
     }
 }
 
-void GraphicsCanvas::onMouseLeftDownModel(const Vector3d& startPt)
+void GraphicsCanvas::onMouseLeftDownModel(wxMouseEvent& event, const Vector3d& startPt)
 {
     const auto& model = _pAppData->getModel();
 
@@ -498,7 +498,7 @@ void GraphicsCanvas::onMouseLeftDownModel(const Vector3d& startPt)
     _leftDown = true;
 }
 
-void GraphicsCanvas::onMouseLeftDownMesh(const Vector3d& startPt)
+void GraphicsCanvas::onMouseLeftDownMesh(wxMouseEvent& event, const Vector3d& startPt)
 {
 
     Vector3d hitPt;
@@ -506,7 +506,7 @@ void GraphicsCanvas::onMouseLeftDownMesh(const Vector3d& startPt)
     Vector3d dir(screenVectorToModel(Vector3d(0, 0, 1)));
     dir.normalize();
     Rayd ray(startPt, dir);
-    _pAppData->handleMeshRayCast(ray);
+    _pAppData->handleMeshRayCast(event, ray);
 
     _leftDown = false;
 }

@@ -1225,11 +1225,8 @@ bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed
 				if (selectedCellIds.contains(cellId) || selectedBlockIds.contains(cellId.blockIdx())) {
 					auto pOwnerBlock = getOwner(cellId.blockIdx());
 					if (pOwnerBlock && pOwnerBlock->polyhedronExists(cellId)) {
-						const auto& cell = pOwnerBlock->getPolyhedron(cellId);
-						if (cell.intersectsModel()) {
-							includeFace = true;
-							break;
-						}
+						includeFace = true;
+						break;
 					}
 				}
 			}

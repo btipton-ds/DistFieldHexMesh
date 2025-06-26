@@ -193,8 +193,8 @@ public:
 #endif
 
     void onMouseLeftDown(wxMouseEvent& event);
-    void onMouseLeftDownModel(const Vector3d& startPt);
-    void onMouseLeftDownMesh(const Vector3d& startPt);
+    void onMouseLeftDownModel(wxMouseEvent& event, const Vector3d& startPt);
+    void onMouseLeftDownMesh(wxMouseEvent& event, const Vector3d& startPt);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
     void onMouseMiddleUp(wxMouseEvent& event);
