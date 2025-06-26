@@ -56,31 +56,22 @@ namespace DFHM {
 			* _numBlockDivsPrompt = nullptr,
 			* _numSimpleDivsPrompt = nullptr,
 			* _numIntersectionDivsPrompt = nullptr,
-			* _numSharpEdgeIntersectionDivsPrompt = nullptr,
 			* _numCurvatureDivsPrompt = nullptr,
 			* _divsPerCurvaturePrompt = nullptr,
-			* _divsPerGapCurvaturePrompt = nullptr,
 			* _maxCellFacesPrompt = nullptr,
 			* _maxGapSizePrompt = nullptr,
 			* _sharpAnglePrompt = nullptr,
-			* _minSplitEdgeLengthCurvaturePrompt = nullptr,
-			* _minSplitEdgeLengthGapCurvaturePrompt = nullptr;
-
-		wxCheckBox
-			* _splitSharpVertsCheckBox = nullptr;
+			* _minEdgeLengthPrompt = nullptr;
 
 		wxTextCtrl
 			* _numSimpleDivsBox = nullptr,
 			* _numIntersectionDivsBox = nullptr,
-			* _numSharpEdgeIntersectionDivs = nullptr,
 			* _numCurvatureDivsBox = nullptr,
 			* _divsPerCurvatureBox = nullptr,
-			* _divsPerGapCurvatureBox = nullptr,
 			* _maxCellFacesBox = nullptr,
 			* _maxGapSizeBox = nullptr,
 			* _sharpAngleBox = nullptr,
-			* _minSplitEdgeLengthCurvatureBox = nullptr,
-			* _minSplitEdgeLengthGapCurvatureBox = nullptr;
+			* _minEdgeLengthBox = nullptr;
 
 		wxButton
 			* _okButton,

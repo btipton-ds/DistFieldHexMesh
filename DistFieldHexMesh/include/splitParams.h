@@ -45,8 +45,6 @@ struct SplittingParams {
 	void read(std::istream& in);
 	void write(std::ostream& out) const;
 
-	bool splitAtSharpVerts = true;
-
 	bool symXAxis = false;
 	bool symYAxis = true;
 	bool symZAxis = false;
@@ -54,12 +52,9 @@ struct SplittingParams {
 	int numFlattenPasses = 3;
 	size_t numSimpleDivs = 0;
 	size_t numIntersectionDivs = 0;
-	size_t numSharpVertDivs = 0;
-	size_t numSharpEdgeIntersectionDivs = 0;
 	size_t numCurvatureDivs = 1;
 	size_t curvatureDivsPerCircumference = 18;
 	size_t curvatureSamples = 3;
-	size_t divsPerGapCurvatureRadius = 4;
 	size_t maxCoplanarFaces = 4;
 	size_t maxCellFaces = 12;
 
@@ -81,9 +76,7 @@ struct SplittingParams {
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double sharpRadius = 0.0001; // .1 mm
 	double maxCuvatureRadius = 100; // m
-	double maxComplanarEdgeRemovalRadius = 2; // m
-	double minSplitEdgeLengthCurvature_meters = 0.001;  //  1 mm
-	double minSplitEdgeLengthGapCurvature_meters = 0.001;  //  1 mm
+	double minEdgeLength = 0.001;  //  1 mm
 	double maxOrthoAngleRadians = 70.0 / 180.0 * M_PI;
 	double maxLocalConcavityCrossProduct = -sin(7.5 / 180.0 * M_PI); // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
 
