@@ -53,8 +53,8 @@ namespace DFHM {
 TODO
 ****************************************************************************************************************************************
 
-Looks like some sections are not being found. The rear cross bar is not radially splitting as it should
-
+Don't split edges which are "too short."
+Visual cross sectioning. ParaView is abysmally slow because it requires real splitting.
 Cross mesh gap analysis using the new search tree.
 
 Memory reporting is far out of line with reported memory allocations.
@@ -83,6 +83,8 @@ Restore graphics multisampling for OIT - There's a mutlsampling facility for ant
 Already done
 ****************************************************************************************************************************************
 
+Curvature splitting was messing up because of miscounting partial splits as full splits. This blocked some needed splits.
+Looks like some sections are not being found. The rear cross bar is not radially splitting as it should
 Curvature calculation needs to by switched to use polygon mesh of models instead of TriMesh. TriMesh produces too many sliver edges which create bad curvatures
 Add bi/quad/oct/wedge splitting in addition to oct splitting.
 raycasting
@@ -138,6 +140,7 @@ enum DFHM_MENU_ID
 
     ID_MESH_INFO,
     ID_ADD_TO_MESH_DEBUG,
+    ID_MESH_DEBUG_SPLIT_CELL,
 
     ID_VIEW_FRONT,
     ID_VIEW_BACK,
@@ -288,6 +291,7 @@ private:
 
     void OnToggleMeshInfo(wxCommandEvent& event);
     void OnToggleMeshDebug(wxCommandEvent& event);
+    void OnTestCellSplit(wxCommandEvent& event);
 
     void OnShowAllSides(wxCommandEvent& event);
     void OnHideAllSides(wxCommandEvent& event);

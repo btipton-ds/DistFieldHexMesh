@@ -186,7 +186,6 @@ void Polyhedron::clear()
 	_faceIds.clear();
 
 	for (const auto& faceId : deadFaceIds) {
-		cout << "Freeing face: " << faceId << "\n";
 		getBlockPtr()->freePolygon(faceId);
 	}
 }

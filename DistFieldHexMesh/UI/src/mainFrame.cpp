@@ -246,8 +246,11 @@ void MainFrame::createDebugMenu()
     _debugMenu->Append(ID_MESH_INFO, "Mesh Info", "Selects a face and reports info", true);
     Bind(wxEVT_MENU, &MainFrame::OnToggleMeshInfo, this, ID_MESH_INFO);
 
-    _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Debug Cell", "Selects a face and reports info", true);
+    _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Select Break Cells", "Selects a face and reports info", true);
     Bind(wxEVT_MENU, &MainFrame::OnToggleMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
+
+    _debugMenu->Append(ID_MESH_DEBUG_SPLIT_CELL, "Test Split", "Selects a face and reports info", true);
+    Bind(wxEVT_MENU, &MainFrame::OnTestCellSplit, this, ID_MESH_DEBUG_SPLIT_CELL);
 
 #if INCLUDE_DEBUG_WX_FRAME
     _debugMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
@@ -857,6 +860,13 @@ void MainFrame::OnToggleMeshDebug(wxCommandEvent& event)
     bool startPicking = _pCanvas->toggleMeshSelection();
     if (startPicking)
         _pAppData->beginMeshFaceDebugPick();
+}
+
+void MainFrame::OnTestCellSplit(wxCommandEvent& event)
+{
+    bool startPicking = _pCanvas->toggleMeshSelection();
+    if (startPicking)
+        _pAppData->testCellSplit();
 }
 
 void MainFrame::OnShowAllSides(wxCommandEvent& event)

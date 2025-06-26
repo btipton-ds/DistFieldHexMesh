@@ -127,6 +127,7 @@ public:
     void setView(Vector3d viewVec);
     void setLights();
 
+    bool meshSelectionEnabled() const;
     bool toggleMeshSelection();
 
     void changeViewElements();
@@ -319,6 +320,11 @@ inline GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO()
 inline const GraphicsCanvas::GraphicsUBO& GraphicsCanvas::getUBO() const
 {
     return _graphicsUBO;
+}
+
+inline bool GraphicsCanvas::meshSelectionEnabled() const
+{
+    return _meshSelection;
 }
 
 inline bool GraphicsCanvas::toggleMeshSelection()

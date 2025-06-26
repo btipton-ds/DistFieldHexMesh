@@ -58,7 +58,7 @@ public:
 	~Splitter3D();
 
 	bool splitComplex();
-	bool splitAtCenter();
+	bool splitConditional();
 private:
 	enum CellType {
 		CT_HEX,
@@ -95,6 +95,7 @@ private:
 	Index3DId findConnectedFaceId(const std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& faceId) const;
 	void verifyLocalEdgeSet(const std::map<EdgeKey, FastBisectionSet<Index3DId>>& localEdgeSet, const Index3DId& splittingFaceId) const;
 	void finalizeCreatedCells();
+	static bool planeFromPoints(const std::vector<Vector3d>& pts, Planed& pl);
 
 	Index3DId makeScratchCell(const Index3DId& parentId);
 	Index3DId makeScratchFace(const Index3DId& srcFaceId);
@@ -106,7 +107,7 @@ private:
 	bool _hasSetSearchTree;
 	std::shared_ptr<const PolyMeshSearchTree> _pPolySearchTree;
 
-	size_t _splitLevel;
+	const size_t _splitLevel;
 	MTC::set<Index3DId> _createdCellIds;
 
 	Block* _pBlock;

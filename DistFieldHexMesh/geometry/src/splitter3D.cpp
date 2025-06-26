@@ -27,7 +27,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <assert.h>
-#include <tm_bestFit.h>
 #include <tm_lineSegment.h>
 #include <tm_ray.h>
 #include <tm_math.hpp>
@@ -187,7 +186,7 @@ bool Splitter3D::splitComplex()
 	return result;
 }
 
-bool Splitter3D::splitAtCenter()
+bool Splitter3D::splitConditional()
 {
 #ifdef _DEBUG
 	if (Index3DId(2, 0, 3, 39) == _polyhedronId || Index3DId(2, 0, 3, 41) == _polyhedronId) {
@@ -469,6 +468,46 @@ bool Splitter3D::needsCurvatureSplit(const Polyhedron& testCell, int axis) const
 	return false;
 }
 
+bool Splitter3D::planeFromPoints(const std::vector<Vector3d>& pts, Planed& pl)
+{
+	if (pts.size() < 3)
+		return false;
+
+	const auto tolSqr = Tolerance::sameDistTolSqr();
+	Vector3d norm(0, 0, 0);
+	const auto& pt0 = pts[0];
+	for (size_t i = 1; i < pts.size() - 2; i++) {
+		size_t j = (i + 1) % pts.size();
+		const auto& pt1 = pts[i];
+		const auto& pt2 = pts[j];
+		Vector3d v0 = pt0 - pt1;
+		double lSqr0 = v0.squaredNorm();
+		if (lSqr0 < tolSqr)
+			return false;
+
+		Vector3d v1 = pt2 - pt1;
+
+		double lSqr1 = v0.squaredNorm();
+		if (lSqr1 < tolSqr)
+			return false;
+
+		v0 /= sqrt(lSqr0);
+		v1 /= sqrt(lSqr1);
+		Vector3d n = v1.cross(v0);
+
+		norm += n;
+	}
+
+	Vector3d origin(0, 0, 0);
+	for (const auto& pt : pts) 
+		origin += pt;
+	
+	origin /= pts.size();
+	pl = Planed(origin, norm);
+
+	return true;
+}
+
 void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds)
 {
 	auto pBlk = getBlockPtr();
@@ -502,15 +541,15 @@ void Splitter3D::bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::ve
 		MTC::vector<Index3DId> newCellFaceIds;
 		newCellFaceIds.push_back(splittingFaceId);
 
-		MTC::vector<MTC::vector<Vector3d>> cellFacePts;
-		GradingOp::getCubeFacePoints(subCellPts, cellFacePts);
+		MTC::vector<MTC::vector<Vector3d>> allCellFacesPts;
+		GradingOp::getCubeFacePoints(subCellPts, allCellFacesPts);
 		vector<Planed> boundingPlanes;
-		for (const auto& cellFacePts : cellFacePts) {
+		for (const auto& cellFacePts : allCellFacesPts) {
+
 			Planed pl;
-			double err;
-			if (!bestFitPlane(cellFacePts, pl, err) || err > Tolerance::sameDistTol()) {
+			if (!planeFromPoints(cellFacePts, pl)) {
 				stringstream ss;
-				ss << "bisectHexCell bestFitPlane failed. " << __FILE__ << "-" << __LINE__;
+				ss << "planeFromPoints failed. " << __FILE__ << "-" << __LINE__;
 				throw runtime_error(ss.str());
 			}
 
@@ -1019,7 +1058,6 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 		_pPolySearchTree = nullptr;
 	}
 	_hasSetSearchTree = true;
-	_splitLevel = targetCell.getSplitLevel();
 }
 
 inline Index3DId Splitter3D::vertId(const Vector3d& pt)

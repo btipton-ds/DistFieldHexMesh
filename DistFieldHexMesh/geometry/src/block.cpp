@@ -1110,11 +1110,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum);
-#if DEBUGGING_MUTEXES_ENABLED
-			static mutex mut;
-			lock_guard lg(mut);
-#endif
-			if (splitter.splitAtCenter()) {
+			if (splitter.splitConditional()) {
 				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}

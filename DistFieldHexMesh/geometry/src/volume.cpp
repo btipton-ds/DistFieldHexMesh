@@ -892,10 +892,10 @@ bool Volume::hasCrossSections() const
 	return false;
 }
 
-void Volume::createCrossSections(const SplittingParams& params)
+void Volume::createCrossSections(const SplittingParams& params, size_t numSplits)
 {
 	for (int axis = 0; axis < 3; axis++) {
-		createCrossSections(params, axis);
+		createCrossSections(params, numSplits, axis);
 	}
 
 	MultiCore::runLambda([this, &params](size_t threadNum, size_t numThreads) {
@@ -941,7 +941,7 @@ void Volume::createCrossSections(const SplittingParams& params)
 	}, RUN_MULTI_THREAD);
 }
 
-void Volume::createCrossSections(const SplittingParams& params, int axis)
+void Volume::createCrossSections(const SplittingParams& params, size_t numSplits, int axis)
 {
 	const auto tol = Tolerance::sameDistTol();
 
@@ -951,14 +951,13 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 	sectionAxis /= len;
 
 	auto& axisSections = _crossSections[axis];
-	size_t nDivs;
+	size_t nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis] + 1;
 	if (axisSections.empty()) {
 		// There will be numSimpleDivs cells across each cell
 		// We need to compute crossections for the split cells and each split cell also computes a half section, 
 		// so we need 4 splits
-		nDivs = 4 * (params.numSimpleDivs + 1) * _modelDim[axis];
-		for (size_t j = 0; j <= nDivs; j++) { // This creates bounding planes, so there is one extra
-			double t = j / (double)nDivs;
+		for (size_t j = 0; j < nDivs; j++) { // This creates bounding planes, so there is one extra
+			double t = j / (nDivs - 1.0);
 
 			Planed pl = calSectionPlane(axis, origin, sectionAxis, t);
 
@@ -970,24 +969,31 @@ void Volume::createCrossSections(const SplittingParams& params, int axis)
 			axisSections.insert(make_pair(pos, pSection));
 		}
 	} else {
-		vector<double> tmp;
-		for (const auto& pair : axisSections) {
-			tmp.push_back(pair.first);
+		size_t passes = 1;
+		if (numSplits != -1) {
+			passes = numSplits - _splitNum;
 		}
-		for (size_t i = 0; i < tmp.size() - 1; i++) {
-			size_t j = (i + 1) % tmp.size();
-			double pos = (tmp[i] + tmp[j]) / 2;
-			double t = pos / len;
 
-			Planed pl = calSectionPlane(axis, origin, sectionAxis, t);
+		for (size_t passNum = 0; passNum < passes; passNum++) {
+			vector<double> tmp;
+			for (const auto& pair : axisSections) {
+				tmp.push_back(pair.first);
+			}
+			for (size_t i = 0; i < tmp.size() - 1; i++) {
+				size_t j = (i + 1) % tmp.size();
+				double pos = (tmp[i] + tmp[j]) / 2;
+				double t = pos / len;
+
+				Planed pl = calSectionPlane(axis, origin, sectionAxis, t);
 #ifdef _DEBUG
-			Vector3d v = pl.getOrigin() - origin;
-			double pos2 = v.dot(sectionAxis);
-			assert(fabs(pos2 - pos) < tol);
+				Vector3d v = pl.getOrigin() - origin;
+				double pos2 = v.dot(sectionAxis);
+				assert(fabs(pos2 - pos) < tol);
 #endif
 
-			auto pSection = make_shared<Splitter2D>(pl);
-			axisSections.insert(make_pair(pos, pSection));
+				auto pSection = make_shared<Splitter2D>(pl);
+				axisSections.insert(make_pair(pos, pSection));
+			}
 		}
 	}
 
@@ -1867,6 +1873,13 @@ const Vertex& Volume::getVertex(const Index3DId& id) const
 	return pBlk->_vertices[id];
 }
 
+Vertex& Volume::getVertex(const Index3DId& id)
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_vertices[id];
+}
+
 const DFHM::Polygon& Volume::getPolygon(const Index3DId& id) const
 {
 	const auto& pBlk = getBlockPtr(id);
@@ -1874,7 +1887,21 @@ const DFHM::Polygon& Volume::getPolygon(const Index3DId& id) const
 	return pBlk->_polygons[id];
 }
 
+DFHM::Polygon& Volume::getPolygon(const Index3DId& id)
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_polygons[id];
+}
+
 const Polyhedron& Volume::getPolyhedron(const Index3DId& id) const
+{
+	const auto& pBlk = getBlockPtr(id);
+	assert(pBlk);
+	return pBlk->_polyhedra[id];
+}
+
+Polyhedron& Volume::getPolyhedron(const Index3DId& id)
 {
 	const auto& pBlk = getBlockPtr(id);
 	assert(pBlk);

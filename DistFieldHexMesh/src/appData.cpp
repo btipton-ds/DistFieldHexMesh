@@ -61,6 +61,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <utils.h>
 #include <gradingOp.h>
+#include <splitter3D.h>
 
 using namespace std;
 using namespace DFHM;
@@ -142,6 +143,28 @@ private:
     AppData* _pAppData;
 };
 
+class AppData::MeshTestSplitSelectHandler : public AppData::MeshPickHandler
+{
+public:
+    MeshTestSplitSelectHandler(AppData* pAppData)
+        : _pAppData(pAppData)
+    {
+    }
+
+    bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    {
+        if (_pAppData) {
+            if (_pAppData->handleMeshTestSplit(event, ray, hits)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    AppData* _pAppData;
+
+};
 class AppData::MeshFaceDebugSelectHandler : public AppData::MeshPickHandler
 {
 public:
@@ -265,6 +288,50 @@ bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, con
     return false;
 }
 
+bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
+{
+    double minDist = DBL_MAX;
+    Index3DId hitFaceId, hitCellId;
+    for (const auto& id : hits) {
+        const auto& face = _pVolume->getPolygon(id);
+        RayHitd hit;
+        if (face.intersect(ray, hit)) {
+            auto cellId = faceCellDisplayed(face);
+            if (hit.dist < minDist && cellId.isValid()) {
+                minDist = hit.dist;
+                hitFaceId = id;
+                hitCellId = cellId;
+            }
+        }
+    }
+
+    if (hitCellId.isValid()) {
+        auto& cell = _pVolume->getPolyhedron(hitCellId);
+        if (cell.getSplitLevel() >= _params.numCurvatureDivs)
+            _params.numCurvatureDivs++;
+
+        bool needsCrossSections = _params.numCurvatureDivs > 0;
+        if (needsCrossSections) {
+            _pVolume->createCrossSections(_params, cell.getSplitLevel());
+        }
+
+        auto pBlock = cell.getBlockPtr();
+        size_t splitLevel = cell.getSplitLevel();
+        Splitter3D sp(pBlock, hitCellId, splitLevel);
+        if (sp.splitConditional()) {
+
+            _pVolume->setLayerNums();
+
+            updateHexTess();
+
+            _pFaceSearchTree = nullptr;
+            initMeshSearchTree();
+        }
+        return true;
+    }
+    return false;
+}
+
 Index3DId AppData::faceCellDisplayed(const Polygon& face) const
 {
     auto pCanvas = _pMainFrame->getCanvas();
@@ -288,6 +355,12 @@ void AppData::beginMeshFaceDebugPick()
 {
     initMeshSearchTree();
     _pMeshPickHandler = make_shared<MeshFaceDebugSelectHandler>(this);
+}
+
+void AppData::testCellSplit()
+{
+    initMeshSearchTree();
+    _pMeshPickHandler = make_shared<MeshTestSplitSelectHandler>(this);
 }
 
 bool AppData::doOpen()

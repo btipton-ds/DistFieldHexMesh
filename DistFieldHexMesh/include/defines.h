@@ -80,7 +80,7 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 #if DEBUGGING_MUTEXES_AVAIL
-#define DEBUGGING_MUTEXES_ENABLED (1 && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
+#define DEBUGGING_MUTEXES_ENABLED (0 && (RUN_MULTI_THREAD || RUN_MULTI_SUB_THREAD))
 #else
 #define DEBUGGING_MUTEXES_ENABLED 0
 #endif

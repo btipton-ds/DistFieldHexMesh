@@ -185,13 +185,17 @@ private:
 	const Polygon& getPolygon(const Index3DId& id) const;
 	const Polyhedron& getPolyhedron(const Index3DId& id) const;
 
+	Vertex& getVertex(const Index3DId& id);
+	Polygon& getPolygon(const Index3DId& id);
+	Polyhedron& getPolyhedron(const Index3DId& id);
+
 	void initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::ThreadPool> pThreadPool);
 	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
 	void gradeSurroundingBlocks(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideSimple(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 	void divideConditional(const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
-	void createCrossSections(const SplittingParams& params);
-	void createCrossSections(const SplittingParams& params, int axis);
+	void createCrossSections(const SplittingParams& params, size_t numSplits = -1);
+	void createCrossSections(const SplittingParams& params, size_t numSplits, int axis);
 	void calSectionAxis(int axis, Vector3d& origin, Vector3d& sectionAxis) const;
 	Planed calSectionPlane(int axis, const Vector3d& origin, const Vector3d& sectionAxis, double t) const;
 	bool getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const;

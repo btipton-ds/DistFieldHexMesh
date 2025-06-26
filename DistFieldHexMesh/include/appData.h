@@ -111,6 +111,8 @@ public:
 
     void beginMeshFaceInfoPick();
     void beginMeshFaceDebugPick();
+    void testCellSplit();
+
     const std::set<Index3DId>& getSelectedCellIds() const;
     std::set<Index3DId>& getSelectedCellIds();
     std::set<Index3D>& getSelectedBlockIds();
@@ -130,8 +132,10 @@ public:
 private:
     class MeshFaceInfoSelectHandler;
     class MeshFaceDebugSelectHandler;
+    class MeshTestSplitSelectHandler;
     friend class MeshFaceInfoSelectHandler;
     friend class MeshFaceDebugSelectHandler;
+    friend class MeshTestSplitSelectHandler;
 
     void clear(bool includeModelData);
     void clearCache();
@@ -145,6 +149,7 @@ private:
     void initMeshSearchTree();
     bool handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const;
     bool handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
+    bool handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
     Index3DId faceCellDisplayed(const Polygon& face) const;
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);
