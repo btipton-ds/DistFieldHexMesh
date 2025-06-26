@@ -158,9 +158,16 @@ bool Splitter3D::splitComplex()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if 1 // && defined(_DEBUG)
-			if (_polyhedronId == Index3DId(3, 0, 4, 0)) {
-				int dbgBreak = 1; // returning correct result for this cell
+#if DEBUGGING_MUTEXES_ENABLED
+			static mutex lockMutexPtrMutex, lockMutex;
+			shared_ptr<lock_guard<mutex>> pLg;
+			{
+				auto pVol = getBlockPtr()->getVolume();
+
+				lock_guard lg(lockMutexPtrMutex);
+				if (pVol->isCellSelected(_polyhedronId)) {
+					pLg = make_shared<lock_guard<mutex>>(lockMutex);
+				}
 			}
 #endif
 			result = complexityBisectionHexSplit(_polyhedronId, 0, 8);

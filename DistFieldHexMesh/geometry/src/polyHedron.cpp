@@ -1360,6 +1360,19 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 
 bool Polyhedron::intersectsModel() const
 {
+#if DEBUGGING_MUTEXES_ENABLED
+	static mutex lockMutexPtrMutex, lockMutex;
+	shared_ptr<lock_guard<mutex>> pLg;
+	{
+		auto pVol = getOurBlockPtr()->getVolume();
+
+		lock_guard lg(lockMutexPtrMutex);
+		if (pVol->isCellSelected(getId())) {
+			pLg = make_shared<lock_guard<mutex>>(lockMutex);
+		}
+	}
+#endif
+
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		for (const auto& id : _faceIds) {
 			auto& face = getPolygon(id);
@@ -1484,15 +1497,7 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 
 bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 {
-#ifdef _DEBUG
-#if ENABLE_DEBUGGING_MUTEXES
-	static mutex mut;
-	lock_guard lg(mut);
-#endif
-	if (getId().blockIdx() == Index3D(1, 4, 5)) {
-		int dbgBreak = 1; // returning correct result for this cell
-	}
-#endif
+
 	for (int orthoAxis = 0; orthoAxis < 3; orthoAxis++) {
 		initCurvatureByNormalAxis(params, orthoAxis);
 	}
@@ -1824,6 +1829,19 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
+#if DEBUGGING_MUTEXES_ENABLED
+	static mutex lockMutexPtrMutex, lockMutex;
+	shared_ptr<lock_guard<mutex>> pLg;
+	{
+		auto pVol = getOurBlockPtr()->getVolume();
+
+		lock_guard lg(lockMutexPtrMutex);
+		if (pVol->isCellSelected(getId())) {
+			pLg = make_shared<lock_guard<mutex>>(lockMutex);
+		}
+	}
+#endif
+
 	if (isTooComplex(params)) {
 		setNeedsDivideAtCentroid();
 		return true;

@@ -84,6 +84,8 @@ public:
 
 	const Index3D& modelDim() const;
 	bool inModelBounds(const Index3D& idx) const;
+	bool isCellSelected(const Index3DId& id) const;
+	bool isBlockSelected(const Index3DId& id) const;
 
 	const Block* getBlockPtr(const Index3D& blockIdx) const;
 	Block* getBlockPtr(const Index3D& blockIdx);

@@ -1110,7 +1110,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	for (const auto& cellId : needToSplitCopy) {
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum);
-#if ENABLE_DEBUGGING_MUTEXES
+#if DEBUGGING_MUTEXES_ENABLED
 			static mutex mut;
 			lock_guard lg(mut);
 #endif
@@ -1463,7 +1463,7 @@ void Block::markIncrementLayerNums(int i)
 			const auto& adjIds = cell.getAdjacentCells();
 			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
-#if 0 && defined(ENABLE_DEBUGGING_MUTEXES)
+#if 0 && defined(DEBUGGING_MUTEXES_ENABLED)
 					set<Index3DId> testIds({
 						Index3DId(2, 0, 3, 126),
 						Index3DId(2, 0, 3, 127),

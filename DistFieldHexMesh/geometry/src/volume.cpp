@@ -469,6 +469,18 @@ bool Volume::inModelBounds(const Index3D& idx) const
 	return true;
 }
 
+bool Volume::isCellSelected(const Index3DId& id) const
+{
+	const auto& ids = _pAppData->getSelectedCellIds();
+	return ids.contains(id);
+}
+
+bool Volume::isBlockSelected(const Index3DId& id) const
+{
+	const auto& ids = _pAppData->getSelectedBlockIds();
+	return ids.contains(id);
+}
+
 void Volume::initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::ThreadPool> pThreadPool)
 {
 	_pAppData = pVol->_pAppData;

@@ -461,7 +461,6 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
 
     Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (_meshSelection && event.ControlDown()) {
-        cout << "Mesh click\n";
         onMouseLeftDownMesh(event, startPt);
     } else {
         onMouseLeftDownModel(event, startPt);

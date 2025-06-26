@@ -134,6 +134,11 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/rgbaColor.cpp"
  )
 
+if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
+	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
+else()
+	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=1")
+endif()
 
 if (WIN32)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
