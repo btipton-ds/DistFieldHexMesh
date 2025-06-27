@@ -58,14 +58,23 @@ vec4 shadeFragment()
 
   if (normalShadingOn != 0) {
     for (int i = 0; i < numLights; i++) {
-      float dp = dot(lightDir[i], fragNormal);
+		float dp;
+		switch (i) {
+			default:
+			case 0:
+				dp = dot(lightDir0.xyz, fragNormal);
+				break;
+			case 1:
+				dp = dot(lightDir1.xyz, fragNormal);
+				break;
+		}
+		if (twoSideLighting != 0)
+			dp = abs(dp);
 
-      if (twoSideLighting != 0)
-        dp = abs(dp);
-
-      if (dp > 0)
-        intensity += dp;
+		if (dp > 0)
+			intensity += dp;
     }
+	intensity /= numLights;
   } else {
     intensity = 1.0;
   }

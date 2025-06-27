@@ -198,18 +198,20 @@ void GraphicsCanvas::dumpUniformOffset() const
     size_t modelViewOff = (size_t)&_graphicsUBO.modelView - uboBase;
     size_t projOff = (size_t)&_graphicsUBO.proj - uboBase;
     size_t defColorOff = (size_t)&_graphicsUBO.defColor - uboBase;
-    size_t lightDirOff = (size_t)&_graphicsUBO.lightDir - uboBase;
+    size_t lightDir0Off = (size_t)&_graphicsUBO.lightDir0 - uboBase;
+    size_t lightDir1Off = (size_t)&_graphicsUBO.lightDir1 - uboBase;
 
     cout << "GraphicsUBO::modelView       : " << modelViewOff << "\n";
     cout << "GraphicsUBO::proj            : " << projOff << "\n";
     cout << "GraphicsUBO::defColor        : " << defColorOff << "\n";
+    cout << "GraphicsUBO::lightDir0       : " << lightDir0Off << "\n";
+    cout << "GraphicsUBO::lightDir1       : " << lightDir1Off << "\n";
     cout << "GraphicsUBO::ambient         : " << ambientOff << "\n";
     cout << "GraphicsUBO::useDefColor     : " << useDefColorOff << "\n";
     cout << "GraphicsUBO::normalShadingOn : " << normalShadingOnOff << "\n";
     cout << "GraphicsUBO::twoSideLighting : " << twoSideLightingOff << "\n";
 
     cout << "GraphicsUBO::numLightsOff    : " << numLightsOff << "\n";
-    cout << "GraphicsUBO::lightDir        : " << lightDirOff << "\n";
 }
 
 std::shared_ptr<DrawCrossSectionEdges> GraphicsCanvas::getDrawCrossSectionEdges()
@@ -363,16 +365,16 @@ void GraphicsCanvas::setLights()
 {
     const float elOffset = 0.0f;
     float lightAz[] = {
-        0.0f,
-        0.0f,
+        -15.0f,
+        15.0f,
         0.0f,
         30.0f,
         60.0f,
     };
 
     float lightEl[] = {
-        0.0f,
-        0.0f,
+        20.0f,
+        20.0f,
         0.0f,
         0.0f,
         0.0f,
@@ -386,8 +388,16 @@ void GraphicsCanvas::setLights()
         float cosAz = cosf(toRad(lightAz[i]));
         float sinEl = sinf(toRad(lightEl[i] + elOffset));
         float cosEl = cosf(toRad(lightEl[i] + elOffset));
-
-        _graphicsUBO.lightDir[i] = -p3f(cosEl * sinAz, cosEl * cosAz, sinEl);
+        p4f lv(cosEl * sinAz, sinEl, cosEl * cosAz, 0);
+        switch (i){
+        default:
+        case 0:
+            _graphicsUBO.lightDir0 = lv;;
+            break;
+        case 1:
+            _graphicsUBO.lightDir1 = lv;;
+            break;
+        }
     }
 }
 

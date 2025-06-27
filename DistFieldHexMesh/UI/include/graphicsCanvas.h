@@ -91,12 +91,13 @@ public:
         m44f modelView; // Model matrix is always identity, so this is the view matrix
         m44f proj;
         p4f defColor;
+        p4f lightDir0;
+        p4f lightDir1;
         float ambient = 0;
         int useDefColor = 1;
         int normalShadingOn = 1;
         int twoSideLighting = 1;
         int numLights = 0;
-        p3f lightDir[8];
     };
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
