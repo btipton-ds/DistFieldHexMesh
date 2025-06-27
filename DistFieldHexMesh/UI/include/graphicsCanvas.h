@@ -94,7 +94,7 @@ public:
         float ambient = 0;
         int useDefColor = 1;
         int normalShadingOn = 1;
-        int twoSideLighting = 0;
+        int twoSideLighting = 1;
         int numLights = 0;
         p3f lightDir[8];
     };
@@ -248,6 +248,7 @@ private:
     static void bindTextureRect(GLint texLoc, GLuint texId, int textureUnit);
 
     void loadShaders();
+    void dumpUniformOffset() const;
 
     Eigen::Vector2d screenToNDC(const wxPoint& pt);
 

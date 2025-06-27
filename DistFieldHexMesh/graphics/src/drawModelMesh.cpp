@@ -37,22 +37,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-namespace {
-    enum DrawStates {
-        DS_MODEL,
-        DS_MODEL_CURVATURE,
-        DS_MODEL_SHARP_EDGES,
-        DS_MODEL_SHARP_VERTS,
-        DS_MODEL_NORMALS,
-        DS_BLOCK_OUTER,
-        DS_MESH_INNER,
-        DS_MESH_BOUNDARY,
-        DS_MODEL_REF_EDGES,
-        DS_MESH_ALL,
-    };
-
-}
-
 DrawModelMesh::DrawModelMesh(GraphicsCanvas* pCanvas)
     : DrawMesh(pCanvas, 20)
 {
@@ -143,7 +127,10 @@ void DrawModelMesh::changeViewElements(const Model& meshData)
     for (auto& pData : meshData) {
 
         if (_options.showFaces) {
-            faceVBO.includeElementIndices(DS_MODEL_FACES, pData->getFaceTess());
+            if (pData->isSolid())
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, pData->getFaceTess());
+            else
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, pData->getFaceTess());
             if (_options.showTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
@@ -220,8 +207,11 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
 
     switch (key) {
     default:
-    case DS_MODEL:
-        UBO.defColor = p3f(0.9f, 0.9f, 1.0f);
+    case DS_MODEL_FACES_SOLID:
+        UBO.defColor = p4f(0.4f, 0.4f, 1.0f, 1);
+        break;
+    case DS_MODEL_FACES_SURFACE:
+        UBO.defColor = p4f(0.6f, 1.0f, 0.6f, 0.6f);
         break;
     case DS_MODEL_SHARP_VERTS:
         UBO.defColor = p3f(1.0f, 1.0f, 0);

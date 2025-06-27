@@ -177,11 +177,39 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Bind(wxEVT_RIGHT_UP, &GraphicsCanvas::onMouseRightUp, this);
     Bind(wxEVT_MOTION, &GraphicsCanvas::onMouseMove, this);
     Bind(wxEVT_MOUSEWHEEL, &GraphicsCanvas::onMouseWheel, this);
+
+    dumpUniformOffset();
 }
 
 GraphicsCanvas::~GraphicsCanvas()
 {
     releaseDepthPeeling();
+}
+
+void GraphicsCanvas::dumpUniformOffset() const
+{
+    size_t uboBase = (size_t)&_graphicsUBO;
+    size_t numLightsOff = (size_t)&_graphicsUBO.numLights - uboBase;
+    size_t useDefColorOff = (size_t)&_graphicsUBO.useDefColor - uboBase;
+    size_t normalShadingOnOff = (size_t)&_graphicsUBO.normalShadingOn - uboBase;
+    size_t twoSideLightingOff = (size_t)&_graphicsUBO.twoSideLighting - uboBase;
+    size_t ambientOff = (size_t)&_graphicsUBO.ambient - uboBase;
+
+    size_t modelViewOff = (size_t)&_graphicsUBO.modelView - uboBase;
+    size_t projOff = (size_t)&_graphicsUBO.proj - uboBase;
+    size_t defColorOff = (size_t)&_graphicsUBO.defColor - uboBase;
+    size_t lightDirOff = (size_t)&_graphicsUBO.lightDir - uboBase;
+
+    cout << "GraphicsUBO::modelView       : " << modelViewOff << "\n";
+    cout << "GraphicsUBO::proj            : " << projOff << "\n";
+    cout << "GraphicsUBO::defColor        : " << defColorOff << "\n";
+    cout << "GraphicsUBO::ambient         : " << ambientOff << "\n";
+    cout << "GraphicsUBO::useDefColor     : " << useDefColorOff << "\n";
+    cout << "GraphicsUBO::normalShadingOn : " << normalShadingOnOff << "\n";
+    cout << "GraphicsUBO::twoSideLighting : " << twoSideLightingOff << "\n";
+
+    cout << "GraphicsUBO::numLightsOff    : " << numLightsOff << "\n";
+    cout << "GraphicsUBO::lightDir        : " << lightDirOff << "\n";
 }
 
 std::shared_ptr<DrawCrossSectionEdges> GraphicsCanvas::getDrawCrossSectionEdges()

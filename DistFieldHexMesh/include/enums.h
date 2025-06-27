@@ -92,7 +92,8 @@ enum IntersectionDrawType {
 // DrawStates must be universally unique across all entities because they are keys
 // into the renderer's VBO map.
 enum DrawStates {
-    DS_MODEL_FACES,
+    DS_MODEL_FACES_SOLID,
+	DS_MODEL_FACES_SURFACE,
 	DS_MODEL_EDGES,
 	DS_MODEL_SHARP_EDGES,
 	DS_MODEL_SMOOTH_EDGES,

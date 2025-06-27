@@ -77,6 +77,8 @@ namespace DFHM {
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
 
+		bool isSolid() const;
+
 		bool isActive() const;
 		void setActive(bool val);
 

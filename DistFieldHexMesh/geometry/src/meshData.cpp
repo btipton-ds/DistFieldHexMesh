@@ -106,6 +106,15 @@ size_t MeshData::numBytes() const
 	return result;
 }
 
+bool MeshData::isSolid() const
+{
+	if (_pPolyMesh)
+		return _pPolyMesh->isClosed();
+	else if (_pMesh)
+		return _pMesh->isClosed();
+	return true;
+}
+
 void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 {
 	if (!isMeshCashed())
