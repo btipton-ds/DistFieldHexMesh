@@ -67,6 +67,24 @@ vec4 shadeFragment()
 			case 1:
 				dp = dot(lightDir1.xyz, fragNormal);
 				break;
+			case 2:
+				dp = dot(lightDir2.xyz, fragNormal);
+				break;
+			case 3:
+				dp = dot(lightDir3.xyz, fragNormal);
+				break;
+			case 4:
+				dp = dot(lightDir4.xyz, fragNormal);
+				break;
+			case 5:
+				dp = dot(lightDir5.xyz, fragNormal);
+				break;
+			case 6:
+				dp = dot(lightDir6.xyz, fragNormal);
+				break;
+			case 7:
+				dp = dot(lightDir7.xyz, fragNormal);
+				break;
 		}
 		if (twoSideLighting != 0)
 			dp = abs(dp);

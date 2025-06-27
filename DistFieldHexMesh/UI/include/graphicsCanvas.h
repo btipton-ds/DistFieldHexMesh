@@ -93,6 +93,12 @@ public:
         p4f defColor;
         p4f lightDir0;
         p4f lightDir1;
+        p4f lightDir2;
+        p4f lightDir3;
+        p4f lightDir4;
+        p4f lightDir5;
+        p4f lightDir6;
+        p4f lightDir7;
         float ambient = 0;
         int useDefColor = 1;
         int normalShadingOn = 1;

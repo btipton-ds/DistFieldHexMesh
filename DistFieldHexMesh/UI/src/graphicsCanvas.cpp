@@ -365,16 +365,18 @@ void GraphicsCanvas::setLights()
 {
     const float elOffset = 0.0f;
     float lightAz[] = {
-        -15.0f,
-        15.0f,
+        -25.0f,
+        25.0f,
         0.0f,
         30.0f,
         60.0f,
     };
 
     float lightEl[] = {
-        20.0f,
-        20.0f,
+        60.0f,
+        60.0f,
+        -60.0f,
+        -60.0f,
         0.0f,
         0.0f,
         0.0f,
@@ -382,7 +384,7 @@ void GraphicsCanvas::setLights()
 
     _graphicsUBO.defColor = p3f(1.0f, 1.0f, 1);
     _graphicsUBO.ambient = 0.3f;
-    _graphicsUBO.numLights = 2;
+    _graphicsUBO.numLights = 4;
     for (int i = 0; i < _graphicsUBO.numLights; i++) {
         float sinAz = sinf(toRad(lightAz[i]));
         float cosAz = cosf(toRad(lightAz[i]));
@@ -396,6 +398,24 @@ void GraphicsCanvas::setLights()
             break;
         case 1:
             _graphicsUBO.lightDir1 = lv;;
+            break;
+        case 2:
+            _graphicsUBO.lightDir2 = lv;;
+            break;
+        case 3:
+            _graphicsUBO.lightDir3 = lv;;
+            break;
+        case 4:
+            _graphicsUBO.lightDir4 = lv;;
+            break;
+        case 5:
+            _graphicsUBO.lightDir5 = lv;;
+            break;
+        case 6:
+            _graphicsUBO.lightDir6 = lv;;
+            break;
+        case 7:
+            _graphicsUBO.lightDir7 = lv;;
             break;
         }
     }
