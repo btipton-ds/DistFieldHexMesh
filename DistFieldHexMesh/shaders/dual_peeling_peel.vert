@@ -46,12 +46,23 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec3 fragNormal;
 
 void main() {
-  gl_Position = proj * modelView * vec4(inPosition, 1.0);
-  fragNormal = normalize((modelView * vec4(inNormal, 0.0)).xyz);
+	int ignoreClipped = 0;
+	if (clippingPlaneOn == 1) {
+		vec3 v = inPosition - clippingPlaneOrigin.xyz;
+		float dp = dot(clippingPlaneNormal.xyz, v);
+		ignoreClipped = dp < 0 ? 1 : 0;
+	}
+
+	if (ignoreClipped == 1) {
+		fragColor = vec4(0,0,0,0);
+	} else {
+		gl_Position = proj * modelView * vec4(inPosition, 1.0);
+		fragNormal = normalize((modelView * vec4(inNormal, 0.0)).xyz);
 	
-	if (useDefColor != 0)
-		fragColor = defColor;
-	else
-		fragColor = vec4(inColor, 1);
+		if (useDefColor != 0)
+			fragColor = defColor;
+		else
+			fragColor = vec4(inColor, 1);
+	}
 }
 

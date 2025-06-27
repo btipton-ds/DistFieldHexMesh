@@ -178,6 +178,13 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Bind(wxEVT_MOTION, &GraphicsCanvas::onMouseMove, this);
     Bind(wxEVT_MOUSEWHEEL, &GraphicsCanvas::onMouseWheel, this);
 
+    Vector3d norm(1, 0, 1);
+    norm.normalize();
+
+    _graphicsUBO.clippingPlaneOn = 0;
+    _graphicsUBO.clippingPlaneNormal = p4f((float)norm[0], (float)norm[1], (float)norm[2], 0);
+    _graphicsUBO.clippingPlaneOrigin = p4f(0.0f, 0, 0, 0);
+
     dumpUniformOffset();
 }
 
