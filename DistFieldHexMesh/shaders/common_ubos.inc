@@ -1,4 +1,4 @@
-uniform UniformBufferObject {
+layout (shared) uniform UniformBufferObject {
 	mat4 modelView;
 	mat4 proj;
 	vec4 defColor;
@@ -10,9 +10,12 @@ uniform UniformBufferObject {
 	vec4 lightDir5;
 	vec4 lightDir6;
 	vec4 lightDir7;
+	vec4 clippingPlaneOrigin;
+	vec4 clippingPlaneNormal;
 	float ambient;
 	int useDefColor;
 	int normalShadingOn;
 	int twoSideLighting;
 	int numLights;
+	int clippingPlaneOn;
 };

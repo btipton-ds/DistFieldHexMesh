@@ -99,11 +99,14 @@ public:
         p4f lightDir5;
         p4f lightDir6;
         p4f lightDir7;
+        p4f clippingPlaneOrigin;
+        p4f clippingPlaneNormal;
         float ambient = 0;
         int useDefColor = 1;
         int normalShadingOn = 1;
         int twoSideLighting = 1;
         int numLights = 0;
+        int clippingPlaneOn = 0;
     };
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
