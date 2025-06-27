@@ -233,49 +233,10 @@ target_link_libraries("TestDFM"
 
 add_custom_command(
         TARGET DistFieldHexMesh POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.vert"
-				
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/phong.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/phong.frag"
 
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_screenRect.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_screenRect.vert"
-				
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_blend.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_blend.frag"
-
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_final.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_final.frag"
-
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_init.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_init.vert"
-				
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_init.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_init.frag"
-
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_peel.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_peel.vert"
-				
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/dual_peeling_peel.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/dual_peeling_peel.frag"
-
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/debug.vert"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.vert"
-				
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${CMAKE_SHADER_SOURCE_DIR}/debug.frag"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders/debug.frag"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SHADER_SOURCE_DIR}/"
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders"
 
 # Only needed if the assets folder has contents, which it currently does not
 #        COMMAND ${CMAKE_COMMAND} -E copy_directory
