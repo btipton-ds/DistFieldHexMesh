@@ -883,12 +883,46 @@ void GraphicsCanvas::loadShaders()
     glGenBuffers(1, &_uboBufferId);
 }
 
+void GraphicsCanvas::readShader(const std::string& path, const std::string& filename, std::string& contents) const
+{
+    contents.clear();
+    {
+        ifstream in(path + filename);
+        char buf[2048];
+        while (in.good() && !in.eof()) {
+            in.getline(buf, 2048);
+            contents += string(buf) + "\n";
+        }
+    }
+
+    string search("_COMMON_UBOS_");
+    auto pos = contents.find(search);
+    if (pos < contents.size()) {
+        string replace;
+        {
+            string incFilename = path + "common_ubos.inc";
+            ifstream in(incFilename);
+            char buf[2048];
+            while (in.good() && !in.eof()) {
+                in.getline(buf, 2048);
+                replace += string(buf) + "\n";
+            }
+        }
+        contents = contents.replace(pos, search.length(), replace);
+    }
+}
+
 shared_ptr<OGL::Shader> GraphicsCanvas::createShader(const std::string& path, const std::string& filename)
 {
     shared_ptr<OGL::Shader> pResult = make_shared<OGL::Shader>();
 
-    pResult->setVertexSrcFile(path + filename + ".vert");
-    pResult->setFragmentSrcFile(path + filename + ".frag");
+    string srcVerts;
+    readShader(path, filename + ".vert", srcVerts);
+    pResult->setVertexSrc(srcVerts);
+
+    string srcFrag;
+    readShader(path, filename + ".frag", srcFrag);
+    pResult->setFragmentSrc(srcFrag);
 
     dumpShaders(pResult, filename);
     return pResult;
@@ -898,8 +932,13 @@ shared_ptr<OGL::Shader> GraphicsCanvas::createRectShader(const std::string& path
 {
     shared_ptr<OGL::Shader> pResult = make_shared<OGL::Shader>();
 
-    pResult->setVertexSrcFile(path + "dual_peeling_screenRect.vert");
-    pResult->setFragmentSrcFile(path + filename + ".frag");
+    string srcVerts;
+    readShader(path, "dual_peeling_screenRect.vert", srcVerts);
+    pResult->setVertexSrc(srcVerts);
+
+    string srcFrag;
+    readShader(path, filename + ".frag", srcFrag);
+    pResult->setFragmentSrc(srcFrag);
 
     dumpShaders(pResult, filename);
     return pResult;

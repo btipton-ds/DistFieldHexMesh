@@ -221,6 +221,7 @@ private:
     void initialize();
     void getGlDims(int& width, int& height);
 
+    void readShader(const std::string& path, const std::string& filename, std::string& contents) const;
     std::shared_ptr<OGL::Shader> createShader(const std::string& path, const std::string& filename);
     std::shared_ptr<OGL::Shader> createRectShader(const std::string& path, const std::string& filename);
     void dumpShaders(const std::shared_ptr<OGL::Shader>& pShader, const std::string& filename);
