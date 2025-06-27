@@ -36,17 +36,7 @@ This file is part of the VulkanQuickStart Project.
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-uniform UniformBufferObject {
-	mat4 modelView;
-	mat4 proj;
-	vec4 defColor;
-	float ambient;
-  int useDefColor;
-  int normalShadingOn;
-  int twoSideLighting;
-  int numLights;
-	vec3 lightDir[8];
-};
+_COMMON_UBOS_
 
 layout(location = 0) in vec3 inPosition;
 

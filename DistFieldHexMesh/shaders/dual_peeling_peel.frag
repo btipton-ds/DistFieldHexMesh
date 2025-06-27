@@ -39,17 +39,7 @@ This file is part of the VulkanQuickStart Project.
 layout(location = 0) uniform sampler2DRect depthBlenderSampler;
 layout(location = 1) uniform sampler2DRect frontBlenderSampler;
 
-uniform UniformBufferObject {
-	mat4 modelView;
-	mat4 proj;
-	vec4 defColor;
-	float ambient;
-  int useDefColor;
-  int normalShadingOn;
-  int twoSideLighting;
-  int numLights;
-	vec3 lightDir[8];
-};
+_COMMON_UBOS_
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
