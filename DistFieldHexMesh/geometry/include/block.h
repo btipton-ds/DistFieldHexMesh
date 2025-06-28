@@ -199,6 +199,7 @@ public:
 	void markIncrementLayerNums(int i);
 	void setIncrementLayerNums(int i);
 
+	void freeVertex(const Index3DId& id);
 	void freePolygon(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 
@@ -220,6 +221,9 @@ public:
 
 	template<class F>
 	void iterateVerticesInOrder(F fLambda) const;
+
+	template<class F>
+	void iterateVerticesInOrder(F fLambda);
 
 	template<class F>
 	void iteratePolygonsInOrder(F fLambda) const;
@@ -372,6 +376,12 @@ inline bool Block::isUnloaded() const
 
 template<class F>
 inline void Block::iterateVerticesInOrder(F fLambda) const
+{
+	_vertices.iterateInOrder(fLambda);
+}
+
+template<class F>
+inline void Block::iterateVerticesInOrder(F fLambda)
 {
 	_vertices.iterateInOrder(fLambda);
 }

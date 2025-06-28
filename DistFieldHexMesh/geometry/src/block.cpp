@@ -1491,6 +1491,16 @@ void Block::setIncrementLayerNums(int i)
 	});
 }
 
+void Block::freeVertex(const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	if (pOwner) {
+		auto& vertices = pOwner->_vertices;
+		vertices.free(id);
+	}
+
+}
+
 void Block::freePolygon(const Index3DId& id)
 {
 #if CAN_FREE_TESTS_ENABLED

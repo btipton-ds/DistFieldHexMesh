@@ -1766,6 +1766,19 @@ void Volume::polymeshWrite(const string& dirPath, ProgressReporter* pReporter)
 {
 	auto path = polymeshCreateDirs(dirPath);
 
+	runThreadPool([this](size_t threadNum, const BlockPtr& pBlk) {
+		pBlk->iterateVerticesInOrder([pBlk](const Index3DId& vertId, Vertex& vert) {
+			auto faceIds = vert.getFaceIds();
+			for (const auto& faceId : faceIds) {
+				if (pBlk->polygonExists(faceId)) {
+					const auto& face = pBlk->getPolygon(faceId);
+					if (!face.containsVertex(vertId)) {
+						vert.removeFaceId(faceId);
+					}
+				}
+			}
+		});
+	}, RUN_MULTI_THREAD);
 	if (pReporter)
 		pReporter->startProgress(9);
 	PolymeshTables tables(this, pReporter);

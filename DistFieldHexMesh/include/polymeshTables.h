@@ -51,7 +51,7 @@ namespace DFHM {
 class Volume;
 class ProgressReporter;
 
-using Index3DToIdxMap = FastBisectionMap<Index3DId, int32_t>;
+using Index3DToIdxMap = std::map<Index3DId, int32_t>;
 
 class PolymeshTables {
 public:
@@ -60,9 +60,7 @@ public:
 	void writeFile(const std::string& dirName) const;
 
 private:
-	void createVertMaps();
-	void createPolyhedraMaps();
-	void createPolygonMaps();
+	void createMaps();
 	void createSortPolygons();
 	void createPolygonTables();
 

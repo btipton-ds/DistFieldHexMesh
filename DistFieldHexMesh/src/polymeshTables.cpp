@@ -32,7 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-#define WRITE_DEBUG_FILES 1
+#define WRITE_DEBUG_FILES 0
 
 PolymeshTables::PolymeshTables(const Volume* pVol, ProgressReporter* pReporter)
 	: _pVol(pVol)
@@ -55,14 +55,10 @@ void PolymeshTables::create()
 		_pProgReporter->startProgress(9);
 
 	reportProgress();
-	createVertMaps();
+
+	createMaps();
 	reportProgress();
 
-	createPolyhedraMaps();
-	reportProgress();
-
-	createPolygonMaps();
-	reportProgress();
 
 	createSortPolygons();
 	reportProgress();
@@ -107,42 +103,39 @@ void PolymeshTables::writeFile(const std::string& dirName) const
 	reportProgress();
 }
 
-void PolymeshTables::createVertMaps()
+void PolymeshTables::createMaps()
 {
-	for (auto pBlk : _pVol->_blocks) {
+	for (size_t i = 0; i < _pVol->_blocks.size(); i++) {
+		const shared_ptr<const Block>& pBlk = _pVol->_blocks[i];
 		if (pBlk) {
-			pBlk->_vertices.iterateInOrder([this](const Index3DId& id, const Vertex& vert) {
-				int32_t vIdx = (int32_t)vertIdxIdMap.size();
-				vertIdxIdMap.push_back(id);
-				vertIdIdxMap.insert(id, vIdx);
-			});
-		}
-	}
-}
+			pBlk->_polyhedra.iterateInOrder([this, &pBlk](const Index3DId& id, const Polyhedron& cell) {
+				int32_t cIdx = (int32_t)cellIdxIdMap.size();
+				cellIdxIdMap.push_back(id);
+				cellIdIdxMap.insert(make_pair(id, cIdx));
 
-void PolymeshTables::createPolyhedraMaps()
-{
-	for (auto pBlk : _pVol->_blocks) {
-		if (pBlk) {
-			pBlk->_polyhedra.iterateInOrder([this](const Index3DId& id, const Polyhedron& cell) {
-				if (cell.exists()) {
-					int32_t cIdx = (int32_t)cellIdxIdMap.size();
-					cellIdxIdMap.push_back(id);
-					cellIdIdxMap.insert(id, cIdx);
+				const auto& faceIds = cell.getFaceIds();
+				for (const auto& faceId : faceIds) {
+					if (pBlk->polygonExists(faceId)) {
+						auto faceIter = faceIdIdxMap.find(faceId);
+						if (faceIter == faceIdIdxMap.end()) {
+							int32_t newFaceIdx = faceIdxIdMap.size();
+							faceIdIdxMap.insert(make_pair(faceId, newFaceIdx));
+							faceIdxIdMap.push_back(faceId);
+
+							const auto& face = pBlk->getPolygon(faceId);
+							const auto& vertIds = face.getNonColinearVertexIds();
+							for (const auto& vertId : vertIds) {
+								auto vertIter = vertIdIdxMap.find(vertId);
+								if (vertIter == vertIdIdxMap.end()) {
+									int32_t newVertIdx = vertIdIdxMap.size();
+									vertIdIdxMap.insert(make_pair(vertId, newVertIdx));
+									vertIdxIdMap.push_back(vertId);
+								}
+
+							}
+						}
+					}
 				}
-			});
-		}
-	}
-}
-
-void PolymeshTables::createPolygonMaps()
-{
-	for (auto pBlk : _pVol->_blocks) {
-		if (pBlk) {
-			pBlk->_polygons.iterateInOrder([this](const Index3DId& id, const Polygon& face) {
-				size_t idx = faceIdxIdMap.size();
-				faceIdxIdMap.push_back(id);
-				faceIdIdxMap.insert(id, (int32_t)idx);
 			});
 		}
 	}
@@ -211,8 +204,6 @@ void PolymeshTables::createPolygonTables()
 
 	// Cell order determines the order of shared faces. Create it first.
 
-	 
-
 	numInner = 0;
 	for (int i = 0; i < 6; i++)
 		boundaryIndices[i] = INT32_MAX;
@@ -257,11 +248,14 @@ void PolymeshTables::createPolygonTables()
 int PolymeshTables::getFaceNeighbourIdx(const FastBisectionSet<Index3DId>& cellIds) const
 {
 	if (cellIds.size() == 2) {
-		int maxCellIdx = -1;
+		int32_t maxCellIdx = -1;
 		for (const auto& cellId : cellIds) {
-			int cellIdx = cellIdIdxMap[cellId];
-			if (cellIdx > maxCellIdx)
-				maxCellIdx = cellIdx;
+			auto iter = cellIdIdxMap.find(cellId);
+			if (iter != cellIdIdxMap.end()) {
+				auto cellIdx = iter->second;
+				if (cellIdx > maxCellIdx)
+					maxCellIdx = cellIdx;
+			}
 		}
 		return maxCellIdx;
 	}
@@ -273,9 +267,12 @@ int PolymeshTables::getFaceOwnerIdx(const FastBisectionSet<Index3DId>& cellIds) 
 {
 	int32_t minCellIdx = INT_MAX;
 	for (const auto& cellId : cellIds) {
-		int cellIdx = cellIdIdxMap[cellId];
-		if (cellIdx < minCellIdx)
-			minCellIdx = cellIdx;
+		auto iter = cellIdIdxMap.find(cellId);
+		if (iter != cellIdIdxMap.end()) {
+			auto cellIdx = iter->second;
+			if (cellIdx < minCellIdx)
+				minCellIdx = cellIdx;
+		}
 	}
 
 	return minCellIdx;
