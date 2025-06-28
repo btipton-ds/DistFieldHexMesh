@@ -178,13 +178,9 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Bind(wxEVT_MOTION, &GraphicsCanvas::onMouseMove, this);
     Bind(wxEVT_MOUSEWHEEL, &GraphicsCanvas::onMouseWheel, this);
 
-    Vector3d norm(1, 0, 1);
-    norm.normalize();
-
-    _graphicsUBO.clippingPlaneOrigin = p4f(8.0f, 4, 0, 1);
-    _graphicsUBO.clippingPlaneNormal = p4f((float)norm[0], (float)norm[1], (float)norm[2], 0);
-
-    _graphicsUBO.clippingPlaneOn = 1;
+    Planed clipPlane0(Vector3d(8, 4, 0), Vector3d(1, 0, 1));
+    setClipplingPlane(0, clipPlane0);
+    setClippingPlaneEnabled(0, true);
 
     dumpUniformOffset();
 }
@@ -1469,6 +1465,52 @@ void GraphicsCanvas::applyScaleFactor(double scaleMult, const Eigen::Vector2d& c
     _projection = scale * _projection;
     _projection = untranslate * _projection;
 
+}
+
+bool GraphicsCanvas::isClippingPlaneEnabled(int num) const
+{
+    switch (num) {
+    case 0:
+        return _graphicsUBO.clippingPlane0On == 1;
+    case 1:
+        return _graphicsUBO.clippingPlane1On == 1;
+    default:
+        return false;
+    }
+}
+
+void GraphicsCanvas::setClippingPlaneEnabled(int num, bool val)
+{
+    switch (num) {
+    case 0:
+        _graphicsUBO.clippingPlane0On = val ? 1 : 0;
+        break;
+    case 1:
+        _graphicsUBO.clippingPlane1On = val ? 1 : 0;
+        break;
+    default:
+        break;
+    }
+}
+
+void GraphicsCanvas::setClipplingPlane(int num, const Planed& pl)
+{
+    const auto& pt = pl.getOrigin();
+    const auto& n = pl.getNormal();
+    p4f origin((float)pt[0], (float)pt[1], (float)pt[2]);
+    p4f normal((float)n[0], (float)n[1], (float)n[2]);
+    switch (num) {
+    case 0:
+        _graphicsUBO.clippingPlane0Origin = origin;
+        _graphicsUBO.clippingPlane0Normal = normal;
+        break;
+    case 1:
+        _graphicsUBO.clippingPlane1Origin = origin;
+        _graphicsUBO.clippingPlane1Normal = normal;
+        break;
+    default:
+        break;
+    }
 }
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const

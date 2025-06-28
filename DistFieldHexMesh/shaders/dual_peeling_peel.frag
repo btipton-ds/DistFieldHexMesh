@@ -112,9 +112,9 @@ vec4 shadeFragment()
 }
 
 void main() {
-	if (clippingPlaneOn == 1) {
-		vec3 v = echoInPosition - clippingPlaneOrigin.xyz;
-		float dp = dot(v, clippingPlaneNormal.xyz);
+	if (clippingPlane0On == 1) {
+		vec3 v = echoInPosition - clippingPlane0Origin.xyz;
+		float dp = dot(v, clippingPlane0Normal.xyz);
 		if (dp < 0)
 			discard;
 	}

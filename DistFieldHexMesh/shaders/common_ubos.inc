@@ -10,12 +10,19 @@ layout (shared) uniform UniformBufferObject {
 	vec4 lightDir5;
 	vec4 lightDir6;
 	vec4 lightDir7;
-	vec4 clippingPlaneOrigin;
-	vec4 clippingPlaneNormal;
+
+	vec4 clippingPlane0Origin;
+	vec4 clippingPlane0Normal;
+
+	vec4 clippingPlane1Origin;
+	vec4 clippingPlane1Normal;
+
 	float ambient;
 	int useDefColor;
 	int normalShadingOn;
 	int twoSideLighting;
 	int numLights;
-	int clippingPlaneOn;
+
+	int clippingPlane0On;
+	int clippingPlane1On;
 };
