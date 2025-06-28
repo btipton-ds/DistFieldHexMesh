@@ -179,13 +179,10 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Bind(wxEVT_MOUSEWHEEL, &GraphicsCanvas::onMouseWheel, this);
 
     Planed clipPlane0(Vector3d(8, 4, 0), Vector3d(1, 0, 1));
-    Planed clipPlane1(Vector3d(8.25, 4, 0), -Vector3d(1, 0, 1));
 
     setClipplingPlane(0, clipPlane0);
     setClippingPlaneEnabled(0, false);
-
-    setClipplingPlane(1, clipPlane1);
-    setClippingPlaneEnabled(1, false);
+    syncClippingPlane(1);
 
     dumpUniformOffset();
 }
@@ -643,7 +640,7 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
             Vector3d origin0 = _startPlane0.getOrigin() + dx * _startPlane0.getNormal();
             Vector3d origin1 = _startPlane1.getOrigin() + dx * _startPlane0.getNormal();
             setClipplingPlane(0, Planed(origin0, _startPlane0.getNormal()));
-            setClipplingPlane(1, Planed(origin1, _startPlane0.getNormal()));
+            syncClippingPlane(1);
             updateUniformBlock();
         } else if (_clippingRotate && event.ControlDown()) {
             double angleAz = delta[0] * M_PI / 2;
@@ -658,6 +655,8 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
             Eigen::Matrix3d rot = rotSpin * rotPitch;
             Eigen::Vector3d n2 = rot * zAxis;
             setClipplingPlane(0, Planed(_startPlane0.getOrigin(), Vector3d(n2[0], n2[1], n2[2])));
+            syncClippingPlane(1);
+            updateUniformBlock();
         } else {
             double angleSpin = delta[0] * M_PI / 2;
             double anglePitch = delta[1] * M_PI / 2;
@@ -1549,6 +1548,29 @@ void GraphicsCanvas::setClipplingPlane(int num, const Planed& pl)
     default:
         break;
     }
+}
+
+void GraphicsCanvas::syncClippingPlane(int num)
+{
+    auto pl0 = getClipplingPlane(0);
+    auto pl1 = getClipplingPlane(1);
+
+    switch (num) {
+    case 0: {
+        // set 0 to match 1
+        pl0 = Planed(pl1.getOrigin() - 1.5 * pl1.getNormal(), -pl1.getNormal());
+        setClipplingPlane(0, pl0);
+        break;
+    }
+    case 1:
+        // set 1 to match 0
+        pl1 = Planed(pl0.getOrigin() + 1.5 * pl0.getNormal(), -pl0.getNormal());
+        setClipplingPlane(1, pl1);
+        break;
+    default:
+        break;
+    }
+
 }
 
 const Planed GraphicsCanvas::getClipplingPlane(int num) const

@@ -232,6 +232,7 @@ public:
 
     static Eigen::Matrix4d createTranslation(const Vector3d& delta);
     static Eigen::Matrix4d createRotation(const Vector3d& axis, double angle);
+
 private:
     Eigen::Matrix4d cumTransform(bool withProjection) const;
     void initProjection();
@@ -258,6 +259,7 @@ private:
     void subRenderOITInit(bool& dump1);
     void subRenderOITFinal(int currId, bool& dump3);
 
+    void syncClippingPlane(int num);
     void initializeDepthPeeling();
     void resizeDepthPeelingTextures();
     void releaseDepthPeeling();
