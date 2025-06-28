@@ -43,6 +43,7 @@ _COMMON_UBOS_
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
+layout(location = 2) in vec3 echoInPosition;
 
 layout(location = 0) out vec4 out_0;
 layout(location = 1) out vec4 out_1;
@@ -111,6 +112,14 @@ vec4 shadeFragment()
 }
 
 void main() {
+	if (clippingPlaneOn == 1) {
+		vec3 v = echoInPosition - clippingPlaneOrigin.xyz;
+		float dp = dot(v, clippingPlaneNormal.xyz);
+		if (dp < 0)
+			discard;
+	}
+
+
 	// window-space depth interpolated linearly in screen space
 	float fragDepth = gl_FragCoord.z;
 	vec2 depthBlender = texture2DRect(depthBlenderSampler, gl_FragCoord.xy).xy;

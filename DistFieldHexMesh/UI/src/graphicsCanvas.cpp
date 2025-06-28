@@ -181,9 +181,10 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Vector3d norm(1, 0, 1);
     norm.normalize();
 
-    _graphicsUBO.clippingPlaneOn = 0;
+    _graphicsUBO.clippingPlaneOrigin = p4f(8.0f, 4, 0, 1);
     _graphicsUBO.clippingPlaneNormal = p4f((float)norm[0], (float)norm[1], (float)norm[2], 0);
-    _graphicsUBO.clippingPlaneOrigin = p4f(0.0f, 0, 0, 0);
+
+    _graphicsUBO.clippingPlaneOn = 1;
 
     dumpUniformOffset();
 }
