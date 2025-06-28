@@ -119,6 +119,12 @@ void main() {
 			discard;
 	}
 
+	if (clippingPlane1On == 1) {
+		vec3 v = echoInPosition - clippingPlane1Origin.xyz;
+		float dp = dot(v, clippingPlane1Normal.xyz);
+		if (dp < 0)
+			discard;
+	}
 
 	// window-space depth interpolated linearly in screen space
 	float fragDepth = gl_FragCoord.z;
