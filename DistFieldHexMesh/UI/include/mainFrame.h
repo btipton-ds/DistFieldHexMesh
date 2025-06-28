@@ -190,6 +190,8 @@ enum DFHM_MENU_ID
 
     ID_SHOW_CLIPPING_SINGLE,
     ID_SHOW_CLIPPING_DOUBLE,
+    ID_CLIPPING_MOVE,
+    ID_CLIPPING_ROTATE,
 
     ID_QUERY_PROGRESS,
 #if INCLUDE_DEBUG_WX_FRAME
@@ -286,6 +288,8 @@ private:
 
     void OnClippingSingle(wxCommandEvent& event);
     void OnClippingDouble(wxCommandEvent& event);
+    void OnClippingMove(wxCommandEvent& event);
+    void OnClippingRotate(wxCommandEvent& event);
 
     void OnSetViewFront(wxCommandEvent& event);
     void OnSetViewBack(wxCommandEvent& event);

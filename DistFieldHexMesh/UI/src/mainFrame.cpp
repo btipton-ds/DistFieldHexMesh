@@ -334,6 +334,14 @@ void MainFrame::createViewMenu()
     _viewMenu->Append(ID_SHOW_CLIPPING_DOUBLE, "Clipping slice", "Two clipping planes view a slice", true);
     Bind(wxEVT_MENU, &MainFrame::OnClippingDouble, this, ID_SHOW_CLIPPING_DOUBLE);
 
+    _viewMenu->AppendSeparator();
+
+    _viewMenu->Append(ID_CLIPPING_MOVE, "Move clipping plane", "Single clipping plane", true);
+    Bind(wxEVT_MENU, &MainFrame::OnClippingMove, this, ID_CLIPPING_MOVE);
+
+    _viewMenu->Append(ID_CLIPPING_ROTATE, "Rotate clipping plane", "Single clipping plane", true);
+    Bind(wxEVT_MENU, &MainFrame::OnClippingRotate, this, ID_CLIPPING_ROTATE);
+
     _menuBar->Append(_viewMenu, "&View");
 
 }
@@ -869,6 +877,28 @@ void MainFrame::OnClippingDouble(wxCommandEvent& event)
         if (item)
             item->Check(false);
     }
+}
+
+void MainFrame::OnClippingMove(wxCommandEvent& event)
+{
+    if (event.IsChecked()) {
+        auto item = _menuBar->FindItem(ID_CLIPPING_ROTATE);
+        if (item)
+            item->Check(false);
+        getCanvas()->setClippingRotateEnabled(false);
+    }
+    getCanvas()->setClippingMoveEnabled(event.IsChecked());
+}
+
+void MainFrame::OnClippingRotate(wxCommandEvent& event)
+{
+    if (event.IsChecked()) {
+        auto item = _menuBar->FindItem(ID_CLIPPING_MOVE);
+        if (item)
+            item->Check(false);
+        getCanvas()->setClippingMoveEnabled(false);
+    }
+    getCanvas()->setClippingRotateEnabled(event.IsChecked());
 }
 
 void MainFrame::OnSetViewFront(wxCommandEvent& event)

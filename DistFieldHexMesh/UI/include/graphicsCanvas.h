@@ -161,6 +161,9 @@ public:
     bool isClippingPlaneEnabled(int num) const;
     void setClippingPlaneEnabled(int num, bool val);
     void setClipplingPlane(int num, const Planed& pl);
+    const Planed getClipplingPlane(int num) const;
+    void setClippingMoveEnabled(bool val);
+    void setClippingRotateEnabled(bool val);
 
     bool showModelSharpEdges() const;
     bool toggleShowModelSharpEdges();
@@ -217,6 +220,7 @@ public:
     void onMouseLeftDown(wxMouseEvent& event);
     void onMouseLeftDownModel(wxMouseEvent& event, const Vector3d& startPt);
     void onMouseLeftDownMesh(wxMouseEvent& event, const Vector3d& startPt);
+    void onMouseLeftDownClipping(wxMouseEvent& event);
     void onMouseLeftUp(wxMouseEvent& event);
     void onMouseMiddleDown(wxMouseEvent& event);
     void onMouseMiddleUp(wxMouseEvent& event);
@@ -279,7 +283,10 @@ private:
     bool _initialized = false;
     bool _renderRunning = true;
     bool _meshSelection = false;
+    bool _clippingMove = false;
+    bool _clippingRotate = false;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
+    Planed _startPlane0, _startPlane1;
     
 #define INIT_VIEW_SCALE 10
     double _viewScale = INIT_VIEW_SCALE;
