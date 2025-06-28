@@ -318,7 +318,6 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_thisId = rhs._thisId;
 	_faceIds = rhs._faceIds;
 	_canonicalVertices = rhs._canonicalVertices;
-	_splitLevel = rhs._splitLevel;
 	_layerNum = rhs._layerNum;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
 	_exists = rhs._exists;
@@ -511,7 +510,6 @@ void Polyhedron::write(ostream& out) const
 
 	_parentId.write(out);
 
-	out.write((char*)&_splitLevel, sizeof(_splitLevel));
 	out.write((char*)&_layerNum, sizeof(_layerNum));
 }
 
@@ -525,7 +523,6 @@ void Polyhedron::read(istream& in)
 
 	_parentId.read(in);
 
-	in.read((char*)&_splitLevel, sizeof(_splitLevel));
 	in.read((char*)&_layerNum, sizeof(_layerNum));
 }
 

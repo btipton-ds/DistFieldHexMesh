@@ -161,8 +161,6 @@ public:
 	void clearLayerNum();
 	void setLayerNum(int32_t val, bool force);
 	void setLayerNumOnNextPass(int32_t val);
-	void setSplitLevel(size_t val);
-	size_t getSplitLevel() const;
 
 	MTC::vector<size_t> getSharpVertIndices() const;
 	bool getSharpEdgeIndices(MTC::vector<size_t>& result, const SplittingParams& params) const;
@@ -229,7 +227,6 @@ private:
 	// If it's empty, the cell is not canonical
 	MTC::vector<Index3DId> _canonicalVertices; 
 
-	size_t _splitLevel = 0;
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
 
 	bool _needsSplitAtCentroid = false;
@@ -276,16 +273,6 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
-}
-
-inline void Polyhedron::setSplitLevel(size_t val)
-{
-	_splitLevel = val;
-}
-
-inline size_t Polyhedron::getSplitLevel() const
-{
-	return _splitLevel;
 }
 
 inline double Polyhedron::calCurvatureXYPlane(const SplittingParams& params) const

@@ -719,7 +719,6 @@ void Splitter3D::finalizeCreatedCells()
 				}
 			}
 		}
-		createdCell.setSplitLevel(_splitLevel + 1);
 	}
 }
 

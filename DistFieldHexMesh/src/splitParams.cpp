@@ -79,24 +79,14 @@ void SplittingParams::read(std::istream& in)
 	size_t version;
 	in.read((char*)&version, sizeof(size_t));
 
-	bool boolDeprecated;
-	char charDeprecated;
-	size_t size_tDeprecated;
-	double doubleDeprecated;
-	in.read((char*)&charDeprecated, sizeof(charDeprecated));
-	in.read((char*)&boolDeprecated, sizeof(boolDeprecated));
-
 	in.read((char*)&symXAxis, sizeof(symXAxis));
 	in.read((char*)&symYAxis, sizeof(symYAxis));
 	in.read((char*)&symZAxis, sizeof(symZAxis));
 
 	in.read((char*)&numSimpleDivs, sizeof(numSimpleDivs));
 	in.read((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
-	in.read((char*)&size_tDeprecated, sizeof(size_tDeprecated));
-	in.read((char*)&size_tDeprecated, sizeof(size_tDeprecated));
 	in.read((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
 	in.read((char*)&curvatureDivsPerCircumference, sizeof(curvatureDivsPerCircumference));
-	in.read((char*)&size_tDeprecated, sizeof(size_tDeprecated));
 	in.read((char*)&maxCellFaces, sizeof(maxCellFaces));
 	in.read((char*)&baseBoxOffset, sizeof(baseBoxOffset));
 	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
@@ -110,10 +100,8 @@ void SplittingParams::read(std::istream& in)
 	in.read((char*)&zMax, sizeof(zMax));
 	in.read((char*)&maxGapSize, sizeof(maxGapSize));
 
-	in.read((char*)&doubleDeprecated, sizeof(doubleDeprecated));
 	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
 	in.read((char*)&minEdgeLength, sizeof(minEdgeLength));
-	in.read((char*)&doubleDeprecated, sizeof(doubleDeprecated));
 
 	in.read((char*)&xMinDivs, sizeof(xMinDivs));
 	in.read((char*)&xMaxDivs, sizeof(xMaxDivs));
@@ -135,7 +123,7 @@ void SplittingParams::read(std::istream& in)
 
 void SplittingParams::write(std::ostream& out) const
 {
-	size_t version = 3;
+	size_t version = 0;
 	out.write((char*)&version, sizeof(size_t));
 
 	out.write((char*)&symXAxis, sizeof(symXAxis));

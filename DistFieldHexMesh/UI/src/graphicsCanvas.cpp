@@ -182,10 +182,10 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     Planed clipPlane1(Vector3d(8.25, 4, 0), -Vector3d(1, 0, 1));
 
     setClipplingPlane(0, clipPlane0);
-    setClippingPlaneEnabled(0, true);
+    setClippingPlaneEnabled(0, false);
 
     setClipplingPlane(1, clipPlane1);
-    setClippingPlaneEnabled(1, true);
+    setClippingPlaneEnabled(1, false);
 
     dumpUniformOffset();
 }

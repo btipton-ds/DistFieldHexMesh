@@ -290,6 +290,7 @@ bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, con
 
 bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
 {
+#if 0
     double minDist = DBL_MAX;
     Index3DId hitFaceId, hitCellId;
     for (const auto& id : hits) {
@@ -307,8 +308,6 @@ bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const st
 
     if (hitCellId.isValid()) {
         auto& cell = _pVolume->getPolyhedron(hitCellId);
-        if (cell.getSplitLevel() >= _params.numCurvatureDivs)
-            _params.numCurvatureDivs++;
 
         bool needsCrossSections = _params.numCurvatureDivs > 0;
         if (needsCrossSections) {
@@ -329,6 +328,7 @@ bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const st
         }
         return true;
     }
+#endif
     return false;
 }
 
