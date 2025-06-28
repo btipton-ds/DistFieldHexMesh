@@ -188,6 +188,9 @@ enum DFHM_MENU_ID
     ID_SHOW_SECTIONS_Y,
     ID_SHOW_SECTIONS_Z,
 
+    ID_SHOW_CLIPPING_SINGLE,
+    ID_SHOW_CLIPPING_DOUBLE,
+
     ID_QUERY_PROGRESS,
 #if INCLUDE_DEBUG_WX_FRAME
     ID_TOGGLE_DEBUG_FRAME,
@@ -281,6 +284,9 @@ private:
     void OnShowSectionsY(wxCommandEvent& event);
     void OnShowSectionsZ(wxCommandEvent& event);
 
+    void OnClippingSingle(wxCommandEvent& event);
+    void OnClippingDouble(wxCommandEvent& event);
+
     void OnSetViewFront(wxCommandEvent& event);
     void OnSetViewBack(wxCommandEvent& event);
     void OnSetViewRight(wxCommandEvent& event);
@@ -319,6 +325,7 @@ private:
 
     void onSizeChange(wxSizeEvent& event);
 
+    void resetClippingPlanes();
     void updateStatusBar();
 
     bool _updateUIEnabled = true;

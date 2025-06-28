@@ -269,54 +269,70 @@ void MainFrame::createViewMenu()
 
     _viewMenu->AppendSeparator();
 
-    _viewMenu->Append(ID_SHOW_MODEL_FACES, "Model - Show Faces", "Turns rendering of faces on/off", true);
+    auto modelMenu = new wxMenu();
+
+    modelMenu->Append(ID_SHOW_MODEL_FACES, "Model - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelFaces, this, ID_SHOW_MODEL_FACES);
 
-    _viewMenu->Append(ID_SHOW_MODEL_EDGES, "Model - Show Edges", "Turns rendering of edges on/off", true);
+    modelMenu->Append(ID_SHOW_MODEL_EDGES, "Model - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelEdges, this, ID_SHOW_MODEL_EDGES);
 
-    _viewMenu->Append(ID_SHOW_MODEL_SHARP_EDGES, "Model - Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
+    modelMenu->Append(ID_SHOW_MODEL_SHARP_EDGES, "Model - Show Sharp Edges", "Turns rendering of sharp edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelSharpEdges, this, ID_SHOW_MODEL_SHARP_EDGES);
 
-    _viewMenu->Append(ID_SHOW_SHARP_VERTS, "Model - Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
+    modelMenu->Append(ID_SHOW_SHARP_VERTS, "Model - Show Sharp Vertices", "Turns rendering of sharp vertices on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelSharpVerts, this, ID_SHOW_SHARP_VERTS);
 
-    _viewMenu->Append(ID_SHOW_TRI_NORMALS, "Model - Show Tri Normals", "Turns rendering of triangle normals on/off", true);
+    modelMenu->Append(ID_SHOW_TRI_NORMALS, "Model - Show Tri Normals", "Turns rendering of triangle normals on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelTriNormals, this, ID_SHOW_TRI_NORMALS);
 
-    _viewMenu->Append(ID_SHOW_CURVATURE, "Model - Show Curvature", "Turns rendering of curvature on/off", true);
+    modelMenu->Append(ID_SHOW_CURVATURE, "Model - Show Curvature", "Turns rendering of curvature on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowModelCurvature, this, ID_SHOW_CURVATURE);
 
-    _viewMenu->AppendSeparator();
+    _viewMenu->AppendSubMenu(modelMenu, "Model", "Model view controls");
 
-    _viewMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
+    auto meshMenu = new wxMenu();
+
+    meshMenu->Append(ID_SHOW_MESH_SELECTED_BLOCKS, "Mesh - Show Selected Blocks", "Shows only selected blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshSelectedBlocks, this, ID_SHOW_MESH_SELECTED_BLOCKS);
 
-    _viewMenu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
+    meshMenu->Append(ID_SHOW_MESH_FACES, "Mesh - Show Faces", "Turns rendering of faces on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshFaces, this, ID_SHOW_MESH_FACES);
 
-    _viewMenu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
+    meshMenu->Append(ID_SHOW_MESH_EDGES, "Mesh - Show Edges", "Turns rendering of edges on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshEdges, this, ID_SHOW_MESH_EDGES);
 
-    _viewMenu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
+    meshMenu->Append(ID_SHOW_MESH_WALL, "Mesh - Show Walls", "Turns rendering of walls on/off", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowMeshWalls, this, ID_SHOW_MESH_WALL);
 
-    _viewMenu->Append(ID_SHOW_MESH_ALL_BLOCKS, "Mesh - Show all Blocks", "Shows all blocks", true);
+    meshMenu->Append(ID_SHOW_MESH_ALL_BLOCKS, "Mesh - Show all Blocks", "Shows all blocks", true);
     Bind(wxEVT_MENU, &MainFrame::OnShowAllBlocks, this, ID_SHOW_MESH_ALL_BLOCKS);
+
+    _viewMenu->AppendSubMenu(meshMenu, "Mesh", "Mesh view controls");
+
+    auto sectionMenu = new wxMenu();
+
+    sectionMenu->Append(ID_ENABLE_CROSSSECTION_GRAPHICS, "Enable cross section graphics", "Show sections in X", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowEnableSectionGraphics, this, ID_ENABLE_CROSSSECTION_GRAPHICS);
+
+    sectionMenu->Append(ID_SHOW_SECTIONS_X, "Sections X", "Show sections in X", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsX, this, ID_SHOW_SECTIONS_X);
+
+    sectionMenu->Append(ID_SHOW_SECTIONS_Y, "Sections Y", "Show sections in Y", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsY, this, ID_SHOW_SECTIONS_Y);
+
+    sectionMenu->Append(ID_SHOW_SECTIONS_Z, "Sections Z", "Show sections in Z", true);
+    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsZ, this, ID_SHOW_SECTIONS_Z);
+
+    _viewMenu->AppendSubMenu(sectionMenu, "Cross sections", "Cross section view controls");
 
     _viewMenu->AppendSeparator();
 
-    _viewMenu->Append(ID_ENABLE_CROSSSECTION_GRAPHICS, "Enable cross section graphics", "Show sections in X", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowEnableSectionGraphics, this, ID_ENABLE_CROSSSECTION_GRAPHICS);
+    _viewMenu->Append(ID_SHOW_CLIPPING_SINGLE, "Clipping plane", "Single clipping plane", true);
+    Bind(wxEVT_MENU, &MainFrame::OnClippingSingle, this, ID_SHOW_CLIPPING_SINGLE);
 
-    _viewMenu->Append(ID_SHOW_SECTIONS_X, "Sections X", "Show sections in X", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsX, this, ID_SHOW_SECTIONS_X);
-
-    _viewMenu->Append(ID_SHOW_SECTIONS_Y, "Sections Y", "Show sections in Y", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsY, this, ID_SHOW_SECTIONS_Y);
-
-    _viewMenu->Append(ID_SHOW_SECTIONS_Z, "Sections Z", "Show sections in Z", true);
-    Bind(wxEVT_MENU, &MainFrame::OnShowSectionsZ, this, ID_SHOW_SECTIONS_Z);
+    _viewMenu->Append(ID_SHOW_CLIPPING_DOUBLE, "Clipping slice", "Two clipping planes view a slice", true);
+    Bind(wxEVT_MENU, &MainFrame::OnClippingDouble, this, ID_SHOW_CLIPPING_DOUBLE);
 
     _menuBar->Append(_viewMenu, "&View");
 
@@ -539,7 +555,26 @@ void MainFrame::OnOpen(wxCommandEvent& event)
         refreshObjectTree();
         _pCanvas->changeViewElements();
         _pCanvas->resetView();
+        resetClippingPlanes();
     }
+}
+
+void MainFrame::resetClippingPlanes()
+{
+    auto pVol = _pAppData->getVolume();
+    auto& pts = pVol->getModelCornerPts();
+    Vector3d origin = TRI_LERP(pts, Vector3d(0.5, 0.5, 0.5));
+    Vector3d pt0 = TRI_LERP(pts, Vector3d(0, 0.5, 0.5));
+    Vector3d pt1 = TRI_LERP(pts, Vector3d(1, 0.5, 0.5));
+    Vector3d dir = (pt1 - pt0).normalized();
+
+    Planed sectionPlane0(origin, dir);
+    _pCanvas->setClipplingPlane(0, sectionPlane0);
+
+    Planed sectionPlane1(origin + dir * 0.5, -dir);
+
+    _pCanvas->setClipplingPlane(0, sectionPlane0);
+    _pCanvas->setClipplingPlane(1, sectionPlane1);
 }
 
 void MainFrame::refreshObjectTree()
@@ -567,6 +602,7 @@ void MainFrame::OnImportMesh(wxCommandEvent& event)
         refreshObjectTree();
         _pCanvas->changeViewElements();
         _pCanvas->resetView();
+        resetClippingPlanes();
     }
 }
 
@@ -810,6 +846,29 @@ void MainFrame::OnShowSectionsZ(wxCommandEvent& event)
     auto item = _menuBar->FindItem(ID_SHOW_SECTIONS_Z);
     if (item)
         item->Check(getCanvas()->showSections(2));
+}
+
+void MainFrame::OnClippingSingle(wxCommandEvent& event)
+{
+    getCanvas()->setClippingPlaneEnabled(0, event.IsChecked());
+    getCanvas()->setClippingPlaneEnabled(1, false);
+
+    if (event.IsChecked()) {
+        auto item = _menuBar->FindItem(ID_SHOW_CLIPPING_DOUBLE);
+        if (item)
+            item->Check(false);
+    }
+}
+
+void MainFrame::OnClippingDouble(wxCommandEvent& event)
+{
+    getCanvas()->setClippingPlaneEnabled(0, event.IsChecked());
+    getCanvas()->setClippingPlaneEnabled(1, event.IsChecked());
+    if (event.IsChecked()) {
+        auto item = _menuBar->FindItem(ID_SHOW_CLIPPING_SINGLE);
+        if (item)
+            item->Check(false);
+    }
 }
 
 void MainFrame::OnSetViewFront(wxCommandEvent& event)
