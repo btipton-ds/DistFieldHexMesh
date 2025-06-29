@@ -470,6 +470,65 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 
 }
 
+void Polyhedron::makeHexCellWedgePoints(int axis, int parity, MTC::vector<MTC::vector<Vector3d>>& subCells, 
+	MTC::vector<Vector3d>& partingFacePts) const
+{
+	/*
+	There are three ways to split a hex into hexes, but 6 ways to split a hex into wedges.
+	Visuallizing a single square face, it can be split lower-left to upper-right and upper-left to lower right
+	This can be done one each axis resulting 6 possible splits. The choice of split is referred to as parity, which is not quite correct
+	but works.
+	*/
+	auto& cp = getCanonicalPoints();
+
+	auto addCellPts = [&cp, &subCells](const vector<size_t>& indices) {
+		MTC::vector<Vector3d> subPts(6);
+		for (size_t i = 0; i < 6; i++) {
+			subPts[i] = cp[indices[i]];
+		}
+		subCells.push_back(subPts);
+	};
+
+	if (parity == 0) {
+		switch (axis) {
+			case 0:
+				addCellPts({ 0,3,7, 1,2,6 });
+				addCellPts({ 0,7,4, 1,6,5 });
+				partingFacePts = { cp[0], cp[1], cp[6], cp[7] };
+				break;
+			case 1:
+				addCellPts({ 0,1,5, 3,2,6 });
+				addCellPts({ 0,5,4, 3,6,7 });
+				partingFacePts = { cp[0], cp[5], cp[6], cp[3] };
+				break;
+			case 2:
+				addCellPts({ 0,1,2, 4,5,6 });
+				addCellPts({ 0,2,3, 4,6,7 });
+				partingFacePts = { cp[0], cp[2], cp[6], cp[4] };
+				break;
+		}
+	}
+	else {
+		switch (axis) {
+			case 0:
+				addCellPts({ 4,0,3, 5,1,2 });
+				addCellPts({ 4,3,7, 5,2,6 });
+				partingFacePts = { cp[4], cp[5], cp[2], cp[3] };
+				break;
+			case 1:
+				addCellPts({ 4,0,1, 7,3,2 });
+				addCellPts({ 4,1,5, 7,2,6 });
+				partingFacePts = { cp[4], cp[1], cp[2], cp[7] };
+				break;
+			case 2:
+				addCellPts({ 1,2,3, 5,6,7 });
+				addCellPts({ 1,3,0, 5,7,4 });
+				partingFacePts = { cp[1], cp[5], cp[7], cp[3] };
+				break;
+			}
+	}
+}
+
 void Polyhedron::makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const
 {
 	auto& cp = getCanonicalPoints();
@@ -497,6 +556,44 @@ void Polyhedron::makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector
 			facePts[i] = LERP(pts0[i], pts1[i], w);
 		break;
 	}
+	}
+}
+
+void Polyhedron::makeHexCellWedgeFacePoints(int axis, int parity, MTC::vector<Vector3d>& facePts) const
+{
+	/*
+	There are three ways to split a hex into hexes, but 6 ways to split a hex into wedges.
+	Visuallizing a single square face, it can be split lower-left to upper-right and upper-left to lower right
+	This can be done one each axis resulting 6 possible splits. The choice of split is referred to as parity, which is not quite correct
+	but works.
+	*/
+	auto& cp = getCanonicalPoints();
+
+	if (parity == 0) {
+		switch (axis) {
+		case 0:
+			facePts = { cp[0], cp[1], cp[6], cp[7] };
+			break;
+		case 1:
+			facePts = { cp[0], cp[5], cp[6], cp[3] };
+			break;
+		case 2:
+			facePts = { cp[0], cp[2], cp[6], cp[4] };
+			break;
+		}
+	}
+	else {
+		switch (axis) {
+		case 0:
+			facePts = { cp[4], cp[5], cp[2], cp[3] };
+			break;
+		case 1:
+			facePts = { cp[4], cp[1], cp[2], cp[7] };
+			break;
+		case 2:
+			facePts = { cp[1], cp[5], cp[7], cp[3] };
+			break;
+		}
 	}
 }
 

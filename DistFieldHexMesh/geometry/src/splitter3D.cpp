@@ -289,8 +289,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 					for (const auto& cellId : newCellIds) {
 						conditionalBisectionHexSplit(cellId, testedAxisBits, 4);
 					}
-				}
-				else if (numPossibleSplits == 4) {
+				} else if (numPossibleSplits == 4) {
 					for (const auto& cellId : newCellIds) {
 						conditionalBisectionHexSplit(cellId, testedAxisBits, 2);
 					}
@@ -570,6 +569,77 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 
 		MTC::vector<MTC::vector<Vector3d>> allCellFacesPts;
 		GradingOp::getCubeFacePoints(subCellPts, allCellFacesPts);
+		vector<Planed> boundingPlanes;
+		for (const auto& cellFacePts : allCellFacesPts) {
+
+			Planed pl;
+			if (!planeFromPoints(cellFacePts, pl)) {
+				stringstream ss;
+				ss << "planeFromPoints failed. " << __FILE__ << "-" << __LINE__;
+				throw runtime_error(ss.str());
+			}
+
+			// Force all plane normals to point outward from the cell center
+			Vector3d v = pl.getOrigin() - ctr;
+			if (pl.getNormal().dot(v) < 0)
+				pl.reverse();
+			boundingPlanes.push_back(pl);
+		}
+
+		for (const auto& faceId : faceIds) {
+			if (cellBoundsContainsFace(boundingPlanes, faceId)) {
+				newCellFaceIds.push_back(faceId);
+			}
+		}
+
+		// This will add the newCell's Id to all the new cell's faces
+		Polyhedron tmp(newCellFaceIds, subCellVerts);
+		auto newCellId = pBlk->addCell(tmp, parentId);
+		auto& newCell = getPolyhedron(newCellId);
+
+		newCellIds.push_back(newCellId);
+		_createdCellIds.insert(newCellId);
+	}
+
+	_createdCellIds.erase(parentId);
+	getBlockPtr()->freePolyhedron(parentId);
+}
+
+void Splitter3D::bisectHexCellToWedges(const Index3DId& parentId, int parity, int splitAxis, MTC::vector<Index3DId>& newCellIds)
+{
+	auto pBlk = getBlockPtr();
+	auto& parentCell = getPolyhedron(parentId);
+
+	MTC::vector<MTC::vector<Vector3d>> subCellsPts;
+	MTC::vector<Vector3d> splittingFacePts;
+	parentCell.makeHexCellWedgePoints(splitAxis, parity, subCellsPts, splittingFacePts);
+	MTC::vector<Index3DId> splittingFaceVerts;
+	splittingFaceVerts.resize(splittingFacePts.size());
+	for (size_t i = 0; i < splittingFacePts.size(); i++)
+		splittingFaceVerts[i] = vertId(splittingFacePts[i]);
+
+	auto splittingFaceId = pBlk->addPolygon(Polygon(splittingFaceVerts));
+
+	imprintCellOnFace(splittingFaceId, parentCell); // create all cell edges on the splitting face to create required new vertices
+	splitCell(parentCell, splittingFaceId);
+
+	parentCell.detachFaces();
+	const auto& faceIds = parentCell.getFaceIds();
+	for (const auto& subCellPts : subCellsPts) {
+		MTC::vector<Index3DId> subCellVerts;
+		subCellVerts.resize(subCellPts.size());
+		Vector3d ctr(0, 0, 0);
+		for (size_t i = 0; i < subCellPts.size(); i++) {
+			ctr += subCellPts[i];
+			subCellVerts[i] = vertId(subCellPts[i]);
+		}
+		ctr /= subCellPts.size();
+
+		MTC::vector<Index3DId> newCellFaceIds;
+		newCellFaceIds.push_back(splittingFaceId);
+
+		MTC::vector<MTC::vector<Vector3d>> allCellFacesPts;
+		GradingOp::getWedgeFacePoints(subCellPts, allCellFacesPts);
 		vector<Planed> boundingPlanes;
 		for (const auto& cellFacePts : allCellFacesPts) {
 

@@ -88,6 +88,54 @@ void GradingOp::getCubeFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MT
     }
 }
 
+const MTC::vector<MTC::vector<size_t>>& GradingOp::getWedgeFaceIndices()
+{
+    static MTC::vector<MTC::vector<size_t>> facePts = {
+        { 0, 2, 1 }, // OpenFoam face 0
+        { 3, 4, 5 }, // OpenFoam face 1
+
+        { 2, 0, 3, 5 }, // OpenFoam face 2
+        { 1, 2, 5, 4 }, // OpenFoam face 3
+        { 0, 1, 4, 3 }, // OpenFoam face 4
+
+        // add left and right
+    };
+
+    return facePts;
+
+}
+
+void GradingOp::getWedgeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts)
+{
+    const auto& cubeFaceIndices = getWedgeFaceIndices();
+    facePts.clear();
+    facePts.resize(cubeFaceIndices.size());
+    for (size_t i = 0; i < cubeFaceIndices.size(); i++) {
+        const auto& rowIndices = cubeFaceIndices[i];
+        auto& rowPts = facePts[i];
+        rowPts.resize(rowIndices.size());
+        for (size_t j = 0; j < rowIndices.size(); j++) {
+            rowPts[j] = cornerPts[rowIndices[j]];
+        }
+    }
+
+}
+
+void GradingOp::getWedgeFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MTC::vector<MTC::vector<Index3DId>>& faceVerts)
+{
+    const auto& cubeFaceIndices = getCubeFaceIndices();
+    faceVerts.clear();
+    faceVerts.resize(cubeFaceIndices.size());
+    for (size_t i = 0; i < cubeFaceIndices.size(); i++) {
+        const auto& rowIndices = cubeFaceIndices[i];
+        auto& rowVerts = faceVerts[i];
+        rowVerts.resize(rowIndices.size());
+        for (size_t j = 0; j < rowIndices.size(); j++) {
+            rowVerts[j] = cornerVerts[rowIndices[j]];
+        }
+    }
+}
+
 GradingOp::GradingOp(Block* pBlk, const SplittingParams& params, const Index3D& _divs, const Vector3d& grading)
     : _pBlk(pBlk)
     , _params(params)
