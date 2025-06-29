@@ -194,6 +194,7 @@ GraphicsCanvas::~GraphicsCanvas()
 
 void GraphicsCanvas::dumpUniformOffset() const
 {
+#if 0
     size_t uboBase = (size_t)&_graphicsUBO;
     size_t numLightsOff = (size_t)&_graphicsUBO.numLights - uboBase;
     size_t useDefColorOff = (size_t)&_graphicsUBO.useDefColor - uboBase;
@@ -218,6 +219,7 @@ void GraphicsCanvas::dumpUniformOffset() const
     cout << "GraphicsUBO::twoSideLighting : " << twoSideLightingOff << "\n";
 
     cout << "GraphicsUBO::numLightsOff    : " << numLightsOff << "\n";
+#endif
 }
 
 std::shared_ptr<DrawCrossSectionEdges> GraphicsCanvas::getDrawCrossSectionEdges()
@@ -250,9 +252,7 @@ void GraphicsCanvas::setView(double azimuth, double elevation)
     _viewBounds = _pAppData->getBoundingBox();
     _modelView.setIdentity();
     _intitialModelView.setIdentity();
-#if 1
 
-    cout << "alpha: " << (azimuth / M_PI * 180) << ", phi: " << (elevation / M_PI * 180) << "\n";
     Vector3d zAxis(0, 0, 1);
     Eigen::Vector3d yAxis(0, 1, 0);
     yAxis.normalize();
@@ -262,13 +262,11 @@ void GraphicsCanvas::setView(double azimuth, double elevation)
 
     tmpRotation = Eigen::AngleAxisd(elevation, (Eigen::Matrix<double, 3, 1>)yAxis).toRotationMatrix();
     rotation = tmpRotation * rotation;
-    yAxis = tmpRotation * yAxis;
 
     tmpRotation = Eigen::AngleAxisd(azimuth + M_PI / 2, (Eigen::Matrix<double, 3, 1>)zAxis).toRotationMatrix();
     rotation = tmpRotation * rotation;
 
     _modelView = rot3ToRot4<Eigen::Matrix4d>(rotation);
-#endif
 }
 
 void GraphicsCanvas::toggleShowFace(View v)

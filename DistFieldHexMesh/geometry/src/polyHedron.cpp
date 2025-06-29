@@ -339,9 +339,9 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_maxOrthogonalityAngleRadians = src._maxOrthogonalityAngleRadians;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	_cachedCurvatureXYPlane = src._cachedCurvatureXYPlane;
-	_cachedCurvatureYZPlane = src._cachedCurvatureYZPlane;
-	_cachedCurvatureZXPlane = src._cachedCurvatureZXPlane;
+	_cachedCurvatureHexXYPlane = src._cachedCurvatureHexXYPlane;
+	_cachedCurvatureHexYZPlane = src._cachedCurvatureHexYZPlane;
+	_cachedCurvatureHexZXPlane = src._cachedCurvatureHexZXPlane;
 
 	_cachedCanonicalPoints = src._cachedCanonicalPoints;
 	_cachedCtr = src._cachedCtr;
@@ -417,7 +417,7 @@ MTC::vector<Index3DId> Polyhedron::getParents() const
 }
 
 
-void Polyhedron::makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
+void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
 {
 	auto& cp = getCanonicalPoints();
 
@@ -470,7 +470,7 @@ void Polyhedron::makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>&
 
 }
 
-void Polyhedron::makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const
+void Polyhedron::makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const
 {
 	auto& cp = getCanonicalPoints();
 
@@ -1635,13 +1635,13 @@ void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int or
 		throw runtime_error(ss.str());
 	}
 	case 0: // X axis is normal to y z
-		pCurvature = &_cachedCurvatureYZPlane;
+		pCurvature = &_cachedCurvatureHexYZPlane;
 		break;
 	case 1: // Y axis is normal to x z
-		pCurvature = &_cachedCurvatureZXPlane;
+		pCurvature = &_cachedCurvatureHexZXPlane;
 		break;
 	case 2: // Z Axis is normal to x y
-		pCurvature = &_cachedCurvatureXYPlane;
+		pCurvature = &_cachedCurvatureHexXYPlane;
 		break;
 	}
 	if (*pCurvature > -1)
@@ -1657,7 +1657,7 @@ void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int or
 	for (int step = 0; step < steps; step++) {
 		double w = step / (steps - 1.0);
 		MTC::vector<Vector3d> facePts;
-		makeHexFacePoints(orthoAxis, w, facePts);
+		makeHexCellHexFacePoints(orthoAxis, w, facePts);
 
 		double c = calCurvature2D(params, facePts, step);
 
@@ -1681,13 +1681,13 @@ double Polyhedron::getCurvatureByNormalAxis(const SplittingParams& params, int o
 		throw runtime_error(ss.str());
 	}
 	case 0: // X axis is normal
-		pCurvature = &_cachedCurvatureYZPlane; 
+		pCurvature = &_cachedCurvatureHexYZPlane;
 		break;
 	case 1: // Y axis is normal
-		pCurvature = &_cachedCurvatureZXPlane; 
+		pCurvature = &_cachedCurvatureHexZXPlane;
 		break;
 	case 2: // Z Axis is normal
-		pCurvature = &_cachedCurvatureXYPlane; 
+		pCurvature = &_cachedCurvatureHexXYPlane;
 		break;
 	}
 
@@ -2192,9 +2192,9 @@ void Polyhedron::clearCache() const
 	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_cachedBBox = {};
 
-	_cachedCurvatureXYPlane = -1;
-	_cachedCurvatureYZPlane = -1;
-	_cachedCurvatureZXPlane = -1;
+	_cachedCurvatureHexXYPlane = -1;
+	_cachedCurvatureHexYZPlane = -1;
+	_cachedCurvatureHexZXPlane = -1;
 
 	_cachedMinGap = -1;
 	_maxOrthogonalityAngleRadians = -1;

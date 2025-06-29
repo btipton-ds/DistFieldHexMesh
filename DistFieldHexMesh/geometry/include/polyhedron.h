@@ -131,9 +131,9 @@ public:
 	bool hasTooManFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 	Vector3d calSpan() const;
-	double calCurvatureXYPlane(const SplittingParams& params) const;
-	double calCurvatureYZPlane(const SplittingParams& params) const;
-	double calCurvatureZXPlane(const SplittingParams& params) const;
+	double calCurvatureHexXYPlane(const SplittingParams& params) const;
+	double calCurvatureHexYZPlane(const SplittingParams& params) const;
+	double calCurvatureHexZXPlane(const SplittingParams& params) const;
 
 	double maxOrthogonalityAngleRadians() const;
 
@@ -169,8 +169,8 @@ public:
 
 	MTC::vector<Index3DId> getParents() const;
 
-	void makeHexCellPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
-	void makeHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
+	void makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
+	void makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
@@ -245,9 +245,9 @@ private:
 	mutable double _maxOrthogonalityAngleRadians = -1;
 
 	// The axes are cached separately because they are accessed separately when determining best split axis
-	mutable double _cachedCurvatureXYPlane = -1;
-	mutable double _cachedCurvatureYZPlane = -1;
-	mutable double _cachedCurvatureZXPlane = -1;
+	mutable double _cachedCurvatureHexXYPlane = -1;
+	mutable double _cachedCurvatureHexYZPlane = -1;
+	mutable double _cachedCurvatureHexZXPlane = -1;
 
 	mutable MTC::vector<Vector3d> _cachedCanonicalPoints;
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
@@ -277,17 +277,17 @@ inline int32_t Polyhedron::getLayerNum() const
 	return _layerNum;
 }
 
-inline double Polyhedron::calCurvatureXYPlane(const SplittingParams& params) const
+inline double Polyhedron::calCurvatureHexXYPlane(const SplittingParams& params) const
 {
 	return getCurvatureByNormalAxis(params, 2);
 }
 
-inline double Polyhedron::calCurvatureYZPlane(const SplittingParams& params) const
+inline double Polyhedron::calCurvatureHexYZPlane(const SplittingParams& params) const
 {
 	return getCurvatureByNormalAxis(params, 0);
 }
 
-inline double Polyhedron::calCurvatureZXPlane(const SplittingParams& params) const
+inline double Polyhedron::calCurvatureHexZXPlane(const SplittingParams& params) const
 {
 	return getCurvatureByNormalAxis(params, 1);
 }

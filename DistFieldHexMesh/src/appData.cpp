@@ -234,9 +234,9 @@ bool AppData::handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, cons
         cout << "  Intersects Model       : " << cell.intersectsModel() << "\n";
         cout << "\n";
         cout << "  Has too high curvature : " << cell.hasTooHighCurvature(_params) << "\n";
-        cout << "  YZ curvature           : " << cell.calCurvatureYZPlane(_params) << "\n";
-        cout << "  ZX curvature           : " << cell.calCurvatureZXPlane(_params) << "\n";
-        cout << "  XY curvature           : " << cell.calCurvatureXYPlane(_params) << "\n";
+        cout << "  HexYZ curvature           : " << cell.calCurvatureHexYZPlane(_params) << "\n";
+        cout << "  HexZX curvature           : " << cell.calCurvatureHexZXPlane(_params) << "\n";
+        cout << "  HexXY curvature           : " << cell.calCurvatureHexXYPlane(_params) << "\n";
 
         cout << "\n";
         cout << "  Norm curvature x       : " << cell.getCurvatureByNormalAxis(_params, 0) << "\n";

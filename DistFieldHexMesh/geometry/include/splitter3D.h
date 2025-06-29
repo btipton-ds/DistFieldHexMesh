@@ -61,6 +61,17 @@ public:
 	bool splitConditional();
 
 private:
+	enum HexSplitType {
+		HST_HEX_X,
+		HST_HEX_Y,
+		HST_HEX_Z,
+
+		HST_NO_SPLIT,
+	};
+
+	static int hex_HST_to_int(HexSplitType hst);
+	static HexSplitType hex_int_to_HST(int hst);
+
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
@@ -71,14 +82,14 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	int determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	HexSplitType determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 	int determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool intersectsModel(const Polyhedron& testCell) const;
 	bool needsCurvatureSplit(const Polyhedron& testCell, int axis) const;
-	void bisectHexCell(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
+	void bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void imprintCellOnFace(const Index3DId& splittingFaceId, const Polyhedron& parentCell);
 	void splitCell(Polyhedron& parentCell, const Index3DId& splittingFaceId);
 	bool splitFace(Polygon& targetFace, const EdgeKey& toolEdgeKey);

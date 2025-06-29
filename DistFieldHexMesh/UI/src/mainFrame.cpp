@@ -965,12 +965,12 @@ void MainFrame::OnSetViewLeft(wxCommandEvent& event)
 
 void MainFrame::OnSetViewTop(wxCommandEvent& event)
 {
-    _pCanvas->setView(0, -M_PI / 2);
+    _pCanvas->setView(0, M_PI / 2);
 }
 
 void MainFrame::OnSetViewBottom(wxCommandEvent& event)
 {
-    _pCanvas->setView(0, M_PI / 2);
+    _pCanvas->setView(0, -M_PI / 2);
 }
 
 void MainFrame::OnResetView(wxCommandEvent& event)
@@ -1006,13 +1006,13 @@ void MainFrame::OnSetModelViewLeft(wxCommandEvent& event)
 void MainFrame::OnSetModelViewTop(wxCommandEvent& event)
 {
     auto& params = _pAppData->getParams();
-    _pCanvas->setView(M_PI + params.zRotationDeg * M_PI / 180, M_PI / 2 - params.yRotationDeg * M_PI / 180);
+    _pCanvas->setView(M_PI + params.zRotationDeg * M_PI / 180, -M_PI / 2 - params.yRotationDeg * M_PI / 180);
 }
 
 void MainFrame::OnSetModelViewBottom(wxCommandEvent& event)
 {
     auto& params = _pAppData->getParams();
-    _pCanvas->setView(M_PI + params.zRotationDeg * M_PI / 180, -M_PI / 2 - params.yRotationDeg * M_PI / 180);
+    _pCanvas->setView(M_PI + params.zRotationDeg * M_PI / 180, M_PI / 2 - params.yRotationDeg * M_PI / 180);
 }
 
 void MainFrame::OnResetModelView(wxCommandEvent& event)
