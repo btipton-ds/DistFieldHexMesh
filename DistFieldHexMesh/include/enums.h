@@ -148,4 +148,13 @@ enum Index3IdUserFlags {
 	UF_UNUSED3 = 8,
 };
 
+enum CellType {
+	CT_HEX,
+	CT_WEDGE,
+	CT_PYRAMID,
+	CT_TETRAHEDRON,
+	CT_UNKNOWN,
+};
+
+
 }

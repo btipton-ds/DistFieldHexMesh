@@ -201,40 +201,24 @@ bool Splitter3D::splitConditional()
 #if 0 && defined(_DEBUG)
 		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
 #endif
-		CellType cellType = CT_UNKNOWN;
 
-		{
-			auto& parentCell = getPolyhedron(_polyhedronId);
-			Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+		auto& parentCell = getPolyhedron(_polyhedronId);
+		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
-			createHexCellData(parentCell);
-
-			auto& cornerVertIds = parentCell.getCanonicalVertIds();
-			vector<Vector3d> cornerPts;
-			cornerPts.reserve(cornerVertIds.size());
-			for (const auto& id : cornerVertIds)
-				cornerPts.push_back(getVertexPoint(id));
-
-			switch (cornerPts.size()) {
-			case 8:
-				cellType = CT_HEX;
-				break;
-			default:
-				break;
-			}
-		}
+		_cellType = parentCell.getCellType();
+		createHexCellData(parentCell);
 
 		// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
 		// match with the neighbor cells's faces.
 		// Now split the parentCell
-		Vector3d tuv(0.5, 0.5, 0.5);
-		switch (cellType) {
-		case CT_HEX: {
 #ifdef _DEBUG
-			if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
-				int dbgBreak = 1;
-			}
+		if (_polyhedronId == Index3DId(3, 0, 4, 5)) {
+			int dbgBreak = 1;
+		}
 #endif
+
+		switch (_cellType) {
+		case CT_HEX: {
 			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
 			break;
 		}

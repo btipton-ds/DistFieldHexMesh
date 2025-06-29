@@ -139,6 +139,8 @@ public:
 
 	double getComplexityScore(const SplittingParams& params) const;
 
+	CellType getCellType() const;
+
 	void setNeedsDivideAtCentroid();
 	bool needsDivideAtCentroid() const;
 

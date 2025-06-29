@@ -59,12 +59,8 @@ public:
 
 	bool splitComplex();
 	bool splitConditional();
-private:
-	enum CellType {
-		CT_HEX,
-		CT_UNKNOWN,
-	};
 
+private:
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
 
@@ -113,6 +109,7 @@ private:
 	Block* _pBlock;
 	Block* _pScratchBlock;
 	const SplittingParams& _params;
+	CellType _cellType;
 	Index3DId _polyhedronId;
 
 	const double _distTol = Tolerance::sameDistTol();

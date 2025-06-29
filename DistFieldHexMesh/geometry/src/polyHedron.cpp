@@ -1737,6 +1737,16 @@ double Polyhedron::getComplexityScore(const SplittingParams& params) const
 	return _cachedComplexityScore;
 }
 
+CellType Polyhedron::getCellType() const
+{
+	if (_canonicalVertices.size() == 8)
+		return CT_HEX;
+	else if (_canonicalVertices.size() == 6)
+		return CT_WEDGE;
+
+	return CT_UNKNOWN;
+}
+
 const Vector3d& Polyhedron::getVertexPoint(const Index3DId& vertId) const
 {
 	return getOurBlockPtr()->getVertexPoint(vertId);
