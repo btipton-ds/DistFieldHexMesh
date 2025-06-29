@@ -150,6 +150,14 @@ enum DFHM_MENU_ID
     ID_VIEW_RIGHT,
     ID_VIEW_RESET,
 
+    ID_MODEL_VIEW_FRONT,
+    ID_MODEL_VIEW_BACK,
+    ID_MODEL_VIEW_TOP,
+    ID_MODEL_VIEW_BOTTOM,
+    ID_MODEL_VIEW_LEFT,
+    ID_MODEL_VIEW_RIGHT,
+    ID_MODEL_VIEW_RESET,
+
     ID_SHOW_ALL_SIDES,
     ID_HIDE_ALL_SIDES,
     ID_SHOW_FRONT,
@@ -242,6 +250,7 @@ private:
     void createDebugMenu();
     void createViewMenu();
     void addStandardViewsSubMenu(wxMenu* pParentMenu);
+    void addModelViewsSubMenu(wxMenu* pParentMenu);
     void addBoundarySubMenu(wxMenu* pParentMenu);
     void addLayersMenu(wxMenu* pParentMenu);
     void createHelpMenu();
@@ -299,6 +308,14 @@ private:
     void OnSetViewBottom(wxCommandEvent& event);
     void OnResetView(wxCommandEvent& event);
 
+    void OnSetModelViewFront(wxCommandEvent& event);
+    void OnSetModelViewBack(wxCommandEvent& event);
+    void OnSetModelViewRight(wxCommandEvent& event);
+    void OnSetModelViewLeft(wxCommandEvent& event);
+    void OnSetModelViewTop(wxCommandEvent& event);
+    void OnSetModelViewBottom(wxCommandEvent& event);
+    void OnResetModelView(wxCommandEvent& event);
+
     void OnToggleMeshInfo(wxCommandEvent& event);
     void OnToggleMeshDebug(wxCommandEvent& event);
     void OnTestCellSplit(wxCommandEvent& event);
@@ -328,6 +345,8 @@ private:
     void OnUpdateUI(wxUpdateUIEvent& event);
 
     void onSizeChange(wxSizeEvent& event);
+    void checkItem(int itemId, bool val);
+    void enableItem(int itemId, bool val);
 
     void resetClippingPlanes();
     void updateStatusBar();
@@ -348,10 +367,7 @@ private:
         * _editMenu = nullptr,
         * _fileMenu = nullptr,
         * _viewMenu = nullptr,
-        * _debugMenu = nullptr,
-        * _viewBoundarySubMenu = nullptr,
-        * _viewStandardViewsSubMenu = nullptr,
-        * _layersSubMenu = nullptr;
+        * _debugMenu = nullptr;
 
     size_t _numCells = 0;
     size_t _numFaces = 0;

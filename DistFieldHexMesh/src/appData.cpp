@@ -576,8 +576,6 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     }
 
     _pMainFrame->refreshObjectTree();
-
-    _pMainFrame->getCanvas()->resetView();
 }
 
 void AppData::doVerifyClosed(const CMeshPtr& pMesh)

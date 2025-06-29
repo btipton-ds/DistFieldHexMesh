@@ -141,7 +141,7 @@ public:
     void render();
     void setBackColor(const rgbaColor& color);
 
-    void setView(Vector3d viewVec);
+    void setView(double azimuth, double elevation);
     void setLights();
 
     bool meshSelectionEnabled() const;
@@ -208,7 +208,6 @@ public:
 
     void setShowMeshSelectedBlocks(bool val);
 
-    void setView(View v);
     void toggleShowFace(View v);
     bool showFace(View v) const;
     void resetView();

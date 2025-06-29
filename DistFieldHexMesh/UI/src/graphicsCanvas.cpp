@@ -167,7 +167,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 
     initProjection();
     setLights();
-    setView(GraphicsCanvas::VIEW_FRONT);
+    setView(0, 0);
 
     Bind(wxEVT_LEFT_DOWN, &GraphicsCanvas::onMouseLeftDown, this);
     Bind(wxEVT_LEFT_UP, &GraphicsCanvas::onMouseLeftUp, this);
@@ -243,64 +243,32 @@ size_t GraphicsCanvas::numBytes() const
     return result;
 }
 
-void GraphicsCanvas::setView(Vector3d viewVec)
+void GraphicsCanvas::setView(double azimuth, double elevation)
 {
     if (!_pAppData)
         return;
     _viewBounds = _pAppData->getBoundingBox();
     _modelView.setIdentity();
     _intitialModelView.setIdentity();
+#if 1
 
-    viewVec.normalize();
-    double alpha = atan2(viewVec[1], viewVec[0]);
-    double r = sqrt(viewVec[0] * viewVec[0] + viewVec[1] * viewVec[1]);
-
-    double phi = atan2(viewVec[2], r);
-
+    cout << "alpha: " << (azimuth / M_PI * 180) << ", phi: " << (elevation / M_PI * 180) << "\n";
     Vector3d zAxis(0, 0, 1);
-    Eigen::Vector3d rotatedXAxis(1, 0, 0);
-    rotatedXAxis.normalize();
+    Eigen::Vector3d yAxis(0, 1, 0);
+    yAxis.normalize();
 
     Eigen::Matrix3d rotation, tmpRotation;
-    Vector3d xAxis(1, 0, 0);
     rotation.setIdentity();
 
-    tmpRotation = Eigen::AngleAxisd(alpha, (Eigen::Matrix<double, 3, 1>)zAxis).toRotationMatrix();
+    tmpRotation = Eigen::AngleAxisd(elevation, (Eigen::Matrix<double, 3, 1>)yAxis).toRotationMatrix();
     rotation = tmpRotation * rotation;
-    rotatedXAxis = rotation * rotatedXAxis;
+    yAxis = tmpRotation * yAxis;
 
-    tmpRotation = Eigen::AngleAxisd(phi, (Eigen::Matrix<double, 3, 1>)rotatedXAxis).toRotationMatrix();
+    tmpRotation = Eigen::AngleAxisd(azimuth + M_PI / 2, (Eigen::Matrix<double, 3, 1>)zAxis).toRotationMatrix();
     rotation = tmpRotation * rotation;
 
     _modelView = rot3ToRot4<Eigen::Matrix4d>(rotation);
-
-}
-
-void GraphicsCanvas::setView(View v)
-{
-    switch (v) {
-    case VIEW_RIGHT:
-        setView(Vector3d(1, 0, 0));
-        break;
-    case VIEW_LEFT:
-        setView(Vector3d(-1, 0, 0));
-        break;
-
-    case VIEW_FRONT:
-        setView(Vector3d(0, 1, 0));
-        break;
-    case VIEW_BACK:
-        setView(Vector3d(0, -1, 0));
-        break;
-
-    case VIEW_TOP:
-        setView(Vector3d(0, 0, -1));
-        break;
-    case VIEW_BOTTOM:
-        setView(Vector3d(0, 0, 1));
-        break;
-
-    }
+#endif
 }
 
 void GraphicsCanvas::toggleShowFace(View v)
@@ -357,7 +325,7 @@ void GraphicsCanvas::resetView()
 {
     _viewScale = INIT_VIEW_SCALE;
     initProjection();
-    setView(GraphicsCanvas::VIEW_FRONT);
+    setView(0, 0);
 }
 
 #if INCLUDE_DEBUG_WX_FRAME
