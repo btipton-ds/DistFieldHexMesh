@@ -172,8 +172,8 @@ public:
 	void makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 	void makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
-	void makeHexCellWedgePoints(int axis, int parity, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
-	void makeHexCellWedgeFacePoints(int axis, int parity, MTC::vector<Vector3d>& facePts) const;
+	void makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
+	void makeHexCellWedgeFacePoints(int axis, SplitParity parity, MTC::vector<Vector3d>& facePts) const;
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

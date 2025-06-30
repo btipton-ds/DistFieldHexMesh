@@ -51,8 +51,8 @@ struct SplittingParams {
 
 	int numFlattenPasses = 3;
 	size_t numSimpleDivs = 0;
-	size_t numIntersectionDivs = 0;
-	size_t numCurvatureDivs = 1;
+	size_t numIntersectionDivs = 1;
+	size_t numCurvatureDivs = 0;
 	size_t curvatureDivsPerCircumference = 24;
 	size_t curvatureSamples = 3;
 	size_t maxCoplanarFaces = 4;

@@ -612,19 +612,21 @@ void MainFrame::OnOpen(wxCommandEvent& event)
 void MainFrame::resetClippingPlanes()
 {
     auto pVol = _pAppData->getVolume();
-    auto& pts = pVol->getModelCornerPts();
-    Vector3d origin = TRI_LERP(pts, Vector3d(0.5, 0.5, 0.5));
-    Vector3d pt0 = TRI_LERP(pts, Vector3d(0, 0.5, 0.5));
-    Vector3d pt1 = TRI_LERP(pts, Vector3d(1, 0.5, 0.5));
-    Vector3d dir = (pt1 - pt0).normalized();
+    if (pVol) {
+        auto& pts = pVol->getModelCornerPts();
+        Vector3d origin = TRI_LERP(pts, Vector3d(0.5, 0.5, 0.5));
+        Vector3d pt0 = TRI_LERP(pts, Vector3d(0, 0.5, 0.5));
+        Vector3d pt1 = TRI_LERP(pts, Vector3d(1, 0.5, 0.5));
+        Vector3d dir = (pt1 - pt0).normalized();
 
-    Planed sectionPlane0(origin, dir);
-    _pCanvas->setClipplingPlane(0, sectionPlane0);
+        Planed sectionPlane0(origin, dir);
+        _pCanvas->setClipplingPlane(0, sectionPlane0);
 
-    Planed sectionPlane1(origin + dir * 0.5, -dir);
+        Planed sectionPlane1(origin + dir * 0.5, -dir);
 
-    _pCanvas->setClipplingPlane(0, sectionPlane0);
-    _pCanvas->setClipplingPlane(1, sectionPlane1);
+        _pCanvas->setClipplingPlane(0, sectionPlane0);
+        _pCanvas->setClipplingPlane(1, sectionPlane1);
+    }
 }
 
 void MainFrame::refreshObjectTree()

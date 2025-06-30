@@ -156,5 +156,9 @@ enum CellType {
 	CT_UNKNOWN,
 };
 
+enum SplitParity {
+	SP_0 = 0,
+	SP_1 = 1,
+};
 
 }

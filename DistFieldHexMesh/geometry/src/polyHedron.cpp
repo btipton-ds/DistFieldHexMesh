@@ -470,7 +470,7 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 
 }
 
-void Polyhedron::makeHexCellWedgePoints(int axis, int parity, MTC::vector<MTC::vector<Vector3d>>& subCells, 
+void Polyhedron::makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vector<MTC::vector<Vector3d>>& subCells,
 	MTC::vector<Vector3d>& partingFacePts) const
 {
 	/*
@@ -489,7 +489,7 @@ void Polyhedron::makeHexCellWedgePoints(int axis, int parity, MTC::vector<MTC::v
 		subCells.push_back(subPts);
 	};
 
-	if (parity == 0) {
+	if (parity == SP_0) {
 		switch (axis) {
 			case 0:
 				addCellPts({ 0,3,7, 1,2,6 });
@@ -559,7 +559,7 @@ void Polyhedron::makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector
 	}
 }
 
-void Polyhedron::makeHexCellWedgeFacePoints(int axis, int parity, MTC::vector<Vector3d>& facePts) const
+void Polyhedron::makeHexCellWedgeFacePoints(int axis, SplitParity parity, MTC::vector<Vector3d>& facePts) const
 {
 	/*
 	There are three ways to split a hex into hexes, but 6 ways to split a hex into wedges.
@@ -569,7 +569,7 @@ void Polyhedron::makeHexCellWedgeFacePoints(int axis, int parity, MTC::vector<Ve
 	*/
 	auto& cp = getCanonicalPoints();
 
-	if (parity == 0) {
+	if (parity == SP_0) {
 		switch (axis) {
 		case 0:
 			facePts = { cp[0], cp[1], cp[6], cp[7] };
@@ -1035,7 +1035,6 @@ double Polyhedron::calVolume() const
 
 double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vector<Vector3d>& polyPoints, size_t step) const
 {
-# if 1
 	const auto tol = Tolerance::sameDistTol();
 	double result = 0;
 	Planed pl;
@@ -1061,226 +1060,6 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 	}
 
 	return result;
-#else
-	double result = 0;
-	static const Vector3d origin(0, 0, 0), xAxis(1, 0, 0), yAxis(0, 1, 0), zAxis(0, 0, 1);
-	vector<PolyMeshIndex> indices;
-
-	if (getPolyIndices(indices) == 0)
-		return 0;
-	
-	Splitter2D sp(polyPoints);
-
-	const auto& model = getModel();
-
-	int reflectionAxisBits = 0;
-# if 0
-	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
-		bool reflect = false;
-		switch (reflectionAxis) {
-		case 0:
-			reflect = params.symXAxis; break;
-		case 1:
-			reflect = params.symYAxis; break;
-		case 2:
-			reflect = params.symZAxis; break;
-		}
-		if (reflect)
-			reflectionAxisBits |= 1 << reflectionAxis;
-	}
-#endif		
-	for (const auto& multiPolyIdx : indices) {
-		const auto& face = model.getPolygon(multiPolyIdx);
-#if 1
-		if (!face)
-			continue;
-
-		const auto& nclinIds = face->getNonColinearVertexIds();
-		MTC::vector<const Vector3d*> pts;
-		pts.resize(nclinIds.size());
-		for (size_t i = 0; i < nclinIds.size(); i++) {
-			pts[i] = &face->getVertexPoint(nclinIds[i]);
-		}
-		if (reflectionAxisBits == 0) {
-			sp.addFaceEdges(pts, false);
-		}
-
-#if 0
-		if (sp.getPoints().size() > 10) {
-			stringstream ss;
-			ss << "D:/DarkSky/Projects/output/objs/cuvature_polylines";
-			sp.writePolylinesObj(ss.str());
-		}
-#endif
-		vector<double> curvatures;
-		if (sp.getCurvatures(params, curvatures) > 0) {
-			int avgHalfWindow = 0;
-			if (avgHalfWindow > 0) {
-				vector<double> curvatures2(curvatures);
-				for (size_t i = 0; i < curvatures2.size(); i++) {
-					double avg = 0;
-					int count = 0;
-					for (int j = -avgHalfWindow; j < avgHalfWindow; j++) {
-						size_t idx = i + j;
-						if (idx < curvatures2.size()) {
-							avg += curvatures2[idx];
-							count++;
-						}
-					}
-					if (count > 0) {
-						avg /= count;
-						curvatures[i] = avg;
-					}
-					else
-						curvatures[i] = curvatures2[i];
-				}
-			}
-
-			for (size_t i = 0; i < curvatures.size(); i++) {
-				auto c = curvatures[i];
-				if (c > result)
-					result = c;
-			}
-
-		}
-#if 0 && defined(_DEBUG)
-
-		auto pVol = getBlockPtr()->getVolume();
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
-		for (size_t i = 0; i < polylines.size(); i++) {
-			vector<vector<Vector3d>> segs;
-			for (size_t j = 0; j < polylines[i].size() - 1; j++) {
-				vector<Vector3d> seg;
-				seg.push_back(polylines[i][j]);
-				seg.push_back(polylines[i][j + 1]);
-				segs.push_back(seg);
-			}
-			pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
-		}
-		int dbgBreak = 1;
-#endif
-	}
-#else
-	vector<TriMeshIndex> indices;
-
-	if (getTriIndices(indices) == 0)
-		return false;
-
-	Splitter2D sp(polyPoints);
-
-	const auto& model = getModel();
-
-	int reflectionAxisBits = 0;
-# if 1
-	for (int reflectionAxis = 0; reflectionAxis < 3; reflectionAxis++) {
-		bool reflect = false;
-		switch (reflectionAxis) {
-		case 0:
-			reflect = params.symXAxis; break;
-		case 1:
-			reflect = params.symYAxis; break;
-		case 2:
-			reflect = params.symZAxis; break;
-		}
-		if (reflect)
-			reflectionAxisBits |= 1 << reflectionAxis;
-	}
-#endif		
-	for (const auto& multiTriIdx : indices) {
-		const Vector3d* pts[3];
-		model.getTri(multiTriIdx, pts);
-
-		// Reflect triangles across symmetry plane to remove false sharps at the boundary
-		if (reflectionAxisBits == 0) {
-			sp.add3DTriEdges(pts, false);
-		} else {
-			bool triLiesOnSymmetryPlane = false;
-			for (int axis = 0; axis < 3; axis++) {
-				int numPointsOnBoundary = 0;
-				int axisBit = 1 << axis;
-				if ((reflectionAxisBits & axisBit) != axisBit)
-					continue;
-
-				Vector3d mirrorPts[3];
-				for (int ptIdx = 0; ptIdx < 3; ptIdx++) {
-					mirrorPts[ptIdx] = *pts[ptIdx];
-					double dist = (*pts[ptIdx])[axis] - origin[axis];
-					if (dist > 0) {
-						mirrorPts[ptIdx][axis] = origin[axis] - dist;
-					}
-					if (fabs(dist) < Tolerance::sameDistTol()) {
-						numPointsOnBoundary++;
-					}
-				}
-
-				if (numPointsOnBoundary == 3) {
-					triLiesOnSymmetryPlane = true;
-				} if (numPointsOnBoundary == 2) {
-					sp.add3DTriEdges(mirrorPts, false);
-				}
-			}
-			if (!triLiesOnSymmetryPlane)
-				sp.add3DTriEdges(pts, false);
-		}
-	}
-#if 0
-	if (step == 0 && (getId().blockIdx() == Index3D(3, 0, 4))) {
-		stringstream ss;
-		ss << "D:/DarkSky/Projects/output/objs/cuvature_polylines_" << getBlockPtr()->getLoggerNumericCode(getId()) << "_" << step << "_";
-		sp.writePolylinesObj(ss.str());
-	}
-#endif
-	vector<double> curvatures;
-	if (sp.getCurvatures(params, curvatures) > 0) {
-		int avgHalfWindow = 0;
-		if (avgHalfWindow > 0) {
-			vector<double> curvatures2(curvatures);
-			for (size_t i = 0; i < curvatures2.size(); i++) {
-				double avg = 0;
-				int count = 0;
-				for (int j = -avgHalfWindow; j < avgHalfWindow; j++) {
-					size_t idx = i + j;
-					if (idx < curvatures2.size()) {
-						avg += curvatures2[idx];
-						count++;
-					}
-				}
-				if (count > 0) {
-					avg /= count;
-					curvatures[i] = avg;
-				}
-				else
-					curvatures[i] = curvatures2[i];
-			}
-		}
-
-		for (size_t i = 0; i < curvatures.size(); i++) {
-			auto c = curvatures[i];
-			if (c > result)
-				result = c;
-		}
-
-	}
-#if 0 && defined(_DEBUG)
-
-	auto pVol = getBlockPtr()->getVolume();
-	pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureModel.obj", tris, true);
-	for (size_t i = 0; i < polylines.size(); i++) {
-		vector<vector<Vector3d>> segs;
-		for (size_t j = 0; j < polylines[i].size() - 1; j++) {
-			vector<Vector3d> seg;
-			seg.push_back(polylines[i][j]);
-			seg.push_back(polylines[i][j + 1]);
-			segs.push_back(seg);
-		}
-		pVol->writeObj("D:/DarkSky/Projects/output/objs/curvatureEdges_" + to_string(axis) + "_" + to_string(i) + ".obj", segs, false);
-	}
-	int dbgBreak = 1;
-#endif
-	
-#endif
-	return result;
-#endif
 }
 
 bool Polyhedron::isOriented() const
