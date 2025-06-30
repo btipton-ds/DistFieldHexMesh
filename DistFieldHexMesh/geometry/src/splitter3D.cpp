@@ -169,45 +169,14 @@ bool Splitter3D::splitComplex()
 #if 0 && defined(_DEBUG)
 		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
 #endif
-		CellType cellType = CT_UNKNOWN;
 
-		{
-			auto& parentCell = getPolyhedron(_polyhedronId);
-			Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
+		auto& parentCell = getPolyhedron(_polyhedronId);
+		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
-			createHexCellData(parentCell);
-
-			auto& cornerVertIds = parentCell.getCanonicalVertIds();
-			vector<Vector3d> cornerPts;
-			cornerPts.reserve(cornerVertIds.size());
-			for (const auto& id : cornerVertIds)
-				cornerPts.push_back(getVertexPoint(id));
-
-			switch (cornerPts.size()) {
-			case 8:
-				cellType = CT_HEX;
-				break;
-			default:
-				break;
-			}
-		}
-
-		// DO NOT USE the parentCell centroid! It is at a different location than the parametric center. That results in faces which do 
-		// match with the neighbor cells's faces.
-		// Now split the parentCell
-		Vector3d tuv(0.5, 0.5, 0.5);
-		switch (cellType) {
-		case CT_HEX: {
-			result = complexityBisectionHexSplit(_polyhedronId, 0, 8);
-			break;
-		}
-		default:
-			result = false;
-		}
+		createHexCellData(parentCell);
+		result = complexityBisectionSplit(_polyhedronId, 0, 8);
 
 		finalizeCreatedCells();
-
-		int dbgBreak = 1;
 	}
 	catch (const runtime_error& err) {
 		cout << "Exception thrown: " << err.what() << "\n";
@@ -263,6 +232,18 @@ bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int tested
 		return conditionalBisectionHexSplit(parentId, testedAxisBits, numPossibleSplits);
 	else if (cellType == CT_WEDGE)
 		return conditionalBisectionWedgeSplit(parentId, testedAxisBits, numPossibleSplits);
+
+	return false;
+}
+
+bool Splitter3D::complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
+	auto& parentCell = getPolyhedron(parentId);
+	auto cellType = parentCell.getCellType();
+	if (cellType == CT_HEX)
+		return complexityBisectionHexSplit(parentId, testedAxisBits, numPossibleSplits);
+	else if (cellType == CT_WEDGE)
+		return complexityBisectionWedgeSplit(parentId, testedAxisBits, numPossibleSplits);
 
 	return false;
 }
@@ -465,9 +446,9 @@ bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int t
 	return false;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
-	return HST_NO_SPLIT;
+	return WST_NO_SPLIT;
 }
 
 bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
@@ -476,22 +457,36 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 		return false;
 
 	bool wasSplit = false;
-	int splitAxis = determineBestComplexitySplitAxis(parentId, testedAxisBits, numPossibleSplits);
+	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
-	if (splitAxis != -1) {
+	if (splitType != HST_NO_SPLIT) {
 		MTC::vector<Index3DId> newCellIds;
-		bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+		int splitAxis = -1;
+		switch (splitType) {
+		case HST_HEX_X:
+			splitAxis = 0;
+			bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+			break;
+		case HST_HEX_Y:
+			splitAxis = 1;
+			bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+			break;
+		case HST_HEX_Z:
+			splitAxis = 2;
+			bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+			break;
+		}
 
 		int axisBit = 1 << splitAxis;
 		testedAxisBits |= axisBit;
 
 		if (numPossibleSplits == 8) {
 			for (const auto& cellId : newCellIds) {
-				complexityBisectionHexSplit(cellId, testedAxisBits, 4);
+				complexityBisectionSplit(cellId, testedAxisBits, 4);
 			}
 		} else if (numPossibleSplits == 4) {
 			for (const auto& cellId : newCellIds) {
-				complexityBisectionHexSplit(cellId, testedAxisBits, 2);
+				complexityBisectionSplit(cellId, testedAxisBits, 2);
 			}
 		}
 
@@ -501,20 +496,20 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 	return wasSplit;
 }
 
-int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
 	if (!getBlockPtr()->doQualitySplits())
-		return -1;
+		return HST_NO_SPLIT;
 
 	const auto& parentCell = getPolyhedron(parentId);
 	if (!parentCell.isTooComplex(_params))
-		return -1;
+		return HST_NO_SPLIT;
 
 
 	size_t minFaceSplits = INT_MAX;
 	double minOfMaxOrtho = DBL_MAX;
-	int bestFaceSplitAxis = -1;
-	int bestOrthoSplitAxis = -1;
+	HexSplitType bestFaceSplitAxis = HST_NO_SPLIT;
+	HexSplitType bestOrthoSplitAxis = HST_NO_SPLIT;
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
@@ -550,17 +545,17 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 		// MUST split on face complexity first. If face complexity gets too high, the splitting process degenerates. The is also reduces orthoganlity by itself.
 		if (totalTooManyFaces < minFaceSplits) {
 			minFaceSplits = totalTooManyFaces;
-			bestFaceSplitAxis = axis;
+			bestFaceSplitAxis = hex_axis_to_HST(axis);
 		}
 
 		if (maxOrtho < minOfMaxOrtho) {
 			minOfMaxOrtho = maxOrtho;
-			bestOrthoSplitAxis = axis;
+			bestOrthoSplitAxis = hex_axis_to_HST(axis);
 		}
 		reset(newCellIds);
 	}
 
-	if (bestFaceSplitAxis == -1) {
+	if (bestFaceSplitAxis == HST_NO_SPLIT) {
 		return bestFaceSplitAxis;
 	}
 
@@ -569,42 +564,33 @@ int Splitter3D::determineBestComplexitySplitAxis(const Index3DId& parentId, int 
 
 bool Splitter3D::planeFromPoints(const std::vector<Vector3d>& pts, Planed& pl)
 {
-	if (pts.size() < 3)
-		return false;
-
-	const auto tolSqr = Tolerance::sameDistTolSqr();
-	Vector3d norm(0, 0, 0);
-	const auto& pt0 = pts[0];
-	for (size_t i = 1; i < pts.size() - 2; i++) {
-		size_t j = (i + 1) % pts.size();
-		const auto& pt1 = pts[i];
-		const auto& pt2 = pts[j];
-		Vector3d v0 = pt0 - pt1;
-		double lSqr0 = v0.squaredNorm();
-		if (lSqr0 < tolSqr)
-			return false;
-
-		Vector3d v1 = pt2 - pt1;
-
-		double lSqr1 = v0.squaredNorm();
-		if (lSqr1 < tolSqr)
-			return false;
-
-		v0 /= sqrt(lSqr0);
-		v1 /= sqrt(lSqr1);
-		Vector3d n = v1.cross(v0);
-
-		norm += n;
+	if (pts.size() < 3) {
+		stringstream ss;
+		ss << "Splitter3D::planeFromPoints less than three points " << __FILE__ << ":" << __LINE__;
+		throw runtime_error(ss.str());
 	}
 
-	Vector3d origin(0, 0, 0);
-	for (const auto& pt : pts) 
-		origin += pt;
-	
-	origin /= pts.size();
-	pl = Planed(origin, norm);
+	const auto& pt0 = pts[0];
+	const auto& pt1 = pts[1];
+	const auto& pt2 = pts[2];
+
+	Vector3d v0 = pt0 - pt1;
+	Vector3d v1 = pt2 - pt1;
+	Vector3d norm = v1.cross(v0);
+
+	pl = Planed(pt0, norm);
 
 	return true;
+}
+
+bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
+	return false;
+}
+
+Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
+	return WST_NO_SPLIT;
 }
 
 void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds)

@@ -421,6 +421,12 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 {
 	auto& cp = getCanonicalPoints();
 
+	if (cp.size() != 8) {
+		stringstream ss;
+		ss << "Polyhedron::makeHexCellHexPoints not hexhedral " << __FILE__ << ":" << __LINE__;
+		throw runtime_error(ss.str());
+	}
+
 	for (int i = 0; i < 2; i++) {
 		double t0 = 0, t1 = 1;
 		double u0 = 0, u1 = 1;
@@ -453,6 +459,7 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 			TRI_LERP(cp, t0, u1, v1),
 		};
 		subCells.push_back(subPts);
+
 		if (i == 0) {
 			switch (axis) {
 			case 0:
@@ -481,7 +488,19 @@ void Polyhedron::makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vecto
 	*/
 	auto& cp = getCanonicalPoints();
 
+	if (cp.size() != 8) {
+		stringstream ss;
+		ss << "Polyhedron::makeHexCellWedgePoints not hexhedral " << __FILE__ << ":" << __LINE__;
+		throw runtime_error(ss.str());
+	}
+
 	auto addCellPts = [&cp, &subCells](const vector<size_t>& indices) {
+		if (indices.size() != 6) {
+			stringstream ss;
+			ss << "Polyhedron::makeHexCellWedgePoints not wedge " << __FILE__ << ":" << __LINE__;
+			throw runtime_error(ss.str());
+		}
+
 		MTC::vector<Vector3d> subPts(6);
 		for (size_t i = 0; i < 6; i++) {
 			subPts[i] = cp[indices[i]];

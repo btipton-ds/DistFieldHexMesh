@@ -76,6 +76,16 @@ private:
 		HST_NO_SPLIT,
 	};
 
+	enum WedgeSplitType {
+		WST_HEX_PERP_AXIS,
+
+		WST_HEX_TRI_0,
+		WST_HEX_TRI_1,
+		WST_HEX_TRI_2,
+
+		WST_NO_SPLIT,
+	};
+
 	static HexSplitType hex_axis_to_HST(int axis);
 	static HexSplitType wedge_axis_to_HST(int axis, SplitParity parity);
 
@@ -89,15 +99,19 @@ private:
 	void createHexCellData(const Polyhedron& parentCell);
 
 	bool conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	bool complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 	HexSplitType determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	HexSplitType determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	WedgeSplitType determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	int determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	HexSplitType determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+
+	bool complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	WedgeSplitType determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	void bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void bisectHexCellToWedges(const Index3DId& parentId, int splitAxis, SplitParity parity, MTC::vector<Index3DId>& newCellIds);
