@@ -221,6 +221,14 @@ bool Splitter3D::splitConditional()
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 	try {
+#if ENABLE_DEBUGGING_MUTEXES
+		static mutex lockMutexPtrMutex, lockMutex;
+		shared_ptr<lock_guard<mutex>> pLg;
+		{
+			lock_guard lg(lockMutexPtrMutex);
+			pLg = make_shared<lock_guard<mutex>>(lockMutex);
+		}
+#endif
 		auto& parentCell = getPolyhedron(_polyhedronId);
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
@@ -236,22 +244,7 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 
-#if ENABLE_DEBUGGING_MUTEXES
-		static mutex lockMutexPtrMutex, lockMutex;
-		shared_ptr<lock_guard<mutex>> pLg;
-		{
-			lock_guard lg(lockMutexPtrMutex);
-			pLg = make_shared<lock_guard<mutex>>(lockMutex);
-		}
-#endif
-		switch (_cellType) {
-		case CT_HEX: {
-			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
-			break;
-		}
-		default:
-			result = false;
-		}
+		result = conditionalBisectionSplit(_polyhedronId, 0, 8);
 
 		finalizeCreatedCells();
 
