@@ -32,7 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <algorithm>
 
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 #include <assert.h>
 #endif
 
@@ -128,7 +128,7 @@ inline bool FastBisectionSet_with_comp<VAL, COMP>::empty() const
 template<class VAL, class COMP>
 bool FastBisectionSet_with_comp<VAL, COMP>::contains(const VAL& id) const
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	size_t idx0, idx1;
@@ -146,7 +146,7 @@ inline const std::vector<VAL>& FastBisectionSet_with_comp<VAL, COMP>::asVector()
 		_vals.shrink_to_fit();
 		_sorted = true;
 	}
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	return _vals;
@@ -157,7 +157,7 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 {
 	_vals = rhs._vals;
 	_sorted = rhs._sorted;
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	return  *this;
@@ -168,7 +168,7 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 {
 	_vals = rhs;
 	_sorted = false;
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	return  *this;
@@ -181,7 +181,7 @@ FastBisectionSet_with_comp<VAL, COMP>& FastBisectionSet_with_comp<VAL, COMP>::op
 	for (const auto& id : rhs)
 		_vals.push_back(id);
 	_sorted = false;
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	return  *this;
@@ -226,7 +226,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry)
 		_vals.push_back(newEntry);
 	}
 
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 }
@@ -234,7 +234,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::insert(const VAL& newEntry)
 template<class VAL, class COMP>
 size_t FastBisectionSet_with_comp<VAL, COMP>::find(const VAL& id) const
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	size_t idx0, idx1;
@@ -246,7 +246,7 @@ size_t FastBisectionSet_with_comp<VAL, COMP>::find(const VAL& id) const
 template<class VAL, class COMP>
 inline void FastBisectionSet_with_comp<VAL, COMP>::erase(const VAL& id)
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	size_t idx = find(id);
@@ -258,7 +258,7 @@ inline void FastBisectionSet_with_comp<VAL, COMP>::erase(const VAL& id)
 template<class VAL, class COMP>
 inline const VAL& FastBisectionSet_with_comp<VAL, COMP>::operator[](const size_t& idx) const
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	return _vals[idx];
@@ -273,7 +273,7 @@ inline const VAL* FastBisectionSet_with_comp<VAL, COMP>::data() const
 template<class VAL, class COMP>
 void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, size_t& idx0, size_t& idx1) const
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 	if (_vals.empty()) {
@@ -287,7 +287,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 		_sorted = true;
 	}
 
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(isSorted());
 #endif
 
@@ -328,7 +328,7 @@ void FastBisectionSet_with_comp<VAL, COMP>::findIdx(const VAL& id, size_t& idx, 
 template<class VAL, class COMP>
 inline bool FastBisectionSet_with_comp<VAL, COMP>::isSorted() const
 {
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	if (_vals.empty())
 		return true;
 

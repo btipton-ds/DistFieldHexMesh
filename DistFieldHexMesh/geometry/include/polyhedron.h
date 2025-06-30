@@ -212,6 +212,9 @@ private:
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
+	bool needsCurvatureSplitHex(const SplittingParams& params, int splittingPlaneNormalAxis) const;
+	bool needsCurvatureSplitWedge(const SplittingParams& params, int splittingPlaneNormalAxis) const;
+
 	double getCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 	void initCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis0) const;
 

@@ -75,7 +75,6 @@ MTC::vector<Index3DId> PolygonSearchKey::makeNonColinearVertexIds(const Block* p
 		int dbgBreak = 1;
 	}
 
-	assert(tmp.size() == 4);
 	return tmp;
 }
 

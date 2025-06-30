@@ -1459,7 +1459,7 @@ void Block::markIncrementLayerNums(int i)
 			const auto& adjIds = cell.getAdjacentCells();
 			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
-#if 0 && defined(DEBUGGING_MUTEXES_ENABLED)
+#if 0 && defined(ENABLE_DEBUGGING_MUTEXES)
 					set<Index3DId> testIds({
 						Index3DId(2, 0, 3, 126),
 						Index3DId(2, 0, 3, 127),

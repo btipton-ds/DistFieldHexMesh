@@ -69,10 +69,16 @@ inline int Splitter3D::hex_HST_to_int(HexSplitType hst)
 		default:
 			return -1;
 		case HST_HEX_X:
+		case HST_WEDGE_SPLIT_X_0:
+		case HST_WEDGE_SPLIT_X_1:
 			return 0;
 		case HST_HEX_Y:
+		case HST_WEDGE_SPLIT_Y_0:
+		case HST_WEDGE_SPLIT_Y_1:
 			return 1;
 		case HST_HEX_Z:
+		case HST_WEDGE_SPLIT_Z_0:
+		case HST_WEDGE_SPLIT_Z_1:
 			return 2;
 	}
 }
@@ -88,6 +94,33 @@ inline Splitter3D::HexSplitType Splitter3D::hex_int_to_HST(int val)
 		return HST_HEX_Y;
 	case 2:
 		return HST_HEX_Z;
+	}
+}
+
+Splitter3D::HexSplitType Splitter3D::wedge_int_to_HST(int val, int parity)
+{
+	if (parity) {
+		switch (val) {
+		default:
+			return HST_NO_SPLIT;
+		case 0:
+			return HST_WEDGE_SPLIT_X_0;
+		case 1:
+			return HST_WEDGE_SPLIT_Y_0;
+		case 2:
+			return HST_WEDGE_SPLIT_Z_0;
+		}
+	} else {
+		switch (val) {
+		default:
+			return HST_NO_SPLIT;
+		case 0:
+			return HST_WEDGE_SPLIT_X_1;
+		case 1:
+			return HST_WEDGE_SPLIT_Y_1;
+		case 2:
+			return HST_WEDGE_SPLIT_Z_1;
+		}
 	}
 }
 
@@ -185,18 +218,6 @@ bool Splitter3D::splitComplex()
 		Vector3d tuv(0.5, 0.5, 0.5);
 		switch (cellType) {
 		case CT_HEX: {
-#if DEBUGGING_MUTEXES_ENABLED
-			static mutex lockMutexPtrMutex, lockMutex;
-			shared_ptr<lock_guard<mutex>> pLg;
-			{
-				auto pVol = getBlockPtr()->getVolume();
-
-				lock_guard lg(lockMutexPtrMutex);
-				if (pVol->isCellSelected(_polyhedronId)) {
-					pLg = make_shared<lock_guard<mutex>>(lockMutex);
-				}
-			}
-#endif
 			result = complexityBisectionHexSplit(_polyhedronId, 0, 8);
 			break;
 		}
@@ -216,20 +237,10 @@ bool Splitter3D::splitComplex()
 
 bool Splitter3D::splitConditional()
 {
-#ifdef _DEBUG
-	if (Index3DId(2, 0, 3, 39) == _polyhedronId || Index3DId(2, 0, 3, 41) == _polyhedronId) {
-		int dbgBreak = 1;
-	}
-#endif // 
 	bool result = false;
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 	try {
-
-#if 0 && defined(_DEBUG)
-		getBlockPtr()->getVolume()->writeObj("D:/DarkSky/Projects/output/objs/splitting_cell.obj", { _polyhedronId }, false, false, false);
-#endif
-
 		auto& parentCell = getPolyhedron(_polyhedronId);
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
@@ -245,6 +256,14 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 
+#if ENABLE_DEBUGGING_MUTEXES
+		static mutex lockMutexPtrMutex, lockMutex;
+		shared_ptr<lock_guard<mutex>> pLg;
+		{
+			lock_guard lg(lockMutexPtrMutex);
+			pLg = make_shared<lock_guard<mutex>>(lockMutex);
+		}
+#endif
 		switch (_cellType) {
 		case CT_HEX: {
 			result = conditionalBisectionHexSplit(_polyhedronId, 0, 8);
@@ -263,6 +282,18 @@ bool Splitter3D::splitConditional()
 	return result;
 }
 
+bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
+	auto& parentCell = getPolyhedron(parentId);
+	auto cellType = parentCell.getCellType();
+	if (cellType == CT_HEX)
+		return conditionalBisectionHexSplit(parentId, testedAxisBits, numPossibleSplits);
+	else if (cellType == CT_WEDGE)
+		return conditionalBisectionWedgeSplit(parentId, testedAxisBits, numPossibleSplits);
+
+	return false;
+}
+
 bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -270,40 +301,76 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	}
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestConditionalSplitAxis(parentId, testedAxisBits, numPossibleSplits);
+	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits, numPossibleSplits);
 
 	if (splitType != HST_NO_SPLIT) {
-		int splitAxis = hex_HST_to_int(splitType);
+		int splitAxis = 0;
 
+		MTC::vector<Index3DId> newCellIds;
 		switch (splitType) {
+			default:
+				return false;
 			case HST_HEX_X:
-			case HST_HEX_Y:
-			case HST_HEX_Z: {
-				MTC::vector<Index3DId> newCellIds;
+				splitAxis = 0;
 				bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+				break;
+			case HST_HEX_Y:
+				splitAxis = 1;
+				bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+				break;
+			case HST_HEX_Z:
+				splitAxis = 2;
+				bisectHexCellToHexes(parentId, splitAxis, newCellIds);
+				break;
 
-				int axisBit = 1 << splitAxis;
-				testedAxisBits |= axisBit;
+			case HST_WEDGE_SPLIT_X_0:
+				splitAxis = 0;
+				bisectHexCellToWedges(parentId, splitAxis, false, newCellIds);
+				break;
+			case HST_WEDGE_SPLIT_X_1:
+				splitAxis = 0;
+				bisectHexCellToWedges(parentId, splitAxis, true, newCellIds);
+				break;
+			case HST_WEDGE_SPLIT_Y_0:
+				splitAxis = 1;
+				bisectHexCellToWedges(parentId, splitAxis, false, newCellIds);
+				break;
+			case HST_WEDGE_SPLIT_Y_1:
+				splitAxis = 1;
+				bisectHexCellToWedges(parentId, splitAxis, true, newCellIds);
+				break;
+			case HST_WEDGE_SPLIT_Z_0:
+				splitAxis = 2;
+				bisectHexCellToWedges(parentId, splitAxis, false, newCellIds);
+				break;
+			case HST_WEDGE_SPLIT_Z_1:
+				splitAxis = 2;
+				bisectHexCellToWedges(parentId, splitAxis, true, newCellIds);
+				break;
 
-				if (numPossibleSplits == 8) {
-					for (const auto& cellId : newCellIds) {
-						conditionalBisectionHexSplit(cellId, testedAxisBits, 4);
-					}
-				} else if (numPossibleSplits == 4) {
-					for (const auto& cellId : newCellIds) {
-						conditionalBisectionHexSplit(cellId, testedAxisBits, 2);
-					}
-				}
+		}
 
-				wasSplit = true;
+		int axisBit = 1 << splitAxis;
+		testedAxisBits |= axisBit;
+
+		if (numPossibleSplits == 8) {
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionSplit(cellId, testedAxisBits, 4);
 			}
 		}
+		else if (numPossibleSplits == 4) {
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionSplit(cellId, testedAxisBits, 2);
+			}
+		}
+
+		wasSplit = true;
 	}
 
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
 {
 #if 0 && defined(_DEBUG)
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -311,15 +378,17 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalSplitAxis(const Ind
 	}
 #endif
 	const auto& parentCell = getPolyhedron(parentId);
+	assert(parentCell.getCellType() == CT_HEX);
+
 	if (!parentCell.intersectsModel())
 		return HexSplitType::HST_NO_SPLIT;
 
 	auto cellSpan = parentCell.calSpan();
 
 	int minIntersections = INT_MAX;
-	int bestIntersectionSplitAxis = -1;
-	int bestCurvatureSplitAxis = -1;
-
+	HexSplitType bestIntersectionSplitType = HST_NO_SPLIT;
+	HexSplitType bestCurvatureSplitType = HST_NO_SPLIT;
+#if 1
 	// Search for the best split axis
 	// If there's a split which creates sub cells where one intersects and one does not (numIntersection == 1), take it as soon as found.
 	// If there's a cell which has two intersection splits AND needs a curvature split, record it for later
@@ -356,32 +425,95 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalSplitAxis(const Ind
 			if (numIntersections < minIntersections) {
 				// If neither sub cell intersects, we do not need to split this one
 				minIntersections = numIntersections;
-				bestIntersectionSplitAxis = axis;
+				bestIntersectionSplitType = hex_int_to_HST(axis);
 			}
 
 			reset(newCellIds);
 		}
 
-		if (numIntersections == 2 && bestCurvatureSplitAxis == -1) {
+		if (numIntersections == 2 && bestCurvatureSplitType == HST_NO_SPLIT) {
 			const auto& parentCell = getPolyhedron(parentId);
 			// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
+			// TODO Need to use a score so we can compare with the wedge split
 			if (needsCurvatureSplit(parentCell, axis)) {
-				bestCurvatureSplitAxis = axis;
+				bestCurvatureSplitType = hex_int_to_HST(axis);
 			}
 		}
 	}
+#endif
+
+#if ENABLE_WEDGE_SPLITS
+	for (int axis = 0; axis < 3; axis++) {
+		int axisBit = 1 << axis;
+		if ((testedAxisBits & axisBit) == axisBit)
+			continue;
+
+		if (cellSpan[axis] < 2 * _params.minEdgeLength) {
+			continue;
+		}
+		for (int parity = 0; parity < 2; parity++) {
+			int numIntersections = 0;
+			{
+				auto scratchCellId = makeScratchCell(parentId);
+
+				Utils::ScopedRestore restore1(_testRun);
+				Utils::ScopedRestore restore2(_pBlock);
+				_testRun = true;
+				_pBlock = _pScratchBlock;
+
+				MTC::vector<Index3DId> newCellIds;
+				bisectHexCellToWedges(scratchCellId, axis, parity, newCellIds);
+
+				for (size_t cellNum = 0; cellNum < 2; cellNum++) {
+					const auto& newCell = getPolyhedron(newCellIds[cellNum]);
+					// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
+					if (intersectsModel(newCell)) {
+						numIntersections++;
+					}
+				}
+
+				if (numIntersections < minIntersections) {
+					// If neither sub cell intersects, we do not need to split this one
+					// TODO Need to use a score so we can compare with the wedge split
+					minIntersections = numIntersections;
+					bestIntersectionSplitType = wedge_int_to_HST(axis, parity);
+				}
+
+				reset(newCellIds);
+			}
+
+			if (numIntersections == 2 && bestCurvatureSplitType == HST_NO_SPLIT) {
+				const auto& parentCell = getPolyhedron(parentId);
+				// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
+				if (needsCurvatureSplit(parentCell, axis)) {
+					bestCurvatureSplitType = wedge_int_to_HST(axis, parity);
+				}
+			}
+		}
+	}
+#endif
 
 	if (_splitLevel < _params.numIntersectionDivs) {
-		return hex_int_to_HST(bestIntersectionSplitAxis);
+		return bestIntersectionSplitType;
 	} else if (_splitLevel < _params.numCurvatureDivs) {
 		if (minIntersections == 1) {
 			// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
-			return hex_int_to_HST(bestIntersectionSplitAxis);
+			return bestIntersectionSplitType;
 		} else if (minIntersections== 2) { // The only way to reach here is there's a cuvature split. We could test if bestCurvatureSplitAxis != -1, but that will be handled by the caller.
-			return hex_int_to_HST(bestCurvatureSplitAxis);
+			return bestCurvatureSplitType;
 		}
 	}
 
+	return HST_NO_SPLIT;
+}
+
+bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
+	return false;
+}
+
+Splitter3D::HexSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+{
 	return HST_NO_SPLIT;
 }
 

@@ -192,7 +192,7 @@ void Polyhedron::clear()
 
 const PolyMeshSearchTree::Refiner* Polyhedron::getRefiner() const
 {
-#if USE_REFINER
+#if ENABLE_REFINER
 	return this;
 #else
 	return nullptr;
@@ -649,7 +649,7 @@ void Polyhedron::remapId(const vector<size_t>& idRemap, const Index3D& srcDims)
 void Polyhedron::addFace(const Index3DId& faceId)
 {
 	_faceIds.insert(faceId);
-#if FAST_BISECTION_VALIDATION_ENABLED
+#if ENABLE_FAST_BISECTION_VALIDATION
 	assert(_faceIds.isSorted());
 #endif
 	faceFunc(faceId, [this](Polygon& face) {
@@ -1453,16 +1453,12 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 
 bool Polyhedron::intersectsModel() const
 {
-#if DEBUGGING_MUTEXES_ENABLED
+#if ENABLE_DEBUGGING_MUTEXES
 	static mutex lockMutexPtrMutex, lockMutex;
 	shared_ptr<lock_guard<mutex>> pLg;
 	{
-		auto pVol = getOurBlockPtr()->getVolume();
-
 		lock_guard lg(lockMutexPtrMutex);
-		if (pVol->isCellSelected(getId())) {
-			pLg = make_shared<lock_guard<mutex>>(lockMutex);
-		}
+		pLg = make_shared<lock_guard<mutex>>(lockMutex);
 	}
 #endif
 
@@ -1640,6 +1636,19 @@ double chordEdgeLenRatio(double curvature, double minCurvature, double len, doub
 
 bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const
 {
+	switch (getCellType()) {
+	default:
+		return false;
+	case CT_HEX:
+		return needsCurvatureSplitHex(params, splittingPlaneNormalAxis);
+	case CT_WEDGE:
+		return needsCurvatureSplitWedge(params, splittingPlaneNormalAxis);
+	}
+}
+
+bool Polyhedron::needsCurvatureSplitHex(const SplittingParams& params, int splittingPlaneNormalAxis) const
+{
+	assert(getCellType() == CT_HEX);
 	const double minCurvature = 1 / params.maxCuvatureRadius;
 	const double wedgeAngle = 2 * M_PI / params.curvatureDivsPerCircumference;
 	const double sinWedgeAngle = sin(wedgeAngle / 2);
@@ -1671,6 +1680,12 @@ bool Polyhedron::needsCurvatureSplit(const SplittingParams& params, int splittin
 
 	// TODO Need to test for an oblique model surface intersection. One that might cause a concave edge.
 	return (val0 > 1 || val1 > 1);
+}
+
+bool Polyhedron::needsCurvatureSplitWedge(const SplittingParams& params, int splittingPlaneNormalAxis) const
+{
+	assert(getCellType() == CT_WEDGE);
+	return false;
 }
 
 Vector3d Polyhedron::calSpan() const
@@ -1959,16 +1974,12 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
-#if DEBUGGING_MUTEXES_ENABLED
+#if ENABLE_DEBUGGING_MUTEXES
 	static mutex lockMutexPtrMutex, lockMutex;
 	shared_ptr<lock_guard<mutex>> pLg;
 	{
-		auto pVol = getOurBlockPtr()->getVolume();
-
 		lock_guard lg(lockMutexPtrMutex);
-		if (pVol->isCellSelected(getId())) {
-			pLg = make_shared<lock_guard<mutex>>(lockMutex);
-		}
+		pLg = make_shared<lock_guard<mutex>>(lockMutex);
 	}
 #endif
 

@@ -66,11 +66,19 @@ private:
 		HST_HEX_Y,
 		HST_HEX_Z,
 
+		HST_WEDGE_SPLIT_X_0,
+		HST_WEDGE_SPLIT_Y_0,
+		HST_WEDGE_SPLIT_Z_0,
+		HST_WEDGE_SPLIT_X_1,
+		HST_WEDGE_SPLIT_Y_1,
+		HST_WEDGE_SPLIT_Z_1,
+
 		HST_NO_SPLIT,
 	};
 
 	static int hex_HST_to_int(HexSplitType hst);
-	static HexSplitType hex_int_to_HST(int hst);
+	static HexSplitType hex_int_to_HST(int val);
+	static HexSplitType wedge_int_to_HST(int val, int parity);
 
 	Block* getBlockPtr();
 	const Block* getBlockPtr() const;
@@ -81,8 +89,13 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
+	bool conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+
 	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
-	HexSplitType determineBestConditionalSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	HexSplitType determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+
+	bool conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
+	HexSplitType determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 
 	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
 	int determineBestComplexitySplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits);
