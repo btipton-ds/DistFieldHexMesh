@@ -97,6 +97,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
+	, _hasBeenSplit(src._hasBeenSplit)
 {
 }
 
@@ -323,6 +324,10 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
 	_pPolySearchTree = rhs._pPolySearchTree;
+	_hasBeenSplit = rhs._hasBeenSplit;
+
+	copyCaches(rhs);
+
 	return *this;
 }
 
@@ -1371,9 +1376,6 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	if (!getOurBlockPtr()->doQualitySplits())
-		return false;
-
 	if (hasTooManFaces(params))
 		return true;
 
@@ -1781,11 +1783,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 	}
 #endif
 
-	if (isTooComplex(params)) {
-		setNeedsDivideAtCentroid();
-		return true;
-	}
-
 	auto span = calSpan();
 	bool canSplit = false;
 	for (int i = 0; i < 3; i++) {
@@ -1896,6 +1893,16 @@ void Polyhedron::createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFac
 void Polyhedron::clearLayerNum()
 {
 	_layerNum = -1;
+}
+
+void Polyhedron::clearHasBeenSplit()
+{
+	_hasBeenSplit = false;
+}
+
+bool Polyhedron::hasBeenSplit() const
+{
+	return _hasBeenSplit;
 }
 
 void Polyhedron::setLayerNum(int32_t val, bool force)
@@ -2074,9 +2081,6 @@ bool Polyhedron::verifyTopology() const
 	if (valid && !isClosed()) {
 		valid = false;
 	}
-	
-	if (valid && isTooComplex(params))
-		valid = false;
 
 #if DUMP_BAD_CELL_OBJS
 	if (!valid) {

@@ -171,6 +171,9 @@ bool Splitter3D::splitComplex()
 #endif
 
 		auto& parentCell = getPolyhedron(_polyhedronId);
+		if (parentCell._hasBeenSplit || parentCell.intersectsModel())
+			return false;
+
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 		createHexCellData(parentCell);
@@ -502,7 +505,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 		return HST_NO_SPLIT;
 
 	const auto& parentCell = getPolyhedron(parentId);
-	if (!parentCell.isTooComplex(_params))
+	if (parentCell.intersectsModel() || !parentCell.isTooComplex(_params))
 		return HST_NO_SPLIT;
 
 
@@ -555,7 +558,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 		reset(newCellIds);
 	}
 
-	if (bestFaceSplitAxis == HST_NO_SPLIT) {
+	if (bestFaceSplitAxis != HST_NO_SPLIT) {
 		return bestFaceSplitAxis;
 	}
 
@@ -841,6 +844,7 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
+		createdCell._hasBeenSplit = true;
 
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)

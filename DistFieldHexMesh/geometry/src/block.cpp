@@ -1431,7 +1431,7 @@ void Block::updateSplitStack()
 	const auto& params = getSplitParams();
 	for (const auto& cellId : _touchedCellIds) {
 		cellFunc(cellId, [this, params](const Polyhedron& cell) {
-			if (cell.isTooComplex(params)) {
+			if (!cell._hasBeenSplit && !cell.intersectsModel() && cell.isTooComplex(params)) {
 				addToSplitStack(cell.getId());
 			}
 		});

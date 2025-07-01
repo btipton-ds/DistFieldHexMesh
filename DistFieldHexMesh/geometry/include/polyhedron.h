@@ -161,6 +161,8 @@ public:
 
 	int32_t getLayerNum() const;
 	void clearLayerNum();
+	void clearHasBeenSplit();
+	bool hasBeenSplit() const;
 	void setLayerNum(int32_t val, bool force);
 	void setLayerNumOnNextPass(int32_t val);
 
@@ -236,6 +238,7 @@ private:
 	MTC::vector<Index3DId> _canonicalVertices; 
 
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
+	bool _hasBeenSplit = false;
 
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;
