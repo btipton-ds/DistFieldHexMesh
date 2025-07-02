@@ -139,6 +139,7 @@ void Splitter3D::reset(const MTC::vector<Index3DId>& tempCellids)
 {
 	for (auto& cellId : tempCellids) {
 		getBlockPtr()->removeFromTouchedCellList(cellId);
+		_createdCellIds.erase(cellId);
 	}
 	_pScratchBlock->clear();
 }
@@ -171,13 +172,13 @@ bool Splitter3D::splitComplex()
 #endif
 
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell.isSplitProduct() || parentCell.intersectsModel())
+		if (parentCell.isSplitProduct())
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 		createHexCellData(parentCell);
-		result = complexityBisectionSplit(_polyhedronId, 0, 8);
+		result = complexityBisectionSplit(_polyhedronId, 0, 3);
 
 		finalizeCreatedCells();
 	}
@@ -193,7 +194,7 @@ bool Splitter3D::splitConditional()
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 	try {
-#if ENABLE_DEBUGGING_MUTEXES
+#if 0 && ENABLE_DEBUGGING_MUTEXES
 		static mutex lockMutexPtrMutex, lockMutex;
 		shared_ptr<lock_guard<mutex>> pLg;
 		{
@@ -202,6 +203,9 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 		auto& parentCell = getPolyhedron(_polyhedronId);
+		if (parentCell.isSplitProduct())
+			return false;
+
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 		_cellType = parentCell.getCellType();
@@ -505,7 +509,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 		return HST_NO_SPLIT;
 
 	const auto& parentCell = getPolyhedron(parentId);
-	if (parentCell.intersectsModel() || !parentCell.isTooComplex(_params))
+	if (parentCell.isSplitProduct() || !parentCell.isTooComplex(_params))
 		return HST_NO_SPLIT;
 
 

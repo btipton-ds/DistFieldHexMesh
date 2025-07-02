@@ -1079,7 +1079,7 @@ double Polyhedron::calCurvature2D(const SplittingParams& params, const MTC::vect
 				}
 			}
 		} else {
-			assert(!"getSection failed to find section in list");
+//			cout << "getSection failed to find section in list\n";
 		}
 	}
 
@@ -1256,7 +1256,7 @@ bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 
 bool Polyhedron::intersectsModel() const
 {
-#if ENABLE_DEBUGGING_MUTEXES
+#if 0 && ENABLE_DEBUGGING_MUTEXES
 	static mutex lockMutexPtrMutex, lockMutex;
 	shared_ptr<lock_guard<mutex>> pLg;
 	{
@@ -1774,7 +1774,7 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
 {
-#if ENABLE_DEBUGGING_MUTEXES
+#if 0 && ENABLE_DEBUGGING_MUTEXES
 	static mutex lockMutexPtrMutex, lockMutex;
 	shared_ptr<lock_guard<mutex>> pLg;
 	{

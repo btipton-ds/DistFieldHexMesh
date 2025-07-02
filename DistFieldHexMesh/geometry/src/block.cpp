@@ -1060,6 +1060,18 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 		sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
 		for (const auto& cellId : needToSplitCopy) {
 			if (polyhedronExists(cellId)) {
+#if 0 && ENABLE_DEBUGGING_MUTEXES
+				static mutex lockMutexPtrMutex, lockMutex;
+				shared_ptr<lock_guard<mutex>> pLg;
+				auto pVol = getVolume();
+				{
+					lock_guard lg(lockMutexPtrMutex);
+					pLg = make_shared<lock_guard<mutex>>(lockMutex);
+				}
+				if (pVol->isCellSelected(cellId)) {
+					int dbgBreak = 1;
+				}
+#endif
 				Splitter3D splitter(this, cellId, splitNum);
 				if (splitter.splitComplex()) {
 					didSplit = true;
@@ -1431,6 +1443,15 @@ void Block::updateSplitStack()
 	const auto& params = getSplitParams();
 	for (const auto& cellId : _touchedCellIds) {
 		cellFunc(cellId, [this, params](const Polyhedron& cell) {
+#if 0 && ENABLE_DEBUGGING_MUTEXES
+			static mutex lockMutexPtrMutex, lockMutex;
+			shared_ptr<lock_guard<mutex>> pLg;
+			auto pVol = getVolume();
+			if (pVol->isCellSelected(cell.getId())) {
+				lock_guard lg(lockMutexPtrMutex);
+				pLg = make_shared<lock_guard<mutex>>(lockMutex);
+			}
+#endif
 			if (!cell.isSplitProduct() && cell.isTooComplex(params)) {
 				addToSplitStack(cell.getId());
 			}
@@ -1459,7 +1480,7 @@ void Block::markIncrementLayerNums(int i)
 			const auto& adjIds = cell.getAdjacentCells();
 			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
-#if 0 && defined(ENABLE_DEBUGGING_MUTEXES)
+#if 0 && ENABLE_DEBUGGING_MUTEXES
 					set<Index3DId> testIds({
 						Index3DId(2, 0, 3, 126),
 						Index3DId(2, 0, 3, 127),
