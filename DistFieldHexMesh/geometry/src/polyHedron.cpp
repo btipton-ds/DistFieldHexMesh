@@ -1772,7 +1772,7 @@ bool boxesEqualTol(const CBoundingBox3Dd& a, const CBoundingBox3Dd& b)
 
 #endif
 
-bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams& params)
+bool Polyhedron::setNeedToSplitConditional(size_t splitNum, const SplittingParams& params)
 {
 #if 0 && ENABLE_DEBUGGING_MUTEXES
 	static mutex lockMutexPtrMutex, lockMutex;
@@ -1795,10 +1795,10 @@ bool Polyhedron::setNeedToSplitConditional(size_t passNum, const SplittingParams
 	if (!canSplit) // Cell span in each axis is too small so don't split
 		return false;
 
-	if (passNum < params.numIntersectionDivs && intersectsModel()) {
+	if (splitNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
-	} else if (passNum < params.numCurvatureDivs && hasTooHighCurvature(params)) {
+	} else if (splitNum < params.numCurvatureDivs && hasTooHighCurvature(params)) {
 		setNeedsDivideAtCentroid();
 		return true;
 	}

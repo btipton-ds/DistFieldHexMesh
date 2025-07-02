@@ -151,7 +151,7 @@ public:
 
 	// Splitting functions are const to prevent reusing the split cell. After splitting, the cell should be removed from the block
 	void addToSplitStack();
-	bool setNeedToSplitConditional(size_t passNum, const SplittingParams& params);
+	bool setNeedToSplitConditional(size_t splitNum, const SplittingParams& params);
 
 	void attachFaces();
 	void detachFaces();
