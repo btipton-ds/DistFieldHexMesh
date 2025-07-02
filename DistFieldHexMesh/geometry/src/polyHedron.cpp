@@ -97,7 +97,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
-	, _isSplitProduct(src._isSplitProduct)
+	, _splitNum(src._splitNum)
 {
 }
 
@@ -324,7 +324,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
 	_pPolySearchTree = rhs._pPolySearchTree;
-	_isSplitProduct = rhs._isSplitProduct;
+	_splitNum = rhs._splitNum;
 
 	copyCaches(rhs);
 
@@ -627,6 +627,7 @@ void Polyhedron::write(ostream& out) const
 	out.write((char*)&version, sizeof(version));
 
 	IoUtil::writeObj(out, _faceIds);
+	out.write((char*)&_splitNum, sizeof(_splitNum));
 	IoUtil::writeObj(out, _canonicalVertices);
 
 	_parentId.write(out);
@@ -640,6 +641,7 @@ void Polyhedron::read(istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	IoUtil::readObj(in, _faceIds);
+	in.read((char*)&_splitNum, sizeof(_splitNum));
 	IoUtil::readObj(in, _canonicalVertices);
 
 	_parentId.read(in);
@@ -1895,14 +1897,14 @@ void Polyhedron::clearLayerNum()
 	_layerNum = -1;
 }
 
-void Polyhedron::clearSplitProduct()
+void Polyhedron::clearSplitNum()
 {
-	_isSplitProduct = false;
+	_splitNum = 0;
 }
 
-bool Polyhedron::isSplitProduct() const
+bool Polyhedron::hasBeenSplit(size_t currentSplitLevel) const
 {
-	return _isSplitProduct;
+	return _splitNum >= currentSplitLevel;
 }
 
 void Polyhedron::setLayerNum(int32_t val, bool force)

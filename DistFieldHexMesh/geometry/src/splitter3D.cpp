@@ -172,7 +172,7 @@ bool Splitter3D::splitComplex()
 #endif
 
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell.isSplitProduct())
+		if (parentCell.hasBeenSplit(_splitLevel))
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
@@ -194,7 +194,7 @@ bool Splitter3D::splitConditional()
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 	try {
-#if 0 && ENABLE_DEBUGGING_MUTEXES
+#if 1 && ENABLE_DEBUGGING_MUTEXES
 		static mutex lockMutexPtrMutex, lockMutex;
 		shared_ptr<lock_guard<mutex>> pLg;
 		{
@@ -203,7 +203,7 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell.isSplitProduct())
+		if (parentCell.hasBeenSplit(_splitLevel))
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
@@ -262,7 +262,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	}
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits, splitLevel);
+	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits);
 
 	if (splitType != HST_NO_SPLIT) {
 		int splitAxis = 0;
@@ -330,7 +330,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits)
 {
 #if 0 && defined(_DEBUG)
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -424,7 +424,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 #endif
 
 		// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
-		if (_splitLevel < _params.numCurvatureDivs && minIntersections == 2 && bestCurvatureSplitType == HST_NO_SPLIT) {
+		if (_splitLevel <= _params.numCurvatureDivs && minIntersections == 2 && bestCurvatureSplitType == HST_NO_SPLIT) {
 			const auto& parentCell = getPolyhedron(parentId);
 
 			// TODO Need to use a score so we can compare with the wedge split
@@ -434,9 +434,9 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 		}
 	}
 
-	if (_splitLevel < _params.numIntersectionDivs) {
+	if (_splitLevel <= _params.numIntersectionDivs) {
 		return bestIntersectionSplitType;
-	} else if (_splitLevel < _params.numCurvatureDivs) {
+	} else if (_splitLevel <= _params.numCurvatureDivs) {
 		if (minIntersections == 1) {
 			// If we're doing curvature splits, split where there's any intersection which generates intersecting and non-intersectingcells.
 			return bestIntersectionSplitType;
@@ -453,7 +453,7 @@ bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int t
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits)
 {
 	return WST_NO_SPLIT;
 }
@@ -464,7 +464,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 		return false;
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits, splitLevel);
+	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits);
 
 	if (splitType != HST_NO_SPLIT) {
 		MTC::vector<Index3DId> newCellIds;
@@ -503,13 +503,13 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits)
 {
 	if (!getBlockPtr()->doQualitySplits())
 		return HST_NO_SPLIT;
 
 	const auto& parentCell = getPolyhedron(parentId);
-	if (parentCell.isSplitProduct() || !parentCell.isTooComplex(_params))
+	if (!parentCell.isTooComplex(_params))
 		return HST_NO_SPLIT;
 
 
@@ -595,7 +595,7 @@ bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int te
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits)
 {
 	return WST_NO_SPLIT;
 }
@@ -848,7 +848,7 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
-		createdCell._isSplitProduct = true;
+		createdCell._splitNum = _splitLevel;
 
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)

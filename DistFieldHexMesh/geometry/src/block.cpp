@@ -1080,7 +1080,7 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 			}
 		}
 
-		updateSplitStack();
+		updateSplitStack(splitNum);
 
 		if (_needToSplit.empty())
 			break;
@@ -1129,7 +1129,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 		}
 	}
 
-	updateSplitStack();
+	updateSplitStack(splitNum);
 
 	return didSplit;
 }
@@ -1437,12 +1437,12 @@ void Block::addToSplitStack(const Index3DId& cellId)
 		pOwner->_needToSplit.insert(cellId);
 }
 
-void Block::updateSplitStack()
+void Block::updateSplitStack(size_t splitNum)
 {
 	MTC::set<Index3DId> blockingIds;
 	const auto& params = getSplitParams();
 	for (const auto& cellId : _touchedCellIds) {
-		cellFunc(cellId, [this, params](const Polyhedron& cell) {
+		cellFunc(cellId, [this, splitNum, params](const Polyhedron& cell) {
 #if 0 && ENABLE_DEBUGGING_MUTEXES
 			static mutex lockMutexPtrMutex, lockMutex;
 			shared_ptr<lock_guard<mutex>> pLg;
@@ -1452,7 +1452,7 @@ void Block::updateSplitStack()
 				pLg = make_shared<lock_guard<mutex>>(lockMutex);
 			}
 #endif
-			if (!cell.isSplitProduct() && cell.isTooComplex(params)) {
+			if (!cell.hasBeenSplit(splitNum) && cell.isTooComplex(params)) {
 				addToSplitStack(cell.getId());
 			}
 		});

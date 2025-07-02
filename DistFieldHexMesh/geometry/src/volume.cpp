@@ -766,7 +766,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 			return true;
 		}, multiCore);
 
-		finishSplits(params, true, multiCore);
+		finishSplits(params, true, 1, multiCore);
 		pReporter->reportProgress();
 	}
 }
@@ -792,12 +792,6 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				cell.clearSplitProduct();
-			});
-		}, multiCore);
-
-		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
 #if 0 && ENABLE_DEBUGGING_MUTEXES
 				static mutex lockMutexPtrMutex, lockMutex;
 				shared_ptr<lock_guard<mutex>> pLg;
@@ -813,7 +807,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		if (changed) {
-			finishSplits(params, true, multiCore);
+			finishSplits(params, true, 1, multiCore);
 			//		assert(verifyTopology(multiCore));
 		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
@@ -828,14 +822,8 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			changed = false;
 
 			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					cell.clearSplitProduct();
-				});
-			}, multiCore);
-
-			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 				pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
-					if (!cell.isSplitProduct() && cell.isTooComplex(params)) {
+					if (!cell.hasBeenSplit(_splitNum - 1) && cell.isTooComplex(params)) {
 						changed = true;
 						pBlk->addToSplitStack(cell.getId());
 					}
@@ -844,7 +832,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			}, multiCore);
 
 			if (changed) {
-				finishSplits(params, false, multiCore);
+				finishSplits(params, false, 0, multiCore);
 			} else {
 				break;
 			}
@@ -859,14 +847,14 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	}
 }
 
-void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool multiCore)
+void Volume::finishSplits(const SplittingParams& params, bool doRequired, int splitDelta, bool multiCore)
 {
 	const bool doQualitySplits = getAppData()->getDoQualitySplits();
 	bool changed = false;
 
 	if (doRequired) {
-		runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(params, _splitNum))
+		runThreadPool_IJK([this, splitDelta, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(params, _splitNum + splitDelta))
 				changed = true;
 			return true;
 		}, multiCore);
@@ -875,8 +863,8 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 	if (doQualitySplits) {
 		for (subPassNum = 0; subPassNum < steps; subPassNum++) {
 			changed = false;
-			runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				if (pBlk->splitComplexPolyhedra(params, _splitNum))
+			runThreadPool_IJK([this, splitDelta, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+				if (pBlk->splitComplexPolyhedra(params, _splitNum + splitDelta))
 					changed = true;
 				return true;
 			}, multiCore);
@@ -1139,7 +1127,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 		}, multiCore);
 
 	if (changed)
-		finishSplits(params, true, multiCore);
+		finishSplits(params, true, 0, multiCore);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const
