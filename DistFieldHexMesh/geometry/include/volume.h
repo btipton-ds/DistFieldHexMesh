@@ -133,7 +133,7 @@ public:
 	void setLayerNums();
 	void resetNumSplits();
 
-	void insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore);
+	void insertBlocks(const SplittingParams& params, HexFaceType face, bool multiCore);
 
 	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;

@@ -39,7 +39,7 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-const MTC::vector<MTC::vector<size_t>>& GradingOp::getCubeFaceIndices()
+const MTC::vector<MTC::vector<size_t>>& GradingOp::getHexFaceIndices()
 {
     static MTC::vector<MTC::vector<size_t>> facePts = {
         // add front and back
@@ -58,13 +58,13 @@ const MTC::vector<MTC::vector<size_t>>& GradingOp::getCubeFaceIndices()
     return facePts;
 }
 
-void GradingOp::getCubeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts)
+void GradingOp::getHexFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts)
 {
-    const auto& cubeFaceIndices = getCubeFaceIndices();
+    const auto& faceIndices = getHexFaceIndices();
     facePts.clear();
     facePts.resize(6);
     for (size_t i = 0; i < 6; i++) {
-        const auto& rowIndices = cubeFaceIndices[i];
+        const auto& rowIndices = faceIndices[i];
         auto& rowPts = facePts[i];
         rowPts.resize(rowIndices.size());
         for (size_t j = 0; j < rowIndices.size(); j++) {
@@ -73,13 +73,13 @@ void GradingOp::getCubeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::v
     }
 }
 
-void GradingOp::getCubeFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MTC::vector<MTC::vector<Index3DId>>& faceVerts)
+void GradingOp::getHexFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MTC::vector<MTC::vector<Index3DId>>& faceVerts)
 {
-    const auto& cubeFaceIndices = getCubeFaceIndices();
+    const auto& faceIndices = getHexFaceIndices();
     faceVerts.clear();
     faceVerts.resize(6);
     for (size_t i = 0; i < 6; i++) {
-        const auto& rowIndices = cubeFaceIndices[i];
+        const auto& rowIndices = faceIndices[i];
         auto& rowVerts = faceVerts[i];
         rowVerts.resize(rowIndices.size());
         for (size_t j = 0; j < rowIndices.size(); j++) {
@@ -107,11 +107,11 @@ const MTC::vector<MTC::vector<size_t>>& GradingOp::getWedgeFaceIndices()
 
 void GradingOp::getWedgeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts)
 {
-    const auto& cubeFaceIndices = getWedgeFaceIndices();
+    const auto& faceIndices = getWedgeFaceIndices();
     facePts.clear();
-    facePts.resize(cubeFaceIndices.size());
-    for (size_t i = 0; i < cubeFaceIndices.size(); i++) {
-        const auto& rowIndices = cubeFaceIndices[i];
+    facePts.resize(faceIndices.size());
+    for (size_t i = 0; i < faceIndices.size(); i++) {
+        const auto& rowIndices = faceIndices[i];
         auto& rowPts = facePts[i];
         rowPts.resize(rowIndices.size());
         for (size_t j = 0; j < rowIndices.size(); j++) {
@@ -123,11 +123,11 @@ void GradingOp::getWedgeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::
 
 void GradingOp::getWedgeFaceVertIds(const MTC::vector<Index3DId>& cornerVerts, MTC::vector<MTC::vector<Index3DId>>& faceVerts)
 {
-    const auto& cubeFaceIndices = getCubeFaceIndices();
+    const auto& faceIndices = getHexFaceIndices();
     faceVerts.clear();
-    faceVerts.resize(cubeFaceIndices.size());
-    for (size_t i = 0; i < cubeFaceIndices.size(); i++) {
-        const auto& rowIndices = cubeFaceIndices[i];
+    faceVerts.resize(faceIndices.size());
+    for (size_t i = 0; i < faceIndices.size(); i++) {
+        const auto& rowIndices = faceIndices[i];
         auto& rowVerts = faceVerts[i];
         rowVerts.resize(rowIndices.size());
         for (size_t j = 0; j < rowIndices.size(); j++) {
@@ -160,7 +160,7 @@ void GradingOp::calGradingFactors(int axis, double& scale, double& growFactor) c
 	}
 }
 
-void GradingOp::createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const
+void GradingOp::createGradedCell(HexFaceType ft0, HexFaceType ft1, HexFaceType ft2) const
 {
 
     if (ft2 == CFT_UNDEFINED) {
@@ -173,7 +173,7 @@ void GradingOp::createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceTyp
     }
 }
 
-void GradingOp::createGradedCellOnFace(CubeFaceType ft0) const
+void GradingOp::createGradedCellOnFace(HexFaceType ft0) const
 {
     Vector3d pts[8];
     const auto& cPts = _pBlk->getCornerPts();
@@ -296,12 +296,12 @@ void GradingOp::createGradedCells() const {
     }
 }
 
-void GradingOp::createGradedCellOnEdge(CubeFaceType ft0, CubeFaceType ft1) const
+void GradingOp::createGradedCellOnEdge(HexFaceType ft0, HexFaceType ft1) const
 {
 
 }
 
-void GradingOp::createGradedCellOnCorner(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const
+void GradingOp::createGradedCellOnCorner(HexFaceType ft0, HexFaceType ft1, HexFaceType ft2) const
 {
 
 }

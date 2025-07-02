@@ -1176,7 +1176,7 @@ void Volume::resetNumSplits()
 	_splitNum = 0;
 }
 
-void Volume::insertBlocks(const SplittingParams& params, CubeFaceType face, bool multiCore)
+void Volume::insertBlocks(const SplittingParams& params, HexFaceType face, bool multiCore)
 {
 	Index3D idxSrc, idxDst;
 	vector<size_t> idRemap; 

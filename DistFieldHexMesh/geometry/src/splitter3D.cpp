@@ -630,7 +630,7 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 		newCellFaceIds.push_back(splittingFaceId);
 
 		MTC::vector<MTC::vector<Vector3d>> allCellFacesPts;
-		GradingOp::getCubeFacePoints(subCellPts, allCellFacesPts);
+		GradingOp::getHexFacePoints(subCellPts, allCellFacesPts);
 		vector<Planed> boundingPlanes;
 		for (const auto& cellFacePts : allCellFacesPts) {
 

@@ -53,7 +53,7 @@ UnalignedBBox<T>::UnalignedBBox(const std::vector<Vector3<T>>& corners)
 }
 
 template<class T>
-void UnalignedBBox<T>::getFacePoints(CubeFaceType ft, Vector3<T> pts[4]) const
+void UnalignedBBox<T>::getFacePoints(HexFaceType ft, Vector3<T> pts[4]) const
 {
 	switch (ft) {
 	case CFT_BOTTOM:
@@ -130,7 +130,7 @@ UnalignedBBox<T>::UnalignedBBox(const CBoundingBox3D<T>& src)
 }
 
 template<class T>
-T UnalignedBBox<T>::distFromFace(const Vector3<T>& pt, CubeFaceType ft) const
+T UnalignedBBox<T>::distFromFace(const Vector3<T>& pt, HexFaceType ft) const
 {
 	Vector3<T> v, v0, v1, norm, norm1;
 	Vector3<T> pts[4];
@@ -168,7 +168,7 @@ bool UnalignedBBox<T>::contains(const Vector3<T>& pt, size_t numDivisions, bool 
 	T minDist = 1.0e6;
 
 	for (int i = 0; i < 6; i++) {
-		CubeFaceType ft = (CubeFaceType) i;
+		HexFaceType ft = (HexFaceType) i;
 		
 		T dist = distFromFace(pt, ft);
 		if (dist > Tolerance::sameDistTol())

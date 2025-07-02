@@ -423,7 +423,7 @@ bool Block::verifyDeterminOwnerBlockIndex() const
 
 	Vector3d facePts[4];
 	for (int i = 0; i < 6; i++) {
-		CubeFaceType ft = (CubeFaceType) i;
+		HexFaceType ft = (HexFaceType) i;
 		switch (ft) {
 		case CFT_BACK:
 			facePts[0] = _corners[0];
@@ -693,7 +693,7 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 Index3DId Block::addHexCell(const MTC::vector<Index3DId>& cornerVertIds)
 {
 	MTC::vector<MTC::vector<Index3DId>> blockFaceIds;
-	GradingOp::getCubeFaceVertIds(cornerVertIds, blockFaceIds);
+	GradingOp::getHexFaceVertIds(cornerVertIds, blockFaceIds);
 	MTC::vector<Index3DId> faceIds;
 	faceIds.reserve(blockFaceIds.size());
 
@@ -710,7 +710,7 @@ Index3DId Block::createGradedHexCell(const std::vector<Vector3d>& blockPts, size
 {
 	auto vertIds = getSubBlockCornerVertIds(blockPts, blockDim, subBlockIdx);
 	MTC::vector<MTC::vector<Index3DId>> blockVertIds;
-	GradingOp::getCubeFaceVertIds(vertIds, blockVertIds);
+	GradingOp::getHexFaceVertIds(vertIds, blockVertIds);
 
 	MTC::vector<Index3DId> faceIds;
 	faceIds.reserve(6);

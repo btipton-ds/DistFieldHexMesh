@@ -57,10 +57,10 @@ public:
 	operator std::vector<Vector3<T>>& ();
 
 	bool setPoints(std::vector<Vector3<T>> corners);
-	void getFacePoints(CubeFaceType ft, Vector3<T> pts[4]) const;
+	void getFacePoints(HexFaceType ft, Vector3<T> pts[4]) const;
 
 private:
-	T distFromFace(const Vector3<T>& pt, CubeFaceType ft) const;
+	T distFromFace(const Vector3<T>& pt, HexFaceType ft) const;
 
 	// need to use planes for contains
 	std::vector<Vector3<T>> _corners;

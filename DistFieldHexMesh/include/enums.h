@@ -49,7 +49,7 @@ enum TopolgyState
 			// Was intact, now there is a split version and this is for reference
 };
 
-enum CubeFaceType {
+enum HexFaceType {
 	CFT_BOTTOM,
 	CFT_TOP,
 	CFT_LEFT,

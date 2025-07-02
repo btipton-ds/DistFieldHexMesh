@@ -41,9 +41,9 @@ struct SplittingParams;
 
 class GradingOp {
 public:
-	static const MTC::vector<MTC::vector<size_t>>&getCubeFaceIndices();
-	static void getCubeFacePoints(const MTC::vector<Vector3d>&cornerPts, MTC::vector<MTC::vector<Vector3d>>&facePts);
-	static void getCubeFaceVertIds(const MTC::vector<Index3DId>&cornerVerts, MTC::vector<MTC::vector<Index3DId>>&faceVerts);
+	static const MTC::vector<MTC::vector<size_t>>&getHexFaceIndices();
+	static void getHexFacePoints(const MTC::vector<Vector3d>&cornerPts, MTC::vector<MTC::vector<Vector3d>>&facePts);
+	static void getHexFaceVertIds(const MTC::vector<Index3DId>&cornerVerts, MTC::vector<MTC::vector<Index3DId>>&faceVerts);
 
 	static const MTC::vector<MTC::vector<size_t>>& getWedgeFaceIndices();
 	static void getWedgeFacePoints(const MTC::vector<Vector3d>& cornerPts, MTC::vector<MTC::vector<Vector3d>>& facePts);
@@ -59,11 +59,11 @@ public:
 	void setGrading(const Vector3d& grading);
 
 	void createGradedCells() const;
-	void createGradedCell(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
+	void createGradedCell(HexFaceType ft0, HexFaceType ft1, HexFaceType ft2) const;
 private:
-	void createGradedCellOnFace(CubeFaceType ft0) const;
-	void createGradedCellOnEdge(CubeFaceType ft0, CubeFaceType ft1) const;
-	void createGradedCellOnCorner(CubeFaceType ft0, CubeFaceType ft1, CubeFaceType ft2) const;
+	void createGradedCellOnFace(HexFaceType ft0) const;
+	void createGradedCellOnEdge(HexFaceType ft0, HexFaceType ft1) const;
+	void createGradedCellOnCorner(HexFaceType ft0, HexFaceType ft1, HexFaceType ft2) const;
 
 	Block* _pBlk;
 	const SplittingParams& _params;
