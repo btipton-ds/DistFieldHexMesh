@@ -535,7 +535,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (newCell.hasTooManFaces(_params)) {
+			if (newCell.hasTooManyFaces(_params)) {
 				totalTooManyFaces++;
 			}
 

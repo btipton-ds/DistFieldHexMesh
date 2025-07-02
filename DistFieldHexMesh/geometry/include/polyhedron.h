@@ -128,7 +128,7 @@ public:
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
-	bool hasTooManFaces(const SplittingParams& params) const;
+	bool hasTooManyFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 	Vector3d calSpan() const;
 	double calCurvatureHexXYPlane(const SplittingParams& params) const;

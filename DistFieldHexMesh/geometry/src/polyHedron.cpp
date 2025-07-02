@@ -1376,7 +1376,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 
 bool Polyhedron::isTooComplex(const SplittingParams& params) const
 {
-	if (hasTooManFaces(params))
+	if (hasTooManyFaces(params))
 		return true;
 
 	if (maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians)
@@ -1402,7 +1402,7 @@ bool Polyhedron::hasTooHighCurvature(const SplittingParams& params) const
 	return result;
 }
 
-bool Polyhedron::hasTooManFaces(const SplittingParams& params) const
+bool Polyhedron::hasTooManyFaces(const SplittingParams& params) const
 {
 	Utils::Timer tmr(Utils::Timer::TT_polyhedronTooManyFaces);
 	MTC::vector<MTC::set<Index3DId>> planarFaceSet;
