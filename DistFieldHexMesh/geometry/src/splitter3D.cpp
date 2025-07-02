@@ -171,7 +171,7 @@ bool Splitter3D::splitComplex()
 #endif
 
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell._hasBeenSplit || parentCell.intersectsModel())
+		if (parentCell.isSplitProduct() || parentCell.intersectsModel())
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
@@ -844,7 +844,7 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
-		createdCell._hasBeenSplit = true;
+		createdCell._isSplitProduct = true;
 
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)

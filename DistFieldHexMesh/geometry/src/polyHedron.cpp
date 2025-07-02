@@ -97,7 +97,7 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
-	, _hasBeenSplit(src._hasBeenSplit)
+	, _isSplitProduct(src._isSplitProduct)
 {
 }
 
@@ -324,7 +324,7 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
 	_pPolySearchTree = rhs._pPolySearchTree;
-	_hasBeenSplit = rhs._hasBeenSplit;
+	_isSplitProduct = rhs._isSplitProduct;
 
 	copyCaches(rhs);
 
@@ -1895,14 +1895,14 @@ void Polyhedron::clearLayerNum()
 	_layerNum = -1;
 }
 
-void Polyhedron::clearHasBeenSplit()
+void Polyhedron::clearSplitProduct()
 {
-	_hasBeenSplit = false;
+	_isSplitProduct = false;
 }
 
-bool Polyhedron::hasBeenSplit() const
+bool Polyhedron::isSplitProduct() const
 {
-	return _hasBeenSplit;
+	return _isSplitProduct;
 }
 
 void Polyhedron::setLayerNum(int32_t val, bool force)

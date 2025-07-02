@@ -792,7 +792,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-				cell.clearHasBeenSplit();
+				cell.clearSplitProduct();
 			});
 		}, multiCore);
 
@@ -821,13 +821,13 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell) {
-					cell.clearHasBeenSplit();
+					cell.clearSplitProduct();
 				});
 			}, multiCore);
 
 			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
 				pBlk->iteratePolyhedraInOrder([this, &changed, pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
-					if (!cell.hasBeenSplit() && !cell.intersectsModel() && cell.isTooComplex(params)) {
+					if (!cell.isSplitProduct() && !cell.intersectsModel() && cell.isTooComplex(params)) {
 						changed = true;
 						pBlk->addToSplitStack(cell.getId());
 					}
