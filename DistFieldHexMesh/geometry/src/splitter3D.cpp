@@ -216,7 +216,7 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 
-		result = conditionalBisectionSplit(_polyhedronId, 0, 8);
+		result = conditionalBisectionSplit(_polyhedronId, 0, 3);
 
 		finalizeCreatedCells();
 
@@ -227,38 +227,38 @@ bool Splitter3D::splitConditional()
 	return result;
 }
 
-bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	auto& parentCell = getPolyhedron(parentId);
 	auto cellType = parentCell.getCellType();
 	if (cellType == CT_HEX)
-		return conditionalBisectionHexSplit(parentId, testedAxisBits, numPossibleSplits);
+		return conditionalBisectionHexSplit(parentId, testedAxisBits, splitLevel);
 	else if (cellType == CT_WEDGE)
-		return conditionalBisectionWedgeSplit(parentId, testedAxisBits, numPossibleSplits);
+		return conditionalBisectionWedgeSplit(parentId, testedAxisBits, splitLevel);
 
 	return false;
 }
 
-bool Splitter3D::complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	auto& parentCell = getPolyhedron(parentId);
 	auto cellType = parentCell.getCellType();
 	if (cellType == CT_HEX)
-		return complexityBisectionHexSplit(parentId, testedAxisBits, numPossibleSplits);
+		return complexityBisectionHexSplit(parentId, testedAxisBits, splitLevel);
 	else if (cellType == CT_WEDGE)
-		return complexityBisectionWedgeSplit(parentId, testedAxisBits, numPossibleSplits);
+		return complexityBisectionWedgeSplit(parentId, testedAxisBits, splitLevel);
 
 	return false;
 }
 
-bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
 		int dbgBreak = 1;
 	}
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits, numPossibleSplits);
+	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits, splitLevel);
 
 	if (splitType != HST_NO_SPLIT) {
 		int splitAxis = 0;
@@ -310,14 +310,14 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 		int axisBit = 1 << splitAxis;
 		testedAxisBits |= axisBit;
 
-		if (numPossibleSplits == 8) {
-			for (const auto& cellId : newCellIds) {
-				conditionalBisectionSplit(cellId, testedAxisBits, 4);
-			}
-		}
-		else if (numPossibleSplits == 4) {
+		if (splitLevel == 3) {
 			for (const auto& cellId : newCellIds) {
 				conditionalBisectionSplit(cellId, testedAxisBits, 2);
+			}
+		}
+		else if (splitLevel == 2) {
+			for (const auto& cellId : newCellIds) {
+				conditionalBisectionSplit(cellId, testedAxisBits, 1);
 			}
 		}
 		wasSplit = true;
@@ -326,7 +326,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 #if 0 && defined(_DEBUG)
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -444,23 +444,23 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 	return HST_NO_SPLIT;
 }
 
-bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	return WST_NO_SPLIT;
 }
 
-bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	if (!getBlockPtr()->doQualitySplits())
 		return false;
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits, numPossibleSplits);
+	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits, splitLevel);
 
 	if (splitType != HST_NO_SPLIT) {
 		MTC::vector<Index3DId> newCellIds;
@@ -483,13 +483,13 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 		int axisBit = 1 << splitAxis;
 		testedAxisBits |= axisBit;
 
-		if (numPossibleSplits == 8) {
-			for (const auto& cellId : newCellIds) {
-				complexityBisectionSplit(cellId, testedAxisBits, 4);
-			}
-		} else if (numPossibleSplits == 4) {
+		if (splitLevel == 3) {
 			for (const auto& cellId : newCellIds) {
 				complexityBisectionSplit(cellId, testedAxisBits, 2);
+			}
+		} else if (splitLevel == 2) {
+			for (const auto& cellId : newCellIds) {
+				complexityBisectionSplit(cellId, testedAxisBits, 1);
 			}
 		}
 
@@ -499,7 +499,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	if (!getBlockPtr()->doQualitySplits())
 		return HST_NO_SPLIT;
@@ -586,12 +586,12 @@ bool Splitter3D::planeFromPoints(const std::vector<Vector3d>& pts, Planed& pl)
 	return true;
 }
 
-bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int numPossibleSplits)
+Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits, int splitLevel)
 {
 	return WST_NO_SPLIT;
 }
