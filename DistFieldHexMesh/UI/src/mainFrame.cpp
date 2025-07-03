@@ -249,8 +249,11 @@ void MainFrame::createDebugMenu()
     _debugMenu->Append(ID_ADD_TO_MESH_DEBUG, "Select Break Cells", "Selects a face and reports info", true);
     Bind(wxEVT_MENU, &MainFrame::OnToggleMeshDebug, this, ID_ADD_TO_MESH_DEBUG);
 
-    _debugMenu->Append(ID_MESH_DEBUG_SPLIT_CELL, "Test Split", "Selects a face and reports info", true);
-    Bind(wxEVT_MENU, &MainFrame::OnTestCellSplit, this, ID_MESH_DEBUG_SPLIT_CELL);
+    _debugMenu->Append(ID_TEST_CONDITIONAL_SPLIT_CELL, "Test Conditional Split", "Selects a face and reports info", true);
+    Bind(wxEVT_MENU, &MainFrame::OnTestCellConditionalSplit, this, ID_TEST_CONDITIONAL_SPLIT_CELL);
+
+    _debugMenu->Append(ID_TEST_COMPLEXITY_SPLIT_CELL, "Test Complexity Split", "Selects a face and reports info", true);
+    Bind(wxEVT_MENU, &MainFrame::OnTestCellComplexitySplit, this, ID_TEST_COMPLEXITY_SPLIT_CELL);
 
 #if INCLUDE_DEBUG_WX_FRAME
     _debugMenu->Append(ID_TOGGLE_DEBUG_FRAME, "Toggle Debug Frame", "Show debug render frame");
@@ -1044,11 +1047,18 @@ void MainFrame::OnToggleMeshDebug(wxCommandEvent& event)
         _pAppData->beginMeshFaceDebugPick();
 }
 
-void MainFrame::OnTestCellSplit(wxCommandEvent& event)
+void MainFrame::OnTestCellConditionalSplit(wxCommandEvent& event)
 {
     bool startPicking = _pCanvas->toggleMeshSelection();
     if (startPicking)
-        _pAppData->testCellSplit();
+        _pAppData->testConditionalCellSplit();
+}
+
+void MainFrame::OnTestCellComplexitySplit(wxCommandEvent& event)
+{
+    bool startPicking = _pCanvas->toggleMeshSelection();
+    if (startPicking)
+        _pAppData->testComplexityCellSplit();
 }
 
 void MainFrame::OnShowAllSides(wxCommandEvent& event)

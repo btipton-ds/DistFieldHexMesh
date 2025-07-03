@@ -1060,14 +1060,11 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 		sort(needToSplitCopy.begin(), needToSplitCopy.end(), comp);
 		for (const auto& cellId : needToSplitCopy) {
 			if (polyhedronExists(cellId)) {
-#if 0 && ENABLE_DEBUGGING_MUTEXES
-				static mutex lockMutexPtrMutex, lockMutex;
-				shared_ptr<lock_guard<mutex>> pLg;
+#if 1 && ENABLE_DEBUGGING_MUTEXES
+				static mutex lockMutex;
+				lock_guard lg(lockMutex);
+
 				auto pVol = getVolume();
-				{
-					lock_guard lg(lockMutexPtrMutex);
-					pLg = make_shared<lock_guard<mutex>>(lockMutex);
-				}
 				if (pVol->isCellSelected(cellId)) {
 					int dbgBreak = 1;
 				}
@@ -1443,13 +1440,14 @@ void Block::updateSplitStack(size_t splitNum)
 	const auto& params = getSplitParams();
 	for (const auto& cellId : _touchedCellIds) {
 		cellFunc(cellId, [this, splitNum, params](const Polyhedron& cell) {
-#if 0 && ENABLE_DEBUGGING_MUTEXES
+#if 1 && ENABLE_DEBUGGING_MUTEXES
 			static mutex lockMutexPtrMutex, lockMutex;
 			shared_ptr<lock_guard<mutex>> pLg;
 			auto pVol = getVolume();
+			lock_guard lg(lockMutexPtrMutex);
+			pLg = make_shared<lock_guard<mutex>>(lockMutex);
 			if (pVol->isCellSelected(cell.getId())) {
-				lock_guard lg(lockMutexPtrMutex);
-				pLg = make_shared<lock_guard<mutex>>(lockMutex);
+				int dbgBreak;
 			}
 #endif
 			if (!cell.hasBeenSplit(splitNum) && cell.isTooComplex(params)) {

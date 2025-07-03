@@ -143,10 +143,10 @@ private:
     AppData* _pAppData;
 };
 
-class AppData::MeshTestSplitSelectHandler : public AppData::MeshPickHandler
+class AppData::MeshTestConditionalSplitSelectHandler : public AppData::MeshPickHandler
 {
 public:
-    MeshTestSplitSelectHandler(AppData* pAppData)
+    MeshTestConditionalSplitSelectHandler(AppData* pAppData)
         : _pAppData(pAppData)
     {
     }
@@ -154,7 +154,7 @@ public:
     bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const override
     {
         if (_pAppData) {
-            if (_pAppData->handleMeshTestSplit(event, ray, hits)) {
+            if (_pAppData->handleMeshConditionalTestSplit(event, ray, hits)) {
                 return true;
             }
         }
@@ -165,6 +165,30 @@ private:
     AppData* _pAppData;
 
 };
+
+class AppData::MeshTestComplexitySplitSelectHandler : public AppData::MeshPickHandler
+{
+public:
+    MeshTestComplexitySplitSelectHandler(AppData* pAppData)
+        : _pAppData(pAppData)
+    {
+    }
+
+    bool handle(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const override
+    {
+        if (_pAppData) {
+            if (_pAppData->handleMeshComplexityTestSplit(event, ray, hits)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    AppData* _pAppData;
+
+};
+
 class AppData::MeshFaceDebugSelectHandler : public AppData::MeshPickHandler
 {
 public:
@@ -231,12 +255,18 @@ bool AppData::handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, cons
         const auto& faceIds = cell.getFaceIds();
         cout << "Info for cell " << hitId << "\n";
         cout << "  Layer                  : " << cell.getLayerNum() << "\n";
-        cout << "  Intersects Model       : " << cell.intersectsModel() << "\n";
         cout << "\n";
-        cout << "  Has too high curvature : " << cell.hasTooHighCurvature(_params) << "\n";
-        cout << "  HexYZ curvature           : " << cell.calCurvatureHexYZPlane(_params) << "\n";
-        cout << "  HexZX curvature           : " << cell.calCurvatureHexZXPlane(_params) << "\n";
-        cout << "  HexXY curvature           : " << cell.calCurvatureHexXYPlane(_params) << "\n";
+        cout << "  Intersects Model       : " << cell.intersectsModel() << "\n";
+        cout << "  isTooComplex           : " << cell.isTooComplex(_params) << "\n";
+        cout << "  hasTooHighCurvature    : " << cell.hasTooHighCurvature(_params) << "\n";
+        cout << "  hasTooManyFaces        : " << cell.hasTooManyFaces(_params) << "\n";
+        cout << "  needsCurvatureSplit x  : " << cell.needsCurvatureSplit(_params, 0) << "\n";
+        cout << "  needsCurvatureSplit y  : " << cell.needsCurvatureSplit(_params, 1) << "\n";
+        cout << "  needsCurvatureSplit z  : " << cell.needsCurvatureSplit(_params, 2) << "\n";
+        cout << "\n";
+        cout << "  HexYZ curvature        : " << cell.calCurvatureHexYZPlane(_params) << "\n";
+        cout << "  HexZX curvature        : " << cell.calCurvatureHexZXPlane(_params) << "\n";
+        cout << "  HexXY curvature        : " << cell.calCurvatureHexXYPlane(_params) << "\n";
 
         cout << "\n";
         cout << "  Norm curvature x       : " << cell.getCurvatureByNormalAxis(_params, 0) << "\n";
@@ -288,7 +318,7 @@ bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, con
     return false;
 }
 
-bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
+bool AppData::handleMeshConditionalTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
 {
     // Not testing curvature divs yet
     _params.numCurvatureDivs = 0;
@@ -334,6 +364,46 @@ bool AppData::handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const st
     return false;
 }
 
+bool AppData::handleMeshComplexityTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits)
+{
+    // Not testing curvature divs yet
+    _params.numCurvatureDivs = 0;
+
+    double minDist = DBL_MAX;
+    Index3DId hitFaceId, hitCellId;
+    for (const auto& id : hits) {
+        const auto& face = _pVolume->getPolygon(id);
+        RayHitd hit;
+        if (face.intersect(ray, hit)) {
+            auto cellId = faceCellDisplayed(face);
+            if (hit.dist < minDist&& cellId.isValid()) {
+                minDist = hit.dist;
+                hitFaceId = id;
+                hitCellId = cellId;
+            }
+        }
+    }
+
+    if (hitCellId.isValid()) {
+        auto& cell = _pVolume->getPolyhedron(hitCellId);
+
+        auto pBlock = cell.getBlockPtr();
+        Splitter3D sp(pBlock, hitCellId, _pVolume->_splitNum + 1);
+        if (sp.splitComplex()) {
+
+            _pVolume->setLayerNums();
+
+            updateHexTess();
+
+            _pFaceSearchTree = nullptr;
+            initMeshSearchTree();
+        }
+        return true;
+    }
+
+    return false;
+}
+
 Index3DId AppData::faceCellDisplayed(const Polygon& face) const
 {
     auto pCanvas = _pMainFrame->getCanvas();
@@ -359,10 +429,16 @@ void AppData::beginMeshFaceDebugPick()
     _pMeshPickHandler = make_shared<MeshFaceDebugSelectHandler>(this);
 }
 
-void AppData::testCellSplit()
+void AppData::testConditionalCellSplit()
 {
     initMeshSearchTree();
-    _pMeshPickHandler = make_shared<MeshTestSplitSelectHandler>(this);
+    _pMeshPickHandler = make_shared<MeshTestConditionalSplitSelectHandler>(this);
+}
+
+void AppData::testComplexityCellSplit()
+{
+    initMeshSearchTree();
+    _pMeshPickHandler = make_shared<MeshTestComplexitySplitSelectHandler>(this);
 }
 
 bool AppData::doOpen()

@@ -111,7 +111,8 @@ public:
 
     void beginMeshFaceInfoPick();
     void beginMeshFaceDebugPick();
-    void testCellSplit();
+    void testConditionalCellSplit();
+    void testComplexityCellSplit();
 
     const std::set<Index3DId>& getSelectedCellIds() const;
     std::set<Index3DId>& getSelectedCellIds();
@@ -132,10 +133,12 @@ public:
 private:
     class MeshFaceInfoSelectHandler;
     class MeshFaceDebugSelectHandler;
-    class MeshTestSplitSelectHandler;
+    class MeshTestConditionalSplitSelectHandler;
+    class MeshTestComplexitySplitSelectHandler;
     friend class MeshFaceInfoSelectHandler;
     friend class MeshFaceDebugSelectHandler;
-    friend class MeshTestSplitSelectHandler;
+    friend class MeshTestConditionalSplitSelectHandler;
+    friend class MeshTestComplexitySplitSelectHandler;
 
     void clear(bool includeModelData);
     void clearCache();
@@ -149,7 +152,8 @@ private:
     void initMeshSearchTree();
     bool handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const;
     bool handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
-    bool handleMeshTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
+    bool handleMeshConditionalTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
+    bool handleMeshComplexityTestSplit(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits);
     Index3DId faceCellDisplayed(const Polygon& face) const;
 
     CMeshPtr readStl(const std::wstring& path, const std::wstring& filename);

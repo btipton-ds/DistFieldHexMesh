@@ -140,7 +140,8 @@ enum DFHM_MENU_ID
 
     ID_MESH_INFO,
     ID_ADD_TO_MESH_DEBUG,
-    ID_MESH_DEBUG_SPLIT_CELL,
+    ID_TEST_CONDITIONAL_SPLIT_CELL,
+    ID_TEST_COMPLEXITY_SPLIT_CELL,
 
     ID_VIEW_FRONT,
     ID_VIEW_BACK,
@@ -318,7 +319,8 @@ private:
 
     void OnToggleMeshInfo(wxCommandEvent& event);
     void OnToggleMeshDebug(wxCommandEvent& event);
-    void OnTestCellSplit(wxCommandEvent& event);
+    void OnTestCellConditionalSplit(wxCommandEvent& event);
+    void OnTestCellComplexitySplit(wxCommandEvent& event);
 
     void OnShowAllSides(wxCommandEvent& event);
     void OnHideAllSides(wxCommandEvent& event);
