@@ -194,7 +194,7 @@ bool Splitter3D::splitConditional()
 	if (!_pBlock->polyhedronExists(_polyhedronId))
 		return false;
 	try {
-#if 1 && ENABLE_DEBUGGING_MUTEXES
+#if 0 && ENABLE_DEBUGGING_MUTEXES
 		static mutex lockMutexPtrMutex, lockMutex;
 		shared_ptr<lock_guard<mutex>> pLg;
 		{
@@ -539,7 +539,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 		for (size_t cellNum = 0; cellNum < 2; cellNum++) {
 			const auto& newCell = getPolyhedron(newCellIds[cellNum]);
 
-			if (newCell.hasTooManyFaces(_params)) {
+			if (newCell.hasTooManyFaces(_params) || newCell.hasTooManySplits()) {
 				totalTooManyFaces++;
 			}
 

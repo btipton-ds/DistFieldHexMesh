@@ -81,7 +81,7 @@ public:
 	size_t getNumFaces() const;
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
-	const MTC::vector<Vector3d>& getCanonicalPoints() const;
+	void getCanonicalPoints(MTC::vector<Vector3d>& pts) const;
 	MTC::set<EdgeKey> getCanonicalHexEdgeKeys(int ignoreAxis = -1) const;
 	MTC::set<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
@@ -127,6 +127,7 @@ public:
 
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
+	bool hasTooManySplits() const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManyFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
@@ -220,6 +221,9 @@ private:
 	double getCurvatureByNormalAxis(const SplittingParams& params, int axis) const;
 	void initCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis0) const;
 
+	bool hasTooManySplits_hex() const;
+	bool hasTooManySplits_wedge() const;
+
 	void createTriPoints(std::vector<std::pair<const Vector3d*, const Polygon*>>& cellTriPts) const;
 	void createTriPoints(std::vector<std::pair<const Vector3d, const Polygon*>>& cellTriPts) const;
 
@@ -258,7 +262,6 @@ private:
 	mutable double _cachedCurvatureHexYZPlane = -1;
 	mutable double _cachedCurvatureHexZXPlane = -1;
 
-	mutable MTC::vector<Vector3d> _cachedCanonicalPoints;
 	mutable Vector3d _cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	mutable CBoundingBox3Dd _cachedBBox;
 	mutable bool _hasSetSearchTree = false;

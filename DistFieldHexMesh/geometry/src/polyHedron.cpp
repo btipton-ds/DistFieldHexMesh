@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <splitParams.h>
 #include <vertex.h>
 #include <edge.h>
+#include <gradingOp.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <block.h>
@@ -348,7 +349,6 @@ void Polyhedron::copyCaches(const Polyhedron& src)
 	_cachedCurvatureHexYZPlane = src._cachedCurvatureHexYZPlane;
 	_cachedCurvatureHexZXPlane = src._cachedCurvatureHexZXPlane;
 
-	_cachedCanonicalPoints = src._cachedCanonicalPoints;
 	_cachedCtr = src._cachedCtr;
 	_cachedBBox = src._cachedBBox;
 	_hasSetSearchTree = src._hasSetSearchTree;
@@ -424,7 +424,8 @@ MTC::vector<Index3DId> Polyhedron::getParents() const
 
 void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
 {
-	auto& cp = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 
 	if (cp.size() != 8) {
 		stringstream ss;
@@ -491,7 +492,8 @@ void Polyhedron::makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vecto
 	This can be done one each axis resulting 6 possible splits. The choice of split is referred to as parity, which is not quite correct
 	but works.
 	*/
-	auto& cp = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 
 	if (cp.size() != 8) {
 		stringstream ss;
@@ -555,7 +557,8 @@ void Polyhedron::makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vecto
 
 void Polyhedron::makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const
 {
-	auto& cp = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 
 	facePts.resize(4);
 	switch (axis) {
@@ -591,7 +594,8 @@ void Polyhedron::makeHexCellWedgeFacePoints(int axis, SplitParity parity, MTC::v
 	This can be done one each axis resulting 6 possible splits. The choice of split is referred to as parity, which is not quite correct
 	but works.
 	*/
-	auto& cp = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 
 	if (parity == SP_0) {
 		switch (axis) {
@@ -712,15 +716,12 @@ size_t Polyhedron::getNumFaces() const
 	return _faceIds.size();
 }
 
-const MTC::vector<Vector3d>& Polyhedron::getCanonicalPoints() const
+void Polyhedron::getCanonicalPoints(MTC::vector<Vector3d>& pts) const
 {
-	if (_cachedCanonicalPoints.empty()) {
-		for (const auto& id : _canonicalVertices) {
-			_cachedCanonicalPoints.push_back(getVertexPoint(id));
-		}
+	pts.clear();
+	for (const auto& id : _canonicalVertices) {
+		pts.push_back(getVertexPoint(id));
 	}
-
-	return _cachedCanonicalPoints;
 }
 
 MTC::set<EdgeKey> Polyhedron::getCanonicalHexEdgeKeys(int ignoreAxis) const
@@ -1381,8 +1382,24 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	if (hasTooManyFaces(params))
 		return true;
 
+	if (hasTooManySplits())
+		return true;
+
 	if (maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians)
 		return true;
+	return false;
+}
+
+bool Polyhedron::hasTooManySplits() const
+{
+	switch (getCellType()) {
+	case CT_HEX:
+		return hasTooManySplits_hex();
+	case CT_WEDGE:
+		return hasTooManySplits_wedge();
+	default:
+		break;
+	}
 	return false;
 }
 
@@ -1458,7 +1475,8 @@ bool Polyhedron::needsCurvatureSplitHex(const SplittingParams& params, int split
 	if (!intersectsModel())
 		return false;
 
-	const auto& corners = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 
 	double maxLenChordRatio = 1;
 	double len, c0, c1, val0 = 0, val1 = 0;
@@ -1466,8 +1484,8 @@ bool Polyhedron::needsCurvatureSplitHex(const SplittingParams& params, int split
 	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
 	tuv0[splittingPlaneNormalAxis] = 0;
 	tuv1[splittingPlaneNormalAxis] = 1;
-	Vector3d pt0 = TRI_LERP(corners, tuv0[0], tuv0[1], tuv0[2]);
-	Vector3d pt1 = TRI_LERP(corners, tuv1[0], tuv1[1], tuv1[2]);
+	Vector3d pt0 = TRI_LERP(cp, tuv0[0], tuv0[1], tuv0[2]);
+	Vector3d pt1 = TRI_LERP(cp, tuv1[0], tuv1[1], tuv1[2]);
 	Vector3d v = pt1 - pt0;
 
 	len = v.norm();
@@ -1492,23 +1510,24 @@ bool Polyhedron::needsCurvatureSplitWedge(const SplittingParams& params, int spl
 
 Vector3d Polyhedron::calSpan() const
 {
-	const auto& pts = getCanonicalPoints();
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
 	Vector3d span;
 	for (int axis = 0; axis < 3; axis++) {
 		Vector3d a, b;
 		switch (axis) {
 		default:
 		case 0:
-			a = 0.25 * (pts[0] + pts[3] + pts[7] + pts[4]);
-			b = 0.25 * (pts[1] + pts[2] + pts[6] + pts[5]);
+			a = 0.25 * (cp[0] + cp[3] + cp[7] + cp[4]);
+			b = 0.25 * (cp[1] + cp[2] + cp[6] + cp[5]);
 			break;
 		case 1:
-			a = 0.25 * (pts[0] + pts[1] + pts[5] + pts[4]);
-			b = 0.25 * (pts[3] + pts[2] + pts[6] + pts[7]);
+			a = 0.25 * (cp[0] + cp[1] + cp[5] + cp[4]);
+			b = 0.25 * (cp[3] + cp[2] + cp[6] + cp[7]);
 			break;
 		case 2:
-			a = 0.25 * (pts[0] + pts[1] + pts[2] + pts[3]);
-			b = 0.25 * (pts[4] + pts[5] + pts[6] + pts[7]);
+			a = 0.25 * (cp[0] + cp[1] + cp[2] + cp[3]);
+			b = 0.25 * (cp[4] + cp[5] + cp[6] + cp[7]);
 			break;
 		}
 		span[axis] = (b - a).norm();
@@ -1567,7 +1586,6 @@ void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int or
 
 	const size_t steps = params.curvatureSamples;
 
-	getCanonicalPoints();
 	for (int step = 0; step < steps; step++) {
 		double w = step / (steps - 1.0);
 		MTC::vector<Vector3d> facePts;
@@ -1580,6 +1598,76 @@ void Polyhedron::initCurvatureByNormalAxis(const SplittingParams& params, int or
 			*pCurvature = c;
 		}
 	}
+}
+
+bool Polyhedron::hasTooManySplits_hex() const
+{
+	auto& canonicalVertIds = getCanonicalVertIds();
+
+	MTC::set<Index3DId> vertIds;
+	getVertIds(vertIds);
+
+	if (canonicalVertIds.size() == vertIds.size())
+		return false;
+
+	const auto tol = Tolerance::sameDistTol();
+
+	set<Index3DId> canonicalVertIdSet(canonicalVertIds.begin(), canonicalVertIds.end());
+	MTC::vector<Vector3d> testPts;
+	for (const auto& id : vertIds) {
+		if (!canonicalVertIdSet.contains(id)) {
+			testPts.push_back(getVertexPoint(id));
+		}
+	}
+
+	MTC::vector<Vector3d> cp;
+	for (const auto& id : canonicalVertIds) {
+		cp.push_back(getVertexPoint(id));
+	}
+
+	MTC::vector<MTC::vector<Vector3d>> cellFacePts;
+	GradingOp::getHexFacePoints(cp, cellFacePts);
+
+	for (const auto& facePts : cellFacePts) {
+		Vector3d v0 = facePts[0] - facePts[1];
+		Vector3d v1 = facePts[2] - facePts[1];
+		Vector3d norm = v1.cross(v0);
+		norm.normalize();
+		size_t numInside = 0;
+		for (const auto& pt : testPts) {
+			size_t numNeg = 0, numPos = 0;
+			for (size_t i = 0; i < facePts.size(); i++) {
+				size_t j = (i + 1) % facePts.size();
+
+				auto& pt0 = facePts[i];
+				auto& pt1 = facePts[j];
+				Vector3d vLeg = pt1 - pt0;
+				vLeg.normalize();
+				Vector3d vPerp = vLeg.cross(norm);
+				vPerp.normalize();
+				Vector3d v = pt - pt0;
+				double dist = v.dot(vPerp);
+
+				if (dist < -tol)
+					numNeg++;
+				else if (dist > tol)
+					numPos++;
+			}
+
+			if (numNeg == facePts.size() || numPos == facePts.size())
+				numInside++;
+		}
+
+		if (numInside > 1)
+			return true;
+	}
+
+	return false;
+}
+
+bool Polyhedron::hasTooManySplits_wedge() const
+{
+	return false;
 }
 
 double Polyhedron::getCurvatureByNormalAxis(const SplittingParams& params, int orthoAxis) const
@@ -2100,7 +2188,6 @@ void Polyhedron::clearCache() const
 	_cachedIntersectsModel = IS_UNKNOWN; // Cached value
 	_sharpEdgesIntersectModel = IS_UNKNOWN;
 	_cachedIsClosed = IS_UNKNOWN;
-	_cachedCanonicalPoints.clear();
 	_cachedCtr = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_cachedBBox = {};
 
