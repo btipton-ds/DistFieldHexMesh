@@ -724,54 +724,52 @@ void Polyhedron::getCanonicalPoints(MTC::vector<Vector3d>& pts) const
 	}
 }
 
-MTC::set<EdgeKey> Polyhedron::getCanonicalHexEdgeKeys(int ignoreAxis) const
+void Polyhedron::getCanonicalHexEdgeKeys(MTC::set<EdgeKey>& eks, int ignoreAxis) const
 {
-	MTC::set<EdgeKey> result;
 	if (ignoreAxis == -1) {
 		for (size_t i = 0; i < 4; i++) {
 			size_t j = (i + 1) % 4;
-			result.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[j]));
-			result.insert(EdgeKey(_canonicalVertices[i + 4], _canonicalVertices[j + 4]));
-			result.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[i + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[j]));
+			eks.insert(EdgeKey(_canonicalVertices[i + 4], _canonicalVertices[j + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[i], _canonicalVertices[i + 4]));
 		}
 	} else {
 		switch (ignoreAxis) {
 		case 0:
-			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[3]));
-			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[7]));
-			result.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[4]));
-			result.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
+			eks.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[3]));
+			eks.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[7]));
+			eks.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[4]));
+			eks.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
 
-			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
-			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
-			result.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[5]));
-			result.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[1]));
+			eks.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
+			eks.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
+			eks.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[5]));
+			eks.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[1]));
 			break;
 		case 1:
-			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
-			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[5]));
-			result.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[4]));
-			result.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
+			eks.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
+			eks.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[5]));
+			eks.insert(EdgeKey(_canonicalVertices[5], _canonicalVertices[4]));
+			eks.insert(EdgeKey(_canonicalVertices[4], _canonicalVertices[0]));
 
-			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[2]));
-			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
-			result.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[7]));
-			result.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[3]));
+			eks.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[2]));
+			eks.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[6]));
+			eks.insert(EdgeKey(_canonicalVertices[6], _canonicalVertices[7]));
+			eks.insert(EdgeKey(_canonicalVertices[7], _canonicalVertices[3]));
 			break;
 		case 2:
-			result.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
-			result.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
-			result.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[3]));
-			result.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[0]));
+			eks.insert(EdgeKey(_canonicalVertices[0], _canonicalVertices[1]));
+			eks.insert(EdgeKey(_canonicalVertices[1], _canonicalVertices[2]));
+			eks.insert(EdgeKey(_canonicalVertices[2], _canonicalVertices[3]));
+			eks.insert(EdgeKey(_canonicalVertices[3], _canonicalVertices[0]));
 
-			result.insert(EdgeKey(_canonicalVertices[0 + 4], _canonicalVertices[1 + 4]));
-			result.insert(EdgeKey(_canonicalVertices[1 + 4], _canonicalVertices[2 + 4]));
-			result.insert(EdgeKey(_canonicalVertices[2 + 4], _canonicalVertices[3 + 4]));
-			result.insert(EdgeKey(_canonicalVertices[3 + 4], _canonicalVertices[0 + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[0 + 4], _canonicalVertices[1 + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[1 + 4], _canonicalVertices[2 + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[2 + 4], _canonicalVertices[3 + 4]));
+			eks.insert(EdgeKey(_canonicalVertices[3 + 4], _canonicalVertices[0 + 4]));
 			break;
 		}
 	}
-	return result;
 }
 
 MTC::set<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
@@ -1659,6 +1657,28 @@ bool Polyhedron::hasTooManySplits_hex() const
 		}
 
 		if (numInside > 1)
+			return true;
+	}
+
+	MTC::set<EdgeKey> edgeKeys;
+	getCanonicalHexEdgeKeys(edgeKeys);
+	for (const auto& ek : edgeKeys) {
+		auto& pt0 = getVertexPoint(ek[0]);
+		auto& pt1 = getVertexPoint(ek[1]);
+
+		LineSegment_byrefd seg(pt0, pt1);
+		double len = seg.calLength();
+		size_t numOnEdge = 0;
+		for (const auto& pt : testPts) {
+			double t;
+			if (seg.contains(pt, t, tol)) {
+				double l = t * len;
+				if (tol < l && l < len - tol) {
+					numOnEdge++;
+				}
+			}
+		}
+		if (numOnEdge > 1)
 			return true;
 	}
 

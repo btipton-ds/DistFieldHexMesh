@@ -260,6 +260,7 @@ bool AppData::handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, cons
         cout << "  isTooComplex           : " << cell.isTooComplex(_params) << "\n";
         cout << "  hasTooHighCurvature    : " << cell.hasTooHighCurvature(_params) << "\n";
         cout << "  hasTooManyFaces        : " << cell.hasTooManyFaces(_params) << "\n";
+        cout << "  hasTooManySplits       : " << cell.hasTooManySplits() << "\n";
         cout << "  needsCurvatureSplit x  : " << cell.needsCurvatureSplit(_params, 0) << "\n";
         cout << "  needsCurvatureSplit y  : " << cell.needsCurvatureSplit(_params, 1) << "\n";
         cout << "  needsCurvatureSplit z  : " << cell.needsCurvatureSplit(_params, 2) << "\n";

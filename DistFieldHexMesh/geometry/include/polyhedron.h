@@ -82,7 +82,7 @@ public:
 	size_t getVertIds(MTC::set<Index3DId>& result) const;
 	const MTC::vector<Index3DId>& getCanonicalVertIds() const;
 	void getCanonicalPoints(MTC::vector<Vector3d>& pts) const;
-	MTC::set<EdgeKey> getCanonicalHexEdgeKeys(int ignoreAxis = -1) const;
+	void getCanonicalHexEdgeKeys(MTC::set<EdgeKey>& eks, int ignoreAxis = -1) const;
 	MTC::set<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
 	FastBisectionSet<Index3DId> getAdjacentCells() const;
