@@ -766,7 +766,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 			return true;
 		}, multiCore);
 
-		finishSplits(params, true, 1, multiCore);
+		finishSplits(params, true, multiCore);
 		pReporter->reportProgress();
 	}
 }
@@ -813,7 +813,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		if (changed) {
-			finishSplits(params, true, 1, multiCore);
+			finishSplits(params, true, multiCore);
 			//		assert(verifyTopology(multiCore));
 		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
@@ -824,7 +824,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 	if (_pAppData->getDoQualitySplits()) {
 		int numComplexityPasses;
-		for (numComplexityPasses = 0; numComplexityPasses < 2; numComplexityPasses++) {
+		for (numComplexityPasses = 0; numComplexityPasses < 25; numComplexityPasses++) {
 			changed = false;
 
 			runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
@@ -838,7 +838,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 			}, multiCore);
 
 			if (changed) {
-				finishSplits(params, false, 0, multiCore);
+				finishSplits(params, false, multiCore);
 			} else {
 				break;
 			}
@@ -853,14 +853,14 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	}
 }
 
-void Volume::finishSplits(const SplittingParams& params, bool doRequired, int splitDelta, bool multiCore)
+void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool multiCore)
 {
 	const bool doQualitySplits = getAppData()->getDoQualitySplits();
 	bool changed = false;
 
 	if (doRequired) {
-		runThreadPool_IJK([this, splitDelta, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			if (pBlk->splitRequiredPolyhedra(params, _splitNum + splitDelta))
+		runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			if (pBlk->splitRequiredPolyhedra(params, _splitNum))
 				changed = true;
 			return true;
 		}, multiCore);
@@ -869,21 +869,12 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, int sp
 	if (doQualitySplits) {
 		for (subPassNum = 0; subPassNum < steps; subPassNum++) {
 			changed = false;
-			runThreadPool_IJK([this, splitDelta, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-				if (pBlk->splitComplexPolyhedra(params, _splitNum + splitDelta))
+			runThreadPool_IJK([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+				if (pBlk->splitComplexPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
 			}, multiCore);
 
-			if (changed) {
-				runThreadPool(MultiCore::getNumCores(), [this, &changed](size_t threadNum, const BlockPtr& pBlk) {
-					if (pBlk->hasPendingSplits()) {
-						changed = true;
-					}
-				}, multiCore);
-			}
-
-			subPassNum++;
 			if (!changed) {
 				break;
 			}
@@ -1133,7 +1124,7 @@ void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
 		}, multiCore);
 
 	if (changed)
-		finishSplits(params, true, 0, multiCore);
+		finishSplits(params, true, multiCore);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

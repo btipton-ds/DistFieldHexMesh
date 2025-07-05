@@ -1032,10 +1032,10 @@ void Block::dumpOpenCells() const
 
 bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum)
 {
-	bool didSplit = false;
 	if (_needToSplit.empty())
 		return false;
 
+	bool hasPendingSplits = false;
 	int i;
 	for (i = 0; i < 25; i++) {
 		auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
@@ -1071,13 +1071,12 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 #endif
 				Splitter3D splitter(this, cellId, splitNum);
 				if (splitter.splitComplex()) {
-					didSplit = true;
 					assert(!polyhedronExists(cellId));
 				}
 			}
 		}
 
-		updateSplitStack(splitNum);
+		hasPendingSplits = updateSplitStack(splitNum) || hasPendingSplits;
 
 		if (_needToSplit.empty())
 			break;
@@ -1087,14 +1086,14 @@ bool Block::splitComplexPolyhedra(const SplittingParams& params, size_t splitNum
 		cout << "Still have pending splits pass: " << i << "\n";
 	}
 
-	return didSplit;
+	return hasPendingSplits;
 }
 
 bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNum)
 {
-	bool didSplit = false;
+	bool hasPendingSplits = false;
 	if (_needToSplit.empty())
-		return didSplit;
+		return hasPendingSplits;
 
 	auto comp = [this, &params](const Index3DId& lhs, const Index3DId& rhs) {
 		// Sort by complexity factor so we split the most complex first
@@ -1120,15 +1119,14 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 		if (polyhedronExists(cellId)) {
 			Splitter3D splitter(this, cellId, splitNum);
 			if (splitter.splitConditional()) {
-				didSplit = true;
 				assert(!polyhedronExists(cellId));
 			}
 		}
 	}
 
-	updateSplitStack(splitNum);
+	hasPendingSplits = updateSplitStack(splitNum) || hasPendingSplits;
 
-	return didSplit;
+	return hasPendingSplits;
 }
 
 bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
@@ -1434,7 +1432,7 @@ void Block::addToSplitStack(const Index3DId& cellId)
 		pOwner->_needToSplit.insert(cellId);
 }
 
-void Block::updateSplitStack(size_t splitNum)
+bool Block::updateSplitStack(size_t splitNum)
 {
 	MTC::set<Index3DId> blockingIds;
 	const auto& params = getSplitParams();
@@ -1455,6 +1453,8 @@ void Block::updateSplitStack(size_t splitNum)
 	}
 
 	_touchedCellIds.clear();
+
+	return !_needToSplit.empty();
 }
 
 bool Block::hasPendingSplits() const
