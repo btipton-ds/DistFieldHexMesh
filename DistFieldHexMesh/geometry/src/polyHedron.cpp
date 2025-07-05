@@ -98,7 +98,6 @@ Polyhedron::Polyhedron(const Polyhedron& src)
 	, _needsSplitAtCentroid(src._needsSplitAtCentroid)
 	, _cachedIsClosed(src._cachedIsClosed)
 	, _layerNum(src._layerNum)
-	, _splitNum(src._splitNum)
 {
 }
 
@@ -322,10 +321,8 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	_canonicalVertices = rhs._canonicalVertices;
 	_layerNum = rhs._layerNum;
 	_needsSplitAtCentroid = rhs._needsSplitAtCentroid;
-	_exists = rhs._exists;
 	_hasSetSearchTree = rhs._hasSetSearchTree;
 	_pPolySearchTree = rhs._pPolySearchTree;
-	_splitNum = rhs._splitNum;
 
 	copyCaches(rhs);
 
@@ -631,7 +628,6 @@ void Polyhedron::write(ostream& out) const
 	out.write((char*)&version, sizeof(version));
 
 	IoUtil::writeObj(out, _faceIds);
-	out.write((char*)&_splitNum, sizeof(_splitNum));
 	IoUtil::writeObj(out, _canonicalVertices);
 
 	_parentId.write(out);
@@ -645,7 +641,6 @@ void Polyhedron::read(istream& in)
 	in.read((char*)&version, sizeof(version));
 
 	IoUtil::readObj(in, _faceIds);
-	in.read((char*)&_splitNum, sizeof(_splitNum));
 	IoUtil::readObj(in, _canonicalVertices);
 
 	_parentId.read(in);
@@ -848,11 +843,6 @@ FastBisectionSet<Index3DId> Polyhedron::getVertFaces(const Index3DId& vertId) co
 	}
 
 	return result;
-}
-
-bool Polyhedron::exists() const
-{
-	return _exists;
 }
 
 size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const

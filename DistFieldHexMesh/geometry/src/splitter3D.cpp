@@ -845,7 +845,6 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
-		createdCell._splitNum = _splitLevel;
 
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)

@@ -106,7 +106,6 @@ public:
 	void calOrientatedPlane(const Index3DId& faceId, const Vector3d& cellCtr, Planed& facePlane) const;
 	bool isClosed() const;
 	bool isOriented() const;
-	bool exists() const;
 	size_t classify(MTC::vector<Vector3d>& corners) const;
 	void classifyEdges(MTC::set<EdgeKey>& convexEdges, MTC::set<EdgeKey>& concaveEdges) const;
 	bool isConvex() const;
@@ -133,8 +132,6 @@ public:
 	bool hasTooManyFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 	Vector3d calSpan() const;
-
-	size_t splitNum() const;
 
 	double calCurvatureHexXYPlane(const SplittingParams& params) const;
 	double calCurvatureHexYZPlane(const SplittingParams& params) const;
@@ -193,10 +190,7 @@ public:
 	bool verifyTopology() const;
 	bool operator < (const Polyhedron& rhs) const;
 
-	inline void setParentId(const Index3DId& id)
-	{
-		_parentId = id;
-	}
+	void setParentId(const Index3DId& id);
 
 	LAMBDA_CLIENT_DECLS
 
@@ -246,11 +240,9 @@ private:
 	MTC::vector<Index3DId> _canonicalVertices; 
 
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
-	size_t _splitNum = 0;
 	int32_t _axisSplitBits = 0;
 
 	bool _needsSplitAtCentroid = false;
-	bool _exists = true;
 
 	mutable bool _needsCurvatureCheck = true;
 
@@ -279,6 +271,11 @@ inline const MTC::vector<Index3DId>& Polyhedron::getCanonicalVertIds() const
 	return _canonicalVertices;
 }
 
+inline void Polyhedron::setParentId(const Index3DId& id)
+{
+	_parentId = id;
+}
+
 inline const FastBisectionSet<Index3DId>& Polyhedron::getFaceIds() const
 {
 	return _faceIds;
@@ -292,11 +289,6 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
-}
-
-inline size_t Polyhedron::splitNum() const
-{
-	return _splitNum;
 }
 
 inline double Polyhedron::calCurvatureHexXYPlane(const SplittingParams& params) const
