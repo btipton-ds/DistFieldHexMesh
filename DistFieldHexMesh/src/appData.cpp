@@ -256,8 +256,10 @@ bool AppData::handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, cons
         cout << "Info for cell " << hitId << "\n";
         cout << "  Layer                  : " << cell.getLayerNum() << "\n";
         cout << "\n";
+        cout << "  splitNum               : " << cell.splitNum() << "\n";
         cout << "  Intersects Model       : " << cell.intersectsModel() << "\n";
         cout << "  isTooComplex           : " << cell.isTooComplex(_params) << "\n";
+        cout << "  isTooNonOrthogoal      : " << cell.isTooNonOrthogoal(_params) << "\n";
         cout << "  hasTooHighCurvature    : " << cell.hasTooHighCurvature(_params) << "\n";
         cout << "  hasTooManyFaces        : " << cell.hasTooManyFaces(_params) << "\n";
         cout << "  hasTooManySplits       : " << cell.hasTooManySplits() << "\n";

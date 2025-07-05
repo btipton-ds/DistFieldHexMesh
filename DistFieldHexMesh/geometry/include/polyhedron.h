@@ -127,11 +127,15 @@ public:
 
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
+	bool isTooNonOrthogoal(const SplittingParams& params) const;
 	bool hasTooManySplits() const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManyFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 	Vector3d calSpan() const;
+
+	size_t splitNum() const;
+
 	double calCurvatureHexXYPlane(const SplittingParams& params) const;
 	double calCurvatureHexYZPlane(const SplittingParams& params) const;
 	double calCurvatureHexZXPlane(const SplittingParams& params) const;
@@ -287,6 +291,11 @@ inline bool Polyhedron::containsFace(const Index3DId& faceId) const
 inline int32_t Polyhedron::getLayerNum() const
 {
 	return _layerNum;
+}
+
+inline size_t Polyhedron::splitNum() const
+{
+	return _splitNum;
 }
 
 inline double Polyhedron::calCurvatureHexXYPlane(const SplittingParams& params) const

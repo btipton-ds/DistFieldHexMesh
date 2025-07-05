@@ -1383,9 +1383,14 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 	if (hasTooManySplits())
 		return true;
 
-	if (maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians)
+	if (isTooNonOrthogoal(params))
 		return true;
 	return false;
+}
+
+bool Polyhedron::isTooNonOrthogoal(const SplittingParams& params) const
+{
+	return maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians;
 }
 
 bool Polyhedron::hasTooManySplits() const
