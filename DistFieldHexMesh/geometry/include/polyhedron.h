@@ -166,8 +166,8 @@ public:
 
 	int32_t getLayerNum() const;
 	void clearLayerNum();
-	void clearSplitNum();
-	bool hasBeenSplit(size_t currentSplitLevel) const;
+	void clearAxisSplitBits();
+	bool hasAvailableAxisSplits() const;
 	void setLayerNum(int32_t val, bool force);
 	void setLayerNumOnNextPass(int32_t val);
 
@@ -247,6 +247,7 @@ private:
 
 	int32_t _layerNum = -1; // -1 is not set yet, -2 is mark for setting on set pass
 	size_t _splitNum = 0;
+	int32_t _axisSplitBits = 0;
 
 	bool _needsSplitAtCentroid = false;
 	bool _exists = true;

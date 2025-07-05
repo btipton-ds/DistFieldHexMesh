@@ -2010,14 +2010,21 @@ void Polyhedron::clearLayerNum()
 	_layerNum = -1;
 }
 
-void Polyhedron::clearSplitNum()
+void Polyhedron::clearAxisSplitBits()
 {
-	_splitNum = 0;
+	_axisSplitBits = 0;
 }
 
-bool Polyhedron::hasBeenSplit(size_t currentSplitLevel) const
+bool Polyhedron::hasAvailableAxisSplits() const
 {
-	return _splitNum >= currentSplitLevel;
+	switch (getCellType()) {
+	case CT_HEX:
+		return _axisSplitBits < 7;
+	default:
+		break;
+	}
+
+	return false;
 }
 
 void Polyhedron::setLayerNum(int32_t val, bool force)

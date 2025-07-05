@@ -1448,7 +1448,7 @@ void Block::updateSplitStack(size_t splitNum)
 				int dbgBreak = 1;
 			}
 #endif
-			if (!cell.hasBeenSplit(splitNum) && cell.isTooComplex(params)) {
+			if (cell.hasAvailableAxisSplits() && cell.isTooComplex(params)) {
 				addToSplitStack(cell.getId());
 			}
 		});

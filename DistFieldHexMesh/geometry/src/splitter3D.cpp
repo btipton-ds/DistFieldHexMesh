@@ -172,13 +172,13 @@ bool Splitter3D::splitComplex()
 #endif
 
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell.hasBeenSplit(_splitLevel))
+		if (!parentCell.hasAvailableAxisSplits())
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
 
 		createHexCellData(parentCell);
-		result = complexityBisectionSplit(_polyhedronId, 0, 3);
+		result = complexityBisectionSplit(_polyhedronId, 3);
 
 		finalizeCreatedCells();
 	}
@@ -203,7 +203,7 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 		auto& parentCell = getPolyhedron(_polyhedronId);
-		if (parentCell.hasBeenSplit(_splitLevel))
+		if (!parentCell.hasAvailableAxisSplits())
 			return false;
 
 		Utils::Timer tmr(Utils::Timer::TT_splitAtPointInner);
@@ -220,7 +220,7 @@ bool Splitter3D::splitConditional()
 		}
 #endif
 
-		result = conditionalBisectionSplit(_polyhedronId, 0, 3);
+		result = conditionalBisectionSplit(_polyhedronId, 3);
 
 		finalizeCreatedCells();
 
@@ -231,38 +231,38 @@ bool Splitter3D::splitConditional()
 	return result;
 }
 
-bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::conditionalBisectionSplit(const Index3DId& parentId, int splitLevel)
 {
 	auto& parentCell = getPolyhedron(parentId);
 	auto cellType = parentCell.getCellType();
 	if (cellType == CT_HEX)
-		return conditionalBisectionHexSplit(parentId, testedAxisBits, splitLevel);
+		return conditionalBisectionHexSplit(parentId, splitLevel);
 	else if (cellType == CT_WEDGE)
-		return conditionalBisectionWedgeSplit(parentId, testedAxisBits, splitLevel);
+		return conditionalBisectionWedgeSplit(parentId, splitLevel);
 
 	return false;
 }
 
-bool Splitter3D::complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::complexityBisectionSplit(const Index3DId& parentId, int splitLevel)
 {
 	auto& parentCell = getPolyhedron(parentId);
 	auto cellType = parentCell.getCellType();
 	if (cellType == CT_HEX)
-		return complexityBisectionHexSplit(parentId, testedAxisBits, splitLevel);
+		return complexityBisectionHexSplit(parentId, splitLevel);
 	else if (cellType == CT_WEDGE)
-		return complexityBisectionWedgeSplit(parentId, testedAxisBits, splitLevel);
+		return complexityBisectionWedgeSplit(parentId, splitLevel);
 
 	return false;
 }
 
-bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int splitLevel)
 {
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
 		int dbgBreak = 1;
 	}
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId, testedAxisBits);
+	HexSplitType splitType = determineBestConditionalHexSplitAxis(parentId);
 
 	if (splitType != HST_NO_SPLIT) {
 		int splitAxis = 0;
@@ -311,17 +311,14 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 
 		}
 
-		int axisBit = 1 << splitAxis;
-		testedAxisBits |= axisBit;
-
 		if (splitLevel == 3) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionSplit(cellId, testedAxisBits, 2);
+				conditionalBisectionSplit(cellId, 2);
 			}
 		}
 		else if (splitLevel == 2) {
 			for (const auto& cellId : newCellIds) {
-				conditionalBisectionSplit(cellId, testedAxisBits, 1);
+				conditionalBisectionSplit(cellId, 1);
 			}
 		}
 		wasSplit = true;
@@ -330,7 +327,7 @@ bool Splitter3D::conditionalBisectionHexSplit(const Index3DId& parentId, int tes
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits)
+Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const Index3DId& parentId)
 {
 #if 0 && defined(_DEBUG)
 	if (_polyhedronId == Index3DId(3, 0, 4, 5) || parentId == Index3DId(3, 0, 4, 5)) {
@@ -355,7 +352,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 	// If there're no splits with 1 intersecting subCell AND a curvature split is needed, use the first axis which had a curvature split
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
-		if ((testedAxisBits & axisBit) == axisBit)
+		if ((parentCell._axisSplitBits & axisBit) == axisBit)
 			continue;
 
 		if (cellSpan[axis] < 2 * _params.minEdgeLength) {
@@ -448,23 +445,23 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 	return HST_NO_SPLIT;
 }
 
-bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::conditionalBisectionWedgeSplit(const Index3DId& parentId, int splitLevel)
 {
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits)
+Splitter3D::WedgeSplitType Splitter3D::determineBestConditionalWedgeSplitAxis(const Index3DId& parentId)
 {
 	return WST_NO_SPLIT;
 }
 
-bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int splitLevel)
 {
 	if (!getBlockPtr()->doQualitySplits())
 		return false;
 
 	bool wasSplit = false;
-	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId, testedAxisBits);
+	HexSplitType splitType = determineBestComplexityHexSplitAxis(parentId);
 
 	if (splitType != HST_NO_SPLIT) {
 		MTC::vector<Index3DId> newCellIds;
@@ -484,16 +481,13 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 			break;
 		}
 
-		int axisBit = 1 << splitAxis;
-		testedAxisBits |= axisBit;
-
 		if (splitLevel == 3) {
 			for (const auto& cellId : newCellIds) {
-				complexityBisectionSplit(cellId, testedAxisBits, 2);
+				complexityBisectionSplit(cellId, 2);
 			}
 		} else if (splitLevel == 2) {
 			for (const auto& cellId : newCellIds) {
-				complexityBisectionSplit(cellId, testedAxisBits, 1);
+				complexityBisectionSplit(cellId, 1);
 			}
 		}
 
@@ -503,7 +497,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int test
 	return wasSplit;
 }
 
-Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits)
+Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const Index3DId& parentId)
 {
 	if (!getBlockPtr()->doQualitySplits())
 		return HST_NO_SPLIT;
@@ -520,7 +514,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 
 	for (int axis = 0; axis < 3; axis++) {
 		int axisBit = 1 << axis;
-		if ((testedAxisBits & axisBit) == axisBit)
+		if ((parentCell._axisSplitBits & axisBit) == axisBit)
 			continue;
 
 		auto scratchCellId = makeScratchCell(parentId);
@@ -590,12 +584,12 @@ bool Splitter3D::planeFromPoints(const std::vector<Vector3d>& pts, Planed& pl)
 	return true;
 }
 
-bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel)
+bool Splitter3D::complexityBisectionWedgeSplit(const Index3DId& parentId, int splitLevel)
 {
 	return false;
 }
 
-Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits)
+Splitter3D::WedgeSplitType Splitter3D::determineBestComplexityWedgeSplitAxis(const Index3DId& parentId)
 {
 	return WST_NO_SPLIT;
 }
@@ -604,6 +598,8 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 {
 	auto pBlk = getBlockPtr();
 	auto& parentCell = getPolyhedron(parentId);
+	int32_t parentSplitBits = parentCell._axisSplitBits;
+	int32_t axisBit = 1 << splitAxis;
 
 	MTC::vector<MTC::vector<Vector3d>> subCellsPts;
 	MTC::vector<Vector3d> splittingFacePts;
@@ -662,6 +658,7 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 		Polyhedron tmp(newCellFaceIds, subCellVerts);
 		auto newCellId = pBlk->addCell(tmp, parentId);
 		auto& newCell = getPolyhedron(newCellId);
+		newCell._axisSplitBits = parentSplitBits | axisBit;
 
 		newCellIds.push_back(newCellId);
 		_createdCellIds.insert(newCellId);

@@ -98,20 +98,20 @@ private:
 	const Vector3d& getVertexPoint(const  Index3DId& id) const;
 	void createHexCellData(const Polyhedron& parentCell);
 
-	bool conditionalBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
-	bool complexityBisectionSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
+	bool conditionalBisectionSplit(const Index3DId& parentId, int splitLevel);
+	bool complexityBisectionSplit(const Index3DId& parentId, int splitLevel);
 
-	bool conditionalBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
-	HexSplitType determineBestConditionalHexSplitAxis(const Index3DId& parentId, int testedAxisBits);
+	bool conditionalBisectionHexSplit(const Index3DId& parentId, int splitLevel);
+	HexSplitType determineBestConditionalHexSplitAxis(const Index3DId& parentId);
 
-	bool conditionalBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
-	WedgeSplitType determineBestConditionalWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits);
+	bool conditionalBisectionWedgeSplit(const Index3DId& parentId, int splitLevel);
+	WedgeSplitType determineBestConditionalWedgeSplitAxis(const Index3DId& parentId);
 
-	bool complexityBisectionHexSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
-	HexSplitType determineBestComplexityHexSplitAxis(const Index3DId& parentId, int testedAxisBits);
+	bool complexityBisectionHexSplit(const Index3DId& parentId, int splitLevel);
+	HexSplitType determineBestComplexityHexSplitAxis(const Index3DId& parentId);
 
-	bool complexityBisectionWedgeSplit(const Index3DId& parentId, int testedAxisBits, int splitLevel);
-	WedgeSplitType determineBestComplexityWedgeSplitAxis(const Index3DId& parentId, int testedAxisBits);
+	bool complexityBisectionWedgeSplit(const Index3DId& parentId, int splitLevel);
+	WedgeSplitType determineBestComplexityWedgeSplitAxis(const Index3DId& parentId);
 
 	void bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, MTC::vector<Index3DId>& newCellIds);
 	void bisectHexCellToWedges(const Index3DId& parentId, int splitAxis, SplitParity parity, MTC::vector<Index3DId>& newCellIds);
