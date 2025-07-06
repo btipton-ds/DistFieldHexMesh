@@ -476,6 +476,32 @@ void Polygon::findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Inde
 	}
 }
 
+void Polygon::findConcaveVertIdsStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds)
+{
+	Vector3d zAxis;
+	if (!calUnitNormalStat(pPolyMesh, vertIds, zAxis)) {
+		cVertIds.insert(vertIds.begin(), vertIds.end());
+		return;
+	}
+
+	for (size_t i = 0; i < vertIds.size(); i++) {
+		size_t j = (i + 1) % vertIds.size();
+		size_t k = (j + 1) % vertIds.size();
+
+		auto pt0 = pPolyMesh->getVertexPoint(vertIds[i]);
+		auto pt1 = pPolyMesh->getVertexPoint(vertIds[j]);
+		auto pt2 = pPolyMesh->getVertexPoint(vertIds[k]);
+
+		Vector3d v0 = pt0 - pt1;
+		Vector3d v1 = pt2 - pt1;
+		Vector3d vN = v1.cross(v0);
+		if (vN.dot(zAxis) < 0) {
+			// Concave vertex
+			cVertIds.insert(vertIds[j]);
+		}
+	}
+}
+
 bool Polygon::calUnitNormalStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& norm)
 {
 	norm = Vector3d(0, 0, 0);
@@ -1016,16 +1042,23 @@ bool Polygon::intersect(const Rayd& ray, RayHitd& hit) const
 
 bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 {
-	auto& vertIds = getNonColinearVertexIds();
-	Vector3d pt0 = getVertexPoint(vertIds[0]);
-	for (size_t i = 1; i < vertIds.size() - 1; i++) {
-		size_t j = (i + 1);
-		Vector3d pt1 = getVertexPoint(vertIds[i]);
-		Vector3d pt2 = getVertexPoint(vertIds[j]);
-		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
-			return true;
+	if (isConvex() == Convexity::IS_CONVEX) {
+		auto& pl = calPlane();
+		if (pl.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+			if (isPointInsideInner(hit.hitPt, pl.getNormal()))
+				return true;
+		}
+	} else {
+		auto& vertIds = getNonColinearVertexIds();
+		Vector3d pt0 = getVertexPoint(vertIds[0]);
+		for (size_t i = 1; i < vertIds.size() - 1; i++) {
+			size_t j = (i + 1);
+			Vector3d pt1 = getVertexPoint(vertIds[i]);
+			Vector3d pt2 = getVertexPoint(vertIds[j]);
+			if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
+				return true;
+		}
 	}
-
 	return false;
 }
 

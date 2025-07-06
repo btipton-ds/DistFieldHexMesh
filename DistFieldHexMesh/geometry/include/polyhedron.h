@@ -173,6 +173,9 @@ public:
 
 	MTC::vector<Index3DId> getParents() const;
 
+	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
+	const Model& getModel() const;
+
 	void makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 	void makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
@@ -202,9 +205,6 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polyhedron& face);
 	friend class Splitter3D;
 	friend class AppData;
-
-	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
-	const Model& getModel() const;
 
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;

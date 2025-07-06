@@ -78,6 +78,7 @@ public:
 	size_t numBytes() const;
 
 	const MeshDataPtr& getMeshData(size_t index) const;
+	bool isClosed(const PolyMeshIndex& id) const;
 
 	std::vector<MeshDataPtr>::iterator begin();
 	std::vector<MeshDataPtr>::iterator end();

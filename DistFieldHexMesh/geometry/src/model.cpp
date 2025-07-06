@@ -101,6 +101,11 @@ void Model::rebuildSearchTree()
 	}
 }
 
+bool Model::isClosed(const PolyMeshIndex& id) const
+{
+	return _modelMeshData[id.getMeshIdx()]->isClosed();
+}
+
 bool Model::isPointInside(const Vector3d& pt) const
 {
 	if (_pPolyMeshSearchTree) {

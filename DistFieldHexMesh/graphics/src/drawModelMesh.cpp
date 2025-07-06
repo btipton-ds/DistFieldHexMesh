@@ -127,7 +127,7 @@ void DrawModelMesh::changeViewElements(const Model& meshData)
     for (auto& pData : meshData) {
 
         if (_options.showFaces) {
-            if (pData->isSolid())
+            if (pData->isClosed())
                 faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, pData->getFaceTess());
             else
                 faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, pData->getFaceTess());

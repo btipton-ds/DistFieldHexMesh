@@ -106,7 +106,7 @@ size_t MeshData::numBytes() const
 	return result;
 }
 
-bool MeshData::isSolid() const
+bool MeshData::isClosed() const
 {
 	if (_pPolyMesh)
 		return _pPolyMesh->isClosed();

@@ -101,6 +101,7 @@ public:
 	
 	static void calCoordSysStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, Vector3d& origin, Vector3d& xAxis, Vector3d& yAxis, Vector3d& zAxis);
 	static void findConcaveVertIdsStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
+	static void findConcaveVertIdsStat(const PolyMesh* pPolyMesh, const MTC::vector<Index3DId>& vertIds, MTC::set<Index3DId>& cVertIds);
 
 	static void dumpPolygonPoints(const Block* pBlock, std::ostream& out, const MTC::vector<Index3DId>& vertIds);
 	static void dumpPolygonPoints(std::ostream& out, const MTC::vector<Vector3d>& pts);
@@ -279,7 +280,11 @@ inline Polygon::Convexity Polygon::isConvex() const
 {
 	if (_isConvex == CONVEXITY_UNKNOWN) {
 		MTC::set<Index3DId> tmp;
-		findConcaveVertIdsStat(getBlockPtr(), _vertexIds, tmp);
+		auto pBlk = getBlockPtr();
+		if (pBlk)
+			findConcaveVertIdsStat(pBlk, _vertexIds, tmp);
+		else
+			findConcaveVertIdsStat(getPolyMeshPtr(), _vertexIds, tmp);
 		_isConvex = tmp.empty() ? IS_CONVEX : IS_CONCAVE;
 	}
 	return _isConvex;
