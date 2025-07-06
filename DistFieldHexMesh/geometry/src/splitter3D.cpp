@@ -1225,6 +1225,20 @@ void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 	_hasSetSearchTree = true;
 }
 
+bool Splitter3D::splitWithModel()
+{
+	auto& parentCell = getPolyhedron(_polyhedronId);
+	if (!parentCell.intersectsModel())
+		return false;
+
+	MTC::vector<Vector3d> facePts;
+	if (parentCell.createSplittingFacePoints(facePts)) {
+
+	}
+
+	return false;
+}
+
 inline Index3DId Splitter3D::vertId(const Vector3d& pt)
 {
 	return _pBlock->getVertexIdOfPoint(pt);

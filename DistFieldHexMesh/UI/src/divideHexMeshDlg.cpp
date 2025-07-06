@@ -54,6 +54,7 @@ namespace
 		NUM_INTERSECTION_DIVS_ID,
 		NUM_CURVATURE_DIVS_ID,
 		NUM_DIVS_PER_RADIUS_ID,
+		MAKE_SPLIT_FACES_ID,
 	};
 }
 
@@ -103,6 +104,10 @@ DivideHexMeshDlg::DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wx
 
 	_divsPerCurvaturePrompt = new wxStaticText(this, 0, _T("curv divs / circ"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
 	_divsPerCurvatureBox = new wxTextCtrl(this, NUM_DIVS_PER_RADIUS_ID, std::to_string(params.curvatureDivsPerCircumference), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	rowNum++;
+
+	_makeSplitFaces = new wxCheckBox(this, MAKE_SPLIT_FACES_ID, _T("Create Split Faces"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
+	_makeSplitFaces->SetValue(params.makeSplitFaces);
 	rowNum++;
 
 	_maxGapSizePrompt = new wxStaticText(this, 0, _T("Max gap size"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -161,4 +166,6 @@ void DivideHexMeshDlg::getParams(SplittingParams& params) const
 	getValue(_maxGapSizeBox, params.maxGapSize);
 	getValue(_sharpAngleBox, params.sharpAngle_degrees);
 	getValue(_minEdgeLengthBox, params.minEdgeLength);
+
+	params.makeSplitFaces = _makeSplitFaces->IsChecked();
 }

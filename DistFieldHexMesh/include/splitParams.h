@@ -48,6 +48,7 @@ struct SplittingParams {
 	bool symXAxis = false;
 	bool symYAxis = true;
 	bool symZAxis = false;
+	bool makeSplitFaces = false;
 
 	int numFlattenPasses = 3;
 	size_t numSimpleDivs = 0;

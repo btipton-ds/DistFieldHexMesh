@@ -59,6 +59,7 @@ public:
 
 	bool splitComplex();
 	bool splitConditional();
+	bool splitWithModel();
 
 private:
 	enum HexSplitType {

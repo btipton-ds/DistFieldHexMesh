@@ -63,6 +63,8 @@ namespace DFHM {
 			* _sharpAnglePrompt = nullptr,
 			* _minEdgeLengthPrompt = nullptr;
 
+		wxCheckBox* _makeSplitFaces = nullptr;
+
 		wxTextCtrl
 			* _numSimpleDivsBox = nullptr,
 			* _numIntersectionDivsBox = nullptr,

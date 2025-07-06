@@ -200,10 +200,11 @@ private:
 	Planed calSectionPlane(int axis, const Vector3d& origin, const Vector3d& sectionAxis, double t) const;
 	bool getSection(const Planed& searchPlane, Splitter2DPtr& pSection) const;
 
-	void cutWithTriMesh(const SplittingParams& params, bool multiCore);
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
-	void finishSplits(const SplittingParams& params, bool doRequired, bool multiCore);
+	void finishSplits(const SplittingParams& params, bool doRequired);
+	void doQualitySplits(const SplittingParams& params);
+	void splitWithModel(const SplittingParams& params);
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 

@@ -767,7 +767,7 @@ void Volume::divideSimple(const SplittingParams& params, ProgressReporter* pRepo
 			return true;
 		}, multiCore);
 
-		finishSplits(params, true, multiCore);
+		finishSplits(params, true);
 		pReporter->reportProgress();
 	}
 }
@@ -816,7 +816,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		if (changed) {
-			finishSplits(params, true, multiCore);
+			finishSplits(params, true);
 			//		assert(verifyTopology(multiCore));
 		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
@@ -825,6 +825,13 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		pReporter->reportProgress();
 	}
 
+	doQualitySplits(params);
+
+	splitWithModel(params);
+}
+
+void Volume::doQualitySplits(const SplittingParams& params)
+{
 	if (_pAppData->getDoQualitySplits()) {
 		bool isTooComplex = false;
 		do {
@@ -836,29 +843,29 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 					}
 					return !isTooComplex;
 				});
-			}, multiCore);
+			}, RUN_MULTI_THREAD);
 
 			if (isTooComplex) {
-				runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
+				bool changed = false;
+				runThreadPool([this, &params, &changed](size_t threadNum, const BlockPtr& pBlk) {
 					pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
 						cell.clearAxisSplitBits();
 
 						if (cell.isTooComplex(params))
 							cell.setNeedsDivideAtCentroid();
 						return true;
-					});
-				}, multiCore);
+						});
+					}, RUN_MULTI_THREAD);
 
-				finishSplits(params, true, multiCore);
+				finishSplits(params, true);
 				_splitNum++;
 			}
 		} while (isTooComplex);
-
-		cout << "Number of splits done: " << _splitNum << ", num requested: " << numPasses << "\n";
 	}
+
 }
 
-void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool multiCore)
+void Volume::finishSplits(const SplittingParams& params, bool doRequired)
 {
 	const bool doQualitySplits = getAppData()->getDoQualitySplits();
 	bool changed = false;
@@ -868,7 +875,7 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			if (pBlk->splitRequiredPolyhedra(params, _splitNum))
 				changed = true;
 			return true;
-		}, multiCore);
+		}, RUN_MULTI_THREAD);
 	}
 	size_t subPassNum, steps = 50;
 	if (doQualitySplits) {
@@ -878,7 +885,7 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 				if (pBlk->splitComplexPolyhedra(params, _splitNum))
 					changed = true;
 				return true;
-			}, multiCore);
+			}, RUN_MULTI_THREAD);
 
 			if (!changed) {
 				break;
@@ -892,6 +899,23 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired, bool m
 			cout << "finishSplits complete. subPassNum: " << subPassNum << "\n";
 		}
 	}
+}
+
+void Volume::splitWithModel(const SplittingParams& params)
+{
+	if (!params.makeSplitFaces)
+		return;
+
+	runThreadPool_IJK([this, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
+		pBlk->iteratePolyhedraInOrder([this, &pBlk, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
+			size_t sl = -1;
+			Splitter3D sp(pBlk.get(), cellId, sl);
+			sp.splitWithModel();
+
+			return true;
+		});
+		return true;
+	}, RUN_MULTI_THREAD);
 }
 
 bool Volume::hasCrossSections() const
@@ -1098,40 +1122,6 @@ bool Volume::getSection(const Planed& searchPlane, Splitter2DPtr& result) const
 	}
 
 	return false;
-}
-
-void Volume::cutWithTriMesh(const SplittingParams& params, bool multiCore)
-{
-	bool changed = false;
-	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder([&pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
-			if (cell.containsSharps()) {
-				if (cell.setNeedsCleanFaces())
-					changed = true;
-			}
-			return true;
-		});
-		return true;
-	}, multiCore);
-
-	changed = false;
-	runThreadPool_IJK([this, &changed, &params](size_t threadNum, const BlockPtr& pBlk)->bool {
-		pBlk->iteratePolyhedraInOrder([this, &pBlk, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
-			vector<Index3DId> localTouched;
-			if (cell.intersectsModel()) {
-#if 0
-				Splitter3D ps(pBlk.get(), cellId, localTouched);
-				if (ps.cutWithModelMesh(params))
-					changed = true;
-#endif
-			}
-			return true;
-		});
-		return true;
-	}, multiCore);
-
-	if (changed)
-		finishSplits(params, true, multiCore);
 }
 
 void Volume::dumpOpenCells(bool multiCore) const

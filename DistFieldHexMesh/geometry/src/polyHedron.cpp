@@ -622,6 +622,80 @@ void Polyhedron::makeHexCellWedgeFacePoints(int axis, SplitParity parity, MTC::v
 	}
 }
 
+namespace
+{
+	struct IntersectionRec {
+		double t;
+		Vector3d norm;
+		inline bool operator < (const IntersectionRec& rhs) const
+		{
+			if (t < rhs.t)
+				return true;
+			else if (rhs.t < t)
+				return false;
+
+			return norm < rhs.norm;
+		}
+	};
+}
+bool Polyhedron::createSplittingFacePoints(MTC::vector<Vector3d>& pts) const
+{
+	auto pTree = getPolySearchTree();
+	if (!pTree)
+		return false;
+
+#if 1
+
+#else
+	auto& model = getModel();
+	const auto& bbox = getBoundingBox();
+	MTC::set<EdgeKey> edgeKeys;
+	getCanonicalHexEdgeKeys(edgeKeys);
+
+	map<EdgeKey, set<IntersectionRec>> edgeToPointMap;
+	for (const auto& ek : edgeKeys) {
+		edgeFunc(ek, [this, &model, &bbox, &pTree, &edgeToPointMap](const Edge& edge) {
+			auto seg = edge.getSegment();
+
+			pTree->traverse(bbox, [this, &model, &edge, &seg, &edgeToPointMap](const PolyMeshIndex& polyIdx)->bool {
+				const auto pFace = model.getPolygon(polyIdx);
+				RayHitd hp;
+				if (pFace && pFace->intersect(seg, hp)) {
+					auto curId = getBlockPtr()->findVertexIdOfPoint(hp.hitPt);
+					if (!curId.isValid()) {
+						EdgeKey ek = edge;
+						auto iter = edgeToPointMap.find(ek);
+						if (iter == edgeToPointMap.end())
+							iter = edgeToPointMap.insert(make_pair(ek, set<IntersectionRec>())).first;
+
+						IntersectionRec ir;
+						ir.t = seg.parameterize(hp.hitPt);
+						ir.norm = pFace->calUnitNormal();
+						iter->second.insert(ir);
+					}
+				}
+				return true;
+			});
+		});
+	}
+
+	{
+		static mutex mut;
+		lock_guard lg(mut);
+		cout << "Cell(" << getId() << ")\n";
+		for (const auto& pair : edgeToPointMap) {
+			cout << "  Edge(" << pair.first[0] << ", " << pair.first[1] << ")\n";
+			const auto& irs = pair.second;
+			for (const auto& ir : irs) {
+				cout << "    t: " << ir.t << ", n: (" << ir.norm << ")\n";
+			}
+		}
+		cout << "\n";
+	}
+#endif
+	return false;
+}
+
 void Polyhedron::write(ostream& out) const
 {
 	uint8_t version = 0;

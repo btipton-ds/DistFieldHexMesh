@@ -182,6 +182,8 @@ public:
 	void makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
 	void makeHexCellWedgeFacePoints(int axis, SplitParity parity, MTC::vector<Vector3d>& facePts) const;
 
+	bool createSplittingFacePoints(MTC::vector<Vector3d>& pts) const;
+
 	void write(std::ostream& out) const;
 	void read(std::istream& in);
 
