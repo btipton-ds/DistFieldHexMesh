@@ -108,7 +108,7 @@ void PolymeshTables::createMaps()
 	for (size_t i = 0; i < _pVol->_blocks.size(); i++) {
 		const shared_ptr<const Block>& pBlk = _pVol->_blocks[i];
 		if (pBlk) {
-			pBlk->_polyhedra.iterateInOrder([this, &pBlk](const Index3DId& id, const Polyhedron& cell) {
+			pBlk->_polyhedra.iterateInOrder([this, &pBlk](const Index3DId& id, const Polyhedron& cell)->bool {
 				int32_t cIdx = (int32_t)cellIdxIdMap.size();
 				cellIdxIdMap.push_back(id);
 				cellIdIdxMap.insert(make_pair(id, cIdx));
@@ -136,6 +136,7 @@ void PolymeshTables::createMaps()
 						}
 					}
 				}
+				return true;
 			});
 		}
 	}
@@ -148,7 +149,7 @@ void PolymeshTables::createSortPolygons()
 
 	for (auto pBlk : _pVol->_blocks) {
 		if (pBlk) {
-			pBlk->_polygons.iterateInOrder([this, &planes](const Index3DId& id, const Polygon& face) {
+			pBlk->_polygons.iterateInOrder([this, &planes](const Index3DId& id, const Polygon& face)->bool {
 				const auto& cellIds = face.getCellIds();
 				SearchRec r;
 				r.faceIdx = faceIdIdxMap[id];
@@ -166,7 +167,9 @@ void PolymeshTables::createSortPolygons()
 				}
 
 				faceIdToSearchRecMap.insert(id, r);
-				});
+
+				return true;
+			});
 		}
 	}
 

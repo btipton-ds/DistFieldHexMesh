@@ -764,7 +764,8 @@ void ObjectPool<T>::iterateInOrder(F fLambda) const
 		}
 	}
 	for (auto pObj : objsToProcess) {
-		fLambda(pObj->getId(), *pObj);
+		if (!fLambda(pObj->getId(), *pObj))
+			break;
 	}
 }
 
@@ -786,7 +787,8 @@ void ObjectPool<T>::iterateInOrder(F fLambda)
 		}
 	}
 	for (auto pObj : objsToProcess) {
-		fLambda(pObj->getId(), *pObj);
+		if (!fLambda(pObj->getId(), *pObj))
+			break;
 	}
 }
 
@@ -834,14 +836,16 @@ void ObjectPool<T>::write(std::ostream& out) const
 	out.write((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
 
 	size_t numObjs = 0;
-	iterateInOrder([&numObjs](const Index3DId& id, const T& obj) {
+	iterateInOrder([&numObjs](const Index3DId& id, const T& obj)->bool {
 		numObjs++;
+		return true;
 	});
 	out.write((char*)&numObjs, sizeof(numObjs));
 
-	iterateInOrder([&out](const Index3DId& id, const T& obj) {
+	iterateInOrder([&out](const Index3DId& id, const T& obj)->bool {
 		id.write(out);
 		obj.write(out);
+		return true;
 	});
 }
 
@@ -851,8 +855,9 @@ void ObjectPool<T>::setSupportsReverseLookup(bool val)
 	_supportsReverseLookup = val;
 	_objToElementIndexMap.clear();
 	if (_supportsReverseLookup) {
-		iterateInOrder([this](const Index3DId& id, T& obj) {
+		iterateInOrder([this](const Index3DId& id, T& obj)->bool {
 			addToLookup(obj);
+			return true;
 		});
 	}
 }

@@ -211,16 +211,19 @@ void Block::remapBlockIndices(const std::vector<size_t>& idRemap, const Index3D&
 	}
 
 
-	_vertices.iterateInOrder([&idRemap, &srcDims](const Index3DId& id, Vertex& vert) {
+	_vertices.iterateInOrder([&idRemap, &srcDims](const Index3DId& id, Vertex& vert)->bool {
 		vert.remapId(idRemap, srcDims);
+		return true;
 	});
 
-	_polygons.iterateInOrder([&idRemap, &srcDims](const Index3DId& faceId, Polygon& face) {
+	_polygons.iterateInOrder([&idRemap, &srcDims](const Index3DId& faceId, Polygon& face)->bool {
 		face.remapId(idRemap, srcDims);
+		return true;
 	});
 
-	_polyhedra.iterateInOrder([&idRemap, &srcDims](const Index3DId& cellId, Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&idRemap, &srcDims](const Index3DId& cellId, Polyhedron& cell)->bool {
 		cell.remapId(idRemap, srcDims);
+		return true;
 	});
 }
 
@@ -331,9 +334,10 @@ Index3DId Block::findVertexIdOfPoint(const Vector3d& point) const
 size_t Block::numFaces(bool includeInner) const
 {
 	size_t result = 0;
-	_polygons.iterateInOrder([&result, includeInner](const Index3DId& id, const Polygon& face) {
+	_polygons.iterateInOrder([&result, includeInner](const Index3DId& id, const Polygon& face)->bool {
 		if (includeInner || face.isBlockBoundary())
 			result++;
+		return true;
 	});
 	return result;
 }
@@ -373,32 +377,35 @@ bool Block::intersectsModel() const
 bool Block::verifyTopology() const
 {
 	bool result = true;
-	_vertices.iterateInOrder([this, &result](const Index3DId& id, const Vertex& vert) {
+	_vertices.iterateInOrder([this, &result](const Index3DId& id, const Vertex& vert)->bool {
 		if (vert.getId() != id)
 			result = false;
 		if (_vertices.findId(vert) != id)
 			result = false;
 		if (!vert.verifyTopology())
 			result = false;
+		return true;
 	});
 
-	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face) {
+	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
 		if (face.getId() != id)
 			result = false;
 		if (_polygons.findId(face) != id)
 			result = false;
 		if (!face.verifyTopology())
 			result = false;
+		return true;
 	});
 
 	MTC::vector<Index3DId> badCellIds;
-	_polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&result, &badCellIds](const Index3DId& id, const Polyhedron& cell)->bool {
 		if (cell.getId() != id)
 			result = false;
 		if (!cell.verifyTopology()) {
 			badCellIds.push_back(id);
 			result = false;
 		}
+		return true;
 	});
 
 	if (!badCellIds.empty()) {
@@ -838,8 +845,9 @@ bool Block::write(ostream& out) const
 void Block::setSupportsReverseLookup(bool val)
 {
 	if (val) {
-		_polygons.iterateInOrder([](const Index3DId& id, Polygon& face) {
+		_polygons.iterateInOrder([](const Index3DId& id, Polygon& face)->bool {
 			face.updateObjectKey();
+			return true;
 		});
 	}
 	_polygons.setSupportsReverseLookup(val);
@@ -1013,7 +1021,7 @@ void Block::dumpEdgeObj(std::string& fileName, const MTC::set<EdgeKey>& edges) c
 void Block::dumpOpenCells() const
 {
 #if DUMP_OPEN_CELL_OBJS
-	_polyhedra.iterateInOrder([this](const Index3DId& id, const Polyhedron& cell) {
+	_polyhedra.iterateInOrder([this](const Index3DId& id, const Polyhedron& cell)->bool {
 		if (!cell.isClosed()) {
 			string path;
 			if (filesystem::exists("D:/DarkSky/Projects")) {
@@ -1026,6 +1034,7 @@ void Block::dumpOpenCells() const
 			ss << path << "cell_" << getLoggerNumericCode() << "_" << cell.getId().elementId() << ".obj";
 			_pVol->writeObj(ss.str(), { cell.getId() }, false, false, false);
 		}
+		return true;
 	});
 #endif
 }
@@ -1317,10 +1326,11 @@ void Block::createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& p
 	if (!glPolys)
 		glPolys = make_shared<GlHexFaces>();
 	const auto& polys = _polygons;
-	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face) {
+	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face)->bool {
 		if (includeFaceInDrawKey(meshType, planes, face)) {
 			glPolys->addFace(*this, face);
 		}
+		return true;
 	});
 }
 
@@ -1339,9 +1349,10 @@ bool Block::polygonExists(const Index3DId& id) const
 bool Block::allCellsClosed() const
 {
 	bool result = true;
-	_polyhedra.iterateInOrder([this, &result](const Index3DId& id, const Polyhedron& cell) {
+	_polyhedra.iterateInOrder([this, &result](const Index3DId& id, const Polyhedron& cell)->bool {
 		if (!cell.isClosed())
 			result = false;
+		return true;
 	});
 
 	return result;
@@ -1464,14 +1475,15 @@ bool Block::hasPendingSplits() const
 
 void Block::resetLayerNums()
 {
-	_polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell) {
+	_polyhedra.iterateInOrder([](const Index3DId& cellId, Polyhedron& cell)->bool {
 		cell.clearLayerNum();
+		return true;
 	});
 }
 
 void Block::markIncrementLayerNums(int i)
 {
-	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
+	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell)->bool {
 		if (cell.getLayerNum() == i) {
 			const auto& adjIds = cell.getAdjacentCells();
 			for (const auto& adjId : adjIds) {
@@ -1498,13 +1510,15 @@ void Block::markIncrementLayerNums(int i)
 				});
 			}
 		}
+		return true;
 	});
 }
 
 void Block::setIncrementLayerNums(int i)
 {
-	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell) {
+	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell)->bool {
 		cell.setLayerNum(i + 1, false);
+		return true;
 	});
 }
 
@@ -1549,10 +1563,11 @@ bool Block::isPolygonInUse(const Index3DId& faceId) const
 {
 	bool result = false;
 
-	_polyhedra.iterateInOrder([&result, &faceId](const Index3DId& cellId, const Polyhedron& cell) {
+	_polyhedra.iterateInOrder([&result, &faceId](const Index3DId& cellId, const Polyhedron& cell)->bool {
 		if (cell.containsFace(faceId)) {
 			result = true;
 		}
+		return true;
 	});
 
 	return result;
@@ -1562,10 +1577,11 @@ bool Block::isPolyhedronInUse(const Index3DId& cellId) const
 {
 	bool result = false;
 
-	_polygons.iterateInOrder([&result, &cellId](const Index3DId& faceId, const Polygon& face) {
+	_polygons.iterateInOrder([&result, &cellId](const Index3DId& faceId, const Polygon& face)->bool {
 		if (face.usedByCell(cellId)) {
 			result = true;
 		}
+		return true;
 	});
 
 	return result;

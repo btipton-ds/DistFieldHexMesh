@@ -122,7 +122,7 @@ void PolyMesh::initClosed()
 		_isClosed = IS_TRUE;
 
 		map<EdgeKey, int> edgeMap;
-		_polygons.iterateInOrder([&edgeMap](const Index3DId& faceId, const Polygon& face) {
+		_polygons.iterateInOrder([&edgeMap](const Index3DId& faceId, const Polygon& face)->bool {
 			face.iterateEdgeKeys([&edgeMap](const EdgeKey& ek)->bool {
 				auto iter = edgeMap.find(ek);
 				if (iter == edgeMap.end()) {
@@ -130,8 +130,9 @@ void PolyMesh::initClosed()
 				}
 				iter->second++;
 				return true;
-				});
 			});
+			return true;
+		});
 
 		size_t numOpen = 0;
 		for (const auto& pair : edgeMap) {
@@ -147,12 +148,14 @@ void PolyMesh::initClosed()
 const CBoundingBox3Dd& PolyMesh::getBBox() const
 {
 	if (_bbox.empty()) {
-		_polygons.iterateInOrder([this](const Index3DId& faceId, const Polygon& face) {
+		_polygons.iterateInOrder([this](const Index3DId& faceId, const Polygon& face)->bool {
 			const auto& vertIds = face.getVertexIds();
 			for (const auto& id : vertIds) {
 				const auto& pt = face.getVertexPoint(id);
 				_bbox.merge(pt);
 			}
+
+			return true;
 		});
 	}
 

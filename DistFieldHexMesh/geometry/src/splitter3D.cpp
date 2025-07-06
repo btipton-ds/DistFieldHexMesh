@@ -337,8 +337,14 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 	const auto& parentCell = getPolyhedron(parentId);
 	assert(parentCell.getCellType() == CT_HEX);
 
-	if (!parentCell.intersectsModel())
+
+	if (parentCell.isTooComplex(_params))
+		return determineBestComplexityHexSplitAxis(parentId);
+
+	bool intersectsModel = parentCell.intersectsModel();
+	if (!intersectsModel)
 		return HexSplitType::HST_NO_SPLIT;
+
 
 	auto cellSpan = parentCell.calSpan();
 

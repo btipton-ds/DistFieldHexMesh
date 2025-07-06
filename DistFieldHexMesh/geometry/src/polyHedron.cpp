@@ -1900,7 +1900,10 @@ bool Polyhedron::setNeedToSplitConditional(size_t splitNum, const SplittingParam
 	if (!canSplit) // Cell span in each axis is too small so don't split
 		return false;
 
-	if (splitNum < params.numIntersectionDivs && intersectsModel()) {
+	if (isTooComplex(params)) {
+		setNeedsDivideAtCentroid();
+		return true;
+	} else if (splitNum < params.numIntersectionDivs && intersectsModel()) {
 		setNeedsDivideAtCentroid();
 		return true;
 	} else if (splitNum < params.numCurvatureDivs && hasTooHighCurvature(params)) {
