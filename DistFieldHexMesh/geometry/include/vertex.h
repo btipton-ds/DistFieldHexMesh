@@ -27,8 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <defines.h>
 #include <tm_vector3.h>
 #include <tm_boundingBox.h>
+#include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <fastBisectionSet.h>
@@ -73,6 +75,8 @@ public:
 	const bool operator != (const Vertex& rhs) const;
 
 	bool isConnectedToVertex(const Index3DId& vertId) const;
+	VertexLocation isInsideSolid() const;
+	void setInsideSolid(VertexLocation val) const;
 
 	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
@@ -104,6 +108,7 @@ private:
 	Vector3d _pt;
 	FastBisectionSet<Index3DId> _faceIds; // Need to switch to connected faces. Vertices are not determistic connections, except within a polygon.
 
+	mutable VertexLocation _cachedInsideSolid;
 	mutable Vector3d _cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 };
 
@@ -120,6 +125,16 @@ inline Vertex::Vertex(const Vector3d& pt)
 inline const Vector3d& Vertex::getPoint() const
 {
 	return _pt;
+}
+
+inline VertexLocation Vertex::isInsideSolid() const
+{
+	return _cachedInsideSolid;
+}
+
+inline void Vertex::setInsideSolid(VertexLocation val) const
+{
+	_cachedInsideSolid = val;
 }
 
 inline Vertex::operator const Vector3d& () const
@@ -140,12 +155,14 @@ inline VertexLockType Vertex::getLockType() const
 inline void Vertex::addFaceId(const Index3DId& faceId)
 {
 	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedInsideSolid = VL_UNKNOWN;
 	_faceIds.insert(faceId);
 }
 
 inline void Vertex::removeFaceId(const Index3DId& faceId)
 {
 	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedInsideSolid = VL_UNKNOWN;
 	_faceIds.erase(faceId);
 }
 
@@ -158,6 +175,7 @@ inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 inline void Vertex::replacePoint(const Vector3d& newPt)
 {
 	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
+	_cachedInsideSolid = VL_UNKNOWN;
 	_pt = newPt;
 }
 

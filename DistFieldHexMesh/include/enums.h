@@ -43,6 +43,13 @@ enum Trinary
 	IS_FALSE
 };
 
+enum VertexLocation {
+	VL_UNKNOWN,
+	VL_INSIDE,
+	VL_OUTSIDE,
+	VL_ON_BOUNDARY,
+};
+
 enum TopolgyState
 {
 				// As originally created without any splits
