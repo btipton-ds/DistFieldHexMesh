@@ -149,6 +149,8 @@ public:
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsEdge(const EdgeKey& edge) const;
 
+	Trinary isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& pSearchTree) const;
+
 	template<class TRI_FUNC, class EDGE_FUNC>
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
 	CBoundingBox3Dd getBBox() const;

@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_math.h>
 #include <tm_lineSegment.hpp>
 #include <tm_lineSegment_byref.hpp>
+#include <tm_spatialSearch.hpp>
 #include <tm_ray.h>
 #include <tm_ioUtil.h>
 #include <tm_bestFit.h>
@@ -1312,6 +1313,60 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 	}
 
 	return negCount == pts2D.size() || posCount == pts2D.size();
+}
+
+Trinary Polygon::isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& pSearchTree) const
+{
+	if (!pSearchTree)
+		return IS_UNKNOWN;
+
+	auto& model = getOurBlockPtr()->getModel();
+	std::set<size_t> outside, inside;
+	for (size_t i =0; i < _vertexIds.size(); i++) {
+		size_t j = (i + 1) % _vertexIds.size();
+		auto& pt0 = getVertexPoint(_vertexIds[i]);
+		auto& pt1 = getVertexPoint(_vertexIds[j]);
+		LineSegment_byrefd seg(pt0, pt1);
+
+		CBoundingBox3Dd bbox;
+		bbox.merge(pt0);
+		bbox.merge(pt1);
+		bbox.grow(Tolerance::sameDistTol());
+
+		pSearchTree->traverse(bbox, [this, &seg, &model, i, j, &outside, &inside](const PolyMeshIndex& polyIdx)->bool {
+			const auto tol = Tolerance::sameDistTol();
+			if (model.isClosed(polyIdx)) {
+				auto pFace = model.getPolygon(polyIdx);
+				RayHitd hp;
+				if (pFace && pFace->intersect(seg, hp)) {
+					auto& pl = pFace->calPlane();
+
+					// Only test pt0 so we only test each vertex once.
+					auto dist0 = pl.distanceToPoint(seg._pt0, false);
+					if (dist0 > tol)
+						outside.insert(i);
+					else if (dist0 < -tol)
+						inside.insert(i);
+
+					auto dist1 = pl.distanceToPoint(seg._pt1, false);
+					if (dist1 > tol)
+						outside.insert(j);
+					else if (dist1 < -tol)
+						inside.insert(j);
+
+				}
+			}
+			return true;
+		});
+	}
+
+	if (!outside.empty())
+		return IS_FALSE; // Outside or crossing solid boundary
+
+	if (!inside.empty())
+		return IS_TRUE; // Has no outside or crossing and at least one inside
+
+	return IS_UNKNOWN;
 }
 
 bool Polygon::isPointOnEdge(const Vector3d& pt) const

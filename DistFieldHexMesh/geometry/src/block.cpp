@@ -1485,7 +1485,8 @@ void Block::markIncrementLayerNums(int i)
 {
 	_polyhedra.iterateInOrder([this, i](const Index3DId& cellId, Polyhedron& cell)->bool {
 		if (cell.getLayerNum() == i) {
-			const auto& adjIds = cell.getAdjacentCells();
+			MTC::set<Index3DId> adjIds;
+			cell.getAdjacentCells(adjIds);
 			for (const auto& adjId : adjIds) {
 				cellFunc(adjId, [i](Polyhedron& adjCell) {
 #if 0 && ENABLE_DEBUGGING_MUTEXES

@@ -817,6 +817,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		if (changed) {
 			finishSplits(params, true);
+			removeInteriorCells();
 			//		assert(verifyTopology(multiCore));
 		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
@@ -828,6 +829,101 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	doQualitySplits(params);
 
 	splitWithModel(params);
+}
+
+void Volume::removeInteriorCells()
+{
+	MTC::vector<Planed> boundingPlanes;
+	getModelBoundaryPlanes(boundingPlanes);
+
+	bool changed = false;
+	do {
+		changed = false;
+
+		MTC::vector<MTC::set<Index3DId>> blockInsideCells;
+		blockInsideCells.resize(_blocks.size());
+
+		runThreadPool([this, &boundingPlanes, &blockInsideCells, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
+			size_t index = calLinearBlockIndex(pBlk->getBlockIdx());
+			auto& insideCellIds = blockInsideCells[index];
+			pBlk->iteratePolyhedraInOrder([&boundingPlanes, &insideCellIds, &changed](const Index3DId& cellId, Polyhedron& cell)->bool {
+				if (cell.isInsideSolid(boundingPlanes)) {
+					changed = true;
+					insideCellIds.insert(cellId);
+				}
+				return true;
+			});
+			return true;
+		}, RUN_MULTI_THREAD);
+
+		if (changed) {
+			removeInteriorCells(blockInsideCells);
+		}
+	} while (changed);
+}
+
+void Volume::removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells)
+{
+#if 1
+	MTC::set<Index3DId> insideCells;
+	for (auto& tmp : blockInsideCells) {
+		insideCells.insert(tmp.begin(), tmp.end());
+	}
+
+	auto cellStack = insideCells;
+	while (!cellStack.empty()) {
+		MTC::set<Index3DId> newCells;
+
+		for (const auto& insideCellId : cellStack) {
+			auto& insideCell = getPolyhedron(insideCellId);
+			MTC::set<Index3DId> adjCellIds;
+			insideCell.getAdjacentCells(adjCellIds);
+
+			for (const auto& adjCellId : adjCellIds) {
+				auto pBlk = getBlockPtr(adjCellId);
+				if (pBlk->polyhedronExists(adjCellId)) {
+					auto& adjCell = getPolyhedron(adjCellId);
+					if (!insideCells.contains(adjCellId) && !adjCell.intersectsModel()) {
+						insideCells.insert(adjCellId);
+						newCells.insert(adjCellId);
+					}
+				}
+			}
+
+			auto pBlk = getBlockPtr(insideCellId);
+			pBlk->freePolyhedron(insideCellId);
+		}
+
+		cellStack = newCells;
+	}
+#else
+	runThreadPool_IJK([this, &blockInsideCells](size_t threadNum, const BlockPtr& pBlk)->bool {
+		size_t index = calLinearBlockIndex(pBlk->getBlockIdx());
+		auto& insideCellIds = blockInsideCells[index];
+		for (const auto& insideCellId : insideCellIds) {
+			auto& insideCell = getPolyhedron(insideCellId);
+			MTC::set<Index3DId> adjCellIds;
+			insideCell.getAdjacentCells(adjCellIds);
+
+			for (const auto& adjCellId : adjCellIds) {
+				if (insideCellIds.contains(adjCellId))
+					continue;
+
+				if (pBlk->polyhedronExists(adjCellId)) {
+					auto& adjCell = getPolyhedron(adjCellId);
+					if (!adjCell.isInsideSolid() && !adjCell.intersectsModel()) {
+						// If the cell is adjacent to an inside cell and doesn't intersect the model, it's inside
+						adjCell.setInsideSolid(true);
+					}
+				}
+			}
+
+			pBlk->freePolyhedron(insideCellId);
+		}
+
+		return true;
+	}, RUN_MULTI_THREAD);
+#endif
 }
 
 void Volume::doQualitySplits(const SplittingParams& params)

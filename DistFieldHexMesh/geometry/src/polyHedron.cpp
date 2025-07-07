@@ -865,10 +865,8 @@ MTC::set<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
 	return result;
 }
 
-FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
+void Polyhedron::getAdjacentCells(MTC::set<Index3DId>& result) const
 {
-	FastBisectionSet<Index3DId> result;
-
 	MTC::set<Index3DId> vertIds;
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
@@ -878,7 +876,6 @@ FastBisectionSet<Index3DId> Polyhedron::getAdjacentCells() const
 		});
 	}
 	result.erase(getId());
-	return result;
 }
 
 // Gets the edges for a vertex which belong to this polyhedron
@@ -886,7 +883,8 @@ void Polyhedron::getVertEdges(const Index3DId& vertId, FastBisectionSet<EdgeKey>
 {
 	auto cellEdgeSet = getEdgeKeys(includeAdjacentCells);
 	if (includeAdjacentCells) {
-		auto adjCells = getAdjacentCells();
+		MTC::set<Index3DId> adjCells;
+		getAdjacentCells(adjCells);
 		for (const auto& adjCellId : adjCells) {
 			cellFunc(adjCellId, [&cellEdgeSet](const Polyhedron& adjCell) {
 				const auto& tmp = adjCell.getEdgeKeys(true);
@@ -1258,27 +1256,6 @@ bool Polyhedron::segInside(const LineSegment_byrefd& seg) const
 
 }
 
-bool Polyhedron::insideModel() const
-{
-	if (_cachedIntersectsModel == IS_TRUE)
-		return false;
-
-	const auto& model = getModel();
-	bool allPointsInsided = true;
-	MTC::set<Index3DId> vertIds;
-	getVertIds(vertIds);
-
-	for (const auto& vertId : vertIds) {
-		const auto& pt = getVertexPoint(vertId);
-		if (!model.isPointInside(pt)) {
-			allPointsInsided = false;
-			break;
-		}
-	}
-
-	return allPointsInsided;
-}
-
 bool Polyhedron::entryIntersectsModel(const PolyMeshIndex& index) const
 {
 	const auto& tol = Tolerance::sameDistTol();
@@ -1455,6 +1432,48 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 bool Polyhedron::isTooNonOrthogoal(const SplittingParams& params) const
 {
 	return maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians;
+}
+
+bool Polyhedron::isInsideSolid(const std::vector<Planed>& boundingPlanes) const
+{
+	auto pTree = getPolySearchTree();
+
+	size_t numInside = 0, numOutside = 0;
+	for (const auto& faceId : _faceIds) {
+		auto& face = getPolygon(faceId);
+
+		// Boundary faces are ignored
+		bool onBoundary = false;
+		for (const auto& bp : boundingPlanes) {
+			if (face.isCoplanar(bp)) {
+				onBoundary = true;
+				break;
+			}
+		}
+
+		if (onBoundary)
+			continue;
+
+		auto state = face.isInsideSolid(pTree);
+		switch (state) {
+		case IS_TRUE:
+			numInside++;
+			break;
+		case IS_FALSE:
+			numOutside++;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (numOutside > 0)
+		return false;
+
+	if (numInside > 0)
+		return true;
+
+	return false;
 }
 
 bool Polyhedron::hasTooManySplits() const

@@ -203,6 +203,8 @@ private:
 	void doPreSplits(const SplittingParams& params, bool multiCore);
 	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(const SplittingParams& params, bool doRequired);
+	void removeInteriorCells();
+	void removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells);
 	void doQualitySplits(const SplittingParams& params);
 	void splitWithModel(const SplittingParams& params);
 	void dumpCellHistogram() const;

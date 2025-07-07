@@ -85,7 +85,7 @@ public:
 	void getCanonicalHexEdgeKeys(MTC::set<EdgeKey>& eks, int ignoreAxis = -1) const;
 	MTC::set<EdgeKey> getEdgeKeys(bool includeAdjacentCellFaces) const;
 
-	FastBisectionSet<Index3DId> getAdjacentCells() const;
+	void getAdjacentCells(MTC::set<Index3DId>& adjIds) const;
 
 	// Gets the edges for a vertex which belong to this polyhedron
 	void getVertEdges(const Index3DId& vertId, FastBisectionSet<EdgeKey>& edges, bool includeAdjacentCells) const;
@@ -111,7 +111,6 @@ public:
 	bool isConvex() const;
 	bool pointInside(const Vector3d& pt) const;
 	bool segInside(const LineSegment_byrefd& seg) const;
-	bool insideModel() const;
 
 	bool entryIntersectsModel(const PolyMeshIndex& index) const;
 	size_t getPolyIndices(std::vector<PolyMeshIndex>& indices) const;
@@ -127,6 +126,7 @@ public:
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	bool isTooNonOrthogoal(const SplittingParams& params) const;
+	bool isInsideSolid(const std::vector<Planed>& boundingPlanes) const;
 	bool hasTooManySplits() const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManyFaces(const SplittingParams& params) const;
