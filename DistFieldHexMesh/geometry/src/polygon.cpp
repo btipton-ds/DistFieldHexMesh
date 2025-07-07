@@ -1344,55 +1344,18 @@ Trinary Polygon::isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& 
 					auto& pl = pFace->calPlane();
 
 					// Only test pt0 so we only test each vertex once.
-					switch (vert0.isInsideSolid()) {
-						case VL_INSIDE:
-							inside.insert(i);
-							break;
-						case VL_OUTSIDE:
-							outside.insert(i);
-							break;
-						case VL_ON_BOUNDARY:
-							break;
-						default: {
-							auto dist0 = pl.distanceToPoint(seg._pt0, false);
-							if (dist0 > tol) {
-								outside.insert(i);
-								vert0.setInsideSolid(VL_OUTSIDE);
-							}
-							else if (dist0 < -tol) {
-								inside.insert(i);
-								vert0.setInsideSolid(VL_INSIDE);
-							}
-							else {
-								vert0.setInsideSolid(VL_ON_BOUNDARY);
-							}
-
-						}
+					auto dist0 = pl.distanceToPoint(seg._pt0, false);
+					if (dist0 > tol) {
+						outside.insert(i);
+					} else if (dist0 < -tol) {
+						inside.insert(i);
 					}
 
-					switch (vert1.isInsideSolid()) {
-						case VL_INSIDE:
-							inside.insert(j);
-							break;
-						case VL_OUTSIDE:
-							outside.insert(j);
-							break;
-						case VL_ON_BOUNDARY:
-							break;
-						default: {
-							auto dist1 = pl.distanceToPoint(seg._pt1, false);
-							if (dist1 > tol) {
-								outside.insert(j);
-								vert1.setInsideSolid(VL_OUTSIDE);
-							}
-							else if (dist1 < -tol) {
-								inside.insert(j);
-								vert1.setInsideSolid(VL_INSIDE);
-							}
-							else {
-								vert1.setInsideSolid(VL_ON_BOUNDARY);
-							}
-						}
+					auto dist1 = pl.distanceToPoint(seg._pt1, false);
+					if (dist1 > tol) {
+						outside.insert(j);
+					} else if (dist1 < -tol) {
+						inside.insert(j);
 					}
 				}
 			}

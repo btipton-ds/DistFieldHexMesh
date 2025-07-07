@@ -79,7 +79,6 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	_lockType = rhs._lockType;
 	_faceIds = rhs._faceIds;
 	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
-	_cachedInsideSolid = rhs._cachedInsideSolid;
 
 	return *this;
 }
