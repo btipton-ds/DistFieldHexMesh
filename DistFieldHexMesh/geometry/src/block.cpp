@@ -364,14 +364,33 @@ bool Block::doQualitySplits() const
 
 bool Block::intersectsModel() const
 {
-	if (_intersectsModel == IS_UNKNOWN) {
+	if (_volType == VOLTYPE_UNKNOWN) {
+		auto volType = getVolumeType();
+		return volType == VOLTYPE_INTERSECTING;
+	}
+
+	return _volType == VOLTYPE_INTERSECTING;
+}
+
+VolumeType Block::getVolumeType() const
+{
+	if (_volType == VOLTYPE_UNKNOWN) {
+		_volType = VolumeType::VOLTYPE_VOID;
+
 		auto& model = getModel();
 		auto bbox = getBBox();
 		vector<PolyMeshIndex> indices;
-		_intersectsModel = model.findPolys(bbox, nullptr, indices) ? IS_TRUE : IS_FALSE;
+		auto pTree = model.getPolySearchTree();
+		if (pTree) {
+			pTree->traverse(bbox, [this, &model](const PolyMeshIndex& idx) {
+				// Get one hit and we have an intersection.
+				// Future testing of cells will refine that down, cell by cell
+				_volType = VolumeType::VOLTYPE_INTERSECTING;
+				return false;
+			});
+		}
 	}
-
-	return _intersectsModel == IS_TRUE;
+	return _volType;
 }
 
 bool Block::verifyTopology() const
@@ -822,6 +841,17 @@ const Vector3d& Block::getVertexPoint(const Index3DId& vertId) const
 	return pOwner->_vertices[vertId].getPoint();
 }
 
+void Block::setSupportsReverseLookup(bool val)
+{
+	if (val) {
+		_polygons.iterateInOrder([](const Index3DId& id, Polygon& face)->bool {
+			face.updateObjectKey();
+			return true;
+			});
+	}
+	_polygons.setSupportsReverseLookup(val);
+}
+
 bool Block::write(ostream& out) const
 {
 	uint8_t version = 0;
@@ -835,22 +865,13 @@ bool Block::write(ostream& out) const
 	vector<Vector3<double>> t = _corners;
 	IoUtil::writeVector3(out, t);
 
+	out.write((char*)&_volType, sizeof(_volType));
+
 	_vertices.write(out);
 	_polygons.write(out);
 	_polyhedra.write(out);
 
 	return true;
-}
-
-void Block::setSupportsReverseLookup(bool val)
-{
-	if (val) {
-		_polygons.iterateInOrder([](const Index3DId& id, Polygon& face)->bool {
-			face.updateObjectKey();
-			return true;
-		});
-	}
-	_polygons.setSupportsReverseLookup(val);
 }
 
 bool Block::read(istream& in)
@@ -867,6 +888,8 @@ bool Block::read(istream& in)
 	vector<Vector3<double>> t;
 	IoUtil::readVector3(in, t);
 	_corners = t;
+
+	in.read((char*)&_volType, sizeof(_volType));
 
 	_vertices.read(in);
 	_polygons.read(in);

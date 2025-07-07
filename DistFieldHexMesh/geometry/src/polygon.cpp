@@ -1051,11 +1051,16 @@ bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 		}
 	} else {
 		auto& vertIds = getNonColinearVertexIds();
-		Vector3d pt0 = getVertexPoint(vertIds[0]);
+		vector<Vector3d> pts;
+		pts.resize(vertIds.size());
+		for (size_t i = 0; i < vertIds.size(); i++)
+			pts[i] = getVertexPoint(vertIds[i]);
+
+		auto& pt0 = pts[0];
 		for (size_t i = 1; i < vertIds.size() - 1; i++) {
 			size_t j = (i + 1);
-			Vector3d pt1 = getVertexPoint(vertIds[i]);
-			Vector3d pt2 = getVertexPoint(vertIds[j]);
+			auto& pt1 = pts[i];
+			auto& pt2 = pts[j];
 			if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
 				return true;
 		}
@@ -1065,16 +1070,28 @@ bool Polygon::intersect(const LineSegmentd& seg, RayHitd& hit) const
 
 bool Polygon::intersect(const LineSegment_byrefd& seg, RayHitd& hit) const
 {
-	auto& vertIds = getNonColinearVertexIds();
-	Vector3d pt0 = getVertexPoint(vertIds[0]);
-	for (size_t i = 1; i < vertIds.size() - 1; i++) {
-		size_t j = (i + 1);
-		Vector3d pt1 = getVertexPoint(vertIds[i]);
-		Vector3d pt2 = getVertexPoint(vertIds[j]);
-		if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
-			return true;
-	}
+	if (isConvex() == Convexity::IS_CONVEX) {
+		auto& pl = calPlane();
+		if (pl.intersectLineSegment(seg, hit, Tolerance::sameDistTol())) {
+			if (isPointInsideInner(hit.hitPt, pl.getNormal()))
+				return true;
+		}
+	} else {
+		auto& vertIds = getNonColinearVertexIds();
+		vector<Vector3d> pts;
+		pts.resize(vertIds.size());
+		for (size_t i = 0; i < vertIds.size(); i++)
+			pts[i] = getVertexPoint(vertIds[i]);
 
+		auto& pt0 = pts[0];
+		for (size_t i = 1; i < vertIds.size() - 1; i++) {
+			size_t j = (i + 1);
+			auto& pt1 = pts[i];
+			auto& pt2 = pts[j];
+			if (seg.intersectTri(pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
+				return true;
+		}
+	}
 	return false;
 }
 

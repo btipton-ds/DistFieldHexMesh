@@ -43,6 +43,17 @@ enum Trinary
 	IS_FALSE
 };
 
+enum VolumeType {
+	VOLTYPE_UNKNOWN,
+	VOLTYPE_VOID,
+	VOLTYPE_VOID1,
+	VOLTYPE_VOID2,
+	VOLTYPE_SOLID,
+	VOLTYPE_SOLID1,
+	VOLTYPE_SOLID2,
+	VOLTYPE_INTERSECTING,
+};
+
 enum TopolgyState
 {
 				// As originally created without any splits

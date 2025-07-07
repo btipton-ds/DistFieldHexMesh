@@ -799,20 +799,22 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-			pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
+			if (pBlk->intersectsModel()) {
+				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
 #if 0 && ENABLE_DEBUGGING_MUTEXES
-				static mutex lockMutexPtrMutex, lockMutex;
-				shared_ptr<lock_guard<mutex>> pLg;
-				if (isCellSelected(cellId)) {
-					lock_guard lg(lockMutexPtrMutex);
-					pLg = make_shared<lock_guard<mutex>>(lockMutex);
-				}
+					static mutex lockMutexPtrMutex, lockMutex;
+					shared_ptr<lock_guard<mutex>> pLg;
+					if (isCellSelected(cellId)) {
+						lock_guard lg(lockMutexPtrMutex);
+						pLg = make_shared<lock_guard<mutex>>(lockMutex);
+					}
 #endif
-				if (cell.setNeedToSplitConditional(_splitNum, params)) {
-					changed = true;
-				}
-				return true;
-			});
+					if (cell.setNeedToSplitConditional(_splitNum, params)) {
+						changed = true;
+					}
+					return true;
+				});
+			}
 		}, multiCore);
 
 		if (changed) {
@@ -834,6 +836,15 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 void Volume::removeInteriorCells()
 {
+	/*
+	Mark all cells as inside, outside, interecting on creation.
+	When split
+		inside cells become inside - they will be deleted immediately
+		outside cells become outside
+		Intersecting cells are unknown 
+		
+	On following passes, we only need to test the unknown cells. 
+	*/
 	MTC::vector<Planed> boundingPlanes;
 	getModelBoundaryPlanes(boundingPlanes);
 
