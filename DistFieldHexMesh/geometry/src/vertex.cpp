@@ -78,6 +78,7 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	_pt = rhs._pt;
 	_lockType = rhs._lockType;
 	_faceIds = rhs._faceIds;
+	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 
 	return *this;
 }
@@ -111,17 +112,19 @@ MTC::set<Index3DId> Vertex::getCellIds() const
 	return result;
 }
 
-Vector3d Vertex::calSurfaceNormal() const
+const Vector3d& Vertex::calSurfaceNormal() const
 {
-	Vector3d norm(0, 0, 0);
-	for (const auto& id : _faceIds) {
-		faceFunc(id, [&norm](const Polygon& face) {
-			const auto& n = face.calUnitNormal();
-			norm += n;
-		});
+	if (_cachedSurfaceNormal[0] == DBL_MAX) {
+		_cachedSurfaceNormal = Vector3d(0, 0, 0);
+		for (const auto& id : _faceIds) {
+			faceFunc(id, [this](const Polygon& face) {
+				const auto& n = face.calUnitNormal();
+				_cachedSurfaceNormal += n;
+			});
+		}
+		_cachedSurfaceNormal.normalize();
 	}
-	norm.normalize();
-	return norm;
+	return _cachedSurfaceNormal;
 }
 
 void Vertex::write(std::ostream& out) const

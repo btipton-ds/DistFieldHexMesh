@@ -84,7 +84,7 @@ public:
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	MTC::set<Index3DId> getCellIds() const;
 
-	Vector3d calSurfaceNormal() const;
+	const Vector3d& calSurfaceNormal() const;
 
 	void replacePoint(const Vector3d& newPt);
 
@@ -103,6 +103,8 @@ private:
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
 	Vector3d _pt;
 	FastBisectionSet<Index3DId> _faceIds; // Need to switch to connected faces. Vertices are not determistic connections, except within a polygon.
+
+	mutable Vector3d _cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 };
 
 inline CBoundingBox3Dd Vertex::getBBox() const
@@ -137,11 +139,13 @@ inline VertexLockType Vertex::getLockType() const
 
 inline void Vertex::addFaceId(const Index3DId& faceId)
 {
+	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_faceIds.insert(faceId);
 }
 
 inline void Vertex::removeFaceId(const Index3DId& faceId)
 {
+	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_faceIds.erase(faceId);
 }
 
@@ -153,6 +157,7 @@ inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 
 inline void Vertex::replacePoint(const Vector3d& newPt)
 {
+	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 	_pt = newPt;
 }
 

@@ -817,7 +817,6 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 		if (changed) {
 			finishSplits(params, true);
-			removeInteriorCells();
 			//		assert(verifyTopology(multiCore));
 		} else {
 			cout << "Finished early. No more splits required: " << _splitNum << "\n";
@@ -827,6 +826,8 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 	}
 
 	doQualitySplits(params);
+
+	removeInteriorCells();
 
 	splitWithModel(params);
 }
