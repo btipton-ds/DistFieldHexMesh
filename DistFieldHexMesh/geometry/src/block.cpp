@@ -364,18 +364,18 @@ bool Block::doQualitySplits() const
 
 bool Block::intersectsModel() const
 {
-	if (_volType == VOLTYPE_UNKNOWN) {
-		auto volType = getVolumeType();
-		return volType == VOLTYPE_INTERSECTING;
+	if (_topologyState == TOPST_UNKNOWN) {
+		auto topologyState = getTopologyState();
+		return topologyState == TOPST_INTERSECTING;
 	}
 
-	return _volType == VOLTYPE_INTERSECTING;
+	return _topologyState == TOPST_INTERSECTING;
 }
 
-VolumeType Block::getVolumeType() const
+TopologyState Block::getTopologyState() const
 {
-	if (_volType == VOLTYPE_UNKNOWN) {
-		_volType = VolumeType::VOLTYPE_VOID;
+	if (_topologyState == TOPST_UNKNOWN) {
+		_topologyState = TopologyState::TOPST_VOID;
 
 		auto& model = getModel();
 		auto bbox = getBBox();
@@ -385,12 +385,12 @@ VolumeType Block::getVolumeType() const
 			pTree->traverse(bbox, [this, &model](const PolyMeshIndex& idx) {
 				// Get one hit and we have an intersection.
 				// Future testing of cells will refine that down, cell by cell
-				_volType = VolumeType::VOLTYPE_INTERSECTING;
+				_topologyState = TopologyState::TOPST_INTERSECTING;
 				return false;
 			});
 		}
 	}
-	return _volType;
+	return _topologyState;
 }
 
 bool Block::verifyTopology() const
@@ -865,7 +865,7 @@ bool Block::write(ostream& out) const
 	vector<Vector3<double>> t = _corners;
 	IoUtil::writeVector3(out, t);
 
-	out.write((char*)&_volType, sizeof(_volType));
+	out.write((char*)&_topologyState, sizeof(_topologyState));
 
 	_vertices.write(out);
 	_polygons.write(out);
@@ -889,7 +889,7 @@ bool Block::read(istream& in)
 	IoUtil::readVector3(in, t);
 	_corners = t;
 
-	in.read((char*)&_volType, sizeof(_volType));
+	in.read((char*)&_topologyState, sizeof(_topologyState));
 
 	_vertices.read(in);
 	_polygons.read(in);

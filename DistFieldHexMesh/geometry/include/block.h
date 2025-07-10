@@ -142,7 +142,7 @@ public:
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool intersectsModel() const;
-	VolumeType getVolumeType() const;
+	TopologyState getTopologyState() const;
 	bool doQualitySplits() const;
 	bool verifyTopology() const;
 	bool verifyDeterminOwnerBlockIndex() const;
@@ -284,7 +284,7 @@ private:
 	bool isPolyhedronInUse(const Index3DId& cellId) const;
 #endif // _DEBUG
 
-	mutable VolumeType _volType = VOLTYPE_UNKNOWN;
+	mutable TopologyState _topologyState = TOPST_UNKNOWN;
 
 	Index3D _blockIdx;
 
