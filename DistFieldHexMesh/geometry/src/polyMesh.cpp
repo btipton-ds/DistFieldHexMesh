@@ -178,12 +178,10 @@ void PolyMesh::simplify(const SplittingParams& params, bool flattenQuads)
 	flattenSharps(params);
 	makeQuads(params, flattenQuads);
 
-#if 0
 	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
 	reduceSlivers(params, maxSliverAngleRadians);
 
 	flattenFaces(params);
-#endif
 }
 
 void PolyMesh::flattenSharps(const SplittingParams& params)
