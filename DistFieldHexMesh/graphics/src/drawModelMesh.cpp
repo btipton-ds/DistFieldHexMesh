@@ -204,6 +204,9 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
     UBO.useDefColor = 1;
+    UBO.backColor = p4f(1.0f, 0, 0, 1.0f);
+
+    float surfaceAlpha = 0.6f;
 
     switch (key) {
     default:
@@ -211,7 +214,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
         UBO.defColor = p4f(0.4f, 0.4f, 1.0f, 1);
         break;
     case DS_MODEL_FACES_SURFACE:
-        UBO.defColor = p4f(0.6f, 1.0f, 0.6f, 0.6f);
+        UBO.defColor = p4f(0.6f, 1.0f, 0.6f, surfaceAlpha);
+        UBO.backColor[3] = surfaceAlpha;
         break;
     case DS_MODEL_SHARP_VERTS:
         UBO.defColor = p3f(1.0f, 1.0f, 0);

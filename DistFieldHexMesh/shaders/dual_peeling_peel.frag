@@ -102,9 +102,17 @@ vec4 shadeFragment()
 
   intensity = ambient + (1.0 - ambient) * intensity;
 
-  float alpha = fragColor[3];
+  vec4 tmpColor = fragColor;
+  if (useDefColor != 0) {
+	if (gl_FrontFacing)
+		tmpColor = defColor;
+	else
+		tmpColor = backColor;
+  }
 
-  color = intensity * fragColor;
+  float alpha = tmpColor[3];
+
+  color = intensity * tmpColor;
 
   color[3] = alpha;
 

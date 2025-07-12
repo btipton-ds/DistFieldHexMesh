@@ -351,6 +351,8 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawEdges(int key)
 
     const auto& alpha = _options.alpha;
 
+    UBO.backColor = p4f(1.0f, 0.0f, 0.0f, 1.0f);
+
     if (_options.showFaces) {
         glLineWidth(0.5f);
         glEnable(GL_BLEND);
@@ -426,6 +428,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     auto& UBO = _pCanvas->getUBO();
     _priorDrawTwoSided = UBO.twoSideLighting;
     UBO.twoSideLighting = 1;
+    UBO.backColor = p4f(1.0f, 0.0f, 0.0f, 1.0f);
 
     bool blend = false;
     float alpha = _options.alpha;

@@ -91,6 +91,7 @@ public:
         m44f modelView; // Model matrix is always identity, so this is the view matrix
         m44f proj;
         p4f defColor;
+        p4f backColor;
         p4f lightDir0;
         p4f lightDir1;
         p4f lightDir2;

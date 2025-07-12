@@ -2,6 +2,7 @@ layout (shared) uniform UniformBufferObject {
 	mat4 modelView;
 	mat4 proj;
 	vec4 defColor;
+	vec4 backColor;
 	vec4 lightDir0;
 	vec4 lightDir1;
 	vec4 lightDir2;
