@@ -65,6 +65,7 @@ void MeshData::postReadCreate()
 	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
 
 	bool flattenQuads = true;
+
 	_pPolyMesh->simplify(params, flattenQuads);
 	_pPolyMesh->initClosed();
 }

@@ -178,10 +178,12 @@ void PolyMesh::simplify(const SplittingParams& params, bool flattenQuads)
 	flattenSharps(params);
 	makeQuads(params, flattenQuads);
 
+#if 0
 	double maxSliverAngleRadians = 15 / 180.0 * M_PI;
 	reduceSlivers(params, maxSliverAngleRadians);
 
 	flattenFaces(params);
+#endif
 }
 
 void PolyMesh::flattenSharps(const SplittingParams& params)
@@ -578,9 +580,15 @@ void PolyMesh::processPlanarFaces(const SplittingParams& params, const Index3DId
 			lastAngle = thisAngle;
 		} else {
 			EdgeKey ek(radiantId, thisId);
-			if (adjacentEdgesHaveSimilarLength(ek)) {
+			Vector3d currentNormal;
+			if (adjacentEdgesHaveSimilarLength(ek, currentNormal)) {
 				auto newFaceId = removeEdgeWithChecks(params, basePlane, radiantId, thisId);
-				if (!newFaceId.isValid()) {
+				if (newFaceId.isValid()) {
+					auto& newFace = getPolygon(newFaceId);
+					auto newNorm = newFace.calUnitNormal();
+					if (currentNormal.dot(newNorm) < 0)
+						newFace.reverse();
+				} else {
 					lastAngle = thisAngle;
 				}
 			}
@@ -1052,11 +1060,11 @@ bool PolyMesh::hasHighLocalConvexity(const SplittingParams& params, const Vector
 	return false;
 }
 
-bool PolyMesh::adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey) const
+bool PolyMesh::adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey, Vector3d& currentNormal) const
 {
 	const double MAX_LENGTH_VARIATION = 0.2;
 	double ratio;
-	edgeFunc(edgeKey, [this, &ratio](const Edge& edge) {
+	edgeFunc(edgeKey, [this, &ratio, &currentNormal](const Edge& edge) {
 		const auto& radiantId = edge[0];
 
 		auto& faceIds = edge.getFaceIds();
@@ -1066,6 +1074,9 @@ bool PolyMesh::adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey) const
 
 		const auto& face0 = getPolygon(faceId0);
 		const auto& face1 = getPolygon(faceId1);
+
+		currentNormal = face0.calUnitNormal() + face1.calUnitNormal();
+		currentNormal.normalize();
 
 		double edgeLen = edge.calLength(), len0, len1;
 
@@ -1298,9 +1309,16 @@ Index3DId PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 
 	Vector3d norm = face0.calUnitNormal() + face1.calUnitNormal();
 	norm.normalize();
-	const auto& ctr = getVertexPoint(vertIds0[0]);
-	Planed plane(ctr, norm);
-	result = removeEdge(edge, faceId0, faceId1, newVertIds, plane);
+
+	Vector3d newNorm;
+	if (Polygon::calUnitNormalStat(this, newVertIds, newNorm)) {
+		if (newNorm.dot(norm) < 0)
+			std::reverse(newVertIds.begin(), newVertIds.end());
+
+		const auto& ctr = getVertexPoint(newVertIds[0]);
+		Planed plane(ctr, norm);
+		result = removeEdge(edge, faceId0, faceId1, newVertIds, plane);
+	}
 
 	return result;
 }

@@ -199,6 +199,7 @@ public:
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
 	double flatten(bool allowQuads);
+	void reverse();
 
 	void write(std::ostream& out) const;
 	void read(std::istream& in);

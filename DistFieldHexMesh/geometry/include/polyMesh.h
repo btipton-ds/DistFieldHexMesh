@@ -122,7 +122,7 @@ namespace DFHM {
 		double calEdgeAngle(const Edge& edge) const;
 
 		bool hasHighLocalConvexity(const SplittingParams& params, const Vector3d& norm, const MTC::vector<Index3DId>& vertIds) const;
-		bool adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey) const;
+		bool adjacentEdgesHaveSimilarLength(const EdgeKey& edgeKey, Vector3d& currentNormal) const;
 		bool isShortEdge(const Edge& edge, const Polygon& face0, const Polygon& face1) const;
 		bool isCoplanar(const SplittingParams& params, const Edge& edge) const;
 		bool isRemovable(const SplittingParams& params, const EdgeKey& key) const;

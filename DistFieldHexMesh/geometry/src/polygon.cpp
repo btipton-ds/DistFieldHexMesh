@@ -283,6 +283,18 @@ double Polygon::flatten(bool allowQuads)
 	return err;
 }
 
+void Polygon::reverse()
+{
+	disconnectVertEdgeTopology();
+	clearCache();
+
+	std::reverse(_vertexIds.begin(), _vertexIds.end());
+
+	connectVertEdgeTopology();
+
+	// No need to update PolygonSearchKey because it's vertices are noncolinear and sorted by id, not winding order
+}
+
 void Polygon::write(ostream& out) const
 {
 	uint8_t version = 0;
