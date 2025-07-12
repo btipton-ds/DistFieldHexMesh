@@ -104,10 +104,10 @@ vec4 shadeFragment()
 
   vec4 tmpColor = fragColor;
   if (useDefColor != 0) {
-	if (gl_FrontFacing)
-		tmpColor = defColor;
-	else
+	if (!gl_FrontFacing && useBackColor != 0)
 		tmpColor = backColor;
+	else
+		tmpColor = defColor;
   }
 
   float alpha = tmpColor[3];

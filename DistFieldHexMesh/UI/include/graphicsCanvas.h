@@ -109,6 +109,7 @@ public:
 
         float ambient = 0;
         int useDefColor = 1;
+        int useBackColor = 0;
         int normalShadingOn = 1;
         int twoSideLighting = 1;
         int numLights = 0;

@@ -428,7 +428,6 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
     auto& UBO = _pCanvas->getUBO();
     _priorDrawTwoSided = UBO.twoSideLighting;
     UBO.twoSideLighting = 1;
-    UBO.backColor = p4f(1.0f, 0.0f, 0.0f, 1.0f);
 
     bool blend = false;
     float alpha = _options.alpha;
@@ -516,6 +515,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawHexMesh::preDrawFaces(int key)
         break;
     }
 
+    UBO.backColor = UBO.defColor;
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
 
     if (blend) {

@@ -528,21 +528,21 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 	gradeSurroundingBlocks(params, pReporter, multiCore);
 
 
+#if 0
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
 			vert.markSolidAndIntersecting();
 			return true;
 		});
-	}, false && multiCore);
+	}, multiCore);
 
-#if 0
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
 			vert.markOthersVoid();
 			return true;
 		});
 	}, multiCore);
-#endif
+
 	size_t numSolid = 0, numVoid = 0, numIntersecting = 0, numUnknown = 0;
 	runThreadPool([&numSolid, &numVoid, &numIntersecting, &numUnknown](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([&numSolid, &numVoid, &numIntersecting, &numUnknown](const Index3DId& vertId, Vertex& vert)->bool {
@@ -567,6 +567,8 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 		}, false && multiCore);
 
 	cout << "numSolid: " << numSolid << ", numVoid: " << numVoid << ", numIntersecting: " << numIntersecting << ", numUnknown: " << numUnknown << "\n";
+#endif
+
 	runThreadPool([this, pReporter](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->deleteModelSearchTree();
 	}, multiCore);

@@ -20,6 +20,7 @@ layout (shared) uniform UniformBufferObject {
 
 	float ambient;
 	int useDefColor;
+	int useBackColor;
 	int normalShadingOn;
 	int twoSideLighting;
 	int numLights;

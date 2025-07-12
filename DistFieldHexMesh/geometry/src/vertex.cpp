@@ -149,33 +149,17 @@ void Vertex::markSolidAndIntersecting()
 		dir.normalize();
 		Rayd ray(_pt, dir);
 		vector<MultiPolyMeshRayHit> hitsOnSolidModel;
-#if 0
-		for (size_t idx = 0; idx < model.size(); idx++) {
-			auto pData = model.getMeshData(idx);
-			if (pData->isClosed()) {
-				auto pMesh = pData->getPolyMesh();
-				pMesh->iterateFaces([idx, &ray, &hitsOnSolidModel](const Index3DId& faceId, const Polygon& face)->bool {
-					RayHitd rh;
-					if (face.intersect(ray, rh)) {
-						PolyMeshIndex pIdx(idx, faceId);
-						hitsOnSolidModel.push_back(MultiPolyMeshRayHit(pIdx, rh));
-					}
-					return true;
-				});
-			}
-		}
-#else
-		// biDirRayCastTraverse is not hitting everything it should
-		vector<PolyMeshIndex> testHits;
-		pTree->biDirRayCastTraverse(ray, [this, &model, &testHits](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+		pTree->biDirRayCastTraverse(ray, [this, &model, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
-				testHits.push_back(idx);
+				auto pFace = model.getPolygon(idx);
+				RayHitd rh;
+				if (pFace->intersect(ray, rh)) {
+					hitsOnSolidModel.push_back(MultiPolyMeshRayHit(idx, rh));
+				}
 			}
 			return true;
 		}, tol);
 
-//		dumpIntersectionObj(ray, testHits);
-#endif
 		if (!hitsOnSolidModel.empty()) {
 			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end(), [](const MultiPolyMeshRayHit& lhs, const MultiPolyMeshRayHit& rhs)->bool {
 				return lhs.getDist() < rhs.getDist();

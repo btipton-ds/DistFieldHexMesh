@@ -204,6 +204,7 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
     auto& UBO = _pCanvas->getUBO();
     UBO.useDefColor = 1;
+    UBO.useBackColor = 1;
 
     float surfaceAlpha = 0.6f;
 
