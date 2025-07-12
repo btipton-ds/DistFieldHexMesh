@@ -50,12 +50,6 @@ enum TopologyState {
 	TOPST_SOLID,
 };
 
-enum TopolgyState
-{
-				// As originally created without any splits
-			// Was intact, now there is a split version and this is for reference
-};
-
 enum HexFaceType {
 	CFT_BOTTOM,
 	CFT_TOP,

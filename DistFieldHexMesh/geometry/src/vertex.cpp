@@ -33,6 +33,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <block.h>
 #include <polyMesh.h>
+#include <polygon.h>
+#include <tm_spatialSearch.hpp>
 
 using namespace std;
 using namespace DFHM;
@@ -54,15 +56,21 @@ void Vertex::setId(const Index3DId& id)
 	_thisId = id;
 }
 
-MTC::set<Index3DId> Vertex::getConnectedVertexIds() const
+void Vertex::getConnectedVertexIds(MTC::set<Index3DId>& ids) const
 {
-	MTC::set<Index3DId> result;
-	auto edges = getEdges();
-	for (const auto& ek : edges) {
-		result.insert(ek.getOtherVert(getId()));
+	for (const auto& faceId : _faceIds) {
+		const auto& face = getPolygon(faceId);
+		const auto& vertIds = face.getVertexIds();
+		for (size_t i = 0; i < vertIds.size(); i++) {
+			const auto& thisId = vertIds[i];
+			if (thisId == getId()) {
+				size_t j = (i + 1) % vertIds.size();
+				ids.insert(vertIds[j]);
+				size_t k = (i + vertIds.size() - 1) % vertIds.size();
+				ids.insert(vertIds[k]);
+			}
+		}
 	}
-
-	return result;
 }
 
 void Vertex::remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims)
@@ -83,18 +91,13 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	return *this;
 }
 
-MTC::set<EdgeKey> Vertex::getEdges() const
+void Vertex::getEdges(MTC::set<EdgeKey>& edges) const
 {
-	MTC::set<EdgeKey> result;
-
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [&result](const Polygon& face) {
-			auto edges = face.getEdgeKeys();
-			result.insert(edges.begin(), edges.end());
-		});
+	MTC::set<Index3DId> conVerts;
+	getConnectedVertexIds(conVerts);
+	for (const auto& otherId : conVerts) {
+		edges.insert(EdgeKey(getId(), otherId));
 	}
-
-	return result;
 }
 
 MTC::set<Index3DId> Vertex::getCellIds() const
@@ -125,6 +128,138 @@ const Vector3d& Vertex::calSurfaceNormal() const
 		_cachedSurfaceNormal.normalize();
 	}
 	return _cachedSurfaceNormal;
+}
+
+void Vertex::markSolidAndIntersecting()
+{
+	auto tol = Tolerance::sameDistTol();
+
+	const auto& model = getOurBlockPtr()->getModel();
+	auto pTree = model.getPolySearchTree();
+	if (!pTree)
+		return;
+
+	MTC::set<Index3DId> conVerts;
+	getConnectedVertexIds(conVerts);
+	for (const auto& otherVertId : conVerts) {
+		const auto& otherVert = getVertex(otherVertId);
+		const auto& otherPt = otherVert._pt;
+
+		Vector3d dir = otherPt - _pt;
+		dir.normalize();
+		Rayd ray(_pt, dir);
+		vector<MultiPolyMeshRayHit> hitsOnSolidModel;
+#if 0
+		for (size_t idx = 0; idx < model.size(); idx++) {
+			auto pData = model.getMeshData(idx);
+			if (pData->isClosed()) {
+				auto pMesh = pData->getPolyMesh();
+				pMesh->iterateFaces([idx, &ray, &hitsOnSolidModel](const Index3DId& faceId, const Polygon& face)->bool {
+					RayHitd rh;
+					if (face.intersect(ray, rh)) {
+						PolyMeshIndex pIdx(idx, faceId);
+						hitsOnSolidModel.push_back(MultiPolyMeshRayHit(pIdx, rh));
+					}
+					return true;
+				});
+			}
+		}
+#else
+		// biDirRayCastTraverse is not hitting everything it should
+		vector<PolyMeshIndex> testHits;
+		pTree->biDirRayCastTraverse(ray, [this, &model, &testHits](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+			if (model.isClosed(idx)) {
+				testHits.push_back(idx);
+			}
+			return true;
+		}, tol);
+
+//		dumpIntersectionObj(ray, testHits);
+#endif
+		if (!hitsOnSolidModel.empty()) {
+			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end(), [](const MultiPolyMeshRayHit& lhs, const MultiPolyMeshRayHit& rhs)->bool {
+				return lhs.getDist() < rhs.getDist();
+			});
+
+			const auto& closestHitOnSolidModel = hitsOnSolidModel.front();
+			auto pModelFace = model.getPolygon(closestHitOnSolidModel);
+			Vector3d norm = pModelFace->calUnitNormal();
+			Vector3d v = _pt - closestHitOnSolidModel.getPoint();
+			double dist = v.dot(norm);
+
+			if (dist < -tol)
+				_topologyState = TOPST_SOLID;
+			else if (dist > tol)
+				_topologyState = TOPST_VOID;
+			else
+				_topologyState = TOPST_INTERSECTING;
+
+			return;
+		}
+	}
+}
+
+void Vertex::dumpIntersectionObj(const Rayd& ray, const std::vector<PolyMeshIndex>& hits) const
+{
+	if (!hits.empty()) {
+		auto path = getOurBlockPtr()->getObjFilePath();
+		string filename(path + "/vertex_intersect.obj");
+		ofstream out(filename);
+
+		map<Vector3d, size_t> ptToIndexMap;
+		vector<Vector3d> pts;
+		vector<vector<size_t>> allFaceIndices;
+
+		pts.push_back(ray._origin);
+		ptToIndexMap[pts.back()] = pts.size() - 1;
+
+		pts.push_back(ray._origin + ray._dir * 50);
+		ptToIndexMap[pts.back()] = pts.size() - 1;
+
+		auto& model = getOurBlockPtr()->getModel();
+
+		for (const auto& idx : hits) {
+			auto pFace = model.getPolygon(idx);
+			vector<size_t> faceIndices;
+			const auto& faceVertIds = pFace->getVertexIds();
+			for (const auto& id : faceVertIds) {
+				const auto& pt = pFace->getVertex(id).getPoint();
+				auto iter = ptToIndexMap.find(pt);
+				if (iter == ptToIndexMap.end()) {
+					iter = ptToIndexMap.insert(make_pair(pt, pts.size())).first;
+					pts.push_back(pt);
+				}
+				size_t idx = iter->second;
+				faceIndices.push_back(idx);
+			}
+			allFaceIndices.push_back(faceIndices);
+		}
+
+		out << "Points\n";
+		for (const auto& pt : pts) {
+			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+		}
+
+		out << "Ray\n";
+		out << "l " << 1 << " " << 2 << "\n";
+
+		out << "Faces\n";
+		for (const auto& faceIndices : allFaceIndices) {
+			out << "f";
+			for (size_t idx : faceIndices) {
+				out << " " << (idx + 1);
+			}
+			out << "\n";
+		}
+
+	}
+}
+
+void Vertex::markOthersVoid()
+{
+	if (_topologyState == TOPST_UNKNOWN) {
+		_topologyState = TOPST_VOID;
+	}
 }
 
 void Vertex::write(std::ostream& out) const

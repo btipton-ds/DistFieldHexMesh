@@ -1034,9 +1034,26 @@ bool Polygon::isPlanar() const
 
 bool Polygon::intersect(const Rayd& ray, RayHitd& hit) const
 {
-	auto plane = calPlane();
-	if (plane.intersectRay(ray, hit, Tolerance::sameDistTol())) {
-		return isPointInside(hit.hitPt);
+	if (isConvex() == Convexity::IS_CONVEX) {
+		auto& plane = calPlane();
+		if (plane.intersectRay(ray, hit, Tolerance::sameDistTol())) {
+			return isPointInsideInner(hit.hitPt, plane);
+		}
+	} else {
+		auto& vertIds = getNonColinearVertexIds();
+		vector<Vector3d> pts;
+		pts.resize(vertIds.size());
+		for (size_t i = 0; i < vertIds.size(); i++)
+			pts[i] = getVertexPoint(vertIds[i]);
+
+		auto& pt0 = pts[0];
+		for (size_t i = 1; i < vertIds.size() - 1; i++) {
+			size_t j = (i + 1);
+			auto& pt1 = pts[i];
+			auto& pt2 = pts[j];
+			if (intersectRayTri(ray, pt0, pt1, pt2, hit, Tolerance::sameDistTol()))
+				return true;
+		}
 	}
 	return false;
 }
@@ -1297,8 +1314,15 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
 
 bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 {
+	auto& pt0 = getVertexPoint(_vertexIds[0]);
+	Planed pl(pt0, norm);
+	return isPointInsideInner(pt, pl);
+}
+
+bool Polygon::isPointInsideInner(const Vector3d& pt, const Planed& pl) const
+{
 	const double tol = Tolerance::sameDistTol();
-	Plane_byref pl(pt, norm);
+
 	if (!pl.isCoincident(pt, tol))
 		return false;
 

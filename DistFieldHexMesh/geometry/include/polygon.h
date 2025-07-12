@@ -237,6 +237,7 @@ private:
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
+	bool isPointInsideInner(const Vector3d& pt, const Planed& pl) const;
 
 	Index3DId _thisId;
 

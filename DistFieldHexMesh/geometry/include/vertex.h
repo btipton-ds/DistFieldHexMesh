@@ -30,11 +30,14 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <tm_vector3.h>
 #include <tm_boundingBox.h>
+#include <tm_ray.h>
+#include <tm_spatialSearch.h>
 #include <enums.h>
 #include <index3D.h>
 #include <objectPool.h>
 #include <fastBisectionSet.h>
 #include <lambdaMacros.h>
+#include <polyMeshIndex.h>
 
 #define USE_FIXED_PT 0
 
@@ -45,6 +48,8 @@ class EdgeKey;
 class Edge;
 class Polygon;
 class Polyhedron;
+class PolyMeshIndex;
+using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Vertex : public ObjectPoolOwnerUser {
 public:
@@ -76,13 +81,17 @@ public:
 
 	bool isConnectedToVertex(const Index3DId& vertId) const;
 
+	void markSolidAndIntersecting();
+	void markOthersVoid();
+	TopologyState getTopolgyState() const;
+
 	const Index3DId& getId() const override;
 	void remapId(const std::vector<size_t>& idRemap, const Index3D& srcDims) override;
 
 	void addFaceId(const Index3DId& faceId);
 	void removeFaceId(const Index3DId& faceId);
-	MTC::set<Index3DId> getConnectedVertexIds() const;
-	MTC::set<EdgeKey> getEdges() const;
+	void getConnectedVertexIds(MTC::set<Index3DId>& ids) const;
+	void getEdges(MTC::set<EdgeKey>& edges) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
 	MTC::set<Index3DId> getCellIds() const;
 
@@ -100,9 +109,12 @@ protected:
 	void setId(const Index3DId& id) override;
 
 private:
+	void dumpIntersectionObj(const Rayd& ray, const std::vector<PolyMeshIndex>& hits) const;
+
 	Index3DId _thisId;
 
 	VertexLockType _lockType = VertexLockType::VLT_NONE;
+	TopologyState _topologyState = TOPST_UNKNOWN;
 	Vector3d _pt;
 	FastBisectionSet<Index3DId> _faceIds; // Need to switch to connected faces. Vertices are not determistic connections, except within a polygon.
 
@@ -134,6 +146,11 @@ inline void Vertex::setLockType(VertexLockType val)
 	_lockType = val;
 }
 
+inline TopologyState Vertex::getTopolgyState() const
+{
+	return _topologyState;
+}
+
 inline VertexLockType Vertex::getLockType() const
 {
 	return _lockType;
@@ -153,7 +170,8 @@ inline void Vertex::removeFaceId(const Index3DId& faceId)
 
 inline bool Vertex::isConnectedToVertex(const Index3DId& vertId) const
 {
-	auto conVerts = getConnectedVertexIds();
+	MTC::set<Index3DId> conVerts;
+	getConnectedVertexIds(conVerts);
 	return conVerts.contains(vertId);
 }
 

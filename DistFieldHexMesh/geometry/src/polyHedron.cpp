@@ -849,8 +849,7 @@ MTC::set<EdgeKey> Polyhedron::getEdgeKeys(bool includeAdjacentCellFaces) const
 		getVertIds(vertIds);
 		for (const auto& vertId : vertIds) {
 			vertexFunc(vertId, [&result](const Vertex& vert) {
-				auto edges = vert.getEdges();
-				result.insert(edges.begin(), edges.end());
+				vert.getEdges(result);
 			});
 		}
 	} else {

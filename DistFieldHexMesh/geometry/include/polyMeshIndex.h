@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_vector3.h>
 #include <tm_spatialSearch.h>
+#include <tm_ray.h>
 #include <index3D.h>
 
 namespace DFHM {
@@ -89,6 +90,7 @@ namespace DFHM {
 		MultiPolyMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist);
 		MultiPolyMeshRayHit(const MultiPolyMeshRayHit& src) = default;
 		MultiPolyMeshRayHit(const PolyMeshIndex& idx);
+		MultiPolyMeshRayHit(const PolyMeshIndex& idx, const RayHitd& rh);
 
 		void setPoint(const Vector3d& pt);
 		const Vector3d& getPoint() const;
@@ -106,6 +108,14 @@ namespace DFHM {
 	inline MultiPolyMeshRayHit::MultiPolyMeshRayHit(const PolyMeshIndex& idx)
 		: PolyMeshIndex(idx)
 	{
+	}
+
+	inline MultiPolyMeshRayHit::MultiPolyMeshRayHit(const PolyMeshIndex& idx, const RayHitd& rh)
+		: PolyMeshIndex(idx)
+		, _dist(rh.dist)
+		, _pt(rh.hitPt)
+	{
+		
 	}
 
 	inline MultiPolyMeshRayHit::MultiPolyMeshRayHit(size_t meshIdx, const Index3DId& hitID, const Vector3d& pt, double dist)
