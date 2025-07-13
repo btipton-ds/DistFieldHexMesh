@@ -130,17 +130,44 @@ const Vector3d& Vertex::calSurfaceNormal() const
 	return _cachedSurfaceNormal;
 }
 
+namespace
+{
+struct SolidHitRec {
+	inline SolidHitRec(double dist, bool positive, const PolyMeshIndex& idx)
+		: _dist(dist)
+		, _positive(positive)
+		, _polyMeshIdx(idx)
+	{
+	}
+
+	inline bool operator<(const SolidHitRec& rhs) const
+	{
+		return _dist < rhs._dist;
+	}
+
+	double _dist;
+	bool _positive;
+	PolyMeshIndex _polyMeshIdx;
+};
+
+}
+
 void Vertex::markSolidAndIntersecting()
 {
-	auto tol = Tolerance::sameDistTol();
+	const auto tol = Tolerance::sameDistTol();
+	const auto tolFloat = Tolerance::sameDistTolFloat();
 
 	const auto& model = getOurBlockPtr()->getModel();
 	auto pTree = model.getPolySearchTree();
 	if (!pTree)
 		return;
 
+	if (Index3DId(3, 0, 3, 0) == getId()) {
+		int dbgBreak = 1;
+	}
 	MTC::set<Index3DId> conVerts;
 	getConnectedVertexIds(conVerts);
+	size_t numSolid = 0, numVoid = 0, numIntersecting = 0;
 	for (const auto& otherVertId : conVerts) {
 		const auto& otherVert = getVertex(otherVertId);
 		const auto& otherPt = otherVert._pt;
@@ -148,38 +175,56 @@ void Vertex::markSolidAndIntersecting()
 		Vector3d dir = otherPt - _pt;
 		dir.normalize();
 		Rayd ray(_pt, dir);
-		vector<MultiPolyMeshRayHit> hitsOnSolidModel;
-		pTree->biDirRayCastTraverse(ray, [this, &model, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+		vector<SolidHitRec> hitsOnSolidModel;
+		pTree->biDirRayCastTraverse(ray, [this, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
 				auto pFace = model.getPolygon(idx);
 				RayHitd rh;
-				if (pFace->intersect(ray, rh)) {
-					hitsOnSolidModel.push_back(MultiPolyMeshRayHit(idx, rh));
+				if (pFace->intersect(ray, rh) && rh.dist > 0) {
+					auto& norm = pFace->calUnitNormal();
+					bool pos = norm.dot(dir) >= 0;
+					hitsOnSolidModel.push_back(SolidHitRec(rh.dist, pos, idx));
 				}
 			}
 			return true;
 		}, tol);
 
 		if (!hitsOnSolidModel.empty()) {
-			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end(), [](const MultiPolyMeshRayHit& lhs, const MultiPolyMeshRayHit& rhs)->bool {
-				return lhs.getDist() < rhs.getDist();
-			});
+			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
+			for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
+				size_t j = (i + 1) % hitsOnSolidModel.size();
+				double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
+				if (gap < tolFloat) {
+					if (hitsOnSolidModel[i]._positive == hitsOnSolidModel[j]._positive)
+						hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
+				}
+			}
+			if (hitsOnSolidModel.front()._dist < tol)
+				numIntersecting++;
+			else {
+				bool inSolid = false;
+				for (const auto& hr : hitsOnSolidModel) {
+					inSolid = !inSolid;
+				}
 
-			const auto& closestHitOnSolidModel = hitsOnSolidModel.front();
-			auto pModelFace = model.getPolygon(closestHitOnSolidModel);
-			Vector3d norm = pModelFace->calUnitNormal();
-			Vector3d v = _pt - closestHitOnSolidModel.getPoint();
-			double dist = v.dot(norm);
+				if (inSolid)
+					numSolid++;
+				else
+					numVoid++;
 
-			if (dist < -tol)
-				_topologyState = TOPST_SOLID;
-			else if (dist > tol)
-				_topologyState = TOPST_VOID;
-			else
-				_topologyState = TOPST_INTERSECTING;
-
-			return;
+				int dbgBreak = 1;
+			}
 		}
+	}
+
+	if (numSolid + numIntersecting > 0) {
+		assert(numVoid == 0);
+		_topologyState = TOPST_SOLID;
+	} else if (numVoid + numIntersecting > 0) {
+		assert(numSolid == 0);
+		_topologyState = TOPST_VOID;
+	} else if (numIntersecting != 0) {
+		_topologyState = TOPST_INTERSECTING;
 	}
 }
 
