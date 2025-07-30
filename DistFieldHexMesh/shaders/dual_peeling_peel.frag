@@ -34,7 +34,6 @@ This file is part of the VulkanQuickStart Project.
 
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
-#extension ARB_draw_buffers : require
 
 layout(location = 0) uniform sampler2DRect depthBlenderSampler;
 layout(location = 1) uniform sampler2DRect frontBlenderSampler;
