@@ -1425,6 +1425,32 @@ Trinary Polygon::isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& 
 	return IS_UNKNOWN;
 }
 
+bool Polygon::isCoincident(const Planed& plane, double tol) const
+{
+	for (const auto& id : _vertexIds) {
+		const auto& pt = getVertexPoint(id);
+		auto dist = plane.distanceToPoint(pt);
+		if (dist > tol)
+			return false;
+	}
+
+	return true;
+}
+
+bool Polygon::isOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol) const
+{
+	if (_isOnSymmetryPlane == IS_UNKNOWN) {
+		_isOnSymmetryPlane = IS_FALSE;
+		for (const auto& pl : symPlanes) {
+			if (isCoincident(pl, tol)) {
+				_isOnSymmetryPlane = IS_TRUE;
+				break;
+			}
+		}
+	}
+	return _isOnSymmetryPlane == IS_TRUE;
+}
+
 bool Polygon::isPointOnEdge(const Vector3d& pt) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -1575,7 +1601,7 @@ bool Polygon::verifyTopology() const
 		bool isBoundaryFace = false;
 
 		for (const auto& bPl : boundaryPlanes) {
-			if (facePlane.isCoincident(bPl, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol())) {
+			if (isCoincident(facePlane, Tolerance::sameDistTol())) {
 				isBoundaryFace = true;
 			}
 		}

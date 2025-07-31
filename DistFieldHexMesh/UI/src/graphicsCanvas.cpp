@@ -673,11 +673,10 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    auto& meshVBOs = _pDrawHexMesh->getVBOs();
-    meshVBOs->clear();
+    _pDrawHexMesh->getVBOs()->clear();
+    _pDrawDebugMesh->getVBOs()->clear();
     if (_pDrawCrossSections) {
-        auto& sectionVBOs = _pDrawCrossSections->getVBOs();
-        sectionVBOs->clear();
+        _pDrawCrossSections->getVBOs()->clear();
     }
 }
 

@@ -106,6 +106,7 @@ public:
     std::wstring getCacheDirName() const;
 
     const Model& getModel() const;
+    Model& getModel();
     MeshDataConstPtr getMeshData(const std::wstring& name) const;
     MeshDataPtr getMeshData(const std::wstring& name);
 
@@ -198,6 +199,11 @@ inline const SplittingParams& AppData::getParams() const
 }
 
 inline const Model& AppData::getModel() const
+{
+    return _model;
+}
+
+inline Model& AppData::getModel()
 {
     return _model;
 }

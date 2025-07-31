@@ -98,6 +98,7 @@ public:
 	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
 
 	void rebuildSearchTree();
+	void clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes);
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;

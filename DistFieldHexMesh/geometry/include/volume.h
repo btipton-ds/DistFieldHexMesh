@@ -144,6 +144,9 @@ public:
 
 	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
+	Planed getSymmetryPlaneX() const;
+	Planed getSymmetryPlaneY() const;
+	Planed getSymmetryPlaneZ() const;
 	bool isSymmetryPlane(const SplittingParams& params, const Planed& pl) const;
 	void createAdHocBlockSearchTree();
 

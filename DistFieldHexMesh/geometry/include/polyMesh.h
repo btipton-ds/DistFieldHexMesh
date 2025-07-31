@@ -85,6 +85,7 @@ namespace DFHM {
 		double getEdgeCurvature(const EdgeKey& key) const;
 		const CBoundingBox3Dd& getBBox() const;
 		void initClosed();
+		void clampToSymmetryPlanes(const std::vector<Planed>& symPlanes);
 		bool isClosed() const;
 
 		template<class FACE_FUNC>

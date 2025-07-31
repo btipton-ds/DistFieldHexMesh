@@ -145,6 +145,24 @@ void PolyMesh::initClosed()
 	}
 }
 
+void PolyMesh::clampToSymmetryPlanes(const std::vector<Planed>& symPlanes)
+{
+	_vertices.iterateInOrder([this, &symPlanes](const Index3DId& vertId, Vertex& vert)->bool {
+		const auto tol = Tolerance::sameDistTolFloat();
+		for (const auto& pl : symPlanes) {
+			const auto& pt = vert.getPoint();
+			auto dist = pl.distanceToPoint(pt);
+			if (dist < tol) {
+				_vertices.removeFromLookup(vertId);
+				auto newPt = pl.projectPoint(pt);
+				vert.replacePoint(newPt);
+				_vertices.addToLookup(vert);
+			}
+		}
+		return true;
+	});
+}
+
 const CBoundingBox3Dd& PolyMesh::getBBox() const
 {
 	if (_bbox.empty()) {

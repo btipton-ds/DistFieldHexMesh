@@ -508,6 +508,16 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 		_modelCornerPts[i] = pts[i];
 	}
 	
+	vector<Planed> symPlanes;
+	if (params.symXAxis)
+		symPlanes.push_back(getSymmetryPlaneX());
+	if (params.symYAxis)
+		symPlanes.push_back(getSymmetryPlaneY());
+	if (params.symZAxis)
+		symPlanes.push_back(getSymmetryPlaneZ());
+
+	auto& model = getAppData()->getModel();
+	model.clampVerticesToSymPlanes(symPlanes);
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
@@ -536,7 +546,7 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 			vert.markSolidAndIntersecting();
 			return true;
 		});
-	}, false && multiCore);
+	}, multiCore);
 
 #if 0
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
@@ -2118,32 +2128,59 @@ void Volume::getModelBoundaryPlanes(vector<Planed>& vals) const
 
 }
 
+Planed Volume::getSymmetryPlaneX() const
+{
+	auto& pts = getModelCornerPts();
+	const auto& pt0 = pts[3];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[4];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
+Planed Volume::getSymmetryPlaneY() const
+{
+	auto& pts = getModelCornerPts();
+
+	const auto& pt0 = pts[1];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[4];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
+Planed Volume::getSymmetryPlaneZ() const
+{
+	auto& pts = getModelCornerPts();
+
+	const auto& pt0 = pts[1];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[3];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
 bool Volume::isSymmetryPlane(const SplittingParams& params, const Planed& pl) const
 {
 	const auto tol = Tolerance::planeCoincidentDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
-	auto& pts = getModelCornerPts();
+
+	Planed symPlane;
 	if (params.symXAxis) {
-		const auto& pt0 = pts[3];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[4];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneX();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 
 	if (params.symYAxis) {
-		const auto& pt0 = pts[1];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[4];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneY();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 
 	if (params.symZAxis) {
-		const auto& pt0 = pts[1];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[3];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneZ();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 
