@@ -85,7 +85,8 @@ add_executable (DistFieldHexMesh
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 
-	"geometry/src/block.cpp"	
+	"geometry/src/block.cpp"
+	"geometry/src/debugMeshData.cpp"
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
@@ -107,6 +108,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/volume.cpp"
 
 	"graphics/src/drawCrossSectionEdges.cpp"
+	"graphics/src/drawDebugMesh.cpp"
 	"graphics/src/drawMesh.cpp"
 	"graphics/src/drawHexMesh.cpp" 
 	"graphics/src/drawModelMesh.cpp"
@@ -132,7 +134,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
- )
+   )
 
 if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
 	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
@@ -196,7 +198,8 @@ add_executable (TestDFM
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 
-	"geometry/src/block.cpp"	
+	"geometry/src/block.cpp"
+	"geometry/src/debugMeshData.cpp"
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
@@ -224,7 +227,7 @@ add_executable (TestDFM
 	"test/src/testMain.cpp"
 	"test/src/testPoolMemory.cpp" 
 	"test/src/testMultiCore.cpp"
- )
+)
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh

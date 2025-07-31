@@ -128,6 +128,7 @@ public:
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
     void updateHexTess();
+    void updateDebugTess();
     void updateModelTess();
 
 private:

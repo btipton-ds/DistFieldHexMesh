@@ -62,6 +62,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 #include <splitter3D.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -314,6 +315,7 @@ bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, con
 
         updatePrefsFile();
         updateHexTess();
+        updateDebugTess();
 
         return true;
     }
@@ -356,6 +358,7 @@ bool AppData::handleMeshConditionalTestSplit(wxMouseEvent& event, const Rayd& ra
             _pVolume->setLayerNums();
 
             updateHexTess();
+            updateDebugTess();
 
             _pFaceSearchTree = nullptr;
             initMeshSearchTree();
@@ -396,6 +399,7 @@ bool AppData::handleMeshComplexityTestSplit(wxMouseEvent& event, const Rayd& ray
             _pVolume->setLayerNums();
 
             updateHexTess();
+            updateDebugTess();
 
             _pFaceSearchTree = nullptr;
             initMeshSearchTree();
@@ -549,6 +553,18 @@ void AppData::updateHexTess()
     }
 }
 
+void AppData::updateDebugTess()
+{
+
+    if (_pVolume) {
+        auto pDbgData = _pVolume->getDebugMeshData();
+
+        auto pCanvas = _pMainFrame->getCanvas();
+        auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
+        pDrawDbgMesh->createTessellation(*pDbgData);
+    }
+}
+
 void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
@@ -653,6 +669,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->createAdHocBlockSearchTree();
 
         updateHexTess();
+        updateDebugTess();
     }
 
     _pMainFrame->refreshObjectTree();
@@ -793,6 +810,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->setShowMeshSelectedBlocks(true);
 
     updateHexTess();
+    updateDebugTess();
 }
 
 void AppData::handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const
@@ -1281,6 +1299,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         const Index3D max(_pVolume->volDim());
         setDisplayMinMax(min, max);
         updateHexTess();
+        updateDebugTess();
 
         _pFaceSearchTree = nullptr;
         initMeshSearchTree();

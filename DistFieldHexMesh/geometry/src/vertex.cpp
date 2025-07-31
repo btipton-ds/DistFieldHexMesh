@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <tm_spatialSearch.hpp>
 #include <tolerances.h>
 #include <fixedPoint.h>
 #include <io_utils.h>
@@ -33,8 +34,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <block.h>
 #include <polyMesh.h>
-#include <polygon.h>
-#include <tm_spatialSearch.hpp>
+#include <volume.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -165,9 +166,11 @@ void Vertex::markSolidAndIntersecting()
 	if (Index3DId(3, 0, 3, 0) == getId()) {
 		int dbgBreak = 1;
 	}
+
+	vector<Rayd> rays;
 	MTC::set<Index3DId> conVerts;
 	getConnectedVertexIds(conVerts);
-	size_t numSolid = 0, numVoid = 0, numIntersecting = 0;
+	size_t numSolid = 0;
 	for (const auto& otherVertId : conVerts) {
 		const auto& otherVert = getVertex(otherVertId);
 		const auto& otherPt = otherVert._pt;
@@ -175,6 +178,7 @@ void Vertex::markSolidAndIntersecting()
 		Vector3d dir = otherPt - _pt;
 		dir.normalize();
 		Rayd ray(_pt, dir);
+		rays.push_back(ray);
 		vector<SolidHitRec> hitsOnSolidModel;
 		pTree->biDirRayCastTraverse(ray, [this, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
@@ -199,32 +203,22 @@ void Vertex::markSolidAndIntersecting()
 						hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
 				}
 			}
-			if (hitsOnSolidModel.front()._dist < tol)
-				numIntersecting++;
-			else {
-				bool inSolid = false;
-				for (const auto& hr : hitsOnSolidModel) {
-					inSolid = !inSolid;
-				}
+			bool inSolid = hitsOnSolidModel.size() % 2 == 1;
 
-				if (inSolid)
-					numSolid++;
-				else
-					numVoid++;
+			if (inSolid)
+				numSolid++;
 
-				int dbgBreak = 1;
-			}
+			int dbgBreak = 1;			
 		}
 	}
 
-	if (numSolid + numIntersecting > 0) {
-		assert(numVoid == 0);
+	if (numSolid > 1) {
+		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
+		for (const auto& r : rays)
+			pDbg->add(r);
 		_topologyState = TOPST_SOLID;
-	} else if (numVoid + numIntersecting > 0) {
-		assert(numSolid == 0);
+	} else {
 		_topologyState = TOPST_VOID;
-	} else if (numIntersecting != 0) {
-		_topologyState = TOPST_INTERSECTING;
 	}
 }
 

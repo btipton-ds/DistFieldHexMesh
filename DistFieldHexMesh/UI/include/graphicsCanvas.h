@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <graphicsVBORec.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <drawDebugMesh.h>
 #include <drawCrossSectionEdges.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
@@ -132,6 +133,9 @@ public:
 
     std::shared_ptr<DrawModelMesh> getDrawModelMesh();
     const std::shared_ptr<DrawModelMesh> getDrawModelMesh() const;
+
+    std::shared_ptr<DrawDebugMesh> getDrawDebugMesh();
+    const std::shared_ptr<DrawDebugMesh> getDrawDebugMesh() const;
 
     std::shared_ptr<DrawHexMesh> getDrawHexMesh();
     const std::shared_ptr<DrawHexMesh> getDrawHexMesh() const;
@@ -301,6 +305,7 @@ private:
     GLuint _width, _height;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+    std::shared_ptr<DrawDebugMesh> _pDrawDebugMesh;
     bool _drawSectionsEnabled = false;
     std::shared_ptr<DrawCrossSectionEdges> _pDrawCrossSections;
     CBoundingBox3Dd _viewBounds;
@@ -374,6 +379,16 @@ inline std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh()
 inline const std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh() const
 {
     return _pDrawModelMesh;
+}
+
+inline std::shared_ptr<DrawDebugMesh> GraphicsCanvas::getDrawDebugMesh()
+{
+    return _pDrawDebugMesh;
+}
+
+inline const std::shared_ptr<DrawDebugMesh> GraphicsCanvas::getDrawDebugMesh() const
+{
+    return _pDrawDebugMesh;
 }
 
 inline std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh()

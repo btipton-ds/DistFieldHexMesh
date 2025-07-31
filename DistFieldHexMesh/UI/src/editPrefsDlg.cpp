@@ -102,4 +102,5 @@ void EditPrefsDlg::save()
 	string str(_prefsText->GetValue());
 	pAppData->updatePrefsFile(str);
 	pAppData->updateHexTess();
+	pAppData->updateDebugTess();
 }

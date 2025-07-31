@@ -66,6 +66,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <drawDebugMesh.h>
 
 #if INCLUDE_DEBUG_WX_FRAME
 #include <graphicsDebugCanvas.h>
@@ -164,6 +165,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 {
     _pDrawHexMesh = make_shared<DrawHexMesh>(this);
     _pDrawModelMesh = make_shared<DrawModelMesh>(this);
+    _pDrawDebugMesh = make_shared<DrawDebugMesh>(this);
 
     initProjection();
     setLights();
@@ -1097,6 +1099,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     // TODO find where we're breaking it and FIX IT, then remove this hack
     glPushAttrib(0xffffffff);
 
+    _pDrawDebugMesh->setShader(pShader);
     if (_pDrawCrossSections) {
         _pDrawModelMesh->setShader(pShader);
         _pDrawHexMesh->setShader(pShader);
@@ -1110,6 +1113,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
         _graphicsUBO.twoSideLighting = true;
         updateUniformBlock();
 
+        _pDrawDebugMesh->render();
         _pDrawHexMesh->render();
 
         _graphicsUBO.twoSideLighting = twoSided;
@@ -1125,6 +1129,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
         _graphicsUBO.twoSideLighting = true;
         updateUniformBlock();
 
+        _pDrawDebugMesh->render();
         _pDrawHexMesh->render();
 
         _graphicsUBO.twoSideLighting = twoSided;
@@ -1655,6 +1660,12 @@ void GraphicsCanvas::changeViewElements()
     const auto& model = _pAppData->getModel();
     _pDrawModelMesh->changeViewElements(model);
     _pDrawHexMesh->changeViewElements();
+
+    auto pVol = _pAppData->getVolume();
+    if (pVol) {
+        auto pDbgData = pVol->getDebugMeshData();
+        _pDrawDebugMesh->changeViewElements(*pDbgData);
+    }
     if (_pDrawCrossSections)
         _pDrawCrossSections->changeViewElements();
 }
@@ -1819,6 +1830,7 @@ void GraphicsCanvas::toggleDrawSections(const VolumePtr& pVolume)
 
             _drawSectionsEnabled = true;
             _pAppData->updateHexTess();
+            _pAppData->updateDebugTess();
             _pDrawCrossSections->changeViewElements();
         }
     }

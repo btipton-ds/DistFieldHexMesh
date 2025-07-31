@@ -1220,6 +1220,7 @@ void MainFrame::OnUpdateUI(wxUpdateUIEvent& event)
                     const Index3D max(pVol ? pVol->volDim() : Index3D());
                     _pAppData->setDisplayMinMax(min, max);
                     _pAppData->updateHexTess();
+                    _pAppData->updateDebugTess();
                     _pCanvas->changeViewElements();
                 }
             }

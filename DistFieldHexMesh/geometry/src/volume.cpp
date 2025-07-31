@@ -54,6 +54,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <gradingOp.h>
 #include <meshData.h>
 #include <appData.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -62,6 +63,7 @@ Volume::Volume(const Index3D& dims)
 	: _volDim(dims)
 	, _modelDim(dims)
 	, _modelDimOrigin(0, 0, 0)
+	, _pDebugMeshData(make_shared<DebugMeshData>())
 {
 }
 
@@ -80,6 +82,7 @@ Volume::Volume(const Volume& src)
 	, _hasSharpVertPlane(src._hasSharpVertPlane)
 	, _sharpVertPlane(src._sharpVertPlane)
 	, _splitNum(src._splitNum)
+	, _pDebugMeshData(make_shared<DebugMeshData>())
 {
 }
 

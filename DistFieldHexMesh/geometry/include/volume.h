@@ -61,6 +61,10 @@ using BlockPtr = std::shared_ptr<Block>;
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
 
+class DebugMeshData;
+using DebugMeshDataPtr = std::shared_ptr<DebugMeshData>;
+using DebugMeshDataConstPtr = std::shared_ptr<const DebugMeshData>;
+
 class Splitter2D;
 using Splitter2DPtr = std::shared_ptr<Splitter2D>;
 
@@ -108,6 +112,9 @@ public:
 	const AppDataPtr& getAppData() const;
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
+
+	const DebugMeshDataPtr& getDebugMeshData();
+	const DebugMeshDataConstPtr& getDebugMeshData() const;
 
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
@@ -259,6 +266,7 @@ private:
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
 
+	DebugMeshDataPtr _pDebugMeshData;
 	mutable std::shared_ptr<MultiCore::ThreadPool> _pThreadPool;
 };
 
@@ -352,6 +360,16 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 inline const std::map<double, Splitter2DPtr>* Volume::getCrossSections() const
 {
 	return _crossSections;
+}
+
+inline const DebugMeshDataPtr& Volume::getDebugMeshData()
+{
+	return _pDebugMeshData;
+}
+
+inline const DebugMeshDataConstPtr& Volume::getDebugMeshData() const
+{
+	return _pDebugMeshData;
 }
 
 } // end namespace DFHM
