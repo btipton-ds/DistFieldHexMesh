@@ -143,8 +143,10 @@ public:
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool usesEdge(const Edge& EdgeKey) const;
 	bool usesEdge(const Edge& EdgeKey, size_t& idx0, size_t& idx1) const;
-	bool isCoincident(const Planed& plane, double tol) const;
-	bool isOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol) const;
+	bool isCoincident(const Planed& plane) const;
+	bool isCoincident(const Planed& plane, double sameDistTol) const;
+	void setOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol);
+	bool isOnSymmetryPlane() const;
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;

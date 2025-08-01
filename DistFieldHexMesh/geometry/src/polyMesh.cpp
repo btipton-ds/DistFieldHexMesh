@@ -145,7 +145,7 @@ void PolyMesh::initClosed()
 	}
 }
 
-void PolyMesh::clampToSymmetryPlanes(const std::vector<Planed>& symPlanes)
+void PolyMesh::initSymmetry(const std::vector<Planed>& symPlanes)
 {
 	_vertices.iterateInOrder([this, &symPlanes](const Index3DId& vertId, Vertex& vert)->bool {
 		const auto tol = Tolerance::sameDistTolFloat();
@@ -159,6 +159,12 @@ void PolyMesh::clampToSymmetryPlanes(const std::vector<Planed>& symPlanes)
 				_vertices.addToLookup(vert);
 			}
 		}
+		return true;
+	});
+
+	_polygons.iterateInOrder([this, &symPlanes](const Index3DId& faceId, Polygon& face)->bool {
+		const auto tol = Tolerance::sameDistTol();
+		face.setOnSymmetryPlane(symPlanes, tol);
 		return true;
 	});
 }

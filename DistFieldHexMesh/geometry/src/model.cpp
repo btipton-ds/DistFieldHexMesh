@@ -105,7 +105,7 @@ void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
 {
 	for (auto& pData : _modelMeshData) {
 		if (pData && pData->getPolyMesh()) {
-			pData->getPolyMesh()->clampToSymmetryPlanes(symPlanes);
+			pData->getPolyMesh()->initSymmetry(symPlanes);
 		}
 	}
 }

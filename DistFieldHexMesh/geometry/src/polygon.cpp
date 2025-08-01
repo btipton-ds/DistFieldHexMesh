@@ -1425,19 +1425,30 @@ Trinary Polygon::isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& 
 	return IS_UNKNOWN;
 }
 
-bool Polygon::isCoincident(const Planed& plane, double tol) const
+bool Polygon::isCoincident(const Planed& plane) const
 {
+	return isCoincident(plane, Tolerance::sameDistTol());
+}
+
+bool Polygon::isCoincident(const Planed& plane, double sameDistTol) const
+{
+	/*
+	Plane vs plane coincidence is error prone.
+	This uses linear distance from each vertex to the plane within a distance tolerance which is more stable.
+	*/
+	if (sameDistTol < 0)
+		sameDistTol = Tolerance::sameDistTol();
 	for (const auto& id : _vertexIds) {
 		const auto& pt = getVertexPoint(id);
 		auto dist = plane.distanceToPoint(pt);
-		if (dist > tol)
+		if (dist > sameDistTol)
 			return false;
 	}
 
 	return true;
 }
 
-bool Polygon::isOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol) const
+void Polygon::setOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol)
 {
 	if (_isOnSymmetryPlane == IS_UNKNOWN) {
 		_isOnSymmetryPlane = IS_FALSE;
@@ -1448,6 +1459,10 @@ bool Polygon::isOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol
 			}
 		}
 	}
+}
+
+bool Polygon::isOnSymmetryPlane() const
+{
 	return _isOnSymmetryPlane == IS_TRUE;
 }
 

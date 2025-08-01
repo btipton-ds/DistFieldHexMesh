@@ -134,9 +134,9 @@ const Vector3d& Vertex::calSurfaceNormal() const
 namespace
 {
 struct SolidHitRec {
-	inline SolidHitRec(double dist, bool positive, const PolyMeshIndex& idx)
+	inline SolidHitRec(double dist, int positiveCrossing, const PolyMeshIndex& idx)
 		: _dist(dist)
-		, _positive(positive)
+		, _positiveCrossing(positiveCrossing)
 		, _polyMeshIdx(idx)
 	{
 	}
@@ -147,7 +147,7 @@ struct SolidHitRec {
 	}
 
 	double _dist;
-	bool _positive;
+	int _positiveCrossing;
 	PolyMeshIndex _polyMeshIdx;
 };
 
@@ -180,26 +180,39 @@ void Vertex::markSolidAndIntersecting()
 		Rayd ray(_pt, dir);
 		rays.push_back(ray);
 		vector<SolidHitRec> hitsOnSolidModel;
-		pTree->biDirRayCastTraverse(ray, [this, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+		pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
 				auto pFace = model.getPolygon(idx);
 				RayHitd rh;
-				if (pFace->intersect(ray, rh) && rh.dist > 0) {
+				if (pFace->intersect(ray, rh) && rh.dist > -tol) {
 					auto& norm = pFace->calUnitNormal();
-					bool pos = norm.dot(dir) >= 0;
-					hitsOnSolidModel.push_back(SolidHitRec(rh.dist, pos, idx));
+					auto dp = norm.dot(dir);
+					bool positiveCrossing = dp >= 0;
+					bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
+					if (!rayStartsOnSymPlaneAndAimedInwards)
+						hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
 				}
 			}
 			return true;
 		}, tol);
 
 		if (!hitsOnSolidModel.empty()) {
-			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
+			// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
+			// each face connected to the vertex will be counted.
+			// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
+			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end(), [](const SolidHitRec& lhs, const SolidHitRec& rhs)->bool {
+				if (lhs._dist < rhs._dist)
+					return true;
+				else if (lhs._dist > rhs._dist)
+					return false;
+				
+				return lhs._positiveCrossing < rhs._positiveCrossing;
+			});
 			for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
 				size_t j = (i + 1) % hitsOnSolidModel.size();
 				double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
 				if (gap < tolFloat) {
-					if (hitsOnSolidModel[i]._positive == hitsOnSolidModel[j]._positive)
+					if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing)
 						hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
 				}
 			}
@@ -212,7 +225,7 @@ void Vertex::markSolidAndIntersecting()
 		}
 	}
 
-	if (numSolid > 1) {
+	if (numSolid > 2) {
 		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
 		for (const auto& r : rays)
 			pDbg->add(r);
