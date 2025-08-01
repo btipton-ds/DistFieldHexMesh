@@ -1002,6 +1002,37 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 	return corners.size();
 }
 
+TopologyState Polyhedron::getTopolgyState() const
+{
+	if (intersectsModel())
+		return TOPST_INTERSECTING;
+
+	MTC::set<Index3DId> vertIds;
+	getVertIds(vertIds);
+
+	size_t numSolid = 0, numVoid = 0;
+	for (const auto& vertId : vertIds) {
+		auto& vert = getVertex(vertId);
+		auto vTopSt = vert.getTopolgyState();
+		switch (vTopSt) {
+			default:
+		case TOPST_SOLID:
+			numSolid++;
+			break;
+		case TOPST_VOID:
+			numVoid++;
+			break;
+		}
+	}
+
+	if (numSolid == vertIds.size())
+		return TOPST_SOLID;
+	else if (numVoid == vertIds.size())
+		return TOPST_VOID;
+
+	return TOPST_INTERSECTING;
+}
+
 const CBoundingBox3Dd& Polyhedron::getBoundingBox() const
 {
 	if (_cachedBBox.empty()) {

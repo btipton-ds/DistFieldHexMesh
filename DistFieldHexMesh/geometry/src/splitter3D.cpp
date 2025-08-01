@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 #include <gradingOp.h>
+#include <debugMeshData.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -610,10 +611,34 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	MTC::vector<MTC::vector<Vector3d>> subCellsPts;
 	MTC::vector<Vector3d> splittingFacePts;
 	parentCell.makeHexCellHexPoints(splitAxis, subCellsPts, splittingFacePts);
+	auto parentTopologyState = parentCell.getTopolgyState();
+
 	MTC::vector<Index3DId> splittingFaceVerts;
 	splittingFaceVerts.resize(splittingFacePts.size());
-	for (size_t i = 0; i < splittingFacePts.size(); i++)
-		splittingFaceVerts[i] = vertId(splittingFacePts[i]);
+	for (size_t i = 0; i < splittingFacePts.size(); i++) {
+		auto newVertId = vertId(splittingFacePts[i]);
+		auto& newVert = getVertex(newVertId);
+
+		switch (parentTopologyState) {
+		default:
+			newVert.markInsideSolid();
+			break;
+		case TOPST_SOLID:
+			newVert.setTopologyState(TOPST_SOLID);
+			break;
+		case TOPST_VOID:
+			newVert.setTopologyState(TOPST_VOID);
+			break;
+		}
+
+		auto newTopState = newVert.getTopolgyState();
+		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
+			auto pVol = _pBlock->getVolume();
+			auto& pDbgMesh = pVol->getDebugMeshData();
+			pDbgMesh->add(newVert.getPoint());
+		}
+		splittingFaceVerts[i] = newVertId;
+	}
 
 	auto splittingFaceId = pBlk->addPolygon(Polygon(splittingFaceVerts));
 

@@ -172,7 +172,7 @@ void Vertex::markInsideSolid()
 		int dbgBreak = 1;
 	}
 
-	vector<Rayd> rays;
+	set<Vector3d> points;
 	MTC::set<Index3DId> conVerts;
 	getConnectedVertexIds(conVerts);
 	size_t numSolid = 0;
@@ -183,7 +183,7 @@ void Vertex::markInsideSolid()
 		Vector3d dir = otherPt - _pt;
 		dir.normalize();
 		Rayd ray(_pt, dir);
-		rays.push_back(ray);
+		points.insert(_pt);
 		vector<SolidHitRec> hitsOnSolidModel;
 		pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
@@ -227,8 +227,8 @@ void Vertex::markInsideSolid()
 
 	if (numSolid > 2) {
 		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
-		for (const auto& r : rays)
-			pDbg->add(r);
+		for (const auto& pt : points)
+			pDbg->add(pt);
 		_topologyState = TOPST_SOLID;
 	} else {
 		_topologyState = TOPST_VOID;

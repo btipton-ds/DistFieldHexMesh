@@ -92,6 +92,8 @@ public:
 	// Gets the faces for a vertex which belong to this polyhedron
 	FastBisectionSet<Index3DId> getVertFaces(const Index3DId& vertId) const;
 
+	TopologyState getTopolgyState() const;
+
 	const CBoundingBox3Dd& getBoundingBox() const;
 	void clearCache() const;
 

@@ -1106,13 +1106,13 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 
         _pDrawModelMesh->render();
         _pDrawCrossSections->render();
+        _pDrawDebugMesh->render();
 
         bool twoSided = _graphicsUBO.twoSideLighting;
 
         _graphicsUBO.twoSideLighting = true;
         updateUniformBlock();
 
-        _pDrawDebugMesh->render();
         _pDrawHexMesh->render();
 
         _graphicsUBO.twoSideLighting = twoSided;
@@ -1122,13 +1122,13 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
         _pDrawHexMesh->setShader(pShader);
 
         _pDrawModelMesh->render();
+        _pDrawDebugMesh->render();
 
         bool twoSided = _graphicsUBO.twoSideLighting;
 
         _graphicsUBO.twoSideLighting = true;
         updateUniformBlock();
 
-        _pDrawDebugMesh->render();
         _pDrawHexMesh->render();
 
         _graphicsUBO.twoSideLighting = twoSided;

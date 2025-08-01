@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <vector>
+#include <set>
 #include <tm_ray.h>
 
 namespace OGL
@@ -49,6 +50,7 @@ public:
 
 	void clear();
 
+	void add(const Vector3d& pt);
 	void add(const Rayd& ray);
 	void add(const Polygon& face);
 
@@ -59,6 +61,7 @@ public:
 	const OGL::IndicesPtr& getEdgeTess() const;
 
 private:
+	std::set<Vector3d> _points;
 	std::vector<Rayd> _rays;
 	std::vector<float> _triPts, _triNormals;
 

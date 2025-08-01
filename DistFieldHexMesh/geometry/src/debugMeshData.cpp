@@ -39,6 +39,11 @@ void DebugMeshData::clear()
 {
 }
 
+void DebugMeshData::add(const Vector3d& pt)
+{
+    _points.insert(pt);
+}
+
 void DebugMeshData::add(const Rayd& ray)
 {
     _rays.push_back(ray);
@@ -50,7 +55,7 @@ void DebugMeshData::add(const Polygon& face)
 
 void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const
 {
-    const auto len = 0.2;
+    const auto len = 0.1;
     pts.clear();
     indices.clear();
 
@@ -66,6 +71,23 @@ void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int
         for (int i = 0; i < 3; i++)
             pts.push_back((float)pt1[i]);
         indices.push_back(idx++);
+    }
+
+    for (const auto& origin : _points) {
+        for (int i = 0; i < 3; i++) {
+            Vector3d axis(0, 0, 0);
+            axis[i] = 0.5;
+            Vector3d pt0 = origin + axis * len;
+            Vector3d pt1 = origin - axis * len;
+
+            for (int i = 0; i < 3; i++)
+                pts.push_back((float)pt0[i]);
+            indices.push_back(idx++);
+
+            for (int i = 0; i < 3; i++)
+                pts.push_back((float)pt1[i]);
+            indices.push_back(idx++);
+        }
     }
 }
 
