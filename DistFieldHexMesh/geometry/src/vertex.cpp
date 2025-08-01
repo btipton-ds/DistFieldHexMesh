@@ -158,7 +158,7 @@ struct SolidHitRec {
 
 }
 
-void Vertex::markSolidAndIntersecting()
+void Vertex::markInsideSolid()
 {
 	const auto tol = Tolerance::sameDistTol();
 	const auto tolFloat = Tolerance::sameDistTolFloat();
@@ -192,6 +192,8 @@ void Vertex::markSolidAndIntersecting()
 				if (pFace->intersect(ray, rh) && rh.dist > -tol) {
 					auto& norm = pFace->calUnitNormal();
 					auto dp = norm.dot(dir);
+					// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
+					// This condition produces a lot of singularities.
 					bool positiveCrossing = dp >= 0;
 					bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
 					if (!rayStartsOnSymPlaneAndAimedInwards)

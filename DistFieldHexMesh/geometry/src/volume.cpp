@@ -550,7 +550,7 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
-			vert.markSolidAndIntersecting();
+			vert.markInsideSolid();
 			return true;
 		});
 	}, multiCore);

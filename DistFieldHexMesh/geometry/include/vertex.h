@@ -81,7 +81,7 @@ public:
 
 	bool isConnectedToVertex(const Index3DId& vertId) const;
 
-	void markSolidAndIntersecting();
+	void markInsideSolid();
 	TopologyState getTopolgyState() const;
 
 	const Index3DId& getId() const override;
