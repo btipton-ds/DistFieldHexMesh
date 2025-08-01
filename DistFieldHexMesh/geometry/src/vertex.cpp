@@ -143,7 +143,12 @@ struct SolidHitRec {
 
 	inline bool operator<(const SolidHitRec& rhs) const
 	{
-		return _dist < rhs._dist;
+		if (_dist < rhs._dist)
+			return true;
+		else if (_dist > rhs._dist)
+			return false;
+
+		return _positiveCrossing < rhs._positiveCrossing;
 	}
 
 	double _dist;
@@ -200,14 +205,7 @@ void Vertex::markSolidAndIntersecting()
 			// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
 			// each face connected to the vertex will be counted.
 			// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
-			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end(), [](const SolidHitRec& lhs, const SolidHitRec& rhs)->bool {
-				if (lhs._dist < rhs._dist)
-					return true;
-				else if (lhs._dist > rhs._dist)
-					return false;
-				
-				return lhs._positiveCrossing < rhs._positiveCrossing;
-			});
+			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
 			for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
 				size_t j = (i + 1) % hitsOnSolidModel.size();
 				double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
@@ -288,13 +286,6 @@ void Vertex::dumpIntersectionObj(const Rayd& ray, const std::vector<PolyMeshInde
 			out << "\n";
 		}
 
-	}
-}
-
-void Vertex::markOthersVoid()
-{
-	if (_topologyState == TOPST_UNKNOWN) {
-		_topologyState = TOPST_VOID;
 	}
 }
 

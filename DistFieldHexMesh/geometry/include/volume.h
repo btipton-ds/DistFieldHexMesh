@@ -217,6 +217,9 @@ private:
 	void removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells);
 	void doQualitySplits(const SplittingParams& params);
 	void splitWithModel(const SplittingParams& params);
+
+	void clampModelVerticesToSymPlanes(const SplittingParams& params);
+
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 

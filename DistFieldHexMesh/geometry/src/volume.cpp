@@ -498,16 +498,8 @@ void Volume::initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::Th
 	_blocks[0] = createBlock(0);
 }
 
-void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
+void Volume::clampModelVerticesToSymPlanes(const SplittingParams& params)
 {
-	resetNumSplits();
-	_modelBoundingBox.clear();
-	_modelBoundingBox.merge(volBox);
-	for (int i = 0; i < 8; i++) {
-		_modelBoundingBox.merge(pts[i]);
-		_modelCornerPts[i] = pts[i];
-	}
-	
 	vector<Planed> symPlanes;
 	if (params.symXAxis)
 		symPlanes.push_back(getSymmetryPlaneX());
@@ -518,6 +510,21 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 
 	auto& model = getAppData()->getModel();
 	model.clampVerticesToSymPlanes(symPlanes);
+
+}
+
+void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
+{
+	resetNumSplits();
+	_modelBoundingBox.clear();
+	_modelBoundingBox.merge(volBox);
+	for (int i = 0; i < 8; i++) {
+		_modelBoundingBox.merge(pts[i]);
+		_modelCornerPts[i] = pts[i];
+	}
+	
+	clampModelVerticesToSymPlanes(params);
+
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
@@ -547,40 +554,6 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 			return true;
 		});
 	}, multiCore);
-
-#if 0
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
-		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
-			vert.markOthersVoid();
-			return true;
-		});
-	}, multiCore);
-
-#endif
-	size_t numSolid = 0, numVoid = 0, numIntersecting = 0, numUnknown = 0;
-	runThreadPool([&numSolid, &numVoid, &numIntersecting, &numUnknown](size_t threadNum, const BlockPtr& pBlk) {
-		pBlk->iterateVerticesInOrder([&numSolid, &numVoid, &numIntersecting, &numUnknown](const Index3DId& vertId, Vertex& vert)->bool {
-			auto topSt = vert.getTopolgyState();
-			switch (topSt) {
-			default:
-			case TOPST_UNKNOWN:
-				numUnknown++;
-				break;
-			case TOPST_SOLID:
-				numSolid++;
-				break;
-			case TOPST_VOID:
-				numVoid++;
-				break;
-			case TOPST_INTERSECTING:
-				numIntersecting++;
-				break;
-			}
-			return true;
-			});
-		}, false && multiCore);
-
-	cout << "numSolid: " << numSolid << ", numVoid: " << numVoid << ", numIntersecting: " << numIntersecting << ", numUnknown: " << numUnknown << "\n";
 
 	runThreadPool([this, pReporter](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->deleteModelSearchTree();
