@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <wx/dataview.h>
 #include <wx/dir.h>
 
+#undef M_PI
 #include "defines.h"
 
 #include <Eigen/Geometry>

@@ -25,6 +25,8 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#pragma warning( disable : 4005 ) // M_PI is being redefined somewhere in wxWidgets 3.2.8
+
 #include <memory>
 #include <ctime>
 #include <wx/filedlg.h>

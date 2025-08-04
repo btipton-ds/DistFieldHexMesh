@@ -2,7 +2,7 @@
 # project specific logic here.
 #
 
-find_package(wxWidgets)
+find_package(wxWidgets COMPONENTS core base gl png z)
 include(${wxWidgets_USE_FILE})
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
@@ -161,19 +161,19 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	)
 else()
 	target_link_libraries("DistFieldHexMesh" 
-	PUBLIC triMesh
-	PUBLIC stlReader
+		PUBLIC triMesh
+		PUBLIC stlReader
 
-	#windows & mfc libraries
-	PUBLIC comctl32
-	PUBLIC rpcrt4
+		#windows & mfc libraries
+		PUBLIC comctl32
+		PUBLIC rpcrt4
 
-	#wxWidgets Libraries
-	PUBLIC wxbase32u
-	PUBLIC wxmsw32u_core
-	PUBLIC wxpng
-	PUBLIC wxzlib
-	PUBLIC wxmsw32u_gl
+		#wxWidgets Libraries
+		PUBLIC wxbase32u
+		PUBLIC wxmsw32u_core
+		PUBLIC wxpng
+		PUBLIC wxzlib
+		PUBLIC wxmsw32u_gl
 	)
 endif()
 else(WIN32)
@@ -248,7 +248,7 @@ add_custom_command(
 )
 
 if(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /Zo")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /Zo /WX")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11 ")

@@ -28,7 +28,11 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+
+#ifndef M_PI
 #include <cmath>
+#endif
+
 #include <vector>
 #include <iostream>
 #include <index3D.h>
