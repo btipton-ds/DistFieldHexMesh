@@ -25,6 +25,9 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#pragma warning( push )
+#pragma warning( disable : 4005 ) // M_PI is being redefined somewhere in wxWidgets 3.2.8
+
 #include <triMesh.hpp>
 #include <appData.h>
 #include <OGLShader.h>
@@ -35,6 +38,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <splitParams.h>
 #include <tolerances.h>
+
+#pragma warning( pop )
 
 using namespace std;
 using namespace DFHM;

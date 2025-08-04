@@ -26,6 +26,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <app.h>
+#undef M_PI
 #include <mainFrame.h>
 #include <vertex.h>
 
