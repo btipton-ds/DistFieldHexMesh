@@ -52,8 +52,8 @@ namespace DFHM {
 
 	struct SplittingParams;
 
-	class AppData;
-	using AppDataPtr = std::shared_ptr<AppData>;
+	class AppDataIntf;
+	using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 	class Model;
 	using ModelPtr = std::shared_ptr<Model>;

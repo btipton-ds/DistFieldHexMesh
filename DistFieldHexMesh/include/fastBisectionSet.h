@@ -62,7 +62,7 @@ public:
 	FastBisectionSet_with_comp& operator = (const std::vector<VAL>& rhs);
 	FastBisectionSet_with_comp& operator = (const std::set<VAL>& rhs);
 
-	void insert(const VAL& VAL);
+	void insert(const VAL& val);
 	template<class ITER>
 	void insert(const ITER& iterBegin, const ITER& iterEnd)
 	{
@@ -71,7 +71,7 @@ public:
 	}
 
 	size_t find(const VAL& id) const;
-	void erase(const VAL& VAL);
+	void erase(const VAL& val);
 	const VAL& operator[](const size_t& idx) const;
 	const VAL* data() const;
 

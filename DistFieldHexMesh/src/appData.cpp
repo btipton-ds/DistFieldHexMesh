@@ -534,6 +534,7 @@ std::wstring AppData::getCacheDirName() const
 #ifdef _WIN32
     return L"c:/tmp/";
 #else
+    return L"c:/tmp/";
 #endif // _WIN32
 
 }

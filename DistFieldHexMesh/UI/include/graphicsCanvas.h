@@ -60,8 +60,8 @@ using CMeshPtr = TriMesh::CMeshPtr;
 class GraphicsDebugCanvas;
 #endif
 
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
+class AppDataIntf;
+using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 class Volume;
 using VolumePtr = std::shared_ptr<Volume>;
@@ -75,7 +75,7 @@ using GraphicsCanvasBase = wxGLCanvas;
 #ifdef WIN32
 class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
 #else
-class GraphicsCanvas : public GraphicsCanvasBase 
+class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
 #endif
 {
 public:

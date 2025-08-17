@@ -69,17 +69,23 @@ int buttonY = baseRowPixels + promptHeight + boxHeight + margin;
 int frameHeight = buttonY + buttonHeight + margin + 40;
 
 #else
-int gap = 3;
-int descent = 3;
-int promptWidth = 50;
-int boxWidth = 20;
-int boxHeight = 21;
-int rowHeight = boxHeight + descent;
-int col0 = 8;
-int col1 = col0 + promptWidth + gap;
-int col2 = col1 + promptWidth + gap;
-int col3 = col2 + promptWidth + gap;
+int frameWidth = 400;
 int baseRowPixels = 5;
+int rightEdge = frameWidth - 20;
+int gap = 2;
+int descent = 3;
+int margin = 7;
+int col0 = margin;
+int promptWidth = 110;
+int buttonWidth = 80;
+int buttonHeight = 20;
+int promptHeight = 20;
+
+int boxWidth = rightEdge - margin;
+int boxHeight = 15 * 20;
+int buttonY = baseRowPixels + promptHeight + boxHeight + margin;
+
+int frameHeight = buttonY + buttonHeight + margin + 40;
 #endif
 }
 

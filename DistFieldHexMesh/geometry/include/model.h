@@ -45,8 +45,8 @@ struct SplittingParams;
 
 class Polygon;
 
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
+class AppDataIntf;
+using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;

@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 #include <wx/dataview.h>
+#include <wx/withimages.h>
 
 #include <memory>
 #include <future>

@@ -118,7 +118,6 @@ add_executable (DistFieldHexMesh
 	"UI/src/editPrefsDlg.cpp"
 	"UI/src/divideHexMeshDlg.cpp"
 	"UI/src/graphicsCanvas.cpp"
-	"UI/src/graphicsDebugCanvas.cpp"
 	"UI/src/mainFrame.cpp"
 	"UI/src/makeBlockDlg.cpp"
 	"UI/src/objectTreeCtrl.cpp"
@@ -128,8 +127,7 @@ add_executable (DistFieldHexMesh
  	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
 
-	"${OpenGlDir}/src/${OpenGlPlatform}/"
-	"${OpenGlDir}/src/${OpenGlPlatform}/OGLExtensions.cpp"
+	"${OpenGlDir}/src/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"

@@ -27,7 +27,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <polyMeshTables.h>
 #include <volume.h>
-#include <appData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -118,7 +117,7 @@ void PolymeshTables::createMaps()
 					if (pBlk->polygonExists(faceId)) {
 						auto faceIter = faceIdIdxMap.find(faceId);
 						if (faceIter == faceIdIdxMap.end()) {
-							int32_t newFaceIdx = faceIdxIdMap.size();
+							int32_t newFaceIdx = (int32_t)faceIdxIdMap.size();
 							faceIdIdxMap.insert(make_pair(faceId, newFaceIdx));
 							faceIdxIdMap.push_back(faceId);
 
@@ -127,7 +126,7 @@ void PolymeshTables::createMaps()
 							for (const auto& vertId : vertIds) {
 								auto vertIter = vertIdIdxMap.find(vertId);
 								if (vertIter == vertIdIdxMap.end()) {
-									int32_t newVertIdx = vertIdIdxMap.size();
+									int32_t newVertIdx = (int32_t)vertIdIdxMap.size();
 									vertIdIdxMap.insert(make_pair(vertId, newVertIdx));
 									vertIdxIdMap.push_back(vertId);
 								}

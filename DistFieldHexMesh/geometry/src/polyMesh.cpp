@@ -37,14 +37,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <index3D.h>
 #include <splitParams.h>
-#include <appData.h>
+#include <appDataIntf.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
 #include <polyMesh.h>
 #include <splitter2D.h>
 #include <logger.h>
-#include <appData.h>
 
 using namespace std;
 using namespace DFHM;

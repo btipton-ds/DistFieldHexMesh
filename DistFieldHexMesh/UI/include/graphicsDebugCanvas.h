@@ -55,7 +55,7 @@ using GraphicsCanvasBase = wxGLCanvas;
 #ifdef WIN32
 class GraphicsDebugCanvas : public GraphicsCanvasBase, public OGL::Extensions
 #else
-class GraphicsCanvas : public GraphicsCanvasBase
+class GraphicsDebugCanvas : public GraphicsCanvasBase
 #endif
 {
 public:

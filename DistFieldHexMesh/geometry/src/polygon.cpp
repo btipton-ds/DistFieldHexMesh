@@ -630,7 +630,7 @@ const Vector3d& Polygon::calUnitNormal() const
 		if (fabs(err) > 1.0e-12) {
 			assert(!"bad squaredNorm");
 		}
-#endif _DEBUG
+#endif
 		assert(!tmp.isNAN());
 		_cachedNormal = tmp;
 	}

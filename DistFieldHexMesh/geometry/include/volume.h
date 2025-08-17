@@ -52,8 +52,8 @@ namespace DFHM {
 
 struct SplittingParams;
 
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
+class AppDataIntf;
+using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 class Block;
 using BlockPtr = std::shared_ptr<Block>;
@@ -114,7 +114,7 @@ public:
 	CBoundingBox3Dd getVolumeBBox() const;
 
 	const DebugMeshDataPtr& getDebugMeshData();
-	const DebugMeshDataConstPtr& getDebugMeshData() const;
+	const DebugMeshDataConstPtr getDebugMeshData() const;
 
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
@@ -373,7 +373,7 @@ inline const DebugMeshDataPtr& Volume::getDebugMeshData()
 	return _pDebugMeshData;
 }
 
-inline const DebugMeshDataConstPtr& Volume::getDebugMeshData() const
+inline const DebugMeshDataConstPtr Volume::getDebugMeshData() const
 {
 	return _pDebugMeshData;
 }

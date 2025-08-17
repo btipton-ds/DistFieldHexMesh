@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <memory>
 #include <vector>
 #include <set>
 #include <tm_ray.h>

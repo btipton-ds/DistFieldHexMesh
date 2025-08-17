@@ -36,8 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 #endif
 
 namespace DFHM {
-	class AppData;
-	using AppDataPtr = std::shared_ptr<AppData>;
+	class AppDataIntf;
+	using AppDataPtr = std::shared_ptr<AppDataIntf>;
 	class MainFrame;
 	struct CreateB;
 

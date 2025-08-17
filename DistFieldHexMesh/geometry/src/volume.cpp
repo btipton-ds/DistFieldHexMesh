@@ -53,7 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 #include <meshData.h>
-#include <appData.h>
+#include <appDataIntf.h>
 #include <debugMeshData.h>
 
 using namespace std;

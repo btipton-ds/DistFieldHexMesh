@@ -37,32 +37,16 @@ This file is part of the DistFieldHexMesh application/library.
 #include <string>
 #include <memory>
 
-#include <triMesh.h>
 #include <OGLMultiVboHandler.h>
 #include <MultiCoreUtil.h>
 #include <splitParams.h>
 #include <model.h>
 #include <volume.h>
+#include <appDataIntf.h>
 
 namespace DFHM {
 
-class GraphicsCanvas;
-class MainFrame;
-class MakeBlockDlg;
-class SelectBlocksDlg;
-class DivideHexMeshDlg;
-class CreateBaseMeshDlg;
-class Index3DId;
-
-class MeshData;
-using MeshDataPtr = std::shared_ptr<MeshData>;
-
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
-
-using Index3DIdSearchTree = CSpatialSearchBase<double, Index3DId, 25>;
-
-class AppData : public std::enable_shared_from_this<AppData> {
+class AppData : public AppDataIntf, public std::enable_shared_from_this<AppData> {
 public:
     class MeshPickHandler {
     public:
