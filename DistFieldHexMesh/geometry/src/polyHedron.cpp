@@ -450,7 +450,8 @@ void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 			break;
 		}
 
-		MTC::vector<Vector3d> subPts = {
+		SubCell subCell;
+		subCell._cellPoints = {
 			TRI_LERP(cp, t0, u0, v0),
 			TRI_LERP(cp, t1, u0, v0),
 			TRI_LERP(cp, t1, u1, v0),
@@ -461,7 +462,8 @@ void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 			TRI_LERP(cp, t1, u1, v1),
 			TRI_LERP(cp, t0, u1, v1),
 		};
-		result._subCellsPts.push_back(subPts);
+		result._subCells.push_back(subCell);
+		const auto& subPts = subCell._cellPoints;
 
 		if (i == 0) {
 			switch (axis) {

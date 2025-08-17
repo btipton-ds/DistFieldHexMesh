@@ -56,8 +56,12 @@ using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
 public:
+	struct SubCell {
+		MTC::vector<Vector3d> _cellPoints;
+	};
+
 	struct SubCellResults {
-		MTC::vector<MTC::vector<Vector3d>> _subCellsPts;
+		MTC::vector<SubCell> _subCells;
 		MTC::vector<Vector3d> _partingFacePts;
 	};
 

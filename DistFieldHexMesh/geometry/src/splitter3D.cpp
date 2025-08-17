@@ -646,7 +646,8 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 
 	parentCell.detachFaces();
 	const auto& faceIds = parentCell.getFaceIds();
-	for (const auto& subCellPts : subCellResults._subCellsPts) {
+	for (const auto& subCell : subCellResults._subCells) {
+		const auto& subCellPts = subCell._cellPoints;
 		MTC::vector<Index3DId> subCellVerts;
 		subCellVerts.resize(subCellPts.size());
 		Vector3d ctr(0, 0, 0);
