@@ -608,15 +608,14 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	int32_t parentSplitBits = parentCell._axisSplitBits;
 	int32_t axisBit = 1 << splitAxis;
 
-	MTC::vector<MTC::vector<Vector3d>> subCellsPts;
-	MTC::vector<Vector3d> splittingFacePts;
-	parentCell.makeHexCellHexPoints(splitAxis, subCellsPts, splittingFacePts);
+	Polyhedron::SubCellResults subCellResults;
+	parentCell.makeHexCellHexPoints(splitAxis, subCellResults);
 	auto parentTopologyState = parentCell.getTopolgyState();
 
 	MTC::vector<Index3DId> splittingFaceVerts;
-	splittingFaceVerts.resize(splittingFacePts.size());
-	for (size_t i = 0; i < splittingFacePts.size(); i++) {
-		auto newVertId = vertId(splittingFacePts[i]);
+	splittingFaceVerts.resize(subCellResults._partingFacePts.size());
+	for (size_t i = 0; i < subCellResults._partingFacePts.size(); i++) {
+		auto newVertId = vertId(subCellResults._partingFacePts[i]);
 		auto& newVert = getVertex(newVertId);
 
 		switch (parentTopologyState) {
@@ -647,7 +646,7 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 
 	parentCell.detachFaces();
 	const auto& faceIds = parentCell.getFaceIds();
-	for (const auto& subCellPts : subCellsPts) {
+	for (const auto& subCellPts : subCellResults._subCellsPts) {
 		MTC::vector<Index3DId> subCellVerts;
 		subCellVerts.resize(subCellPts.size());
 		Vector3d ctr(0, 0, 0);

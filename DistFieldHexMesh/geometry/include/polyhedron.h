@@ -56,6 +56,12 @@ using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
 public:
+	struct SubCellResults {
+		MTC::vector<MTC::vector<Vector3d>> _subCellsPts;
+		MTC::vector<Vector3d> _partingFacePts;
+	};
+
+
 	Polyhedron() = default;
 	Polyhedron(const MultiCore::set<Index3DId>& faceIds, const MultiCore::vector<Index3DId>& cornerVertIds = MultiCore::vector<Index3DId>());
 	explicit Polyhedron(const std::set<Index3DId>& faceIds, const std::vector<Index3DId>& cornerVertIds = std::vector<Index3DId>());
@@ -178,7 +184,7 @@ public:
 	const std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	const Model& getModel() const;
 
-	void makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;
+	void makeHexCellHexPoints(int axis, SubCellResults& result) const;
 	void makeHexCellHexFacePoints(int axis, double w, MTC::vector<Vector3d>& facePts) const;
 
 	void makeHexCellWedgePoints(int axis, SplitParity parity, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const;

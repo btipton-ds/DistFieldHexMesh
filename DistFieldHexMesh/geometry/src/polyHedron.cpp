@@ -419,7 +419,7 @@ MTC::vector<Index3DId> Polyhedron::getParents() const
 }
 
 
-void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
+void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 {
 	MTC::vector<Vector3d> cp;
 	getCanonicalPoints(cp);
@@ -461,18 +461,18 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 			TRI_LERP(cp, t1, u1, v1),
 			TRI_LERP(cp, t0, u1, v1),
 		};
-		subCells.push_back(subPts);
+		result._subCellsPts.push_back(subPts);
 
 		if (i == 0) {
 			switch (axis) {
 			case 0:
-				partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
+				result._partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
 				break;
 			case 1:
-				partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
+				result._partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
 				break;
 			case 2:
-				partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
+				result._partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
 				break;
 			}
 		}
