@@ -421,16 +421,20 @@ MTC::vector<Index3DId> Polyhedron::getParents() const
 
 void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 {
-	MTC::vector<Vector3d> cp;
-	getCanonicalPoints(cp);
-
-	if (cp.size() != 8) {
+	auto& cornerVertIds = getCanonicalVertIds();
+	if (cornerVertIds.size() != 8) {
 		stringstream ss;
 		ss << "Polyhedron::makeHexCellHexPoints not hexhedral " << __FILE__ << ":" << __LINE__;
 		throw runtime_error(ss.str());
 	}
 
+	MTC::vector<Vector3d> cp;
+	for (const auto& id : cornerVertIds)
+		cp.push_back(getVertexPoint(id));
+
 	for (int i = 0; i < 2; i++) {
+		SubCell subCell;
+
 		double t0 = 0, t1 = 1;
 		double u0 = 0, u1 = 1;
 		double v0 = 0, v1 = 1;
@@ -450,7 +454,6 @@ void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 			break;
 		}
 
-		SubCell subCell;
 		subCell._cellPoints = {
 			TRI_LERP(cp, t0, u0, v0),
 			TRI_LERP(cp, t1, u0, v0),

@@ -1535,15 +1535,13 @@ bool Polygon::verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index
 
 bool Polygon::verifyUniqueStat(const MTC::vector<Index3DId>& vertIds)
 {
-	bool valid = true;
-
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		for (size_t j = i + 1; j < vertIds.size(); j++) {
 			if (vertIds[i] == vertIds[j])
-				valid = false;
+				return false;
 		}
 	}
-	return valid;
+	return true;
 }
 
 CBoundingBox3Dd Polygon::getBBox() const
@@ -1616,7 +1614,7 @@ bool Polygon::verifyTopology() const
 		bool isBoundaryFace = false;
 
 		for (const auto& bPl : boundaryPlanes) {
-			if (isCoincident(facePlane, Tolerance::sameDistTol())) {
+			if (isCoincident(bPl, Tolerance::sameDistTol())) {
 				isBoundaryFace = true;
 			}
 		}
