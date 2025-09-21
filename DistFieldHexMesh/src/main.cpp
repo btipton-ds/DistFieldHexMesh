@@ -30,11 +30,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <iostream>
 
-#include "wx/wxprec.h"
-
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
-#endif
+
 #undef M_PI
 
 #include <triMesh.h>

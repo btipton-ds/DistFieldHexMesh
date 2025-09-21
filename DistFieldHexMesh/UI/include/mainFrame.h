@@ -27,13 +27,10 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include "wx/wxprec.h"
+#include <defines.h>
 
-
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
 #include "wx/dataview.h"
-#endif
 
 #include <memory>
 #include <future>
