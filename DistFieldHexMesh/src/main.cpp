@@ -30,7 +30,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <iostream>
 
-#define wxUSE_GLCANVAS
 #include "wx/wx.h"
 
 #undef M_PI
