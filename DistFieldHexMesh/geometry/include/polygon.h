@@ -143,6 +143,10 @@ public:
 	bool isPointOnPlane(const Vector3d& pt) const;
 	bool usesEdge(const Edge& EdgeKey) const;
 	bool usesEdge(const Edge& EdgeKey, size_t& idx0, size_t& idx1) const;
+	bool isCoincident(const Planed& plane) const;
+	bool isCoincident(const Planed& plane, double sameDistTol) const;
+	void setOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol);
+	bool isOnSymmetryPlane() const;
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
@@ -246,6 +250,7 @@ private:
 	FastBisectionSet<Index3DId> _cellIds;
 
 	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
+	mutable Trinary _isOnSymmetryPlane = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN;
 	mutable double _cachedArea = -1;
 	mutable Vector3d _cachedCentroid = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);

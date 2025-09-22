@@ -630,7 +630,7 @@ const Vector3d& Polygon::calUnitNormal() const
 		if (fabs(err) > 1.0e-12) {
 			assert(!"bad squaredNorm");
 		}
-#endif _DEBUG
+#endif
 		assert(!tmp.isNAN());
 		_cachedNormal = tmp;
 	}
@@ -1425,6 +1425,47 @@ Trinary Polygon::isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& 
 	return IS_UNKNOWN;
 }
 
+bool Polygon::isCoincident(const Planed& plane) const
+{
+	return isCoincident(plane, Tolerance::sameDistTol());
+}
+
+bool Polygon::isCoincident(const Planed& plane, double sameDistTol) const
+{
+	/*
+	Plane vs plane coincidence is error prone.
+	This uses linear distance from each vertex to the plane within a distance tolerance which is more stable.
+	*/
+	if (sameDistTol < 0)
+		sameDistTol = Tolerance::sameDistTol();
+	for (const auto& id : _vertexIds) {
+		const auto& pt = getVertexPoint(id);
+		auto dist = plane.distanceToPoint(pt);
+		if (dist > sameDistTol)
+			return false;
+	}
+
+	return true;
+}
+
+void Polygon::setOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol)
+{
+	if (_isOnSymmetryPlane == IS_UNKNOWN) {
+		_isOnSymmetryPlane = IS_FALSE;
+		for (const auto& pl : symPlanes) {
+			if (isCoincident(pl, tol)) {
+				_isOnSymmetryPlane = IS_TRUE;
+				break;
+			}
+		}
+	}
+}
+
+bool Polygon::isOnSymmetryPlane() const
+{
+	return _isOnSymmetryPlane == IS_TRUE;
+}
+
 bool Polygon::isPointOnEdge(const Vector3d& pt) const
 {
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
@@ -1494,15 +1535,13 @@ bool Polygon::verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index
 
 bool Polygon::verifyUniqueStat(const MTC::vector<Index3DId>& vertIds)
 {
-	bool valid = true;
-
 	for (size_t i = 0; i < vertIds.size(); i++) {
 		for (size_t j = i + 1; j < vertIds.size(); j++) {
 			if (vertIds[i] == vertIds[j])
-				valid = false;
+				return false;
 		}
 	}
-	return valid;
+	return true;
 }
 
 CBoundingBox3Dd Polygon::getBBox() const
@@ -1575,7 +1614,7 @@ bool Polygon::verifyTopology() const
 		bool isBoundaryFace = false;
 
 		for (const auto& bPl : boundaryPlanes) {
-			if (facePlane.isCoincident(bPl, Tolerance::planeCoincidentDistTol(), Tolerance::planeCoincidentCrossProductTol())) {
+			if (isCoincident(bPl, Tolerance::sameDistTol())) {
 				isBoundaryFace = true;
 			}
 		}

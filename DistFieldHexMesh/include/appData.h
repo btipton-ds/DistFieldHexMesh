@@ -27,42 +27,25 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include "wx/wxprec.h"
+#ifndef _APP_DATA
+#define _APP_DATA
 
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
-#endif
 
 #include <defines.h>
 #include <string>
 #include <memory>
 
-#include <triMesh.h>
 #include <OGLMultiVboHandler.h>
 #include <MultiCoreUtil.h>
 #include <splitParams.h>
 #include <model.h>
 #include <volume.h>
+#include <appDataIntf.h>
 
 namespace DFHM {
 
-class GraphicsCanvas;
-class MainFrame;
-class MakeBlockDlg;
-class SelectBlocksDlg;
-class DivideHexMeshDlg;
-class CreateBaseMeshDlg;
-class Index3DId;
-
-class MeshData;
-using MeshDataPtr = std::shared_ptr<MeshData>;
-
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
-
-using Index3DIdSearchTree = CSpatialSearchBase<double, Index3DId, 25>;
-
-class AppData : public std::enable_shared_from_this<AppData> {
+class AppData : public AppDataIntf, public std::enable_shared_from_this<AppData> {
 public:
     class MeshPickHandler {
     public:
@@ -106,6 +89,7 @@ public:
     std::wstring getCacheDirName() const;
 
     const Model& getModel() const;
+    Model& getModel();
     MeshDataConstPtr getMeshData(const std::wstring& name) const;
     MeshDataPtr getMeshData(const std::wstring& name);
 
@@ -128,6 +112,7 @@ public:
     void buildHexFaceTables();
     void copyHexFaceTablesToVBOs();
     void updateHexTess();
+    void updateDebugTess();
     void updateModelTess();
 
 private:
@@ -201,6 +186,11 @@ inline const Model& AppData::getModel() const
     return _model;
 }
 
+inline Model& AppData::getModel()
+{
+    return _model;
+}
+
 inline const std::set<Index3DId>& AppData::getSelectedCellIds() const
 {
     return _selectedCellIds;
@@ -237,3 +227,5 @@ inline MainFrame* AppData::getMainFrame()
 }
 
 }
+
+#endif // !_APP_DATA

@@ -28,42 +28,38 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
-#include "wx/wxprec.h"
+#include <map>
+#include <string>
+#include <drawMesh.h>
 
-#ifndef WX_PRECOMP
-#include "wx/wx.h"
-#endif
-
-#include <wx/dataview.h>
+namespace OGL
+{
+	class Shader;
+}
 
 namespace DFHM {
-	class MainFrame;
 
-	class ObjectTreeCtrl : public wxDataViewTreeCtrl
-	{
-	public:
-		ObjectTreeCtrl(MainFrame* pMainFrame,
-			wxWindowID id,
-			const wxPoint& pos = wxDefaultPosition,
-			const wxSize& size = wxDefaultSize,
-			long style = wxDV_NO_HEADER | wxDV_ROW_LINES,
-			const wxValidator& validator = wxDefaultValidator);
+class DebugMeshData;
 
-		void onSelectionChanged(wxDataViewEvent& event);
-		void onContextMenu(wxDataViewEvent& event);
+class DrawDebugMesh : public DrawMesh {
+public:
+	DrawDebugMesh(GraphicsCanvas* pCanvas);
+	virtual ~DrawDebugMesh();
 
-	private:
-		void OnToggleShow(wxCommandEvent& event);
-		void OnMeshStats(wxCommandEvent& event);
-		void OnVerifyNormals(wxCommandEvent& event);
-		void OnAnalyzeGaps(wxCommandEvent& event);
-		void OnFindMinGap(wxCommandEvent& event);
-		void OnSplitLongTris(wxCommandEvent& event);
+	void changeViewElements(const DebugMeshData& data);
+	void createTessellation(DebugMeshData& data);
 
-		MainFrame* _pMainFrame;
-		std::wstring getCurrentItemName() const;
+protected:
 
-	protected:
-		wxDECLARE_EVENT_TABLE();
-	};
+	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
+	void postDrawEdges() override;
+
+	OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key) override;
+	void postDrawFaces() override;
+
+private:
+	bool _priorNormalShadingOn;
+};
+
+
 }

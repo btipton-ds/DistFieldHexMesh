@@ -68,6 +68,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <drawDebugMesh.h>
 
 #if INCLUDE_DEBUG_WX_FRAME
 #include <graphicsDebugCanvas.h>
@@ -159,6 +160,16 @@ namespace
     }
 }
 
+const wxGLContext* GraphicsCanvas::getGLContext(wxGLCanvas* pCanvas)
+{
+    static std::shared_ptr<wxGLContext> pContext;
+    if (!pContext)
+        pContext = make_shared<wxGLContext>(pCanvas);
+    else
+        pContext->SetCurrent(*pCanvas);
+    return pContext.get();
+}
+
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
@@ -166,6 +177,7 @@ GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
 {
     _pDrawHexMesh = make_shared<DrawHexMesh>(this);
     _pDrawModelMesh = make_shared<DrawModelMesh>(this);
+    _pDrawDebugMesh = make_shared<DrawDebugMesh>(this);
 
     initProjection();
     setLights();
@@ -673,11 +685,10 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    auto& meshVBOs = _pDrawHexMesh->getVBOs();
-    meshVBOs->clear();
+    _pDrawHexMesh->getVBOs()->clear();
+    _pDrawDebugMesh->getVBOs()->clear();
     if (_pDrawCrossSections) {
-        auto& sectionVBOs = _pDrawCrossSections->getVBOs();
-        sectionVBOs->clear();
+        _pDrawCrossSections->getVBOs()->clear();
     }
 }
 
@@ -700,7 +711,7 @@ void GraphicsCanvas::initialize()
 
 void GraphicsCanvas::initializeDepthPeeling()
 {
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
     bool hasContext = wglGetCurrentContext();
     if (hasContext && hasVBOSupport() && _ddp_FBO_id == UINT_MAX) {
         createScreenRectPoints();
@@ -906,7 +917,7 @@ void GraphicsCanvas::releaseDepthPeeling()
 
 void GraphicsCanvas::loadShaders()
 {
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
     string path = "shaders/";
     
     /*********************************************************************************************************/
@@ -1070,7 +1081,7 @@ void GraphicsCanvas::render()
 //    wxPaintDC dc(this);
     if (!IsShown())
         return;
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
  	initialize();
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();
@@ -1099,6 +1110,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
     // TODO find where we're breaking it and FIX IT, then remove this hack
     glPushAttrib(0xffffffff);
 
+    _pDrawDebugMesh->setShader(pShader);
     if (_pDrawCrossSections) {
         _pDrawModelMesh->setShader(pShader);
         _pDrawHexMesh->setShader(pShader);
@@ -1106,6 +1118,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 
         _pDrawModelMesh->render();
         _pDrawCrossSections->render();
+        _pDrawDebugMesh->render();
 
         bool twoSided = _graphicsUBO.twoSideLighting;
 
@@ -1121,6 +1134,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
         _pDrawHexMesh->setShader(pShader);
 
         _pDrawModelMesh->render();
+        _pDrawDebugMesh->render();
 
         bool twoSided = _graphicsUBO.twoSideLighting;
 
@@ -1657,6 +1671,12 @@ void GraphicsCanvas::changeViewElements()
     const auto& model = _pAppData->getModel();
     _pDrawModelMesh->changeViewElements(model);
     _pDrawHexMesh->changeViewElements();
+
+    auto pVol = _pAppData->getVolume();
+    if (pVol) {
+        auto pDbgData = pVol->getDebugMeshData();
+        _pDrawDebugMesh->changeViewElements(*pDbgData);
+    }
     if (_pDrawCrossSections)
         _pDrawCrossSections->changeViewElements();
 }
@@ -1821,6 +1841,7 @@ void GraphicsCanvas::toggleDrawSections(const VolumePtr& pVolume)
 
             _drawSectionsEnabled = true;
             _pAppData->updateHexTess();
+            _pAppData->updateDebugTess();
             _pDrawCrossSections->changeViewElements();
         }
     }

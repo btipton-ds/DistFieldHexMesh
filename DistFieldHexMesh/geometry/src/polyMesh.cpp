@@ -37,14 +37,13 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <index3D.h>
 #include <splitParams.h>
-#include <appData.h>
+#include <appDataIntf.h>
 #include <vertex.h>
 #include <edge.h>
 #include <polygon.h>
 #include <polyMesh.h>
 #include <splitter2D.h>
 #include <logger.h>
-#include <appData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -143,6 +142,30 @@ void PolyMesh::initClosed()
 
 		_isClosed = numOpen < 2 ? IS_TRUE : IS_FALSE;
 	}
+}
+
+void PolyMesh::initSymmetry(const std::vector<Planed>& symPlanes)
+{
+	_vertices.iterateInOrder([this, &symPlanes](const Index3DId& vertId, Vertex& vert)->bool {
+		const auto tol = Tolerance::sameDistTolFloat();
+		for (const auto& pl : symPlanes) {
+			const auto& pt = vert.getPoint();
+			auto dist = pl.distanceToPoint(pt);
+			if (dist < tol) {
+				_vertices.removeFromLookup(vertId);
+				auto newPt = pl.projectPoint(pt);
+				vert.replacePoint(newPt);
+				_vertices.addToLookup(vert);
+			}
+		}
+		return true;
+	});
+
+	_polygons.iterateInOrder([this, &symPlanes](const Index3DId& faceId, Polygon& face)->bool {
+		const auto tol = Tolerance::sameDistTol();
+		face.setOnSymmetryPlane(symPlanes, tol);
+		return true;
+	});
 }
 
 const CBoundingBox3Dd& PolyMesh::getBBox() const

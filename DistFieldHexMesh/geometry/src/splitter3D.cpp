@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <utils.h>
 #include <gradingOp.h>
+#include <debugMeshData.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -607,13 +608,36 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	int32_t parentSplitBits = parentCell._axisSplitBits;
 	int32_t axisBit = 1 << splitAxis;
 
-	MTC::vector<MTC::vector<Vector3d>> subCellsPts;
-	MTC::vector<Vector3d> splittingFacePts;
-	parentCell.makeHexCellHexPoints(splitAxis, subCellsPts, splittingFacePts);
+	Polyhedron::SubCellResults subCellResults;
+	parentCell.makeHexCellHexPoints(splitAxis, subCellResults);
+	auto parentTopologyState = parentCell.getTopolgyState();
+
 	MTC::vector<Index3DId> splittingFaceVerts;
-	splittingFaceVerts.resize(splittingFacePts.size());
-	for (size_t i = 0; i < splittingFacePts.size(); i++)
-		splittingFaceVerts[i] = vertId(splittingFacePts[i]);
+	splittingFaceVerts.resize(subCellResults._partingFacePts.size());
+	for (size_t i = 0; i < subCellResults._partingFacePts.size(); i++) {
+		auto newVertId = vertId(subCellResults._partingFacePts[i]);
+		auto& newVert = getVertex(newVertId);
+
+		switch (parentTopologyState) {
+		default:
+			newVert.markInsideSolid();
+			break;
+		case TOPST_SOLID:
+			newVert.setTopologyState(TOPST_SOLID);
+			break;
+		case TOPST_VOID:
+			newVert.setTopologyState(TOPST_VOID);
+			break;
+		}
+
+		auto newTopState = newVert.getTopolgyState();
+		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
+			auto pVol = _pBlock->getVolume();
+			auto& pDbgMesh = pVol->getDebugMeshData();
+			pDbgMesh->add(newVert.getPoint());
+		}
+		splittingFaceVerts[i] = newVertId;
+	}
 
 	auto splittingFaceId = pBlk->addPolygon(Polygon(splittingFaceVerts));
 
@@ -622,7 +646,8 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 
 	parentCell.detachFaces();
 	const auto& faceIds = parentCell.getFaceIds();
-	for (const auto& subCellPts : subCellsPts) {
+	for (const auto& subCell : subCellResults._subCells) {
+		const auto& subCellPts = subCell._cellPoints;
 		MTC::vector<Index3DId> subCellVerts;
 		subCellVerts.resize(subCellPts.size());
 		Vector3d ctr(0, 0, 0);

@@ -27,17 +27,24 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#ifndef _GRAPHIC_CANVAS
+#define _GRAPHIC_CANVAS
+
+#include <wx/wx.h>
+#include <wx/glcanvas.h>
+
+#include <defines.h>
 #include <memory>
 #include <mutex>
 #define GL_GLEXT_PROTOTYPES
-#include <wx/wx.h>
-#include <wx/glcanvas.h>
+
 #include <rgbaColor.h>
 #include <triMesh.h>
 #include <meshData.h>
 #include <graphicsVBORec.h>
 #include <drawHexMesh.h>
 #include <drawModelMesh.h>
+#include <drawDebugMesh.h>
 #include <drawCrossSectionEdges.h>
 #include <OGLMath.h>
 #include <OGLMultiVboHandler.h>
@@ -59,23 +66,13 @@ using CMeshPtr = TriMesh::CMeshPtr;
 class GraphicsDebugCanvas;
 #endif
 
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
+class AppDataIntf;
+using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 class Volume;
 using VolumePtr = std::shared_ptr<Volume>;
 
-#define USING_VULKAN 0
-#if USING_VULKAN
-#else
-using GraphicsCanvasBase = wxGLCanvas;
-#endif
-
-#ifdef WIN32
-class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
-#else
-class GraphicsCanvas : public GraphicsCanvasBase 
-#endif
+class GraphicsCanvas : public wxGLCanvas, public OGL::Extensions
 {
 public:
     enum View {
@@ -118,6 +115,8 @@ public:
         int clippingPlane1On = 0;
     };
 
+    static const wxGLContext* getGLContext(wxGLCanvas* pCanvas);
+
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
     void reset();
@@ -132,6 +131,9 @@ public:
 
     std::shared_ptr<DrawModelMesh> getDrawModelMesh();
     const std::shared_ptr<DrawModelMesh> getDrawModelMesh() const;
+
+    std::shared_ptr<DrawDebugMesh> getDrawDebugMesh();
+    const std::shared_ptr<DrawDebugMesh> getDrawDebugMesh() const;
 
     std::shared_ptr<DrawHexMesh> getDrawHexMesh();
     const std::shared_ptr<DrawHexMesh> getDrawHexMesh() const;
@@ -301,6 +303,7 @@ private:
     GLuint _width, _height;
     std::shared_ptr<DrawHexMesh> _pDrawHexMesh;
     std::shared_ptr<DrawModelMesh> _pDrawModelMesh;
+    std::shared_ptr<DrawDebugMesh> _pDrawDebugMesh;
     bool _drawSectionsEnabled = false;
     std::shared_ptr<DrawCrossSectionEdges> _pDrawCrossSections;
     CBoundingBox3Dd _viewBounds;
@@ -374,6 +377,16 @@ inline std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh()
 inline const std::shared_ptr<DrawModelMesh> GraphicsCanvas::getDrawModelMesh() const
 {
     return _pDrawModelMesh;
+}
+
+inline std::shared_ptr<DrawDebugMesh> GraphicsCanvas::getDrawDebugMesh()
+{
+    return _pDrawDebugMesh;
+}
+
+inline const std::shared_ptr<DrawDebugMesh> GraphicsCanvas::getDrawDebugMesh() const
+{
+    return _pDrawDebugMesh;
 }
 
 inline std::shared_ptr<DrawHexMesh> GraphicsCanvas::getDrawHexMesh()
@@ -458,3 +471,4 @@ inline void GraphicsCanvas::setShowMeshSelectedBlocks(bool val)
 }
 
 }
+#endif // !_GRAPHIC_CANVAS

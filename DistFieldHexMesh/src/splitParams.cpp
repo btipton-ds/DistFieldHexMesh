@@ -29,6 +29,12 @@ This file is part of the DistFieldHexMesh application/library.
 
 using namespace DFHM;
 
+SplittingParams::SplittingParams()
+{
+	maxOrthoAngleRadians = 70.0 / 180.0 * M_PI;
+	maxLocalConcavityCrossProduct = -sin(7.5 / 180.0 * M_PI); // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
+}
+
 size_t SplittingParams::numConditionalPasses() const
 {
 	size_t result = 0;

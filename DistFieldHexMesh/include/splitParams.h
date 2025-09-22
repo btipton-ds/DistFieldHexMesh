@@ -29,10 +29,6 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 
-#ifndef M_PI
-#include <cmath>
-#endif
-
 #include <vector>
 #include <iostream>
 #include <index3D.h>
@@ -40,6 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 struct SplittingParams {
+	SplittingParams();
+
 	size_t numConditionalPasses() const;
 	double getSharpAngleRadians() const;
 	double getSharpAngleDegrees() const;
@@ -82,8 +80,8 @@ struct SplittingParams {
 	double sharpRadius = 0.0001; // .1 mm
 	double maxCuvatureRadius = 100; // m
 	double minEdgeLength = 0.001;  //  1 mm
-	double maxOrthoAngleRadians = 70.0 / 180.0 * M_PI;
-	double maxLocalConcavityCrossProduct = -sin(7.5 / 180.0 * M_PI); // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
+	double maxOrthoAngleRadians;
+	double maxLocalConcavityCrossProduct; // Negative angle is concave. Small local concavity is allowed when simplifying concave "fan" tesselations
 
 	// These are used only to determine which cell is most complex so it gets split first
 	double complexityFaceFactor = 1;

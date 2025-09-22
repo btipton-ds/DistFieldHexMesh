@@ -53,7 +53,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <utils.h>
 #include <gradingOp.h>
 #include <meshData.h>
-#include <appData.h>
+#include <appDataIntf.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -62,6 +63,7 @@ Volume::Volume(const Index3D& dims)
 	: _volDim(dims)
 	, _modelDim(dims)
 	, _modelDimOrigin(0, 0, 0)
+	, _pDebugMeshData(make_shared<DebugMeshData>())
 {
 }
 
@@ -80,6 +82,7 @@ Volume::Volume(const Volume& src)
 	, _hasSharpVertPlane(src._hasSharpVertPlane)
 	, _sharpVertPlane(src._sharpVertPlane)
 	, _splitNum(src._splitNum)
+	, _pDebugMeshData(make_shared<DebugMeshData>())
 {
 }
 
@@ -495,6 +498,21 @@ void Volume::initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::Th
 	_blocks[0] = createBlock(0);
 }
 
+void Volume::clampModelVerticesToSymPlanes(const SplittingParams& params)
+{
+	vector<Planed> symPlanes;
+	if (params.symXAxis)
+		symPlanes.push_back(getSymmetryPlaneX());
+	if (params.symYAxis)
+		symPlanes.push_back(getSymmetryPlaneY());
+	if (params.symZAxis)
+		symPlanes.push_back(getSymmetryPlaneZ());
+
+	auto& model = getAppData()->getModel();
+	model.clampVerticesToSymPlanes(symPlanes);
+
+}
+
 void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore)
 {
 	resetNumSplits();
@@ -505,6 +523,8 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 		_modelCornerPts[i] = pts[i];
 	}
 	
+	clampModelVerticesToSymPlanes(params);
+
 	const auto& dim = volDim();
 	size_t numBlocks = dim[0] * dim[1] * dim[2];
 	_blocks.resize(numBlocks);
@@ -530,44 +550,10 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
-			vert.markSolidAndIntersecting();
-			return true;
-		});
-	}, false && multiCore);
-
-#if 0
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
-		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
-			vert.markOthersVoid();
+			vert.markInsideSolid();
 			return true;
 		});
 	}, multiCore);
-
-#endif
-	size_t numSolid = 0, numVoid = 0, numIntersecting = 0, numUnknown = 0;
-	runThreadPool([&numSolid, &numVoid, &numIntersecting, &numUnknown](size_t threadNum, const BlockPtr& pBlk) {
-		pBlk->iterateVerticesInOrder([&numSolid, &numVoid, &numIntersecting, &numUnknown](const Index3DId& vertId, Vertex& vert)->bool {
-			auto topSt = vert.getTopolgyState();
-			switch (topSt) {
-			default:
-			case TOPST_UNKNOWN:
-				numUnknown++;
-				break;
-			case TOPST_SOLID:
-				numSolid++;
-				break;
-			case TOPST_VOID:
-				numVoid++;
-				break;
-			case TOPST_INTERSECTING:
-				numIntersecting++;
-				break;
-			}
-			return true;
-			});
-		}, false && multiCore);
-
-	cout << "numSolid: " << numSolid << ", numVoid: " << numVoid << ", numIntersecting: " << numIntersecting << ", numUnknown: " << numUnknown << "\n";
 
 	runThreadPool([this, pReporter](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->deleteModelSearchTree();
@@ -2115,32 +2101,59 @@ void Volume::getModelBoundaryPlanes(vector<Planed>& vals) const
 
 }
 
+Planed Volume::getSymmetryPlaneX() const
+{
+	auto& pts = getModelCornerPts();
+	const auto& pt0 = pts[3];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[4];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
+Planed Volume::getSymmetryPlaneY() const
+{
+	auto& pts = getModelCornerPts();
+
+	const auto& pt0 = pts[1];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[4];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
+Planed Volume::getSymmetryPlaneZ() const
+{
+	auto& pts = getModelCornerPts();
+
+	const auto& pt0 = pts[1];
+	const auto& pt1 = pts[0];
+	const auto& pt2 = pts[3];
+	Planed symPlane(pt0, pt1, pt2);
+
+	return symPlane;
+}
+
 bool Volume::isSymmetryPlane(const SplittingParams& params, const Planed& pl) const
 {
 	const auto tol = Tolerance::planeCoincidentDistTol();
 	const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
-	auto& pts = getModelCornerPts();
+
+	Planed symPlane;
 	if (params.symXAxis) {
-		const auto& pt0 = pts[3];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[4];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneX();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 
 	if (params.symYAxis) {
-		const auto& pt0 = pts[1];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[4];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneY();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 
 	if (params.symZAxis) {
-		const auto& pt0 = pts[1];
-		const auto& pt1 = pts[0];
-		const auto& pt2 = pts[3];
-		Planed symPlane(pt0, pt1, pt2);
+		Planed symPlane = getSymmetryPlaneZ();
 		return symPlane.isCoincident(pl, tol, cpTol);
 	}
 

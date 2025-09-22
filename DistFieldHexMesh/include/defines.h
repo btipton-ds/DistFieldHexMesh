@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <tm_defines.h>
 #include <math.h>
+#include <cfloat>
 
 #define RUN_MULTI_THREAD 1
 #define RUN_MULTI_SUB_THREAD 1

@@ -28,7 +28,6 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <stdexcept>
-#include <vertex.h>
 #include <chrono>
 #include <mutex>
 #include <atomic>

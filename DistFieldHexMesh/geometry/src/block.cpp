@@ -51,7 +51,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <logger.h>
 #include <gradingOp.h>
 #include <meshData.h>
-#include <appData.h>
+#include <appDataIntf.h>
 
 //using namespace std;
 using namespace DFHM;
@@ -1280,18 +1280,18 @@ void Block::GlHexFaces::addTriangle(const Vector3d& pt0, const Vector3d& pt1, co
 	Vector3d n = v0.cross(v1).normalized();
 
 	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back(pt0[i]);
-		_glTriNormals.push_back(n[i]);
+		_glTriPoints.push_back((float)pt0[i]);
+		_glTriNormals.push_back((float)n[i]);
 	}
 
 	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back(pt1[i]);
-		_glTriNormals.push_back(n[i]);
+		_glTriPoints.push_back((float)pt1[i]);
+		_glTriNormals.push_back((float)n[i]);
 	}
 
 	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back(pt2[i]);
-		_glTriNormals.push_back(n[i]);
+		_glTriPoints.push_back((float)pt2[i]);
+		_glTriNormals.push_back((float)n[i]);
 	}
 
 }
@@ -1304,27 +1304,27 @@ void Block::GlHexFaces::addFace(const Block& blk, const Polygon& face)
 		Vector3d n = v0.cross(v1).normalized();
 
 		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back(pt0[i]);
-			_glTriNormals.push_back(n[i]);
+			_glTriPoints.push_back((float)pt0[i]);
+			_glTriNormals.push_back((float)n[i]);
 		}
 
 		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back(pt1[i]);
-			_glTriNormals.push_back(n[i]);
+			_glTriPoints.push_back((float)pt1[i]);
+			_glTriNormals.push_back((float)n[i]);
 		}
 
 		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back(pt2[i]);
-			_glTriNormals.push_back(n[i]);
+			_glTriPoints.push_back((float)pt2[i]);
+			_glTriNormals.push_back((float)n[i]);
 		}
 	};
 
 	auto edgeFunc = [this](const Vector3d& pt0, const Vector3d& pt1) {
 		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back(pt0[i]);
+			_glEdgePoints.push_back((float)pt0[i]);
 
 		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back(pt1[i]);
+			_glEdgePoints.push_back((float)pt1[i]);
 	};
 
 	face.getTriPoints(triFunc, edgeFunc);

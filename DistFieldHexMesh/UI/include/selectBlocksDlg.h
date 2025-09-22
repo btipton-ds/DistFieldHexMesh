@@ -27,14 +27,12 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include "wx/wxprec.h"
+#include <defines.h>
 #include <tm_vector3.h>
 #include <index3D.h>
 
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
 #include <wx/dialog.h>
-#endif
 
 namespace DFHM {
 class MainFrame;

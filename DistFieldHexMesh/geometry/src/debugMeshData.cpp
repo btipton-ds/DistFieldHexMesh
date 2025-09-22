@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 This file is part of the DistFieldHexMesh application/library.
 
@@ -27,58 +25,73 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <memory>
-#include <mutex>
-#define GL_GLEXT_PROTOTYPES
-#include <wx/wx.h>
-#include <wx/glcanvas.h>
-#include <rgbaColor.h>
-#include <OGLMath.h>
-#include <OGLMultiVboHandler.h>
-#include <OGLExtensions.h>
+#include <defines.h>
+#include <debugMeshData.h>
 
-#include <tm_vector3.h>
-#include <enums.h>
+using namespace std;
+using namespace DFHM;
 
-namespace OGL {
-    class Shader;
+DebugMeshData::~DebugMeshData()
+{
 }
 
-namespace DFHM {
-
-class GraphicsDebugCanvas : public wxGLCanvas, public OGL::Extensions
+void DebugMeshData::clear()
 {
-public:
-    GraphicsDebugCanvas(wxFrame* parent);
-    ~GraphicsDebugCanvas();
+}
 
-    void setSourceTextureId(GLuint texId);
-    void doPaint(wxPaintEvent& event);
-    void render();
-    void onSizeChange(wxSizeEvent& event);
-private:
-    friend class GraphicsCanvas;
+void DebugMeshData::add(const Vector3d& pt)
+{
+    _points.insert(pt);
+}
 
-    void initialize();
-    void glClearColor(const rgbaColor& color);
-    void drawScreenRect();
-    void regenDefImage();
-    static void getGlDims(int& width, int& height);
+void DebugMeshData::add(const Rayd& ray)
+{
+    _rays.push_back(ray);
+}
 
-    std::shared_ptr<OGL::Shader> _pShader;
+void DebugMeshData::add(const Polygon& face)
+{
+}
 
-    bool _initialized = false;
-    bool _ready = false;
-    GLuint _texId = -1;
-    GLuint _sourceTexId = -1;
+void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const
+{
+    const auto len = 0.1;
+    pts.clear();
+    indices.clear();
 
-    GLint _sourceLoc = -1;
+    unsigned int idx = 0;
+    for (const auto& r : _rays) {
+        const auto& pt0 = r._origin;
+        auto pt1 = pt0 + r._dir * len;
+        
+        for (int i = 0; i < 3; i++)
+            pts.push_back((float)pt0[i]);
+        indices.push_back(idx++);
 
-    GLfloat _screenRectPts[6 * 3];
+        for (int i = 0; i < 3; i++)
+            pts.push_back((float)pt1[i]);
+        indices.push_back(idx++);
+    }
 
-    std::vector<GLubyte> _pixels;
+    for (const auto& origin : _points) {
+        for (int i = 0; i < 3; i++) {
+            Vector3d axis(0, 0, 0);
+            axis[i] = 0.5;
+            Vector3d pt0 = origin + axis * len;
+            Vector3d pt1 = origin - axis * len;
 
-protected:
-    wxDECLARE_EVENT_TABLE();
-};
+            for (int i = 0; i < 3; i++)
+                pts.push_back((float)pt0[i]);
+            indices.push_back(idx++);
+
+            for (int i = 0; i < 3; i++)
+                pts.push_back((float)pt1[i]);
+            indices.push_back(idx++);
+        }
+    }
+}
+
+void DebugMeshData::getGLTris(std::vector<float>& pts, std::vector<float>& normals, std::vector<unsigned int>& indices) const
+{
+
 }

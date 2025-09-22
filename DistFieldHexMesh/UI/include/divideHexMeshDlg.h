@@ -28,13 +28,10 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
-#include "wx/wxprec.h"
 #include <tm_vector3.h>
 
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
 #include <wx/dialog.h>
-#endif
 
 namespace DFHM {
 	struct SplittingParams;

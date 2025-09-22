@@ -107,6 +107,9 @@ enum DrawStates {
 	DS_MESH_ERROR_WALL, // These are wall faces which were NOT produced by cutting cells with mesh to produce real walls.
 	DS_MESH_INNER,
 
+	DS_DEBUG_MESH_EDGES,
+	DS_DEBUG_MESH_FACES,
+
 	DS_MESH_BOTTOM,
 	DS_MESH_TOP,
 	DS_MESH_LEFT,

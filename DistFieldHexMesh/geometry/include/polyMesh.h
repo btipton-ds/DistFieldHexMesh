@@ -52,8 +52,8 @@ namespace DFHM {
 
 	struct SplittingParams;
 
-	class AppData;
-	using AppDataPtr = std::shared_ptr<AppData>;
+	class AppDataIntf;
+	using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 	class Model;
 	using ModelPtr = std::shared_ptr<Model>;
@@ -85,6 +85,7 @@ namespace DFHM {
 		double getEdgeCurvature(const EdgeKey& key) const;
 		const CBoundingBox3Dd& getBBox() const;
 		void initClosed();
+		void initSymmetry(const std::vector<Planed>& symPlanes);
 		bool isClosed() const;
 
 		template<class FACE_FUNC>

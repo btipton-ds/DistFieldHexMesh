@@ -47,6 +47,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <readWriteStl.h>
 #include <MultiCoreUtil.h>
+
+#include <graphicsCanvas.h>
 #include <selectBlocksDlg.h>
 #include <createBaseMeshDlg.h>
 #include <divideHexMeshDlg.h>
@@ -57,12 +59,12 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mainFrame.h>
 #include <drawModelMesh.h>
 #include <drawHexMesh.h>
-#include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
 #include <utils.h>
 #include <gradingOp.h>
 #include <splitter3D.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -315,6 +317,7 @@ bool AppData::handleMeshFaceDebugClick(wxMouseEvent& event, const Rayd& ray, con
 
         updatePrefsFile();
         updateHexTess();
+        updateDebugTess();
 
         return true;
     }
@@ -357,6 +360,7 @@ bool AppData::handleMeshConditionalTestSplit(wxMouseEvent& event, const Rayd& ra
             _pVolume->setLayerNums();
 
             updateHexTess();
+            updateDebugTess();
 
             _pFaceSearchTree = nullptr;
             initMeshSearchTree();
@@ -397,6 +401,7 @@ bool AppData::handleMeshComplexityTestSplit(wxMouseEvent& event, const Rayd& ray
             _pVolume->setLayerNums();
 
             updateHexTess();
+            updateDebugTess();
 
             _pFaceSearchTree = nullptr;
             initMeshSearchTree();
@@ -530,6 +535,7 @@ std::wstring AppData::getCacheDirName() const
 #ifdef _WIN32
     return L"c:/tmp/";
 #else
+    return L"c:/tmp/";
 #endif // _WIN32
 
 }
@@ -547,6 +553,18 @@ void AppData::updateHexTess()
 //            pDraw->writeGLObj("D:/DarkSky/Projects/output/objs/allSections.obj");
             pDraw->copyTablesToVBOs();
         }
+    }
+}
+
+void AppData::updateDebugTess()
+{
+
+    if (_pVolume) {
+        auto pDbgData = _pVolume->getDebugMeshData();
+
+        auto pCanvas = _pMainFrame->getCanvas();
+        auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
+        pDrawDbgMesh->createTessellation(*pDbgData);
     }
 }
 
@@ -654,6 +672,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->createAdHocBlockSearchTree();
 
         updateHexTess();
+        updateDebugTess();
     }
 
     _pMainFrame->refreshObjectTree();
@@ -794,6 +813,7 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
     pCanvas->setShowMeshSelectedBlocks(true);
 
     updateHexTess();
+    updateDebugTess();
 }
 
 void AppData::handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const
@@ -1282,6 +1302,7 @@ void AppData::doDivideHexMesh(const DivideHexMeshDlg& dlg)
         const Index3D max(_pVolume->volDim());
         setDisplayMinMax(min, max);
         updateHexTess();
+        updateDebugTess();
 
         _pFaceSearchTree = nullptr;
         initMeshSearchTree();

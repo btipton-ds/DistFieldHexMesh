@@ -84,7 +84,7 @@ inline void GradingOp::setDivs(const Index3D& divs)
 
 inline const Vector3d& GradingOp::getGrading() const
 {
-	_grading;
+	return _grading;
 }
 
 inline void GradingOp::setGrading(const Vector3d& grading)

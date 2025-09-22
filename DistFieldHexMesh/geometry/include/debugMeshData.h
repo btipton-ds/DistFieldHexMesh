@@ -28,42 +28,56 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
-#include "wx/wxprec.h"
+#include <memory>
+#include <vector>
+#include <set>
+#include <tm_ray.h>
 
-#ifndef WX_PRECOMP
-#include "wx/wx.h"
-#endif
-
-#include <wx/dataview.h>
+namespace OGL
+{
+	struct Indices;
+	using IndicesPtr = std::shared_ptr<Indices>;
+}
 
 namespace DFHM {
-	class MainFrame;
 
-	class ObjectTreeCtrl : public wxDataViewTreeCtrl
-	{
-	public:
-		ObjectTreeCtrl(MainFrame* pMainFrame,
-			wxWindowID id,
-			const wxPoint& pos = wxDefaultPosition,
-			const wxSize& size = wxDefaultSize,
-			long style = wxDV_NO_HEADER | wxDV_ROW_LINES,
-			const wxValidator& validator = wxDefaultValidator);
+class Polygon;
 
-		void onSelectionChanged(wxDataViewEvent& event);
-		void onContextMenu(wxDataViewEvent& event);
+class DebugMeshData {
+public:
+	DebugMeshData() = default;
+	DebugMeshData(const DebugMeshData& src) = default;
+	virtual ~DebugMeshData();
 
-	private:
-		void OnToggleShow(wxCommandEvent& event);
-		void OnMeshStats(wxCommandEvent& event);
-		void OnVerifyNormals(wxCommandEvent& event);
-		void OnAnalyzeGaps(wxCommandEvent& event);
-		void OnFindMinGap(wxCommandEvent& event);
-		void OnSplitLongTris(wxCommandEvent& event);
+	void clear();
 
-		MainFrame* _pMainFrame;
-		std::wstring getCurrentItemName() const;
+	void add(const Vector3d& pt);
+	void add(const Rayd& ray);
+	void add(const Polygon& face);
 
-	protected:
-		wxDECLARE_EVENT_TABLE();
-	};
+	void getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const;
+	void getGLTris(std::vector<float>& pts, std::vector<float>& normals, std::vector<unsigned int>& indices) const;
+
+	void setEdgeTess(const OGL::IndicesPtr& edgeTess);
+	const OGL::IndicesPtr& getEdgeTess() const;
+
+private:
+	std::set<Vector3d> _points;
+	std::vector<Rayd> _rays;
+	std::vector<float> _triPts, _triNormals;
+
+	OGL::IndicesPtr _edgeTess;
+};
+
+
+inline void DebugMeshData::setEdgeTess(const OGL::IndicesPtr& edgeTess)
+{
+	_edgeTess = edgeTess;
+}
+
+inline const OGL::IndicesPtr& DebugMeshData::getEdgeTess() const
+{
+	return _edgeTess;
+}
+
 }
