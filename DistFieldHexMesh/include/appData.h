@@ -27,6 +27,9 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#ifndef _APP_DATA
+#define _APP_DATA
+
 #include "wx/wx.h"
 
 #include <defines.h>
@@ -224,3 +227,5 @@ inline MainFrame* AppData::getMainFrame()
 }
 
 }
+
+#endif // !_APP_DATA

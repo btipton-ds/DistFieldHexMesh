@@ -65,16 +65,6 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 EVT_PAINT(MainFrame::doPaint)
 END_EVENT_TABLE()
 
-const std::shared_ptr<wxGLContext>& MainFrame::getGLContext(wxGLCanvas* pCanvas)
-{
-    static std::shared_ptr<wxGLContext> pContext;
-    if (!pContext)
-        pContext = make_shared<wxGLContext>(pCanvas);
-    else
-        pContext->SetCurrent(*pCanvas);
-    return pContext;
-}
-
 namespace
 {
     int attribs[] = {

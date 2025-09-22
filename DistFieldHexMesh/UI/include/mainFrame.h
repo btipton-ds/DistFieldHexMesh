@@ -26,11 +26,14 @@ This file is part of the DistFieldHexMesh application/library.
 
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
+#ifndef _MAIN_FRAME
+#define _MAIN_FRAME
 
 #include <defines.h>
 
 #include "wx/wx.h"
 #include "wx/dataview.h"
+#include "wx/glcanvas.h"
 
 #include <memory>
 #include <future>
@@ -40,7 +43,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <objectTreeCtrl.h>
 
 class wxGLContext;
-class wxGLCanvas;
 
 namespace DFHM {
 
@@ -215,8 +217,6 @@ using MeshDataPtr = std::shared_ptr<MeshData>;
 class MainFrame : public wxFrame, public ProgressReporter
 {
 public:
-    static const std::shared_ptr<wxGLContext>& getGLContext(wxGLCanvas* pCanvas);
-
     MainFrame(wxWindow* parent,
         wxWindowID id,
         const wxString& title,
@@ -404,3 +404,5 @@ inline void MainFrame::setFuture(std::shared_ptr<std::future<int>>& pFuture)
 }
 
 }
+
+#endif

@@ -27,11 +27,17 @@ This file is part of the DistFieldHexMesh application/library.
     Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#ifndef _GRAPHIC_CANVAS
+#define _GRAPHIC_CANVAS
+
+#include <wx/wx.h>
+#include <wx/glcanvas.h>
+
+#include <defines.h>
 #include <memory>
 #include <mutex>
 #define GL_GLEXT_PROTOTYPES
-#include <wx/wx.h>
-#include <wx/glcanvas.h>
+
 #include <rgbaColor.h>
 #include <triMesh.h>
 #include <meshData.h>
@@ -66,17 +72,7 @@ using AppDataPtr = std::shared_ptr<AppDataIntf>;
 class Volume;
 using VolumePtr = std::shared_ptr<Volume>;
 
-#define USING_VULKAN 0
-#if USING_VULKAN
-#else
-using GraphicsCanvasBase = wxGLCanvas;
-#endif
-
-#ifdef WIN32
-class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
-#else
-class GraphicsCanvas : public GraphicsCanvasBase, public OGL::Extensions
-#endif
+class GraphicsCanvas : public wxGLCanvas, public OGL::Extensions
 {
 public:
     enum View {
@@ -118,6 +114,8 @@ public:
         int clippingPlane0On = 0;
         int clippingPlane1On = 0;
     };
+
+    static const wxGLContext* getGLContext(wxGLCanvas* pCanvas);
 
     GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData);
     ~GraphicsCanvas();
@@ -473,3 +471,4 @@ inline void GraphicsCanvas::setShowMeshSelectedBlocks(bool val)
 }
 
 }
+#endif // !_GRAPHIC_CANVAS

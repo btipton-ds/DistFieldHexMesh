@@ -47,6 +47,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <readWriteStl.h>
 #include <MultiCoreUtil.h>
+
+#include <graphicsCanvas.h>
 #include <selectBlocksDlg.h>
 #include <createBaseMeshDlg.h>
 #include <divideHexMeshDlg.h>
@@ -57,7 +59,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <mainFrame.h>
 #include <drawModelMesh.h>
 #include <drawHexMesh.h>
-#include <graphicsCanvas.h>
 #include <volume.h>
 #include <vertex.h>
 #include <utils.h>

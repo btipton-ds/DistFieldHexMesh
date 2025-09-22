@@ -160,6 +160,16 @@ namespace
     }
 }
 
+const wxGLContext* GraphicsCanvas::getGLContext(wxGLCanvas* pCanvas)
+{
+    static std::shared_ptr<wxGLContext> pContext;
+    if (!pContext)
+        pContext = make_shared<wxGLContext>(pCanvas);
+    else
+        pContext->SetCurrent(*pCanvas);
+    return pContext.get();
+}
+
 
 GraphicsCanvas::GraphicsCanvas(wxFrame* parent, const AppDataPtr& pAppData)
     : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
@@ -701,7 +711,7 @@ void GraphicsCanvas::initialize()
 
 void GraphicsCanvas::initializeDepthPeeling()
 {
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
     bool hasContext = wglGetCurrentContext();
     if (hasContext && hasVBOSupport() && _ddp_FBO_id == UINT_MAX) {
         createScreenRectPoints();
@@ -907,7 +917,7 @@ void GraphicsCanvas::releaseDepthPeeling()
 
 void GraphicsCanvas::loadShaders()
 {
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
     string path = "shaders/";
     
     /*********************************************************************************************************/
@@ -1071,7 +1081,7 @@ void GraphicsCanvas::render()
 //    wxPaintDC dc(this);
     if (!IsShown())
         return;
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*getGLContext(this));
  	initialize();
     auto portRect = GetSize();
     int width = portRect.GetWidth(), height = portRect.GetHeight();

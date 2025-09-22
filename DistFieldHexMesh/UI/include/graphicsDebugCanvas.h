@@ -46,17 +46,7 @@ namespace OGL {
 
 namespace DFHM {
 
-#define USING_VULKAN 0
-#if USING_VULKAN
-#else
-using GraphicsCanvasBase = wxGLCanvas;
-#endif
-
-#ifdef WIN32
-class GraphicsDebugCanvas : public GraphicsCanvasBase, public OGL::Extensions
-#else
-class GraphicsDebugCanvas : public GraphicsCanvasBase
-#endif
+class GraphicsDebugCanvas : public wxGLCanvas, public OGL::Extensions
 {
 public:
     GraphicsDebugCanvas(wxFrame* parent);

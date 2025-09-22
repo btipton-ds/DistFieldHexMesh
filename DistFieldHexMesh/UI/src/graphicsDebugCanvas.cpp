@@ -89,7 +89,7 @@ void GraphicsDebugCanvas::initialize()
 
     string path = "shaders/";
 
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*GraphicsCanvas::getGLContext(this));
 
     _pShader = make_shared<OGL::Shader>();
     _pShader->setVertexSrcFile(path + "debug.vert");
