@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <vector>
-#include <Index3D.h>
+#include <index3D.h>
 
 namespace DFHM {
 

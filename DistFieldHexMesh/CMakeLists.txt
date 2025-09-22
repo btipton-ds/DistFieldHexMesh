@@ -5,6 +5,8 @@
 find_package(wxWidgets COMPONENTS core base gl png z)
 include(${wxWidgets_USE_FILE})
 
+message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
+
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 
 if(WIN32)
@@ -38,19 +40,19 @@ include_directories(
 	"${OpenGlDir}/include/${OpenGlPlatform}/"
 	"${wxWidgets_INCLUDE_DIRS}"
 )
-else()
+else(WIN32)
 set(triMeshLibDir "../../triMesh/x64/linux/${CMAKE_BUILD_TYPE}")
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
 include_directories(
 	"include"
-	"usr/include/GL/"
+	"/usr/include/GL/"
+    "/usr/include/eigen3/"
 	"geometry/include/"
 	"graphics/include/"
 	"test/include/"
 	"UI/include/"
-	"../../ThirdParty/eigen/"
 	"../../triMesh/triMesh/include/"
 	"../../triMesh/stlReader/include/"
 	"../../triMesh/tests/include/"
@@ -59,7 +61,7 @@ include_directories(
 	"${OpenGlDir}/include/${OpenGlPlatform}/"
 	"${wxWidgets_INCLUDE_DIRS}"
 )
-endif()
+endif(WIN32)
 
 if(WIN32)
 link_directories(
