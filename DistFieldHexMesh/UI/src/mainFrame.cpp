@@ -691,7 +691,11 @@ void MainFrame::OnWritePolymesh(wxCommandEvent& event)
         _pBackgroundFuture = make_shared<future<int>> (std::async(std::launch::async, [this, dirPath]()->int {
             _pAppData->getVolume()->polymeshWrite(dirPath, this);
 
+#ifdef _WIN32
             Sleep(500);
+#else
+            usleep(500);
+#endif
 
             return 1;
         }));
