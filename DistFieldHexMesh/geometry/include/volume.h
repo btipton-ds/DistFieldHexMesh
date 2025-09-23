@@ -52,14 +52,18 @@ namespace DFHM {
 
 struct SplittingParams;
 
-class AppData;
-using AppDataPtr = std::shared_ptr<AppData>;
+class AppDataIntf;
+using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 class Block;
 using BlockPtr = std::shared_ptr<Block>;
 
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
+
+class DebugMeshData;
+using DebugMeshDataPtr = std::shared_ptr<DebugMeshData>;
+using DebugMeshDataConstPtr = std::shared_ptr<const DebugMeshData>;
 
 class Splitter2D;
 using Splitter2DPtr = std::shared_ptr<Splitter2D>;
@@ -109,6 +113,9 @@ public:
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
 
+	const DebugMeshDataPtr& getDebugMeshData();
+	const DebugMeshDataConstPtr getDebugMeshData() const;
+
 	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
 
 	void createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
@@ -137,6 +144,9 @@ public:
 
 	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
+	Planed getSymmetryPlaneX() const;
+	Planed getSymmetryPlaneY() const;
+	Planed getSymmetryPlaneZ() const;
 	bool isSymmetryPlane(const SplittingParams& params, const Planed& pl) const;
 	void createAdHocBlockSearchTree();
 
@@ -207,6 +217,9 @@ private:
 	void removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells);
 	void doQualitySplits(const SplittingParams& params);
 	void splitWithModel(const SplittingParams& params);
+
+	void clampModelVerticesToSymPlanes(const SplittingParams& params);
+
 	void dumpCellHistogram() const;
 	void dumpOpenCells(bool multiCore) const;
 
@@ -259,6 +272,7 @@ private:
 	bool _hasSharpVertPlane = false;
 	Planed _sharpVertPlane;
 
+	DebugMeshDataPtr _pDebugMeshData;
 	mutable std::shared_ptr<MultiCore::ThreadPool> _pThreadPool;
 };
 
@@ -352,6 +366,16 @@ inline const std::set<size_t>& Volume::getSharpEdgeIndices() const
 inline const std::map<double, Splitter2DPtr>* Volume::getCrossSections() const
 {
 	return _crossSections;
+}
+
+inline const DebugMeshDataPtr& Volume::getDebugMeshData()
+{
+	return _pDebugMeshData;
+}
+
+inline const DebugMeshDataConstPtr Volume::getDebugMeshData() const
+{
+	return _pDebugMeshData;
 }
 
 } // end namespace DFHM

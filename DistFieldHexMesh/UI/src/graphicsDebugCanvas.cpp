@@ -35,8 +35,14 @@ This file is part of the DistFieldHexMesh application/library.
 #include <filesystem>
 
 #ifdef WIN32
-#include "windows.h"
-#endif // WIN32
+#include <Windows.h>
+#include <GL/gl.h>
+#include <GL/glext.h>
+#include <GL/wglext.h>
+#else
+#include "/usr/include/GL/gl.h"
+#include "/usr/include/GL/glext.h"
+#endif
 
 #include <OGLShader.h>
 #include <mainFrame.h>
@@ -83,7 +89,7 @@ void GraphicsDebugCanvas::initialize()
 
     string path = "shaders/";
 
-    SetCurrent(*MainFrame::getGLContext(this));
+    SetCurrent(*GraphicsCanvas::getGLContext(this));
 
     _pShader = make_shared<OGL::Shader>();
     _pShader->setVertexSrcFile(path + "debug.vert");

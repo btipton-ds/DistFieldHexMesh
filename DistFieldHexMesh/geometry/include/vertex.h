@@ -81,8 +81,8 @@ public:
 
 	bool isConnectedToVertex(const Index3DId& vertId) const;
 
-	void markSolidAndIntersecting();
-	void markOthersVoid();
+	void markInsideSolid();
+	void setTopologyState(TopologyState val);
 	TopologyState getTopolgyState() const;
 
 	const Index3DId& getId() const override;
@@ -144,6 +144,11 @@ inline Vertex::operator const Vector3d& () const
 inline void Vertex::setLockType(VertexLockType val)
 {
 	_lockType = val;
+}
+
+inline void Vertex::setTopologyState(TopologyState val)
+{
+	_topologyState = val;
 }
 
 inline TopologyState Vertex::getTopolgyState() const

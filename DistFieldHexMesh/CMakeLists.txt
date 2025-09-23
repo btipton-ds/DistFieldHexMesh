@@ -2,7 +2,7 @@
 # project specific logic here.
 #
 
-find_package(wxWidgets COMPONENTS core base gl png)
+find_package(wxWidgets COMPONENTS core base gl png z)
 include(${wxWidgets_USE_FILE})
 
 message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
@@ -87,7 +87,8 @@ add_executable (DistFieldHexMesh
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 
-	"geometry/src/block.cpp"	
+	"geometry/src/block.cpp"
+	"geometry/src/debugMeshData.cpp"
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
@@ -109,6 +110,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/volume.cpp"
 
 	"graphics/src/drawCrossSectionEdges.cpp"
+	"graphics/src/drawDebugMesh.cpp"
 	"graphics/src/drawMesh.cpp"
 	"graphics/src/drawHexMesh.cpp" 
 	"graphics/src/drawModelMesh.cpp"
@@ -118,7 +120,6 @@ add_executable (DistFieldHexMesh
 	"UI/src/editPrefsDlg.cpp"
 	"UI/src/divideHexMeshDlg.cpp"
 	"UI/src/graphicsCanvas.cpp"
-	"UI/src/graphicsDebugCanvas.cpp"
 	"UI/src/mainFrame.cpp"
 	"UI/src/makeBlockDlg.cpp"
 	"UI/src/objectTreeCtrl.cpp"
@@ -128,13 +129,12 @@ add_executable (DistFieldHexMesh
  	"../../utilities/threads/src/MultiCoreUtil.cpp"
 	"../../utilities/threads/src/local_heap.cpp"
 
-	"${OpenGlDir}/src/${OpenGlPlatform}/"
 	"${OpenGlDir}/src/OGLExtensions.cpp"
 	"${OpenGlDir}/src/OGLShader.cpp"
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
- )
+   )
 
 if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
 	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
@@ -198,7 +198,8 @@ add_executable (TestDFM
 	"src/splitParams.cpp"
 	"src/utils.cpp"
 
-	"geometry/src/block.cpp"	
+	"geometry/src/block.cpp"
+	"geometry/src/debugMeshData.cpp"
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
@@ -226,7 +227,7 @@ add_executable (TestDFM
 	"test/src/testMain.cpp"
 	"test/src/testPoolMemory.cpp" 
 	"test/src/testMultiCore.cpp"
- )
+)
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh
@@ -250,8 +251,9 @@ if(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /Zo /WX")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11 ")
-target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20) 
+set(CMAKE_CXX_COMPILER "/usr/bin/g++-11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11")
+target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20)
 endif(WIN32)
 
 

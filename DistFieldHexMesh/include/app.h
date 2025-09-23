@@ -27,12 +27,11 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include "wx/wxprec.h"
+#ifndef _APP
+#define _APP
 
 
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
-#endif
 
 namespace DFHM {
 
@@ -43,3 +42,5 @@ public:
 };
 
 }
+
+#endif // _APP

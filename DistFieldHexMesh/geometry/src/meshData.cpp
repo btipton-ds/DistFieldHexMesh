@@ -28,8 +28,9 @@ This file is part of the DistFieldHexMesh application/library.
 #pragma warning( push )
 #pragma warning( disable : 4005 ) // M_PI is being redefined somewhere in wxWidgets 3.2.8
 
+#include <filesystem>
 #include <triMesh.hpp>
-#include <appData.h>
+#include <appDataIntf.h>
 #include <OGLShader.h>
 #include <rgbaColor.h>
 #include <index3D.h>
@@ -280,14 +281,27 @@ void MeshData::cacheMesh() {
 
 	auto filename = getCacheFilename();
 
+#ifdef WIN32
 	ofstream out(filename, ios::out | ios::trunc | ios::binary);
+#else
+	filesystem::path filenamePath(filename);
+	ofstream out(filenamePath, ios::out | ios::trunc | ios::binary);
+#endif
+
 	_pMesh->write(out);
 }
 
 void MeshData::readMeshFromCache()
 {
 	auto filename = getCacheFilename();
+
+#ifdef WIN32
 	ifstream in(filename, ifstream::binary);
+#else
+	filesystem::path filenamePath(filename);
+	ifstream in(filenamePath, ifstream::binary);
+#endif
+
 	CMeshPtr pMesh = make_shared<CMesh>();
 	if (pMesh->read(in)) {
 		_pMesh = pMesh;

@@ -48,7 +48,8 @@ namespace DFHM {
 	class DrawModelMesh;
 	struct SplittingParams;
 
-	class AppData;
+	class AppDataIntf;
+	using AppDataPtr = std::shared_ptr<AppDataIntf>;
 
 	class PolyMesh;
 	using PolyMeshPtr = std::shared_ptr<PolyMesh>;
@@ -93,11 +94,9 @@ namespace DFHM {
 		const OGL::IndicesPtr getSharpEdgeTess() const;
 		const OGL::IndicesPtr getNormalTess() const;
 
-	private:
-		friend class AppData;
-
 		void postReadCreate();
 
+	private:
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 		TriMesh::CMeshPtr getSharpVertMesh() const;
 

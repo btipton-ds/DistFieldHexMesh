@@ -25,6 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#include <tm_spatialSearch.hpp>
 #include <tolerances.h>
 #include <fixedPoint.h>
 #include <io_utils.h>
@@ -33,8 +34,8 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polygon.h>
 #include <block.h>
 #include <polyMesh.h>
-#include <polygon.h>
-#include <tm_spatialSearch.hpp>
+#include <volume.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -133,26 +134,31 @@ const Vector3d& Vertex::calSurfaceNormal() const
 namespace
 {
 struct SolidHitRec {
-	inline SolidHitRec(double dist, bool positive, const PolyMeshIndex& idx)
+	inline SolidHitRec(double dist, int positiveCrossing, const PolyMeshIndex& idx)
 		: _dist(dist)
-		, _positive(positive)
+		, _positiveCrossing(positiveCrossing)
 		, _polyMeshIdx(idx)
 	{
 	}
 
 	inline bool operator<(const SolidHitRec& rhs) const
 	{
-		return _dist < rhs._dist;
+		if (_dist < rhs._dist)
+			return true;
+		else if (_dist > rhs._dist)
+			return false;
+
+		return _positiveCrossing < rhs._positiveCrossing;
 	}
 
 	double _dist;
-	bool _positive;
+	int _positiveCrossing;
 	PolyMeshIndex _polyMeshIdx;
 };
 
 }
 
-void Vertex::markSolidAndIntersecting()
+void Vertex::markInsideSolid()
 {
 	const auto tol = Tolerance::sameDistTol();
 	const auto tolFloat = Tolerance::sameDistTolFloat();
@@ -165,9 +171,11 @@ void Vertex::markSolidAndIntersecting()
 	if (Index3DId(3, 0, 3, 0) == getId()) {
 		int dbgBreak = 1;
 	}
+
+	set<Vector3d> points;
 	MTC::set<Index3DId> conVerts;
 	getConnectedVertexIds(conVerts);
-	size_t numSolid = 0, numVoid = 0, numIntersecting = 0;
+	size_t numSolid = 0;
 	for (const auto& otherVertId : conVerts) {
 		const auto& otherVert = getVertex(otherVertId);
 		const auto& otherPt = otherVert._pt;
@@ -175,56 +183,55 @@ void Vertex::markSolidAndIntersecting()
 		Vector3d dir = otherPt - _pt;
 		dir.normalize();
 		Rayd ray(_pt, dir);
+		points.insert(_pt);
 		vector<SolidHitRec> hitsOnSolidModel;
-		pTree->biDirRayCastTraverse(ray, [this, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+		pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 			if (model.isClosed(idx)) {
 				auto pFace = model.getPolygon(idx);
 				RayHitd rh;
-				if (pFace->intersect(ray, rh) && rh.dist > 0) {
+				if (pFace->intersect(ray, rh) && rh.dist > -tol) {
 					auto& norm = pFace->calUnitNormal();
-					bool pos = norm.dot(dir) >= 0;
-					hitsOnSolidModel.push_back(SolidHitRec(rh.dist, pos, idx));
+					auto dp = norm.dot(dir);
+					// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
+					// This condition produces a lot of singularities.
+					bool positiveCrossing = dp >= 0;
+					bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
+					if (!rayStartsOnSymPlaneAndAimedInwards)
+						hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
 				}
 			}
 			return true;
 		}, tol);
 
 		if (!hitsOnSolidModel.empty()) {
+			// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
+			// each face connected to the vertex will be counted.
+			// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
 			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
 			for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
 				size_t j = (i + 1) % hitsOnSolidModel.size();
 				double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
 				if (gap < tolFloat) {
-					if (hitsOnSolidModel[i]._positive == hitsOnSolidModel[j]._positive)
+					if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing)
 						hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
 				}
 			}
-			if (hitsOnSolidModel.front()._dist < tol)
-				numIntersecting++;
-			else {
-				bool inSolid = false;
-				for (const auto& hr : hitsOnSolidModel) {
-					inSolid = !inSolid;
-				}
+			bool inSolid = hitsOnSolidModel.size() % 2 == 1;
 
-				if (inSolid)
-					numSolid++;
-				else
-					numVoid++;
+			if (inSolid)
+				numSolid++;
 
-				int dbgBreak = 1;
-			}
+			int dbgBreak = 1;			
 		}
 	}
 
-	if (numSolid + numIntersecting > 0) {
-		assert(numVoid == 0);
+	if (numSolid > 2) {
+		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
+		for (const auto& pt : points)
+			pDbg->add(pt);
 		_topologyState = TOPST_SOLID;
-	} else if (numVoid + numIntersecting > 0) {
-		assert(numSolid == 0);
+	} else {
 		_topologyState = TOPST_VOID;
-	} else if (numIntersecting != 0) {
-		_topologyState = TOPST_INTERSECTING;
 	}
 }
 
@@ -281,13 +288,6 @@ void Vertex::dumpIntersectionObj(const Rayd& ray, const std::vector<PolyMeshInde
 			out << "\n";
 		}
 
-	}
-}
-
-void Vertex::markOthersVoid()
-{
-	if (_topologyState == TOPST_UNKNOWN) {
-		_topologyState = TOPST_VOID;
 	}
 }
 

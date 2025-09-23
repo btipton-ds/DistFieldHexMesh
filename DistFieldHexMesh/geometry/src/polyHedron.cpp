@@ -419,18 +419,22 @@ MTC::vector<Index3DId> Polyhedron::getParents() const
 }
 
 
-void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d>>& subCells, MTC::vector<Vector3d>& partingFacePts) const
+void Polyhedron::makeHexCellHexPoints(int axis, SubCellResults& result) const
 {
-	MTC::vector<Vector3d> cp;
-	getCanonicalPoints(cp);
-
-	if (cp.size() != 8) {
+	auto& cornerVertIds = getCanonicalVertIds();
+	if (cornerVertIds.size() != 8) {
 		stringstream ss;
 		ss << "Polyhedron::makeHexCellHexPoints not hexhedral " << __FILE__ << ":" << __LINE__;
 		throw runtime_error(ss.str());
 	}
 
+	MTC::vector<Vector3d> cp;
+	for (const auto& id : cornerVertIds)
+		cp.push_back(getVertexPoint(id));
+
 	for (int i = 0; i < 2; i++) {
+		SubCell subCell;
+
 		double t0 = 0, t1 = 1;
 		double u0 = 0, u1 = 1;
 		double v0 = 0, v1 = 1;
@@ -450,7 +454,7 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 			break;
 		}
 
-		MTC::vector<Vector3d> subPts = {
+		subCell._cellPoints = {
 			TRI_LERP(cp, t0, u0, v0),
 			TRI_LERP(cp, t1, u0, v0),
 			TRI_LERP(cp, t1, u1, v0),
@@ -461,18 +465,19 @@ void Polyhedron::makeHexCellHexPoints(int axis, MTC::vector<MTC::vector<Vector3d
 			TRI_LERP(cp, t1, u1, v1),
 			TRI_LERP(cp, t0, u1, v1),
 		};
-		subCells.push_back(subPts);
+		result._subCells.push_back(subCell);
+		const auto& subPts = subCell._cellPoints;
 
 		if (i == 0) {
 			switch (axis) {
 			case 0:
-				partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
+				result._partingFacePts = { subPts[1], subPts[5], subPts[6], subPts[2], };
 				break;
 			case 1:
-				partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
+				result._partingFacePts = { subPts[2], subPts[6], subPts[7], subPts[3], };
 				break;
 			case 2:
-				partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
+				result._partingFacePts = { subPts[4], subPts[7], subPts[6], subPts[5], };
 				break;
 			}
 		}
@@ -1000,6 +1005,37 @@ size_t Polyhedron::classify(MTC::vector<Vector3d>& corners) const
 		// Must be tetrahedron
 	}
 	return corners.size();
+}
+
+TopologyState Polyhedron::getTopolgyState() const
+{
+	if (intersectsModel())
+		return TOPST_INTERSECTING;
+
+	MTC::set<Index3DId> vertIds;
+	getVertIds(vertIds);
+
+	size_t numSolid = 0, numVoid = 0;
+	for (const auto& vertId : vertIds) {
+		auto& vert = getVertex(vertId);
+		auto vTopSt = vert.getTopolgyState();
+		switch (vTopSt) {
+			default:
+		case TOPST_SOLID:
+			numSolid++;
+			break;
+		case TOPST_VOID:
+			numVoid++;
+			break;
+		}
+	}
+
+	if (numSolid == vertIds.size())
+		return TOPST_SOLID;
+	else if (numVoid == vertIds.size())
+		return TOPST_VOID;
+
+	return TOPST_INTERSECTING;
 }
 
 const CBoundingBox3Dd& Polyhedron::getBoundingBox() const

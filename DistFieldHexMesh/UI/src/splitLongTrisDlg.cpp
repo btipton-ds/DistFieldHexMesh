@@ -63,10 +63,15 @@ int col2 = col1 + promptWidth + gap;
 int col3 = col2 + promptWidth + gap;
 int baseRowPixels = 5;
 #else
+int frameWidth = 400;
+int frameHeight = 150;
+int rightEdge = frameWidth - 20;
 int gap = 3;
 int descent = 3;
 int promptWidth = 50;
+int buttonWidth = 80;
 int boxWidth = 20;
+int boxWidth1 = 30;
 int boxHeight = 21;
 int rowHeight = boxHeight + descent;
 int col0 = 8;

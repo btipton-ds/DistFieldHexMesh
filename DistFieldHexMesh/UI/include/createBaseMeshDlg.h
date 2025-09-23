@@ -27,17 +27,14 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include "wx/wxprec.h"
 #include <tm_vector3.h>
 
-#ifndef WX_PRECOMP
 #include "wx/wx.h"
 #include <wx/dialog.h>
-#endif
 
 namespace DFHM {
-	class AppData;
-	using AppDataPtr = std::shared_ptr<AppData>;
+	class AppDataIntf;
+	using AppDataPtr = std::shared_ptr<AppDataIntf>;
 	class MainFrame;
 	struct CreateB;
 
