@@ -2,7 +2,7 @@
 # project specific logic here.
 #
 
-find_package(wxWidgets COMPONENTS core base gl png z)
+find_package(wxWidgets COMPONENTS core base gl png)
 include(${wxWidgets_USE_FILE})
 
 message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
