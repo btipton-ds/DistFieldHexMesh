@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#undef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 
 #ifdef WIN32
