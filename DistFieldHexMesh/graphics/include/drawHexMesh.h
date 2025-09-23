@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <OGLMultiVbo.h>
 #include <drawMesh.h>
-#include <Index3D.h>
+#include <index3D.h>
 #include <block.h>
 
 namespace OGL

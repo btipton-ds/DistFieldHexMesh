@@ -33,7 +33,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <set>
 #include <iostream>
 #include <triMeshPatch.h>
-#include <Vector2d.h>
+#include <vector2d.h>
 #include <tm_lineSegment.h>
 #include <tm_lineSegment_byref.h>
 #include <patient_lock_guard.h>

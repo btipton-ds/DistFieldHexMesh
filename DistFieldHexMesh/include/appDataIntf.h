@@ -31,7 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <string>
 #include <triMesh.h>
 #include <MultiCoreUtil.h>
-#include <Index3D.h>
+#include <index3D.h>
 
 class wxMouseEvent;
 

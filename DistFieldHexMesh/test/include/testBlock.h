@@ -27,7 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <Index3D.h>
+#include <index3D.h>
 
 namespace DFHM {
 

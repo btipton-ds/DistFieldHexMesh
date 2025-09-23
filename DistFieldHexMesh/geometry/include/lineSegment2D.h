@@ -28,7 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
-#include <Vector2d.h>
+#include <vector2d.h>
 
 namespace DFHM {
 

@@ -25,7 +25,7 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
-#include <polyMeshTables.h>
+#include <polymeshTables.h>
 #include <volume.h>
 
 using namespace std;

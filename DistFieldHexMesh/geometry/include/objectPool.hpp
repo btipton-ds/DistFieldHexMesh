@@ -29,7 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <defines.h>
 #include <objectPool.h>
 #include <block.h>
-#include <Volume.h>
+#include <volume.h>
 
 namespace DFHM {
 
