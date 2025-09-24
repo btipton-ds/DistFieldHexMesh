@@ -5,10 +5,6 @@
 find_package(wxWidgets COMPONENTS core base gl)
 include(${wxWidgets_USE_FILE})
 
-message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
-message(WARNING "wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
-
-
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 if(WIN32)
 	set(OpenGlPlatform "win")
@@ -16,72 +12,67 @@ if(WIN32)
 else(WIN32)
 	set(OpenGL_GL_PREFERENCE LEGACY)
 	find_package(OpenGL)
-	message(WARNING "OPENGL_INCLUDE_DIRS${OPENGL_INCLUDE_DIRS}")
-	message(WARNING "OPENGL_LIBRARIES${OPENGL_LIBRARIES}")
 	set(OpenGlPlatform "linux")
 	set(OpenGlPlatformDecl )
 endif(WIN32)
 
-if(WIN32)
-set(triMeshLibDir "../../triMesh/x64/win/${CMAKE_BUILD_TYPE}")
 set (CMAKE_SHADER_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/shaders")
 set (CMAKE_ASSETS_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/assets")
-set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
-
-include_directories(
-	"include"
-	"geometry/include/"
-	"graphics/include/"
-	"test/include/"
-	"UI/include/"
-	"../../ThirdParty/eigen/"
-	"../../triMesh/stlReader/include/"
-	"../../triMesh/triMesh/include/"
-	"../../triMesh/tests/include/"
-	"../../utilities/threads/include/"
-	"${OpenGlDir}/include/"
-	"${OpenGlDir}/include/${OpenGlPlatform}/"
-	"${wxWidgets_INCLUDE_DIRS}"
-)
-else(WIN32)
-set(triMeshLibDir "../../triMesh/x64/linux/${CMAKE_BUILD_TYPE}")
-set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
-include_directories(
-	"include"
-	"/usr/include/GL/"
-    "/usr/include/eigen3/"
-	"geometry/include/"
-	"graphics/include/"
-	"test/include/"
-	"UI/include/"
-	"../../triMesh/triMesh/include/"
-	"../../triMesh/stlReader/include/"
-	"../../triMesh/tests/include/"
-	"../../utilities/threads/include/"
-	"${OpenGlDir}/include/"
-	"${OPENGL_INCLUDE_DIRS}"
-	"${wxWidgets_INCLUDE_DIRS}"
-)
-endif(WIN32)
-
 if(WIN32)
-link_directories(
-	"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/"
-	${triMeshLibDir}
-)
-else()
-link_directories(
-	"/usr/local/lib/"
-	"/usr/lib/x86_64-linux-gnu/"
-	usr/lib/X11
-	${wxWidgets_LIBRARIES}
-	${triMeshLibDir}
-)
-endif()
+	set(triMeshLibDir "../../triMesh/x64/win/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/win/${CMAKE_BUILD_TYPE}")
+
+	include_directories(
+		"include"
+		"geometry/include/"
+		"graphics/include/"
+		"test/include/"
+		"UI/include/"
+		"../../ThirdParty/eigen/"
+		"../../triMesh/stlReader/include/"
+		"../../triMesh/triMesh/include/"
+		"../../triMesh/tests/include/"
+		"../../utilities/threads/include/"
+		"${OpenGlDir}/include/"
+		"${OpenGlDir}/include/${OpenGlPlatform}/"
+		"${wxWidgets_INCLUDE_DIRS}"
+	)
+
+	link_directories(
+			"C:/Program\ Files/wxWidgets/lib/vc_x64_lib/"
+			${triMeshLibDir}
+	)
+else(WIN32)
+	set(triMeshLibDir "../../triMesh/x64/linux/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+	set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/x64/linux/${CMAKE_BUILD_TYPE}")
+	include_directories(
+		"include"
+		"/usr/include/GL/"
+		"/usr/include/eigen3/"
+		"geometry/include/"
+		"graphics/include/"
+		"test/include/"
+		"UI/include/"
+		"../../triMesh/triMesh/include/"
+		"../../triMesh/stlReader/include/"
+		"../../triMesh/tests/include/"
+		"../../utilities/threads/include/"
+		"${OpenGlDir}/include/"
+		"${OPENGL_INCLUDE_DIRS}"
+		"${wxWidgets_INCLUDE_DIRS}"
+	)
+	link_directories(
+			"/usr/local/lib/"
+			"/usr/lib/x86_64-linux-gnu/"
+			usr/lib/X11
+			${wxWidgets_LIBRARIES}
+			${triMeshLibDir}
+	)
+endif(WIN32)
 
 add_executable (DistFieldHexMesh         
 	${OpenGlPlatformDecl}
