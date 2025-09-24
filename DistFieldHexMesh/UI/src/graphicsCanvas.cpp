@@ -705,7 +705,11 @@ void GraphicsCanvas::initialize()
 	if (_initialized)
 		return;
 
-	loadShaders();
+#ifndef WIN32
+    glewInit();
+#endif
+
+    loadShaders();
     initializeDepthPeeling();
     _initialized = true;
 	return;
