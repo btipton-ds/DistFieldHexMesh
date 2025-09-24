@@ -2,19 +2,24 @@
 # project specific logic here.
 #
 
-find_package(wxWidgets COMPONENTS core base gl png)
+find_package(wxWidgets COMPONENTS core base gl)
 include(${wxWidgets_USE_FILE})
 
 message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
+message(WARNING "wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
+
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
-
 if(WIN32)
-set(OpenGlPlatform "win")
-set(OpenGlPlatformDecl WIN32)
+	set(OpenGlPlatform "win")
+	set(OpenGlPlatformDecl WIN32)
 else(WIN32)
-set(OpenGlPlatform "linux")
-set(OpenGlPlatformDecl )
+	set(OpenGL_GL_PREFERENCE LEGACY)
+	find_package(OpenGL)
+	message(WARNING "OPENGL_INCLUDE_DIRS${OPENGL_INCLUDE_DIRS}")
+	message(WARNING "OPENGL_LIBRARIES${OPENGL_LIBRARIES}")
+	set(OpenGlPlatform "linux")
+	set(OpenGlPlatformDecl )
 endif(WIN32)
 
 if(WIN32)
@@ -58,7 +63,7 @@ include_directories(
 	"../../triMesh/tests/include/"
 	"../../utilities/threads/include/"
 	"${OpenGlDir}/include/"
-	"${OpenGlDir}/include/${OpenGlPlatform}/"
+	"${OPENGL_INCLUDE_DIRS}"
 	"${wxWidgets_INCLUDE_DIRS}"
 )
 endif(WIN32)
@@ -72,6 +77,8 @@ else()
 link_directories(
 	"/usr/local/lib/"
 	"/usr/lib/x86_64-linux-gnu/"
+	usr/lib/X11
+	${wxWidgets_LIBRARIES}
 	${triMeshLibDir}
 )
 endif()
@@ -143,52 +150,49 @@ else()
 endif()
 
 if (WIN32)
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-	target_link_libraries("DistFieldHexMesh" 
-		PUBLIC triMesh
-		PUBLIC stlReader
+	if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+		target_link_libraries("DistFieldHexMesh"
+			PUBLIC triMesh
+			PUBLIC stlReader
 
-		#windows & mfc libraries
-		PUBLIC comctl32
-		PUBLIC rpcrt4
+			#windows & mfc libraries
+			PUBLIC comctl32
+			PUBLIC rpcrt4
 
-		#wxWidgets Libraries
-		PUBLIC wxbase32ud
-		PUBLIC wxmsw32ud_core
-		PUBLIC wxpngd
-		PUBLIC wxzlibd
-		PUBLIC wxmsw32ud_gl
-	)
-else()
-	target_link_libraries("DistFieldHexMesh" 
-		PUBLIC triMesh
-		PUBLIC stlReader
+			#wxWidgets Libraries
+			PUBLIC wxbase32ud
+			PUBLIC wxmsw32ud_core
+			PUBLIC wxpngd
+			PUBLIC wxzlibd
+			PUBLIC wxmsw32ud_gl
+		)
+	else(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+		target_link_libraries("DistFieldHexMesh"
+			PUBLIC triMesh
+			PUBLIC stlReader
 
-		#windows & mfc libraries
-		PUBLIC comctl32
-		PUBLIC rpcrt4
+			#windows & mfc libraries
+			PUBLIC comctl32
+			PUBLIC rpcrt4
 
-		#wxWidgets Libraries
-		PUBLIC wxbase32u
-		PUBLIC wxmsw32u_core
-		PUBLIC wxpng
-		PUBLIC wxzlib
-		PUBLIC wxmsw32u_gl
-	)
-endif()
+			#wxWidgets Libraries
+			PUBLIC wxbase32u
+			PUBLIC wxmsw32u_core
+			PUBLIC wxpng
+			PUBLIC wxzlib
+			PUBLIC wxmsw32u_gl
+		)
+	endif(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 else(WIN32)
-target_link_libraries("DistFieldHexMesh" 
-	PUBLIC triMesh
-	PUBLIC stlReader
+	target_link_libraries("DistFieldHexMesh"
+		PUBLIC triMesh
+		PUBLIC stlReader
 
-	PUBLIC GL
-	PUBLIC GLU
-	PUBLIC GLX
+		${OPENGL_LIBRARIES} GLEW
 
-	#wxWidgets Libraries
-	PUBLIC wx_gtk3u-3.2
-	PUBLIC wx_gtk3u_gl-3.2
-)
+		#wxWidgets Libraries
+		${wxWidgets_LIBRARIES} X11
+	)
 endif(WIN32)
 
 add_executable (TestDFM         
