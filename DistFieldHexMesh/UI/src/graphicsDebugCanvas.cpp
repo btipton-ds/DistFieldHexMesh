@@ -40,8 +40,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <GL/glext.h>
 #include <GL/wglext.h>
 #else
-#include "/usr/include/GL/gl.h"
-#include "/usr/include/GL/glext.h"
 #endif
 
 #include <OGLShader.h>
