@@ -2327,8 +2327,6 @@ void Volume::runThreadPool_IJK(const L& fLambda, bool multiCore)
 							MultiCore::scoped_set_local_heap sth(pBlk->getHeapPtr());
 #endif
 							fLambda(threadNum, pBlk);
-						} else {
-							fLambda(threadNum, nullptr);
 						}
 						return true;
 					}, multiCore);

@@ -40,14 +40,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-#define DECL_THREAD_LOCAL(CLASS_NAME)  template<>\
-thread_local CLASS_NAME* ObjectPool<CLASS_NAME>::_tl_pCompareObj = nullptr
-
-DECL_THREAD_LOCAL(Vertex);
-DECL_THREAD_LOCAL(Edge);
-DECL_THREAD_LOCAL(::DFHM::Polygon);
-DECL_THREAD_LOCAL(Polyhedron);
-
 ObjectPoolOwnerUser::ObjectPoolOwnerUser(const ObjectPoolOwnerUser& src)
 	: _pPoolOwner(src._pPoolOwner)
 {

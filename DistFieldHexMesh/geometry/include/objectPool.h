@@ -262,7 +262,13 @@ private:
 															// Attempted this on 2/5/25 and gave up after several hours using FastBisectionMap. It's trickier than it looks.
 															// Probably due to _objToElementIndexMap.find not reporting missing entries properly.
 															// Can't use a simple array because of accumulated dead ids at the head.
-	thread_local static T* _tl_pCompareObj;
+
+	static T*& getPCompareObj()
+	{
+		thread_local static T* pCompareObj;
+		return pCompareObj;
+	}
+
 };
 
 template<class T>
@@ -381,7 +387,7 @@ inline const T* ObjectPool<T>::getEntryFromObjIndex(const ObjIndex& objIdx) cons
 {
 	const T* p = nullptr;
 	if (objIdx == -1)
-		return _tl_pCompareObj;
+		return getPCompareObj();
 	else {
 		size_t segNum, segIdx;
 		if (calObjSegIndices(objIdx, segNum, segIdx)) {
@@ -547,17 +553,18 @@ size_t ObjectPool<T>::findElementIndexObj(const T& obj) const
 {
 	size_t result = -1;
 	if (_supportsReverseLookup) {
-		_tl_pCompareObj = (T*) &obj;
+		auto& pCompare = getPCompareObj();
+		pCompare = (T*) &obj;
 
-		auto pPriorOwner = _tl_pCompareObj->_pPoolOwner;
-		_tl_pCompareObj->_pPoolOwner = _pPoolOwner;
+		auto pPriorOwner = pCompare->_pPoolOwner;
+		pCompare->_pPoolOwner = _pPoolOwner;
 
 		auto iter = _objToElementIndexMap.find(ObjIndex());
 		if (iter != _objToElementIndexMap.end()) {
 			result = iter->second;
 		}
 
-		_tl_pCompareObj->_pPoolOwner = pPriorOwner;
+		pCompare->_pPoolOwner = pPriorOwner;
 	}
 	return result;
 }
@@ -704,7 +711,7 @@ template<class T>
 inline const T* ObjectPool<T>::get(const Index3DId& id) const
 {
 	if (!id.isValid())
-		return (T*)_tl_pCompareObj;
+		return (T*)getPCompareObj();
 	else
 		return getEntryFromElementIndex(id.elementId());
 }
@@ -713,7 +720,7 @@ template<class T>
 T* ObjectPool<T>::get(const Index3DId& id)
 {
 	if (!id.isValid())
-		return (T*)_tl_pCompareObj;
+		return (T*)getPCompareObj();
 	else
 		return getEntryFromElementIndex(id.elementId());
 }
