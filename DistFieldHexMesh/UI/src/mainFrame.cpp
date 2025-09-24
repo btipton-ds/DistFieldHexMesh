@@ -36,6 +36,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #ifdef WIN32
 #include "windows.h"
+#else
+#include <GL/glew.h>
 #endif // WIN32
 
 #include <tm_math.h>

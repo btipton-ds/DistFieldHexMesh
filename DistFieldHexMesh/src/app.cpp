@@ -25,6 +25,10 @@ This file is part of the DistFieldHexMesh application/library.
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
 
+#ifndef WIN32
+#include <GL/glew.h>
+#endif
+
 #include <app.h>
 #undef M_PI
 #include <mainFrame.h>

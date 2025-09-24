@@ -28,6 +28,10 @@ This file is part of the DistFieldHexMesh application/library.
 #pragma warning( push )
 #pragma warning( disable : 4005 ) // M_PI is being redefined somewhere in wxWidgets 3.2.8
 
+#ifndef WIN32
+#include <GL/glew.h>
+#endif
+
 #include <filesystem>
 #include <triMesh.hpp>
 #include <appDataIntf.h>

@@ -29,6 +29,10 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <memory>
 
+#ifndef WIN32
+#include <GL/glew.h>
+#endif
+
 #include <graphicsCanvas.h>
 #include <mainFrame.h>
 
@@ -709,8 +713,9 @@ void GraphicsCanvas::initialize()
 
 void GraphicsCanvas::initializeDepthPeeling()
 {
-    SetCurrent(*getGLContext(this));
-    bool hasContext = wglGetCurrentContext();
+    auto pContext = getGLContext(this);
+    SetCurrent(*pContext);
+    bool hasContext = pContext != nullptr;
     if (hasContext && hasVBOSupport() && _ddp_FBO_id == UINT_MAX) {
         createScreenRectPoints();
 
