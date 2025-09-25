@@ -643,8 +643,9 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
 
     vector<MeshDataPtr> meshes;
     CBoundingBox3Dd bbox;
+    auto sharedThis = shared_from_this();
     for (size_t i = 0; i < numMeshes; i++) {
-        auto pData = make_shared<MeshData>(shared_from_this());
+        auto pData = make_shared<MeshData>(sharedThis);
         pData->read(in);
         meshes.push_back(pData);
         bbox.merge(pData->getMesh()->getBBox());
