@@ -349,7 +349,6 @@ bool AppData::handleMeshConditionalTestSplit(wxMouseEvent& event, const Rayd& ra
         auto& cell = _pVolume->getPolyhedron(hitCellId);
 
         bool needsCrossSections = _params.numCurvatureDivs > 0;
-        _pVolume->_splitNum;
         if (needsCrossSections) {
             _pVolume->createCrossSections(_params, _pVolume->_splitNum);
         }
@@ -611,7 +610,7 @@ void AppData::writeDHFM() const
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
     uint8_t version = 0;
-    out.write((char*)&version, sizeof(version));
+    IoUtil::write(out, version);
 
     _params.write(out);
 
@@ -635,7 +634,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     ifstream in(filesystem::path(_dhfmFilename), ifstream::binary);
 
     uint8_t version;
-    in.read((char*)&version, sizeof(version));
+    IoUtil::read(in, version);
     _params.read(in);
 
     size_t numMeshes = _model.size();

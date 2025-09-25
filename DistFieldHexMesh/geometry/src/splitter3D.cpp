@@ -474,6 +474,7 @@ bool Splitter3D::complexityBisectionHexSplit(const Index3DId& parentId, int spli
 		MTC::vector<Index3DId> newCellIds;
 		int splitAxis = -1;
 		switch (splitType) {
+		default:
 		case HST_HEX_X:
 			splitAxis = 0;
 			bisectHexCellToHexes(parentId, splitAxis, newCellIds);
