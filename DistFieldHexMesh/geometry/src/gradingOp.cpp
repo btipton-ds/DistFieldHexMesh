@@ -178,6 +178,7 @@ void GradingOp::createGradedCellOnFace(HexFaceType ft0) const
     Vector3d pts[8];
     const auto& cPts = _pBlk->getCornerPts();
 	switch (ft0) {
+    default:
     case CFT_BACK:
         pts[0] = pts[1] = cPts[0];
         pts[3] = pts[2] = cPts[3];

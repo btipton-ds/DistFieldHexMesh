@@ -336,19 +336,19 @@ CBoundingBox3Dd Vertex::calBBox(const Vector3d& pt)
 	return result;
 }
 
-inline int64_t Vertex::scaleToSearch()
+int64_t Vertex::scaleToSearch()
 {
 	const int64_t micronInv = 1000000;
 	return 100 * micronInv; // 1/100 micron
 }
 
-inline int64_t Vertex::scaleToSearch(double v)
+int64_t Vertex::scaleToSearch(double v)
 {
 	// Rounding is REQUIRED for correct fusing of highly divided edges. DO NOT REMOVE the "+ 0.5" without a lot of verification.
 	return (int64_t)(v * scaleToSearch() + 0.5);
 }
 
-inline Vector3<int64_t> Vertex::scaleToSearch(const Vector3d& pt)
+Vector3<int64_t> Vertex::scaleToSearch(const Vector3d& pt)
 {
 	return Vector3<int64_t>(scaleToSearch(pt[0]), scaleToSearch(pt[1]), scaleToSearch(pt[2]));
 }

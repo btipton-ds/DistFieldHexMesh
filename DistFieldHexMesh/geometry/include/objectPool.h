@@ -495,7 +495,7 @@ inline void ObjectPool<T>::addToLookup(const T& obj)
 //		assert(id.elementId() < _elementIndexToObjIndexMap.size());
 		const ObjIndex& objIdx = _elementIndexToObjIndexMap[id.elementId()];
 #if OBJECT_POOL_USE_STD_MAP
-		_objToElementIndexMap.insert(make_pair(objIdx, id.elementId()));
+		_objToElementIndexMap.insert(std::make_pair(objIdx, id.elementId()));
 #else
 		_objToElementIndexMap.insert(objIdx, id.elementId());
 #endif

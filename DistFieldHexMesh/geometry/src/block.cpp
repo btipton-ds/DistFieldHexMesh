@@ -53,7 +53,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <meshData.h>
 #include <appDataIntf.h>
 
-//using namespace std;
+using namespace std;
 using namespace DFHM;
 
 atomic<size_t> Block::GlPoints::_statId = 0;

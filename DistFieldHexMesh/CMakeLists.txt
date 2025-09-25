@@ -4,6 +4,7 @@
 
 find_package(wxWidgets COMPONENTS core base gl)
 include(${wxWidgets_USE_FILE})
+message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 if(WIN32)
@@ -37,7 +38,8 @@ if(WIN32)
 		"../../utilities/threads/include/"
 		"${OpenGlDir}/include/"
 		"${OpenGlDir}/include/${OpenGlPlatform}/"
-		"${wxWidgets_INCLUDE_DIRS}"
+		"C:/Program Files/wxWidgets/lib/vc_x64_lib/mswu"
+		"C:/Program Files/wxWidgets/include"
 	)
 
 	link_directories(
@@ -243,7 +245,7 @@ add_custom_command(
 )
 
 if(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20 /Zo /WX")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11")

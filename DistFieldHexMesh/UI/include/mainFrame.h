@@ -240,7 +240,7 @@ public:
 private:
     void addMenus();
     void addStatusBar();
-    void OnInternalIdle();
+    void OnInternalIdle() override;
 
     void createFileMenu();
     void createEditMenu();

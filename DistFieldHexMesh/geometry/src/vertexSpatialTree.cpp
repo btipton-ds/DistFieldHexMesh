@@ -74,6 +74,6 @@ void VertSearchTree<INDEX_TYPE, S>::add(const Vector3d& pt, const INDEX_TYPE& id
 	BaseTree::add(bbox, idx);
 }
 
-template class VertSearchTree<size_t, 4>;
-template class VertSearchTree<size_t, 8>;
-template class VertSearchTree<Index3DId, 4>;
+template class DFHM::VertSearchTree<size_t, 4>;
+template class DFHM::VertSearchTree<size_t, 8>;
+template class DFHM::VertSearchTree<Index3DId, 4>;

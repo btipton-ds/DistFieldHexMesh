@@ -56,6 +56,7 @@ template<class T>
 void UnalignedBBox<T>::getFacePoints(HexFaceType ft, Vector3<T> pts[4]) const
 {
 	switch (ft) {
+	default:
 	case CFT_BOTTOM:
 		pts[0] = _corners[0];
 		pts[1] = _corners[3];
@@ -309,6 +310,6 @@ UnalignedBBox<T>::operator std::vector<Vector3<T>>& ()
 	return _corners;
 }
 
-template class UnalignedBBox<double>;
+template class DFHM::UnalignedBBox<double>;
 
-template class UnalignedBBox<float>;
+template class DFHM::UnalignedBBox<float>;

@@ -48,7 +48,7 @@ int main(int numParams, const char** params)
 #endif
 	{
 		TestMultiCore tmc;
-		if (!tmc.testAll()) return false;
+		if (!tmc.testAll()) return 0;
 	}
 
 	std::cout << "All tests passed\n";

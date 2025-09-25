@@ -1666,7 +1666,7 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	return out;
 }
 
-inline const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
+const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 {
 	auto p = getOurBlockPtr();
 	if (p)
