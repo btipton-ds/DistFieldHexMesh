@@ -10,6 +10,8 @@ endif()
 
 if (WIN32)
 	add_compile_definitions("WIN32")
+else()
+    set (CMAKE_COLOR_DIAGNOSTICS "")
 endif()
 
 project ("DistFieldHexMesh")

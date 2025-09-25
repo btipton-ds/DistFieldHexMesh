@@ -4,7 +4,7 @@
 
 find_package(wxWidgets COMPONENTS core base gl)
 include(${wxWidgets_USE_FILE})
-message(WARNING "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
+message(STATUS "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 if(WIN32)
@@ -54,7 +54,7 @@ else(WIN32)
 	include_directories(
 		"include"
 		"/usr/include/GL/"
-		"/usr/include/eigen3/"
+		"../../ThirdParty/eigen/"
 		"geometry/include/"
 		"graphics/include/"
 		"test/include/"
@@ -248,7 +248,7 @@ if(WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion -lX11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wno-deprecated-enum-enum-conversion")
 target_compile_features(DistFieldHexMesh PRIVATE cxx_std_20)
 endif(WIN32)
 
