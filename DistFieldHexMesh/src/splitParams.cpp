@@ -27,6 +27,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <splitParams.h>
 
+#include "io_utils.h"
+
 using namespace DFHM;
 
 SplittingParams::SplittingParams()
@@ -83,45 +85,48 @@ std::vector<Vector3d> SplittingParams::getVolBounds() const
 void SplittingParams::read(std::istream& in)
 {
 	size_t version;
-	in.read((char*)&version, sizeof(size_t));
+	IoUtil::read(in, version);
 
-	in.read((char*)&symXAxis, sizeof(symXAxis));
-	in.read((char*)&symYAxis, sizeof(symYAxis));
-	in.read((char*)&symZAxis, sizeof(symZAxis));
+	IoUtil::read(in, symXAxis);
+	IoUtil::read(in, symYAxis);
+	IoUtil::read(in, symZAxis);
 
-	in.read((char*)&numSimpleDivs, sizeof(numSimpleDivs));
-	in.read((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
-	in.read((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
-	in.read((char*)&curvatureDivsPerCircumference, sizeof(curvatureDivsPerCircumference));
-	in.read((char*)&maxCellFaces, sizeof(maxCellFaces));
-	in.read((char*)&baseBoxOffset, sizeof(baseBoxOffset));
-	in.read((char*)&xRotationDeg, sizeof(xRotationDeg));
-	in.read((char*)&yRotationDeg, sizeof(yRotationDeg));
-	in.read((char*)&zRotationDeg, sizeof(zRotationDeg));
-	in.read((char*)&xMin, sizeof(xMin));
-	in.read((char*)&xMax, sizeof(xMax));
-	in.read((char*)&yMin, sizeof(yMin));
-	in.read((char*)&yMax, sizeof(yMax));
-	in.read((char*)&zMin, sizeof(zMin));
-	in.read((char*)&zMax, sizeof(zMax));
-	in.read((char*)&maxGapSize, sizeof(maxGapSize));
+	IoUtil::read(in, numSimpleDivs);
+	IoUtil::read(in, numIntersectionDivs);
+	IoUtil::read(in, numCurvatureDivs);
+	IoUtil::read(in, curvatureDivsPerCircumference);
+	IoUtil::read(in, maxCellFaces);
 
-	in.read((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
-	in.read((char*)&minEdgeLength, sizeof(minEdgeLength));
+	IoUtil::read(in, baseBoxOffset);
+	IoUtil::read(in, xRotationDeg);
+	IoUtil::read(in, yRotationDeg);
+	IoUtil::read(in, zRotationDeg);
 
-	in.read((char*)&xMinDivs, sizeof(xMinDivs));
-	in.read((char*)&xMaxDivs, sizeof(xMaxDivs));
-	in.read((char*)&yMinDivs, sizeof(yMinDivs));
-	in.read((char*)&yMaxDivs, sizeof(yMaxDivs));
-	in.read((char*)&zMinDivs, sizeof(zMinDivs));
-	in.read((char*)&zMaxDivs, sizeof(zMaxDivs));
+	IoUtil::read(in, xMin);
+	IoUtil::read(in, xMax);
+	IoUtil::read(in, yMin);
+	IoUtil::read(in, yMax);
+	IoUtil::read(in, zMin);
+	IoUtil::read(in, zMax);
 
-	in.read((char*)&xMinGrading, sizeof(double));
-	in.read((char*)&xMaxGrading, sizeof(double));
-	in.read((char*)&yMinGrading, sizeof(double));
-	in.read((char*)&yMaxGrading, sizeof(double));
-	in.read((char*)&zMinGrading, sizeof(double));
-	in.read((char*)&zMaxGrading, sizeof(double));
+	IoUtil::read(in, maxGapSize);
+	IoUtil::read(in, sharpAngle_degrees);
+	IoUtil::read(in, minEdgeLength);
+
+	IoUtil::read(in, xMinDivs);
+	IoUtil::read(in, xMaxDivs);
+	IoUtil::read(in, yMinDivs);
+	IoUtil::read(in, yMaxDivs);
+	IoUtil::read(in, zMinDivs);
+	IoUtil::read(in, zMaxDivs);
+
+	IoUtil::read(in, xMinGrading);
+	IoUtil::read(in, xMaxGrading);
+	IoUtil::read(in, yMinGrading);
+	IoUtil::read(in, yMaxGrading);
+	IoUtil::read(in, zMinGrading);
+	IoUtil::read(in, zMaxGrading);
+
 
 	in.read((char*)dims.data(), 3 * sizeof(double));
 	volDivs.read(in);
@@ -130,46 +135,47 @@ void SplittingParams::read(std::istream& in)
 void SplittingParams::write(std::ostream& out) const
 {
 	size_t version = 0;
-	out.write((char*)&version, sizeof(size_t));
+	IoUtil::write(out, version);
 
-	out.write((char*)&symXAxis, sizeof(symXAxis));
-	out.write((char*)&symYAxis, sizeof(symYAxis));
-	out.write((char*)&symZAxis, sizeof(symZAxis));
+	IoUtil::write(out, symXAxis);
+	IoUtil::write(out, symYAxis);
+	IoUtil::write(out, symZAxis);
 
-	out.write((char*)&numSimpleDivs, sizeof(numSimpleDivs));
-	out.write((char*)&numIntersectionDivs, sizeof(numIntersectionDivs));
-	out.write((char*)&numCurvatureDivs, sizeof(numCurvatureDivs));
-	out.write((char*)&curvatureDivsPerCircumference, sizeof(curvatureDivsPerCircumference));
-	out.write((char*)&maxCellFaces, sizeof(maxCellFaces));
+	IoUtil::write(out, numSimpleDivs);
+	IoUtil::write(out, numIntersectionDivs);
+	IoUtil::write(out, numCurvatureDivs);
+	IoUtil::write(out, curvatureDivsPerCircumference);
+	IoUtil::write(out, maxCellFaces);
 
-	out.write((char*)&baseBoxOffset, sizeof(baseBoxOffset));
-	out.write((char*)&xRotationDeg, sizeof(xRotationDeg));
-	out.write((char*)&yRotationDeg, sizeof(yRotationDeg));
-	out.write((char*)&zRotationDeg, sizeof(zRotationDeg));
+	IoUtil::write(out, baseBoxOffset);
+	IoUtil::write(out, xRotationDeg);
+	IoUtil::write(out, yRotationDeg);
+	IoUtil::write(out, zRotationDeg);
 
-	out.write((char*)&xMin, sizeof(xMin));
-	out.write((char*)&xMax, sizeof(xMax));
-	out.write((char*)&yMin, sizeof(yMin));
-	out.write((char*)&yMax, sizeof(yMax));
-	out.write((char*)&zMin, sizeof(zMin));
-	out.write((char*)&zMax, sizeof(zMax));
-	out.write((char*)&maxGapSize, sizeof(maxGapSize));
-	out.write((char*)&sharpAngle_degrees, sizeof(sharpAngle_degrees));
-	out.write((char*)&minEdgeLength, sizeof(minEdgeLength));
+	IoUtil::write(out, xMin);
+	IoUtil::write(out, xMax);
+	IoUtil::write(out, yMin);
+	IoUtil::write(out, yMax);
+	IoUtil::write(out, zMin);
+	IoUtil::write(out, zMax);
 
-	out.write((char*)&xMinDivs, sizeof(xMinDivs));
-	out.write((char*)&xMaxDivs, sizeof(xMaxDivs));
-	out.write((char*)&yMinDivs, sizeof(yMinDivs));
-	out.write((char*)&yMaxDivs, sizeof(yMaxDivs));
-	out.write((char*)&zMinDivs, sizeof(zMinDivs));
-	out.write((char*)&zMaxDivs, sizeof(zMaxDivs));
+	IoUtil::write(out, maxGapSize);
+	IoUtil::write(out, sharpAngle_degrees);
+	IoUtil::write(out, minEdgeLength);
 
-	out.write((char*)&xMinGrading, sizeof(double));
-	out.write((char*)&xMaxGrading, sizeof(double));
-	out.write((char*)&yMinGrading, sizeof(double));
-	out.write((char*)&yMaxGrading, sizeof(double));
-	out.write((char*)&zMinGrading, sizeof(double));
-	out.write((char*)&zMaxGrading, sizeof(double));
+	IoUtil::write(out, xMinDivs);
+	IoUtil::write(out, xMaxDivs);
+	IoUtil::write(out, yMinDivs);
+	IoUtil::write(out, yMaxDivs);
+	IoUtil::write(out, zMinDivs);
+	IoUtil::write(out, zMaxDivs);
+
+	IoUtil::write(out, xMinGrading);
+	IoUtil::write(out, xMaxGrading);
+	IoUtil::write(out, yMinGrading);
+	IoUtil::write(out, yMaxGrading);
+	IoUtil::write(out, zMinGrading);
+	IoUtil::write(out, zMaxGrading);
 
 	out.write((char*)dims.data(), 3 * sizeof(double));
 	volDivs.write(out);
