@@ -187,10 +187,10 @@ inline bool QueryPerformanceCounter(LARGE_INTEGER *value)
 {
   timespec ts;
   // CLOCK_MONOTONIC is available on more systems than CLOCK_THREAD_CPUTIME_ID
-  bool result = clock_gettime(CLOCK_MONOTONIC, &ts);
+  auto result = clock_gettime(CLOCK_MONOTONIC, &ts);
   // assume call succeeds 
   value->QuadPart = ts.tv_nsec;
-  if (result = -1) {
+  if (result == -1) {
     // mimic windows error behavior, 0=error
     result = 0;
     value->QuadPart = 0;
