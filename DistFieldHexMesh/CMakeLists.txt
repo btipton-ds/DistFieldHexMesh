@@ -3,19 +3,22 @@
 #
 
 find_package(wxWidgets COMPONENTS core base gl)
-include(${wxWidgets_USE_FILE})
-message(STATUS "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
 set(OpenGlDir "${PROJECT_SOURCE_DIR}/../utilities/opengl")
 if(WIN32)
 	set(OpenGlPlatform "win")
 	set(OpenGlPlatformDecl WIN32)
+	set (wxWidgets_INCLUDE_DIRS  "C:/Program Files/wxWidgets/lib/vc_x64_lib/mswu" "C:/Program Files/wxWidgets/include")
 else(WIN32)
+	include(${wxWidgets_USE_FILE})
+
 	set(OpenGL_GL_PREFERENCE LEGACY)
 	find_package(OpenGL)
 	set(OpenGlPlatform "linux")
 	set(OpenGlPlatformDecl )
 endif(WIN32)
+
+message(STATUS "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
 
 set (CMAKE_SHADER_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/shaders")
 set (CMAKE_ASSETS_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/assets")
@@ -38,8 +41,7 @@ if(WIN32)
 		"../../utilities/threads/include/"
 		"${OpenGlDir}/include/"
 		"${OpenGlDir}/include/${OpenGlPlatform}/"
-		"C:/Program Files/wxWidgets/lib/vc_x64_lib/mswu"
-		"C:/Program Files/wxWidgets/include"
+		"${wxWidgets_INCLUDE_DIRS}"
 	)
 
 	link_directories(
