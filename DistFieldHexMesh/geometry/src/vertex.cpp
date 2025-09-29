@@ -296,7 +296,7 @@ void Vertex::write(std::ostream& out) const
 	uint8_t version = 0;
 	out.write((char*)&version, sizeof(version));
 
-	writeVector3(out, _pt);
+	IoUtil::write(out, _pt);
 
 	out.write((char*)&_lockType, sizeof(_lockType));
 	IoUtil::writeObj(out, _faceIds);
@@ -307,7 +307,7 @@ void Vertex::read(std::istream& in)
 	uint8_t version;
 	in.read((char*)&version, sizeof(version));
 
-	readVector3(in, _pt);
+	IoUtil::read(in, _pt);
 
 	in.read((char*)&_lockType, sizeof(_lockType));
 	IoUtil::readObj(in, _faceIds);
