@@ -56,6 +56,9 @@ public:
 	operator const std::vector<Vector3<T>>& () const;
 	operator std::vector<Vector3<T>>& ();
 
+	const std::vector<Vector3<T>>& asVector() const;
+	std::vector<Vector3<T>>& asVector();
+
 	bool setPoints(std::vector<Vector3<T>> corners);
 	void getFacePoints(HexFaceType ft, Vector3<T> pts[4]) const;
 

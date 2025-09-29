@@ -862,8 +862,7 @@ bool Block::write(ostream& out) const
 	_innerBoundBox.write(out);
 
 	out.write((char*)&_blockDim, sizeof(_blockDim));
-	vector<Vector3<double>> t = _corners;
-	IoUtil::writeVector3(out, t);
+	IoUtil::write(out, _corners.asVector());
 
 	out.write((char*)&_topologyState, sizeof(_topologyState));
 
@@ -884,10 +883,7 @@ bool Block::read(istream& in)
 	_innerBoundBox.read(in);
 
 	in.read((char*)&_blockDim, sizeof(_blockDim));
-
-	vector<Vector3<double>> t;
-	IoUtil::readVector3(in, t);
-	_corners = t;
+	IoUtil::read(in, _corners.asVector());
 
 	in.read((char*)&_topologyState, sizeof(_topologyState));
 

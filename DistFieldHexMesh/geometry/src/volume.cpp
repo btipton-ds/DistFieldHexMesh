@@ -1946,11 +1946,8 @@ bool Volume::write(ostream& out) const
 
 	out.write((char*)&_splitNum, sizeof(_splitNum));
 
-	const vector<Vector3d>& cPts = _modelCornerPts;
-	IoUtil::writeVector3(out, cPts);
-
-	const vector<Vector3d>& vPts = _volCornerPts;
-	IoUtil::writeVector3(out, vPts);
+	IoUtil::write(out, _modelCornerPts.asVector());
+	IoUtil::write(out, _volCornerPts.asVector());
 
 	size_t num = _blocks.size();
 	out.write((char*)&num, sizeof(num));
@@ -1981,13 +1978,8 @@ bool Volume::read(istream& in)
 
 	in.read((char*)&_splitNum, sizeof(_splitNum));
 
-	vector<Vector3d> cPts;
-	IoUtil::readVector3(in, cPts);
-	_modelCornerPts = cPts;
-
-	vector<Vector3d> volPts;
-	IoUtil::readVector3(in, volPts);
-	_volCornerPts = volPts;
+	IoUtil::read(in, _modelCornerPts.asVector());
+	IoUtil::read(in, _volCornerPts.asVector());
 
 	size_t num;
 	in.read((char*)&num, sizeof(num));

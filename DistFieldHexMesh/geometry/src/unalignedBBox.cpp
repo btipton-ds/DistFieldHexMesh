@@ -310,6 +310,18 @@ UnalignedBBox<T>::operator std::vector<Vector3<T>>& ()
 	return _corners;
 }
 
+template<class T>
+const std::vector<Vector3<T>>& UnalignedBBox<T>::asVector() const
+{
+	return _corners;
+}
+
+template<class T>
+std::vector<Vector3<T>>& UnalignedBBox<T>::asVector()
+{
+	return _corners;
+}
+
 template class DFHM::UnalignedBBox<double>;
 
 template class DFHM::UnalignedBBox<float>;
