@@ -609,6 +609,14 @@ void AppData::writeDHFM() const
 {
     ofstream out(filesystem::path(_dhfmFilename), ios::out | ios::trunc | ios::binary);
 
+    int checksEnabled = 0;
+#if ENABLE_FILE_PACKET_SIZE_CHECKS
+    checksEnabled = 1;
+#endif
+    // DO NOT use IoUtil because it will cause infinite recursion
+    IoUtil::writeChecksEnabled() = checksEnabled;
+    out.write((const char*)&checksEnabled, sizeof(checksEnabled));
+
     uint8_t version = 0;
     IoUtil::write(out, version);
 
@@ -633,6 +641,12 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     _dhfmFilename = path + filename;
 
     ifstream in(filesystem::path(_dhfmFilename), ifstream::binary);
+
+    int checksEnabled = 0;
+    // DO NOT use IoUtil because it will cause infinite recursion
+    in.read((char*)&checksEnabled, sizeof(checksEnabled));
+    // read checks are determined by the file state when the file was written.
+    IoUtil::readChecksEnabled() = checksEnabled == 1;
 
     uint8_t version;
     IoUtil::read(in, version);

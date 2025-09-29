@@ -84,7 +84,7 @@ std::vector<Vector3d> SplittingParams::getVolBounds() const
 
 void SplittingParams::read(std::istream& in)
 {
-	size_t version;
+	uint8_t version;
 	IoUtil::read(in, version);
 
 	IoUtil::read(in, symXAxis);
@@ -134,7 +134,7 @@ void SplittingParams::read(std::istream& in)
 
 void SplittingParams::write(std::ostream& out) const
 {
-	size_t version = 0;
+	uint8_t version = 0;
 	IoUtil::write(out, version);
 
 	IoUtil::write(out, symXAxis);
