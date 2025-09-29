@@ -157,12 +157,9 @@ void MeshData::write(std::ostream& out) const
 {
 	uint8_t version = 0;
 	IoUtil::write(out, version);
-
 	IoUtil::write(out, _active);
+	IoUtil::write(out, _name);
 
-	size_t numChars = _name.size();
-	out.write((char*)&numChars, sizeof(numChars));
-	out.write((char*)_name.c_str(), numChars * sizeof(wchar_t));
 //	assert(_pMesh->verifyTopology(false));
 	_pMesh->write(out);
 }
@@ -171,15 +168,8 @@ void MeshData::read(std::istream& in)
 {
 	uint8_t version = 0;
 	IoUtil::read(in, version);
-
 	IoUtil::read(in, _active);
-
-	size_t numChars;
-	in.read((char*)&numChars, sizeof(numChars));
-	wchar_t buf[1024];
-	in.read((char*)buf, numChars * sizeof(wchar_t));
-	buf[numChars] = (wchar_t)0;
-	_name = wstring(buf);
+	IoUtil::read(in, _name);
 
 	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
