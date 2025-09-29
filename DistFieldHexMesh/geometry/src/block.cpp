@@ -855,16 +855,17 @@ void Block::setSupportsReverseLookup(bool val)
 bool Block::write(ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	_blockIdx.write(out);
 	_boundBox.write(out);
 	_innerBoundBox.write(out);
 
-	out.write((char*)&_blockDim, sizeof(_blockDim));
+	IoUtil::write(out, _blockDim);
 	IoUtil::write(out, _corners.asVector());
 
-	out.write((char*)&_topologyState, sizeof(_topologyState));
+	int ts = (int)_topologyState;
+	IoUtil::write(out, ts);
 
 	_vertices.write(out);
 	_polygons.write(out);
@@ -876,7 +877,7 @@ bool Block::write(ostream& out) const
 bool Block::read(istream& in)
 {
 	uint8_t version = 0;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	_blockIdx.read(in);
 	_boundBox.read(in);
@@ -885,7 +886,9 @@ bool Block::read(istream& in)
 	in.read((char*)&_blockDim, sizeof(_blockDim));
 	IoUtil::read(in, _corners.asVector());
 
-	in.read((char*)&_topologyState, sizeof(_topologyState));
+	int ts;
+	in.read((char*)&_topologyState, ts);
+	_topologyState = (TopologyState)ts;
 
 	_vertices.read(in);
 	_polygons.read(in);
@@ -927,7 +930,8 @@ bool Block::load()
 	if (!in.good()) return false;
 
 	size_t size;
-	in.read((char*) & size, sizeof(size));
+	IoUtil::read(in, size);
+
 	if (!in.good()) return false;
 
 	_filename.clear();

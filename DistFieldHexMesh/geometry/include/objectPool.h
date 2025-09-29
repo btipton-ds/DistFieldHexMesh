@@ -838,22 +838,39 @@ template<class T>
 void ObjectPool<T>::write(std::ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
-
-	out.write((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
+	IoUtil::write(out, version);
 
 	size_t numObjs = 0;
 	iterateInOrder([&numObjs](const Index3DId& id, const T& obj)->bool {
 		numObjs++;
 		return true;
 	});
-	out.write((char*)&numObjs, sizeof(numObjs));
+	IoUtil::write(out, numObjs);
 
 	iterateInOrder([&out](const Index3DId& id, const T& obj)->bool {
 		id.write(out);
 		obj.write(out);
 		return true;
 	});
+}
+
+template<class T>
+void ObjectPool<T>::read(std::istream& in)
+{
+	uint8_t version = -1;
+	IoUtil::read(in, version);
+
+	size_t numObjs = -1;
+	IoUtil::read(in, numObjs);
+
+	for (size_t i = 0; i < numObjs; i++) {
+		Index3DId currentId;
+		currentId.read(in);
+		T* pObj = add(T(), currentId);
+		assert(pObj->getId() == currentId);
+		pObj->read(in);
+		addToLookup(*pObj);
+	}
 }
 
 template<class T>
@@ -866,27 +883,6 @@ void ObjectPool<T>::setSupportsReverseLookup(bool val)
 			addToLookup(obj);
 			return true;
 		});
-	}
-}
-
-template<class T>
-void ObjectPool<T>::read(std::istream& in)
-{
-	uint8_t version = -1;
-	in.read((char*)&version, sizeof(version));
-
-	in.read((char*)&_objectSegmentSize, sizeof(_objectSegmentSize));
-
-	size_t numObjs = -1;
-	in.read((char*)&numObjs, sizeof(numObjs));
-
-	for (size_t i = 0; i < numObjs; i++) {
-		Index3DId currentId;
-		currentId.read(in);
-		T* pObj = add(T(), currentId);
-		assert(pObj->getId() == currentId);
-		pObj->read(in);
-		addToLookup(*pObj);
 	}
 }
 

@@ -294,7 +294,7 @@ void Vertex::dumpIntersectionObj(const Rayd& ray, const std::vector<PolyMeshInde
 void Vertex::write(std::ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	IoUtil::write(out, _pt);
 

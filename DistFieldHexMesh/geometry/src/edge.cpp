@@ -589,7 +589,7 @@ void Edge::write(std::ostream& out) const
 void Edge::read(std::istream& in)
 {
 	uint8_t version;
-	in.read((char*)&version, sizeof(uint8_t));
+	IoUtil::read(in, version);
 
 	_vertexIds[0].read(in);
 	_vertexIds[1].read(in);

@@ -1936,7 +1936,7 @@ bool Volume::write(ostream& out) const
 	assert(verifyTopology(true));
 #endif
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	_volDim.write(out);
 	_modelDim.write(out);
@@ -1968,7 +1968,7 @@ bool Volume::read(istream& in)
 	clear();
 
 	uint8_t version = -1;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	_volDim.read(in);
 	_modelDim.read(in);

@@ -298,7 +298,7 @@ void Polygon::reverse()
 void Polygon::write(ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	IoUtil::writeObj(out, _vertexIds);
 	IoUtil::writeObj(out, _cellIds);

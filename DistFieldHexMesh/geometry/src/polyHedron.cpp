@@ -704,7 +704,7 @@ bool Polyhedron::createSplittingFacePoints(MTC::vector<Vector3d>& pts) const
 void Polyhedron::write(ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	IoUtil::writeObj(out, _faceIds);
 	IoUtil::writeObj(out, _canonicalVertices);

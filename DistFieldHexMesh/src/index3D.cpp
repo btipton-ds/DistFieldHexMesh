@@ -96,7 +96,7 @@ void Index3DBase::clampInBounds(const Index3DBase& bounds)
 void Index3DBase::write(std::ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 	out.write((char*)&_iVal, sizeof(_iVal));
 }
 

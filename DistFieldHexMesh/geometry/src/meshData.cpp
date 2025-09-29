@@ -156,7 +156,7 @@ void MeshData::setTessNormals(const OGL::IndicesPtr& normalsTess)
 void MeshData::write(std::ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
+	IoUtil::write(out, version);
 
 	out.write((char*)&_active, sizeof(_active));
 
@@ -170,7 +170,7 @@ void MeshData::write(std::ostream& out) const
 void MeshData::read(std::istream& in)
 {
 	uint8_t version = 0;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	in.read((char*)&_active, sizeof(_active));
 
