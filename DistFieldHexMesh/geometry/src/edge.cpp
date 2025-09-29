@@ -580,7 +580,7 @@ bool Edge::imprintVertex(const Index3DId& vertId)
 void Edge::write(std::ostream& out) const
 {
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(uint8_t));
+	IoUtil::write(out, version);
 
 	_vertexIds[0].write(out);
 	_vertexIds[1].write(out);

@@ -1944,16 +1944,17 @@ bool Volume::write(ostream& out) const
 
 	_modelBoundingBox.write(out);
 
-	out.write((char*)&_splitNum, sizeof(_splitNum));
-
+	IoUtil::write(out, _splitNum);
 	IoUtil::write(out, _modelCornerPts.asVector());
 	IoUtil::write(out, _volCornerPts.asVector());
 
 	size_t num = _blocks.size();
-	out.write((char*)&num, sizeof(num));
+	IoUtil::write(out, num);
+
 	for (const auto& pBlock : _blocks) {
 		bool isNull = pBlock == nullptr;
-		out.write((char*)&isNull, sizeof(isNull));
+		IoUtil::write(out, isNull);
+
 		if (pBlock)
 			pBlock->write(out);
 	}
@@ -1976,20 +1977,20 @@ bool Volume::read(istream& in)
 
 	_modelBoundingBox.read(in);
 
-	in.read((char*)&_splitNum, sizeof(_splitNum));
-
+	IoUtil::read(in, _splitNum);
 	IoUtil::read(in, _modelCornerPts.asVector());
 	IoUtil::read(in, _volCornerPts.asVector());
 
 	size_t num;
-	in.read((char*)&num, sizeof(num));
+	IoUtil::read(in, _splitNum);
 	if (num > 0) {
 		_blocks.resize(num);
 
 		// Read all the blocks
 		for (size_t i = 0; i < _blocks.size(); i++) {
 			bool isNull;
-			in.read((char*)&isNull, sizeof(isNull));
+			IoUtil::read(in, isNull);
+
 			if (isNull)
 				continue;
 

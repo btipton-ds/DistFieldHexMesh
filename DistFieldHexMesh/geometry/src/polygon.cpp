@@ -308,7 +308,7 @@ void Polygon::write(ostream& out) const
 void Polygon::read(istream& in)
 {
 	uint8_t version;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	IoUtil::readObj(in, _vertexIds);
 	IoUtil::readObj(in, _cellIds);

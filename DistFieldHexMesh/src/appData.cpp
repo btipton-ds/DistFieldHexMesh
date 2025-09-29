@@ -615,14 +615,15 @@ void AppData::writeDHFM() const
     _params.write(out);
 
     size_t numMeshes = _model.size();
-    out.write((char*)&numMeshes, sizeof(numMeshes));
+    IoUtil::write(out, numMeshes);
 
     for (const auto& pData : _model) {
         pData->write(out);
     }
 
     bool hasVolume = _pVolume != nullptr;
-    out.write((char*)&hasVolume, sizeof(hasVolume));
+    IoUtil::write(out, hasVolume);
+
     if (hasVolume)
         _pVolume->write(out);    
 }
@@ -638,7 +639,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     _params.read(in);
 
     size_t numMeshes = _model.size();
-    in.read((char*)&numMeshes, sizeof(numMeshes));
+    IoUtil::read(in, numMeshes);
 
     vector<MeshDataPtr> meshes;
     CBoundingBox3Dd bbox;
@@ -664,7 +665,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     updateModelTess();
 
     bool hasVolume;
-    in.read((char*)&hasVolume, sizeof(hasVolume));
+    IoUtil::read(in, hasVolume);
     if (hasVolume) {
         _pVolume = make_shared<Volume>();
         _pVolume->setAppData(shared_from_this(), getThreadPool());
@@ -1023,7 +1024,7 @@ void AppData::updatePrefsFile(const std::string& contents) const
 {
     string filename = "assets/prefs.txt";
     ofstream out(filename);
-    out.write((const char*)contents.data(), contents.size());
+    IoUtil::write(out, contents.size());
 }
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)

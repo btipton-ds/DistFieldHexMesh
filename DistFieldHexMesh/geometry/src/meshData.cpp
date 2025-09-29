@@ -158,7 +158,7 @@ void MeshData::write(std::ostream& out) const
 	uint8_t version = 0;
 	IoUtil::write(out, version);
 
-	out.write((char*)&_active, sizeof(_active));
+	IoUtil::write(out, _active);
 
 	size_t numChars = _name.size();
 	out.write((char*)&numChars, sizeof(numChars));
@@ -172,7 +172,7 @@ void MeshData::read(std::istream& in)
 	uint8_t version = 0;
 	IoUtil::read(in, version);
 
-	in.read((char*)&_active, sizeof(_active));
+	IoUtil::read(in, _active);
 
 	size_t numChars;
 	in.read((char*)&numChars, sizeof(numChars));

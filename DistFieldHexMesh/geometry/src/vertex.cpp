@@ -298,18 +298,23 @@ void Vertex::write(std::ostream& out) const
 
 	IoUtil::write(out, _pt);
 
-	out.write((char*)&_lockType, sizeof(_lockType));
+	int lt = (int)_lockType;
+	IoUtil::write(out, lt);
+
 	IoUtil::writeObj(out, _faceIds);
 }
 
 void Vertex::read(std::istream& in)
 {
 	uint8_t version;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	IoUtil::read(in, _pt);
 
-	in.read((char*)&_lockType, sizeof(_lockType));
+	int lt = (int)_lockType;
+	IoUtil::read(in, lt);
+	_lockType = (VertexLockType)lt;
+
 	IoUtil::readObj(in, _faceIds);
 }
 

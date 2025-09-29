@@ -97,14 +97,14 @@ void Index3DBase::write(std::ostream& out) const
 {
 	uint8_t version = 0;
 	IoUtil::write(out, version);
-	out.write((char*)&_iVal, sizeof(_iVal));
+	IoUtil::write(out, _iVal);
 }
 
 void Index3DBase::read(std::istream& in)
 {
 	uint8_t version = 0;
-	in.read((char*)&version, sizeof(version));
-	in.read((char*)&_iVal, sizeof(_iVal));
+	IoUtil::read(in, version);
+	IoUtil::read(in, _iVal);
 }
 
 ostream& DFHM::operator << (ostream& out, const Index3DId& id)
@@ -144,14 +144,14 @@ void Index3DId::write(std::ostream& out) const
 	Index3DBase::write(out);
 
 	uint8_t version = 0;
-	out.write((char*)&version, sizeof(version));
-	out.write((char*)&_elementId, sizeof(_elementId));
+	IoUtil::write(out, version);
+	IoUtil::write(out, _elementId);
 }
 
 void Index3DId::read(std::istream& in)
 {
 	Index3DBase::read(in);
 	uint8_t version = 0;
-	in.read((char*)&version, sizeof(version));
-	in.read((char*)&_elementId, sizeof(_elementId));
+	IoUtil::read(in, version);
+	IoUtil::read(in, _elementId);
 }

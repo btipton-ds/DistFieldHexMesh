@@ -711,20 +711,20 @@ void Polyhedron::write(ostream& out) const
 
 	_parentId.write(out);
 
-	out.write((char*)&_layerNum, sizeof(_layerNum));
+	IoUtil::write(out, _layerNum);
 }
 
 void Polyhedron::read(istream& in)
 {
 	uint8_t version;
-	in.read((char*)&version, sizeof(version));
+	IoUtil::read(in, version);
 
 	IoUtil::readObj(in, _faceIds);
 	IoUtil::readObj(in, _canonicalVertices);
 
 	_parentId.read(in);
 
-	in.read((char*)&_layerNum, sizeof(_layerNum));
+	IoUtil::read(in, _layerNum);
 }
 
 bool Polyhedron::unload(ostream& out)

@@ -883,11 +883,11 @@ bool Block::read(istream& in)
 	_boundBox.read(in);
 	_innerBoundBox.read(in);
 
-	in.read((char*)&_blockDim, sizeof(_blockDim));
+	IoUtil::read(in, _blockDim);
 	IoUtil::read(in, _corners.asVector());
 
 	int ts;
-	in.read((char*)&_topologyState, ts);
+	IoUtil::read(in, ts);
 	_topologyState = (TopologyState)ts;
 
 	_vertices.read(in);
