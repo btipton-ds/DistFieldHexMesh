@@ -127,8 +127,8 @@ void SplittingParams::read(std::istream& in)
 	IoUtil::read(in, zMinGrading);
 	IoUtil::read(in, zMaxGrading);
 
+	IoUtil::read(in, dims.data(), 3);
 
-	in.read((char*)dims.data(), 3 * sizeof(double));
 	volDivs.read(in);
 }
 
@@ -176,8 +176,8 @@ void SplittingParams::write(std::ostream& out) const
 	IoUtil::write(out, yMaxGrading);
 	IoUtil::write(out, zMinGrading);
 	IoUtil::write(out, zMaxGrading);
+	IoUtil::write(out, dims.data(), 3);
 
-	out.write((char*)dims.data(), 3 * sizeof(double));
 	volDivs.write(out);
 }
 
