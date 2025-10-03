@@ -19,7 +19,7 @@ else(WIN32)
 endif(WIN32)
 
 message(STATUS "wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
-
+message(STATUS "wxWidgets_LIBRARIES}: ${wxWidgets_LIBRARIES}}")
 set (CMAKE_SHADER_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/shaders")
 set (CMAKE_ASSETS_SOURCE_DIR  "${CMAKE_SOURCE_DIR}/DistFieldHexMesh/assets")
 if(WIN32)
@@ -56,7 +56,7 @@ else(WIN32)
 	include_directories(
 		"include"
 		"/usr/include/GL/"
-		"../../ThirdParty/eigen/"
+		"/usr/include/eigen3/"
 		"geometry/include/"
 		"graphics/include/"
 		"test/include/"
