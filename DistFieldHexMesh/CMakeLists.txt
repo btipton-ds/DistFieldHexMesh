@@ -66,7 +66,6 @@ else(WIN32)
 		"../../triMesh/tests/include/"
 		"../../utilities/threads/include/"
 		"${OpenGlDir}/include/"
-		"${OPENGL_INCLUDE_DIRS}"
 		"${wxWidgets_INCLUDE_DIRS}"
 	)
 	link_directories(
