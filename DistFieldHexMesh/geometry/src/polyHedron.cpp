@@ -875,7 +875,8 @@ void Polyhedron::getAdjacentCells(MTC::set<Index3DId>& result) const
 	getVertIds(vertIds);
 	for (const auto& vertId : vertIds) {
 		vertexFunc(vertId, [&result](const Vertex& vertex) {
-			auto cellIds = vertex.getCellIds();
+			MTC::set<Index3DId> cellIds;
+			vertex.getCellIds(cellIds);
 			result.insert(cellIds.begin(), cellIds.end());
 		});
 	}
@@ -1471,44 +1472,14 @@ bool Polyhedron::isTooNonOrthogoal(const SplittingParams& params) const
 
 bool Polyhedron::isInsideSolid(const std::vector<Planed>& boundingPlanes) const
 {
-	auto pTree = getPolySearchTree();
-
-	size_t numInside = 0, numOutside = 0;
-	for (const auto& faceId : _faceIds) {
-		auto& face = getPolygon(faceId);
-
-		// Boundary faces are ignored
-		bool onBoundary = false;
-		for (const auto& bp : boundingPlanes) {
-			if (face.isCoplanar(bp)) {
-				onBoundary = true;
-				break;
-			}
-		}
-
-		if (onBoundary)
-			continue;
-
-		auto state = face.isInsideSolid(pTree);
-		switch (state) {
-		case IS_TRUE:
-			numInside++;
-			break;
-		case IS_FALSE:
-			numOutside++;
-			break;
-		default:
-			break;
-		}
+	MTC::set<Index3DId> vertIds;
+	getVertIds(vertIds);
+	for (const auto& id : vertIds) {
+		const auto& vert = getVertex(id);
+		if (vert.getTopolgyState() == TOPST_VOID)
+			return false;
 	}
-
-	if (numOutside > 0)
-		return false;
-
-	if (numInside > 0)
-		return true;
-
-	return false;
+	return true;
 }
 
 bool Polyhedron::hasTooManySplits() const

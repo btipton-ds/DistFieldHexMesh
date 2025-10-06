@@ -36,6 +36,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyMesh.h>
 #include <volume.h>
 #include <debugMeshData.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -101,9 +102,8 @@ void Vertex::getEdges(MTC::set<EdgeKey>& edges) const
 	}
 }
 
-MTC::set<Index3DId> Vertex::getCellIds() const
+void Vertex::getCellIds(MTC::set<Index3DId>& result) const
 {
-	MTC::set<Index3DId> result;
 	auto& faceIds = getFaceIds();
 
 	for (const auto& faceId : faceIds) {
@@ -112,8 +112,6 @@ MTC::set<Index3DId> Vertex::getCellIds() const
 			result.insert(cellIds.begin(), cellIds.end());
 		});
 	}
-
-	return result;
 }
 
 const Vector3d& Vertex::calSurfaceNormal() const
@@ -129,6 +127,27 @@ const Vector3d& Vertex::calSurfaceNormal() const
 		_cachedSurfaceNormal.normalize();
 	}
 	return _cachedSurfaceNormal;
+}
+
+bool Vertex::isOnSymPlane(const SplittingParams& params)
+{
+	auto const tol = Tolerance::sameDistTol();
+
+	Vector3d origin(0, 0, 0);
+	if (params.symXAxis) {
+		Planed pl(origin, Vector3d(1, 0, 0));
+		return pl.isCoincident(_pt, tol);
+	}
+	if (params.symYAxis) {
+		Planed pl(origin, Vector3d(0, 1, 0));
+		return pl.isCoincident(_pt, tol);
+	}
+	if (params.symZAxis) {
+		Planed pl(origin, Vector3d(0, 0, 1));
+		return pl.isCoincident(_pt, tol);
+	}
+
+	return false;
 }
 
 namespace
@@ -158,80 +177,195 @@ struct SolidHitRec {
 
 }
 
-void Vertex::markInsideSolid()
+void Vertex::markTopologyState()
 {
-	const auto tol = Tolerance::sameDistTol();
-	const auto tolFloat = Tolerance::sameDistTolFloat();
-
-	const auto& model = getOurBlockPtr()->getModel();
-	auto pTree = model.getPolySearchTree();
-	if (!pTree)
-		return;
-
-	if (Index3DId(3, 0, 3, 0) == getId()) {
-		int dbgBreak = 1;
-	}
-
-	set<Vector3d> points;
-	MTC::set<Index3DId> conVerts;
-	getConnectedVertexIds(conVerts);
-	size_t numSolid = 0;
-	for (const auto& otherVertId : conVerts) {
-		const auto& otherVert = getVertex(otherVertId);
-		const auto& otherPt = otherVert._pt;
-
-		Vector3d dir = otherPt - _pt;
-		dir.normalize();
-		Rayd ray(_pt, dir);
-		points.insert(_pt);
-		vector<SolidHitRec> hitsOnSolidModel;
-		pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
-			if (model.isClosed(idx)) {
-				auto pFace = model.getPolygon(idx);
-				RayHitd rh;
-				if (pFace->intersect(ray, rh) && rh.dist > -tol) {
-					auto& norm = pFace->calUnitNormal();
-					auto dp = norm.dot(dir);
-					// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
-					// This condition produces a lot of singularities.
-					bool positiveCrossing = dp >= 0;
-					bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
-					if (!rayStartsOnSymPlaneAndAimedInwards)
-						hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
-				}
-			}
-			return true;
-		}, tol);
-
-		if (!hitsOnSolidModel.empty()) {
-			// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
-			// each face connected to the vertex will be counted.
-			// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
-			sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
-			for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
-				size_t j = (i + 1) % hitsOnSolidModel.size();
-				double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
-				if (gap < tolFloat) {
-					if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing)
-						hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
-				}
-			}
-			bool inSolid = hitsOnSolidModel.size() % 2 == 1;
-
-			if (inSolid)
-				numSolid++;
-
-			int dbgBreak = 1;			
-		}
-	}
-
-	if (numSolid > 2) {
-		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
-		for (const auto& pt : points)
-			pDbg->add(pt);
-		_topologyState = TOPST_SOLID;
-	} else {
+	if (_topologyState == TOPST_UNKNOWN) {
 		_topologyState = TOPST_VOID;
+		const auto tol = Tolerance::sameDistTol();
+		const auto tolFloat = Tolerance::sameDistTolFloat();
+
+		const auto& model = getOurBlockPtr()->getModel();
+		auto pTree = model.getPolySearchTree();
+		if (!pTree)
+			return;
+#if 1
+		const double randScale = 0.01; // Random 1 cm variation
+		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
+		auto& params = getOurBlockPtr()->getSplitParams();
+		MTC::set<Index3DId> cellIds;
+		getCellIds(cellIds);
+		if (!cellIds.empty()) {
+			bool ambiguous = false;
+			for (auto cellId : cellIds) {
+				// Need a random direction to shoot the ray. May as well use the centroid of the first cell.
+				auto& cell = getPolyhedron(cellId);
+
+				auto ctr = cell.calCentroid();
+
+				Vector3d randV(std::rand() / (double)RAND_MAX, std::rand() / (double)RAND_MAX, std::rand() / (double)RAND_MAX);
+				ctr += randScale * randV;
+
+				Vector3d dir = ctr - _pt;
+
+				// Assure the vector points away from all symmetry planes to avoid symmetry issues
+				if (params.symXAxis && dir.dot(Vector3d(1., 0., 0.)) < 0) {
+					dir[0] = -dir[0]; // Reverse X component
+				}
+				if (params.symYAxis && dir.dot(Vector3d(0., 1., 0.)) < 0) {
+					dir[1] = -dir[1]; // Reverse Y component
+				}
+				if (params.symZAxis && dir.dot(Vector3d(0., 0., 1.)) < 0) {
+					dir[2] = -dir[2]; // Reverse Z component
+				}
+				dir.normalize();
+
+				Rayd ray(_pt, dir);
+				vector<SolidHitRec> hitsOnSolidModel;
+				pTree->biDirRayCastTraverse(ray, [this, &params, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+					if (model.isClosed(idx)) {
+						auto pFace = model.getPolygon(idx);
+						RayHitd rh;
+						if (pFace->intersect(ray, rh)) {
+							if (fabs(rh.dist) < tol) {
+								if (isOnSymPlane(params)) {
+									return true; // skip 
+								}
+								_topologyState = TOPST_INTERSECTING;
+								return false;
+							}
+							if (rh.dist > 0) {
+								auto& norm = pFace->calUnitNormal();
+								auto dp = norm.dot(dir);
+								// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
+								// This condition produces a lot of singularities.
+								bool positiveCrossing = dp >= 0;
+								bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
+								if (!rayStartsOnSymPlaneAndAimedInwards)
+									hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
+							}
+						}
+					}
+					return true;
+					}, tol);
+
+				if (hitsOnSolidModel.empty()) {
+					_topologyState = TOPST_VOID;
+					break;
+				} else {
+					if (hitsOnSolidModel.size() == 1) {
+						// a single hit is unambiguously inside
+						_topologyState = TOPST_SOLID;
+						pDbg->add(_pt);
+						break;
+					} else {
+						sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
+						size_t i = 0;
+						// May need an oblique test and move the ray several degrees away
+						// May want to rotate the ray by an angle.
+						for (size_t j = 1; j < hitsOnSolidModel.size(); j++) {
+							i = j - 1;
+							double distErr = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
+							if (fabs(distErr) <= Tolerance::sameDistTolFloat()) {
+								if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing) {
+									hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
+									j--;
+								} else {
+									ambiguous = true;
+									break;
+								}
+							}
+						}
+
+						if (!ambiguous) {
+							int parity = hitsOnSolidModel.size() % 2;
+							switch (parity) {
+								case 0:
+									_topologyState = TOPST_VOID;
+									break;
+								case 1:
+									_topologyState = TOPST_SOLID;
+									pDbg->add(_pt);
+									break;
+								default: {
+									continue;
+								}
+							}
+							break;
+							continue;
+						}
+					}
+				}
+			}
+		}
+#else
+
+		if (Index3DId(3, 0, 3, 0) == getId()) {
+			int dbgBreak = 1;
+		}
+
+		set<Vector3d> points;
+		MTC::set<Index3DId> conVerts;
+		getConnectedVertexIds(conVerts);
+		size_t numSolid = 0;
+		for (const auto& otherVertId : conVerts) {
+			const auto& otherVert = getVertex(otherVertId);
+			const auto& otherPt = otherVert._pt;
+
+			Vector3d dir = otherPt - _pt;
+			dir.normalize();
+			Rayd ray(_pt, dir);
+			points.insert(_pt);
+			vector<SolidHitRec> hitsOnSolidModel;
+			pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+				if (model.isClosed(idx)) {
+					auto pFace = model.getPolygon(idx);
+					RayHitd rh;
+					if (pFace->intersect(ray, rh) && rh.dist > -tol) {
+						auto& norm = pFace->calUnitNormal();
+						auto dp = norm.dot(dir);
+						// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
+						// This condition produces a lot of singularities.
+						bool positiveCrossing = dp >= 0;
+						bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
+						if (!rayStartsOnSymPlaneAndAimedInwards)
+							hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
+					}
+				}
+				return true;
+				}, tol);
+
+			if (!hitsOnSolidModel.empty()) {
+				// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
+				// each face connected to the vertex will be counted.
+				// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
+				sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
+				for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
+					size_t j = (i + 1) % hitsOnSolidModel.size();
+					double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
+					if (gap < tolFloat) {
+						if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing)
+							hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
+					}
+				}
+				bool inSolid = hitsOnSolidModel.size() % 2 == 1;
+
+				if (inSolid)
+					numSolid++;
+
+				int dbgBreak = 1;
+			}
+		}
+
+		if (numSolid > 2) {
+			auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
+			for (const auto& pt : points)
+				pDbg->add(pt);
+			_topologyState = TOPST_SOLID;
+		}
+		else {
+			_topologyState = TOPST_VOID;
+		}
+#endif
 	}
 }
 

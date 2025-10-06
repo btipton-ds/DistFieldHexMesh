@@ -49,6 +49,7 @@ class Edge;
 class Polygon;
 class Polyhedron;
 class PolyMeshIndex;
+struct SplittingParams;
 using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Vertex : public ObjectPoolOwnerUser {
@@ -80,8 +81,9 @@ public:
 	const bool operator != (const Vertex& rhs) const;
 
 	bool isConnectedToVertex(const Index3DId& vertId) const;
+	bool isOnSymPlane(const SplittingParams& params);
 
-	void markInsideSolid();
+	void markTopologyState();
 	void setTopologyState(TopologyState val);
 	TopologyState getTopolgyState() const;
 
@@ -93,7 +95,7 @@ public:
 	void getConnectedVertexIds(MTC::set<Index3DId>& ids) const;
 	void getEdges(MTC::set<EdgeKey>& edges) const;
 	const FastBisectionSet<Index3DId>& getFaceIds() const;
-	MTC::set<Index3DId> getCellIds() const;
+	void getCellIds(MTC::set<Index3DId>& cellIds) const;
 
 	const Vector3d& calSurfaceNormal() const;
 

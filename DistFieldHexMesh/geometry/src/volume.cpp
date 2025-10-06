@@ -550,7 +550,7 @@ void Volume::createBaseVolume(const SplittingParams& params, const Vector3d pts[
 
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk) {
 		pBlk->iterateVerticesInOrder([](const Index3DId& vertId, Vertex& vert)->bool {
-			vert.markInsideSolid();
+			vert.markTopologyState();
 			return true;
 		});
 	}, multiCore);
@@ -860,7 +860,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 	removeInteriorCells();
 
-	splitWithModel(params);
+//	splitWithModel(params);
 }
 
 void Volume::removeInteriorCells()
@@ -906,10 +906,19 @@ void Volume::removeInteriorCells()
 void Volume::removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells)
 {
 #if 1
+
 	MTC::set<Index3DId> insideCells;
 	for (auto& tmp : blockInsideCells) {
 		insideCells.insert(tmp.begin(), tmp.end());
 	}
+	for (const auto& insideCellId : insideCells) {
+		auto pBlk = getBlockPtr(insideCellId);
+		pBlk->freePolyhedron(insideCellId);
+	}
+
+#if 1
+
+#else
 
 	auto cellStack = insideCells;
 	while (!cellStack.empty()) {
@@ -937,6 +946,8 @@ void Volume::removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCe
 
 		cellStack = newCells;
 	}
+#endif
+
 #else
 	runThreadPool_IJK([this, &blockInsideCells](size_t threadNum, const BlockPtr& pBlk)->bool {
 		size_t index = calLinearBlockIndex(pBlk->getBlockIdx());

@@ -618,10 +618,12 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	for (size_t i = 0; i < subCellResults._partingFacePts.size(); i++) {
 		auto newVertId = vertId(subCellResults._partingFacePts[i]);
 		auto& newVert = getVertex(newVertId);
-
+#if 1
+//		newVert.markTopologyState();
+#else
 		switch (parentTopologyState) {
 		default:
-			newVert.markInsideSolid();
+			newVert.markTopologyState();
 			break;
 		case TOPST_SOLID:
 			newVert.setTopologyState(TOPST_SOLID);
@@ -630,7 +632,7 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 			newVert.setTopologyState(TOPST_VOID);
 			break;
 		}
-
+#endif
 		auto newTopState = newVert.getTopolgyState();
 		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
 			auto pVol = _pBlock->getVolume();
@@ -877,7 +879,14 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
-
+#if 1
+		MTC::set<Index3DId> vertIds;
+		createdCell.getVertIds(vertIds);
+		for (const auto& id : vertIds) {
+			auto& vert = getVertex(id);
+			vert.markTopologyState();
+		}
+#else
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)
 			createdCell.setIntersectsModel(false);
@@ -905,6 +914,7 @@ void Splitter3D::finalizeCreatedCells()
 				}
 			}
 		}
+#endif
 	}
 }
 
