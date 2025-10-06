@@ -52,6 +52,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <gradingOp.h>
 #include <meshData.h>
 #include <appDataIntf.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -1562,10 +1563,25 @@ void Block::freePolygon(const Index3DId& id)
 	assert(!isPolygonInUse(id));
 #endif
 
+	auto pDbg = getVolume()->getDebugMeshData();
 	auto pOwner = getOwner(id);
 	if (pOwner) {
+		const auto& face = getPolygon(id);
+		auto oldVertices = face.getVertexIds();
 		auto& polygons = pOwner->_polygons;
 		polygons.free(id);
+
+		for (const auto& vertId : oldVertices) {
+			const auto& vert = getVertex(vertId);
+			if (vert.getFaceIds().empty()) {
+				pDbg->remove(vert.getPoint());
+				auto vertOwner = getOwner(vertId);
+				if (vertOwner) {
+					auto& vertices = vertOwner->_vertices;
+					vertices.free(vertId);
+				}
+			}
+		}
 	}
 }
 

@@ -188,9 +188,11 @@ void Vertex::markTopologyState()
 		auto pTree = model.getPolySearchTree();
 		if (!pTree)
 			return;
-#if 1
+
 		const double randScale = 0.01; // Random 1 cm variation
+#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
 		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
+#endif
 		auto& params = getOurBlockPtr()->getSplitParams();
 		MTC::set<Index3DId> cellIds;
 		getCellIds(cellIds);
@@ -255,7 +257,9 @@ void Vertex::markTopologyState()
 					if (hitsOnSolidModel.size() == 1) {
 						// a single hit is unambiguously inside
 						_topologyState = TOPST_SOLID;
+#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
 						pDbg->add(_pt);
+#endif
 						break;
 					} else {
 						sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
@@ -284,7 +288,9 @@ void Vertex::markTopologyState()
 									break;
 								case 1:
 									_topologyState = TOPST_SOLID;
+#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
 									pDbg->add(_pt);
+#endif
 									break;
 								default: {
 									continue;
@@ -297,75 +303,6 @@ void Vertex::markTopologyState()
 				}
 			}
 		}
-#else
-
-		if (Index3DId(3, 0, 3, 0) == getId()) {
-			int dbgBreak = 1;
-		}
-
-		set<Vector3d> points;
-		MTC::set<Index3DId> conVerts;
-		getConnectedVertexIds(conVerts);
-		size_t numSolid = 0;
-		for (const auto& otherVertId : conVerts) {
-			const auto& otherVert = getVertex(otherVertId);
-			const auto& otherPt = otherVert._pt;
-
-			Vector3d dir = otherPt - _pt;
-			dir.normalize();
-			Rayd ray(_pt, dir);
-			points.insert(_pt);
-			vector<SolidHitRec> hitsOnSolidModel;
-			pTree->biDirRayCastTraverse(ray, [this, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
-				if (model.isClosed(idx)) {
-					auto pFace = model.getPolygon(idx);
-					RayHitd rh;
-					if (pFace->intersect(ray, rh) && rh.dist > -tol) {
-						auto& norm = pFace->calUnitNormal();
-						auto dp = norm.dot(dir);
-						// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
-						// This condition produces a lot of singularities.
-						bool positiveCrossing = dp >= 0;
-						bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
-						if (!rayStartsOnSymPlaneAndAimedInwards)
-							hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
-					}
-				}
-				return true;
-				}, tol);
-
-			if (!hitsOnSolidModel.empty()) {
-				// We will count crossings, in and out of the solid boundary, but if the ray hits an edge or fan vertex within tolerance
-				// each face connected to the vertex will be counted.
-				// This detects hits within the same distance tolerance along the ray with the same orientation and removes them.
-				sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
-				for (size_t i = hitsOnSolidModel.size() - 2; i != -1; i--) {
-					size_t j = (i + 1) % hitsOnSolidModel.size();
-					double gap = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
-					if (gap < tolFloat) {
-						if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing)
-							hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
-					}
-				}
-				bool inSolid = hitsOnSolidModel.size() % 2 == 1;
-
-				if (inSolid)
-					numSolid++;
-
-				int dbgBreak = 1;
-			}
-		}
-
-		if (numSolid > 2) {
-			auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
-			for (const auto& pt : points)
-				pDbg->add(pt);
-			_topologyState = TOPST_SOLID;
-		}
-		else {
-			_topologyState = TOPST_VOID;
-		}
-#endif
 	}
 }
 

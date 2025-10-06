@@ -636,8 +636,10 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 		auto newTopState = newVert.getTopolgyState();
 		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
 			auto pVol = _pBlock->getVolume();
+#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
 			auto& pDbgMesh = pVol->getDebugMeshData();
 			pDbgMesh->add(newVert.getPoint());
+#endif
 		}
 		splittingFaceVerts[i] = newVertId;
 	}

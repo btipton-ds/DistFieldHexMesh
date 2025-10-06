@@ -52,6 +52,7 @@ public:
 	void clear();
 
 	void add(const Vector3d& pt);
+	void remove(const Vector3d& pt);
 	void add(const Rayd& ray);
 	void add(const Polygon& face);
 

@@ -44,6 +44,11 @@ void DebugMeshData::add(const Vector3d& pt)
     _points.insert(pt);
 }
 
+void DebugMeshData::remove(const Vector3d& pt)
+{
+    _points.erase(pt);
+}
+
 void DebugMeshData::add(const Rayd& ray)
 {
     _rays.push_back(ray);

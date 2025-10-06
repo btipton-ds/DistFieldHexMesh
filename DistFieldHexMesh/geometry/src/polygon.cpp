@@ -137,6 +137,7 @@ void Polygon::disconnectVertEdgeTopology() {
 
 DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
+	auto oldVertIds = _vertexIds;
 	clearCache();
 	disconnectVertEdgeTopology();
 	auto tmp = _cellIds;
