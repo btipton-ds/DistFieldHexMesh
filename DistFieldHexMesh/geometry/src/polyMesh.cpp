@@ -1346,7 +1346,7 @@ Index3DId PolyMesh::mergeToQuad(const SplittingParams& params, const Edge& edge)
 
 void PolyMesh::removeFace(const Index3DId& id)
 {
-	_polygons[id].disconnectVertEdgeTopology();
+	_polygons[id].disconnectVertEdgeTopology(true);
 	_polygons.removeFromLookup(id);
 	_polygons.free(id);
 }

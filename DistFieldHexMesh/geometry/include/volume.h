@@ -198,6 +198,7 @@ private:
 	Vertex& getVertex(const Index3DId& id);
 	Polygon& getPolygon(const Index3DId& id);
 	Polyhedron& getPolyhedron(const Index3DId& id);
+	void doGarbageCollection();
 
 	void initScratch(const Volume* pVol, const std::shared_ptr<MultiCore::ThreadPool> pThreadPool);
 	void buildSurroundingBlocks(const SplittingParams& params, const Vector3d cPts[8], ProgressReporter* pReporter, bool multiCore);
@@ -214,7 +215,6 @@ private:
 	bool splitRequiredPolyhedra(bool multiCore);
 	void finishSplits(const SplittingParams& params, bool doRequired);
 	void removeInteriorCells();
-	void removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells);
 	void doQualitySplits(const SplittingParams& params);
 	void splitWithModel(const SplittingParams& params);
 

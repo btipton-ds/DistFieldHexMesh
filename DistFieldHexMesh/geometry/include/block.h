@@ -199,8 +199,8 @@ public:
 	void markIncrementLayerNums(int i);
 	void setIncrementLayerNums(int i);
 
-	void freeVertex(const Index3DId& id);
-	void freePolygon(const Index3DId& id);
+	void markVertexForDeletion(const Index3DId& id);
+	void markPolygonForDeletion(const Index3DId& id);
 	void freePolyhedron(const Index3DId& id);
 
 	// pack removes the subBlock array if there's nothing interesting in it. It's a full search of the array and can be time consuming.
@@ -265,6 +265,9 @@ private:
 
 	MTC::vector<Index3DId> getSubBlockCornerVertIds(const std::vector<Vector3d>& blockPts, size_t divs, const Index3D& subBlockIdx);
 
+	void freeVertex(const Index3DId& id);
+	void freePolygon(const Index3DId& id);
+
 	Vector3d triLinInterp(const Vector3d* blockPts, size_t divs, const Index3D& pt) const;
 	void createSubBlocksForHexSubBlock(const Vector3d* blockPts, const Index3D& subBlockIdx);
 
@@ -303,6 +306,7 @@ private:
 	std::string _filename;
 
 	std::set<Index3DId> _needToSplit, _touchedCellIds;
+	std::set<Index3DId> _deadVertexIds, _deadPolygonIds;
 
 	ObjectPool<Vertex> _vertices;
 	ObjectPool<Polygon> _polygons;

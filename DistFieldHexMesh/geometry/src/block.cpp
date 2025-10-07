@@ -1547,6 +1547,22 @@ void Block::setIncrementLayerNums(int i)
 	});
 }
 
+void Block::markVertexForDeletion(const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	if (pOwner) {
+		pOwner->_deadVertexIds.insert(id);
+	}
+}
+
+void Block::markPolygonForDeletion(const Index3DId& id)
+{
+	auto pOwner = getOwner(id);
+	if (pOwner) {
+		pOwner->_deadPolygonIds.insert(id);
+	}
+}
+
 void Block::freeVertex(const Index3DId& id)
 {
 	auto pOwner = getOwner(id);
@@ -1574,12 +1590,7 @@ void Block::freePolygon(const Index3DId& id)
 		for (const auto& vertId : oldVertices) {
 			const auto& vert = getVertex(vertId);
 			if (vert.getFaceIds().empty()) {
-				pDbg->remove(vert.getPoint());
-				auto vertOwner = getOwner(vertId);
-				if (vertOwner) {
-					auto& vertices = vertOwner->_vertices;
-					vertices.free(vertId);
-				}
+				markVertexForDeletion(vertId);
 			}
 		}
 	}

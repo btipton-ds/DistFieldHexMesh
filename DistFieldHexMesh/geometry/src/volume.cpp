@@ -858,8 +858,6 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 
 	doQualitySplits(params);
 
-	removeInteriorCells();
-
 //	splitWithModel(params);
 }
 
@@ -877,105 +875,24 @@ void Volume::removeInteriorCells()
 	MTC::vector<Planed> boundingPlanes;
 	getModelBoundaryPlanes(boundingPlanes);
 
-	bool changed = false;
-	do {
-		changed = false;
-
-		MTC::vector<MTC::set<Index3DId>> blockInsideCells;
-		blockInsideCells.resize(_blocks.size());
-
-		runThreadPool([this, &boundingPlanes, &blockInsideCells, &changed](size_t threadNum, const BlockPtr& pBlk)->bool {
-			size_t index = calLinearBlockIndex(pBlk->getBlockIdx());
-			auto& insideCellIds = blockInsideCells[index];
-			pBlk->iteratePolyhedraInOrder([&boundingPlanes, &insideCellIds, &changed](const Index3DId& cellId, Polyhedron& cell)->bool {
-				if (cell.isInsideSolid(boundingPlanes)) {
-					changed = true;
-					insideCellIds.insert(cellId);
-				}
-				return true;
-			});
-			return true;
-		}, RUN_MULTI_THREAD);
-
-		if (changed) {
-			removeInteriorCells(blockInsideCells);
-		}
-	} while (changed);
-}
-
-void Volume::removeInteriorCells(MTC::vector<MTC::set<Index3DId>>& blockInsideCells)
-{
-#if 1
-
-	MTC::set<Index3DId> insideCells;
-	for (auto& tmp : blockInsideCells) {
-		insideCells.insert(tmp.begin(), tmp.end());
-	}
-	for (const auto& insideCellId : insideCells) {
-		auto pBlk = getBlockPtr(insideCellId);
-		pBlk->freePolyhedron(insideCellId);
-	}
-
-#if 1
-
-#else
-
-	auto cellStack = insideCells;
-	while (!cellStack.empty()) {
-		MTC::set<Index3DId> newCells;
-
-		for (const auto& insideCellId : cellStack) {
-			auto& insideCell = getPolyhedron(insideCellId);
-			MTC::set<Index3DId> adjCellIds;
-			insideCell.getAdjacentCells(adjCellIds);
-
-			for (const auto& adjCellId : adjCellIds) {
-				auto pBlk = getBlockPtr(adjCellId);
-				if (pBlk->polyhedronExists(adjCellId)) {
-					auto& adjCell = getPolyhedron(adjCellId);
-					if (!insideCells.contains(adjCellId) && !adjCell.intersectsModel()) {
-						insideCells.insert(adjCellId);
-						newCells.insert(adjCellId);
-					}
-				}
-			}
-
-			auto pBlk = getBlockPtr(insideCellId);
-			pBlk->freePolyhedron(insideCellId);
-		}
-
-		cellStack = newCells;
-	}
-#endif
-
-#else
-	runThreadPool_IJK([this, &blockInsideCells](size_t threadNum, const BlockPtr& pBlk)->bool {
+	bool needsGarbageCollection = false;
+	runThreadPool([this, &boundingPlanes, &needsGarbageCollection](size_t threadNum, const BlockPtr& pBlk)->bool {
 		size_t index = calLinearBlockIndex(pBlk->getBlockIdx());
-		auto& insideCellIds = blockInsideCells[index];
-		for (const auto& insideCellId : insideCellIds) {
-			auto& insideCell = getPolyhedron(insideCellId);
-			MTC::set<Index3DId> adjCellIds;
-			insideCell.getAdjacentCells(adjCellIds);
-
-			for (const auto& adjCellId : adjCellIds) {
-				if (insideCellIds.contains(adjCellId))
-					continue;
-
-				if (pBlk->polyhedronExists(adjCellId)) {
-					auto& adjCell = getPolyhedron(adjCellId);
-					if (!adjCell.isInsideSolid() && !adjCell.intersectsModel()) {
-						// If the cell is adjacent to an inside cell and doesn't intersect the model, it's inside
-						adjCell.setInsideSolid(true);
-					}
-				}
+		pBlk->iteratePolyhedraInOrder([&boundingPlanes, pBlk, &needsGarbageCollection](const Index3DId& cellId, Polyhedron& cell)->bool {
+			assert(cellId.isValid());
+			assert(cellId.blockIdx() == pBlk->getBlockIdx());
+			assert(cell.getId().isValid());
+			if (cell.isInsideSolid(boundingPlanes)) {
+				needsGarbageCollection = true;
+				pBlk->freePolyhedron(cellId);
 			}
-
-			pBlk->freePolyhedron(insideCellId);
-		}
-
+			return true;
+		});
 		return true;
 	}, RUN_MULTI_THREAD);
-#endif
+
+	if (needsGarbageCollection)
+		doGarbageCollection();
 }
 
 void Volume::doQualitySplits(const SplittingParams& params)
@@ -1047,6 +964,7 @@ void Volume::finishSplits(const SplittingParams& params, bool doRequired)
 			cout << "finishSplits complete. subPassNum: " << subPassNum << "\n";
 		}
 	}
+	removeInteriorCells();
 }
 
 void Volume::splitWithModel(const SplittingParams& params)
@@ -2067,6 +1985,25 @@ Polyhedron& Volume::getPolyhedron(const Index3DId& id)
 	const auto& pBlk = getBlockPtr(id);
 	assert(pBlk);
 	return pBlk->_polyhedra[id];
+}
+
+void Volume::doGarbageCollection()
+{
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
+		for (const auto& faceId : pBlk->_deadPolygonIds) {
+			pBlk->freePolygon(faceId);
+		}
+		pBlk->_deadPolygonIds.clear();
+		return true;
+	}, RUN_MULTI_THREAD);
+
+	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
+		for (const auto& vertId : pBlk->_deadVertexIds) {
+			pBlk->freeVertex(vertId);
+		}
+		pBlk->_deadVertexIds.clear();
+		return true;
+	}, RUN_MULTI_THREAD);
 }
 
 string Volume::polymeshCreateDirs(const string& pathIn)

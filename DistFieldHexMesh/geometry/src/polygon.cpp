@@ -124,22 +124,25 @@ void Polygon::connectVertEdgeTopology() {
 	}
 }
 
-void Polygon::disconnectVertEdgeTopology() {
+void Polygon::disconnectVertEdgeTopology(bool markVerticesForDeletion) {
 	if (!getId().isValid())
 		return;
+
+	auto pBlk = getBlockPtr();
 	for (size_t i = 0; i < _vertexIds.size(); i++) {
 		size_t j = (i + 1) % _vertexIds.size();
-		vertexFunc(_vertexIds[i], [this](Vertex& vert) {
-			vert.removeFaceId(getId());
-		});
+		auto& vert = getVertex(_vertexIds[i]);
+		vert.removeFaceId(getId());
+		if (markVerticesForDeletion && vert.getFaceIds().empty()) {
+			pBlk->markVertexForDeletion(vert.getId());
+		}
 	}
 }
 
 DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 {
-	auto oldVertIds = _vertexIds;
 	clearCache();
-	disconnectVertEdgeTopology();
+	disconnectVertEdgeTopology(true);
 	auto tmp = _cellIds;
 	for (const auto& cellId : tmp) {
 		cellFunc(cellId, [this](Polyhedron& cell) {
@@ -286,7 +289,7 @@ double Polygon::flatten(bool allowQuads)
 
 void Polygon::reverse()
 {
-	disconnectVertEdgeTopology();
+	disconnectVertEdgeTopology(false);
 	clearCache();
 
 	std::reverse(_vertexIds.begin(), _vertexIds.end());
@@ -1000,7 +1003,7 @@ bool Polygon::imprintVert(const Index3DId& vertId)
 	
 
 	if (tmp.size() > _vertexIds.size()) {
-		disconnectVertEdgeTopology();
+		disconnectVertEdgeTopology(false);
 		clearCache(false);
 
 #if VALIDATION_ON		

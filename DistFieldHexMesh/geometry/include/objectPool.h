@@ -186,8 +186,8 @@ private:
 	*/
 
 	enum ObjStatus {
-		OS_UNKNOWN = 0,
-		OS_IN_USE = 1
+		OS_AVAILABLE = 0,
+		OS_IN_USE = 1,
 	};
 	class ObjIndex {
 	public:
@@ -456,16 +456,17 @@ bool ObjectPool<T>::free(const Index3DId& globalId)
 	if (!exists(globalId))
 		return false;
 
-	auto p = getPairFromElementIndex(globalId.elementId());
+	const auto elementId = globalId.elementId();
+	auto p = getPairFromElementIndex(elementId);
 	if (p) {
 		removeFromLookup(globalId);
 
-		p->first = {};
-		p->second = OS_UNKNOWN;
-		const ObjIndex objIdx = _elementIndexToObjIndexMap[globalId.elementId()];
-		_elementIndexToObjIndexMap[globalId.elementId()] = ObjIndex(); // Clear this id so it won't be used again
+		const ObjIndex objIdx = _elementIndexToObjIndexMap[elementId];
+		_elementIndexToObjIndexMap[elementId] = ObjIndex(); // Clear this id so it won't be used again
 		_availableObjIndices.push_back(objIdx);
 
+		p->first = {};
+		p->second = OS_AVAILABLE;
 		return true;
 	}
 	return false;
@@ -758,21 +759,22 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	std::vector<const T*> objsToProcess;
-	objsToProcess.reserve(_elementIndexToObjIndexMap.size());
-	for (auto& pb : _objSegmentPtrs) {
-		if (!pb)
+	for (const ObjectSegPtr& pObjSegVec : _objSegmentPtrs) {
+		if (!pObjSegVec)
 			continue;
-		auto& seg = *pb;
-		for (auto& pr : seg) {
-			if (pr.second == OS_IN_USE) {
-				objsToProcess.push_back(&pr.first);
+		auto& objSegVec = *pObjSegVec;
+		for (auto& pair : objSegVec) {
+			if (pair.second == OS_IN_USE) {
+				auto pObj = &pair.first;
+				if (pObj->getId().isValid()) {
+					if (!fLambda(pObj->getId(), *pObj))
+						break;
+				}
+				else {
+					assert(!"In use pair is not valid");
+				}
 			}
 		}
-	}
-	for (auto pObj : objsToProcess) {
-		if (!fLambda(pObj->getId(), *pObj))
-			break;
 	}
 }
 
@@ -781,21 +783,22 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	std::vector<T*> objsToProcess;
-	objsToProcess.reserve(_elementIndexToObjIndexMap.size());
-	for (auto& pb : _objSegmentPtrs) {
-		if (!pb)
+	for (ObjectSegPtr& pObjSegVec : _objSegmentPtrs) {
+		if (!pObjSegVec)
 			continue;
-		auto& seg = *pb;
-		for (auto& pr : seg) {
-			if (pr.second == OS_IN_USE) {
-				objsToProcess.push_back(&pr.first);
+		auto& objSegVec = *pObjSegVec;
+		for (auto& pair : objSegVec) {
+			if (pair.second == OS_IN_USE) {
+				auto pObj = &pair.first;
+				if (pObj->getId().isValid()) {
+					if (!fLambda(pObj->getId(), *pObj))
+						break;
+				}
+				else {
+					assert(!"In use pair is not valid");
+				}
 			}
 		}
-	}
-	for (auto pObj : objsToProcess) {
-		if (!fLambda(pObj->getId(), *pObj))
-			break;
 	}
 }
 

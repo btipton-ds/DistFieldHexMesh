@@ -1158,7 +1158,7 @@ void GraphicsCanvas::subRender(const std::shared_ptr<OGL::Shader>& pShader)
 
 void GraphicsCanvas::subRenderOIT()
 {
-    const int numPeelingPasses = 50;
+    const int numPeelingPasses = 25;
 
     glDisable(GL_DEPTH_TEST); GL_ASSERT;
     glEnable(GL_BLEND); GL_ASSERT;

@@ -179,16 +179,12 @@ void Polyhedron::clear()
 		faceFunc(faceId, [this, &deadFaceIds](Polygon& face) {
 			face.removeCellId(getId());
 			if (face.numCells() == 0) {
-				deadFaceIds.insert(face.getId());
+				getOwnerBlockPtr(face.getId())->markPolygonForDeletion(face.getId());
 			}
 		});
 	}
 
 	_faceIds.clear();
-
-	for (const auto& faceId : deadFaceIds) {
-		getBlockPtr()->freePolygon(faceId);
-	}
 }
 
 const PolyMeshSearchTree::Refiner* Polyhedron::getRefiner() const
@@ -305,14 +301,15 @@ Polyhedron& Polyhedron::operator = (const Polyhedron& rhs)
 	clearCache();
 	auto tmp = _faceIds;
 	for (const auto& faceId : tmp) {
-		if (getBlockPtr()->polygonExists(faceId)) {
+		auto pBlk = getBlockPtr();
+		if (pBlk->polygonExists(faceId)) {
 			bool isDetached = false;
 			faceFunc(faceId, [this, &isDetached](Polygon& face) {
 				face.removeCellId(getId());
 				isDetached = face.getCellIds().empty();
 			});
 			if (isDetached)
-				getBlockPtr()->freePolygon(faceId);
+				pBlk->markPolygonForDeletion(faceId);
 		}
 	}
 
@@ -1924,24 +1921,6 @@ void Polyhedron::detachFaces()
 	for (const auto& faceId : _faceIds) {
 		faceFunc(faceId, [this](Polygon& face) {
 			face.removeCellId(getId());
-		});
-	}
-}
-
-void Polyhedron::connectVertEdgeTopology()
-{
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this](Polygon& face) {
-			face.connectVertEdgeTopology();
-		});
-	}
-}
-
-void Polyhedron::disconnectVertEdgeTopology()
-{
-	for (const auto& faceId : _faceIds) {
-		faceFunc(faceId, [this](Polygon& face) {
-			face.disconnectVertEdgeTopology();
 		});
 	}
 }

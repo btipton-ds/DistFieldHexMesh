@@ -125,7 +125,7 @@ public:
 
 	void addVertex(const Index3DId& vertId);
 	void connectVertEdgeTopology();
-	void disconnectVertEdgeTopology();
+	void disconnectVertEdgeTopology(bool markVerticesForDeletion);
 
 	void addCellId(const Index3DId& cellId);
 	void removeCellId(const Index3DId& cellId);
