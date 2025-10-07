@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <debugMeshData.h>
 #include <splitParams.h>
+#include <rayModelIntersector.h>
 
 using namespace std;
 using namespace DFHM;
@@ -150,33 +151,6 @@ bool Vertex::isOnSymPlane(const SplittingParams& params)
 	return false;
 }
 
-namespace
-{
-struct SolidHitRec {
-	inline SolidHitRec(double dist, int positiveCrossing, const PolyMeshIndex& idx)
-		: _dist(dist)
-		, _positiveCrossing(positiveCrossing)
-		, _polyMeshIdx(idx)
-	{
-	}
-
-	inline bool operator<(const SolidHitRec& rhs) const
-	{
-		if (_dist < rhs._dist)
-			return true;
-		else if (_dist > rhs._dist)
-			return false;
-
-		return _positiveCrossing < rhs._positiveCrossing;
-	}
-
-	double _dist;
-	int _positiveCrossing;
-	PolyMeshIndex _polyMeshIdx;
-};
-
-}
-
 void Vertex::markTopologyState()
 {
 	if (_topologyState == TOPST_UNKNOWN) {
@@ -184,16 +158,13 @@ void Vertex::markTopologyState()
 		const auto tol = Tolerance::sameDistTol();
 		const auto tolFloat = Tolerance::sameDistTolFloat();
 
-		const auto& model = getOurBlockPtr()->getModel();
-		auto pTree = model.getPolySearchTree();
-		if (!pTree)
-			return;
+		auto& params = getOurBlockPtr()->getSplitParams();
+		RayModelIntersector intersector(params, getOurBlockPtr()->getModel(), *this);
 
 		const double randScale = 0.01; // Random 1 cm variation
 #if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
 		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
 #endif
-		auto& params = getOurBlockPtr()->getSplitParams();
 		MTC::set<Index3DId> cellIds;
 		getCellIds(cellIds);
 		if (!cellIds.empty()) {
@@ -223,32 +194,7 @@ void Vertex::markTopologyState()
 
 				Rayd ray(_pt, dir);
 				vector<SolidHitRec> hitsOnSolidModel;
-				pTree->biDirRayCastTraverse(ray, [this, &params, tol, &model, &dir, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
-					if (model.isClosed(idx)) {
-						auto pFace = model.getPolygon(idx);
-						RayHitd rh;
-						if (pFace->intersect(ray, rh)) {
-							if (fabs(rh.dist) < tol) {
-								if (isOnSymPlane(params)) {
-									return true; // skip 
-								}
-								_topologyState = TOPST_INTERSECTING;
-								return false;
-							}
-							if (rh.dist > 0) {
-								auto& norm = pFace->calUnitNormal();
-								auto dp = norm.dot(dir);
-								// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
-								// This condition produces a lot of singularities.
-								bool positiveCrossing = dp >= 0;
-								bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
-								if (!rayStartsOnSymPlaneAndAimedInwards)
-									hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
-							}
-						}
-					}
-					return true;
-					}, tol);
+				intersector.castRay(ray, hitsOnSolidModel);
 
 				if (hitsOnSolidModel.empty()) {
 					_topologyState = TOPST_VOID;

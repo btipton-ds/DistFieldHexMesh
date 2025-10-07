@@ -135,7 +135,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-   )
+    "geometry/src/rayModelIntersector.cpp")
 
 if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
 	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
@@ -225,7 +225,7 @@ add_executable (TestDFM
 	"test/src/testMain.cpp"
 	"test/src/testPoolMemory.cpp" 
 	"test/src/testMultiCore.cpp"
-)
+ "geometry/src/rayModelIntersector.cpp")
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh
