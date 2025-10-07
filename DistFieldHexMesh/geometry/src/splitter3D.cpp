@@ -607,7 +607,6 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	auto pBlk = getBlockPtr();
 	auto& parentCell = getPolyhedron(parentId);
 	int32_t parentSplitBits = parentCell._axisSplitBits;
-	auto parentTopologyState = parentCell.getTopolgyState();
 	int32_t axisBit = 1 << splitAxis;
 
 	Polyhedron::SubCellResults subCellResults;
@@ -618,8 +617,6 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	for (size_t i = 0; i < subCellResults._partingFacePts.size(); i++) {
 		auto newVertId = vertId(subCellResults._partingFacePts[i]);
 		auto& newVert = getVertex(newVertId);
-		if (parentTopologyState == TOPST_VOID)
-			newVert.setTopologyState(parentTopologyState);
 		splittingFaceVerts[i] = newVertId;
 	}
 
@@ -865,7 +862,12 @@ void Splitter3D::finalizeCreatedCells()
 		createdCell.getVertIds(vertIds);
 		for (const auto& id : vertIds) {
 			auto& vert = getVertex(id);
-			vert.markTopologyState();
+			if (vert.getTopolgyState() == TOPST_UNKNOWN) {
+				if (_parentTopolState == TOPST_VOID)
+					vert.setTopologyState(TOPST_VOID);
+				else
+					vert.markTopologyState();
+			}
 		}
 #else
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
@@ -1230,6 +1232,7 @@ Index3DId Splitter3D::makeScratchFace(const Index3DId& srcFaceId)
 void Splitter3D::createHexCellData(const Polyhedron& targetCell)
 {
 	_intersectsModel = targetCell.intersectsModel();
+	_parentTopolState = targetCell.getTopolgyState();
 
 	if (_intersectsModel) {
 		if (targetCell._hasSetSearchTree)

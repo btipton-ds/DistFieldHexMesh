@@ -47,8 +47,9 @@ RayModelIntersector::RayModelIntersector(const SplittingParams& params, const Mo
 	_pTree = model.getPolySearchTree();
 }
 
-void RayModelIntersector::castRay(const Rayd& ray, vector<SolidHitRec>& hitsOnSolidModel) {
-	_pTree->biDirRayCastTraverse(ray, [this, &hitsOnSolidModel](const Rayd& ray, const PolyMeshIndex& idx)->bool {
+bool RayModelIntersector::castRay(const Rayd& ray, vector<SolidHitRec>& hitsOnSolidModel) {
+	bool result = true;
+	_pTree->biDirRayCastTraverse(ray, [this, &hitsOnSolidModel, &result](const Rayd& ray, const PolyMeshIndex& idx)->bool {
 		if (_model.isClosed(idx)) {
 			auto pFace = _model.getPolygon(idx);
 			RayHitd rh;
@@ -65,14 +66,38 @@ void RayModelIntersector::castRay(const Rayd& ray, vector<SolidHitRec>& hitsOnSo
 					auto dp = norm.dot(ray._dir);
 					// TODO, it may be advisable to discard any raycast where the ray is close to parallel to a hit face.
 					// This condition produces a lot of singularities.
-					bool positiveCrossing = dp >= 0;
-					bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < _tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
-					if (!rayStartsOnSymPlaneAndAimedInwards)
-						hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
+					if (fabs(dp) < 0.1) {
+						result = false;
+					} else {
+						bool positiveCrossing = dp >= 0;
+						bool rayStartsOnSymPlaneAndAimedInwards = rh.dist < _tol && pFace->isOnSymmetryPlane() && !positiveCrossing;
+						if (!rayStartsOnSymPlaneAndAimedInwards)
+							hitsOnSolidModel.push_back(SolidHitRec(rh.dist, positiveCrossing ? 1 : 0, idx));
+					}
 				}
 			}
 		}
-		return true;
-		}, _tol);
+		return result;
+	}, _tol);
+
+	if (hitsOnSolidModel.size() > 2) {
+		sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
+		size_t i = 0;
+		size_t j = 1;
+		while (j < hitsOnSolidModel.size()) {
+			const auto& a = hitsOnSolidModel[i];
+			const auto& b = hitsOnSolidModel[j];
+			double dist = b._dist - a._dist;
+			if (fabs(dist) < _tol) {
+				assert(a._positiveCrossing == b._positiveCrossing);
+				auto iter = hitsOnSolidModel.begin();
+				hitsOnSolidModel.erase(iter + j);
+			} else {
+				i++;
+				j++;
+			}
+		}
+	}
+	return result;
 }
 

@@ -88,6 +88,7 @@ Vertex& Vertex::operator = (const Vertex& rhs)
 	_thisId = rhs._thisId;
 	_pt = rhs._pt;
 	_lockType = rhs._lockType;
+	_topologyState = rhs._topologyState;
 	_faceIds = rhs._faceIds;
 	_cachedSurfaceNormal = Vector3d(DBL_MAX, DBL_MAX, DBL_MAX);
 
@@ -162,84 +163,78 @@ void Vertex::markTopologyState()
 		RayModelIntersector intersector(params, getOurBlockPtr()->getModel(), *this);
 
 		const double randScale = 0.01; // Random 1 cm variation
-		MTC::set<Index3DId> cellIds;
-		getCellIds(cellIds);
-		if (!cellIds.empty()) {
-			bool ambiguous = false;
-			for (auto cellId : cellIds) {
-				// Need a random direction to shoot the ray. May as well use the centroid of the first cell.
-				auto& cell = getPolyhedron(cellId);
 
-				auto ctr = cell.calCentroid();
+		// Need a random direction to shoot the ray. May as well use the centroid of the first cell.
+		const Vector3d globalX(1, 0, 0), globalY(0, 1, 0), globalZ(0, 0, 1);
+		double az = 2 * M_PI * (std::rand() / (double)RAND_MAX);
+		double cosAz = cos(az);
+		double sinAz = sin(az);
 
-				Vector3d randV(std::rand() / (double)RAND_MAX, std::rand() / (double)RAND_MAX, std::rand() / (double)RAND_MAX);
-				ctr += randScale * randV;
+		double el = (-0.5 + (std::rand() / (double)RAND_MAX)) * M_PI;
+		double cosEl = cos(el);
+		double sinEl = sin(el);
 
-				Vector3d dir = ctr - _pt;
+		Vector3d dir(cosAz * cosEl, sinAz * cosEl, sinEl);
 
-				// Assure the vector points away from all symmetry planes to avoid symmetry issues
-				if (params.symXAxis && dir.dot(Vector3d(1., 0., 0.)) < 0) {
-					dir[0] = -dir[0]; // Reverse X component
+		// We require a deterministic, semirandom sequence. So use rand, but always in the same order. 
+		// This effectively acts as an infinite table lookup
+		std::srand(31415); 
+
+		bool goodCast = true;
+		int count = 0;
+		do {
+			if (goodCast == false) {
+				count++;
+				if (count > 10) {
+					int dbgBreak = 1;
 				}
-				if (params.symYAxis && dir.dot(Vector3d(0., 1., 0.)) < 0) {
-					dir[1] = -dir[1]; // Reverse Y component
-				}
-				if (params.symZAxis && dir.dot(Vector3d(0., 0., 1.)) < 0) {
-					dir[2] = -dir[2]; // Reverse Z component
-				}
-				dir.normalize();
+				cout << "Regenerating cast dir " << count << "\n";
+				az = 2 * M_PI * (std::rand() / (double)RAND_MAX);
+				cosAz = cos(az);
+				sinAz = sin(az);
 
-				Rayd ray(_pt, dir);
-				vector<RayModelIntersector::SolidHitRec> hitsOnSolidModel;
-				intersector.castRay(ray, hitsOnSolidModel);
+				el = (-0.5 + (std::rand() / (double)RAND_MAX)) * M_PI;
+				cosEl = cos(el);
+				sinEl = sin(el);
 
+				dir = Vector3d(cosAz * cosEl, sinAz * cosEl, sinEl);
+			}
+
+			// Assure the vector points away from all symmetry planes to avoid symmetry issues
+			if (params.symXAxis && dir.dot(globalX) < 0) {
+				dir[0] = -dir[0]; // Reverse X component
+			}
+			if (params.symYAxis && dir.dot(globalY) < 0) {
+				dir[1] = -dir[1]; // Reverse Y component
+			}
+			if (params.symZAxis && dir.dot(globalZ) < 0) {
+				dir[2] = -dir[2]; // Reverse Z component
+			}
+			dir.normalize();
+
+			Rayd ray(_pt, dir);
+			vector<RayModelIntersector::SolidHitRec> hitsOnSolidModel;
+			goodCast = intersector.castRay(ray, hitsOnSolidModel);
+
+			if (goodCast) {
 				if (hitsOnSolidModel.empty()) {
 					_topologyState = TOPST_VOID;
-					break;
 				} else {
 					if (hitsOnSolidModel.size() == 1) {
 						// a single hit is unambiguously inside
 						_topologyState = TOPST_SOLID;
-						break;
 					} else {
-						sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
-						size_t i = 0;
-						// May need an oblique test and move the ray several degrees away
-						// May want to rotate the ray by an angle.
-						for (size_t j = 1; j < hitsOnSolidModel.size(); j++) {
-							i = j - 1;
-							double distErr = hitsOnSolidModel[j]._dist - hitsOnSolidModel[i]._dist;
-							if (fabs(distErr) <= Tolerance::sameDistTolFloat()) {
-								if (hitsOnSolidModel[i]._positiveCrossing == hitsOnSolidModel[j]._positiveCrossing) {
-									hitsOnSolidModel.erase(hitsOnSolidModel.begin() + j);
-									j--;
-								} else {
-									ambiguous = true;
-									break;
-								}
-							}
+						int parity = hitsOnSolidModel.size() % 2;
+						if (parity == 1) {
+							_topologyState = TOPST_SOLID;
 						}
-
-						if (!ambiguous) {
-							int parity = hitsOnSolidModel.size() % 2;
-							switch (parity) {
-								case 0:
-									_topologyState = TOPST_VOID;
-									break;
-								case 1:
-									_topologyState = TOPST_SOLID;
-									break;
-								default: {
-									continue;
-								}
-							}
-							break;
-							continue;
+						else {
+							_topologyState = TOPST_VOID;
 						}
 					}
 				}
 			}
-		}
+		} while (!goodCast);
 	}
 }
 
@@ -309,6 +304,9 @@ void Vertex::write(std::ostream& out) const
 	int lt = (int)_lockType;
 	IoUtil::write(out, lt);
 
+	int ts = (int)_topologyState;
+	IoUtil::write(out, ts);
+
 	IoUtil::writeObj(out, _faceIds);
 }
 
@@ -319,9 +317,13 @@ void Vertex::read(std::istream& in)
 
 	IoUtil::read(in, _pt);
 
-	int lt = (int)_lockType;
+	int lt;
 	IoUtil::read(in, lt);
 	_lockType = (VertexLockType)lt;
+
+	int ts;
+	IoUtil::read(in, ts);
+	_topologyState = (TopologyState) ts;
 
 	IoUtil::readObj(in, _faceIds);
 }

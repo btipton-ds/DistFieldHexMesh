@@ -138,6 +138,7 @@ private:
 	bool _testRun = false;
 	bool _intersectsModel = false;
 	bool _hasSetSearchTree;
+	TopologyState _parentTopolState = TOPST_UNKNOWN;
 	std::shared_ptr<const PolyMeshSearchTree> _pPolySearchTree;
 
 	const size_t _splitLevel;

@@ -53,7 +53,7 @@ public:
 public:
 	RayModelIntersector(const SplittingParams& params, const Model& model, Vertex& vert);
 
-	void castRay(const Rayd& ray, std::vector<SolidHitRec>& hitsOnSolidModel);
+	bool castRay(const Rayd& ray, std::vector<SolidHitRec>& hitsOnSolidModel);
 
 private:
 	Vertex& _vert;
