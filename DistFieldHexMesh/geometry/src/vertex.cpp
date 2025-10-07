@@ -188,7 +188,6 @@ void Vertex::markTopologyState()
 				if (count > 10) {
 					int dbgBreak = 1;
 				}
-				cout << "Regenerating cast dir " << count << "\n";
 				az = 2 * M_PI * (std::rand() / (double)RAND_MAX);
 				cosAz = cos(az);
 				sinAz = sin(az);

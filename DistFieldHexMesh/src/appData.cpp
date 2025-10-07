@@ -560,6 +560,8 @@ void AppData::updateDebugTess()
 {
 
     if (_pVolume) {
+        auto pCanvas = _pMainFrame->getCanvas();
+
 #if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
         auto pDbgData = _pVolume->getDebugMeshData();
         pDbgData->clear();
@@ -569,13 +571,12 @@ void AppData::updateDebugTess()
                     pDbgData->add(vert.getPoint());
                 }
                 return true;
-            });
+                });
         }
-#endif
 
-        auto pCanvas = _pMainFrame->getCanvas();
         auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
         pDrawDbgMesh->createTessellation(*pDbgData);
+#endif
     }
 }
 
