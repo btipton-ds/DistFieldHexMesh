@@ -50,7 +50,6 @@ class Polygon;
 class Polyhedron;
 class PolyMeshIndex;
 struct SplittingParams;
-using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Vertex : public ObjectPoolOwnerUser {
 public:

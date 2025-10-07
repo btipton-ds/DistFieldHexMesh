@@ -42,6 +42,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <polyMeshIndex.h>
 #include <meshData.h>
 #include <model.h>
+#include <triMeshTypeDefs.h>
 
 template<class T>
 class Plane;
@@ -52,7 +53,6 @@ struct SplittingParams;
 class Block;
 class Edge;
 class AppData;
-using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Polyhedron : public ObjectPoolOwnerUser, public PolyMeshSearchTree::Refiner {
 public:

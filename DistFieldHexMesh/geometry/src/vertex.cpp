@@ -193,7 +193,7 @@ void Vertex::markTopologyState()
 				dir.normalize();
 
 				Rayd ray(_pt, dir);
-				vector<SolidHitRec> hitsOnSolidModel;
+				vector<RayModelIntersector::SolidHitRec> hitsOnSolidModel;
 				intersector.castRay(ray, hitsOnSolidModel);
 
 				if (hitsOnSolidModel.empty()) {

@@ -37,6 +37,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <triMeshIndex.h>
 #include <polyMeshIndex.h>
+#include <triMeshTypeDefs.h>
 
 namespace DFHM {
 
@@ -54,8 +55,6 @@ using MeshDataConstPtr = std::shared_ptr<const MeshData>;
 
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
-
-using PolyMeshSearchTree = CSpatialSearchBase<double, PolyMeshIndex, 25>;
 
 class Model {
 public:
