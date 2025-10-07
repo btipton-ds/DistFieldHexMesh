@@ -60,7 +60,7 @@ void DebugMeshData::add(const Polygon& face)
 
 void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const
 {
-    const auto len = 0.1;
+    const auto len = 0.025;
     pts.clear();
     indices.clear();
 
