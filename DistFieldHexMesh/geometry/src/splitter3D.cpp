@@ -618,32 +618,8 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	for (size_t i = 0; i < subCellResults._partingFacePts.size(); i++) {
 		auto newVertId = vertId(subCellResults._partingFacePts[i]);
 		auto& newVert = getVertex(newVertId);
-#if 1
 		if (parentTopologyState == TOPST_VOID)
 			newVert.setTopologyState(parentTopologyState);
-
-//		newVert.markTopologyState();
-#else
-		switch (parentTopologyState) {
-		default:
-			newVert.markTopologyState();
-			break;
-		case TOPST_SOLID:
-			newVert.setTopologyState(TOPST_SOLID);
-			break;
-		case TOPST_VOID:
-			newVert.setTopologyState(TOPST_VOID);
-			break;
-		}
-		auto newTopState = newVert.getTopolgyState();
-		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
-#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
-			auto pVol = _pBlock->getVolume();
-			auto& pDbgMesh = pVol->getDebugMeshData();
-			pDbgMesh->add(newVert.getPoint());
-#endif
-		}
-#endif
 		splittingFaceVerts[i] = newVertId;
 	}
 

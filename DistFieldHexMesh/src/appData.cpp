@@ -560,7 +560,18 @@ void AppData::updateDebugTess()
 {
 
     if (_pVolume) {
+#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
         auto pDbgData = _pVolume->getDebugMeshData();
+        pDbgData->clear();
+        for (const auto& pBlk : _pVolume->_blocks) {
+            pBlk->iterateVerticesInOrder([&pDbgData](const Index3DId& vertId, Vertex& vert)->bool {
+                if (vert.getTopolgyState() == TOPST_SOLID) {
+                    pDbgData->add(vert.getPoint());
+                }
+                return true;
+            });
+        }
+#endif
 
         auto pCanvas = _pMainFrame->getCanvas();
         auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();

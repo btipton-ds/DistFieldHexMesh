@@ -1579,7 +1579,6 @@ void Block::freePolygon(const Index3DId& id)
 	assert(!isPolygonInUse(id));
 #endif
 
-	auto pDbg = getVolume()->getDebugMeshData();
 	auto pOwner = getOwner(id);
 	if (pOwner) {
 		const auto& face = getPolygon(id);

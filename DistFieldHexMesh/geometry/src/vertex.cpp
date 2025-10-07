@@ -162,9 +162,6 @@ void Vertex::markTopologyState()
 		RayModelIntersector intersector(params, getOurBlockPtr()->getModel(), *this);
 
 		const double randScale = 0.01; // Random 1 cm variation
-#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
-		auto pDbg = getOurBlockPtr()->getVolume()->getDebugMeshData();
-#endif
 		MTC::set<Index3DId> cellIds;
 		getCellIds(cellIds);
 		if (!cellIds.empty()) {
@@ -203,9 +200,6 @@ void Vertex::markTopologyState()
 					if (hitsOnSolidModel.size() == 1) {
 						// a single hit is unambiguously inside
 						_topologyState = TOPST_SOLID;
-#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
-						pDbg->add(_pt);
-#endif
 						break;
 					} else {
 						sort(hitsOnSolidModel.begin(), hitsOnSolidModel.end());
@@ -234,9 +228,6 @@ void Vertex::markTopologyState()
 									break;
 								case 1:
 									_topologyState = TOPST_SOLID;
-#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
-									pDbg->add(_pt);
-#endif
 									break;
 								default: {
 									continue;
