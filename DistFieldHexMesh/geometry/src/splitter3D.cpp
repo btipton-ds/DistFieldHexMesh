@@ -607,11 +607,11 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 	auto pBlk = getBlockPtr();
 	auto& parentCell = getPolyhedron(parentId);
 	int32_t parentSplitBits = parentCell._axisSplitBits;
+	auto parentTopologyState = parentCell.getTopolgyState();
 	int32_t axisBit = 1 << splitAxis;
 
 	Polyhedron::SubCellResults subCellResults;
 	parentCell.makeHexCellHexPoints(splitAxis, subCellResults);
-	auto parentTopologyState = parentCell.getTopolgyState();
 
 	MTC::vector<Index3DId> splittingFaceVerts;
 	splittingFaceVerts.resize(subCellResults._partingFacePts.size());
@@ -619,6 +619,9 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 		auto newVertId = vertId(subCellResults._partingFacePts[i]);
 		auto& newVert = getVertex(newVertId);
 #if 1
+		if (parentTopologyState == TOPST_VOID)
+			newVert.setTopologyState(parentTopologyState);
+
 //		newVert.markTopologyState();
 #else
 		switch (parentTopologyState) {
@@ -632,15 +635,15 @@ void Splitter3D::bisectHexCellToHexes(const Index3DId& parentId, int splitAxis, 
 			newVert.setTopologyState(TOPST_VOID);
 			break;
 		}
-#endif
 		auto newTopState = newVert.getTopolgyState();
 		if (newTopState == TOPST_SOLID && _pBlock != _pScratchBlock) {
-			auto pVol = _pBlock->getVolume();
 #if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
+			auto pVol = _pBlock->getVolume();
 			auto& pDbgMesh = pVol->getDebugMeshData();
 			pDbgMesh->add(newVert.getPoint());
 #endif
 		}
+#endif
 		splittingFaceVerts[i] = newVertId;
 	}
 
