@@ -88,6 +88,11 @@ namespace DFHM {
 		void initSymmetry(const std::vector<Planed>& symPlanes);
 		bool isClosed() const;
 
+		template<class VERT_FUNC>
+		void iterateVertices(VERT_FUNC vertFunc) const;
+		template<class VERT_FUNC>
+		void iterateVertices(VERT_FUNC vertFunc) ;
+
 		template<class FACE_FUNC>
 		void iterateFaces(FACE_FUNC faceFunc) const;
 
@@ -148,6 +153,16 @@ namespace DFHM {
 
 		mutable Trinary _isClosed = IS_UNKNOWN;
 	};
+
+	template<class VERT_FUNC>
+	void PolyMesh::iterateVertices(VERT_FUNC vertFunc) const {
+		_vertices.iterateInOrder(vertFunc);
+	}
+
+	template<class VERT_FUNC>
+	void PolyMesh::iterateVertices(VERT_FUNC vertFunc) {
+		_vertices.iterateInOrder(vertFunc);
+	}
 
 	template<class FACE_FUNC>
 	inline void PolyMesh::iterateFaces(FACE_FUNC faceFunc) const {

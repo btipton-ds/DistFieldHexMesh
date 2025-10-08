@@ -97,11 +97,13 @@ public:
 	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
 
 	void rebuildSearchTree();
+	void calculateGaps(const SplittingParams& params);
 	void clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes);
 
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
+	std::map<PolyMeshIndex, double> _polyMeshIdxToGapDistMap;
 };
 
 inline bool Model::empty() const

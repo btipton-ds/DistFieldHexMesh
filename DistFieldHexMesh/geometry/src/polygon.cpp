@@ -835,8 +835,32 @@ void Polygon::setIsConvex_risky(Convexity convexity)
 
 double Polygon::distFromPlane(const Vector3d& pt) const
 {
-	auto pl = calPlane();
+	auto& pl = calPlane();
 	return pl.distanceToPoint(pt);
+}
+
+double Polygon::minDistToPoint(const Vector3d& pt) const
+{
+	double dist = DBL_MAX;
+	auto& pl = calPlane();
+	auto projPt = pl.projectPoint(pt);
+	if (isPointInside(projPt)) {
+		auto v = pt - pl.getOrigin();
+		dist = fabs(pl.getNormal().dot(v)); 
+	} else {
+		iterateTrianglePts([&pt, &dist](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2 )->bool {
+			const Vector3d* pts[] = { &pt0, &pt1, &pt2 };
+			for (int i = 0; i < 3; i++) {
+				int j = (i + 1) % 3;
+				LineSegmentd seg(*pts[i], *pts[j]);
+				double minSegDist = seg.distanceToPoint(pt);
+				if (minSegDist < dist)
+					dist = minSegDist;
+			}
+			return true;
+		});
+	}
+	return dist;
 }
 
 void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const

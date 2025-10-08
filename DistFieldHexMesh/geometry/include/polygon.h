@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 
 /*
 This file is part of the DistFieldHexMesh application/library.
@@ -173,6 +174,7 @@ public:
 	double calVertexAngle(const Index3DId& vertId) const;
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
 	double distFromPlane(const Vector3d& pt) const;
+	double minDistToPoint(const Vector3d& pt) const;
 
 	const Planed& calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;

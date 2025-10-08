@@ -688,6 +688,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     }
 
     _model.rebuildSearchTree();
+    _model.calculateGaps(_params);
     updateModelTess();
 
     bool hasVolume;

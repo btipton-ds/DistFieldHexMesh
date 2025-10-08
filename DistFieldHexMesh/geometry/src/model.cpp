@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <model.h>
 #include <tm_spatialSearch.hpp>
 #include <tolerances.h>
+#include <splitParams.h>
 
 using namespace std;
 using namespace DFHM;
@@ -98,6 +99,42 @@ void Model::rebuildSearchTree()
 				return true;
 			});
 		}
+	}
+}
+
+void Model::calculateGaps(const SplittingParams& params)
+{
+	if (!_pPolyMeshSearchTree)
+		return;
+
+	for (size_t i = 0; i < _modelMeshData.size(); i++) {
+		auto& pMeshData = _modelMeshData[i];
+		auto& pPolyMesh = pMeshData->getPolyMesh();
+		pPolyMesh->iterateVertices([this, &params, i](const Index3DId& id, Vertex& vert)->bool {
+			double minDist = DBL_MAX;
+			const auto& pt = vert.getPoint();
+			const auto& norm = vert.calSurfaceNormal();
+			CBoundingBox3Dd bbox(pt);
+			bbox.grow(params.gapBoundingBoxSemiSpan);
+			std::vector<PolyMeshIndex> hits;
+			if (_pPolyMeshSearchTree->find(bbox, nullptr, hits) != 0) {
+				for (size_t i = 0; i < hits.size(); i++) {
+					const auto& modelFace = getPolygon(hits[i]);
+					const auto& faceNorm = modelFace->calUnitNormal();
+					double dp = norm.dot(faceNorm);
+					if (dp < -0.7071) {
+						double minDistToPoint = modelFace->minDistToPoint(pt);
+						if (minDistToPoint > 0 && minDistToPoint < minDist)
+							minDist = minDistToPoint;
+					}
+				}
+			}
+
+			if (minDist < params.gapBoundingBoxSemiSpan)
+				_polyMeshIdxToGapDistMap.insert(make_pair(PolyMeshIndex(i, id), minDist));
+
+			return true;
+		});
 	}
 }
 
