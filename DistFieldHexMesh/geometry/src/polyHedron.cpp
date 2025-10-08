@@ -1366,9 +1366,9 @@ bool Polyhedron::intersectsModel() const
 				size_t nTris = cellTriPts.size() / 3;
 				auto pMeshTriData = cellTriPts.data();
 				auto pModelFace = model.getPolygon(polyIdx);
-
-				pModelFace->intersectHexMeshTris(nTris, pMeshTriData, _cachedIntersectsModel);
-
+				if (pModelFace && !pModelFace->isOnSymmetryPlane()) {
+					pModelFace->intersectHexMeshTris(nTris, pMeshTriData, _cachedIntersectsModel);
+				}
 				return _cachedIntersectsModel != IS_TRUE;
 			});
 		} else
@@ -1471,21 +1471,6 @@ bool Polyhedron::isTooComplex(const SplittingParams& params) const
 bool Polyhedron::isTooNonOrthogoal(const SplittingParams& params) const
 {
 	return maxOrthogonalityAngleRadians() > params.maxOrthoAngleRadians;
-}
-
-bool Polyhedron::isInsideSolid(const std::vector<Planed>& boundingPlanes) const
-{
-	if (intersectsModel())
-		return false;
-
-	MTC::set<Index3DId> vertIds;
-	getVertIds(vertIds);
-	for (const auto& id : vertIds) {
-		const auto& vert = getVertex(id);
-		if (vert.getTopolgyState() == TOPST_VOID)
-			return false;
-	}
-	return true;
 }
 
 bool Polyhedron::hasTooManySplits() const

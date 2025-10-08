@@ -138,7 +138,6 @@ public:
 	void createPlanarFaceSet(MTC::vector<MTC::set<Index3DId>>& planarFaceSet) const;
 	bool isTooComplex(const SplittingParams& params) const;
 	bool isTooNonOrthogoal(const SplittingParams& params) const;
-	bool isInsideSolid(const std::vector<Planed>& boundingPlanes) const;
 	bool hasTooManySplits() const;
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManyFaces(const SplittingParams& params) const;

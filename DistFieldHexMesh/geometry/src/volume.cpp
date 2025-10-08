@@ -872,17 +872,15 @@ void Volume::removeInteriorCells()
 		
 	On following passes, we only need to test the unknown cells. 
 	*/
-	MTC::vector<Planed> boundingPlanes;
-	getModelBoundaryPlanes(boundingPlanes);
 
 	bool needsGarbageCollection = false;
-	runThreadPool([this, &boundingPlanes, &needsGarbageCollection](size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool([this, &needsGarbageCollection](size_t threadNum, const BlockPtr& pBlk)->bool {
 		size_t index = calLinearBlockIndex(pBlk->getBlockIdx());
-		pBlk->iteratePolyhedraInOrder([&boundingPlanes, pBlk, &needsGarbageCollection](const Index3DId& cellId, Polyhedron& cell)->bool {
+		pBlk->iteratePolyhedraInOrder([pBlk, &needsGarbageCollection](const Index3DId& cellId, Polyhedron& cell)->bool {
 			assert(cellId.isValid());
 			assert(cellId.blockIdx() == pBlk->getBlockIdx());
 			assert(cell.getId().isValid());
-			if (cell.isInsideSolid(boundingPlanes)) {
+			if (cell.getTopolgyState() == TOPST_SOLID) {
 				needsGarbageCollection = true;
 				pBlk->freePolyhedron(cellId);
 			}
