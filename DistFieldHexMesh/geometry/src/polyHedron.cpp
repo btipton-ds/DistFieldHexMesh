@@ -59,6 +59,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <model.h>
 #include <triMeshIndex.h>
 #include <splitter2D.h>
+#include <appDataIntf.h>
 
 using namespace std;
 using namespace DFHM;
@@ -1339,6 +1340,11 @@ bool Polyhedron::intersectsModel() const
 		pLg = make_shared<lock_guard<mutex>>(lockMutex);
 	}
 #endif
+	auto pVol = getBlockPtr()->getVolume();
+	const auto& selectedBlockIds = pVol->getAppData()->getSelectedBlockIds();
+	if (selectedBlockIds.contains(getId())) {
+		int dbgBreak = 1;
+	}
 
 	if (_cachedIntersectsModel == IS_UNKNOWN) {
 		for (const auto& id : _faceIds) {
@@ -1469,6 +1475,9 @@ bool Polyhedron::isTooNonOrthogoal(const SplittingParams& params) const
 
 bool Polyhedron::isInsideSolid(const std::vector<Planed>& boundingPlanes) const
 {
+	if (intersectsModel())
+		return false;
+
 	MTC::set<Index3DId> vertIds;
 	getVertIds(vertIds);
 	for (const auto& id : vertIds) {

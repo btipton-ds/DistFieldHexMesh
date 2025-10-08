@@ -838,10 +838,21 @@ void AppData::doSelectBlocks(const SelectBlocksDlg& dlg)
 
     auto pCanvas = _pMainFrame->getCanvas();
     pCanvas->clearMesh3D();
-    pCanvas->setShowMeshSelectedBlocks(true);
 
+    _selectedBlockIds.clear();
+    auto min = dlg.getMin();
+    auto max = dlg.getMax();
+    Index3D idx;
+    for (idx[0] = min[0]; idx[0] < max[0]; idx[0]++) {
+        for (idx[1] = min[1]; idx[1] < max[1]; idx[1]++) {
+            for (idx[2] = min[2]; idx[2] < max[2]; idx[2]++) {
+                _selectedBlockIds.insert(idx);
+            }
+        }
+    }
+
+    updatePrefsFile();
     updateHexTess();
-    updateDebugTess();
 }
 
 void AppData::handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const
@@ -998,6 +1009,13 @@ void AppData::loadPrefs()
 bool AppData::readPrefsFile(std::string& contents) const
 {
     contents.clear();
+    std::string filepath = { "assets" };
+    bool filepathExists = filesystem::exists(filepath);
+    if (!filepathExists) {
+        // Create an empty assets directory and prefs.txt file
+        updatePrefsFile();
+    }
+
 
     string filename = "assets/prefs.txt";
     ifstream in(filename);
@@ -1048,9 +1066,14 @@ void AppData::updatePrefsFile() const
 
 void AppData::updatePrefsFile(const std::string& contents) const
 {
+    std::string filepath = { "assets" };
+    bool filepathExists = filesystem::exists(filepath);
+    if (!filepathExists) {
+        std::filesystem::create_directory("assets");
+    }
     string filename = "assets/prefs.txt";
     ofstream out(filename);
-    IoUtil::write(out, contents.size());
+    out << contents;
 }
 
 void AppData::makeBlock(const MakeBlockDlg& dlg)

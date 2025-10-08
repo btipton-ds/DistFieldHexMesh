@@ -857,19 +857,7 @@ void Splitter3D::finalizeCreatedCells()
 
 	for (auto& createdCellId : _createdCellIds) {
 		auto& createdCell = getPolyhedron(createdCellId);
-#if 1
-		MTC::set<Index3DId> vertIds;
-		createdCell.getVertIds(vertIds);
-		for (const auto& id : vertIds) {
-			auto& vert = getVertex(id);
-			if (vert.getTopolgyState() == TOPST_UNKNOWN) {
-				if (_parentTopolState == TOPST_VOID)
-					vert.setTopologyState(TOPST_VOID);
-				else
-					vert.markTopologyState();
-			}
-		}
-#else
+
 		// If the parent cell doesn't intersect the model, it's sub cells cannot intersect either
 		if (!_intersectsModel)
 			createdCell.setIntersectsModel(false);
@@ -897,7 +885,18 @@ void Splitter3D::finalizeCreatedCells()
 				}
 			}
 		}
-#endif
+
+		MTC::set<Index3DId> vertIds;
+		createdCell.getVertIds(vertIds);
+		for (const auto& id : vertIds) {
+			auto& vert = getVertex(id);
+			if (vert.getTopolgyState() == TOPST_UNKNOWN) {
+				if (_parentTopolState == TOPST_VOID)
+					vert.setTopologyState(TOPST_VOID);
+				else
+					vert.markTopologyState();
+			}
+		}
 	}
 }
 
