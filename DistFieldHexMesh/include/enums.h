@@ -26,7 +26,9 @@ This file is part of the DistFieldHexMesh application/library.
 
 	Dark Sky Innovative Solutions http://darkskyinnovation.com/
 */
+
 #include "defines.h"
+#include <tm_ioUtil.h>
 
 namespace DFHM {
 
@@ -166,3 +168,11 @@ enum SplitParity {
 };
 
 }
+
+namespace IoUtil
+{
+	WRITE_READ_ENUM(DFHM::Trinary)
+	WRITE_READ_ENUM(DFHM::TopologyState)
+	WRITE_READ_ENUM(DFHM::CellType)
+}
+

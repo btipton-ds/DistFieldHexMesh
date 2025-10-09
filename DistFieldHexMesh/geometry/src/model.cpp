@@ -111,6 +111,7 @@ void Model::calculateGaps(const SplittingParams& params)
 		auto& pMeshData = _modelMeshData[i];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();
 		pStartPolyMesh->iterateVertices([this, &pStartPolyMesh, &params, i](const Index3DId& id, Vertex& vert)->bool {
+			const double minDotProduct = sin(20 * M_PI / 180.0);
 			double minDist = DBL_MAX;
 			Vector3d closestPt;
 			const auto& startPt = vert.getPoint();
@@ -131,7 +132,6 @@ void Model::calculateGaps(const SplittingParams& params)
 					const auto& nearFaceNorm = nearFace->calUnitNormal();
 					for (const auto& startFaceNorm : startFaceNorms) {
 						double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
-						const double minDotProduct = 0.1;
 						if (dpFaceFace < -minDotProduct) {
 							Vector3d hitPt;
 							double minDistToPoint = nearFace->minDistToPoint(startPt, hitPt);

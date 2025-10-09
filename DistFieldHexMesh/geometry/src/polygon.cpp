@@ -155,6 +155,8 @@ DFHM::Polygon& DFHM::Polygon::operator = (const Polygon& rhs)
 	_thisId = rhs._thisId;
 	_vertexIds = rhs._vertexIds;
 	_cellIds = rhs._cellIds;
+	_needsGapTest = rhs._needsGapTest;
+
 	_cachedIntersectsModel = rhs._cachedIntersectsModel;
 
 	// DO NOT call connectVertEdgeTopology() here!!! The polygon is not in position yet
@@ -301,12 +303,12 @@ void Polygon::reverse()
 
 void Polygon::write(ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	IoUtil::write(out, version);
 
+	IoUtil::writeEnum(out, _needsGapTest);
 	IoUtil::writeObj(out, _vertexIds);
 	IoUtil::writeObj(out, _cellIds);
-
 }
 
 void Polygon::read(istream& in)
@@ -314,6 +316,10 @@ void Polygon::read(istream& in)
 	uint8_t version;
 	IoUtil::read(in, version);
 
+	if (version > 0)
+		IoUtil::readEnum(in, _needsGapTest);
+	else
+		_needsGapTest = IS_UNKNOWN;
 	IoUtil::readObj(in, _vertexIds);
 	IoUtil::readObj(in, _cellIds);
 }

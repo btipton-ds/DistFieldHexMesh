@@ -250,6 +250,7 @@ private:
 
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
+	Trinary _needsGapTest = IS_UNKNOWN;
 
 	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
 	mutable Trinary _isOnSymmetryPlane = IS_UNKNOWN;
