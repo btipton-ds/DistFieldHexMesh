@@ -77,6 +77,7 @@ namespace
 
 AppData::AppData(MainFrame* pMainFrame)
     : _pMainFrame(pMainFrame)
+    , _pDebugMeshData(make_shared<DebugMeshData>())
 {
     clearCache();
     loadPrefs();
@@ -523,7 +524,10 @@ bool AppData::doImportMesh()
         _model.add(pMeshData);
 
         _model.rebuildSearchTree();
+        _model.calculateGaps(_params);
+
         updateModelTess();
+        updateDebugTess();
         return true;
     }
 
@@ -558,26 +562,35 @@ void AppData::updateHexTess()
 
 void AppData::updateDebugTess()
 {
-
-    if (_pVolume) {
-        auto pCanvas = _pMainFrame->getCanvas();
-
 #if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
-        auto pDbgData = _pVolume->getDebugMeshData();
-        pDbgData->clear();
+    auto pCanvas = _pMainFrame->getCanvas();
+    auto pDbgData = getDebugMeshData();
+
+    pDbgData->clear();
+    if (_pVolume) {
         for (const auto& pBlk : _pVolume->_blocks) {
             pBlk->iterateVerticesInOrder([&pDbgData](const Index3DId& vertId, Vertex& vert)->bool {
                 if (vert.getTopolgyState() == TOPST_SOLID) {
                     pDbgData->add(vert.getPoint());
                 }
                 return true;
-                });
+            });
         }
-
-        auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
-        pDrawDbgMesh->createTessellation(*pDbgData);
-#endif
     }
+
+    auto& gapSegs = _model.getPolyMeshIdxToGapEndPtMap();
+    for (auto& pair : gapSegs) {
+        auto pVert = _model.getVertex(pair.first);
+        if (pVert) {
+            auto& pt0 = pVert->getPoint();
+            LineSegmentd seg(pt0, pair.second);
+            pDbgData->add(seg);
+        }
+    }
+
+    auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
+    pDrawDbgMesh->createTessellation(*pDbgData);
+#endif
 }
 
 void AppData::updateModelTess()
@@ -648,6 +661,17 @@ void AppData::writeDHFM() const
         _pVolume->write(out);    
 }
 
+const DebugMeshDataPtr& AppData::getDebugMeshData()
+{
+    return _pDebugMeshData;
+}
+
+const DebugMeshDataConstPtr AppData::getDebugMeshData() const
+{
+    return _pDebugMeshData;
+}
+
+
 void AppData::readDHFM(const wstring& path, const wstring& filename)
 {
     _dhfmFilename = path + filename;
@@ -689,6 +713,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
 
     _model.rebuildSearchTree();
     _model.calculateGaps(_params);
+
     updateModelTess();
 
     bool hasVolume;
@@ -701,9 +726,9 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         _pVolume->createAdHocBlockSearchTree();
 
         updateHexTess();
-        updateDebugTess();
     }
 
+    updateDebugTess();
     _pMainFrame->refreshObjectTree();
 }
 

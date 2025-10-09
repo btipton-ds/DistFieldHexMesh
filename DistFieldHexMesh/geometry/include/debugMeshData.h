@@ -52,9 +52,11 @@ public:
 	void clear();
 
 	void add(const Vector3d& pt);
-	void remove(const Vector3d& pt);
 	void add(const Rayd& ray);
+	void add(const LineSegmentd& seg);
 	void add(const Polygon& face);
+
+	void remove(const Vector3d& pt);
 
 	void getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const;
 	void getGLTris(std::vector<float>& pts, std::vector<float>& normals, std::vector<unsigned int>& indices) const;
@@ -65,6 +67,7 @@ public:
 private:
 	std::set<Vector3d> _points;
 	std::vector<Rayd> _rays;
+	std::vector<LineSegmentd> _segments;
 	std::vector<float> _triPts, _triNormals;
 
 	OGL::IndicesPtr _edgeTess;

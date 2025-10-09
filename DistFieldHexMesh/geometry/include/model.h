@@ -45,6 +45,7 @@ class DrawModelMesh;
 struct SplittingParams;
 
 class Polygon;
+class Vertex;
 
 class AppDataIntf;
 using AppDataPtr = std::shared_ptr<AppDataIntf>;
@@ -95,15 +96,18 @@ public:
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;
 
 	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
+	const Vertex* getVertex(const PolyMeshIndex& idx) const;
 
 	void rebuildSearchTree();
 	void calculateGaps(const SplittingParams& params);
 	void clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes);
 
+	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
+
 private:
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
-	std::map<PolyMeshIndex, double> _polyMeshIdxToGapDistMap;
+	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;
 };
 
 inline bool Model::empty() const
@@ -161,6 +165,10 @@ inline std::shared_ptr<const PolyMeshSearchTree> Model::getPolySubTree(const BOX
 	return _pPolyMeshSearchTree->getSubTree(bbox, pRefiner);
 }
 
+inline const std::map<PolyMeshIndex, Vector3d>& Model::getPolyMeshIdxToGapEndPtMap() const
+{
+	return _polyMeshIdxToGapEndPtMap;
+}
 
 
 }

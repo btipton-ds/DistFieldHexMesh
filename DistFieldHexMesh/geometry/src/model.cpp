@@ -112,6 +112,7 @@ void Model::calculateGaps(const SplittingParams& params)
 		auto& pPolyMesh = pMeshData->getPolyMesh();
 		pPolyMesh->iterateVertices([this, &params, i](const Index3DId& id, Vertex& vert)->bool {
 			double minDist = DBL_MAX;
+			Vector3d closestPt;
 			const auto& pt = vert.getPoint();
 			const auto& norm = vert.calSurfaceNormal();
 			CBoundingBox3Dd bbox(pt);
@@ -123,15 +124,18 @@ void Model::calculateGaps(const SplittingParams& params)
 					const auto& faceNorm = modelFace->calUnitNormal();
 					double dp = norm.dot(faceNorm);
 					if (dp < -0.7071) {
-						double minDistToPoint = modelFace->minDistToPoint(pt);
-						if (minDistToPoint > 0 && minDistToPoint < minDist)
+						Vector3d hitPt;
+						double minDistToPoint = modelFace->minDistToPoint(pt, hitPt);
+						if (minDistToPoint > 0 && minDistToPoint < minDist) {
 							minDist = minDistToPoint;
+							closestPt = hitPt;
+						}
 					}
 				}
 			}
 
 			if (minDist < params.gapBoundingBoxSemiSpan)
-				_polyMeshIdxToGapDistMap.insert(make_pair(PolyMeshIndex(i, id), minDist));
+				_polyMeshIdxToGapEndPtMap.insert(make_pair(PolyMeshIndex(i, id), closestPt));
 
 			return true;
 		});
@@ -295,6 +299,17 @@ const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 		auto pData = _modelMeshData[meshIdx];
 		auto pMesh = pData->getPolyMesh();
 		return &pMesh->getPolygon(idx.getPolyId());
+	}
+	return nullptr;
+}
+
+const Vertex* Model::getVertex(const PolyMeshIndex& idx) const
+{
+	size_t meshIdx = idx.getMeshIdx();
+	if (meshIdx < _modelMeshData.size()) {
+		auto pData = _modelMeshData[meshIdx];
+		auto pMesh = pData->getPolyMesh();
+		return &pMesh->getVertex(idx.getPolyId());
 	}
 	return nullptr;
 }

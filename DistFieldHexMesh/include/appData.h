@@ -54,66 +54,68 @@ public:
 
     AppData(MainFrame* pMainFrame = nullptr);
     virtual ~AppData();
-    void preDestroy();
+    void preDestroy() override;
 
-    size_t numBytes() const;
+    size_t numBytes() const override;
 
-    bool doOpen();
-    bool doImportMesh();
-    void doSave();
-    void doSaveAs();
-    void doVerifyClosed(const CMeshPtr& pMesh);
-    void doVerifyNormals(const CMeshPtr& pMesh);
-    void doAnalyzeGaps(const CMeshPtr& pMesh);
-    void doFindMinGap(const CMeshPtr& pMesh) const;
-    void doCreateBaseVolume();
-    void doRemoveBaseVolume();
-    void doDivideHexMesh(const DivideHexMeshDlg& dlg);
-    void doNew(const MakeBlockDlg& dlg);
-    void doSelectBlocks(const SelectBlocksDlg& dlg);
-    void handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const;
+    bool doOpen() override;
+    bool doImportMesh() override;
+    void doSave() override;
+    void doSaveAs() override;
+    void doVerifyClosed(const CMeshPtr& pMesh) override;
+    void doVerifyNormals(const CMeshPtr& pMesh) override;
+    void doAnalyzeGaps(const CMeshPtr& pMesh) override;
+    void doFindMinGap(const CMeshPtr& pMesh) const override;
+    void doCreateBaseVolume() override;
+    void doRemoveBaseVolume() override;
+    void doDivideHexMesh(const DivideHexMeshDlg& dlg) override;
+    void doNew(const MakeBlockDlg& dlg) override;
+    void doSelectBlocks(const SelectBlocksDlg& dlg) override;
+    void handleMeshRayCast(wxMouseEvent& event, const Rayd& ray) const override;
 
-    const std::shared_ptr<MultiCore::ThreadPool>& getThreadPool() const;
+    const std::shared_ptr<MultiCore::ThreadPool>& getThreadPool() const override;
         
-    VolumePtr getVolume() const;
-    MainFrame* getMainFrame();
+    VolumePtr getVolume() const override;
+    MainFrame* getMainFrame() override;
 
-    CBoundingBox3Dd getBoundingBox() const;
-    CBoundingBox3Dd getMeshBoundingBox() const;
-    void getDisplayMinMax(Index3D& min, Index3D& max) const;
-    void setDisplayMinMax(const Index3D& min, const Index3D& max);
+    CBoundingBox3Dd getBoundingBox() const override;
+    CBoundingBox3Dd getMeshBoundingBox() const override;
+    void getDisplayMinMax(Index3D& min, Index3D& max) const override;
+    void setDisplayMinMax(const Index3D& min, const Index3D& max) override;
 
-    SplittingParams& getParams();
-    const SplittingParams& getParams() const;
+    SplittingParams& getParams() override;
+    const SplittingParams& getParams() const override;
 
-    std::wstring getCacheDirName() const;
+    std::wstring getCacheDirName() const override;
 
-    const Model& getModel() const;
-    Model& getModel();
-    MeshDataConstPtr getMeshData(const std::wstring& name) const;
-    MeshDataPtr getMeshData(const std::wstring& name);
+    const Model& getModel() const override;
+    Model& getModel() override;
+    MeshDataConstPtr getMeshData(const std::wstring& name) const override;
+    MeshDataPtr getMeshData(const std::wstring& name) override;
+    const DebugMeshDataPtr& getDebugMeshData() override;
+    const DebugMeshDataConstPtr getDebugMeshData() const override;
 
-    void beginMeshFaceInfoPick();
-    void beginMeshFaceDebugPick();
-    void testConditionalCellSplit();
-    void testComplexityCellSplit();
+    void beginMeshFaceInfoPick() override;
+    void beginMeshFaceDebugPick() override;
+    void testConditionalCellSplit() override;
+    void testComplexityCellSplit() override;
 
-    const std::set<Index3DId>& getSelectedCellIds() const;
-    std::set<Index3DId>& getSelectedCellIds();
-    std::set<Index3D>& getSelectedBlockIds();
-    std::set<Index3D>& getProcessOnlyBlockIds();
-    bool getDoQualitySplits() const;
+    const std::set<Index3DId>& getSelectedCellIds() const override;
+    std::set<Index3DId>& getSelectedCellIds() override;
+    std::set<Index3D>& getSelectedBlockIds() override;
+    std::set<Index3D>& getProcessOnlyBlockIds() override;
+    bool getDoQualitySplits() const override;
 
-    void loadPrefs();
-    bool readPrefsFile(std::string& contents) const;
-    void updatePrefsFile() const;
-    void updatePrefsFile(const std::string& contents) const;
+    void loadPrefs() override;
+    bool readPrefsFile(std::string& contents) const override;
+    void updatePrefsFile() const override;
+    void updatePrefsFile(const std::string& contents) const override;
 
-    void buildHexFaceTables();
-    void copyHexFaceTablesToVBOs();
-    void updateHexTess();
-    void updateDebugTess();
-    void updateModelTess();
+    void buildHexFaceTables() override;
+    void copyHexFaceTablesToVBOs() override;
+    void updateHexTess() override;
+    void updateDebugTess() override;
+    void updateModelTess() override;
 
 private:
     class MeshFaceInfoSelectHandler;
@@ -153,6 +155,7 @@ private:
     VolumePtr _pVolume;
     std::shared_ptr<const MeshPickHandler> _pMeshPickHandler;
     std::shared_ptr<Index3DIdSearchTree> _pFaceSearchTree;
+    DebugMeshDataPtr _pDebugMeshData;
 
     const OGL::IndicesPtr 
         _modelFaceTess, 

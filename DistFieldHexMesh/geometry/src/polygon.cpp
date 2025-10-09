@@ -839,23 +839,28 @@ double Polygon::distFromPlane(const Vector3d& pt) const
 	return pl.distanceToPoint(pt);
 }
 
-double Polygon::minDistToPoint(const Vector3d& pt) const
+double Polygon::minDistToPoint(const Vector3d& pt, Vector3d& closestPt) const
 {
 	double dist = DBL_MAX;
 	auto& pl = calPlane();
 	auto projPt = pl.projectPoint(pt);
 	if (isPointInside(projPt)) {
-		auto v = pt - pl.getOrigin();
+		closestPt = pt;
+		auto v = closestPt - pl.getOrigin();
 		dist = fabs(pl.getNormal().dot(v)); 
 	} else {
-		iterateTrianglePts([&pt, &dist](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2 )->bool {
+		iterateTrianglePts([&pt, &closestPt, &dist](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2 )->bool {
 			const Vector3d* pts[] = { &pt0, &pt1, &pt2 };
 			for (int i = 0; i < 3; i++) {
 				int j = (i + 1) % 3;
 				LineSegmentd seg(*pts[i], *pts[j]);
-				double minSegDist = seg.distanceToPoint(pt);
-				if (minSegDist < dist)
+				double t;
+				Vector3d hitPt;
+				double minSegDist = seg.distanceToPoint(pt, hitPt, t);
+				if (minSegDist > 0 && minSegDist < dist) {
 					dist = minSegDist;
+					closestPt = hitPt;
+				}
 			}
 			return true;
 		});

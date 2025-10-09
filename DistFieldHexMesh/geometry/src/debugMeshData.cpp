@@ -54,6 +54,11 @@ void DebugMeshData::add(const Rayd& ray)
     _rays.push_back(ray);
 }
 
+void DebugMeshData::add(const LineSegmentd& seg)
+{
+    _segments.push_back(seg);
+}
+
 void DebugMeshData::add(const Polygon& face)
 {
 }
@@ -77,6 +82,20 @@ void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int
             pts.push_back((float)pt1[i]);
         indices.push_back(idx++);
     }
+
+    for (const auto& seg : _segments) {
+        const auto& pt0 = seg._pt0;
+        auto pt1 = seg._pt1;
+
+        for (int i = 0; i < 3; i++)
+            pts.push_back((float)pt0[i]);
+        indices.push_back(idx++);
+
+        for (int i = 0; i < 3; i++)
+            pts.push_back((float)pt1[i]);
+        indices.push_back(idx++);
+    }
+
 
     for (const auto& origin : _points) {
         for (int i = 0; i < 3; i++) {

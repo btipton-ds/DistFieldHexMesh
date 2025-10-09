@@ -174,7 +174,7 @@ public:
 	double calVertexAngle(const Index3DId& vertId) const;
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
 	double distFromPlane(const Vector3d& pt) const;
-	double minDistToPoint(const Vector3d& pt) const;
+	double minDistToPoint(const Vector3d& pt, Vector3d& closestPt) const;
 
 	const Planed& calPlane() const;
 	Planed calOrientedPlane(const Index3DId& cellId) const;

@@ -1679,11 +1679,8 @@ void GraphicsCanvas::changeViewElements()
     _pDrawModelMesh->changeViewElements(model);
     _pDrawHexMesh->changeViewElements();
 
-    auto pVol = _pAppData->getVolume();
-    if (pVol) {
-        auto pDbgData = pVol->getDebugMeshData();
-        _pDrawDebugMesh->changeViewElements(*pDbgData);
-    }
+    auto pDbgData = _pAppData->getDebugMeshData();
+    _pDrawDebugMesh->changeViewElements(*pDbgData);
     if (_pDrawCrossSections)
         _pDrawCrossSections->changeViewElements();
 }

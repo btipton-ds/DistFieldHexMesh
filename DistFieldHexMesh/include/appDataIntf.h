@@ -51,6 +51,10 @@ namespace DFHM {
     using MeshDataPtr = std::shared_ptr<MeshData>;
     using MeshDataConstPtr = std::shared_ptr<const MeshData>;
 
+    class DebugMeshData;
+    using DebugMeshDataPtr = std::shared_ptr<DebugMeshData>;
+    using DebugMeshDataConstPtr = std::shared_ptr<const DebugMeshData>;
+
     class Volume;
     using VolumePtr = std::shared_ptr<Volume>;
 
@@ -87,6 +91,8 @@ namespace DFHM {
 
         virtual VolumePtr getVolume() const = 0;
         virtual MainFrame* getMainFrame() = 0;
+        virtual const DebugMeshDataPtr& getDebugMeshData() = 0;
+        virtual const DebugMeshDataConstPtr getDebugMeshData() const =0;
 
         virtual CBoundingBox3Dd getBoundingBox() const = 0;
         virtual CBoundingBox3Dd getMeshBoundingBox() const = 0;
