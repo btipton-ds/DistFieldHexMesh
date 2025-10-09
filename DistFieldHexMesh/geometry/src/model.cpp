@@ -109,32 +109,48 @@ void Model::calculateGaps(const SplittingParams& params)
 
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		auto& pMeshData = _modelMeshData[i];
-		auto& pPolyMesh = pMeshData->getPolyMesh();
-		pPolyMesh->iterateVertices([this, &params, i](const Index3DId& id, Vertex& vert)->bool {
+		auto& pStartPolyMesh = pMeshData->getPolyMesh();
+		pStartPolyMesh->iterateVertices([this, &pStartPolyMesh, &params, i](const Index3DId& id, Vertex& vert)->bool {
 			double minDist = DBL_MAX;
 			Vector3d closestPt;
-			const auto& pt = vert.getPoint();
-			const auto& norm = vert.calSurfaceNormal();
-			CBoundingBox3Dd bbox(pt);
+			const auto& startPt = vert.getPoint();
+			auto& startFaceIds = vert.getFaceIds();
+			vector<Vector3d> startFaceNorms;
+			for (const auto& startFaceId : startFaceIds) {
+				auto& startFace = pStartPolyMesh->getPolygon(startFaceId);
+				const auto& startFaceNorm = startFace.calUnitNormal();
+				startFaceNorms.push_back(startFaceNorm);
+			}
+
+			CBoundingBox3Dd bbox(startPt);
 			bbox.grow(params.gapBoundingBoxSemiSpan);
-			std::vector<PolyMeshIndex> hits;
-			if (_pPolyMeshSearchTree->find(bbox, nullptr, hits) != 0) {
-				for (size_t i = 0; i < hits.size(); i++) {
-					const auto& modelFace = getPolygon(hits[i]);
-					const auto& faceNorm = modelFace->calUnitNormal();
-					double dp = norm.dot(faceNorm);
-					if (dp < -0.7071) {
-						Vector3d hitPt;
-						double minDistToPoint = modelFace->minDistToPoint(pt, hitPt);
-						if (minDistToPoint > 0 && minDistToPoint < minDist) {
-							minDist = minDistToPoint;
-							closestPt = hitPt;
+			std::vector<PolyMeshIndex> nearFaceIds;
+			if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
+				for (size_t i = 0; i < nearFaceIds.size(); i++) {
+					const auto& nearFace = getPolygon(nearFaceIds[i]);
+					const auto& nearFaceNorm = nearFace->calUnitNormal();
+					for (const auto& startFaceNorm : startFaceNorms) {
+						double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
+						const double minDotProduct = 0.1;
+						if (dpFaceFace < -minDotProduct) {
+							Vector3d hitPt;
+							double minDistToPoint = nearFace->minDistToPoint(startPt, hitPt);
+							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan && minDistToPoint < minDist) {
+								Vector3d v = hitPt - startPt;
+								v.normalize();
+								double dpHitFace = v.dot(nearFaceNorm);
+								double dpStartFace = v.dot(startFaceNorm);
+								if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
+									minDist = minDistToPoint;
+									closestPt = hitPt;
+								}
+							}
 						}
 					}
 				}
 			}
 
-			if (minDist < params.gapBoundingBoxSemiSpan)
+			if (minDist < DBL_MAX)
 				_polyMeshIdxToGapEndPtMap.insert(make_pair(PolyMeshIndex(i, id), closestPt));
 
 			return true;
