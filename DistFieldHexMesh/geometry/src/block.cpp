@@ -1150,7 +1150,7 @@ bool Block::splitRequiredPolyhedra(const SplittingParams& params, size_t splitNu
 	return hasPendingSplits;
 }
 
-bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
+bool Block::includeFaceInDrawKey(HexMeshDrawType meshType, const std::vector<Planed>& planes, const Polygon& face) const
 {
 	bool result = false;
 
@@ -1189,61 +1189,61 @@ bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed
 	result = false;
 	switch (meshType) {
 		default:
-		case MDT_ALL:
+		case HMDT_MESH_ALL:
 			result = true;
 			break;
-		case MDT_INNER:
+		case HMDT_MESH_INNER:
 			result = isInner;
 			break;
-		case MDT_ERROR_WALL:
+		case HMDT_MESH_ERROR_WALL:
 			result = isWall;
 			break;
 
-		case MDT_BOTTOM:
+		case HMDT_MESH_BOTTOM:
 			result = face.isCoplanar(planes[CFT_BOTTOM]);
 			break;
 
-		case MDT_TOP:
+		case HMDT_MESH_TOP:
 			result = face.isCoplanar(planes[CFT_TOP]);
 			break;
 
-		case MDT_LEFT:
+		case HMDT_MESH_LEFT:
 			result = face.isCoplanar(planes[CFT_LEFT]);
 			break;
 
-		case MDT_RIGHT:
+		case HMDT_MESH_RIGHT:
 			result = face.isCoplanar(planes[CFT_RIGHT]);
 			break;
 
-		case MDT_BACK:
+		case HMDT_MESH_BACK:
 			result = face.isCoplanar(planes[CFT_BACK]);
 			break;
-		case MDT_FRONT:
+		case HMDT_MESH_FRONT:
 			result = face.isCoplanar(planes[CFT_FRONT]);
 			break;
 		
-		case MDT_MESH_LAYER_0:
+		case HMDT_MESH_LAYER_0:
 			if (layerNum == 0)
 				result = true;
 			break;
-		case MDT_MESH_LAYER_1:
+		case HMDT_MESH_LAYER_1:
 			if (layerNum == 1)
 				result = true;
 			break;
-		case MDT_MESH_LAYER_2:
+		case HMDT_MESH_LAYER_2:
 			if (layerNum == 2)
 				result = true;
 			break;
-		case MDT_MESH_LAYER_3:
+		case HMDT_MESH_LAYER_3:
 			if (layerNum == 3)
 				result = true;
 			break;
-		case MDT_MESH_LAYER_4:
+		case HMDT_MESH_LAYER_4:
 			if (layerNum == 4)
 				result = true;
 			break;
 
-		case MDT_MESH_SELECTED:
+		case HMDT_MESH_SELECTED:
 			bool includeFace = false;
 			for (const auto& cellId : face.getCellIds()) {
 				if (selectedCellIds.contains(cellId) || selectedBlockIds.contains(cellId.blockIdx())) {
@@ -1262,7 +1262,7 @@ bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed
 	return result;
 }
 
-void Block::createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlMeshFacesPtr& glPolys)
+void Block::createHexTriMesh(HexMeshDrawType meshType, const std::vector<Planed>& planes, GlMeshFacesPtr& glPolys)
 {
 	if (numFaces(true) == 0)
 		return;

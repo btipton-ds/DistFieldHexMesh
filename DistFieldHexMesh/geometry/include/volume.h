@@ -135,7 +135,7 @@ public:
 
 	void insertBlocks(const SplittingParams& params, HexFaceType face, bool multiCore);
 
-	void makeFaceTriMesh(MeshDrawType faceType, GlMeshFacesPtr& pFace, const BlockPtr& pBlock) const;
+	void makeFaceTriMesh(HexMeshDrawType faceType, GlMeshFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 	Planed getSymmetryPlaneX() const;
 	Planed getSymmetryPlaneY() const;

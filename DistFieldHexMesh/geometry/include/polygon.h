@@ -155,6 +155,8 @@ public:
 	bool containsEdge(const EdgeKey& edge) const;
 
 	Trinary isInsideSolid(const std::shared_ptr<const PolyMeshSearchTree>& pSearchTree) const;
+	Trinary needsGapTest() const;
+	void setNeedsGapTest(Trinary val);
 
 	template<class TRI_FUNC, class EDGE_FUNC>
 	void getTriPoints(TRI_FUNC triFunc, EDGE_FUNC edgeFunc) const;
@@ -266,6 +268,16 @@ private:
 inline double Polygon::bboxOffsetDist()
 {
 	return Tolerance::sameDistTol();
+}
+
+inline Trinary Polygon::needsGapTest() const
+{
+	return _needsGapTest;
+}
+
+inline void Polygon::setNeedsGapTest(Trinary val)
+{
+	_needsGapTest = val;
 }
 
 inline bool Polygon::verifyUnique() const

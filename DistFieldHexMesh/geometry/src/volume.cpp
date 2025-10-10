@@ -1011,7 +1011,7 @@ void Volume::createCrossSections(const SplittingParams& params, size_t numSplits
 				if (pSplitter && pSplitter->empty()) {
 					for (const auto& pData : model) {
 						auto& pPolyMesh = pData->getPolyMesh();
-						pPolyMesh->iterateFaces([this, &pSplitter](const Index3DId& id, const Polygon& face)->bool {
+						pPolyMesh->iteratePolygons([this, &pSplitter](const Index3DId& id, const Polygon& face)->bool {
 							const auto& nclin = face.getNonColinearVertexIds();
 							MTC::vector<const Vector3d*> pts;
 							MTC::vector<Vector3d> surfNorms;
@@ -1517,7 +1517,7 @@ void Volume::createAdHocBlockSearchTree()
 	}
 }
 
-void Volume::makeFaceTriMesh(MeshDrawType faceType, GlMeshFacesPtr& polys, const shared_ptr<Block>& pBlock) const
+void Volume::makeFaceTriMesh(HexMeshDrawType faceType, GlMeshFacesPtr& polys, const shared_ptr<Block>& pBlock) const
 {
 	CBoundingBox3Dd bbox = _modelBoundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1531,9 +1531,9 @@ void Volume::makeFaceTriMesh(MeshDrawType faceType, GlMeshFacesPtr& polys, const
 void Volume::createHexFaceTris(GlMeshFacesGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t nThreads = (multiCore && _pThreadPool) ? _pThreadPool->getNumThreads() : 1;
-	triMeshes.resize(MDT_ALL + 1);
-	for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
-		MeshDrawType ft = (MeshDrawType)j;
+	triMeshes.resize(HMDT_MESH_ALL + 1);
+	for (int j = HMDT_MESH_ERROR_WALL; j <= HMDT_MESH_ALL; j++) {
+		HexMeshDrawType ft = (HexMeshDrawType)j;
 		triMeshes[ft].resize(nThreads);
 	}
 
@@ -1546,8 +1546,8 @@ void Volume::createHexFaceTris(GlMeshFacesGroup& triMeshes, const Index3D& min, 
 			if (blkIdx[0] >= min[0] && blkIdx[1] >= min[1] && blkIdx[2] >= min[2] &&
 				blkIdx[0] <= max[0] && blkIdx[1] <= max[1] && blkIdx[2] <= max[2]) {
 
-				for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
-					MeshDrawType ft = (MeshDrawType)j;
+				for (int j = HMDT_MESH_ERROR_WALL; j <= HMDT_MESH_ALL; j++) {
+					HexMeshDrawType ft = (HexMeshDrawType)j;
 					makeFaceTriMesh(ft, triMeshes[ft][threadNum], blockPtr);
 				}
 			}
@@ -1555,8 +1555,8 @@ void Volume::createHexFaceTris(GlMeshFacesGroup& triMeshes, const Index3D& min, 
 	}, multiCore);
 
 	for (size_t i = 0; i < nThreads; i++) {
-		for (int j = MDT_ERROR_WALL; j <= MDT_ALL; j++) {
-			MeshDrawType ft = (MeshDrawType)j;
+		for (int j = HMDT_MESH_ERROR_WALL; j <= HMDT_MESH_ALL; j++) {
+			HexMeshDrawType ft = (HexMeshDrawType)j;
 #if 0
 			if (triMeshes[ft][i])
 				triMeshes[ft][i]->changed();

@@ -116,8 +116,8 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void postDrawFaces() override;
 
 	private:
-		static DrawStates faceTypeToDrawState(MeshDrawType ft);
-		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, MeshDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
+		static DrawStates faceTypeToDrawState(HexMeshDrawType ft);
+		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, HexMeshDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
 		void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
 		void createBlockMeshStorage(const GlMeshFacesVector& faces);
 

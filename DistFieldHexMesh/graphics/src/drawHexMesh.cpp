@@ -55,75 +55,75 @@ DrawHexMesh::~DrawHexMesh()
 
 }
 
-DrawStates DrawHexMesh::faceTypeToDrawState(MeshDrawType ft)
+DrawStates DrawHexMesh::faceTypeToDrawState(HexMeshDrawType ft)
 {
     switch (ft) {
-    case MDT_ERROR_WALL:
+    case HMDT_MESH_ERROR_WALL:
         return DS_MESH_ERROR_WALL;
-    case MDT_INNER:
+    case HMDT_MESH_INNER:
         return DS_MESH_INNER;
-    case MDT_BOTTOM:
+    case HMDT_MESH_BOTTOM:
         return DS_MESH_BOTTOM;
-    case MDT_TOP:
+    case HMDT_MESH_TOP:
         return DS_MESH_TOP;
-    case MDT_LEFT:
+    case HMDT_MESH_LEFT:
         return DS_MESH_LEFT;
-    case MDT_RIGHT:
+    case HMDT_MESH_RIGHT:
         return DS_MESH_RIGHT;
-    case MDT_BACK:
+    case HMDT_MESH_BACK:
         return DS_MESH_BACK;
-    case MDT_FRONT:
+    case HMDT_MESH_FRONT:
         return DS_MESH_FRONT;
 
-    case MDT_MESH_LAYER_0:
+    case HMDT_MESH_LAYER_0:
         return DS_MESH_LAYER_0;
-    case MDT_MESH_LAYER_1:
+    case HMDT_MESH_LAYER_1:
         return DS_MESH_LAYER_1;
-    case MDT_MESH_LAYER_2:
+    case HMDT_MESH_LAYER_2:
         return DS_MESH_LAYER_2;
-    case MDT_MESH_LAYER_3:
+    case HMDT_MESH_LAYER_3:
         return DS_MESH_LAYER_3;
-    case MDT_MESH_LAYER_4:
+    case HMDT_MESH_LAYER_4:
         return DS_MESH_LAYER_4;
 
-    case MDT_MESH_SELECTED:
+    case HMDT_MESH_SELECTED:
         return DS_MESH_SELECTED;
 
     default:
-    case MDT_ALL:
+    case HMDT_MESH_ALL:
         return DS_MESH_ALL;
     }
 
 }
 
-bool DrawHexMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, MeshDrawType ft, vector<OGL::IndicesPtr>& tessellations)
+bool DrawHexMesh::includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, HexMeshDrawType ft, vector<OGL::IndicesPtr>& tessellations)
 {
     if (enabled) {
         DFHM::DrawStates drawState = faceTypeToDrawState(ft);
         DFHM::DrawStates drawState2;
-        MeshDrawType ft2;
+        HexMeshDrawType ft2;
         bool useDrawState2 = false;
         switch (ft) {
         default:
             break;
-        case MDT_MESH_LAYER_1:
+        case HMDT_MESH_LAYER_1:
             drawState2 = DS_MESH_LAYER_0_OPAQUE;
-            ft2 = MDT_MESH_LAYER_0;
+            ft2 = HMDT_MESH_LAYER_0;
             useDrawState2 = true;
             break;
-        case MDT_MESH_LAYER_2:
+        case HMDT_MESH_LAYER_2:
             drawState2 = DS_MESH_LAYER_1_OPAQUE;
-            ft2 = MDT_MESH_LAYER_1;
+            ft2 = HMDT_MESH_LAYER_1;
             useDrawState2 = true;
             break;
-        case MDT_MESH_LAYER_3:
+        case HMDT_MESH_LAYER_3:
             drawState2 = DS_MESH_LAYER_2_OPAQUE;
-            ft2 = MDT_MESH_LAYER_2;
+            ft2 = HMDT_MESH_LAYER_2;
             useDrawState2 = true;
             break;
-        case MDT_MESH_LAYER_4:
+        case HMDT_MESH_LAYER_4:
             drawState2 = DS_MESH_LAYER_3_OPAQUE;
-            ft2 = MDT_MESH_LAYER_3;
+            ft2 = HMDT_MESH_LAYER_3;
             useDrawState2 = true;
             break;
         }
@@ -202,18 +202,18 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
     GlMeshFacesGroup blockMeshes;
 
-    _triIndices.resize(MDT_ALL + 1);
-    _edgeIndices.resize(MDT_ALL + 1);
-    _faceTessellations.resize(MDT_ALL + 1);
-    _edgeTessellations.resize(MDT_ALL + 1);
+    _triIndices.resize(HMDT_MESH_ALL + 1);
+    _edgeIndices.resize(HMDT_MESH_ALL + 1);
+    _faceTessellations.resize(HMDT_MESH_ALL + 1);
+    _edgeTessellations.resize(HMDT_MESH_ALL + 1);
 
     pVolume->createHexFaceTris(blockMeshes, min, max, multiCore);
 
-    createBlockMeshStorage(blockMeshes[MDT_ALL]);
+    createBlockMeshStorage(blockMeshes[HMDT_MESH_ALL]);
 
     MultiCore::runLambda([this, &blockMeshes](size_t threadNum, size_t numThreads) {
-        for (size_t mode = threadNum; mode < MDT_ALL; mode += numThreads) {
-            MeshDrawType faceType = (MeshDrawType)mode;
+        for (size_t mode = threadNum; mode < HMDT_MESH_ALL; mode += numThreads) {
+            HexMeshDrawType faceType = (HexMeshDrawType)mode;
             auto& thisGroup = blockMeshes[mode];
 
             std::map<GLEdge, size_t> localEdgeMap;
@@ -270,23 +270,23 @@ void DrawHexMesh::copyHexFaceTablesToVBOs()
     // This stores the points and normals for all drawing
     vector<float> triParameters;
     triParameters.resize(_triPoints.size(), 0);
-    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(DS_MESH_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[MDT_ALL]);
-    _faceTessellations[MDT_ALL] = pFaceTess;
+    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(DS_MESH_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[HMDT_MESH_ALL]);
+    _faceTessellations[HMDT_MESH_ALL] = pFaceTess;
 
-    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(DS_MESH_ALL, 0, _edgePoints, _edgeIndices[MDT_ALL]);
-    _edgeTessellations[MDT_ALL] = pEdgeTess;
+    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(DS_MESH_ALL, 0, _edgePoints, _edgeIndices[HMDT_MESH_ALL]);
+    _edgeTessellations[HMDT_MESH_ALL] = pEdgeTess;
 
-    // This only stores indices which reference MDT_ALL
-    for (size_t mode = 0; mode < MDT_ALL; mode++) {
-        MeshDrawType faceType = (MeshDrawType)mode;
+    // This only stores indices which reference HMDT_MESH_ALL
+    for (size_t mode = 0; mode < HMDT_MESH_ALL; mode++) {
+        HexMeshDrawType faceType = (HexMeshDrawType)mode;
         DrawStates ds = faceTypeToDrawState(faceType);
         if (!_triIndices[mode].empty()) {
-            auto pFaceTess = faceVBO.setFaceTessellation(ds, _faceTessellations[MDT_ALL], _triIndices[mode]);
+            auto pFaceTess = faceVBO.setFaceTessellation(ds, _faceTessellations[HMDT_MESH_ALL], _triIndices[mode]);
             _faceTessellations[faceType] = pFaceTess;
         }
 
         if (!_edgeIndices[mode].empty()) {
-            auto pEdgeTess = edgeVBO.setEdgeSegTessellation(ds, _edgeTessellations[MDT_ALL], _edgeIndices[mode]);
+            auto pEdgeTess = edgeVBO.setEdgeSegTessellation(ds, _edgeTessellations[HMDT_MESH_ALL], _edgeIndices[mode]);
             _edgeTessellations[faceType] = pEdgeTess;
         }
     }
@@ -302,24 +302,24 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
     if (tess.empty())
         return;
 
-    bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, MDT_ALL, tess);
+    bool blocksAdded = includeElementIndices(_options.showSelectedBlocks, VBO, HMDT_MESH_ALL, tess);
     if (!blocksAdded) {            
-        blocksAdded |= includeElementIndices(_options.showAll, VBO, MDT_ALL, tess);
-        blocksAdded |= includeElementIndices(_options.showErrorWalls, VBO, MDT_ERROR_WALL, tess);
-        blocksAdded |= includeElementIndices(_options.showBack, VBO, MDT_BACK, tess); 
-        blocksAdded |= includeElementIndices(_options.showFront, VBO, MDT_FRONT, tess); 
-        blocksAdded |= includeElementIndices(_options.showLeft, VBO, MDT_LEFT, tess); 
-        blocksAdded |= includeElementIndices(_options.showRight, VBO, MDT_RIGHT, tess); 
-        blocksAdded |= includeElementIndices(_options.showBottom, VBO, MDT_BOTTOM, tess); 
-        blocksAdded |= includeElementIndices(_options.showTop, VBO, MDT_TOP, tess); 
+        blocksAdded |= includeElementIndices(_options.showAll, VBO, HMDT_MESH_ALL, tess);
+        blocksAdded |= includeElementIndices(_options.showErrorWalls, VBO, HMDT_MESH_ERROR_WALL, tess);
+        blocksAdded |= includeElementIndices(_options.showBack, VBO, HMDT_MESH_BACK, tess); 
+        blocksAdded |= includeElementIndices(_options.showFront, VBO, HMDT_MESH_FRONT, tess); 
+        blocksAdded |= includeElementIndices(_options.showLeft, VBO, HMDT_MESH_LEFT, tess); 
+        blocksAdded |= includeElementIndices(_options.showRight, VBO, HMDT_MESH_RIGHT, tess); 
+        blocksAdded |= includeElementIndices(_options.showBottom, VBO, HMDT_MESH_BOTTOM, tess); 
+        blocksAdded |= includeElementIndices(_options.showTop, VBO, HMDT_MESH_TOP, tess); 
 
-        blocksAdded |= includeElementIndices(_options.layers[0], VBO, MDT_MESH_LAYER_0, tess);
-        blocksAdded |= includeElementIndices(_options.layers[1], VBO, MDT_MESH_LAYER_1, tess);
-        blocksAdded |= includeElementIndices(_options.layers[2], VBO, MDT_MESH_LAYER_2, tess);
-        blocksAdded |= includeElementIndices(_options.layers[3], VBO, MDT_MESH_LAYER_3, tess);
-        blocksAdded |= includeElementIndices(_options.layers[4], VBO, MDT_MESH_LAYER_4, tess);
+        blocksAdded |= includeElementIndices(_options.layers[0], VBO, HMDT_MESH_LAYER_0, tess);
+        blocksAdded |= includeElementIndices(_options.layers[1], VBO, HMDT_MESH_LAYER_1, tess);
+        blocksAdded |= includeElementIndices(_options.layers[2], VBO, HMDT_MESH_LAYER_2, tess);
+        blocksAdded |= includeElementIndices(_options.layers[3], VBO, HMDT_MESH_LAYER_3, tess);
+        blocksAdded |= includeElementIndices(_options.layers[4], VBO, HMDT_MESH_LAYER_4, tess);
 
-        blocksAdded |= includeElementIndices(true, VBO, MDT_MESH_SELECTED, tess);
+        blocksAdded |= includeElementIndices(true, VBO, HMDT_MESH_SELECTED, tess);
     }
 }
 
@@ -562,7 +562,7 @@ void DrawHexMesh::createBlockMeshStorage(const GlMeshFacesVector& faces)
                 Vector3f ptf((float)tmpTriPoints[3 * i + 0], (float)tmpTriPoints[3 * i + 1], (float)tmpTriPoints[3 * i + 2]);
                 Vector3f normf((float)tmpTriNormals[3 * i + 0], (float)tmpTriNormals[3 * i + 1], (float)tmpTriNormals[3 * i + 2]);
                 size_t idx = getVertexIdx(ptf, normf);
-                _triIndices[MDT_ALL].push_back(idx);
+                _triIndices[HMDT_MESH_ALL].push_back(idx);
             }
         }
 
@@ -582,8 +582,8 @@ void DrawHexMesh::createBlockMeshStorage(const GlMeshFacesVector& faces)
                 GLEdge e(idx0, idx1);
                 if (_edgeMap.find(e) == _edgeMap.end()) {
                     size_t eIdx = _edgeIndices.size() / 2;
-                    _edgeIndices[MDT_ALL].push_back(idx0);
-                    _edgeIndices[MDT_ALL].push_back(idx1);
+                    _edgeIndices[HMDT_MESH_ALL].push_back(idx0);
+                    _edgeIndices[HMDT_MESH_ALL].push_back(idx1);
                     _edgeMap.insert(make_pair(e, eIdx));
                 }
             }

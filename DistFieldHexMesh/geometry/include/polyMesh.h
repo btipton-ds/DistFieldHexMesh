@@ -76,6 +76,8 @@ namespace DFHM {
 		const Block* getOwner(const Index3D& blockIdx) const override;
 		Block* getOwner(const Index3D& blockIdx) override;
 
+		size_t numPolygons() const;
+
 		const PolyMesh* getPolyMeshPtr() const override;
 		PolyMesh* getPolyMeshPtr() override;
 
@@ -94,7 +96,9 @@ namespace DFHM {
 		void iterateVertices(VERT_FUNC vertFunc) ;
 
 		template<class FACE_FUNC>
-		void iterateFaces(FACE_FUNC faceFunc) const;
+		void iteratePolygons(FACE_FUNC faceFunc) const;
+		template<class FACE_FUNC>
+		void iteratePolygons(FACE_FUNC faceFunc);
 
 		void getGlTriPoints(std::vector<float>& result) const;
 		void getGlTriNormals(std::vector<float>& result) const;
@@ -154,6 +158,11 @@ namespace DFHM {
 		mutable Trinary _isClosed = IS_UNKNOWN;
 	};
 
+	inline size_t PolyMesh::numPolygons() const
+	{
+		return _polygons.size();
+	}
+
 	template<class VERT_FUNC>
 	void PolyMesh::iterateVertices(VERT_FUNC vertFunc) const {
 		_vertices.iterateInOrder(vertFunc);
@@ -165,7 +174,12 @@ namespace DFHM {
 	}
 
 	template<class FACE_FUNC>
-	inline void PolyMesh::iterateFaces(FACE_FUNC faceFunc) const {
+	inline void PolyMesh::iteratePolygons(FACE_FUNC faceFunc) const {
+		_polygons.iterateInOrder(faceFunc);
+	}
+
+	template<class FACE_FUNC>
+	inline void PolyMesh::iteratePolygons(FACE_FUNC faceFunc) {
 		_polygons.iterateInOrder(faceFunc);
 	}
 

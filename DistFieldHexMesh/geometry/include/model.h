@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <triMeshIndex.h>
 #include <polyMeshIndex.h>
 #include <triMeshTypeDefs.h>
+#include <glMeshData.h>
 
 namespace DFHM {
 
@@ -96,6 +97,7 @@ public:
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;
 
 	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
+	Polygon* getPolygon(const PolyMeshIndex& idx);
 	const Vertex* getVertex(const PolyMeshIndex& idx) const;
 
 	void rebuildSearchTree();
@@ -104,7 +106,11 @@ public:
 
 	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
 
+	void createFaceTris(GlMeshFacesGroup& blockMeshes, bool multiCore) const;
+
 private:
+	bool includeFaceInDrawKey(ModelMeshDrawType drawType, bool isClosed, const Polygon& face) const;
+		
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
 	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;

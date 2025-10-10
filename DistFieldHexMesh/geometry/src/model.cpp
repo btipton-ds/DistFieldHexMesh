@@ -92,7 +92,7 @@ void Model::rebuildSearchTree()
 		auto& pPolyMesh = pData->getPolyMesh();
 
 		if (pPolyMesh) {
-			pPolyMesh->iterateFaces([this, meshIdx](const Index3DId& id, const Polygon& face) {
+			pPolyMesh->iteratePolygons([this, meshIdx](const Index3DId& id, const Polygon& face) {
 				auto bb = face.getBBox();
 				_pPolyMeshSearchTree->add(bb, PolyMeshIndex(meshIdx, id));
 
@@ -106,56 +106,96 @@ void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-
+#if 1
+	vector<PolyMeshIndex> allIndices;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		auto& pMeshData = _modelMeshData[i];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();
-		pStartPolyMesh->iterateVertices([this, &pStartPolyMesh, &params, i](const Index3DId& id, Vertex& vert)->bool {
-			const double minDotProduct = sin(20 * M_PI / 180.0);
-			double minDist = DBL_MAX;
-			Vector3d closestPt;
-			const auto& startPt = vert.getPoint();
-			auto& startFaceIds = vert.getFaceIds();
-			vector<Vector3d> startFaceNorms;
-			for (const auto& startFaceId : startFaceIds) {
-				auto& startFace = pStartPolyMesh->getPolygon(startFaceId);
-				const auto& startFaceNorm = startFace.calUnitNormal();
-				startFaceNorms.push_back(startFaceNorm);
-			}
 
-			CBoundingBox3Dd bbox(startPt);
+		pStartPolyMesh->iteratePolygons([this, &allIndices, i](const Index3DId& id, Polygon& face)->bool {
+			allIndices.push_back(PolyMeshIndex(i, id));
+			return true;
+		});
+	}
+
+	MultiCore::runLambda([this, &params, &allIndices](size_t index)->bool {
+		const double minDotProduct = sin(20 * M_PI / 180.0);
+
+		const auto id = allIndices[index];
+		auto pStartModelData = _modelMeshData[id.getMeshIdx()];
+		auto pStartMesh = pStartModelData->getPolyMesh();
+		auto pStartFace = getPolygon(id);
+		if (!pStartFace || pStartFace->needsGapTest() != IS_UNKNOWN)
+			return true; // skip this one
+
+		pStartFace->setNeedsGapTest(IS_FALSE);
+		const auto& startFaceNorm = pStartFace->calUnitNormal();
+		const auto& vertIds = pStartFace->getVertexIds();
+
+		CBoundingBox3Dd bbox;
+		Vector3d hitPt;
+		for (const auto& vertId : vertIds) {
+			const auto& startPt = pStartMesh->getVertexPoint(vertId);
+
+			bbox = CBoundingBox3Dd (startPt);
 			bbox.grow(params.gapBoundingBoxSemiSpan);
 			std::vector<PolyMeshIndex> nearFaceIds;
 			if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 				for (size_t i = 0; i < nearFaceIds.size(); i++) {
 					const auto& nearFace = getPolygon(nearFaceIds[i]);
 					const auto& nearFaceNorm = nearFace->calUnitNormal();
-					for (const auto& startFaceNorm : startFaceNorms) {
-						double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
-						if (dpFaceFace < -minDotProduct) {
-							Vector3d hitPt;
-							double minDistToPoint = nearFace->minDistToPoint(startPt, hitPt);
-							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan && minDistToPoint < minDist) {
-								Vector3d v = hitPt - startPt;
-								v.normalize();
-								double dpHitFace = v.dot(nearFaceNorm);
-								double dpStartFace = v.dot(startFaceNorm);
-								if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
-									minDist = minDistToPoint;
-									closestPt = hitPt;
-								}
+
+					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
+					if (dpFaceFace < -minDotProduct) {
+						double minDistToPoint = nearFace->minDistToPoint(startPt, hitPt);
+						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+							Vector3d v = hitPt - startPt;
+							v.normalize();
+							double dpHitFace = v.dot(nearFaceNorm);
+							double dpStartFace = v.dot(startFaceNorm);
+							if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
+								pStartFace->setNeedsGapTest(IS_TRUE);
+								break;
 							}
 						}
 					}
 				}
 			}
+		}
 
-			if (minDist < DBL_MAX)
-				_polyMeshIdxToGapEndPtMap.insert(make_pair(PolyMeshIndex(i, id), closestPt));
-
+		if (pStartFace->needsGapTest() != IS_UNKNOWN)
 			return true;
-		});
-	}
+
+		const Vector3d& ctr = pStartFace->calCentroid();
+		bbox = CBoundingBox3Dd(ctr);
+		bbox.grow(params.gapBoundingBoxSemiSpan);
+		std::vector<PolyMeshIndex> nearFaceIds;
+		if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
+			for (size_t i = 0; i < nearFaceIds.size(); i++) {
+				const auto& nearFace = getPolygon(nearFaceIds[i]);
+				const auto& nearFaceNorm = nearFace->calUnitNormal();
+
+				double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
+				if (dpFaceFace < -minDotProduct) {
+					double minDistToPoint = nearFace->minDistToPoint(ctr, hitPt);
+					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+						Vector3d v = hitPt - ctr;
+						v.normalize();
+						double dpHitFace = v.dot(nearFaceNorm);
+						double dpStartFace = v.dot(startFaceNorm);
+						if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
+							pStartFace->setNeedsGapTest(IS_TRUE);
+							return true;
+						}
+					}
+				}
+			}
+		}
+
+		return true;
+	}, allIndices.size(), RUN_MULTI_THREAD);
+
+#endif
 }
 
 void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
@@ -165,6 +205,69 @@ void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
 			pData->getPolyMesh()->initSymmetry(symPlanes);
 		}
 	}
+}
+
+void Model::createFaceTris(GlMeshFacesGroup& blockMeshes, bool multiCore) const
+{
+
+	size_t nThreads = 1; // (multiCore && pThreadPool) ? pThreadPool->getNumThreads() : 1;
+	blockMeshes.resize(MMDT_MODEL_ALL + 1);
+	for (int j = MMDT_MODEL_SOLID; j <= MMDT_MODEL_ALL; j++) {
+		ModelMeshDrawType ft = (ModelMeshDrawType)j;
+		blockMeshes[ft].resize(nThreads);
+	}
+
+	for (int mode = MMDT_MODEL_SOLID; mode <= MMDT_MODEL_ALL; mode++) {
+		for (const auto& pData : _modelMeshData) {
+			const auto& pMesh = pData->getPolyMesh();
+			if (pMesh->numPolygons() == 0)
+				return;
+
+			bool isClosed = pMesh->isClosed();
+
+			ModelMeshDrawType drawType = (ModelMeshDrawType)mode;
+			if (!blockMeshes[mode][0])
+				blockMeshes[mode][0] = make_shared<GlMeshFaces>();
+			auto& glPolys = blockMeshes[mode][0];
+
+			pMesh->iteratePolygons([this, drawType, isClosed, &glPolys](const Index3DId& id, const Polygon& face)->bool {
+				if (includeFaceInDrawKey(drawType, isClosed, face)) {
+					glPolys->addFace(face);
+				}
+				return true;
+			});
+		}
+	}
+}
+
+bool Model::includeFaceInDrawKey(ModelMeshDrawType drawType, bool isClosed, const Polygon& face) const
+{
+	bool needsGapTest = face.needsGapTest() == IS_TRUE;
+
+	if (drawType == MMDT_MODEL_ALL)
+		return true;
+
+	if (needsGapTest) {
+		switch (drawType) {
+		default:
+			return false;
+		case MMDT_MODEL_SOLID_GAP:
+			return isClosed;
+		case MMDT_MODEL_SURFACE_GAP:
+			return !isClosed;
+		}
+	} else {
+		switch (drawType) {
+		default:
+			return false;
+		case MMDT_MODEL_SOLID:
+			return isClosed;
+		case MMDT_MODEL_SURFACE:
+			return !isClosed;
+		}
+	}
+
+	return false;
 }
 
 bool Model::isClosed(const PolyMeshIndex& id) const
@@ -309,6 +412,17 @@ bool DFHM::Model::rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir)
 }
 
 const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
+{
+	size_t meshIdx = idx.getMeshIdx();
+	if (meshIdx < _modelMeshData.size()) {
+		auto pData = _modelMeshData[meshIdx];
+		auto pMesh = pData->getPolyMesh();
+		return &pMesh->getPolygon(idx.getPolyId());
+	}
+	return nullptr;
+}
+
+DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx)
 {
 	size_t meshIdx = idx.getMeshIdx();
 	if (meshIdx < _modelMeshData.size()) {
