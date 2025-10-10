@@ -142,7 +142,10 @@ void Model::calculateGaps(const SplittingParams& params)
 			std::vector<PolyMeshIndex> nearFaceIds;
 			if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 				for (size_t i = 0; i < nearFaceIds.size(); i++) {
-					const auto& nearFace = getPolygon(nearFaceIds[i]);
+					const auto& nearFaceId = nearFaceIds[i];
+					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
+					bool nearModelisClosed = pMesh->isClosed();
+					const auto& nearFace = getPolygon(nearFaceId);
 					const auto& nearFaceNorm = nearFace->calUnitNormal();
 
 					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
@@ -153,7 +156,7 @@ void Model::calculateGaps(const SplittingParams& params)
 							v.normalize();
 							double dpHitFace = v.dot(nearFaceNorm);
 							double dpStartFace = v.dot(startFaceNorm);
-							if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
+							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
 								pStartFace->setNeedsGapTest(IS_TRUE);
 								break;
 							}
