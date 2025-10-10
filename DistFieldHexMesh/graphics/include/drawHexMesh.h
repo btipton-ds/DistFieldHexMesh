@@ -119,23 +119,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		static DrawStates faceTypeToDrawState(MeshDrawType ft);
 		static bool includeElementIndices(bool enabled, OGL::MultiVboHandler& VBO, MeshDrawType ft, std::vector<OGL::IndicesPtr>& tessellations);
 		void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
-		struct VertexPointAndNormal {
-			VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());
-			bool operator < (const VertexPointAndNormal& rhs) const;
-			Vector3<int> _iPoint, _iNormal;
-		};
-
-		struct GLEdge {
-			GLEdge(unsigned int idx0 = -1, unsigned int idx1 = -1);
-			GLEdge(const GLEdge& src) = default;
-
-			bool operator < (const GLEdge& rhs) const;
-
-			const unsigned int _idx0;
-			const unsigned int _idx1;
-		};
-
-		void createBlockMeshStorage(const Block::GlHexFacesVector& faces);
+		void createBlockMeshStorage(const GlMeshFacesVector& faces);
 
 		size_t getVertexIdx(const Vector3f& pt);
 		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);

@@ -109,12 +109,12 @@ public:
 	CBoundingBox3Dd getModelBBox() const;
 	CBoundingBox3Dd getVolumeBBox() const;
 
-	void addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges);
+	void addAllBlocks(GlMeshFacesGroup& triMeshes, glPointsGroup& faceEdges);
 
 	void createBaseVolume(const SplittingParams& params, const Vector3d pts[8], const CMesh::BoundingBox& volBox, ProgressReporter* pReporter, bool multiCore);
 	void divideHexMesh(const Model& meshData, const SplittingParams& params, ProgressReporter* pReporter, bool multiCore);
 
-	void createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
+	void createHexFaceTris(GlMeshFacesGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const;
 
 	size_t numFaces(bool includeInner) const;
 	size_t numPolyhedra() const;
@@ -135,7 +135,7 @@ public:
 
 	void insertBlocks(const SplittingParams& params, HexFaceType face, bool multiCore);
 
-	void makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& pFace, const BlockPtr& pBlock) const;
+	void makeFaceTriMesh(MeshDrawType faceType, GlMeshFacesPtr& pFace, const BlockPtr& pBlock) const;
 	void getModelBoundaryPlanes(std::vector<Planed>& vals) const;
 	Planed getSymmetryPlaneX() const;
 	Planed getSymmetryPlaneY() const;

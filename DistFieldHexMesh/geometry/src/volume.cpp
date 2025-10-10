@@ -415,7 +415,7 @@ CBoundingBox3Dd Volume::getVolumeBBox() const
 	return result;
 }
 
-void Volume::addAllBlocks(Block::GlHexMeshGroup& triMeshes, Block::glPointsGroup& faceEdges)
+void Volume::addAllBlocks(GlMeshFacesGroup& triMeshes, glPointsGroup& faceEdges)
 {
 	const auto& dim = volDim();
 
@@ -1517,7 +1517,7 @@ void Volume::createAdHocBlockSearchTree()
 	}
 }
 
-void Volume::makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& polys, const shared_ptr<Block>& pBlock) const
+void Volume::makeFaceTriMesh(MeshDrawType faceType, GlMeshFacesPtr& polys, const shared_ptr<Block>& pBlock) const
 {
 	CBoundingBox3Dd bbox = _modelBoundingBox;
 	bbox.merge(pBlock->_boundBox);
@@ -1528,7 +1528,7 @@ void Volume::makeFaceTriMesh(MeshDrawType faceType, Block::GlHexFacesPtr& polys,
 	pBlock->createHexTriMesh(faceType, planes, polys);
 }
 
-void Volume::createHexFaceTris(Block::GlHexMeshGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
+void Volume::createHexFaceTris(GlMeshFacesGroup& triMeshes, const Index3D& min, const Index3D& max, bool multiCore) const
 {
 	size_t nThreads = (multiCore && _pThreadPool) ? _pThreadPool->getNumThreads() : 1;
 	triMeshes.resize(MDT_ALL + 1);

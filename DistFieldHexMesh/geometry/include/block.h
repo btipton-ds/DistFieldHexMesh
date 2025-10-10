@@ -43,12 +43,14 @@ This file is part of the DistFieldHexMesh application/library.
 #include <pool_set.h>
 #include <logger.h>
 #include <lambdaMacros.h>
+#include <glMeshData.h>
 #include <vertex.h>
 #include <unalignedBBox.h>
 #include <polygon.h>
 #include <polyhedron.h>
 #include <vertexSpatialTree.h>
 #include <fastBisectionSet.h>
+#include <glMeshData.h>
 
 #if USE_MULTI_THREAD_CONTAINERS
 #include <local_heap.h>
@@ -74,36 +76,6 @@ class Splitter3D;
 
 class Block : public ObjectPoolOwner {
 public:
-	class GlPoints : public std::vector<float>
-	{
-	public:
-		GlPoints();
-		GlPoints(const GlPoints& src);
-		size_t getId() const;
-		size_t changeNumber() const;
-		void changed();
-	private:
-		static std::atomic<size_t> _statId;
-		size_t _id, _changeNumber = 0;
-	};
-
-	using glPointsPtr = std::shared_ptr<GlPoints>;
-	using glPointsVector = std::vector<glPointsPtr>;
-	using glPointsGroup = std::vector<glPointsVector>;
-
-	struct GlHexFaces {
-		// all faces for a block
-		void addFace(const Block& blk, const Polygon& face);
-		void addTriangle(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2);
-		size_t numTriVertices() const;
-		size_t numEdgeVertices() const;
-
-		std::vector<float> _glTriPoints, _glTriNormals, _glEdgePoints;
-	};
-
-	using GlHexFacesPtr = std::shared_ptr<GlHexFaces>;
-	using GlHexFacesVector = std::vector<GlHexFacesPtr>;
-	using GlHexMeshGroup = std::vector<GlHexFacesVector>;
 
 	Block(Volume* pVol, const Index3D& blockIdx, const std::vector<Vector3d>& pts, bool forReading = false);
 	Block(Volume* pVol, const Index3D& blockIdx, const Vector3d pts[8], bool forReading = false);
@@ -156,7 +128,7 @@ public:
 	const Model& getModel() const;
 	const std::shared_ptr<const PolyMeshSearchTree>& getPolySearchTree() const;
 	void deleteModelSearchTree();
-	void createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& polys);
+	void createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlMeshFacesPtr& polys);
 
 	Index3DId addVertex(const Vector3d& pt, const Index3DId& currentId = Index3DId());
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
@@ -319,24 +291,9 @@ private:
 #endif
 };
 
-inline size_t Block::GlPoints::getId() const
-{
-	return _id;
-}
-
 inline const UnalignedBBoxd& Block::getUnalignedBBox() const
 {
 	return _corners;
-}
-
-inline size_t Block::GlPoints::changeNumber() const
-{
-	return _changeNumber;
-}
-
-inline void Block::GlPoints::changed()
-{
-	_changeNumber++;
 }
 
 inline size_t Block::blockDim() const

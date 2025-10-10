@@ -93,6 +93,7 @@ add_executable (DistFieldHexMesh
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
+	"geometry/src/glMeshData.cpp"
 	"geometry/src/gradingOp.cpp"
 	"geometry/src/lineSegment2D.cpp"
 	"geometry/src/meshData.cpp"
@@ -102,6 +103,7 @@ add_executable (DistFieldHexMesh
 	"geometry/src/polygonSearchKey.cpp"
 	"geometry/src/polyHedron.cpp"
 	"geometry/src/polyMesh.cpp"
+    "geometry/src/rayModelIntersector.cpp"
     "geometry/src/splitter2D.cpp" 
 	"geometry/src/splitter3D.cpp"
 	"geometry/src/unalignedBBox.cpp"
@@ -135,7 +137,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-    "geometry/src/rayModelIntersector.cpp")
+)
 
 if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
 	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
@@ -201,6 +203,7 @@ add_executable (TestDFM
     "geometry/src/edge.cpp"
 	"geometry/src/edgeKey.cpp"
 	"geometry/src/fixedPoint.cpp"
+	"geometry/src/glMeshData.cpp"
 	"geometry/src/gradingOp.cpp"
 	"geometry/src/lineSegment2D.cpp"
 	"geometry/src/meshData.cpp"

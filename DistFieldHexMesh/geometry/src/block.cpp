@@ -57,18 +57,6 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-atomic<size_t> Block::GlPoints::_statId = 0;
-
-Block::GlPoints::GlPoints()
-{
-	_id = _statId++;
-}
-Block::GlPoints::GlPoints(const GlPoints& src)
-	: vector<float>(src)
-{
-	_id = _statId++;
-}
-
 Block::Block(Volume* pVol, const Index3D& blockIdx, const vector<Vector3d>& pts, bool forReading)
 	: Block(pVol, blockIdx, pts.data(), forReading)
 {
@@ -1274,85 +1262,17 @@ bool Block::includeFaceInDrawKey(MeshDrawType meshType, const std::vector<Planed
 	return result;
 }
 
-void Block::GlHexFaces::addTriangle(const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)
-{
-	Vector3d v0 = pt0 - pt1;
-	Vector3d v1 = pt2 - pt1;
-	Vector3d n = v0.cross(v1).normalized();
-
-	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back((float)pt0[i]);
-		_glTriNormals.push_back((float)n[i]);
-	}
-
-	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back((float)pt1[i]);
-		_glTriNormals.push_back((float)n[i]);
-	}
-
-	for (int i = 0; i < 3; i++) {
-		_glTriPoints.push_back((float)pt2[i]);
-		_glTriNormals.push_back((float)n[i]);
-	}
-
-}
-
-void Block::GlHexFaces::addFace(const Block& blk, const Polygon& face)
-{
-	auto triFunc = [this](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2) {
-		Vector3d v0 = pt0 - pt1;
-		Vector3d v1 = pt2 - pt1;
-		Vector3d n = v0.cross(v1).normalized();
-
-		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back((float)pt0[i]);
-			_glTriNormals.push_back((float)n[i]);
-		}
-
-		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back((float)pt1[i]);
-			_glTriNormals.push_back((float)n[i]);
-		}
-
-		for (int i = 0; i < 3; i++) {
-			_glTriPoints.push_back((float)pt2[i]);
-			_glTriNormals.push_back((float)n[i]);
-		}
-	};
-
-	auto edgeFunc = [this](const Vector3d& pt0, const Vector3d& pt1) {
-		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back((float)pt0[i]);
-
-		for (int i = 0; i < 3; i++)
-			_glEdgePoints.push_back((float)pt1[i]);
-	};
-
-	face.getTriPoints(triFunc, edgeFunc);
-
-}
-
-size_t Block::GlHexFaces::numTriVertices() const
-{
-	return _glTriPoints.size() / 3;
-}
-
-size_t Block::GlHexFaces::numEdgeVertices() const
-{
-	return _glEdgePoints.size() / 2;
-}
-
-void Block::createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlHexFacesPtr& glPolys)
+void Block::createHexTriMesh(MeshDrawType meshType, const std::vector<Planed>& planes, GlMeshFacesPtr& glPolys)
 {
 	if (numFaces(true) == 0)
 		return;
 
 	if (!glPolys)
-		glPolys = make_shared<GlHexFaces>();
+		glPolys = make_shared<GlMeshFaces>();
 	const auto& polys = _polygons;
 	polys.iterateInOrder([this, &glPolys, planes, meshType](const Index3DId& id, const Polygon& face)->bool {
 		if (includeFaceInDrawKey(meshType, planes, face)) {
-			glPolys->addFace(*this, face);
+			glPolys->addFace(face);
 		}
 		return true;
 	});

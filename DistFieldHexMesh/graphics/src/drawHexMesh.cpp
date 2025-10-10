@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <volume.h>
 #include <graphicsCanvas.h>
 #include <utils.h>
+#include <glMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -199,7 +200,7 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
     clearPrior();
 
-    Block::GlHexMeshGroup blockMeshes;
+    GlMeshFacesGroup blockMeshes;
 
     _triIndices.resize(MDT_ALL + 1);
     _edgeIndices.resize(MDT_ALL + 1);
@@ -544,7 +545,7 @@ void DrawHexMesh::postDrawFaces()
     glDisable(GL_BLEND);
 }
 
-void DrawHexMesh::createBlockMeshStorage(const Block::GlHexFacesVector& faces)
+void DrawHexMesh::createBlockMeshStorage(const GlMeshFacesVector& faces)
 {
     size_t triIdx = 0, edgeIdx = 0;
     for (const auto& pBlockMesh : faces) {
@@ -591,24 +592,6 @@ void DrawHexMesh::createBlockMeshStorage(const Block::GlHexFacesVector& faces)
 
 }
 
-DrawHexMesh::VertexPointAndNormal::VertexPointAndNormal(const Vector3f& pt, const Vector3f& normal)
-{
-    for (int i = 0; i < 3; i++) {
-        _iPoint[i] = (int)(pt[i] * 100000);
-        _iNormal[i] = (int)(normal[i] * 100000);
-    }
-}
-
-bool DrawHexMesh::VertexPointAndNormal::operator < (const VertexPointAndNormal& rhs) const
-{
-    if (_iPoint < rhs._iPoint)
-        return true;
-    else if (rhs._iPoint < _iPoint)
-        return false;
-
-    return _iNormal < rhs._iNormal;
-}
-
 size_t DrawHexMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
 {
     VertexPointAndNormal val(pt, normal);
@@ -643,18 +626,3 @@ size_t DrawHexMesh::getVertexIdx(const Vector3f& pt)
     return iter->second;
 }
 
-DrawHexMesh::GLEdge::GLEdge(unsigned int idx0, unsigned int idx1)
-    : _idx0(idx0 < idx1 ? idx0 : idx1)
-    , _idx1(idx0 < idx1 ? idx1 : idx0)
-{
-}
-
-bool DrawHexMesh::GLEdge::operator < (const GLEdge& rhs) const
-{
-    if (_idx0 < rhs._idx0)
-        return true;
-    else if (_idx0 > rhs._idx0)
-        return false;
-
-    return _idx1 < rhs._idx1;
-}
