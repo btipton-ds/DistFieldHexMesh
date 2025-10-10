@@ -38,6 +38,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <OGLMultiVboHandler.h>
 #include <OGLExtensions.h>
 #include <OGLShader.h>
+#include <glMultiKeyMeshData.h>
 
 namespace OGL
 {
@@ -47,7 +48,7 @@ class Shader;
 namespace DFHM {
 	class GraphicsCanvas;
 
-	class DrawMesh : public OGL::Extensions {
+	class DrawMesh : public OGL::Extensions, public GlMultiKeyMeshData {
 	public:
 
 		DrawMesh(GraphicsCanvas* pCanvas, int numLayers);

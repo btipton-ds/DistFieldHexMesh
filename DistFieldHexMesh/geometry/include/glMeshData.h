@@ -60,6 +60,12 @@ namespace DFHM {
 		std::vector<float> _glTriPoints, _glTriNormals, _glEdgePoints;
 	};
 
+	struct VertexPoint {
+		VertexPoint(const Vector3f& pt = Vector3f());
+		bool operator < (const VertexPoint& rhs) const;
+		Vector3<int> _iPoint;
+	};
+
 	struct VertexPointAndNormal {
 		VertexPointAndNormal(const Vector3f& pt = Vector3f(), const Vector3f& normal = Vector3f());
 		bool operator < (const VertexPointAndNormal& rhs) const;

@@ -31,7 +31,6 @@ This file is part of the DistFieldHexMesh application/library.
 #include <drawMesh.h>
 #include <index3D.h>
 #include <block.h>
-#include <glMultiKeyMeshData.h>
 
 namespace OGL
 {
@@ -79,7 +78,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 	};
 
 
-	class DrawHexMesh : public DrawMesh, public GlMultiKeyMeshData {
+	class DrawHexMesh : public DrawMesh {
 	public:
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();

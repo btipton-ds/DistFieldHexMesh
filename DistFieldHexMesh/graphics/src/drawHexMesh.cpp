@@ -612,7 +612,7 @@ size_t DrawHexMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
 
 size_t DrawHexMesh::getVertexIdx(const Vector3f& pt)
 {
-    VertexPointAndNormal val(pt);
+    VertexPoint val(pt);
     auto iter = _edgeVertexToIndexMap.find(val);
     if (iter == _edgeVertexToIndexMap.end()) {
         size_t idx = _edgePoints.size() / 3;

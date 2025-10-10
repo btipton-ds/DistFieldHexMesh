@@ -28,6 +28,7 @@ This file is part of the DistFieldHexMesh application/library.
 */
 
 #include <defines.h>
+#include <glMeshData.h>
 
 namespace DFHM {
 
@@ -37,7 +38,8 @@ namespace DFHM {
 		void setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src);
 
 	protected:
-		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
+		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap;
+		std::map<VertexPoint, size_t> _edgeVertexToIndexMap;
 		std::map<GLEdge, size_t> _edgeMap;
 		std::vector<float> _triPoints, _triNormals, _edgePoints; // Appears to not being cleared
 		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;

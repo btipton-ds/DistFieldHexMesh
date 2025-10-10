@@ -99,6 +99,18 @@ size_t GlMeshFaces::numEdgeVertices() const
     return _glEdgePoints.size() / 2;
 }
 
+VertexPoint::VertexPoint(const Vector3f& pt)
+{
+    for (int i = 0; i < 3; i++) {
+        _iPoint[i] = (int)(pt[i] * 100000);
+    }
+}
+
+bool VertexPoint::operator < (const VertexPoint& rhs) const
+{
+    return _iPoint < rhs._iPoint;
+}
+
 VertexPointAndNormal::VertexPointAndNormal(const Vector3f& pt, const Vector3f& normal)
 {
     for (int i = 0; i < 3; i++) {
