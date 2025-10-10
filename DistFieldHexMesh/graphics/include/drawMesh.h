@@ -66,6 +66,9 @@ namespace DFHM {
 	protected:
 		static bool toggle(bool& val);
 
+		size_t getVertexIdx(const Vector3f& pt);
+		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);
+
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key);
 		virtual OGL::MultiVBO::DrawVertexColorMode preDrawFaces(int key);
 

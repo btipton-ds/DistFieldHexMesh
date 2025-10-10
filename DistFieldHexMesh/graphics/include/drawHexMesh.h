@@ -83,6 +83,8 @@ using VolumePtr = std::shared_ptr<Volume>;
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();
 
+		void setFaceTessellations(const std::vector<OGL::IndicesPtr>& src);
+		void setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src);
 		void changeViewElements();
 
 		DECL_OPTS(Edges)
@@ -119,15 +121,15 @@ using VolumePtr = std::shared_ptr<Volume>;
 		void includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::IndicesPtr>& tess) const;
 		void createBlockMeshStorage(const GlMeshFacesVector& faces);
 
-		size_t getVertexIdx(const Vector3f& pt);
-		size_t getVertexIdx(const Vector3f& pt, const Vector3f& normal);
-
 		void clearPrior();
 		void clearPost();
 
 		int _priorDrawTwoSided = 0;
 
 		HexMeshViewOptions _options;
+
+		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
+		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
 
 	IMPL_OPTS(Edges)
@@ -145,6 +147,16 @@ using VolumePtr = std::shared_ptr<Volume>;
 	inline void DrawHexMesh::setShowSelectedBlocks(bool val)
 	{
 		_options.showSelectedBlocks = val;
+	}
+
+	inline void DrawHexMesh::setFaceTessellations(const std::vector<OGL::IndicesPtr>& src)
+	{
+		_faceTessellations = src;
+	}
+
+	inline void DrawHexMesh::setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src)
+	{
+		_edgeTessellations = src;
 	}
 
 }

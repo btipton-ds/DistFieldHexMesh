@@ -33,28 +33,13 @@ This file is part of the DistFieldHexMesh application/library.
 namespace DFHM {
 
 	class GlMultiKeyMeshData {
-	public:
-		void setFaceTessellations(const std::vector<OGL::IndicesPtr>& src);
-		void setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src);
 
 	protected:
 		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap;
 		std::map<VertexPoint, size_t> _edgeVertexToIndexMap;
 		std::map<GLEdge, size_t> _edgeMap;
 		std::vector<float> _triPoints, _triNormals, _edgePoints; // Appears to not being cleared
-		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
-		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 
 	};
-
-	inline void GlMultiKeyMeshData::setFaceTessellations(const std::vector<OGL::IndicesPtr>& src)
-	{
-		_faceTessellations = src;
-	}
-
-	inline void GlMultiKeyMeshData::setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src)
-	{
-		_edgeTessellations = src;
-	}
 
 }

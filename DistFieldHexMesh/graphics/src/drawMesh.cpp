@@ -63,6 +63,40 @@ void DrawMesh::setShader(const shared_ptr<OGL::Shader>& pShader)
     _VBOs->_edgeVBO.setShader(pShader.get());
 }
 
+size_t DrawMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
+{
+    VertexPointAndNormal val(pt, normal);
+    auto iter = _triVertexToIndexMap.find(val);
+    if (iter == _triVertexToIndexMap.end()) {
+        size_t idx = _triPoints.size() / 3;
+
+        for (int i = 0; i < 3; i++) {
+            _triPoints.push_back(pt[i]);
+            _triNormals.push_back(normal[i]);
+        }
+
+        iter = _triVertexToIndexMap.insert(make_pair(val, idx)).first;
+    }
+
+    return iter->second;
+}
+
+size_t DrawMesh::getVertexIdx(const Vector3f& pt)
+{
+    VertexPoint val(pt);
+    auto iter = _edgeVertexToIndexMap.find(val);
+    if (iter == _edgeVertexToIndexMap.end()) {
+        size_t idx = _edgePoints.size() / 3;
+        _edgePoints.push_back(pt[0]);
+        _edgePoints.push_back(pt[1]);
+        _edgePoints.push_back(pt[2]);
+
+        iter = _edgeVertexToIndexMap.insert(make_pair(val, idx)).first;
+    }
+
+    return iter->second;
+}
+
 void DrawMesh::render()
 {
     if (!_readyToDraw)
