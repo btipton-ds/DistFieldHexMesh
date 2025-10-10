@@ -31,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <drawMesh.h>
 #include <index3D.h>
 #include <block.h>
+#include <glMultiKeyMeshData.h>
 
 namespace OGL
 {
@@ -78,13 +79,11 @@ using VolumePtr = std::shared_ptr<Volume>;
 	};
 
 
-	class DrawHexMesh : public DrawMesh {
+	class DrawHexMesh : public DrawMesh, public GlMultiKeyMeshData {
 	public:
 		DrawHexMesh(GraphicsCanvas* pCanvas);
 		virtual ~DrawHexMesh();
 
-		void setFaceTessellations(const std::vector<OGL::IndicesPtr>& src);
-		void setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src);
 		void changeViewElements();
 
 		DECL_OPTS(Edges)
@@ -130,23 +129,7 @@ using VolumePtr = std::shared_ptr<Volume>;
 		int _priorDrawTwoSided = 0;
 
 		HexMeshViewOptions _options;
-
-		std::map<VertexPointAndNormal, size_t> _triVertexToIndexMap, _edgeVertexToIndexMap;
-		std::map<GLEdge, size_t> _edgeMap;
-		std::vector<float> _triPoints, _triNormals, _edgePoints; // Appears to not being cleared
-		std::vector<std::vector<unsigned int>> _triIndices, _edgeIndices;
-		std::vector<OGL::IndicesPtr> _faceTessellations, _edgeTessellations;
 	};
-
-	inline void DrawHexMesh::setFaceTessellations(const std::vector<OGL::IndicesPtr>& src)
-	{
-		_faceTessellations = src;
-	}
-
-	inline void DrawHexMesh::setEdgeTessellations(const std::vector<OGL::IndicesPtr>& src)
-	{
-		_edgeTessellations = src;
-	}
 
 	IMPL_OPTS(Edges)
 	IMPL_OPTS(Faces)
