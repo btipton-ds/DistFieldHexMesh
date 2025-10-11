@@ -134,7 +134,6 @@ private:
     void makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox);
 
     void makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh);
-    void changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw);
 
     void initMeshSearchTree();
     bool handleMeshFaceInfoClick(wxMouseEvent& event, const Rayd& ray, const std::vector<Index3DId>& hits) const;

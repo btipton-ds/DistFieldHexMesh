@@ -61,10 +61,10 @@ public:
 	DrawModelMesh(GraphicsCanvas* pCanvas);
 	virtual ~DrawModelMesh();
 
-	OGL::IndicesPtr createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData);
+	void createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData);
 	void createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData);
 
-	void changeViewElements(const Model& meshData);
+	void changeViewElements(const Model& model);
 
 	bool showSharpEdges() const;
 	bool toggleShowSharpEdges();

@@ -83,7 +83,7 @@ void MeshData::postReadCreate()
 
 void MeshData::clear()
 {
-	_faceTess = nullptr;
+	_faceTess.clear();
 	_allEdgeTess = nullptr;
 	_smoothEdgeTess = nullptr;
 	_sharpEdgeTess = nullptr;
@@ -136,7 +136,7 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
 }
 
-void MeshData::setFaceTess(const OGL::IndicesPtr& faceTess)
+void MeshData::setFaceTess(const std::vector<OGL::IndicesPtr>& faceTess)
 {
 	_faceTess = faceTess;
 }

@@ -85,10 +85,10 @@ namespace DFHM {
 
 		const PolyMeshPtr& getPolyMesh() const;
 
-		void setFaceTess(const OGL::IndicesPtr& faceTess);
+		void setFaceTess(const std::vector<OGL::IndicesPtr>& faceTess);
 		void setTessEdges(const OGL::IndicesPtr& allEdgeTess, const OGL::IndicesPtr& sharpEdgeTess, const OGL::IndicesPtr& smoothEdgeTess);
 		void setTessNormals(const OGL::IndicesPtr& normalsTess);
-		const OGL::IndicesPtr getFaceTess() const;
+		const std::vector<OGL::IndicesPtr>& getFaceTess() const;
 		const OGL::IndicesPtr getAllEdgeTess() const;
 		const OGL::IndicesPtr getSmoothEdgeTess() const;
 		const OGL::IndicesPtr getSharpEdgeTess() const;
@@ -113,8 +113,8 @@ namespace DFHM {
 		TriMesh::CMeshPtr _pMesh;
 		PolyMeshPtr _pPolyMesh;
 
+		std::vector<OGL::IndicesPtr> _faceTess;
 		OGL::IndicesPtr 
-			_faceTess, 
 			_allEdgeTess,
 			_smoothEdgeTess,
 			_sharpEdgeTess,
@@ -142,7 +142,7 @@ namespace DFHM {
 		return _active;
 	}
 
-	inline const OGL::IndicesPtr MeshData::getFaceTess() const
+	inline const std::vector<OGL::IndicesPtr>& MeshData::getFaceTess() const
 	{
 		return _faceTess;
 	}

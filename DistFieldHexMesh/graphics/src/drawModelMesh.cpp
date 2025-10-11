@@ -47,14 +47,17 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData)
+void DrawModelMesh::createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData)
 {
     const auto& pMesh = pData->getPolyMesh();
     vector<float> points, normals;
-    vector<unsigned int> vertIndices;
+
     pMesh->getGlTriPoints(points);
     pMesh->getGlTriNormals(normals);
-    pMesh->getGlTriIndices(vertIndices);
+    std::vector<std::vector<unsigned int>> triIndices;
+    pMesh->getGlTriIndices(triIndices);
+    std::vector<OGL::IndicesPtr> tessAll;
+    tessAll.resize(triIndices.size());
 
     vector<float> parameters;
     parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
@@ -67,12 +70,12 @@ OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const SplittingParams& par
     auto& faceVBO = VBOs->_faceVBO;
 
     faceVBO.beginFaceTesselation();
-    auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
+    tessAll[0] = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, triIndices[0]);
+    tessAll[1] = faceVBO.setFaceTessellation(meshId, tessAll[0], triIndices[1]);
+    tessAll[2] = faceVBO.setFaceTessellation(meshId, tessAll[0], triIndices[2]);
     faceVBO.endFaceTesselation(false);
 
-    pData->setFaceTess(tess);
-
-    return tess;
+    pData->setFaceTess(tessAll);
 }
 
 void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData)
@@ -119,19 +122,25 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
     edgeVBO.endEdgeTesselation();
 }
 
-void DrawModelMesh::changeViewElements(const Model& meshData)
+void DrawModelMesh::changeViewElements(const Model& model)
 {
-    for (size_t meshIdx = 0; meshIdx < meshData.size(); meshIdx++) {
-        auto& pData = meshData.getMeshData(meshIdx);
+    for (size_t meshIdx = 0; meshIdx < model.size(); meshIdx++) {
+        auto& pData = model.getMeshData(meshIdx);
         auto& faceVBO = getVBOs(meshIdx)->_faceVBO;
         auto& edgeVBO = getVBOs(meshIdx)->_edgeVBO;
 
         faceVBO.beginSettingElementIndices(0xffffffffffffffff);
         if (_options.showFaces) {
-            if (pData->isClosed())
-                faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, pData->getFaceTess());
-            else
-                faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, pData->getFaceTess());
+            const auto& tessAll = pData->getFaceTess();
+            if (pData->isClosed()) {
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, tessAll[1]);
+                if (tessAll[2])
+                    faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID_GAP, tessAll[2]);
+            } else {
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, tessAll[1]);
+                if (tessAll[2])
+                    faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE_GAP, tessAll[2]);
+            }
             if (_options.showTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
@@ -215,8 +224,16 @@ OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawFaces(int key)
         UBO.defColor = p4f(0.4f, 0.4f, 1.0f, 1);
         UBO.backColor = p4f(1.0f, 0, 0, 1.0f);
         break;
+    case DS_MODEL_FACES_SOLID_GAP:
+        UBO.defColor = p4f(1.f, 1.f, 0.0f, 1);
+        UBO.backColor = p4f(1.0f, 0, 0, 1.0f);
+        break;
     case DS_MODEL_FACES_SURFACE:
         UBO.defColor = p4f(0.6f, 1.0f, 0.6f, surfaceAlpha);
+        UBO.backColor = p4f(1.0f, 0.8f, 0.8f, surfaceAlpha / 2);
+        break;
+    case DS_MODEL_FACES_SURFACE_GAP:
+        UBO.defColor = p4f(1.f, 1.f, 0.0f, surfaceAlpha);
         UBO.backColor = p4f(1.0f, 0.8f, 0.8f, surfaceAlpha / 2);
         break;
     case DS_MODEL_SHARP_VERTS:

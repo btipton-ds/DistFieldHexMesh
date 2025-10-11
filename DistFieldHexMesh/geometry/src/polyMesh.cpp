@@ -1391,14 +1391,21 @@ void PolyMesh::getGlTriNormals(std::vector<float>& result) const
 	});
 }
 
-void PolyMesh::getGlTriIndices(std::vector<unsigned int>& result) const
+void PolyMesh::getGlTriIndices(std::vector<std::vector<unsigned int>>& indices) const
 {
-	result.clear();
+	indices.clear();
+	indices.resize(3);
 	unsigned int idx = 0;
-	_polygons.iterateInOrder([this, &result, &idx](const Index3DId& id, const Polygon& face)->bool {
-		face.iterateTriangles([this, &result, &idx](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+	_polygons.iterateInOrder([this, &indices, &idx](const Index3DId& id, const Polygon& face)->bool {
+		face.iterateTriangles([this, &indices, &idx, &face](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 			for (int i = 0; i < 3; i++) {
-				result.push_back(idx++);
+				indices[0].push_back(idx);
+
+				if (face.needsGapTest() == IS_TRUE)
+					indices[2].push_back(idx);
+				else
+					indices[1].push_back(idx);
+				idx++;
 			}
 			return true;
 		});

@@ -102,7 +102,7 @@ namespace DFHM {
 
 		void getGlTriPoints(std::vector<float>& result) const;
 		void getGlTriNormals(std::vector<float>& result) const;
-		void getGlTriIndices(std::vector<unsigned int>& result) const;
+		void getGlTriIndices(std::vector<std::vector<unsigned int>>& indices) const;
 
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,

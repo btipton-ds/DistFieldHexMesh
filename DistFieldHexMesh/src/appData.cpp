@@ -1265,19 +1265,6 @@ void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& param
 #endif
 }
 
-void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawModelMesh>& pDraw)
-{
-    if (!pData->isActive())
-        return;
-
-    auto& VBOs = pDraw->getVBOs(0);
-    if (pDraw->showFaces())
-        VBOs->_faceVBO.includeElementIndices(DS_MESH_FACES, pData->getFaceTess());
-    
-    if (pDraw->showEdges()) 
-        VBOs->_edgeVBO.includeElementIndices(DS_MESH_EDGES, pData->getAllEdgeTess());    
-}
-
 MeshDataConstPtr AppData::getMeshData(const std::wstring& name) const
 {
     for (const auto& pData : _model) {
