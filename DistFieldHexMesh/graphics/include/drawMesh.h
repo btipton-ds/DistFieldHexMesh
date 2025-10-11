@@ -60,6 +60,9 @@ namespace DFHM {
 		void clearVBOs();
 		const VBORecPtr& getVBOs(size_t index) const;
 
+		void setVBOActive(size_t idx, bool val);
+		bool isVBOActive(size_t idx) const;
+
 		void render();
 		void drawEdges();
 		void drawFaces();

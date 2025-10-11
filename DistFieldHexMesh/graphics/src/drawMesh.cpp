@@ -104,6 +104,19 @@ void DrawMesh::clearVBOs() {
         vbo->clear();
 }
 
+void DrawMesh::setVBOActive(size_t idx, bool val)
+{
+    if (idx < _VBOs.size())
+        _VBOs[idx]->setActive(val);
+}
+
+bool DrawMesh::isVBOActive(size_t idx) const
+{
+    if (idx < _VBOs.size())
+        return _VBOs[idx]->isActive();
+    return false;
+}
+
 const VBORecPtr& DrawMesh::getVBOs(size_t index) const
 {
     if (index >= _VBOs.size())
@@ -139,7 +152,10 @@ void DrawMesh::drawEdges()
 
     for (const auto& vbo : _VBOs) {
         if (vbo->isActive()) {
-            vbo->_edgeVBO.drawAllKeys(preDrawFunc, postDrawFunc, preTexDrawFunc, postTexDrawFunc);
+            vbo->_edgeVBO.drawAllKeys(preDrawFunc, 
+                postDrawFunc, 
+                preTexDrawFunc, 
+                postTexDrawFunc);
         }
     }
 }
@@ -163,12 +179,14 @@ void DrawMesh::drawFaces()
     };
 
     for (const auto& vbo : _VBOs) {
-        vbo->_faceVBO.drawAllKeys(
-            preDrawFunc,
-            postDrawFunc,
-            preTexDrawFunc,
-            postTexDrawFunc
-        );
+        if (vbo->isActive()) {
+            vbo->_faceVBO.drawAllKeys(
+                preDrawFunc,
+                postDrawFunc,
+                preTexDrawFunc,
+                postTexDrawFunc
+            );
+        }
     }
 }
 

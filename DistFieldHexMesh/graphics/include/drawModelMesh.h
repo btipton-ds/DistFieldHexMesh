@@ -66,6 +66,9 @@ public:
 
 	void changeViewElements(const Model& model);
 
+	bool showMesh(size_t index) const;
+	bool toggleShowMesh(size_t index);
+
 	bool showSharpEdges() const;
 	bool toggleShowSharpEdges();
 

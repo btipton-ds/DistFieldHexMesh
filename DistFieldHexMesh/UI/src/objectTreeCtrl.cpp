@@ -101,7 +101,9 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 	const auto pData = pAppData->getMeshData(name);
 	if (pData) {
 		pData->setActive(!pData->isActive());
-		_pMainFrame->getCanvas()->changeViewElements();
+		const auto& pCanvas = _pMainFrame->getCanvas();
+		auto pDraw = pCanvas->getDrawModelMesh();
+		pDraw->setVBOActive(pData->getId(), pData->isActive());
 	}
 }
 
