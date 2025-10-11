@@ -1236,25 +1236,22 @@ void MainFrame::updateStatusBar()
         lastTime = t;
         t = clock() / (double)CLOCKS_PER_SEC;
         _numCells = _numFaces = _numBytes = 0;
-        auto pVol = _pAppData->getVolume();
-        if (pVol) {
-            _numCells = pVol->numPolyhedra();
-            _numFaces = pVol->numFaces(true);
-        }
-        _numBytes = _pAppData->numBytes();
-        _numBytes += _pCanvas->numBytes();
-    }
+        if (_pAppData) {
+            auto pVol = _pAppData->getVolume();
+            if (pVol) {
+                _dim = pVol->volDim();
 
-    Index3D dim;
-    if (_pAppData) {
-        const auto& pVol = _pAppData->getVolume();
-        if (pVol)
-            dim = pVol->volDim();
+                _numCells = pVol->numPolyhedra();
+                _numFaces = pVol->numFaces(true);
+            }
+            _numBytes = _pAppData->numBytes();
+            _numBytes += _pCanvas->numBytes();
+        }
     }
 
     double mem = _numBytes / 1024.0 / 1024.0;
-    if (dim.isValid())
-        ss << L"Volume Dimension: (" << dim[0] << L"," << dim[1] << L"," << dim[2] << L"), ";
+    if (_dim.isValid())
+        ss << L"Volume Dimension: (" << _dim[0] << L"," << _dim[1] << L"," << _dim[2] << L"), ";
 
     ss << L"Num Cells: " << _numCells << ", Num Faces: " << _numFaces << ", Memory: " << mem << " mb";
     SetStatusText(ss.str());

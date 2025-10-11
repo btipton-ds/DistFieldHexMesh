@@ -370,6 +370,7 @@ private:
     size_t _numCells = 0;
     size_t _numFaces = 0;
     size_t _numBytes = 0;
+    Index3D _dim;
 
     ObjectTreeCtrl* _pObjectTree;
     AppDataPtr _pAppData;

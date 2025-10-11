@@ -92,6 +92,7 @@ public:
 	void getLoops(std::vector<std::vector<Vector2d>>& polylines, std::vector<std::vector<Vector2d>>& loops) const;
 
 	bool empty() const;
+	size_t numBytes() const;
 	size_t numEdges() const;
 	size_t findCurvaturesInPolygon(const std::vector<Vector3d>& polygon, std::vector<double>& curvatures) const;
 	void initCurvatures(const SplittingParams& params);
@@ -174,7 +175,7 @@ private:
 	bool splitWithAllPoints(const Edge2D& e0, std::set<Edge2D>& result);
 
 	mutable std::mutex _mutex;
-	mutable size_t _numHits = 0;
+	mutable size_t _numHits = 0, _numBytes = 0;
 	std::vector<Vector2d> _pts, _radiusPts;
 	std::vector<Vector3d> _surfaceNormals;
 	std::vector<double> _curvatures;
@@ -185,6 +186,11 @@ private:
 	Vector3d _xAxis, _yAxis;
 	Planed _plane;
 };
+
+inline size_t Splitter2D::numBytes() const
+{
+	return _numBytes;
+}
 
 inline size_t Splitter2D::numEdges() const 
 {

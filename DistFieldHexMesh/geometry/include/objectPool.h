@@ -279,6 +279,8 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, bool supportsReverseLooku
 	, _objectSegmentSize(objectSegmentSize)
 	, _supportsReverseLookup(supportsReverseLookup)
 {
+	_numBytes += sizeof(*this);
+
 	assert(_pPoolOwner);
 }
 
@@ -291,6 +293,8 @@ ObjectPool<T>::ObjectPool(ObjectPoolOwner* pPoolOwner, const ObjectPool& src)
 	, _elementIndexToObjIndexMap(src._elementIndexToObjIndexMap)
 	, _availableObjIndices(src._availableObjIndices)
 {
+	_numBytes += sizeof(*this);
+
 	_objSegmentPtrs.reserve(src._objSegmentPtrs.size());
 	for (size_t i = 0; i < src._objSegmentPtrs.size(); i++) {
 		const auto& pSrcVec = src._objSegmentPtrs[i];
@@ -537,8 +541,6 @@ void ObjectPool<T>::resize(size_t size)
 template<class T>
 size_t ObjectPool<T>::numBytes() const
 {
-	if (_numBytes == 0)
-		_numBytes += sizeof(*this);
 	return _numBytes;
 }
 

@@ -1591,13 +1591,19 @@ size_t Volume::numPolyhedra() const
 
 size_t Volume::numBytes() const
 {
-	// TODO Rare race condition crash
 	size_t result = sizeof(Volume);
 	for (const auto& pBlk : _blocks) {
 		if (pBlk)
 			result += pBlk->numBytes();
 	}
 
+	for (const auto& section : _crossSections) {
+		for (const auto& pair : section) {
+			result += sizeof(pair);
+			if (pair.second)
+				result += pair.second->numBytes();
+		}
+	}
 	result += _sharpEdgeIndices.size() * sizeof(size_t);
 	result += _sharpVertIndices.size() * sizeof(size_t);
 

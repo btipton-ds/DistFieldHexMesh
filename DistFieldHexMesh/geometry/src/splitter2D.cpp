@@ -40,6 +40,7 @@ using namespace DFHM;
 Splitter2D::Splitter2D(const Planed& plane)
 	: _plane(plane)
 {
+	_numBytes = sizeof(*this);
 	_xAxis = _plane.getXRef();
 	_yAxis = _plane.getNormal().cross(_xAxis);
 }
@@ -114,9 +115,13 @@ size_t Splitter2D::addPoint(const Vector2d& pt)
 	auto valXi = FixedPt::fromDbl(pt[0]);
 	auto valYi = FixedPt::fromDbl(pt[1]);
 
+	_numBytes -= _pts.capacity() * sizeof(Vector2d);
+	_numBytes -= _ptToIndexMap.size() * sizeof(std::pair<FIXED_PT_SCALAR_TYPE, size_t>);
+
 	auto iter = _ptToIndexMap.find(valXi);
 	if (iter == _ptToIndexMap.end())
 		iter = _ptToIndexMap.insert(make_pair(valXi, std::map<FIXED_PT_SCALAR_TYPE, size_t>())).first;
+
 	auto& subMap = iter->second;
 	auto iter2 = subMap.find(valYi);
 	if (iter2 == subMap.end()) {
@@ -124,6 +129,10 @@ size_t Splitter2D::addPoint(const Vector2d& pt)
 		_pts.push_back(pt);
 		iter2 = subMap.insert(make_pair(valYi, idx)).first;
 	}
+
+	_numBytes += _pts.capacity() * sizeof(Vector2d);
+	_numBytes += _ptToIndexMap.size() * sizeof(std::pair<FIXED_PT_SCALAR_TYPE, size_t>);
+
 	return iter2->second;
 }
 
@@ -132,9 +141,15 @@ size_t Splitter2D::addPoint(const std::pair<Vector2d, Vector3d>& ptNormPair)
 	auto valXi = FixedPt::fromDbl(ptNormPair.first[0]);
 	auto valYi = FixedPt::fromDbl(ptNormPair.first[1]);
 
+	_numBytes -= _pts.capacity() * sizeof(Vector2d);
+	_numBytes -= _surfaceNormals.capacity() * sizeof(Vector3d);
+	_numBytes -= _ptToIndexMap.size() * sizeof(std::pair<FIXED_PT_SCALAR_TYPE, size_t>);
+
 	auto iter = _ptToIndexMap.find(valXi);
 	if (iter == _ptToIndexMap.end())
 		iter = _ptToIndexMap.insert(make_pair(valXi, std::map<FIXED_PT_SCALAR_TYPE, size_t>())).first;
+
+
 	auto& subMap = iter->second;
 	auto iter2 = subMap.find(valYi);
 	if (iter2 == subMap.end()) {
@@ -143,6 +158,10 @@ size_t Splitter2D::addPoint(const std::pair<Vector2d, Vector3d>& ptNormPair)
 		_surfaceNormals.push_back(ptNormPair.second);
 		iter2 = subMap.insert(make_pair(valYi, idx)).first;
 	}
+
+	_numBytes += _pts.capacity() * sizeof(Vector2d);
+	_numBytes += _surfaceNormals.capacity() * sizeof(Vector3d);
+	_numBytes += _ptToIndexMap.size() * sizeof(std::pair<FIXED_PT_SCALAR_TYPE, size_t>);
 	return iter2->second;
 }
 
@@ -184,6 +203,9 @@ void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 	assert(fabs(_plane.getNormal().dot(_yAxis)) < Tolerance::paramTol());
 	assert(fabs(_xAxis.dot(_yAxis)) < Tolerance::paramTol());
 
+	_numBytes -= _boundaryIndices.size() * sizeof(size_t);
+	_numBytes -= _boundaryEdges.size() * sizeof(Edge2D);
+
 	const auto tol = .1; // Extremely loose tolerance since these points define the plane.
 	for (size_t i = 0; i < polyPoints.size(); i++) {
 		size_t j = (i + 1) % polyPoints.size();
@@ -200,6 +222,9 @@ void Splitter2D::initFromPoints(const MTC::vector<Vector3d>& polyPoints)
 		}
 
 	}
+
+	_numBytes += _boundaryIndices.size() * sizeof(size_t);
+	_numBytes += _boundaryEdges.size() * sizeof(Edge2D);
 }
 
 void Splitter2D::addEdge(const Edge2D& edge, bool split)
@@ -896,8 +921,15 @@ void Splitter2D::calCurvaturesAndRadPoints(const SplittingParams& params, std::m
 	const auto sharpRadius = params.sharpRadius;
 	const auto sharpAngleRadians = params.getSharpAngleRadians();
 
+	_numBytes -= _curvatures.capacity() * sizeof(double);
+	_numBytes -= _radiusPts.capacity() * sizeof(Vector2d);
+
 	_curvatures.resize(_pts.size());
 	_radiusPts.resize(_pts.size());
+
+	_numBytes += _curvatures.capacity() * sizeof(double);
+	_numBytes += _radiusPts.capacity() * sizeof(Vector2d);
+
 	for (size_t i = 0; i < _pts.size(); i++) {
 		_curvatures[i] = 0;
 		_radiusPts[i] = _pts[i];
