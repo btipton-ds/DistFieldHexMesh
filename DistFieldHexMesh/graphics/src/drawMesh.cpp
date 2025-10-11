@@ -36,7 +36,7 @@ using namespace DFHM;
 DrawMesh::DrawMesh(GraphicsCanvas* pCanvas, int numLayers)
 	: _pCanvas(pCanvas)
 {
-	_VBOs = std::make_shared<VBORec>(numLayers);
+	_VBOs.push_back(std::make_shared<VBORec>(numLayers));
 }
 
 DrawMesh::~DrawMesh()
@@ -48,10 +48,10 @@ size_t DrawMesh::numBytes() const
 {
     size_t result = sizeof(DrawMesh);
 
-    if (_VBOs) {
+    for (const auto& vbo : _VBOs) {
         result += sizeof(VBORec);
-        result += _VBOs->_edgeVBO.numBytes();
-        result += _VBOs->_faceVBO.numBytes();
+        result += vbo->_edgeVBO.numBytes();
+        result += vbo->_faceVBO.numBytes();
     }
 
     return result;
@@ -59,8 +59,9 @@ size_t DrawMesh::numBytes() const
 
 void DrawMesh::setShader(const shared_ptr<OGL::Shader>& pShader)
 {
-    _VBOs->_faceVBO.setShader(pShader.get());
-    _VBOs->_edgeVBO.setShader(pShader.get());
+    // All shaders should be the same. Only need to set once
+    _VBOs.front()->_faceVBO.setShader(pShader.get());
+    _VBOs.front()->_edgeVBO.setShader(pShader.get());
 }
 
 size_t DrawMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
@@ -97,6 +98,11 @@ size_t DrawMesh::getVertexIdx(const Vector3f& pt)
     return iter->second;
 }
 
+void DrawMesh::clearVBOs() {
+    for (auto& vbo : _VBOs)
+        vbo->clear();
+}
+
 void DrawMesh::render()
 {
     if (!_readyToDraw)
@@ -123,25 +129,39 @@ void DrawMesh::drawEdges()
         postTexDraw();
     };
 
-    _VBOs->_edgeVBO.drawAllKeys(preDrawFunc, postDrawFunc, preTexDrawFunc, postTexDrawFunc);
+    for (const auto& vbo : _VBOs) {
+        if (vbo->isActive()) {
+            vbo->_edgeVBO.drawAllKeys(preDrawFunc, postDrawFunc, preTexDrawFunc, postTexDrawFunc);
+        }
+    }
 }
 
 void DrawMesh::drawFaces()
 {
-    _VBOs->_faceVBO.drawAllKeys(
-        [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
-            return preDrawFaces(key);
-        },
-        [this]() {
-            postDrawFaces();
-        },
-        [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
-            return preTexDraw(texId);
-        },
-        [this]() {
-            postTexDraw();
-        }
-    );
+    auto preDrawFunc = [this](int key) -> OGL::MultiVBO::DrawVertexColorMode {
+        return preDrawFaces(key);
+    };
+
+    auto postDrawFunc = [this]() {
+        postDrawFaces();
+    };
+
+    auto preTexDrawFunc = [this](unsigned int texId) -> OGL::MultiVBO::DrawVertexColorMode {
+        return preTexDraw(texId);
+    };
+
+    auto postTexDrawFunc = [this]() {
+        postTexDraw();
+    };
+
+    for (const auto& vbo : _VBOs) {
+        vbo->_faceVBO.drawAllKeys(
+            preDrawFunc,
+            postDrawFunc,
+            preTexDrawFunc,
+            postTexDrawFunc
+        );
+    }
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawMesh::preDrawEdges(int key)

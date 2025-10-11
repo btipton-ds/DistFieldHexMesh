@@ -69,7 +69,7 @@ OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
     auto meshId = 1;// pMesh->getId();
     auto changeNumber = 0; // pMesh->getChangeNumber();
 
-    auto& VBOs = getVBOs();
+    auto& VBOs = getVBOs(0);
     auto& faceVBO = VBOs->_faceVBO;
     auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
     return tess;
@@ -96,7 +96,7 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
     indices = smoothIndices;
     indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
-    auto& VBOs = getVBOs();
+    auto& VBOs = getVBOs(0);
 
     auto meshId = pData->getId();
     auto changeNumber = 1;
@@ -118,8 +118,8 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
 
 void DrawModelMesh::changeViewElements(const Model& meshData)
 {
-    auto& faceVBO = _VBOs->_faceVBO;
-    auto& edgeVBO = _VBOs->_edgeVBO;
+    auto& faceVBO = getVBOs(0)->_faceVBO;
+    auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);

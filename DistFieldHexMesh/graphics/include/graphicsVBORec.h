@@ -43,15 +43,31 @@ namespace OGL
 }
 
 namespace DFHM {
-	class VBORec {
-	public:
-		VBORec(int numLayers);
-		virtual ~VBORec();
 
-		void clear();
+class VBORec {
+public:
+	VBORec(int numLayers);
+	virtual ~VBORec();
 
-		std::mutex _vboMutex;
-		OGL::MultiVboHandler _faceVBO, _edgeVBO;
-	};
+	void clear();
+	void setActive(bool val);
+	bool isActive() const;
+
+	bool _active = true;
+	std::mutex _vboMutex;
+	OGL::MultiVboHandler _faceVBO, _edgeVBO;
+};
+
+using VBORecPtr = std::shared_ptr<VBORec>;
+
+inline void VBORec::setActive(bool val)
+{
+	_active = val;
+}
+
+inline bool VBORec::isActive() const
+{
+	return _active;
+}
 
 }

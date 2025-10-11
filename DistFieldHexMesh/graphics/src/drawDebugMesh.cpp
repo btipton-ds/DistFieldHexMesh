@@ -47,8 +47,8 @@ DrawDebugMesh::~DrawDebugMesh()
 
 void DrawDebugMesh::createTessellation(DebugMeshData& data)
 {
-    auto& eVBO = _VBOs->_edgeVBO;
-    auto& fVBO = _VBOs->_faceVBO;
+    auto& eVBO = getVBOs(0)->_edgeVBO;
+    auto& fVBO = getVBOs(0)->_faceVBO;
 
     eVBO.beginEdgeTesselation();
     fVBO.beginFaceTesselation();
@@ -67,8 +67,8 @@ void DrawDebugMesh::createTessellation(DebugMeshData& data)
 
 void DrawDebugMesh::changeViewElements(const DebugMeshData& data)
 {
-    auto& faceVBO = _VBOs->_faceVBO;
-    auto& edgeVBO = _VBOs->_edgeVBO;
+    auto& faceVBO = getVBOs(0)->_faceVBO;
+    auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);

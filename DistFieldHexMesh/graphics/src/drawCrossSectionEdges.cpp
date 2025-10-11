@@ -65,7 +65,7 @@ size_t DrawCrossSectionEdges::numBytes() const
 
 void DrawCrossSectionEdges::changeViewElements()
 {
-	auto& edgeVBO = _VBOs->_edgeVBO;
+	auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
 	edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
@@ -124,7 +124,7 @@ void DrawCrossSectionEdges::buildTables(const SplittingParams& params, const std
 
 void DrawCrossSectionEdges::copyTablesToVBOs()
 {
-	auto& edgeVBO = _VBOs->_edgeVBO;
+	auto& edgeVBO = getVBOs(0)->_edgeVBO;
 	edgeVBO.beginEdgeTesselation();
 
 	if (!_indices->empty()) {

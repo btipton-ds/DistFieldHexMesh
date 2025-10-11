@@ -597,7 +597,7 @@ void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
     auto pDrawModelMesh = pCanvas->getDrawModelMesh();
-    auto VBOs = pDrawModelMesh->getVBOs();
+    auto VBOs = pDrawModelMesh->getVBOs(0);
 
     auto& edgeVBO = VBOs->_edgeVBO;
     auto& faceVBO = VBOs->_faceVBO;
@@ -1276,7 +1276,7 @@ void AppData::changeViewElements(const MeshDataPtr& pData, std::shared_ptr<DrawM
     if (!pData->isActive())
         return;
 
-    auto& VBOs = pDraw->getVBOs();
+    auto& VBOs = pDraw->getVBOs(0);
     if (pDraw->showFaces())
         VBOs->_faceVBO.includeElementIndices(DS_MESH_FACES, pData->getFaceTess());
     

@@ -687,16 +687,16 @@ void GraphicsCanvas::onSizeChange(wxSizeEvent& event)
 
 void GraphicsCanvas::clearMesh3D()
 {
-    _pDrawHexMesh->getVBOs()->clear();
-    _pDrawDebugMesh->getVBOs()->clear();
+    _pDrawHexMesh->getVBOs(0)->clear();
+    _pDrawDebugMesh->getVBOs(0)->clear();
     if (_pDrawCrossSections) {
-        _pDrawCrossSections->getVBOs()->clear();
+        _pDrawCrossSections->getVBOs(0)->clear();
     }
 }
 
 void GraphicsCanvas::clearModel()
 {
-    auto& VBOs = _pDrawModelMesh->getVBOs();
+    auto& VBOs = _pDrawModelMesh->getVBOs(0);
     VBOs->clear();
 }
 
@@ -1835,7 +1835,7 @@ void GraphicsCanvas::toggleDrawSections(const VolumePtr& pVolume)
 
     if (_drawSectionsEnabled) {
         if (_pDrawCrossSections)
-            _pDrawCrossSections->getVBOs()->clear();
+            _pDrawCrossSections->clearVBOs();
         _pDrawCrossSections = nullptr;
         _drawSectionsEnabled = false;
     } else {

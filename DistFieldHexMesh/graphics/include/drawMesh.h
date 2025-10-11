@@ -57,7 +57,8 @@ namespace DFHM {
 		virtual size_t numBytes() const;
 
 		void setShader(const std::shared_ptr<OGL::Shader>& pShader);
-		const std::shared_ptr<VBORec>& getVBOs() const;
+		void clearVBOs();
+		const VBORecPtr& getVBOs(size_t index) const;
 
 		void render();
 		void drawEdges();
@@ -83,7 +84,8 @@ namespace DFHM {
 
 		GraphicsCanvas* _pCanvas;
 
-		std::shared_ptr<VBORec> _VBOs;
+	private:
+		std::vector<VBORecPtr> _VBOs;
 	};
 
 	inline bool DrawMesh::toggle(bool& val)
@@ -92,9 +94,9 @@ namespace DFHM {
 		return val;
 	}
 
-	inline const std::shared_ptr<VBORec>& DrawMesh::getVBOs() const
+	inline const VBORecPtr& DrawMesh::getVBOs(size_t index) const
 	{
-		return _VBOs;
+		return _VBOs[index];
 	}
 
 }

@@ -145,8 +145,7 @@ void DrawHexMesh::clearPrior()
     _triIndices.clear();
     _edgeIndices.clear();
 
-    _VBOs->_edgeVBO.clear();
-    _VBOs->_faceVBO.clear();
+    clearVBOs();
 }
 
 void DrawHexMesh::clearPost()
@@ -261,8 +260,8 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
 
 void DrawHexMesh::copyHexFaceTablesToVBOs()
 {
-    auto& faceVBO = _VBOs->_faceVBO;
-    auto& edgeVBO = _VBOs->_edgeVBO;
+    auto& faceVBO = getVBOs(0)->_faceVBO;
+    auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
     faceVBO.beginFaceTesselation();
     edgeVBO.beginEdgeTesselation();
@@ -270,10 +269,10 @@ void DrawHexMesh::copyHexFaceTablesToVBOs()
     // This stores the points and normals for all drawing
     vector<float> triParameters;
     triParameters.resize(_triPoints.size(), 0);
-    auto pFaceTess = _VBOs->_faceVBO.setFaceTessellation(DS_MESH_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[HMDT_MESH_ALL]);
+    auto pFaceTess = getVBOs(0)->_faceVBO.setFaceTessellation(DS_MESH_ALL, 0, _triPoints, _triNormals, triParameters, _triIndices[HMDT_MESH_ALL]);
     _faceTessellations[HMDT_MESH_ALL] = pFaceTess;
 
-    auto pEdgeTess = _VBOs->_edgeVBO.setEdgeSegTessellation(DS_MESH_ALL, 0, _edgePoints, _edgeIndices[HMDT_MESH_ALL]);
+    auto pEdgeTess = getVBOs(0)->_edgeVBO.setEdgeSegTessellation(DS_MESH_ALL, 0, _edgePoints, _edgeIndices[HMDT_MESH_ALL]);
     _edgeTessellations[HMDT_MESH_ALL] = pEdgeTess;
 
     // This only stores indices which reference HMDT_MESH_ALL
@@ -325,8 +324,8 @@ void DrawHexMesh::includeElements(OGL::MultiVboHandler& VBO, std::vector<OGL::In
 
 void DrawHexMesh::changeViewElements()
 {
-    auto& faceVBO = _VBOs->_faceVBO;
-    auto& edgeVBO = _VBOs->_edgeVBO;
+    auto& faceVBO = getVBOs(0)->_faceVBO;
+    auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
     faceVBO.beginSettingElementIndices(0xffffffffffffffff);
