@@ -106,11 +106,7 @@ public:
 
 	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
 
-	void createFaceTris(GlMeshFacesGroup& blockMeshes, bool multiCore) const;
-
-private:
-	bool includeFaceInDrawKey(ModelMeshDrawType drawType, bool isClosed, const Polygon& face) const;
-		
+private:		
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
 	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;

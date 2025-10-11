@@ -210,69 +210,6 @@ void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
 	}
 }
 
-void Model::createFaceTris(GlMeshFacesGroup& blockMeshes, bool multiCore) const
-{
-
-	size_t nThreads = 1; // (multiCore && pThreadPool) ? pThreadPool->getNumThreads() : 1;
-	blockMeshes.resize(MMDT_MODEL_ALL + 1);
-	for (int j = MMDT_MODEL_SOLID; j <= MMDT_MODEL_ALL; j++) {
-		ModelMeshDrawType ft = (ModelMeshDrawType)j;
-		blockMeshes[ft].resize(nThreads);
-	}
-
-	for (int mode = MMDT_MODEL_SOLID; mode <= MMDT_MODEL_ALL; mode++) {
-		for (const auto& pData : _modelMeshData) {
-			const auto& pMesh = pData->getPolyMesh();
-			if (pMesh->numPolygons() == 0)
-				return;
-
-			bool isClosed = pMesh->isClosed();
-
-			ModelMeshDrawType drawType = (ModelMeshDrawType)mode;
-			if (!blockMeshes[mode][0])
-				blockMeshes[mode][0] = make_shared<GlMeshFaces>();
-			auto& glPolys = blockMeshes[mode][0];
-
-			pMesh->iteratePolygons([this, drawType, isClosed, &glPolys](const Index3DId& id, const Polygon& face)->bool {
-				if (includeFaceInDrawKey(drawType, isClosed, face)) {
-					glPolys->addFace(face);
-				}
-				return true;
-			});
-		}
-	}
-}
-
-bool Model::includeFaceInDrawKey(ModelMeshDrawType drawType, bool isClosed, const Polygon& face) const
-{
-	bool needsGapTest = face.needsGapTest() == IS_TRUE;
-
-	if (drawType == MMDT_MODEL_ALL)
-		return true;
-
-	if (needsGapTest) {
-		switch (drawType) {
-		default:
-			return false;
-		case MMDT_MODEL_SOLID_GAP:
-			return isClosed;
-		case MMDT_MODEL_SURFACE_GAP:
-			return !isClosed;
-		}
-	} else {
-		switch (drawType) {
-		default:
-			return false;
-		case MMDT_MODEL_SOLID:
-			return isClosed;
-		case MMDT_MODEL_SURFACE:
-			return !isClosed;
-		}
-	}
-
-	return false;
-}
-
 bool Model::isClosed(const PolyMeshIndex& id) const
 {
 	return _modelMeshData[id.getMeshIdx()]->isClosed();

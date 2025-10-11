@@ -70,9 +70,9 @@ void DrawModelMesh::createFaceTessellation(const SplittingParams& params, const 
     auto& faceVBO = VBOs->_faceVBO;
 
     faceVBO.beginFaceTesselation();
-    tessAll[0] = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, triIndices[0]);
-    tessAll[1] = faceVBO.setFaceTessellation(meshId, tessAll[0], triIndices[1]);
-    tessAll[2] = faceVBO.setFaceTessellation(meshId, tessAll[0], triIndices[2]);
+    tessAll[MMDT_MODEL_ALL] = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, triIndices[0]);
+    tessAll[MMDT_MODEL_TYPICAL] = faceVBO.setFaceTessellation(meshId, tessAll[MMDT_MODEL_ALL], triIndices[MMDT_MODEL_TYPICAL]);
+    tessAll[MMDT_MODEL_GAP] = faceVBO.setFaceTessellation(meshId, tessAll[MMDT_MODEL_ALL], triIndices[MMDT_MODEL_GAP]);
     faceVBO.endFaceTesselation(false);
 
     pData->setFaceTess(tessAll);
@@ -133,13 +133,13 @@ void DrawModelMesh::changeViewElements(const Model& model)
         if (_options.showFaces) {
             const auto& tessAll = pData->getFaceTess();
             if (pData->isClosed()) {
-                faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, tessAll[1]);
-                if (tessAll[2])
-                    faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID_GAP, tessAll[2]);
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, tessAll[MMDT_MODEL_TYPICAL]);
+                if (tessAll[MMDT_MODEL_GAP])
+                    faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID_GAP, tessAll[MMDT_MODEL_GAP]);
             } else {
-                faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, tessAll[1]);
-                if (tessAll[2])
-                    faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE_GAP, tessAll[2]);
+                faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE, tessAll[MMDT_MODEL_TYPICAL]);
+                if (tessAll[MMDT_MODEL_GAP])
+                    faceVBO.includeElementIndices(DS_MODEL_FACES_SURFACE_GAP, tessAll[MMDT_MODEL_GAP]);
             }
             if (_options.showTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
