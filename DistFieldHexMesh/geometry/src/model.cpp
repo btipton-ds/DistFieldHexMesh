@@ -107,24 +107,24 @@ void Model::calculateGaps(const SplittingParams& params)
 	if (!_pPolyMeshSearchTree)
 		return;
 #if 1
-	vector<PolyMeshIndex> allIndices;
+	vector<PolyMeshIndex> allFaceIndices;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		auto& pMeshData = _modelMeshData[i];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();
 
-		pStartPolyMesh->iteratePolygons([this, &allIndices, i](const Index3DId& id, Polygon& face)->bool {
-			allIndices.push_back(PolyMeshIndex(i, id));
+		pStartPolyMesh->iteratePolygons([this, &allFaceIndices, i](const Index3DId& id, Polygon& face)->bool {
+			allFaceIndices.push_back(PolyMeshIndex(i, id));
 			return true;
 		});
 	}
 
-	MultiCore::runLambda([this, &params, &allIndices](size_t index)->bool {
-		const double minDotProduct = sin(20 * M_PI / 180.0);
+	MultiCore::runLambda([this, &params, &allFaceIndices](size_t index)->bool {
+		const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 
-		const auto id = allIndices[index];
-		auto pStartModelData = _modelMeshData[id.getMeshIdx()];
+		const auto startFaceId = allFaceIndices[index];
+		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
 		auto pStartMesh = pStartModelData->getPolyMesh();
-		auto pStartFace = getPolygon(id);
+		auto pStartFace = getPolygon(startFaceId);
 		if (!pStartFace || pStartFace->needsGapTest() != IS_UNKNOWN)
 			return true; // skip this one
 
@@ -145,12 +145,16 @@ void Model::calculateGaps(const SplittingParams& params)
 					const auto& nearFaceId = nearFaceIds[i];
 					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
 					bool nearModelisClosed = pMesh->isClosed();
-					const auto& nearFace = getPolygon(nearFaceId);
-					const auto& nearFaceNorm = nearFace->calUnitNormal();
+					const auto& pNearFace = getPolygon(nearFaceId);
+					if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
+						continue;
+					}
+
+					const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
 					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 					if (dpFaceFace < -minDotProduct) {
-						double minDistToPoint = nearFace->minDistToPoint(startPt, hitPt);
+						double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
 						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
 							Vector3d v = hitPt - startPt;
 							v.normalize();
@@ -196,7 +200,7 @@ void Model::calculateGaps(const SplittingParams& params)
 		}
 
 		return true;
-	}, allIndices.size(), RUN_MULTI_THREAD);
+	}, allFaceIndices.size(), RUN_MULTI_THREAD);
 
 #endif
 }

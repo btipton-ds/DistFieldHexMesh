@@ -151,6 +151,7 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
+	bool isConnected(const Polygon& otherFace) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsEdge(const EdgeKey& edge) const;
 

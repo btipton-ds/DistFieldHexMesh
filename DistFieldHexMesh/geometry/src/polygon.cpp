@@ -1362,6 +1362,15 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
 	return result;
 }
 
+bool Polygon::isConnected(const Polygon& otherFace) const
+{
+	for (const auto& vertId : _vertexIds) {
+		if (otherFace.containsVertex(vertId))
+			return true;
+	}
+
+	return false;
+}
 
 bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
 {
