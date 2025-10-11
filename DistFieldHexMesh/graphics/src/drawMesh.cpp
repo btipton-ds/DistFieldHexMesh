@@ -35,8 +35,8 @@ using namespace DFHM;
 
 DrawMesh::DrawMesh(GraphicsCanvas* pCanvas, int numLayers)
 	: _pCanvas(pCanvas)
+    , _numLayers(numLayers)
 {
-	_VBOs.push_back(std::make_shared<VBORec>(numLayers));
 }
 
 DrawMesh::~DrawMesh()
@@ -59,9 +59,10 @@ size_t DrawMesh::numBytes() const
 
 void DrawMesh::setShader(const shared_ptr<OGL::Shader>& pShader)
 {
-    // All shaders should be the same. Only need to set once
-    _VBOs.front()->_faceVBO.setShader(pShader.get());
-    _VBOs.front()->_edgeVBO.setShader(pShader.get());
+    for (auto& vbo : _VBOs) {
+        vbo->_faceVBO.setShader(pShader.get());
+        vbo->_edgeVBO.setShader(pShader.get());
+    }
 }
 
 size_t DrawMesh::getVertexIdx(const Vector3f& pt, const Vector3f& normal)
@@ -101,6 +102,13 @@ size_t DrawMesh::getVertexIdx(const Vector3f& pt)
 void DrawMesh::clearVBOs() {
     for (auto& vbo : _VBOs)
         vbo->clear();
+}
+
+const VBORecPtr& DrawMesh::getVBOs(size_t index) const
+{
+    if (index >= _VBOs.size())
+        _VBOs.push_back(std::make_shared<VBORec>(_numLayers));
+    return _VBOs[index];
 }
 
 void DrawMesh::render()

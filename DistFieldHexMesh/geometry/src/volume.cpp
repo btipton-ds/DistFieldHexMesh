@@ -1571,7 +1571,7 @@ size_t Volume::numFaces(bool includeInner) const
 	size_t result = 0;
 	for (auto pBlock : _blocks) {
 		if (pBlock)
-			result += pBlock->numFaces(includeInner);
+			result += pBlock->numPolygons();
 	}
 
 	return result;

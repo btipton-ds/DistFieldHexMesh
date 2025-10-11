@@ -106,7 +106,7 @@ public:
 	Index3DId getVertexIdOfPoint(const Vector3d& point);
 	Index3DId findVertexIdOfPoint(const Vector3d& point) const;
 
-	size_t numFaces(bool includeInner) const;
+	size_t numPolygons() const;
 	size_t numPolyhedra() const;
 	size_t numBytes() const;
 
@@ -271,8 +271,10 @@ private:
 						// This required for mutex management for objects which may be modified by more than one box/thread. Items belonging to this box do not require 
 						// locking the mutex.Objects which lie on the boundary do require locking.
 	
-	size_t _blockDim;   // This is the dimension of the block = the number of cells across the block
-
+	size_t _blockDim,   // This is the dimension of the block = the number of cells across the block
+		_numPolygons = 0,
+		_numPolyhedra = 0,
+		_numBytes = 0;
 	UnalignedBBoxd _corners;
 
 	std::string _filename;

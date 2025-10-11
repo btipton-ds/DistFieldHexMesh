@@ -61,7 +61,7 @@ public:
 	DrawModelMesh(GraphicsCanvas* pCanvas);
 	virtual ~DrawModelMesh();
 
-	void createFaceTessellation(const MeshDataPtr& pData);
+	OGL::IndicesPtr createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData);
 	void createEdgeTessellation(const SplittingParams& params, const MeshDataPtr& pData);
 
 	void changeViewElements(const Model& meshData);
@@ -85,7 +85,6 @@ public:
 	bool toggleShowEdges();
 
 protected:
-	OGL::IndicesPtr createFaceTessellation(const PolyMeshPtr& pMesh);
 
 	OGL::MultiVBO::DrawVertexColorMode preDrawEdges(int key) override;
 	void postDrawEdges() override;

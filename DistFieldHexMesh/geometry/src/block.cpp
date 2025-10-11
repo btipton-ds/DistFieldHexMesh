@@ -320,30 +320,19 @@ Index3DId Block::findVertexIdOfPoint(const Vector3d& point) const
 	return Index3DId();
 }
 
-size_t Block::numFaces(bool includeInner) const
+size_t Block::numPolygons() const
 {
-	size_t result = 0;
-	_polygons.iterateInOrder([&result, includeInner](const Index3DId& id, const Polygon& face)->bool {
-		if (includeInner || face.isBlockBoundary())
-			result++;
-		return true;
-	});
-	return result;
+	return _numPolygons;
 }
 
 size_t Block::numPolyhedra() const
 {
-	return _polyhedra.size();
+	return _numPolyhedra;
 }
 
 size_t Block::numBytes() const
 {
-	size_t result = 0;
-	// TODO, need a mutex or semaphore because another thread is writing these
-	result += _vertices.numBytes();
-	result += _polygons.numBytes();
-	result += _polyhedra.numBytes();
-	return result;
+	return _numBytes;
 }
 
 bool Block::doQualitySplits() const
@@ -685,6 +674,7 @@ Index3DId Block::addCell(const Polyhedron& cell, const Index3DId& parentCellId)
 	Index3DId cellId = _polyhedra.findOrAdd(cell);
 	auto& newCell = getPolyhedron(cellId);
 	newCell.setParentId(parentCellId);
+	_numPolyhedra++;
 
 	const auto& cellFaceIds = newCell.getFaceIds();
 
@@ -814,6 +804,8 @@ Index3DId Block::addPolygon(const Polygon& face)
 	}
 	Index3DId result = pOwner->_polygons.findOrAdd(connectedFace);
 	auto& newFace = pOwner->_polygons[result];
+	_numPolygons++;
+//	_numBytes += newFace.
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(5, 1, 3, 10) == result) {
@@ -1264,7 +1256,7 @@ bool Block::includeFaceInDrawKey(HexMeshDrawType meshType, const std::vector<Pla
 
 void Block::createHexTriMesh(HexMeshDrawType meshType, const std::vector<Planed>& planes, GlMeshFacesPtr& glPolys)
 {
-	if (numFaces(true) == 0)
+	if (numPolygons() == 0)
 		return;
 
 	if (!glPolys)
@@ -1505,6 +1497,7 @@ void Block::freePolygon(const Index3DId& id)
 		auto oldVertices = face.getVertexIds();
 		auto& polygons = pOwner->_polygons;
 		polygons.free(id);
+		_numPolygons--;
 
 		for (const auto& vertId : oldVertices) {
 			const auto& vert = getVertex(vertId);
@@ -1525,6 +1518,7 @@ void Block::freePolyhedron(const Index3DId& id)
 	if (pOwner) {
 		auto& polyhedra = pOwner->_polyhedra;
 		polyhedra.free(id); // This frees all unused polygons
+		_numPolyhedra--;
 	}
 }
 

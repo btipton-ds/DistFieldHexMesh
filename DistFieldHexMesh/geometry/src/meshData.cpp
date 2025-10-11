@@ -49,16 +49,17 @@ This file is part of the DistFieldHexMesh application/library.
 using namespace std;
 using namespace DFHM;
 
-MeshData::MeshData(const AppDataPtr& pAppData)
+MeshData::MeshData(const AppDataPtr& pAppData, size_t id)
 	: _pAppData(pAppData)
+	, _id(id)
 {
 }
 
-MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, const std::wstring& name)
+MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, size_t id, const std::wstring& name)
 	: _pAppData(pAppData)
 	, _name(name)
 	, _pMesh(pMesh)
-	, _id(pMesh->getId())
+	, _id(id)
 {
 	postReadCreate();
 }
@@ -104,7 +105,6 @@ size_t MeshData::numBytes() const
 	size_t result = sizeof(MeshData);
 	result += sizeof(_name) + _name.length() * sizeof(wchar_t);
 	result += _pMesh->numBytes();
-
 
 	OGL::IndicesPtr
 		_faceTess,

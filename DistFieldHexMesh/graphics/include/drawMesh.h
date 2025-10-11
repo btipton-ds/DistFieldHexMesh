@@ -85,18 +85,14 @@ namespace DFHM {
 		GraphicsCanvas* _pCanvas;
 
 	private:
-		std::vector<VBORecPtr> _VBOs;
+		size_t _numLayers;
+		mutable std::vector<VBORecPtr> _VBOs;
 	};
 
 	inline bool DrawMesh::toggle(bool& val)
 	{
 		val = !val;
 		return val;
-	}
-
-	inline const VBORecPtr& DrawMesh::getVBOs(size_t index) const
-	{
-		return _VBOs[index];
 	}
 
 }

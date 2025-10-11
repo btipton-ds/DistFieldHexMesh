@@ -59,8 +59,8 @@ namespace DFHM {
 
 	class MeshData {
 	public:
-		MeshData(const AppDataPtr& pAppData);
-		MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& _pMesh, const std::wstring& name);
+		MeshData(const AppDataPtr& pAppData, size_t id);
+		MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& _pMesh, size_t id, const std::wstring& name);
 		virtual ~MeshData();
 
 		void clear();

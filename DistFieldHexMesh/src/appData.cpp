@@ -520,7 +520,8 @@ bool AppData::doImportMesh()
         auto pMesh = readStl(path, filename);
         auto pos = filename.find(L".");
         wstring name = filename.replace(pos, filename.size(), L"");
-        MeshDataPtr pMeshData = make_shared<MeshData>(shared_from_this(), pMesh, name);
+        size_t index = _model.size();
+        MeshDataPtr pMeshData = make_shared<MeshData>(shared_from_this(), pMesh, index, name);
         _model.add(pMeshData);
 
         _model.rebuildSearchTree();
@@ -597,18 +598,11 @@ void AppData::updateModelTess()
 {
     auto pCanvas = _pMainFrame->getCanvas();
     auto pDrawModelMesh = pCanvas->getDrawModelMesh();
-    auto VBOs = pDrawModelMesh->getVBOs(0);
-
-    auto& edgeVBO = VBOs->_edgeVBO;
-    auto& faceVBO = VBOs->_faceVBO;
-
-    edgeVBO.beginEdgeTesselation();
-    faceVBO.beginFaceTesselation();
-    for (auto& pData : _model) {
+    for (size_t meshIdx = 0; meshIdx < _model.size(); meshIdx++) {
+        auto& pData = _model.getMeshData(meshIdx);
+        assert(pData->getId() == meshIdx);
         makeOGLTess(pData, _params, pDrawModelMesh);
     }
-    faceVBO.endFaceTesselation(false);
-    edgeVBO.endEdgeTesselation();
 }
 
 void AppData::doSave()
@@ -695,7 +689,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     CBoundingBox3Dd bbox;
     auto sharedThis = shared_from_this();
     for (size_t i = 0; i < numMeshes; i++) {
-        auto pData = make_shared<MeshData>(sharedThis);
+        auto pData = make_shared<MeshData>(sharedThis, i);
         pData->read(in);
         meshes.push_back(pData);
         bbox.merge(pData->getMesh()->getBBox());
@@ -1261,7 +1255,7 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
 
 void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& params, std::shared_ptr<DrawModelMesh>& pDrawModelMesh)
 {
-    pDrawModelMesh->createFaceTessellation(pData);
+    pDrawModelMesh->createFaceTessellation(_params, pData);
     pDrawModelMesh->createEdgeTessellation(_params, pData);
 
 #if 0

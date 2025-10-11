@@ -47,15 +47,9 @@ DrawModelMesh::~DrawModelMesh()
 
 }
 
-void DrawModelMesh::createFaceTessellation(const MeshDataPtr& pData)
+OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData)
 {
-    auto pMesh = pData->getPolyMesh();
-    auto tess = createFaceTessellation(pMesh);
-    pData->setFaceTess(tess);
-}
-
-OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
-{
+    const auto& pMesh = pData->getPolyMesh();
     vector<float> points, normals;
     vector<unsigned int> vertIndices;
     pMesh->getGlTriPoints(points);
@@ -66,12 +60,18 @@ OGL::IndicesPtr DrawModelMesh::createFaceTessellation(const PolyMeshPtr& pMesh)
     parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
 
     vector<float> colors;
-    auto meshId = 1;// pMesh->getId();
+    auto meshId = pData->getId();
     auto changeNumber = 0; // pMesh->getChangeNumber();
 
-    auto& VBOs = getVBOs(0);
+    auto VBOs = getVBOs(meshId);
     auto& faceVBO = VBOs->_faceVBO;
+
+    faceVBO.beginFaceTesselation();
     auto tess = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, vertIndices);
+    faceVBO.endFaceTesselation(false);
+
+    pData->setFaceTess(tess);
+
     return tess;
 }
 
@@ -88,7 +88,6 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
     vector<float> points, colors;
     vector<unsigned int> indices, sharpIndices, smoothIndices;
 
-
     bool includeSmooth = true;
     auto pPolyMesh = pData->getPolyMesh();
     pPolyMesh->getGlEdges(colorFunc, includeSmooth, points, colors, sinSharpAngle, sharpIndices, smoothIndices);
@@ -96,11 +95,13 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
     indices = smoothIndices;
     indices.insert(indices.end(), sharpIndices.begin(), sharpIndices.end());
 
-    auto& VBOs = getVBOs(0);
+    auto VBOs = getVBOs(pData->getId());
+    auto& edgeVBO = VBOs->_edgeVBO;
+
+    edgeVBO.beginEdgeTesselation();
 
     auto meshId = pData->getId();
     auto changeNumber = 1;
-    auto& edgeVBO = VBOs->_edgeVBO;
     auto allEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 0, changeNumber, points, colors, indices);
     auto sharpEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 1, changeNumber, points, colors, sharpIndices);
     auto smoothEdgeTess = edgeVBO.setEdgeSegTessellation(meshId, 2, changeNumber, points, colors, smoothIndices);
@@ -114,18 +115,18 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
         auto normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);
         pData->setTessNormals(normalTess);
     }
+
+    edgeVBO.endEdgeTesselation();
 }
 
 void DrawModelMesh::changeViewElements(const Model& meshData)
 {
-    auto& faceVBO = getVBOs(0)->_faceVBO;
-    auto& edgeVBO = getVBOs(0)->_edgeVBO;
+    for (size_t meshIdx = 0; meshIdx < meshData.size(); meshIdx++) {
+        auto& pData = meshData.getMeshData(meshIdx);
+        auto& faceVBO = getVBOs(meshIdx)->_faceVBO;
+        auto& edgeVBO = getVBOs(meshIdx)->_edgeVBO;
 
-    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
-    edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
-
-    for (auto& pData : meshData) {
-
+        faceVBO.beginSettingElementIndices(0xffffffffffffffff);
         if (_options.showFaces) {
             if (pData->isClosed())
                 faceVBO.includeElementIndices(DS_MODEL_FACES_SOLID, pData->getFaceTess());
@@ -134,7 +135,9 @@ void DrawModelMesh::changeViewElements(const Model& meshData)
             if (_options.showTriNormals)
                 edgeVBO.includeElementIndices(DS_MODEL_NORMALS, pData->getNormalTess());
         }
+        faceVBO.endSettingElementIndices();
 
+        edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
         if (_options.showEdges) {
             if (_options.showSharpEdges) {
                 edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
@@ -147,10 +150,8 @@ void DrawModelMesh::changeViewElements(const Model& meshData)
         else if (_options.showSharpEdges) {
             edgeVBO.includeElementIndices(DS_MODEL_SHARP_EDGES, pData->getSharpEdgeTess());
         }
+        edgeVBO.endSettingElementIndices();
     }
-
-    faceVBO.endSettingElementIndices();
-    edgeVBO.endSettingElementIndices();
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawModelMesh::preDrawEdges(int key)
