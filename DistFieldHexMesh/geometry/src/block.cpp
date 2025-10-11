@@ -332,7 +332,13 @@ size_t Block::numPolyhedra() const
 
 size_t Block::numBytes() const
 {
-	return _numBytes;
+	size_t result = 0;
+
+	result += _vertices.numBytes();
+	result += _polygons.numBytes();
+	result += _polyhedra.numBytes();
+
+	return result;
 }
 
 bool Block::doQualitySplits() const
@@ -805,7 +811,6 @@ Index3DId Block::addPolygon(const Polygon& face)
 	Index3DId result = pOwner->_polygons.findOrAdd(connectedFace);
 	auto& newFace = pOwner->_polygons[result];
 	_numPolygons++;
-//	_numBytes += newFace.
 
 #if DEBUG_BREAKS && defined(_DEBUG)
 	if (Index3DId(5, 1, 3, 10) == result) {

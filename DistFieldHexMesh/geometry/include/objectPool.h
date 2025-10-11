@@ -243,6 +243,7 @@ private:
 	const std::pair<T, ObjStatus>* getPairFromElementIndex(size_t elementIndex) const;
 
 	bool _supportsReverseLookup;
+	mutable size_t _numBytes = 0;
 	ObjectPoolOwner* _pPoolOwner;
 	const size_t _objectSegmentSize; // May want to tune this so the first segment only holds 1 cell since most blocks only contain one cell. We're allocating a lot of unused memory in sparse blocks
 	std::vector<ObjIndex> _elementIndexToObjIndexMap;
@@ -536,17 +537,9 @@ void ObjectPool<T>::resize(size_t size)
 template<class T>
 size_t ObjectPool<T>::numBytes() const
 {
-	size_t result = sizeof(ObjectPool<T>);
-	result += _elementIndexToObjIndexMap.size() * sizeof(size_t);
-	result += _availableObjIndices.size() * sizeof(size_t);
-	for (const auto& pSeg : _objSegmentPtrs) {
-
-		result += pSeg->size() * sizeof(T);
-	}
-
-	result += _objToElementIndexMap.size() * sizeof(std::pair<size_t, size_t>);
-
-	return result;
+	if (_numBytes == 0)
+		_numBytes += sizeof(*this);
+	return _numBytes;
 }
 
 template<class T>
@@ -618,13 +611,16 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 
 	if (_availableObjIndices.empty()) {
 		if (_objSegmentPtrs.empty() || _objSegmentPtrs.back()->size() >= _objectSegmentSize) {
+			_numBytes += sizeof(std::vector<std::pair<T, ObjStatus>>);
 			_objSegmentPtrs.push_back(std::make_shared<std::vector<std::pair<T, ObjStatus>>>());
 		}
 		segNum = _objSegmentPtrs.size() - 1;
 
 		auto& segData = *_objSegmentPtrs.back();
-		if (segData.capacity() == 0)
+		if (segData.capacity() == 0) {
 			segData.reserve(_objectSegmentSize);
+			_numBytes += segData.capacity() * sizeof(std::pair<T, ObjStatus>);
+		}
 
 		segIdx = segData.size();
 		segData.push_back(std::make_pair(obj, OS_IN_USE));
@@ -639,11 +635,16 @@ ObjectPool<T>::ObjIndex ObjectPool<T>::storeAndReturnObjIndex(const T& obj)
 			_objSegmentPtrs.push_back(std::make_shared<std::vector<std::pair<T, ObjStatus>>>());
 		}
 		auto& segData = *_objSegmentPtrs[segNum];
-		if (segData.capacity() == 0)
+		if (segData.capacity() == 0) {
 			segData.reserve(_objectSegmentSize);
+			_numBytes += segData.capacity() * sizeof(std::pair<T, ObjStatus>);
+		}
 
-		if (segIdx >= segData.size())
+		if (segIdx >= segData.size()) {
+			_numBytes -= segData.capacity() * sizeof(std::pair<T, ObjStatus>);
 			segData.resize(segIdx + 1);
+			_numBytes += segData.capacity() * sizeof(std::pair<T, ObjStatus>);
+		}
 
 		segData[segIdx].first = obj;
 		segData[segIdx].second = OS_IN_USE;

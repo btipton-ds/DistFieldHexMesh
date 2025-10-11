@@ -273,8 +273,7 @@ private:
 	
 	size_t _blockDim,   // This is the dimension of the block = the number of cells across the block
 		_numPolygons = 0,
-		_numPolyhedra = 0,
-		_numBytes = 0;
+		_numPolyhedra = 0;
 	UnalignedBBoxd _corners;
 
 	std::string _filename;
