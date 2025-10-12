@@ -142,6 +142,8 @@ public:
 	bool hasTooHighCurvature(const SplittingParams& params) const;
 	bool hasTooManyFaces(const SplittingParams& params) const;
 	bool needsCurvatureSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
+	bool needsGapSplit(const SplittingParams& params) const;
+	bool needsGapSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const;
 	Vector3d calSpan() const;
 
 	double calCurvatureHexXYPlane(const SplittingParams& params) const;
@@ -216,10 +218,10 @@ private:
 	friend class Splitter3D;
 	friend class AppData;
 
+	Vector3d calAxisDir(int axisIndex) const;
 	MTC::set<EdgeKey> createEdgesFromVerts(MTC::vector<Index3DId>& vertIds) const;
 	bool orderVertIds(MTC::vector<Index3DId>& vertIds) const;
 	void copyToOut() const;
-	double minGap() const;
 	bool polygonExists(const Index3DId& id) const;
 	const Vector3d& getVertexPoint(const Index3DId& vertId) const;
 
@@ -258,6 +260,7 @@ private:
 
 	mutable Trinary _cachedIsClosed = IS_UNKNOWN;
 	mutable Trinary _cachedIntersectsModel = IS_UNKNOWN; // Cached value
+	mutable Trinary _cachedNeedsGapSplit[3] = { IS_UNKNOWN , IS_UNKNOWN , IS_UNKNOWN };
 	mutable Trinary _sharpEdgesIntersectModel = IS_UNKNOWN; // Cached value
 
 	mutable double _cachedMinGap = -1;

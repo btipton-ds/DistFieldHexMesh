@@ -530,7 +530,7 @@ void GraphicsCanvas::onMouseLeftDownModel(wxMouseEvent& event, const Vector3d& s
         dir.normalize();
         Rayd ray(startPt, dir);
         MultiPolyMeshRayHit hit;
-        if (model.rayCast(ray, hit)) {
+        if (model.rayCast(ray, false, hit)) {
             hitModel = hit.getPoint();
         }
         else {

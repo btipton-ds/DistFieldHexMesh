@@ -163,6 +163,16 @@ namespace DFHM {
 		return _polygons.size();
 	}
 
+	inline const Polygon& PolyMesh::getPolygon(const Index3DId& id) const
+	{
+		return _polygons[id];
+	}
+
+	inline Polygon& PolyMesh::getPolygon(const Index3DId& id)
+	{
+		return _polygons[id];
+	}
+
 	template<class VERT_FUNC>
 	void PolyMesh::iterateVertices(VERT_FUNC vertFunc) const {
 		_vertices.iterateInOrder(vertFunc);

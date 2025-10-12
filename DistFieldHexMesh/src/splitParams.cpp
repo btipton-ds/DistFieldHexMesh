@@ -47,6 +47,9 @@ size_t SplittingParams::numConditionalPasses() const
 	if (numCurvatureDivs > result)
 		result = numCurvatureDivs;
 
+	if (numGapDivs > result)
+		result = numGapDivs;
+
 	return result;
 }
 
@@ -94,6 +97,8 @@ void SplittingParams::read(std::istream& in)
 	IoUtil::read(in, numSimpleDivs);
 	IoUtil::read(in, numIntersectionDivs);
 	IoUtil::read(in, numCurvatureDivs);
+	if (version > 0)
+		IoUtil::read(in, numGapDivs);
 	IoUtil::read(in, curvatureDivsPerCircumference);
 	IoUtil::read(in, maxCellFaces);
 
@@ -134,7 +139,7 @@ void SplittingParams::read(std::istream& in)
 
 void SplittingParams::write(std::ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	IoUtil::write(out, version);
 
 	IoUtil::write(out, symXAxis);
@@ -144,6 +149,7 @@ void SplittingParams::write(std::ostream& out) const
 	IoUtil::write(out, numSimpleDivs);
 	IoUtil::write(out, numIntersectionDivs);
 	IoUtil::write(out, numCurvatureDivs);
+	IoUtil::write(out, numGapDivs);
 	IoUtil::write(out, curvatureDivsPerCircumference);
 	IoUtil::write(out, maxCellFaces);
 

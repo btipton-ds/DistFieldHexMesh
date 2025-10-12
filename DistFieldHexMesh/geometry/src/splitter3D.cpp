@@ -352,6 +352,7 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 	int minIntersections = INT_MAX;
 	HexSplitType bestIntersectionSplitType = HST_NO_SPLIT;
 	HexSplitType bestCurvatureSplitType = HST_NO_SPLIT;
+	HexSplitType bestGapSplitType = HST_NO_SPLIT;
 
 	// Search for the best split axis
 	// If there's a split which creates sub cells where one intersects and one does not (numIntersection == 1), take it as soon as found.
@@ -369,8 +370,8 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 		{
 			auto scratchCellId = makeScratchCell(parentId);
 
-			Utils::ScopedRestore restore1(_testRun);
-			Utils::ScopedRestore restore2(_pBlock);
+			Utils::ScopedRestore<bool> restore1(_testRun);
+			Utils::ScopedRestore<Block*> restore2(_pBlock);
 			_testRun = true;
 			_pBlock = _pScratchBlock;
 
@@ -429,11 +430,19 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 
 		// intersectsModel and needsCurvatureSplit test if _splitLevel is appropriate, so it's not needed here
 		if (_splitLevel <= _params.numCurvatureDivs && minIntersections == 2 && bestCurvatureSplitType == HST_NO_SPLIT) {
-			const auto& parentCell = getPolyhedron(parentId);
 
 			// TODO Need to use a score so we can compare with the wedge split
 			if (parentCell.needsCurvatureSplit(_params, axis)) {
 				bestCurvatureSplitType = hex_axis_to_HST(axis);
+			}
+		}
+
+		bool otherSplitsDone = _splitLevel > _params.numIntersectionDivs && _splitLevel > _params.numCurvatureDivs;
+		if (otherSplitsDone && _splitLevel <= _params.numGapDivs && bestGapSplitType == HST_NO_SPLIT) {
+
+			// TODO Need to use a score so we can compare with the wedge split
+			if (parentCell.needsGapSplit(_params, axis)) {
+				bestGapSplitType = hex_axis_to_HST(axis);
 			}
 		}
 	}
@@ -447,6 +456,9 @@ Splitter3D::HexSplitType Splitter3D::determineBestConditionalHexSplitAxis(const 
 		} else if (minIntersections== 2) { // The only way to reach here is there's a cuvature split. We could test if bestCurvatureSplitAxis != -1, but that will be handled by the caller.
 			return bestCurvatureSplitType;
 		}
+	} else if (_splitLevel <= _params.numGapDivs) {
+		cout << "bestGapSplitType: " << bestGapSplitType << "\n";
+		return bestGapSplitType;
 	}
 
 	return HST_NO_SPLIT;
@@ -527,8 +539,8 @@ Splitter3D::HexSplitType Splitter3D::determineBestComplexityHexSplitAxis(const I
 
 		auto scratchCellId = makeScratchCell(parentId);
 
-		Utils::ScopedRestore restore1(_testRun);
-		Utils::ScopedRestore restore2(_pBlock);
+		Utils::ScopedRestore<bool> restore1(_testRun);
+		Utils::ScopedRestore<Block*> restore2(_pBlock);
 		_testRun = true;
 		_pBlock = _pScratchBlock;
 

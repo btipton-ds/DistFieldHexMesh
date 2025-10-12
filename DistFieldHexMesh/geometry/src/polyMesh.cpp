@@ -1574,14 +1574,6 @@ void PolyMesh::faceFunc(const Index3DId& id, const function<void(Polygon& obj)>&
 	func(_polygons[id]);
 } 
 
-const DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) const {
-	return _polygons[id];
-}  
-
-DFHM::Polygon& PolyMesh::getPolygon(const Index3DId& id) {
-	return _polygons[id];
-}
-
 void PolyMesh::edgeFunc(const EdgeKey& key, const function<void(const Edge& obj)>& func) const {
 	if (_vertices.exists(key[0]) && _vertices.exists(key[1])) {
 		Edge edge(key, this); 

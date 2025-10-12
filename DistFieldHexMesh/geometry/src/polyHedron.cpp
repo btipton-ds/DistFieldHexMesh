@@ -1558,18 +1558,10 @@ bool Polyhedron::needsCurvatureSplitHex(const SplittingParams& params, int split
 	if (!intersectsModel())
 		return false;
 
-	MTC::vector<Vector3d> cp;
-	getCanonicalPoints(cp);
-
 	double maxLenChordRatio = 1;
 	double len, c0, c1, val0 = 0, val1 = 0;
 
-	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
-	tuv0[splittingPlaneNormalAxis] = 0;
-	tuv1[splittingPlaneNormalAxis] = 1;
-	Vector3d pt0 = TRI_LERP(cp, tuv0[0], tuv0[1], tuv0[2]);
-	Vector3d pt1 = TRI_LERP(cp, tuv1[0], tuv1[1], tuv1[2]);
-	Vector3d v = pt1 - pt0;
+	Vector3d v = calAxisDir(splittingPlaneNormalAxis);
 
 	len = v.norm();
 
@@ -1589,6 +1581,61 @@ bool Polyhedron::needsCurvatureSplitWedge(const SplittingParams& params, int spl
 {
 	assert(getCellType() == CT_WEDGE);
 	return false;
+}
+
+Vector3d Polyhedron::calAxisDir(int axisIndex) const
+{
+	MTC::vector<Vector3d> cp;
+	getCanonicalPoints(cp);
+
+	Vector3d tuv0(0.5, 0.5, 0.5), tuv1(0.5, 0.5, 0.5);
+	tuv0[axisIndex] = 0;
+	tuv1[axisIndex] = 1;
+	Vector3d pt0 = TRI_LERP(cp, tuv0[0], tuv0[1], tuv0[2]);
+	Vector3d pt1 = TRI_LERP(cp, tuv1[0], tuv1[1], tuv1[2]);
+	Vector3d dir = pt1 - pt0;
+
+	return dir;
+}
+
+bool Polyhedron::needsGapSplit(const SplittingParams& params) const
+{
+	for (int i = 0; i < 3; i++) {
+		if (needsGapSplit(params, i))
+			return true;
+	}
+	return false;
+}
+
+bool Polyhedron::needsGapSplit(const SplittingParams& params, int splittingPlaneNormalAxis) const
+{
+	if (_cachedNeedsGapSplit[splittingPlaneNormalAxis] == IS_UNKNOWN) {
+		_cachedNeedsGapSplit[splittingPlaneNormalAxis] = IS_FALSE;
+		auto& ctr = calCentroid();
+		const auto& model = getBlockPtr()->getModel();
+		if (model.isPointInside(ctr))
+			return false;
+
+
+		Vector3d dir = calAxisDir(splittingPlaneNormalAxis);
+		dir.normalize();
+
+		vector<Vector3d> testPoints;
+		testPoints.push_back(calCentroid());
+
+		MTC::set<Index3DId> vertIds;
+		getVertIds(vertIds);
+		for (const auto& vertId : vertIds) {
+			testPoints.push_back(getVertexPoint(vertId));
+		}
+
+		for (const auto& pt : testPoints) {
+			if (model.isPointInGap(params, pt, dir)) {
+				_cachedNeedsGapSplit[splittingPlaneNormalAxis] = IS_TRUE;
+			}
+		}
+	}
+	return _cachedNeedsGapSplit[splittingPlaneNormalAxis] == IS_TRUE;
 }
 
 Vector3d Polyhedron::calSpan() const
@@ -1617,7 +1664,6 @@ Vector3d Polyhedron::calSpan() const
 	}
 	return span;
 }
-
 
 double Polyhedron::maxOrthogonalityAngleRadians() const
 {
@@ -1981,6 +2027,9 @@ bool Polyhedron::setNeedToSplitConditional(size_t splitNum, const SplittingParam
 	} else if (splitNum < params.numCurvatureDivs && hasTooHighCurvature(params)) {
 		setNeedsDivideAtCentroid();
 		return true;
+	} else if (splitNum < params.numGapDivs && needsGapSplit(params, -1)) {
+		setNeedsDivideAtCentroid();
+		return true;
 	}
 
 #if 0
@@ -1991,27 +2040,6 @@ bool Polyhedron::setNeedToSplitConditional(size_t splitNum, const SplittingParam
 
 #endif
 	return false;
-}
-
-double Polyhedron::minGap() const
-{
-#if 0
-	if (_cachedMinGap < 0) {
-		_cachedMinGap = DBL_MAX;
-
-		auto pTriMesh = getBlockPtr()->getModelMesh();
-		auto bbox = getBoundingBox();
-		vector<size_t> triIndices;
-		if (pTriMesh->processFoundTris(_triIndices, bbox, triIndices)) {
-			for (size_t idx : triIndices) {
-				double gap = pTriMesh->triGap(idx);
-				if (gap < _cachedMinGap)
-					_cachedMinGap = gap;
-			}
-		}
-	}
-#endif
-	return _cachedMinGap;
 }
 
 bool Polyhedron::polygonExists(const Index3DId& id) const

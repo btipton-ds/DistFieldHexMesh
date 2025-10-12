@@ -826,7 +826,7 @@ void Volume::divideConditional(const SplittingParams& params, ProgressReporter* 
 		}, multiCore);
 
 		runThreadPool([this, &params, sinEdgeAngle, &changed](size_t threadNum, const BlockPtr& pBlk) {
-			if (pBlk->intersectsModel()) {
+			if (pBlk->intersectsModel() || pBlk->needsGapSplit()) {
 				pBlk->iteratePolyhedraInOrder([this, &changed, &params](const Index3DId& cellId, Polyhedron& cell)->bool {
 #if 0 && ENABLE_DEBUGGING_MUTEXES
 					static mutex lockMutexPtrMutex, lockMutex;
@@ -1991,8 +1991,9 @@ Polyhedron& Volume::getPolyhedron(const Index3DId& id)
 
 void Volume::doGarbageCollection()
 {
-	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
+	runThreadPool_IJK([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		for (const auto& faceId : pBlk->_deadPolygonIds) {
+			assert(pBlk->getBlockIdx() == faceId.blockIdx());
 			pBlk->freePolygon(faceId);
 		}
 		pBlk->_deadPolygonIds.clear();
@@ -2001,6 +2002,7 @@ void Volume::doGarbageCollection()
 
 	runThreadPool([](size_t threadNum, const BlockPtr& pBlk)->bool {
 		for (const auto& vertId : pBlk->_deadVertexIds) {
+			assert(pBlk->getBlockIdx() == vertId.blockIdx());
 			pBlk->freeVertex(vertId);
 		}
 		pBlk->_deadVertexIds.clear();

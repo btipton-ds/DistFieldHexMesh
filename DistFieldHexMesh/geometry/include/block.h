@@ -113,6 +113,7 @@ public:
 	const std::vector<Vector3d>& getCornerPts() const;
 
 	bool intersectsModel() const;
+	bool needsGapSplit() const;
 	TopologyState getTopologyState() const;
 	bool doQualitySplits() const;
 	bool verifyTopology() const;

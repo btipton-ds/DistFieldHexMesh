@@ -356,6 +356,21 @@ bool Block::intersectsModel() const
 	return _topologyState == TOPST_INTERSECTING;
 }
 
+bool Block::needsGapSplit() const
+{
+	const auto& params = getSplitParams();
+	bool result = false;
+	_polyhedra.iterateInOrder([&params , &result](const Index3DId& cellId, const Polyhedron& cell)->bool {
+		if (cell.needsGapSplit(params)) {
+			result = true;
+			return false;
+		}
+		return true;
+	});
+
+	return result;
+}
+
 TopologyState Block::getTopologyState() const
 {
 	if (_topologyState == TOPST_UNKNOWN) {

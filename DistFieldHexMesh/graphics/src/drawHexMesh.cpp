@@ -194,7 +194,7 @@ void DrawHexMesh::buildHexFaceTables(const VolumePtr& pVolume, const Index3D& mi
     if (!pVolume || pVolume->numPolyhedra() == 0)
         return;
 
-    Utils::ScopedRestore sr(_readyToDraw);
+    Utils::ScopedRestore<bool> sr(_readyToDraw);
     _readyToDraw = false;
 
     clearPrior();

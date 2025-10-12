@@ -32,6 +32,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tm_spatialSearch.hpp>
 #include <tolerances.h>
 #include <splitParams.h>
+#include <polygon.h>
 
 using namespace std;
 using namespace DFHM;
@@ -102,11 +103,57 @@ void Model::rebuildSearchTree()
 	}
 }
 
+bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt, const Vector3d& dir) const
+{
+	if (!_pPolyMeshSearchTree)
+		return false;
+
+	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
+
+#if ENABLE_DEBUGGING_MUTEXES
+	static std::mutex mut;
+	std::lock_guard<std::mutex> lg(mut);
+#endif
+	CBoundingBox3Dd bbox(startPt);
+	bbox.grow(params.gapBoundingBoxSemiSpan);
+	vector<PolyMeshIndex> nearFaceIds;
+	if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
+		for (size_t i = 0; i < nearFaceIds.size(); i++) {
+			const auto& nearFaceId = nearFaceIds[i];
+			auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
+
+			bool nearModelIsClosed;
+			const auto& pNearFace = getPolygon(nearFaceId, nearModelIsClosed);
+			if (!pNearFace) {
+				continue;
+			}
+
+			const auto& nearFaceNorm = pNearFace->calUnitNormal();
+
+			Vector3d hitPt;
+			double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
+			if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+				if (!nearModelIsClosed)
+					return true;
+				Vector3d v = hitPt - startPt;
+				v.normalize();
+				double dpHitFace = v.dot(nearFaceNorm);
+				if (dpHitFace < -minDotProduct) {
+					return true;
+				}
+			}
+		}
+
+	}
+
+	return false;
+}
+
 void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-#if 1
+#if 0
 	vector<PolyMeshIndex> allFaceIndices;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		auto& pMeshData = _modelMeshData[i];
@@ -229,21 +276,14 @@ bool Model::isPointInside(const Vector3d& pt) const
 			Rayd ray(pt, v);
 			size_t count = 0;
 			_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, &count](const Rayd& ray, const PolyMeshIndex& polyIdx)->bool {
-				if (polyIdx.getMeshIdx() >= _modelMeshData.size())
-					return true;
-				auto pData = _modelMeshData[polyIdx.getMeshIdx()];
-				if (!pData || !pData->isActive())
-					return true;
+				bool isClosed;
+				const auto pFace = getPolygon(polyIdx, isClosed);
+				if (isClosed) {
 
-				auto& pMesh = pData->getPolyMesh();
-				if (!pMesh || !pMesh->isClosed())
-					return true;
-
-				const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
-
-				RayHitd hit;
-				if (face.intersect(ray, hit)) {
-					count++;
+					RayHitd hit;
+					if (pFace->intersect(ray, hit)) {
+						count++;
+					}
 				}
 
 				return true;
@@ -313,22 +353,16 @@ size_t Model::findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner*
 	return result.size();
 }
 
-bool DFHM::Model::rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir) const
+bool DFHM::Model::rayCast(const Rayd& ray, bool frontFacesOnly, MultiPolyMeshRayHit& hit, bool biDir) const
 {
 	double minDist = DBL_MAX; // Distance increases deeper in the view. Min distance is closest to the viewer - aka the first hit
-	_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, biDir, &hit, &minDist](const Rayd& ray, const PolyMeshIndex& polyIdx)->bool {
-		if (polyIdx.getMeshIdx() >= _modelMeshData.size())
+	_pPolyMeshSearchTree->biDirRayCastTraverse(ray, [this, biDir, frontFacesOnly, &hit, &minDist](const Rayd& ray, const PolyMeshIndex& polyIdx)->bool {
+		bool isClosed;
+		const auto pFace = getPolygon(polyIdx, isClosed);
+		if (!pFace)
 			return true;
-		auto pData = _modelMeshData[polyIdx.getMeshIdx()];
-		if (!pData || !pData->isActive())
-			return true;
-
-		auto& pMesh = pData->getPolyMesh();
-		if (!pMesh)
-			return true;
-
-		const auto& face = pMesh->getPolygon(polyIdx.getPolyId());
-		face.iterateTriangles([&ray, &pMesh, &polyIdx, &hit, &minDist, biDir](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
+		auto pMesh = _modelMeshData[polyIdx.getMeshIdx()]->getPolyMesh();
+		pFace->iterateTriangles([&ray, &pMesh, isClosed, &polyIdx, frontFacesOnly, &hit, &minDist, biDir](const Index3DId& idx0, const Index3DId& idx1, const Index3DId& idx2)->bool {
 			const Vector3d* pts[] = {
 				&pMesh->getVertexPoint(idx0),
 				&pMesh->getVertexPoint(idx1),
@@ -337,6 +371,17 @@ bool DFHM::Model::rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir)
 
 			RayHitd rayHit;
 			if (intersectRayTri(ray, pts, rayHit)) {
+
+				if (isClosed && frontFacesOnly) {
+					Vector3d v0 = *pts[1] - *pts[0];
+					Vector3d v1 = *pts[2] - *pts[0];
+					auto norm = v0.cross(v1);
+					norm.normalize();
+					double dp = ray._dir.dot(norm);
+					if (dp > 0)
+						return true;
+				}
+
 				if (biDir) {
 					if (rayHit.dist < minDist) {
 						minDist = rayHit.dist;
@@ -357,22 +402,40 @@ bool DFHM::Model::rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir)
 
 const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 {
+	bool isClosed;
+	return getPolygon(idx, isClosed);
+}
+
+const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx, bool& isClosed) const
+{
 	size_t meshIdx = idx.getMeshIdx();
 	if (meshIdx < _modelMeshData.size()) {
 		auto pData = _modelMeshData[meshIdx];
-		auto pMesh = pData->getPolyMesh();
-		return &pMesh->getPolygon(idx.getPolyId());
+		if (pData->isActive()) {
+			auto pMesh = pData->getPolyMesh();
+			isClosed = pMesh->isClosed();
+			return &pMesh->getPolygon(idx.getPolyId());
+		}
 	}
 	return nullptr;
 }
 
 DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx)
 {
+	bool isClosed;
+	return getPolygon(idx, isClosed);
+}
+
+DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx, bool& isClosed)
+{
 	size_t meshIdx = idx.getMeshIdx();
 	if (meshIdx < _modelMeshData.size()) {
 		auto pData = _modelMeshData[meshIdx];
-		auto pMesh = pData->getPolyMesh();
-		return &pMesh->getPolygon(idx.getPolyId());
+		if (pData->isActive()) {
+			auto pMesh = pData->getPolyMesh();
+			isClosed = pMesh->isClosed();
+			return &pMesh->getPolygon(idx.getPolyId());
+		}
 	}
 	return nullptr;
 }

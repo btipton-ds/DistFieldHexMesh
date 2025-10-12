@@ -87,17 +87,20 @@ public:
 	std::vector<MeshDataPtr>::const_iterator end() const;
 
 	bool isPointInside(const Vector3d&  pt) const;
+	bool isPointInGap(const SplittingParams& params, const Vector3d& pt, const Vector3d& dir) const;
 
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshSearchTree::Entry>& indices) const;
 	size_t findPolys(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner, std::vector<PolyMeshIndex>& result, PolyMeshSearchTree::BoxTestType contains = PolyMeshSearchTree::BoxTestType::IntersectsOrContains) const;
 
-	bool rayCast(const Rayd& ray, MultiPolyMeshRayHit& hit, bool biDir = true) const;
+	bool rayCast(const Rayd& ray, bool frontFacesOnly, MultiPolyMeshRayHit& hit, bool biDir = true) const;
 
 	std::shared_ptr<const PolyMeshSearchTree> getPolySearchTree() const;
 	std::shared_ptr<const PolyMeshSearchTree> getPolySubTree(const BOX_TYPE& bbox, const PolyMeshSearchTree::Refiner* pRefiner) const;
 
 	const Polygon* getPolygon(const PolyMeshIndex& idx) const;
+	const Polygon* getPolygon(const PolyMeshIndex& idx, bool& isClosed) const;
 	Polygon* getPolygon(const PolyMeshIndex& idx);
+	Polygon* getPolygon(const PolyMeshIndex& idx, bool& isClosed);
 	const Vertex* getVertex(const PolyMeshIndex& idx) const;
 
 	void rebuildSearchTree();
