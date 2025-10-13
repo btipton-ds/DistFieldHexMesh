@@ -153,8 +153,15 @@ void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-#if 0
+#if 1
+	size_t numIndices = 0;
+	for (size_t i = 0; i < _modelMeshData.size(); i++) {
+		numIndices += _modelMeshData[i]->getPolyMesh()->numPolygons();
+	}
+
 	vector<PolyMeshIndex> allFaceIndices;
+	allFaceIndices.reserve(numIndices);
+
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		auto& pMeshData = _modelMeshData[i];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();

@@ -508,7 +508,7 @@ void GraphicsCanvas::onMouseLeftDown(wxMouseEvent& event)
     Vector3d startPt = NDCPointToModel(_mouseStartLocNDC_2D);
     if (_meshSelection && event.ControlDown()) {
         onMouseLeftDownMesh(event, startPt);
-    } else if ((_clippingMove || _clippingRotate) && event.ControlDown()) {
+    } else if (event.ControlDown()) {
         onMouseLeftDownClipping(event);
     } else {
         onMouseLeftDownModel(event, startPt);
@@ -615,30 +615,32 @@ void GraphicsCanvas::onMouseMove(wxMouseEvent& event)
         wxSize frameSize = GetSize();
         Eigen::Vector2d delta = pos - _mouseStartLocNDC_2D;
 
-        if (_clippingMove && event.ControlDown()) {
-            double dx = delta[0];
-            if (!event.ShiftDown())
-                dx *= 10;
-            Vector3d origin0 = _startPlane0.getOrigin() + dx * _startPlane0.getNormal();
-            Vector3d origin1 = _startPlane1.getOrigin() + dx * _startPlane0.getNormal();
-            setClipplingPlane(0, Planed(origin0, _startPlane0.getNormal()));
-            syncClippingPlane(1);
-            updateUniformBlock();
-        } else if (_clippingRotate && event.ControlDown()) {
-            double angleAz = delta[0] * M_PI / 2;
-            double angleEl = delta[1] * M_PI / 2;
-            auto& n = _startPlane0.getNormal();
-            auto& x = _startPlane0.getXRef();
-            Eigen::Vector3d zAxis (n[0], n[1], n[2]);
-            Eigen::Vector3d xAxis (x[0], x[1], x[2]);
-            auto yAxis = zAxis.cross(xAxis).normalized();
-            Eigen::Matrix3d rotSpin = Eigen::AngleAxisd(angleAz, yAxis).toRotationMatrix();
-            Eigen::Matrix3d rotPitch = Eigen::AngleAxisd(angleEl, xAxis).toRotationMatrix();
-            Eigen::Matrix3d rot = rotSpin * rotPitch;
-            Eigen::Vector3d n2 = rot * zAxis;
-            setClipplingPlane(0, Planed(_startPlane0.getOrigin(), Vector3d(n2[0], n2[1], n2[2])));
-            syncClippingPlane(1);
-            updateUniformBlock();
+        if (event.ControlDown()) {
+            if (_clippingMove) {
+                double dx = delta[0];
+                if (!event.ShiftDown())
+                    dx *= 10;
+                Vector3d origin0 = _startPlane0.getOrigin() + dx * _startPlane0.getNormal();
+                Vector3d origin1 = _startPlane1.getOrigin() + dx * _startPlane0.getNormal();
+                setClipplingPlane(0, Planed(origin0, _startPlane0.getNormal()));
+                syncClippingPlane(1);
+                updateUniformBlock();
+            } else {
+                double angleAz = delta[0] * M_PI / 2;
+                double angleEl = delta[1] * M_PI / 2;
+                auto& n = _startPlane0.getNormal();
+                auto& x = _startPlane0.getXRef();
+                Eigen::Vector3d zAxis(n[0], n[1], n[2]);
+                Eigen::Vector3d xAxis(x[0], x[1], x[2]);
+                auto yAxis = zAxis.cross(xAxis).normalized();
+                Eigen::Matrix3d rotSpin = Eigen::AngleAxisd(angleAz, yAxis).toRotationMatrix();
+                Eigen::Matrix3d rotPitch = Eigen::AngleAxisd(angleEl, xAxis).toRotationMatrix();
+                Eigen::Matrix3d rot = rotSpin * rotPitch;
+                Eigen::Vector3d n2 = rot * zAxis;
+                setClipplingPlane(0, Planed(_startPlane0.getOrigin(), Vector3d(n2[0], n2[1], n2[2])));
+                syncClippingPlane(1);
+                updateUniformBlock();
+            }
         } else {
             double angleSpin = delta[0] * M_PI / 2;
             double anglePitch = delta[1] * M_PI / 2;
@@ -1590,7 +1592,17 @@ void GraphicsCanvas::setClippingMoveEnabled(bool val)
 
 void GraphicsCanvas::setClippingRotateEnabled(bool val)
 {
-    _clippingRotate = val;
+    _clippingMove = !val;
+}
+
+bool GraphicsCanvas::isClippingMoveEnabled() const
+{
+    return _clippingMove;
+}
+
+bool GraphicsCanvas::isClippingRotateEnabled() const
+{
+    return !_clippingMove;
 }
 
 inline Eigen::Matrix4d GraphicsCanvas::cumTransform(bool withProjection) const

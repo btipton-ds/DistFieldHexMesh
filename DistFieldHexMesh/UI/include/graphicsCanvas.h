@@ -168,6 +168,8 @@ public:
     const Planed getClipplingPlane(int num) const;
     void setClippingMoveEnabled(bool val);
     void setClippingRotateEnabled(bool val);
+    bool isClippingMoveEnabled() const;
+    bool isClippingRotateEnabled() const;
 
     bool showModelSharpEdges() const;
     bool toggleShowModelSharpEdges();
@@ -288,8 +290,7 @@ private:
     bool _initialized = false;
     bool _renderRunning = true;
     bool _meshSelection = false;
-    bool _clippingMove = false;
-    bool _clippingRotate = false;
+    bool _clippingMove = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
     Planed _startPlane0, _startPlane1;
     
