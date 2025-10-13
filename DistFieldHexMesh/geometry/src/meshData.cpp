@@ -58,9 +58,9 @@ MeshData::MeshData(const AppDataPtr& pAppData, size_t id)
 MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, size_t id, const std::wstring& name)
 	: _pAppData(pAppData)
 	, _name(name)
-	, _pMesh_deprecated(pMesh)
 	, _id(id)
 {
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, pMesh);
 	postReadCreate();
 }
 
@@ -71,9 +71,6 @@ MeshData::~MeshData()
 void MeshData::postReadCreate()
 {
 	const auto& params = _pAppData->getParams();
-
-	_pMesh_deprecated->clearSearchTrees();
-	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh_deprecated);
 
 	bool flattenQuads = true;
 
@@ -124,10 +121,6 @@ bool MeshData::isClosed() const
 
 void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 {
-	if (!isMeshCashed())
-		cacheMesh();
-	else
-		readMeshFromCache();
 //	_pMesh->splitLongTris(maxLength);
 }
 
@@ -150,13 +143,13 @@ void MeshData::setTessNormals(const OGL::IndicesPtr& normalsTess)
 
 void MeshData::write(std::ostream& out) const
 {
-	uint8_t version = 0;
+	uint8_t version = 1;
 	IoUtil::write(out, version);
 	IoUtil::write(out, _active);
 	IoUtil::write(out, _name);
 
 //	assert(_pMesh->verifyTopology(false));
-	_pMesh_deprecated->write(out);
+	_pPolyMesh->write(out);
 }
 
 void MeshData::read(std::istream& in)
@@ -166,29 +159,25 @@ void MeshData::read(std::istream& in)
 	IoUtil::read(in, _active);
 	IoUtil::read(in, _name);
 
-	_pMesh_deprecated = make_shared<CMesh>();
-	_pMesh_deprecated->read(in);
-	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh_deprecated);
+	if (version == 0) {
+		auto pMesh = make_shared<CMesh>();
+		pMesh->read(in);
+		_pPolyMesh = make_shared<PolyMesh>(_pAppData, pMesh);
+	} else {
+		_pPolyMesh = make_shared<PolyMesh>(_pAppData);
+		_pPolyMesh->read(in);
+	}
 }
 
-void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
+void MeshData::getGLNormalData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
 {
 	normPts.clear();
 	normIndices.clear();
 
-	for (size_t triIdx = 0; triIdx < _pMesh_deprecated->numTris(); triIdx++) {
-		const Index3D& triIndices = _pMesh_deprecated->getTri(triIdx);
-		const auto pt0 = _pMesh_deprecated->getVert(triIndices[0])._pt;
-		const auto pt1 = _pMesh_deprecated->getVert(triIndices[1])._pt;
-		const auto pt2 = _pMesh_deprecated->getVert(triIndices[2])._pt;
-
-		Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
-		Vector3d v0 = pt0 - pt1;
-		Vector3d v1 = pt2 - pt1;
-		Vector3d n = v1.cross(v0);
-		double area = n.norm() / 2;
-		double charLen = sqrt(area);
-		Vector3d ptEnd = ctr + n.normalized() * 0.01;// *charLen;
+	_pPolyMesh->iteratePolygons([&normPts, &normIndices](const Index3DId& faceId, const Polygon& face)->bool {
+		const auto& ctr = face.calCentroid();
+		const auto& norm = face.calUnitNormal();
+		Vector3d ptEnd = ctr + norm.normalized() * 0.01;// *charLen;
 
 		for (int j = 0; j < 3; j++)
 			normPts.push_back((float)ctr[j]);
@@ -198,7 +187,9 @@ void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int
 
 		normIndices.push_back((int)normIndices.size());
 		normIndices.push_back((int)normIndices.size());
-	}
+
+		return true;
+	});
 }
 
 void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double radius) const
@@ -230,51 +221,6 @@ void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double ra
 			}
 		}
 	}
-}
-
-wstring MeshData::getCacheFilename() const
-{
-	return L"";
-}
-
-bool MeshData::isMeshCashed() const
-{
-	auto filename = getCacheFilename();
-	return false;// wxFileExists(filename);
-}
-
-void MeshData::cacheMesh() {
-	if (!_pMesh_deprecated)
-		return;
-
-	auto filename = getCacheFilename();
-
-#ifdef WIN32
-	ofstream out(filename, ios::out | ios::trunc | ios::binary);
-#else
-	filesystem::path filenamePath(filename);
-	ofstream out(filenamePath, ios::out | ios::trunc | ios::binary);
-#endif
-
-	_pMesh_deprecated->write(out);
-}
-
-void MeshData::readMeshFromCache()
-{
-	auto filename = getCacheFilename();
-
-#ifdef WIN32
-	ifstream in(filename, ifstream::binary);
-#else
-	filesystem::path filenamePath(filename);
-	ifstream in(filenamePath, ifstream::binary);
-#endif
-
-	CMeshPtr pMesh = make_shared<CMesh>();
-	if (pMesh->read(in)) {
-		_pMesh_deprecated = pMesh;
-	}
-
 }
 
 void MeshData::setActive(bool val)

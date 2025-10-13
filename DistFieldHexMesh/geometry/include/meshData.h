@@ -72,7 +72,7 @@ namespace DFHM {
 		const std::wstring& getName() const;
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
-		void getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
+		void getGLNormalData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const;
 
 		void write(std::ostream& out) const;
 		void read(std::istream& in);
@@ -98,17 +98,11 @@ namespace DFHM {
 	private:
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
 
-		std::wstring getCacheFilename() const;
-		bool isMeshCashed() const;
-		void cacheMesh();
-		void readMeshFromCache();
-
 		AppDataPtr _pAppData;
 		bool _active = true;
 		size_t _id;
 
 		std::wstring _name;
-		TriMesh::CMeshPtr _pMesh_deprecated;
 		PolyMeshPtr _pPolyMesh;
 
 		std::vector<OGL::IndicesPtr> _faceTess;

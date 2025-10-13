@@ -112,7 +112,7 @@ void DrawModelMesh::createEdgeTessellation(const SplittingParams& params, const 
     pData->setTessEdges(allEdgeTess, sharpEdgeTess, smoothEdgeTess);
     vector<float> normPts;
     vector<unsigned int> normIndices;
-    pData->getEdgeData(normPts, normIndices);
+    pData->getGLNormalData(normPts, normIndices);
 
     if (!normPts.empty()) {
         auto normalTess = edgeVBO.setEdgeSegTessellation(meshId, 3, changeNumber, normPts, normIndices);

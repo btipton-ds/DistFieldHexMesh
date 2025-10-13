@@ -91,6 +91,9 @@ namespace DFHM {
 		void initSymmetry(const std::vector<Planed>& symPlanes);
 		bool isClosed() const;
 
+		void write(std::ostream& out) const;
+		void read(std::istream& in);
+
 		template<class VERT_FUNC>
 		void iterateVertices(VERT_FUNC vertFunc) const;
 		template<class VERT_FUNC>

@@ -200,6 +200,51 @@ bool PolyMesh::isClosed() const
 	return _isClosed == IS_TRUE;
 }
 
+void PolyMesh::write(std::ostream& out) const
+{
+	uint8_t version = 0;
+	IoUtil::write(out, version);
+	IoUtil::write(out, _maxRemovableVerts);
+	IoUtil::write(out, _maxRemovableAreaRatio);
+	IoUtil::write(out, _minAspectRatio);
+	
+	size_t size = _edgeCurvatures.size();
+	IoUtil::write(out, size);
+	for (const auto& pair : _edgeCurvatures) {
+		pair.first[0].write(out);
+		pair.first[1].write(out);
+		IoUtil::write(out, pair.second);
+	}
+
+	_vertices.write(out);
+	_polygons.write(out);
+}
+
+void PolyMesh::read(std::istream& in)
+{
+	uint8_t version = 0;
+	IoUtil::read(in, version);
+	IoUtil::read(in, _maxRemovableVerts);
+	IoUtil::read(in, _maxRemovableAreaRatio);
+	IoUtil::read(in, _minAspectRatio);
+
+	size_t size;
+	IoUtil::read(in, size);
+	for (size_t i = 0; i < size; i++) {
+		Index3DId id0, id1;
+		double val;
+
+		id0.read(in);
+		id1.read(in);
+		IoUtil::read(in, val);
+		_edgeCurvatures.insert(make_pair(EdgeKey(id0, id1), val));
+	}
+
+	_vertices.read(in);
+	_polygons.read(in);
+
+}
+
 const Vector3d& PolyMesh::getVertexPoint(const Index3DId& id) const
 {
 	return _vertices[id];
