@@ -69,7 +69,6 @@ namespace DFHM {
 		size_t getId() const;
 		CBoundingBox3Dd getBBox() const;
 
-		const TriMesh::CMeshPtr& getMesh() const;
 		const std::wstring& getName() const;
 
 		void splitLongTris(const SplittingParams& params, double maxLength);
@@ -125,11 +124,6 @@ namespace DFHM {
 	inline size_t MeshData::getId() const
 	{
 		return _id;
-	}
-
-	inline const TriMesh::CMeshPtr& MeshData::getMesh() const
-	{
-		return _pMesh;
 	}
 
 	inline const std::wstring& MeshData::getName() const

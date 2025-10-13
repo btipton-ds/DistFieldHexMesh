@@ -47,6 +47,9 @@ namespace DFHM {
     class CreateBaseMeshDlg;
     class Index3DId;
 
+    class PolyMesh;
+    using PolyMeshPtr = std::shared_ptr<PolyMesh>;
+
     class MeshData;
     using MeshDataPtr = std::shared_ptr<MeshData>;
     using MeshDataConstPtr = std::shared_ptr<const MeshData>;
@@ -76,10 +79,6 @@ namespace DFHM {
         virtual bool doImportMesh() = 0;
         virtual void doSave() = 0;
         virtual void doSaveAs() = 0;
-        virtual void doVerifyClosed(const TriMesh::CMeshPtr& pMesh) = 0;
-        virtual void doVerifyNormals(const TriMesh::CMeshPtr& pMesh) = 0;
-        virtual void doAnalyzeGaps(const TriMesh::CMeshPtr& pMesh) = 0;
-        virtual void doFindMinGap(const TriMesh::CMeshPtr& pMesh) const = 0;
         virtual void doCreateBaseVolume() = 0;
         virtual void doRemoveBaseVolume() = 0;
         virtual void doDivideHexMesh(const DivideHexMeshDlg& dlg) = 0;

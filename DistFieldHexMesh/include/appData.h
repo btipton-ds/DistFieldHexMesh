@@ -45,6 +45,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 namespace DFHM {
 
+class PolyMeshIntf;
 class AppData : public AppDataIntf, public std::enable_shared_from_this<AppData> {
 public:
     class MeshPickHandler {
@@ -62,10 +63,6 @@ public:
     bool doImportMesh() override;
     void doSave() override;
     void doSaveAs() override;
-    void doVerifyClosed(const CMeshPtr& pMesh) override;
-    void doVerifyNormals(const CMeshPtr& pMesh) override;
-    void doAnalyzeGaps(const CMeshPtr& pMesh) override;
-    void doFindMinGap(const CMeshPtr& pMesh) const override;
     void doCreateBaseVolume() override;
     void doRemoveBaseVolume() override;
     void doDivideHexMesh(const DivideHexMeshDlg& dlg) override;

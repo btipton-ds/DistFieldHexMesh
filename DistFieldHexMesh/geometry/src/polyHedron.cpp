@@ -1414,13 +1414,13 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 {
 	if (_sharpEdgesIntersectModel == IS_FALSE)
 		return false;
-
+#if 0
 	CBoundingBox3Dd bbox = getBoundingBox();
 	const double sinSharpEdgeAngle = sin(params.getSharpAngleRadians());
 	MTC::vector<size_t> sharpEdges;
 	auto& model = getBlockPtr()->getModel();
 	for (auto& pData : model) {
-		auto& pMesh = pData->getMesh();
+		auto& pMesh = pData->getPolyMesh();
 		vector<size_t> edgeIndices;
 		if (pMesh->findEdges(bbox, edgeIndices)) {
 			for (size_t edgeIdx : edgeIndices) {
@@ -1452,6 +1452,7 @@ bool Polyhedron::sharpEdgesIntersectModel(const SplittingParams& params) const
 				return true;
 		}
 	}
+#endif
 	return _sharpEdgesIntersectModel == IS_TRUE;
 }
 
@@ -1928,12 +1929,13 @@ bool Polyhedron::setNeedsCleanFaces()
 
 bool Polyhedron::containsSharps() const
 {
+#if 0
 	auto vertIndices = getBlockPtr()->getVolume()->getSharpVertIndices();
 
 	auto bbox = getBoundingBox();
 	const auto& model = getBlockPtr()->getModel();
 	for (const auto& pData : model) {
-		auto pMesh = pData->getMesh();
+		auto pMesh = pData->getPolyMesh();
 		for (size_t vertIdx : vertIndices) {
 			const auto& pt = pMesh->getVert(vertIdx)._pt;
 			if (bbox.contains(pt, Tolerance::sameDistTol()))
@@ -1944,6 +1946,7 @@ bool Polyhedron::containsSharps() const
 		if (pMesh->findTris(bbox, triIndices) > 0) {
 		}
 	}
+#endif
 	return false;
 }
 

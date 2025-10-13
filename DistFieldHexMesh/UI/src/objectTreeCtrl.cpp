@@ -71,20 +71,6 @@ void ObjectTreeCtrl::onContextMenu(wxDataViewEvent& event)
 
 		contextMenu->AppendSeparator();
 
-		contextMenu->Append(ID_VerifyClosed, "Mesh stats...", "", true);
-		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnMeshStats, this, ID_VerifyClosed);
-
-		contextMenu->Append(ID_VerifyNormals, "Verify Normals");
-		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnVerifyNormals, this, ID_VerifyNormals);
-
-		contextMenu->Append(ID_AnalyzeGaps, "Analyze Gaps");
-		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnAnalyzeGaps, this, ID_AnalyzeGaps);
-
-		contextMenu->Append(ID_FindMinimumGap, "Find Minimum Gap");
-		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnFindMinGap, this, ID_FindMinimumGap);
-
-		contextMenu->AppendSeparator();
-
 		contextMenu->Append(ID_REMESH, "Split Long Tris...");
 		Bind(wxEVT_MENU, &ObjectTreeCtrl::OnSplitLongTris, this, ID_REMESH);
 
@@ -105,38 +91,6 @@ void ObjectTreeCtrl::OnToggleShow(wxCommandEvent& event)
 		auto pDraw = pCanvas->getDrawModelMesh();
 		pDraw->setVBOActive(pData->getId(), pData->isActive());
 	}
-}
-
-void ObjectTreeCtrl::OnMeshStats(wxCommandEvent& event)
-{
-	auto name = getCurrentItemName();
-	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData(name);
-	pAppData->doVerifyClosed(pData->getMesh());
-}
-
-void ObjectTreeCtrl::OnVerifyNormals(wxCommandEvent& event)
-{
-	auto name = getCurrentItemName();
-	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData(name);
-	pAppData->doVerifyNormals(pData->getMesh());
-}
-
-void ObjectTreeCtrl::OnAnalyzeGaps(wxCommandEvent& event)
-{
-	auto name = getCurrentItemName();
-	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData(name);
-	pAppData->doAnalyzeGaps(pData->getMesh());
-}
-
-void ObjectTreeCtrl::OnFindMinGap(wxCommandEvent& event)
-{
-	auto name = getCurrentItemName();
-	const auto& pAppData = _pMainFrame->getAppData();
-	const auto& pData = pAppData->getMeshData(name);
-	pAppData->doFindMinGap(pData->getMesh());
 }
 
 void ObjectTreeCtrl::OnSplitLongTris(wxCommandEvent& event)

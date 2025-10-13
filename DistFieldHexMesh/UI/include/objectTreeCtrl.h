@@ -54,10 +54,6 @@ namespace DFHM {
 
 	private:
 		void OnToggleShow(wxCommandEvent& event);
-		void OnMeshStats(wxCommandEvent& event);
-		void OnVerifyNormals(wxCommandEvent& event);
-		void OnAnalyzeGaps(wxCommandEvent& event);
-		void OnFindMinGap(wxCommandEvent& event);
 		void OnSplitLongTris(wxCommandEvent& event);
 
 		MainFrame* _pMainFrame;

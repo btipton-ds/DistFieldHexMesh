@@ -397,7 +397,7 @@ CBoundingBox3Dd Volume::getModelBBox() const
 
 	const auto& model = _pAppData->getModel();
 	for (const auto& pData : model) {
-		const auto& pMesh = pData->getMesh();
+		const auto& pMesh = pData->getPolyMesh();
 		result.merge(pMesh->getBBox());
 	}
 
@@ -728,13 +728,7 @@ void Volume::divideHexMesh(const Model& model, const SplittingParams& params, Pr
 	{
 
 		for (auto& pData : model) {
-			const auto& pMesh = pData->getMesh();
-			pMesh->buildCentroids(true);
-			pMesh->buildNormals(true);
-			pMesh->calCurvatures(sharpAngleRadians, true);
-			auto tmp = pMesh->getSharpEdgeIndices(sharpAngleRadians);
-
-			sharpEdges.insert(sharpEdges.end(), tmp.begin(), tmp.end());
+//			sharpEdges.insert(sharpEdges.end(), tmp.begin(), tmp.end());
 			findFeatures();
 			reportProgress(pReporter);
 		}

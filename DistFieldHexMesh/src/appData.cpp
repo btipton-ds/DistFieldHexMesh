@@ -692,7 +692,7 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
         auto pData = make_shared<MeshData>(sharedThis, i);
         pData->read(in);
         meshes.push_back(pData);
-        bbox.merge(pData->getMesh()->getBBox());
+        bbox.merge(pData->getPolyMesh()->getBBox());
     }
     MultiCore::runLambda([&meshes](size_t threadNum, size_t numThreads) {
         for (size_t i = threadNum; i < meshes.size(); i += numThreads) {
@@ -724,116 +724,6 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
 
     updateDebugTess();
     _pMainFrame->refreshObjectTree();
-}
-
-void AppData::doVerifyClosed(const CMeshPtr& pMesh)
-{
-    int numOpen = pMesh->numLaminarEdges();
-
-    stringstream ss;
-    ss << "Number of edges: " << pMesh->numEdges() << "\nNumber of open edges: " << numOpen;
-    wxMessageBox(ss.str().c_str(), "Verify Closed", wxOK | wxICON_INFORMATION);
-}
-
-void AppData::doVerifyNormals(const CMeshPtr& pMesh)
-{
-    size_t numMisMatched = 0;
-    size_t numEdges = pMesh->numEdges();
-    for (size_t i = 0; i < numEdges; i++) {
-        const auto& edge = pMesh->getEdge(i);
-        if (edge.numFaces() == 2) {
-            size_t ptIdx0 = edge._vertIndex[0];
-            size_t ptIdx1 = edge._vertIndex[1];
-
-            const Index3D& faceIndices0 = pMesh->getTri(edge.getTriIdx(0));
-            const Index3D& faceIndices1 = pMesh->getTri(edge.getTriIdx(1));
-
-            bool face0Pos = false, face1Pos = false;
-            for (int i = 0; i < 3; i++) {
-                if (faceIndices0[i] == ptIdx0) {
-                    face0Pos = (faceIndices0[(i + 1) % 3] == ptIdx1);
-                    break;
-                }
-            }
-
-            for (int i = 0; i < 3; i++) {
-                if (faceIndices1[i] == ptIdx0) {
-                    face1Pos = (faceIndices1[(i + 1) % 3] == ptIdx1);
-                    break;
-                }
-            }
-
-            if (face0Pos == face1Pos) {
-                numMisMatched++;
-            }
-        }
-    }
-
-    stringstream ss;
-    ss << "Number of tris: " << pMesh->numTris() << "\nNumber of opposed faces: " << numMisMatched;
-    wxMessageBox(ss.str().c_str(), "Verify Normals", wxOK | wxICON_INFORMATION);
-}
-
-void AppData::doAnalyzeGaps(const CMeshPtr& pMesh)
-{
-    vector<double> binSizes({ 0.050 / 64, 0.050 / 32, 0.050 / 16, 0.050 / 8, 0.050 / 4, 0.050 / 2, 0.050 });
-    vector<size_t> bins;
-    bins.resize(binSizes.size(), 0);
-    pMesh->getGapHistogram(binSizes, bins, true);
-
-    stringstream ss;
-    ss << "Gap histogram\n";
-    for (size_t i = 0; i < binSizes.size(); i++) {
-        ss << "hits < " << binSizes[i] << ": " << bins[i] << "\n";
-    }
-    wxMessageBox(ss.str().c_str(), "Gap Analysis", wxOK | wxICON_INFORMATION);
-    
-}
-
-void AppData::doFindMinGap(const CMeshPtr& pMesh) const
-{
-    double t = pMesh->findMinGap() * 10;
-    auto bb = pMesh->getBBox();
-    auto bbMin = bb.getMin();
-    auto range = bb.range();
-    size_t numX = (size_t)(range[0] / t + 0.5);
-    size_t numY = (size_t)(range[1] / t + 0.5);
-    size_t numZ = (size_t)(range[2] / t + 0.5);
-
-    numX = (numX / 8 + 1) * 8;
-    numY = (numY / 8 + 1) * 8;
-    numZ = (numZ / 8 + 1) * 8;
-    Index3D dim(numX, numY, numZ);
-
-
-    MultiCore::runLambda([this, dim, bb](size_t threadNum, size_t numThreads)->bool {
-        auto range = bb.range();
-        auto bbMin = bb.getMin();
-        Vector3d zAxis(0, 0, 1);
-        for (size_t ix = threadNum; ix < dim[0]; ix += numThreads) {
-            double t = ix / (dim[0] - 1.0);
-            double x = bbMin[0] + t * range[0];
-            for (size_t iy = 0; iy < dim[1]; iy++) {
-                double u = iy / (dim[1] - 1.0);
-                double y = bbMin[1] + u * range[1];
-                Vector3d ctr(x, y, 0);
-                Rayd ray(ctr, zAxis);
-
-#if 0 && defined(_DEBUG)
-                vector<RayHit> hits;
-                if (_pMesh->rayCast(ray, hits)) {
-                    int dbgBreak = 1;
-                }
-#endif
-            }
-        }
-        return true;
-    }, true);
-
-
-    stringstream ss;
-    ss << "Span: [" << numX << ", " << numY << ", " << numZ << "]\n";
-    wxMessageBox(ss.str().c_str(), "Box span in steps", wxOK | wxICON_INFORMATION);
 }
 
 void AppData::doNew(const MakeBlockDlg& dlg)
@@ -887,7 +777,7 @@ CBoundingBox3Dd AppData::getBoundingBox() const
 {
     CBoundingBox3Dd result;
     for (const auto& pData : _model) {
-        result.merge(pData->getMesh()->getBBox());
+        result.merge(pData->getPolyMesh()->getBBox());
     }
 
     if (_pVolume)
@@ -906,7 +796,7 @@ CBoundingBox3Dd AppData::getMeshBoundingBox() const
     CBoundingBox3Dd result;
     for (const auto& pData : _model) {
         if (pData->isActive())
-            result.merge(pData->getMesh()->getBBox());
+            result.merge(pData->getPolyMesh()->getBBox());
     }
 
     return result;
@@ -1149,9 +1039,9 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
     CBoundingBox3Dd bboxOriented;
 
     for (const auto& pData : _model) {
-        const auto pMesh = pData->getMesh();
-        for (size_t i = 0; i < pMesh->numVertices(); i++) {
-            const Vector3d& pt = pMesh->getVert(i)._pt;
+        const auto pMesh = pData->getPolyMesh();
+        pMesh->iterateVertices([this, &pMesh, &xform, &bboxOriented](const Index3DId& vertId, const Vertex& vert)->bool {
+            const Vector3d& pt = vert.getPoint();
             Eigen::Vector4d pt4(pt[0], pt[1], pt[2], 1);
 
             if (_params.symXAxis && pt4[0] < 0)
@@ -1166,7 +1056,9 @@ void AppData::makeModelCubePoints(Vector3d pts[8], CBoundingBox3Dd& volBox)
             pt4 = xform * pt4;
             Vector3d ptX(pt4[0], pt4[1], pt4[2]);
             bboxOriented.merge(ptX);
-        }
+
+            return true;
+        });
     }
 
     Eigen::Vector4d cubePts4[8];

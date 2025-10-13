@@ -173,6 +173,7 @@ void MeshData::read(std::istream& in)
 
 	_pMesh = make_shared<CMesh>();
 	_pMesh->read(in);
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const

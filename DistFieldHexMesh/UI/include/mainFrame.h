@@ -125,10 +125,6 @@ class Volume;
 enum DFHM_MENU_ID
 {
     DFHM_LOWEST = wxID_HIGHEST,
-    ID_VerifyClosed,
-    ID_VerifyNormals,
-    ID_AnalyzeGaps,
-    ID_FindMinimumGap,
     ID_REMESH,
     ID_CREATE_BASE_MESH,
     ID_BuildCFDHexes,

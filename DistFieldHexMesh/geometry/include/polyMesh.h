@@ -77,6 +77,7 @@ namespace DFHM {
 		Block* getOwner(const Index3D& blockIdx) override;
 
 		size_t numPolygons() const;
+		size_t numBytes() const;
 
 		const PolyMesh* getPolyMeshPtr() const override;
 		PolyMesh* getPolyMeshPtr() override;

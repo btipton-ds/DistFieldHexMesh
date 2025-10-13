@@ -639,7 +639,7 @@ void MainFrame::refreshObjectTree()
     auto surfacesItem = _pObjectTree->AppendContainer(wxDataViewItem(), "Surfaces", -1, 0);
     for (const auto& pData : model) {
         wxDataViewItem item;
-        const auto pMesh = pData->getMesh();
+        const auto pMesh = pData->getPolyMesh();
         if (pMesh->isClosed())
             item = _pObjectTree->AppendItem(solidsItem, pData->getName());
         else
