@@ -185,6 +185,15 @@ const CBoundingBox3Dd& PolyMesh::getBBox() const
 	return _bbox;
 }
 
+size_t PolyMesh::numBytes() const
+{
+	size_t result = sizeof(this);
+	result += _vertices.numBytes();
+	result += _polygons.numBytes();
+	result += sizeof(std::pair<EdgeKey, double>) * _edgeCurvatures.size();
+
+	return result;
+}
 
 bool PolyMesh::isClosed() const
 {

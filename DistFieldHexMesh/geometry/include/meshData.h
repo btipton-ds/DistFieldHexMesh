@@ -97,7 +97,6 @@ namespace DFHM {
 
 	private:
 		void addPointMarker(TriMesh::CMeshPtr& pMesh, const Vector3d& pt, double radius) const;
-		TriMesh::CMeshPtr getSharpVertMesh() const;
 
 		std::wstring getCacheFilename() const;
 		bool isMeshCashed() const;
@@ -109,7 +108,7 @@ namespace DFHM {
 		size_t _id;
 
 		std::wstring _name;
-		TriMesh::CMeshPtr _pMesh;
+		TriMesh::CMeshPtr _pMesh_deprecated;
 		PolyMeshPtr _pPolyMesh;
 
 		std::vector<OGL::IndicesPtr> _faceTess;

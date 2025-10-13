@@ -1149,12 +1149,6 @@ void AppData::makeOGLTess(const MeshDataPtr& pData, const SplittingParams& param
 {
     pDrawModelMesh->createFaceTessellation(_params, pData);
     pDrawModelMesh->createEdgeTessellation(_params, pData);
-
-#if 0
-    CMeshPtr pSharpVertMesh; // = getSharpVertMesh(); // TODO This needs to be instanced and much faster.
-    if (pSharpVertMesh)
-        pData->_sharpPointTess = createFaceTessellation(pSharpVertMesh, pDrawModelMesh);
-#endif
 }
 
 MeshDataConstPtr AppData::getMeshData(const std::wstring& name) const

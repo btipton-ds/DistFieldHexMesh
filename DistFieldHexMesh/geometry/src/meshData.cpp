@@ -58,7 +58,7 @@ MeshData::MeshData(const AppDataPtr& pAppData, size_t id)
 MeshData::MeshData(const AppDataPtr& pAppData, const TriMesh::CMeshPtr& pMesh, size_t id, const std::wstring& name)
 	: _pAppData(pAppData)
 	, _name(name)
-	, _pMesh(pMesh)
+	, _pMesh_deprecated(pMesh)
 	, _id(id)
 {
 	postReadCreate();
@@ -72,8 +72,8 @@ void MeshData::postReadCreate()
 {
 	const auto& params = _pAppData->getParams();
 
-	_pMesh->clearSearchTrees();
-	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
+	_pMesh_deprecated->clearSearchTrees();
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh_deprecated);
 
 	bool flattenQuads = true;
 
@@ -95,8 +95,6 @@ CBoundingBox3Dd MeshData::getBBox() const
 {
 	if (_pPolyMesh)
 		return _pPolyMesh->getBBox();
-	else if (_pMesh)
-		return _pMesh->getBBox();
 	return CBoundingBox3Dd();
 }
 
@@ -104,7 +102,7 @@ size_t MeshData::numBytes() const
 {
 	size_t result = sizeof(MeshData);
 	result += sizeof(_name) + _name.length() * sizeof(wchar_t);
-	result += _pMesh->numBytes();
+	result += _pPolyMesh->numBytes();
 
 	OGL::IndicesPtr
 		_faceTess,
@@ -121,8 +119,6 @@ bool MeshData::isClosed() const
 {
 	if (_pPolyMesh)
 		return _pPolyMesh->isClosed();
-	else if (_pMesh)
-		return _pMesh->isClosed();
 	return true;
 }
 
@@ -132,8 +128,7 @@ void MeshData::splitLongTris(const SplittingParams& params, double maxLength)
 		cacheMesh();
 	else
 		readMeshFromCache();
-	_pMesh->splitLongTris(maxLength);
-	_pMesh->calCurvatures(params.getSinSharpAngle(), RUN_MULTI_THREAD);
+//	_pMesh->splitLongTris(maxLength);
 }
 
 void MeshData::setFaceTess(const std::vector<OGL::IndicesPtr>& faceTess)
@@ -161,7 +156,7 @@ void MeshData::write(std::ostream& out) const
 	IoUtil::write(out, _name);
 
 //	assert(_pMesh->verifyTopology(false));
-	_pMesh->write(out);
+	_pMesh_deprecated->write(out);
 }
 
 void MeshData::read(std::istream& in)
@@ -171,9 +166,9 @@ void MeshData::read(std::istream& in)
 	IoUtil::read(in, _active);
 	IoUtil::read(in, _name);
 
-	_pMesh = make_shared<CMesh>();
-	_pMesh->read(in);
-	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh);
+	_pMesh_deprecated = make_shared<CMesh>();
+	_pMesh_deprecated->read(in);
+	_pPolyMesh = make_shared<PolyMesh>(_pAppData, _pMesh_deprecated);
 }
 
 void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int>& normIndices) const
@@ -181,11 +176,11 @@ void MeshData::getEdgeData(std::vector<float>& normPts, std::vector<unsigned int
 	normPts.clear();
 	normIndices.clear();
 
-	for (size_t triIdx = 0; triIdx < _pMesh->numTris(); triIdx++) {
-		const Index3D& triIndices = _pMesh->getTri(triIdx);
-		const auto pt0 = _pMesh->getVert(triIndices[0])._pt;
-		const auto pt1 = _pMesh->getVert(triIndices[1])._pt;
-		const auto pt2 = _pMesh->getVert(triIndices[2])._pt;
+	for (size_t triIdx = 0; triIdx < _pMesh_deprecated->numTris(); triIdx++) {
+		const Index3D& triIndices = _pMesh_deprecated->getTri(triIdx);
+		const auto pt0 = _pMesh_deprecated->getVert(triIndices[0])._pt;
+		const auto pt1 = _pMesh_deprecated->getVert(triIndices[1])._pt;
+		const auto pt2 = _pMesh_deprecated->getVert(triIndices[2])._pt;
 
 		Vector3d ctr = (pt0 + pt1 + pt2) / 3.0;
 		Vector3d v0 = pt0 - pt1;
@@ -237,28 +232,6 @@ void MeshData::addPointMarker(CMeshPtr& pMesh, const Vector3d& origin, double ra
 	}
 }
 
-CMeshPtr MeshData::getSharpVertMesh() const
-{
-	auto bBox = _pMesh->getBBox();
-	double span = bBox.range().norm();
-	double radius = span / 500;
-	bBox.grow(2 * radius);
-
-	vector<size_t> sVerts;
-	Volume::findSharpVertices(_pMesh, SHARP_EDGE_ANGLE_RADIANS, sVerts);
-	if (!sVerts.empty()) {
-		CMeshPtr pMesh = make_shared<CMesh>(bBox);
-		for (size_t vertIdx : sVerts) {
-			auto pt = _pMesh->getVert(vertIdx)._pt;
-			addPointMarker(pMesh, pt, radius);
-		}
-
-		return pMesh;
-	}
-
-	return nullptr;
-}
-
 wstring MeshData::getCacheFilename() const
 {
 	return L"";
@@ -271,7 +244,7 @@ bool MeshData::isMeshCashed() const
 }
 
 void MeshData::cacheMesh() {
-	if (!_pMesh)
+	if (!_pMesh_deprecated)
 		return;
 
 	auto filename = getCacheFilename();
@@ -283,7 +256,7 @@ void MeshData::cacheMesh() {
 	ofstream out(filenamePath, ios::out | ios::trunc | ios::binary);
 #endif
 
-	_pMesh->write(out);
+	_pMesh_deprecated->write(out);
 }
 
 void MeshData::readMeshFromCache()
@@ -299,7 +272,7 @@ void MeshData::readMeshFromCache()
 
 	CMeshPtr pMesh = make_shared<CMesh>();
 	if (pMesh->read(in)) {
-		_pMesh = pMesh;
+		_pMesh_deprecated = pMesh;
 	}
 
 }
