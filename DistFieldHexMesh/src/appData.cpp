@@ -579,16 +579,6 @@ void AppData::updateDebugTess()
         }
     }
 
-    auto& gapSegs = _model.getPolyMeshIdxToGapEndPtMap();
-    for (auto& pair : gapSegs) {
-        auto pVert = _model.getVertex(pair.first);
-        if (pVert) {
-            auto& pt0 = pVert->getPoint();
-            LineSegmentd seg(pt0, pair.second);
-            pDbgData->add(seg);
-        }
-    }
-
     auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
     pDrawDbgMesh->createTessellation(*pDbgData);
 #endif

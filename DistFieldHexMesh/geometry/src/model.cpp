@@ -149,11 +149,137 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 	return false;
 }
 
+namespace
+{
+
+struct GapTrianglularPrism
+{
+	GapTrianglularPrism(Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
+		: _model(model)
+	{
+		_pts[0] = startPt;
+		_contactFaces[0] = pFace0;
+		_contactFaces[1] = pFace1;
+		_normals[0] = pFace0->calUnitNormal();
+		_normals[1] = pFace1->calUnitNormal();
+	}
+
+	void calVertex3() {
+		const auto pFace0 = _contactFaces[0];
+		const auto pFace1 = _contactFaces[1];
+
+		const auto& plane0 = pFace0->calPlane();
+		const auto& plane1 = pFace1->calPlane();
+
+		Rayd intersectionRay;
+		if (plane0.intersectPlane(plane1, intersectionRay, Tolerance::sameDistTol())) {
+			Vector3d sectionOrigin = intersectionRay.project(_pts[0]);
+			Planed sectionPlane(sectionOrigin, intersectionRay._dir);
+			Vector3d projPt0 = sectionPlane.projectPoint(_pts[0]);
+			Vector3d projPt1 = sectionPlane.projectPoint(plane1.getOrigin());
+			_xAxis = (projPt0 - sectionOrigin).normalized();
+			_zAxis = intersectionRay._dir;
+			_yAxis = _zAxis.cross(_xAxis).normalized();
+
+			auto v = projPt1 - sectionOrigin;
+			auto x = _xAxis.dot(v);
+			auto y = _yAxis.dot(v);
+			auto theta = atan2(y, x) / 2;
+			Vector3d pt1 = sectionOrigin + cos(theta) * _xAxis + sin(theta) * _yAxis;
+			Vector3d v0 = pt1 - sectionOrigin;
+			Vector3d v1 = _zAxis;
+			Vector3d midNorm = v0.cross(v1);
+			Planed midPlane(sectionOrigin, midNorm);
+
+			Rayd normRay(_pts[0], plane0.getNormal());
+			RayHitd hit;
+			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
+				const auto& ctr = hit.hitPt;
+				auto projPt1 = plane1.projectPoint(ctr);
+				if (pFace1->isPointInside(projPt1)) {
+					// The algorithm is basically working, but lots of branches aren't handled yet
+					// There's also a dead zone if the test point projects outside both faces and 
+					// should hit the edge.
+					_pts[1] = projPt1;
+
+					auto dist0 = (_pts[0] - ctr).norm();
+					auto dist1 = (_pts[1] - ctr).norm();
+					auto err = dist1 - dist0;
+				}
+			}
+		} else {
+
+		}
+
+		double angleA = fabs(_normals[0].cross(_xAxis).dot(_zAxis));
+		double angleB = fabs(_normals[1].cross(_xAxis).dot(_zAxis));
+
+		double tanA = tan(angleA);
+		double tanB = tan(angleB);
+
+		double x = _edgeCLen * tanA / (tanA + tanB);
+		double h = x * tanA;
+		_pts[2] = _pts[0] + x * _xAxis + h * _yAxis;
+	}
+
+	void projectPoint2(const Vector3d& origin)
+	{
+		Planed pl(origin, _normals[1], true);
+		auto projPoint = pl.projectPoint(_pts[2]);
+		_pts[1] = projPoint;
+	}
+
+	double calError() {
+		double lenA = (_pts[2] - _pts[0]).norm();
+		double lenB = (_pts[2] - _pts[1]).norm();
+		double err = (lenB - lenA);
+		return err;
+	}
+
+	void equalizeEdges() {
+		const double DELTA = 1.0e-8;
+		const Vector3d dir = _normals[0];
+
+		// Record the origin so there's no "drift" during root finding
+		const auto origin = _pts[1];
+
+		calVertex3();
+		double err = calError();
+		int count = 0;
+		while (fabs(err) > 1.0e-6 && count++ < 30) {
+			cout << "Err: " << err << "\n";
+			auto priorVal = _pts[2];
+			_pts[2] = _pts[2] + dir * DELTA;
+			projectPoint2(origin);
+			calVertex3();
+			_pts[2] = priorVal;
+
+			double err1 = calError();
+			double slope = (err1 - err) / DELTA;
+			double deltaX = -err / slope;
+
+			_pts[2] = _pts[2] + dir * deltaX;
+			projectPoint2(origin);
+			calVertex3();
+			err = calError();
+		}
+	}
+
+	Model& _model;
+	double _edgeALen, _edgeBLen, _edgeCLen;
+	Vector3d _pts[3]; // 0 and 1 are the contact points. Point 2 is the center point when the distance between 0 and 1 are equal
+	Vector3d _normals[2];
+	Vector3d _xAxis, _yAxis, _zAxis;
+	const DFHM::Polygon* _contactFaces[2]; // These are the polygons the points fall on
+};
+
+}
+
 void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-#if 1
+#if 0
 	size_t numIndices = 0;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		numIndices += _modelMeshData[i]->getPolyMesh()->numPolygons();
@@ -208,6 +334,11 @@ void Model::calculateGaps(const SplittingParams& params)
 
 					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 					if (dpFaceFace < -minDotProduct) {
+#if 1
+						GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
+						prism.calVertex3();
+//						prism.equalizeEdges();
+#else
 						double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
 						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
 							Vector3d v = hitPt - startPt;
@@ -219,6 +350,7 @@ void Model::calculateGaps(const SplittingParams& params)
 								break;
 							}
 						}
+#endif
 					}
 				}
 			}
