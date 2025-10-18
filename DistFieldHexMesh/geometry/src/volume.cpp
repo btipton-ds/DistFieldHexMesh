@@ -342,7 +342,7 @@ Index3D Volume::determineOwnerBlockIdx(const Vector3d& point) const
 			}
 		}
 		if (candidates.size() == 1) {
-			return *candidates.begin();
+			result = *candidates.begin();
 		} else if (candidates.size() > 1) {
 			int dbgBreak = 1;
 		}

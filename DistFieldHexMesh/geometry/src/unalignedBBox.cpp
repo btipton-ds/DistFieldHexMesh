@@ -179,7 +179,8 @@ bool UnalignedBBox<T>::contains(const Vector3<T>& pt, size_t numDivisions, bool 
 	if (numDivisions != -1) {
 		const T maxDiff = 1.0f / 2; // Half a grid tick
 		Vector3<T> uvw, pt0, pt1, v0, v1;
-		TRI_LERP_INV(pt, _corners, uvw);
+		if (!TRI_LERP_INV(pt, _corners, uvw))
+			return false;
 
 		for (int i = 0; i < 3; i++) {
 			inNextBlock[i] = false;
