@@ -75,6 +75,7 @@ namespace DFHM {
 
         virtual size_t numBytes() const = 0;
 
+        virtual void analyzeGaps() = 0;
         virtual bool doOpen() = 0;
         virtual bool doImportMesh() = 0;
         virtual void doSave() = 0;

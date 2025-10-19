@@ -119,6 +119,7 @@ add_executable (DistFieldHexMesh
 	"graphics/src/drawModelMesh.cpp"
 	"graphics/src/graphicsVBORec.cpp"
 
+	"UI/src/analyzeGapsDlg.cpp"
 	"UI/src/createBaseMeshDlg.cpp"
 	"UI/src/editPrefsDlg.cpp"
 	"UI/src/divideHexMeshDlg.cpp"
@@ -137,7 +138,7 @@ add_executable (DistFieldHexMesh
 	"${OpenGlDir}/src/OGLMultiVbo.cpp"
 	"${OpenGlDir}/src/OGLMultiVboHandler.cpp"
 	"${OpenGlDir}/src/rgbaColor.cpp"
-)
+ )
 
 if ((${CMAKE_BUILD_TYPE} STREQUAL "Release"))
 	add_definitions("-DDEBUGGING_MUTEXES_AVAIL=0")
@@ -213,6 +214,7 @@ add_executable (TestDFM
 	"geometry/src/polygonSearchKey.cpp"
 	"geometry/src/polyHedron.cpp"
 	"geometry/src/polyMesh.cpp"
+	"geometry/src/rayModelIntersector.cpp"
     "geometry/src/splitter2D.cpp" 
 	"geometry/src/splitter3D.cpp"
 	"geometry/src/unalignedBBox.cpp"
@@ -228,7 +230,7 @@ add_executable (TestDFM
 	"test/src/testMain.cpp"
 	"test/src/testPoolMemory.cpp" 
 	"test/src/testMultiCore.cpp"
- "geometry/src/rayModelIntersector.cpp")
+)
 
 target_link_libraries("TestDFM" 
 	PUBLIC triMesh

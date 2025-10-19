@@ -59,6 +59,7 @@ public:
 
     size_t numBytes() const override;
 
+    void analyzeGaps() override;
     bool doOpen() override;
     bool doImportMesh() override;
     void doSave() override;

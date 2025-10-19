@@ -279,7 +279,7 @@ void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-#if 0
+#if 1
 	size_t numIndices = 0;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		numIndices += _modelMeshData[i]->getPolyMesh()->numPolygons();
@@ -334,7 +334,7 @@ void Model::calculateGaps(const SplittingParams& params)
 
 					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 					if (dpFaceFace < -minDotProduct) {
-#if 1
+#if 0
 						GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
 						prism.calVertex3();
 //						prism.equalizeEdges();

@@ -126,6 +126,7 @@ enum DFHM_MENU_ID
 {
     DFHM_LOWEST = wxID_HIGHEST,
     ID_REMESH,
+    ID_ANALYZE_GAPS,
     ID_CREATE_BASE_MESH,
     ID_BuildCFDHexes,
     ID_EDIT_PREFS,
@@ -249,6 +250,7 @@ private:
     void createHelpMenu();
 
     void OnOpen(wxCommandEvent& event);
+    void OnAnalyzeGaps(wxCommandEvent& event);
     void OnImportMesh(wxCommandEvent& event);
     void OnNew(wxCommandEvent& event);
     void OnSave(wxCommandEvent& event);

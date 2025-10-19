@@ -450,9 +450,15 @@ void AppData::testComplexityCellSplit()
     _pMeshPickHandler = make_shared<MeshTestComplexitySplitSelectHandler>(this);
 }
 
+void AppData::analyzeGaps()
+{
+    _model.calculateGaps(_params);
+    updateModelTess();
+}
+
 bool AppData::doOpen()
 {
-    wxFileDialog openFileDialog(_pMainFrame, _("Open Triangle Mesh file"), "", "",
+    wxFileDialog openFileDialog(_pMainFrame, _("Open DFHM file"), "", "",
         "All (*.dfhm)|*.dfhm|DFHM files (*.dfhm)|*.dfhm", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return false;     // the user canceled
@@ -525,7 +531,6 @@ bool AppData::doImportMesh()
         _model.add(pMeshData);
 
         _model.rebuildSearchTree();
-        _model.calculateGaps(_params);
 
         updateModelTess();
         updateDebugTess();
@@ -696,7 +701,6 @@ void AppData::readDHFM(const wstring& path, const wstring& filename)
     }
 
     _model.rebuildSearchTree();
-    _model.calculateGaps(_params);
 
     updateModelTess();
 

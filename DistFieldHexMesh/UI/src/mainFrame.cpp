@@ -47,6 +47,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <splitParams.h>
 #include <mainFrame.h>
+#include <analyzeGapsDlg.h>
 #include <makeBlockDlg.h>
 #include <editPrefsDlg.h>
 #include <selectBlocksDlg.h>
@@ -220,6 +221,11 @@ void MainFrame::createEditMenu()
 
     _editMenu->Append(wxID_PASTE);
     Bind(wxEVT_MENU, &MainFrame::OnPaste, this, wxID_PASTE);
+
+    _editMenu->AppendSeparator();
+
+    _editMenu->Append(ID_ANALYZE_GAPS, "Analyze Gaps...");
+    Bind(wxEVT_MENU, &MainFrame::OnAnalyzeGaps, this, ID_ANALYZE_GAPS);
 
     _editMenu->AppendSeparator();
 
@@ -509,6 +515,7 @@ void MainFrame::OnInternalIdle()
 
     if (_editMenu) {
         _editMenu->Enable(ID_CREATE_BASE_MESH, hasModel);
+        _editMenu->Enable(ID_ANALYZE_GAPS, hasModel);
         _editMenu->Enable(ID_BuildCFDHexes, hasMesh);
     }
 
@@ -754,6 +761,15 @@ void MainFrame::OnCopy(wxCommandEvent& event)
 void MainFrame::OnPaste(wxCommandEvent& event)
 {
 
+}
+
+void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
+{
+    AnalyzeGapsDlg dlg(_pAppData, this, 1, wxString("Analyze Gaps"), wxPoint(40, 40));
+    if (dlg.ShowModal() == wxID_OK) {
+        _pAppData->analyzeGaps();
+        _pCanvas->changeViewElements();
+    }
 }
 
 void MainFrame::OnCreateBaseMesh(wxCommandEvent& event)
