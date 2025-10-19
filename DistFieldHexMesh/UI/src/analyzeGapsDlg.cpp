@@ -92,7 +92,7 @@ AnalyzeGapsDlg::AnalyzeGapsDlg(AppDataPtr& pAppData, MainFrame* parent, wxWindow
 
 	int rowNum = 0;
 	_maxGapDistPrompt = new wxStaticText(this, 0, _T("Max Gap Dist(m)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_maxGapDistText = new wxTextCtrl(this, MAX_GAP_DIST, std::to_string(params.maxGapSize), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_maxGapDistText = new wxTextCtrl(this, MAX_GAP_DIST, std::to_string(params.gapBoundingBoxSemiSpan * 2), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 
 	rowNum++;
 	_gridSizePrompt = new wxStaticText(this, 0, _T("Grid Size (m)"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -164,16 +164,11 @@ bool AnalyzeGapsDlg::getValue(wxTextCtrl* item, double& value) const
 	return false;
 }
 
-void AnalyzeGapsDlg::OnOk(wxCommandEvent& event)
+void AnalyzeGapsDlg::OnOk()
 {
 	auto& params = _pAppData->getParams();
-	getValue(_maxGapDistText, params.maxGapSize);
+	getValue(_maxGapDistText, params.gapBoundingBoxSemiSpan);
+	params.gapBoundingBoxSemiSpan /= 2;
 	getValue(_gridSizeText, params.gapGridSpacing);
-}
-
-void AnalyzeGapsDlg::OnCancel(wxCommandEvent& event)
-{
-	_pAppData = nullptr;
-	Destroy();
 }
 

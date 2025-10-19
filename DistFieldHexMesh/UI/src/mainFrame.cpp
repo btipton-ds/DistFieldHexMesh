@@ -767,6 +767,7 @@ void MainFrame::OnAnalyzeGaps(wxCommandEvent& event)
 {
     AnalyzeGapsDlg dlg(_pAppData, this, 1, wxString("Analyze Gaps"), wxPoint(40, 40));
     if (dlg.ShowModal() == wxID_OK) {
+        dlg.OnOk();
         _pAppData->analyzeGaps();
         _pCanvas->changeViewElements();
     }

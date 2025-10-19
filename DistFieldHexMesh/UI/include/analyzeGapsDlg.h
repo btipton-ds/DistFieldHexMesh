@@ -45,8 +45,7 @@ namespace DFHM {
 			const wxPoint& pos = wxDefaultPosition);
 		~AnalyzeGapsDlg();
 
-		void OnOk(wxCommandEvent& event);
-		void OnCancel(wxCommandEvent& event);
+		void OnOk();
 
 	private:
 		bool getValue(wxTextCtrl* item, Index3DBaseType& value) const;

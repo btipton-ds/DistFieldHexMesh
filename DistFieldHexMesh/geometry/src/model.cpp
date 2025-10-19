@@ -164,7 +164,7 @@ struct GapTrianglularPrism
 		_normals[1] = pFace1->calUnitNormal();
 	}
 
-	void calVertex3() {
+	const Vector3d& calClosestPoint() {
 		const auto pFace0 = _contactFaces[0];
 		const auto pFace1 = _contactFaces[1];
 
@@ -220,49 +220,7 @@ struct GapTrianglularPrism
 		double x = _edgeCLen * tanA / (tanA + tanB);
 		double h = x * tanA;
 		_pts[2] = _pts[0] + x * _xAxis + h * _yAxis;
-	}
-
-	void projectPoint2(const Vector3d& origin)
-	{
-		Planed pl(origin, _normals[1], true);
-		auto projPoint = pl.projectPoint(_pts[2]);
-		_pts[1] = projPoint;
-	}
-
-	double calError() {
-		double lenA = (_pts[2] - _pts[0]).norm();
-		double lenB = (_pts[2] - _pts[1]).norm();
-		double err = (lenB - lenA);
-		return err;
-	}
-
-	void equalizeEdges() {
-		const double DELTA = 1.0e-8;
-		const Vector3d dir = _normals[0];
-
-		// Record the origin so there's no "drift" during root finding
-		const auto origin = _pts[1];
-
-		calVertex3();
-		double err = calError();
-		int count = 0;
-		while (fabs(err) > 1.0e-6 && count++ < 30) {
-			cout << "Err: " << err << "\n";
-			auto priorVal = _pts[2];
-			_pts[2] = _pts[2] + dir * DELTA;
-			projectPoint2(origin);
-			calVertex3();
-			_pts[2] = priorVal;
-
-			double err1 = calError();
-			double slope = (err1 - err) / DELTA;
-			double deltaX = -err / slope;
-
-			_pts[2] = _pts[2] + dir * deltaX;
-			projectPoint2(origin);
-			calVertex3();
-			err = calError();
-		}
+		return _pts[2];
 	}
 
 	Model& _model;
@@ -305,7 +263,7 @@ void Model::calculateGaps(const SplittingParams& params)
 		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
 		auto pStartMesh = pStartModelData->getPolyMesh();
 		auto pStartFace = getPolygon(startFaceId);
-		if (!pStartFace || pStartFace->needsGapTest() != IS_UNKNOWN)
+		if (!pStartFace)
 			return true; // skip this one
 
 		pStartFace->setNeedsGapTest(IS_FALSE);
@@ -313,7 +271,6 @@ void Model::calculateGaps(const SplittingParams& params)
 		const auto& vertIds = pStartFace->getVertexIds();
 
 		CBoundingBox3Dd bbox;
-		Vector3d hitPt;
 		for (const auto& vertId : vertIds) {
 			const auto& startPt = pStartMesh->getVertexPoint(vertId);
 
@@ -334,10 +291,20 @@ void Model::calculateGaps(const SplittingParams& params)
 
 					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 					if (dpFaceFace < -minDotProduct) {
-#if 0
+#if 1
 						GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
-						prism.calVertex3();
-//						prism.equalizeEdges();
+						const auto& hitPt = prism.calClosestPoint();
+						Vector3d v = hitPt - startPt;
+						double minDistToPoint = v.norm();
+						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+							v.normalize();
+							double dpHitFace = v.dot(nearFaceNorm);
+							double dpStartFace = v.dot(startFaceNorm);
+							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+								pStartFace->setNeedsGapTest(IS_TRUE);
+								break;
+							}
+						}
 #else
 						double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
 						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
@@ -365,11 +332,29 @@ void Model::calculateGaps(const SplittingParams& params)
 		std::vector<PolyMeshIndex> nearFaceIds;
 		if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 			for (size_t i = 0; i < nearFaceIds.size(); i++) {
-				const auto& nearFace = getPolygon(nearFaceIds[i]);
-				const auto& nearFaceNorm = nearFace->calUnitNormal();
+				const auto& pNearFace = getPolygon(nearFaceIds[i]);
+				const auto& nearFaceNorm = pNearFace->calUnitNormal();
+				const auto& nearFaceId = nearFaceIds[i];
+				auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
+				bool nearModelisClosed = pMesh->isClosed();
 
 				double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 				if (dpFaceFace < -minDotProduct) {
+#if 1
+					GapTrianglularPrism prism(*this, ctr, pStartFace, pNearFace);
+					const auto& hitPt = prism.calClosestPoint();
+					Vector3d v = hitPt - ctr;
+					double minDistToPoint = v.norm();
+					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+						v.normalize();
+						double dpHitFace = v.dot(nearFaceNorm);
+						double dpStartFace = v.dot(startFaceNorm);
+						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+							pStartFace->setNeedsGapTest(IS_TRUE);
+							break;
+						}
+					}
+#else
 					double minDistToPoint = nearFace->minDistToPoint(ctr, hitPt);
 					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
 						Vector3d v = hitPt - ctr;
@@ -381,6 +366,7 @@ void Model::calculateGaps(const SplittingParams& params)
 							return true;
 						}
 					}
+#endif
 				}
 			}
 		}
