@@ -194,37 +194,24 @@ struct GapTrianglularPrism
 			Rayd normRay(_pts[0], plane0.getNormal());
 			RayHitd hit;
 			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
-				const auto& ctr = hit.hitPt;
-				auto projPt1 = plane1.projectPoint(ctr);
-				if (pFace1->isPointInside(projPt1)) {
-					// The algorithm is basically working, but lots of branches aren't handled yet
-					// There's also a dead zone if the test point projects outside both faces and 
-					// should hit the edge.
-					_pts[1] = projPt1;
-
-					auto dist0 = (_pts[0] - ctr).norm();
-					auto dist1 = (_pts[1] - ctr).norm();
+				_pts[2] = hit.hitPt;
+				_pts[1] = plane1.projectPoint(_pts[2]);
+				if (pFace1->isPointInside(_pts[1])) {
+					auto dist0 = (_pts[0] - _pts[2]).norm();
+					auto dist1 = (_pts[1] - _pts[2]).norm();
 					auto err = dist1 - dist0;
+					assert(fabs(err) < Tolerance::sameDistTol());
+					return _pts[1];
 				}
 			}
 		} else {
 
 		}
 
-		double angleA = fabs(_normals[0].cross(_xAxis).dot(_zAxis));
-		double angleB = fabs(_normals[1].cross(_xAxis).dot(_zAxis));
-
-		double tanA = tan(angleA);
-		double tanB = tan(angleB);
-
-		double x = _edgeCLen * tanA / (tanA + tanB);
-		double h = x * tanA;
-		_pts[2] = _pts[0] + x * _xAxis + h * _yAxis;
-		return _pts[2];
+		return _pts[0];
 	}
 
 	Model& _model;
-	double _edgeALen, _edgeBLen, _edgeCLen;
 	Vector3d _pts[3]; // 0 and 1 are the contact points. Point 2 is the center point when the distance between 0 and 1 are equal
 	Vector3d _normals[2];
 	Vector3d _xAxis, _yAxis, _zAxis;
@@ -237,7 +224,7 @@ void Model::calculateGaps(const SplittingParams& params)
 {
 	if (!_pPolyMeshSearchTree)
 		return;
-#if 1
+
 	size_t numIndices = 0;
 	for (size_t i = 0; i < _modelMeshData.size(); i++) {
 		numIndices += _modelMeshData[i]->getPolyMesh()->numPolygons();
@@ -279,6 +266,10 @@ void Model::calculateGaps(const SplittingParams& params)
 			std::vector<PolyMeshIndex> nearFaceIds;
 			if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 				for (size_t i = 0; i < nearFaceIds.size(); i++) {
+#if ENABLE_DEBUGGING_MUTEXES
+					static mutex mut;
+					lock_guard<mutex> lg(mut);
+#endif
 					const auto& nearFaceId = nearFaceIds[i];
 					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
 					bool nearModelisClosed = pMesh->isClosed();
@@ -374,7 +365,6 @@ void Model::calculateGaps(const SplittingParams& params)
 		return true;
 	}, allFaceIndices.size(), RUN_MULTI_THREAD);
 
-#endif
 }
 
 void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
