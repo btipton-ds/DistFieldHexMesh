@@ -164,7 +164,8 @@ struct GapTrianglularPrism
 		_normals[1] = pFace1->calUnitNormal();
 	}
 
-	const Vector3d& calClosestPoint() {
+	bool calClosestPoint(Vector3d& result) {
+		bool found = false;
 		const auto pFace0 = _contactFaces[0];
 		const auto pFace1 = _contactFaces[1];
 
@@ -201,14 +202,15 @@ struct GapTrianglularPrism
 					auto dist1 = (_pts[1] - _pts[2]).norm();
 					auto err = dist1 - dist0;
 					assert(fabs(err) < Tolerance::sameDistTol());
-					return _pts[1];
+					result = _pts[1];
+					found = true;
 				}
 			}
 		} else {
 
 		}
 
-		return _pts[0];
+		return found;
 	}
 
 	Model& _model;
@@ -284,31 +286,33 @@ void Model::calculateGaps(const SplittingParams& params)
 					if (dpFaceFace < -minDotProduct) {
 #if 1
 						GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
-						const auto& hitPt = prism.calClosestPoint();
-						Vector3d v = hitPt - startPt;
-						double minDistToPoint = v.norm();
-						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-							v.normalize();
-							double dpHitFace = v.dot(nearFaceNorm);
-							double dpStartFace = v.dot(startFaceNorm);
-							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-								pStartFace->setNeedsGapTest(IS_TRUE);
-								break;
-							}
-						}
-#else
-						double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
-						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+						Vector3d hitPt;
+						if (prism.calClosestPoint(hitPt)) {
 							Vector3d v = hitPt - startPt;
-							v.normalize();
-							double dpHitFace = v.dot(nearFaceNorm);
-							double dpStartFace = v.dot(startFaceNorm);
-							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-								pStartFace->setNeedsGapTest(IS_TRUE);
-								break;
+							double minDistToPoint = v.norm();
+							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+								v.normalize();
+								double dpHitFace = v.dot(nearFaceNorm);
+								double dpStartFace = v.dot(startFaceNorm);
+								if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+									pStartFace->setNeedsGapTest(IS_TRUE);
+									break;
+								}
 							}
-						}
+#else
+							double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
+							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+								Vector3d v = hitPt - startPt;
+								v.normalize();
+								double dpHitFace = v.dot(nearFaceNorm);
+								double dpStartFace = v.dot(startFaceNorm);
+								if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+									pStartFace->setNeedsGapTest(IS_TRUE);
+									break;
+								}
+							}
 #endif
+						}
 					}
 				}
 			}
@@ -333,31 +337,33 @@ void Model::calculateGaps(const SplittingParams& params)
 				if (dpFaceFace < -minDotProduct) {
 #if 1
 					GapTrianglularPrism prism(*this, ctr, pStartFace, pNearFace);
-					const auto& hitPt = prism.calClosestPoint();
-					Vector3d v = hitPt - ctr;
-					double minDistToPoint = v.norm();
-					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-						v.normalize();
-						double dpHitFace = v.dot(nearFaceNorm);
-						double dpStartFace = v.dot(startFaceNorm);
-						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-							pStartFace->setNeedsGapTest(IS_TRUE);
-							break;
-						}
-					}
-#else
-					double minDistToPoint = nearFace->minDistToPoint(ctr, hitPt);
-					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+					Vector3d hitPt;
+					if (prism.calClosestPoint(hitPt)) {
 						Vector3d v = hitPt - ctr;
-						v.normalize();
-						double dpHitFace = v.dot(nearFaceNorm);
-						double dpStartFace = v.dot(startFaceNorm);
-						if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
-							pStartFace->setNeedsGapTest(IS_TRUE);
-							return true;
+						double minDistToPoint = v.norm();
+						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+							v.normalize();
+							double dpHitFace = v.dot(nearFaceNorm);
+							double dpStartFace = v.dot(startFaceNorm);
+							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+								pStartFace->setNeedsGapTest(IS_TRUE);
+								break;
+							}
 						}
-					}
+#else
+						double minDistToPoint = nearFace->minDistToPoint(ctr, hitPt);
+						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+							Vector3d v = hitPt - ctr;
+							v.normalize();
+							double dpHitFace = v.dot(nearFaceNorm);
+							double dpStartFace = v.dot(startFaceNorm);
+							if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
+								pStartFace->setNeedsGapTest(IS_TRUE);
+								return true;
+							}
+						}
 #endif
+					}
 				}
 			}
 		}
