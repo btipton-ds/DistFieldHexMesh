@@ -149,9 +149,9 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 	return false;
 }
 
-struct Model::GapTriangularPrism
+struct Model::FitGapCircle
 {
-	GapTriangularPrism(const Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
+	FitGapCircle(const Model& model, const DFHM::Polygon* pFace0, const Vector3d& startPt, const DFHM::Polygon* pFace1)
 		: _model(model)
 	{
 		_pts[0] = startPt;
@@ -313,23 +313,20 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 				bool nearModelisClosed = pMesh->isClosed();
 				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
-				double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
-				if (fabs(dpFaceFace) > minDotProduct) {
-					GapTriangularPrism prism(*this, startPt, pStartFace, pNearFace);
-					Vector3d hitPt;
-					if (prism.calClosestPoint(hitPt)) {
-//						writeGapObj(pStartFace, pNearFace, prism);
-						Vector3d v = hitPt - startPt;
-						double minDistToPoint = v.norm();
-						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-							v.normalize();
-							double dpHitFace = v.dot(nearFaceNorm);
-							double dpStartFace = v.dot(startFaceNorm);
-							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-								// if (!obscured(startPt, hitPt))
-								pStartFace->setNeedsGapTest(IS_TRUE);
-								break;
-							}
+				FitGapCircle prism(*this, pStartFace, startPt, pNearFace);
+				Vector3d hitPt;
+				if (prism.calClosestPoint(hitPt)) {
+					//						writeGapObj(pStartFace, pNearFace, prism);
+					Vector3d v = hitPt - startPt;
+					double minDistToPoint = v.norm();
+					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+						v.normalize();
+						double dpHitFace = v.dot(nearFaceNorm);
+						double dpStartFace = v.dot(startFaceNorm);
+						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+							// if (!obscured(startPt, hitPt))
+							pStartFace->setNeedsGapTest(IS_TRUE);
+							break;
 						}
 					}
 				}
@@ -339,7 +336,7 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 
 }
 
-void Model::writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const GapTriangularPrism& prism) const
+void Model::writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const FitGapCircle& prism) const
 {
 	vector<Vector3d> pts;
 	vector<int> indices;
