@@ -109,7 +109,10 @@ public:
 
 	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
 
-private:		
+private:
+	struct SamplePt;
+	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, Polygon* pStartFace) const;
+
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
 	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;

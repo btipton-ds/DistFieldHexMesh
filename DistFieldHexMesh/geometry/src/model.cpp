@@ -154,7 +154,7 @@ namespace
 
 struct GapTrianglularPrism
 {
-	GapTrianglularPrism(Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
+	GapTrianglularPrism(const Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
 		: _model(model)
 	{
 		_pts[0] = startPt;
@@ -213,7 +213,7 @@ struct GapTrianglularPrism
 		return found;
 	}
 
-	Model& _model;
+	const Model& _model;
 	Vector3d _pts[3]; // 0 and 1 are the contact points. Point 2 is the center point when the distance between 0 and 1 are equal
 	Vector3d _normals[2];
 	Vector3d _xAxis, _yAxis, _zAxis;
@@ -221,6 +221,16 @@ struct GapTrianglularPrism
 };
 
 }
+
+struct Model::SamplePt {
+	inline SamplePt(const Vector3d& pt)
+		: _pt(pt)
+	{
+	}
+
+	Vector3d _pt;
+	Vector2d _uv;
+};
 
 void Model::calculateGaps(const SplittingParams& params)
 {
@@ -246,7 +256,6 @@ void Model::calculateGaps(const SplittingParams& params)
 	}
 
 	MultiCore::runLambda([this, &params, &allFaceIndices](size_t index)->bool {
-		const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 
 		const auto startFaceId = allFaceIndices[index];
 		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
@@ -256,120 +265,69 @@ void Model::calculateGaps(const SplittingParams& params)
 			return true; // skip this one
 
 		pStartFace->setNeedsGapTest(IS_FALSE);
-		const auto& startFaceNorm = pStartFace->calUnitNormal();
 		const auto& vertIds = pStartFace->getVertexIds();
-
-		CBoundingBox3Dd bbox;
+		vector<SamplePt> samplePts;
 		for (const auto& vertId : vertIds) {
-			const auto& startPt = pStartMesh->getVertexPoint(vertId);
-
-			bbox = CBoundingBox3Dd (startPt);
-			bbox.grow(params.gapBoundingBoxSemiSpan);
-			std::vector<PolyMeshIndex> nearFaceIds;
-			if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
-				for (size_t i = 0; i < nearFaceIds.size(); i++) {
-#if ENABLE_DEBUGGING_MUTEXES
-					static mutex mut;
-					lock_guard<mutex> lg(mut);
-#endif
-					const auto& nearFaceId = nearFaceIds[i];
-					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
-					bool nearModelisClosed = pMesh->isClosed();
-					const auto& pNearFace = getPolygon(nearFaceId);
-					if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
-						continue;
-					}
-
-					const auto& nearFaceNorm = pNearFace->calUnitNormal();
-
-					double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
-					if (dpFaceFace < -minDotProduct) {
-#if 1
-						GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
-						Vector3d hitPt;
-						if (prism.calClosestPoint(hitPt)) {
-							Vector3d v = hitPt - startPt;
-							double minDistToPoint = v.norm();
-							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-								v.normalize();
-								double dpHitFace = v.dot(nearFaceNorm);
-								double dpStartFace = v.dot(startFaceNorm);
-								if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-									pStartFace->setNeedsGapTest(IS_TRUE);
-									break;
-								}
-							}
-#else
-							double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
-							if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-								Vector3d v = hitPt - startPt;
-								v.normalize();
-								double dpHitFace = v.dot(nearFaceNorm);
-								double dpStartFace = v.dot(startFaceNorm);
-								if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-									pStartFace->setNeedsGapTest(IS_TRUE);
-									break;
-								}
-							}
-#endif
-						}
-					}
-				}
-			}
+			samplePts.push_back(pStartMesh->getVertexPoint(vertId));
 		}
+		samplePts.push_back(pStartFace->calCentroid());
 
-		if (pStartFace->needsGapTest() != IS_UNKNOWN)
-			return true;
+		calculateFaceGaps(params, samplePts, pStartFace);
 
-		const Vector3d& ctr = pStartFace->calCentroid();
-		bbox = CBoundingBox3Dd(ctr);
+		return true;
+	}, allFaceIndices.size(), RUN_MULTI_THREAD);
+
+}
+
+void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, Polygon* pStartFace) const
+{
+	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
+	const auto& startFaceNorm = pStartFace->calUnitNormal();
+	CBoundingBox3Dd bbox;
+	for (const auto& samplePt : samplePts) {
+		const auto& startPt = samplePt._pt;
+
+		bbox = CBoundingBox3Dd(startPt);
 		bbox.grow(params.gapBoundingBoxSemiSpan);
 		std::vector<PolyMeshIndex> nearFaceIds;
 		if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
+#if 0 || ENABLE_DEBUGGING_MUTEXES
+			static mutex mut;
+			lock_guard<mutex> lg(mut);
+#endif
 			for (size_t i = 0; i < nearFaceIds.size(); i++) {
-				const auto& pNearFace = getPolygon(nearFaceIds[i]);
-				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 				const auto& nearFaceId = nearFaceIds[i];
 				auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
 				bool nearModelisClosed = pMesh->isClosed();
+				const auto& pNearFace = getPolygon(nearFaceId);
+				if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
+					continue;
+				}
+
+				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
 				double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
 				if (dpFaceFace < -minDotProduct) {
-#if 1
-					GapTrianglularPrism prism(*this, ctr, pStartFace, pNearFace);
+					GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
 					Vector3d hitPt;
 					if (prism.calClosestPoint(hitPt)) {
-						Vector3d v = hitPt - ctr;
+						Vector3d v = hitPt - startPt;
 						double minDistToPoint = v.norm();
 						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
 							v.normalize();
 							double dpHitFace = v.dot(nearFaceNorm);
 							double dpStartFace = v.dot(startFaceNorm);
 							if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+								// if (!obscured(startPt, hitPt))
 								pStartFace->setNeedsGapTest(IS_TRUE);
 								break;
 							}
 						}
-#else
-						double minDistToPoint = nearFace->minDistToPoint(ctr, hitPt);
-						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
-							Vector3d v = hitPt - ctr;
-							v.normalize();
-							double dpHitFace = v.dot(nearFaceNorm);
-							double dpStartFace = v.dot(startFaceNorm);
-							if (dpHitFace < -minDotProduct && dpStartFace > minDotProduct) {
-								pStartFace->setNeedsGapTest(IS_TRUE);
-								return true;
-							}
-						}
-#endif
 					}
 				}
 			}
 		}
-
-		return true;
-	}, allFaceIndices.size(), RUN_MULTI_THREAD);
+	}
 
 }
 
