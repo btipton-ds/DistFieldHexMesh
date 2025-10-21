@@ -111,7 +111,10 @@ public:
 
 private:
 	struct SamplePt;
-	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, Polygon* pStartFace) const;
+	struct GapTriangularPrism;
+
+	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace) const;
+	void writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const GapTriangularPrism& prism) const;
 
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;

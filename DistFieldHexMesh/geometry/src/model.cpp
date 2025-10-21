@@ -149,12 +149,9 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 	return false;
 }
 
-namespace
+struct Model::GapTriangularPrism
 {
-
-struct GapTrianglularPrism
-{
-	GapTrianglularPrism(const Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
+	GapTriangularPrism(const Model& model, const Vector3d& startPt, const DFHM::Polygon* pFace0, const DFHM::Polygon* pFace1)
 		: _model(model)
 	{
 		_pts[0] = startPt;
@@ -165,12 +162,17 @@ struct GapTrianglularPrism
 	}
 
 	bool calClosestPoint(Vector3d& result) {
+		const auto distTol = Tolerance::sameDistTolFloat();
+		const auto cpTol = Tolerance::planeCoincidentCrossProductTol();
+
 		bool found = false;
 		const auto pFace0 = _contactFaces[0];
 		const auto pFace1 = _contactFaces[1];
 
 		const auto& plane0 = pFace0->calPlane();
 		const auto& plane1 = pFace1->calPlane();
+		if (plane0.isCoincident(plane1, distTol, cpTol))
+			return false;
 
 		Rayd intersectionRay;
 		if (plane0.intersectPlane(plane1, intersectionRay, Tolerance::sameDistTol())) {
@@ -192,18 +194,23 @@ struct GapTrianglularPrism
 			Vector3d midNorm = v0.cross(v1);
 			Planed midPlane(sectionOrigin, midNorm);
 
-			Rayd normRay(_pts[0], plane0.getNormal());
+			Rayd normRay(_pts[0], _normals[0]);
 			RayHitd hit;
 			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
 				_pts[2] = hit.hitPt;
 				_pts[1] = plane1.projectPoint(_pts[2]);
-				if (pFace1->isPointInside(_pts[1])) {
-					auto dist0 = (_pts[0] - _pts[2]).norm();
-					auto dist1 = (_pts[1] - _pts[2]).norm();
-					auto err = dist1 - dist0;
-					assert(fabs(err) < Tolerance::sameDistTol());
-					result = _pts[1];
-					found = true;
+				v0 = (_pts[0] - _pts[2]).normalized();
+				v1 = (_pts[1] - _pts[2]).normalized();
+				auto dpCtr = v0.dot(v1);
+				if (dpCtr < 0) {
+					if (pFace1->isPointInside(_pts[1])) {
+						auto dist0 = (_pts[0] - _pts[2]).norm();
+						auto dist1 = (_pts[1] - _pts[2]).norm();
+						auto err = dist1 - dist0;
+						assert(fabs(err) < Tolerance::sameDistTol());
+						result = _pts[1];
+						found = true;
+					}
 				}
 			}
 		} else {
@@ -219,8 +226,6 @@ struct GapTrianglularPrism
 	Vector3d _xAxis, _yAxis, _zAxis;
 	const DFHM::Polygon* _contactFaces[2]; // These are the polygons the points fall on
 };
-
-}
 
 struct Model::SamplePt {
 	inline SamplePt(const Vector3d& pt)
@@ -260,6 +265,7 @@ void Model::calculateGaps(const SplittingParams& params)
 		const auto startFaceId = allFaceIndices[index];
 		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
 		auto pStartMesh = pStartModelData->getPolyMesh();
+		bool startModelIsClosed = pStartMesh->isClosed();
 		auto pStartFace = getPolygon(startFaceId);
 		if (!pStartFace)
 			return true; // skip this one
@@ -272,16 +278,17 @@ void Model::calculateGaps(const SplittingParams& params)
 		}
 		samplePts.push_back(pStartFace->calCentroid());
 
-		calculateFaceGaps(params, samplePts, pStartFace);
+		calculateFaceGaps(params, samplePts, startModelIsClosed, pStartFace);
 
 		return true;
 	}, allFaceIndices.size(), RUN_MULTI_THREAD);
 
 }
 
-void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, Polygon* pStartFace) const
+void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
+
 	const auto& startFaceNorm = pStartFace->calUnitNormal();
 	CBoundingBox3Dd bbox;
 	for (const auto& samplePt : samplePts) {
@@ -298,19 +305,20 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 			for (size_t i = 0; i < nearFaceIds.size(); i++) {
 				const auto& nearFaceId = nearFaceIds[i];
 				auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
-				bool nearModelisClosed = pMesh->isClosed();
 				const auto& pNearFace = getPolygon(nearFaceId);
 				if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
 					continue;
 				}
 
+				bool nearModelisClosed = pMesh->isClosed();
 				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
 				double dpFaceFace = startFaceNorm.dot(nearFaceNorm);
-				if (dpFaceFace < -minDotProduct) {
-					GapTrianglularPrism prism(*this, startPt, pStartFace, pNearFace);
+				if (fabs(dpFaceFace) > minDotProduct) {
+					GapTriangularPrism prism(*this, startPt, pStartFace, pNearFace);
 					Vector3d hitPt;
 					if (prism.calClosestPoint(hitPt)) {
+//						writeGapObj(pStartFace, pNearFace, prism);
 						Vector3d v = hitPt - startPt;
 						double minDistToPoint = v.norm();
 						if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
@@ -329,6 +337,91 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 		}
 	}
 
+}
+
+void Model::writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const GapTriangularPrism& prism) const
+{
+	vector<Vector3d> pts;
+	vector<int> indices;
+	vector<vector<int>> faces, edges;
+	map<const Vector3d, int> ptToIndexMap;
+
+	vector<int> face;
+
+	for (const auto& id : pStartFace->getVertexIds()) {
+		const auto& pt = pStartFace->getVertexPoint(id);
+		auto iter = ptToIndexMap.find(pt);
+
+		if (iter == ptToIndexMap.end()) {
+			int idx = pts.size();
+			pts.push_back(pt);
+			iter = ptToIndexMap.insert(make_pair(pt, idx)).first;
+		}
+		face.push_back(iter->second);
+	}
+	faces.push_back(face);
+	face.clear();
+
+	for (const auto& id : pNearFace->getVertexIds()) {
+		const auto& pt = pNearFace->getVertexPoint(id);
+		auto iter = ptToIndexMap.find(pt);
+
+		if (iter == ptToIndexMap.end()) {
+			int idx = pts.size();
+			pts.push_back(pt);
+			iter = ptToIndexMap.insert(make_pair(pt, idx)).first;
+		}
+		face.push_back(iter->second);
+	}
+	faces.push_back(face);
+
+	auto iter = ptToIndexMap.find(prism._pts[0]);
+
+	if (iter == ptToIndexMap.end()) {
+		int idx = pts.size();
+		pts.push_back(prism._pts[0]);
+		iter = ptToIndexMap.insert(make_pair(prism._pts[0], idx)).first;
+	}
+	int startPtIdx = iter->second;
+
+	iter = ptToIndexMap.find(prism._pts[1]);
+
+	if (iter == ptToIndexMap.end()) {
+		int idx = pts.size();
+		pts.push_back(prism._pts[1]);
+		iter = ptToIndexMap.insert(make_pair(prism._pts[1], idx)).first;
+	}
+	int endPtIdx = iter->second;
+
+	iter = ptToIndexMap.find(prism._pts[2]);
+
+	if (iter == ptToIndexMap.end()) {
+		int idx = pts.size();
+		pts.push_back(prism._pts[2]);
+		iter = ptToIndexMap.insert(make_pair(prism._pts[2], idx)).first;
+	}
+	int ctrPtIdx = iter->second;
+
+	{
+		ofstream out("D:/Projects/output/objs/gapFaces.obj");
+		for (const auto& pt : pts) {
+			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+		}
+		for (const auto& face : faces) {
+			out << "f";
+			for (int idx : face)
+				out << " " << (idx + 1);
+			out << "\n";
+		}
+	}
+	{
+		ofstream out("D:/Projects/output/objs/gapEdges.obj");
+		for (const auto& pt : pts) {
+			out << "v " << pt[0] << " " << pt[1] << " " << pt[2] << "\n";
+		}
+
+		out << "f " << (startPtIdx + 1) << " " << (ctrPtIdx + 1) << " " << (endPtIdx + 1) << "\n";
+	}
 }
 
 void Model::clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes)
