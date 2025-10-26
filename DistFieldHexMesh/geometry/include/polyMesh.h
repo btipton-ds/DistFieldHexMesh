@@ -104,8 +104,7 @@ namespace DFHM {
 		template<class FACE_FUNC>
 		void iteratePolygons(FACE_FUNC faceFunc);
 
-		void getGlTriPoints(std::vector<float>& result) const;
-		void getGlTriNormals(std::vector<float>& result) const;
+		void getGlTriData(std::vector<float>& points, std::vector<float>& normals, std::vector<float>& uvs) const;
 		void getGlTriIndices(std::vector<std::vector<unsigned int>>& indices) const;
 
 		template<typename LAMBDA>

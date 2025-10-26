@@ -50,16 +50,14 @@ DrawModelMesh::~DrawModelMesh()
 void DrawModelMesh::createFaceTessellation(const SplittingParams& params, const MeshDataPtr& pData)
 {
     const auto& pMesh = pData->getPolyMesh();
-    vector<float> points, normals;
+    vector<float> points, normals, parameters;
 
-    pMesh->getGlTriPoints(points);
-    pMesh->getGlTriNormals(normals);
+    pMesh->getGlTriData(points, normals, parameters);
     std::vector<std::vector<unsigned int>> triIndices;
     pMesh->getGlTriIndices(triIndices);
     std::vector<OGL::IndicesPtr> tessAll;
     tessAll.resize(triIndices.size());
 
-    vector<float> parameters;
     parameters.resize((points.size() * 3) / 2, 0); // Must match size of points with dim 2 instead of 3, but not used
 
     vector<float> colors;

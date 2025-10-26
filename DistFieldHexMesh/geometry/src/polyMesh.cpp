@@ -1405,38 +1405,83 @@ void PolyMesh::removeFace(const Index3DId& id)
 	_polygons.free(id);
 }
 
-void PolyMesh::getGlTriPoints(std::vector<float>& result) const
+namespace {
+
+	Vector2d project2d(const Vector3d& pt3d, const Planed& pl)
+	{
+		const auto& xAxis = pl.getXRef();
+		const auto& yAxis = pl.getNormal().cross(xAxis).normalized();
+		Vector3d v = pt3d - pl.getOrigin();
+		Vector2d pt2d(v.dot(xAxis), v.dot(yAxis));
+
+		return pt2d;
+	}
+
+	Vector2d uvOfPoint(const Vector3d& pt, const Planed& pl, const Vector2d& boundsVec) {
+		auto pt2d = project2d(pt, pl);
+		auto u = pt2d[0] / boundsVec[0];
+		auto v = pt2d[1] / boundsVec[1];
+
+		if (u < 0)
+			u = 0;
+		else if (u > 1)
+			u = 1;
+
+		if (v < 0)
+			v = 0;
+		else if (v > 1)
+			v = 1;
+
+		return Vector2d(u, v);
+	}
+}
+
+void PolyMesh::getGlTriData(std::vector<float>& points, std::vector<float>& normals, std::vector<float>& uvs) const
 {
-	result.clear();
-	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
-		face.iterateTriangles([this, &result](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+	points.clear();
+	normals.clear();
+	uvs.clear();
+	_polygons.iterateInOrder([this, &points, &normals, &uvs](const Index3DId& id, const Polygon& face)->bool {
+		const Planed& pl = face.calPlane();
+
+		Vector2d boundsMin(DBL_MAX, DBL_MAX), boundsMax(-DBL_MAX, -DBL_MAX);
+		for (const auto& id : face.getVertexIds()) {
+			const auto& pt = getVertexPoint(id);
+			auto pt2d = project2d(pt, pl);
+
+			for (int i = 0; i < 2; i++) {
+				if (pt2d[i] < boundsMin[i])
+					boundsMin[i] = pt2d[i];
+				if (pt2d[i] > boundsMax[i])
+					boundsMax[i] = pt2d[i];
+			}
+		}
+
+		Vector2d boundsVec = boundsMax - boundsMin;
+		face.iterateTriangles([this, &pl, &boundsVec, &points, &normals, &uvs](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+			const auto& faceNorm = pl.getNormal();
 			const Vector3d* pts[] = {
 				&getVertexPoint(id0),
 				&getVertexPoint(id1),
 				&getVertexPoint(id2),
 			};
 
+			Vector2d triUvs[] = {
+				Vector2d(uvOfPoint(*pts[0], pl, boundsVec)),
+				Vector2d(uvOfPoint(*pts[1], pl, boundsVec)),
+				Vector2d(uvOfPoint(*pts[2], pl, boundsVec)),
+			};
+
 			for (int i = 0; i < 3; i++) {
 				const auto& pt = *pts[i];
 				for (int j = 0; j < 3; j++) {
-					result.push_back((float)pt[j]);
+					points.push_back((float)pt[j]);
+					normals.push_back((float)faceNorm[j]);
 				}
-			}
-			return true;
-		});
-		return true;
-	});
-}
 
-void PolyMesh::getGlTriNormals(std::vector<float>& result) const
-{
-	result.clear();
-	_polygons.iterateInOrder([this, &result](const Index3DId& id, const Polygon& face)->bool {
-		Vector3d norm = face.calUnitNormal();
-		face.iterateTriangles([this, &result, &norm](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
-			for (int i = 0; i < 3; i++) {
-				for (int j = 0; j < 3; j++) {
-					result.push_back((float)norm[j]);
+				const auto& uv = triUvs[i];
+				for (int j = 0; j < 2; j++) {
+					uvs.push_back((float)uv[j]);
 				}
 			}
 			return true;
