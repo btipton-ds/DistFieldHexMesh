@@ -106,6 +106,7 @@ namespace DFHM {
 
 		void getGlTriData(std::vector<float>& points, std::vector<float>& normals, std::vector<float>& uvs) const;
 		void getGlTriIndices(std::vector<std::vector<unsigned int>>& indices) const;
+		void getFaceGlTriIndices(const Polygon& face, std::vector<unsigned int>& indices) const;
 
 		template<typename LAMBDA>
 		void getGlEdges(LAMBDA& curvatureToColorFunc, bool includeSmooth, std::vector<float>& points, std::vector<float>& colors,
@@ -156,6 +157,7 @@ namespace DFHM {
 		ObjectPool<Vertex> _vertices;
 		ObjectPool<Polygon> _polygons;
 		MTC::map<EdgeKey, double> _edgeCurvatures;
+		mutable MTC::map<Index3DId, size_t> _vertIndexToGLPointIndexMap;
 		mutable CBoundingBox3Dd _bbox;
 
 		mutable Trinary _isClosed = IS_UNKNOWN;

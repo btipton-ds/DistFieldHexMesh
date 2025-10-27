@@ -1460,10 +1460,12 @@ void PolyMesh::getGlTriData(std::vector<float>& points, std::vector<float>& norm
 		Vector2d boundsVec = boundsMax - boundsMin;
 		face.iterateTriangles([this, &pl, &boundsVec, &points, &normals, &uvs](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
 			const auto& faceNorm = pl.getNormal();
+
+			const Index3DId vertIds[] = {id0, id1, id2};
 			const Vector3d* pts[] = {
-				&getVertexPoint(id0),
-				&getVertexPoint(id1),
-				&getVertexPoint(id2),
+				&getVertexPoint(vertIds[0]),
+				&getVertexPoint(vertIds[1]),
+				&getVertexPoint(vertIds[2]),
 			};
 
 			Vector2d triUvs[] = {
@@ -1473,6 +1475,7 @@ void PolyMesh::getGlTriData(std::vector<float>& points, std::vector<float>& norm
 			};
 
 			for (int i = 0; i < 3; i++) {
+				_vertIndexToGLPointIndexMap.insert(make_pair(vertIds[i], points.size() / 3));
 				const auto& pt = *pts[i];
 				for (int j = 0; j < 3; j++) {
 					points.push_back((float)pt[j]);
@@ -1508,6 +1511,31 @@ void PolyMesh::getGlTriIndices(std::vector<std::vector<unsigned int>>& indices) 
 			}
 			return true;
 		});
+		return true;
+	});
+}
+
+void PolyMesh::getFaceGlTriIndices(const Polygon& face, std::vector<unsigned int>& indices) const
+{
+	face.iterateTriangles([this, &indices](const Index3DId& id0, const Index3DId& id1, const Index3DId& id2)->bool {
+		auto iter = _vertIndexToGLPointIndexMap.find(id0);
+		if (iter == _vertIndexToGLPointIndexMap.end()) {
+			assert(!"Vertex not in map");
+		}
+		indices.push_back(iter->second);
+
+		iter = _vertIndexToGLPointIndexMap.find(id1);
+		if (iter == _vertIndexToGLPointIndexMap.end()) {
+			assert(!"Vertex not in map");
+		}
+		indices.push_back(iter->second);
+
+		iter = _vertIndexToGLPointIndexMap.find(id2);
+		if (iter == _vertIndexToGLPointIndexMap.end()) {
+			assert(!"Vertex not in map");
+		}
+		indices.push_back(iter->second);
+
 		return true;
 	});
 }

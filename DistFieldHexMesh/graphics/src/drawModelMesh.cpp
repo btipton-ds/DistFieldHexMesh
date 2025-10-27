@@ -71,6 +71,22 @@ void DrawModelMesh::createFaceTessellation(const SplittingParams& params, const 
     tessAll[MMDT_MODEL_ALL] = faceVBO.setFaceTessellation(meshId, changeNumber, points, normals, parameters, colors, triIndices[0]);
     tessAll[MMDT_MODEL_TYPICAL] = faceVBO.setFaceTessellation(meshId, tessAll[MMDT_MODEL_ALL], triIndices[MMDT_MODEL_TYPICAL]);
     tessAll[MMDT_MODEL_GAP] = faceVBO.setFaceTessellation(meshId, tessAll[MMDT_MODEL_ALL], triIndices[MMDT_MODEL_GAP]);
+
+    pMesh->iteratePolygons([&pMesh, &meshId, &faceVBO, &tessAll](const Index3DId& id, const Polygon& face)->bool {
+        auto pGapData = face.getGapTextureData();
+        if (pGapData) {
+            std::vector<unsigned int> faceTriIndices;
+            pMesh->getFaceGlTriIndices(face, faceTriIndices);
+            auto pTex = faceVBO.setFaceTessellation(meshId, tessAll[MMDT_MODEL_ALL], faceTriIndices);
+#if 0
+            // pGapData->_distVectors;
+            GLuint texId;
+            glCreateTextures(GL_TEXTURE_2D, 1, &texId);
+            auto pIndices = make_shared<Polygon::GapTextureData>();
+#endif
+        }
+        return true;
+    });
     faceVBO.endFaceTesselation(false);
 
     pData->setFaceTess(tessAll);

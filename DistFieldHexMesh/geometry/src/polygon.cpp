@@ -388,8 +388,10 @@ bool Polygon::usesEdge(const Edge& edgeKey, size_t& idx0, size_t& idx1) const
 
 bool Polygon::containsVertex(const Index3DId& vertId) const
 {
-	for (const auto& id : _vertexIds) {
-		if (id == vertId)
+	size_t num = _vertexIds.size();
+	auto pData = _vertexIds.data();
+	for (size_t i = 0; i < num; i++) {
+		if (pData[i] == vertId)
 			return true;
 	}
 	return false;
@@ -1364,8 +1366,11 @@ bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
 
 bool Polygon::isConnected(const Polygon& otherFace) const
 {
-	for (const auto& vertId : _vertexIds) {
-		if (otherFace.containsVertex(vertId))
+	// Extremely slow function in debug mode due to stl iterator debugging
+	size_t num = _vertexIds.size();
+	auto pData = _vertexIds.data();
+	for (size_t i = 0; i < num; i++) {
+		if (otherFace.containsVertex(pData[i]))
 			return true;
 	}
 

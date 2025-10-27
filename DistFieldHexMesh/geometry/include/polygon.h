@@ -85,6 +85,14 @@ public:
 		IS_CONVEX_ENOUGH, // Special case for reduced PolyMesh fans where on end follows a curved shape like a cylinder.
 		CONVEXITY_UNKNOWN,
 	};
+
+	struct GapTextureData {
+		size_t _height, _width;
+		std::vector<float> _distVectors;
+		uint32_t getTexId() const;
+	};
+	using GapTextureDataPtr = std::shared_ptr<GapTextureData>;
+
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
 	static bool verifyVertsConvexStat(const Block* pBlock, const MTC::vector<Index3DId>& vertIds);
 
@@ -207,6 +215,8 @@ public:
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
+	const GapTextureDataPtr& getGapTextureData() const;
+
 	double flatten(bool allowQuads);
 	void reverse();
 
@@ -254,6 +264,7 @@ private:
 	MTC::vector<Index3DId> _vertexIds;
 	FastBisectionSet<Index3DId> _cellIds;
 	Trinary _needsGapTest = IS_UNKNOWN;
+	GapTextureDataPtr _pGapTextureData;
 
 	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
 	mutable Trinary _isOnSymmetryPlane = IS_UNKNOWN;
@@ -341,6 +352,11 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	if (isReversed(cellId))
 		std::reverse(result.begin(), result.end());
 	return result;
+}
+
+inline const Polygon::GapTextureDataPtr& Polygon::getGapTextureData() const
+{
+	return _pGapTextureData;
 }
 
 template<class F>

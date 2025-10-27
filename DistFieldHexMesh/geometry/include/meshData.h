@@ -29,6 +29,8 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <memory>
+#include <vector>
+#include <map>
 
 #include <tm_vector3.h>
 #include <graphicsVBORec.h>
@@ -106,6 +108,7 @@ namespace DFHM {
 		PolyMeshPtr _pPolyMesh;
 
 		std::vector<OGL::IndicesPtr> _faceTess;
+		std::map<Index3D, OGL::IndicesPtr> _texturedFaceTess;
 		OGL::IndicesPtr 
 			_allEdgeTess,
 			_smoothEdgeTess,

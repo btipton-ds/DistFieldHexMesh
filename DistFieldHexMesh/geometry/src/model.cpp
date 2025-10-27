@@ -207,14 +207,21 @@ struct Model::FitGapCircle
 						auto dist0 = (_pts[0] - _pts[2]).norm();
 						auto dist1 = (_pts[1] - _pts[2]).norm();
 						auto err = dist1 - dist0;
-						assert(fabs(err) < Tolerance::sameDistTol());
+						assert(fabs(err) < 1.0e-5);
 						result = _pts[1];
 						found = true;
 					}
 				}
-			}
+			} // If the ray doesn't hit the midplane, it's a pathological case and we should be able to ignore it.
 		} else {
-
+			// Parallel planes case
+			_pts[1] = plane1.projectPoint(_pts[0]);
+			if (pFace1->isPointInside(_pts[1])) {
+				Vector3d v = _pts[1] - _pts[0];
+				_pts[2] = _pts[0] + 0.5 * v;
+				result = _pts[1];
+				found = true;
+			}
 		}
 
 		return found;
@@ -578,13 +585,13 @@ const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx) const
 const DFHM::Polygon* Model::getPolygon(const PolyMeshIndex& idx, bool& isClosed) const
 {
 	size_t meshIdx = idx.getMeshIdx();
-	if (meshIdx < _modelMeshData.size()) {
-		auto pData = _modelMeshData[meshIdx];
-		if (pData->isActive()) {
-			auto pMesh = pData->getPolyMesh();
-			isClosed = pMesh->isClosed();
-			return &pMesh->getPolygon(idx.getPolyId());
-		}
+	assert(meshIdx < _modelMeshData.size());
+	auto pMeshData = _modelMeshData.data();
+	auto pData = pMeshData[meshIdx];
+	if (pData->isActive()) {
+		auto pMesh = pData->getPolyMesh();
+		isClosed = pMesh->isClosed();
+		return &pMesh->getPolygon(idx.getPolyId());
 	}
 	return nullptr;
 }
