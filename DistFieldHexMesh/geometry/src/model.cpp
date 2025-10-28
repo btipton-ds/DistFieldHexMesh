@@ -154,8 +154,10 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 
 struct Model::FitGapCircle
 {
-	FitGapCircle(const Model& model, const DFHM::Polygon* pFace0, const Vector3d& startPt, const DFHM::Polygon* pFace1)
+	FitGapCircle(const Model& model, const DFHM::Polygon* pFace0, bool startIsClosed, const Vector3d& startPt, const DFHM::Polygon* pFace1, bool endIsClosed)
 		: _model(model)
+		, _startModelIsClosed(startIsClosed)
+		, _endModelIsClosed(endIsClosed)
 	{
 		_pts[0] = startPt;
 		_contactFaces[0] = pFace0;
@@ -202,17 +204,21 @@ struct Model::FitGapCircle
 			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
 				_pts[2] = hit.hitPt;
 				_pts[1] = plane1.projectPoint(_pts[2]);
-				v0 = (_pts[0] - _pts[2]).normalized();
-				v1 = (_pts[1] - _pts[2]).normalized();
-				auto dpCtr = v0.dot(v1);
-				if (dpCtr < 0) {
-					if (pFace1->isPointInside(_pts[1])) {
-						auto dist0 = (_pts[0] - _pts[2]).norm();
-						auto dist1 = (_pts[1] - _pts[2]).norm();
-						auto err = dist1 - dist0;
-						assert(fabs(err) < 1.0e-5);
-						result = _pts[1];
-						found = true;
+				Vector3d v = _pts[1] - _pts[0];
+				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
+					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
+					v0 = (_pts[0] - _pts[2]).normalized();
+					v1 = (_pts[1] - _pts[2]).normalized();
+					auto dpCtr = v0.dot(v1);
+					if (dpCtr < 0) {
+						if (pFace1->isPointInside(_pts[1])) {
+							auto dist0 = (_pts[0] - _pts[2]).norm();
+							auto dist1 = (_pts[1] - _pts[2]).norm();
+							auto err = dist1 - dist0;
+							assert(fabs(err) < 1.0e-5);
+							result = _pts[1];
+							found = true;
+						}
 					}
 				}
 			} // If the ray doesn't hit the midplane, it's a pathological case and we should be able to ignore it.
@@ -221,9 +227,12 @@ struct Model::FitGapCircle
 			_pts[1] = plane1.projectPoint(_pts[0]);
 			if (pFace1->isPointInside(_pts[1])) {
 				Vector3d v = _pts[1] - _pts[0];
-				_pts[2] = _pts[0] + 0.5 * v;
-				result = _pts[1];
-				found = true;
+				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
+					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
+					_pts[2] = _pts[0] + 0.5 * v;
+					result = _pts[1];
+					found = true;
+				}
 			}
 		}
 
@@ -231,6 +240,7 @@ struct Model::FitGapCircle
 	}
 
 	const Model& _model;
+	const bool _startModelIsClosed, _endModelIsClosed;
 	Vector3d _pts[3]; // 0 and 1 are the contact points. Point 2 is the center point when the distance between 0 and 1 are equal
 	Vector3d _normals[2];
 	Vector3d _xAxis, _yAxis, _zAxis;
@@ -347,10 +357,11 @@ void Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 				if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
 					continue;
 				}
+				bool nearFaceModelIsClosed = isClosed(nearFaceId);
 
 				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
-				FitGapCircle prism(*this, pStartFace, startPt, pNearFace);
+				FitGapCircle prism(*this, pStartFace, startModelIsClosed, startPt, pNearFace, nearFaceModelIsClosed);
 				Vector3d hitPt;
 				if (prism.calClosestPoint(hitPt)) {
 					//						writeGapObj(pStartFace, pNearFace, prism);

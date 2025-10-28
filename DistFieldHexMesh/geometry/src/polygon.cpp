@@ -1397,17 +1397,30 @@ void Polygon::getSpacedSamplePoints(double gridCellDim, std::vector<Vector3d>& s
 	if (numY < 3)
 		numY = 3;
 
-#if 0
+#if 1
 	static mutex mut;
 	lock_guard<mutex> lg(mut);
 #endif
 
+	const auto& pl = calPlane();
 	for (size_t i = 0; i < numY; i++) {
 		double u = i / (numY - 1.0);
 		for (size_t j = 0; j < numX; j++) {
 			double t = j / (numX - 1.0);
 			Vector3d pt = origin + t * span[0] * xAxis; + u * span[1] * yAxis;
-			if (isPointInside(pt)) {
+
+			Vector3d vErr = pt - pl.getOrigin();
+			double dp = vErr.dot(pl.getNormal());
+
+			int count = 0;
+			while (fabs(dp) > Tolerance::sameDistTol() && count < 3) {
+				// If the error is larger than tolerance, clamp it to the plane
+				// One pass should fix it
+				pt = pt - dp * pl.getNormal();
+				vErr = pt - pl.getOrigin();
+				dp = vErr.dot(pl.getNormal());
+			}
+			if (isPointInsideInner(pt, pl)) {
 				samplePts.push_back(pt);
 			}
 		}
