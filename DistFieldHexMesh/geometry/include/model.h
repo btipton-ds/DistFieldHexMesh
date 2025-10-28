@@ -118,7 +118,7 @@ private:
 	struct SamplePt;
 	struct FitGapCircle;
 
-	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const;
+	void calculateFaceGaps(const SplittingParams& params, const std::set<PolyMeshIndex>& connectedFaceIds, const std::vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const;
 	void writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const FitGapCircle& prism) const;
 
 	std::vector<MeshDataPtr> _modelMeshData;

@@ -260,17 +260,27 @@ void Model::calculateGaps(const SplittingParams& params)
 	vector<PolyMeshIndex> allFaceIndices;
 	allFaceIndices.reserve(numIndices);
 
-	for (size_t i = 0; i < _modelMeshData.size(); i++) {
-		auto& pMeshData = _modelMeshData[i];
+	// Connected face determination is expensive, so make a lookup map. May want to do a binary search vector at some time.
+	map<PolyMeshIndex, set<PolyMeshIndex>> connectedFaceMap;
+
+	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
+		auto& pMeshData = _modelMeshData[meshIdx];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();
 
-		pStartPolyMesh->iteratePolygons([this, &allFaceIndices, i](const Index3DId& id, Polygon& face)->bool {
-			allFaceIndices.push_back(PolyMeshIndex(i, id));
+		pStartPolyMesh->iteratePolygons([this, &allFaceIndices, &connectedFaceMap, meshIdx](const Index3DId& id, Polygon& face)->bool {
+			PolyMeshIndex polyFaceId(meshIdx, id);
+			allFaceIndices.push_back(polyFaceId);
+			set<Index3DId> ids;
+			face.getConnectedFaceIds(ids);
+			auto iter = connectedFaceMap.insert(make_pair(polyFaceId, set<PolyMeshIndex>())).first;
+			auto& polyIds = iter->second;
+			for (const auto& id : ids)
+				polyIds.insert(PolyMeshIndex(meshIdx, id));
 			return true;
 		});
 	}
 
-	MultiCore::runLambda([this, &params, &allFaceIndices](size_t index)->bool {
+	MultiCore::runLambda([this, &params, &allFaceIndices, &connectedFaceMap](size_t index)->bool {
 
 		const auto startFaceId = allFaceIndices[index];
 		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
@@ -280,16 +290,21 @@ void Model::calculateGaps(const SplittingParams& params)
 		if (!pStartFace)
 			return true; // skip this one
 
+		auto connectedFaceIter = connectedFaceMap.find(startFaceId);
+		const auto& connectedFaceIds = connectedFaceIter->second;
 		pStartFace->setNeedsGapTest(IS_FALSE);
-		const auto& vertIds = pStartFace->getVertexIds();
+
+		vector<Vector3d> gridPts;
+		pStartFace->getSpacedSamplePoints(params.gapGridSpacing, gridPts);
+		if (gridPts.empty())
+			return true;
+
 		vector<SamplePt> samplePts;
-		for (const auto& vertId : vertIds) {
-			samplePts.push_back(pStartMesh->getVertexPoint(vertId));
-		}
-		samplePts.push_back(pStartFace->calCentroid());
+		for (const auto& pt : gridPts)
+			samplePts.push_back(pt);
 
 		vector<Vector3d> endVectors;
-		calculateFaceGaps(params, samplePts, startModelIsClosed, pStartFace, endVectors);
+		calculateFaceGaps(params, connectedFaceIds, samplePts, startModelIsClosed, pStartFace, endVectors);
 		{
 			lock_guard<mutex> lg(_mut);
 			for (size_t i = 0; i < samplePts.size(); i++) {
@@ -304,7 +319,8 @@ void Model::calculateGaps(const SplittingParams& params)
 
 }
 
-void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const
+void Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshIndex>& connectedFaceIds, const vector<SamplePt>& samplePts,
+	bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 
@@ -327,13 +343,11 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 #endif
 			for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
 				const auto& nearFaceId = nearFaceIds[faceIdx];
-				auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
 				const auto& pNearFace = getPolygon(nearFaceId);
-				if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
+				if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
 					continue;
 				}
 
-				bool nearModelisClosed = pMesh->isClosed();
 				const auto& nearFaceNorm = pNearFace->calUnitNormal();
 
 				FitGapCircle prism(*this, pStartFace, startPt, pNearFace);
@@ -342,16 +356,17 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 					//						writeGapObj(pStartFace, pNearFace, prism);
 					Vector3d v = hitPt - startPt;
 					double minDistToPoint = v.norm();
-					if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+					if (minDistToPoint > 0 && minDistToPoint < 2 * params.gapBoundingBoxSemiSpan) {
 						v.normalize();
 						double dpHitFace = v.dot(nearFaceNorm);
 						double dpStartFace = v.dot(startFaceNorm);
-						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+						auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
+						bool nearModelisClosed = pMesh->isClosed();
+//						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
 							// if (!obscured(startPt, hitPt))
 							pStartFace->setNeedsGapTest(IS_TRUE);
 							endPtVector[i] = prism._pts[1] - prism._pts[0];
-							break;
-						}
+//						}
 					}
 				}
 			}

@@ -181,6 +181,7 @@ public:
 	void clearCache(bool clearSortIds = true) const;
 	MTC::vector<EdgeKey> getEdgeKeys() const;
 	Index3DId getAdjacentCellId(const Index3DId& thisCellId) const;
+	void getConnectedFaceIds(MTC::set<Index3DId>& ids) const;
 
 	double calVertexAngle(const Index3DId& vertId) const;
 	double calVertexError(const std::vector<Index3DId>& testVertIds) const;
@@ -196,7 +197,7 @@ public:
 	void setCentroid_risky(const Vector3d& val);
 	void setIsConvex_risky(Convexity convexity);
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
-	Vector2d projectPoint(const Vector3d& pt) const;
+	Vector2d projectPoint(const Vector3d& pt, const Vector3d& origin, const Vector3d& xAxis) const;
 	void setIntersectsModel(Trinary val) const;
 
 	bool intersectsModel() const;
@@ -215,6 +216,7 @@ public:
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
+	void getSpacedSamplePoints(double gridCellDim, std::vector<Vector3d>& samplePts) const;
 	const GapTextureDataPtr& getGapTextureData() const;
 
 	double flatten(bool allowQuads);
