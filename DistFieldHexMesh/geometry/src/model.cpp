@@ -118,7 +118,7 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 	std::lock_guard<std::mutex> lg(mut);
 #endif
 	CBoundingBox3Dd bbox(startPt);
-	bbox.grow(params.gapBoundingBoxSemiSpan);
+	bbox.grow(1.5 * params.maxGapWidth);
 	vector<PolyMeshIndex> nearFaceIds;
 	if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 		for (size_t i = 0; i < nearFaceIds.size(); i++) {
@@ -135,7 +135,7 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 
 			Vector3d hitPt;
 			double minDistToPoint = pNearFace->minDistToPoint(startPt, hitPt);
-			if (minDistToPoint > 0 && minDistToPoint < params.gapBoundingBoxSemiSpan) {
+			if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth) {
 				if (!nearModelIsClosed)
 					return true;
 				Vector3d v = hitPt - startPt;
@@ -179,6 +179,8 @@ struct Model::FitGapCircle
 		if (plane0.isCoincident(plane1, distTol, cpTol))
 			return false;
 
+		double minDist = DBL_MAX;
+
 		Rayd intersectionRay;
 		if (plane0.intersectPlane(plane1, intersectionRay, Tolerance::sameDistTol())) {
 			Vector3d sectionOrigin = intersectionRay.project(_pts[0]);
@@ -212,10 +214,12 @@ struct Model::FitGapCircle
 					auto dpCtr = v0.dot(v1);
 					if (dpCtr < 0) {
 						if (pFace1->isPointInside(_pts[1])) {
+#if 0
 							auto dist0 = (_pts[0] - _pts[2]).norm();
 							auto dist1 = (_pts[1] - _pts[2]).norm();
 							auto err = dist1 - dist0;
 							assert(fabs(err) < 1.0e-5);
+#endif
 							result = _pts[1];
 							found = true;
 						}
@@ -344,13 +348,14 @@ void Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 		const auto& startPt = samplePt._pt;
 
 		bbox = CBoundingBox3Dd(startPt);
-		bbox.grow(params.gapBoundingBoxSemiSpan);
+		bbox.grow(1.5 * params.maxGapWidth);
 		std::vector<PolyMeshIndex> nearFaceIds;
 		if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 #if 0 || ENABLE_DEBUGGING_MUTEXES
 			static mutex mut;
 			lock_guard<mutex> lg(mut);
 #endif
+			double minDist = DBL_MAX;
 			for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
 				const auto& nearFaceId = nearFaceIds[faceIdx];
 				const auto& pNearFace = getPolygon(nearFaceId);
@@ -367,7 +372,8 @@ void Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 					//						writeGapObj(pStartFace, pNearFace, prism);
 					Vector3d v = hitPt - startPt;
 					double minDistToPoint = v.norm();
-					if (minDistToPoint > 0 && minDistToPoint < 2 * params.gapBoundingBoxSemiSpan) {
+					if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth && minDistToPoint < minDist) {
+						minDist = minDistToPoint;
 						v.normalize();
 						double dpHitFace = v.dot(nearFaceNorm);
 						double dpStartFace = v.dot(startFaceNorm);

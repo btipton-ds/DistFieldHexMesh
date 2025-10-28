@@ -70,7 +70,7 @@ struct SplittingParams {
 	Index3DBaseType zMaxDivs = 2;
 
 	double baseBoxOffset = 2;
-	double gapBoundingBoxSemiSpan = 0.07; // Gap analysis off by default
+	double maxGapWidth = 0.07; // Gap analysis off by default
 	double gapOpposingFaceAngleDeg = 20;
 	double xRotationDeg = 0;
 	double yRotationDeg = 45;
