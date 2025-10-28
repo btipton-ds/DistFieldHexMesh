@@ -762,11 +762,19 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda) const
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	for (const ObjectSegPtr& pObjSegVec : _objSegmentPtrs) {
+
+	size_t segPrsDataSize = _objSegmentPtrs.size();
+	auto segPtrsData = _objSegmentPtrs.data();
+	for (size_t i = 0; i < segPrsDataSize; i++) {
+		const auto& pObjSegVec = segPtrsData[i];
 		if (!pObjSegVec)
 			continue;
 		auto& objSegVec = *pObjSegVec;
-		for (auto& pair : objSegVec) {
+
+		size_t objSegVecSize = objSegVec.size();
+		auto objSegVecPtr = objSegVec.data();
+		for (size_t j = 0; j < objSegVecSize; j++) {
+			auto& pair = objSegVecPtr[j];
 			if (pair.second == OS_IN_USE) {
 				auto pObj = &pair.first;
 				if (pObj->getId().isValid()) {
@@ -786,11 +794,19 @@ template<class F>
 void ObjectPool<T>::iterateInOrder(F fLambda)
 {
 	auto blkIdx = _pPoolOwner->getBlockIdx();
-	for (ObjectSegPtr& pObjSegVec : _objSegmentPtrs) {
+
+	size_t segPrsDataSize = _objSegmentPtrs.size();
+	auto segPtrsData = _objSegmentPtrs.data();
+	for (size_t i = 0; i < segPrsDataSize; i++) {
+		const auto& pObjSegVec = segPtrsData[i];
 		if (!pObjSegVec)
 			continue;
 		auto& objSegVec = *pObjSegVec;
-		for (auto& pair : objSegVec) {
+
+		size_t objSegVecSize = objSegVec.size();
+		auto objSegVecPtr = objSegVec.data();
+		for (size_t j = 0; j < objSegVecSize; j++) {
+			auto& pair = objSegVecPtr[j];
 			if (pair.second == OS_IN_USE) {
 				auto pObj = &pair.first;
 				if (pObj->getId().isValid()) {

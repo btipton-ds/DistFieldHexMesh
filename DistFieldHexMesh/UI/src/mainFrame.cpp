@@ -65,7 +65,6 @@ using namespace DFHM;
 #define PROG_MAX 300
 
 BEGIN_EVENT_TABLE(MainFrame, wxFrame)
-EVT_PAINT(MainFrame::doPaint)
 END_EVENT_TABLE()
 
 namespace
@@ -156,17 +155,6 @@ void MainFrame::addMenus()
 
 
     SetMenuBar(_menuBar);
-}
-
-void MainFrame::doPaint(wxPaintEvent& WXUNUSED(event)) {
-//    wxPaintDC dc(this); // Despite the documentation, wxPaintDC BREAKS many things and the destructor DOES NOT roll up the stack with multiple GlCanvases.
-    _pCanvas->render();
-
-#if INCLUDE_DEBUG_WX_FRAME
-    if (_pDebugCanvas)
-        _pDebugCanvas->render();
-#endif
-
 }
 
 void MainFrame::createFileMenu()

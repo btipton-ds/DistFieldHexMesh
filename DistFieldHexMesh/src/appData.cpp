@@ -454,6 +454,7 @@ void AppData::analyzeGaps()
 {
     _model.calculateGaps(_params);
     updateModelTess();
+    updateDebugTess();
 }
 
 bool AppData::doOpen()
@@ -568,11 +569,13 @@ void AppData::updateHexTess()
 
 void AppData::updateDebugTess()
 {
-#if ENABLE_VERTEX_IN_OUT_DEBUG_GRAPHICS
+#if ENABLE_VERTEX_DEBUG_GRAPHICS || ENABLE_GAP_DEBUG_GRAPHICS
     auto pCanvas = _pMainFrame->getCanvas();
     auto pDbgData = getDebugMeshData();
 
     pDbgData->clear();
+
+#if ENABLE_VERTEX_DEBUG_GRAPHICS
     if (_pVolume) {
         for (const auto& pBlk : _pVolume->_blocks) {
             pBlk->iterateVerticesInOrder([&pDbgData](const Index3DId& vertId, Vertex& vert)->bool {
@@ -583,6 +586,14 @@ void AppData::updateDebugTess()
             });
         }
     }
+
+#endif
+
+#if ENABLE_GAP_DEBUG_GRAPHICS
+    if (!_model.empty()) {
+        _model.addGapDebugGraphicsData(pDbgData);
+    }
+#endif
 
     auto pDrawDbgMesh = pCanvas->getDrawDebugMesh();
     pDrawDbgMesh->createTessellation(*pDbgData);

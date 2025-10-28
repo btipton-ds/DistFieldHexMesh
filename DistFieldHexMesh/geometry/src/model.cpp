@@ -27,12 +27,15 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <assert.h>
+
+#include <objectPool.hpp>
 #include <meshData.h>
 #include <model.h>
 #include <tm_spatialSearch.hpp>
 #include <tolerances.h>
 #include <splitParams.h>
 #include <polygon.h>
+#include <debugMeshData.h>
 
 using namespace std;
 using namespace DFHM;
@@ -285,20 +288,33 @@ void Model::calculateGaps(const SplittingParams& params)
 		}
 		samplePts.push_back(pStartFace->calCentroid());
 
-		calculateFaceGaps(params, samplePts, startModelIsClosed, pStartFace);
+		vector<Vector3d> endVectors;
+		calculateFaceGaps(params, samplePts, startModelIsClosed, pStartFace, endVectors);
+		{
+			lock_guard<mutex> lg(_mut);
+			for (size_t i = 0; i < samplePts.size(); i++) {
+				if (endVectors[i].squaredNorm() > 0) {
+					_gapSegments.push_back(make_pair(samplePts[i]._pt, endVectors[i]));
+				}
+			}
+		}
 
 		return true;
 	}, allFaceIndices.size(), RUN_MULTI_THREAD);
 
 }
 
-void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace) const
+void Model::calculateFaceGaps(const SplittingParams& params, const vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 
+	endPtVector.clear();
+	endPtVector.resize(samplePts.size(), Vector3d(0, 0, 0));
+
 	const auto& startFaceNorm = pStartFace->calUnitNormal();
 	CBoundingBox3Dd bbox;
-	for (const auto& samplePt : samplePts) {
+	for (size_t i = 0; i < samplePts.size(); i++) {
+		const auto& samplePt = samplePts[i];
 		const auto& startPt = samplePt._pt;
 
 		bbox = CBoundingBox3Dd(startPt);
@@ -309,8 +325,8 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 			static mutex mut;
 			lock_guard<mutex> lg(mut);
 #endif
-			for (size_t i = 0; i < nearFaceIds.size(); i++) {
-				const auto& nearFaceId = nearFaceIds[i];
+			for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
+				const auto& nearFaceId = nearFaceIds[faceIdx];
 				auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
 				const auto& pNearFace = getPolygon(nearFaceId);
 				if (!pNearFace || pStartFace->isConnected(*pNearFace)) {
@@ -333,6 +349,7 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
 							// if (!obscured(startPt, hitPt))
 							pStartFace->setNeedsGapTest(IS_TRUE);
+							endPtVector[i] = prism._pts[1] - prism._pts[0];
 							break;
 						}
 					}
@@ -341,6 +358,14 @@ void Model::calculateFaceGaps(const SplittingParams& params, const vector<Sample
 		}
 	}
 
+}
+
+void Model::addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const
+{
+	for (const auto& pair : _gapSegments) {
+		LineSegmentd seg(pair.first, pair.first + pair.second);
+		pDbgData->add(seg);
+	}
 }
 
 void Model::writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const FitGapCircle& prism) const

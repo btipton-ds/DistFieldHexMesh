@@ -227,8 +227,6 @@ public:
     const GraphicsCanvas* getCanvas() const;
     GraphicsCanvas* getCanvas();
 
-    void doPaint(wxPaintEvent& event);
-
     AppDataPtr getAppData();
     void refreshObjectTree();
     void reportProgressInner(double fraction) override;

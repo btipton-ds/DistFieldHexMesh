@@ -29,6 +29,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <memory>
+#include <mutex>
 
 #include <tm_vector3.h>
 #include <tm_spatialSearch.h>
@@ -54,6 +55,9 @@ using AppDataPtr = std::shared_ptr<AppDataIntf>;
 class MeshData;
 using MeshDataPtr = std::shared_ptr<MeshData>;
 using MeshDataConstPtr = std::shared_ptr<const MeshData>;
+
+class DebugMeshData;
+using DebugMeshDataPtr = std::shared_ptr<DebugMeshData>;
 
 class Model;
 using ModelPtr = std::shared_ptr<Model>;
@@ -105,6 +109,7 @@ public:
 
 	void rebuildSearchTree();
 	void calculateGaps(const SplittingParams& params);
+	void addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const;
 	void clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes);
 
 	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
@@ -113,12 +118,15 @@ private:
 	struct SamplePt;
 	struct FitGapCircle;
 
-	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace) const;
+	void calculateFaceGaps(const SplittingParams& params, const std::vector<SamplePt>& samplePts, bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const;
 	void writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const FitGapCircle& prism) const;
 
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
 	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;
+
+	mutable std::mutex _mut;
+	std::vector<std::pair<Vector3d, Vector3d>> _gapSegments;
 };
 
 inline bool Model::empty() const
