@@ -56,10 +56,11 @@ void DrawDebugMesh::createTessellation(DebugMeshData& data)
     vector<float> edgePts;
     vector<unsigned int> edgeIndices;
     data.getGLEdges(edgePts, edgeIndices);
+    if (!edgePts.empty() && !edgeIndices.empty()) {
 
-    auto tess = eVBO.setEdgeSegTessellation(0, 0, 0, edgePts, edgeIndices);
-    data.setEdgeTess(tess);
-
+        auto tess = eVBO.setEdgeSegTessellation(0, 0, 0, edgePts, edgeIndices);
+        data.setEdgeTess(tess);
+    }
     eVBO.endEdgeTesselation();
     fVBO.endFaceTesselation(false);
 }

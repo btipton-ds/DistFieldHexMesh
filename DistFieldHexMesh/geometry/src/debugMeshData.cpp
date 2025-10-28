@@ -83,7 +83,9 @@ void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int
         indices.push_back(idx++);
     }
 
-    for (const auto& seg : _segments) {
+    size_t numSegs = _segments.size();
+    for (size_t i = 0; i < numSegs; i++) {
+        const auto& seg = _segments[i];
         const auto& pt0 = seg._pt0;
         auto pt1 = seg._pt1;
 

@@ -288,7 +288,6 @@ private:
     void writeDepthTexture(const std::string& filename, GLenum target, GLuint texId);
 
     bool _initialized = false;
-    bool _renderRunning = true;
     bool _meshSelection = false;
     bool _clippingMove = true;
     bool _leftDown = false, _middleDown = false, _rightDown = false;
