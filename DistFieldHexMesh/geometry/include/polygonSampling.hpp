@@ -43,7 +43,7 @@ void Polygon::sampleSpacedPoints(double gridCellDim, const FUNC& func) const
 		sampleSpacedPointsQuad(vertIds, gridCellDim, func);
 	}
 	else {
-//		sampleSpacedPointsGeneral(gridCellDim, func);
+		sampleSpacedPointsGeneral(gridCellDim, func);
 	}
 }
 
