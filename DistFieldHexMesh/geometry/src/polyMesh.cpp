@@ -153,7 +153,7 @@ void PolyMesh::initSymmetry(const std::vector<Planed>& symPlanes)
 			auto dist = pl.distanceToPoint(pt);
 			if (dist < tol) {
 				_vertices.removeFromLookup(vertId);
-				auto newPt = pl.projectPoint(pt);
+				auto newPt = pl.projectPoint(pt, Tolerance::sameDistTol());
 				vert.replacePoint(newPt);
 				_vertices.addToLookup(vert);
 			}
@@ -302,7 +302,7 @@ void PolyMesh::flattenEdgeLoop(const std::vector<Index3DId>& loop)
 			const auto& pt = getVertexPoint(id);
 			double dist = plane.distanceToPoint(pt);
 			if (dist < tol2) {
-				auto projPt = plane.projectPoint(pt);
+				auto projPt = plane.projectPoint(pt, Tolerance::sameDistTol());
 				auto& vert = getVertex(id);
 				vert.replacePoint(projPt);
 			} else {

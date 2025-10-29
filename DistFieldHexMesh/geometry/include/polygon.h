@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 /*
 This file is part of the DistFieldHexMesh application/library.
@@ -32,6 +31,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <memory>
 #include <vector>
 #include <set>
+#include <mutex>
 #include <iostream>
 #include <triMeshPatch.h>
 #include <vector2d.h>
@@ -159,6 +159,7 @@ public:
 	bool isPointOnEdge(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt) const;
 	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
+	bool isPointInside(const Vector3d& pt, const Planed& plane) const;
 	bool isConnected(const Polygon& otherFace) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsEdge(const EdgeKey& edge) const;
@@ -197,7 +198,7 @@ public:
 	void setCentroid_risky(const Vector3d& val);
 	void setIsConvex_risky(Convexity convexity);
 	void calAreaAndCentroid(double& area, Vector3d& centroid) const;
-	Vector2d projectPoint(const Vector3d& pt, const Vector3d& origin, const Vector3d& xAxis) const;
+	Vector2d projectPoint2d(const Vector3d& pt, const Planed& pl) const;
 	void setIntersectsModel(Trinary val) const;
 
 	bool intersectsModel() const;
@@ -216,7 +217,8 @@ public:
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
-	void getSpacedSamplePoints(double gridCellDim, std::vector<Vector3d>& samplePts) const;
+	template<class FUNC>
+	void sampleSpacedPoints(double gridCellDim, const FUNC& sampleFunk) const;
 	const GapTextureDataPtr& getGapTextureData() const;
 
 	double flatten(bool allowQuads);
@@ -260,6 +262,11 @@ private:
 
 	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
 	bool isPointInsideInner(const Vector3d& pt, const Planed& pl) const;
+
+	template<class FUNC>
+	void sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridCellDim, const FUNC& sampleFunk) const;
+	template<class FUNC>
+	void sampleSpacedPointsGeneral(double gridCellDim, const FUNC& sampleFunk) const;
 
 	Index3DId _thisId;
 
@@ -354,6 +361,11 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	if (isReversed(cellId))
 		std::reverse(result.begin(), result.end());
 	return result;
+}
+
+inline bool Polygon::isPointInside(const Vector3d& pt, const Planed& plane) const
+{
+	return isPointInsideInner(pt, plane);
 }
 
 inline const Polygon::GapTextureDataPtr& Polygon::getGapTextureData() const

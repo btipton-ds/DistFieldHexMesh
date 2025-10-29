@@ -296,7 +296,7 @@ double Polygon::flatten(bool allowQuads)
 			auto& vert = getVertex(vertId);
 			auto pt = vert.getPoint();
 			if (!plane.isCoincident(pt, tolTight)) {
-				pt = plane.projectPoint(pt);
+				pt = plane.projectPoint(pt, tolTight);
 				assert(plane.isCoincident(pt, tolTight));
 				vert.replacePoint(pt);
 			}
@@ -868,7 +868,7 @@ double Polygon::minDistToPoint(const Vector3d& pt, Vector3d& closestPt) const
 {
 	double dist = DBL_MAX;
 	auto& pl = calPlane();
-	auto projPt = pl.projectPoint(pt);
+	auto projPt = pl.projectPoint(pt, Tolerance::sameDistTol());
 	if (isPointInside(projPt)) {
 		closestPt = pt;
 		auto v = closestPt - pl.getOrigin();
@@ -928,11 +928,13 @@ void Polygon::calAreaAndCentroid(double& area, Vector3d& centroid) const
 		_cachedCentroid = centroid;
 }
 
-Vector2d Polygon::projectPoint(const Vector3d& pt, const Vector3d& origin, const Vector3d& xAxis) const
+Vector2d Polygon::projectPoint2d(const Vector3d& pt, const Planed& pl) const
 {
-	auto& zAxis = calUnitNormal();
-
+	auto& origin = pl.getOrigin();
+	auto& xAxis = pl.getXRef();
+	auto& zAxis = pl.getNormal();
 	Vector3d yAxis = zAxis.cross(xAxis);
+
 	Vector3d v = pt - origin;
 	Vector2d result(v.dot(xAxis), v.dot(yAxis));
 
@@ -1356,77 +1358,6 @@ void Polygon::intersectHexMeshTris(size_t numTris, const pair<const Vector3d*, c
 	}
 }
 
-void Polygon::getSpacedSamplePoints(double gridCellDim, std::vector<Vector3d>& samplePts) const
-{
-	double maxLen = 0;
-	Vector3d origin, xAxis;
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		size_t j = (i + 1) % _vertexIds.size();
-		const auto& pt0 = getVertexPoint(_vertexIds[i]);
-		const auto& pt1 = getVertexPoint(_vertexIds[j]);
-		Vector3d v = pt1 - pt0;
-		double lenSqr = v.squaredNorm();
-		if (lenSqr > maxLen) {
-			maxLen = lenSqr;
-			origin = pt0;
-			xAxis = v;
-		}
-	}
-
-	const auto& zAxis = calUnitNormal();
-	Vector3d yAxis = zAxis.cross(yAxis).normalized();
-
-	Vector2d minCorner(DBL_MAX, DBL_MAX), maxCorner(-DBL_MAX, -DBL_MAX);
-	for (size_t i = 0; i < _vertexIds.size(); i++) {
-		const auto& pt = getVertexPoint(_vertexIds[i]);
-		Vector2d pt2d = projectPoint(pt, origin, xAxis);
-		for (int i = 0; i < 2; i++) {
-			if (pt2d[i] < minCorner[i])
-				minCorner[i] = pt2d[i];
-			if (pt2d[i] > maxCorner[i])
-				maxCorner[i] = pt2d[i];
-		}
-	}
-
-	Vector2d span = maxCorner - minCorner;
-	size_t numX = (size_t) (span[0] / gridCellDim + 0.5);
-	if (numX < 3)
-		numX = 3;
-
-	size_t numY = (size_t)(span[1] / gridCellDim + 0.5);
-	if (numY < 3)
-		numY = 3;
-
-#if 1
-	static mutex mut;
-	lock_guard<mutex> lg(mut);
-#endif
-
-	const auto& pl = calPlane();
-	for (size_t i = 0; i < numY; i++) {
-		double u = i / (numY - 1.0);
-		for (size_t j = 0; j < numX; j++) {
-			double t = j / (numX - 1.0);
-			Vector3d pt = origin + t * span[0] * xAxis; + u * span[1] * yAxis;
-
-			Vector3d vErr = pt - pl.getOrigin();
-			double dp = vErr.dot(pl.getNormal());
-
-			int count = 0;
-			while (fabs(dp) > Tolerance::sameDistTol() && count < 3) {
-				// If the error is larger than tolerance, clamp it to the plane
-				// One pass should fix it
-				pt = pt - dp * pl.getNormal();
-				vErr = pt - pl.getOrigin();
-				dp = vErr.dot(pl.getNormal());
-			}
-			if (isPointInsideInner(pt, pl)) {
-				samplePts.push_back(pt);
-			}
-		}
-	}
-}
-
 bool Polygon::isPointInside(const Vector3d& pt) const
 {
 	bool result;
@@ -1475,10 +1406,10 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Planed& pl) const
 	vector<Vector2d> pts2D;
 	pts2D.resize(nclinVerts.size());
 	for (size_t i = 0; i < nclinVerts.size(); i++) {
-		pts2D[i] = projectPoint(getVertexPoint(nclinVerts[i]), pl.getOrigin(), pl.getXRef());
+		pts2D[i] = projectPoint2d(getVertexPoint(nclinVerts[i]), pl);
 	}
 
-	Vector2d pt2d = projectPoint(pt, pl.getOrigin(), pl.getXRef());
+	Vector2d pt2d = projectPoint2d(pt, pl);
 	LineSegment2d ray(pt2d, pt2d + Vector2d(1, 0));
 	size_t posCount = 0, negCount = 0;
 	for (size_t i = 0; i < pts2D.size(); i++) {

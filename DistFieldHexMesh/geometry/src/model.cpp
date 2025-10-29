@@ -35,6 +35,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <tolerances.h>
 #include <splitParams.h>
 #include <polygon.h>
+#include <polygonSampling.hpp>
 #include <debugMeshData.h>
 
 using namespace std;
@@ -185,8 +186,8 @@ struct Model::FitGapCircle
 		if (plane0.intersectPlane(plane1, intersectionRay, Tolerance::sameDistTol())) {
 			Vector3d sectionOrigin = intersectionRay.project(_pts[0]);
 			Planed sectionPlane(sectionOrigin, intersectionRay._dir);
-			Vector3d projPt0 = sectionPlane.projectPoint(_pts[0]);
-			Vector3d projPt1 = sectionPlane.projectPoint(plane1.getOrigin());
+			Vector3d projPt0 = sectionPlane.projectPoint(_pts[0], Tolerance::sameDistTol());
+			Vector3d projPt1 = sectionPlane.projectPoint(plane1.getOrigin(), Tolerance::sameDistTol());
 			_xAxis = (projPt0 - sectionOrigin).normalized();
 			_zAxis = intersectionRay._dir;
 			_yAxis = _zAxis.cross(_xAxis).normalized();
@@ -205,7 +206,7 @@ struct Model::FitGapCircle
 			RayHitd hit;
 			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
 				_pts[2] = hit.hitPt;
-				_pts[1] = plane1.projectPoint(_pts[2]);
+				_pts[1] = plane1.projectPoint(_pts[2], Tolerance::sameDistTol());
 				Vector3d v = _pts[1] - _pts[0];
 				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
 					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
@@ -213,7 +214,7 @@ struct Model::FitGapCircle
 					v1 = (_pts[1] - _pts[2]).normalized();
 					auto dpCtr = v0.dot(v1);
 					if (dpCtr < 0) {
-						if (pFace1->isPointInside(_pts[1])) {
+						if (pFace1->isPointInside(_pts[1], plane1)) {
 #if 0
 							auto dist0 = (_pts[0] - _pts[2]).norm();
 							auto dist1 = (_pts[1] - _pts[2]).norm();
@@ -228,8 +229,8 @@ struct Model::FitGapCircle
 			} // If the ray doesn't hit the midplane, it's a pathological case and we should be able to ignore it.
 		} else {
 			// Parallel planes case
-			_pts[1] = plane1.projectPoint(_pts[0]);
-			if (pFace1->isPointInside(_pts[1])) {
+			_pts[1] = plane1.projectPoint(_pts[0], Tolerance::sameDistTol());
+			if (pFace1->isPointInside(_pts[1], plane1)) {
 				Vector3d v = _pts[1] - _pts[0];
 				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
 					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
@@ -249,16 +250,6 @@ struct Model::FitGapCircle
 	Vector3d _normals[2];
 	Vector3d _xAxis, _yAxis, _zAxis;
 	const DFHM::Polygon* _contactFaces[2]; // These are the polygons the points fall on
-};
-
-struct Model::SamplePt {
-	inline SamplePt(const Vector3d& pt)
-		: _pt(pt)
-	{
-	}
-
-	Vector3d _pt;
-	Vector2d _uv;
 };
 
 void Model::calculateGaps(const SplittingParams& params)
@@ -308,88 +299,104 @@ void Model::calculateGaps(const SplittingParams& params)
 		const auto& connectedFaceIds = connectedFaceIter->second;
 		pStartFace->setNeedsGapTest(IS_FALSE);
 
-		vector<Vector3d> gridPts;
-		pStartFace->getSpacedSamplePoints(params.gapGridSpacing, gridPts);
-		if (gridPts.empty())
-			return true;
-
-		vector<SamplePt> samplePts;
-		for (const auto& pt : gridPts)
-			samplePts.push_back(pt);
-
-		vector<Vector3d> endVectors;
-		calculateFaceGaps(params, connectedFaceIds, samplePts, startModelIsClosed, pStartFace, endVectors);
-		{
-			lock_guard<mutex> lg(_mut);
-			for (size_t i = 0; i < samplePts.size(); i++) {
-				if (endVectors[i].squaredNorm() > 0) {
-					_gapSegments.push_back(make_pair(samplePts[i]._pt, endVectors[i]));
+		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, &connectedFaceIds, startModelIsClosed, pStartFace](const Vector3d& pt) {
+			Vector3d endVec;
+			if (calculateFaceGaps(params, connectedFaceIds, pt, startModelIsClosed, pStartFace, endVec)) {
+				if (endVec.squaredNorm() > Tolerance::sameDistTolSqr()) {
+					lock_guard<mutex> lg(_mut);
+					_gapSegments.push_back(make_pair(pt, endVec));
 				}
 			}
-		}
+		});
+
 
 		return true;
 	}, allFaceIndices.size(), RUN_MULTI_THREAD);
 
 }
 
-void Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshIndex>& connectedFaceIds, const vector<SamplePt>& samplePts,
-	bool startModelIsClosed, Polygon* pStartFace, std::vector<Vector3d>& endPtVector) const
+bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshIndex>& connectedFaceIds, const Vector3d& startPt,
+	bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
+	bool result = false;
 
-	endPtVector.clear();
-	endPtVector.resize(samplePts.size(), Vector3d(0, 0, 0));
-
-	const auto& startFaceNorm = pStartFace->calUnitNormal();
+	const auto& pl = pStartFace->calPlane();
+	const auto& startFaceNorm = pl.getNormal();
+	Vector3d xAxis = pl.getXRef();
+	Vector3d yAxis = startFaceNorm.cross(xAxis).normalized();
 	CBoundingBox3Dd bbox;
-	for (size_t i = 0; i < samplePts.size(); i++) {
-		const auto& samplePt = samplePts[i];
-		const auto& startPt = samplePt._pt;
 
-		bbox = CBoundingBox3Dd(startPt);
-		bbox.grow(1.5 * params.maxGapWidth);
-		std::vector<PolyMeshIndex> nearFaceIds;
-		if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
+	auto dist = params.maxGapWidth;
+	bbox.merge(startPt - xAxis * dist - yAxis * dist);
+	bbox.merge(startPt + xAxis * dist - yAxis * dist);
+	bbox.merge(startPt + xAxis * dist + yAxis * dist);
+	bbox.merge(startPt - xAxis * dist + yAxis * dist);
+
+	bbox.merge(startPt - xAxis * dist - yAxis * dist + startFaceNorm * dist);
+	bbox.merge(startPt + xAxis * dist - yAxis * dist + startFaceNorm * dist);
+	bbox.merge(startPt + xAxis * dist + yAxis * dist + startFaceNorm * dist);
+	bbox.merge(startPt - xAxis * dist + yAxis * dist + startFaceNorm * dist);
+
+	std::vector<PolyMeshIndex> nearFaceIds;
+	if (_pPolyMeshSearchTree->find(bbox, nullptr, nearFaceIds) != 0) {
 #if 0 || ENABLE_DEBUGGING_MUTEXES
-			static mutex mut;
-			lock_guard<mutex> lg(mut);
+		static mutex mut;
+		lock_guard<mutex> lg(mut);
 #endif
-			double minDist = DBL_MAX;
-			for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
-				const auto& nearFaceId = nearFaceIds[faceIdx];
-				const auto& pNearFace = getPolygon(nearFaceId);
-				if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
-					continue;
+		double minDist = DBL_MAX;
+		for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
+			const auto& nearFaceId = nearFaceIds[faceIdx];
+			const auto& pNearFace = getPolygon(nearFaceId);
+			if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
+				continue;
+			}
+
+			const auto& nearFaceNorm = pNearFace->calUnitNormal();
+			auto dp = startFaceNorm.dot(nearFaceNorm);
+			if (fabs(dp) < 0.5)
+				continue;
+
+			const auto& nearVertIds = pNearFace->getVertexIds();
+			bool hasVertexInFront = false;
+			for (const auto& vertId : nearVertIds) {
+				const auto& pt = pNearFace->getVertexPoint(vertId);
+				Vector3d v = pt - startPt;
+				if (v.dot(startFaceNorm) > 0) {
+					hasVertexInFront = true;
+					break;
 				}
-				bool nearFaceModelIsClosed = isClosed(nearFaceId);
+			}
+			if (!hasVertexInFront)
+				continue;
 
-				const auto& nearFaceNorm = pNearFace->calUnitNormal();
+			bool nearFaceModelIsClosed = isClosed(nearFaceId);
 
-				FitGapCircle prism(*this, pStartFace, startModelIsClosed, startPt, pNearFace, nearFaceModelIsClosed);
-				Vector3d hitPt;
-				if (prism.calClosestPoint(hitPt)) {
-					//						writeGapObj(pStartFace, pNearFace, prism);
-					Vector3d v = hitPt - startPt;
-					double minDistToPoint = v.norm();
-					if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth && minDistToPoint < minDist) {
-						minDist = minDistToPoint;
-						v.normalize();
-						double dpHitFace = v.dot(nearFaceNorm);
-						double dpStartFace = v.dot(startFaceNorm);
-						auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
-						bool nearModelisClosed = pMesh->isClosed();
-//						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-							// if (!obscured(startPt, hitPt))
-							pStartFace->setNeedsGapTest(IS_TRUE);
-							endPtVector[i] = prism._pts[1] - prism._pts[0];
-//						}
-					}
+			FitGapCircle prism(*this, pStartFace, startModelIsClosed, startPt, pNearFace, nearFaceModelIsClosed);
+			Vector3d hitPt;
+			if (prism.calClosestPoint(hitPt)) {
+				//						writeGapObj(pStartFace, pNearFace, prism);
+				Vector3d v = hitPt - startPt;
+				double minDistToPoint = v.norm();
+				if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth && minDistToPoint < minDist) {
+					minDist = minDistToPoint;
+					v.normalize();
+					double dpHitFace = v.dot(nearFaceNorm);
+					double dpStartFace = v.dot(startFaceNorm);
+					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
+					bool nearModelisClosed = pMesh->isClosed();
+					//						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
+												// if (!obscured(startPt, hitPt))
+					pStartFace->setNeedsGapTest(IS_TRUE);
+					endPtVector = prism._pts[1] - prism._pts[0];
+					if (endPtVector.squaredNorm() > 0)
+						result = true;
+					//						}
 				}
 			}
 		}
 	}
-
+	return result;
 }
 
 void Model::addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const
