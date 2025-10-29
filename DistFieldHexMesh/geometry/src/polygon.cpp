@@ -1730,6 +1730,11 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	return out;
 }
 
+void Polygon::resetGaps()
+{
+	_gapPoints.clear();
+}
+
 void Polygon::addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId)
 {
 	_gapPoints.push_back(GapPointData(pt, endVec, endId));

@@ -262,30 +262,25 @@ void Model::calculateGaps(const SplittingParams& params)
 		numIndices += _modelMeshData[i]->getPolyMesh()->numPolygons();
 	}
 
-	vector<PolyMeshIndex> allFaceIndices;
-	allFaceIndices.reserve(numIndices);
-
-	// Connected face determination is expensive, so make a lookup map. May want to do a binary search vector at some time.
-	map<PolyMeshIndex, set<PolyMeshIndex>> connectedFaceMap;
+	vector<PolyMeshIndex> sortedAllFaceIndices;
+	sortedAllFaceIndices.reserve(numIndices);
 
 	for (size_t meshIdx = 0; meshIdx < _modelMeshData.size(); meshIdx++) {
 		auto& pMeshData = _modelMeshData[meshIdx];
 		auto& pStartPolyMesh = pMeshData->getPolyMesh();
 
-		pStartPolyMesh->iteratePolygons([this, &allFaceIndices, &connectedFaceMap, meshIdx](const Index3DId& id, Polygon& face)->bool {
+		pStartPolyMesh->iteratePolygons([this, &sortedAllFaceIndices, meshIdx](const Index3DId& id, Polygon& face)->bool {
+			face.resetGaps();
+			face.setNeedsGapTest(IS_FALSE);
+			if (face.isOnSymmetryPlane())
+				return true;
 			PolyMeshIndex polyFaceId(meshIdx, id);
-			allFaceIndices.push_back(polyFaceId);
-			set<Index3DId> ids;
-			face.getConnectedFaceIds(ids);
-			auto iter = connectedFaceMap.insert(make_pair(polyFaceId, set<PolyMeshIndex>())).first;
-			auto& polyIds = iter->second;
-			for (const auto& id : ids)
-				polyIds.insert(PolyMeshIndex(meshIdx, id));
+			sortedAllFaceIndices.push_back(polyFaceId);
 			return true;
 		});
 	}
 
-	sort(allFaceIndices.begin(), allFaceIndices.end(), [this](const PolyMeshIndex& lhs, const PolyMeshIndex& rhs)->bool {
+	sort(sortedAllFaceIndices.begin(), sortedAllFaceIndices.end(), [this](const PolyMeshIndex& lhs, const PolyMeshIndex& rhs)->bool {
 		double lhsArea, rhsArea;
 		Vector3d lhsCtr, rhsCtr;
 
@@ -294,9 +289,9 @@ void Model::calculateGaps(const SplittingParams& params)
 		return lhsArea < rhsArea;
 	});
 
-	MultiCore::runLambda([this, &params, &allFaceIndices, &connectedFaceMap](size_t index)->bool {
+	MultiCore::runLambda([this, &params, &sortedAllFaceIndices](size_t index)->bool {
 
-		const auto startFaceId = allFaceIndices[index];
+		const auto startFaceId = sortedAllFaceIndices[index];
 		auto pStartModelData = _modelMeshData[startFaceId.getMeshIdx()];
 		auto pStartMesh = pStartModelData->getPolyMesh();
 		bool startModelIsClosed = pStartMesh->isClosed();
@@ -304,14 +299,10 @@ void Model::calculateGaps(const SplittingParams& params)
 		if (!pStartFace)
 			return true; // skip this one
 
-		auto connectedFaceIter = connectedFaceMap.find(startFaceId);
-		const auto& connectedFaceIds = connectedFaceIter->second;
-		pStartFace->setNeedsGapTest(IS_FALSE);
-
-		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, &connectedFaceIds, startModelIsClosed, pStartFace](const Vector3d& pt) {
+		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](const Vector3d& pt) {
 			Vector3d endVec;
 			PolyMeshIndex endFaceId;
-			if (calculateFaceGaps(params, connectedFaceIds, pt, startModelIsClosed, pStartFace, endVec, endFaceId)) {
+			if (calculateFaceGaps(params, pt, startModelIsClosed, pStartFace, endVec, endFaceId)) {
 				if (endVec.squaredNorm() > Tolerance::sameDistTolSqr()) {
 					pStartFace->addGap(pt, endVec, endFaceId);
 				}
@@ -320,11 +311,11 @@ void Model::calculateGaps(const SplittingParams& params)
 
 
 		return true;
-	}, allFaceIndices.size(), RUN_MULTI_THREAD);
+	}, sortedAllFaceIndices.size(), RUN_MULTI_THREAD);
 
 }
 
-bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshIndex>& connectedFaceIds, const Vector3d& startPt,
+bool Model::calculateFaceGaps(const SplittingParams& params, const Vector3d& startPt,
 	bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector, PolyMeshIndex& endPtFaceId) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
@@ -362,7 +353,7 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 			const auto& nearFaceId = nearFaceIds[faceIdx];
 			const auto& pNearFace = getPolygon(nearFaceId);
 
-			if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
+			if (!pNearFace || pNearFace->isOnSymmetryPlane()) {
 				continue;
 			}
 
@@ -403,19 +394,10 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 				double minDistToPoint = v.norm();
 				if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth && minDistToPoint < minDist) {
 					minDist = minDistToPoint;
-					v.normalize();
-					double dpHitFace = v.dot(nearFaceNorm);
-					double dpStartFace = v.dot(startFaceNorm);
-					auto pMesh = _modelMeshData[nearFaceId.getMeshIdx()];
-					bool nearModelisClosed = pMesh->isClosed();
-					//						if ((!nearModelisClosed || dpHitFace < -minDotProduct) && dpStartFace > minDotProduct) {
-												// if (!obscured(startPt, hitPt))
 					pStartFace->setNeedsGapTest(IS_TRUE);
-					endPtVector = prism._pts[1] - prism._pts[0];
+					endPtVector = v;
 					endPtFaceId = nearFaceId;
-					if (endPtVector.squaredNorm() > 0)
-						result = true;
-					//						}
+					result = true;
 				}
 			}
 		}

@@ -227,6 +227,7 @@ public:
 	bool intersect(const Polygon& otherFace, bool dumpObj) const;
 	void intersectHexMeshTris(size_t numTris, const std::pair<const Vector3d*, const Polygon*>* pMeshTriData, Trinary& result) const;
 
+	void resetGaps();
 	void addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId);
 	const std::vector<GapPointData>& getGapData() const;
 
