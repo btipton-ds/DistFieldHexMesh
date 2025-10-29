@@ -37,6 +37,13 @@ DebugMeshData::~DebugMeshData()
 
 void DebugMeshData::clear()
 {
+    _points.clear();
+    _rays.clear();
+    _segments.clear();
+    _triPts.clear();
+    _triNormals.clear();
+
+    _edgeTess = nullptr;
 }
 
 void DebugMeshData::add(const Vector3d& pt)
