@@ -112,22 +112,16 @@ public:
 	void addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const;
 	void clampVerticesToSymPlanes(const std::vector<Planed>& symPlanes);
 
-	const std::map<PolyMeshIndex, Vector3d>& getPolyMeshIdxToGapEndPtMap() const;
-
 private:
 	struct SamplePt;
 	struct FitGapCircle;
 
 	bool calculateFaceGaps(const SplittingParams& params, const std::set<PolyMeshIndex>& connectedFaceIds, const Vector3d& samplePt,
-		bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector) const;
+		bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector, PolyMeshIndex& endPtFaceId) const;
 	void writeGapObj(const Polygon* pStartFace, const Polygon* pNearFace, const FitGapCircle& prism) const;
 
 	std::vector<MeshDataPtr> _modelMeshData;
 	std::shared_ptr<PolyMeshSearchTree> _pPolyMeshSearchTree;
-	std::map<PolyMeshIndex, Vector3d> _polyMeshIdxToGapEndPtMap;
-
-	mutable std::mutex _mut;
-	std::vector<std::pair<Vector3d, Vector3d>> _gapSegments;
 };
 
 inline bool Model::empty() const
@@ -184,11 +178,5 @@ inline std::shared_ptr<const PolyMeshSearchTree> Model::getPolySubTree(const BOX
 {
 	return _pPolyMeshSearchTree->getSubTree(bbox, pRefiner);
 }
-
-inline const std::map<PolyMeshIndex, Vector3d>& Model::getPolyMeshIdxToGapEndPtMap() const
-{
-	return _polyMeshIdxToGapEndPtMap;
-}
-
 
 }

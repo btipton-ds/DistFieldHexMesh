@@ -1730,6 +1730,16 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 	return out;
 }
 
+void Polygon::addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId)
+{
+	_gapPoints.push_back(GapPointData(pt, endVec, endId));
+}
+
+const std::vector<Polygon::GapPointData>& Polygon::getGapData() const
+{
+	return _gapPoints;
+}
+
 const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const
 {
 	auto p = getOurBlockPtr();

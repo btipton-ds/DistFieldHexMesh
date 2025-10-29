@@ -285,6 +285,15 @@ void Model::calculateGaps(const SplittingParams& params)
 		});
 	}
 
+	sort(allFaceIndices.begin(), allFaceIndices.end(), [this](const PolyMeshIndex& lhs, const PolyMeshIndex& rhs)->bool {
+		double lhsArea, rhsArea;
+		Vector3d lhsCtr, rhsCtr;
+
+		getPolygon(lhs)->calAreaAndCentroid(lhsArea, lhsCtr);
+		getPolygon(rhs)->calAreaAndCentroid(rhsArea, rhsCtr);
+		return lhsArea < rhsArea;
+	});
+
 	MultiCore::runLambda([this, &params, &allFaceIndices, &connectedFaceMap](size_t index)->bool {
 
 		const auto startFaceId = allFaceIndices[index];
@@ -301,10 +310,10 @@ void Model::calculateGaps(const SplittingParams& params)
 
 		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, &connectedFaceIds, startModelIsClosed, pStartFace](const Vector3d& pt) {
 			Vector3d endVec;
-			if (calculateFaceGaps(params, connectedFaceIds, pt, startModelIsClosed, pStartFace, endVec)) {
+			PolyMeshIndex endFaceId;
+			if (calculateFaceGaps(params, connectedFaceIds, pt, startModelIsClosed, pStartFace, endVec, endFaceId)) {
 				if (endVec.squaredNorm() > Tolerance::sameDistTolSqr()) {
-					lock_guard<mutex> lg(_mut);
-					_gapSegments.push_back(make_pair(pt, endVec));
+					pStartFace->addGap(pt, endVec, endFaceId);
 				}
 			}
 		});
@@ -316,10 +325,14 @@ void Model::calculateGaps(const SplittingParams& params)
 }
 
 bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshIndex>& connectedFaceIds, const Vector3d& startPt,
-	bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector) const
+	bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector, PolyMeshIndex& endPtFaceId) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 	bool result = false;
+
+	double startArea;
+	Vector3d startCtr;
+	pStartFace->calAreaAndCentroid(startArea, startCtr);
 
 	const auto& pl = pStartFace->calPlane();
 	const auto& startFaceNorm = pl.getNormal();
@@ -348,9 +361,19 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 		for (size_t faceIdx = 0; faceIdx < nearFaceIds.size(); faceIdx++) {
 			const auto& nearFaceId = nearFaceIds[faceIdx];
 			const auto& pNearFace = getPolygon(nearFaceId);
+
 			if (!pNearFace || connectedFaceIds.count(nearFaceId) != 0) {
 				continue;
 			}
+
+			// Faces are sorted by ascending area. If the test face has smaller area than this face
+			// We've already tested it in the other direction and can skip it.
+			double nearArea;
+			Vector3d nearCtr;
+			pNearFace->calAreaAndCentroid(nearArea, nearCtr);
+			if (nearArea < startArea)
+				continue;
+
 
 			const auto& nearFaceNorm = pNearFace->calUnitNormal();
 			auto dp = startFaceNorm.dot(nearFaceNorm);
@@ -389,6 +412,7 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 												// if (!obscured(startPt, hitPt))
 					pStartFace->setNeedsGapTest(IS_TRUE);
 					endPtVector = prism._pts[1] - prism._pts[0];
+					endPtFaceId = nearFaceId;
 					if (endPtVector.squaredNorm() > 0)
 						result = true;
 					//						}
@@ -401,9 +425,17 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const set<PolyMeshI
 
 void Model::addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const
 {
-	for (const auto& pair : _gapSegments) {
-		LineSegmentd seg(pair.first, pair.first + pair.second);
-		pDbgData->add(seg);
+	for (const auto& pMeshData : _modelMeshData) {
+		auto pMesh = pMeshData->getPolyMesh();
+		pMesh->iteratePolygons([pDbgData](const Index3DId& faceId, const Polygon& face)->bool {
+			const auto& gapData = face.getGapData();
+			for (const auto& rec : gapData) {
+				LineSegmentd seg(rec._ourPoint, rec._ourPoint + rec._endVec);
+				pDbgData->add(seg);
+			}
+
+			return true;
+		});
 	}
 }
 

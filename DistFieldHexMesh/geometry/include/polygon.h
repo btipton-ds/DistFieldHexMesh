@@ -49,6 +49,7 @@ This file is part of the DistFieldHexMesh application/library.
 #include <vertex.h>
 #include <edge.h>
 #include <polygonSearchKey.h>
+#include <polyMeshIndex.h>
 #include <model.h>
 
 template<class T>
@@ -91,6 +92,17 @@ public:
 		std::vector<float> _distVectors;
 		uint32_t getTexId() const;
 	};
+	struct GapPointData {
+		GapPointData(const Vector3d& ourPoint, const Vector3d& endVec, const PolyMeshIndex& endId)
+			: _ourPoint(ourPoint)
+			, _endVec(endVec)
+			, _endId(endId)
+		{
+		}
+		Vector3d _ourPoint, _endVec;
+		PolyMeshIndex _endId;
+	};
+
 	using GapTextureDataPtr = std::shared_ptr<GapTextureData>;
 
 	static bool verifyUniqueStat(const MTC::vector<Index3DId>& vertIds);
@@ -215,6 +227,9 @@ public:
 	bool intersect(const Polygon& otherFace, bool dumpObj) const;
 	void intersectHexMeshTris(size_t numTris, const std::pair<const Vector3d*, const Polygon*>* pMeshTriData, Trinary& result) const;
 
+	void addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId);
+	const std::vector<GapPointData>& getGapData() const;
+
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
 	template<class FUNC>
@@ -274,6 +289,7 @@ private:
 	FastBisectionSet<Index3DId> _cellIds;
 	Trinary _needsGapTest = IS_UNKNOWN;
 	GapTextureDataPtr _pGapTextureData;
+	std::vector<GapPointData> _gapPoints;
 
 	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
 	mutable Trinary _isOnSymmetryPlane = IS_UNKNOWN;
