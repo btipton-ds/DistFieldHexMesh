@@ -92,6 +92,7 @@ public:
 		std::vector<float> _distVectors;
 		uint32_t getTexId() const;
 	};
+
 	struct GapPointData {
 		GapPointData(const Vector3d& ourPoint, const Vector3d& endVec, const PolyMeshIndex& endId)
 			: _ourPoint(ourPoint)
@@ -101,6 +102,15 @@ public:
 		}
 		Vector3d _ourPoint, _endVec;
 		PolyMeshIndex _endId;
+	};
+
+	struct GapQuadData {
+		GapQuadData(const Vector3d pts[4])
+		{
+			for (int i = 0; i < 4; i++)
+				_qPts[i] = pts[i];
+		}
+		Vector3d _qPts[4];
 	};
 
 	using GapTextureDataPtr = std::shared_ptr<GapTextureData>;
@@ -228,13 +238,19 @@ public:
 	void intersectHexMeshTris(size_t numTris, const std::pair<const Vector3d*, const Polygon*>* pMeshTriData, Trinary& result) const;
 
 	void resetGaps();
-	void addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId);
-	const std::vector<GapPointData>& getGapData() const;
+	void addGapPt(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId);
+	void addGapQuad(const Vector3d pts[4]);
+	const std::vector<GapPointData>& getGapPointData() const;
+	const std::vector<GapQuadData>& getGapQuadData() const;
 
 	const Vector3d& getVertexPoint(const Index3DId& id) const;
 
 	template<class FUNC>
-	void sampleSpacedPoints(double gridCellDim, const FUNC& sampleFunk) const;
+	void sampleSpacedPoints(double gridSpacing, const FUNC& sampleFunk) const;
+
+	template<class FUNC>
+	void sampleSpacedQuads(double gridSpacing, const FUNC& sampleFunk) const;
+
 	const GapTextureDataPtr& getGapTextureData() const;
 
 	double flatten(bool allowQuads);
@@ -280,9 +296,15 @@ private:
 	bool isPointInsideInner(const Vector3d& pt, const Planed& pl) const;
 
 	template<class FUNC>
-	void sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridCellDim, const FUNC& sampleFunk) const;
+	void sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridSpacing, const FUNC& sampleFunk) const;
 	template<class FUNC>
-	void sampleSpacedPointsGeneral(double gridCellDim, const FUNC& sampleFunk) const;
+	void sampleSpacedPointsGeneral(double gridSpacing, const FUNC& sampleFunk) const;
+
+	template<class FUNC>
+	void sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, double gridSpacing, const FUNC& sampleFunk) const;
+
+	template<class FUNC>
+	void sampleSpacedQuadsGeneral(double gridSpacing, const FUNC& sampleFunk) const;
 
 	Index3DId _thisId;
 
@@ -291,6 +313,7 @@ private:
 	Trinary _needsGapTest = IS_UNKNOWN;
 	GapTextureDataPtr _pGapTextureData;
 	std::vector<GapPointData> _gapPoints;
+	std::vector<GapQuadData> _gapQuads;
 
 	mutable Convexity _isConvex = CONVEXITY_UNKNOWN;
 	mutable Trinary _isOnSymmetryPlane = IS_UNKNOWN;

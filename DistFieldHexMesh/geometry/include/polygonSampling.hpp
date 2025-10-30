@@ -32,7 +32,7 @@ namespace DFHM
 {
 
 template<class FUNC>
-void Polygon::sampleSpacedPoints(double gridCellDim, const FUNC& func) const
+void Polygon::sampleSpacedPoints(double gridSpacing, const FUNC& func) const
 {
 #if 0
 	static std::mutex mut;
@@ -40,15 +40,15 @@ void Polygon::sampleSpacedPoints(double gridCellDim, const FUNC& func) const
 #endif
 	auto& vertIds = getNonColinearVertexIds();
 	if (vertIds.size() == 4) {
-		sampleSpacedPointsQuad(vertIds, gridCellDim, func);
+		sampleSpacedPointsQuad(vertIds, gridSpacing, func);
 	}
 	else {
-		sampleSpacedPointsGeneral(gridCellDim, func);
+		sampleSpacedPointsGeneral(gridSpacing, func);
 	}
 }
 
 template<class FUNC>
-void Polygon::sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridCellDim, const FUNC& func) const
+void Polygon::sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridSpacing, const FUNC& func) const
 {
 	const Vector3d* pts[] = {
 		&getVertexPoint(vertIds[0]),
@@ -60,8 +60,8 @@ void Polygon::sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, doub
 	double width = 0.5 * ((*pts[1] - *pts[0]).norm() + (*pts[2] - *pts[3]).norm());
 	double height = 0.5 * ((*pts[3] - *pts[0]).norm() + (*pts[2] - *pts[1]).norm());
 
-	size_t numX = (size_t)(width / gridCellDim + 0.5);
-	size_t numY = (size_t)(height / gridCellDim + 0.5);
+	size_t numX = (size_t)(width / gridSpacing + 0.5);
+	size_t numY = (size_t)(height / gridSpacing + 0.5);
 	Vector3d pt;
 	if (numX < 2 && numY < 2) {
 		func(calCentroid());
@@ -91,7 +91,7 @@ void Polygon::sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, doub
 			for (size_t j = 0; j < numY; j++) {
 				double u = j / (numY - 1.0);
 				auto len1 = (tpt1 - tpt0).norm();
-				size_t numY = (size_t)(len1 / gridCellDim + 0.5);
+				size_t numY = (size_t)(len1 / gridSpacing + 0.5);
 				if (numY < 2) {
 					Vector3d pt = (tpt1 - tpt0) * 0.5;
 					func(pt);
@@ -110,10 +110,10 @@ void Polygon::sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, doub
 }
 
 template<class FUNC>
-void Polygon::sampleSpacedPointsGeneral(double gridCellDim, const FUNC& func) const
+void Polygon::sampleSpacedPointsGeneral(double gridSpacing, const FUNC& func) const
 {
 	std::set<Vector3<int64_t>> pointToIndexSet;
-	iterateTrianglePts([gridCellDim, &func, &pointToIndexSet](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
+	iterateTrianglePts([gridSpacing, &func, &pointToIndexSet](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
 		const Vector3d* pts[] = { &pt0, &pt1, &pt2 };
 		double minLen = DBL_MAX, len;
 		int apexIdx = -1;
@@ -130,7 +130,7 @@ void Polygon::sampleSpacedPointsGeneral(double gridCellDim, const FUNC& func) co
 		const auto& origin = *pts[apexIdx];
 		Vector3d midShort = (*pts[(apexIdx + 1) % 3] + *pts[(apexIdx + 2) % 3]) * 0.5;
 		len = (midShort - origin).norm();
-		size_t numX = (size_t)(len / gridCellDim + 0.5);
+		size_t numX = (size_t)(len / gridSpacing + 0.5);
 
 		if (numX < 2) {
 			Vector3d ctr = (pt0 + pt1 + pt2) / 3;
@@ -140,7 +140,7 @@ void Polygon::sampleSpacedPointsGeneral(double gridCellDim, const FUNC& func) co
 				func(ctr);
 			}
 		}
-		else if (minLen < gridCellDim) {
+		else if (minLen < gridSpacing) {
 			for (size_t i = 0; i < numX; i++) {
 				double t = i / (numX - 1.0);
 				Vector3d pt = LERP(origin, midShort, t);
@@ -157,7 +157,7 @@ void Polygon::sampleSpacedPointsGeneral(double gridCellDim, const FUNC& func) co
 				Vector3d tpt0 = LERP(*pts[0], *pts[1], t);
 				Vector3d tpt1 = LERP(*pts[0], *pts[2], t);
 				auto len1 = (tpt1 - tpt0).norm();
-				size_t numY = (size_t)(len1 / gridCellDim + 0.5);
+				size_t numY = (size_t)(len1 / gridSpacing + 0.5);
 				if (numY < 2) {
 					Vector3d pt = LERP(tpt0, tpt1, 0.5);
 					auto ptI = Vertex::scaleToSearch(pt);
@@ -183,6 +183,159 @@ void Polygon::sampleSpacedPointsGeneral(double gridCellDim, const FUNC& func) co
 
 		return true;
 	});
+}
+
+template<class FUNC>
+void Polygon::sampleSpacedQuads(double gridSpacing, const FUNC& func) const
+{
+#if 0
+	static std::mutex mut;
+	std::lock_guard<std::mutex> lg(mut);
+#endif
+	auto& vertIds = getNonColinearVertexIds();
+	if (vertIds.size() == 4) {
+		sampleSpacedQuadsQuad(vertIds, gridSpacing, func);
+	} else {
+//		sampleSpacedQuadsGeneral(gridSpacing, func);
+	}
+}
+
+template<class FUNC>
+void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, double gridSpacing, const FUNC& func) const
+{
+	const Vector3d pts[] = {
+		getVertexPoint(vertIds[0]),
+		getVertexPoint(vertIds[1]),
+		getVertexPoint(vertIds[2]),
+		getVertexPoint(vertIds[3]),
+	};
+
+	double width = 0.5 * ((pts[1] - pts[0]).norm() + (pts[2] - pts[3]).norm());
+	double height = 0.5 * ((pts[3] - pts[0]).norm() + (pts[2] - pts[1]).norm());
+
+	size_t numX = (size_t)(width / gridSpacing + 0.5);
+	size_t numY = (size_t)(height / gridSpacing + 0.5);
+	Vector3d gridPts[4];
+	Vector2d tu0(0, 0), tu1(1, 1);
+
+	if (numX < 2 && numY < 2) {
+		func(pts);
+	} else if (numX < 2) {
+		tu0[0] = 0;
+		tu1[0] = 1;
+		for (size_t j = 0; j < numY; j++) {
+			tu0[1] = j / (double)numY;
+			tu1[1] = (j + 1) / (double)numY;
+			gridPts[0] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu0[1]);
+			gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
+			gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
+			gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
+			func(gridPts);
+		}
+	} else if (numY < 2) {
+		tu0[1] = 0;
+		tu1[1] = 1;
+		for (size_t i = 0; i < numX; i++) {
+			tu0[0] = i / (double)numX;
+			tu1[0] = (i + 1) / (double)numX;
+			gridPts[0] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu0[1]);
+			gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
+			gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
+			gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
+			func(gridPts);
+		}
+	} else {
+		for (size_t i = 0; i < numX; i++) {
+			tu0[0] = i / (double)numX;
+			tu1[0] = (i + 1) / (double)numX;
+
+			for (size_t j = 0; j < numY; j++) {
+				tu0[1] = j / (double)numY;
+				tu1[1] = (j + 1) / (double)numY;
+				gridPts[0] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu0[1]);
+				gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
+				gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
+				gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
+				func(gridPts);
+			}
+		}
+	}
+}
+
+template<class FUNC>
+void Polygon::sampleSpacedQuadsGeneral(double gridSpacing, const FUNC& func) const
+{
+	std::set<Vector3<int64_t>> pointToIndexSet;
+	iterateTrianglePts([gridSpacing, &func, &pointToIndexSet](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
+		const Vector3d* pts[] = { &pt0, &pt1, &pt2 };
+		double minLen = DBL_MAX, len;
+		int apexIdx = -1;
+		for (int i = 0; i < 3; i++) {
+			int j = (i + 1) % 3;
+			Vector3d v = *pts[j] - *pts[i];
+			len = v.norm();
+			if (len < minLen) {
+				minLen = len;
+				apexIdx = (j + 1) % 3; // The index opposite the shortest leg
+			}
+		}
+
+		const auto& origin = *pts[apexIdx];
+		Vector3d midShort = (*pts[(apexIdx + 1) % 3] + *pts[(apexIdx + 2) % 3]) * 0.5;
+		len = (midShort - origin).norm();
+		size_t numX = (size_t)(len / gridSpacing + 0.5);
+
+		if (numX < 2) {
+			Vector3d ctr = (pt0 + pt1 + pt2) / 3;
+			auto ctrI = Vertex::scaleToSearch(ctr);
+			if (pointToIndexSet.count(ctrI) == 0) {
+				pointToIndexSet.insert(ctrI);
+				func(ctr);
+			}
+		}
+		else if (minLen < gridSpacing) {
+			for (size_t i = 0; i < numX; i++) {
+				double t = i / (numX - 1.0);
+				Vector3d pt = LERP(origin, midShort, t);
+				auto ptI = Vertex::scaleToSearch(pt);
+				if (pointToIndexSet.count(ptI) == 0) {
+					pointToIndexSet.insert(ptI);
+					func(pt);
+				}
+			}
+		}
+		else {
+			for (size_t i = 0; i < numX; i++) {
+				double t = i / (numX - 1.0);
+				Vector3d tpt0 = LERP(*pts[0], *pts[1], t);
+				Vector3d tpt1 = LERP(*pts[0], *pts[2], t);
+				auto len1 = (tpt1 - tpt0).norm();
+				size_t numY = (size_t)(len1 / gridSpacing + 0.5);
+				if (numY < 2) {
+					Vector3d pt = LERP(tpt0, tpt1, 0.5);
+					auto ptI = Vertex::scaleToSearch(pt);
+					if (pointToIndexSet.count(ptI) == 0) {
+						pointToIndexSet.insert(ptI);
+						func(pt);
+					}
+				}
+				else {
+					for (size_t j = 0; j < numY; j++) {
+						double u = j / (numY - 1.0);
+						Vector3d pt = LERP(tpt0, tpt1, u);
+						auto ptI = Vertex::scaleToSearch(pt);
+						if (pointToIndexSet.count(ptI) == 0) {
+							pointToIndexSet.insert(ptI);
+							func(pt);
+						}
+					}
+				}
+			}
+
+		}
+
+		return true;
+		});
 }
 
 }

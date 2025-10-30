@@ -51,22 +51,35 @@ void DrawDebugMesh::createTessellation(DebugMeshData& data)
     auto& fVBO = getVBOs(0)->_faceVBO;
 
     data.setEdgeTess(nullptr);
+    data.setFaceTess(nullptr);
     eVBO.clear();
     fVBO.clear();
 
-    eVBO.beginEdgeTesselation();
-    fVBO.beginFaceTesselation();
+    {
+        eVBO.beginEdgeTesselation();
 
-    vector<float> edgePts;
-    vector<unsigned int> edgeIndices;
-    data.getGLEdges(edgePts, edgeIndices);
-    if (!edgePts.empty() && !edgeIndices.empty()) {
+        vector<float> edgePts;
+        vector<unsigned int> edgeIndices;
+        data.getGLEdges(edgePts, edgeIndices);
+        if (!edgePts.empty() && !edgeIndices.empty()) {
 
-        auto tess = eVBO.setEdgeSegTessellation(DS_DEBUG_MESH_EDGES, 0, 0, edgePts, edgeIndices);
-        data.setEdgeTess(tess);
+            auto tess = eVBO.setEdgeSegTessellation(DS_DEBUG_MESH_EDGES, 0, 0, edgePts, edgeIndices);
+            data.setEdgeTess(tess);
+        }
+        eVBO.endEdgeTesselation();
     }
-    eVBO.endEdgeTesselation();
-    fVBO.endFaceTesselation(false);
+
+    {
+        fVBO.beginFaceTesselation();
+        vector<float> triPts, triNorms, params;
+        vector<unsigned int> triIndices;
+        data.getGLTris(triPts, triNorms, triIndices);
+        if (!triPts.empty() && !triIndices.empty()) {
+            auto tess = fVBO.setFaceTessellation(DS_DEBUG_MESH_FACES, 0, triPts, triNorms, params, triIndices);
+            data.setFaceTess(tess);
+        }
+        fVBO.endFaceTesselation(false);
+    }
 }
 
 
@@ -75,13 +88,15 @@ void DrawDebugMesh::changeViewElements(const DebugMeshData& data)
     auto& faceVBO = getVBOs(0)->_faceVBO;
     auto& edgeVBO = getVBOs(0)->_edgeVBO;
 
-    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
     edgeVBO.beginSettingElementIndices(0xffffffffffffffff);
 
     edgeVBO.includeElementIndices(DS_DEBUG_MESH_EDGES, data.getEdgeTess());
 
-    faceVBO.endSettingElementIndices();
     edgeVBO.endSettingElementIndices();
+
+    faceVBO.beginSettingElementIndices(0xffffffffffffffff);
+    faceVBO.includeElementIndices(DS_DEBUG_MESH_FACES, data.getFaceTess());
+    faceVBO.endSettingElementIndices();
 }
 
 OGL::MultiVBO::DrawVertexColorMode DrawDebugMesh::preDrawEdges(int key)
@@ -120,6 +135,31 @@ void DrawDebugMesh::postDrawEdges()
 OGL::MultiVBO::DrawVertexColorMode DrawDebugMesh::preDrawFaces(int key)
 {
     OGL::MultiVBO::DrawVertexColorMode result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR_NONE;
+    auto& UBO = _pCanvas->getUBO();
+    UBO.useDefColor = 1;
+    UBO.useBackColor = 1;
+
+    float surfaceAlpha = 0.6f;
+
+    switch (key) {
+    default:
+    case DS_DEBUG_MESH_FACES:
+        UBO.defColor = p4f(1.0f, 0.5f, 1.0f, 0.5f);
+        UBO.backColor = p4f(1.0f, 0.5f, 1.0f, 0.5f);
+        break;
+    }
+
+#if 0
+    if (_options.showCurvature) {
+        UBO.useDefColor = 0;
+        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
+    }
+#endif
+
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
     return result;
 }
 

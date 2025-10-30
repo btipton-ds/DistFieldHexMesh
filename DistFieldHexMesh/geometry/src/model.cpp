@@ -299,6 +299,37 @@ void Model::calculateGaps(const SplittingParams& params)
 		if (!pStartFace)
 			return true; // skip this one
 
+#if 1
+		pStartFace->sampleSpacedQuads(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](const Vector3d pts[4]) {
+			Vector3d endVec[4];
+			PolyMeshIndex endFaceId[4];
+			bool allFound = true;
+			int numZero = 0;
+			for (int i = 0; i < 4; i++) {
+				if (!calculateFaceGaps(params, pts[i], startModelIsClosed, pStartFace, endVec[i], endFaceId[i])) {
+					allFound = false;
+					break;
+				}
+				if (endVec[i].squaredNorm() < Tolerance::sameDistTolSqr()) {
+					numZero++;
+				}
+			}
+
+			if (allFound && numZero < 2) {
+				// This will produce brick or a "bowtie" wedge or a "bowtie" pyramid.
+				for (int i = 1; i < params.numGapDivs; i++) {
+					double v = i / (double)params.numGapDivs;
+					Vector3d gapPts[] = {
+						pts[0] + v * endVec[0],
+						pts[1] + v * endVec[1],
+						pts[2] + v * endVec[2],
+						pts[3] + v * endVec[3] 
+					};
+					pStartFace->addGapQuad(gapPts);
+				}
+			}
+		});
+#else
 		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](const Vector3d& pt) {
 			Vector3d endVec;
 			PolyMeshIndex endFaceId;
@@ -308,7 +339,7 @@ void Model::calculateGaps(const SplittingParams& params)
 				}
 			}
 		});
-
+#endif
 
 		return true;
 	}, sortedAllFaceIndices.size(), RUN_MULTI_THREAD);
@@ -409,11 +440,16 @@ void Model::addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const
 {
 	for (const auto& pMeshData : _modelMeshData) {
 		auto pMesh = pMeshData->getPolyMesh();
-		pMesh->iteratePolygons([pDbgData](const Index3DId& faceId, const Polygon& face)->bool {
-			const auto& gapData = face.getGapData();
+		pMesh->iteratePolygons([&pMesh, pDbgData](const Index3DId& faceId, const Polygon& face)->bool {
+			const auto& gapData = face.getGapPointData();
 			for (const auto& rec : gapData) {
 				LineSegmentd seg(rec._ourPoint, rec._ourPoint + rec._endVec);
 				pDbgData->add(seg);
+			}
+
+			const auto& gapQuadData = face.getGapQuadData();
+			for (const auto& quadData : gapQuadData) {
+				pDbgData->addQuad(quadData._qPts);
 			}
 
 			return true;

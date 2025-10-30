@@ -1733,16 +1733,27 @@ ostream& DFHM::operator << (ostream& out, const Polygon& face)
 void Polygon::resetGaps()
 {
 	_gapPoints.clear();
+	_gapQuads.clear();
 }
 
-void Polygon::addGap(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId)
+void Polygon::addGapPt(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId)
 {
 	_gapPoints.push_back(GapPointData(pt, endVec, endId));
 }
 
-const std::vector<Polygon::GapPointData>& Polygon::getGapData() const
+void Polygon::addGapQuad(const Vector3d pts[4])
+{
+	_gapQuads.push_back(GapQuadData(pts));
+}
+
+const std::vector<Polygon::GapPointData>& Polygon::getGapPointData() const
 {
 	return _gapPoints;
+}
+
+const std::vector<Polygon::GapQuadData>& Polygon::getGapQuadData() const
+{
+	return _gapQuads;
 }
 
 const Vector3d& Polygon::getVertexPoint(const Index3DId& id) const

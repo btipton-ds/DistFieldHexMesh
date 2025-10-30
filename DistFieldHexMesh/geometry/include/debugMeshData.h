@@ -55,6 +55,8 @@ public:
 	void add(const Rayd& ray);
 	void add(const LineSegmentd& seg);
 	void add(const Polygon& face);
+	void addTri(const Vector3d pts[3]);
+	void addQuad(const Vector3d pts[4]);
 
 	void remove(const Vector3d& pt);
 
@@ -64,6 +66,9 @@ public:
 	void setEdgeTess(const OGL::IndicesPtr& edgeTess);
 	const OGL::IndicesPtr& getEdgeTess() const;
 
+	void setFaceTess(const OGL::IndicesPtr& faceTess);
+	const OGL::IndicesPtr& getFaceTess() const;
+
 private:
 	std::set<Vector3d> _points;
 	std::vector<Rayd> _rays;
@@ -71,8 +76,8 @@ private:
 	std::vector<float> _triPts, _triNormals;
 
 	OGL::IndicesPtr _edgeTess;
+	OGL::IndicesPtr _faceTess;
 };
-
 
 inline void DebugMeshData::setEdgeTess(const OGL::IndicesPtr& edgeTess)
 {
@@ -82,6 +87,16 @@ inline void DebugMeshData::setEdgeTess(const OGL::IndicesPtr& edgeTess)
 inline const OGL::IndicesPtr& DebugMeshData::getEdgeTess() const
 {
 	return _edgeTess;
+}
+
+inline void DebugMeshData::setFaceTess(const OGL::IndicesPtr& faceTess)
+{
+	_faceTess = faceTess;
+}
+
+inline const OGL::IndicesPtr& DebugMeshData::getFaceTess() const
+{
+	return _faceTess;
 }
 
 }

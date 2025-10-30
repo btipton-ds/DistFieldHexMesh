@@ -27,6 +27,7 @@ This file is part of the DistFieldHexMesh application/library.
 
 #include <defines.h>
 #include <debugMeshData.h>
+#include <polygon.h>
 
 using namespace std;
 using namespace DFHM;
@@ -68,6 +69,41 @@ void DebugMeshData::add(const LineSegmentd& seg)
 
 void DebugMeshData::add(const Polygon& face)
 {
+    const auto& norm = face.calUnitNormal();
+    face.iterateTrianglePts([this, &norm](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
+        Vector3d pts[] = {pt0, pt1, pt2};
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                _triPts.push_back((float)pts[i][j]);
+                _triNormals.push_back((float)norm[j]);
+            }
+        }
+        return true;
+    });
+}
+
+void DebugMeshData::addTri(const Vector3d pts[3])
+{
+    Vector3d v0 = pts[1] - pts[0];
+    Vector3d v1 = pts[2] - pts[0];
+    Vector3d norm = v0.cross(v1).normalized();
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            _triPts.push_back((float)pts[i][j]);
+            _triNormals.push_back((float)norm[j]);
+        }
+    }
+}
+
+void DebugMeshData::addQuad(const Vector3d pts[4])
+{
+    Vector3d triPts[2][3] = {
+        {pts[0], pts[1], pts[2]},
+        {pts[0], pts[2], pts[3]},
+    };
+
+    addTri(triPts[0]);
+    addTri(triPts[1]);
 }
 
 void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int>& indices) const
@@ -126,5 +162,12 @@ void DebugMeshData::getGLEdges(std::vector<float>& pts, std::vector<unsigned int
 
 void DebugMeshData::getGLTris(std::vector<float>& pts, std::vector<float>& normals, std::vector<unsigned int>& indices) const
 {
-
+    size_t nVerts = _triPts.size() / 3;
+    for (size_t i = 0; i < nVerts; i++) {
+        indices.push_back(i);
+        for (int j = 0; j < 3; j++) {
+            pts.push_back(_triPts[3 * i + j]);
+            normals.push_back(_triNormals[3 * i + j]);
+        }
+    }
 }
