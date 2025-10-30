@@ -216,7 +216,7 @@ void Polygon::addVertex(const Index3DId& vertId)
 
 const MTC::vector<Index3DId>& Polygon::getNonColinearVertexIds() const
 {
-	lock_guard lg(_nonColinearVertexIdsMutex);
+	lock_guard<mutex> lg(_nonColinearVertexIdsMutex);
 	if (_nonColinearVertexIds.empty()) {
 		auto p = getOurBlockPtr();
 		if (p)
@@ -1358,19 +1358,19 @@ void Polygon::intersectHexMeshTris(size_t numTris, const pair<const Vector3d*, c
 	}
 }
 
-bool Polygon::isPointInside(const Vector3d& pt) const
+bool Polygon::isPointInside(const Vector3d& pt, double boundaryTol) const
 {
 	bool result;
 	Vector3d norm = calUnitNormal();
-	result = isPointInsideInner(pt, norm);
+	result = isPointInsideInner(pt, norm, boundaryTol);
 
 	return result;
 }
 
-bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm) const
+bool Polygon::isPointInside(const Vector3d& pt, const Vector3d& norm, double boundaryTol) const
 {
 	bool result;
-	result = isPointInsideInner(pt, norm);
+	result = isPointInsideInner(pt, norm, boundaryTol);
 
 	return result;
 }
@@ -1388,14 +1388,14 @@ bool Polygon::isConnected(const Polygon& otherFace) const
 	return false;
 }
 
-bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const
+bool Polygon::isPointInsideInner(const Vector3d& pt, const Vector3d& norm, double boundaryTol) const
 {
 	auto& pt0 = getVertexPoint(_vertexIds[0]);
 	Planed pl(pt0, norm);
-	return isPointInsideInner(pt, pl);
+	return isPointInsideInner(pt, pl, boundaryTol);
 }
 
-bool Polygon::isPointInsideInner(const Vector3d& pt, const Planed& pl) const
+bool Polygon::isPointInsideInner(const Vector3d& pt, const Planed& pl, double boundaryTol) const
 {
 	const double tol = Tolerance::sameDistTol();
 
@@ -1422,10 +1422,10 @@ bool Polygon::isPointInsideInner(const Vector3d& pt, const Planed& pl) const
 
 		Vector2d v = pt2d - pt0;
 		double dist = vPerp.dot(v);
-		if (dist < tol)
+		if (dist < boundaryTol)
 			negCount++;
 
-		if (dist > -tol)
+		if (dist > -boundaryTol)
 			posCount++;
 	}
 

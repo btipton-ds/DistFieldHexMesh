@@ -214,7 +214,8 @@ struct Model::FitGapCircle
 					v1 = (_pts[1] - _pts[2]).normalized();
 					auto dpCtr = v0.dot(v1);
 					if (dpCtr < 0) {
-						if (pFace1->isPointInside(_pts[1], plane1)) {
+						const auto boundaryTol = 100 * Tolerance::sameDistTol();
+						if (pFace1->isPointInside(_pts[1], plane1, boundaryTol)) {
 #if 0
 							auto dist0 = (_pts[0] - _pts[2]).norm();
 							auto dist1 = (_pts[1] - _pts[2]).norm();

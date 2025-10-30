@@ -139,22 +139,15 @@ OGL::MultiVBO::DrawVertexColorMode DrawDebugMesh::preDrawFaces(int key)
     UBO.useDefColor = 1;
     UBO.useBackColor = 1;
 
-    float surfaceAlpha = 0.6f;
+    float alpha = 0.75f;
 
     switch (key) {
     default:
     case DS_DEBUG_MESH_FACES:
-        UBO.defColor = p4f(1.0f, 0.5f, 1.0f, 0.5f);
-        UBO.backColor = p4f(1.0f, 0.5f, 1.0f, 0.5f);
+        UBO.defColor = p4f(1.0f, 0.5f, 1.0f, alpha);
+        UBO.backColor = p4f(1.0f, 0.5f, 1.0f, alpha);
         break;
     }
-
-#if 0
-    if (_options.showCurvature) {
-        UBO.useDefColor = 0;
-        result = OGL::MultiVBO::DrawVertexColorMode::DRAW_COLOR;
-    }
-#endif
 
     glBufferData(GL_UNIFORM_BUFFER, sizeof(UBO), &UBO, GL_DYNAMIC_DRAW);
     glEnable(GL_DEPTH_TEST);

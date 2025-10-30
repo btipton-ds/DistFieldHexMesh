@@ -181,9 +181,9 @@ public:
 	void setOnSymmetryPlane(const std::vector<Planed>& symPlanes, double tol);
 	bool isOnSymmetryPlane() const;
 	bool isPointOnEdge(const Vector3d& pt) const;
-	bool isPointInside(const Vector3d& pt) const;
-	bool isPointInside(const Vector3d& pt, const Vector3d& norm) const;
-	bool isPointInside(const Vector3d& pt, const Planed& plane) const;
+	bool isPointInside(const Vector3d& pt, double boundaryTol = Tolerance::sameDistTol()) const;
+	bool isPointInside(const Vector3d& pt, const Vector3d& norm, double boundaryTol = Tolerance::sameDistTol()) const;
+	bool isPointInside(const Vector3d& pt, const Planed& plane, double boundaryTol = Tolerance::sameDistTol()) const;
 	bool isConnected(const Polygon& otherFace) const;
 	bool containsVertex(const Index3DId& vertId) const;
 	bool containsEdge(const EdgeKey& edge) const;
@@ -295,8 +295,8 @@ private:
 	friend class Splitter;
 	friend std::ostream& operator << (std::ostream& out, const Polygon& face);
 
-	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm) const;
-	bool isPointInsideInner(const Vector3d& pt, const Planed& pl) const;
+	bool isPointInsideInner(const Vector3d& pt, const Vector3d& norm, double boundaryTol = Tolerance::sameDistTol()) const;
+	bool isPointInsideInner(const Vector3d& pt, const Planed& pl, double boundaryTol = Tolerance::sameDistTol()) const;
 
 	template<class FUNC>
 	void sampleSpacedPointsQuad(const MTC::vector<Index3DId>& vertIds, double gridSpacing, const FUNC& sampleFunk) const;
@@ -406,9 +406,9 @@ inline MTC::vector<Index3DId> Polygon::getOrientedVertexIds(const Index3DId& cel
 	return result;
 }
 
-inline bool Polygon::isPointInside(const Vector3d& pt, const Planed& plane) const
+inline bool Polygon::isPointInside(const Vector3d& pt, const Planed& plane, double boundaryTol) const
 {
-	return isPointInsideInner(pt, plane);
+	return isPointInsideInner(pt, plane, boundaryTol);
 }
 
 inline const Polygon::GapTextureDataPtr& Polygon::getGapTextureData() const
