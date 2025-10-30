@@ -105,11 +105,13 @@ public:
 	};
 
 	struct GapQuadData {
-		GapQuadData(const Vector3d pts[4])
+		GapQuadData(int numPts, const Vector3d pts[4])
+			: _numPts(numPts)
 		{
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < _numPts; i++)
 				_qPts[i] = pts[i];
 		}
+		const int _numPts;
 		Vector3d _qPts[4];
 	};
 
@@ -239,6 +241,7 @@ public:
 
 	void resetGaps();
 	void addGapPt(const Vector3d& pt, const Vector3d& endVec, const PolyMeshIndex& endId);
+	void addGapTri(const Vector3d pts[3]);
 	void addGapQuad(const Vector3d pts[4]);
 	const std::vector<GapPointData>& getGapPointData() const;
 	const std::vector<GapQuadData>& getGapQuadData() const;

@@ -299,13 +299,12 @@ void Model::calculateGaps(const SplittingParams& params)
 		if (!pStartFace)
 			return true; // skip this one
 
-#if 1
-		pStartFace->sampleSpacedQuads(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](const Vector3d pts[4]) {
+		pStartFace->sampleSpacedQuads(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](int numPts, const Vector3d pts[4]) {
 			Vector3d endVec[4];
 			PolyMeshIndex endFaceId[4];
 			bool allFound = true;
 			int numZero = 0;
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < numPts; i++) {
 				if (!calculateFaceGaps(params, pts[i], startModelIsClosed, pStartFace, endVec[i], endFaceId[i])) {
 					allFound = false;
 					break;
@@ -323,23 +322,15 @@ void Model::calculateGaps(const SplittingParams& params)
 						pts[0] + v * endVec[0],
 						pts[1] + v * endVec[1],
 						pts[2] + v * endVec[2],
-						pts[3] + v * endVec[3] 
+						pts[3] + v * endVec[3]
 					};
-					pStartFace->addGapQuad(gapPts);
+					if (numPts == 4)
+						pStartFace->addGapQuad(gapPts);
+					else
+						pStartFace->addGapTri(gapPts);
 				}
 			}
 		});
-#else
-		pStartFace->sampleSpacedPoints(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](const Vector3d& pt) {
-			Vector3d endVec;
-			PolyMeshIndex endFaceId;
-			if (calculateFaceGaps(params, pt, startModelIsClosed, pStartFace, endVec, endFaceId)) {
-				if (endVec.squaredNorm() > Tolerance::sameDistTolSqr()) {
-					pStartFace->addGap(pt, endVec, endFaceId);
-				}
-			}
-		});
-#endif
 
 		return true;
 	}, sortedAllFaceIndices.size(), RUN_MULTI_THREAD);
@@ -449,7 +440,10 @@ void Model::addGapDebugGraphicsData(DebugMeshDataPtr& pDbgData) const
 
 			const auto& gapQuadData = face.getGapQuadData();
 			for (const auto& quadData : gapQuadData) {
-				pDbgData->addQuad(quadData._qPts);
+				if (quadData._numPts == 4)
+					pDbgData->addQuad(quadData._qPts);
+				else
+					pDbgData->addTri(quadData._qPts);
 			}
 
 			return true;

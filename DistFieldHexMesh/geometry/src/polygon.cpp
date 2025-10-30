@@ -1741,9 +1741,14 @@ void Polygon::addGapPt(const Vector3d& pt, const Vector3d& endVec, const PolyMes
 	_gapPoints.push_back(GapPointData(pt, endVec, endId));
 }
 
+void Polygon::addGapTri(const Vector3d pts[3])
+{
+	_gapQuads.push_back(GapQuadData(3, pts));
+}
+
 void Polygon::addGapQuad(const Vector3d pts[4])
 {
-	_gapQuads.push_back(GapQuadData(pts));
+	_gapQuads.push_back(GapQuadData(4, pts));
 }
 
 const std::vector<Polygon::GapPointData>& Polygon::getGapPointData() const

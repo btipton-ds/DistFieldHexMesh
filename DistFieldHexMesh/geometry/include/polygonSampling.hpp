@@ -219,7 +219,7 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 	Vector2d tu0(0, 0), tu1(1, 1);
 
 	if (numX < 2 && numY < 2) {
-		func(pts);
+		func(4, pts);
 	} else if (numX < 2) {
 		tu0[0] = 0;
 		tu1[0] = 1;
@@ -230,7 +230,7 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 			gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
 			gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
 			gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
-			func(gridPts);
+			func(4, gridPts);
 		}
 	} else if (numY < 2) {
 		tu0[1] = 0;
@@ -242,7 +242,7 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 			gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
 			gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
 			gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
-			func(gridPts);
+			func(4, gridPts);
 		}
 	} else {
 		for (size_t i = 0; i < numX; i++) {
@@ -256,7 +256,7 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 				gridPts[1] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu0[1]);
 				gridPts[2] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu1[0], tu1[1]);
 				gridPts[3] = BI_LERP(pts[0], pts[1], pts[2], pts[3], tu0[0], tu1[1]);
-				func(gridPts);
+				func(4, gridPts);
 			}
 		}
 	}
