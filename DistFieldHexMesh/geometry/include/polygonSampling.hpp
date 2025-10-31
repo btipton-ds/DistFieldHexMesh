@@ -221,7 +221,7 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 	double paramDeltaY = height > 0 ? 1.0e-3 / height : 0;
 
 	if (numX < 2 && numY < 2) {
-//		func(4, pts);
+		func(4, pts);
 	} else if (numX < 2) {
 		tu0[0] = 0;
 		tu1[0] = 1;
