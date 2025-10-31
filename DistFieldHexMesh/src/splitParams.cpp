@@ -114,7 +114,11 @@ void SplittingParams::read(std::istream& in)
 	IoUtil::read(in, zMin);
 	IoUtil::read(in, zMax);
 
-	IoUtil::read(in, maxGapSize);
+	if (version < 3) {
+		double maxGapSize_deprecated;
+		IoUtil::read(in, maxGapSize_deprecated);
+	}
+
 	if (version >= 2)
 		IoUtil::read(in, gapGridSpacing);
 	IoUtil::read(in, sharpAngle_degrees);
@@ -141,7 +145,7 @@ void SplittingParams::read(std::istream& in)
 
 void SplittingParams::write(std::ostream& out) const
 {
-	uint8_t version = 2;
+	uint8_t version = 3;
 	IoUtil::write(out, version);
 
 	IoUtil::write(out, symXAxis);
@@ -167,7 +171,6 @@ void SplittingParams::write(std::ostream& out) const
 	IoUtil::write(out, zMin);
 	IoUtil::write(out, zMax);
 
-	IoUtil::write(out, maxGapSize);
 	IoUtil::write(out, gapGridSpacing);
 	IoUtil::write(out, sharpAngle_degrees);
 	IoUtil::write(out, minEdgeLength);

@@ -155,16 +155,15 @@ bool Model::isPointInGap(const SplittingParams& params, const Vector3d& startPt,
 
 struct Model::FitGapCircle
 {
-	FitGapCircle(const Model& model, const DFHM::Polygon* pFace0, bool startIsClosed, const Vector3d& startPt, const DFHM::Polygon* pFace1, bool endIsClosed)
+	FitGapCircle(const Model& model, const DFHM::Polygon* pFace0, const Vector3d& startNormal, const Vector3d& startPt, const DFHM::Polygon* pFace1, bool endIsClosed)
 		: _model(model)
-		, _startModelIsClosed(startIsClosed)
+		, _startNormal(startNormal)
 		, _endModelIsClosed(endIsClosed)
+		, _endNormal(pFace1->calUnitNormal())
 	{
 		_pts[0] = startPt;
 		_contactFaces[0] = pFace0;
 		_contactFaces[1] = pFace1;
-		_normals[0] = pFace0->calUnitNormal();
-		_normals[1] = pFace1->calUnitNormal();
 	}
 
 	bool calClosestPoint(Vector3d& result) {
@@ -202,19 +201,19 @@ struct Model::FitGapCircle
 			Vector3d midNorm = v0.cross(v1);
 			Planed midPlane(sectionOrigin, midNorm);
 
-			Rayd normRay(_pts[0], _normals[0]);
+			Rayd normRay(_pts[0], _startNormal);
 			RayHitd hit;
 			if (midPlane.intersectRay(normRay, hit, Tolerance::sameDistTol())) {
 				_pts[2] = hit.hitPt;
 				_pts[1] = plane1.projectPoint(_pts[2], Tolerance::sameDistTol());
 				Vector3d v = _pts[1] - _pts[0];
-				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
+				if (_startNormal.dot(v) > 0 &&
 					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
 					v0 = (_pts[0] - _pts[2]).normalized();
 					v1 = (_pts[1] - _pts[2]).normalized();
 					auto dpCtr = v0.dot(v1);
 					if (dpCtr < 0) {
-						const auto boundaryTol = Tolerance::sameDistTol();
+						const auto boundaryTol = 1.0e-4;
 						if (pFace1->isPointInside(_pts[1], plane1, boundaryTol)) {
 #if 0
 							auto dist0 = (_pts[0] - _pts[2]).norm();
@@ -249,7 +248,7 @@ struct Model::FitGapCircle
 			_pts[1] = plane1.projectPoint(_pts[0], Tolerance::sameDistTol());
 			if (pFace1->isPointInside(_pts[1], plane1)) {
 				Vector3d v = _pts[1] - _pts[0];
-				if (_startModelIsClosed && plane0.getNormal().dot(v) > 0 &&
+				if (_startNormal.dot(v) > 0 &&
 					(!_endModelIsClosed || plane1.getNormal().dot(v) < 0)) {
 					_pts[2] = _pts[0] + 0.5 * v;
 					result = _pts[1];
@@ -262,9 +261,9 @@ struct Model::FitGapCircle
 	}
 
 	const Model& _model;
-	const bool _startModelIsClosed, _endModelIsClosed;
+	const bool _endModelIsClosed;
 	Vector3d _pts[3]; // 0 and 1 are the contact points. Point 2 is the center point when the distance between 0 and 1 are equal
-	Vector3d _normals[2];
+	Vector3d _startNormal, _endNormal;
 	Vector3d _xAxis, _yAxis, _zAxis;
 	const DFHM::Polygon* _contactFaces[2]; // These are the polygons the points fall on
 };
@@ -303,7 +302,14 @@ void Model::calculateGaps(const SplittingParams& params)
 
 		getPolygon(lhs)->calAreaAndCentroid(lhsArea, lhsCtr);
 		getPolygon(rhs)->calAreaAndCentroid(rhsArea, rhsCtr);
-		return lhsArea < rhsArea;
+		if (lhsArea < rhsArea)
+			return true;
+		else if (lhsArea > rhsArea)
+			return false;
+
+		int lhsClosed = isClosed(lhs) ? 1 : 0;
+		int rhsClosed = isClosed(rhs) ? 1 : 0;
+		return lhsClosed < rhsClosed;
 	});
 
 	MultiCore::runLambda([this, &params, &sortedAllFaceIndices](size_t index)->bool {
@@ -316,35 +322,57 @@ void Model::calculateGaps(const SplittingParams& params)
 		if (!pStartFace)
 			return true; // skip this one
 
+		// sampleSpacedQuads has been tested and visual inspections shows it's
+		// providing 100% surface coverage
 		pStartFace->sampleSpacedQuads(params.gapGridSpacing, [this, &params, startModelIsClosed, pStartFace](int numPts, const Vector3d pts[4]) {
-			Vector3d endVec[4];
+			Vector3d startPts[4], endVec[4];
 			PolyMeshIndex endFaceId[4];
-			bool allFound = true;
-			int numZero = 0;
-			for (int i = 0; i < numPts; i++) {
-				if (!calculateFaceGaps(params, pts[i], startModelIsClosed, pStartFace, endVec[i], endFaceId[i])) {
-					allFound = false;
-					break;
-				}
-				if (endVec[i].squaredNorm() < Tolerance::sameDistTolSqr()) {
-					numZero++;
-				}
-			}
+			int numPasses = startModelIsClosed ? 1 : 2;
+			for (int i = 0; i < numPasses; i++) {
+				Vector3d startNormal = pStartFace->calUnitNormal();
+				if (i == 1)
+					startNormal = -startNormal; // surfaces get tested from both directions
 
-			if (allFound && numZero < 2) {
-				// This will produce brick or a "bowtie" wedge or a "bowtie" pyramid.
-				for (int i = 1; i < params.numGapDivs; i++) {
-					double v = i / (double)params.numGapDivs;
-					Vector3d gapPts[] = {
-						pts[0] + v * endVec[0],
-						pts[1] + v * endVec[1],
-						pts[2] + v * endVec[2],
-						pts[3] + v * endVec[3]
-					};
-					if (numPts == 4)
-						pStartFace->addGapQuad(gapPts);
-					else
-						pStartFace->addGapTri(gapPts);
+				int numHits = 0;
+				double minGapSqr = params.numGapDivs * params.minEdgeLength;
+				minGapSqr = minGapSqr * minGapSqr;
+				double maxGapSqr = params.maxGapWidth * params.maxGapWidth;
+				for (int i = 0; i < numPts; i++) {
+					Vector3d ev;
+					PolyMeshIndex eId;
+#if 0 // Set to true this to run sample coverage tests
+					startPts[numHits] = pts[i];
+					endVec[numHits] = Vector3d(0, 0, 0);
+					endFaceId[numHits] = {};
+					numHits++;
+#else
+					if (calculateFaceGaps(params, pts[i], startNormal, pStartFace, ev, eId)) {
+						auto lenSqr = ev.squaredNorm();
+						if (lenSqr > minGapSqr && lenSqr < maxGapSqr) {
+							startPts[numHits] = pts[i];
+							endVec[numHits] = ev;
+							endFaceId[numHits] = eId;
+							numHits++;
+						}
+					}
+#endif
+				}
+
+				if (numHits >= 3) {
+					// This will produce brick or a "bowtie" wedge or a "bowtie" pyramid.
+					int start = 1;
+					int steps = params.numGapDivs;
+					for (int i = start; i < steps; i++) {
+						double v = i / (double)steps;
+						Vector3d gapPts[4];
+						for (int j = 0; j < numHits; j++) {
+							gapPts[j] = startPts[j] + v * endVec[j];
+						};
+						if (numHits == 4)
+							pStartFace->addGapQuad(gapPts);
+						else
+							pStartFace->addGapTri(gapPts);
+					}
 				}
 			}
 		});
@@ -355,7 +383,7 @@ void Model::calculateGaps(const SplittingParams& params)
 }
 
 bool Model::calculateFaceGaps(const SplittingParams& params, const Vector3d& startPt,
-	bool startModelIsClosed, Polygon* pStartFace, Vector3d& endPtVector, PolyMeshIndex& endPtFaceId) const
+	const Vector3d& startNormal, Polygon* pStartFace, Vector3d& endPtVector, PolyMeshIndex& endPtFaceId) const
 {
 	const double minDotProduct = sin(params.gapOpposingFaceAngleDeg * M_PI / 180.0);
 	bool result = false;
@@ -425,15 +453,15 @@ bool Model::calculateFaceGaps(const SplittingParams& params, const Vector3d& sta
 
 			bool nearFaceModelIsClosed = isClosed(nearFaceId);
 
-			FitGapCircle prism(*this, pStartFace, startModelIsClosed, startPt, pNearFace, nearFaceModelIsClosed);
+			FitGapCircle prism(*this, pStartFace, startNormal, startPt, pNearFace, nearFaceModelIsClosed);
 			Vector3d hitPt;
 			if (prism.calClosestPoint(hitPt)) {
 				//						writeGapObj(pStartFace, pNearFace, prism);
 				Vector3d v = hitPt - startPt;
 				double minDistToPoint = v.norm();
-				if (minDistToPoint > 0 && minDistToPoint < params.maxGapWidth && minDistToPoint < minDist) {
+				if (minDistToPoint < minDist) {
 					minDist = minDistToPoint;
-					pStartFace->setNeedsGapTest(IS_TRUE);
+//					pStartFace->setNeedsGapTest(IS_TRUE);
 					endPtVector = v;
 					endPtFaceId = nearFaceId;
 					result = true;

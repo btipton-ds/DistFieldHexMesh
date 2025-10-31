@@ -78,7 +78,6 @@ struct SplittingParams {
 	double xMin = DBL_MAX, xMax = 1;
 	double yMin = DBL_MAX, yMax = 1;
 	double zMin = DBL_MAX, zMax = 1;
-	double maxGapSize = 0.01; // 10 mm
 	double gapGridSpacing = 0.025; // 25 mm
 	double sharpAngle_degrees = SHARP_EDGE_ANGLE_DEGREES;
 	double sharpRadius = 0.0001; // .1 mm

@@ -217,8 +217,8 @@ void Polygon::sampleSpacedQuadsQuad(const MTC::vector<Index3DId>& vertIds, doubl
 	size_t numY = (size_t)(height / gridSpacing + 0.5);
 	Vector3d gridPts[4];
 	Vector2d tu0(0, 0), tu1(1, 1);
-	double paramDeltaX = width  > 0 ? 1.0e-3 / width  : 0;
-	double paramDeltaY = height > 0 ? 1.0e-3 / height : 0;
+	double paramDeltaX = 1; // width > 0 ? 1.0e-3 / width : 0;
+	double paramDeltaY = 1; // height > 0 ? 1.0e-3 / height : 0;
 
 	if (numX < 2 && numY < 2) {
 		func(4, pts);
@@ -285,6 +285,7 @@ void Polygon::sampleSpacedQuadsGeneral(double gridSpacing, const FUNC& func) con
 	std::set<Vector3<int64_t>> pointToIndexSet;
 	iterateTrianglePts([gridSpacing, &func, &pointToIndexSet](const Vector3d& pt0, const Vector3d& pt1, const Vector3d& pt2)->bool {
 		const Vector3d* pts[] = { &pt0, &pt1, &pt2 };
+
 		double minLen = DBL_MAX, len;
 		int apexIdx = -1;
 		for (int i = 0; i < 3; i++) {
@@ -297,57 +298,107 @@ void Polygon::sampleSpacedQuadsGeneral(double gridSpacing, const FUNC& func) con
 			}
 		}
 
-		const Vector3d triPts[] = { *pts[apexIdx], *pts[(apexIdx + 1) % 3], *pts[(apexIdx + 2) % 3] };
-		const auto& origin = triPts[0];
-		Vector3d midShort = (triPts[1] + triPts[2]) * 0.5;
-		len = (midShort - origin).norm();
+		int numTris = 1;
+		Vector3d triPtArr[2][3] = {
+			{ *pts[apexIdx], *pts[(apexIdx + 1) % 3], *pts[(apexIdx + 2) % 3] },
+		};
 
-		size_t numX = (size_t)(len / gridSpacing + 0.5);
+		const auto& origin = triPtArr[0][0];
+		Vector3d v1 = triPtArr[0][1] - origin;
+		Vector3d v2 = triPtArr[0][2] - origin;
+		auto len1 = v1.norm();
+		auto len2 = v2.norm();
+		auto k = 1.5;
+		if (len1 > k * len2 || len2 > k * len1) {
+			auto p0 = origin;
+			auto p1 = triPtArr[0][1];
+			auto p2 = triPtArr[0][2];
 
-		if (numX < 2) {
-			func(3, triPts);
-		} else {
-			for (size_t i = 0; i < numX; i++) {
-				double t0 = i / (double)numX;
-				double t1 = (i + 1) / (double)numX;
-				Vector3d pt00 = LERP(triPts[0], triPts[1], t0);
-				Vector3d pt01 = LERP(triPts[0], triPts[1], t1);
+			if (len1 > k * len2) {
+				v1.normalize();
+				auto dp = v1.dot(v2);
+				assert(dp < len1);
+				Vector3d splitPt = p0 + dp * v1;
 
-				Vector3d pt10 = LERP(triPts[0], triPts[2], t0);
-				Vector3d pt11 = LERP(triPts[0], triPts[2], t1);
-				auto len1 = (pt11 - pt10).norm();
+				numTris = 2;
 
-				size_t numY = (size_t)(len1 / gridSpacing + 0.5);
-				if (numY < 1)
-					numY = 1;
-				for (size_t j = 0; j < numY; j++) {
-					double u0 = j / (double)numY;
-					double u1 = (j + 1) / (double)numY;
-					if (i == 0) {
-						Vector3d gridPts[] = {
-							triPts[0],
-							LERP(pt01, pt11, u0),
-							LERP(pt01, pt11, u1),
-						};
-						func(3, gridPts);
-					} else {
-						Vector3d gridPts[] = {
-							LERP(pt00, pt10, u0),
+				triPtArr[0][0] = splitPt;
+				triPtArr[0][1] = p2;
+				triPtArr[0][2] = p0;
 
-							LERP(pt01, pt11, u0),
-							LERP(pt01, pt11, u1),
+				triPtArr[1][0] = splitPt;
+				triPtArr[1][1] = p1;
+				triPtArr[1][2] = p2;
+			} else {
+				v2.normalize();
+				auto dp = v1.dot(v2);
+				assert(dp < len1);
+				Vector3d splitPt = p0 + dp * v2;
 
-							LERP(pt00, pt10, u1),
-						};
-						func(4, gridPts);
+				numTris = 2;
+
+				triPtArr[0][0] = splitPt;
+				triPtArr[0][1] = p0;
+				triPtArr[0][2] = p1;
+
+				triPtArr[1][0] = splitPt;
+				triPtArr[1][1] = p1;
+				triPtArr[1][2] = p2;
+			}
+		}
+
+		for (int triIdx = 0; triIdx < numTris; triIdx++) {
+			auto triPts = triPtArr[triIdx];
+			Vector3d midShort = (triPts[1] + triPts[2]) * 0.5;
+			len = (midShort - origin).norm();
+
+			size_t numX = (size_t)(len / gridSpacing + 0.5);
+
+			if (numX < 2) {
+				func(3, triPts);
+			}
+			else {
+				for (size_t i = 0; i < numX; i++) {
+					double t0 = i / (double)numX;
+					double t1 = (i + 1) / (double)numX;
+					Vector3d pt00 = LERP(triPts[0], triPts[1], t0);
+					Vector3d pt10 = LERP(triPts[0], triPts[2], t0);
+
+					Vector3d pt01 = LERP(triPts[0], triPts[1], t1);
+					Vector3d pt11 = LERP(triPts[0], triPts[2], t1);
+					auto len1 = (pt11 - pt01).norm();
+
+					size_t numY = (size_t)(len1 / gridSpacing + 0.5);
+					if (numY < 1)
+						numY = 1;
+					for (size_t j = 0; j < numY; j++) {
+						double u0 = j / (double)numY;
+						double u1 = (j + 1) / (double)numY;
+						if (i == 0) {
+							Vector3d gridPts[] = {
+								triPts[0],
+								LERP(pt01, pt11, u0),
+								LERP(pt01, pt11, u1),
+							};
+							func(3, gridPts);
+						} else {
+							Vector3d gridPts[] = {
+								LERP(pt00, pt10, u0),
+
+								LERP(pt01, pt11, u0),
+								LERP(pt01, pt11, u1),
+
+								LERP(pt00, pt10, u1),
+							};
+							func(4, gridPts);
+						}
 					}
 				}
 			}
-
 		}
 
 		return true;
-		});
+	});
 }
 
 }

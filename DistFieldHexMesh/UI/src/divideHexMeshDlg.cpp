@@ -116,7 +116,7 @@ DivideHexMeshDlg::DivideHexMeshDlg(SplittingParams& params, wxWindow* parent, wx
 	rowNum++;
 
 	_maxGapSizePrompt = new wxStaticText(this, 0, _T("Max gap size"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
-	_maxGapSizeBox = new wxTextCtrl(this, MAX_GAP_SIZE_ID, std::to_string(params.maxGapSize), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
+	_maxGapSizeBox = new wxTextCtrl(this, MAX_GAP_SIZE_ID, std::to_string(params.maxGapWidth), wxPoint(col1, baseRowPixels + rowNum * rowHeight - descent), wxSize(boxWidth, boxHeight), wxTE_RIGHT);
 	rowNum++;
 
 	_minEdgeLengthPrompt = new wxStaticText(this, 0, _T("Min edge length"), wxPoint(col0, baseRowPixels + rowNum * rowHeight), wxSize(promptWidth, boxHeight));
@@ -169,7 +169,7 @@ void DivideHexMeshDlg::getParams(SplittingParams& params) const
 	getValue(_numGapDivsBox, params.numGapDivs);
 	getValue(_divsPerCurvatureBox, params.curvatureDivsPerCircumference);
 	getValue(_maxCellFacesBox, params.maxCellFaces);
-	getValue(_maxGapSizeBox, params.maxGapSize);
+	getValue(_maxGapSizeBox, params.maxGapWidth);
 	getValue(_sharpAngleBox, params.sharpAngle_degrees);
 	getValue(_minEdgeLengthBox, params.minEdgeLength);
 
