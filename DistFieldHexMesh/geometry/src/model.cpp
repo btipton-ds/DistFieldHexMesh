@@ -214,7 +214,7 @@ struct Model::FitGapCircle
 					v1 = (_pts[1] - _pts[2]).normalized();
 					auto dpCtr = v0.dot(v1);
 					if (dpCtr < 0) {
-						const auto boundaryTol = 100 * Tolerance::sameDistTol();
+						const auto boundaryTol = Tolerance::sameDistTol();
 						if (pFace1->isPointInside(_pts[1], plane1, boundaryTol)) {
 #if 0
 							auto dist0 = (_pts[0] - _pts[2]).norm();
@@ -224,6 +224,22 @@ struct Model::FitGapCircle
 #endif
 							result = _pts[1];
 							found = true;
+						} else {
+							double minDist = DBL_MAX;
+							pFace1->iterateEdges([this, &sectionPlane, &result, &found, &minDist](const Edge& edge)->bool {
+								auto seg = edge.getSegment();
+								RayHitd hit2;
+								if (sectionPlane.intersectLineSegment(seg, hit2, Tolerance::sameDistTol())) {
+									Vector3d v = hit2.hitPt - _pts[2];
+									auto dist = v.norm();
+									if (dist < minDist) {
+										_pts[1] = hit2.hitPt;
+										minDist = dist;
+									}
+									found = true;
+								}
+								return true;
+							});
 						}
 					}
 				}
